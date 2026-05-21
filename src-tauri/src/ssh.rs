@@ -695,6 +695,15 @@ fn is_benign_ssh_disconnect_error(error: &russh::Error) -> bool {
 }
 
 fn emit_terminal_output(app: &AppHandle, session_id: &str, data: String) {
+    // Tap the watchdog session-activity tracker before emitting so a
+    // sshSessionOutputSilence watchdog sees fresh bytes the same tick the
+    // user does. `try_state` gracefully no-ops when the tracker isn't
+    // managed (early boot, tests).
+    if let Some(tracker) =
+        app.try_state::<std::sync::Arc<crate::watchdog::SessionActivityTracker>>()
+    {
+        tracker.record(session_id, data.as_bytes());
+    }
     let _ = app.emit(
         "terminal-output",
         TerminalOutput {

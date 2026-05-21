@@ -113,6 +113,7 @@ export const defaultAiAssistantToolSettings = {
   tutorial: true,
   manual: true,
   network: false,
+  watchdog: true,
 };
 
 export const defaultAiProviderSettings: AiProviderSettings = {

@@ -13,7 +13,7 @@ use std::{
     thread::{self, JoinHandle},
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
@@ -196,6 +196,18 @@ impl TerminalSessionStarted {
 pub struct TerminalOutput {
     pub(crate) session_id: String,
     pub(crate) data: String,
+}
+
+/// Tap the watchdog session-activity tracker so a `sshSessionOutputSilence`
+/// watchdog observes the byte the same tick the user does. Free function
+/// (no &self) so the read threads inside `start_terminal_session` can call
+/// it cheaply without holding the SessionManager mutex.
+pub(crate) fn record_session_activity(app: &AppHandle, session_id: &str, data: &str) {
+    if let Some(tracker) =
+        app.try_state::<std::sync::Arc<crate::watchdog::SessionActivityTracker>>()
+    {
+        tracker.record(session_id, data.as_bytes());
+    }
 }
 
 #[derive(Deserialize)]
@@ -383,6 +395,7 @@ impl SessionManager {
                         Ok(0) => break,
                         Ok(count) => {
                             let data = String::from_utf8_lossy(&buffer[..count]).to_string();
+                            record_session_activity(&app, &output_session_id, &data);
                             let _ = app.emit(
                                 "terminal-output",
                                 TerminalOutput {
@@ -392,11 +405,13 @@ impl SessionManager {
                             );
                         }
                         Err(error) => {
+                            let data = format!("\r\n[session read error: {error}]\r\n");
+                            record_session_activity(&app, &output_session_id, &data);
                             let _ = app.emit(
                                 "terminal-output",
                                 TerminalOutput {
                                     session_id: output_session_id.clone(),
-                                    data: format!("\r\n[session read error: {error}]\r\n"),
+                                    data,
                                 },
                             );
                             break;

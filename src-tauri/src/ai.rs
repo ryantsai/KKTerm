@@ -46,6 +46,22 @@ const DASHBOARD_WIDGET_ANIMATION_CONTRACT: &str = "Dashboard widget animation co
 const DASHBOARD_WIDGET_PHYSICS_CONTRACT: &str = "Dashboard widget physics contract: for 2D physics, prefer the bundled Matter.js library instead of hand-rolling collision, gravity, constraints, or rigid-body integration. List body.libraries [\"matter\"] and call the Matter global from source. Size the Matter renderer/canvas from KK.getViewport(), rebuild or reposition static wall/floor bodies on KK.onViewportResize, keep the simulation bounded to the widget arena, and stop Runner or requestAnimationFrame work when the widget is paused, game-over, capped, or no longer needs animation.";
 const DASHBOARD_WIDGET_PERFORMANCE_COUNTER_CONTRACT: &str = "Dashboard performance counter contract: for local performance widgets, use a script widget that calls await KK.getPerformanceCounters(). It returns a low-overhead local snapshot with CPU, RAM, commit, process/thread/handle counts, aggregate network rates, KKTerm process memory/I/O rates, uptime, and system-drive free space. Poll at a modest interval such as 2-5 seconds; do not use requestAnimationFrame for counters.";
 const DASHBOARD_WIDGET_DOM_CONTRACT: &str = "Dashboard widget DOM contract: the generated source is smoke-checked before it is saved. Build the UI from the provided #root element with document.createElement and root.replaceChildren, or provide htmlShim for every extra element id you query. Do not call document.getElementById('some-id').innerHTML/textContent/appendChild unless that id is root, appears in htmlShim, or is created in source before use. After a dashboard_create_widget or dashboard_update_custom_widget call, inspect the tool result; if validation reports a DOM mount, JSON, library, or script-source error, fix the widget and retry before yielding to the user.";
+/// Builds the watchdog intent system prompt. The target catalog (kinds,
+/// descriptions, predicate hints, examples) is pulled from
+/// `watchdog::catalog` so adding a new pattern updates the AI's prompt
+/// automatically. The rest of the contract — predicate / stop / action
+/// rules — is pinned here because it changes much less frequently.
+fn watchdog_intent_contract() -> String {
+    let catalog_section = crate::watchdog::catalog::target_catalog_prompt_section();
+    format!(
+        "WATCHDOG MODE: The user wants to set up a background monitor. Translate their natural-language request into one structured watchdog and create it by calling the watchdog_create tool with a full WatchdogConfig. Do not describe what a watchdog would do — call the tool. After watchdog_create succeeds, give a brief one-paragraph confirmation that names the target, the trigger, and the stop condition; then yield. Do not stay in chat after one watchdog is created unless the user asked for several. \
+\n\nSupported target kinds (pick the one whose example most resembles the user's request):\n{catalog_section}\n\nUse session_state to discover live session ids before creating sshSessionOutputSilence watchdogs; if multiple sessions match the user's description, ask one narrow question to disambiguate. \
+Predicate ops are gt | lt | gte | lte | eq | ne with a numeric value, or silenceFor {{ ms: u64 }} for output-silence targets. Always set sustainedForMs on threshold-style triggers (cpu/ram/disk over X for Y minutes) so transient spikes don't trip a false alarm. SilenceFor triggers don't need sustainedForMs — the threshold is built into the predicate. pollMs must be 500–3_600_000; choose a poll interval at least 10x smaller than the threshold so the timer has multiple samples to confirm. \
+stop is one of {{ kind: 'untilCanceled' }} (default for ongoing watches), {{ kind: 'afterFirstTrigger' }} (one-shot alert), {{ kind: 'afterTriggerCount', n: <u32> }}, {{ kind: 'afterPollCount', n: <u32> }}, or {{ kind: 'afterDuration', ms: <u64> }}. \
+action is either {{ kind: 'notify' }} (passive: status-bar surface only) or {{ kind: 'aiIntervene', goal: <imperative instructions>, contextSources: <subset of sessionOutputTail | sessionMeta | tickHistory | performanceSnapshot>, allowedTools: <exact tool names>, approvalPolicy: 'sessionAllow', maxInterventions: <hard cap, typically 3–10>, suppressionMs: <cooldown after each action, typically 15_000–60_000> }}. For SSH-session watchdogs that should nudge stalled CLIs, set contextSources to ['sessionOutputTail', 'sessionMeta', 'tickHistory'] so the intervention sub-turn sees recent terminal output; the typical allowedTools is ['session_send_text', 'session_state']. Use aiIntervene only when the user explicitly asks for the AI to act when the trigger fires (e.g. 'tell the codex CLI to continue when it stalls'); otherwise default to notify. For aiIntervene watchdogs the runtime will show the user an approval modal listing every allowed tool — be conservative with allowedTools, list only what's needed. \
+notification is one of inAppOnly | inAppPlusToast | inAppPlusSound — default inAppOnly. Generate a short human-readable name like 'CPU > 90% (5 min)' or 'codex CLI keepalive'. If the user's request maps to a target kind not in the catalog above (process exit, log file pattern, HTTP endpoint health, SSL cert expiry, etc.), explain that limitation in one sentence and offer the closest currently-supported alternative — most often a performanceCounter, ping, tcpReachable, or sshSessionOutputSilence variant — instead of creating a watchdog you know will fail validation."
+    )
+}
 
 macro_rules! ai_interaction_debug {
     ($event:expr, $payload:expr) => {
@@ -3708,7 +3724,116 @@ fn ai_tool_definitions_with_skills(
             json!({"type":"object","properties":{"query":{"type":"string"}},"required":["query"]}),
         ));
     }
+    if settings.watchdog() {
+        tools.push(tool_definition(
+            "watchdog_create",
+            "Create a background watchdog that polls a target and fires when a predicate is met. Use this for monitoring requests (\"alert me when CPU > 90% for 5 min\"). After this returns, give the user a brief confirmation and yield — the runtime polls independently and surfaces ticks/triggers in the status bar. Schema constraints in this version: target.kind must be 'mock' (testing) or 'performanceCounter'; metric values must come from the documented enum; action.kind must be 'notify' (aiIntervene actions land in a later release); pollMs is 500..=3_600_000; sustainedForMs prevents transient spikes from firing.",
+            watchdog_create_schema(),
+        ));
+        tools.push(tool_definition(
+            "watchdog_list",
+            "List all watchdogs known to the registry this session. Returns id, name, state, lastValue, triggerCount, pollCount.",
+            json!({"type":"object","properties":{}}),
+        ));
+        tools.push(tool_definition(
+            "watchdog_cancel",
+            "Cancel a running watchdog by id. The registry transitions it to a canceled state and stops polling.",
+            json!({"type":"object","properties":{"id":{"type":"string"}},"required":["id"]}),
+        ));
+        tools.push(tool_definition(
+            "watchdog_get_report",
+            "Fetch the full report for one watchdog: config, current state, tick ring buffer (last 200), and the full trigger event log. Use this when the user asks for a summary or post-mortem.",
+            json!({"type":"object","properties":{"id":{"type":"string"}},"required":["id"]}),
+        ));
+    }
     tools
+}
+
+/// JSON schema for `watchdog_create`. Kept inline so the LLM sees exact field
+/// names and enums; mirrors `WatchdogConfig` in src-tauri/src/watchdog/types.rs.
+fn watchdog_create_schema() -> Value {
+    json!({
+        "type": "object",
+        "properties": {
+            "config": {
+                "type": "object",
+                "properties": {
+                    "name": { "type": "string", "description": "Short human-readable name shown in the status bar popover, e.g. 'CPU > 90% (5 min)'" },
+                    "target": {
+                        // Built from the watchdog target catalog so new
+                        // pattern additions update the AI's schema with
+                        // just one catalog entry.
+                        "oneOf": crate::watchdog::catalog::target_catalog()
+                            .into_iter()
+                            .map(|d| (d.schema_fragment)())
+                            .collect::<Vec<_>>()
+                    },
+                    "trigger": {
+                        "type": "object",
+                        "properties": {
+                            "predicate": {
+                                "oneOf": [
+                                    {
+                                        "type": "object",
+                                        "properties": {
+                                            "op": { "type": "string", "enum": ["gt", "lt", "gte", "lte", "eq", "ne"] },
+                                            "value": { "type": "number" }
+                                        },
+                                        "required": ["op", "value"]
+                                    },
+                                    {
+                                        "type": "object",
+                                        "properties": {
+                                            "op": { "const": "silenceFor" },
+                                            "ms": { "type": "integer", "minimum": 1, "description": "Trigger fires when target reports it has been silent for at least this many ms." }
+                                        },
+                                        "required": ["op", "ms"]
+                                    }
+                                ]
+                            },
+                            "sustainedForMs": { "type": "integer", "minimum": 0, "description": "Predicate must hold continuously for this many ms before firing. Not needed for silenceFor — the threshold is in the predicate." }
+                        },
+                        "required": ["predicate"]
+                    },
+                    "pollMs": { "type": "integer", "minimum": 500, "maximum": 3600000 },
+                    "stop": {
+                        "oneOf": [
+                            { "type": "object", "properties": { "kind": { "const": "untilCanceled" } }, "required": ["kind"] },
+                            { "type": "object", "properties": { "kind": { "const": "afterFirstTrigger" } }, "required": ["kind"] },
+                            { "type": "object", "properties": { "kind": { "const": "afterTriggerCount" }, "n": { "type": "integer", "minimum": 1 } }, "required": ["kind", "n"] },
+                            { "type": "object", "properties": { "kind": { "const": "afterPollCount" }, "n": { "type": "integer", "minimum": 1 } }, "required": ["kind", "n"] },
+                            { "type": "object", "properties": { "kind": { "const": "afterDuration" }, "ms": { "type": "integer", "minimum": 1 } }, "required": ["kind", "ms"] }
+                        ]
+                    },
+                    "notification": { "type": "string", "enum": ["inAppOnly", "inAppPlusToast", "inAppPlusSound"] },
+                    "action": {
+                        "oneOf": [
+                            {
+                                "type": "object",
+                                "properties": { "kind": { "const": "notify" } },
+                                "required": ["kind"]
+                            },
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "kind": { "const": "aiIntervene" },
+                                    "goal": { "type": "string", "description": "Standing instructions handed to the intervention sub-turn each time the trigger fires. Imperative voice, narrow scope." },
+                                    "contextSources": { "type": "array", "items": { "type": "string", "enum": ["sessionOutputTail", "sessionMeta", "tickHistory", "performanceSnapshot"] } },
+                                    "allowedTools": { "type": "array", "items": { "type": "string" }, "minItems": 1, "description": "Exact tool names the intervention sub-turn is permitted to call. Runtime enforced — extra tools are refused." },
+                                    "approvalPolicy": { "type": "string", "enum": ["sessionAllow"], "description": "Only sessionAllow is supported in this version: one approval at creation covers every intervention." },
+                                    "maxInterventions": { "type": "integer", "minimum": 1, "maximum": 50, "description": "Hard cap on intervention sub-turns. Watchdog auto-terminates with error state on reach." },
+                                    "suppressionMs": { "type": "integer", "minimum": 0, "description": "Wait after an intervention before re-evaluating triggers. Prevents the watchdog's own action from immediately re-firing the predicate." }
+                                },
+                                "required": ["kind", "goal", "allowedTools", "maxInterventions"]
+                            }
+                        ]
+                    }
+                },
+                "required": ["name", "target", "trigger", "pollMs", "stop", "notification", "action"]
+            }
+        },
+        "required": ["config"]
+    })
 }
 
 fn assistant_use_skill_tool_definition(
@@ -4226,6 +4351,9 @@ async fn run_ai_tool(
         "tutorial_highlight" if tool_settings.tutorial() => live_session_tool(app, "tutorial_highlight", args).await,
         name if tool_settings.network() && name.starts_with("network_") => {
             network_tool(name, args).await
+        }
+        name if tool_settings.watchdog() && name.starts_with("watchdog_") => {
+            watchdog_tool(app, name, args).await
         }
         _ => "Tool is disabled in AI Assistant settings.".to_string(),
     };
@@ -4929,6 +5057,83 @@ async fn network_tool(name: &str, args: Value) -> String {
             }
         }
         _ => json!({"ok":false,"error":"unknown network tool"}).to_string(),
+    }
+}
+
+/// Watchdog tool dispatcher. Async because `watchdog_create` with
+/// `aiIntervene` action must await the user-approval modal before spawning
+/// any task. List/cancel/report stay effectively synchronous (no await on
+/// the happy path).
+async fn watchdog_tool(app: &tauri::AppHandle, name: &str, args: Value) -> String {
+    use crate::watchdog::registry::{validate_config, WatchdogRegistry};
+    use crate::watchdog::types::{WatchdogAction, WatchdogConfig};
+    let Some(registry) = app.try_state::<std::sync::Arc<WatchdogRegistry>>() else {
+        return json!({"ok": false, "error": "watchdog registry unavailable"}).to_string();
+    };
+    match name {
+        "watchdog_create" => {
+            let config_value = args.get("config").cloned().unwrap_or(Value::Null);
+            let config: WatchdogConfig = match serde_json::from_value(config_value) {
+                Ok(c) => c,
+                Err(e) => {
+                    return json!({"ok": false, "error": format!("invalid config: {e}")})
+                        .to_string();
+                }
+            };
+            // Pre-flight validate before pestering the user with an approval
+            // modal. Cheap and idempotent — `create` will re-validate.
+            if let Err(e) = validate_config(&config) {
+                return json!({"ok": false, "error": e}).to_string();
+            }
+            // aiIntervene actions always require explicit user approval at
+            // creation time, regardless of the global tool_permission_mode.
+            // A single approval covers every intervention this watchdog
+            // performs (session-allow scoping); the allow-list is enforced
+            // by the intervention runner in step 6.
+            if let WatchdogAction::AiIntervene { .. } = &config.action {
+                let approval_args = json!({ "config": config });
+                let Some(bridge) = app.try_state::<AssistantToolApprovalBridge>() else {
+                    return json!({"ok": false, "error": "approval bridge unavailable"}).to_string();
+                };
+                let approved = bridge.request(app, "watchdog_create", &approval_args).await;
+                if !approved {
+                    return json!({
+                        "ok": false,
+                        "error": "User declined to approve this watchdog's intervention plan.",
+                    })
+                    .to_string();
+                }
+            }
+            match WatchdogRegistry::create(&registry, app, config) {
+                Ok(summary) => json!({"ok": true, "summary": summary}).to_string(),
+                Err(e) => json!({"ok": false, "error": e}).to_string(),
+            }
+        }
+        "watchdog_list" => {
+            let summaries = registry.list();
+            json!({"ok": true, "summaries": summaries}).to_string()
+        }
+        "watchdog_cancel" => {
+            let id = arg_string(&args, "id");
+            if id.is_empty() {
+                return json!({"ok": false, "error": "id required"}).to_string();
+            }
+            match registry.cancel(&id) {
+                Ok(()) => json!({"ok": true}).to_string(),
+                Err(e) => json!({"ok": false, "error": e}).to_string(),
+            }
+        }
+        "watchdog_get_report" => {
+            let id = arg_string(&args, "id");
+            if id.is_empty() {
+                return json!({"ok": false, "error": "id required"}).to_string();
+            }
+            match registry.report(&id) {
+                Ok(report) => json!({"ok": true, "report": report}).to_string(),
+                Err(e) => json!({"ok": false, "error": e}).to_string(),
+            }
+        }
+        _ => json!({"ok": false, "error": "unknown watchdog tool"}).to_string(),
     }
 }
 
@@ -6081,6 +6286,9 @@ fn build_agent_messages(
             "Prefer narrow extension permissions, local-first storage boundaries, and clear trust notes. If a KKTerm extension API is not provided in context, mark API details as proposed rather than claiming they exist.".to_string(),
         ]);
     }
+    if normalized_intent == AgentIntent::Watchdog {
+        system_instructions.push(watchdog_intent_contract());
+    }
 
     let mut messages = vec![OpenAiCompatibleMessage {
         role: "system".to_string(),
@@ -6176,6 +6384,7 @@ fn normalize_page_context(page_context: Option<AgentPageContext>) -> Option<Agen
 enum AgentIntent {
     Chat,
     ExtensionCreation,
+    Watchdog,
 }
 
 impl AgentIntent {
@@ -6183,6 +6392,7 @@ impl AgentIntent {
         match self {
             Self::Chat => "chat",
             Self::ExtensionCreation => "extensionCreation",
+            Self::Watchdog => "watchdog",
         }
     }
 }
@@ -6198,6 +6408,7 @@ fn normalize_agent_intent(intent: Option<String>) -> AgentIntent {
         | Some("extension_creation")
         | Some("extension-draft")
         | Some("extensiondraft") => AgentIntent::ExtensionCreation,
+        Some("watchdog") => AgentIntent::Watchdog,
         _ => AgentIntent::Chat,
     }
 }

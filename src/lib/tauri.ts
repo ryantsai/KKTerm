@@ -1794,6 +1794,26 @@ type CommandMap = {
     args: { subscriptionId: string };
     result: void;
   };
+  watchdog_create: {
+    args: { config: import("../watchdog/types").WatchdogConfig };
+    result: import("../watchdog/types").WatchdogSummary;
+  };
+  watchdog_list: {
+    args: undefined;
+    result: import("../watchdog/types").WatchdogSummary[];
+  };
+  watchdog_cancel: {
+    args: { id: string };
+    result: void;
+  };
+  watchdog_get_report: {
+    args: { id: string };
+    result: import("../watchdog/types").WatchdogReport;
+  };
+  watchdog_record_intervention: {
+    args: { id: string; record: import("../watchdog/types").WatchdogInterventionRecord };
+    result: void;
+  };
 };
 
 export interface ManualChapter {

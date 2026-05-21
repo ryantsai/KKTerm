@@ -416,7 +416,8 @@ export type AiAssistantToolId =
   | "sessions"
   | "tutorial"
   | "manual"
-  | "network";
+  | "network"
+  | "watchdog";
 
 export type AiAssistantToolSettings = Record<AiAssistantToolId, boolean>;
 

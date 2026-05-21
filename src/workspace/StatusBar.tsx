@@ -10,6 +10,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { AiCodingUsageStatusBar } from "../ai-coding-usage/AiCodingUsageStatusBar";
 import { useWorkspaceStore } from "../store";
+import { WatchdogStatusBar } from "../watchdog/WatchdogStatusBar";
 
 const NOTIFICATION_FADE_MS = 220;
 
@@ -76,6 +77,7 @@ export function StatusBar({
         ) : null}
       </div>
       <div className="status-bar-actions">
+        <WatchdogStatusBar />
         <AssistantWorkingStatusButton onOpenAssistant={onOpenAssistant} />
       </div>
     </footer>
