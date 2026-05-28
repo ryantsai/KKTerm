@@ -499,7 +499,6 @@
     "empty": {
       "loading": "Loading catalog…"
     },
-    "warningCacheFallback": "Could not refresh catalog ({{reason}}). Using cached copy.",
     "confirm": {
       "installTitle": "Install {{name}}?",
       "installWithPrereqsBody": "This will also install the following prerequisite(s):",

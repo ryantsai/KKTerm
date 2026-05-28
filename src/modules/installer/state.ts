@@ -8,7 +8,6 @@
 import { create } from "zustand";
 import type {
   Catalog,
-  CatalogSourceKind,
   DetectedState,
   ProgressEvent,
   ToolState,
@@ -26,8 +25,6 @@ interface InFlight {
 
 interface InstallerStoreState {
   catalog: Catalog | null;
-  catalogSource: CatalogSourceKind | null;
-  catalogSourceDetail: string | null;
   detected: Record<string, DetectedState>;
   toolState: Record<string, ToolState>;
   hasInitialScanned: boolean;
@@ -50,11 +47,7 @@ interface InstallerStoreState {
   /// Reset only by restarting KKTerm — a real reboot kills the app anyway.
   wslJustEnabled: boolean;
 
-  setCatalog: (
-    catalog: Catalog,
-    source: CatalogSourceKind,
-    sourceDetail: string | null,
-  ) => void;
+  setCatalog: (catalog: Catalog) => void;
   setDetected: (detected: Record<string, DetectedState>) => void;
   setOneDetected: (toolId: string, state: DetectedState) => void;
   setToolStates: (states: ToolState[]) => void;
@@ -70,8 +63,6 @@ interface InstallerStoreState {
 const initial: Pick<
   InstallerStoreState,
   | "catalog"
-  | "catalogSource"
-  | "catalogSourceDetail"
   | "detected"
   | "toolState"
   | "hasInitialScanned"
@@ -82,8 +73,6 @@ const initial: Pick<
   | "wslJustEnabled"
 > = {
   catalog: null,
-  catalogSource: null,
-  catalogSourceDetail: null,
   detected: {},
   toolState: {},
   hasInitialScanned: false,
@@ -96,8 +85,7 @@ const initial: Pick<
 
 export const useInstallerStore = create<InstallerStoreState>((set) => ({
   ...initial,
-  setCatalog: (catalog, source, sourceDetail) =>
-    set({ catalog, catalogSource: source, catalogSourceDetail: sourceDetail }),
+  setCatalog: (catalog) => set({ catalog }),
   setDetected: (detected) => set({ detected }),
   setOneDetected: (toolId, state) =>
     set((s) => ({ detected: { ...s.detected, [toolId]: state } })),

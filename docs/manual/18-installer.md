@@ -2,15 +2,15 @@
 
 ## AI grep hints
 
-- Keys: `installer.title`, `installer.subtitle`, `installer.railLabel`, `installer.refresh`, `installer.checkUpdates`, `installer.updateAll`, `installer.section.installed`, `installer.section.available`, `installer.section.updates`, `installer.actions.install`, `installer.actions.update`, `installer.actions.uninstall`, `installer.actions.cancel`, `installer.options.scope`, `installer.options.version`, `installer.options.location`, `installer.options.addToPath`, `installer.options.pinVersion`, `installer.status.installing`, `installer.status.uninstalling`, `installer.status.completed`, `installer.status.failed`, `installer.status.cancelled`, `installer.status.partial`, `installer.status.scanning`, `installer.empty.loading`, `installer.warningCacheFallback`, `installer.confirm.installTitle`, `installer.confirm.installWithPrereqsBody`, `installer.confirm.uacFooter`, `installer.confirm.uninstallTitle`, `installer.confirm.uninstallSimpleBody`, `installer.confirm.uninstallDependentsBody`, `installer.confirm.uninstallDependentsFooter`, `installer.confirm.updateAllTitle`, `installer.confirm.updateAllBody`, `installer.confirm.updateAllConfirm`, `installer.wslReboot`
-- Topics: Installer Helper Module, remote signed catalog, ADR 0007, winget recipes, npm recipes, github-release recipes, Windows feature recipes (DISM), bundles (node-bundle, python-bundle), dependency resolution, UAC prompts, WSL reboot gating, pin version, in-flight cancellation, tutorial targets `app.activityRailInstaller`, `installer.updateAll`, `installer.toolOptions`
+- Keys: `installer.title`, `installer.subtitle`, `installer.railLabel`, `installer.refresh`, `installer.checkUpdates`, `installer.updateAll`, `installer.section.installed`, `installer.section.available`, `installer.section.updates`, `installer.actions.install`, `installer.actions.update`, `installer.actions.uninstall`, `installer.actions.cancel`, `installer.options.scope`, `installer.options.version`, `installer.options.location`, `installer.options.addToPath`, `installer.options.pinVersion`, `installer.status.installing`, `installer.status.uninstalling`, `installer.status.completed`, `installer.status.failed`, `installer.status.cancelled`, `installer.status.partial`, `installer.status.scanning`, `installer.empty.loading`, `installer.confirm.installTitle`, `installer.confirm.installWithPrereqsBody`, `installer.confirm.uacFooter`, `installer.confirm.uninstallTitle`, `installer.confirm.uninstallSimpleBody`, `installer.confirm.uninstallDependentsBody`, `installer.confirm.uninstallDependentsFooter`, `installer.confirm.updateAllTitle`, `installer.confirm.updateAllBody`, `installer.confirm.updateAllConfirm`, `installer.wslReboot`
+- Topics: Installer Helper Module, bundled catalog (compile-time embedded), ADR 0008 supersedes ADR 0007, winget recipes, npm recipes, github-release recipes, Windows feature recipes (DISM), bundles (node-bundle, python-bundle), dependency resolution, UAC prompts, WSL reboot gating, pin version, in-flight cancellation, tutorial targets `app.activityRailInstaller`, `installer.updateAll`, `installer.toolOptions`
 - Synonyms: "install nvm", "install Node", "install Python", "install Docker", "install Claude Code", "set up dev tools", "developer tools installer", "package manager"
 
 ## What it is
 
 The **Installer Helper Module** is a built-in Activity Rail destination that installs, updates, and uninstalls a curated catalog of Windows developer tools — git, node, python, docker, AI coding CLIs, and so on. It is grouped with the other built-in Module buttons near the top of the rail, with its own icon (`Package`).
 
-The catalog is **remote** and **signed**: the JSON list of supported tools is fetched from a fixed URL on GitHub, verified against a signing key compiled into the KKTerm binary, and cached locally. New tools can be added to the catalog without releasing a new KKTerm build. See `docs/ADR/0007-installer-helper-remote-catalog.md` for the trust model.
+The catalog **ships with the KKTerm release**: the JSON list of supported tools is compiled into the binary at build time. Updates to the catalog ride with each release. See `docs/ADR/0008-installer-helper-bundled-catalog.md` for the rationale and what it supersedes.
 
 ## Module layout
 
@@ -87,21 +87,16 @@ When the user installs the WSL Windows feature in the current app session, the I
 ## Persistence
 
 - **SQLite** — table `installer_tool_state(tool_id PK, pinned, latest_version_seen, last_check_at)` (schema version 17). Pinning and the cached latest version survive restarts.
-- **On-disk files** — `%APPDATA%\KKTerm\installer\catalog.cached.json` and `.minisig`, plus `catalog.lastFetchAt` for the 1-hour TTL.
 - **In-memory only** — current detected state, the in-flight install queue, the WSL reboot flag, the per-tool log buffer.
+- **On-disk install dirs** — `%LOCALAPPDATA%\KKTerm\installer\bin\<tool_id>\` holds installed `githubRelease`-provider tools and their `.kkterm-installer.json` marker file. These are installed-tool state, not catalog cache.
 
-## Catalog hosting and signing
+## Catalog source
 
-The shipped catalog file is `installer/catalog.v1.json` at the root of the KKTerm repository. The signature file is `installer/catalog.v1.json.minisig`. Users fetch them from:
+The catalog `installer/catalog.v1.json` is **embedded into the KKTerm binary at compile time** via `include_str!`. Updates to the catalog ship with the next KKTerm release — there is no network fetch, no on-disk cache, and no signature verification. The trust anchor is the app binary itself (eventually backed by Windows code-signing of the KKTerm installer).
 
-```
-https://raw.githubusercontent.com/ryantsai/KKTerm/main/installer/catalog.v1.json
-https://raw.githubusercontent.com/ryantsai/KKTerm/main/installer/catalog.v1.json.minisig
-```
+Adding, editing, or removing a tool is a normal commit to `installer/catalog.v1.json` followed by a release. The `shipped_catalog_parses_and_validates` test embeds the same JSON via `include_str!` and runs `Catalog::validate()`, so malformed edits fail `cargo test` before they can ship.
 
-Signing is performed by the maintainer on an offline machine using `minisign`. See `scripts/installer/sign-catalog.ps1`.
-
-The public key is **compiled into the binary** as `INSTALLER_CATALOG_PUBKEY` in `src-tauri/src/installer/trust.rs`. Until a real keypair has been generated and the constant updated, every signature verification fails by design — the page will show `installer.empty.loading` indefinitely and the Status Bar will surface the cache-fallback warning (`installer.warningCacheFallback`) once a cached copy exists.
+See [`docs/ADR/0008-installer-helper-bundled-catalog.md`](../ADR/0008-installer-helper-bundled-catalog.md) for the design rationale and what it supersedes from [ADR 0007](../ADR/0007-installer-helper-remote-catalog.md).
 
 ## Tutorial
 

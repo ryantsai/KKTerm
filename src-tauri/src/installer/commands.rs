@@ -5,15 +5,13 @@
 // thread per call; cancellation is cooperative via a shared AtomicBool.
 
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 
-use serde::Serialize;
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Emitter, State};
 
-use super::catalog::{load_catalog, CatalogSource};
+use super::catalog::load_bundled_catalog;
 use super::detect::{detect_all, detect_one, detect_one_in_catalog, DetectedState};
 use super::events::{ProgressEvent, PROGRESS_EVENT};
 use super::install::{install_recipe, EventSink};
@@ -55,47 +53,21 @@ impl InstallerRuntime {
     }
 }
 
-fn cache_dir(app: &AppHandle) -> PathBuf {
-    app.path()
-        .app_data_dir()
-        .unwrap_or_else(|_| std::env::temp_dir())
-        .join("installer")
-}
-
 fn find_recipe<'a>(catalog: &'a Catalog, id: &str) -> Option<&'a Recipe> {
     catalog.recipes.iter().find(|r| r.id == id)
 }
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CatalogLoadResponse {
-    pub catalog: Catalog,
-    pub source: String,
-    pub source_detail: Option<String>,
-}
-
+/// Load the bundled catalog. The `_force_refresh` arg is retained for
+/// frontend API compatibility but has no effect — the catalog is embedded
+/// at compile time, so "refresh" is the same as "the build that's running".
 #[tauri::command]
 pub fn installer_load_catalog(
-    app: AppHandle,
     runtime: State<'_, InstallerRuntime>,
-    force_refresh: Option<bool>,
-) -> Result<CatalogLoadResponse, String> {
-    let load = load_catalog(&cache_dir(&app), force_refresh.unwrap_or(false))
-        .map_err(|e| e.to_string())?;
-    let (source, detail) = match &load.source {
-        CatalogSource::Fresh => ("fresh".to_string(), None),
-        CatalogSource::CacheWithinTtl => ("cacheWithinTtl".to_string(), None),
-        CatalogSource::CacheFallback { reason } => (
-            "cacheFallback".to_string(),
-            Some(reason.clone()),
-        ),
-    };
-    *runtime.catalog.lock().unwrap() = Some(load.catalog.clone());
-    Ok(CatalogLoadResponse {
-        catalog: load.catalog,
-        source,
-        source_detail: detail,
-    })
+    _force_refresh: Option<bool>,
+) -> Result<Catalog, String> {
+    let catalog = load_bundled_catalog().map_err(|e| e.to_string())?;
+    *runtime.catalog.lock().unwrap() = Some(catalog.clone());
+    Ok(catalog)
 }
 
 #[tauri::command]
@@ -210,7 +182,7 @@ pub fn installer_uninstall_recipe(
     std::thread::spawn(move || {
         let emit: EventSink = make_emit_sink(app.clone());
         let result = if let Provider::Bundle { steps } = &recipe.provider {
-            run_bundle_uninstall(&catalog_or_empty(&app), &recipe.id, steps, cancel.clone(), &emit)
+            run_bundle_uninstall(&catalog, &recipe.id, steps, cancel.clone(), &emit)
         } else {
             uninstall_recipe(&recipe, cancel.clone(), &emit).map(|_| None)
         };
@@ -342,15 +314,3 @@ fn run_bundle_uninstall(
     Ok(None)
 }
 
-fn catalog_or_empty(app: &AppHandle) -> Catalog {
-    app.state::<InstallerRuntime>()
-        .catalog
-        .lock()
-        .unwrap()
-        .clone()
-        .unwrap_or(Catalog {
-            schema_version: 1,
-            generated_at: None,
-            recipes: vec![],
-        })
-}

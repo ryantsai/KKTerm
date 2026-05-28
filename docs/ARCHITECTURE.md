@@ -238,7 +238,7 @@ When `docs/ARCHITECTURE.md` and `docs/DASHBOARD.md` conflict on Dashboard-intern
 
 The Installer Helper Module is a built-in Activity Rail destination (rail icon `Package`, grouped with the other built-in Module buttons near the top of the rail) that manages a curated catalog of Windows developer tools — git, node, python, docker, AI coding CLIs, and so on. Users see Installed / Updates available / Available sections; per-row actions are Install / Update / Uninstall, plus a Pin checkbox that excludes the tool from "Update all".
 
-The catalog itself is a **remote, signed JSON document** fetched from `https://raw.githubusercontent.com/ryantsai/KKTerm/main/installer/catalog.v1.json` and verified against an Ed25519 public key compiled into the binary as `INSTALLER_CATALOG_PUBKEY` in `src-tauri/src/installer/trust.rs`. New tools can be added to the catalog without releasing a new KKTerm build. The full trust model — signing, schema versioning, cache fallback, structured-data-only recipes — lives in `docs/ADR/0007-installer-helper-remote-catalog.md`.
+The catalog itself is a **JSON file embedded into the KKTerm binary at compile time** via `include_str!("../../../installer/catalog.v1.json")`. Updates to the catalog ship with each KKTerm release. There is no network fetch, no on-disk cache, and no signature verification — the trust anchor is the app binary itself (eventually backed by Windows code-signing of the KKTerm installer). The design rationale and what it supersedes from the earlier remote-signed approach lives in `docs/ADR/0008-installer-helper-bundled-catalog.md` (see also the superseded `docs/ADR/0007-installer-helper-remote-catalog.md`).
 
 Summary of the durable shape:
 
@@ -249,19 +249,18 @@ Summary of the durable shape:
 - **WSL reboot gating** sets a session-only flag when the WSL Windows feature is enabled this session; Docker Desktop (and any recipe transitively needing WSL) is disabled with an explanatory hint until KKTerm restarts.
 - **UAC handling is honest** — "Update all" warns up front with the estimated prompt count. We do not try to suppress or batch UAC.
 - **Cancellation** kills the child process for an in-flight install via a shared `AtomicBool` flag. For "Update all", cancel stops the queue but not the in-flight tool. Partial installs are not rolled back.
-- **Persistence** is split: SQLite table `installer_tool_state(tool_id PK, pinned, latest_version_seen, last_check_at)` (schema version 17) holds per-tool prefs and the latest-version cache; on-disk files under `%APPDATA%\KKTerm\installer\` hold the cached catalog blob + signature; detection results and the in-flight queue are **in-memory only** so detection is always re-derived from the OS on demand.
+- **Persistence** is split: SQLite table `installer_tool_state(tool_id PK, pinned, latest_version_seen, last_check_at)` (schema version 17) holds per-tool prefs and the latest-version cache; the catalog itself is compile-time-embedded and needs no on-disk cache; `%LOCALAPPDATA%\KKTerm\installer\bin\<tool_id>\` holds installed `githubRelease`-provider tools; detection results and the in-flight queue are **in-memory only** so detection is always re-derived from the OS on demand.
 - **Progress streaming** is via the Tauri event channel `installer://progress` carrying a discriminated `ProgressEvent` union (`step`, `stdout`, `stderr`, `progress`, `completed`, `failed`, `cancelled`). The frontend reduces these into per-tool log + current-step + ratio state in a Zustand store.
 - **AI Assistant integration is deferred.** No installer Tauri command is exposed to the assistant in v1.
 - **Tutorial-capable.** Targets: `app.activityRailInstaller` (rail), `installer.updateAll` (header button), `installer.toolOptions` (per-row options form).
 
 Source layout:
 
-- `src-tauri/src/installer/` — Rust backend: `trust.rs` (Ed25519 verify), `schema.rs` (Recipe / Provider / Catalog with validate + cycle check), `catalog.rs` (fetch + cache + TTL), `detect.rs`, `install.rs`, `uninstall.rs`, `latest_version.rs`, `state.rs` (SQLite), `events.rs`, `commands.rs` (Tauri commands + `InstallerRuntime` state).
+- `src-tauri/src/installer/` — Rust backend: `schema.rs` (Recipe / Provider / Catalog with validate + cycle check), `catalog.rs` (compile-time `include_str!` loader), `detect.rs`, `install.rs`, `uninstall.rs`, `latest_version.rs`, `state.rs` (SQLite), `events.rs`, `commands.rs` (Tauri commands + `InstallerRuntime` state).
 - `src/modules/installer/` — frontend: `InstallerPage.tsx`, `ToolRow.tsx`, `InstallerConfirmDialog.tsx`, `state.ts` (Zustand), `dag.ts` (pure DAG helpers), `types.ts`, `installer.css`.
-- `installer/catalog.v1.json` + `installer/catalog.v1.json.minisig` — the published catalog and its signature, served by raw.githubusercontent.com.
-- `scripts/installer/sign-catalog.ps1` — maintainer signing helper.
+- `installer/catalog.v1.json` — the catalog source, embedded into the Rust binary at compile time.
 
-When `docs/ARCHITECTURE.md` and `docs/ADR/0007-installer-helper-remote-catalog.md` conflict on installer concerns, the ADR wins.
+When `docs/ARCHITECTURE.md` and `docs/ADR/0008-installer-helper-bundled-catalog.md` conflict on installer concerns, the ADR wins.
 
 ### AI Assistant
 

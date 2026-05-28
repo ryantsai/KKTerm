@@ -1859,7 +1859,7 @@ type CommandMap = {
   };
   installer_load_catalog: {
     args: { forceRefresh?: boolean };
-    result: import("../modules/installer/types").CatalogLoadResponse;
+    result: import("../modules/installer/types").Catalog;
   };
   installer_detect_all: {
     args: undefined;

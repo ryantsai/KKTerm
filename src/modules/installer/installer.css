@@ -40,15 +40,6 @@
   font-size: 0.875rem;
 }
 
-.installer-page__warning {
-  margin: 0.5rem 0 0;
-  padding: 0.5rem 0.75rem;
-  background: var(--amber-soft);
-  border-left: 3px solid var(--amber);
-  border-radius: 4px;
-  font-size: 0.875rem;
-}
-
 .installer-page__actions {
   display: flex;
   gap: 0.5rem;

@@ -3100,7 +3100,7 @@ dependencies = [
 
 [[package]]
 name = "kkterm"
-version = "0.1.40"
+version = "0.1.41"
 dependencies = [
  "anyhow",
  "async-native-tls",
@@ -3114,7 +3114,6 @@ dependencies = [
  "keyring-core",
  "lazy_static",
  "lettre",
- "minisign-verify",
  "oxc_allocator",
  "oxc_ast",
  "oxc_ast_visit",
@@ -3386,12 +3385,6 @@ name = "mime"
 version = "0.3.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6877bb514081ee2a7ff5ef9de3281f14a4dd4bceac4c09388074a6b5df8a139a"
-
-[[package]]
-name = "minisign-verify"
-version = "0.2.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22f9645cb765ea72b8111f36c522475d2daa0d22c957a9826437e97534bc4e9e"
 
 [[package]]
 name = "miniz_oxide"

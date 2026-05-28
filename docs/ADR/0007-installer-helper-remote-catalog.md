@@ -2,7 +2,11 @@
 
 ## Status
 
-Accepted
+**Superseded by [ADR 0008](0008-installer-helper-bundled-catalog.md)** —
+the Installer Helper now ships its catalog as a compile-time-embedded
+JSON inside the KKTerm binary instead of fetching a signed JSON from
+GitHub at runtime. This document is retained as the record of the
+original design decision and the trade-offs that motivated the change.
 
 ## Context
 

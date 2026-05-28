@@ -33,8 +33,6 @@ export function InstallerPage({ active }: { active: boolean }) {
     (state) => state.showStatusBarNotice,
   );
   const catalog = useInstallerStore((s) => s.catalog);
-  const catalogSource = useInstallerStore((s) => s.catalogSource);
-  const catalogSourceDetail = useInstallerStore((s) => s.catalogSourceDetail);
   const detected = useInstallerStore((s) => s.detected);
   const toolState = useInstallerStore((s) => s.toolState);
   const scanning = useInstallerStore((s) => s.scanning);
@@ -108,16 +106,8 @@ export function InstallerPage({ active }: { active: boolean }) {
     if (catalog) return; // already loaded
     void (async () => {
       try {
-        const response = await invokeCommand("installer_load_catalog", {});
-        setCatalog(response.catalog, response.source, response.sourceDetail);
-        if (response.source === "cacheFallback") {
-          showStatusBarNotice(
-            t("installer.warningCacheFallback", {
-              reason: response.sourceDetail ?? "",
-            }),
-            { tone: "info" },
-          );
-        }
+        const loaded = await invokeCommand("installer_load_catalog", {});
+        setCatalog(loaded);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         showStatusBarNotice(message, { tone: "error" });
@@ -252,13 +242,6 @@ export function InstallerPage({ active }: { active: boolean }) {
         <div>
           <h1>{t("installer.title")}</h1>
           <p className="installer-page__subtitle">{t("installer.subtitle")}</p>
-          {catalogSource === "cacheFallback" && catalogSourceDetail ? (
-            <p className="installer-page__warning" role="status">
-              {t("installer.warningCacheFallback", {
-                reason: catalogSourceDetail,
-              })}
-            </p>
-          ) : null}
         </div>
         <div className="installer-page__actions">
           <button

@@ -42,14 +42,6 @@ export interface Catalog {
   recipes: Recipe[];
 }
 
-export type CatalogSourceKind = "fresh" | "cacheWithinTtl" | "cacheFallback";
-
-export interface CatalogLoadResponse {
-  catalog: Catalog;
-  source: CatalogSourceKind;
-  sourceDetail: string | null;
-}
-
 export interface DetectedState {
   installed: boolean;
   installedVersion: string | null;
