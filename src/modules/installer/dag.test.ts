@@ -77,3 +77,63 @@ if (antigravityPlan.uacPromptEstimate !== 0) {
     `Antigravity CLI's user-local command installer should not warn about UAC; got ${antigravityPlan.uacPromptEstimate}`,
   );
 }
+
+const downloadableWingetRecipe: Recipe = {
+  id: "downloadable-winget-app",
+  name: "Downloadable winget app",
+  descriptionEn: "Downloadable winget app",
+  category: "utilities",
+  icon: "Package",
+  needs: ["winget"],
+  provider: { kind: "winget", id: "Example.App" },
+  downloadProvider: {
+    kind: "downloadInstaller",
+    url: "https://example.test/app.exe",
+    fileName: "app.exe",
+  },
+  options: ["provider"],
+};
+
+const catalogWithDownloadProvider: Catalog = {
+  schemaVersion: 1,
+  generatedAt: "2026-05-31",
+  recipes: [
+    {
+      id: "winget",
+      name: "winget",
+      descriptionEn: "winget",
+      category: "essentials",
+      icon: "Package",
+      provider: {
+        kind: "downloadInstaller",
+        url: "https://example.test/winget.msixbundle",
+        fileName: "winget.msixbundle",
+      },
+    },
+    downloadableWingetRecipe,
+  ],
+};
+
+const defaultProviderPlan = resolveInstallPlan(
+  "downloadable-winget-app",
+  catalogWithDownloadProvider,
+  {},
+  { provider: "default" },
+);
+if (!defaultProviderPlan.actionable.some((step) => step.recipe.id === "winget")) {
+  throw new Error(
+    "Default provider installs should still include winget as a prerequisite.",
+  );
+}
+
+const downloadProviderPlan = resolveInstallPlan(
+  "downloadable-winget-app",
+  catalogWithDownloadProvider,
+  {},
+  { provider: "download" },
+);
+if (downloadProviderPlan.actionable.some((step) => step.recipe.id === "winget")) {
+  throw new Error(
+    "Download provider installs should not include winget as a prerequisite.",
+  );
+}

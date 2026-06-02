@@ -50,7 +50,8 @@ export function resolveInstallPlan(
     seen.add(id);
     const recipe = byId.get(id);
     if (!recipe) return;
-    for (const need of recipe.needs ?? []) {
+    const recipeOptions = id === targetRecipeId ? options : undefined;
+    for (const need of effectiveNeedsFor(recipe, recipeOptions)) {
       visit(need);
     }
     order.push(recipe);
@@ -83,6 +84,18 @@ export function resolveInstallPlan(
   );
 
   return { steps, actionable, uacPromptEstimate };
+}
+
+function effectiveNeedsFor(recipe: Recipe, options?: InstallOptions): string[] {
+  const needs = recipe.needs ?? [];
+  if (
+    options?.provider === "download" &&
+    recipe.provider.kind === "winget" &&
+    recipe.downloadProvider?.kind === "downloadInstaller"
+  ) {
+    return needs.filter((need) => need !== "winget");
+  }
+  return needs;
 }
 
 /// Reverse-DAG: for `targetRecipeId`, find every catalog recipe whose

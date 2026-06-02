@@ -421,10 +421,6 @@ fn run_downloaded_installer(
     cancel: Arc<AtomicBool>,
     emit: &EventSink,
 ) -> Result<(), String> {
-    let script = format!(
-        "$p = Start-Process -FilePath {} -Wait -PassThru; exit $p.ExitCode",
-        powershell_single_quote(&download_path.to_string_lossy())
-    );
     run_streamed_public(
         "powershell",
         &[
@@ -432,11 +428,35 @@ fn run_downloaded_installer(
             "-ExecutionPolicy".into(),
             "Bypass".into(),
             "-Command".into(),
-            script,
+            downloaded_installer_powershell_script(download_path),
         ],
         tool_id,
         cancel,
         emit,
+    )
+}
+
+fn downloaded_installer_powershell_script(download_path: &PathBuf) -> String {
+    if is_appx_package_path(download_path) {
+        return format!(
+            "Add-AppxPackage -Path {}; if ($?) {{ exit 0 }} else {{ exit 1 }}",
+            powershell_single_quote(&download_path.to_string_lossy())
+        );
+    }
+
+    format!(
+        "$p = Start-Process -FilePath {} -Wait -PassThru; exit $p.ExitCode",
+        powershell_single_quote(&download_path.to_string_lossy())
+    )
+}
+
+fn is_appx_package_path(download_path: &PathBuf) -> bool {
+    let Some(extension) = download_path.extension().and_then(|value| value.to_str()) else {
+        return false;
+    };
+    matches!(
+        extension.to_ascii_lowercase().as_str(),
+        "appx" | "appxbundle" | "msix" | "msixbundle"
     )
 }
 
@@ -1700,6 +1720,24 @@ mod tests {
             release_notes_url: None,
             detection: Default::default(),
         }
+    }
+
+    #[test]
+    fn appx_package_downloads_install_with_add_appxpackage() {
+        let script = downloaded_installer_powershell_script(&PathBuf::from(
+            r"C:\Temp\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle",
+        ));
+
+        assert!(script.contains("Add-AppxPackage -Path"));
+        assert!(!script.contains("Start-Process"));
+    }
+
+    #[test]
+    fn exe_downloads_still_launch_with_start_process() {
+        let script = downloaded_installer_powershell_script(&PathBuf::from(r"C:\Temp\setup.exe"));
+
+        assert!(script.contains("Start-Process -FilePath"));
+        assert!(!script.contains("Add-AppxPackage"));
     }
 
     #[test]

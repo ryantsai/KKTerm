@@ -606,9 +606,11 @@ function NotInstalledInfoBody({ recipe }: { recipe: Recipe }) {
     }
   }
 
-  const prereqs = (recipe.needs ?? [])
-    .map((id) => catalog?.recipes.find((r) => r.id === id))
-    .filter((r): r is Recipe => !!r);
+  const prereqs = catalog
+    ? resolveInstallPlan(recipe.id, catalog, detected, options)
+        .steps.filter((step) => step.isPrerequisite)
+        .map((step) => step.recipe)
+    : [];
 
   return (
     <>
