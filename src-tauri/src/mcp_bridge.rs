@@ -64,7 +64,28 @@ fn write_bridge_info(path: &Path, info: &BridgeInfo) -> std::io::Result<()> {
         use std::os::unix::fs::PermissionsExt;
         let _ = std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600));
     }
+    #[cfg(target_os = "windows")]
+    restrict_file_to_current_user(path);
     Ok(())
+}
+
+/// Tighten the DACL on the bridge-info file so only the current Windows user
+/// can read or write it.  Uses `icacls` (available on Vista+):
+///   /inheritance:r  — strip inherited ACEs
+///   /grant:r        — replace explicit grants with owner-only full control
+/// Failures are non-fatal; the named-pipe token still protects the bridge.
+#[cfg(target_os = "windows")]
+fn restrict_file_to_current_user(path: &Path) {
+    let Some(path_str) = path.to_str() else {
+        return;
+    };
+    let Ok(username) = std::env::var("USERNAME") else {
+        return;
+    };
+    let grant_arg = format!("{username}:(F)");
+    let _ = std::process::Command::new("icacls")
+        .args([path_str, "/inheritance:r", "/grant:r", &grant_arg])
+        .output();
 }
 
 fn remove_bridge_info(path: &Path) {
