@@ -32,4 +32,4 @@ Screenshots are transient by design: a capture is either copied to the clipboard
 
 ## RDP screenshots
 
-RDP captures use a dedicated typed Tauri command that asks the OS for the visible RDP host bitmap, because the native HWND behind RDP cannot be composited into a normal DOM screenshot. Other surface kinds use the standard capture path. Do not generalise the RDP screenshot code path to other surfaces — see [09-remote-desktop.md](09-remote-desktop.md).
+RDP captures use a dedicated typed Tauri command that asks the OS for the visible RDP host bitmap, because the native HWND behind RDP cannot be composited into a normal DOM screenshot. URL Connections still use the standard capture path, but while `workspace.selectRegion` is active the live WebView2 child surface is temporarily replaced by a captured placeholder so the Region controls stay above it. Do not generalise the RDP screenshot code path to other surfaces — see [09-remote-desktop.md](09-remote-desktop.md).

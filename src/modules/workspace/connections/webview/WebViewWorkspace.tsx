@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { FormEvent } from "react";
 import { invokeCommand, isTauriRuntime, openExternalUrl } from "../../../../lib/tauri";
-import type { WebviewSessionStarted } from "../../../../lib/tauri";
+import type { AssistantScreenshot, WebviewSessionStarted } from "../../../../lib/tauri";
 import { useWorkspaceStore } from "../../../../store";
 import type { WorkspaceTab } from "../../../../types";
 
@@ -133,6 +133,7 @@ type CapturedCredentialPayload = {
 const CREDENTIAL_TITLE_PREFIX = "__KKTERM_URL_CREDENTIAL__";
 const EXTERNAL_LINK_TITLE_PREFIX = "__KKTERM_URL_EXTERNAL_LINK__";
 const AUTO_REFRESH_INTERVALS_SECONDS = [0, 5, 15, 30, 60, 120] as const;
+const WEBVIEW_PRE_CAPTURE_INTERVAL_MS = 1200;
 type AutoRefreshIntervalSeconds = (typeof AUTO_REFRESH_INTERVALS_SECONDS)[number];
 
 function createCredentialCaptureNonce() {
@@ -186,6 +187,10 @@ export function WebViewWorkspace({
   const sessionIdRef = useRef<string>(createWebviewSessionId());
   const lastBoundsRef = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
   const rafRef = useRef<number | null>(null);
+  const suppressionCaptureInFlightRef = useRef(false);
+  const preCaptureInFlightRef = useRef(false);
+  const preCachedSnapshotRef = useRef<AssistantScreenshot | null>(null);
+  const preCaptureLastRef = useRef(0);
   const visibilityRef = useRef({ isActive, suppressed: false });
   const pendingCaptureNonceRef = useRef<string | null>(null);
   const externalLinkTokenRef = useRef<string | null>(null);
@@ -199,6 +204,7 @@ export function WebViewWorkspace({
 
   const initialUrl = tab.url ?? "";
   const [hasSavedCredential, setHasSavedCredential] = useState(Boolean(tab.connection?.hasUrlCredential));
+  const [webviewSnapshot, setWebviewSnapshot] = useState<AssistantScreenshot | null>(null);
   const canFillCredential = Boolean(hasSavedCredential);
 
   useEffect(() => {
@@ -243,6 +249,54 @@ export function WebViewWorkspace({
     if (visible && bounds) {
       lastBoundsRef.current = bounds;
     }
+  };
+
+  const captureVisibleWebviewSnapshot = async () => {
+    if (!isTauriRuntime() || !sessionStartedRef.current || !visibilityRef.current.isActive) {
+      return null;
+    }
+    const bounds = computeBounds();
+    if (!bounds) {
+      return null;
+    }
+    return invokeCommand("capture_screenshot_for_assistant", {
+      request: bounds,
+    });
+  };
+
+  const suppressWebviewWithSnapshot = (snapshot: AssistantScreenshot | null) => {
+    setWebviewSnapshot(snapshot);
+    visibilityRef.current = { ...visibilityRef.current, suppressed: true };
+    window.requestAnimationFrame(() => pushWebviewVisibility());
+  };
+
+  const triggerPreCapture = () => {
+    if (
+      !isActive ||
+      !isTauriRuntime() ||
+      !sessionStartedRef.current ||
+      visibilityRef.current.suppressed
+    ) {
+      return;
+    }
+    const now = Date.now();
+    if (preCaptureInFlightRef.current || now - preCaptureLastRef.current < WEBVIEW_PRE_CAPTURE_INTERVAL_MS) {
+      return;
+    }
+    preCaptureLastRef.current = now;
+    preCaptureInFlightRef.current = true;
+    void captureVisibleWebviewSnapshot()
+      .then((snapshot) => {
+        if (snapshot) {
+          preCachedSnapshotRef.current = snapshot;
+        }
+      })
+      .catch(() => {
+        // Speculative pre-capture can miss; the overlay path still falls back to capture-on-open.
+      })
+      .finally(() => {
+        preCaptureInFlightRef.current = false;
+      });
   };
 
   const scheduleBoundsPush = () => {
@@ -406,11 +460,45 @@ export function WebViewWorkspace({
     }
     const updateSuppression = () => {
       const suppressed = documentHasWebviewBlockingOverlay(placeholderRef.current);
-      if (visibilityRef.current.suppressed === suppressed) {
+      if (!suppressed) {
+        suppressionCaptureInFlightRef.current = false;
+        if (visibilityRef.current.suppressed) {
+          visibilityRef.current = { ...visibilityRef.current, suppressed: false };
+          setWebviewSnapshot(null);
+          pushWebviewVisibility();
+        }
         return;
       }
-      visibilityRef.current = { ...visibilityRef.current, suppressed };
-      pushWebviewVisibility();
+      if (visibilityRef.current.suppressed || suppressionCaptureInFlightRef.current) {
+        return;
+      }
+      const cached = preCachedSnapshotRef.current;
+      if (cached) {
+        preCachedSnapshotRef.current = null;
+        if (documentHasWebviewBlockingOverlay(placeholderRef.current)) {
+          suppressWebviewWithSnapshot(cached);
+        }
+        return;
+      }
+      suppressionCaptureInFlightRef.current = true;
+      void captureVisibleWebviewSnapshot()
+        .then((snapshot) => {
+          if (!documentHasWebviewBlockingOverlay(placeholderRef.current)) {
+            visibilityRef.current = { ...visibilityRef.current, suppressed: false };
+            setWebviewSnapshot(null);
+            pushWebviewVisibility();
+            return;
+          }
+          suppressWebviewWithSnapshot(snapshot);
+        })
+        .catch(() => {
+          if (documentHasWebviewBlockingOverlay(placeholderRef.current)) {
+            suppressWebviewWithSnapshot(null);
+          }
+        })
+        .finally(() => {
+          suppressionCaptureInFlightRef.current = false;
+        });
     };
     updateSuppression();
     const observer = new MutationObserver(updateSuppression);
@@ -802,6 +890,7 @@ export function WebViewWorkspace({
             <ScreenshotMenu
               buttonClassName="terminal-pane-action"
               dataTutorialId="workspace.screenshotMenu"
+              onPreCapture={triggerPreCapture}
               targetLabel={t("webview.screenshotTarget", { title: tab.title })}
               targetRef={workspaceRef}
             />
@@ -830,6 +919,15 @@ export function WebViewWorkspace({
           </div>
         </header>
         <div ref={placeholderRef} className="webview-placeholder" data-tutorial-id="webview.surface">
+          {webviewSnapshot ? (
+            <img
+              alt=""
+              className="webview-suppression-snapshot"
+              height={webviewSnapshot.height}
+              src={webviewSnapshot.dataUrl}
+              width={webviewSnapshot.width}
+            />
+          ) : null}
           {!initialUrl ? (
             <p className="webview-placeholder-message">{t("webview.noUrlConfigured")}</p>
           ) : !isTauriRuntime() ? (
