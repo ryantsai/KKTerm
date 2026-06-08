@@ -232,7 +232,10 @@ export function TerminalWorkspace({
   const lastFocusRestoreRef = useRef(0);
   const inputProbeArmedRef = useRef(false);
   const restoreFocusOnWindowFocusRef = useRef(false);
-  function restoreFocusedTerminalPane(reason: string) {
+  // Only a genuine OS window re-activation ("window-focus") escalates to native
+  // WebView2 focus; in-app activations stay DOM-only (see restoreFocusedTerminalPane).
+  type TerminalFocusRestoreReason = "workspace-activated" | "window-focus" | "titlebar";
+  function restoreFocusedTerminalPane(reason: TerminalFocusRestoreReason) {
     logTerminalFocusDiagnostic(`restore:${reason}`);
     if (shouldPreserveTerminalWorkspaceFocus()) {
       return;
@@ -254,12 +257,18 @@ export function TerminalWorkspace({
     const focusRenderer = () => getPaneRenderer(focusedPaneId)?.focus();
     // Cover the case where DOM focus did leave the terminal (e.g. a title-bar
     // drag parked it on <body>): re-focus the pane's textarea. This is a no-op
-    // when it already holds focus. Schedule another pass for app activation,
-    // because WebView2 can ignore textarea focus until the webview receives
-    // native keyboard focus after an Alt+Tab return.
+    // when it already holds focus.
     focusRenderer();
     window.requestAnimationFrame(focusRenderer);
-    if (isTauriRuntime()) {
+    // Native focus escalation (window.set_focus -> WebView2 MoveFocus) re-arms
+    // the WebView2 content window's OS keyboard focus. That is only necessary
+    // when the OS actually moved keyboard focus off our window -- an Alt+Tab /
+    // taskbar return ("window-focus"). On in-app activations ("workspace-
+    // activated", "titlebar") the WebView2 content still owns native keyboard
+    // focus, so escalating there forces focus onto the terminal and steals it
+    // from whatever pane/control the UI legitimately routed focus to during the
+    // module switch (the #269/#270 regression). Keep in-app paths DOM-only.
+    if (reason === "window-focus" && isTauriRuntime()) {
       void focusMainWindow()
         .then(() => focusCurrentWebview())
         .catch(() => undefined)
@@ -267,6 +276,8 @@ export function TerminalWorkspace({
           window.requestAnimationFrame(focusRenderer);
           logTerminalFocusDiagnostic(`restored:${reason}`);
         });
+    } else {
+      logTerminalFocusDiagnostic(`restored:${reason}`);
     }
   }
 
