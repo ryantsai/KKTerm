@@ -238,6 +238,7 @@ pub struct NativeSshTerminalRequest {
     pub tmux_history_limit: u32,
     pub x11_forwarding: Option<NativeSshX11Forwarding>,
     pub socks_proxy: Option<String>,
+    pub compression: bool,
 }
 
 #[derive(Clone)]
@@ -263,6 +264,7 @@ pub(crate) struct NativeSshConnectionRequest {
     pub known_hosts_path: PathBuf,
     pub x11_forwarding: Option<NativeSshX11Forwarding>,
     pub socks_proxy: Option<String>,
+    pub compression: bool,
     pub(crate) remote_forward_targets: Option<RemoteForwardTargets>,
 }
 
@@ -556,6 +558,7 @@ pub fn start_native_terminal(
         tmux_history_limit: clamp_tmux_history_limit(request.tmux_history_limit),
         x11_forwarding: request.x11_forwarding,
         socks_proxy: request.socks_proxy,
+        compression: true,
     };
     ssh_debug(
         "terminal.start",
@@ -801,6 +804,7 @@ async fn run_remote_command_async(request: NativeSshCommandRequest) -> Result<St
         known_hosts_path: request.known_hosts_path,
         x11_forwarding: None,
         socks_proxy: request.socks_proxy,
+        compression: true,
         remote_forward_targets: None,
     })
     .await?;
@@ -894,6 +898,7 @@ async fn run_remote_command_async_capture(
         known_hosts_path: request.known_hosts_path,
         x11_forwarding: None,
         socks_proxy: request.socks_proxy,
+        compression: true,
         remote_forward_targets: None,
     })
     .await?;
@@ -1181,6 +1186,7 @@ async fn run_native_terminal_once(
                 known_hosts_path: request.known_hosts_path.clone(),
                 x11_forwarding: request.x11_forwarding.clone(),
                 socks_proxy: request.socks_proxy.clone(),
+                compression: request.compression,
                 remote_forward_targets: Some(Arc::clone(&remote_forward_targets)),
             },
             Some(&mut prompt),
@@ -1761,7 +1767,7 @@ async fn connect_verified_client_with_prompt(
     }
 
     let auth = normalize_native_ssh_auth(request.auth)?;
-    let config = Arc::new(native_ssh_client_config());
+    let config = Arc::new(native_ssh_client_config(request.compression));
     let host_key_rejection = Arc::new(std::sync::Mutex::new(None));
     let socks_proxy = request
         .socks_proxy
@@ -2153,12 +2159,27 @@ mod ssh_port_forward_tests {
     }
 }
 
-fn native_ssh_client_config() -> client::Config {
+fn native_ssh_client_config(compression: bool) -> client::Config {
     client::Config {
         inactivity_timeout: None,
         keepalive_interval: Some(SSH_KEEPALIVE_INTERVAL),
         keepalive_max: SSH_KEEPALIVE_MAX_MISSED,
+        preferred: native_ssh_preferred_algorithms(compression),
         ..Default::default()
+    }
+}
+
+fn native_ssh_preferred_algorithms(compression: bool) -> russh::Preferred {
+    if !compression {
+        return russh::Preferred::DEFAULT;
+    }
+    russh::Preferred {
+        compression: std::borrow::Cow::Borrowed(&[
+            russh::compression::ZLIB_LEGACY,
+            russh::compression::ZLIB,
+            russh::compression::NONE,
+        ]),
+        ..russh::Preferred::DEFAULT
     }
 }
 
@@ -2561,6 +2582,7 @@ async fn run_playbook_async(
         known_hosts_path: request.known_hosts_path,
         x11_forwarding: None,
         socks_proxy: request.socks_proxy,
+        compression: true,
         remote_forward_targets: None,
     })
     .await?;
@@ -2730,14 +2752,14 @@ mod tests {
 
     #[test]
     fn native_ssh_client_does_not_timeout_idle_terminal_sessions() {
-        let config = native_ssh_client_config();
+        let config = native_ssh_client_config(true);
 
         assert_eq!(config.inactivity_timeout, None);
     }
 
     #[test]
     fn native_ssh_client_sends_keepalives_to_detect_dead_idle_links() {
-        let config = native_ssh_client_config();
+        let config = native_ssh_client_config(true);
 
         // Without keepalives an idle session behind a NAT/firewall freezes:
         // the link dies silently, input is swallowed, yet the session never
@@ -2748,6 +2770,47 @@ mod tests {
             "a dead link must be torn down after a bounded number of missed keepalives"
         );
         assert_eq!(config.keepalive_max, SSH_KEEPALIVE_MAX_MISSED);
+    }
+
+    #[test]
+    fn enabling_compression_prefers_zlib_over_none() {
+        let config = native_ssh_client_config(true);
+        let order: Vec<&str> = config
+            .preferred
+            .compression
+            .iter()
+            .map(|name| name.as_ref())
+            .collect();
+        let zlib = order
+            .iter()
+            .position(|name| *name == "zlib@openssh.com" || *name == "zlib")
+            .expect("zlib must be advertised when compression is enabled");
+        let none = order
+            .iter()
+            .position(|name| *name == "none")
+            .expect("none must remain as a fallback");
+
+        assert!(
+            zlib < none,
+            "compression must be preferred ahead of none: {order:?}"
+        );
+    }
+
+    #[test]
+    fn disabling_compression_keeps_none_first() {
+        let config = native_ssh_client_config(false);
+        let first = config
+            .preferred
+            .compression
+            .iter()
+            .map(|name| name.as_ref())
+            .next();
+
+        assert_eq!(
+            first,
+            Some("none"),
+            "with compression off the default order (none first) must be kept"
+        );
     }
 
     #[test]
@@ -3106,6 +3169,7 @@ mod tests {
             known_hosts_path: config.known_hosts_path,
             x11_forwarding: None,
             socks_proxy: None,
+            compression: true,
             remote_forward_targets: None,
         })
         .await?;
@@ -3230,6 +3294,7 @@ mod tests {
             tmux_history_limit: 5_000,
             x11_forwarding: None,
             socks_proxy: None,
+            compression: true,
         }
     }
 
