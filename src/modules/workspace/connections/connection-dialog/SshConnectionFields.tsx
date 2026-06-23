@@ -17,13 +17,16 @@ export function SshConnectionFields({
   matchingPasswordCredentials,
   onAuthMethodChange,
   onBrowseKeyFile,
+  onBrowseRemoteStartupDirectory,
   onKeyPathChange,
   onOpenKeyEmailDialog,
   onPortDraftChange,
   onSelectedPasswordCredentialIdChange,
+  onStartupDirectoryChange,
   portDraft,
   selectedPasswordCredentialId,
   sshSettings,
+  startupDirectory,
 }: {
   authMethod: "keyFile" | "password" | "agent";
   hasStoredConnectionPassword: boolean;
@@ -35,13 +38,16 @@ export function SshConnectionFields({
   matchingPasswordCredentials: StoredCredentialSummary[];
   onAuthMethodChange: (authMethod: "keyFile" | "password" | "agent") => void;
   onBrowseKeyFile: () => void;
+  onBrowseRemoteStartupDirectory: () => void;
   onKeyPathChange: (keyPath: string) => void;
   onOpenKeyEmailDialog: () => void;
   onPortDraftChange: (port: string) => void;
   onSelectedPasswordCredentialIdChange: (credentialId: string) => void;
+  onStartupDirectoryChange: (directory: string) => void;
   portDraft: string;
   selectedPasswordCredentialId: string;
   sshSettings: SshSettings;
+  startupDirectory: string;
 }) {
   const { t } = useTranslation();
 
@@ -177,6 +183,21 @@ export function SshConnectionFields({
             />
           </>
         ) : null}
+        <label>
+          <span>{t("connections.sshStartupDirectory")}</span>
+          <div className="input-with-button">
+            <input
+              name="localStartupDirectory"
+              {...technicalInputProps}
+              onChange={(event) => onStartupDirectoryChange(event.currentTarget.value)}
+              placeholder={t("connections.sshStartupDirectoryPlaceholder")}
+              value={startupDirectory}
+            />
+            <button className="toolbar-button" onClick={onBrowseRemoteStartupDirectory} type="button">
+              {t("connections.browse")}
+            </button>
+          </div>
+        </label>
       </div>
     </>
   );

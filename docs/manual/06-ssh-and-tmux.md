@@ -29,6 +29,8 @@ This is not a `window.confirm`. Users explicitly approve the new key; the truste
 
 Add/Edit Connection places `connections.keyPassphraseOptional` directly below the private-key path. A value is stored as a per-Connection `connectionPassphrase` secret in the configured secret store, never in the Connection row or plaintext settings data. Leaving the field blank while editing preserves an existing passphrase. When an encrypted key has no stored passphrase, or the stored passphrase cannot decrypt it, the terminal prompts for `SSH key passphrase:` interactively before authentication. This fallback applies to terminal Sessions; non-interactive fresh connections such as SFTP and one-shot tmux/IT Ops commands require the saved passphrase. An entered passphrase does not prevent an unencrypted key from loading; it is ignored for that key.
 
+Add/Edit Connection also offers `connections.sshStartupDirectory`, an optional remote directory path. When set, opening the SSH Connection sends a startup `cd` to that directory before presenting the shell. The field's `connections.browse` action opens `connections.remoteDirectoryPickerTitle`, which connects through SFTP and lets the user choose a remote folder without typing the path manually. For tmux-enabled Connections, KKTerm applies the same remote path before creating or attaching to the tmux session.
+
 ## Idle behaviour
 
 A live SSH Session has **no app-side idle timeout**. Quiet and unfocused Sessions stay connected until the remote, network, or an explicit user close ends them.

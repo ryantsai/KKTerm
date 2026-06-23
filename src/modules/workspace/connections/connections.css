@@ -1946,6 +1946,78 @@ fieldset.connection-specific-options > legend {
   box-shadow: 0 1px 2px color-mix(in srgb, var(--red) 30%, transparent);
 }
 
+.remote-directory-picker-dialog {
+  width: min(620px, calc(100vw - 48px));
+}
+
+.remote-directory-picker-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 360px;
+}
+
+.remote-directory-picker-path-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+}
+
+.remote-directory-picker-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 240px;
+  max-height: 360px;
+  overflow: auto;
+  padding: 6px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.remote-directory-picker-row {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 6px 8px;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+}
+
+.remote-directory-picker-row:hover:not(:disabled),
+.remote-directory-picker-row:focus-visible {
+  background: var(--hover);
+}
+
+.remote-directory-picker-row:disabled {
+  color: var(--text-faint);
+}
+
+.remote-directory-picker-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.remote-directory-picker-empty,
+.remote-directory-picker-status {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.remote-directory-picker-empty {
+  padding: 12px 10px;
+}
+
 /* Per-row option glyph (design language): a leading monochrome icon that turns
    each grouped option into a Finder-style row — icon · label · control. */
 .connection-dialog .option-glyph {

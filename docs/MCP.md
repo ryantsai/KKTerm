@@ -157,6 +157,8 @@ The Workspace Module owns saved Connections and live Sessions
 | `kkterm.workspace.quick_commands.list` | List saved Quick Commands for a Connection's Quick Command Bar. Backed by `quick_command_list` through the frontend live-tool bridge because Quick Commands live in workspace storage. |
 | `kkterm.workspace.quick_commands.read` | Read one saved Quick Command for a Connection by Quick Command id. Backed by `quick_command_read`. |
 
+For `kkterm.workspace.connections.create` and `kkterm.workspace.connections.update`, `localStartupDirectory` is a non-secret startup path slot. For SSH Connections it is a remote directory that the terminal changes into after login; for local terminal and File Explorer Connections it remains a local directory, and for Document Connections it stores the local file path.
+
 ### Workspace Module — dangerous (`kkterm.workspace.dangerous.*`)
 
 | Name | Description |

@@ -1636,8 +1636,7 @@ fn startup_command_for(request: &NativeSshTerminalRequest) -> Option<String> {
             });
     }
 
-    initial_directory_for(request)
-        .map(|directory| format!("cd -- {}", shell_single_quote(&directory)))
+    initial_directory_for(request).map(|directory| remote_cd_command(&directory))
 }
 
 pub(crate) fn remote_tmux_resume_command(
@@ -1658,6 +1657,45 @@ pub(crate) fn remote_tmux_resume_command(
         shell_single_quote(session_id),
         clamp_tmux_history_limit(history_limit),
     )
+}
+
+fn remote_cd_command(directory: &str) -> String {
+    if let Some(directory) = windows_remote_cd_path(directory) {
+        format!("cd /d {}", windows_cmd_double_quote(&directory))
+    } else {
+        format!("cd -- {}", shell_single_quote(directory))
+    }
+}
+
+fn windows_remote_cd_path(directory: &str) -> Option<String> {
+    let directory = directory.trim();
+    if directory.contains('\\') {
+        return Some(directory.to_string());
+    }
+
+    let mut chars = directory.chars();
+    let drive = chars.next()?;
+    if matches!(chars.next(), Some(':'))
+        && drive.is_ascii_alphabetic()
+        && matches!(chars.next(), Some('/') | Some('\\'))
+    {
+        return Some(directory.to_string());
+    }
+
+    let mut chars = directory.chars();
+    if matches!(chars.next(), Some('/')) {
+        let drive = chars.next()?;
+        if drive.is_ascii_alphabetic() && matches!(chars.next(), Some('/') | Some('\\')) {
+            let remainder = &directory[3..];
+            return Some(format!("{}:/{}", drive.to_ascii_uppercase(), remainder));
+        }
+    }
+
+    None
+}
+
+fn windows_cmd_double_quote(value: &str) -> String {
+    format!("\"{}\"", value.replace('"', "\"\""))
 }
 
 fn clamp_tmux_history_limit(value: u32) -> u32 {
@@ -3114,6 +3152,46 @@ mod tests {
     }
 
     #[test]
+    fn remote_cd_command_uses_posix_cd_for_unix_paths() {
+        assert_eq!(
+            remote_cd_command("/srv/app's current"),
+            "cd -- '/srv/app'\\''s current'"
+        );
+    }
+
+    #[test]
+    fn remote_cd_command_uses_cmd_cd_for_windows_relative_paths() {
+        assert_eq!(
+            remote_cd_command(r"Desktop\test\"),
+            r#"cd /d "Desktop\test\""#,
+        );
+    }
+
+    #[test]
+    fn remote_cd_command_uses_cmd_cd_for_windows_drive_paths() {
+        assert_eq!(
+            remote_cd_command(r"C:\Users\admin\project"),
+            r#"cd /d "C:\Users\admin\project""#,
+        );
+        assert_eq!(
+            remote_cd_command("C:/Users/admin/project"),
+            r#"cd /d "C:/Users/admin/project""#,
+        );
+    }
+
+    #[test]
+    fn remote_cd_command_converts_sftp_windows_drive_paths_for_cmd() {
+        assert_eq!(
+            remote_cd_command("/C/Users/example/Desktop/project"),
+            r#"cd /d "C:/Users/example/Desktop/project""#,
+        );
+        assert_eq!(
+            remote_cd_command("/c/Users/example/Desktop/project"),
+            r#"cd /d "C:/Users/example/Desktop/project""#,
+        );
+    }
+
+    #[test]
     fn tmux_resume_command_sets_default_history_limit() {
         let cmd = remote_tmux_resume_command(None, "kkterm-test", 5_000);
         assert!(
@@ -3283,7 +3361,7 @@ mod tests {
             .await
             .map_err(|error| format!("failed to start SSH shell: {error}"))?;
         if let Some(directory) = config.initial_directory.as_deref() {
-            let command = format!("cd -- {}\r", shell_single_quote(directory));
+            let command = format!("{}\r", remote_cd_command(directory));
             channel
                 .data(command.as_bytes())
                 .await

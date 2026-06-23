@@ -4004,9 +4004,11 @@ fn normalize_local_startup_directory(
     value: Option<String>,
     connection_type: &str,
 ) -> Result<Option<String>, String> {
-    // For `fileView` Connections this column stores the target file path rather
-    // than a starting directory; both reuse the same non-secret local path slot.
+    // For `ssh` Connections this column stores the remote startup directory.
+    // For `fileView` Connections it stores the target file path rather than a
+    // starting directory; all uses remain non-secret path hints.
     if connection_type != "local"
+        && connection_type != "ssh"
         && connection_type != "localFiles"
         && connection_type != "fileView"
     {
@@ -4018,7 +4020,7 @@ fn normalize_local_startup_directory(
         .filter(|value| !value.is_empty());
     if let Some(directory) = trimmed.as_deref() {
         if directory.chars().any(char::is_control) {
-            return Err("local startup directory cannot contain control characters".to_string());
+            return Err("startup path cannot contain control characters".to_string());
         }
     }
     Ok(trimmed)

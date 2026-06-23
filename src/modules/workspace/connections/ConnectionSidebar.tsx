@@ -8,6 +8,7 @@ import { LocalConnectionFields } from "./connection-dialog/LocalConnectionFields
 import { defaultWslConnectionName, distroFromWslShell } from "./connection-dialog/wslLocalShell";
 import { LocalFilesConnectionFields } from "./connection-dialog/LocalFilesConnectionFields";
 import { FileViewConnectionFields } from "./connection-dialog/FileViewConnectionFields";
+import { RemoteDirectoryPickerDialog } from "./connection-dialog/RemoteDirectoryPickerDialog";
 import { RdpConnectionFields, RdpConnectionOptions } from "./connection-dialog/RdpConnectionFields";
 import { SerialConnectionFields } from "./connection-dialog/SerialConnectionFields";
 import { SshConnectionFields, SshConnectionOptions } from "./connection-dialog/SshConnectionFields";
@@ -3921,8 +3922,10 @@ function ConnectionDialog({
   onSubmit: (request: ConnectionDialogRequest) => void | Promise<void>;
 }) {
   const { i18n, t } = useTranslation();
+  const formRef = useRef<HTMLFormElement | null>(null);
   const terminalSettings = useWorkspaceStore((state) => state.terminalSettings);
   const urlSettings = useWorkspaceStore((state) => state.urlSettings);
+  const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
   const connectionType = initialConnection?.type ?? initialConnectionType ?? "";
   const [authMethod, setAuthMethod] = useState<"keyFile" | "password" | "agent">(
     initialConnection?.authMethod ?? "keyFile",
@@ -3949,6 +3952,8 @@ function ConnectionDialog({
   const [keyPassphraseDraft, setKeyPassphraseDraft] = useState("");
   const [isGeneratingKey, setIsGeneratingKey] = useState(false);
   const [keyGenerationError, setKeyGenerationError] = useState("");
+  const [remoteDirectoryPickerConnection, setRemoteDirectoryPickerConnection] =
+    useState<Connection | null>(null);
   const [hasStoredConnectionPassword, setHasStoredConnectionPassword] = useState(
     Boolean(initialConnection?.hasPassword || initialConnection?.passwordCredentialId),
   );
@@ -4242,7 +4247,7 @@ function ConnectionDialog({
       usePsmuxSessions: connectionType === "local" ? usePsmuxSessions : undefined,
       localShell: connectionType === "local" ? selectedLocalShell || undefined : undefined,
       localStartupDirectory:
-        connectionType === "local" || connectionType === "localFiles"
+        connectionType === "local" || connectionType === "localFiles" || connectionType === "ssh"
           ? String(form.get("localStartupDirectory") ?? "").trim() || undefined
           : connectionType === "fileView"
             ? localStartupDirectory.trim() || undefined
@@ -4375,6 +4380,46 @@ function ConnectionDialog({
     if (selectedPath) {
       setLocalStartupDirectory(selectedPath);
     }
+  }
+
+  function handleBrowseRemoteStartupDirectory() {
+    const form = formRef.current;
+    if (!form) {
+      return;
+    }
+    const formData = new FormData(form);
+    const host = String(formData.get("host") ?? "").trim();
+    const user = String(formData.get("user") ?? "").trim();
+    if (!host || !user) {
+      showStatusBarNotice(t("connections.remoteDirectoryPickerMissingHost"), { tone: "warning" });
+      return;
+    }
+    if (authMethod === "password" && !selectedPasswordCredentialId && !hasStoredConnectionPassword) {
+      showStatusBarNotice(t("connections.remoteDirectoryPickerPasswordUnavailable"), {
+        tone: "warning",
+      });
+      return;
+    }
+
+    const sshUsesDefaultOptions = formData.get("sshSocksProxyInheritDefaults") === "on";
+    const port = Number(String(formData.get("port") ?? "").trim()) || defaultPortForConnectionType("ssh", sshSettings);
+    const connectionId = initialConnection?.id ?? uniqueRuntimeId("remote-picker-connection");
+    setRemoteDirectoryPickerConnection({
+      id: connectionId,
+      name: String(formData.get("name") ?? "").trim() || host,
+      host,
+      user,
+      port,
+      keyPath: authMethod === "keyFile" ? keyPath.trim() || undefined : undefined,
+      proxyJump: sshUsesDefaultOptions ? (sshSettings.defaultProxyJump ?? "").trim() || undefined : String(formData.get("proxyJump") ?? "").trim() || undefined,
+      sshSocksProxy: sshUsesDefaultOptions ? (sshSettings.defaultSshSocksProxy ?? "").trim() || undefined : String(formData.get("sshSocksProxy") ?? "").trim() || undefined,
+      sshSocksProxyUsername: sshUsesDefaultOptions ? (sshSettings.defaultSshSocksProxyUsername ?? "").trim() || undefined : String(formData.get("sshSocksProxyUsername") ?? "").trim() || undefined,
+      sshSocksProxyInheritDefaults: sshUsesDefaultOptions,
+      authMethod,
+      passwordCredentialId: selectedPasswordCredentialId || initialConnection?.passwordCredentialId || undefined,
+      type: "ssh",
+      status: "idle",
+    });
   }
 
   function handleLocalFilesNameChange(value: string) {
@@ -4510,13 +4555,16 @@ function ConnectionDialog({
             matchingPasswordCredentials={matchingPasswordCredentials}
             onAuthMethodChange={setAuthMethod}
             onBrowseKeyFile={() => void handleBrowseKeyFile()}
+            onBrowseRemoteStartupDirectory={handleBrowseRemoteStartupDirectory}
             onKeyPathChange={setKeyPath}
             onOpenKeyEmailDialog={handleOpenKeyEmailDialog}
             onPortDraftChange={setPortDraft}
             onSelectedPasswordCredentialIdChange={setSelectedPasswordCredentialId}
+            onStartupDirectoryChange={setLocalStartupDirectory}
             portDraft={portDraft}
             selectedPasswordCredentialId={selectedPasswordCredentialId}
             sshSettings={sshSettings}
+            startupDirectory={localStartupDirectory}
           />
         );
       case "telnet":
@@ -4628,6 +4676,7 @@ function ConnectionDialog({
     <DialogPortal>
     <div className="dialog-backdrop connection-dialog-backdrop" role="presentation">
       <form
+        ref={formRef}
         className={usesTwoColumnOptions ? "connection-dialog connection-dialog-wide" : "connection-dialog"}
         onSubmit={handleSubmit}
       >
@@ -4742,6 +4791,17 @@ function ConnectionDialog({
           onPassphraseChange={setKeyGenerationPassphrase}
           onPassphraseConfirmChange={setKeyGenerationPassphraseConfirm}
           onSubmit={(email) => void handleGenerateKeyPair(email)}
+        />
+      ) : null}
+      {remoteDirectoryPickerConnection ? (
+        <RemoteDirectoryPickerDialog
+          connection={remoteDirectoryPickerConnection}
+          initialPath={localStartupDirectory}
+          onCancel={() => setRemoteDirectoryPickerConnection(null)}
+          onSelect={(path) => {
+            setLocalStartupDirectory(path);
+            setRemoteDirectoryPickerConnection(null);
+          }}
         />
       ) : null}
     </div>

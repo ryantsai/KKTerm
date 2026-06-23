@@ -3273,6 +3273,9 @@ function initialDirectoryForTerminalSession(connection: Connection, paneCwd: str
   if (connection.type === "ssh" && isRemoteInitialDirectory(paneCwd)) {
     return paneCwd.trim();
   }
+  if (connection.type === "ssh") {
+    return connection.localStartupDirectory?.trim() || undefined;
+  }
   return undefined;
 }
 
