@@ -55,6 +55,15 @@ type TerminalContextMenuState = {
 
 const TMUX_MOUSE_MODE_EVENT = "kkterm:tmux-mouse-mode";
 const TMUX_UNAVAILABLE_MARKER = "[KKTerm: tmux not found, using normal shell]";
+// Emitted by the remote tmux launch command so the frontend can tell, with no
+// guessing, whether `tmux new-session -A` created the session or attached to an
+// already-running one — the basis for replaying the SSH startup script.
+const TMUX_SESSION_CREATED_MARKER = "[KKTerm: tmux session created]";
+const TMUX_SESSION_ATTACHED_MARKER = "[KKTerm: tmux session attached]";
+const TMUX_MARKER_TAIL_LENGTH = Math.max(
+  TMUX_SESSION_CREATED_MARKER.length,
+  TMUX_SESSION_ATTACHED_MARKER.length,
+) * 2;
 const MAIN_WINDOW_FOCUS_CHANGED_EVENT = "kkterm://main-window-focus-changed";
 const terminalInputEncoder = new TextEncoder();
 
@@ -1556,6 +1565,13 @@ function TerminalPaneView({
   const tmuxWheelFlushTimerRef = useRef<number | null>(null);
   const tmuxWheelPendingLinesRef = useRef(0);
   const tmuxStartupOutputTailRef = useRef("");
+  // tmux startup-script injection is driven by the remote "session created" /
+  // "session attached" markers so we replay the script exactly once, and only on a
+  // fresh session unless the user opted into applying it on every attach.
+  const sshStartupPendingInputRef = useRef("");
+  const sshStartupApplyOnAttachRef = useRef(false);
+  const sshStartupInjectedRef = useRef(false);
+  const sshStartupMarkerTailRef = useRef("");
   const multilinePasteConfirmationResolverRef = useRef<((confirmed: boolean) => void) | null>(null);
   const onFocusRef = useRef(onFocus);
   useEffect(() => {
@@ -2004,6 +2020,23 @@ function TerminalPaneView({
             if (tmuxStartupOutputTailRef.current.includes(TMUX_UNAVAILABLE_MARKER)) {
               markOpenTerminalPaneTmuxUnavailable(tabId, pane.id);
             }
+            // Replay the SSH startup script based on the authoritative session-state
+            // marker: always on a freshly created session, and on attach only when the
+            // Connection opted in. We inject at most once per session open.
+            if (!sshStartupInjectedRef.current && sshStartupPendingInputRef.current) {
+              sshStartupMarkerTailRef.current = (sshStartupMarkerTailRef.current + event.payload.data).slice(
+                -TMUX_MARKER_TAIL_LENGTH,
+              );
+              if (sshStartupMarkerTailRef.current.includes(TMUX_SESSION_CREATED_MARKER)) {
+                sshStartupInjectedRef.current = true;
+                writeInputToSession(sshStartupPendingInputRef.current);
+              } else if (sshStartupMarkerTailRef.current.includes(TMUX_SESSION_ATTACHED_MARKER)) {
+                sshStartupInjectedRef.current = true;
+                if (sshStartupApplyOnAttachRef.current) {
+                  writeInputToSession(sshStartupPendingInputRef.current);
+                }
+              }
+            }
           }
         }
       });
@@ -2048,6 +2081,21 @@ function TerminalPaneView({
           return;
         }
         const localStartup = localStartupFor(connection, shell);
+        // Arm tmux startup-script replay before the session starts so the output
+        // listener never misses an early session-state marker. Non-tmux SSH injects
+        // directly after start (no session to reuse), so it leaves the refs disarmed.
+        const sshStartupInput = sshStartupInputFor(connection);
+        // The remote tmux command (and its session-state markers) only runs when a
+        // tmux session id is present; otherwise the backend falls back to a plain
+        // shell, which we treat like non-tmux SSH and inject into directly.
+        const sshUsesTmux =
+          connection.type === "ssh" && connection.useTmuxSessions !== false && Boolean(pane.tmuxSessionId);
+        sshStartupInjectedRef.current = false;
+        sshStartupMarkerTailRef.current = "";
+        sshStartupPendingInputRef.current = sshStartupInput && sshUsesTmux ? sshStartupInput : "";
+        sshStartupApplyOnAttachRef.current = sshUsesTmux
+          ? readSshApplyStartupToExistingTmux(connection.id)
+          : false;
         const result = await invokeCommand("start_terminal_session", {
           request: {
             sessionId: requestedSessionId,
@@ -2134,19 +2182,11 @@ function TerminalPaneView({
         if (localStartup.startupInput) {
           writeInputToSession(localStartup.startupInput);
         }
-        const sshStartupInput = sshStartupInputFor(connection);
-        if (sshStartupInput) {
-          const usesTmux = connection.useTmuxSessions !== false;
-          if (!usesTmux) {
-            writeInputToSession(sshStartupInput);
-          } else {
-            const tmuxKey = `${connection.id}:${pane.tmuxSessionId ?? result.sessionId}`;
-            const applyOnAttach = readSshApplyStartupToExistingTmux(connection.id);
-            if (applyOnAttach || !injectedSshTmuxStartup.has(tmuxKey)) {
-              writeInputToSession(sshStartupInput);
-              injectedSshTmuxStartup.add(tmuxKey);
-            }
-          }
+        if (sshStartupInput && !sshUsesTmux) {
+          // Non-tmux SSH lands directly in the remote shell, so there is no session to
+          // reuse — replay the script on every connect, like the local shell does.
+          // (tmux replay is handled by the session-state marker in the output listener.)
+          writeInputToSession(sshStartupInput);
         }
         if (trackConnectionSession) {
           markConnectionSessionStarted(connection.id);
@@ -3335,13 +3375,6 @@ function localStartupFor(connection: Connection, shell: string | undefined) {
       : "",
   };
 }
-
-// Remote tmux sessions persist across reconnects, so a startup script that ran
-// when the session was first opened would re-run on every re-attach. We track the
-// tmux sessions we have already seeded this app run and, by default, only inject
-// the startup script the first time. The per-Connection "apply on attach" flag
-// overrides this to inject on every attach.
-const injectedSshTmuxStartup = new Set<string>();
 
 function sshStartupInputFor(connection: Connection) {
   if (connection.type !== "ssh") {

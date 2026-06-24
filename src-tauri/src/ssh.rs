@@ -1745,15 +1745,32 @@ pub(crate) fn remote_tmux_resume_command(
     let cd_command = initial_directory
         .map(|directory| format!("cd -- {} && ", shell_single_quote(directory)))
         .unwrap_or_default();
+    let session = shell_single_quote(session_id);
+    let history_limit = clamp_tmux_history_limit(history_limit);
     format!(
-        // The else-branch builds the "[KKTerm: tmux not found, using normal shell]"
-        // marker from a printf %s argument on purpose: the command is typed into the
-        // remote PTY, which echoes it back, and the frontend hides the tmux label when
-        // it sees that marker in terminal output. Keeping the bracketed marker out of
-        // the literal command source means only a genuine tmux-less run emits it.
-        "if command -v tmux >/dev/null 2>&1; then {cd_command}exec tmux new-session -A -s {} \\; set-option mouse on \\; set-option set-clipboard on \\; set-option history-limit {}; else {cd_command}printf '\\r\\n[%s]\\r\\n' 'KKTerm: tmux not found, using normal shell'; exec \"${{SHELL:-sh}}\" -i; fi",
-        shell_single_quote(session_id),
-        clamp_tmux_history_limit(history_limit),
+        // The marker printfs build their bracketed text from a printf %s argument on
+        // purpose: the command is typed into the remote PTY, which echoes it back, and
+        // the frontend reacts when it sees a marker in terminal output. Keeping the
+        // bracketed markers out of the literal command source means only a genuine
+        // runtime branch emits them.
+        //
+        // Before attaching we probe `tmux has-session` so the host authoritatively
+        // reports whether `new-session -A` will create the session or attach to an
+        // existing one. The frontend reads the "tmux session created" / "tmux session
+        // attached" markers to decide whether to replay the connection's startup
+        // script (new sessions always; existing sessions only when the user opts in).
+        // tmux's alternate screen redraw wipes the marker line on attach, so it never
+        // lingers in view or in the pane's scrollback.
+        "if command -v tmux >/dev/null 2>&1; then \
+            if tmux has-session -t {session} 2>/dev/null; then \
+                printf '\\r\\n[%s]\\r\\n' 'KKTerm: tmux session attached'; \
+            else \
+                printf '\\r\\n[%s]\\r\\n' 'KKTerm: tmux session created'; \
+            fi; \
+            {cd_command}exec tmux new-session -A -s {session} \\; set-option mouse on \\; set-option set-clipboard on \\; set-option history-limit {history_limit}; \
+        else \
+            {cd_command}printf '\\r\\n[%s]\\r\\n' 'KKTerm: tmux not found, using normal shell'; exec \"${{SHELL:-sh}}\" -i; \
+        fi",
     )
 }
 
@@ -3318,6 +3335,46 @@ mod tests {
             !cmd.contains(FRONTEND_MARKER),
             "resume command must not contain the frontend tmux-unavailable marker contiguously, \
              or PTY echo hides the tmux label while tmux is running: {cmd}"
+        );
+    }
+
+    #[test]
+    fn tmux_resume_command_probes_session_existence_for_new_vs_attach() {
+        // The host runs `has-session` before `new-session -A`, so it can authoritatively
+        // tell the frontend whether the session was created or attached to.
+        let cmd = remote_tmux_resume_command(None, "kkterm-test", 5_000);
+        assert!(
+            cmd.contains("tmux has-session -t 'kkterm-test'"),
+            "command must probe session existence before attaching: {cmd}"
+        );
+    }
+
+    #[test]
+    fn tmux_resume_command_emits_created_and_attached_markers() {
+        let cmd = remote_tmux_resume_command(None, "kkterm-test", 5_000);
+        assert!(
+            cmd.contains("'KKTerm: tmux session created'"),
+            "command must emit the created marker on a fresh session: {cmd}"
+        );
+        assert!(
+            cmd.contains("'KKTerm: tmux session attached'"),
+            "command must emit the attached marker when reusing a session: {cmd}"
+        );
+    }
+
+    #[test]
+    fn tmux_resume_command_keeps_session_state_markers_non_contiguous() {
+        // Same rationale as the tmux-unavailable marker: the bracketed marker must only
+        // ever appear as runtime printf output, never as a literal substring the PTY
+        // echo could trip on and misclassify the session state.
+        let cmd = remote_tmux_resume_command(None, "kkterm-test", 5_000);
+        assert!(
+            !cmd.contains("[KKTerm: tmux session created]"),
+            "created marker must not appear contiguously in the command source: {cmd}"
+        );
+        assert!(
+            !cmd.contains("[KKTerm: tmux session attached]"),
+            "attached marker must not appear contiguously in the command source: {cmd}"
         );
     }
 
