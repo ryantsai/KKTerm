@@ -11,6 +11,7 @@ import { FileViewConnectionFields } from "./connection-dialog/FileViewConnection
 import { RdpConnectionFields, RdpConnectionOptions } from "./connection-dialog/RdpConnectionFields";
 import { SerialConnectionFields } from "./connection-dialog/SerialConnectionFields";
 import { SshConnectionFields, SshConnectionOptions } from "./connection-dialog/SshConnectionFields";
+import { writeSshApplyStartupToExistingTmux } from "./connection-dialog/sshStartupScript";
 import { TelnetConnectionFields } from "./connection-dialog/TelnetConnectionFields";
 import { UrlConnectionFields, UrlConnectionOptions } from "./connection-dialog/UrlConnectionFields";
 import { parseUrlProxyDraft, type UrlProxyMode } from "./webview/urlProxy";
@@ -218,6 +219,9 @@ type ConnectionDialogRequest = CreateConnectionRequest & {
   sshSocksProxyPassword?: string;
   urlCredentialUsername?: string;
   urlPassword?: string;
+  // UI-only: persisted client-side (localStorage) after the Connection id is known,
+  // never sent to the backend create/update request.
+  sshStartupScriptApplyToExistingTmux?: boolean;
 };
 
 type ChildConnectionPropertiesState = {
@@ -1247,7 +1251,7 @@ export function ConnectionSidebar({
 
   async function handleConnectionSubmit(request: ConnectionDialogRequest) {
     setFormError("");
-    const { iconDataUrl, iconBackgroundColor, password, passwordCredentialId, keyPassphrase, sshSocksProxyPassword, urlCredentialUsername, urlPassword, ...connectionRequest } = request;
+    const { iconDataUrl, iconBackgroundColor, password, passwordCredentialId, keyPassphrase, sshSocksProxyPassword, urlCredentialUsername, urlPassword, sshStartupScriptApplyToExistingTmux, ...connectionRequest } = request;
     const appearance = supportsTerminalAppearanceDefaults(connectionRequest.type)
       ? resolveDefaultTerminalAppearance(connectionRequest.type, sshSettings, terminalSettings)
       : null;
@@ -1285,6 +1289,9 @@ export function ConnectionSidebar({
         if (connection.type === "url" && urlCredentialUsername && urlPassword) {
           await storeUrlPassword(connection.id, urlPassword);
           await upsertUrlCredential(connection.id, urlCredentialUsername);
+        }
+        if (connection.type === "ssh") {
+          writeSshApplyStartupToExistingTmux(connection.id, Boolean(sshStartupScriptApplyToExistingTmux));
         }
         await handleConnectionSaved();
       } catch (error) {
@@ -1350,7 +1357,7 @@ export function ConnectionSidebar({
       setFormError(t("connections.connectionNotFound"));
       return;
     }
-    const { iconDataUrl, iconBackgroundColor, password, passwordCredentialId, keyPassphrase, sshSocksProxyPassword, urlCredentialUsername, urlPassword, ...connectionRequest } = request;
+    const { iconDataUrl, iconBackgroundColor, password, passwordCredentialId, keyPassphrase, sshSocksProxyPassword, urlCredentialUsername, urlPassword, sshStartupScriptApplyToExistingTmux, ...connectionRequest } = request;
     const updateRequest: UpdateConnectionRequest = {
       ...connectionRequest,
       id: currentConnection.connection.id,
@@ -1377,6 +1384,9 @@ export function ConnectionSidebar({
       }
       if (connection.type === "url" && urlCredentialUsername) {
         await upsertUrlCredential(connection.id, urlCredentialUsername);
+      }
+      if (connection.type === "ssh") {
+        writeSshApplyStartupToExistingTmux(connection.id, Boolean(sshStartupScriptApplyToExistingTmux));
       }
       refreshOpenConnectionMetadata({
         ...connection,
@@ -4285,9 +4295,11 @@ function ConnectionDialog({
             ? localStartupDirectory.trim() || undefined
             : undefined,
       localStartupScript:
-        connectionType === "local"
+        connectionType === "local" || connectionType === "ssh"
           ? String(form.get("localStartupScript") ?? "").trim() || undefined
           : undefined,
+      sshStartupScriptApplyToExistingTmux:
+        connectionType === "ssh" ? form.get("sshStartupScriptApplyToExistingTmux") === "on" : undefined,
       fileViewOpenExternal:
         connectionType === "fileView" ? form.get("fileViewOpenExternal") === "on" : undefined,
       serialLine: connectionType === "serial" ? serialLine : undefined,

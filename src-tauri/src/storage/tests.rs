@@ -525,6 +525,64 @@ fn local_connection_persists_startup_directory_and_script() {
 }
 
 #[test]
+fn ssh_connection_persists_startup_script() {
+    let storage = Storage::open(temp_db_path("ssh-startup-script")).expect("storage opens");
+
+    let created = storage
+        .create_connection(CreateConnectionRequest {
+            name: "Project SSH".to_string(),
+            host: "server.internal".to_string(),
+            user: "admin".to_string(),
+            connection_type: "ssh".to_string(),
+            folder_id: None,
+            port: None,
+            key_path: None,
+            proxy_jump: None,
+            ssh_socks_proxy: None,
+            ssh_socks_proxy_username: None,
+            ssh_socks_proxy_inherit_defaults: None,
+            ssh_compression: None,
+            auth_method: None,
+            local_shell: None,
+            local_startup_directory: None,
+            local_startup_script: Some("  cd /srv/app\nsource .venv/bin/activate  ".to_string()),
+            url: None,
+            data_partition: None,
+            url_proxy: None,
+            url_proxy_inherit_defaults: None,
+            use_tmux_sessions: None,
+            use_psmux_sessions: None,
+            serial_line: None,
+            serial_speed: None,
+            rdp_options: None,
+            vnc_options: None,
+            ftp_options: None,
+            file_view_open_external: false,
+            ssh_port_forwardings: None,
+            workspace_id: None,
+        })
+        .expect("SSH connection is created");
+
+    assert_eq!(
+        created.local_startup_script.as_deref(),
+        Some("cd /srv/app\nsource .venv/bin/activate")
+    );
+
+    let tree = storage
+        .list_connection_tree()
+        .expect("connection tree loads");
+    let reloaded = tree
+        .connections
+        .iter()
+        .find(|connection| connection.id == created.id)
+        .expect("SSH connection reloads");
+    assert_eq!(
+        reloaded.local_startup_script.as_deref(),
+        Some("cd /srv/app\nsource .venv/bin/activate")
+    );
+}
+
+#[test]
 fn local_connection_persists_psmux_preference() {
     let storage = Storage::open(temp_db_path("local-psmux-preference")).expect("storage opens");
 

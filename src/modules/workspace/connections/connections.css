@@ -1817,6 +1817,59 @@ fieldset.connection-specific-options > legend {
   font-size: 12px;
 }
 
+.ssh-startup-script-section {
+  display: grid;
+  gap: 8px;
+}
+
+.ssh-startup-script-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ssh-startup-script-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ssh-startup-script-edit {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ssh-startup-script-edit:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.ssh-startup-script-preview {
+  display: block;
+  overflow: hidden;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--surface-muted, rgba(127, 127, 127, 0.12));
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ssh-startup-script-empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .local-startup-script-field {
   display: grid;
   gap: 6px;

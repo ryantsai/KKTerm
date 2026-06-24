@@ -4028,7 +4028,11 @@ fn normalize_local_startup_script(
     value: Option<String>,
     connection_type: &str,
 ) -> Result<Option<String>, String> {
-    if connection_type != "local" {
+    // `local` shells run this as an environment/startup block; `ssh` Connections
+    // reuse the same column to store a remote startup script that is typed into
+    // the session after it opens. Both keep multi-line content (newlines are part
+    // of the script), so we only trim the surrounding whitespace.
+    if connection_type != "local" && connection_type != "ssh" {
         return Ok(None);
     }
 

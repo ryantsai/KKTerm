@@ -1,10 +1,13 @@
 import { useState } from "react";
-import { Fingerprint, KeyRound, Layers, LockKeyhole, Settings2 } from "lucide-react";
+import { Fingerprint, KeyRound, Layers, LockKeyhole, ScrollText, Settings2, WandSparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Switch } from "../../../../app/ui/dialog";
 import { technicalInputProps } from "../../../../lib/inputBehavior";
 import type { Connection, SshCompressionMode, SshSettings, StoredCredentialSummary } from "../../../../types";
 import { defaultPortForConnectionType } from "../utils";
 import { PasswordCredentialSelect, PasswordField } from "./ConnectionPasswordFields";
+import { SshStartupScriptDialog } from "./SshStartupScriptDialog";
+import { readSshApplyStartupToExistingTmux } from "./sshStartupScript";
 
 export function SshConnectionFields({
   authMethod,
@@ -44,6 +47,15 @@ export function SshConnectionFields({
   sshSettings: SshSettings;
 }) {
   const { t } = useTranslation();
+  const [startupScriptEnabled, setStartupScriptEnabled] = useState(
+    Boolean(initialConnection?.localStartupScript?.trim()),
+  );
+  const [startupScript, setStartupScript] = useState(initialConnection?.localStartupScript ?? "");
+  const [startupScriptDialogOpen, setStartupScriptDialogOpen] = useState(false);
+  const [applyStartupToExistingTmux, setApplyStartupToExistingTmux] = useState(() =>
+    readSshApplyStartupToExistingTmux(initialConnection?.id),
+  );
+  const startupScriptPreview = startupScript.trim().split(/\r?\n/, 1)[0] ?? "";
 
   return (
     <>
@@ -178,6 +190,63 @@ export function SshConnectionFields({
           </>
         ) : null}
       </div>
+
+      <div className="connection-auth-fields ssh-startup-script-section">
+        <div className="ssh-startup-script-row">
+          <div className="ssh-startup-script-heading">
+            <ScrollText className="option-glyph" size={17} aria-hidden />
+            <span>{t("connections.sshStartupScript")}</span>
+          </div>
+          <Switch
+            on={startupScriptEnabled}
+            ariaLabel={t("connections.sshStartupScriptToggle")}
+            onChange={(next) => {
+              setStartupScriptEnabled(next);
+              if (next) {
+                setStartupScriptDialogOpen(true);
+              }
+            }}
+          />
+          <button
+            className="toolbar-button ssh-startup-script-edit"
+            disabled={!startupScriptEnabled}
+            onClick={() => setStartupScriptDialogOpen(true)}
+            type="button"
+          >
+            <WandSparkles size={15} aria-hidden />
+            {t("connections.sshStartupScriptEdit")}
+          </button>
+        </div>
+        {startupScriptEnabled ? (
+          startupScriptPreview ? (
+            <code className="ssh-startup-script-preview">{startupScriptPreview}</code>
+          ) : (
+            <small className="ssh-startup-script-empty">{t("connections.sshStartupScriptEmpty")}</small>
+          )
+        ) : null}
+        <input name="localStartupScript" type="hidden" value={startupScriptEnabled ? startupScript : ""} />
+        <input
+          name="sshStartupScriptApplyToExistingTmux"
+          type="hidden"
+          value={startupScriptEnabled && applyStartupToExistingTmux ? "on" : "off"}
+        />
+      </div>
+
+      {startupScriptDialogOpen ? (
+        <SshStartupScriptDialog
+          connection={initialConnection}
+          connectionName={initialConnection?.name ?? ""}
+          initialApplyToExistingTmux={applyStartupToExistingTmux}
+          initialScript={startupScript}
+          onApply={({ script, applyToExistingTmux }) => {
+            setStartupScript(script);
+            setApplyStartupToExistingTmux(applyToExistingTmux);
+            setStartupScriptEnabled(Boolean(script));
+            setStartupScriptDialogOpen(false);
+          }}
+          onCancel={() => setStartupScriptDialogOpen(false)}
+        />
+      ) : null}
     </>
   );
 }

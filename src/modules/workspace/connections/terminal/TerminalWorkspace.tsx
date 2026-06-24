@@ -45,6 +45,7 @@ import { TerminalBackgroundLayer, TerminalBackgroundPopover } from "./TerminalBa
 import { SshPortForwardingDialog, hasEnabledSshPortForwardings } from "./SshPortForwardingDialog";
 import { startEnabledSshPortForwardings } from "./sshPortForwardingModel";
 import { classifyEnvironmentShell, prepareLocalStartup } from "../connection-dialog/environmentVariables";
+import { readSshApplyStartupToExistingTmux } from "../connection-dialog/sshStartupScript";
 
 type TerminalContextMenuState = {
   x: number;
@@ -2133,6 +2134,20 @@ function TerminalPaneView({
         if (localStartup.startupInput) {
           writeInputToSession(localStartup.startupInput);
         }
+        const sshStartupInput = sshStartupInputFor(connection);
+        if (sshStartupInput) {
+          const usesTmux = connection.useTmuxSessions !== false;
+          if (!usesTmux) {
+            writeInputToSession(sshStartupInput);
+          } else {
+            const tmuxKey = `${connection.id}:${pane.tmuxSessionId ?? result.sessionId}`;
+            const applyOnAttach = readSshApplyStartupToExistingTmux(connection.id);
+            if (applyOnAttach || !injectedSshTmuxStartup.has(tmuxKey)) {
+              writeInputToSession(sshStartupInput);
+              injectedSshTmuxStartup.add(tmuxKey);
+            }
+          }
+        }
         if (trackConnectionSession) {
           markConnectionSessionStarted(connection.id);
         }
@@ -3319,6 +3334,26 @@ function localStartupFor(connection: Connection, shell: string | undefined) {
       ? `${prepared.startupScript.replace(/\r?\n/g, "\r")}\r`
       : "",
   };
+}
+
+// Remote tmux sessions persist across reconnects, so a startup script that ran
+// when the session was first opened would re-run on every re-attach. We track the
+// tmux sessions we have already seeded this app run and, by default, only inject
+// the startup script the first time. The per-Connection "apply on attach" flag
+// overrides this to inject on every attach.
+const injectedSshTmuxStartup = new Set<string>();
+
+function sshStartupInputFor(connection: Connection) {
+  if (connection.type !== "ssh") {
+    return "";
+  }
+  const script = connection.localStartupScript?.trim();
+  if (!script) {
+    return "";
+  }
+  // The script is typed into the remote PTY after the session lands, so each line
+  // becomes a carriage return (Enter) just like the local startup script path.
+  return `${script.replace(/\r?\n/g, "\r")}\r`;
 }
 
 function isTransientLocalConnectionId(connectionId: string) {
