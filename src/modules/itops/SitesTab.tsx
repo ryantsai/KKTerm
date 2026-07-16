@@ -93,9 +93,7 @@ import {
   loadSiteTreeWidth,
   saveFreePlacement,
   saveCollapsedNodeIds,
-  saveRackFacing,
   saveRackTreeSort,
-  saveRoomObjects,
   saveRoomViewMode,
   saveServerRoomTreeSort,
   saveSiteTreeWidth,
@@ -1551,9 +1549,10 @@ function RackDrill({
     setSitePlacements(loadFreePlacement(sitePlacementScope));
   }, [sitePlacementScope]);
 
-  // Rack placements are durable rack fields (SQLite); the localStorage scopes
-  // remain as a legacy fallback for layouts saved before the durable columns
-  // existed. Merge order: legacy < durable < this session's live edits.
+  // Rack placements are durable rack fields (SQLite grid_x/grid_y); edits write
+  // only there. The legacy per-scope blob (pre-durable-column layouts) is read
+  // once and merged underneath so old saves still resolve, but is never written
+  // again. Merge order: legacy < durable columns < this session's live edits.
   // The floor plan and the 2.5D view share this one grid-cell placement, so
   // arranging the room in either view rearranges both.
   const roomRacks = serverRoom?.racks;
@@ -1574,9 +1573,9 @@ function RackDrill({
   );
 
   // Per-room rack facing, shared by the floor plan and the 2.5D view. Facing
-  // is a durable rack field; the localStorage scope remains as the legacy /
-  // non-Tauri fallback. Merge order: legacy < durable < this session's edits
-  // (the same merge as placements).
+  // is a durable rack field (SQLite); the legacy per-scope blob is read once and
+  // merged underneath but never written again. Merge order: legacy < durable <
+  // this session's edits (the same merge as placements).
   const legacyFacing = useMemo(
     () => (isoPlacementScope ? loadRackFacing(isoPlacementScope) : {}),
     [isoPlacementScope],
@@ -1597,7 +1596,6 @@ function RackDrill({
 
   function saveRoomFacingState(next: RackFacingMap) {
     setFacingEdits(next);
-    if (isoPlacementScope) saveRackFacing(isoPlacementScope, next);
     const entries = Object.entries(next)
       .filter(([id]) => rackIds.has(id))
       .map(([id, facing]) => ({ id, facing }));
@@ -1607,9 +1605,8 @@ function RackDrill({
     });
   }
 
-  // Non-rack room objects: durable per room (itops_room_objects), with the
-  // localStorage scope as the legacy / non-Tauri fallback until the first
-  // durable write.
+  // Non-rack room objects: durable per room (itops_room_objects). The legacy
+  // per-scope blob is read once as a starting point but never written again.
   const [roomObjects, setRoomObjects] = useState<RoomObject[]>([]);
   const roomObjectsSaveTimer = useRef<number | undefined>(undefined);
   const roomName = serverRoom ? serverRoom.key : null;
@@ -1632,7 +1629,6 @@ function RackDrill({
 
   const saveRoomObjectsState = useCallback((next: RoomObject[]) => {
     setRoomObjects(next);
-    if (isoPlacementScope) saveRoomObjects(isoPlacementScope, next);
     if (roomName == null) return;
     if (roomObjectsSaveTimer.current != null) {
       window.clearTimeout(roomObjectsSaveTimer.current);
@@ -1645,7 +1641,7 @@ function RackDrill({
         showStatusBarNotice(t("itops.errorNotice", { message }), { tone: "error" });
       });
     }, 500);
-  }, [isoPlacementScope, roomName, saveDurableRoomObjects, showStatusBarNotice, site.id, t]);
+  }, [roomName, saveDurableRoomObjects, showStatusBarNotice, site.id, t]);
 
   // A 乖乖 pack resting on a cabinet top lives as the rack's single rack-top
   // Rack Device — the same object the Rack View shows center top — never as a
@@ -1936,7 +1932,6 @@ function RackDrill({
 
   function saveIsoPlacements(next: FreePlacementMap) {
     setIsoEdits(next);
-    if (isoPlacementScope) saveFreePlacement(isoPlacementScope, next);
     scheduleDurableSave("grid", next);
   }
 
