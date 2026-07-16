@@ -3952,6 +3952,79 @@ fn assistant_chat_history_schema_has_list_indexes() {
 }
 
 #[test]
+fn durable_ui_state_round_trip_prefix_and_cleanup() {
+    let storage = Storage::open(temp_db_path("durable-ui-state")).expect("storage opens");
+
+    // Missing key reads as None.
+    assert_eq!(
+        storage
+            .get_durable_ui_state("kkterm.quickCommands.web01".to_string())
+            .expect("missing key reads"),
+        None
+    );
+
+    // Upsert then read back.
+    storage
+        .set_durable_ui_state("kkterm.quickCommands.web01".to_string(), "[1]".to_string())
+        .expect("first write");
+    storage
+        .set_durable_ui_state("kkterm.quickCommands.db01".to_string(), "[2]".to_string())
+        .expect("second write");
+    storage
+        .set_durable_ui_state(
+            "kkterm.fileBrowserFavorites.v1".to_string(),
+            "[3]".to_string(),
+        )
+        .expect("favorites write");
+    // Conflict on the same key updates in place.
+    storage
+        .set_durable_ui_state("kkterm.quickCommands.web01".to_string(), "[9]".to_string())
+        .expect("overwrite");
+    assert_eq!(
+        storage
+            .get_durable_ui_state("kkterm.quickCommands.web01".to_string())
+            .expect("key reads"),
+        Some("[9]".to_string())
+    );
+
+    // Prefix listing matches literally (LIKE wildcards in a key are escaped).
+    let quick = storage
+        .list_durable_ui_state("kkterm.quickCommands.".to_string())
+        .expect("prefix lists");
+    assert_eq!(quick.len(), 2);
+
+    // Per-connection cleanup removes only the matching key.
+    storage
+        .delete_durable_ui_state("kkterm.quickCommands.web01".to_string())
+        .expect("delete one");
+    assert_eq!(
+        storage
+            .list_durable_ui_state("kkterm.quickCommands.".to_string())
+            .expect("prefix relists")
+            .len(),
+        1
+    );
+
+    // Namespace cleanup (reset) removes a whole prefix, leaving others intact.
+    storage
+        .delete_durable_ui_state_by_prefix("kkterm.quickCommands.".to_string())
+        .expect("delete prefix");
+    assert!(
+        storage
+            .list_durable_ui_state("kkterm.quickCommands.".to_string())
+            .expect("prefix empty")
+            .is_empty()
+    );
+    assert_eq!(
+        storage
+            .get_durable_ui_state("kkterm.fileBrowserFavorites.v1".to_string())
+            .expect("favorites survive")
+            .as_deref(),
+        Some("[3]")
+    );
+}
+
+#[test]
 fn assistant_memories_scope_and_round_trip() {
     let storage = Storage::open(temp_db_path("assistant-memory")).expect("storage opens");
     let now = "2026-06-12T00:00:00Z".to_string();

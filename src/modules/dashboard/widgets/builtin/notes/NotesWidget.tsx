@@ -6,7 +6,7 @@ import type { CSSProperties, MouseEvent as ReactMouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { showNativeContextMenu } from "../../../../../lib/nativeContextMenu";
 import type { BuiltInWidgetBodyProps } from "../../../registry/builtInRegistry";
-import { useWidgetConfig } from "../../widgetLocalStorage";
+import { useDurableWidgetConfig } from "../../widgetLocalStorage";
 
 type NotesColor = "yellow" | "pink" | "blue" | "green" | "orange" | "purple" | "white";
 type NotesFont = "handwriting" | "marker" | "system" | "serif" | "mono";
@@ -124,7 +124,7 @@ function renderMarkdown(markdown: string) {
 
 export function NotesBody({ instance }: BuiltInWidgetBodyProps) {
   const { t } = useTranslation();
-  const [config, setConfig] = useWidgetConfig(
+  const [config, setConfig] = useDurableWidgetConfig(
     storageKey(instance.id),
     DEFAULT_CONFIG,
     normalizeNotesConfig,

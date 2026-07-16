@@ -13,7 +13,7 @@ use std::{
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use zip::{ZipArchive, ZipWriter, write::SimpleFileOptions};
 
-const SCHEMA_USER_VERSION: i32 = 48;
+const SCHEMA_USER_VERSION: i32 = 49;
 
 const DEFAULT_TERMINAL_OPACITY: u8 = 50;
 
@@ -248,6 +248,19 @@ CREATE TABLE IF NOT EXISTS assistant_memories (
 
 CREATE INDEX IF NOT EXISTS idx_assistant_memories_scope
     ON assistant_memories(scope, updated_at DESC);
+
+-- Durable frontend UI state that used to live only in localStorage: Quick
+-- Commands, Child Connection Tabs, Notes widget content, file-browser
+-- favorites, and remembered CLI account labels. Key is a namespaced string
+-- ("quickCommands:<connectionId>", "childConnections", "notes:<instanceId>",
+-- "fileBrowserFavorites", "cliAccountLabels"); value is an opaque frontend JSON
+-- blob. Non-secret, backed up with the database, and cleared by the Settings
+-- reset and per-connection delete flows. v49.
+CREATE TABLE IF NOT EXISTS durable_ui_state (
+    key        TEXT PRIMARY KEY,
+    value      TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 
 CREATE TABLE IF NOT EXISTS ai_coding_usage_accounts (
     provider TEXT PRIMARY KEY CHECK (provider IN ('codex', 'claudeCode')),
@@ -1737,9 +1750,24 @@ pub struct AssistantMemoryRecord {
     pub updated_at: String,
 }
 
+/// One durable frontend UI-state entry: a namespaced key mapping to an opaque
+/// JSON string the frontend owns. Backs data that used to live only in
+/// `localStorage` (Quick Commands, Child Connection Tabs, Notes widget content,
+/// file-browser favorites, remembered CLI account labels) so it survives a
+/// reinstall, rides along in database backups/exports, and is cleared by the
+/// Settings reset and per-connection delete flows. Never holds secrets.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DurableUiStateRecord {
+    pub key: String,
+    pub value: String,
+}
+
 mod settings;
 
 mod connections;
+
+mod durable_ui_state;
 
 impl Storage {
     pub fn open(db_path: PathBuf) -> Result<Self, String> {

@@ -1851,6 +1851,26 @@ type CommandMap = {
     args: { threadId: string };
     result: null;
   };
+  list_durable_ui_state: {
+    args: { prefix: string };
+    result: { key: string; value: string }[];
+  };
+  get_durable_ui_state: {
+    args: { key: string };
+    result: string | null;
+  };
+  set_durable_ui_state: {
+    args: { key: string; value: string };
+    result: null;
+  };
+  delete_durable_ui_state: {
+    args: { key: string };
+    result: null;
+  };
+  delete_durable_ui_state_by_prefix: {
+    args: { prefix: string };
+    result: null;
+  };
   start_github_copilot_device_flow: {
     args: undefined;
     result: GitHubCopilotDeviceFlow;

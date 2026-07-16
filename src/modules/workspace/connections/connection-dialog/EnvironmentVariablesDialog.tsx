@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import claudeCodeIcon from "../../../../assets/installer-icons/claude-code.svg?url";
 import codexIcon from "../../../../assets/installer-icons/codex.svg?url";
 import { Actions, Btn, DialogShell, Field, Sheet, TextInput } from "../../../../app/ui/dialog";
+import { readDurableUiState, writeDurableUiState } from "../../../../lib/durableUiState";
 import {
   applyEnvironmentBlock,
   createCliAccountVariable,
@@ -129,7 +130,7 @@ export function CliAccountDialog({
 
 function readRememberedAccountLabels() {
   try {
-    const value: unknown = JSON.parse(localStorage.getItem(KKTERM_CLI_ACCOUNT_LABELS_STORAGE_KEY) ?? "[]");
+    const value: unknown = JSON.parse(readDurableUiState(KKTERM_CLI_ACCOUNT_LABELS_STORAGE_KEY) ?? "[]");
     if (!Array.isArray(value)) return [];
     return uniqueLabels(value.filter((label: unknown): label is string => typeof label === "string"));
   } catch {
@@ -139,11 +140,9 @@ function readRememberedAccountLabels() {
 
 function rememberAccountLabel(label: string, currentLabels: string[]) {
   const nextLabels = uniqueLabels([label, ...currentLabels]);
-  try {
-    localStorage.setItem(KKTERM_CLI_ACCOUNT_LABELS_STORAGE_KEY, JSON.stringify(nextLabels));
-  } catch {
-    // Account setup still works when browser storage is unavailable.
-  }
+  // Remembered CLI account labels are durable convenience data: SQLite source
+  // of truth (backed up, portable), mirrored to the synchronous cache.
+  writeDurableUiState(KKTERM_CLI_ACCOUNT_LABELS_STORAGE_KEY, JSON.stringify(nextLabels));
   return nextLabels;
 }
 

@@ -29,6 +29,7 @@ import {
   CHILD_CONNECTIONS_UPDATED_EVENT,
   loadStoredChildConnections,
   persistStoredChildConnections,
+  pruneChildConnectionsForParent,
   syncChildConnectionsFromTabs,
 } from "./childConnections";
 import {
@@ -77,7 +78,7 @@ import { DeleteConfirmationDialog } from "../../../app/DeleteConfirmationDialog"
 import { DialogPortal } from "../../../app/DialogPortal";
 import { ConfirmSheet, LegacyDialogActions } from "../../../app/ui/dialog";
 import { pushTrayMenu } from "../../../app/trayMenu";
-import { CHILD_CONNECTION_CLOSED_EVENT, DEFAULT_WORKSPACE_ID, appendTmuxSessionId, useWorkspaceStore } from "../../../store";
+import { CHILD_CONNECTION_CLOSED_EVENT, DEFAULT_WORKSPACE_ID, appendTmuxSessionId, forgetConnectionLocalState, useWorkspaceStore } from "../../../store";
 import type { Connection, ConnectionFolder, ConnectionStatus, ConnectionTree, ConnectionType, CreateConnectionRequest, RdpSettings, SplitDirection, SshCompressionMode, SshOldProtocolsMode, SshSettings, StoredCredentialSummary, UpdateConnectionRequest, VncSettings, WorkspaceChildConnection, WorkspaceTab } from "../../../types";
 
 // Pointer travel (px, either axis) before a press is treated as a drag rather
@@ -1694,6 +1695,8 @@ export function ConnectionSidebar({
       await invokeCommand("delete_connection", {
         connectionId: connection.id,
       });
+      forgetConnectionLocalState(connection.id);
+      pruneChildConnectionsForParent(connection.id);
       closeOpenTabsForConnection(connection.id);
       await reloadConnectionGroups();
       notifyConnectionTreeInvalidated();

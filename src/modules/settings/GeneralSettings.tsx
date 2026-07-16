@@ -60,6 +60,8 @@ import {
   allAiProviderSecretOwnerIds,
 } from "../../lib/settings";
 import { useLastUpdateCheckAt } from "../../lib/lastUpdateCheck";
+import { resetDurableUiState } from "../../lib/durableUiState";
+import { CHILD_CONNECTIONS_UPDATED_EVENT } from "../workspace/connections/childConnections";
 import { ABOUT_PRODUCT } from "./aboutData";
 import { SelectiveExportDialog } from "./SelectiveExportDialog";
 import { SelectiveImportDialog } from "./SelectiveImportDialog";
@@ -309,6 +311,11 @@ export function GeneralSettings() {
       } catch {
         // Storage may be unavailable.
       }
+      // Wipe durable frontend UI state (Quick Commands, Child Connection Tabs,
+      // Notes content, favorites, CLI labels, IT Ops layout) from both the
+      // database and the cache so it does not survive a settings reset.
+      await resetDurableUiState();
+      window.dispatchEvent(new CustomEvent(CHILD_CONNECTIONS_UPDATED_EVENT));
       const resetLanguage = detectLanguage();
       await switchLanguage(resetLanguage);
       setCurrentLanguage(resetLanguage);

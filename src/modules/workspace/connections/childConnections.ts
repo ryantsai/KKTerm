@@ -1,5 +1,6 @@
 import type { DashboardBackground } from "../../dashboard/types";
 import type { Connection, TerminalPane, WorkspaceChildConnection, WorkspacePane, WorkspaceTab } from "../../../types";
+import { readDurableUiState, writeDurableUiState } from "../../../lib/durableUiState";
 
 export const CHILD_CONNECTIONS_STORAGE_KEY = "kkterm.workspace.childConnections.v1";
 export const CHILD_CONNECTIONS_UPDATED_EVENT = "kkterm:workspace-child-connections-updated";
@@ -9,7 +10,7 @@ export function loadStoredChildConnections(): WorkspaceChildConnection[] {
     return [];
   }
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(CHILD_CONNECTIONS_STORAGE_KEY) ?? "[]") as unknown;
+    const parsed = JSON.parse(readDurableUiState(CHILD_CONNECTIONS_STORAGE_KEY) ?? "[]") as unknown;
     return Array.isArray(parsed) ? parsed.filter(isStoredChildConnection) : [];
   } catch {
     return [];
@@ -20,10 +21,19 @@ export function persistStoredChildConnections(children: WorkspaceChildConnection
   if (typeof window === "undefined") {
     return;
   }
-  try {
-    window.localStorage.setItem(CHILD_CONNECTIONS_STORAGE_KEY, JSON.stringify(children));
-  } catch {
-    // Storage can be unavailable or full; keep runtime state working.
+  // Child Connection Tabs are durable frontend workspace state: source of truth
+  // is SQLite (backed up, portable), mirrored to the synchronous cache.
+  writeDurableUiState(CHILD_CONNECTIONS_STORAGE_KEY, JSON.stringify(children));
+}
+
+// Drop every saved Child Connection Tab under a deleted parent Connection so the
+// rows do not orphan after the parent is gone.
+export function pruneChildConnectionsForParent(parentConnectionId: string) {
+  const children = loadStoredChildConnections();
+  const next = children.filter((child) => child.parentConnectionId !== parentConnectionId);
+  if (next.length !== children.length) {
+    persistStoredChildConnections(next);
+    notifyStoredChildConnectionsUpdated();
   }
 }
 

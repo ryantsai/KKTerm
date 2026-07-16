@@ -66,6 +66,11 @@ import {
   notifyStoredChildConnectionsUpdated,
   persistStoredChildConnections,
 } from "./modules/workspace/connections/childConnections";
+import {
+  readDurableUiState,
+  removeDurableUiState,
+  writeDurableUiState,
+} from "./lib/durableUiState";
 
 const LAYOUT_STORAGE_PREFIX = "kkterm.layout.";
 const TMUX_SESSION_STORAGE_PREFIX = "kkterm.tmuxSessions.";
@@ -330,7 +335,7 @@ function loadStoredQuickCommands(connectionId: string | undefined): QuickCommand
     return [];
   }
   try {
-    const raw = window.localStorage.getItem(`${QUICK_COMMANDS_STORAGE_PREFIX}${connectionId}`);
+    const raw = readDurableUiState(`${QUICK_COMMANDS_STORAGE_PREFIX}${connectionId}`);
     const parsed = raw ? (JSON.parse(raw) as unknown) : [];
     return Array.isArray(parsed) ? parsed.filter(isQuickCommand) : [];
   } catch {
@@ -342,10 +347,25 @@ function persistQuickCommands(connectionId: string | undefined, commands: QuickC
   if (!connectionId || typeof window === "undefined") {
     return;
   }
+  // Quick Commands are durable per-Connection configuration: source of truth is
+  // SQLite (backed up, portable), mirrored to the synchronous cache.
+  writeDurableUiState(`${QUICK_COMMANDS_STORAGE_PREFIX}${connectionId}`, JSON.stringify(commands));
+}
+
+// Remove a deleted Connection's durable Quick Commands plus its local-only
+// per-Connection reopen hints (layout, tmux session ids, quick-command-bar
+// visibility) so they do not orphan and accumulate.
+export function forgetConnectionLocalState(connectionId: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  removeDurableUiState(`${QUICK_COMMANDS_STORAGE_PREFIX}${connectionId}`);
   try {
-    window.localStorage.setItem(`${QUICK_COMMANDS_STORAGE_PREFIX}${connectionId}`, JSON.stringify(commands));
+    window.localStorage.removeItem(`${QUICK_COMMAND_BAR_STORAGE_PREFIX}${connectionId}`);
+    window.localStorage.removeItem(`${LAYOUT_STORAGE_PREFIX}${connectionId}`);
+    window.localStorage.removeItem(`${TMUX_SESSION_STORAGE_PREFIX}${connectionId}`);
   } catch {
-    // Storage may be unavailable (private mode, quota); fail silently.
+    // Storage may be unavailable; nothing durable is lost.
   }
 }
 

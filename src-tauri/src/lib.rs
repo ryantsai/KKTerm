@@ -1275,6 +1275,47 @@ fn delete_assistant_chat_thread(
 }
 
 #[tauri::command]
+fn list_durable_ui_state(
+    storage: tauri::State<'_, storage::Storage>,
+    prefix: String,
+) -> Result<Vec<storage::DurableUiStateRecord>, String> {
+    storage.list_durable_ui_state(prefix)
+}
+
+#[tauri::command]
+fn get_durable_ui_state(
+    storage: tauri::State<'_, storage::Storage>,
+    key: String,
+) -> Result<Option<String>, String> {
+    storage.get_durable_ui_state(key)
+}
+
+#[tauri::command]
+fn set_durable_ui_state(
+    storage: tauri::State<'_, storage::Storage>,
+    key: String,
+    value: String,
+) -> Result<(), String> {
+    storage.set_durable_ui_state(key, value)
+}
+
+#[tauri::command]
+fn delete_durable_ui_state(
+    storage: tauri::State<'_, storage::Storage>,
+    key: String,
+) -> Result<(), String> {
+    storage.delete_durable_ui_state(key)
+}
+
+#[tauri::command]
+fn delete_durable_ui_state_by_prefix(
+    storage: tauri::State<'_, storage::Storage>,
+    prefix: String,
+) -> Result<(), String> {
+    storage.delete_durable_ui_state_by_prefix(prefix)
+}
+
+#[tauri::command]
 async fn start_github_copilot_device_flow()
 -> Result<github_copilot::GitHubCopilotDeviceFlow, String> {
     github_copilot::start_device_flow().await
@@ -3917,6 +3958,11 @@ pub fn run() {
             open_built_in_mcp_config_location,
             list_assistant_chat_threads,
             upsert_assistant_chat_thread,
+            list_durable_ui_state,
+            get_durable_ui_state,
+            set_durable_ui_state,
+            delete_durable_ui_state,
+            delete_durable_ui_state_by_prefix,
             delete_assistant_chat_thread,
             // ── AI providers, models & CLI backends
             start_github_copilot_device_flow,

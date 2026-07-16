@@ -5,6 +5,7 @@
 
 import { sanitizeRoomObjects, type RoomObject } from "./roomObjects";
 import { sanitizeFacing, type Facing, type IsoViewAngle } from "./roomIsoLayout";
+import { readDurableUiState, writeDurableUiState } from "../../lib/durableUiState";
 
 const WIDTH_KEY = "kkterm.itopsSiteTreeWidth";
 const PANEL_COLLAPSED_KEY = "kkterm.itopsSiteTreePanelCollapsed";
@@ -161,7 +162,7 @@ export type FreePlacementMap = Record<string, FreePlacement>;
 function readFreePlacementStore(): Record<string, FreePlacementMap> {
   if (typeof localStorage === "undefined") return {};
   try {
-    const parsed = JSON.parse(localStorage.getItem(FREE_LAYOUT_KEY) ?? "{}");
+    const parsed = JSON.parse(readDurableUiState(FREE_LAYOUT_KEY) ?? "{}");
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
     const store: Record<string, FreePlacementMap> = {};
     for (const [scope, value] of Object.entries(parsed)) {
@@ -191,7 +192,9 @@ export function saveFreePlacement(scope: string, placement: FreePlacementMap): v
   if (typeof localStorage === "undefined") return;
   const store = readFreePlacementStore();
   store[scope] = placement;
-  localStorage.setItem(FREE_LAYOUT_KEY, JSON.stringify(store));
+  // Server Room View layout (including Site View server-room card positions) is
+  // durable: SQLite source of truth, mirrored to the synchronous cache.
+  writeDurableUiState(FREE_LAYOUT_KEY, JSON.stringify(store));
 }
 
 // ── Rack facing (per-room quarter-turn orientation of each rack) ──
@@ -201,7 +204,7 @@ export type RackFacingMap = Record<string, Facing>;
 function readScopedStore(key: string): Record<string, unknown> {
   if (typeof localStorage === "undefined") return {};
   try {
-    const parsed = JSON.parse(localStorage.getItem(key) ?? "{}");
+    const parsed = JSON.parse(readDurableUiState(key) ?? "{}");
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
     return parsed as Record<string, unknown>;
   } catch {
@@ -209,11 +212,13 @@ function readScopedStore(key: string): Record<string, unknown> {
   }
 }
 
+// Backs the durable per-room rack facing and room-object stores (both mirrored
+// to SQLite). Cosmetic Sites-tree view prefs stay on plain localStorage above.
 function writeScopedStore(key: string, scope: string, value: unknown): void {
   if (typeof localStorage === "undefined") return;
   const store = readScopedStore(key);
   store[scope] = value;
-  localStorage.setItem(key, JSON.stringify(store));
+  writeDurableUiState(key, JSON.stringify(store));
 }
 
 export function loadRackFacing(scope: string): RackFacingMap {

@@ -1996,6 +1996,12 @@ mod tests {
             "ai_coding_usage_accounts",
             "ai_coding_usage_snapshots",
             "installer_tool_state",
+            // Durable frontend UI state (Quick Commands, Child Connection Tabs,
+            // Notes content, favorites, CLI labels, IT Ops layout). Rides in the
+            // whole-database backup but stays out of shareable connection
+            // bundles so a user's local workspace notes/favorites are not
+            // leaked when exporting selected Connections.
+            "durable_ui_state",
         ];
         let covered: Vec<&str> = SEGMENT_ORDER
             .iter()
