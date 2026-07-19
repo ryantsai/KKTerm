@@ -38,6 +38,7 @@ test("General settings owns all built-in Activity Rail visibility controls", () 
     "showWorkspaceOnRail",
     "showDashboardOnRail",
     "showInstallerOnRail",
+    "showScreenshotsOnRail",
     "showItOps",
     "showDontSleepOnRail",
   ]) {
@@ -58,6 +59,7 @@ test("Activity Rail visibility defaults and rendering match the unified controls
   assert.match(defaults, /showWorkspaceOnRail:\s*true/);
   assert.match(defaults, /showDashboardOnRail:\s*true/);
   assert.match(defaults, /showInstallerOnRail:\s*true/);
+  assert.match(defaults, /showScreenshotsOnRail:\s*true/);
   assert.match(defaults, /showItOps:\s*true/);
   assert.match(defaults, /showDontSleepOnRail:\s*true/);
   assert.match(defaults, /activityRailOrder:\s*\[\.\.\.DEFAULT_ACTIVITY_RAIL_ORDER\]/);
@@ -65,6 +67,7 @@ test("Activity Rail visibility defaults and rendering match the unified controls
   assert.match(activityRail, /generalSettings\.showWorkspaceOnRail\s*\?/);
   assert.match(activityRail, /generalSettings\.showDashboardOnRail\s*\?/);
   assert.match(activityRail, /generalSettings\.showInstallerOnRail/);
+  assert.match(activityRail, /generalSettings\.showScreenshotsOnRail\s*\?/);
   assert.match(activityRail, /generalSettings\.showItOps/);
   assert.match(activityRail, /generalSettings\.showDontSleepOnRail\s*\?/);
   assert.match(activityRail, /activityRailModuleOrder/);

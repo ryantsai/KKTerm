@@ -53,6 +53,10 @@
   --module-tint: color-mix(in srgb, var(--accent) 74%, var(--red));
 }
 
+.module-header__tile--screenshots {
+  --module-tint: color-mix(in srgb, var(--accent) 60%, var(--amber));
+}
+
 .module-header__tile--itops {
   --module-tint: color-mix(in srgb, var(--accent) 66%, var(--green));
 }

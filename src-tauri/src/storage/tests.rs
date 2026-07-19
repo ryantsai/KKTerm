@@ -2244,10 +2244,18 @@ fn general_settings_round_trip_through_settings_table() {
     assert!(!defaults.separate_split_terminal_backgrounds);
     assert!(defaults.show_installer_on_rail);
     assert!(defaults.show_it_ops);
+    assert!(defaults.show_screenshots_on_rail);
     assert!(defaults.show_dont_sleep_on_rail);
     assert_eq!(
         defaults.activity_rail_order,
-        ["workspace", "dashboard", "installer", "itops", "dontSleep"]
+        [
+            "workspace",
+            "dashboard",
+            "installer",
+            "screenshots",
+            "itops",
+            "dontSleep"
+        ]
     );
     assert_eq!(defaults.installer_check_interval_seconds, 86_400);
     assert!(defaults.pinned_connection_ids.is_empty());
@@ -2278,12 +2286,14 @@ fn general_settings_round_trip_through_settings_table() {
             separate_split_terminal_backgrounds: true,
             show_installer_on_rail: false,
             show_it_ops: false,
+            show_screenshots_on_rail: false,
             show_dont_sleep_on_rail: false,
             activity_rail_order: vec![
                 "dontSleep".to_string(),
                 "workspace".to_string(),
                 "dashboard".to_string(),
                 "installer".to_string(),
+                "screenshots".to_string(),
                 "itops".to_string(),
             ],
             installer_check_interval_seconds: 604_800,
@@ -2678,12 +2688,14 @@ fn database_backup_import_restores_settings_and_connections() {
             separate_split_terminal_backgrounds: true,
             show_installer_on_rail: false,
             show_it_ops: false,
+            show_screenshots_on_rail: false,
             show_dont_sleep_on_rail: false,
             activity_rail_order: vec![
                 "dontSleep".to_string(),
                 "workspace".to_string(),
                 "dashboard".to_string(),
                 "installer".to_string(),
+                "screenshots".to_string(),
                 "itops".to_string(),
             ],
             installer_check_interval_seconds: 86_400,
@@ -2723,6 +2735,7 @@ fn database_backup_import_restores_settings_and_connections() {
             separate_split_terminal_backgrounds: false,
             show_installer_on_rail: true,
             show_it_ops: false,
+            show_screenshots_on_rail: true,
             show_dont_sleep_on_rail: true,
             activity_rail_order: default_activity_rail_order(),
             installer_check_interval_seconds: 86_400,

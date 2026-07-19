@@ -6,7 +6,6 @@ use std::{
 };
 
 use base64::{Engine as _, engine::general_purpose::STANDARD};
-use image::GenericImageView;
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
 
@@ -33,18 +32,37 @@ pub struct AssistantScreenshot {
     height: u32,
 }
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StoredScreenshot {
     id: String,
     path: String,
     file_name: String,
+    thumbnail_data_url: String,
+    width: u32,
+    height: u32,
+    file_size_bytes: u64,
+    captured_at: u128,
+    kind: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FullScreenshot {
+    id: String,
+    file_name: String,
     data_url: String,
     width: u32,
     height: u32,
-    captured_at: u128,
-    label: String,
-    kind: String,
+}
+
+/// How captures are written into the library folder. Built from the persisted
+/// `ScreenshotSettings` by the command layer.
+#[derive(Clone)]
+pub struct LibrarySaveOptions {
+    pub folder_path: String,
+    pub format: String,
+    pub jpeg_quality: u8,
 }
 
 #[derive(Deserialize)]
@@ -149,7 +167,7 @@ pub fn capture_rect_to_library(
     app: &tauri::AppHandle,
     request: CaptureScreenshotRequest,
     kind: String,
-    folder_path: String,
+    options: LibrarySaveOptions,
     use_directx: bool,
 ) -> Result<StoredScreenshot, String> {
     let target = capture_target(app, request)?;
@@ -165,7 +183,7 @@ pub fn capture_rect_to_library(
         target.width as u32,
         target.height as u32,
         kind,
-        &folder_path,
+        &options,
     )
 }
 
@@ -173,7 +191,7 @@ pub fn capture_rect_to_library(
 pub fn capture_fullscreen_to_library(
     app: &tauri::AppHandle,
     kind: String,
-    folder_path: String,
+    options: LibrarySaveOptions,
     use_directx: bool,
 ) -> Result<StoredScreenshot, String> {
     let _guard = MinimizedCaptureWindow::new(app)?;
@@ -190,7 +208,7 @@ pub fn capture_fullscreen_to_library(
         target.width as u32,
         target.height as u32,
         kind,
-        &folder_path,
+        &options,
     )
 }
 
@@ -198,7 +216,7 @@ pub fn capture_fullscreen_to_library(
 pub fn capture_active_window_to_library(
     app: &tauri::AppHandle,
     kind: String,
-    folder_path: String,
+    options: LibrarySaveOptions,
     use_directx: bool,
 ) -> Result<StoredScreenshot, String> {
     let _guard = MinimizedCaptureWindow::new(app)?;
@@ -219,7 +237,7 @@ pub fn capture_active_window_to_library(
         target.width as u32,
         target.height as u32,
         kind,
-        &folder_path,
+        &options,
     )
 }
 
@@ -227,7 +245,7 @@ pub fn capture_active_window_to_library(
 pub fn capture_interactive_region_to_library(
     app: &tauri::AppHandle,
     kind: String,
-    folder_path: String,
+    options: LibrarySaveOptions,
     use_directx: bool,
 ) -> Result<StoredScreenshot, String> {
     let _guard = MinimizedCaptureWindow::new(app)?;
@@ -247,7 +265,7 @@ pub fn capture_interactive_region_to_library(
         target.width as u32,
         target.height as u32,
         kind,
-        &folder_path,
+        &options,
     )
 }
 
@@ -275,10 +293,14 @@ impl MinimizedCaptureWindow {
             .ok_or_else(|| "main window is not available".to_string())?;
         let was_minimized = window.is_minimized().unwrap_or(false);
         let was_visible = window.is_visible().unwrap_or(true);
-        window
-            .minimize()
-            .map_err(|error| format!("failed to minimize window before screenshot: {error}"))?;
-        thread::sleep(std::time::Duration::from_millis(350));
+        // A window already hidden to the tray must stay hidden: skip the
+        // minimize/settle dance entirely so the capture never restores it.
+        if was_visible {
+            window
+                .minimize()
+                .map_err(|error| format!("failed to minimize window before screenshot: {error}"))?;
+            thread::sleep(std::time::Duration::from_millis(350));
+        }
         Ok(Self {
             window,
             was_minimized,
@@ -290,9 +312,10 @@ impl MinimizedCaptureWindow {
 #[cfg(target_os = "windows")]
 impl Drop for MinimizedCaptureWindow {
     fn drop(&mut self) {
-        if self.was_visible {
-            let _ = self.window.show();
+        if !self.was_visible {
+            return;
         }
+        let _ = self.window.show();
         if !self.was_minimized {
             let _ = self.window.unminimize();
             let _ = self.window.set_focus();
@@ -389,7 +412,7 @@ pub fn capture_rect_to_library(
     _app: &tauri::AppHandle,
     _request: CaptureScreenshotRequest,
     _kind: String,
-    _folder_path: String,
+    _options: LibrarySaveOptions,
     _use_directx: bool,
 ) -> Result<StoredScreenshot, String> {
     Err("screenshot capture is currently available on Windows".to_string())
@@ -399,7 +422,7 @@ pub fn capture_rect_to_library(
 pub fn capture_fullscreen_to_library(
     _app: &tauri::AppHandle,
     _kind: String,
-    _folder_path: String,
+    _options: LibrarySaveOptions,
     _use_directx: bool,
 ) -> Result<StoredScreenshot, String> {
     Err("screenshot capture is currently available on Windows".to_string())
@@ -409,7 +432,7 @@ pub fn capture_fullscreen_to_library(
 pub fn capture_active_window_to_library(
     _app: &tauri::AppHandle,
     _kind: String,
-    _folder_path: String,
+    _options: LibrarySaveOptions,
     _use_directx: bool,
 ) -> Result<StoredScreenshot, String> {
     Err("screenshot capture is currently available on Windows".to_string())
@@ -419,7 +442,7 @@ pub fn capture_active_window_to_library(
 pub fn capture_interactive_region_to_library(
     _app: &tauri::AppHandle,
     _kind: String,
-    _folder_path: String,
+    _options: LibrarySaveOptions,
     _use_directx: bool,
 ) -> Result<StoredScreenshot, String> {
     Err("screenshot capture is currently available on Windows".to_string())
@@ -674,6 +697,9 @@ fn rgba_to_jpeg_assistant(
     })
 }
 
+const THUMBS_DIR_NAME: &str = ".kkterm-thumbs";
+const THUMB_LONG_EDGE: u32 = 320;
+
 pub fn list_library_screenshots(
     request: ListScreenshotsRequest,
     folder_path: String,
@@ -717,10 +743,109 @@ pub fn list_library_screenshots(
     })
 }
 
+/// Resolves a library screenshot id to its canonical on-disk path with the
+/// same traversal guards as every other id-based operation.
+pub fn library_screenshot_path(id: &str, folder_path: &str) -> Result<PathBuf, String> {
+    let folder = ensure_screenshots_folder(folder_path)?;
+    screenshot_path_from_id(&folder, id)
+}
+
+pub fn read_library_screenshot(id: String, folder_path: String) -> Result<FullScreenshot, String> {
+    let folder = ensure_screenshots_folder(&folder_path)?;
+    let path = screenshot_path_from_id(&folder, &id)?;
+    let bytes = fs::read(&path).map_err(|error| format!("failed to load screenshot: {error}"))?;
+    let (width, height) = image::image_dimensions(&path)
+        .map_err(|error| format!("failed to read screenshot: {error}"))?;
+    let mime_type = mime_type_for_path(&path);
+    let file_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or_else(|| "screenshot file name is not valid UTF-8".to_string())?
+        .to_string();
+    Ok(FullScreenshot {
+        id,
+        file_name,
+        data_url: format!("data:{mime_type};base64,{}", STANDARD.encode(bytes)),
+        width,
+        height,
+    })
+}
+
+pub fn rename_library_screenshot(
+    id: String,
+    new_name: String,
+    folder_path: String,
+) -> Result<StoredScreenshot, String> {
+    let folder = ensure_screenshots_folder(&folder_path)?;
+    let path = screenshot_path_from_id(&folder, &id)?;
+    let extension = path
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .map(|extension| extension.to_ascii_lowercase())
+        .ok_or_else(|| "screenshot has no file extension".to_string())?;
+
+    let trimmed = new_name.trim();
+    if trimmed.is_empty() {
+        return Err("screenshot name must not be empty".to_string());
+    }
+    if trimmed.contains(['/', '\\', ':', '*', '?', '"', '<', '>', '|'])
+        || trimmed.contains("..")
+        || trimmed.starts_with('.')
+    {
+        return Err("screenshot name contains unsupported characters".to_string());
+    }
+    let target_name = if trimmed
+        .to_ascii_lowercase()
+        .ends_with(&format!(".{extension}"))
+    {
+        trimmed.to_string()
+    } else {
+        format!("{trimmed}.{extension}")
+    };
+    let target = folder.join(&target_name);
+    if target.exists() {
+        return Err("a screenshot with that name already exists".to_string());
+    }
+    fs::rename(&path, &target).map_err(|error| format!("failed to rename screenshot: {error}"))?;
+    remove_thumbnail_for(&folder, &id);
+    stored_screenshot_from_path(&folder, target)
+}
+
+#[cfg(target_os = "windows")]
+pub fn copy_library_screenshot_to_clipboard(
+    app: &tauri::AppHandle,
+    id: String,
+    folder_path: String,
+) -> Result<(), String> {
+    let folder = ensure_screenshots_folder(&folder_path)?;
+    let path = screenshot_path_from_id(&folder, &id)?;
+    let image = image::open(&path)
+        .map_err(|error| format!("failed to read screenshot: {error}"))?
+        .to_rgba8();
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| "main window is not available".to_string())?;
+    let hwnd = window
+        .hwnd()
+        .map_err(|error| format!("failed to resolve window handle: {error}"))?;
+    platform::write_rgba_to_clipboard(hwnd.0, image.as_raw(), image.width(), image.height())
+}
+
+#[cfg(not(target_os = "windows"))]
+pub fn copy_library_screenshot_to_clipboard(
+    _app: &tauri::AppHandle,
+    _id: String,
+    _folder_path: String,
+) -> Result<(), String> {
+    Err("screenshot clipboard is currently available on Windows".to_string())
+}
+
 pub fn delete_library_screenshot(id: String, folder_path: String) -> Result<(), String> {
     let folder = ensure_screenshots_folder(&folder_path)?;
     let path = screenshot_path_from_id(&folder, &id)?;
-    fs::remove_file(&path).map_err(|error| format!("failed to delete screenshot: {error}"))
+    fs::remove_file(&path).map_err(|error| format!("failed to delete screenshot: {error}"))?;
+    remove_thumbnail_for(&folder, &id);
+    Ok(())
 }
 
 pub fn clear_library_screenshots(folder_path: String) -> Result<(), String> {
@@ -735,6 +860,7 @@ pub fn clear_library_screenshots(folder_path: String) -> Result<(), String> {
             let _ = fs::remove_file(path);
         }
     }
+    let _ = fs::remove_dir_all(folder.join(THUMBS_DIR_NAME));
     Ok(())
 }
 
@@ -744,15 +870,22 @@ fn save_dib_to_library(
     width: u32,
     height: u32,
     kind: String,
-    folder_path: &str,
+    options: &LibrarySaveOptions,
 ) -> Result<StoredScreenshot, String> {
-    let folder = ensure_screenshots_folder(folder_path)?;
-    let jpeg = platform::dib_to_jpeg_bytes(dib, width, height)?;
+    let folder = ensure_screenshots_folder(&options.folder_path)?;
+    let (bytes, extension) = if options.format == "jpeg" {
+        (
+            platform::dib_to_jpeg_bytes_with_quality(dib, width, height, options.jpeg_quality)?,
+            "jpg",
+        )
+    } else {
+        (platform::dib_to_png_bytes(dib, width, height)?, "png")
+    };
     let captured_at = now_millis();
     let normalized_kind = normalize_kind(&kind);
-    let file_name = format!("KKTerm-{normalized_kind}-{captured_at}.jpg");
+    let file_name = format!("KKTerm-{normalized_kind}-{captured_at}.{extension}");
     let path = folder.join(file_name);
-    fs::write(&path, jpeg).map_err(|error| format!("failed to save screenshot: {error}"))?;
+    fs::write(&path, bytes).map_err(|error| format!("failed to save screenshot: {error}"))?;
     stored_screenshot_from_path(&folder, path)
 }
 
@@ -786,11 +919,8 @@ fn stored_screenshot_from_path(
         return Err("screenshot path is not a file".to_string());
     }
 
-    let image =
-        image::open(&path).map_err(|error| format!("failed to read screenshot: {error}"))?;
-    let (width, height) = image.dimensions();
-    let bytes = fs::read(&path).map_err(|error| format!("failed to load screenshot: {error}"))?;
-    let mime_type = mime_type_for_path(&path);
+    let (width, height) = image::image_dimensions(&path)
+        .map_err(|error| format!("failed to read screenshot: {error}"))?;
     let file_name = path
         .file_name()
         .and_then(|name| name.to_str())
@@ -812,18 +942,75 @@ fn stored_screenshot_from_path(
         .map_err(|_| "screenshot is outside the screenshots folder".to_string())?;
     let id = relative.to_string_lossy().replace('\\', "/");
     let kind = kind_from_file_name(&file_name);
+    let thumbnail_data_url = ensure_thumbnail_data_url(screenshots_folder, &path, &file_name)?;
 
     Ok(StoredScreenshot {
         id,
         path: path.to_string_lossy().to_string(),
         file_name,
-        data_url: format!("data:{mime_type};base64,{}", STANDARD.encode(bytes)),
+        thumbnail_data_url,
         width,
         height,
+        file_size_bytes: metadata.len(),
         captured_at,
-        label: label_for_kind(&kind).to_string(),
         kind,
     })
+}
+
+/// Returns the cached thumbnail for a library image as a JPEG data URL,
+/// regenerating it when the source file is newer than the cache entry. The
+/// cache lives in a hidden `.kkterm-thumbs` subfolder so gallery listings do
+/// not decode and base64 every full-size capture.
+fn ensure_thumbnail_data_url(
+    folder: &Path,
+    path: &Path,
+    file_name: &str,
+) -> Result<String, String> {
+    let thumbs_dir = folder.join(THUMBS_DIR_NAME);
+    let thumb_path = thumbs_dir.join(format!("{file_name}.thumb.jpg"));
+    let source_modified = fs::metadata(path).ok().and_then(|meta| meta.modified().ok());
+    let thumb_fresh = match (fs::metadata(&thumb_path), source_modified) {
+        (Ok(thumb_meta), Some(source_modified)) => thumb_meta
+            .modified()
+            .map(|thumb_modified| thumb_modified >= source_modified)
+            .unwrap_or(false),
+        _ => false,
+    };
+
+    if !thumb_fresh {
+        fs::create_dir_all(&thumbs_dir)
+            .map_err(|error| format!("failed to create thumbnail folder: {error}"))?;
+        let image =
+            image::open(path).map_err(|error| format!("failed to read screenshot: {error}"))?;
+        let thumbnail = image.thumbnail(THUMB_LONG_EDGE, THUMB_LONG_EDGE).to_rgb8();
+        let mut jpeg = Vec::new();
+        {
+            use image::{ColorType, ImageEncoder, codecs::jpeg::JpegEncoder};
+            JpegEncoder::new_with_quality(&mut jpeg, 80)
+                .write_image(
+                    thumbnail.as_raw(),
+                    thumbnail.width(),
+                    thumbnail.height(),
+                    ColorType::Rgb8.into(),
+                )
+                .map_err(|error| format!("failed to encode thumbnail: {error}"))?;
+        }
+        fs::write(&thumb_path, &jpeg)
+            .map_err(|error| format!("failed to save thumbnail: {error}"))?;
+        return Ok(format!("data:image/jpeg;base64,{}", STANDARD.encode(jpeg)));
+    }
+
+    let bytes = fs::read(&thumb_path)
+        .map_err(|error| format!("failed to load thumbnail: {error}"))?;
+    Ok(format!("data:image/jpeg;base64,{}", STANDARD.encode(bytes)))
+}
+
+fn remove_thumbnail_for(folder: &Path, id: &str) {
+    let _ = fs::remove_file(
+        folder
+            .join(THUMBS_DIR_NAME)
+            .join(format!("{id}.thumb.jpg")),
+    );
 }
 
 fn screenshot_path_from_id(folder: &Path, id: &str) -> Result<PathBuf, String> {
@@ -886,15 +1073,6 @@ fn kind_from_file_name(file_name: &str) -> String {
         "window".to_string()
     } else {
         "screenshot".to_string()
-    }
-}
-
-fn label_for_kind(kind: &str) -> &'static str {
-    match kind {
-        "region" => "Region screenshot",
-        "fullscreen" => "Fullscreen screenshot",
-        "window" => "Window screenshot",
-        _ => "Screenshot",
     }
 }
 
@@ -1783,6 +1961,38 @@ mod platform {
     }
 
     pub fn dib_to_jpeg_bytes(dib: &[u8], width: u32, height: u32) -> Result<Vec<u8>, String> {
+        dib_to_jpeg_bytes_with_quality(dib, width, height, 90)
+    }
+
+    pub fn dib_to_jpeg_bytes_with_quality(
+        dib: &[u8],
+        width: u32,
+        height: u32,
+        quality: u8,
+    ) -> Result<Vec<u8>, String> {
+        let rgb = dib_to_rgb(dib, width, height)?;
+        let mut jpeg = Vec::new();
+        JpegEncoder::new_with_quality(&mut jpeg, quality.clamp(1, 100))
+            .write_image(&rgb, width, height, ColorType::Rgb8.into())
+            .map_err(|error| format!("failed to encode JPEG: {error}"))?;
+        Ok(jpeg)
+    }
+
+    pub fn dib_to_png_bytes(dib: &[u8], width: u32, height: u32) -> Result<Vec<u8>, String> {
+        use image::codecs::png::PngEncoder;
+
+        let rgb = dib_to_rgb(dib, width, height)?;
+        let mut png = Vec::new();
+        PngEncoder::new(&mut png)
+            .write_image(&rgb, width, height, ColorType::Rgb8.into())
+            .map_err(|error| format!("failed to encode PNG: {error}"))?;
+        Ok(png)
+    }
+
+    // GDI/DXGI captures leave the DIB alpha channel undefined (often zero), so
+    // encoders must drop it instead of trusting it — an as-is RGBA encode would
+    // produce a fully transparent PNG.
+    fn dib_to_rgb(dib: &[u8], width: u32, height: u32) -> Result<Vec<u8>, String> {
         let header_size = mem::size_of::<BITMAPINFOHEADER>();
         let expected_len = header_size + width as usize * height as usize * 4;
         if dib.len() < expected_len {
@@ -1796,12 +2006,7 @@ mod platform {
             rgb.push(bgra[1]);
             rgb.push(bgra[0]);
         }
-
-        let mut jpeg = Vec::new();
-        JpegEncoder::new_with_quality(&mut jpeg, 90)
-            .write_image(&rgb, width, height, ColorType::Rgb8.into())
-            .map_err(|error| format!("failed to encode JPEG: {error}"))?;
-        Ok(jpeg)
+        Ok(rgb)
     }
 
     unsafe fn bitmap_to_dib(

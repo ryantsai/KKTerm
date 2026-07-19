@@ -6,6 +6,7 @@ type ActivityRailModuleVisibility = {
   showWorkspaceOnRail: boolean;
   showDashboardOnRail: boolean;
   showInstallerOnRail: boolean;
+  showScreenshotsOnRail: boolean;
   showItOps: boolean;
 };
 
@@ -13,6 +14,7 @@ export const DEFAULT_ACTIVITY_RAIL_ORDER: ActivityRailItemId[] = [
   "workspace",
   "dashboard",
   "installer",
+  "screenshots",
   "itops",
   "dontSleep",
 ];
@@ -22,6 +24,7 @@ const ACTIVITY_RAIL_MODULE_IDS = new Set<ActivityRailItemId>([
   "workspace",
   "dashboard",
   "installer",
+  "screenshots",
   "itops",
 ]);
 const ACTIVITY_RAIL_MODULE_VISIBILITY: Record<
@@ -31,6 +34,7 @@ const ACTIVITY_RAIL_MODULE_VISIBILITY: Record<
   workspace: "showWorkspaceOnRail",
   dashboard: "showDashboardOnRail",
   installer: "showInstallerOnRail",
+  screenshots: "showScreenshotsOnRail",
   itops: "showItOps",
 };
 

@@ -14,6 +14,7 @@ const TRAY_ID: &str = "kkterm-main";
 const DONT_SLEEP_ITEM_ID: &str = "kkterm-tray-dont-sleep";
 const EXIT_ITEM_ID: &str = "kkterm-tray-exit";
 const RECENT_ITEM_PREFIX: &str = "kkterm-tray-recent:";
+const CAPTURE_ITEM_PREFIX: &str = "kkterm-tray-capture:";
 
 #[derive(Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -28,6 +29,14 @@ pub struct TrayMenuSnapshot {
     pub recent_connections: Vec<TrayRecentConnection>,
     pub dont_sleep_label: String,
     pub exit_label: String,
+    // Localized capture item labels pushed by the frontend; empty strings (or
+    // an older frontend omitting the fields) hide the capture section.
+    #[serde(default)]
+    pub capture_region_label: String,
+    #[serde(default)]
+    pub capture_window_label: String,
+    #[serde(default)]
+    pub capture_fullscreen_label: String,
 }
 
 pub struct TrayState {
@@ -203,6 +212,27 @@ fn build_menu<R: tauri::Runtime>(
             .map_err(|error| error.to_string())?;
     }
 
+    let capture_items = [
+        ("region", &snapshot.capture_region_label),
+        ("window", &snapshot.capture_window_label),
+        ("fullscreen", &snapshot.capture_fullscreen_label),
+    ];
+    if capture_items.iter().all(|(_, label)| !label.is_empty()) {
+        for (mode, label) in capture_items {
+            let item = MenuItem::with_id(
+                app,
+                format!("{CAPTURE_ITEM_PREFIX}{mode}"),
+                label,
+                true,
+                None::<&str>,
+            )
+            .map_err(|error| error.to_string())?;
+            menu.append(&item).map_err(|error| error.to_string())?;
+        }
+        menu.append(&PredefinedMenuItem::separator(app).map_err(|error| error.to_string())?)
+            .map_err(|error| error.to_string())?;
+    }
+
     let dont_sleep = CheckMenuItem::with_id(
         app,
         DONT_SLEEP_ITEM_ID,
@@ -235,6 +265,13 @@ fn handle_menu_event<R: tauri::Runtime>(app: &tauri::AppHandle<R>, id: &str) {
 
     if id == DONT_SLEEP_ITEM_ID {
         toggle_dont_sleep(app);
+        return;
+    }
+
+    if let Some(mode) = id.strip_prefix(CAPTURE_ITEM_PREFIX) {
+        // The webview keeps running while hidden to the tray, so the frontend
+        // capture bridge handles this event without restoring the window.
+        let _ = app.emit(crate::screenshot_shortcuts::CAPTURE_EVENT, mode.to_string());
         return;
     }
 

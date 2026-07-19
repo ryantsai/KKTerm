@@ -1148,7 +1148,7 @@ pub fn tool_descriptors() -> Vec<Value> {
         }),
         json!({
             "name": "kkterm.app.dangerous.tutorial_highlight",
-            "description": "DANGEROUS: navigate the KKTerm UI and show a one-step Tutorial overlay — highlight one app-owned target, dim the rest of the window, and place a short help balloon beside it. This moves the user's UI: navigation may switch the active Module (workspace, dashboard, itops, installer, settings), a Settings section, or an IT Ops Site destination (navigation.itopsSiteId + navigation.itopsDestination: site|serverRooms|hosts|automations|runHistory|taskLibrary). targetId must be a registered tutorial target (see docs/manual chapters) or an IT Ops entity target such as itops.host:<hostId>. The overlay disappears when the user clicks or presses any key. Requires built_in_mcp_allow_all_dangerous = true.",
+            "description": "DANGEROUS: navigate the KKTerm UI and show a one-step Tutorial overlay — highlight one app-owned target, dim the rest of the window, and place a short help balloon beside it. This moves the user's UI: navigation may switch the active Module (workspace, dashboard, itops, installer, screenshots, settings), a Settings section, or an IT Ops Site destination (navigation.itopsSiteId + navigation.itopsDestination: site|serverRooms|hosts|automations|runHistory|taskLibrary). targetId must be a registered tutorial target (see docs/manual chapters) or an IT Ops entity target such as itops.host:<hostId>. The overlay disappears when the user clicks or presses any key. Requires built_in_mcp_allow_all_dangerous = true.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -1158,7 +1158,7 @@ pub fn tool_descriptors() -> Vec<Value> {
                     "navigation": {
                         "type": "object",
                         "properties": {
-                            "page": {"type": "string", "enum": ["workspace", "dashboard", "itops", "installer", "settings"]},
+                            "page": {"type": "string", "enum": ["workspace", "dashboard", "itops", "installer", "screenshots", "settings"]},
                             "settingsSectionId": {"type": "string"},
                             "itopsSiteId": {"type": "string"},
                             "itopsDestination": {"type": "string", "enum": ["site", "serverRooms", "hosts", "automations", "runHistory", "taskLibrary"]},

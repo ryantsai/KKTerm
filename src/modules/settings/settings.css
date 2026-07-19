@@ -3110,3 +3110,25 @@
     justify-content: flex-start;
   }
 }
+
+/* Screenshots settings section */
+.screenshots-folder-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.screenshots-folder-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.screenshots-shortcut-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.screenshots-shortcut-controls input {
+  width: 170px;
+}

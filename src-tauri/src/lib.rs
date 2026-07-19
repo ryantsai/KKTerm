@@ -36,6 +36,7 @@ mod rdp;
 #[cfg(not(target_os = "windows"))]
 mod rdp_client;
 mod screenshot;
+mod screenshot_shortcuts;
 mod secrets;
 mod selective_export;
 mod serial;
@@ -1118,10 +1119,14 @@ fn get_screenshot_settings(
 
 #[tauri::command]
 fn update_screenshot_settings(
+    app: tauri::AppHandle,
     storage: tauri::State<'_, storage::Storage>,
     request: storage::ScreenshotSettings,
 ) -> Result<storage::ScreenshotSettings, String> {
-    storage.update_screenshot_settings(request)
+    screenshot_shortcuts::validate(&request)?;
+    let saved = storage.update_screenshot_settings(request)?;
+    screenshot_shortcuts::apply(&app, &saved)?;
+    Ok(saved)
 }
 
 #[tauri::command]
@@ -1791,6 +1796,24 @@ async fn capture_fullscreen_screenshot_for_assistant(
     .await
 }
 
+/// Resolves the persisted library save options plus the DirectX capture flag
+/// shared by every capture-to-library command.
+fn screenshot_library_context(
+    app: &tauri::AppHandle,
+) -> Result<(screenshot::LibrarySaveOptions, bool), String> {
+    let storage = app.state::<storage::Storage>();
+    let settings = storage.screenshot_settings()?;
+    let general_settings = storage.general_settings()?;
+    Ok((
+        screenshot::LibrarySaveOptions {
+            folder_path: settings.folder_path().to_string(),
+            format: settings.format().to_string(),
+            jpeg_quality: settings.jpeg_quality(),
+        },
+        general_settings.use_directx_screen_capture(),
+    ))
+}
+
 #[tauri::command]
 async fn capture_screenshot_to_library(
     app: tauri::AppHandle,
@@ -1798,16 +1821,8 @@ async fn capture_screenshot_to_library(
     kind: String,
 ) -> Result<screenshot::StoredScreenshot, String> {
     run_blocking_screenshot_command("screenshot library capture", move || {
-        let storage = app.state::<storage::Storage>();
-        let settings = storage.screenshot_settings()?;
-        let general_settings = storage.general_settings()?;
-        screenshot::capture_rect_to_library(
-            &app,
-            request,
-            kind,
-            settings.folder_path().to_string(),
-            general_settings.use_directx_screen_capture(),
-        )
+        let (options, use_directx) = screenshot_library_context(&app)?;
+        screenshot::capture_rect_to_library(&app, request, kind, options, use_directx)
     })
     .await
 }
@@ -1818,15 +1833,8 @@ async fn capture_fullscreen_screenshot_to_library(
     kind: String,
 ) -> Result<screenshot::StoredScreenshot, String> {
     run_blocking_screenshot_command("fullscreen screenshot library capture", move || {
-        let storage = app.state::<storage::Storage>();
-        let settings = storage.screenshot_settings()?;
-        let general_settings = storage.general_settings()?;
-        screenshot::capture_fullscreen_to_library(
-            &app,
-            kind,
-            settings.folder_path().to_string(),
-            general_settings.use_directx_screen_capture(),
-        )
+        let (options, use_directx) = screenshot_library_context(&app)?;
+        screenshot::capture_fullscreen_to_library(&app, kind, options, use_directx)
     })
     .await
 }
@@ -1837,15 +1845,8 @@ async fn capture_active_window_screenshot_to_library(
     kind: String,
 ) -> Result<screenshot::StoredScreenshot, String> {
     run_blocking_screenshot_command("active-window screenshot library capture", move || {
-        let storage = app.state::<storage::Storage>();
-        let settings = storage.screenshot_settings()?;
-        let general_settings = storage.general_settings()?;
-        screenshot::capture_active_window_to_library(
-            &app,
-            kind,
-            settings.folder_path().to_string(),
-            general_settings.use_directx_screen_capture(),
-        )
+        let (options, use_directx) = screenshot_library_context(&app)?;
+        screenshot::capture_active_window_to_library(&app, kind, options, use_directx)
     })
     .await
 }
@@ -1856,15 +1857,8 @@ async fn capture_interactive_region_screenshot_to_library(
     kind: String,
 ) -> Result<screenshot::StoredScreenshot, String> {
     run_blocking_screenshot_command("interactive screenshot library capture", move || {
-        let storage = app.state::<storage::Storage>();
-        let settings = storage.screenshot_settings()?;
-        let general_settings = storage.general_settings()?;
-        screenshot::capture_interactive_region_to_library(
-            &app,
-            kind,
-            settings.folder_path().to_string(),
-            general_settings.use_directx_screen_capture(),
-        )
+        let (options, use_directx) = screenshot_library_context(&app)?;
+        screenshot::capture_interactive_region_to_library(&app, kind, options, use_directx)
     })
     .await
 }
@@ -1897,6 +1891,96 @@ async fn clear_screenshots(app: tauri::AppHandle) -> Result<(), String> {
         screenshot::clear_library_screenshots(settings.folder_path().to_string())
     })
     .await
+}
+
+#[tauri::command]
+async fn read_screenshot(
+    app: tauri::AppHandle,
+    id: String,
+) -> Result<screenshot::FullScreenshot, String> {
+    run_blocking_screenshot_command("screenshot loading", move || {
+        let settings = app.state::<storage::Storage>().screenshot_settings()?;
+        screenshot::read_library_screenshot(id, settings.folder_path().to_string())
+    })
+    .await
+}
+
+#[tauri::command]
+async fn rename_screenshot(
+    app: tauri::AppHandle,
+    id: String,
+    new_name: String,
+) -> Result<screenshot::StoredScreenshot, String> {
+    run_blocking_screenshot_command("screenshot renaming", move || {
+        let settings = app.state::<storage::Storage>().screenshot_settings()?;
+        screenshot::rename_library_screenshot(id, new_name, settings.folder_path().to_string())
+    })
+    .await
+}
+
+#[tauri::command]
+async fn copy_stored_screenshot_to_clipboard(
+    app: tauri::AppHandle,
+    id: String,
+) -> Result<(), String> {
+    run_blocking_screenshot_command("screenshot clipboard copy", move || {
+        let settings = app.state::<storage::Storage>().screenshot_settings()?;
+        screenshot::copy_library_screenshot_to_clipboard(
+            &app,
+            id,
+            settings.folder_path().to_string(),
+        )
+    })
+    .await
+}
+
+#[tauri::command]
+fn open_screenshots_folder(
+    app: tauri::AppHandle,
+    storage: tauri::State<'_, storage::Storage>,
+) -> Result<(), String> {
+    let settings = storage.screenshot_settings()?;
+    let folder = storage::expand_screenshot_folder_path(settings.folder_path());
+    fs::create_dir_all(&folder).map_err(|error| {
+        format!(
+            "failed to create screenshots folder {}: {error}",
+            folder.display()
+        )
+    })?;
+    app.opener()
+        .open_path(folder.to_string_lossy(), None::<&str>)
+        .map_err(|error| {
+            format!(
+                "failed to open screenshots folder {}: {error}",
+                folder.display()
+            )
+        })
+}
+
+#[tauri::command]
+fn reveal_screenshot(
+    app: tauri::AppHandle,
+    storage: tauri::State<'_, storage::Storage>,
+    id: String,
+) -> Result<(), String> {
+    let settings = storage.screenshot_settings()?;
+    let path = screenshot::library_screenshot_path(&id, settings.folder_path())?;
+    app.opener()
+        .reveal_item_in_dir(&path)
+        .map_err(|error| format!("failed to reveal screenshot {}: {error}", path.display()))
+}
+
+#[tauri::command]
+fn open_screenshot_file(
+    app: tauri::AppHandle,
+    storage: tauri::State<'_, storage::Storage>,
+    id: String,
+) -> Result<(), String> {
+    let settings = storage.screenshot_settings()?;
+    let path = screenshot::library_screenshot_path(&id, settings.folder_path())?;
+    app.opener()
+        .open_path(path.to_string_lossy(), None::<&str>)
+        .map_err(|error| format!("failed to open screenshot {}: {error}", path.display()))
 }
 
 #[tauri::command]
@@ -3736,6 +3820,7 @@ pub fn run() {
     configure_macos_updater(configure_single_instance(tauri::Builder::default()))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             let app_data_dir = app.path().app_data_dir().map_err(|error| {
@@ -3886,6 +3971,18 @@ pub fn run() {
                 }
             }
             let secret_db_path = storage.db_path();
+            match storage.screenshot_settings() {
+                Ok(screenshot_settings) => {
+                    if let Err(error) =
+                        screenshot_shortcuts::apply(app.handle(), &screenshot_settings)
+                    {
+                        eprintln!("failed to register screenshot capture shortcuts: {error}");
+                    }
+                }
+                Err(error) => {
+                    eprintln!("failed to load screenshot settings for capture shortcuts: {error}");
+                }
+            }
             app.manage(storage);
             app.manage(performance::PerformanceMonitor::new());
             app.manage(pc_info::PcInfoCache::new());
@@ -4147,8 +4244,14 @@ pub fn run() {
             capture_active_window_screenshot_to_library,
             capture_interactive_region_screenshot_to_library,
             list_screenshots,
+            read_screenshot,
+            rename_screenshot,
+            copy_stored_screenshot_to_clipboard,
             delete_screenshot,
             clear_screenshots,
+            open_screenshots_folder,
+            reveal_screenshot,
+            open_screenshot_file,
             // ── SSH transport, config import, bookmarks & host keys
             ssh_transport_plan,
             import_ssh_config,

@@ -1,0 +1,11 @@
+# settings.screenshotsFormatHint
+
+- **English value**: `New captures are saved in this format. Existing files keep working.`
+- **Namespace**: `settings`
+- **File/component**: `src/modules/settings/ScreenshotsSettings.tsx`
+- **UI role**: `fragment`
+- **User flow**: Hint under the format select.
+- **Tone**: concise/neutral
+- **Placeholders**: none
+- **Context/meaning**: Reassures the format only affects future captures.
+- **Domain notes**: "Screenshots" names the Activity Rail Module that captures and lists screen images; KKTerm, PNG, JPEG, DirectX, and key combinations like Ctrl+Alt+R stay English. Best-effort translations were added for all locales in the same change and still need a verified localization pass.

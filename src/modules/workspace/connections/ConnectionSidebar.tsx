@@ -1844,6 +1844,9 @@ export function ConnectionSidebar({
     void pushTrayMenu(recentConnections, {
       dontSleep: t("app.trayDontSleep"),
       exit: t("app.trayExit"),
+      captureRegion: t("screenshots.captureRegion"),
+      captureWindow: t("screenshots.captureWindow"),
+      captureFullscreen: t("screenshots.captureFullscreen"),
     });
     // recentConnections is intentionally read fresh; we only resync when the
     // stable id/name signature or translations change.

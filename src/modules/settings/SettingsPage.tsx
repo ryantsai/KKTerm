@@ -32,7 +32,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { LegacyDialogActions } from "../../app/ui/dialog";
 import { ModuleIconTile, type ModuleKind } from "../../app/ModuleHeader";
-import { InstallHelperModuleIcon } from "../../app/moduleIdentityIcons";
+import { InstallHelperModuleIcon, ScreenshotsModuleIcon } from "../../app/moduleIdentityIcons";
 import { AI_PROVIDER_SECRET_OWNER_ID } from "../../lib/settings";
 import { supportsInstallerHelper, supportsRdp } from "../../lib/platform";
 import { AboutSettings } from "./AboutSettings";
@@ -46,6 +46,7 @@ import { FileExplorerSettings } from "./FileExplorerSettings";
 import { InstallerSettings } from "./InstallerSettings";
 import { ProxySettings } from "./ProxySettings";
 import { RdpSettings } from "./RdpSettings";
+import { ScreenshotsSettings } from "./ScreenshotsSettings";
 import { ShortcutsSettings } from "./ShortcutsSettings";
 import { SshSettings } from "./SshSettings";
 import { TerminalSettings as TerminalSettingsPage } from "./TerminalSettings";
@@ -83,6 +84,7 @@ const SETTINGS_SECTION_IDS: readonly SettingsSectionId[] = [
   "url-settings",
   "rdp-settings",
   "vnc-settings",
+  "screenshots-settings",
   "dont-sleep-settings",
   "shortcuts-settings",
   "proxy-settings",
@@ -121,6 +123,7 @@ const SETTINGS_NAV: readonly SettingsNavItem[] = [
   { id: "url-settings", Icon: Globe, color: "#32ade6", labelKey: "settings.sectionUrl" },
   { id: "rdp-settings", Icon: Monitor, color: "#5856d6", labelKey: "settings.sectionRdp", requires: "rdp" },
   { id: "vnc-settings", Icon: Network, color: "#5ac8fa", labelKey: "settings.sectionVnc" },
+  { id: "screenshots-settings", Icon: ScreenshotsModuleIcon, color: "#ff9500", labelKey: "settings.sectionScreenshots", module: "screenshots" },
   { id: "dont-sleep-settings", Icon: Coffee, color: "#ac8e68", labelKey: "settings.sectionDontSleep" },
   { id: "shortcuts-settings", Icon: Keyboard, color: "#ff6482", labelKey: "settings.sectionShortcuts" },
   { id: "proxy-settings", Icon: Waypoints, color: "#00c7be", labelKey: "settings.proxy" },
@@ -473,6 +476,7 @@ export function SettingsPage({
             {renderSettingsSection("url-settings", <UrlSettings />)}
             {rdpSupported ? renderSettingsSection("rdp-settings", <RdpSettings />) : null}
             {renderSettingsSection("vnc-settings", <VncSettings />)}
+            {renderSettingsSection("screenshots-settings", <ScreenshotsSettings />)}
             {renderSettingsSection("dont-sleep-settings", <DontSleepSettings />)}
             {renderSettingsSection("shortcuts-settings", <ShortcutsSettings />)}
             {renderSettingsSection("proxy-settings", <ProxySettings />)}

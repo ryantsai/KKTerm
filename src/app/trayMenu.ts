@@ -13,6 +13,9 @@ export async function pushTrayMenu(
   labels: {
     dontSleep: string;
     exit: string;
+    captureRegion: string;
+    captureWindow: string;
+    captureFullscreen: string;
   },
 ) {
   if (!isTauriRuntime()) {
@@ -27,6 +30,9 @@ export async function pushTrayMenu(
           .map((connection) => ({ id: connection.id, label: connection.name })),
         dontSleepLabel: labels.dontSleep,
         exitLabel: labels.exit,
+        captureRegionLabel: labels.captureRegion,
+        captureWindowLabel: labels.captureWindow,
+        captureFullscreenLabel: labels.captureFullscreen,
       },
     });
   } catch {

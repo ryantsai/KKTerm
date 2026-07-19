@@ -756,6 +756,7 @@ export interface GeneralSettings {
   separateSplitTerminalBackgrounds: boolean;
   showInstallerOnRail: boolean;
   showItOps: boolean;
+  showScreenshotsOnRail: boolean;
   showDontSleepOnRail: boolean;
   activityRailOrder: ActivityRailItemId[];
   installerCheckIntervalSeconds: number;
@@ -786,6 +787,7 @@ export type ActivityRailItemId =
   | "workspace"
   | "dashboard"
   | "installer"
+  | "screenshots"
   | "itops"
   | "dontSleep";
 
@@ -1174,8 +1176,18 @@ export interface FtpConnectionOptions {
   remotePath?: string;
 }
 
+export type ScreenshotFormat = "png" | "jpeg";
+
 export interface ScreenshotSettings {
   folderPath: string;
+  format: ScreenshotFormat;
+  jpegQuality: number;
+  regionShortcut: string;
+  regionShortcutEnabled: boolean;
+  windowShortcut: string;
+  windowShortcutEnabled: boolean;
+  fullscreenShortcut: string;
+  fullscreenShortcutEnabled: boolean;
 }
 
 export type AiProviderKind =

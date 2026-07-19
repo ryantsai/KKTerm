@@ -15,7 +15,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { CHECK_FOR_APP_UPDATES_EVENT } from "../../app/AppUpdatePrompt";
 import { ModuleIconTile, type ModuleKind } from "../../app/ModuleHeader";
-import { InstallHelperModuleIcon } from "../../app/moduleIdentityIcons";
+import { InstallHelperModuleIcon, ScreenshotsModuleIcon } from "../../app/moduleIdentityIcons";
 import {
   activityRailModuleOrder,
   canHideActivityRailModule,
@@ -80,6 +80,7 @@ type ActivityRailVisibilitySetting =
   | "showWorkspaceOnRail"
   | "showDashboardOnRail"
   | "showInstallerOnRail"
+  | "showScreenshotsOnRail"
   | "showItOps"
   | "showDontSleepOnRail";
 const ACTIVITY_RAIL_SETTINGS: Record<
@@ -89,6 +90,7 @@ const ACTIVITY_RAIL_SETTINGS: Record<
   workspace: ["showWorkspaceOnRail", "settings.sectionWorkspace"],
   dashboard: ["showDashboardOnRail", "settings.sectionDashboard"],
   installer: ["showInstallerOnRail", "settings.sectionInstaller"],
+  screenshots: ["showScreenshotsOnRail", "settings.sectionScreenshots"],
   itops: ["showItOps", "settings.sectionItOps"],
   dontSleep: ["showDontSleepOnRail", "settings.sectionDontSleep"],
 };
@@ -106,6 +108,8 @@ function ActivityRailModuleIcon({ id }: { id: ActivityRailItemId }) {
       <Gauge aria-hidden="true" />
     ) : id === "installer" ? (
       <InstallHelperModuleIcon aria-hidden="true" />
+    ) : id === "screenshots" ? (
+      <ScreenshotsModuleIcon aria-hidden="true" />
     ) : (
       <ItIcon name="ops" size={17} sw={1.7} />
     );

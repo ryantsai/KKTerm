@@ -34,6 +34,7 @@ import { ConnectionSidebar } from "./modules/workspace/connections/ConnectionSid
 import { useDashboardStore } from "./modules/dashboard/state/dashboardStore";
 import { useDashboardBackendInvalidation } from "./modules/dashboard/state/invalidation";
 import { useItOpsBackendInvalidation } from "./modules/itops/invalidation";
+import { useScreenshotCaptureBridge } from "./modules/screenshots/captureBridge";
 import { useItOpsStore } from "./modules/itops/state";
 import {
   loadSiteTreeCollapsed,
@@ -73,6 +74,11 @@ const ItOpsPage = lazy(() =>
     default: ItOpsPage,
   })),
 );
+const ScreenshotsPage = lazy(() =>
+  import("./modules/screenshots/ScreenshotsPage").then(({ ScreenshotsPage }) => ({
+    default: ScreenshotsPage,
+  })),
+);
 const SettingsPage = lazy(() =>
   import("./modules/settings/SettingsPage").then(({ SettingsPage }) => ({
     default: SettingsPage,
@@ -95,6 +101,9 @@ function App() {
     () => activePage === "installer",
   );
   const [itopsMounted, setItopsMounted] = useState(() => activePage === "itops");
+  const [screenshotsMounted, setScreenshotsMounted] = useState(
+    () => activePage === "screenshots",
+  );
   const [activeSettingsSectionId, setActiveSettingsSectionId] =
     useState<SettingsSectionId>("general-settings");
   const previousBasePageRef = useRef<BaseModulePage>(launchPageRef.current);
@@ -128,6 +137,9 @@ function App() {
     }
     if (page === "itops") {
       setItopsMounted(true);
+    }
+    if (page === "screenshots") {
+      setScreenshotsMounted(true);
     }
     if (isOverlayPage(page) && !isOverlayPage(activePage)) {
       previousBasePageRef.current = activePage;
@@ -204,6 +216,9 @@ function App() {
   const hideTopTabButtons = useWorkspaceStore((state) => state.generalSettings.hideTopTabButtons);
   const statusBarEnabled = useWorkspaceStore((state) => state.generalSettings.statusBarEnabled);
   const showItOps = useWorkspaceStore((state) => state.generalSettings.showItOps);
+  const showScreenshotsOnRail = useWorkspaceStore(
+    (state) => state.generalSettings.showScreenshotsOnRail,
+  );
   const resetAllLayouts = useWorkspaceStore((state) => state.resetAllLayouts);
   const appShellRef = useRef<HTMLDivElement | null>(null);
   const {
@@ -228,6 +243,7 @@ function App() {
   const { generalSettingsReady } = useBootstrapSettings();
   useDashboardBackendInvalidation();
   useItOpsBackendInvalidation();
+  useScreenshotCaptureBridge();
   useDebugFrontendHeartbeat();
   useFrontendLaunchTimestamp();
   useHostUsagePolling();
@@ -349,6 +365,21 @@ function App() {
     }
   }, [showItOps, activePage]);
 
+  // Same stranding guard as IT Ops: hiding the Screenshots Module while it is
+  // the active (or last-active) page falls back to the Workspace.
+  useEffect(() => {
+    if (showScreenshotsOnRail) {
+      return;
+    }
+    if (previousBasePageRef.current === "screenshots") {
+      previousBasePageRef.current = "workspace";
+    }
+    if (activePage === "screenshots") {
+      persistActivePage("workspace");
+      setActivePage("workspace");
+    }
+  }, [showScreenshotsOnRail, activePage]);
+
   useEffect(() => {
     saveSiteTreeCollapsed(itOpsSiteTreeCollapsed);
   }, [itOpsSiteTreeCollapsed]);
@@ -469,6 +500,12 @@ function App() {
           siteTreeCollapsed={itOpsSiteTreeCollapsed}
           onAssistantContextChange={setItOpsAssistantContext}
           onShowWorkspace={() => navigateToPage("workspace")}
+        />
+      ) : null}
+      {screenshotsMounted ? (
+        <ScreenshotsPage
+          key="screenshots-page"
+          active={visibleBasePage === "screenshots"}
         />
       ) : null}
       </Suspense>

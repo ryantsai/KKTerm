@@ -62,9 +62,8 @@ Strong success criteria let you loop independently.
   resources, **Session** for live runtime state, and **Tab** for the frontend
   workspace container. Do not say "profile" for a stored Connection.
 - Capital-M **Module** means a top-level Activity Rail destination. Current
-  product Modules are **Workspace**, **Dashboard**, **Install Helper**, and
-  **IT Ops** (IT Ops defaults hidden on the rail); **Settings** is the bottom
-  rail destination. The App Launcher is a Dashboard widget, not a Module.
+  product Modules are **Workspace**, **Dashboard**, **Install Helper**,
+  **Screenshots**, and **IT Ops**; **Settings** is the bottom rail destination. The App Launcher is a Dashboard widget, not a Module.
 - Source placement lives in `docs/ARCHITECTURE.md` → "Frontend Source Map".
   Prefer existing source areas and typed wrappers in `src/lib/tauri.ts`.
 - SQLite schema changes must preserve the current-version startup fast path

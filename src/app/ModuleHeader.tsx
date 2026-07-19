@@ -1,6 +1,6 @@
 import type { HTMLAttributes, ReactNode } from "react";
 
-export type ModuleKind = "workspace" | "dashboard" | "installer" | "itops";
+export type ModuleKind = "workspace" | "dashboard" | "installer" | "screenshots" | "itops";
 
 export function ModuleHeader({ className = "", ...props }: HTMLAttributes<HTMLElement>) {
   return <header className={`module-header ${className}`.trim()} {...props} />;

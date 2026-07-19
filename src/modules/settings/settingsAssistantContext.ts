@@ -13,6 +13,7 @@ export type SettingsSectionId =
   | "url-settings"
   | "rdp-settings"
   | "vnc-settings"
+  | "screenshots-settings"
   | "shortcuts-settings"
   | "proxy-settings"
   | "about-settings";
@@ -64,7 +65,7 @@ const SETTINGS_SECTIONS: Record<SettingsSectionId, SettingsSectionSummary> = {
       {
         key: "settings.activityRail",
         description:
-          "Visibility and drag-to-reorder controls for Workspace, Dashboard, Install Helper, IT Ops, and Don't Sleep on the Activity Rail.",
+          "Visibility and drag-to-reorder controls for Workspace, Dashboard, Install Helper, Screenshots, IT Ops, and Don't Sleep on the Activity Rail.",
         tutorialTargetId: "settings.activityRail",
       },
       {
@@ -382,6 +383,28 @@ const SETTINGS_SECTIONS: Record<SettingsSectionId, SettingsSectionSummary> = {
         key: "settings.vncColorLevel",
         description: "VNC color level default.",
         tutorialTargetId: "settings.vncColorLevel",
+      },
+    ],
+  },
+  "screenshots-settings": {
+    labelKey: "settings.sectionScreenshots",
+    fallbackLabel: "Screenshots",
+    controls: [
+      {
+        key: "settings.screenshotsFolder",
+        description: "Library folder path for captured screenshots.",
+        tutorialTargetId: "settings.screenshotsFolder",
+      },
+      {
+        key: "settings.screenshotsFormat",
+        description: "Capture save format: PNG (default) or JPEG with a quality value.",
+        tutorialTargetId: "settings.screenshotsFormat",
+      },
+      {
+        key: "settings.screenshotsShortcuts",
+        description:
+          "Global capture hotkeys for region, window, and full-screen captures, each with an enable toggle.",
+        tutorialTargetId: "settings.screenshotsShortcuts",
       },
     ],
   },

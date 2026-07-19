@@ -533,6 +533,8 @@ pub struct GeneralSettings {
     // migration (see `reveal_it_ops_on_release`).
     #[serde(default = "default_show_it_ops")]
     show_it_ops: bool,
+    #[serde(default = "default_show_screenshots_on_rail")]
+    show_screenshots_on_rail: bool,
     #[serde(default = "default_show_dont_sleep_on_rail")]
     show_dont_sleep_on_rail: bool,
     #[serde(default = "default_activity_rail_order")]
@@ -931,11 +933,59 @@ pub struct VncSettings {
 #[serde(rename_all = "camelCase")]
 pub struct ScreenshotSettings {
     folder_path: String,
+    #[serde(default = "default_screenshot_format")]
+    format: String,
+    #[serde(default = "default_screenshot_jpeg_quality")]
+    jpeg_quality: u8,
+    #[serde(default = "default_screenshot_region_shortcut")]
+    region_shortcut: String,
+    #[serde(default = "default_screenshot_shortcut_enabled")]
+    region_shortcut_enabled: bool,
+    #[serde(default = "default_screenshot_window_shortcut")]
+    window_shortcut: String,
+    #[serde(default = "default_screenshot_shortcut_enabled")]
+    window_shortcut_enabled: bool,
+    #[serde(default = "default_screenshot_fullscreen_shortcut")]
+    fullscreen_shortcut: String,
+    #[serde(default = "default_screenshot_shortcut_enabled")]
+    fullscreen_shortcut_enabled: bool,
 }
 
 impl ScreenshotSettings {
     pub(crate) fn folder_path(&self) -> &str {
         &self.folder_path
+    }
+
+    pub(crate) fn format(&self) -> &str {
+        &self.format
+    }
+
+    pub(crate) fn jpeg_quality(&self) -> u8 {
+        self.jpeg_quality
+    }
+
+    pub(crate) fn region_shortcut(&self) -> &str {
+        &self.region_shortcut
+    }
+
+    pub(crate) fn region_shortcut_enabled(&self) -> bool {
+        self.region_shortcut_enabled
+    }
+
+    pub(crate) fn window_shortcut(&self) -> &str {
+        &self.window_shortcut
+    }
+
+    pub(crate) fn window_shortcut_enabled(&self) -> bool {
+        self.window_shortcut_enabled
+    }
+
+    pub(crate) fn fullscreen_shortcut(&self) -> &str {
+        &self.fullscreen_shortcut
+    }
+
+    pub(crate) fn fullscreen_shortcut_enabled(&self) -> bool {
+        self.fullscreen_shortcut_enabled
     }
 }
 
@@ -4983,6 +5033,7 @@ fn default_general_settings() -> GeneralSettings {
         separate_split_terminal_backgrounds: false,
         show_installer_on_rail: default_show_installer_on_rail(),
         show_it_ops: default_show_it_ops(),
+        show_screenshots_on_rail: default_show_screenshots_on_rail(),
         show_dont_sleep_on_rail: default_show_dont_sleep_on_rail(),
         activity_rail_order: default_activity_rail_order(),
         installer_check_interval_seconds: default_installer_check_interval_seconds(),
@@ -5060,15 +5111,26 @@ fn default_show_it_ops() -> bool {
     true
 }
 
+fn default_show_screenshots_on_rail() -> bool {
+    true
+}
+
 fn default_show_dont_sleep_on_rail() -> bool {
     true
 }
 
 fn default_activity_rail_order() -> Vec<String> {
-    ["workspace", "dashboard", "installer", "itops", "dontSleep"]
-        .into_iter()
-        .map(str::to_string)
-        .collect()
+    [
+        "workspace",
+        "dashboard",
+        "installer",
+        "screenshots",
+        "itops",
+        "dontSleep",
+    ]
+    .into_iter()
+    .map(str::to_string)
+    .collect()
 }
 
 fn default_installer_check_interval_seconds() -> u32 {
@@ -5358,7 +5420,39 @@ fn default_vnc_preferred_encoding() -> String {
 fn default_screenshot_settings() -> ScreenshotSettings {
     ScreenshotSettings {
         folder_path: default_screenshot_folder_path(),
+        format: default_screenshot_format(),
+        jpeg_quality: default_screenshot_jpeg_quality(),
+        region_shortcut: default_screenshot_region_shortcut(),
+        region_shortcut_enabled: default_screenshot_shortcut_enabled(),
+        window_shortcut: default_screenshot_window_shortcut(),
+        window_shortcut_enabled: default_screenshot_shortcut_enabled(),
+        fullscreen_shortcut: default_screenshot_fullscreen_shortcut(),
+        fullscreen_shortcut_enabled: default_screenshot_shortcut_enabled(),
     }
+}
+
+fn default_screenshot_format() -> String {
+    "png".to_string()
+}
+
+fn default_screenshot_jpeg_quality() -> u8 {
+    90
+}
+
+fn default_screenshot_region_shortcut() -> String {
+    "Ctrl+Alt+R".to_string()
+}
+
+fn default_screenshot_window_shortcut() -> String {
+    "Ctrl+Alt+W".to_string()
+}
+
+fn default_screenshot_fullscreen_shortcut() -> String {
+    "Ctrl+Alt+F".to_string()
+}
+
+fn default_screenshot_shortcut_enabled() -> bool {
+    true
 }
 
 pub(crate) fn default_screenshot_folder_path() -> String {
@@ -6242,7 +6336,22 @@ fn validate_screenshot_settings(
     let folder = expand_home_path(&settings.folder_path);
     fs::create_dir_all(&folder)
         .map_err(|error| format!("failed to create screenshots folder: {error}"))?;
+    settings.format = match settings.format.trim().to_lowercase().as_str() {
+        "" | "png" => "png".to_string(),
+        "jpeg" | "jpg" => "jpeg".to_string(),
+        _ => return Err("screenshot format must be png or jpeg".to_string()),
+    };
+    settings.jpeg_quality = settings.jpeg_quality.clamp(1, 100);
+    settings.region_shortcut = settings.region_shortcut.trim().to_string();
+    settings.window_shortcut = settings.window_shortcut.trim().to_string();
+    settings.fullscreen_shortcut = settings.fullscreen_shortcut.trim().to_string();
     Ok(settings)
+}
+
+/// Expands the persisted screenshots folder setting (which may keep a
+/// `%USERPROFILE%` prefix) to a concrete path for filesystem operations.
+pub(crate) fn expand_screenshot_folder_path(path: &str) -> PathBuf {
+    expand_home_path(path)
 }
 
 fn expand_home_path(path: &str) -> PathBuf {

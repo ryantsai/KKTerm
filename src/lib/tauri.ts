@@ -633,6 +633,9 @@ export interface TrayMenuSnapshot {
   recentConnections: TrayRecentConnection[];
   dontSleepLabel: string;
   exitLabel: string;
+  captureRegionLabel: string;
+  captureWindowLabel: string;
+  captureFullscreenLabel: string;
 }
 
 export interface CommandProposalPlan {
@@ -769,12 +772,20 @@ export interface StoredScreenshot {
   id: string;
   path: string;
   fileName: string;
+  thumbnailDataUrl: string;
+  width: number;
+  height: number;
+  fileSizeBytes: number;
+  capturedAt: number;
+  kind: "region" | "window" | "fullscreen" | "screenshot";
+}
+
+export interface FullScreenshot {
+  id: string;
+  fileName: string;
   dataUrl: string;
   width: number;
   height: number;
-  capturedAt: number;
-  label: string;
-  kind: "region" | "window" | "fullscreen" | "screenshot";
 }
 
 export interface ListScreenshotsResponse {
@@ -2083,12 +2094,36 @@ type CommandMap = {
     args: { request: { offset?: number; limit?: number } };
     result: ListScreenshotsResponse;
   };
+  read_screenshot: {
+    args: { id: string };
+    result: FullScreenshot;
+  };
+  rename_screenshot: {
+    args: { id: string; newName: string };
+    result: StoredScreenshot;
+  };
+  copy_stored_screenshot_to_clipboard: {
+    args: { id: string };
+    result: null;
+  };
   delete_screenshot: {
     args: { id: string };
     result: null;
   };
   clear_screenshots: {
     args: undefined;
+    result: null;
+  };
+  open_screenshots_folder: {
+    args: undefined;
+    result: null;
+  };
+  reveal_screenshot: {
+    args: { id: string };
+    result: null;
+  };
+  open_screenshot_file: {
+    args: { id: string };
     result: null;
   };
   ssh_transport_plan: {

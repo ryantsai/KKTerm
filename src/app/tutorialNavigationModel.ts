@@ -44,6 +44,7 @@ const SETTINGS_SECTION_IDS = new Set<SettingsSectionId>([
   "url-settings",
   "rdp-settings",
   "vnc-settings",
+  "screenshots-settings",
   "shortcuts-settings",
   "proxy-settings",
   "about-settings",
@@ -87,6 +88,9 @@ const SETTINGS_TUTORIAL_TARGET_SECTIONS: Record<string, SettingsSectionId> = {
   "settings.rdpRemoteResolution": "rdp-settings",
   "settings.vncViewOnly": "vnc-settings",
   "settings.vncColorLevel": "vnc-settings",
+  "settings.screenshotsFolder": "screenshots-settings",
+  "settings.screenshotsFormat": "screenshots-settings",
+  "settings.screenshotsShortcuts": "screenshots-settings",
   "settings.shortcuts": "shortcuts-settings",
   "settings.proxy": "proxy-settings",
   "settings.aboutVersion": "about-settings",
@@ -196,6 +200,15 @@ const INSTALLER_TUTORIAL_TARGET_IDS = [
   "installer.toolOptions",
 ] as const;
 
+const SCREENSHOTS_TUTORIAL_TARGET_IDS = [
+  "app.activityRailScreenshots",
+  "screenshots.captureRegion",
+  "screenshots.captureWindow",
+  "screenshots.captureFullscreen",
+  "screenshots.viewSwitch",
+  "screenshots.library",
+] as const;
+
 const TUTORIAL_TARGET_NAVIGATION: Record<string, TutorialNavigationTarget> = {
   ...Object.fromEntries(
     DASHBOARD_TUTORIAL_TARGET_IDS.map((targetId) => [
@@ -227,6 +240,12 @@ const TUTORIAL_TARGET_NAVIGATION: Record<string, TutorialNavigationTarget> = {
     INSTALLER_TUTORIAL_TARGET_IDS.map((targetId) => [
       targetId,
       { page: "installer" },
+    ]),
+  ),
+  ...Object.fromEntries(
+    SCREENSHOTS_TUTORIAL_TARGET_IDS.map((targetId) => [
+      targetId,
+      { page: "screenshots" },
     ]),
   ),
   ...Object.fromEntries(
@@ -347,6 +366,7 @@ function normalizeTutorialPage(value: unknown): ActivePage | undefined {
     value === "dashboard" ||
     value === "itops" ||
     value === "installer" ||
+    value === "screenshots" ||
     value === "settings"
   ) {
     return value;

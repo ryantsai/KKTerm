@@ -176,6 +176,11 @@ export const SETTINGS_SEARCH_KEYS: Record<SettingsSectionId, readonly string[]> 
     "settings.vncColor8", "settings.vncColorFull", "settings.vncEncodingRaw",
     "settings.vncEncodingTight", "settings.vncEncodingZrle",
   ],
+  "screenshots-settings": [
+    "settings.screenshotsFolder", "settings.screenshotsFormat", "settings.screenshotsFormatPng",
+    "settings.screenshotsFormatJpeg", "settings.screenshotsJpegQuality",
+    "settings.screenshotsShortcuts", "settings.screenshotsDefaults",
+  ],
   "dont-sleep-settings": ["settings.dontSleepForegroundOnly"],
   "shortcuts-settings": [
     "settings.workspaceTabs", "settings.sectionTerminal", "settings.shortcutPressKeys",
