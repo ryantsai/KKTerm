@@ -1,112 +1,110 @@
 {
-    "$schema":  "https://schema.tauri.app/config/2",
-    "productName":  "KKTerm",
-    "version":  "0.1.127",
-    "identifier":  "com.kkterm.app",
-    "build":  {
-                  "beforeDevCommand":  "npm run dev",
-                  "devUrl":  "http://localhost:1420",
-                  "beforeBuildCommand":  "npm run build",
-                  "frontendDist":  "../dist"
-              },
-    "app":  {
-                "windows":  [
-
-                            ],
-                "security":  {
-                                 "csp":  null,
-                                 "assetProtocol":  {
-                                                       "enable":  true,
-                                                       "scope":  [
-                                                                     "$APPDATA/backgrounds/**/*",
-                                                                     "$RESOURCE/backgrounds/**/*",
-                                                                     "$APPDATA/fonts/**/*",
-                                                                     "$RESOURCE/fonts/**/*"
-                                                                 ]
-                                                   }
-                             }
-            },
-    "bundle":  {
-                   "active":  true,
-                   "createUpdaterArtifacts":  false,
-                   "targets":  [
-                                   "nsis",
-                                   "app",
-                                   "dmg"
-                               ],
-                   "publisher":  "Ryan Tsai",
-                   "licenseFile":  "../LICENSE",
-                   "category":  "DeveloperTool",
-                   "shortDescription":  "Local-first administration workspace.",
-                   "longDescription":  "KKTerm is a local-first desktop administration workspace for terminals, SSH, SFTP, and approval-based command assistance.",
-                   "icon":  [
-                                "icons/32x32.png",
-                                "icons/128x128.png",
-                                "icons/128x128@2x.png",
-                                "icons/icon.icns",
-                                "icons/icon.ico"
-                            ],
-                   "resources":  {
-                                     "../docs/manual/INDEX.md":  "manual/INDEX.md",
-                                     "../docs/manual/01-getting-started.md":  "manual/01-getting-started.md",
-                                     "../docs/manual/02-app-layout.md":  "manual/02-app-layout.md",
-                                     "../docs/manual/03-connections.md":  "manual/03-connections.md",
-                                     "../docs/manual/04-workspace-tabs-panes.md":  "manual/04-workspace-tabs-panes.md",
-                                     "../docs/manual/05-terminal.md":  "manual/05-terminal.md",
-                                     "../docs/manual/06-ssh-and-tmux.md":  "manual/06-ssh-and-tmux.md",
-                                     "../docs/manual/07-sftp.md":  "manual/07-sftp.md",
-                                     "../docs/manual/08-url-webview.md":  "manual/08-url-webview.md",
-                                     "../docs/manual/09-remote-desktop.md":  "manual/09-remote-desktop.md",
-                                     "../docs/manual/10-dashboard.md":  "manual/10-dashboard.md",
-                                     "../docs/manual/11-app-launcher.md":  "manual/11-app-launcher.md",
-                                     "../docs/manual/12-it-ops.md":  "manual/12-it-ops.md",
-                                     "../docs/manual/13-ai-assistant.md":  "manual/13-ai-assistant.md",
-                                     "../docs/manual/14-screenshots.md":  "manual/14-screenshots.md",
-                                     "../docs/manual/15-settings.md":  "manual/15-settings.md",
-                                     "../docs/manual/16-localization.md":  "manual/16-localization.md",
-                                     "../docs/manual/17-data-backup-secrets.md":  "manual/17-data-backup-secrets.md",
-                                     "../docs/manual/18-installer.md":  "manual/18-installer.md",
-                                     "../docs/manual/19-git-browser.md":  "manual/19-git-browser.md",
-                                     "../assistant-skills/dashboard-widget-builder/SKILL.md":  "assistant-skills/dashboard-widget-builder/SKILL.md",
-                                     "../assistant-skills/dashboard-widget-designer/SKILL.md":  "assistant-skills/dashboard-widget-designer/SKILL.md",
-                                     "../assistant-skills/dashboard-data-visualization/SKILL.md":  "assistant-skills/dashboard-data-visualization/SKILL.md",
-                                     "../assistant-skills/desktop-accessibility-ui/SKILL.md":  "assistant-skills/desktop-accessibility-ui/SKILL.md",
-                                     "../assistant-skills/dns-dhcp-troubleshooter/SKILL.md":  "assistant-skills/dns-dhcp-troubleshooter/SKILL.md",
-                                     "../assistant-skills/firewall-port-troubleshooter/SKILL.md":  "assistant-skills/firewall-port-troubleshooter/SKILL.md",
-                                     "../assistant-skills/network-connectivity-troubleshooter/SKILL.md":  "assistant-skills/network-connectivity-troubleshooter/SKILL.md",
-                                     "../assistant-skills/remote-desktop-helper/SKILL.md":  "assistant-skills/remote-desktop-helper/SKILL.md",
-                                     "../assistant-skills/sftp-transfer-helper/SKILL.md":  "assistant-skills/sftp-transfer-helper/SKILL.md",
-                                     "../assistant-skills/ssh-troubleshooter/SKILL.md":  "assistant-skills/ssh-troubleshooter/SKILL.md",
-                                     "../assistant-skills/terminal-command-planner/SKILL.md":  "assistant-skills/terminal-command-planner/SKILL.md",
-                                     "../assistant-skills/tls-certificate-troubleshooter/SKILL.md":  "assistant-skills/tls-certificate-troubleshooter/SKILL.md"
-                                 },
-                   "windows":  {
-                                   "allowDowngrades":  false,
-                                   "webviewInstallMode":  {
-                                                              "type":  "downloadBootstrapper",
-                                                              "silent":  true
-                                                          },
-                                   "nsis":  {
-                                                "installMode":  "currentUser",
-                                                "languages":  [
-                                                                  "English",
-                                                                  "French",
-                                                                  "German",
-                                                                  "Italian",
-                                                                  "Japanese",
-                                                                  "Korean",
-                                                                  "PortugueseBR",
-                                                                  "SimpChinese",
-                                                                  "Spanish",
-                                                                  "SpanishInternational",
-                                                                  "TradChinese",
-                                                                  "Vietnamese"
-                                                              ],
-                                                "installerIcon":  "icons/icon.ico",
-                                                "uninstallerIcon":  "icons/icon.ico",
-                                                "startMenuFolder":  "KKTerm",
-                                                "compression":  "lzma"
-                                            }
-                               }
-               }
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "KKTerm",
+  "version": "0.1.128",
+  "identifier": "com.kkterm.app",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [],
+    "security": {
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": [
+          "$APPDATA/backgrounds/**/*",
+          "$RESOURCE/backgrounds/**/*",
+          "$APPDATA/fonts/**/*",
+          "$RESOURCE/fonts/**/*"
+        ]
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "createUpdaterArtifacts": false,
+    "targets": [
+      "nsis",
+      "app",
+      "dmg"
+    ],
+    "publisher": "Ryan Tsai",
+    "licenseFile": "../LICENSE",
+    "category": "DeveloperTool",
+    "shortDescription": "Local-first administration workspace.",
+    "longDescription": "KKTerm is a local-first desktop administration workspace for terminals, SSH, SFTP, and approval-based command assistance.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "resources": {
+      "../docs/manual/INDEX.md": "manual/INDEX.md",
+      "../docs/manual/01-getting-started.md": "manual/01-getting-started.md",
+      "../docs/manual/02-app-layout.md": "manual/02-app-layout.md",
+      "../docs/manual/03-connections.md": "manual/03-connections.md",
+      "../docs/manual/04-workspace-tabs-panes.md": "manual/04-workspace-tabs-panes.md",
+      "../docs/manual/05-terminal.md": "manual/05-terminal.md",
+      "../docs/manual/06-ssh-and-tmux.md": "manual/06-ssh-and-tmux.md",
+      "../docs/manual/07-sftp.md": "manual/07-sftp.md",
+      "../docs/manual/08-url-webview.md": "manual/08-url-webview.md",
+      "../docs/manual/09-remote-desktop.md": "manual/09-remote-desktop.md",
+      "../docs/manual/10-dashboard.md": "manual/10-dashboard.md",
+      "../docs/manual/11-app-launcher.md": "manual/11-app-launcher.md",
+      "../docs/manual/12-it-ops.md": "manual/12-it-ops.md",
+      "../docs/manual/13-ai-assistant.md": "manual/13-ai-assistant.md",
+      "../docs/manual/14-screenshots.md": "manual/14-screenshots.md",
+      "../docs/manual/15-settings.md": "manual/15-settings.md",
+      "../docs/manual/16-localization.md": "manual/16-localization.md",
+      "../docs/manual/17-data-backup-secrets.md": "manual/17-data-backup-secrets.md",
+      "../docs/manual/18-installer.md": "manual/18-installer.md",
+      "../docs/manual/19-git-browser.md": "manual/19-git-browser.md",
+      "../assistant-skills/dashboard-widget-builder/SKILL.md": "assistant-skills/dashboard-widget-builder/SKILL.md",
+      "../assistant-skills/dashboard-widget-designer/SKILL.md": "assistant-skills/dashboard-widget-designer/SKILL.md",
+      "../assistant-skills/dashboard-data-visualization/SKILL.md": "assistant-skills/dashboard-data-visualization/SKILL.md",
+      "../assistant-skills/desktop-accessibility-ui/SKILL.md": "assistant-skills/desktop-accessibility-ui/SKILL.md",
+      "../assistant-skills/dns-dhcp-troubleshooter/SKILL.md": "assistant-skills/dns-dhcp-troubleshooter/SKILL.md",
+      "../assistant-skills/firewall-port-troubleshooter/SKILL.md": "assistant-skills/firewall-port-troubleshooter/SKILL.md",
+      "../assistant-skills/network-connectivity-troubleshooter/SKILL.md": "assistant-skills/network-connectivity-troubleshooter/SKILL.md",
+      "../assistant-skills/remote-desktop-helper/SKILL.md": "assistant-skills/remote-desktop-helper/SKILL.md",
+      "../assistant-skills/sftp-transfer-helper/SKILL.md": "assistant-skills/sftp-transfer-helper/SKILL.md",
+      "../assistant-skills/ssh-troubleshooter/SKILL.md": "assistant-skills/ssh-troubleshooter/SKILL.md",
+      "../assistant-skills/terminal-command-planner/SKILL.md": "assistant-skills/terminal-command-planner/SKILL.md",
+      "../assistant-skills/tls-certificate-troubleshooter/SKILL.md": "assistant-skills/tls-certificate-troubleshooter/SKILL.md"
+    },
+    "windows": {
+      "allowDowngrades": false,
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": [
+          "English",
+          "French",
+          "German",
+          "Italian",
+          "Japanese",
+          "Korean",
+          "PortugueseBR",
+          "SimpChinese",
+          "Spanish",
+          "SpanishInternational",
+          "TradChinese",
+          "Vietnamese"
+        ],
+        "installerIcon": "icons/icon.ico",
+        "uninstallerIcon": "icons/icon.ico",
+        "startMenuFolder": "KKTerm",
+        "compression": "lzma"
+      }
+    }
+  }
 }
