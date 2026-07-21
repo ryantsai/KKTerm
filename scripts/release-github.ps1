@@ -142,7 +142,11 @@ function Set-CargoPackageVersion {
         [string]$Version
     )
 
-    $Content = Get-Content -Raw $Path
+    # Read as UTF-8 explicitly. Under Windows PowerShell 5.1 `Get-Content -Raw`
+    # decodes with the system ANSI code page (Windows-1252), so a UTF-8 em-dash
+    # in the manifest comments would be misread and then re-written as UTF-8,
+    # roughly doubling its byte length on every release run.
+    $Content = Get-Content -Raw -Encoding utf8 $Path
     $Updated = [regex]::Replace(
         $Content,
         '(?m)^version = "\d+\.\d+\.\d+"',
@@ -164,7 +168,7 @@ function Set-TauriConfigVersion {
     )
 
     Write-Host "==> Update Tauri version"
-    $Config = Get-Content -Raw $Path | ConvertFrom-Json
+    $Config = Get-Content -Raw -Encoding utf8 $Path | ConvertFrom-Json
     $Config.version = $Version
     $Updated = $Config | ConvertTo-Json -Depth 10
     Set-TextFileUtf8NoBom -Path $Path -Value ($Updated + [Environment]::NewLine)
