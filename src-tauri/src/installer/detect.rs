@@ -651,7 +651,7 @@ pub(super) fn standalone_uv_executable(bin_dir: &Path) -> Option<PathBuf> {
     standalone_uv_executable_with_receipt_bin_dir(bin_dir, astral_uv_receipt_bin_dir().as_deref())
 }
 
-fn standalone_uv_executable_with_receipt_bin_dir(
+pub(super) fn standalone_uv_executable_with_receipt_bin_dir(
     bin_dir: &Path,
     receipt_bin_dir: Option<&Path>,
 ) -> Option<PathBuf> {
@@ -660,43 +660,43 @@ fn standalone_uv_executable_with_receipt_bin_dir(
         return None;
     }
     // Astral's installer writes uv-receipt.json to its config directory —
-    // %XDG_CONFIG_HOME%\uv or %LOCALAPPDATA%\uv — not next to uv.exe, and
-    // records the install prefix inside it. Accepting the directory only when
-    // it carries an adjacent receipt (custom setups) or matches the config
-    // receipt's install prefix keeps a pipx, Scoop, Cargo, or unrelated PATH
-    // copy from being mislabeled as standalone.
-    (bin_dir.join("uv-receipt.json").is_file()
-        || receipt_bin_dir.is_some_and(|receipt_dir| paths_equal_ignore_case(bin_dir, receipt_dir)))
-    .then_some(executable)
+    // %XDG_CONFIG_HOME%\uv when configured, otherwise %LOCALAPPDATA%\uv — and
+    // records the install prefix inside it. Requiring that exact prefix keeps
+    // a pipx, Scoop, Cargo, or unrelated PATH copy from being mislabeled as
+    // standalone.
+    receipt_bin_dir
+        .is_some_and(|receipt_dir| paths_equal_ignore_case(bin_dir, receipt_dir))
+        .then_some(executable)
 }
 
 fn astral_uv_receipt_bin_dir() -> Option<PathBuf> {
-    astral_uv_receipt_paths(
+    let path = astral_uv_receipt_path(
         std::env::var_os("XDG_CONFIG_HOME").as_deref(),
         std::env::var_os("LOCALAPPDATA").as_deref(),
-    )
-    .into_iter()
-    .find_map(|path| {
-        let text = std::fs::read_to_string(path).ok()?;
-        astral_uv_receipt_bin_dir_from_json(&text)
-    })
+    )?;
+    let text = std::fs::read_to_string(path).ok()?;
+    astral_uv_receipt_bin_dir_from_json(&text)
 }
 
-fn astral_uv_receipt_paths(
+fn astral_uv_receipt_path(
     xdg_config_home: Option<&std::ffi::OsStr>,
     local_app_data: Option<&std::ffi::OsStr>,
-) -> Vec<PathBuf> {
-    // install.ps1 prefers %XDG_CONFIG_HOME%\uv when set, else %LOCALAPPDATA%\uv.
-    [xdg_config_home, local_app_data]
-        .into_iter()
-        .flatten()
+) -> Option<PathBuf> {
+    // Match install.ps1 and uv self-update exactly: a non-empty
+    // XDG_CONFIG_HOME replaces LOCALAPPDATA rather than merely preceding it.
+    xdg_config_home
+        .filter(|root| !root.is_empty())
+        .or_else(|| local_app_data.filter(|root| !root.is_empty()))
         .map(|root| PathBuf::from(root).join("uv").join("uv-receipt.json"))
-        .collect()
 }
 
 fn astral_uv_receipt_bin_dir_from_json(text: &str) -> Option<PathBuf> {
     let value = serde_json::from_str::<serde_json::Value>(text).ok()?;
-    let prefix = PathBuf::from(value.get("install_prefix")?.as_str()?);
+    let prefix = value.get("install_prefix")?.as_str()?;
+    if prefix.trim().is_empty() {
+        return None;
+    }
+    let prefix = PathBuf::from(prefix);
     // The default Windows install uses the `flat` layout with uv.exe directly
     // in install_prefix; hierarchical and cargo-home layouts add `bin`.
     match value
@@ -704,7 +704,8 @@ fn astral_uv_receipt_bin_dir_from_json(text: &str) -> Option<PathBuf> {
         .and_then(|layout| layout.as_str())
     {
         Some("hierarchical") | Some("cargo-home") => Some(prefix.join("bin")),
-        _ => Some(prefix),
+        Some("flat") | None => Some(prefix),
+        Some(_) => None,
     }
 }
 
@@ -1596,7 +1597,7 @@ mod tests {
     }
 
     #[test]
-    fn standalone_uv_detection_requires_astral_receipt() {
+    fn standalone_uv_detection_requires_matching_config_receipt() {
         let temp = tempfile::tempdir().expect("temp dir");
         let bin = temp.path().join("bin");
         std::fs::create_dir(&bin).unwrap();
@@ -1611,6 +1612,11 @@ mod tests {
         std::fs::write(bin.join("uv-receipt.json"), b"{}").unwrap();
         assert_eq!(
             standalone_uv_executable_with_receipt_bin_dir(&bin, None),
+            None,
+            "an adjacent file is not where Astral's updater reads its receipt"
+        );
+        assert_eq!(
+            standalone_uv_executable_with_receipt_bin_dir(&bin, Some(&bin)),
             Some(executable)
         );
     }
@@ -1643,22 +1649,30 @@ mod tests {
     }
 
     #[test]
-    fn astral_uv_receipt_paths_prefer_xdg_config_home() {
-        let paths = astral_uv_receipt_paths(
+    fn astral_uv_receipt_path_honors_xdg_override() {
+        let path = astral_uv_receipt_path(
             Some(std::ffi::OsStr::new("xdg-config")),
             Some(std::ffi::OsStr::new("local-app-data")),
         );
 
         assert_eq!(
-            paths,
-            vec![
+            path,
+            Some(
                 PathBuf::from("xdg-config")
                     .join("uv")
-                    .join("uv-receipt.json"),
+                    .join("uv-receipt.json")
+            )
+        );
+        assert_eq!(
+            astral_uv_receipt_path(
+                Some(std::ffi::OsStr::new("")),
+                Some(std::ffi::OsStr::new("local-app-data")),
+            ),
+            Some(
                 PathBuf::from("local-app-data")
                     .join("uv")
-                    .join("uv-receipt.json"),
-            ]
+                    .join("uv-receipt.json")
+            )
         );
     }
 
@@ -1679,6 +1693,16 @@ mod tests {
 
         assert_eq!(astral_uv_receipt_bin_dir_from_json("{}"), None);
         assert_eq!(astral_uv_receipt_bin_dir_from_json("not json"), None);
+        assert_eq!(
+            astral_uv_receipt_bin_dir_from_json(
+                r#"{"install_prefix":"C:\\uv","install_layout":"unknown"}"#
+            ),
+            None
+        );
+        assert_eq!(
+            astral_uv_receipt_bin_dir_from_json(r#"{"install_prefix":""}"#),
+            None
+        );
     }
 
     #[test]

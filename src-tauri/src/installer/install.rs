@@ -154,6 +154,13 @@ fn update_astral_standalone_uv(
 fn astral_standalone_uv_executable(
     detected: &super::detect::DetectedState,
 ) -> Result<PathBuf, String> {
+    astral_standalone_uv_executable_with_validator(detected, standalone_uv_executable)
+}
+
+fn astral_standalone_uv_executable_with_validator(
+    detected: &super::detect::DetectedState,
+    validate: impl FnOnce(&Path) -> Option<PathBuf>,
+) -> Result<PathBuf, String> {
     if !detected.is_official_script_install() {
         return Err("uv is not installed through Astral's standalone installer".into());
     }
@@ -165,7 +172,7 @@ fn astral_standalone_uv_executable(
     // Revalidate executable and receipt at execution time. The detected state
     // may have come from the registry cache, and a stale path must never fall
     // back to a package-manager executable during an in-place self-update.
-    standalone_uv_executable(&bin_dir).ok_or_else(|| {
+    validate(&bin_dir).ok_or_else(|| {
         "Astral uv executable or receipt is missing; refresh detection and try again".into()
     })
 }
@@ -2648,9 +2655,9 @@ fn refreshed_path_extras(vars: &BTreeMap<String, String>) -> Vec<String> {
     {
         extras.push(dir.to_string_lossy().to_string());
     }
-    // Only add directories carrying Astral's receipt. Adding every default
-    // candidate unconditionally could make an unrelated `uv.exe` shadow the
-    // package-manager copy that KKTerm is supposed to manage.
+    // Only add directories matching Astral's config receipt. Adding every
+    // default candidate unconditionally could make an unrelated `uv.exe`
+    // shadow the package-manager copy that KKTerm is supposed to manage.
     for dir in standalone_uv_bin_path_candidates(
         vars,
         std::env::var_os("UV_INSTALL_DIR").as_deref(),
@@ -3483,7 +3490,7 @@ mod tests {
     }
 
     #[test]
-    fn standalone_uv_path_extra_requires_receipt_and_supports_custom_install_dir() {
+    fn standalone_uv_path_extra_requires_matching_config_receipt() {
         let temp = tempfile::tempdir().expect("temp dir");
         let custom_bin = temp.path().join("custom-uv");
         std::fs::create_dir(&custom_bin).unwrap();
@@ -3501,8 +3508,13 @@ mod tests {
         assert_eq!(candidates, vec![custom_bin.clone()]);
         assert!(!is_astral_standalone_uv_bin_dir(&custom_bin));
 
-        std::fs::write(custom_bin.join("uv-receipt.json"), b"{}").unwrap();
-        assert!(is_astral_standalone_uv_bin_dir(&custom_bin));
+        assert!(
+            super::super::detect::standalone_uv_executable_with_receipt_bin_dir(
+                &custom_bin,
+                Some(&custom_bin),
+            )
+            .is_some()
+        );
     }
 
     #[test]
@@ -3698,13 +3710,18 @@ mod tests {
             .path()
             .join(format!("uv{}", std::env::consts::EXE_SUFFIX));
         std::fs::write(&executable, b"uv").unwrap();
-        std::fs::write(temp.path().join("uv-receipt.json"), b"{}").unwrap();
         let detected = super::super::detect::DetectedState::installed(Some("0.1.0".into()))
             .with_install_location(Some(temp.path().to_string_lossy().into_owned()))
             .with_install_source(Some("officialScript"));
 
         assert_eq!(
-            astral_standalone_uv_executable(&detected).unwrap(),
+            astral_standalone_uv_executable_with_validator(&detected, |bin_dir| {
+                super::super::detect::standalone_uv_executable_with_receipt_bin_dir(
+                    bin_dir,
+                    Some(temp.path()),
+                )
+            })
+            .unwrap(),
             executable
         );
     }
@@ -3723,9 +3740,11 @@ mod tests {
             .with_install_source(Some("officialScript"));
 
         assert!(
-            astral_standalone_uv_executable(&detected)
-                .unwrap_err()
-                .contains("receipt is missing")
+            astral_standalone_uv_executable_with_validator(&detected, |bin_dir| {
+                super::super::detect::standalone_uv_executable_with_receipt_bin_dir(bin_dir, None)
+            })
+            .unwrap_err()
+            .contains("receipt is missing")
         );
     }
 

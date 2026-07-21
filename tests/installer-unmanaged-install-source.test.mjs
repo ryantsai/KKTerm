@@ -45,7 +45,11 @@ test("official-script installs expose safe updates but hide WinGet uninstall", a
 });
 
 test("backend routes standalone uv updates by receipt and still blocks uninstall", async () => {
-  const [installSource, uninstallSource, latestSource] = await Promise.all([
+  const [detectSource, installSource, uninstallSource, latestSource] = await Promise.all([
+    readFile(
+      new URL("../src-tauri/src/installer/detect.rs", import.meta.url),
+      "utf8",
+    ),
     readFile(
       new URL("../src-tauri/src/installer/install.rs", import.meta.url),
       "utf8",
@@ -67,8 +71,13 @@ test("backend routes standalone uv updates by receipt and still blocks uninstall
   );
   assert.match(
     installSource,
-    /!executable\.is_file\(\) \|\| !bin_dir\.join\("uv-receipt\.json"\)\.is_file\(\)/,
+    /astral_standalone_uv_executable_with_validator\(detected, standalone_uv_executable\)/,
     "the update target must revalidate Astral's executable and receipt",
+  );
+  assert.match(
+    detectSource,
+    /xdg_config_home[\s\S]*\.or_else\(\|\| local_app_data/,
+    "receipt lookup must use LOCALAPPDATA only when XDG_CONFIG_HOME is unset",
   );
   assert.match(
     installSource,
