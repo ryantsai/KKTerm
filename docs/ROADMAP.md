@@ -2,9 +2,9 @@
 
 ## Current Status
 
-Quick snapshot as of July 5, 2026:
+Quick snapshot as of July 21, 2026:
 
-All core connection types (SSH, Telnet, Serial, FTP/FTPS, RDP, VNC, URL/WebView2, local shells, and the local File/Document viewer), terminal features, SSH port forwarding, SFTP/FTP, RDP/VNC, AI Assistant tool calling with composer attachments, Dashboard Module redesign, Install Helper, IT Ops first runtime surfaces, and UI customization are implemented and shipping. The app builds for Windows, macOS, and Linux. The app metadata is currently at v0.1.111 and releasing continuously.
+All core connection types (SSH, Telnet, Serial, FTP/FTPS, RDP, VNC, URL/WebView2, local shells, and the local File/Document viewer), terminal features, SSH port forwarding, SFTP/FTP, RDP/VNC, AI Assistant tool calling with composer attachments, Dashboard Module redesign, Install Helper, the Site-first IT Ops Module (Sites, Server Room/Rack topology, Hosts inventory, Task Library, SSH Batch Runs, durable Automations, and playbooks), and UI customization are implemented and shipping. The app builds for Windows, macOS, and Linux. The app metadata is currently at v0.1.127 and releasing continuously.
 
 Release validation gates are documented in `AGENTS.md` and `docs/RELEASE.md`; run the full suite before significant code changes or release publication. Previous packaging validation passed for `npm run package:installer` and `npm run smoke:installer`.
 
@@ -31,7 +31,7 @@ For operational measurement records see `docs/PERFORMANCE.md`. For packaging and
 - [x] Tab workspace with split panes inside terminal tabs.
 - [x] Runtime-only per-Tab rename for multiple Tabs opened from the same Connection.
 - [x] Child Connection Tabs in the Connection Tree for saved per-Connection Tab instances, lazy reopen, tmux/session-directory resume hints, and multi-child split layouts.
-- [x] Left activity rail with Workspace, Dashboard, Install Helper, and Settings entries.
+- [x] Left activity rail with Workspace, Dashboard, IT Ops, Install Helper, Screenshots, and Settings entries.
 - [x] MobaXterm/RDCMan import.
 - [x] Telnet Connection type.
 - [x] Serial (COM port / baud) Connection type.
@@ -85,12 +85,29 @@ For operational measurement records see `docs/PERFORMANCE.md`. For packaging and
 - [x] "Open terminal here" action.
 - [x] FTP/FTPS Connection type.
 
+### Diff & Compare
+
+- [x] Compare Module surfaces (`src/modules/compare/`): side-by-side text diff, folder compare, hex compare, and image compare via a background compare worker, reachable from SFTP and the workspace.
+
+### Git Browser
+
+Deep dive: `docs/manual/19-git-browser.md`.
+
+- [x] Git Browser workspace surface (`src/modules/git/`) with working tree, staging, commit menu, diff viewer (including an advanced diff view), commit graph/lanes, repo detection, an install gate, and a command palette.
+
 ### Remote Desktop
 
 - [x] Durable RDP connection type via Windows ActiveX COM hosting.
 - [x] Geometry-scoped RDP ActiveX snapshot/parking for app-owned DOM overlays so dialogs, screenshot menus, Region selection, and menus that intersect the RDP host are not covered by the native child HWND.
 - [x] Configurable RDP session options (display quality/performance tuning, clipboard mapping, redirect/security controls).
 - [x] Durable VNC connection type via `vnc-rs` framebuffer rendering and pointer/key input.
+
+### Screenshots
+
+Deep dive: `docs/SCREENSHOTS.md`, `docs/manual/14-screenshots.md`.
+
+- [x] Screenshots Module (Activity Rail destination) with a capture library, a screenshot editor, batch dialogs, and configurable editor keyboard shortcuts.
+- [x] Capture bridge shared with the AI Assistant (full surface, partial area, and region); optional DirectX capture path.
 
 ### AI Assistant
 
@@ -115,12 +132,13 @@ For operational measurement records see `docs/PERFORMANCE.md`. For packaging and
 - [x] Command planning safety tests.
 - [x] Composer context attachments: file/photo, image, and text/terminal-buffer snippets captured into the run manifest from the composer.
 - [x] Context budgeting per provider with automatic compaction of conversation history.
+- [x] Local Assistant Skills: bundled `SKILL.md` workflow guides copied into app-data, listed and toggled in Settings → AI, and loaded on demand via model-driven `assistant_use_skill` invocation (see `docs/ASSISTANT_SKILLS.md`).
 
 ### Dashboard & Widgets
 
 - [x] Dashboard Module: SQLite-backed views/instances/AI Created Widgets, three visual presets (`panel`, `ambient`, `hero`), per-widget accent/icon/title customization, drag-and-drop layout via `react-grid-layout`, dynamic backgrounds.
 - [x] Two-kind widget model: `builtIn` and `script` with `iframe srcdoc` script hosting.
-- [x] Built-in widgets: App Launcher (local app/shortcut/script/file entries), Connection (embedded SSH/RDP/VNC/SFTP surfaces), Notes (sticky note), AI Coding Usage (Codex / Claude Code quota), Network Tools (subnet / DNS / speedtest / ping / whois tabs), Generators (QR / cron / password / time / hash tabs), and Converters (unit / currency / image tabs).
+- [x] Built-in widgets: App Launcher (local app/shortcut/script/file entries), Connection (embedded SSH/RDP/VNC/SFTP surfaces), Notes (sticky note), AI Coding Usage (Codex / Claude Code quota), PC Info (CPU/memory/system info), and a family of individual tool widgets — Subnet Calculator, DNS Lookup, Speedtest, Ping, Whois, QR Code, Cron Builder, Password Generator, Hash Workbench, Time Converter, and Converters — that can be combined with the Tool Group widget.
 - [x] AI Created script widgets.
 
 ### Install Helper
@@ -130,11 +148,25 @@ For operational measurement records see `docs/PERFORMANCE.md`. For packaging and
 - [x] Structured provider recipes for winget, Chocolatey, npm, uv pip, downloaded installers, GitHub releases, Windows features, WSL distros, and bundled tools.
 - [x] Managed app support for app-local tools, launch actions, workspace add actions, service helpers, and streaming command logs.
 
+### IT Ops
+
+Design and deep dive: `docs/ADR/0011-it-ops-module.md`, `docs/ITOPS.md`, `docs/SITE.md`, and `docs/manual/12-it-ops.md`.
+
+- [x] Site-first IT Ops Module on the Activity Rail: durable Sites (named Connection selections with optional dynamic filters) plus a global reusable Task Library.
+- [x] Site topology: Server Rooms, Racks with independent Front/Rear mounting faces, and Rack Devices (Connection-backed or passive) with floor-plan and 2.5D spatial editing, PDF/Excel export.
+- [x] Per-Site Hosts inventory: hostname import, child Hosts for VMs/containers, multi-Connection bindings, and bounded-concurrency TCP scans for SSH/WinRM/HTTPS endpoints.
+- [x] Task Library with a synced built-in per-OS diagnostic catalog (Linux, macOS, Windows, Cisco IOS/NX-OS, FortiOS, Junos, Arista EOS); reusable script and expect-style Playbook Tasks with Applicable OS metadata.
+- [x] SSH Batch Runs: fan-out task execution across selected Hosts with live per-host streamed output and a consolidated, saved Run History report.
+- [x] Durable Automations (the evolved Watchdog) in an n8n-style node editor: trigger → condition → action pipeline, re-armed on launch, with a dry-run Test action and the Status Bar indicator.
+- [x] Action catalog: notify, popup, email (SMTP), webhook, runBatch, and approval-gated AI intervention.
+- [x] AI Assistant + built-in MCP integration for Site/Host/Task/Automation/Batch Run management under approval-gated `itops_*` / `kkterm.itops.*` tools.
+
 ### UI, Settings & i18n
 
 - [x] Color Scheme settings for app chrome and workspace surfaces.
 - [x] Language (i18n) settings with i18next; 14 locales: en, zh-TW, zh-CN, ja, ko, fr, de, es, es-MX, it, pt-BR, th, id, vi.
-- [x] Settings sections: General, Appearance, Credentials, AI, SSH, Terminal, URL, RDP, VNC, Dashboard, Install Helper, and About.
+- [x] Settings sections: General, Appearance, Credentials, AI (with Assistant Skills and MCP Servers), SSH, Proxy, Terminal, URL, RDP, VNC, Dashboard, Install Helper, Screenshots, File Explorer, Shortcuts, and About.
+- [x] Editable keyboard shortcuts: workspace shortcut overrides with conflict detection and configurable screenshot editor shortcuts (Shortcuts settings section).
 - [x] Custom UI fonts; minimize-to-tray; Don't Sleep (prevents Windows sleep/suspend/hibernate/shutdown).
 - [x] Backup/import via settings ZIPs; startup and manual backups in the same importable format; selective export/import of chosen items (see `docs/ADR/0010-selective-export-import.md`).
 - [x] Encrypted credential secret store with unlock flow gating connection credential access.
@@ -152,6 +184,7 @@ For operational measurement records see `docs/PERFORMANCE.md`. For packaging and
 ### Distribution & Packaging
 
 - [x] Windows NSIS installer (current-user mode, creates Start Menu entries, bootstraps WebView2).
+- [x] Portable Mode (Windows portable v1): a no-installer ZIP that keeps KKTerm-owned durable state next to the executable and can coexist with an installed copy; created via the in-app Portable Creator (see `docs/PORTABLE.md`).
 - [x] Installer smoke test (checksum verify, silent install/uninstall into temp directory).
 - [x] GitHub Release script: version bump across npm/Tauri/Cargo, build, smoke test, commit, tag, push, and create release.
 - [x] macOS DMG release helper: build on macOS, upload DMG/checksum to an existing GitHub Release, and patch release notes.
@@ -171,20 +204,18 @@ For operational measurement records see `docs/PERFORMANCE.md`. For packaging and
 ### Dashboard & Modules
 
 - [ ] Redesign legacy widget bodies (hash, subnet, quick tools, maintenance report) to take full advantage of the new preset chrome.
-- [ ] Native data widgets: Clock, Weather, CPU, Memory, Recent Hosts, Session Activity, Today's Brief.
+- [ ] Native data widgets: Clock, Weather, Recent Hosts, Session Activity, Today's Brief (CPU/Memory/system info already ship via the PC Info widget).
 - [ ] Built-in Connections widget and URL widget with configurable auto-reload intervals.
 
 ### Extension Platform
 
 - [ ] General user-installable extension support (permissions, install/update lifecycle, and trust boundaries defined in ADR-0005).
-- [ ] macOS/Linux transport for the built-in MCP server bridge (Unix domain socket) so external MCP clients can drive KKTerm sessions off Windows.
 
 ### Workflow Simplification
 
 - [ ] Evaluate whether broader durable Tab persistence is still needed beyond the implemented Child Connection Tab model, including per-Tab order, close semantics, and Pane/tmux metadata that must stay separate from durable Connection records.
 - [ ] If broader durable Tab persistence is pursued, keep it in Workspace-owned Tab state rather than Connection-owned presets so Connection data remains separate from workspace containers.
 - [ ] Simplify common workflows and reduce unnecessary visual or interaction complexity.
-- [ ] Editable keybindings.
 
 ### Cross-Platform & Distribution
 
@@ -203,7 +234,7 @@ Second-tier follow-ups to the shipped OSC 133 / Quick Select / inline images / n
 - [ ] Copy Mode: keyboard-driven (vim-style) scrollback navigation and selection.
 - [ ] Global command palette spanning app actions (open Connection, split Pane, switch Workspace); generalize the existing Git Browser palette.
 - [ ] Pane zoom (temporarily maximize one Pane in a split) and directional keyboard Pane focus/resize.
-- [ ] User-configurable keybindings with an optional tmux-style leader key (see also "Editable keybindings" under UX).
+- [ ] Extend the shipped editable-keybinding system with terminal-scope bindings and an optional tmux-style leader key.
 - [ ] `kkterm` CLI for scripting the app from a shell (spawn/split/send-text over the existing MCP/tool backend).
 - [ ] Kitty keyboard protocol (progressive keyboard enhancement); xterm.js gap noted on the terminal compatibility checklist — modern TUIs increasingly probe for it.
 - [ ] Font ligatures need a shaping renderer; fold into the WGPU renderer evaluation above (WezTerm's MIT `termwiz`/`wezterm-term` crates are candidate foundations).
@@ -217,7 +248,7 @@ Second-tier follow-ups to the shipped OSC 133 / Quick Select / inline images / n
 ### SFTP Enhancements
 
 - [ ] SFTP folder sync/diff/resume.
-- [ ] Beyond Compare-like diff/merge tool for side-by-side local and remote (SFTP) comparison with sync and merge actions.
+- [ ] Extend the shipped Compare Module with SFTP sync/merge actions (side-by-side diff, folder, hex, and image compare already ship; see the Diff & Compare section).
 
 ### Recording
 
@@ -231,8 +262,11 @@ Second-tier follow-ups to the shipped OSC 133 / Quick Select / inline images / n
 
 ### IT Ops Center
 
-Design accepted: see `docs/ADR/0011-it-ops-module.md`, `docs/ADR/0012-winrm-transport-library.md` (WinRM transport for Windows Update playbooks), `docs/ITOPS.md`, and `docs/manual/12-it-ops.md`. The runtime module is Site-first, with Site-owned Server Rooms, Hosts, Automations, and Run History plus a global reusable Task Library. The first Task slice persists reusable scripts and launches them through Batch Runs; reusable Playbook editing and Automation `taskId` references remain follow-up work.
+Design accepted: see `docs/ADR/0011-it-ops-module.md`, `docs/ADR/0012-winrm-transport-library.md` (WinRM transport for Windows Update playbooks), `docs/ITOPS.md`, and `docs/manual/12-it-ops.md`. The Site-first module now ships Sites, Server Room/Rack topology, Hosts inventory, the global Task Library (script and Playbook Tasks), SSH Batch Runs with Run History, and durable Automations. Batch Runs currently reach hosts over SSH only; the items below extend transports, monitoring, and automation depth.
 
+- [ ] Windows remote management (WinRM/WS-Man) Batch Run transport per ADR-0012, so Batch Runs and playbooks reach Windows hosts without OpenSSH. The runner and UI already target a common `Transport` trait; today non-SSH hosts are skipped and the WinRM/PsExec adapters remain stubbed (Phase 6).
+- [ ] PsExec (SMB/named-pipe) Batch Run transport for Windows hosts, shipped as an Install Helper recipe behind the same `Transport` trait.
+- [ ] Network device SNMP status polling: promote the scaffolded SNMP path (`SnmpRefreshRequest`/`SnmpPortSample` model, port-speed parser, and Rack Device `snmp` metadata) from its current no-op transport to real SNMP GET/WALK polling, surfacing live port speed/state on Rack Devices and Hosts with scheduled refresh.
 - [ ] More IT Ops automation actions, conditions, and reusable workflow templates.
 - [ ] Automated server-update playbooks (apt, dnf, yum, Windows Update via WinRM) with dry-run preview and rollback-aware sequencing.
 - [ ] AI-enabled triggers watching terminal output, SFTP changes, or scheduled probes.
@@ -242,4 +276,3 @@ Design accepted: see `docs/ADR/0011-it-ops-module.md`, `docs/ADR/0012-winrm-tran
 
 - [ ] Team sharing/sync (major product-scope decision before implementation).
 - [ ] Mobile apps (major platform-scope decision after desktop architecture proves itself).
-- [ ] Git Browser(like STFTP browser)
