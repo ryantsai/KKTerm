@@ -31,7 +31,7 @@ const WINGET_NO_INSTALLED_PACKAGE_EXIT_CODE: i32 = 0x8A15_0014_u32 as i32;
 
 use super::detect::{
     GithubReleaseMarker, InstallScope, detect_chocolatey_package, detect_one, detect_winget,
-    github_release_install_dir, github_release_marker_path,
+    github_release_install_dir, github_release_marker_path, standalone_uv_executable,
 };
 use super::events::ProgressEvent;
 use super::managed_app::{
@@ -162,16 +162,12 @@ fn astral_standalone_uv_executable(
         .as_deref()
         .map(PathBuf::from)
         .ok_or("Astral uv install location is unavailable; refresh detection and try again")?;
-    let executable = bin_dir.join(format!("uv{}", std::env::consts::EXE_SUFFIX));
-    // Revalidate both files at execution time. The detected state may have
-    // come from the registry cache, and a stale path must never fall back to
-    // a package-manager executable when performing an in-place self-update.
-    if !executable.is_file() || !bin_dir.join("uv-receipt.json").is_file() {
-        return Err(
-            "Astral uv executable or receipt is missing; refresh detection and try again".into(),
-        );
-    }
-    Ok(executable)
+    // Revalidate executable and receipt at execution time. The detected state
+    // may have come from the registry cache, and a stale path must never fall
+    // back to a package-manager executable during an in-place self-update.
+    standalone_uv_executable(&bin_dir).ok_or_else(|| {
+        "Astral uv executable or receipt is missing; refresh detection and try again".into()
+    })
 }
 
 fn install_recipe_by_provider(
@@ -2710,9 +2706,7 @@ fn standalone_uv_bin_path_candidates(
 }
 
 fn is_astral_standalone_uv_bin_dir(dir: &std::path::Path) -> bool {
-    dir.join(format!("uv{}", std::env::consts::EXE_SUFFIX))
-        .is_file()
-        && dir.join("uv-receipt.json").is_file()
+    standalone_uv_executable(dir).is_some()
 }
 
 fn git_cmd_path_candidates() -> Vec<PathBuf> {
