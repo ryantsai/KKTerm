@@ -636,6 +636,7 @@ pub const DYNAMIC_BACKGROUND_IDS: &[&str] = &[
     "halftone",
     "clouds",
     "ocean",
+    "mistySea",
     "raindrops",
     "rainywindow",
     "frostedWindow",
@@ -2074,6 +2075,11 @@ mod tests {
     #[test]
     fn dynamic_background_accepts_fuji() {
         assert!(validate_dynamic_background("fuji").is_ok());
+    }
+
+    #[test]
+    fn dynamic_background_accepts_misty_sea() {
+        assert!(validate_dynamic_background("mistySea").is_ok());
     }
 
     #[test]

@@ -3,6 +3,7 @@ import { CircuitBg, CrystalsBg, HalftoneBg, InkBg, OrbitalsBg } from "./abstract
 import { dynamicBackgroundDevicePixelRatio } from "./dynamicBackgroundCanvas";
 import { BalloonsBg, DunesBg, JellyfishBg, LighthouseBg, SavannaBg } from "./extraDynamicBackgrounds";
 import { FujiBg } from "./fujiBackground";
+import { MistySeaBg } from "./mistySeaBackground";
 import {
   DashboardAnimationGate,
   useDashboardAnimationActive,
@@ -3811,6 +3812,7 @@ const DYNAMIC_BACKGROUND_COMPONENTS = {
   halftone: HalftoneBg,
   clouds: CloudsBg,
   ocean: OceanBg,
+  mistySea: MistySeaBg,
   raindrops: RaindropsBg,
   rainywindow: RainyWindowBg,
   frostedWindow: FrostedWindowBg,
@@ -3857,6 +3859,7 @@ export const DYNAMIC_BACKGROUNDS: readonly {
   { id: "halftone", labelKey: "dashboard.dynamicBackgrounds.halftone", mood: "calm" },
   { id: "clouds", labelKey: "dashboard.dynamicBackgrounds.clouds", mood: "calm" },
   { id: "ocean", labelKey: "dashboard.dynamicBackgrounds.ocean", mood: "calm" },
+  { id: "mistySea", labelKey: "dashboard.dynamicBackgrounds.mistySea", mood: "calm" },
   { id: "raindrops", labelKey: "dashboard.dynamicBackgrounds.raindrops", mood: "calm" },
   { id: "rainywindow", labelKey: "dashboard.dynamicBackgrounds.rainyWindow", mood: "calm" },
   { id: "frostedWindow", labelKey: "dashboard.dynamicBackgrounds.frostedWindow", mood: "calm" },
