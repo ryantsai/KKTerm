@@ -10,6 +10,7 @@ import {
   conflictingWorkspaceShortcutAction,
   type WorkspaceShortcutActionId,
   type WorkspaceShortcutOverrides,
+  type WorkspaceShortcutScope,
 } from "../workspace/keymap";
 import { SettingsSectionHeader, useSettingsSaveRegistration } from "./shared";
 import { ScreenshotShortcutRows } from "./ScreenshotShortcutRows";
@@ -135,7 +136,7 @@ export function ShortcutsSettings() {
 
   useSettingsSaveRegistration({ hasChanges, onSave: handleSave });
 
-  function renderRows(scope: "workspace" | "terminal") {
+  function renderRows(scope: WorkspaceShortcutScope) {
     return WORKSPACE_SHORTCUT_ACTIONS.filter((action) => action.scope === scope).map((action) => {
       const binding = effectiveBinding(action.id);
       const overridden = action.id in draft;
@@ -239,6 +240,13 @@ export function ShortcutsSettings() {
         <div className="shortcut-list">
           <ScreenshotShortcutRows />
         </div>
+      </fieldset>
+      <fieldset className="settings-subsection settings-fieldset">
+        <legend>{t("settings.screenshotsEditorShortcuts")}</legend>
+        <div>
+          <p className="field-hint">{t("settings.screenshotsEditorShortcutsHint")}</p>
+        </div>
+        <div className="shortcut-list">{renderRows("screenshotEditor")}</div>
       </fieldset>
     </section>
   );

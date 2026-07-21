@@ -15,6 +15,7 @@ export function EncryptedSecretStoreDialog({
   busy,
   error,
   initialMode,
+  initialResetExisting = false,
   encryptedStoreExists,
   launchPrompt,
   platform,
@@ -24,6 +25,7 @@ export function EncryptedSecretStoreDialog({
   busy: boolean;
   error: string | null;
   initialMode: EncryptedSecretStoreWizardMode;
+  initialResetExisting?: boolean;
   encryptedStoreExists: boolean | null | undefined;
   launchPrompt: boolean;
   platform: RuntimePlatform;
@@ -36,7 +38,7 @@ export function EncryptedSecretStoreDialog({
 }) {
   const { t } = useTranslation();
   const [mode, setMode] = useState<EncryptedSecretStoreWizardMode>(initialMode);
-  const [resetExisting, setResetExisting] = useState(false);
+  const [resetExisting, setResetExisting] = useState(initialResetExisting);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -130,27 +132,29 @@ export function EncryptedSecretStoreDialog({
               {t("settings.encryptedSecretStoreEnvironmentHint")}
             </p>
           ) : null}
-          <Field label={t("settings.encryptedSecretStorePassword")} req>
-            <TextInput
-              autoFocus
-              autoComplete={createIfMissing ? "new-password" : "current-password"}
-              disabled={busy}
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.currentTarget.value)}
-            />
-          </Field>
-          {createIfMissing ? (
-            <Field label={t("settings.encryptedSecretStoreConfirmPassword")} req>
+          <div className="encrypted-secret-store-password-fields">
+            <Field label={t("settings.encryptedSecretStorePassword")} req>
               <TextInput
-                autoComplete="new-password"
+                autoFocus
+                autoComplete={createIfMissing ? "new-password" : "current-password"}
                 disabled={busy}
                 type="password"
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.currentTarget.value)}
+                value={password}
+                onChange={(event) => setPassword(event.currentTarget.value)}
               />
             </Field>
-          ) : null}
+            {createIfMissing ? (
+              <Field label={t("settings.encryptedSecretStoreConfirmPassword")} req>
+                <TextInput
+                  autoComplete="new-password"
+                  disabled={busy}
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.currentTarget.value)}
+                />
+              </Field>
+            ) : null}
+          </div>
           {resetExisting ? (
             <p className="field-hint settings-dialog-warning">
               {t("settings.encryptedSecretStoreResetWarning")}

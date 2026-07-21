@@ -29,6 +29,7 @@ import type {
   AppLauncherSettings,
   ConfigureEncryptedFileSecretStoreRequest,
   ConfigureEncryptedFileSecretStoreResult,
+  ChangeEncryptedFileSecretStorePasswordRequest,
   CredentialSettings,
   CredentialSecretStoreStatus,
   Connection,
@@ -1663,6 +1664,10 @@ type CommandMap = {
   configure_encrypted_file_secret_store: {
     args: { request: ConfigureEncryptedFileSecretStoreRequest };
     result: ConfigureEncryptedFileSecretStoreResult;
+  };
+  change_encrypted_file_secret_store_password: {
+    args: { request: ChangeEncryptedFileSecretStorePasswordRequest };
+    result: KeychainStatus;
   };
   credential_secret_store_status: {
     args: undefined;

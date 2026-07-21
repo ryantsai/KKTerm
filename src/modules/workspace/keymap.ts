@@ -5,16 +5,20 @@
 // Settings → Shortcuts). User overrides are stored in
 // `GeneralSettings.workspaceShortcuts` as an actionId → binding map where a
 // null value means "explicitly unbound"; actions absent from the map keep
-// their default. Defaults use Ctrl+Shift combinations (or Ctrl with keys no
-// shell interprets) so terminal Sessions never lose plain Ctrl+letter input.
+// their default. Workspace and terminal defaults use Ctrl+Shift combinations
+// (or Ctrl with keys no shell interprets) so terminal Sessions never lose plain
+// Ctrl+letter input; the Screenshots editor is a modal dialog, so its defaults
+// use the conventional Ctrl+C / Ctrl+S / Ctrl+Shift+S.
 //
 // Scopes: "workspace" actions are handled by a window-level capture listener
 // while the Workspace Module is active; "terminal" actions are handled inside
-// the focused terminal Pane's xterm.js custom key handler.
+// the focused terminal Pane's xterm.js custom key handler; "screenshotEditor"
+// actions are handled by the Screenshots editor dialog's key handler while it
+// is open.
 
 import type { Connection, WorkspaceTab } from "../../types";
 
-export type WorkspaceShortcutScope = "workspace" | "terminal";
+export type WorkspaceShortcutScope = "workspace" | "terminal" | "screenshotEditor";
 
 export type WorkspaceShortcutActionId =
   | "newTab"
@@ -31,7 +35,10 @@ export type WorkspaceShortcutActionId =
   | "splitRight"
   | "splitLeft"
   | "splitDown"
-  | "splitUp";
+  | "splitUp"
+  | "screenshotEditorCopy"
+  | "screenshotEditorSave"
+  | "screenshotEditorSaveAs";
 
 export type WorkspaceShortcutOverrides = Record<string, string | null>;
 
@@ -70,6 +77,9 @@ export const WORKSPACE_SHORTCUT_ACTIONS: readonly WorkspaceShortcutAction[] = [
   { id: "splitLeft", scope: "terminal", labelKey: "terminal.splitLeft", defaultBinding: null },
   { id: "splitDown", scope: "terminal", labelKey: "terminal.splitDown", defaultBinding: null },
   { id: "splitUp", scope: "terminal", labelKey: "terminal.splitUp", defaultBinding: null },
+  { id: "screenshotEditorCopy", scope: "screenshotEditor", labelKey: "screenshots.menu.copy", defaultBinding: "Ctrl+C" },
+  { id: "screenshotEditorSave", scope: "screenshotEditor", labelKey: "common.save", defaultBinding: "Ctrl+S" },
+  { id: "screenshotEditorSaveAs", scope: "screenshotEditor", labelKey: "screenshots.editor.saveAs", defaultBinding: "Ctrl+Shift+S" },
 ];
 
 const FIXED_TERMINAL_SHORTCUT_ALIASES: ReadonlyArray<{
@@ -177,24 +187,46 @@ export function fixedTerminalShortcutFromKeyboardEvent(
 }
 
 /**
- * Find the other action already using `binding`, for conflict rejection in
- * the Settings recorder. Shortcuts share one namespace across both scopes
- * because terminal-focused keys reach the window listener too.
+ * Bindings only conflict inside the same namespace. "workspace" and "terminal"
+ * share one namespace because terminal-focused keys reach the window listener
+ * too, so the same key cannot mean two things there. The Screenshots editor is
+ * a self-contained modal whose keys never reach those listeners, so it gets its
+ * own namespace — the same combination (e.g. Ctrl+C / Ctrl+S) can be reused for
+ * a workspace or terminal action without colliding.
+ */
+function shortcutNamespace(scope: WorkspaceShortcutScope): "app" | "screenshotEditor" {
+  return scope === "screenshotEditor" ? "screenshotEditor" : "app";
+}
+
+/**
+ * Find the other action already using `binding`, for conflict rejection in the
+ * Settings recorder. Only actions in the same namespace as `exceptActionId`
+ * (see `shortcutNamespace`) are considered, so reusing a combination across
+ * namespaces is allowed.
  */
 export function conflictingWorkspaceShortcutAction(
   binding: string,
   overrides: WorkspaceShortcutOverrides | undefined,
   exceptActionId: WorkspaceShortcutActionId,
 ): WorkspaceShortcutAction | null {
-  const fixedAlias = FIXED_TERMINAL_SHORTCUT_ALIASES.find(
-    (alias) => alias.actionId !== exceptActionId && alias.binding === binding,
-  );
-  if (fixedAlias) {
-    return WORKSPACE_SHORTCUT_ACTIONS.find((action) => action.id === fixedAlias.actionId) ?? null;
+  const exceptAction = WORKSPACE_SHORTCUT_ACTIONS.find((action) => action.id === exceptActionId);
+  const namespace = shortcutNamespace(exceptAction?.scope ?? "workspace");
+  // Fixed terminal aliases live in the shared app namespace only.
+  if (namespace === "app") {
+    const fixedAlias = FIXED_TERMINAL_SHORTCUT_ALIASES.find(
+      (alias) => alias.actionId !== exceptActionId && alias.binding === binding,
+    );
+    if (fixedAlias) {
+      return WORKSPACE_SHORTCUT_ACTIONS.find((action) => action.id === fixedAlias.actionId) ?? null;
+    }
   }
   const bindings = effectiveWorkspaceShortcutBindings(overrides);
   for (const action of WORKSPACE_SHORTCUT_ACTIONS) {
-    if (action.id !== exceptActionId && bindings.get(action.id) === binding) {
+    if (
+      action.id !== exceptActionId
+      && shortcutNamespace(action.scope) === namespace
+      && bindings.get(action.id) === binding
+    ) {
       return action;
     }
   }

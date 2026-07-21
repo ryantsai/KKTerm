@@ -95,6 +95,8 @@ test("unified screenshot dialog follows the Sheet contract and bounds image zoom
   assert.match(editor, /zClassName="kk-qc-subdialog"/);
   assert.match(editor, /<DialogShell>/);
   assert.doesNotMatch(editor, /<DialogShell\s+onBackdrop=/);
+  assert.match(editor, /workspaceRef\.current\?\.focus\(\)/);
+  assert.match(editor, /ref=\{workspaceRef\}[\s\S]*?className="screenshots-editor__workspace"[\s\S]*?tabIndex=\{-1\}/);
   assert.match(editor, /onKeyDown=\{\(event\) => \{\s*event\.stopPropagation\(\);\s*if \(event\.key === "Escape"\)/);
   assert.match(editor, /if \(event\.key === "Escape" && !saving\) \{\s*event\.preventDefault\(\);\s*requestClose\(\);/);
   assert.doesNotMatch(editor, /if \(selectedId !== null\) \{\s*setSelectedId\(null\);/);

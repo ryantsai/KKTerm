@@ -7,6 +7,7 @@
 // logic of its own; when the app is not running it returns a structured
 // JSON-RPC error so MCP clients render it readably.
 
+use std::io::IsTerminal;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
@@ -44,13 +45,58 @@ const SERVER_VERSION: &str = env!("CARGO_PKG_VERSION");
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(3);
 const CALL_TIMEOUT: Duration = Duration::from_secs(60);
 
+const HELP: &str = "kkterm-cli - KKTerm built-in MCP stdio server\n\nUsage:\n  kkterm-cli              Start the MCP server when stdin is piped; show this help in a terminal\n  kkterm-cli mcp          Start the MCP stdio server\n  kkterm-cli help         Show this help\n\nOptions:\n  -h, --help, -help       Show this help\n  -?, /?, /h, /help       Show this help\n  -V, --version           Show the version\n";
+
+#[derive(Debug, PartialEq, Eq)]
+enum CliAction {
+    Serve,
+    Help,
+    Version,
+    Invalid(String),
+}
+
+fn cli_action(args: &[String], stdin_is_terminal: bool) -> CliAction {
+    match args {
+        [] if stdin_is_terminal => CliAction::Help,
+        [] => CliAction::Serve,
+        [arg] if matches!(arg.as_str(), "mcp" | "serve") => CliAction::Serve,
+        [arg]
+            if matches!(
+                arg.as_str(),
+                "help" | "-h" | "--help" | "-help" | "-?" | "/?" | "/h" | "/help"
+            ) =>
+        {
+            CliAction::Help
+        }
+        [arg] if matches!(arg.as_str(), "-V" | "--version" | "version") => CliAction::Version,
+        _ => CliAction::Invalid(args.join(" ")),
+    }
+}
+
 #[tokio::main]
 async fn main() -> ExitCode {
-    if let Err(error) = run().await {
-        let _ = writeln_stderr(&format!("kkterm-cli MCP error: {error}"));
-        return ExitCode::from(1);
+    let args = std::env::args().skip(1).collect::<Vec<_>>();
+    match cli_action(&args, std::io::stdin().is_terminal()) {
+        CliAction::Help => {
+            print!("{HELP}");
+            ExitCode::SUCCESS
+        }
+        CliAction::Version => {
+            println!("kkterm-cli {SERVER_VERSION}");
+            ExitCode::SUCCESS
+        }
+        CliAction::Invalid(args) => {
+            let _ = writeln_stderr(&format!("unknown argument: {args}\n\n{HELP}"));
+            ExitCode::from(2)
+        }
+        CliAction::Serve => {
+            if let Err(error) = run().await {
+                let _ = writeln_stderr(&format!("kkterm-cli MCP error: {error}"));
+                return ExitCode::from(1);
+            }
+            ExitCode::SUCCESS
+        }
     }
-    ExitCode::SUCCESS
 }
 
 async fn run() -> std::io::Result<()> {
@@ -394,6 +440,33 @@ fn writeln_stderr(message: &str) -> std::io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn interactive_no_args_and_common_aliases_show_help() {
+        assert_eq!(cli_action(&[], true), CliAction::Help);
+        for alias in ["help", "-h", "--help", "-help", "-?", "/?", "/h", "/help"] {
+            assert_eq!(cli_action(&[alias.to_string()], false), CliAction::Help);
+        }
+    }
+
+    #[test]
+    fn piped_no_args_and_explicit_mcp_start_the_server() {
+        assert_eq!(cli_action(&[], false), CliAction::Serve);
+        assert_eq!(cli_action(&["mcp".to_string()], true), CliAction::Serve);
+        assert_eq!(cli_action(&["serve".to_string()], true), CliAction::Serve);
+    }
+
+    #[test]
+    fn version_and_invalid_arguments_are_classified() {
+        assert_eq!(
+            cli_action(&["--version".to_string()], true),
+            CliAction::Version
+        );
+        assert_eq!(
+            cli_action(&["unexpected".to_string()], true),
+            CliAction::Invalid("unexpected".to_string())
+        );
+    }
 
     #[test]
     fn portable_cli_resolves_only_its_sibling_bridge_descriptor() {

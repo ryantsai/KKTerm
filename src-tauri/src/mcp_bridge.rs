@@ -20,7 +20,7 @@ use std::process::Command;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
 #[cfg(any(windows, unix))]
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -729,6 +729,10 @@ fn debug_json_key_is_sensitive(key: &str) -> bool {
         || normalized.contains("secret")
         || normalized.contains("password")
         || normalized.contains("authorization")
+        || normalized == "data_url"
+        || normalized == "dataurl"
+        || normalized.ends_with("dataurl")
+        || normalized == "thumbnail_data_url"
 }
 
 fn redact_object_key(value: &mut Value, key: &str) {
@@ -737,6 +741,14 @@ fn redact_object_key(value: &mut Value, key: &str) {
             object.insert(key.to_string(), Value::String("[REDACTED]".to_string()));
         }
     }
+}
+
+fn required_tool_string(args: &Value, key: &str) -> Result<String, String> {
+    args.get(key)
+        .and_then(Value::as_str)
+        .map(str::to_string)
+        .filter(|value| !value.trim().is_empty())
+        .ok_or_else(|| format!("{key} is required"))
 }
 
 fn remap_required_id(mut args: Value, source: &str, target: &str) -> Result<Value, String> {
@@ -1158,6 +1170,119 @@ async fn dispatch_tool(app: &AppHandle, name: &str, args: Value) -> Result<Value
             let raw = crate::ai::dashboard_tool(app, "dashboard_reset", json!({}));
             parse_dashboard_json(&raw)
         }
+        "kkterm.screenshots.list" => {
+            let request = serde_json::from_value(args).map_err(|error| error.to_string())?;
+            serde_json::to_value(crate::list_screenshots(app.clone(), request).await?)
+                .map_err(|error| error.to_string())
+        }
+        "kkterm.screenshots.dangerous.read" => {
+            let id = required_tool_string(&args, "id")?;
+            serde_json::to_value(crate::read_screenshot(app.clone(), id).await?)
+                .map_err(|error| error.to_string())
+        }
+        "kkterm.screenshots.rename" => {
+            let id = required_tool_string(&args, "id")?;
+            let new_name = required_tool_string(&args, "newName")?;
+            serde_json::to_value(crate::rename_screenshot(app.clone(), id, new_name).await?)
+                .map_err(|error| error.to_string())
+        }
+        "kkterm.screenshots.copy_to_clipboard" => {
+            let id = required_tool_string(&args, "id")?;
+            crate::copy_stored_screenshot_to_clipboard(app.clone(), id).await?;
+            Ok(json!({"ok": true}))
+        }
+        "kkterm.screenshots.resize" => {
+            let request = serde_json::from_value(args).map_err(|error| error.to_string())?;
+            serde_json::to_value(crate::resize_screenshots(app.clone(), request).await?)
+                .map_err(|error| error.to_string())
+        }
+        "kkterm.screenshots.convert" => {
+            let request = serde_json::from_value(args).map_err(|error| error.to_string())?;
+            serde_json::to_value(crate::convert_screenshots(app.clone(), request).await?)
+                .map_err(|error| error.to_string())
+        }
+        "kkterm.screenshots.dangerous.save_edited" => {
+            let request = serde_json::from_value(args).map_err(|error| error.to_string())?;
+            serde_json::to_value(crate::save_edited_screenshot(app.clone(), request).await?)
+                .map_err(|error| error.to_string())
+        }
+        "kkterm.screenshots.dangerous.delete" => {
+            let id = required_tool_string(&args, "id")?;
+            crate::delete_screenshot(app.clone(), id).await?;
+            Ok(json!({"ok": true}))
+        }
+        "kkterm.screenshots.dangerous.delete_batch" => {
+            let ids = args
+                .get("ids")
+                .cloned()
+                .ok_or_else(|| "ids is required".to_string())?;
+            let ids = serde_json::from_value(ids).map_err(|error| error.to_string())?;
+            crate::delete_screenshots(app.clone(), ids).await?;
+            Ok(json!({"ok": true}))
+        }
+        "kkterm.screenshots.dangerous.clear" => {
+            crate::clear_screenshots(app.clone()).await?;
+            Ok(json!({"ok": true}))
+        }
+        "kkterm.screenshots.open_folder" => {
+            crate::open_screenshots_folder(app.clone(), app.state())?;
+            Ok(json!({"ok": true}))
+        }
+        "kkterm.screenshots.reveal" => {
+            let id = required_tool_string(&args, "id")?;
+            crate::reveal_screenshot(app.clone(), app.state(), id)?;
+            Ok(json!({"ok": true}))
+        }
+        "kkterm.screenshots.open_file" => {
+            let id = required_tool_string(&args, "id")?;
+            crate::open_screenshot_file(app.clone(), app.state(), id)?;
+            Ok(json!({"ok": true}))
+        }
+        "kkterm.screenshots.dangerous.capture_rect" => {
+            let request = serde_json::from_value(args).map_err(|error| error.to_string())?;
+            let result = crate::capture_screenshot_to_library(
+                app.clone(),
+                request,
+                "screenshot".to_string(),
+            )
+            .await?;
+            serde_json::to_value(result).map_err(|error| error.to_string())
+        }
+        "kkterm.screenshots.dangerous.capture_region"
+        | "kkterm.screenshots.dangerous.capture_window"
+        | "kkterm.screenshots.dangerous.capture_fullscreen" => {
+            let minimize_window = args
+                .get("minimizeWindow")
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
+            let result = match name {
+                "kkterm.screenshots.dangerous.capture_region" => {
+                    crate::capture_interactive_region_screenshot_to_library(
+                        app.clone(),
+                        "region".to_string(),
+                        minimize_window,
+                    )
+                    .await?
+                }
+                "kkterm.screenshots.dangerous.capture_window" => {
+                    crate::capture_active_window_screenshot_to_library(
+                        app.clone(),
+                        "window".to_string(),
+                        minimize_window,
+                    )
+                    .await?
+                }
+                _ => {
+                    crate::capture_fullscreen_screenshot_to_library(
+                        app.clone(),
+                        "fullscreen".to_string(),
+                        minimize_window,
+                    )
+                    .await?
+                }
+            };
+            serde_json::to_value(result).map_err(|error| error.to_string())
+        }
         // -- IT Ops: Site topology + Rack Devices ---------------------------
         // itops_tool reads the same camelCase argument keys the catalog
         // publishes, validates required fields itself, and reports failures
@@ -1174,6 +1299,15 @@ async fn dispatch_tool(app: &AppHandle, name: &str, args: Value) -> Result<Value
         "kkterm.itops.sites.remove" => {
             parse_tool_json(&crate::ai::itops_tool(app, "itops_remove_site", args).await)
         }
+        "kkterm.itops.sites.reorder" => {
+            parse_tool_json(&crate::ai::itops_tool(app, "itops_reorder_sites", args).await)
+        }
+        "kkterm.itops.sites.resolve" => {
+            parse_tool_json(&crate::ai::itops_tool(app, "itops_resolve_site", args).await)
+        }
+        "kkterm.itops.sites.set_background" => {
+            parse_tool_json(&crate::ai::itops_tool(app, "itops_set_site_background", args).await)
+        }
         "kkterm.itops.server_rooms.list" => {
             parse_tool_json(&crate::ai::itops_tool(app, "itops_list_server_rooms", args).await)
         }
@@ -1185,6 +1319,15 @@ async fn dispatch_tool(app: &AppHandle, name: &str, args: Value) -> Result<Value
         }
         "kkterm.itops.server_rooms.remove" => {
             parse_tool_json(&crate::ai::itops_tool(app, "itops_delete_server_room", args).await)
+        }
+        "kkterm.itops.server_rooms.duplicate" => {
+            parse_tool_json(&crate::ai::itops_tool(app, "itops_duplicate_server_room", args).await)
+        }
+        "kkterm.itops.server_rooms.set_background" => parse_tool_json(
+            &crate::ai::itops_tool(app, "itops_set_server_room_background", args).await,
+        ),
+        "kkterm.itops.server_rooms.set_icon" => {
+            parse_tool_json(&crate::ai::itops_tool(app, "itops_set_room_icon", args).await)
         }
         "kkterm.itops.racks.list" => {
             parse_tool_json(&crate::ai::itops_tool(app, "itops_list_racks", args).await)
@@ -1198,6 +1341,21 @@ async fn dispatch_tool(app: &AppHandle, name: &str, args: Value) -> Result<Value
         "kkterm.itops.racks.remove" => {
             parse_tool_json(&crate::ai::itops_tool(app, "itops_delete_rack", args).await)
         }
+        "kkterm.itops.racks.duplicate" => {
+            parse_tool_json(&crate::ai::itops_tool(app, "itops_duplicate_rack", args).await)
+        }
+        "kkterm.itops.racks.reorder" => {
+            parse_tool_json(&crate::ai::itops_tool(app, "itops_reorder_racks", args).await)
+        }
+        "kkterm.itops.racks.set_placements" => {
+            parse_tool_json(&crate::ai::itops_tool(app, "itops_set_rack_placements", args).await)
+        }
+        "kkterm.itops.racks.set_facings" => {
+            parse_tool_json(&crate::ai::itops_tool(app, "itops_set_rack_facings", args).await)
+        }
+        "kkterm.itops.racks.set_background" => {
+            parse_tool_json(&crate::ai::itops_tool(app, "itops_set_rack_background", args).await)
+        }
         "kkterm.itops.rack_items.place" => {
             parse_tool_json(&crate::ai::itops_tool(app, "itops_place_rack_item", args).await)
         }
@@ -1209,6 +1367,18 @@ async fn dispatch_tool(app: &AppHandle, name: &str, args: Value) -> Result<Value
         }
         "kkterm.itops.rack_items.remove" => {
             parse_tool_json(&crate::ai::itops_tool(app, "itops_remove_rack_item", args).await)
+        }
+        "kkterm.itops.rack_items.refresh_snmp" => {
+            parse_tool_json(&crate::ai::itops_tool(app, "itops_refresh_rack_item_snmp", args).await)
+        }
+        "kkterm.itops.room_objects.list" => {
+            parse_tool_json(&crate::ai::itops_tool(app, "itops_list_room_objects", args).await)
+        }
+        "kkterm.itops.room_objects.set" => {
+            parse_tool_json(&crate::ai::itops_tool(app, "itops_set_room_objects", args).await)
+        }
+        "kkterm.itops.connections.get" => {
+            parse_tool_json(&crate::ai::itops_tool(app, "itops_get_connection", args).await)
         }
         "kkterm.itops.hosts.list" => {
             parse_tool_json(&crate::ai::itops_tool(app, "itops_list_hosts", args).await)
@@ -1665,6 +1835,22 @@ mod tests {
     }
 
     #[test]
+    fn screenshot_and_itops_image_data_is_redacted_from_debug_logs() {
+        let screenshot = redact_tool_result(
+            "kkterm.screenshots.dangerous.read",
+            &json!({"dataUrl": "data:image/png;base64,secret", "thumbnailDataUrl": "data:image/jpeg;base64,secret"}),
+        );
+        assert_eq!(screenshot["dataUrl"], "[REDACTED]");
+        assert_eq!(screenshot["thumbnailDataUrl"], "[REDACTED]");
+
+        let background = redact_tool_arguments(
+            "kkterm.itops.sites.set_background",
+            &json!({"siteId": "site-1", "background": {"dataUrl": "data:image/png;base64,secret"}}),
+        );
+        assert_eq!(background["background"]["dataUrl"], "[REDACTED]");
+    }
+
+    #[test]
     fn redact_bridge_response_hides_structured_content_copy() {
         let response = json!({
             "jsonrpc": "2.0",
@@ -1732,6 +1918,11 @@ mod tests {
         assert!(!dangerous_tool("kkterm.network.port_scan"));
         assert!(!dangerous_tool("kkterm.watchdog.list"));
         assert!(!dangerous_tool("kkterm.watchdog.cancel"));
+        assert!(dangerous_tool("kkterm.screenshots.dangerous.read"));
+        assert!(dangerous_tool(
+            "kkterm.screenshots.dangerous.capture_fullscreen"
+        ));
+        assert!(!dangerous_tool("kkterm.screenshots.list"));
     }
 
     #[test]
@@ -1787,6 +1978,27 @@ mod tests {
         assert!(names.contains(&"kkterm.workspace.sessions.remote_desktop_screenshot".to_string()));
         assert!(names.contains(&"kkterm.workspace.dangerous.remote_desktop_send_text".to_string()));
         assert!(names.contains(&"kkterm.workspace.dangerous.remote_desktop_keypress".to_string()));
+        for name in [
+            "kkterm.screenshots.list",
+            "kkterm.screenshots.dangerous.read",
+            "kkterm.screenshots.rename",
+            "kkterm.screenshots.copy_to_clipboard",
+            "kkterm.screenshots.resize",
+            "kkterm.screenshots.convert",
+            "kkterm.screenshots.dangerous.save_edited",
+            "kkterm.screenshots.dangerous.delete",
+            "kkterm.screenshots.dangerous.delete_batch",
+            "kkterm.screenshots.dangerous.clear",
+            "kkterm.screenshots.open_folder",
+            "kkterm.screenshots.reveal",
+            "kkterm.screenshots.open_file",
+            "kkterm.screenshots.dangerous.capture_rect",
+            "kkterm.screenshots.dangerous.capture_region",
+            "kkterm.screenshots.dangerous.capture_window",
+            "kkterm.screenshots.dangerous.capture_fullscreen",
+        ] {
+            assert!(names.contains(&name.to_string()));
+        }
         // IT Ops surface
         assert!(names.contains(&"kkterm.itops.sites.list".to_string()));
         assert!(names.contains(&"kkterm.itops.sites.create".to_string()));
@@ -1810,6 +2022,25 @@ mod tests {
         assert!(names.contains(&"kkterm.itops.hosts.remove".to_string()));
         assert!(names.contains(&"kkterm.itops.hosts.import".to_string()));
         assert!(names.contains(&"kkterm.itops.hosts.scan".to_string()));
+        for name in [
+            "kkterm.itops.sites.reorder",
+            "kkterm.itops.sites.resolve",
+            "kkterm.itops.sites.set_background",
+            "kkterm.itops.server_rooms.duplicate",
+            "kkterm.itops.server_rooms.set_background",
+            "kkterm.itops.server_rooms.set_icon",
+            "kkterm.itops.racks.duplicate",
+            "kkterm.itops.racks.reorder",
+            "kkterm.itops.racks.set_placements",
+            "kkterm.itops.racks.set_facings",
+            "kkterm.itops.racks.set_background",
+            "kkterm.itops.rack_items.refresh_snmp",
+            "kkterm.itops.room_objects.list",
+            "kkterm.itops.room_objects.set",
+            "kkterm.itops.connections.get",
+        ] {
+            assert!(names.contains(&name.to_string()));
+        }
         assert!(names.contains(&"kkterm.itops.tasks.list".to_string()));
         assert!(names.contains(&"kkterm.itops.tasks.get".to_string()));
         assert!(names.contains(&"kkterm.itops.tasks.dangerous.create".to_string()));

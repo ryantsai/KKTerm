@@ -27,8 +27,11 @@ Namespaces in this build:
   SFTP/FTP file browser.
 - `kkterm.dashboard.*` — Dashboard Module: views, widget instances,
   AI-Created Widgets.
+- `kkterm.screenshots.*` — Screenshots Module: captures, library reads,
+  transforms, file actions, and destructive library management.
 - `kkterm.itops.*` — IT Ops Module: Sites, Server Rooms, Racks, Rack
-  Devices, and the Host inventory list.
+  Devices, Room Objects, presentation metadata, Hosts, Tasks, Automations,
+  and Batch Runs.
 - `kkterm.network.*` — Network capability: read-only diagnostics (ping,
   DNS, TCP check, port scan, interfaces, Wake-on-LAN, WHOIS).
 - `kkterm.watchdog.*` — Watchdog capability: background monitors that poll
@@ -247,6 +250,41 @@ same protection without any per-Module gate code.
 | `kkterm.dashboard.dangerous.remove_custom_widget` | Delete an AI-Created Widget definition (use `forceDeleteInstances` to also remove placements). |
 | `kkterm.dashboard.dangerous.reset` | Wipe the entire Dashboard. Irreversible. |
 
+### Screenshots Module (`kkterm.screenshots.*`)
+
+The Screenshots Module tools use the configured library folder, format,
+quality, Capture Mode, border, cursor, and acceleration settings. Listing,
+copying, non-destructive transforms, rename, and explicit operating-system file
+actions are available normally. Full-image reads and captures can expose
+sensitive screen content; edited-image overwrite and deletion can replace or
+destroy files. Those operations use the `dangerous` namespace and require
+`built_in_mcp_allow_all_dangerous = true`.
+
+| Name | Description |
+|---|---|
+| `kkterm.screenshots.list` | List paginated library thumbnails and metadata with date/name/type sorting. |
+| `kkterm.screenshots.rename` | Rename one screenshot while preserving its extension. |
+| `kkterm.screenshots.copy_to_clipboard` | Copy one screenshot to the operating-system clipboard. |
+| `kkterm.screenshots.resize` | Create resized copies by exact dimensions or percentage; originals remain unchanged. |
+| `kkterm.screenshots.convert` | Create converted PNG/JPEG/WebP/GIF copies; originals remain unchanged. |
+| `kkterm.screenshots.open_folder` | Open the configured library folder in the file manager. |
+| `kkterm.screenshots.reveal` | Reveal one screenshot in the file manager. |
+| `kkterm.screenshots.open_file` | Open one screenshot in the default image application. |
+
+### Screenshots Module — dangerous (`kkterm.screenshots.dangerous.*`)
+
+| Name | Description |
+|---|---|
+| `kkterm.screenshots.dangerous.read` | Read one full-size screenshot as a base64 data URL. |
+| `kkterm.screenshots.dangerous.save_edited` | Save edited image data as a copy or overwrite the original. |
+| `kkterm.screenshots.dangerous.delete` | Permanently delete one screenshot. |
+| `kkterm.screenshots.dangerous.delete_batch` | Permanently delete multiple screenshots. |
+| `kkterm.screenshots.dangerous.clear` | Permanently clear the complete configured library. |
+| `kkterm.screenshots.dangerous.capture_rect` | Capture an exact screen rectangle in monitor coordinates. |
+| `kkterm.screenshots.dangerous.capture_region` | Open the interactive region selector and capture the chosen screen area. |
+| `kkterm.screenshots.dangerous.capture_window` | Interactively choose and capture a window. |
+| `kkterm.screenshots.dangerous.capture_fullscreen` | Capture the full virtual screen across all monitors. |
+
 ### IT Ops Module (`kkterm.itops.*`)
 
 The full IT Ops Module surface (docs/ITOPS.md): Site topology and Rack Device
@@ -274,18 +312,33 @@ parent first.
 | `kkterm.itops.sites.create` | Create a Site. Optional `memberIds` reference saved Connection ids; `transport` defaults to `auto`. |
 | `kkterm.itops.sites.update` | Update one Site by id. Omitted fields keep their current values; presentation fields (icons, backgrounds) are always preserved. |
 | `kkterm.itops.sites.remove` | Delete one Site by id including its Server Rooms, Racks, Rack Devices, and Hosts. Saved Connections and Run History survive; the Default Site cannot be deleted. |
+| `kkterm.itops.sites.reorder` | Reorder all Sites by an ordered id list. |
+| `kkterm.itops.sites.resolve` | Resolve one Site to its runnable Connection-backed hosts. |
+| `kkterm.itops.sites.set_background` | Set or clear the Site-view presentation background. |
 | `kkterm.itops.server_rooms.list` | List one Site's Server Rooms by `siteId`. |
 | `kkterm.itops.server_rooms.create` | Create a Server Room in a Site. `floorColor` defaults to `default`. |
 | `kkterm.itops.server_rooms.update` | Update one Server Room by id. Full-value semantics: read the room first and resend `name` and `floorColor`. |
 | `kkterm.itops.server_rooms.remove` | Delete one Server Room by id, including its Racks and placements. |
+| `kkterm.itops.server_rooms.duplicate` | Duplicate a Server Room with its Racks, Rack Device placements, and Room Objects. |
+| `kkterm.itops.server_rooms.set_background` | Set or clear a Server Room presentation background. |
+| `kkterm.itops.server_rooms.set_icon` | Set or clear a Server Room icon. |
 | `kkterm.itops.racks.list` | List one Site's Racks by `siteId`, each with its placed Rack Devices in U order. |
 | `kkterm.itops.racks.create` | Create a Rack in a Site. `serverRoom` names an existing Server Room in the same Site; `heightU` defaults to 42, `depthMm` to 1000. |
 | `kkterm.itops.racks.update` | Update one Rack by id. Full-value semantics; shrinking `heightU` is rejected while placed devices would no longer fit. |
 | `kkterm.itops.racks.remove` | Delete one Rack by id, including its Rack Device placements. |
+| `kkterm.itops.racks.duplicate` | Duplicate a Rack and its Rack Device placements with optional grid placement/facing. |
+| `kkterm.itops.racks.reorder` | Reorder all Racks in one Site by an ordered id list. |
+| `kkterm.itops.racks.set_placements` | Batch-set floor-plan or 2.5D-grid Rack placements. |
+| `kkterm.itops.racks.set_facings` | Batch-set Rack quarter-turn facings. |
+| `kkterm.itops.racks.set_background` | Set or clear one Rack's presentation background. |
 | `kkterm.itops.rack_items.place` | Place one Rack Device. `mountFace` is `front` or `rear` (default `front`); in-cabinet spans use the lowest occupied `startU` (1 = bottom) and are validated against bounds/overlaps on that face. A rack-top package uses kind `kuaiguai`, `startU = rack.heightU + 1`, height 4 with `metadata.kuaiguaiStyle = "full"` (or height 1 with `"laidDown"`), and optional ISO `metadata.expiry`; only one may occupy a Rack top regardless of face. Kind `connection` requires `connectionId`. |
 | `kkterm.itops.rack_items.update` | Update one Rack Device's kind, label, Connection binding, `mountFace`, or metadata by id. Moving to another face re-validates the occupied span there. The kind enum includes `kuaiguai`, with typed expiry/style/size/rotation metadata. Full-value semantics: omitted metadata clears stored metadata. |
 | `kkterm.itops.rack_items.move` | Move and/or resize one Rack Device by id, possibly into a different Rack or onto its `front`/`rear` `mountFace`; the new face and span are re-validated. |
 | `kkterm.itops.rack_items.remove` | Remove one Rack Device placement by id. Bound saved Connections are untouched. |
+| `kkterm.itops.rack_items.refresh_snmp` | Refresh one Rack Device's SNMP telemetry using its existing Connection and metadata. |
+| `kkterm.itops.room_objects.list` | List all non-Rack Room Objects in one Server Room. |
+| `kkterm.itops.room_objects.set` | Replace one Server Room's complete Room Object set. |
+| `kkterm.itops.connections.get` | Read one saved Connection used by an IT Ops binding; secrets are omitted. |
 | `kkterm.itops.hosts.list` | List one Site's Hosts by `siteId`: hostname, kind, parent Host, bound Connection ids, and last connectivity-scan snapshot. |
 | `kkterm.itops.hosts.create` | Create one Host in a Site's inventory. `parentHostId` nests it as a VM/container guest. |
 | `kkterm.itops.hosts.update` | Update one Host by id. Full-value semantics; `connectionIds` are ordered saved Connection references, and the first bound SSH Connection makes the Host runnable. |
@@ -416,7 +469,11 @@ in the same PR:
 
 Use the `kkterm-cli` binary path in your MCP client settings. The release build
 lives next to the KKTerm executable: `kkterm-cli.exe` beside `kkterm.exe` on
-Windows, and `kkterm-cli` beside the app binary on macOS/Linux.
+Windows, and `kkterm-cli` beside the app binary on macOS/Linux. MCP clients may
+continue launching it with no arguments because their piped stdin starts stdio
+server mode. Interactive no-argument use displays English command-line help;
+`mcp` and `serve` explicitly start server mode, and `help`, `-h`, `--help`,
+`-help`, `-?`, `/?`, `/h`, and `/help` display help.
 
 - **Claude Code / Claude Desktop style config**
 ```json

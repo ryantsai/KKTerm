@@ -816,6 +816,11 @@ export interface ConfigureEncryptedFileSecretStoreResult {
   status: KeychainStatus;
 }
 
+export interface ChangeEncryptedFileSecretStorePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
 export interface CredentialSecretStoreStatus {
   selectedStore: SecretStoreKind;
   backend: string;

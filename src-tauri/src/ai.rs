@@ -4689,6 +4689,7 @@ fn optional_itops_mount_face(args: &Value) -> Result<Option<RackMountFace>, Stri
 /// Automations, and Batch Runs. Mutations emit `itops-changed` so the IT Ops
 /// Module reloads when a change arrives from outside its own UI.
 pub(crate) async fn itops_tool(app: &tauri::AppHandle, name: &str, args: Value) -> String {
+    use crate::dashboard_storage::DashboardBackground;
     use crate::itops::automation_commands as itops_auto_commands;
     use crate::itops::automation_storage as itops_autos;
     use crate::itops::commands as itops_commands;
@@ -4700,8 +4701,9 @@ pub(crate) async fn itops_tool(app: &tauri::AppHandle, name: &str, args: Value) 
     use crate::itops::task_commands as itops_task_commands;
     use crate::itops::task_storage as itops_tasks;
     use crate::itops::types::{
-        AutomationAction, BatchTask, HostKind, ItopsTask, RackItemKind, RackItemMetadata,
-        RunHistoryEntry, RunScope, SiteFilter, TaskOperatingSystem, Transport,
+        AutomationAction, BatchTask, HostKind, ItopsTask, RackFacingEntry, RackItemKind,
+        RackItemMetadata, RackPlacementEntry, RoomIcon, RoomObject, RunHistoryEntry, RunScope,
+        SiteFilter, TaskOperatingSystem, Transport,
     };
     use crate::watchdog::WatchdogRegistry;
     use crate::watchdog::types::{WatchdogAction, WatchdogConfig};
@@ -4878,6 +4880,137 @@ pub(crate) async fn itops_tool(app: &tauri::AppHandle, name: &str, args: Value) 
     // they must run outside the shared storage closure (the connection lock is
     // not reentrant) and may await.
     let delegated: Option<Result<Value, String>> = match name {
+        "itops_reorder_sites" => Some((|| {
+            let ordered_ids = string_array(&args, "orderedIds").unwrap_or_default();
+            itops_commands::itops_reorder_sites(app.clone(), ordered_ids)
+                .map(|_| json!({"ok": true}))
+        })()),
+        "itops_resolve_site" => Some((|| {
+            let id = required_string(&args, "id")?;
+            itops_commands::itops_resolve_site(app.clone(), id).map(to_value)
+        })()),
+        "itops_duplicate_server_room" => Some((|| {
+            let id = required_string(&args, "id")?;
+            let name = required_string(&args, "name")?;
+            let floor_color = required_string(&args, "floorColor")?;
+            itops_commands::itops_duplicate_server_room(app.clone(), id, name, floor_color)
+                .map(to_value)
+        })()),
+        "itops_duplicate_rack" => Some((|| {
+            let id = required_string(&args, "id")?;
+            let name = required_string(&args, "name")?;
+            let server_room = required_string(&args, "serverRoom")?;
+            let rack_group = arg_string(&args, "rackGroup");
+            let shell = optional_string(&args, "shell");
+            let height_u = required_u32(&args, "heightU")?;
+            let depth_mm = required_u32(&args, "depthMm")?;
+            let power_capacity_w = optional_u32(&args, "powerCapacityW");
+            let grid_x = args.get("gridX").and_then(Value::as_i64);
+            let grid_y = args.get("gridY").and_then(Value::as_i64);
+            let facing = args.get("facing").and_then(Value::as_i64);
+            itops_commands::itops_duplicate_rack(
+                app.clone(),
+                id,
+                name,
+                server_room,
+                rack_group,
+                shell,
+                height_u,
+                depth_mm,
+                power_capacity_w,
+                grid_x,
+                grid_y,
+                facing,
+            )
+            .map(to_value)
+        })()),
+        "itops_reorder_racks" => Some((|| {
+            let site_id = required_string(&args, "siteId")?;
+            let ordered_ids = string_array(&args, "orderedIds").unwrap_or_default();
+            itops_commands::itops_reorder_racks(app.clone(), site_id, ordered_ids)
+                .map(|_| json!({"ok": true}))
+        })()),
+        "itops_set_rack_placements" => Some((|| {
+            let kind = required_string(&args, "kind")?;
+            let entries: Vec<RackPlacementEntry> =
+                serde_json::from_value(args.get("entries").cloned().unwrap_or_else(|| json!([])))
+                    .map_err(|error| format!("invalid entries: {error}"))?;
+            itops_commands::itops_set_rack_placements(app.clone(), kind, entries)
+                .map(|_| json!({"ok": true}))
+        })()),
+        "itops_set_rack_facings" => Some((|| {
+            let entries: Vec<RackFacingEntry> =
+                serde_json::from_value(args.get("entries").cloned().unwrap_or_else(|| json!([])))
+                    .map_err(|error| format!("invalid entries: {error}"))?;
+            itops_commands::itops_set_rack_facings(app.clone(), entries)
+                .map(|_| json!({"ok": true}))
+        })()),
+        "itops_list_room_objects" => Some((|| {
+            let site_id = required_string(&args, "siteId")?;
+            let server_room = required_string(&args, "serverRoom")?;
+            itops_commands::itops_list_room_objects(app.clone(), site_id, server_room).map(to_value)
+        })()),
+        "itops_set_room_objects" => Some((|| {
+            let site_id = required_string(&args, "siteId")?;
+            let server_room = required_string(&args, "serverRoom")?;
+            let objects: Vec<RoomObject> =
+                serde_json::from_value(args.get("objects").cloned().unwrap_or_else(|| json!([])))
+                    .map_err(|error| format!("invalid objects: {error}"))?;
+            itops_commands::itops_set_room_objects(app.clone(), site_id, server_room, objects)
+                .map(|_| json!({"ok": true}))
+        })()),
+        "itops_set_site_background" => Some((|| {
+            let site_id = required_string(&args, "siteId")?;
+            let background: Option<DashboardBackground> =
+                serde_json::from_value(args.get("background").cloned().unwrap_or(Value::Null))
+                    .map_err(|error| format!("invalid background: {error}"))?;
+            itops_commands::itops_set_site_background(app.clone(), site_id, background)
+                .map(|site| compact_itops_value(to_value(site)))
+        })()),
+        "itops_set_server_room_background" => Some((|| {
+            let site_id = required_string(&args, "siteId")?;
+            let server_room = required_string(&args, "serverRoom")?;
+            let background: Option<DashboardBackground> =
+                serde_json::from_value(args.get("background").cloned().unwrap_or(Value::Null))
+                    .map_err(|error| format!("invalid background: {error}"))?;
+            itops_commands::itops_set_server_room_background(
+                app.clone(),
+                site_id,
+                server_room,
+                background,
+            )
+            .map(|site| compact_itops_value(to_value(site)))
+        })()),
+        "itops_set_room_icon" => Some((|| {
+            let site_id = required_string(&args, "siteId")?;
+            let server_room = required_string(&args, "serverRoom")?;
+            let icon: Option<RoomIcon> =
+                serde_json::from_value(args.get("icon").cloned().unwrap_or(Value::Null))
+                    .map_err(|error| format!("invalid icon: {error}"))?;
+            itops_commands::itops_set_room_icon(app.clone(), site_id, server_room, icon)
+                .map(|site| compact_itops_value(to_value(site)))
+        })()),
+        "itops_set_rack_background" => Some((|| {
+            let id = required_string(&args, "id")?;
+            let background: Option<DashboardBackground> =
+                serde_json::from_value(args.get("background").cloned().unwrap_or(Value::Null))
+                    .map_err(|error| format!("invalid background: {error}"))?;
+            itops_commands::itops_set_rack_background(app.clone(), id, background)
+                .map(|rack| compact_itops_value(to_value(rack)))
+        })()),
+        "itops_refresh_rack_item_snmp" => Some(
+            async {
+                let id = required_string(&args, "id")?;
+                itops_commands::itops_refresh_rack_item_snmp(app.clone(), id)
+                    .await
+                    .map(to_value)
+            }
+            .await,
+        ),
+        "itops_get_connection" => Some((|| {
+            let id = required_string(&args, "id")?;
+            itops_commands::itops_get_connection(app.clone(), id).map(to_value)
+        })()),
         "itops_scan_hosts" => Some(
             async {
                 let site_id = required_string(&args, "siteId")?;

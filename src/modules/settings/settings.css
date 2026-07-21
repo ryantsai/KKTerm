@@ -2121,6 +2121,19 @@ input.settings-credential-search {
   color: var(--text);
 }
 
+.encrypted-secret-store-password-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.encrypted-secret-store-settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 12px;
+}
+
 .settings-list-row > .settings-list-actions,
 .settings-list-row > button,
 .settings-summary-item strong,

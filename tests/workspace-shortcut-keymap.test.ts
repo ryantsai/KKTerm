@@ -84,6 +84,36 @@ test("workspaceShortcutFromKeyboardEvent resolves defaults within the requested 
   );
 });
 
+test("screenshot editor actions resolve only within their own scope", () => {
+  // Copy/Save/Save As default to the conventional modal-dialog bindings.
+  assert.equal(
+    workspaceShortcutFromKeyboardEvent(keyEvent("c", { ctrlKey: true }), {}, "screenshotEditor"),
+    "screenshotEditorCopy",
+  );
+  assert.equal(
+    workspaceShortcutFromKeyboardEvent(keyEvent("s", { ctrlKey: true }), {}, "screenshotEditor"),
+    "screenshotEditorSave",
+  );
+  assert.equal(
+    workspaceShortcutFromKeyboardEvent(keyEvent("s", { ctrlKey: true, shiftKey: true }), {}, "screenshotEditor"),
+    "screenshotEditorSaveAs",
+  );
+  // A plain Ctrl+C must not leak into the terminal scope where it would steal SIGINT.
+  assert.equal(
+    workspaceShortcutFromKeyboardEvent(keyEvent("c", { ctrlKey: true }), {}, "terminal"),
+    null,
+  );
+  // A rebind flows through the shared overrides map like any other action.
+  assert.equal(
+    workspaceShortcutFromKeyboardEvent(
+      keyEvent("e", { ctrlKey: true }),
+      { screenshotEditorCopy: "Ctrl+E" },
+      "screenshotEditor",
+    ),
+    "screenshotEditorCopy",
+  );
+});
+
 test("overrides rebind and unbind actions", () => {
   const overrides = { newTab: "Ctrl+Shift+N", closeTab: null } as Record<string, string | null>;
   assert.equal(
@@ -131,13 +161,36 @@ test("fixed terminal aliases cannot be stolen by other configurable actions", ()
   assert.equal(conflictingWorkspaceShortcutAction("Ctrl+Shift+V", {}, "paste"), null);
 });
 
-test("every action has a unique default binding or is unbound", () => {
-  const seen = new Set<string>();
+test("default bindings are unique within a namespace but may repeat across namespaces", () => {
+  // Mirror the source grouping: workspace/terminal share one namespace; the
+  // Screenshots editor modal is isolated, so it may reuse the same key.
+  const namespaceOf = (scope: string) => (scope === "screenshotEditor" ? "screenshotEditor" : "app");
+  const seen = new Map<string, Set<string>>();
   for (const action of WORKSPACE_SHORTCUT_ACTIONS) {
     if (action.defaultBinding === null) {
       continue;
     }
-    assert.ok(!seen.has(action.defaultBinding), `duplicate default binding ${action.defaultBinding}`);
-    seen.add(action.defaultBinding);
+    const namespace = namespaceOf(action.scope);
+    const used = seen.get(namespace) ?? new Set<string>();
+    assert.ok(
+      !used.has(action.defaultBinding),
+      `duplicate default binding ${action.defaultBinding} in ${namespace} namespace`,
+    );
+    used.add(action.defaultBinding);
+    seen.set(namespace, used);
   }
+});
+
+test("conflict detection is isolated to the recording action's namespace", () => {
+  // The editor's Ctrl+C default must not block reusing Ctrl+C for a workspace or
+  // terminal action, and vice versa — they live in separate namespaces.
+  assert.equal(conflictingWorkspaceShortcutAction("Ctrl+C", {}, "newTab"), null);
+  assert.equal(conflictingWorkspaceShortcutAction("Ctrl+Shift+C", {}, "screenshotEditorCopy"), null);
+  // Within the editor namespace, a real collision is still reported.
+  assert.equal(
+    conflictingWorkspaceShortcutAction("Ctrl+S", {}, "screenshotEditorCopy")?.id,
+    "screenshotEditorSave",
+  );
+  // Fixed terminal aliases only guard the shared app namespace.
+  assert.equal(conflictingWorkspaceShortcutAction("Ctrl+Insert", {}, "screenshotEditorCopy"), null);
 });

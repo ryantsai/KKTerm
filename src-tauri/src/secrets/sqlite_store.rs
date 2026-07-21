@@ -128,6 +128,71 @@ impl SqliteSecretStore {
         self.write_by_key(&storage_key(SENTINEL_KEY), SENTINEL_PLAINTEXT)
     }
 
+    pub(super) fn rotate_password(&self, new_password: String) -> Result<Self, String> {
+        self.initialize_or_verify(false)?;
+        let replacement = Self::new(self.db_path.clone(), new_password)?;
+        let mut connection = self.open()?;
+        let transaction = connection.transaction().map_err(|error| {
+            format!("Could not start encrypted SQLite secret rotation: {error}")
+        })?;
+        let rows = {
+            let mut statement = transaction
+                .prepare(
+                    "SELECT secret_key, version, kdf, cipher, salt, nonce, ciphertext
+                     FROM encrypted_secret_store_entries",
+                )
+                .map_err(|error| {
+                    format!("Could not read encrypted SQLite secrets for rotation: {error}")
+                })?;
+            let mapped = statement
+                .query_map([], |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        EncryptedSecretRow {
+                            version: row.get::<_, u8>(1)?,
+                            kdf: row.get(2)?,
+                            cipher: row.get(3)?,
+                            salt: row.get(4)?,
+                            nonce: row.get(5)?,
+                            ciphertext: row.get(6)?,
+                        },
+                    ))
+                })
+                .map_err(|error| {
+                    format!("Could not read encrypted SQLite secrets for rotation: {error}")
+                })?;
+            mapped.collect::<Result<Vec<_>, _>>().map_err(|error| {
+                format!("Could not read encrypted SQLite secrets for rotation: {error}")
+            })?
+        };
+
+        for (key, row) in rows {
+            let plaintext = decrypt_secret(&self.password, &key, row)?;
+            let encrypted = encrypt_secret(&replacement.password, &key, &plaintext)?;
+            transaction
+                .execute(
+                    "UPDATE encrypted_secret_store_entries
+                     SET version = ?2, kdf = ?3, cipher = ?4, salt = ?5,
+                         nonce = ?6, ciphertext = ?7, updated_at = CURRENT_TIMESTAMP
+                     WHERE secret_key = ?1",
+                    params![
+                        key,
+                        encrypted.version,
+                        encrypted.kdf,
+                        encrypted.cipher,
+                        encrypted.salt,
+                        encrypted.nonce,
+                        encrypted.ciphertext
+                    ],
+                )
+                .map_err(|error| format!("Could not rotate encrypted SQLite secret: {error}"))?;
+        }
+        transaction.commit().map_err(|error| {
+            format!("Could not commit encrypted SQLite secret rotation: {error}")
+        })?;
+        Ok(replacement)
+    }
+
     fn open(&self) -> Result<Connection, String> {
         Connection::open(&self.db_path).map_err(|error| {
             format!(

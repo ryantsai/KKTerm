@@ -54,6 +54,13 @@ pub struct ConfigureEncryptedFileSecretStoreRequest {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ChangeEncryptedFileSecretStorePasswordRequest {
+    current_password: String,
+    new_password: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct StoreSecretRequest {
     kind: SecretKind,
     owner_id: String,
@@ -415,6 +422,28 @@ impl Secrets {
         } else {
             store.initialize_or_verify(request.create_if_missing)?;
         }
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|_| "secret store state lock is poisoned".to_string())?;
+        *state = SecretStoreState {
+            backend: Some("Encrypted SQLite secret store".to_string()),
+            store: Some(Box::new(store)),
+            init_error: None,
+            selected_store: "file".to_string(),
+        };
+        drop(state);
+        Ok(self.status())
+    }
+
+    pub fn change_encrypted_file_store_password(
+        &self,
+        request: ChangeEncryptedFileSecretStorePasswordRequest,
+    ) -> Result<KeychainStatus, String> {
+        let _guard = self.lock()?;
+        let store =
+            SqliteSecretStore::from_password(self.db_path.clone(), request.current_password)?;
+        let store = store.rotate_password(request.new_password)?;
         let mut state = self
             .state
             .lock()
@@ -1043,6 +1072,92 @@ mod tests {
                 })
                 .expect("presence check succeeds")
                 .exists()
+        );
+    }
+
+    #[test]
+    fn encrypted_sqlite_store_password_rotation_preserves_credentials() {
+        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let path = temp_dir.path().join("kkterm.sqlite3");
+        crate::storage::Storage::open(path.clone()).expect("storage opens");
+        let old_store =
+            super::sqlite_store::SqliteSecretStore::new(path, "old-password".to_string())
+                .expect("old store");
+        let connection_password = SecretReference::new(
+            SecretKind::ConnectionPassword,
+            "rotation-connection".to_string(),
+        )
+        .expect("connection password reference");
+        let api_key = SecretReference::new(SecretKind::AiApiKey, "rotation-api-key".to_string())
+            .expect("api key reference");
+
+        old_store
+            .initialize_or_verify(true)
+            .expect("store sentinel is created");
+        old_store
+            .write(&connection_password, "connection-secret")
+            .expect("connection password is stored");
+        old_store
+            .write(&api_key, "api-secret")
+            .expect("api key is stored");
+
+        let new_store = old_store
+            .rotate_password("new-password".to_string())
+            .expect("password rotation succeeds");
+
+        assert_eq!(
+            new_store
+                .read(&connection_password)
+                .expect("connection password can be read")
+                .as_deref(),
+            Some("connection-secret")
+        );
+        assert_eq!(
+            new_store
+                .read(&api_key)
+                .expect("api key can be read")
+                .as_deref(),
+            Some("api-secret")
+        );
+        assert!(old_store.read(&connection_password).is_err());
+    }
+
+    #[test]
+    fn encrypted_sqlite_store_password_rotation_rejects_wrong_current_password() {
+        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let path = temp_dir.path().join("kkterm.sqlite3");
+        crate::storage::Storage::open(path.clone()).expect("storage opens");
+        let store = super::sqlite_store::SqliteSecretStore::new(
+            path.clone(),
+            "current-password".to_string(),
+        )
+        .expect("store");
+        let reference = SecretReference::new(
+            SecretKind::ConnectionPassword,
+            "unchanged-after-failed-rotation".to_string(),
+        )
+        .expect("reference");
+        store
+            .initialize_or_verify(true)
+            .expect("store sentinel is created");
+        store
+            .write(&reference, "keep-me")
+            .expect("secret is stored");
+
+        let wrong_store =
+            super::sqlite_store::SqliteSecretStore::new(path, "wrong-password".to_string())
+                .expect("wrong-password store");
+        assert!(
+            wrong_store
+                .rotate_password("unused-new-password".to_string())
+                .is_err()
+        );
+        assert_eq!(
+            store
+                .read(&reference)
+                .expect("original store still works")
+                .as_deref(),
+            Some("keep-me")
         );
     }
 

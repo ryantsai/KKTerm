@@ -69,6 +69,7 @@ const NON_SEARCHABLE_KEYS: Record<SettingsSectionId, readonly string[]> = {
     "settings.credentialDeleted", "settings.credentialStorageActive",
     "settings.credentialStorageSaved", "settings.credentialStorageUnavailable",
     "settings.credentialStorageUnknownStatus", "settings.encryptedSecretStoreConfigured",
+    "settings.encryptedSecretStorePasswordChanged",
     "settings.widgetCredentialsEmpty",
     "settings.credentialMissingSecret", "settings.deleteCredentialConfirmBody",
     "settings.credentialColumnDetails", "settings.credentialColumnName",

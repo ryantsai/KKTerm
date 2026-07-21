@@ -559,6 +559,149 @@ pub fn tool_descriptors() -> Vec<Value> {
             "description": "DANGEROUS: wipe the entire Dashboard — all views, instances, and AI-Created Widgets. Irreversible. Requires Allow-all.",
             "inputSchema": {"type": "object", "properties": {}, "additionalProperties": false},
         }),
+        json!({
+            "name": "kkterm.screenshots.list",
+            "description": "List the Screenshots Module library with paginated thumbnails and metadata. sortBy is date, name, or type; sortDirection is asc or desc.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "offset": {"type": "integer", "minimum": 0},
+                    "limit": {"type": "integer", "minimum": 1, "maximum": 200},
+                    "sortBy": {"type": "string", "enum": ["date", "name", "type"]},
+                    "sortDirection": {"type": "string", "enum": ["asc", "desc"]},
+                },
+                "additionalProperties": false,
+            },
+        }),
+        json!({
+            "name": "kkterm.screenshots.dangerous.read",
+            "description": "DANGEROUS: read one library screenshot by id, returning the full image as a base64 data URL. Screenshots may contain sensitive screen content. Requires Allow-all.",
+            "inputSchema": id_input_schema("id"),
+        }),
+        json!({
+            "name": "kkterm.screenshots.rename",
+            "description": "Rename one library screenshot by id while preserving its image extension.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {"id": {"type": "string"}, "newName": {"type": "string", "minLength": 1}},
+                "required": ["id", "newName"],
+                "additionalProperties": false,
+            },
+        }),
+        json!({
+            "name": "kkterm.screenshots.copy_to_clipboard",
+            "description": "Copy one library screenshot by id to the operating-system clipboard.",
+            "inputSchema": id_input_schema("id"),
+        }),
+        json!({
+            "name": "kkterm.screenshots.resize",
+            "description": "Resize one or more library screenshots into new files; originals are preserved. mode is exact or percentage.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "ids": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+                    "mode": {"type": "string", "enum": ["exact", "percentage"]},
+                    "width": {"type": "integer", "minimum": 1},
+                    "height": {"type": "integer", "minimum": 1},
+                    "percentage": {"type": "integer", "minimum": 1},
+                    "preserveAspectRatio": {"type": "boolean"},
+                },
+                "required": ["ids", "mode", "preserveAspectRatio"],
+                "additionalProperties": false,
+            },
+        }),
+        json!({
+            "name": "kkterm.screenshots.convert",
+            "description": "Convert one or more library screenshots into new files; originals are preserved.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "ids": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+                    "format": {"type": "string", "enum": ["png", "jpeg", "webp", "gif"]},
+                    "quality": {"type": "integer", "minimum": 1, "maximum": 100},
+                },
+                "required": ["ids", "format", "quality"],
+                "additionalProperties": false,
+            },
+        }),
+        json!({
+            "name": "kkterm.screenshots.dangerous.save_edited",
+            "description": "DANGEROUS: save edited image data over a library screenshot or as a copy. Overwrite mode replaces the original file. Requires Allow-all.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string"},
+                    "dataUrl": {"type": "string"},
+                    "saveAsCopy": {"type": "boolean"},
+                },
+                "required": ["id", "dataUrl", "saveAsCopy"],
+                "additionalProperties": false,
+            },
+        }),
+        json!({
+            "name": "kkterm.screenshots.dangerous.delete",
+            "description": "DANGEROUS: permanently delete one library screenshot by id. Requires Allow-all.",
+            "inputSchema": id_input_schema("id"),
+        }),
+        json!({
+            "name": "kkterm.screenshots.dangerous.delete_batch",
+            "description": "DANGEROUS: permanently delete multiple library screenshots by id. Requires Allow-all.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {"ids": {"type": "array", "items": {"type": "string"}, "minItems": 1}},
+                "required": ["ids"],
+                "additionalProperties": false,
+            },
+        }),
+        json!({
+            "name": "kkterm.screenshots.dangerous.clear",
+            "description": "DANGEROUS: permanently delete every screenshot in the configured library folder. Requires Allow-all.",
+            "inputSchema": {"type": "object", "properties": {}, "additionalProperties": false},
+        }),
+        json!({
+            "name": "kkterm.screenshots.open_folder",
+            "description": "Open the configured screenshot library folder in the operating-system file manager.",
+            "inputSchema": {"type": "object", "properties": {}, "additionalProperties": false},
+        }),
+        json!({
+            "name": "kkterm.screenshots.reveal",
+            "description": "Reveal one library screenshot by id in the operating-system file manager.",
+            "inputSchema": id_input_schema("id"),
+        }),
+        json!({
+            "name": "kkterm.screenshots.open_file",
+            "description": "Open one library screenshot by id in the operating system's default image application.",
+            "inputSchema": id_input_schema("id"),
+        }),
+        json!({
+            "name": "kkterm.screenshots.dangerous.capture_rect",
+            "description": "DANGEROUS: capture an exact screen rectangle using monitor coordinates and the persisted Screenshots settings. Screen content may be sensitive. Requires Allow-all.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "x": {"type": "number"}, "y": {"type": "number"},
+                    "width": {"type": "number", "exclusiveMinimum": 0},
+                    "height": {"type": "number", "exclusiveMinimum": 0},
+                },
+                "required": ["x", "y", "width", "height"],
+                "additionalProperties": false,
+            },
+        }),
+        json!({
+            "name": "kkterm.screenshots.dangerous.capture_region",
+            "description": "DANGEROUS: open the interactive region selector and capture the chosen screen area using the persisted Screenshots settings. Screen content may be sensitive. Requires Allow-all.",
+            "inputSchema": capture_library_input_schema(),
+        }),
+        json!({
+            "name": "kkterm.screenshots.dangerous.capture_window",
+            "description": "DANGEROUS: interactively select and capture a window using the persisted Screenshots settings. Screen content may be sensitive. Requires Allow-all.",
+            "inputSchema": capture_library_input_schema(),
+        }),
+        json!({
+            "name": "kkterm.screenshots.dangerous.capture_fullscreen",
+            "description": "DANGEROUS: capture the full virtual screen across all monitors using the persisted Screenshots settings. Screen content may be sensitive. Requires Allow-all.",
+            "inputSchema": capture_library_input_schema(),
+        }),
         // -- IT Ops: Site topology + Rack Devices (kkterm.itops.*) ---------
         json!({
             "name": "kkterm.itops.sites.list",
@@ -826,6 +969,110 @@ pub fn tool_descriptors() -> Vec<Value> {
                 "required": ["siteId"],
                 "additionalProperties": false,
             },
+        }),
+        json!({
+            "name": "kkterm.itops.sites.reorder",
+            "description": "Reorder IT Ops Sites by supplying every Site id in the desired order.",
+            "inputSchema": ordered_ids_input_schema(false),
+        }),
+        json!({
+            "name": "kkterm.itops.sites.resolve",
+            "description": "Resolve one Site by id to its runnable Connection-backed hosts.",
+            "inputSchema": id_input_schema("id"),
+        }),
+        json!({
+            "name": "kkterm.itops.server_rooms.duplicate",
+            "description": "Duplicate a Server Room and all of its Racks, Rack Device placements, and Room Objects under a new name and floor color.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {"id": {"type": "string"}, "name": {"type": "string"}, "floorColor": {"type": "string"}},
+                "required": ["id", "name", "floorColor"],
+                "additionalProperties": false,
+            },
+        }),
+        json!({
+            "name": "kkterm.itops.racks.duplicate",
+            "description": "Duplicate a Rack and its Rack Device placements with full Rack values and optional grid placement/facing.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string"}, "name": {"type": "string"}, "serverRoom": {"type": "string"},
+                    "rackGroup": {"type": "string"}, "shell": {"type": "string"},
+                    "heightU": {"type": "integer", "minimum": 1}, "depthMm": {"type": "integer", "minimum": 1},
+                    "powerCapacityW": {"type": "integer", "minimum": 0}, "gridX": {"type": "integer"},
+                    "gridY": {"type": "integer"}, "facing": {"type": "integer", "minimum": 0, "maximum": 3}
+                },
+                "required": ["id", "name", "serverRoom", "heightU", "depthMm"],
+                "additionalProperties": false,
+            },
+        }),
+        json!({
+            "name": "kkterm.itops.racks.reorder",
+            "description": "Reorder the Racks of one Site by supplying every Rack id in the desired order.",
+            "inputSchema": ordered_ids_input_schema(true),
+        }),
+        json!({
+            "name": "kkterm.itops.racks.set_placements",
+            "description": "Batch-set Server Room View placements for Racks. kind is floor for pixel coordinates or grid for 2.5D cells.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "kind": {"type": "string", "enum": ["floor", "grid"]},
+                    "entries": {"type": "array", "items": {"type": "object", "properties": {"id": {"type": "string"}, "x": {"type": "number"}, "y": {"type": "number"}}, "required": ["id", "x", "y"], "additionalProperties": false}}
+                },
+                "required": ["kind", "entries"],
+                "additionalProperties": false,
+            },
+        }),
+        json!({
+            "name": "kkterm.itops.racks.set_facings",
+            "description": "Batch-set Rack quarter-turn facings in Server Room View.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {"entries": {"type": "array", "items": {"type": "object", "properties": {"id": {"type": "string"}, "facing": {"type": "integer", "minimum": 0, "maximum": 3}}, "required": ["id", "facing"], "additionalProperties": false}}},
+                "required": ["entries"],
+                "additionalProperties": false,
+            },
+        }),
+        json!({
+            "name": "kkterm.itops.room_objects.list",
+            "description": "List all non-Rack Room Objects in one Server Room.",
+            "inputSchema": site_room_input_schema(false),
+        }),
+        json!({
+            "name": "kkterm.itops.room_objects.set",
+            "description": "Replace one Server Room's complete Room Object set.",
+            "inputSchema": site_room_input_schema(true),
+        }),
+        json!({
+            "name": "kkterm.itops.sites.set_background",
+            "description": "Set or clear one Site's presentation background. Pass background null to clear it.",
+            "inputSchema": background_input_schema("siteId"),
+        }),
+        json!({
+            "name": "kkterm.itops.server_rooms.set_background",
+            "description": "Set or clear one Server Room's presentation background within a Site.",
+            "inputSchema": site_room_value_input_schema("background"),
+        }),
+        json!({
+            "name": "kkterm.itops.server_rooms.set_icon",
+            "description": "Set or clear one Server Room's icon metadata within a Site.",
+            "inputSchema": site_room_value_input_schema("icon"),
+        }),
+        json!({
+            "name": "kkterm.itops.racks.set_background",
+            "description": "Set or clear one Rack's presentation background. Pass background null to clear it.",
+            "inputSchema": background_input_schema("id"),
+        }),
+        json!({
+            "name": "kkterm.itops.rack_items.refresh_snmp",
+            "description": "Refresh one Rack Device's SNMP telemetry using its existing Connection and SNMP metadata.",
+            "inputSchema": id_input_schema("id"),
+        }),
+        json!({
+            "name": "kkterm.itops.connections.get",
+            "description": "Read one saved Connection by id for an IT Ops Rack Device binding. Secret values are never returned.",
+            "inputSchema": id_input_schema("id"),
         }),
         json!({
             "name": "kkterm.itops.tasks.list",
@@ -1274,6 +1521,78 @@ pub fn connection_input_schema(id_name: Option<&str>) -> Value {
             .insert(0, json!(id_name));
     }
     schema
+}
+
+fn ordered_ids_input_schema(include_site_id: bool) -> Value {
+    let mut properties = serde_json::Map::from_iter([(
+        "orderedIds".to_string(),
+        json!({"type": "array", "items": {"type": "string"}}),
+    )]);
+    let mut required = vec![json!("orderedIds")];
+    if include_site_id {
+        properties.insert("siteId".to_string(), json!({"type": "string"}));
+        required.insert(0, json!("siteId"));
+    }
+    json!({"type": "object", "properties": properties, "required": required, "additionalProperties": false})
+}
+
+fn background_input_schema(id_name: &str) -> Value {
+    json!({
+        "type": "object",
+        "properties": {(id_name): {"type": "string"}, "background": {"type": ["object", "null"]}},
+        "required": [id_name, "background"],
+        "additionalProperties": false,
+    })
+}
+
+fn site_room_value_input_schema(value_name: &str) -> Value {
+    json!({
+        "type": "object",
+        "properties": {
+            "siteId": {"type": "string"},
+            "serverRoom": {"type": "string"},
+            (value_name): {"type": ["object", "null"]},
+        },
+        "required": ["siteId", "serverRoom", value_name],
+        "additionalProperties": false,
+    })
+}
+
+fn site_room_input_schema(include_objects: bool) -> Value {
+    let mut properties = serde_json::Map::from_iter([
+        ("siteId".to_string(), json!({"type": "string"})),
+        ("serverRoom".to_string(), json!({"type": "string"})),
+    ]);
+    let mut required = vec![json!("siteId"), json!("serverRoom")];
+    if include_objects {
+        properties.insert(
+            "objects".to_string(),
+            json!({
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "string"}, "kind": {"type": "string"},
+                        "x": {"type": "integer"}, "y": {"type": "integer"},
+                        "z": {"type": "integer"}, "rot": {"type": "integer"},
+                        "corner": {"type": ["integer", "null"]},
+                    },
+                    "required": ["id", "kind", "x", "y", "z", "rot"],
+                    "additionalProperties": false,
+                }
+            }),
+        );
+        required.push(json!("objects"));
+    }
+    json!({"type": "object", "properties": properties, "required": required, "additionalProperties": false})
+}
+
+fn capture_library_input_schema() -> Value {
+    json!({
+        "type": "object",
+        "properties": {"minimizeWindow": {"type": "boolean"}},
+        "additionalProperties": false,
+    })
 }
 
 fn site_id_input_schema() -> Value {

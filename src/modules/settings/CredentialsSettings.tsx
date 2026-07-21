@@ -16,6 +16,7 @@ import type {
   UrlCredentialSummary,
 } from "../../types";
 import { CredentialDeleteConfirmDialog } from "./CredentialDeleteConfirmDialog";
+import { EncryptedSecretStoreChangePasswordDialog } from "./EncryptedSecretStoreChangePasswordDialog";
 import { EncryptedSecretStoreDialog } from "./EncryptedSecretStoreDialog";
 import {
   credentialStorageSelectionAction,
@@ -84,8 +85,11 @@ export function CredentialsSettings() {
   const [secretStatus, setSecretStatus] = useState<KeychainStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [encryptedStoreDialogOpen, setEncryptedStoreDialogOpen] = useState(false);
+  const [encryptedStoreReset, setEncryptedStoreReset] = useState(false);
   const [encryptedStoreBusy, setEncryptedStoreBusy] = useState(false);
   const [encryptedStoreError, setEncryptedStoreError] = useState<string | null>(null);
+  const [changePasswordDialogOpen, setChangePasswordDialogOpen] = useState(false);
+  const [changePasswordBusy, setChangePasswordBusy] = useState(false);
   const hasChanges = JSON.stringify(draft) !== JSON.stringify(credentialSettings);
 
   const { storedCredentials, widgetCredentials } = useMemo(
@@ -213,12 +217,40 @@ export function CredentialsSettings() {
 
   function closeEncryptedStoreDialog() {
     setEncryptedStoreDialogOpen(false);
+    setEncryptedStoreReset(false);
     setEncryptedStoreError(null);
   }
 
-  function openEncryptedStoreDialog() {
+  function openEncryptedStoreDialog(resetExisting = false) {
     setEncryptedStoreError(null);
+    setEncryptedStoreReset(resetExisting);
     setEncryptedStoreDialogOpen(true);
+  }
+
+  async function changeEncryptedStorePassword(request: {
+    currentPassword: string;
+    newPassword: string;
+  }) {
+    try {
+      setChangePasswordBusy(true);
+      const status = isTauriRuntime()
+        ? await invokeCommand("change_encrypted_file_secret_store_password", { request })
+        : {
+            available: true,
+            service: "com.kkterm.app",
+            backend: t("settings.credentialStorageFile"),
+            selectedStore: "file" as const,
+            availableStores: ["os" as const, "file" as const],
+            encryptedStoreExists: true,
+          };
+      setSecretStatus(status);
+      setChangePasswordDialogOpen(false);
+      showStatusBarNotice(t("settings.encryptedSecretStorePasswordChanged"), { tone: "success" });
+    } catch (error) {
+      showStatusBarNotice(error instanceof Error ? error.message : String(error), { tone: "error" });
+    } finally {
+      setChangePasswordBusy(false);
+    }
   }
 
   async function deleteCredential(credential: StoredCredentialSummary) {
@@ -314,14 +346,44 @@ export function CredentialsSettings() {
                   })}
             </small>
           </label>
-          {selectedSecretStore === "file" && !secretStatus?.available ? (
-            <button
-              className="secondary-button"
-              type="button"
-              onClick={() => openEncryptedStoreDialog()}
-            >
-              {t("settings.encryptedSecretStoreSetupAction")}
-            </button>
+          {selectedSecretStore === "file" ? (
+            <div className="encrypted-secret-store-settings-actions">
+              {secretStatus?.encryptedStoreExists ? (
+                <>
+                  {!secretStatus.available ? (
+                    <button
+                      className="secondary-button"
+                      type="button"
+                      onClick={() => openEncryptedStoreDialog()}
+                    >
+                      {t("settings.encryptedSecretStoreUnlockAction")}
+                    </button>
+                  ) : null}
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    onClick={() => setChangePasswordDialogOpen(true)}
+                  >
+                    {t("settings.encryptedSecretStoreChangePasswordAction")}
+                  </button>
+                  <button
+                    className="secondary-button danger"
+                    type="button"
+                    onClick={() => openEncryptedStoreDialog(true)}
+                  >
+                    {t("settings.encryptedSecretStoreResetAction")}
+                  </button>
+                </>
+              ) : (
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={() => openEncryptedStoreDialog()}
+                >
+                  {t("settings.encryptedSecretStoreSetupAction")}
+                </button>
+              )}
+            </div>
           ) : null}
         </div>
         <p className="field-hint settings-security-note">{t(securityReminderKey)}</p>
@@ -398,13 +460,25 @@ export function CredentialsSettings() {
           busy={encryptedStoreBusy}
           encryptedStoreExists={secretStatus?.encryptedStoreExists}
           error={encryptedStoreError}
-          initialMode={encryptedSecretStoreInitialMode({
-            encryptedStoreExists: secretStatus?.encryptedStoreExists,
-          })}
+          initialMode={
+            encryptedStoreReset
+              ? "create"
+              : encryptedSecretStoreInitialMode({
+                  encryptedStoreExists: secretStatus?.encryptedStoreExists,
+                })
+          }
+          initialResetExisting={encryptedStoreReset}
           launchPrompt={false}
           platform={platform}
           onCancel={closeEncryptedStoreDialog}
           onSubmit={configureEncryptedStore}
+        />
+      ) : null}
+      {changePasswordDialogOpen ? (
+        <EncryptedSecretStoreChangePasswordDialog
+          busy={changePasswordBusy}
+          onCancel={() => setChangePasswordDialogOpen(false)}
+          onSubmit={changeEncryptedStorePassword}
         />
       ) : null}
     </section>

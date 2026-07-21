@@ -921,6 +921,14 @@ fn configure_encrypted_file_secret_store(
     Ok(ConfigureEncryptedFileSecretStoreResult { settings, status })
 }
 
+#[tauri::command]
+fn change_encrypted_file_secret_store_password(
+    secrets: tauri::State<'_, secrets::Secrets>,
+    request: secrets::ChangeEncryptedFileSecretStorePasswordRequest,
+) -> Result<secrets::KeychainStatus, String> {
+    secrets.change_encrypted_file_store_password(request)
+}
+
 /// Frontend -> backend push of a script widget's latest runtime-health state
 /// (from `ScriptWidgetHost`'s smoke test / watchdog) so the assistant's
 /// `dashboard_check_widget_health` tool can read it in the same turn.
@@ -4554,6 +4562,7 @@ pub fn run() {
             get_credential_settings,
             update_credential_settings,
             configure_encrypted_file_secret_store,
+            change_encrypted_file_secret_store_password,
             dashboard_report_widget_health,
             prepare_app_launcher_entry,
             launch_app_launcher_entry,

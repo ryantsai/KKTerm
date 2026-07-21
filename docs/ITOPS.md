@@ -525,9 +525,11 @@ i18n rules in `AGENTS.md`. New dialogs/sheets follow
 ## AI Assistant integration
 
 IT Ops commands are registered as approval-gated assistant tools, the
-same model Dashboard uses. The `itops_*` tool surface covers the Module's
-operations end to end: Site/Server Room/Rack/Rack Device lifecycle, Host
-inventory (create/update/delete/import/scan), the global Task Library
+same model Dashboard uses. The shared `itops_*` execution surface covers the
+Module's backend operations end to end: Site/Server Room/Rack/Rack Device
+lifecycle, ordering and duplication, spatial Rack placement/facing and Room
+Objects, presentation backgrounds/icons, SNMP refresh, Host inventory
+(create/update/delete/import/scan), the global Task Library
 (list/get/create/update/remove, with built-ins read-only), durable
 Automations (list/create/update/set-enabled/remove plus a one-shot
 `itops_test_automation` dry run), and Batch Runs
