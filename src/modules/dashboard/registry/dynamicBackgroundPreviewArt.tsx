@@ -112,6 +112,30 @@ BUILDERS.ocean = (id) => {
   return svgWrap(id, inner, d);
 };
 
+/* Misty Sea — low sunset, layered haze, dark perspective waves and broken reflection */
+BUILDERS.mistySea = (id) => {
+  const d = lg(id+'sky',[[0,'#281426'],[.58,'#87404d'],[1,'#ef8b65']],0,0,0,1)
+    + lg(id+'sea',[[0,'#351521'],[.45,'#190b15'],[1,'#08070e']],0,0,0,1)
+    + rg(id+'sun',[[0,'#fff7d6',1],[.16,'#ffd29b',.9],[.48,'#f09a7b',.22],[1,'#f09a7b',0]],80,50,35)
+    + blurFilter(id+'mist',2.8);
+  let waves = '';
+  for(let i=0;i<8;i++){
+    const y=54+i*6.7, amp=1.2+i*.34, op=.18+i*.065;
+    waves += `<path class="anim" style="animation:driftX ${12-i*.7}s linear infinite" d="M-24,${y} q18,-${amp} 36,0 t36,0 t36,0 t36,0 t36,0" fill="none" stroke="rgba(244,205,197,${op})" stroke-width="${.65+i*.08}"/>`;
+  }
+  const clouds = `<g filter="url(#${id}mist)" fill="#d7868e" opacity=".3">
+    <ellipse cx="24" cy="28" rx="34" ry="6"/><ellipse cx="103" cy="23" rx="43" ry="7"/><ellipse cx="148" cy="38" rx="31" ry="5"/></g>`;
+  const inner = `<rect width="160" height="51" fill="url(#${id}sky)"/>
+    <rect width="160" height="100" fill="url(#${id}sun)"/>
+    <g class="anim drift" style="--d:42s">${loopX(clouds)}</g>
+    <circle cx="80" cy="49" r="6.5" fill="#fff7dc" class="anim br" style="--d:5s; transform-box:fill-box; transform-origin:center"/>
+    <rect y="51" width="160" height="49" fill="url(#${id}sea)"/>
+    <path d="M75,52 L85,52 L97,100 L63,100 Z" fill="#f7a17d" opacity=".13"/>
+    ${waves}
+    <rect width="160" height="100" fill="none" stroke="rgba(255,255,255,.06)"/>`;
+  return svgWrap(id, inner, d);
+};
+
 /* 5. 雨滴 — dark blue, slanted rain streaks, ripples bottom */
 BUILDERS.raindrops = (id) => {
   const d = lg(id+'bg',[[0,'#0e1a2a'],[.6,'#162638'],[1,'#0a1422']]);
