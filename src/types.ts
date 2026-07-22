@@ -918,6 +918,12 @@ export interface SelectiveManifest {
   createdAt: string;
   segments: string[];
   encrypted: boolean;
+  /**
+   * Secret backend the bundle's Settings segment selects (normalized to a store
+   * this machine supports), or null/undefined when the bundle carries no such
+   * selection. Only populated by `inspect_selective_database`.
+   */
+  credentialStore?: SecretStoreKind | null;
 }
 
 export interface SelectiveExportInfo {

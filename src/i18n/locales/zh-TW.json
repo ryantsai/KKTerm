@@ -2135,6 +2135,8 @@
     "exportPassphraseConfirm": "確認密碼片語",
     "exportPassphraseMismatch": "密碼片語不相符。",
     "importPassphrase": "密碼片語",
+    "importEncryptedStorePassword": "加密資料庫主密碼",
+    "importEncryptedStorePasswordHint": "這些密碼儲存在加密資料庫中。請輸入其主密碼以在本機解鎖，若尚未設定，請設定新的主密碼。",
     "selectiveExportComplete": "已將所選項目匯出至 {{filename}}。",
     "selectiveImportComplete": "已匯入 {{count}} 個類別。",
     "selectiveImportChooseFile": "選擇備份檔案...",

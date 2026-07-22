@@ -2135,6 +2135,8 @@
     "exportPassphraseConfirm": "Passphrase bestätigen",
     "exportPassphraseMismatch": "Passphrasen stimmen nicht überein.",
     "importPassphrase": "Passphrase",
+    "importEncryptedStorePassword": "Master-Passwort der verschlüsselten Datenbank",
+    "importEncryptedStorePasswordHint": "Diese Passwörter werden in der verschlüsselten Datenbank gespeichert. Geben Sie ihr Master-Passwort ein, um sie auf diesem Gerät zu entsperren, oder legen Sie ein neues fest, falls sie noch nicht eingerichtet ist.",
     "selectiveExportComplete": "Auswahl nach {{filename}} exportiert.",
     "selectiveImportComplete": "{{count}} Kategorie(n) importiert.",
     "selectiveImportChooseFile": "Sicherungsdatei auswählen...",

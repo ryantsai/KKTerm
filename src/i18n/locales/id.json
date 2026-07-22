@@ -2135,6 +2135,8 @@
     "exportPassphraseConfirm": "Konfirmasi frasa sandi",
     "exportPassphraseMismatch": "Frasa sandi tidak cocok.",
     "importPassphrase": "Frasa sandi",
+    "importEncryptedStorePassword": "Kata sandi utama basis data terenkripsi",
+    "importEncryptedStorePasswordHint": "Kata sandi ini disimpan di basis data terenkripsi. Masukkan kata sandi utamanya untuk membukanya di mesin ini, atau tetapkan yang baru jika belum dikonfigurasi.",
     "selectiveExportComplete": "Pilihan diekspor ke {{filename}}.",
     "selectiveImportComplete": "{{count}} kategori diimpor.",
     "selectiveImportChooseFile": "Pilih File Cadangan...",

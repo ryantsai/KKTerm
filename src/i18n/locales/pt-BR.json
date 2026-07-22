@@ -2135,6 +2135,8 @@
     "exportPassphraseConfirm": "Confirmar frase secreta",
     "exportPassphraseMismatch": "As frases secretas não coincidem.",
     "importPassphrase": "Frase secreta",
+    "importEncryptedStorePassword": "Senha mestra do banco de dados criptografado",
+    "importEncryptedStorePasswordHint": "Essas senhas são armazenadas no banco de dados criptografado. Digite a senha mestra dele para desbloqueá-lo nesta máquina ou defina uma nova se ainda não estiver configurado.",
     "selectiveExportComplete": "Seleção exportada para {{filename}}.",
     "selectiveImportComplete": "{{count}} categoria(s) importada(s).",
     "selectiveImportChooseFile": "Escolher arquivo de backup...",

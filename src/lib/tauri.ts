@@ -1738,6 +1738,7 @@ type CommandMap = {
       path: string;
       actions: Record<string, string>;
       passphrase: string | null;
+      encryptedStorePassword: string | null;
     };
     result: SelectiveImportResult;
   };

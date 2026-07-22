@@ -2135,6 +2135,8 @@
     "exportPassphraseConfirm": "确认密码短语",
     "exportPassphraseMismatch": "密码短语不匹配。",
     "importPassphrase": "密码短语",
+    "importEncryptedStorePassword": "加密数据库主密码",
+    "importEncryptedStorePasswordHint": "这些密码存储在加密数据库中。请输入其主密码以在本机上解锁，如果尚未设置，请设置一个新密码。",
     "selectiveExportComplete": "已将所选项导出到 {{filename}}。",
     "selectiveImportComplete": "已导入 {{count}} 个类别。",
     "selectiveImportChooseFile": "选择备份文件...",

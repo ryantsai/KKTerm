@@ -2135,6 +2135,8 @@
     "exportPassphraseConfirm": "パスフレーズの確認",
     "exportPassphraseMismatch": "パスフレーズが一致しません。",
     "importPassphrase": "パスフレーズ",
+    "importEncryptedStorePassword": "暗号化データベースのマスターパスワード",
+    "importEncryptedStorePasswordHint": "これらのパスワードは暗号化データベースに保存されます。このマシンでロックを解除するにはマスターパスワードを入力してください。まだ設定されていない場合は新しく設定してください。",
     "selectiveExportComplete": "選択項目を {{filename}} にエクスポートしました。",
     "selectiveImportComplete": "{{count}} 個のカテゴリをインポートしました。",
     "selectiveImportChooseFile": "バックアップファイルを選択...",

@@ -43,6 +43,16 @@ pub struct CredentialSecretStoreStatus {
     unlocked: bool,
 }
 
+impl CredentialSecretStoreStatus {
+    pub(crate) fn selected_store(&self) -> &str {
+        &self.selected_store
+    }
+
+    pub(crate) fn unlocked(&self) -> bool {
+        self.unlocked
+    }
+}
+
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ConfigureEncryptedFileSecretStoreRequest {
@@ -50,6 +60,16 @@ pub struct ConfigureEncryptedFileSecretStoreRequest {
     create_if_missing: bool,
     #[serde(default)]
     reset_existing: bool,
+}
+
+impl ConfigureEncryptedFileSecretStoreRequest {
+    pub(crate) fn new(password: String, create_if_missing: bool, reset_existing: bool) -> Self {
+        Self {
+            password,
+            create_if_missing,
+            reset_existing,
+        }
+    }
 }
 
 #[derive(Deserialize)]
