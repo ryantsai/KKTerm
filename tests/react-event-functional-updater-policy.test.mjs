@@ -1,13 +1,20 @@
-import { readFileSync } from "node:fs";
-import { execFileSync } from "node:child_process";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import ts from "typescript";
 
-const files = execFileSync("rg", ["--files", "src", "-g", "*.tsx", "-g", "*.ts"], { encoding: "utf8" })
-  .trim()
-  .split("\n")
-  .filter(Boolean);
+function listTypeScriptFiles(directory) {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) {
+      return listTypeScriptFiles(path);
+    }
+    return entry.isFile() && /\.tsx?$/.test(entry.name) ? [path] : [];
+  });
+}
+
+const files = listTypeScriptFiles("src");
 
 const eventFieldReadPattern = /\bevent\.(?:currentTarget|target)\.(?:value|checked|files)\b/;
 
