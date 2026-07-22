@@ -127,7 +127,9 @@ function InstalledInfoBody({ recipe }: { recipe: Recipe }) {
   const detected = useInstallerStore((s) => s.detected[recipe.id]);
   const toolState = useInstallerStore((s) => s.toolState[recipe.id]);
   const latestError = useInstallerStore((s) => s.checkError[recipe.id]);
-  const checking = useInstallerStore((s) => s.checking);
+  const checking = useInstallerStore((s) =>
+    s.checkingToolIds.has(recipe.id),
+  );
   const allDetected = useInstallerStore((s) => s.detected);
   const catalog = useInstallerStore((s) => s.catalog);
   const closeDialog = useInstallerStore((s) => s.closeDialog);
@@ -428,7 +430,9 @@ function NotInstalledInfoBody({ recipe }: { recipe: Recipe }) {
   const detected = useInstallerStore((s) => s.detected);
   const toolState = useInstallerStore((s) => s.toolState[recipe.id]);
   const latestError = useInstallerStore((s) => s.checkError[recipe.id]);
-  const checking = useInstallerStore((s) => s.checking);
+  const checking = useInstallerStore((s) =>
+    s.checkingToolIds.has(recipe.id),
+  );
   const catalog = useInstallerStore((s) => s.catalog);
   const closeDialog = useInstallerStore((s) => s.closeDialog);
   const openInfoDialog = useInstallerStore((s) => s.openInfoDialog);

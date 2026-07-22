@@ -14,6 +14,10 @@ const page = await readFile(
   new URL("../src/modules/installer/InstallerPage.tsx", import.meta.url),
   "utf8",
 );
+const dialog = await readFile(
+  new URL("../src/modules/installer/InstallerToolDialog.tsx", import.meta.url),
+  "utf8",
+);
 
 test("a card's retrieving state is gated on per-tool membership, not the global checking flag", () => {
   // The retrieving placeholder must come from this tool's membership in the
@@ -54,5 +58,21 @@ test("the page count derivation also reads per-tool checking membership", () => 
     page,
     /checking: checkingToolIds\.has\(recipe\.id\)/,
     "statusFor must pass per-tool checking to deriveToolStatus",
+  );
+});
+
+test("each detail dialog reads the open tool's checking membership", () => {
+  const perToolSelectors = dialog.match(
+    /useInstallerStore\(\(s\) =>\s*s\.checkingToolIds\.has\(recipe\.id\),?\s*\)/g,
+  );
+  assert.equal(
+    perToolSelectors?.length,
+    2,
+    "installed and not-installed details must scope checking to their recipe",
+  );
+  assert.doesNotMatch(
+    dialog,
+    /useInstallerStore\(\(s\) => s\.checking\)/,
+    "detail dialogs must not disable refresh for another tool's check",
   );
 });
