@@ -2138,6 +2138,8 @@
     "exportPassphraseConfirm": "Confirmar frase de contraseña",
     "exportPassphraseMismatch": "Las frases de contraseña no coinciden.",
     "importPassphrase": "Frase de contraseña",
+    "importEncryptedStorePassword": "Contraseña maestra de la base de datos cifrada",
+    "importEncryptedStorePasswordHint": "Estas contraseñas se guardan en la base de datos cifrada. Ingresa su contraseña maestra para desbloquearla en esta computadora, o establece una nueva si aún no está configurada.",
     "selectiveExportComplete": "Selección exportada a {{filename}}.",
     "selectiveImportComplete": "Se importaron {{count}} categoría(s).",
     "selectiveImportChooseFile": "Elegir archivo de copia de seguridad...",

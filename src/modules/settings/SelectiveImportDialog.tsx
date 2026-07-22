@@ -14,7 +14,7 @@ import {
 import { useDashboardStore } from "../dashboard/state/dashboardStore";
 import { reloadDurableUiStatePrefix } from "../../lib/durableUiState";
 import { invokeCommand, selectSettingsBackupImportFile } from "../../lib/tauri";
-import type { SelectiveManifest } from "../../types";
+import type { CredentialSecretStoreStatus, SelectiveManifest } from "../../types";
 import { useWorkspaceStore } from "../../store";
 import { EXPORT_GROUPS } from "./SelectiveExportDialog";
 
@@ -41,6 +41,8 @@ export function SelectiveImportDialog({
   const [manifest, setManifest] = useState<SelectiveManifest | null>(null);
   const [actions, setActions] = useState<Record<string, SegmentAction>>({});
   const [passphrase, setPassphrase] = useState("");
+  const [encryptedStorePassword, setEncryptedStorePassword] = useState("");
+  const [machineStore, setMachineStore] = useState<CredentialSecretStoreStatus | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function handleChooseFile() {
@@ -56,6 +58,12 @@ export function SelectiveImportDialog({
       }
       setPath(chosen);
       setPassphrase("");
+      setEncryptedStorePassword("");
+      // Fetched outside the inspect try/catch so a status failure is not
+      // misread as "this is a full .zip backup". Used to decide whether
+      // importing credentials must set up or unlock this machine's encrypted
+      // database before the secrets can be written.
+      setMachineStore(await invokeCommand("credential_secret_store_status", undefined));
       try {
         const inspected = await invokeCommand("inspect_selective_database", { path: chosen });
         const initial: Record<string, SegmentAction> = {};
@@ -106,6 +114,9 @@ export function SelectiveImportDialog({
         path,
         actions,
         passphrase: manifest.encrypted ? passphrase : null,
+        // The backend ignores this unless the import must set up or unlock this
+        // machine's encrypted database, so an empty value is safe to send.
+        encryptedStorePassword: encryptedStorePassword.length > 0 ? encryptedStorePassword : null,
       });
       const importedSettings = result.applied.includes("settings");
       const importedConnections = result.applied.includes("connections");
@@ -170,7 +181,27 @@ export function SelectiveImportDialog({
     return (present && actions[present]) || "add";
   };
   const passphraseNeeded = Boolean(selectiveManifest?.encrypted) && actions.credentials !== "skip";
-  const canImport = Boolean(importKind) && !busy && (!passphraseNeeded || passphrase.length > 0);
+  // Importing the Settings group adopts the bundle's secret-store selection when
+  // it carries one; otherwise (and when Settings is not imported) the passwords
+  // land in the store this machine already uses. Mirrors the backend's
+  // `resolve_target_secret_store`.
+  const settingsImported =
+    Boolean(selectiveManifest?.segments.includes("settings")) && actions.settings !== "skip";
+  const targetStore =
+    settingsImported && selectiveManifest?.credentialStore
+      ? selectiveManifest.credentialStore
+      : machineStore?.selectedStore;
+  const targetIsFile = targetStore === "file";
+  const encryptedStoreReady =
+    machineStore?.selectedStore === "file" && machineStore.unlocked === true;
+  // A master password is required only when the passwords are headed for the
+  // encrypted database and it is not already set up and unlocked on this machine.
+  const encryptedSetupNeeded = passphraseNeeded && Boolean(targetIsFile) && !encryptedStoreReady;
+  const canImport =
+    Boolean(importKind) &&
+    !busy &&
+    (!passphraseNeeded || passphrase.length > 0) &&
+    (!encryptedSetupNeeded || encryptedStorePassword.length > 0);
 
   return (
     <DialogShell onBackdrop={onClose}>
@@ -253,6 +284,19 @@ export function SelectiveImportDialog({
                   type="password"
                   value={passphrase}
                   onChange={(event) => setPassphrase(event.currentTarget.value)}
+                />
+              </Field>
+            )}
+            {encryptedSetupNeeded && (
+              <Field
+                label={t("settings.importEncryptedStorePassword")}
+                hint={t("settings.importEncryptedStorePasswordHint")}
+                req
+              >
+                <TextInput
+                  type="password"
+                  value={encryptedStorePassword}
+                  onChange={(event) => setEncryptedStorePassword(event.currentTarget.value)}
                 />
               </Field>
             )}

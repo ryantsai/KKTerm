@@ -33,7 +33,7 @@ use time::format_description::well_known::Rfc3339;
 use zip::{ZipArchive, ZipWriter, write::SimpleFileOptions};
 
 use crate::secrets::{Secrets, StoreSecretRequest};
-use crate::storage::{DEFAULT_WORKSPACE_ID, Storage};
+use crate::storage::{self, DEFAULT_WORKSPACE_ID, Storage};
 
 const SELECTIVE_FORMAT: &str = "kkterm-selective-export";
 const SELECTIVE_VERSION: u32 = 2;
@@ -255,6 +255,13 @@ pub struct SelectiveManifest {
     pub created_at: String,
     pub segments: Vec<String>,
     pub encrypted: bool,
+    /// The secret backend the bundle's Settings segment selects, normalized to a
+    /// store this machine supports, or `None` when the bundle carries no Settings
+    /// credential selection. Populated on inspect from `data.json`; it is never
+    /// written into `manifest.json`, so older bundles simply deserialize to
+    /// `None`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub credential_store: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -354,6 +361,7 @@ fn export_selective_database_sync(
             .unwrap_or_else(|_| "unknown".to_string()),
         segments: segments.clone(),
         encrypted,
+        credential_store: None,
     };
 
     write_bundle(
@@ -543,10 +551,118 @@ fn collect_connection_secrets(
 #[tauri::command]
 pub async fn inspect_selective_database(path: String) -> Result<SelectiveManifest, String> {
     crate::run_blocking_command("selective database inspection", move || {
-        let (manifest, _data, _secrets) = read_bundle(Path::new(&path))?;
+        let (mut manifest, data, _secrets) = read_bundle(Path::new(&path))?;
+        manifest.credential_store = bundle_credential_store(&data);
         Ok(manifest)
     })
     .await
+}
+
+/// Normalize a stored secret-store name to a backend this machine actually
+/// supports (Linux offers only the encrypted file store), falling back to the
+/// platform default for anything unrecognized. Mirrors `Secrets::set_secret_store`.
+fn normalize_secret_store(raw: &str) -> String {
+    let requested = raw.trim().to_lowercase();
+    if storage::secret_store_options().contains(&requested.as_str()) {
+        requested
+    } else {
+        storage::default_secret_store()
+    }
+}
+
+/// The secret backend the bundle's Settings segment selects, if any, normalized
+/// to a store this machine supports. `None` when the bundle has no Settings
+/// segment or no `credentials` row inside it.
+fn bundle_credential_store(data: &Value) -> Option<String> {
+    let rows = data.get("settings")?.get("settings")?.as_array()?;
+    let raw = rows.iter().find_map(|row| {
+        let obj = row.as_object()?;
+        if obj.get("key").and_then(Value::as_str)? != "credentials" {
+            return None;
+        }
+        let value = obj.get("value").and_then(Value::as_str)?;
+        let parsed: Value = serde_json::from_str(value).ok()?;
+        parsed
+            .get("secretStore")
+            .and_then(Value::as_str)
+            .map(str::to_string)
+    })?;
+    Some(normalize_secret_store(&raw))
+}
+
+/// Where imported credentials must be written. Importing the Settings segment
+/// adopts the bundle's secret-store selection (the selection travels with
+/// Settings); otherwise credentials stay in the backend this machine already
+/// uses. The result is always a store this machine supports.
+fn resolve_target_secret_store(
+    settings_imported: bool,
+    bundle_store: Option<&str>,
+    current_store: &str,
+) -> String {
+    match (settings_imported, bundle_store) {
+        (true, Some(store)) => normalize_secret_store(store),
+        _ => normalize_secret_store(current_store),
+    }
+}
+
+/// Point the live secret backend at `target` before any credential is written,
+/// so a wrong master password fails before the database is touched (mirroring
+/// the up-front bundle-passphrase check) and decrypted secrets land in the store
+/// the import selected rather than whichever backend launched with the app.
+fn reconcile_secret_store_for_import(
+    secrets: &Secrets,
+    target: &str,
+    status: &crate::secrets::CredentialSecretStoreStatus,
+    password: Option<&str>,
+) -> Result<(), String> {
+    if target == "file" {
+        // Already the active, unlocked encrypted store — nothing to reconcile.
+        if status.selected_store() == "file" && status.unlocked() {
+            return Ok(());
+        }
+        let password = password
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .ok_or_else(|| {
+                "a master password is required to import credentials into this machine's encrypted database"
+                    .to_string()
+            })?;
+        // `create_if_missing` sets the store up on a fresh machine or verifies
+        // and unlocks an existing one, switching the runtime to the file store.
+        secrets.configure_encrypted_file_store(
+            crate::secrets::ConfigureEncryptedFileSecretStoreRequest::new(
+                password.to_string(),
+                true,
+                false,
+            ),
+        )?;
+    } else {
+        // The OS keystore is always available, so no extra secret is needed.
+        secrets.set_secret_store(target)?;
+    }
+    Ok(())
+}
+
+/// Validate any required encrypted-store password without creating the store or
+/// changing the live backend. This keeps missing/wrong-password failures ahead
+/// of both the safety backup and the imported database transaction.
+fn validate_secret_store_for_import(
+    secrets: &Secrets,
+    target: &str,
+    status: &crate::secrets::CredentialSecretStoreStatus,
+    password: Option<&str>,
+) -> Result<(), String> {
+    if target != "file" || (status.selected_store() == "file" && status.unlocked()) {
+        return Ok(());
+    }
+    let password = password
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| {
+            "a master password is required to import credentials into this machine's encrypted database"
+                .to_string()
+        })?;
+    secrets.validate_encrypted_file_store_password(password)
 }
 
 // ── Import ────────────────────────────────────────────────────────────────
@@ -557,9 +673,10 @@ pub async fn import_selective_database(
     path: String,
     actions: HashMap<String, String>,
     passphrase: Option<String>,
+    encrypted_store_password: Option<String>,
 ) -> Result<SelectiveImportResult, String> {
     crate::run_blocking_database_command("selective database import", move || {
-        import_selective_database_sync(&app, path, actions, passphrase)
+        import_selective_database_sync(&app, path, actions, passphrase, encrypted_store_password)
     })
     .await
 }
@@ -569,6 +686,7 @@ fn import_selective_database_sync(
     path: String,
     actions: HashMap<String, String>,
     passphrase: Option<String>,
+    encrypted_store_password: Option<String>,
 ) -> Result<SelectiveImportResult, String> {
     let storage = app.state::<Storage>();
     let secrets = app.state::<Secrets>();
@@ -608,6 +726,34 @@ fn import_selective_database_sync(
         Vec::new()
     };
 
+    // Resolve the destination and validate a required master password without
+    // creating the encrypted store or changing the live backend. Reconciliation
+    // happens after the database transaction, immediately before secret writes.
+    let target_secret_store: Option<String> = if credential_action != "skip" {
+        let settings_imported = actions.get("settings").map(String::as_str) != Some("skip")
+            && actions.contains_key("settings");
+        let bundle_store = if settings_imported {
+            bundle_credential_store(&data)
+        } else {
+            None
+        };
+        let status = secrets.credential_secret_store_status();
+        let target = resolve_target_secret_store(
+            settings_imported,
+            bundle_store.as_deref(),
+            status.selected_store(),
+        );
+        validate_secret_store_for_import(
+            &secrets,
+            &target,
+            &status,
+            encrypted_store_password.as_deref(),
+        )?;
+        Some(target)
+    } else {
+        None
+    };
+
     // Safety backup before mutating the live store.
     let backup = storage.backup_database()?;
 
@@ -643,12 +789,30 @@ fn import_selective_database_sync(
         Ok::<(), String>(())
     })?;
 
+    if let Some(target) = target_secret_store.as_deref() {
+        let status = secrets.credential_secret_store_status();
+        reconcile_secret_store_for_import(
+            &secrets,
+            target,
+            &status,
+            encrypted_store_password.as_deref(),
+        )?;
+    }
+
     if applied.iter().any(|segment| segment == "itops") {
         crate::itops::automation_commands::reconcile_automations(app);
     }
 
-    // Write credentials into the active backend, owner ids rewritten via remap.
+    // Write credentials into the reconciled backend, owner ids rewritten via
+    // remap. Persist the resolved selection first so the next launch reads the
+    // same backend the secrets were written into — the Settings "add" merge can
+    // otherwise leave the machine's prior selection in place.
     if credential_action != "skip" {
+        if let Some(target) = target_secret_store {
+            storage.update_credential_settings(storage::CredentialSettings {
+                secret_store: target,
+            })?;
+        }
         write_secrets(&secrets, &secret_entries, &remap)?;
     }
 
@@ -1560,6 +1724,63 @@ mod tests {
         let restored = decrypt_blob("correct horse", &blob).expect("decrypt");
         assert_eq!(restored, plaintext);
         assert!(decrypt_blob("wrong passphrase", &blob).is_err());
+    }
+
+    fn bundle_with_credentials(store: &str) -> Value {
+        serde_json::json!({
+            "settings": {
+                "settings": [
+                    { "key": "general", "value": "{}" },
+                    { "key": "credentials", "value": format!("{{\"secretStore\":\"{store}\"}}") }
+                ]
+            }
+        })
+    }
+
+    #[test]
+    fn bundle_credential_store_reads_and_normalizes_the_settings_selection() {
+        let data = bundle_with_credentials("file");
+        assert_eq!(bundle_credential_store(&data).as_deref(), Some("file"));
+
+        // No Settings segment at all -> nothing to adopt.
+        let empty = serde_json::json!({ "connections": { "connections": [] } });
+        assert_eq!(bundle_credential_store(&empty), None);
+
+        // Settings present but no credentials row -> nothing to adopt.
+        let no_creds = serde_json::json!({
+            "settings": { "settings": [{ "key": "general", "value": "{}" }] }
+        });
+        assert_eq!(bundle_credential_store(&no_creds), None);
+
+        // An unknown/unsupported store falls back to this machine's default.
+        let bogus = bundle_with_credentials("nonsense");
+        assert_eq!(
+            bundle_credential_store(&bogus),
+            Some(storage::default_secret_store())
+        );
+    }
+
+    #[test]
+    fn resolve_target_secret_store_adopts_bundle_only_when_settings_imported() {
+        // Assert against `normalize_secret_store` of the *expected source* so the
+        // test holds on Linux (which only supports the file store) as well as
+        // platforms that also offer the OS keystore.
+
+        // Settings imported: adopt the bundle's selection.
+        assert_eq!(
+            resolve_target_secret_store(true, Some("file"), "os"),
+            normalize_secret_store("file")
+        );
+        // Settings imported but the bundle carries no selection: keep this machine's store.
+        assert_eq!(
+            resolve_target_secret_store(true, None, "os"),
+            normalize_secret_store("os")
+        );
+        // Settings not imported: never adopt the bundle's selection.
+        assert_eq!(
+            resolve_target_secret_store(false, Some("file"), "os"),
+            normalize_secret_store("os")
+        );
     }
 
     /// Minimal subset of the live schema exercised by the connections segment,

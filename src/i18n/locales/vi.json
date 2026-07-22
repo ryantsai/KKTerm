@@ -2138,6 +2138,8 @@
     "exportPassphraseConfirm": "Xác nhận cụm mật khẩu",
     "exportPassphraseMismatch": "Cụm mật khẩu không khớp.",
     "importPassphrase": "Cụm mật khẩu",
+    "importEncryptedStorePassword": "Mật khẩu chính của cơ sở dữ liệu được mã hóa",
+    "importEncryptedStorePasswordHint": "Các mật khẩu này được lưu trong cơ sở dữ liệu được mã hóa. Nhập mật khẩu chính của nó để mở khóa trên máy này, hoặc đặt mật khẩu mới nếu chưa được thiết lập.",
     "selectiveExportComplete": "Đã xuất lựa chọn tới {{filename}}.",
     "selectiveImportComplete": "Đã nhập {{count}} danh mục.",
     "selectiveImportChooseFile": "Chọn tệp sao lưu...",

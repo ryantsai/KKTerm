@@ -2138,6 +2138,8 @@
     "exportPassphraseConfirm": "Confirmer la phrase secrète",
     "exportPassphraseMismatch": "Les phrases secrètes ne correspondent pas.",
     "importPassphrase": "Phrase secrète",
+    "importEncryptedStorePassword": "Mot de passe principal de la base de données chiffrée",
+    "importEncryptedStorePasswordHint": "Ces mots de passe sont stockés dans la base de données chiffrée. Saisissez son mot de passe principal pour la déverrouiller sur cet appareil, ou définissez-en un nouveau si elle n'est pas encore configurée.",
     "selectiveExportComplete": "Sélection exportée vers {{filename}}.",
     "selectiveImportComplete": "{{count}} catégorie(s) importée(s).",
     "selectiveImportChooseFile": "Choisir un fichier de sauvegarde...",

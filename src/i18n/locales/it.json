@@ -2138,6 +2138,8 @@
     "exportPassphraseConfirm": "Conferma passphrase",
     "exportPassphraseMismatch": "Le passphrase non corrispondono.",
     "importPassphrase": "Passphrase",
+    "importEncryptedStorePassword": "Password principale del database cifrato",
+    "importEncryptedStorePasswordHint": "Queste password sono archiviate nel database cifrato. Inserisci la sua password principale per sbloccarlo su questo computer, oppure impostane una nuova se non è ancora configurato.",
     "selectiveExportComplete": "Selezione esportata in {{filename}}.",
     "selectiveImportComplete": "{{count}} categorie importate.",
     "selectiveImportChooseFile": "Scegli file di backup...",

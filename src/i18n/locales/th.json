@@ -2138,6 +2138,8 @@
     "exportPassphraseConfirm": "ยืนยันวลีรหัสผ่าน",
     "exportPassphraseMismatch": "วลีรหัสผ่านไม่ตรงกัน",
     "importPassphrase": "วลีรหัสผ่าน",
+    "importEncryptedStorePassword": "รหัสผ่านหลักของฐานข้อมูลที่เข้ารหัส",
+    "importEncryptedStorePasswordHint": "รหัสผ่านเหล่านี้ถูกจัดเก็บไว้ในฐานข้อมูลที่เข้ารหัส ป้อนรหัสผ่านหลักเพื่อปลดล็อกบนเครื่องนี้ หรือตั้งรหัสใหม่หากยังไม่ได้ตั้งค่า",
     "selectiveExportComplete": "ส่งออกสิ่งที่เลือกไปยัง {{filename}} แล้ว",
     "selectiveImportComplete": "นำเข้าหมวดหมู่ {{count}} รายการแล้ว",
     "selectiveImportChooseFile": "เลือกไฟล์ข้อมูลสำรอง...",

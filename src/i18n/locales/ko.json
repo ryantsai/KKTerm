@@ -2138,6 +2138,8 @@
     "exportPassphraseConfirm": "암호문 확인",
     "exportPassphraseMismatch": "암호문이 일치하지 않습니다.",
     "importPassphrase": "암호문",
+    "importEncryptedStorePassword": "암호화된 데이터베이스 마스터 비밀번호",
+    "importEncryptedStorePasswordHint": "이 비밀번호들은 암호화된 데이터베이스에 저장됩니다. 이 컴퓨터에서 잠금을 해제하려면 마스터 비밀번호를 입력하고, 아직 설정되지 않았다면 새로 설정하세요.",
     "selectiveExportComplete": "선택 항목을 {{filename}}에 내보냈습니다.",
     "selectiveImportComplete": "카테고리 {{count}}개를 가져왔습니다.",
     "selectiveImportChooseFile": "백업 파일 선택...",

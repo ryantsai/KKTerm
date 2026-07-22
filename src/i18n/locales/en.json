@@ -2138,6 +2138,8 @@
     "exportPassphraseConfirm": "Confirm passphrase",
     "exportPassphraseMismatch": "Passphrases do not match.",
     "importPassphrase": "Passphrase",
+    "importEncryptedStorePassword": "Encrypted database master password",
+    "importEncryptedStorePasswordHint": "These passwords are stored in the encrypted database. Enter its master password to unlock it on this machine, or set a new one if it is not configured yet.",
     "selectiveExportComplete": "Exported selection to {{filename}}.",
     "selectiveImportComplete": "Imported {{count}} categor(ies).",
     "selectiveImportChooseFile": "Choose Backup File…",
