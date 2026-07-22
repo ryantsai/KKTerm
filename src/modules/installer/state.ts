@@ -77,8 +77,17 @@ interface InstallerStoreState {
   toolState: Record<string, ToolState>;
   hasInitialScanned: boolean;
   scanning: boolean;
-  /// True for the duration of a streaming check-for-updates sweep.
+  /// True for the duration of a streaming check-for-updates sweep. This is
+  /// the aggregate signal used by the toolbar (Refresh button, header pill)
+  /// and the interval guard. For per-card presentation use `checkingToolIds`
+  /// instead — a scoped check (e.g. the post-install refresh of a single
+  /// tool) sets this global flag too, so gating a card's "retrieving"
+  /// placeholder on it makes every card flicker.
   checking: boolean;
+  /// The specific tools whose latest-version lookup is currently in flight.
+  /// Cards read per-tool membership so a scoped refresh only shows the
+  /// retrieving placeholder on the tool being checked.
+  checkingToolIds: Set<string>;
   /// Optional per-tool error from the most recent check sweep (null when
   /// the latest lookup succeeded).
   checkError: Record<string, string | null>;
@@ -141,6 +150,7 @@ const initial: Pick<
   | "hasInitialScanned"
   | "scanning"
   | "checking"
+  | "checkingToolIds"
   | "checkError"
   | "inFlight"
   | "stepperState"
@@ -156,6 +166,7 @@ const initial: Pick<
   hasInitialScanned: false,
   scanning: false,
   checking: false,
+  checkingToolIds: new Set(),
   checkError: {},
   inFlight: {},
   stepperState: {},
@@ -199,6 +210,7 @@ export const useInstallerStore = create<InstallerStoreState>((set) => ({
         for (const id of event.toolIds) cleared[id] = null;
         return {
           checking: true,
+          checkingToolIds: new Set(event.toolIds),
           checkError: { ...s.checkError, ...cleared },
         };
       }
@@ -212,8 +224,14 @@ export const useInstallerStore = create<InstallerStoreState>((set) => ({
             event.latestVersion ?? existing?.latestVersionSeen ?? null,
           lastCheckAt: Math.floor(Date.now() / 1000),
         };
+        // Clear this tool's retrieving state as soon as its own result
+        // lands, so each card settles independently instead of waiting for
+        // the whole sweep to finish.
+        const nextCheckingToolIds = new Set(s.checkingToolIds);
+        nextCheckingToolIds.delete(event.toolId);
         return {
           toolState: nextToolState,
+          checkingToolIds: nextCheckingToolIds,
           checkError: {
             ...s.checkError,
             [event.toolId]: event.error ?? null,
@@ -221,7 +239,7 @@ export const useInstallerStore = create<InstallerStoreState>((set) => ({
         };
       }
       if (event.kind === "checkFinished") {
-        return { checking: false };
+        return { checking: false, checkingToolIds: new Set() };
       }
       if (event.kind === "detectStarted") {
         return { scanning: true };

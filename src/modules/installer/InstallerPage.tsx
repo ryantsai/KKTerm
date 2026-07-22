@@ -105,6 +105,7 @@ export function InstallerPage({ active }: { active: boolean }) {
   const checkError = useInstallerStore((s) => s.checkError);
   const scanning = useInstallerStore((s) => s.scanning);
   const checking = useInstallerStore((s) => s.checking);
+  const checkingToolIds = useInstallerStore((s) => s.checkingToolIds);
   const setCatalog = useInstallerStore((s) => s.setCatalog);
   const setDetected = useInstallerStore((s) => s.setDetected);
   const setToolStates = useInstallerStore((s) => s.setToolStates);
@@ -343,9 +344,17 @@ export function InstallerPage({ active }: { active: boolean }) {
         latestError: checkError[recipe.id],
         lastFailed: lastStatus[recipe.id]?.kind === "failed",
         scanning,
-        checking,
+        checking: checkingToolIds.has(recipe.id),
       });
-  }, [detected, toolState, inFlight, lastStatus, checkError, scanning, checking]);
+  }, [
+    detected,
+    toolState,
+    inFlight,
+    lastStatus,
+    checkError,
+    scanning,
+    checkingToolIds,
+  ]);
 
   const counts = useMemo<InstallerCounts>(() => {
     let installed = 0;
