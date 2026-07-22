@@ -31,6 +31,7 @@ import {
   type TerminalNotification,
 } from "./oscSequences";
 import { refreshTerminalFontAtlases, type TerminalFontAtlasRefreshTarget } from "./fontAtlasRefresh";
+import { shouldSuppressMacImeSwitchKey } from "./imeInput";
 
 export type { TerminalNotification } from "./oscSequences";
 
@@ -312,7 +313,12 @@ class XtermTerminalRenderer implements TerminalRenderer, TerminalFontAtlasRefres
   }
 
   attachCustomKeyEventHandler(handler: (event: KeyboardEvent) => boolean) {
-    this.terminal.attachCustomKeyEventHandler(handler);
+    this.terminal.attachCustomKeyEventHandler((event) => {
+      if (shouldSuppressMacImeSwitchKey(event)) {
+        return false;
+      }
+      return handler(event);
+    });
   }
 
   getSelection() {

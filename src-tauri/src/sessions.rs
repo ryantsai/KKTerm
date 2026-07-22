@@ -3384,6 +3384,7 @@ fn command_for(request: &StartTerminalSessionRequest) -> Result<CommandBuilder, 
             sanitize_windows_local_environment(&mut command);
             sanitize_linux_appimage_environment(&mut command);
             set_terminal_environment(&mut command);
+            set_macos_local_terminal_locale(&mut command, &request.text_encoding);
             apply_managed_terminal_environment(&mut command, &request.environment_variables)?;
             if let Some(session_id) = psmux_session_id {
                 command.arg("new-session");
@@ -3476,6 +3477,27 @@ fn command_for(request: &StartTerminalSessionRequest) -> Result<CommandBuilder, 
 fn set_terminal_environment(command: &mut CommandBuilder) {
     command.env("TERM", "xterm-256color");
     command.env("COLORTERM", "truecolor");
+}
+
+fn set_macos_local_terminal_locale(command: &mut CommandBuilder, text_encoding: &str) {
+    if cfg!(target_os = "macos")
+        && let Some(locale) = macos_default_lc_ctype(text_encoding)
+    {
+        // Finder-launched apps do not receive Terminal.app's UTF-8 locale
+        // environment. Without LC_CTYPE, zsh treats each UTF-8 input byte as a
+        // separate character and renders sequences such as `<00ad>`. Only add
+        // the UTF-8 locale when this Session's selected wire encoding is UTF-8;
+        // legacy per-Pane encodings must keep their existing locale behavior.
+        // Connection environment variables are applied afterwards and may
+        // intentionally override this default.
+        command.env("LC_CTYPE", locale);
+    }
+}
+
+fn macos_default_lc_ctype(text_encoding: &str) -> Option<&'static str> {
+    terminal_encoding(text_encoding)
+        .is_ok_and(|encoding| encoding == UTF_8)
+        .then_some("UTF-8")
 }
 
 fn apply_managed_terminal_environment(
@@ -4470,6 +4492,30 @@ mod tests {
                 .get_env("COLORTERM")
                 .and_then(|value| value.to_str()),
             Some("truecolor")
+        );
+    }
+
+    #[test]
+    fn macos_local_utf8_locale_follows_the_terminal_encoding() {
+        assert_eq!(macos_default_lc_ctype("utf-8"), Some("UTF-8"));
+        assert_eq!(macos_default_lc_ctype("UTF8"), Some("UTF-8"));
+        assert_eq!(macos_default_lc_ctype("big5"), None);
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn connection_locale_override_wins_over_the_macos_utf8_default() {
+        let mut request = local_request();
+        request.environment_variables = vec![ManagedTerminalEnvironmentVariable {
+            name: "LC_CTYPE".to_string(),
+            value: "zh_TW.Big5".to_string(),
+            source: "literal".to_string(),
+        }];
+
+        let command = command_for(&request).expect("local zsh command should build");
+        assert_eq!(
+            command.get_env("LC_CTYPE").and_then(|value| value.to_str()),
+            Some("zh_TW.Big5")
         );
     }
 

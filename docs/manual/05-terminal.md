@@ -13,7 +13,9 @@
 
 Terminal Panes are rendered by xterm.js. Local terminals use ConPTY through `portable_pty`; SSH terminals use KKTerm's `NativeSsh` transport. Both run through the real Tauri runtime — a Vite browser preview cannot host them. Behaviour like focus and input must be validated against `npm run tauri dev` or the built `kkterm.exe`.
 
-The terminal hamburger menu exposes `terminal.textEncoding` directly below Font for Local, SSH, Telnet, and Serial/COM Panes. UTF-8 is the default. The selected ASCII-compatible encoding applies bidirectionally to that live Session: backend output bytes are decoded with it and typed or pasted Unicode text is encoded with it. The choice is stored with the frontend Pane/Child Connection Tab layout in local storage, not in the durable Connection or global Terminal Settings.
+On macOS, Caps Lock may switch the active Chinese input method between Chinese and English while text is still being composed. KKTerm keeps that non-printing switch event out of xterm's key handler so the completed text is sent to the Session once, rather than once during the switch and again when WebKit ends the composition.
+
+The terminal hamburger menu exposes `terminal.textEncoding` directly below Font for Local, SSH, Telnet, and Serial/COM Panes. UTF-8 is the default. The selected ASCII-compatible encoding applies bidirectionally to that live Session: backend output bytes are decoded with it and typed or pasted Unicode text is encoded with it. On macOS, a local UTF-8 Session also defaults `LC_CTYPE` to `UTF-8`, matching Terminal.app even when KKTerm launches from Finder; choosing a legacy per-Pane encoding does not apply that UTF-8 locale, and an explicit Connection environment variable takes precedence. The choice is stored with the frontend Pane/Child Connection Tab layout in local storage, not in the durable Connection or global Terminal Settings.
 
 Tutorial targets: `terminal.pane`, `terminal.surface`.
 
