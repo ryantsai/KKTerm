@@ -456,6 +456,18 @@ impl Secrets {
         Ok(self.status())
     }
 
+    pub(crate) fn validate_encrypted_file_store_password(
+        &self,
+        password: &str,
+    ) -> Result<(), String> {
+        let _guard = self.lock()?;
+        let store = SqliteSecretStore::from_password(self.db_path.clone(), password.to_string())?;
+        if SqliteSecretStore::store_exists(&self.db_path)? {
+            store.initialize_or_verify(false)?;
+        }
+        Ok(())
+    }
+
     pub fn change_encrypted_file_store_password(
         &self,
         request: ChangeEncryptedFileSecretStorePasswordRequest,
@@ -1050,6 +1062,51 @@ mod tests {
             wrong_password_store
                 .exists(&reference)
                 .expect("presence check should only query metadata")
+        );
+    }
+
+    #[test]
+    fn encrypted_sqlite_store_import_validation_is_write_free_when_missing() {
+        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let path = temp_dir.path().join("kkterm.sqlite3");
+        crate::storage::Storage::open(path.clone()).expect("storage opens");
+        let secrets = Secrets::new("os", path);
+
+        secrets
+            .validate_encrypted_file_store_password("new-password")
+            .expect("a new password is valid for a missing store");
+
+        let status = secrets.credential_secret_store_status();
+        assert_eq!(status.selected_store, "os");
+        assert!(!status.encrypted_store_exists);
+    }
+
+    #[test]
+    fn encrypted_sqlite_store_import_validation_rejects_wrong_existing_password_without_switching()
+    {
+        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let path = temp_dir.path().join("kkterm.sqlite3");
+        crate::storage::Storage::open(path.clone()).expect("storage opens");
+        let secrets = Secrets::new("os", path);
+        secrets
+            .configure_encrypted_file_store(ConfigureEncryptedFileSecretStoreRequest {
+                password: "correct-password".to_string(),
+                create_if_missing: true,
+                reset_existing: false,
+            })
+            .expect("encrypted sqlite store is created");
+        secrets
+            .set_secret_store("os")
+            .expect("OS store is restored before validation");
+
+        let error = secrets
+            .validate_encrypted_file_store_password("wrong-password")
+            .expect_err("wrong password must fail validation");
+
+        assert!(error.contains("could not decrypt"));
+        assert_eq!(
+            secrets.credential_secret_store_status().selected_store,
+            "os"
         );
     }
 

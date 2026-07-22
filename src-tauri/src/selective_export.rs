@@ -629,6 +629,28 @@ fn reconcile_secret_store_for_import(
     Ok(())
 }
 
+/// Validate any required encrypted-store password without creating the store or
+/// changing the live backend. This keeps missing/wrong-password failures ahead
+/// of both the safety backup and the imported database transaction.
+fn validate_secret_store_for_import(
+    secrets: &Secrets,
+    target: &str,
+    status: &crate::secrets::CredentialSecretStoreStatus,
+    password: Option<&str>,
+) -> Result<(), String> {
+    if target != "file" || (status.selected_store() == "file" && status.unlocked()) {
+        return Ok(());
+    }
+    let password = password
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| {
+            "a master password is required to import credentials into this machine's encrypted database"
+                .to_string()
+        })?;
+    secrets.validate_encrypted_file_store_password(password)
+}
+
 // ── Import ────────────────────────────────────────────────────────────────
 
 #[tauri::command]
@@ -690,11 +712,9 @@ fn import_selective_database_sync(
         Vec::new()
     };
 
-    // Make the live secret backend follow the import before touching the
-    // database. Doing this up-front means a missing or wrong master password
-    // fails before any DB write (like the passphrase check above), and the
-    // decrypted secrets are written into the store the bundle selects rather
-    // than whichever backend the app launched with.
+    // Resolve the destination and validate a required master password without
+    // creating the encrypted store or changing the live backend. Reconciliation
+    // happens after the database transaction, immediately before secret writes.
     let target_secret_store: Option<String> = if credential_action != "skip" {
         let settings_imported = actions.get("settings").map(String::as_str) != Some("skip")
             && actions.contains_key("settings");
@@ -709,7 +729,7 @@ fn import_selective_database_sync(
             bundle_store.as_deref(),
             status.selected_store(),
         );
-        reconcile_secret_store_for_import(
+        validate_secret_store_for_import(
             &secrets,
             &target,
             &status,
@@ -754,6 +774,16 @@ fn import_selective_database_sync(
             .map_err(|error| format!("failed to commit import: {error}"))?;
         Ok::<(), String>(())
     })?;
+
+    if let Some(target) = target_secret_store.as_deref() {
+        let status = secrets.credential_secret_store_status();
+        reconcile_secret_store_for_import(
+            &secrets,
+            target,
+            &status,
+            encrypted_store_password.as_deref(),
+        )?;
+    }
 
     if applied.iter().any(|segment| segment == "itops") {
         crate::itops::automation_commands::reconcile_automations(app);
