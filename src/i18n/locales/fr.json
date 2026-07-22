@@ -1989,6 +1989,8 @@
     "screenshotsCaptureModeFolder": "Enregistrer dans le dossier",
     "screenshotsCaptureModeClipboard": "Presse-papiers",
     "screenshotsCaptureModeBoth": "Les deux",
+    "screenshotsOpenInEditorAfterCapture": "Ouvrir dans l’éditeur après la capture",
+    "screenshotsOpenInEditorAfterCaptureHint": "Disponible lorsque les captures sont enregistrées dans le dossier Captures d’écran.",
     "screenshotsBrowse": "Parcourir…",
     "screenshotsFormat": "Format d'image",
     "screenshotsFormatHint": "Les nouvelles captures sont enregistrées dans ce format. Les fichiers existants restent utilisables.",

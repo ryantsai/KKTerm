@@ -1198,6 +1198,7 @@ export interface ScreenshotSettings {
   format: ScreenshotFormat;
   quality: number;
   captureMode: ScreenshotCaptureDelivery;
+  openInEditorAfterCapture: boolean;
   borderEnabled: boolean;
   borderWidth: number;
   borderStyle: ScreenshotBorderStyle;

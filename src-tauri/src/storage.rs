@@ -939,6 +939,8 @@ pub struct ScreenshotSettings {
     quality: u8,
     #[serde(default = "default_screenshot_capture_mode")]
     capture_mode: String,
+    #[serde(default)]
+    open_in_editor_after_capture: bool,
     #[serde(default = "default_screenshot_border_enabled")]
     border_enabled: bool,
     #[serde(default = "default_screenshot_border_width")]
@@ -978,6 +980,10 @@ impl ScreenshotSettings {
 
     pub(crate) fn capture_mode(&self) -> &str {
         &self.capture_mode
+    }
+
+    pub(crate) fn open_in_editor_after_capture(&self) -> bool {
+        self.open_in_editor_after_capture
     }
 
     pub(crate) fn border_enabled(&self) -> bool {
@@ -5679,6 +5685,7 @@ fn default_screenshot_settings() -> ScreenshotSettings {
         format: default_screenshot_format(),
         quality: default_screenshot_quality(),
         capture_mode: default_screenshot_capture_mode(),
+        open_in_editor_after_capture: false,
         border_enabled: default_screenshot_border_enabled(),
         border_width: default_screenshot_border_width(),
         border_style: default_screenshot_border_style(),

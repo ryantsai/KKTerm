@@ -790,6 +790,7 @@ export interface StoredScreenshot {
 export interface ScreenshotCaptureResult {
   storedScreenshot: StoredScreenshot | null;
   copiedToClipboard: boolean;
+  openInEditor: boolean;
 }
 
 export interface FullScreenshot {

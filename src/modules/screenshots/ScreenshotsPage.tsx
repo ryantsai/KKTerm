@@ -130,6 +130,7 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
   const loading = useScreenshotsStore((state) => state.loading);
   const listError = useScreenshotsStore((state) => state.error);
   const captureInFlight = useScreenshotsStore((state) => state.captureInFlight);
+  const editorRequestId = useScreenshotsStore((state) => state.editorRequestId);
   const refresh = useScreenshotsStore((state) => state.refresh);
   const loadMore = useScreenshotsStore((state) => state.loadMore);
   const setSortInStore = useScreenshotsStore((state) => state.setSort);
@@ -170,6 +171,15 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
       return next.size === current.size ? current : next;
     });
   }, [screenshots]);
+
+  useEffect(() => {
+    if (!editorRequestId || !screenshots.some((screenshot) => screenshot.id === editorRequestId)) {
+      return;
+    }
+    setSelectedIds(new Set([editorRequestId]));
+    setViewerId(editorRequestId);
+    useScreenshotsStore.getState().clearEditorRequest();
+  }, [editorRequestId, screenshots]);
 
   const selectedScreenshots = useMemo(
     () => screenshots.filter((screenshot) => selectedIds.has(screenshot.id)),

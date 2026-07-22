@@ -1989,6 +1989,8 @@
     "screenshotsCaptureModeFolder": "폴더에 저장",
     "screenshotsCaptureModeClipboard": "클립보드",
     "screenshotsCaptureModeBoth": "둘 다",
+    "screenshotsOpenInEditorAfterCapture": "캡처 후 편집기에서 열기",
+    "screenshotsOpenInEditorAfterCaptureHint": "캡처를 스크린샷 폴더에 저장할 때 사용할 수 있습니다.",
     "screenshotsBrowse": "찾아보기…",
     "screenshotsFormat": "이미지 형식",
     "screenshotsFormatHint": "새 캡처는 이 형식으로 저장됩니다. 기존 파일은 계속 사용할 수 있습니다.",

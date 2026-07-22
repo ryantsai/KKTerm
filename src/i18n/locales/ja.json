@@ -1989,6 +1989,8 @@
     "screenshotsCaptureModeFolder": "フォルダーに保存",
     "screenshotsCaptureModeClipboard": "クリップボード",
     "screenshotsCaptureModeBoth": "両方",
+    "screenshotsOpenInEditorAfterCapture": "キャプチャ後にエディターで開く",
+    "screenshotsOpenInEditorAfterCaptureHint": "キャプチャをスクリーンショットフォルダーに保存する場合に使用できます。",
     "screenshotsBrowse": "参照…",
     "screenshotsFormat": "画像形式",
     "screenshotsFormatHint": "新しいキャプチャはこの形式で保存されます。既存のファイルはそのまま使用できます。",

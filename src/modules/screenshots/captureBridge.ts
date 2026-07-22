@@ -58,6 +58,9 @@ export async function performScreenshotCapture(
             });
     if (result.storedScreenshot) {
       useScreenshotsStore.getState().prepend(result.storedScreenshot);
+      if (result.openInEditor) {
+        useScreenshotsStore.getState().requestEditor(result.storedScreenshot.id);
+      }
     }
     const message = result.storedScreenshot && result.copiedToClipboard
       ? t("screenshots.captureSavedAndCopied", { name: result.storedScreenshot.fileName })

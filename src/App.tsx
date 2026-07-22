@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTranslation } from "react-i18next";
 import { AssistantPanel } from "./ai/AssistantPanel";
 import type { AssistantPageContext } from "./ai/AssistantPanel";
@@ -36,6 +37,7 @@ import { useDashboardStore } from "./modules/dashboard/state/dashboardStore";
 import { useDashboardBackendInvalidation } from "./modules/dashboard/state/invalidation";
 import { useItOpsBackendInvalidation } from "./modules/itops/invalidation";
 import { useScreenshotCaptureBridge } from "./modules/screenshots/captureBridge";
+import { useScreenshotsStore } from "./modules/screenshots/state";
 import { useItOpsStore } from "./modules/itops/state";
 import {
   loadSiteTreeCollapsed,
@@ -48,7 +50,11 @@ import {
 import { ariaHidden } from "./lib/aria";
 import { currentPlatform, supportsInstallerHelper } from "./lib/platform";
 import { useBootstrapSettings } from "./lib/settings";
-import { CREDENTIAL_UNLOCK_REQUIRED_EVENT, invokeCommand } from "./lib/tauri";
+import {
+  CREDENTIAL_UNLOCK_REQUIRED_EVENT,
+  invokeCommand,
+  isTauriRuntime,
+} from "./lib/tauri";
 import type { CredentialUnlockRequestDetail } from "./lib/credentialUnlock";
 import {
   PORTABLE_IMPORT_REQUEST_KEY,
@@ -125,7 +131,7 @@ function App() {
     return page === "settings";
   }
 
-  function navigateToPage(page: ActivePage) {
+  const navigateToPage = useCallback((page: ActivePage) => {
     if (page === "installer" && !supportsInstallerHelper()) {
       page = "workspace";
     }
@@ -153,7 +159,7 @@ function App() {
     }
     persistActivePage(basePage);
     setActivePage(page);
-  }
+  }, [activePage]);
 
   function openAssistantPanel() {
     expandAiPanel();
@@ -226,6 +232,7 @@ function App() {
   const showScreenshotsOnRail = useWorkspaceStore(
     (state) => state.generalSettings.showScreenshotsOnRail,
   );
+  const screenshotEditorRequestId = useScreenshotsStore((state) => state.editorRequestId);
   const resetAllLayouts = useWorkspaceStore((state) => state.resetAllLayouts);
   const appShellRef = useRef<HTMLDivElement | null>(null);
   const {
@@ -252,6 +259,25 @@ function App() {
   useDashboardBackendInvalidation();
   useItOpsBackendInvalidation();
   useScreenshotCaptureBridge();
+
+  useEffect(() => {
+    if (!screenshotEditorRequestId) {
+      return;
+    }
+    navigateToPage("screenshots");
+    if (isTauriRuntime()) {
+      const mainWindow = getCurrentWindow();
+      void mainWindow.show()
+        .then(() => mainWindow.unminimize())
+        .then(() => mainWindow.setFocus())
+        .catch((error) => {
+          useWorkspaceStore.getState().showStatusBarNotice(
+            error instanceof Error ? error.message : String(error),
+            { tone: "error" },
+          );
+        });
+    }
+  }, [navigateToPage, screenshotEditorRequestId]);
   useDebugFrontendHeartbeat();
   useFrontendLaunchTimestamp();
   useHostUsagePolling();

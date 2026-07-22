@@ -1989,6 +1989,8 @@
     "screenshotsCaptureModeFolder": "Lưu vào thư mục",
     "screenshotsCaptureModeClipboard": "Bảng nhớ tạm",
     "screenshotsCaptureModeBoth": "Cả hai",
+    "screenshotsOpenInEditorAfterCapture": "Mở trong trình chỉnh sửa sau khi chụp",
+    "screenshotsOpenInEditorAfterCaptureHint": "Khả dụng khi ảnh chụp được lưu vào thư mục Ảnh chụp màn hình.",
     "screenshotsBrowse": "Duyệt…",
     "screenshotsFormat": "Định dạng hình ảnh",
     "screenshotsFormatHint": "Ảnh chụp mới được lưu ở định dạng này. Các tệp hiện có vẫn hoạt động bình thường.",

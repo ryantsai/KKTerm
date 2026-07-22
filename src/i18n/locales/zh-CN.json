@@ -1989,6 +1989,8 @@
     "screenshotsCaptureModeFolder": "保存到文件夹",
     "screenshotsCaptureModeClipboard": "剪贴板",
     "screenshotsCaptureModeBoth": "两个都",
+    "screenshotsOpenInEditorAfterCapture": "截图后在编辑器中打开",
+    "screenshotsOpenInEditorAfterCaptureHint": "将截图保存到截图文件夹时可用。",
     "screenshotsBrowse": "浏览…",
     "screenshotsFormat": "图片格式",
     "screenshotsFormatHint": "新截图将以此格式保存。现有文件不受影响。",

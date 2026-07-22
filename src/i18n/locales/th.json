@@ -1989,6 +1989,8 @@
     "screenshotsCaptureModeFolder": "บันทึกลงในโฟลเดอร์",
     "screenshotsCaptureModeClipboard": "คลิปบอร์ด",
     "screenshotsCaptureModeBoth": "ทั้งคู่",
+    "screenshotsOpenInEditorAfterCapture": "เปิดในตัวแก้ไขหลังจับภาพ",
+    "screenshotsOpenInEditorAfterCaptureHint": "ใช้ได้เมื่อบันทึกภาพที่จับไว้ในโฟลเดอร์ภาพหน้าจอ",
     "screenshotsBrowse": "เรียกดู…",
     "screenshotsFormat": "รูปแบบรูปภาพ",
     "screenshotsFormatHint": "ภาพที่จับใหม่จะถูกบันทึกในรูปแบบนี้ ไฟล์เดิมยังใช้งานได้ตามปกติ",

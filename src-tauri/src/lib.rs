@@ -1902,6 +1902,7 @@ fn screenshot_library_context(
             format: settings.format().to_string(),
             quality: settings.quality(),
             capture_mode: settings.capture_mode().to_string(),
+            open_in_editor_after_capture: settings.open_in_editor_after_capture(),
             border_enabled: settings.border_enabled(),
             border_width: settings.border_width(),
             border_style: settings.border_style().to_string(),

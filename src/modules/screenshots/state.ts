@@ -15,9 +15,12 @@ type ScreenshotsState = {
   loading: boolean;
   error: string | null;
   captureInFlight: boolean;
+  editorRequestId: string | null;
   sortBy: ScreenshotSortBy;
   sortDirection: ScreenshotSortDirection;
   setCaptureInFlight: (value: boolean) => void;
+  requestEditor: (id: string) => void;
+  clearEditorRequest: () => void;
   setSort: (sortBy: ScreenshotSortBy, sortDirection: ScreenshotSortDirection) => Promise<void>;
   refresh: () => Promise<void>;
   loadMore: () => Promise<void>;
@@ -36,9 +39,12 @@ export const useScreenshotsStore = create<ScreenshotsState>((set, get) => ({
   loading: false,
   error: null,
   captureInFlight: false,
+  editorRequestId: null,
   sortBy: "date",
   sortDirection: "desc",
   setCaptureInFlight: (value) => set({ captureInFlight: value }),
+  requestEditor: (id) => set({ editorRequestId: id }),
+  clearEditorRequest: () => set({ editorRequestId: null }),
   setSort: async (sortBy, sortDirection) => {
     if (get().sortBy === sortBy && get().sortDirection === sortDirection) {
       return;

@@ -1989,6 +1989,8 @@
     "screenshotsCaptureModeFolder": "Salva nella cartella",
     "screenshotsCaptureModeClipboard": "Appunti",
     "screenshotsCaptureModeBoth": "Entrambi",
+    "screenshotsOpenInEditorAfterCapture": "Apri nell’editor dopo l’acquisizione",
+    "screenshotsOpenInEditorAfterCaptureHint": "Disponibile quando le acquisizioni vengono salvate nella cartella Screenshot.",
     "screenshotsBrowse": "Sfoglia…",
     "screenshotsFormat": "Formato immagine",
     "screenshotsFormatHint": "Le nuove catture vengono salvate in questo formato. I file esistenti continuano a funzionare.",

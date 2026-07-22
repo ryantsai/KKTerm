@@ -80,3 +80,25 @@ test("capture delivery returns optional library data and clipboard state", async
   assert.match(bridge, /screenshots\.captureSavedAndCopied/);
   assert.match(bridge, /screenshots\.captureCopied/);
 });
+
+test("saved captures can request the built-in editor", async () => {
+  const [settings, draft, backend, capture, bridge, page, app] = await Promise.all([
+    read("src/modules/settings/ScreenshotsSettings.tsx"),
+    read("src/modules/settings/screenshotSettingsDraft.ts"),
+    read("src-tauri/src/storage.rs"),
+    read("src-tauri/src/screenshot.rs"),
+    read("src/modules/screenshots/captureBridge.ts"),
+    read("src/modules/screenshots/ScreenshotsPage.tsx"),
+    read("src/App.tsx"),
+  ]);
+
+  assert.match(settings, /settings\.screenshotsOpenInEditorAfterCapture/);
+  assert.match(settings, /disabled=\{draft\?\.captureMode === "clipboard"\}/);
+  assert.match(draft, /openInEditorAfterCapture: false/);
+  assert.match(backend, /open_in_editor_after_capture: bool/);
+  assert.match(capture, /stored_screenshot\.is_some\(\) && options\.open_in_editor_after_capture/);
+  assert.match(bridge, /requestEditor\(result\.storedScreenshot\.id\)/);
+  assert.match(page, /setViewerId\(editorRequestId\)/);
+  assert.match(app, /navigateToPage\("screenshots"\)/);
+  assert.match(app, /mainWindow\.show\(\)/);
+});

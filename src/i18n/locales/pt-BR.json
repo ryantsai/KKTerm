@@ -1989,6 +1989,8 @@
     "screenshotsCaptureModeFolder": "Salvar na pasta",
     "screenshotsCaptureModeClipboard": "Área de transferência",
     "screenshotsCaptureModeBoth": "Ambos",
+    "screenshotsOpenInEditorAfterCapture": "Abrir no editor após a captura",
+    "screenshotsOpenInEditorAfterCaptureHint": "Disponível quando as capturas são salvas na pasta Capturas de tela.",
     "screenshotsBrowse": "Procurar…",
     "screenshotsFormat": "Formato de imagem",
     "screenshotsFormatHint": "Novas capturas são salvas neste formato. Os arquivos existentes continuam funcionando.",

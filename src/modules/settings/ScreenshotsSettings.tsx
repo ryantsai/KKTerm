@@ -143,6 +143,19 @@ export function ScreenshotsSettings() {
             </label>
           </div>
         ) : null}
+        <div className="settings-toggle-list">
+          <label className="settings-toggle-row">
+            <ToggleSwitch
+              checked={draft?.openInEditorAfterCapture ?? false}
+              disabled={draft?.captureMode === "clipboard"}
+              onChange={(value) => update({ openInEditorAfterCapture: value })}
+            />
+            <span>
+              <strong>{t("settings.screenshotsOpenInEditorAfterCapture")}</strong>
+              <small>{t("settings.screenshotsOpenInEditorAfterCaptureHint")}</small>
+            </span>
+          </label>
+        </div>
       </fieldset>
 
       <fieldset className="settings-subsection settings-fieldset">

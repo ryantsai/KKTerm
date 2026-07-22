@@ -54,6 +54,7 @@ pub struct StoredScreenshot {
 pub struct ScreenshotCaptureResult {
     stored_screenshot: Option<StoredScreenshot>,
     copied_to_clipboard: bool,
+    open_in_editor: bool,
 }
 
 #[derive(Serialize)]
@@ -74,6 +75,7 @@ pub struct LibrarySaveOptions {
     pub format: String,
     pub quality: u8,
     pub capture_mode: String,
+    pub open_in_editor_after_capture: bool,
     pub border_enabled: bool,
     pub border_width: u32,
     pub border_style: String,
@@ -736,6 +738,7 @@ fn deliver_rgba(
         None
     };
     Ok(ScreenshotCaptureResult {
+        open_in_editor: stored_screenshot.is_some() && options.open_in_editor_after_capture,
         stored_screenshot,
         copied_to_clipboard: copy_to_clipboard,
     })
@@ -1804,6 +1807,7 @@ fn deliver_dib(
     };
 
     Ok(ScreenshotCaptureResult {
+        open_in_editor: stored_screenshot.is_some() && options.open_in_editor_after_capture,
         stored_screenshot,
         copied_to_clipboard: copy_to_clipboard,
     })

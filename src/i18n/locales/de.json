@@ -1989,6 +1989,8 @@
     "screenshotsCaptureModeFolder": "Im Ordner speichern",
     "screenshotsCaptureModeClipboard": "Zwischenablage",
     "screenshotsCaptureModeBoth": "Beide",
+    "screenshotsOpenInEditorAfterCapture": "Nach der Aufnahme im Editor öffnen",
+    "screenshotsOpenInEditorAfterCaptureHint": "Verfügbar, wenn Aufnahmen im Screenshot-Ordner gespeichert werden.",
     "screenshotsBrowse": "Durchsuchen…",
     "screenshotsFormat": "Bildformat",
     "screenshotsFormatHint": "Neue Aufnahmen werden in diesem Format gespeichert. Vorhandene Dateien funktionieren weiterhin.",

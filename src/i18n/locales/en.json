@@ -1989,6 +1989,8 @@
     "screenshotsCaptureModeFolder": "Save to folder",
     "screenshotsCaptureModeClipboard": "Clipboard",
     "screenshotsCaptureModeBoth": "Both",
+    "screenshotsOpenInEditorAfterCapture": "Open in editor after capture",
+    "screenshotsOpenInEditorAfterCaptureHint": "Available when captures are saved to the Screenshots folder.",
     "screenshotsBrowse": "Browse…",
     "screenshotsFormat": "Image format",
     "screenshotsFormatHint": "New captures are saved in this format. Existing files keep working.",

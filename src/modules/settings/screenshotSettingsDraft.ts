@@ -8,6 +8,7 @@ const browserDefaults: ScreenshotSettings = {
   format: "png",
   quality: 90,
   captureMode: "both",
+  openInEditorAfterCapture: false,
   borderEnabled: true,
   borderWidth: 1,
   borderStyle: "solid",

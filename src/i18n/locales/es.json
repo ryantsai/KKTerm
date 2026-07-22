@@ -1989,6 +1989,8 @@
     "screenshotsCaptureModeFolder": "Guardar en carpeta",
     "screenshotsCaptureModeClipboard": "Portapapeles",
     "screenshotsCaptureModeBoth": "Ambos",
+    "screenshotsOpenInEditorAfterCapture": "Abrir en el editor después de la captura",
+    "screenshotsOpenInEditorAfterCaptureHint": "Disponible cuando las capturas se guardan en la carpeta Capturas de pantalla.",
     "screenshotsBrowse": "Examinar…",
     "screenshotsFormat": "Formato de imagen",
     "screenshotsFormatHint": "Las nuevas capturas se guardan en este formato. Los archivos existentes siguen funcionando.",

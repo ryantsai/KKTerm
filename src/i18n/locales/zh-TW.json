@@ -1989,6 +1989,8 @@
     "screenshotsCaptureModeFolder": "儲存至資料夾",
     "screenshotsCaptureModeClipboard": "剪貼簿",
     "screenshotsCaptureModeBoth": "兩者皆要",
+    "screenshotsOpenInEditorAfterCapture": "擷取後在編輯器中開啟",
+    "screenshotsOpenInEditorAfterCaptureHint": "將擷取畫面儲存到螢幕擷取畫面資料夾時可用。",
     "screenshotsBrowse": "瀏覽…",
     "screenshotsFormat": "影像格式",
     "screenshotsFormatHint": "新的擷取會以此格式儲存。現有檔案不受影響。",
