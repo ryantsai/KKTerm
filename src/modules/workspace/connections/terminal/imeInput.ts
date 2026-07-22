@@ -1,30 +1,73 @@
 import { isMacPlatform } from "../../../../lib/platform";
 
-type TerminalKeyboardEvent = Pick<KeyboardEvent, "code" | "key" | "keyCode" | "type">;
+type TerminalKeyboardEvent = Pick<
+  KeyboardEvent,
+  "altKey" | "ctrlKey" | "isComposing" | "key" | "metaKey" | "type"
+>;
 
 /**
- * WKWebView can report the macOS Caps Lock input-source switch with keyCode 0.
- * xterm 6 only recognizes keyCode 20 while composing, so letting that event
- * through makes xterm finalize the pending IME text and then send it again on
- * compositionend. Stop the non-printing switch key before xterm handles it.
+ * xterm can finalize a composition early when a composing keydown does not use
+ * the conventional keyCode 229. WebKit then fires compositionend and xterm
+ * sends the same composition again. Let the composition lifecycle own all
+ * composing keydowns on macOS instead of guessing which key switches the IME.
  */
-export function shouldSuppressMacImeSwitchKey(
+export function shouldSuppressMacImeCompositionKey(
   event: TerminalKeyboardEvent,
   compositionActive = false,
   isMac = isMacPlatform(),
 ) {
-  if (!isMac) {
-    return false;
-  }
+  return isMac && event.type === "keydown" && (compositionActive || event.isComposing);
+}
 
-  if (event.code === "CapsLock" || event.key === "CapsLock") {
-    return true;
+/**
+ * Keep the physical text typed during a macOS composition. This is only a
+ * validation signal: IMEs are free to turn it into entirely different text.
+ */
+export function appendMacImeRawKey(
+  current: string,
+  event: TerminalKeyboardEvent,
+  compositionActive: boolean,
+  isMac = isMacPlatform(),
+) {
+  if (!compositionActive) {
+    return current;
   }
+  return current + macImeRawKey(event, isMac);
+}
 
-  return (
-    compositionActive &&
-    event.type === "keydown" &&
-    event.keyCode === 0 &&
-    (event.key === "" || event.key === "Unidentified")
-  );
+export function macImeRawKey(event: TerminalKeyboardEvent, isMac = isMacPlatform()) {
+  if (
+    !isMac ||
+    event.type !== "keydown" ||
+    event.altKey ||
+    event.ctrlKey ||
+    event.metaKey ||
+    event.key.length !== 1
+  ) {
+    return "";
+  }
+  return event.key;
+}
+
+/**
+ * UI Events defines compositionend.data as the final committed value. WebKit's
+ * Apple Pinyin integration can add visual syllable whitespace to that value
+ * when the input source is switched. Use the physical text only when it proves
+ * that whitespace is the sole difference; otherwise preserve the IME commit.
+ */
+export function resolveMacImeCompositionCommit(
+  xtermData: string,
+  compositionEndData?: string,
+  rawInput = "",
+) {
+  const committed = compositionEndData ?? xtermData;
+  const withoutWhitespace = (value: string) => value.replace(/\s/gu, "");
+  if (
+    rawInput.length > 0 &&
+    rawInput !== committed &&
+    withoutWhitespace(rawInput) === withoutWhitespace(committed)
+  ) {
+    return rawInput;
+  }
+  return committed;
 }
