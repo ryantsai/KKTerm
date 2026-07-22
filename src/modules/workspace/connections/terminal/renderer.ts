@@ -17,6 +17,7 @@ import {
   type ITheme,
 } from "@xterm/xterm";
 import { writeToClipboard } from "../../../../lib/clipboard";
+import { isMacPlatform } from "../../../../lib/platform";
 import { logUiDebug, openExternalUrl } from "../../../../lib/tauri";
 import type { TerminalHyperlinkRule, TerminalSettings } from "../../../../types";
 import {
@@ -31,7 +32,12 @@ import {
   type TerminalNotification,
 } from "./oscSequences";
 import { refreshTerminalFontAtlases, type TerminalFontAtlasRefreshTarget } from "./fontAtlasRefresh";
-import { shouldSuppressMacImeSwitchKey } from "./imeInput";
+import {
+  appendMacImeRawKey,
+  macImeRawKey,
+  resolveMacImeCompositionCommit,
+  shouldSuppressMacImeCompositionKey,
+} from "./imeInput";
 
 export type { TerminalNotification } from "./oscSequences";
 
@@ -173,6 +179,11 @@ class XtermTerminalRenderer implements TerminalRenderer, TerminalFontAtlasRefres
   private hostElement: HTMLElement | null = null;
   private imeCompositionActive = false;
   private imeCompositionCleanup: (() => void) | null = null;
+  private imeCommitResetTimer: number | null = null;
+  private macImeLeadingKey = "";
+  private macImeLeadingKeyResetTimer: number | null = null;
+  private macImeRawInput = "";
+  private pendingMacImeCommit: { data: string; rawInput: string } | null = null;
   private readonly searchAddon = new SearchAddon({ highlightLimit: 500 });
   private readonly osc52Disposable: IDisposable | null = null;
   private readonly cwdListeners = new Set<(cwd: string) => void>();
@@ -263,6 +274,14 @@ class XtermTerminalRenderer implements TerminalRenderer, TerminalFontAtlasRefres
     this.hostElement = null;
     this.imeCompositionCleanup?.();
     this.imeCompositionCleanup = null;
+    if (this.imeCommitResetTimer !== null) {
+      window.clearTimeout(this.imeCommitResetTimer);
+      this.imeCommitResetTimer = null;
+    }
+    if (this.macImeLeadingKeyResetTimer !== null) {
+      window.clearTimeout(this.macImeLeadingKeyResetTimer);
+      this.macImeLeadingKeyResetTimer = null;
+    }
     this.osc52Disposable?.dispose();
     this.osc7Disposable?.dispose();
     for (const disposable of this.oscSequenceDisposables) {
@@ -318,7 +337,22 @@ class XtermTerminalRenderer implements TerminalRenderer, TerminalFontAtlasRefres
 
   attachCustomKeyEventHandler(handler: (event: KeyboardEvent) => boolean) {
     this.terminal.attachCustomKeyEventHandler((event) => {
-      if (shouldSuppressMacImeSwitchKey(event, this.imeCompositionActive)) {
+      if (this.imeCompositionActive) {
+        this.macImeRawInput = appendMacImeRawKey(this.macImeRawInput, event, true);
+      } else {
+        const leadingKey = macImeRawKey(event);
+        if (leadingKey) {
+          this.macImeLeadingKey = leadingKey;
+          if (this.macImeLeadingKeyResetTimer !== null) {
+            window.clearTimeout(this.macImeLeadingKeyResetTimer);
+          }
+          this.macImeLeadingKeyResetTimer = window.setTimeout(() => {
+            this.macImeLeadingKey = "";
+            this.macImeLeadingKeyResetTimer = null;
+          }, 0);
+        }
+      }
+      if (shouldSuppressMacImeCompositionKey(event, this.imeCompositionActive)) {
         return false;
       }
       return handler(event);
@@ -330,7 +364,20 @@ class XtermTerminalRenderer implements TerminalRenderer, TerminalFontAtlasRefres
   }
 
   onData(handler: (data: string) => void) {
-    return this.terminal.onData(handler);
+    return this.terminal.onData((data) => {
+      if (!this.pendingMacImeCommit) {
+        handler(data);
+        return;
+      }
+
+      const { data: compositionEndData, rawInput } = this.pendingMacImeCommit;
+      this.pendingMacImeCommit = null;
+      if (this.imeCommitResetTimer !== null) {
+        window.clearTimeout(this.imeCommitResetTimer);
+        this.imeCommitResetTimer = null;
+      }
+      handler(resolveMacImeCompositionCommit(data, compositionEndData, rawInput));
+    });
   }
 
   onCwdChange(handler: (cwd: string) => void) {
@@ -516,17 +563,53 @@ class XtermTerminalRenderer implements TerminalRenderer, TerminalFontAtlasRefres
     if (imeTextarea) {
       const handleCompositionStart = () => {
         this.imeCompositionActive = true;
+        this.macImeRawInput = this.macImeLeadingKey;
+        this.macImeLeadingKey = "";
+        if (this.macImeLeadingKeyResetTimer !== null) {
+          window.clearTimeout(this.macImeLeadingKeyResetTimer);
+          this.macImeLeadingKeyResetTimer = null;
+        }
+        this.pendingMacImeCommit = null;
+        if (this.imeCommitResetTimer !== null) {
+          window.clearTimeout(this.imeCommitResetTimer);
+          this.imeCommitResetTimer = null;
+        }
       };
-      const handleCompositionEnd = () => {
+      const handleCompositionEnd = (event: CompositionEvent) => {
         this.imeCompositionActive = false;
+        if (isMacPlatform()) {
+          this.pendingMacImeCommit = { data: event.data, rawInput: this.macImeRawInput };
+          this.macImeRawInput = "";
+          if (this.imeCommitResetTimer !== null) {
+            window.clearTimeout(this.imeCommitResetTimer);
+          }
+          this.imeCommitResetTimer = window.setTimeout(() => {
+            this.pendingMacImeCommit = null;
+            this.imeCommitResetTimer = null;
+          }, 0);
+        }
+      };
+      const handleBlur = () => {
+        this.imeCompositionActive = false;
+        this.macImeLeadingKey = "";
+        this.macImeRawInput = "";
+        if (this.macImeLeadingKeyResetTimer !== null) {
+          window.clearTimeout(this.macImeLeadingKeyResetTimer);
+          this.macImeLeadingKeyResetTimer = null;
+        }
+        this.pendingMacImeCommit = null;
+        if (this.imeCommitResetTimer !== null) {
+          window.clearTimeout(this.imeCommitResetTimer);
+          this.imeCommitResetTimer = null;
+        }
       };
       imeTextarea.addEventListener("compositionstart", handleCompositionStart);
       imeTextarea.addEventListener("compositionend", handleCompositionEnd);
-      imeTextarea.addEventListener("blur", handleCompositionEnd);
+      imeTextarea.addEventListener("blur", handleBlur);
       this.imeCompositionCleanup = () => {
         imeTextarea.removeEventListener("compositionstart", handleCompositionStart);
         imeTextarea.removeEventListener("compositionend", handleCompositionEnd);
-        imeTextarea.removeEventListener("blur", handleCompositionEnd);
+        imeTextarea.removeEventListener("blur", handleBlur);
       };
     }
     this.tryEnableWebglRenderer();

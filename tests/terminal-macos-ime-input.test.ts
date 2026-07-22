@@ -1,28 +1,34 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { shouldSuppressMacImeSwitchKey } from "../src/modules/workspace/connections/terminal/imeInput.ts";
+import {
+  appendMacImeRawKey,
+  macImeRawKey,
+  resolveMacImeCompositionCommit,
+  shouldSuppressMacImeCompositionKey,
+} from "../src/modules/workspace/connections/terminal/imeInput.ts";
 
-test("macOS Caps Lock input-source switches are kept out of xterm composition handling", () => {
+const printableKey = (key: string) => ({
+  altKey: false,
+  ctrlKey: false,
+  isComposing: true,
+  key,
+  metaKey: false,
+  type: "keydown",
+});
+
+test("macOS composing keydowns are kept out of xterm key handling", () => {
   assert.equal(
-    shouldSuppressMacImeSwitchKey(
-      { code: "CapsLock", key: "CapsLock", keyCode: 20, type: "keydown" },
+    shouldSuppressMacImeCompositionKey(
+      printableKey("n"),
       false,
       true,
     ),
     true,
   );
   assert.equal(
-    shouldSuppressMacImeSwitchKey(
-      { code: "CapsLock", key: "Unidentified", keyCode: 20, type: "keydown" },
-      false,
-      true,
-    ),
-    true,
-  );
-  assert.equal(
-    shouldSuppressMacImeSwitchKey(
-      { code: "", key: "Unidentified", keyCode: 0, type: "keydown" },
+    shouldSuppressMacImeCompositionKey(
+      { ...printableKey("n"), isComposing: false },
       true,
       true,
     ),
@@ -30,29 +36,49 @@ test("macOS Caps Lock input-source switches are kept out of xterm composition ha
   );
 });
 
-test("the IME workaround leaves other keys and platforms unchanged", () => {
+test("the IME workaround leaves non-composing keys and other platforms unchanged", () => {
   assert.equal(
-    shouldSuppressMacImeSwitchKey(
-      { code: "KeyA", key: "a", keyCode: 0, type: "keydown" },
+    shouldSuppressMacImeCompositionKey(
+      { ...printableKey("n"), type: "keyup" },
       true,
       true,
     ),
     false,
   );
   assert.equal(
-    shouldSuppressMacImeSwitchKey(
-      { code: "", key: "Unidentified", keyCode: 0, type: "keydown" },
-      false,
-      true,
-    ),
-    false,
-  );
-  assert.equal(
-    shouldSuppressMacImeSwitchKey(
-      { code: "CapsLock", key: "CapsLock", keyCode: 20, type: "keydown" },
+    shouldSuppressMacImeCompositionKey(
+      printableKey("n"),
       true,
       false,
     ),
     false,
   );
+  assert.equal(
+    shouldSuppressMacImeCompositionKey(
+      { ...printableKey("n"), isComposing: false },
+      false,
+      true,
+    ),
+    false,
+  );
+});
+
+test("macOS composition input records unmodified printable keys", () => {
+  assert.equal(macImeRawKey(printableKey("n"), true), "n");
+  assert.equal(appendMacImeRawKey("niha", printableKey("o"), true, true), "nihao");
+  assert.equal(
+    appendMacImeRawKey("ni", { ...printableKey("h"), metaKey: true }, true, true),
+    "ni",
+  );
+  assert.equal(appendMacImeRawKey("ni", printableKey("h"), false, true), "ni");
+  assert.equal(appendMacImeRawKey("ni", printableKey("h"), true, false), "ni");
+});
+
+test("macOS composition commits remove only IME-inserted whitespace", () => {
+  assert.equal(resolveMacImeCompositionCommit("ni hao", "ni hao", "nihao"), "nihao");
+  assert.equal(resolveMacImeCompositionCommit("ni hao", "ni hao", "ni hao"), "ni hao");
+  assert.equal(resolveMacImeCompositionCommit("stale text", "你好", "nihao"), "你好");
+  assert.equal(resolveMacImeCompositionCommit("Hello", "Hello", "hello"), "Hello");
+  assert.equal(resolveMacImeCompositionCommit("stale text", ""), "");
+  assert.equal(resolveMacImeCompositionCommit("fallback text"), "fallback text");
 });
