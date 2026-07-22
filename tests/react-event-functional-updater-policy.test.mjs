@@ -6,7 +6,7 @@ import ts from "typescript";
 
 const files = execFileSync("rg", ["--files", "src", "-g", "*.tsx", "-g", "*.ts"], { encoding: "utf8" })
   .trim()
-  .split("\n")
+  .split(/\r?\n/)
   .filter(Boolean);
 
 const eventFieldReadPattern = /\bevent\.(?:currentTarget|target)\.(?:value|checked|files)\b/;
