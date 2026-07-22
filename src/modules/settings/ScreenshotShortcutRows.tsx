@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { X } from "../../lib/reicon";
 import { useTranslation } from "react-i18next";
-import { bindingFromKeyboardEvent } from "../workspace/keymap";
+import { bindingFromKeyboardEvent, displayShortcutBinding } from "../workspace/keymap";
 import { useScreenshotSettingsDraft } from "./screenshotSettingsDraft";
 
 type ShortcutKey = "regionShortcut" | "windowShortcut" | "fullscreenShortcut";
@@ -99,7 +99,7 @@ export function ScreenshotShortcutRows() {
           >
             {recording
               ? t("settings.shortcutPressKeys")
-              : (value || t("settings.shortcutNotSet"))}
+              : (value ? displayShortcutBinding(value) : t("settings.shortcutNotSet"))}
           </button>
           {value ? (
             <button

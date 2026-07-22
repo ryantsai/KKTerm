@@ -17,6 +17,7 @@
 // is open.
 
 import type { Connection, WorkspaceTab } from "../../types";
+import { currentPlatform, type RuntimePlatform } from "../../lib/platform";
 
 export type WorkspaceShortcutScope = "workspace" | "terminal" | "screenshotEditor";
 
@@ -91,6 +92,37 @@ const FIXED_TERMINAL_SHORTCUT_ALIASES: ReadonlyArray<{
 ];
 
 const MODIFIER_KEYS = new Set(["Control", "Shift", "Alt", "Meta"]);
+const MAC_MODIFIER_LABELS: Readonly<Record<string, string>> = {
+  Ctrl: "Control",
+  Control: "Control",
+  Alt: "Option",
+  Option: "Option",
+  Cmd: "Command",
+  Command: "Command",
+  Meta: "Command",
+  Super: "Command",
+  CmdOrCtrl: "Command",
+  CmdOrControl: "Command",
+  CommandOrCtrl: "Command",
+  CommandOrControl: "Command",
+};
+
+/**
+ * Format a canonical binding for display without changing the stored value
+ * used by keyboard matching and native shortcut registration.
+ */
+export function displayShortcutBinding(
+  binding: string,
+  platform: RuntimePlatform = currentPlatform(),
+): string {
+  if (platform !== "macos") {
+    return binding;
+  }
+  return binding
+    .split("+")
+    .map((part) => MAC_MODIFIER_LABELS[part] ?? part)
+    .join("+");
+}
 
 /**
  * Normalize a keydown event into the canonical binding string, e.g.
