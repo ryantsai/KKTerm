@@ -9,6 +9,7 @@
     "build": "tsc && vite build",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "check": "npm run lint && node tests/run-all.mjs && tsc --noEmit",
+    "check:all": "npm run check && cargo test --manifest-path src-tauri/Cargo.toml",
     "package:installer": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-installer.ps1",
     "package:installer:arm64": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-installer-arm64.ps1",
     "package:portable": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-portable.ps1",

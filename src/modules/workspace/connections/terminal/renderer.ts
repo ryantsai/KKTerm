@@ -171,6 +171,8 @@ class XtermTerminalRenderer implements TerminalRenderer, TerminalFontAtlasRefres
   private readonly rendererId = nextTerminalRendererId++;
   private readonly fitAddon = new FitAddon();
   private hostElement: HTMLElement | null = null;
+  private imeCompositionActive = false;
+  private imeCompositionCleanup: (() => void) | null = null;
   private readonly searchAddon = new SearchAddon({ highlightLimit: 500 });
   private readonly osc52Disposable: IDisposable | null = null;
   private readonly cwdListeners = new Set<(cwd: string) => void>();
@@ -259,6 +261,8 @@ class XtermTerminalRenderer implements TerminalRenderer, TerminalFontAtlasRefres
   dispose() {
     liveTerminalRenderers.delete(this);
     this.hostElement = null;
+    this.imeCompositionCleanup?.();
+    this.imeCompositionCleanup = null;
     this.osc52Disposable?.dispose();
     this.osc7Disposable?.dispose();
     for (const disposable of this.oscSequenceDisposables) {
@@ -314,7 +318,7 @@ class XtermTerminalRenderer implements TerminalRenderer, TerminalFontAtlasRefres
 
   attachCustomKeyEventHandler(handler: (event: KeyboardEvent) => boolean) {
     this.terminal.attachCustomKeyEventHandler((event) => {
-      if (shouldSuppressMacImeSwitchKey(event)) {
+      if (shouldSuppressMacImeSwitchKey(event, this.imeCompositionActive)) {
         return false;
       }
       return handler(event);
@@ -508,6 +512,23 @@ class XtermTerminalRenderer implements TerminalRenderer, TerminalFontAtlasRefres
     this.hostElement = element;
     this.applyHostBackground(this.backgroundOpacity);
     this.terminal.open(element);
+    const imeTextarea = this.terminal.textarea;
+    if (imeTextarea) {
+      const handleCompositionStart = () => {
+        this.imeCompositionActive = true;
+      };
+      const handleCompositionEnd = () => {
+        this.imeCompositionActive = false;
+      };
+      imeTextarea.addEventListener("compositionstart", handleCompositionStart);
+      imeTextarea.addEventListener("compositionend", handleCompositionEnd);
+      imeTextarea.addEventListener("blur", handleCompositionEnd);
+      this.imeCompositionCleanup = () => {
+        imeTextarea.removeEventListener("compositionstart", handleCompositionStart);
+        imeTextarea.removeEventListener("compositionend", handleCompositionEnd);
+        imeTextarea.removeEventListener("blur", handleCompositionEnd);
+      };
+    }
     this.tryEnableWebglRenderer();
     liveTerminalRenderers.add(this);
     this.refreshAtlasWhenFontsReady();

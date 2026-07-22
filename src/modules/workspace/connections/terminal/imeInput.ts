@@ -1,6 +1,6 @@
 import { isMacPlatform } from "../../../../lib/platform";
 
-type TerminalKeyboardEvent = Pick<KeyboardEvent, "code" | "key">;
+type TerminalKeyboardEvent = Pick<KeyboardEvent, "code" | "key" | "keyCode" | "type">;
 
 /**
  * WKWebView can report the macOS Caps Lock input-source switch with keyCode 0.
@@ -10,7 +10,21 @@ type TerminalKeyboardEvent = Pick<KeyboardEvent, "code" | "key">;
  */
 export function shouldSuppressMacImeSwitchKey(
   event: TerminalKeyboardEvent,
+  compositionActive = false,
   isMac = isMacPlatform(),
 ) {
-  return isMac && (event.code === "CapsLock" || event.key === "CapsLock");
+  if (!isMac) {
+    return false;
+  }
+
+  if (event.code === "CapsLock" || event.key === "CapsLock") {
+    return true;
+  }
+
+  return (
+    compositionActive &&
+    event.type === "keydown" &&
+    event.keyCode === 0 &&
+    (event.key === "" || event.key === "Unidentified")
+  );
 }
