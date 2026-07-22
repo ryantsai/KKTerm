@@ -42,7 +42,10 @@ encrypted SQLite backend is in use.
   bundle v2 added `itops` and `assistant`) and, on import, chooses **per
   segment** whether to Skip, Add (merge), or Replace. The manifest records the
   lowest bundle version able to carry the chosen segments, so bundles without
-  the newer segments stay importable by older app versions.
+  the newer segments stay importable by older app versions. The `dashboards`
+  segment also carries live Notes widget content from `durable_ui_state`; only
+  the Notes namespace is included, and its embedded Widget Instance id is
+  remapped during additive import.
 
 ### Generic, metadata-driven row copy
 

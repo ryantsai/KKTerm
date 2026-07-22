@@ -35,7 +35,10 @@ export const DURABLE_UI_STATE_PREFIXES = [
 ] as const;
 
 const DB_FLUSH_DELAY_MS = 400;
-const pendingFlushTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const pendingFlushes = new Map<
+  string,
+  { timer: ReturnType<typeof setTimeout>; value: string }
+>();
 
 function isDurableKey(key: string): boolean {
   return DURABLE_UI_STATE_PREFIXES.some((prefix) => key.startsWith(prefix));
@@ -57,19 +60,62 @@ function flushToDatabase(key: string, value: string) {
   if (!isTauriRuntime()) {
     return;
   }
-  const existing = pendingFlushTimers.get(key);
+  const existing = pendingFlushes.get(key);
   if (existing) {
-    clearTimeout(existing);
+    clearTimeout(existing.timer);
   }
-  pendingFlushTimers.set(
+  const timer = setTimeout(() => {
+    pendingFlushes.delete(key);
+    void invokeCommand("set_durable_ui_state", { key, value }).catch(() => {
+      // The cache still holds the value; startup hydration re-syncs it.
+    });
+  }, DB_FLUSH_DELAY_MS);
+  pendingFlushes.set(
     key,
-    setTimeout(() => {
-      pendingFlushTimers.delete(key);
-      void invokeCommand("set_durable_ui_state", { key, value }).catch(() => {
-        // The cache still holds the value; startup hydration re-syncs it.
-      });
-    }, DB_FLUSH_DELAY_MS),
+    { timer, value },
   );
+}
+
+/** Persist every queued write before a database snapshot/export reads it. */
+export async function flushDurableUiState(): Promise<void> {
+  if (!isTauriRuntime() || pendingFlushes.size === 0) {
+    return;
+  }
+  const pending = [...pendingFlushes.entries()];
+  for (const [key, { timer }] of pending) {
+    clearTimeout(timer);
+    pendingFlushes.delete(key);
+  }
+  await Promise.all(
+    pending.map(([key, { value }]) =>
+      invokeCommand("set_durable_ui_state", { key, value }),
+    ),
+  );
+}
+
+/** Replace one cache namespace from SQLite after an in-process database import. */
+export async function reloadDurableUiStatePrefix(prefix: string): Promise<void> {
+  if (typeof window === "undefined" || !isTauriRuntime()) {
+    return;
+  }
+  for (const [key, pending] of pendingFlushes) {
+    if (key.startsWith(prefix)) {
+      clearTimeout(pending.timer);
+      pendingFlushes.delete(key);
+    }
+  }
+  for (let index = window.localStorage.length - 1; index >= 0; index -= 1) {
+    const key = window.localStorage.key(index);
+    if (key?.startsWith(prefix)) {
+      window.localStorage.removeItem(key);
+    }
+  }
+  const records = await invokeCommand("list_durable_ui_state", { prefix });
+  for (const record of records) {
+    if (record.key.startsWith(prefix)) {
+      window.localStorage.setItem(record.key, record.value);
+    }
+  }
 }
 
 /** Write a durable value: update the cache now, write through to SQLite soon. */
@@ -86,10 +132,10 @@ export function writeDurableUiState(key: string, value: string): void {
 
 /** Remove one durable entry from both tiers. */
 export function removeDurableUiState(key: string): void {
-  const pending = pendingFlushTimers.get(key);
+  const pending = pendingFlushes.get(key);
   if (pending) {
-    clearTimeout(pending);
-    pendingFlushTimers.delete(key);
+    clearTimeout(pending.timer);
+    pendingFlushes.delete(key);
   }
   if (typeof window !== "undefined") {
     try {
@@ -106,10 +152,10 @@ export function removeDurableUiState(key: string): void {
 /** Remove every durable entry whose key starts with `prefix`, from both tiers.
  *  Backs per-connection cleanup on delete and the Settings reset. */
 export async function clearDurableUiStateByPrefix(prefix: string): Promise<void> {
-  for (const [key, pending] of pendingFlushTimers) {
+  for (const [key, pending] of pendingFlushes) {
     if (key.startsWith(prefix)) {
-      clearTimeout(pending);
-      pendingFlushTimers.delete(key);
+      clearTimeout(pending.timer);
+      pendingFlushes.delete(key);
     }
   }
   if (typeof window !== "undefined") {

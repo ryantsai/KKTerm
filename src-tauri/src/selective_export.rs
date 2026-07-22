@@ -37,6 +37,8 @@ use crate::storage::{DEFAULT_WORKSPACE_ID, Storage};
 
 const SELECTIVE_FORMAT: &str = "kkterm-selective-export";
 const SELECTIVE_VERSION: u32 = 2;
+const DASHBOARD_NOTES_KEY_PREFIX: &str = "kkterm.dashboard.notes.";
+const DASHBOARD_NOTES_KEY_SUFFIX: &str = ".v1";
 
 /// Lowest bundle version able to carry the chosen segments. v1 shipped
 /// workspaces/connections/dashboards/settings/mcpServers; v2 added the
@@ -134,6 +136,14 @@ fn segment_tables(segment: &str) -> Option<&'static [TableSpec]> {
                 // source_id -> dashboard_custom_widgets only when kind = 'script';
                 // built-in source ids are constants and handled specially below.
                 fks: &[("view_id", "dashboard_views")],
+            },
+            TableSpec {
+                // Only Notes rows belonging to live Dashboard instances are
+                // collected for this segment; other durable UI namespaces are
+                // intentionally private to their owning export categories.
+                name: "durable_ui_state",
+                pk: Pk::Natural,
+                fks: &[],
             },
         ]),
         "settings" => Some(&[TableSpec {
@@ -386,7 +396,11 @@ fn collect_segment_data(
             let tables = segment_tables(segment).expect("segment validated above");
             let mut segment_map = Map::new();
             for table in tables {
-                let rows = read_table(conn, table.name)?;
+                let rows = if segment == "dashboards" && table.name == "durable_ui_state" {
+                    read_dashboard_note_rows(conn)?
+                } else {
+                    read_table(conn, table.name)?
+                };
                 segment_map.insert(table.name.to_string(), Value::Array(rows));
             }
             data.insert(segment.clone(), Value::Object(segment_map));
@@ -674,8 +688,16 @@ fn apply_segment(
     // For "replace", clear the segment's tables child-before-parent first.
     if action == "replace" {
         for table in tables.iter().rev() {
-            tx.execute(&format!("DELETE FROM {}", table.name), [])
+            if table.name == "durable_ui_state" {
+                tx.execute(
+                    "DELETE FROM durable_ui_state WHERE key LIKE ?1",
+                    [format!("{DASHBOARD_NOTES_KEY_PREFIX}%")],
+                )
                 .map_err(|error| format!("failed to clear {}: {error}", table.name))?;
+            } else {
+                tx.execute(&format!("DELETE FROM {}", table.name), [])
+                    .map_err(|error| format!("failed to clear {}: {error}", table.name))?;
+            }
         }
     }
 
@@ -739,6 +761,11 @@ fn apply_segment(
             // the destination schema no longer has them, so drop them rather
             // than failing the whole insert.
             rewritten.retain(|column, _| destination_columns.contains(column));
+            if table.name == "durable_ui_state"
+                && !rewrite_dashboard_note_key(&mut rewritten, remap)
+            {
+                continue;
+            }
             rewrite_row(tx, table, &mut rewritten, action, remap)?;
             // On "add", a built-in Task the importer already has (same
             // deterministic id / built_in_key) is kept as-is rather than
@@ -1229,12 +1256,64 @@ fn read_table(conn: &SqliteConnection, table: &str) -> Result<Vec<Value>, String
     Ok(rows)
 }
 
+fn read_dashboard_note_rows(conn: &SqliteConnection) -> Result<Vec<Value>, String> {
+    let live_note_instances: HashSet<String> = conn
+        .prepare(
+            "SELECT id FROM dashboard_widget_instances
+             WHERE kind = 'builtIn' AND source_id = 'notes'",
+        )
+        .map_err(|error| format!("failed to read Notes widget instances: {error}"))?
+        .query_map([], |row| row.get(0))
+        .map_err(|error| format!("failed to read Notes widget instances: {error}"))?
+        .collect::<Result<_, _>>()
+        .map_err(|error| format!("failed to read Notes widget instances: {error}"))?;
+
+    Ok(read_table(conn, "durable_ui_state")?
+        .into_iter()
+        .filter(|row| {
+            row.get("key")
+                .and_then(Value::as_str)
+                .and_then(dashboard_note_instance_id)
+                .is_some_and(|instance_id| live_note_instances.contains(instance_id))
+        })
+        .collect())
+}
+
+fn dashboard_note_instance_id(key: &str) -> Option<&str> {
+    key.strip_prefix(DASHBOARD_NOTES_KEY_PREFIX)?
+        .strip_suffix(DASHBOARD_NOTES_KEY_SUFFIX)
+        .filter(|instance_id| !instance_id.is_empty())
+}
+
+fn rewrite_dashboard_note_key(
+    row: &mut Map<String, Value>,
+    remap: &HashMap<(String, String), String>,
+) -> bool {
+    let Some(instance_id) = row
+        .get("key")
+        .and_then(Value::as_str)
+        .and_then(dashboard_note_instance_id)
+    else {
+        return false;
+    };
+    let Some(mapped) = remap.get(&(
+        "dashboard_widget_instances".to_string(),
+        instance_id.to_string(),
+    )) else {
+        return false;
+    };
+    row.insert(
+        "key".to_string(),
+        Value::String(format!(
+            "{DASHBOARD_NOTES_KEY_PREFIX}{mapped}{DASHBOARD_NOTES_KEY_SUFFIX}"
+        )),
+    );
+    true
+}
+
 /// Column names of `table` in the destination database. `table` always comes
 /// from a static [`TableSpec`], never from bundle data.
-fn table_columns(
-    tx: &rusqlite::Transaction<'_>,
-    table: &str,
-) -> Result<HashSet<String>, String> {
+fn table_columns(tx: &rusqlite::Transaction<'_>, table: &str) -> Result<HashSet<String>, String> {
     let mut stmt = tx
         .prepare(&format!("SELECT name FROM pragma_table_info('{table}')"))
         .map_err(|error| format!("failed to inspect {table}: {error}"))?;
@@ -2204,6 +2283,141 @@ mod tests {
             .expect("all portable categories copy");
     }
 
+    #[test]
+    fn dashboard_merge_carries_note_content_and_remaps_its_instance_key() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let src = Storage::open(dir.path().join("src.sqlite3")).expect("src storage");
+        src.with_connection_mut(|conn| {
+            conn.execute_batch(
+                "INSERT INTO dashboard_views (id, title, sort_order, grid_density)
+                     VALUES ('notes-view','Notes',99,'default');
+                 INSERT INTO dashboard_widget_instances
+                     (id, view_id, kind, source_id, preset, accent_name, icon_name,
+                      settings_values_json, grid_x, grid_y, grid_w, grid_h, sort_order)
+                     VALUES
+                     ('notes-instance','notes-view','builtIn','notes','panel','amber','sticky-note',
+                      '{}',0,0,4,4,0);
+                 INSERT INTO durable_ui_state (key, value)
+                     VALUES ('kkterm.dashboard.notes.notes-instance.v1',
+                             '{\"pages\":[\"survives selective export\"],\"color\":\"yellow\",\"font\":\"handwriting\"}');",
+            )
+            .map_err(|error| error.to_string())
+        })
+        .expect("seed note widget");
+
+        let data = collect_segment_data(&src, &["dashboards".to_string()])
+            .expect("collect dashboard segment");
+        let dashboards = data
+            .get("dashboards")
+            .and_then(Value::as_object)
+            .expect("dashboard data");
+        assert_eq!(
+            dashboards
+                .get("durable_ui_state")
+                .and_then(Value::as_array)
+                .map(Vec::len),
+            Some(1),
+            "the Dashboard segment must carry durable Notes content"
+        );
+
+        let dst = Storage::open(dir.path().join("dst.sqlite3")).expect("dst storage");
+        let mut remap = HashMap::new();
+        dst.with_connection_mut(|conn| {
+            let tx = conn.transaction().map_err(|error| error.to_string())?;
+            apply_segment(
+                &tx,
+                segment_tables("dashboards").expect("dashboard segment exists"),
+                dashboards,
+                "add",
+                &mut remap,
+            )?;
+            tx.commit().map_err(|error| error.to_string())
+        })
+        .expect("merge dashboards");
+
+        let imported_instance = remap
+            .get(&(
+                "dashboard_widget_instances".to_string(),
+                "notes-instance".to_string(),
+            ))
+            .expect("instance remap");
+        let imported_key = format!("kkterm.dashboard.notes.{imported_instance}.v1");
+        let imported_value: String = dst
+            .with_connection(|conn| {
+                conn.query_row(
+                    "SELECT value FROM durable_ui_state WHERE key = ?1",
+                    [&imported_key],
+                    |row| row.get(0),
+                )
+                .map_err(|error| error.to_string())
+            })
+            .expect("imported note content");
+        assert!(imported_value.contains("survives selective export"));
+    }
+
+    #[test]
+    fn dashboard_replace_preserves_unrelated_durable_ui_state() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let src = Storage::open(dir.path().join("replace-src.sqlite3")).expect("src storage");
+        src.with_connection_mut(|conn| {
+            conn.execute_batch(
+                "INSERT INTO dashboard_views (id, title, sort_order, grid_density)
+                     VALUES ('replace-view','Notes',99,'default');
+                 INSERT INTO dashboard_widget_instances
+                     (id, view_id, kind, source_id, preset, accent_name, icon_name,
+                      settings_values_json, grid_x, grid_y, grid_w, grid_h, sort_order)
+                     VALUES
+                     ('replace-note','replace-view','builtIn','notes','panel','amber','sticky-note',
+                      '{}',0,0,4,4,0);
+                 INSERT INTO durable_ui_state (key, value)
+                     VALUES ('kkterm.dashboard.notes.replace-note.v1','{\"pages\":[\"replacement\"]}');",
+            )
+            .map_err(|error| error.to_string())
+        })
+        .expect("seed replacement Dashboard");
+        let data = collect_segment_data(&src, &["dashboards".to_string()])
+            .expect("collect replacement Dashboard");
+        let dashboards = data["dashboards"].as_object().expect("dashboard data");
+
+        let dst = Storage::open(dir.path().join("replace-dst.sqlite3")).expect("dst storage");
+        dst.with_connection_mut(|conn| {
+            conn.execute_batch(
+                "INSERT INTO durable_ui_state (key, value) VALUES
+                     ('kkterm.quickCommands.keep-me','[]'),
+                     ('kkterm.dashboard.notes.stale.v1','{\"pages\":[\"stale\"]}');",
+            )
+            .map_err(|error| error.to_string())?;
+            let tx = conn.transaction().map_err(|error| error.to_string())?;
+            apply_segment(
+                &tx,
+                segment_tables("dashboards").expect("dashboard segment exists"),
+                dashboards,
+                "replace",
+                &mut HashMap::new(),
+            )?;
+            tx.commit().map_err(|error| error.to_string())
+        })
+        .expect("replace dashboards");
+
+        let (quick_commands, stale_notes, replacement_notes): (i64, i64, i64) = dst
+            .with_connection(|conn| {
+                conn.query_row(
+                    "SELECT
+                         COUNT(*) FILTER (WHERE key = 'kkterm.quickCommands.keep-me'),
+                         COUNT(*) FILTER (WHERE key = 'kkterm.dashboard.notes.stale.v1'),
+                         COUNT(*) FILTER (WHERE key = 'kkterm.dashboard.notes.replace-note.v1')
+                     FROM durable_ui_state",
+                    [],
+                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+                )
+                .map_err(|error| error.to_string())
+            })
+            .expect("inspect durable state");
+        assert_eq!(quick_commands, 1, "unrelated durable data must survive");
+        assert_eq!(stale_notes, 0, "old Dashboard Notes must be replaced");
+        assert_eq!(replacement_notes, 1, "imported Dashboard Notes must land");
+    }
+
     /// Guard against the export silently falling behind the live schema: every
     /// table must either belong to a segment or be listed here as an
     /// intentional exclusion. Adding a table to `storage::CURRENT_SCHEMA`
@@ -2235,12 +2449,6 @@ mod tests {
             "ai_coding_usage_accounts",
             "ai_coding_usage_snapshots",
             "installer_tool_state",
-            // Durable frontend UI state (Quick Commands, Child Connection Tabs,
-            // Notes content, favorites, CLI labels, IT Ops layout). Rides in the
-            // whole-database backup but stays out of shareable connection
-            // bundles so a user's local workspace notes/favorites are not
-            // leaked when exporting selected Connections.
-            "durable_ui_state",
         ];
         let covered: Vec<&str> = SEGMENT_ORDER
             .iter()

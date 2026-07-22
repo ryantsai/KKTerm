@@ -12,6 +12,7 @@ import {
   TextInput,
 } from "../../app/ui/dialog";
 import { useDashboardStore } from "../dashboard/state/dashboardStore";
+import { reloadDurableUiStatePrefix } from "../../lib/durableUiState";
 import { invokeCommand, selectSettingsBackupImportFile } from "../../lib/tauri";
 import type { SelectiveManifest } from "../../types";
 import { useWorkspaceStore } from "../../store";
@@ -112,6 +113,7 @@ export function SelectiveImportDialog({
         window.dispatchEvent(new CustomEvent("kkterm:connection-tree-invalidated"));
       }
       if (result.applied.includes("dashboards")) {
+        await reloadDurableUiStatePrefix("kkterm.dashboard.notes.");
         await loadDashboard();
       }
       if (result.applied.includes("itops")) {

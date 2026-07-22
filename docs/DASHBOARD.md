@@ -104,13 +104,14 @@ If a script widget displays remote images, the assistant must set `permissions.n
 
 ## Persistence
 
-SQLite holds three Dashboard tables, defined in `src-tauri/src/storage.rs` under `CURRENT_SCHEMA`. Dashboard schema additions that are safe defaults use `ensure_column` during startup so existing local databases keep their saved views/widgets.
+SQLite holds three dedicated Dashboard tables plus instance-scoped Notes content in the shared `durable_ui_state` table, all defined in `src-tauri/src/storage.rs` under `CURRENT_SCHEMA`. Dashboard schema additions that are safe defaults use `ensure_column` during startup so existing local databases keep their saved views/widgets.
 
 | Table | Purpose |
 | --- | --- |
 | `dashboard_views` | One row per view. Holds `title`, `sort_order`, `grid_density`, and optional `tab_color` preset id. |
 | `dashboard_widget_instances` | One row per placed widget. Holds `kind`, `source_id`, presentation fields (`preset`, `accent_name`, `icon_name`, `custom_title`), per-instance `settings_values_json`, and layout (`grid_x`, `grid_y`, `grid_w`, `grid_h`). Secret fields store only `secretRef` metadata here. |
 | `dashboard_custom_widgets` | One row per AI Created script-widget definition. Holds `body_json`, validated against the script body schema, plus optional app-rendered `settings_schema_json`. It does not carry a widget kind because all AI Created Widgets are script widgets. |
+| `durable_ui_state` | Notes widget pages, paper color, and font use instance-scoped `kkterm.dashboard.notes.<instance-id>.v1` rows. SQLite is authoritative and `localStorage` is only the synchronous cache mirror. Settings selective export includes live Notes rows with the Dashboards segment and remaps their instance ids during additive import. |
 
 Indexes: `(view_id, sort_order)` on instances for fast per-view loads.
 

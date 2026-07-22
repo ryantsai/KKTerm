@@ -13,6 +13,7 @@ import {
   type DialogIconName,
 } from "../../app/ui/dialog";
 import { invokeCommand, selectSelectiveExportFile } from "../../lib/tauri";
+import { flushDurableUiState } from "../../lib/durableUiState";
 import { useWorkspaceStore } from "../../store";
 
 /// Categories offered for selective export, in display order. Each group maps to
@@ -70,6 +71,7 @@ export function SelectiveExportDialog({ onClose }: { onClose: () => void }) {
         setBusy(false);
         return;
       }
+      await flushDurableUiState();
       const info = await invokeCommand("export_selective_database", {
         path,
         segments: chosenSegments,
