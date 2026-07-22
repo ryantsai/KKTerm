@@ -152,19 +152,24 @@ test("NSSM, VcXsrv, and Oh My Posh retain their provider contracts", () => {
   });
 });
 
-test("Chocolatey bootstraps through winget without a recursive provider picker", () => {
+test("Chocolatey offers winget and official-script bootstrap sources", () => {
   const chocolatey = recipe("chocolatey");
   assert.equal(chocolatey.category, "package-managers");
   assert.deepEqual(chocolatey.provider, {
     kind: "winget",
     id: "Chocolatey.Chocolatey",
   });
+  assert.deepEqual(chocolatey.downloadProvider, {
+    kind: "downloadInstaller",
+    url: "https://community.chocolatey.org/install.ps1",
+    fileName: "chocolatey-install.ps1",
+  });
   assert.deepEqual(chocolatey.chocolateyProvider, {
     kind: "chocolatey",
     id: "chocolatey",
   });
   assert.ok(chocolatey.needs?.includes("winget"));
-  assert.ok(!chocolatey.options?.includes("provider"));
+  assert.ok(chocolatey.options?.includes("provider"));
 });
 
 test("uv is winget-backed but does not request scoped portable installs", () => {

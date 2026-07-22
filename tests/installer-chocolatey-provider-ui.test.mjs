@@ -47,6 +47,14 @@ test("provider selector offers Chocolatey when a recipe declares a Chocolatey pr
   );
 });
 
+test("Chocolatey does not offer itself as a recursive bootstrap provider", () => {
+  assert.match(
+    dialogSource,
+    /canChooseChocolatey\s*=\s*recipe\.id !== "chocolatey"/,
+    "Chocolatey's own provider selector should offer WinGet or the official script, not Chocolatey itself.",
+  );
+});
+
 test("not-installed Chocolatey dialog states the admin + machine-wide requirement", () => {
   assert.match(
     dialogSource,
