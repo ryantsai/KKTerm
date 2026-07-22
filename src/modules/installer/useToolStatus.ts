@@ -46,6 +46,9 @@ export interface ToolStatusInputs {
   latestError: string | null | undefined;
   lastFailed: boolean;
   scanning: boolean;
+  /// Whether *this* tool's latest-version lookup is currently in flight.
+  /// Scoped per-tool (not the store's global `checking` flag) so a check
+  /// targeting one tool does not flip every card into the retrieving state.
   checking: boolean;
 }
 
@@ -108,7 +111,7 @@ export function useToolStatus(recipe: Recipe): ToolStatus {
   const lastStatus = useInstallerStore((s) => s.lastStatus[recipe.id]);
   const latestError = useInstallerStore((s) => s.checkError[recipe.id]);
   const scanning = useInstallerStore((s) => s.scanning);
-  const checking = useInstallerStore((s) => s.checking);
+  const checking = useInstallerStore((s) => s.checkingToolIds.has(recipe.id));
 
   return deriveToolStatus(recipe, {
     detected,
