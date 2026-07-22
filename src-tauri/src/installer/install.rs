@@ -865,19 +865,24 @@ fn run_downloaded_installer(
     cancel: Arc<AtomicBool>,
     emit: &EventSink,
 ) -> Result<(), String> {
-    run_streamed_public(
-        "powershell",
-        &[
-            "-NoProfile".into(),
-            "-ExecutionPolicy".into(),
-            "Bypass".into(),
-            "-Command".into(),
-            downloaded_installer_powershell_script(download_path, tool_id),
-        ],
-        tool_id,
-        cancel,
-        emit,
-    )
+    let script = downloaded_installer_powershell_script(download_path, tool_id);
+    let mut args = vec![
+        "-NoProfile".into(),
+        "-ExecutionPolicy".into(),
+        "Bypass".into(),
+        "-Command".into(),
+    ];
+    if tool_id == "chocolatey" {
+        // Chocolatey's official bootstrap must run from an administrative
+        // PowerShell process because it installs machine-wide under
+        // C:\ProgramData\Chocolatey. The elevated runner writes a batch
+        // wrapper, so keep the complete PowerShell command in one quoted arg.
+        args.push(format!("\"{script}\""));
+        run_streamed_elevated("powershell", &args, tool_id, cancel, emit)
+    } else {
+        args.push(script);
+        run_streamed_public("powershell", &args, tool_id, cancel, emit)
+    }
 }
 
 fn downloaded_installer_powershell_script(download_path: &PathBuf, tool_id: &str) -> String {
@@ -896,8 +901,13 @@ fn downloaded_installer_powershell_script(download_path: &PathBuf, tool_id: &str
         .extension()
         .is_some_and(|extension| extension.eq_ignore_ascii_case("ps1"))
     {
+        let tls_setup = if tool_id == "chocolatey" {
+            "[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; "
+        } else {
+            ""
+        };
         return format!(
-            "$ErrorActionPreference = 'Stop'; & {}; if ($LASTEXITCODE) {{ exit $LASTEXITCODE }}; exit 0",
+            "$ErrorActionPreference = 'Stop'; {tls_setup}& {}; if ($LASTEXITCODE) {{ exit $LASTEXITCODE }}; exit 0",
             powershell_single_quote(&download_path.to_string_lossy())
         );
     }
@@ -3326,6 +3336,17 @@ mod tests {
         assert!(script.contains("& 'C:\\Temp\\install.ps1'"));
         assert!(script.contains("$LASTEXITCODE"));
         assert!(!script.contains("Start-Process -FilePath"));
+    }
+
+    #[test]
+    fn chocolatey_bootstrap_enables_tls_12_before_running_download() {
+        let script = downloaded_installer_powershell_script(
+            &PathBuf::from(r"C:\Temp\chocolatey-install.ps1"),
+            "chocolatey",
+        );
+
+        assert!(script.contains("SecurityProtocol -bor 3072"));
+        assert!(script.contains("& 'C:\\Temp\\chocolatey-install.ps1'"));
     }
 
     #[test]

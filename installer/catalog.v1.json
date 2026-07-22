@@ -159,11 +159,17 @@
         "kind": "winget",
         "id": "Chocolatey.Chocolatey"
       },
+      "downloadProvider": {
+        "kind": "downloadInstaller",
+        "url": "https://community.chocolatey.org/install.ps1",
+        "fileName": "chocolatey-install.ps1"
+      },
       "chocolateyProvider": {
         "kind": "chocolatey",
         "id": "chocolatey"
       },
       "options": [
+        "provider",
         "version"
       ],
       "descriptionLocales": {

@@ -732,6 +732,26 @@ mod tests {
     }
 
     #[test]
+    fn shipped_chocolatey_recipe_offers_official_direct_bootstrap() {
+        let json = include_str!("../../../installer/catalog.v1.json");
+        let catalog: Catalog =
+            serde_json::from_str(json).expect("shipped catalog JSON should parse");
+        let recipe = catalog
+            .recipes
+            .iter()
+            .find(|recipe| recipe.id == "chocolatey")
+            .expect("catalog should include Chocolatey");
+
+        assert!(recipe.options.contains(&RecipeOption::Provider));
+        assert!(matches!(
+            &recipe.download_provider,
+            Some(Provider::DownloadInstaller { url, file_name, .. })
+                if url == "https://community.chocolatey.org/install.ps1"
+                    && file_name == "chocolatey-install.ps1"
+        ));
+    }
+
+    #[test]
     fn shipped_catalog_includes_psmux_winget_recipe() {
         let json = include_str!("../../../installer/catalog.v1.json");
         let catalog: Catalog =

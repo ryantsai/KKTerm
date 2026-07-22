@@ -1495,7 +1495,9 @@ function OptionsForm({
     (recipe.downloadProvider?.kind === "downloadInstaller" ||
       recipe.downloadProvider?.kind === "githubRelease");
   const canChooseChocolatey =
-    supported.has("provider") && recipe.chocolateyProvider?.kind === "chocolatey";
+    recipe.id !== "chocolatey" &&
+    supported.has("provider") &&
+    recipe.chocolateyProvider?.kind === "chocolatey";
   const canChooseNpm =
     supported.has("provider") && recipe.npmProvider?.kind === "npm";
   const usingDownloadProvider =
@@ -1606,6 +1608,7 @@ function defaultInstallOptionsForRecipe(
 ): InstallOptions {
   if (
     preferredProvider === "chocolatey" &&
+    recipe.id !== "chocolatey" &&
     recipe.options?.includes("provider") &&
     recipe.provider.kind === "winget" &&
     recipe.chocolateyProvider?.kind === "chocolatey"

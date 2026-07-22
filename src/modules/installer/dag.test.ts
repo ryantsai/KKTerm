@@ -282,10 +282,28 @@ const catalogWithChocolateyProvider: Catalog = {
       icon: "Package",
       needs: ["winget"],
       provider: { kind: "winget", id: "Chocolatey.Chocolatey" },
+      downloadProvider: {
+        kind: "downloadInstaller",
+        url: "https://community.chocolatey.org/install.ps1",
+        fileName: "chocolatey-install.ps1",
+      },
+      options: ["provider"],
     },
     chocolateyBackedWingetRecipe,
   ],
 };
+
+const directChocolateyPlan = resolveInstallPlan(
+  "chocolatey",
+  catalogWithChocolateyProvider,
+  {},
+  { provider: "download" },
+);
+if (directChocolateyPlan.actionable.some((step) => step.recipe.id === "winget")) {
+  throw new Error(
+    "Chocolatey's direct installer should not require winget.",
+  );
+}
 
 const chocolateyProviderPlan = resolveInstallPlan(
   "choco-backed-winget-app",
