@@ -19,6 +19,10 @@ interface MistySeaPaletteStop extends MistySeaPalette {
   hour: number;
 }
 
+export const MISTY_SEA_DAY_CYCLE_SECONDS = 5 * 60;
+export const MISTY_SEA_WAVE_SCALE = 2;
+export const MISTY_SEA_STAR_DENSITY = 1.0;
+
 // Palette stops mirror the supplied scene's automatic dawn-to-midnight mood.
 // The WebGL implementation below is original KKTerm code; it does not embed
 // Wallpaper Engine assets or its compiled DirectX shaders. Visual reference:
@@ -140,7 +144,6 @@ precision highp float;
 
 varying vec2 vUv;
 uniform vec2 uResolution;
-uniform vec2 uPointer;
 uniform float uTime;
 uniform vec3 uSkyColor;
 uniform vec3 uHorizonColor;
@@ -150,6 +153,8 @@ uniform vec3 uSunColor;
 uniform float uSunHeight;
 uniform float uSunStrength;
 uniform float uDaylight;
+uniform float uWaveScale;
+uniform float uStarDensity;
 
 float hash21(vec2 point) {
   point = fract(point * vec2(123.34, 456.21));
@@ -181,13 +186,26 @@ float fbm(vec2 point) {
 }
 
 float waveField(vec2 point) {
-  vec2 drifted = point + vec2(uTime * 0.22, -uTime * 0.16);
-  float wave = sin(dot(drifted, vec2(0.72, 0.31))) * 0.42;
-  wave += sin(dot(drifted, vec2(-0.46, 1.17)) + 1.4) * 0.27;
-  wave += sin(dot(drifted, vec2(1.83, 0.24)) - 0.7) * 0.16;
-  wave += sin(dot(drifted, vec2(-1.12, 2.31)) + 2.2) * 0.09;
-  wave += (valueNoise(drifted * 0.62) - 0.5) * 0.24;
+  float speed = 0.42 * uWaveScale;
+  vec2 drifted = point + vec2(uTime * speed, -uTime * speed * 0.72);
+  float amplitude = uWaveScale;
+  float wave = sin(dot(drifted, vec2(0.72, 0.31))) * 0.62 * amplitude;
+  wave += sin(dot(drifted, vec2(-0.46, 1.17)) + 1.4) * 0.40 * amplitude;
+  wave += sin(dot(drifted, vec2(1.83, 0.24)) - 0.7) * 0.24 * amplitude;
+  wave += sin(dot(drifted, vec2(-1.12, 2.31)) + 2.2) * 0.14 * amplitude;
+  wave += (valueNoise(drifted * 0.62) - 0.5) * 0.32 * amplitude;
   return wave;
+}
+
+float starLayer(vec2 uv, float threshold, float seed) {
+  vec2 grid = floor(uv);
+  vec2 cell = fract(uv) - 0.5;
+  float hash = hash21(grid + seed);
+  if (hash < threshold) return 0.0;
+  float brightness = 1.0 - smoothstep(0.0, 0.14, length(cell));
+  brightness *= smoothstep(threshold, 1.0, hash);
+  float twinkle = 0.5 + 0.5 * sin(uTime * 2.2 + hash * 60.0 + seed);
+  return brightness * (0.5 + 0.5 * twinkle);
 }
 
 void main() {
@@ -195,9 +213,8 @@ void main() {
   float aspect = uResolution.x / max(1.0, uResolution.y);
   point.x *= aspect;
 
-  vec2 pointerOffset = (uPointer - 0.5) * vec2(0.11, 0.055);
-  float horizon = 0.035 + pointerOffset.y;
-  vec2 sunPosition = vec2(pointerOffset.x * 1.6, horizon + 0.035 + uSunHeight);
+  float horizon = 0.035;
+  vec2 sunPosition = vec2(0.0, 0.035 + 0.035 + uSunHeight);
   float skyAmount = clamp((point.y - horizon) / max(0.001, 1.0 - horizon), 0.0, 1.0);
 
   vec3 sky = mix(uHorizonColor, uSkyColor, pow(skyAmount, 0.62));
@@ -207,26 +224,34 @@ void main() {
   float cloudNoise = fbm(cloudPoint * 2.0) + fbm(cloudPoint * 4.3 + 8.0) * 0.3;
   float cloudMask = smoothstep(0.48, 0.72, cloudNoise) * cloudFade;
   sky = mix(sky, uCloudColor, cloudMask * (0.27 + 0.31 * uDaylight));
-  float horizonHaze = (1.0 - smoothstep(0.0, 0.17, abs(point.y - horizon - 0.075)))
+  float horizonHaze = (1.0 - smoothstep(0.0, 0.09, abs(point.y - horizon - 0.05)))
     * (0.55 + 0.45 * valueNoise(vec2(point.x * 2.1 + uTime * 0.004, 3.7)));
-  sky = mix(sky, uCloudColor, horizonHaze * 0.13);
+  sky = mix(sky, uCloudColor, horizonHaze * 0.025);
+
+  float nightness = clamp(1.0 - uDaylight, 0.0, 1.0);
+  float aboveHorizon = smoothstep(horizon + 0.01, horizon + 0.4, point.y);
+  float starGlow = starLayer(point * 14.0, 0.90, 0.0)
+    + starLayer(point * 27.0, 0.95, 2.4) * 0.75;
+  sky += vec3(0.85, 0.9, 1.0) * starGlow * aboveHorizon * nightness * uStarDensity;
 
   vec2 sunDelta = point - sunPosition;
   sunDelta.x *= 0.82;
   float sunDistance = length(sunDelta);
-  float sunDisc = 1.0 - smoothstep(0.025, 0.045, sunDistance);
+  float sunDisc = 1.0 - smoothstep(0.031, 0.035, sunDistance);
   float sunGlow = exp(-sunDistance * 8.0) * 0.72 + exp(-sunDistance * 28.0) * 0.42;
-  sky += uSunColor * (sunDisc * 1.35 + sunGlow) * uSunStrength;
+  float glowScale = mix(1.0, 0.3, nightness);
+  float discBoost = 1.4 + nightness * 3.2;
+  sky += uSunColor * (sunDisc * discBoost + sunGlow * glowScale) * uSunStrength;
 
   vec3 color = sky;
   if (point.y < horizon) {
     float waterDepth = min(38.0, 0.72 / max(0.025, horizon - point.y));
-    vec2 waterPoint = vec2(point.x * waterDepth * 1.18, waterDepth * 1.75);
+    vec2 waterPoint = vec2(point.x * waterDepth, waterDepth * 1.45);
     float wave = waveField(waterPoint);
     float epsilon = 0.055 + waterDepth * 0.0035;
     float waveX = waveField(waterPoint + vec2(epsilon, 0.0));
     float waveZ = waveField(waterPoint + vec2(0.0, epsilon));
-    vec3 normal = normalize(vec3((wave - waveX) / epsilon * 0.48, 1.0, (wave - waveZ) / epsilon * 0.58));
+    vec3 normal = normalize(vec3((wave - waveX) / epsilon * 0.62, 1.0, (wave - waveZ) / epsilon * 0.72));
 
     float distanceFromHorizon = clamp(horizon - point.y, 0.0, 1.2);
     float fresnel = 0.24 + 0.58 * pow(1.0 - distanceFromHorizon * 0.72, 3.0);
@@ -234,18 +259,20 @@ void main() {
     vec3 reflectedSky = mix(uHorizonColor, uSkyColor, reflectedHeight);
     reflectedSky = mix(reflectedSky, uCloudColor, cloudMask * 0.18);
 
+    float bandFade = smoothstep(0.0, 0.32, distanceFromHorizon);
+
     float waveLight = clamp(normal.x * -0.22 + normal.z * 0.38 + 0.48, 0.0, 1.0);
     color = mix(uWaterColor * (0.5 + waveLight * 0.24), reflectedSky, fresnel);
     float swellBand = 0.5 + 0.5 * sin(waterPoint.y * 2.35 + wave * 3.1 + normal.x * 0.8);
     float rippleBand = 0.5 + 0.5 * sin(waterPoint.y * 5.8 - wave * 2.4);
-    color *= 0.7 + swellBand * 0.26 + rippleBand * 0.08;
-    color += reflectedSky * pow(swellBand, 7.0) * (0.035 + distanceFromHorizon * 0.08);
+    color *= mix(1.0, 0.7 + swellBand * 0.26 + rippleBand * 0.08, bandFade);
+    color += reflectedSky * pow(swellBand, 7.0) * (0.035 + distanceFromHorizon * 0.08) * bandFade;
 
     float reflectionOffset = point.x - sunPosition.x + normal.x * (0.035 + distanceFromHorizon * 0.055);
     float reflectionColumn = exp(-abs(reflectionOffset) * (10.0 + distanceFromHorizon * 16.0));
     float reflectionBands = pow(0.5 + 0.5 * sin(waterPoint.y * 4.7 + wave * 5.0), 5.0);
     reflectionBands += pow(0.5 + 0.5 * sin(waterPoint.y * 8.9 - wave * 3.0), 9.0) * 0.55;
-    float reflectionReach = smoothstep(0.005, 0.055, distanceFromHorizon)
+    float reflectionReach = smoothstep(0.02, 0.14, distanceFromHorizon)
       * (1.0 - smoothstep(0.7, 1.08, distanceFromHorizon));
     float reflection = reflectionColumn * reflectionBands * reflectionReach;
     color += uSunColor * reflection * uSunStrength * 1.55;
@@ -256,8 +283,10 @@ void main() {
     ) * smoothstep(0.07, 0.82, distanceFromHorizon);
     color += mix(uHorizonColor, vec3(0.92, 0.96, 1.0), uDaylight * 0.5) * crest * 0.16;
 
-    float seaMist = smoothstep(12.0, 35.0, waterDepth);
-    color = mix(color, uHorizonColor, seaMist * 0.45);
+    float seaMist = smoothstep(5.0, 38.0, waterDepth);
+    color = mix(color, uHorizonColor, seaMist * 0.42);
+    float horizonSeam = 1.0 - smoothstep(0.0, 0.03, distanceFromHorizon);
+    color = mix(color, uHorizonColor, horizonSeam);
   }
 
   float vignette = 1.0 - 0.28 * pow(length(point * vec2(0.58, 0.82)), 2.25);
@@ -324,11 +353,14 @@ export function mistySeaPaletteAtHour(inputHour: number): MistySeaPalette {
   };
 }
 
-function currentLocalHour(): number {
+export function mistySeaHourAtElapsedSeconds(elapsedSeconds: number): number {
+  return ((elapsedSeconds % MISTY_SEA_DAY_CYCLE_SECONDS) / MISTY_SEA_DAY_CYCLE_SECONDS) * 24;
+}
+
+function currentSceneHour(elapsedSeconds: number): number {
   const forcedHour = (window as Window & { __kkMistySeaHour?: number }).__kkMistySeaHour;
   if (Number.isFinite(forcedHour)) return forcedHour as number;
-  const now = new Date();
-  return now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
+  return mistySeaHourAtElapsedSeconds(elapsedSeconds);
 }
 
 function compileShader(
@@ -392,12 +424,7 @@ export function MistySeaBg() {
     let elapsed = 0;
     let width = 2;
     let height = 2;
-    let pointerX = 0.5;
-    let pointerY = 0.5;
-    let targetPointerX = 0.5;
-    let targetPointerY = 0.5;
-    let palette = mistySeaPaletteAtHour(currentLocalHour());
-    let nextPaletteRefresh = 0;
+    let palette = mistySeaPaletteAtHour(currentSceneHour(0));
     let warned = false;
 
     let gl: WebGLRenderingContext | null = null;
@@ -408,7 +435,6 @@ export function MistySeaBg() {
     let positionLocation = -1;
     let timeLocation: WebGLUniformLocation | null = null;
     let resolutionLocation: WebGLUniformLocation | null = null;
-    let pointerLocation: WebGLUniformLocation | null = null;
     let skyLocation: WebGLUniformLocation | null = null;
     let horizonLocation: WebGLUniformLocation | null = null;
     let waterLocation: WebGLUniformLocation | null = null;
@@ -417,6 +443,8 @@ export function MistySeaBg() {
     let sunHeightLocation: WebGLUniformLocation | null = null;
     let sunStrengthLocation: WebGLUniformLocation | null = null;
     let daylightLocation: WebGLUniformLocation | null = null;
+    let waveScaleLocation: WebGLUniformLocation | null = null;
+    let starDensityLocation: WebGLUniformLocation | null = null;
 
     function applyFallbackBackground() {
       canvas.style.background = `linear-gradient(180deg, ${cssRgb(palette.sky)} 0%, ${cssRgb(palette.horizon)} 51%, ${cssRgb(palette.water)} 100%)`;
@@ -465,7 +493,6 @@ export function MistySeaBg() {
         positionLocation = gl.getAttribLocation(program, "aPosition");
         timeLocation = gl.getUniformLocation(program, "uTime");
         resolutionLocation = gl.getUniformLocation(program, "uResolution");
-        pointerLocation = gl.getUniformLocation(program, "uPointer");
         skyLocation = gl.getUniformLocation(program, "uSkyColor");
         horizonLocation = gl.getUniformLocation(program, "uHorizonColor");
         waterLocation = gl.getUniformLocation(program, "uWaterColor");
@@ -474,6 +501,8 @@ export function MistySeaBg() {
         sunHeightLocation = gl.getUniformLocation(program, "uSunHeight");
         sunStrengthLocation = gl.getUniformLocation(program, "uSunStrength");
         daylightLocation = gl.getUniformLocation(program, "uDaylight");
+        waveScaleLocation = gl.getUniformLocation(program, "uWaveScale");
+        starDensityLocation = gl.getUniformLocation(program, "uStarDensity");
         if (positionLocation < 0) throw new Error("Misty Sea shader input is unavailable.");
         gl.useProgram(program);
         gl.enableVertexAttribArray(positionLocation);
@@ -507,32 +536,17 @@ export function MistySeaBg() {
       else applyFallbackBackground();
     }
 
-    function followPointer(event: PointerEvent) {
-      if (!activeRef.current) return;
-      const rect = parent.getBoundingClientRect();
-      if (rect.width <= 0 || rect.height <= 0) return;
-      targetPointerX = clamp01((event.clientX - rect.left) / rect.width);
-      targetPointerY = 1 - clamp01((event.clientY - rect.top) / rect.height);
-    }
-
     function render(now: number) {
       const dt = lastNow ? Math.min((now - lastNow) / 1000, 0.05) : 0;
       lastNow = now;
       elapsed += dt;
-      const pointerMix = Math.min(1, dt * 3.5);
-      pointerX = mixNumber(pointerX, targetPointerX, pointerMix);
-      pointerY = mixNumber(pointerY, targetPointerY, pointerMix);
 
-      if (now >= nextPaletteRefresh) {
-        palette = mistySeaPaletteAtHour(currentLocalHour());
-        nextPaletteRefresh = now + 1000;
-      }
+      palette = mistySeaPaletteAtHour(currentSceneHour(elapsed));
 
       if (webGlReady && gl && program) {
         gl.useProgram(program);
         gl.uniform1f(timeLocation, elapsed);
         gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
-        gl.uniform2f(pointerLocation, pointerX, pointerY);
         gl.uniform3fv(skyLocation, palette.sky);
         gl.uniform3fv(horizonLocation, palette.horizon);
         gl.uniform3fv(waterLocation, palette.water);
@@ -541,6 +555,8 @@ export function MistySeaBg() {
         gl.uniform1f(sunHeightLocation, palette.sunHeight);
         gl.uniform1f(sunStrengthLocation, palette.sunStrength);
         gl.uniform1f(daylightLocation, palette.daylight);
+        gl.uniform1f(waveScaleLocation, MISTY_SEA_WAVE_SCALE);
+        gl.uniform1f(starDensityLocation, MISTY_SEA_STAR_DENSITY);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       }
 
@@ -598,7 +614,6 @@ export function MistySeaBg() {
 
     const resizeObserver = new ResizeObserver(resize);
     resizeObserver.observe(parent);
-    document.addEventListener("pointermove", followPointer, { passive: true });
     canvas.addEventListener("webglcontextlost", handleContextLost);
     canvas.addEventListener("webglcontextrestored", handleContextRestored);
     resize();
@@ -608,7 +623,6 @@ export function MistySeaBg() {
     return () => {
       cancelFrame();
       resizeObserver.disconnect();
-      document.removeEventListener("pointermove", followPointer);
       canvas.removeEventListener("webglcontextlost", handleContextLost);
       canvas.removeEventListener("webglcontextrestored", handleContextRestored);
       releaseWebGlResources();
