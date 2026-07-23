@@ -60,7 +60,7 @@ The full-screen window carries a **connection bar** (`remoteDesktop.fullscreen.b
 
 Backend: `list_display_monitors`, `open_remote_fullscreen_window`, and `close_remote_fullscreen_window` (`src-tauri/src/remote_fullscreen.rs`). The window loads the app bundle at `#/remote-fullscreen/<kind>/<sessionId>/<connectionId>`; `main.tsx` mounts only `RemoteFullscreenApp` for that route.
 
-Current coverage: **VNC and macOS/Linux RDP** render in the full-screen window today (`remoteDesktop.fullscreen.rdpPending` is shown for **Windows RDP**, whose ActiveX popup full-screen and `/multimon` support are pending). The macOS/Linux RDP attach paints framebuffer deltas as they arrive; a late attacher's initial frame is not resent until a full-refresh command is added.
+Current coverage: **VNC and macOS/Linux RDP** render in the full-screen window today (`remoteDesktop.fullscreen.rdpPending` is shown for **Windows RDP**, whose ActiveX popup full-screen and `/multimon` support are pending). On attach, VNC calls `refresh_vnc_session` and macOS/Linux RDP calls `refresh_rdp_client_session` (which replays IronRDP's decoded framebuffer as one full RawImage) so the current screen appears immediately rather than waiting for server deltas.
 
 ## macOS/Linux RDP keyboard and clipboard
 

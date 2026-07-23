@@ -212,6 +212,11 @@ export function RdpCanvasView({
 
     if (attachSessionId) {
       reportConnected();
+      // Force a full-frame repaint so the detached window shows the current
+      // screen immediately instead of waiting for server deltas.
+      void invokeCommand("refresh_rdp_client_session", {
+        request: { sessionId: attachSessionId },
+      }).catch(() => undefined);
     } else if (connection && rdpOptions) {
       void invokeCommand("start_rdp_client_session", {
         request: {

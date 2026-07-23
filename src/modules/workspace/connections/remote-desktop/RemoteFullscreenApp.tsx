@@ -60,9 +60,9 @@ export function RemoteFullscreenApp({ route }: { route: RemoteFullscreenRoute })
           onKeyUp={vnc.handlers.onKeyUp}
         />
       ) : usesCanvasRdp() ? (
-        // macOS/Linux: reuse the IronRDP canvas view in attach mode. It renders
-        // framebuffer deltas as they arrive; a late attacher's initial frame is
-        // not resent (no full-refresh command yet — Phase 4 adds a RefreshRect).
+        // macOS/Linux: reuse the IronRDP canvas view in attach mode. It requests
+        // a full-frame repaint on attach (refresh_rdp_client_session) so the
+        // current screen shows immediately, then paints deltas as they arrive.
         <RdpCanvasView attachSessionId={route.sessionId} />
       ) : (
         // Windows RDP is the ActiveX popup; full-screen for it lands in Phase 4.

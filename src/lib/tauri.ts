@@ -3244,6 +3244,10 @@ type CommandMap = {
     args: { request: RdpClientSimpleRequest };
     result: null;
   };
+  refresh_rdp_client_session: {
+    args: { request: RdpClientSimpleRequest };
+    result: null;
+  };
   close_rdp_client_session: {
     args: { request: RdpClientSimpleRequest };
     result: null;
