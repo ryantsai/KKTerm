@@ -60,7 +60,10 @@ The full-screen window carries a **connection bar** (`remoteDesktop.fullscreen.b
 
 Backend: `list_display_monitors`, `open_remote_fullscreen_window`, and `close_remote_fullscreen_window` (`src-tauri/src/remote_fullscreen.rs`). The window loads the app bundle at `#/remote-fullscreen/<kind>/<sessionId>/<connectionId>`; `main.tsx` mounts only `RemoteFullscreenApp` for that route.
 
-Current coverage: **VNC and macOS/Linux RDP** render in the full-screen window today (`remoteDesktop.fullscreen.rdpPending` is shown for **Windows RDP**, whose ActiveX popup full-screen and `/multimon` support are pending). On attach, VNC calls `refresh_vnc_session` and macOS/Linux RDP calls `refresh_rdp_client_session` (which replays IronRDP's decoded framebuffer as one full RawImage) so the current screen appears immediately rather than waiting for server deltas.
+Coverage by surface:
+
+- **VNC** and **macOS/Linux RDP** render inside the full-screen window (a second render host attached by Session id). On attach, VNC calls `refresh_vnc_session` and macOS/Linux RDP calls `refresh_rdp_client_session` (which replays IronRDP's decoded framebuffer as one full RawImage) so the current screen appears immediately rather than waiting for server deltas.
+- **Windows RDP** is the native `mstscax` ActiveX popup, so its full-screen window renders nothing in the DOM: `enter_rdp_fullscreen` moves the popup over the full-screen window (inserted above it in z-order) and marks the Session so the Pane can no longer reposition or park the popup; `exit_rdp_fullscreen` parks it and clears the mark so the Pane re-reveals it. `remoteDesktop.fullscreen.rdpPending` remains as the fallback message. Windows `/multimon` (a spanned RDP desktop across monitors) needs pre-connect configuration and is not covered by the attach model; span mode there covers the monitor rect visually only. The Windows ActiveX full-screen path is best-effort and must be validated on a Windows desktop (cross-window z-order/airspace and the Pane re-reveal on exit).
 
 ## macOS/Linux RDP keyboard and clipboard
 

@@ -3160,6 +3160,14 @@ type CommandMap = {
     args: { request: SetRdpVisibilityRequest };
     result: null;
   };
+  enter_rdp_fullscreen: {
+    args: { request: RdpSimpleRequest };
+    result: null;
+  };
+  exit_rdp_fullscreen: {
+    args: { request: RdpSimpleRequest };
+    result: null;
+  };
   sync_rdp_display_size: {
     args: { request: SyncRdpDisplaySizeRequest };
     result: RdpDisplaySizeSync;
