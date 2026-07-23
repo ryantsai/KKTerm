@@ -2,7 +2,14 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const [source, itOpsCommandsSource, selectiveExportSource, xServerSource, sftpWorkspaceSource] = await Promise.all([
+const [
+  source,
+  itOpsCommandsSource,
+  selectiveExportSource,
+  xServerSource,
+  sftpWorkspaceSource,
+  remoteFullscreenSource,
+] = await Promise.all([
   readFile(new URL("../src-tauri/src/lib.rs", import.meta.url), "utf8"),
   readFile(new URL("../src-tauri/src/itops/commands.rs", import.meta.url), "utf8"),
   readFile(new URL("../src-tauri/src/selective_export.rs", import.meta.url), "utf8"),
@@ -14,6 +21,7 @@ const [source, itOpsCommandsSource, selectiveExportSource, xServerSource, sftpWo
     ),
     "utf8",
   ),
+  readFile(new URL("../src-tauri/src/remote_fullscreen.rs", import.meta.url), "utf8"),
 ]);
 
 function commandSource(name, nextName) {
@@ -42,6 +50,16 @@ test("system counter collection runs outside Tauri's native main thread", () => 
   const command = commandSource("get_system_performance_counters", "pc_info_get");
   assert.match(command, /tauri::async_runtime::spawn_blocking/);
   assert.match(command, /system_performance_counters_snapshot\(\)/);
+});
+
+test("detached remote full-screen creation leaves the WebView2 IPC callback", () => {
+  const command = asyncCommandSource(
+    remoteFullscreenSource,
+    "open_remote_fullscreen_window",
+  );
+  assert.match(command, /tauri::async_runtime::spawn_blocking/);
+  assert.match(command, /open_remote_fullscreen_window_blocking/);
+  assert.match(command, /WebviewWindowBuilder::new/);
 });
 
 test("IT Ops batch preparation runs outside Tauri's native main thread", () => {

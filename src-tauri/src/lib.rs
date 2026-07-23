@@ -4478,18 +4478,6 @@ pub fn run() {
                     eprintln!("failed to update remote desktop full-screen shortcut: {error}");
                 }
             }
-            if matches!(event, tauri::WindowEvent::Destroyed)
-                && let Some(session_id) =
-                    remote_fullscreen::session_id_from_label(window.label())
-                && let Some(rdp_sessions) = window.try_state::<rdp::RdpSessionManager>()
-            {
-                let _ = rdp_sessions.exit_fullscreen(
-                    window.app_handle().clone(),
-                    rdp::RdpSimpleRequest {
-                        session_id: session_id.to_string(),
-                    },
-                );
-            }
             if window.label() != window_state::MAIN_WINDOW_LABEL {
                 return;
             }

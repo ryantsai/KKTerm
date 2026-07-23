@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
 import { usesCanvasRdp } from "../../../../lib/platform";
-import { closeCurrentWindow, invokeCommand, isTauriRuntime } from "../../../../lib/tauri";
+import { closeCurrentWindow, isTauriRuntime } from "../../../../lib/tauri";
 import { RdpCanvasView } from "./RdpCanvasView";
 import { RemoteFullscreenBar } from "./RemoteFullscreenBar";
 import { useVncSurface } from "./vncSurface";
@@ -16,25 +16,6 @@ import type { RemoteFullscreenRoute } from "./remoteFullscreenRoute";
 import "./remote-desktop.css";
 
 const REMOTE_FULLSCREEN_SHORTCUT_EVENT = "kkterm://toggle-remote-fullscreen";
-
-/**
- * Windows RDP host: the ActiveX popup is a native window, so this only asks the
- * backend to move that popup over this full-screen window (enter) and back to
- * its Pane on unmount (exit). Nothing renders in the DOM here — the popup draws
- * on top. (Best-effort; needs Windows desktop validation.)
- */
-function WindowsRdpFullscreenHost({ sessionId }: { sessionId: string }) {
-  useEffect(() => {
-    if (!isTauriRuntime()) {
-      return;
-    }
-    void invokeCommand("enter_rdp_fullscreen", { request: { sessionId } }).catch(() => undefined);
-    return () => {
-      void invokeCommand("exit_rdp_fullscreen", { request: { sessionId } }).catch(() => undefined);
-    };
-  }, [sessionId]);
-  return null;
-}
 
 export type { RemoteFullscreenRoute };
 export { parseRemoteFullscreenRoute } from "./remoteFullscreenRoute";
@@ -108,9 +89,9 @@ export function RemoteFullscreenApp({ route }: { route: RemoteFullscreenRoute })
         // current screen shows immediately, then paints deltas as they arrive.
         <RdpCanvasView attachSessionId={route.sessionId} />
       ) : (
-        // Windows: the RDP ActiveX popup is a native window the backend moves
-        // over this full-screen window; nothing renders in this DOM tree.
-        <WindowsRdpFullscreenHost sessionId={route.sessionId} />
+        // Windows RDP never reaches this detached route: mstscax owns its
+        // full-screen host and native connection bar.
+        null
       )}
 
       {status ? <div className="remote-fullscreen-status">{status}</div> : null}

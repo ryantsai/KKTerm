@@ -104,13 +104,6 @@ export function RemoteFullscreenBar({
           native: true,
         });
       }
-      // Windows RDP renders through a native popup positioned by the backend, so
-      // moving this window does not move the popup — re-issue enter to follow it.
-      if (kind === "rdp" && !usesCanvasRdp()) {
-        await invokeCommand("enter_rdp_fullscreen", { request: { sessionId } }).catch(
-          () => undefined,
-        );
-      }
     } catch {
       // Repositioning is best-effort; the window stays where it is on failure.
     }

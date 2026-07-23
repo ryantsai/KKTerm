@@ -867,6 +867,14 @@ export function RemoteDesktopWorkspace({
     if (!sessionId || !connection || (connection.type !== "rdp" && connection.type !== "vnc")) {
       return;
     }
+    if (canStartRdp) {
+      void invokeCommand("enter_rdp_fullscreen", {
+        request: { sessionId },
+      }).catch((error) =>
+        reportRemoteDesktopError(error instanceof Error ? error.message : String(error)),
+      );
+      return;
+    }
     void openRemoteFullscreen({
       sessionId,
       connectionId: connection.id,
@@ -1624,19 +1632,6 @@ export function RemoteDesktopWorkspace({
           {rdpStatus ? <span className="webview-toolbar-status">{rdpStatus}</span> : null}
           {showRemoteDesktopToolbar ? (
             <button
-              aria-label={t("remoteDesktop.actionsMenu")}
-              className="terminal-pane-action"
-              data-tutorial-id="remoteDesktop.viewMode"
-              disabled={!isTauriRuntime()}
-              onClick={handleRemoteDesktopMenu}
-              title={t("remoteDesktop.actionsMenu")}
-              type="button"
-            >
-              <Menu size={13} />
-            </button>
-          ) : null}
-          {showRemoteDesktopToolbar ? (
-            <button
               aria-label={`${t("remoteDesktop.sendCtrlAltDel")} ${typeLabel} ${t("remoteDesktop.session")}`}
               className="terminal-pane-action"
               data-tutorial-id="remoteDesktop.sendCtrlAltDel"
@@ -1678,6 +1673,19 @@ export function RemoteDesktopWorkspace({
               type="button"
             >
               <Bot size={13} />
+            </button>
+          ) : null}
+          {showRemoteDesktopToolbar ? (
+            <button
+              aria-label={t("remoteDesktop.actionsMenu")}
+              className="terminal-pane-action"
+              data-tutorial-id="remoteDesktop.viewMode"
+              disabled={!isTauriRuntime()}
+              onClick={handleRemoteDesktopMenu}
+              title={t("remoteDesktop.actionsMenu")}
+              type="button"
+            >
+              <Menu size={13} />
             </button>
           ) : null}
         

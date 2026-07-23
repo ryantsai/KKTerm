@@ -199,6 +199,13 @@ mod platform {
         device_collection_get: usize,
         drive_collection_get:
             unsafe extern "system" fn(*mut c_void, *mut *mut c_void) -> windows::core::HRESULT,
+        warn_about_sending_credentials_put: usize,
+        warn_about_sending_credentials_get: usize,
+        warn_about_clipboard_redirection_put: usize,
+        warn_about_clipboard_redirection_get: usize,
+        connection_bar_text_put:
+            unsafe extern "system" fn(*mut c_void, BSTR) -> windows::core::HRESULT,
+        connect_to_administer_server_get: usize,
     }
 
     #[repr(transparent)]
@@ -560,11 +567,6 @@ mod platform {
         device_scale_factor: i32,
         dynamic_resize_failures: u32,
         resolution_mode: RemoteResolutionMode,
-        /// When the session is presented in a detached full-screen window, this
-        /// holds the owner HWND to restore on exit. While `Some`, the Pane's
-        /// bounds/visibility pushes are ignored so they cannot drag the ActiveX
-        /// popup off the full-screen window.
-        fullscreen: Option<HWND>,
     }
 
     // These values are always created, used, and destroyed through closures
@@ -617,8 +619,8 @@ mod platform {
                 let session = sessions
                     .get_mut(&request.session_id)
                     .ok_or_else(|| format!("RDP session '{}' was not found", request.session_id))?;
-                if session.fullscreen.is_some() {
-                    // Presented in a detached full-screen window; ignore Pane bounds.
+                if is_native_fullscreen(session) {
+                    // ActiveX owns its native full-screen window; ignore Pane bounds.
                     return Ok(());
                 }
                 show_and_resize_rdp(
@@ -649,11 +651,11 @@ mod platform {
                 let scale_factor =
                     rdp_request_scale_factor(request.scale_factor, host_scale_factor);
                 let sessions = lock_sessions(&sessions)?;
-                // A session shown in a detached full-screen window owns its popup;
-                // the Pane must not reposition or park it.
+                // A session in ActiveX full screen owns its native host; the Pane
+                // must not reposition or park its windowed host.
                 if sessions
                     .get(&request.session_id)
-                    .is_some_and(|session| session.fullscreen.is_some())
+                    .is_some_and(is_native_fullscreen)
                 {
                     return Ok(());
                 }
@@ -661,7 +663,7 @@ mod platform {
                     let mut parked_other_sessions = 0;
                     for (other_session_id, other_session) in sessions.iter() {
                         if other_session_id != &request.session_id
-                            && other_session.fullscreen.is_none()
+                            && !is_native_fullscreen(other_session)
                         {
                             park_rdp_at_current_size(other_session.hwnd)?;
                             parked_other_sessions += 1;
@@ -753,9 +755,9 @@ mod platform {
             })
         }
 
-        /// Present a live RDP session in its detached full-screen window: move
-        /// the ActiveX popup to cover that window and mark the session so the
-        /// Pane can no longer reposition or park the popup.
+        /// Ask the Microsoft RDP ActiveX control to enter its own full-screen
+        /// mode. The control owns both the top-level host and connection bar,
+        /// matching mstsc/RDCMan and avoiding cross-window WebView2 airspace.
         pub fn enter_fullscreen(
             &self,
             app: AppHandle,
@@ -763,28 +765,19 @@ mod platform {
         ) -> Result<(), String> {
             let sessions = Arc::clone(&self.sessions);
             let session_id = request.session_id;
-            run_on_main_thread("enter_rdp_fullscreen", app, move |app| {
-                let label = format!("remote-fullscreen-{session_id}");
-                let fs_window = app
-                    .get_webview_window(&label)
-                    .ok_or_else(|| format!("full-screen window '{label}' is not available"))?;
-                let fs_handle = fs_window
-                    .hwnd()
-                    .map_err(|error| format!("failed to read full-screen window handle: {error}"))?;
-                let fs_hwnd = HWND(fs_handle.0);
-                let mut sessions = lock_sessions(&sessions)?;
+            run_on_main_thread("enter_rdp_fullscreen", app, move |_app| {
+                let sessions = lock_sessions(&sessions)?;
                 let session = sessions
-                    .get_mut(&session_id)
+                    .get(&session_id)
                     .ok_or_else(|| format!("RDP session '{session_id}' was not found"))?;
-                position_rdp_over_fullscreen(session.hwnd, fs_hwnd)?;
-                session.fullscreen = Some(fs_hwnd);
+                configure_native_fullscreen(&session.dispatch)?;
+                set_property_bool(&session.dispatch, "FullScreen", true)?;
                 Ok(())
             })
         }
 
-        /// Return an RDP session from its detached full-screen window to its
-        /// Pane. The popup is parked; the Pane re-reveals it on its next bounds
-        /// push (the frontend re-drives bounds after the window closes).
+        /// Return the ActiveX control to its existing windowed host. The Pane's
+        /// HWND and bounds never moved, so no parking/reveal cycle is needed.
         pub fn exit_fullscreen(
             &self,
             app: AppHandle,
@@ -793,14 +786,36 @@ mod platform {
             let sessions = Arc::clone(&self.sessions);
             let session_id = request.session_id;
             run_on_main_thread("exit_rdp_fullscreen", app, move |_app| {
-                let mut sessions = lock_sessions(&sessions)?;
+                let sessions = lock_sessions(&sessions)?;
                 let session = sessions
-                    .get_mut(&session_id)
+                    .get(&session_id)
                     .ok_or_else(|| format!("RDP session '{session_id}' was not found"))?;
-                session.fullscreen = None;
-                park_rdp_at_current_size(session.hwnd)?;
+                set_property_bool(&session.dispatch, "FullScreen", false)?;
                 Ok(())
             })
+        }
+
+        /// Called only from Tauri's native shortcut callback, which runs on the
+        /// UI thread that owns the ActiveX controls.
+        pub fn exit_active_fullscreen(&self) -> Result<bool, String> {
+            let sessions = lock_sessions(&self.sessions)?;
+            for session in sessions.values() {
+                if is_native_fullscreen(session) {
+                    set_property_bool(&session.dispatch, "FullScreen", false)?;
+                    rdp_debug(
+                        "fullscreen.shortcut.exit",
+                        &json!({ "sessionId": &session.session_id }),
+                    );
+                    return Ok(true);
+                }
+            }
+            Ok(false)
+        }
+
+        /// Called by shortcut focus registration on Tauri's UI thread.
+        pub fn has_active_fullscreen(&self) -> Result<bool, String> {
+            let sessions = lock_sessions(&self.sessions)?;
+            Ok(sessions.values().any(is_native_fullscreen))
         }
 
         pub fn sync_display_size(
@@ -1314,7 +1329,6 @@ mod platform {
                 device_scale_factor: display_settings.device_scale_factor,
                 dynamic_resize_failures: 0,
                 resolution_mode,
-                fullscreen: None,
             },
         );
 
@@ -1810,6 +1824,33 @@ mod platform {
         if let Some(advanced) = get_advanced_settings(dispatch) {
             let _ = set_property_string(&advanced, "ClearTextPassword", password);
         }
+    }
+
+    fn set_connection_bar_text(dispatch: &IDispatch, text: &str) -> Result<(), String> {
+        let nonscriptable = dispatch
+            .cast::<IMsRdpClientNonScriptable3>()
+            .map_err(|error| {
+                format!("RDP ActiveX does not expose native connection-bar settings: {error}")
+            })?;
+        unsafe {
+            (nonscriptable.vtable().connection_bar_text_put)(
+                Interface::as_raw(&nonscriptable),
+                BSTR::from(text),
+            )
+            .ok()
+            .map_err(|error| format!("failed to set the RDP connection-bar text: {error}"))
+        }
+    }
+
+    fn configure_native_fullscreen(dispatch: &IDispatch) -> Result<(), String> {
+        set_connection_bar_text(dispatch, "KKTerm")?;
+        let advanced = get_advanced_settings(dispatch)
+            .ok_or_else(|| "RDP ActiveX advanced settings are unavailable".to_string())?;
+        set_property_bool(&advanced, "DisplayConnectionBar", true)?;
+        set_property_bool(&advanced, "PinConnectionBar", false)?;
+        let _ = set_property_bool(&advanced, "ConnectionBarShowRestoreButton", true);
+        let _ = set_property_bool(&advanced, "ConnectionBarShowMinimizeButton", false);
+        Ok(())
     }
 
     fn get_advanced_settings(dispatch: &IDispatch) -> Option<IDispatch> {
@@ -2847,34 +2888,8 @@ mod platform {
         Ok(staged)
     }
 
-    /// Position the ActiveX popup to cover a detached full-screen window,
-    /// inserted directly above it in z-order. Coordinates are physical screen
-    /// pixels (GetWindowRect), so no logical/scale conversion is involved. The
-    /// remote desktop is not renegotiated here; the popup covers the monitor and
-    /// the existing SmartSizing/resolution behaviour applies. Best-effort:
-    /// cross-window z-order/airspace for an owned popup needs desktop validation.
-    fn position_rdp_over_fullscreen(popup: HWND, fs_hwnd: HWND) -> Result<(), String> {
-        let mut rect = RECT::default();
-        unsafe {
-            GetWindowRect(fs_hwnd, &mut rect)
-                .map_err(|error| format!("failed to read full-screen window rect: {error}"))?;
-        }
-        let width = (rect.right - rect.left).max(1);
-        let height = (rect.bottom - rect.top).max(1);
-        unsafe {
-            SetWindowPos(
-                popup,
-                Some(fs_hwnd),
-                rect.left,
-                rect.top,
-                width,
-                height,
-                SWP_NOACTIVATE,
-            )
-            .map_err(|error| format!("failed to position RDP control over full screen: {error}"))?;
-            let _ = ShowWindow(popup, SW_SHOWNOACTIVATE);
-        }
-        Ok(())
+    fn is_native_fullscreen(session: &RdpSession) -> bool {
+        get_property_i32(&session.dispatch, "FullScreen").is_ok_and(|value| value != 0)
     }
 
     fn staged_rect(width: i32, height: i32) -> (i32, i32, i32, i32) {
@@ -3631,7 +3646,10 @@ mod platform {
             _app: AppHandle,
             _request: RdpSimpleRequest,
         ) -> Result<(), String> {
-            Err("RDP full screen requires Windows and the Microsoft RDP ActiveX control".to_string())
+            Err(
+                "RDP full screen requires Windows and the Microsoft RDP ActiveX control"
+                    .to_string(),
+            )
         }
 
         pub fn exit_fullscreen(
@@ -3640,6 +3658,14 @@ mod platform {
             _request: RdpSimpleRequest,
         ) -> Result<(), String> {
             Ok(())
+        }
+
+        pub fn exit_active_fullscreen(&self) -> Result<bool, String> {
+            Ok(false)
+        }
+
+        pub fn has_active_fullscreen(&self) -> Result<bool, String> {
+            Ok(false)
         }
 
         pub fn sync_display_size(

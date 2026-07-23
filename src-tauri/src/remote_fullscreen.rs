@@ -1,22 +1,20 @@
-//! Detached full-screen windows for RDP and VNC Sessions.
+//! Detached full-screen windows for VNC and canvas-rendered RDP Sessions.
 //!
 //! A remote-desktop Session normally renders inside its Pane in the main
 //! window. "Full screen" here means presenting that *same live Session* in a
 //! separate, borderless top-level window that covers one monitor (true OS
-//! full screen) or spans the whole virtual desktop — the model used by mstsc,
-//! RDCMan, Remmina and TigerVNC.
+//! full screen) or spans the whole virtual desktop.
 //!
 //! This module owns only the window/monitor plumbing. It does not start or own
 //! the Session: VNC (`vnc-session-event`) and IronRDP (`rdp-canvas-event`)
 //! already emit **app-wide**, and their input commands are keyed by
 //! `session_id`, so the full-screen window attaches to the running Session by
-//! id and renders it with the shared remote-desktop surface code. The Windows
-//! RDP ActiveX popup is positioned over this window through the existing
-//! `update_rdp_bounds` / `set_rdp_visibility` geometry path.
+//! id and renders it with the shared remote-desktop surface code. Windows RDP
+//! bypasses this module and uses mstscax's own `FullScreen` mode and native
+//! connection bar.
 //!
-//! NOTE: real RDP/VNC full-screen behavior and the Windows ActiveX multimon
-//! path must be validated in the Tauri desktop runtime; this file only carries
-//! the portable window lifecycle.
+//! NOTE: real VNC/canvas full-screen behavior must be validated in the Tauri
+//! desktop runtime; this file only carries the portable window lifecycle.
 
 use serde::{Deserialize, Serialize};
 use tauri::{
@@ -96,12 +94,6 @@ struct Rect {
 
 fn label_for(session_id: &str) -> String {
     format!("{LABEL_PREFIX}{session_id}")
-}
-
-pub(crate) fn session_id_from_label(label: &str) -> Option<&str> {
-    label
-        .strip_prefix(LABEL_PREFIX)
-        .filter(|value| !value.is_empty())
 }
 
 fn collect_monitors(app: &AppHandle) -> Result<Vec<MonitorInfo>, String> {
@@ -230,12 +222,29 @@ pub(crate) fn list_display_monitors(app: AppHandle) -> Result<Vec<MonitorInfo>, 
 
 /// Open (or focus) the detached full-screen window for a live Session.
 #[tauri::command]
-pub(crate) fn open_remote_fullscreen_window(
+pub(crate) async fn open_remote_fullscreen_window(
+    app: AppHandle,
+    request: OpenRemoteFullscreenRequest,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        open_remote_fullscreen_window_blocking(app, request)
+    })
+    .await
+    .map_err(|error| format!("full-screen window worker failed: {error}"))?
+}
+
+fn open_remote_fullscreen_window_blocking(
     app: AppHandle,
     request: OpenRemoteFullscreenRequest,
 ) -> Result<(), String> {
     if request.kind != "rdp" && request.kind != "vnc" {
         return Err(format!("unsupported full-screen kind: {}", request.kind));
+    }
+    #[cfg(target_os = "windows")]
+    if request.kind == "rdp" {
+        return Err(
+            "Windows RDP full screen is owned by the Microsoft RDP ActiveX control".to_string(),
+        );
     }
     let label = label_for(&request.session_id);
     if let Some(existing) = app.get_webview_window(&label) {
@@ -346,15 +355,5 @@ mod tests {
                 height: 720,
             }
         );
-    }
-
-    #[test]
-    fn session_id_is_recovered_from_fullscreen_window_label() {
-        assert_eq!(
-            session_id_from_label("remote-fullscreen-rdp-123"),
-            Some("rdp-123")
-        );
-        assert_eq!(session_id_from_label("remote-fullscreen-"), None);
-        assert_eq!(session_id_from_label("main"), None);
     }
 }

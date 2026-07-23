@@ -12,7 +12,7 @@ use std::{
 use tauri::Manager;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
-use crate::{remote_fullscreen, storage::GeneralSettings};
+use crate::{rdp::RdpSessionManager, remote_fullscreen, storage::GeneralSettings};
 
 const ACTION_ID: &str = "remoteFullscreen";
 
@@ -71,10 +71,15 @@ pub(crate) fn apply(app: &tauri::AppHandle, settings: &GeneralSettings) -> Resul
 /// F11 or another user-selected binding while the user works in another app.
 pub(crate) fn sync_focus(app: &tauri::AppHandle) -> Result<(), String> {
     let manager = app.global_shortcut();
-    let app_is_focused = app
+    let window_is_focused = app
         .webview_windows()
         .into_values()
         .any(|window| window.is_focused().unwrap_or(false));
+    let native_rdp_is_fullscreen = match app.try_state::<RdpSessionManager>() {
+        Some(rdp_sessions) => rdp_sessions.has_active_fullscreen()?,
+        None => false,
+    };
+    let app_is_focused = window_is_focused || native_rdp_is_fullscreen;
     let mut state = registration()
         .lock()
         .map_err(|_| "remote desktop full-screen shortcut state is unavailable".to_string())?;
@@ -86,6 +91,15 @@ pub(crate) fn sync_focus(app: &tauri::AppHandle) -> Result<(), String> {
     let register = |shortcut| {
         manager.on_shortcut(shortcut, move |app, _shortcut, event| {
             if event.state() == ShortcutState::Pressed {
+                if let Some(rdp_sessions) = app.try_state::<RdpSessionManager>() {
+                    match rdp_sessions.exit_active_fullscreen() {
+                        Ok(true) => return,
+                        Ok(false) => {}
+                        Err(error) => {
+                            eprintln!("failed to exit native RDP full screen: {error}");
+                        }
+                    }
+                }
                 remote_fullscreen::emit_toggle_shortcut(app);
             }
         })
