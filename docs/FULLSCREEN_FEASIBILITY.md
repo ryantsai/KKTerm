@@ -135,7 +135,62 @@ So within RDP/VNC, child-window full screen is only moderately costly for
 Windows RDP (already its own window, but delicate) and expensive for every
 canvas surface (VNC, macOS/Linux RDP).
 
-## 4. Recommendation
+## 4. How other apps do it (prior art)
+
+Every mainstream RDP/VNC client converges on the same full-screen pattern, and
+it maps almost exactly onto Option A2. Two problems KKTerm has to solve — exit
+UI over an airspace/keyboard-grabbing surface, and "maximize is not full
+screen" — are solved the same way across the board.
+
+- **Microsoft `mstsc` (Remote Desktop Connection).** Full screen makes the
+  *window* borderless over the monitor; the persistent affordance is a
+  **pinnable "connection bar"** docked top-center with restore/minimize/close.
+  Toggle is a dedicated hotkey (**Ctrl+Alt+Break**). Multi-monitor via
+  `/multimon`, `/span`, and `selectedmonitors:s:` in the `.rdp` file. Known
+  pain that KKTerm must avoid: with `use multimon`, the host taskbar is hidden,
+  so the connection bar is the *only* way out.
+- **RDCMan (Sysinternals).** The closest analog to KKTerm — it embeds the same
+  `mstscax.dll` ActiveX control in tabs. It has a per-server full-screen mode
+  and a **Smart Sizing** toggle in the control menu. The load-bearing lesson: a
+  [documented bug](https://learn.microsoft.com/en-us/answers/questions/2189488/rdcman-full-screen-mode-not-functioning-properly-w)
+  is that full screen misbehaves when the RDCMan window is merely **maximized**
+  (it reserves taskbar space) but works when the window is minimized/true
+  full screen. → KKTerm's A2 must use a real `set_fullscreen`, **not** maximize,
+  or it inherits the same taskbar-gutter bug.
+- **RealVNC / TigerVNC.** Because the remote grabs the keyboard, exit is a
+  **top-edge reveal toolbar** plus an **in-session menu key (F8)** with a
+  "Exit full screen / Full screen" item; VNC also exposes a **"send/redirect
+  system keys" (keyboard grab)** control so Alt+Tab / Ctrl+Alt+Del reach the
+  remote. TigerVNC 1.16 replaced the fixed F8 with a **configurable shortcut
+  system** for the fullscreen toggle and system-key redirect — direct
+  validation of KKTerm's keyboard-passthrough concern.
+- **Remmina.** Embedded tabs with a **floating auto-hide toolbar in
+  fullscreen** carrying fullscreen toggle, dynamic resolution, scaling, a
+  **keyboard-grab toggle**, minimize, and multi-monitor; toggle shortcut
+  **Ctrl+Right+F**; a viewport-scroll fullscreen for oversized remotes; and a
+  CLI kiosk mode.
+- **mRemoteNG.** Tabbed embedded RDP (ActiveX, like RDCMan) with a fullscreen
+  toggle and a per-connection "redirect key combinations" setting.
+
+**Distilled pattern (what KKTerm should copy):**
+
+1. Full-screen the *container window* with a real fullscreen call, not
+   maximize (RDCMan lesson).
+2. Provide a **reveal-on-hover / pinnable top "connection bar"** as the
+   persistent exit + controls affordance — this is the universal answer to
+   "the remote surface is on top and the taskbar is gone." For Windows RDP this
+   bar must live outside the ActiveX airspace (native strip or a
+   `nativeOverlay`-registered DOM overlay); for VNC/canvas RDP an ordinary DOM
+   bar suffices.
+3. Bind a **dedicated toggle hotkey** intercepted before the remote host
+   (mstsc Ctrl+Alt+Break, Remmina Ctrl+R+F, TigerVNC configurable).
+4. Treat **keyboard grab / "send system keys"** (Alt+Tab, Ctrl+Alt+Del, Win)
+   as a distinct fullscreen concern, exposed on that bar.
+5. **Multi-monitor** (span / pick monitors) is a recognized advanced axis —
+   reasonable to defer, and it pairs naturally with Option B (child window on a
+   chosen monitor).
+
+## 5. Recommendation
 
 1. **Ship Option A (in-app full screen) first.** It fits the existing
    architecture, reuses the geometry-sync and view-mode machinery, and covers
@@ -154,11 +209,15 @@ canvas surface (VNC, macOS/Linux RDP).
    lifecycle.
 
 A defensible v1 that satisfies "full screen for RDP and VNC" is: **Option A1 +
-A2 for both surfaces on all platforms**, with the Windows-RDP exit affordance
-solved via a native menu item and an optional always-native top strip. Child
+A2 for both surfaces on all platforms**, following the industry pattern from §4
+— a real `set_fullscreen` (not maximize), a **reveal-on-hover top connection
+bar** as the exit/controls affordance (native strip or `nativeOverlay`-
+registered overlay over Windows RDP; plain DOM over VNC/canvas RDP), a
+**dedicated toggle hotkey** intercepted before the remote, and a **keyboard-
+grab / "send system keys"** control on that bar. Multi-monitor and child
 windows come later.
 
-## 5. Invariants and required follow-through (from AGENTS.md / ARCHITECTURE.md)
+## 6. Invariants and required follow-through (from AGENTS.md / ARCHITECTURE.md)
 
 - **Airspace**: any exit/toolbar UI over Windows RDP uses `nativeContextMenu.ts`
   or is registered in `nativeOverlay.ts`; extend
@@ -180,7 +239,7 @@ windows come later.
 - **Verification**: RDP/VNC focus/input, native menus, and title-bar behavior
   must be validated in the real Tauri desktop runtime, not Vite/browser preview.
 
-## 6. Open questions for the requester
+## 7. Open questions for the requester
 
 - Which placement is actually wanted first — **in-app** full screen (A),
   **child window** (B), or both?
@@ -188,5 +247,8 @@ windows come later.
   filling the KKTerm frame (A1) enough?
 - Platform priority for RDP: Windows ActiveX vs. macOS/Linux canvas (Windows
   first per the product tradeoff order)?
-- Preferred Windows-RDP exit affordance: a native menu item, an always-native
-  top strip, a title-bar toggle, or a global accelerator?
+- Exit affordance: prior art (§4) points to a **reveal/pinnable top connection
+  bar + a dedicated toggle hotkey**. Adopt that, or prefer a simpler
+  native-menu-only exit for v1?
+- Is a **keyboard-grab / "send system keys"** toggle (Alt+Tab, Ctrl+Alt+Del to
+  the remote) wanted in v1, or deferred with multi-monitor?
