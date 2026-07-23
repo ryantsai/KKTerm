@@ -3,6 +3,56 @@
 All notable changes to KKTerm are documented here.
 
 ## Direct Downloads
+* 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.130/kkterm-0.1.130-windows-x64-setup.exe)
+* 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.130/kkterm-0.1.130-windows-arm64-setup.exe)
+* 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.130/kkterm-0.1.130-windows-x64-portable.zip)
+* 📦 [Portable for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.130/kkterm-0.1.130-windows-arm64-portable.zip)
+
+## Highlights
+- Remote Desktop: Add full-screen RDP and VNC sessions (with connection-aware full-screen requests).  
+- macOS: Improve shortcut display names and fix Tauri updater signing-key normalization.  
+  (Because your release pipeline shouldn’t faceplant on base64 like a startled terminal.)
+
+## New
+- Remote Desktop: Full-screen RDP and VNC sessions.
+
+## Improved
+- macOS: Use macOS modifier names in shortcut displays (PR #673).
+- Remote Desktop: Enhanced full-screen handling to include Connection name in requests (PR #676).
+
+## Fixed
+- Fixed: Normalize Tauri updater signing key to standard base64 (PR #674) — reported by @ryantsai (linked issue reporter #675).
+- macOS shortcut-related signing key test updates (PR #673).
+
+## Internal
+- Release/packaging & updater signing adjustments:
+  - Normalize updater signing key for macOS packaging scripts (PR #674).
+  - Update tests and scripts related to macOS signing key behavior (PR #673).
+
+---
+
+## 重點
+- 遠端桌面（Remote Desktop）：新增全螢幕的 RDP 與 VNC Session（同時讓全螢幕請求帶上連線資訊）。  
+- macOS：改善快捷鍵顯示方式，並修正 Tauri 更新程式的簽名金鑰編碼。  
+ （畢竟釋出流程不該被 base64 絆倒成驚慌的終端機。）
+
+## 新功能
+- 遠端桌面：新增全螢幕 RDP 與 VNC Session。
+
+## 改進
+- macOS：快捷鍵顯示改用 macOS 的修飾鍵名稱（PR #673）。
+- 遠端桌面：強化全螢幕處理，使請求包含 Connection 名稱（PR #676）。
+
+## 修正
+- 修正：將 Tauri 更新程式簽名金鑰正規化為標準 base64（PR #674）—並由 @ryantsai 回報（linked issue reporter #675）。
+- macOS：快捷鍵相關簽名金鑰測試更新（PR #673）。
+
+## 內部變更
+- 發佈/封裝與更新程式簽名相關調整：
+  - 更新 macOS 封裝腳本的 updater 簽名金鑰正規化（PR #674）。
+  - 更新與 macOS 簽名金鑰行為相關的測試與腳本（PR #673）。
+
+## Direct Downloads
 * 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.129/kkterm-0.1.129-windows-x64-setup.exe)
 * 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.129/kkterm-0.1.129-windows-arm64-setup.exe)
 * 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.129/kkterm-0.1.129-windows-x64-portable.zip)
