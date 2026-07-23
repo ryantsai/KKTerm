@@ -79,13 +79,18 @@ export function RdpCanvasView({
   onSessionDisconnected,
   rdpOptions,
   surfaceRef,
+  attachSessionId,
 }: {
   cadSignal?: number;
-  connection: Connection;
+  // Required to START a session (pane path). Omitted in attach mode, where the
+  // detached full-screen window renders an already-running session by id.
+  connection?: Connection;
   onSessionConnected?: (sessionId: string) => void;
   onSessionDisconnected?: (sessionId: string) => void;
-  rdpOptions: RdpSettings;
+  rdpOptions?: RdpSettings;
   surfaceRef?: RefObject<HTMLCanvasElement | null>;
+  /** When set, attach to this live session instead of starting a new one. */
+  attachSessionId?: string;
 }) {
   const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -95,7 +100,7 @@ export function RdpCanvasView({
   const composingRef = useRef(false);
   const [status, setStatus] = useState<"connecting" | "connected" | "disconnected">("connecting");
   const [errorMessage, setErrorMessage] = useState("");
-  const sharedLocalFoldersKey = rdpOptions.sharedLocalFolders.join("\u0000");
+  const sharedLocalFoldersKey = (rdpOptions?.sharedLocalFolders ?? []).join("\u0000");
 
   const focusInput = useCallback((reason: string) => {
     const input = inputRef.current;
@@ -120,9 +125,11 @@ export function RdpCanvasView({
     let disposed = false;
     let unlisten: (() => void) | undefined;
     let reportedConnected = false;
-    const sessionId = createRdpSessionId();
+    // Attach mode reuses a live session started elsewhere (the Pane); it never
+    // starts or closes the backend session, only renders + forwards input.
+    const sessionId = attachSessionId ?? createRdpSessionId();
     sessionIdRef.current = sessionId;
-    setStatus("connecting");
+    setStatus(attachSessionId ? "connected" : "connecting");
     setErrorMessage("");
 
     const reportConnected = () => {
@@ -203,39 +210,47 @@ export function RdpCanvasView({
       unlisten = dispose;
     });
 
-    void invokeCommand("start_rdp_client_session", {
-      request: {
-        sessionId,
-        host: connection.host,
-        port: connection.port,
-        username: connection.user ?? "",
-        secretOwnerId: connectionPasswordOwnerId(connection),
-        administrativeSession: rdpOptions.administrativeSession,
-        sharedLocalFolders: rdpOptions.redirectDrives ? rdpOptions.sharedLocalFolders : undefined,
-      },
-    }).catch((error) => {
-      if (!disposed) {
-        setErrorMessage(error instanceof Error ? error.message : String(error));
-        setStatus("disconnected");
-        reportDisconnected();
-      }
-    });
+    if (attachSessionId) {
+      reportConnected();
+    } else if (connection && rdpOptions) {
+      void invokeCommand("start_rdp_client_session", {
+        request: {
+          sessionId,
+          host: connection.host,
+          port: connection.port,
+          username: connection.user ?? "",
+          secretOwnerId: connectionPasswordOwnerId(connection),
+          administrativeSession: rdpOptions.administrativeSession,
+          sharedLocalFolders: rdpOptions.redirectDrives ? rdpOptions.sharedLocalFolders : undefined,
+        },
+      }).catch((error) => {
+        if (!disposed) {
+          setErrorMessage(error instanceof Error ? error.message : String(error));
+          setStatus("disconnected");
+          reportDisconnected();
+        }
+      });
+    }
 
     return () => {
       disposed = true;
       reportDisconnected();
       unlisten?.();
-      void invokeCommand("close_rdp_client_session", { request: { sessionId } }).catch(() => undefined);
+      // Never close a session we merely attached to — the Pane owns its lifecycle.
+      if (!attachSessionId) {
+        void invokeCommand("close_rdp_client_session", { request: { sessionId } }).catch(() => undefined);
+      }
       sessionIdRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    connection.id,
-    connection.host,
-    connection.port,
-    connection.user,
-    rdpOptions.administrativeSession,
-    rdpOptions.redirectDrives,
+    attachSessionId,
+    connection?.id,
+    connection?.host,
+    connection?.port,
+    connection?.user,
+    rdpOptions?.administrativeSession,
+    rdpOptions?.redirectDrives,
     sharedLocalFoldersKey,
   ]);
 

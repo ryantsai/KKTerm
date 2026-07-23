@@ -6,6 +6,8 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { usesCanvasRdp } from "../../../../lib/platform";
+import { RdpCanvasView } from "./RdpCanvasView";
 import { RemoteFullscreenBar } from "./RemoteFullscreenBar";
 import { useVncSurface } from "./vncSurface";
 import "./remote-desktop.css";
@@ -76,9 +78,13 @@ export function RemoteFullscreenApp({ route }: { route: RemoteFullscreenRoute })
           onKeyDown={vnc.handlers.onKeyDown}
           onKeyUp={vnc.handlers.onKeyUp}
         />
+      ) : usesCanvasRdp() ? (
+        // macOS/Linux: reuse the IronRDP canvas view in attach mode. It renders
+        // framebuffer deltas as they arrive; a late attacher's initial frame is
+        // not resent (no full-refresh command yet — Phase 4 adds a RefreshRect).
+        <RdpCanvasView attachSessionId={route.sessionId} />
       ) : (
-        // Phase 3 (macOS/Linux IronRDP canvas) and Phase 4 (Windows RDP ActiveX
-        // multimon) render the RDP surface here.
+        // Windows RDP is the ActiveX popup; full-screen for it lands in Phase 4.
         <div className="remote-fullscreen-pending">
           <p>{t("remoteDesktop.fullscreen.rdpPending")}</p>
         </div>
