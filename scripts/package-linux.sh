@@ -20,19 +20,26 @@ TARGET_TRIPLE="${LINUX_TARGET_TRIPLE:-x86_64-unknown-linux-gnu}"
 KEY_PATH="${TAURI_SIGNING_PRIVATE_KEY_PATH:-$HOME/.tauri/kkterm-updater.key}"
 
 normalize_tauri_signing_key() {
-  local key_content first_line
+  local key_content first_line normalized
 
   key_content="$1"
   first_line="${key_content%%$'\n'*}"
 
   # Tauri expects base64 of the full minisign key box (untrusted comment +
-  # payload). Wrap a raw box if given one; otherwise pass through verbatim.
+  # payload). Wrap a raw box if given one; otherwise treat the value as the
+  # already-base64 box.
   if [[ "$first_line" == "untrusted comment:"* ]]; then
-    printf '%s' "$key_content" | base64 -w 0
-    return
+    normalized="$(printf '%s' "$key_content" | base64 -w 0)"
+  else
+    normalized="$key_content"
   fi
 
-  printf '%s' "$key_content"
+  # Tauri's minisign decoder only accepts single-line standard base64. Strip any
+  # whitespace a secret store or base64 line-wrapping introduced, and map the
+  # URL-safe alphabet (-/_) back to standard (+//) so a URL-safe-encoded secret
+  # still decodes. Valid standard base64 contains none of these, so this is a
+  # no-op on correct keys and only repairs a malformed one.
+  printf '%s' "$normalized" | tr -d '[:space:]' | tr -- '-_' '+/'
 }
 
 extract_tauri_signing_key() {
