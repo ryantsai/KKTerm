@@ -229,11 +229,11 @@ fn vcxsrv_launch_args(display: u16, extra_args: Option<&str>) -> Vec<String> {
     args
 }
 
-fn no_window(command: &mut Command) {
+fn no_window(_command: &mut Command) {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        command.creation_flags(CREATE_NO_WINDOW);
+        _command.creation_flags(CREATE_NO_WINDOW);
     }
 }
 

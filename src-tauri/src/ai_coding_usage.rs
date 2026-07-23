@@ -1370,10 +1370,10 @@ fn new_provider_process(command: &ProviderCommand) -> Command {
     process
 }
 
-fn hide_provider_process_window(command: &mut Command) {
+fn hide_provider_process_window(_command: &mut Command) {
     #[cfg(target_os = "windows")]
     {
-        command.creation_flags(CREATE_NO_WINDOW);
+        _command.creation_flags(CREATE_NO_WINDOW);
     }
 }
 
