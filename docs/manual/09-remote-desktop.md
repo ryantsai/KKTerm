@@ -2,9 +2,9 @@
 
 ## AI grep hints
 
-- Keys: `remoteDesktop.*` (full namespace), `connections.windowsRdp`, `connections.screenControl`, `settings.rdpRemoteResolution*`, `settings.remoteDesktopViewMode*`, `settings.rdpAdministrativeSession`, `settings.rdpShareLocalFolders`, `settings.rdpAddFolder`, `settings.rdpAllLocalDrives`, `settings.rdpChooseDrives`, `settings.submitAiAttachmentsDirectly`, `workspace.sendEntirePanelToAi`, `ai.directAttachmentPrompt`
-- Topics: RDP via mstscax ActiveX, RDP via IronRDP, Windows drive redirection, macOS/Linux shared local folder, VNC via vnc-rs, Ctrl+Alt+Del, Ctrl+Alt+End hotkey hint, remote resolution (Automatic / fixed `WxH`), view mode scaling, reconnect, framebuffer waiting, tutorial targets `remoteDesktop.toolbar`, `remoteDesktop.viewMode`, `remoteDesktop.sendCtrlAltDel`, `remoteDesktop.reconnect`, `remoteDesktop.sendToAi`, `remoteDesktop.surface`, `settings.rdpRemoteResolution`
-- Synonyms: "remote desktop", "screen sharing", "mstsc", "IronRDP", "drive mapping", "redirect drives", "share local folder", "VNC viewer", "send three-finger salute", "high DPI scaling", "remote screen size"
+- Keys: `remoteDesktop.*` (full namespace, including `remoteDesktop.fullscreen.*`), `connections.windowsRdp`, `connections.screenControl`, `settings.rdpRemoteResolution*`, `settings.remoteDesktopViewMode*`, `settings.rdpAdministrativeSession`, `settings.rdpShareLocalFolders`, `settings.rdpAddFolder`, `settings.rdpAllLocalDrives`, `settings.rdpChooseDrives`, `settings.submitAiAttachmentsDirectly`, `workspace.sendEntirePanelToAi`, `ai.directAttachmentPrompt`
+- Topics: RDP via mstscax ActiveX, RDP via IronRDP, Windows drive redirection, macOS/Linux shared local folder, VNC via vnc-rs, Ctrl+Alt+Del, Ctrl+Alt+End hotkey hint, remote resolution (Automatic / fixed `WxH`), view mode scaling, reconnect, framebuffer waiting, detached full-screen window (connection bar, span all monitors, monitor picker, keyboard grab, `open_remote_fullscreen_window`, `list_display_monitors`), tutorial targets `remoteDesktop.toolbar`, `remoteDesktop.viewMode`, `remoteDesktop.sendCtrlAltDel`, `remoteDesktop.reconnect`, `remoteDesktop.sendToAi`, `remoteDesktop.surface`, `settings.rdpRemoteResolution`
+- Synonyms: "remote desktop", "screen sharing", "mstsc", "IronRDP", "drive mapping", "redirect drives", "share local folder", "VNC viewer", "send three-finger salute", "high DPI scaling", "remote screen size", "full screen", "fullscreen", "second monitor", "multi-monitor", "span monitors", "connection bar"
 
 ## Connection kinds
 
@@ -46,6 +46,21 @@ Transport labels for status messages: `remoteDesktop.rdpActiveX`, `remoteDesktop
 - `workspace.sendEntirePanelToAi` — captures the visible remote desktop Pane for AI Assistant. By default `settings.submitAiAttachmentsDirectly` submits the screenshot with `ai.directAttachmentPrompt`; when disabled, the button only attaches the screenshot to the composer.
 
 Tutorial targets: `remoteDesktop.toolbar`, `remoteDesktop.viewMode`, `remoteDesktop.sendCtrlAltDel`, `remoteDesktop.reconnect`, `remoteDesktop.sendToAi`.
+
+## Full screen (detached window)
+
+`remoteDesktop.fullscreen.enter` — the maximize icon in an RDP/VNC Pane toolbar opens the live Session in a **separate borderless full-screen window** (the model used by mstsc, RDCMan, Remmina, and TigerVNC), rather than expanding it inside the app. The window attaches to the already-running Session by id — VNC (`vnc-session-event`) and macOS/Linux IronRDP (`rdp-canvas-event`) emit app-wide, and input commands are keyed by Session id — so the Pane's Session keeps running and is presented in both places. A VNC attach forces a full framebuffer (`refresh_vnc_session`) on open so it repaints immediately.
+
+The full-screen window carries a **connection bar** (`remoteDesktop.fullscreen.barAria`) docked top-center. It auto-hides and reveals on hover; `remoteDesktop.fullscreen.pin` / `remoteDesktop.fullscreen.unpin` keep it shown. Its controls:
+
+- **Display** (`remoteDesktop.fullscreen.display`) — a monitor picker. `remoteDesktop.fullscreen.spanAll` stretches the window across the whole virtual desktop (borderless); an individual monitor entry (named, or `remoteDesktop.fullscreen.displayIndex` when the OS gives no name) moves the window to that display in true OS full screen. A single monitor uses real full screen rather than maximize, so the taskbar/menu bar is covered (this avoids the documented RDCMan "maximized leaves a taskbar gutter" behaviour).
+- **Send system keys** (`remoteDesktop.fullscreen.sendSystemKeys`) — the keyboard-grab toggle.
+- **Ctrl+Alt+Del** (`remoteDesktop.sendCtrlAltDel`) — routed per surface (`send_vnc_ctrl_alt_delete`, `send_rdp_client_ctrl_alt_delete`, or `send_rdp_ctrl_alt_delete`).
+- **Exit** (`remoteDesktop.fullscreen.exit`) — closes the window; the Session keeps running in its Pane.
+
+Backend: `list_display_monitors`, `open_remote_fullscreen_window`, and `close_remote_fullscreen_window` (`src-tauri/src/remote_fullscreen.rs`). The window loads the app bundle at `#/remote-fullscreen/<kind>/<sessionId>/<connectionId>`; `main.tsx` mounts only `RemoteFullscreenApp` for that route.
+
+Current coverage: **VNC and macOS/Linux RDP** render in the full-screen window today (`remoteDesktop.fullscreen.rdpPending` is shown for **Windows RDP**, whose ActiveX popup full-screen and `/multimon` support are pending). The macOS/Linux RDP attach paints framebuffer deltas as they arrive; a late attacher's initial frame is not resent until a full-refresh command is added.
 
 ## macOS/Linux RDP keyboard and clipboard
 

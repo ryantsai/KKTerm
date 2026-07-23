@@ -3,10 +3,8 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import { ensureI18nReady } from "./i18n/config";
 import { hydrateDurableUiState } from "./lib/durableUiState";
-import {
-  parseRemoteFullscreenRoute,
-  RemoteFullscreenApp,
-} from "./modules/workspace/connections/remote-desktop/RemoteFullscreenApp";
+import { RemoteFullscreenApp } from "./modules/workspace/connections/remote-desktop/RemoteFullscreenApp";
+import { parseRemoteFullscreenRoute } from "./modules/workspace/connections/remote-desktop/remoteFullscreenRoute";
 
 // A detached RDP/VNC full-screen window loads the same bundle with a
 // `#/remote-fullscreen/...` route. It attaches to the live Session by id and

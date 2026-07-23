@@ -10,30 +10,11 @@ import { usesCanvasRdp } from "../../../../lib/platform";
 import { RdpCanvasView } from "./RdpCanvasView";
 import { RemoteFullscreenBar } from "./RemoteFullscreenBar";
 import { useVncSurface } from "./vncSurface";
+import type { RemoteFullscreenRoute } from "./remoteFullscreenRoute";
 import "./remote-desktop.css";
 
-export type RemoteFullscreenRoute = {
-  kind: "rdp" | "vnc";
-  sessionId: string;
-  connectionId: string;
-};
-
-/** Parse `#/remote-fullscreen/<kind>/<sessionId>/<connectionId>` from the URL hash. */
-export function parseRemoteFullscreenRoute(hash: string): RemoteFullscreenRoute | null {
-  const match = hash.replace(/^#\/?/, "").split("/");
-  if (match[0] !== "remote-fullscreen") {
-    return null;
-  }
-  const [, kind, sessionId, connectionId] = match;
-  if ((kind !== "rdp" && kind !== "vnc") || !sessionId || !connectionId) {
-    return null;
-  }
-  return {
-    kind,
-    sessionId: decodeURIComponent(sessionId),
-    connectionId: decodeURIComponent(connectionId),
-  };
-}
+export type { RemoteFullscreenRoute };
+export { parseRemoteFullscreenRoute } from "./remoteFullscreenRoute";
 
 export function RemoteFullscreenApp({ route }: { route: RemoteFullscreenRoute }) {
   const { t } = useTranslation();
