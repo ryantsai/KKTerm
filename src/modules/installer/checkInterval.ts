@@ -2,9 +2,10 @@
 //
 // The Install Helper does not re-fetch the latest available versions on
 // every Module entry. Instead it refreshes at most once per interval: when the
-// Module becomes active it compares the last successful check timestamp against
-// this interval and only re-checks when the interval has elapsed. The chosen
-// interval is persisted as `installerCheckIntervalSeconds` in General Settings.
+// Module becomes active it compares the last completed check-attempt timestamp
+// against this interval and only re-checks when the interval has elapsed. The
+// chosen interval is persisted as `installerCheckIntervalSeconds` in General
+// Settings.
 //
 // Valid options must stay in sync with the Rust validation in
 // `src-tauri/src/storage.rs` (`validate_general_settings`).
@@ -27,4 +28,18 @@ export function resolveInstallerCheckIntervalSeconds(
     (INSTALLER_CHECK_INTERVAL_OPTIONS as readonly number[]).includes(value)
     ? value
     : DEFAULT_INSTALLER_CHECK_INTERVAL_SECONDS;
+}
+
+export function shouldRunInstallerAutomaticCheck({
+  lastCheckAt,
+  intervalSeconds,
+  nowSeconds = Date.now() / 1000,
+}: {
+  lastCheckAt: number | null;
+  intervalSeconds: number;
+  nowSeconds?: number;
+}): boolean {
+  return (
+    lastCheckAt === null || nowSeconds - lastCheckAt >= intervalSeconds
+  );
 }

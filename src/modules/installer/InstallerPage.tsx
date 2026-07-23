@@ -9,15 +9,15 @@
 // line. The per-tool detail surface stays the app-owned InstallerToolDialog.
 //
 // Lifecycle:
-//   * Mount: load catalog (uses 1h disk cache), subscribe to progress events,
-//     load toolState. If hasInitialScanned is false, kick off detect_all in
-//     the background. Subsequent visits use the in-memory cache.
+//   * Mount: load the embedded catalog, subscribe to progress events, and load
+//     persisted detection + tool state before deciding whether an automatic
+//     sweep is due.
 //   * Activation (switching to the Module from another Module): run an
-//     interval-gated latest-version check. The check only fetches when the
-//     configured interval (General Settings → Install Helper, default once
+//     interval-gated detection + latest-version sweep. The sweep only runs when
+//     the configured interval (General Settings → Install Helper, default once
 //     per day) has elapsed since the last completed check; the last-check
 //     timestamp is persisted per tool in SQLite and survives app launches.
-//     Otherwise the persisted check state is reused without a network fetch.
+//     Otherwise the persisted detection and latest-version state is reused.
 //   * "Refresh" button (manual check): re-run detection, then check latest
 //     versions for every catalog tool regardless of the interval, updating the
 //     last-check timestamp.
@@ -73,7 +73,10 @@ import {
 import { INSTALLER_CATEGORY_SECTIONS } from "./sections";
 import { deriveToolStatus } from "./useToolStatus";
 import { recipeSupportsManagedLatestVersion } from "./latestSupport";
-import { resolveInstallerCheckIntervalSeconds } from "./checkInterval";
+import {
+  resolveInstallerCheckIntervalSeconds,
+  shouldRunInstallerAutomaticCheck,
+} from "./checkInterval";
 import "./installer.css";
 
 type ViewMode = "list" | "gallery";
@@ -192,7 +195,8 @@ export function InstallerPage({ active }: { active: boolean }) {
     };
   }, [applyProgress, markWslJustEnabled]);
 
-  // Load catalog + initial detect when the Module first becomes active.
+  // Load the embedded catalog when the Module first becomes active. Persisted
+  // state is hydrated by the activation effect before it evaluates the gate.
   useEffect(() => {
     if (!active || !isTauriRuntime()) return;
     if (catalog) return; // already loaded
@@ -204,14 +208,8 @@ export function InstallerPage({ active }: { active: boolean }) {
         const message = error instanceof Error ? error.message : String(error);
         showStatusBarNotice(message, { tone: "error" });
       }
-      try {
-        const states = await invokeCommand("installer_get_state");
-        setToolStates(states);
-      } catch {
-        // Empty toolState is fine on first run.
-      }
     })();
-  }, [active, catalog, setCatalog, setToolStates, showStatusBarNotice, t]);
+  }, [active, catalog, setCatalog, showStatusBarNotice]);
 
   // Drive detection + interval-gated auto-check once per activation. The ref
   // resets whenever the Module goes inactive, so switching back to the Module
@@ -228,18 +226,49 @@ export function InstallerPage({ active }: { active: boolean }) {
     if (activationHandled.current) return;
     activationHandled.current = true;
     void (async () => {
-      // Detection sweep runs once per app session.
-      const store = useInstallerStore.getState();
-      if (!store.hasInitialScanned && !store.scanning) {
-        setScanning(true);
+      let latest = useInstallerStore.getState();
+      if (!latest.hasInitialScanned && !latest.scanning) {
         try {
-          const cached = await invokeCommand("installer_load_detection_cache");
+          const [cached, states] = await Promise.all([
+            invokeCommand("installer_load_detection_cache"),
+            invokeCommand("installer_get_state"),
+          ]);
           if (Object.keys(cached).length > 0) {
             setDetected(cached);
           }
-          await invokeCommand("installer_detect_all_streaming");
-          const states = await invokeCommand("installer_get_state");
           setToolStates(states);
+          latest = useInstallerStore.getState();
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : String(error);
+          showStatusBarNotice(message, { tone: "error" });
+          markInitialScanned();
+          return;
+        }
+      }
+
+      // Gate the whole automatic sweep after hydrating persisted state. This
+      // ordering is what makes the configured interval survive app relaunches.
+      if (latest.checking) return;
+      const lastCheck = latestTimestamp(
+        Object.values(latest.toolState).map((s) => s.lastCheckAt),
+      );
+      const intervalSeconds = resolveInstallerCheckIntervalSeconds(
+        generalSettings.installerCheckIntervalSeconds,
+      );
+      if (
+        !shouldRunInstallerAutomaticCheck({
+          lastCheckAt: lastCheck,
+          intervalSeconds,
+        })
+      ) {
+        return;
+      }
+
+      if (!latest.hasInitialScanned && !latest.scanning) {
+        setScanning(true);
+        try {
+          await invokeCommand("installer_detect_all_streaming");
         } catch (error) {
           const message =
             error instanceof Error ? error.message : String(error);
@@ -250,20 +279,7 @@ export function InstallerPage({ active }: { active: boolean }) {
         }
       }
 
-      // Interval-gated latest-version check: skip the network fetch when the
-      // last completed check is still within the configured interval.
-      const latest = useInstallerStore.getState();
-      if (latest.checking) return;
-      const lastCheck = latestTimestamp(
-        Object.values(latest.toolState).map((s) => s.lastCheckAt),
-      );
-      const intervalSeconds = resolveInstallerCheckIntervalSeconds(
-        generalSettings.installerCheckIntervalSeconds,
-      );
-      const nowSeconds = Date.now() / 1000;
-      if (lastCheck !== null && nowSeconds - lastCheck < intervalSeconds) {
-        return;
-      }
+      latest = useInstallerStore.getState();
       const toolIds = catalog.recipes
         .filter((recipe) =>
           recipeSupportsManagedLatestVersion(recipe, latest.detected[recipe.id]),
