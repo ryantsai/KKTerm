@@ -512,7 +512,7 @@ mod platform {
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct RdpSimpleRequest {
-        session_id: String,
+        pub(crate) session_id: String,
     }
 
     #[derive(Deserialize)]

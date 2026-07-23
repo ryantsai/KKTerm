@@ -42,6 +42,7 @@ mod rdp;
 #[cfg(not(target_os = "windows"))]
 mod rdp_client;
 mod remote_fullscreen;
+mod remote_fullscreen_shortcut;
 mod screenshot;
 mod screenshot_shortcuts;
 mod secrets;
@@ -815,6 +816,7 @@ fn update_general_settings(
     webviews: tauri::State<'_, webview::WebviewSessionManager>,
     mut request: storage::GeneralSettings,
 ) -> Result<storage::GeneralSettings, String> {
+    remote_fullscreen_shortcut::validate(&request)?;
     if app.state::<app_paths::AppPaths>().is_portable() {
         // Auto-start is unsupported and hidden in portable mode, but imported
         // installed-mode backups can still carry the flag; drop it instead of
@@ -824,6 +826,7 @@ fn update_general_settings(
         auto_start::sync_auto_start_with_windows(request.auto_start_with_windows())?;
     }
     let saved = storage.update_general_settings(request)?;
+    remote_fullscreen_shortcut::apply(&app, &saved)?;
     net::proxy::set(net::proxy::from_settings(
         saved.proxy_mode(),
         saved.proxy_url(),
@@ -4428,6 +4431,9 @@ pub fn run() {
                     eprintln!("failed to load screenshot settings for capture shortcuts: {error}");
                 }
             }
+            if let Err(error) = remote_fullscreen_shortcut::apply(app.handle(), &general_settings) {
+                eprintln!("failed to register remote desktop full-screen shortcut: {error}");
+            }
             app.manage(storage);
             app.manage(performance::PerformanceMonitor::new());
             app.manage(pc_info::PcInfoCache::new());
@@ -4467,6 +4473,23 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
+            if matches!(event, tauri::WindowEvent::Focused(_)) {
+                if let Err(error) = remote_fullscreen_shortcut::sync_focus(window.app_handle()) {
+                    eprintln!("failed to update remote desktop full-screen shortcut: {error}");
+                }
+            }
+            if matches!(event, tauri::WindowEvent::Destroyed)
+                && let Some(session_id) =
+                    remote_fullscreen::session_id_from_label(window.label())
+                && let Some(rdp_sessions) = window.try_state::<rdp::RdpSessionManager>()
+            {
+                let _ = rdp_sessions.exit_fullscreen(
+                    window.app_handle().clone(),
+                    rdp::RdpSimpleRequest {
+                        session_id: session_id.to_string(),
+                    },
+                );
+            }
             if window.label() != window_state::MAIN_WINDOW_LABEL {
                 return;
             }

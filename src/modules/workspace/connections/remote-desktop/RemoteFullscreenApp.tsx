@@ -6,13 +6,16 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { listen } from "@tauri-apps/api/event";
 import { usesCanvasRdp } from "../../../../lib/platform";
-import { invokeCommand, isTauriRuntime } from "../../../../lib/tauri";
+import { closeCurrentWindow, invokeCommand, isTauriRuntime } from "../../../../lib/tauri";
 import { RdpCanvasView } from "./RdpCanvasView";
 import { RemoteFullscreenBar } from "./RemoteFullscreenBar";
 import { useVncSurface } from "./vncSurface";
 import type { RemoteFullscreenRoute } from "./remoteFullscreenRoute";
 import "./remote-desktop.css";
+
+const REMOTE_FULLSCREEN_SHORTCUT_EVENT = "kkterm://toggle-remote-fullscreen";
 
 /**
  * Windows RDP host: the ActiveX popup is a native window, so this only asks the
@@ -39,7 +42,6 @@ export { parseRemoteFullscreenRoute } from "./remoteFullscreenRoute";
 export function RemoteFullscreenApp({ route }: { route: RemoteFullscreenRoute }) {
   const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [keyboardGrab, setKeyboardGrab] = useState(true);
   const [status, setStatus] = useState<string | null>(null);
 
   const vnc = useVncSurface({
@@ -56,13 +58,34 @@ export function RemoteFullscreenApp({ route }: { route: RemoteFullscreenRoute })
     [t],
   );
 
+  useEffect(() => {
+    if (!isTauriRuntime()) {
+      return;
+    }
+    let disposed = false;
+    let dispose: (() => void) | undefined;
+    void listen(REMOTE_FULLSCREEN_SHORTCUT_EVENT, () => {
+      if (!disposed) {
+        void closeCurrentWindow();
+      }
+    }).then((unlisten) => {
+      if (disposed) {
+        unlisten();
+      } else {
+        dispose = unlisten;
+      }
+    });
+    return () => {
+      disposed = true;
+      dispose?.();
+    };
+  }, []);
+
   return (
     <div className="remote-fullscreen-root">
       <RemoteFullscreenBar
         sessionId={route.sessionId}
         kind={route.kind}
-        keyboardGrab={keyboardGrab}
-        onToggleKeyboardGrab={setKeyboardGrab}
         title={title}
       />
 

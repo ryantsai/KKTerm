@@ -5,7 +5,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronDown, Keyboard, Monitor, Pin, PinOff, X } from "../../../../lib/reicon";
+import { ChevronDown, Monitor, Pin, PinOff, X } from "../../../../lib/reicon";
 import { usesCanvasRdp } from "../../../../lib/platform";
 import {
   closeCurrentWindow,
@@ -39,14 +39,10 @@ function unionBounds(monitors: DisplayMonitor[]) {
 export function RemoteFullscreenBar({
   sessionId,
   kind,
-  keyboardGrab,
-  onToggleKeyboardGrab,
   title,
 }: {
   sessionId: string;
   kind: "rdp" | "vnc";
-  keyboardGrab: boolean;
-  onToggleKeyboardGrab: (next: boolean) => void;
   title: string;
 }) {
   const { t } = useTranslation();
@@ -176,16 +172,6 @@ export function RemoteFullscreenBar({
             </ul>
           ) : null}
         </div>
-
-        <button
-          type="button"
-          className={`remote-fullscreen-bar-button${keyboardGrab ? " active" : ""}`}
-          onClick={() => onToggleKeyboardGrab(!keyboardGrab)}
-          aria-pressed={keyboardGrab}
-          title={t("remoteDesktop.fullscreen.sendSystemKeys")}
-        >
-          <Keyboard size={14} />
-        </button>
 
         <button
           type="button"

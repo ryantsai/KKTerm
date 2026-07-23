@@ -437,7 +437,7 @@ const SETTINGS_SECTIONS: Record<SettingsSectionId, SettingsSectionSummary> = {
       {
         key: "settings.sectionShortcuts",
         description:
-          "Workspace Module keyboard shortcut bindings: Tab management (new/close/next/previous Tab) and terminal Pane actions (copy, paste, Quick Select, find in scrollback, font size, splits). Click a binding to record a new key combination; actions without a default stay disabled until one is assigned.",
+          "Workspace Module keyboard shortcut bindings: Tab management, terminal Pane actions, and the native RDP/VNC full-screen toggle (Ctrl+Alt+Break on Windows, Control+Command+F on macOS, F11 on Linux). Click a binding to record a new key combination; actions without a default stay disabled until one is assigned.",
         tutorialTargetId: "settings.shortcuts",
       },
     ],

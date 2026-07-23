@@ -3,7 +3,7 @@ import { ScreenshotMenu } from "../../ScreenshotMenu";
 
 import { documentHasRdpBlockingOverlay } from "../../nativeOverlay";
 import { showNativeContextMenu } from "../../../../lib/nativeContextMenu";
-import { Bot, Keyboard, Maximize2, Monitor, RotateCcw, Scaling } from "../../../../lib/reicon";
+import { Bot, Keyboard, Menu, Monitor, RotateCcw } from "../../../../lib/reicon";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -33,6 +33,10 @@ import {
   type RemoteDesktopController,
 } from "../../paneRegistry";
 import { usesCanvasRdp } from "../../../../lib/platform";
+import {
+  displayShortcutBinding,
+  effectiveWorkspaceShortcutBindings,
+} from "../../keymap";
 import { RdpCanvasView } from "./RdpCanvasView";
 import { scancodeForCode } from "./rdpScancodes";
 import {
@@ -52,6 +56,7 @@ const RDP_PRE_CAPTURE_INTERVAL_MS = 800;
 const RDP_DISPLAY_SETTLE_INTERVAL_MS = 2000;
 const RDP_DISPLAY_SETTLE_PASSES = 6;
 const RDP_DISPLAY_SETTLE_SUCCESS_PASSES = 2;
+const REMOTE_FULLSCREEN_SHORTCUT_EVENT = "kkterm://toggle-remote-fullscreen";
 
 function currentRdpPixelScale() {
   return window.devicePixelRatio || 1;
@@ -80,6 +85,7 @@ export function RemoteDesktopWorkspace({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const sessionStartedRef = useRef(false);
   const sessionStartingRef = useRef(false);
+  const openFullscreenRef = useRef<() => void>(() => undefined);
   const rdpConnectionCountedRef = useRef(false);
   const sessionIdRef = useRef<string | null>(null);
   const lastBoundsRef = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
@@ -856,19 +862,83 @@ export function RemoteDesktopWorkspace({
     });
   };
 
-  const handleViewModeMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
+  const openFullscreen = () => {
+    const sessionId = sessionIdRef.current;
+    if (!sessionId || !connection || (connection.type !== "rdp" && connection.type !== "vnc")) {
+      return;
+    }
+    void openRemoteFullscreen({
+      sessionId,
+      connectionId: connection.id,
+      kind: connection.type,
+      monitorMode: "current",
+    }).catch((error) =>
+      reportRemoteDesktopError(error instanceof Error ? error.message : String(error)),
+    );
+  };
+  openFullscreenRef.current = openFullscreen;
+
+  useEffect(() => {
+    if (!isTauriRuntime()) {
+      return;
+    }
+    let disposed = false;
+    let dispose: (() => void) | undefined;
+    void listen(REMOTE_FULLSCREEN_SHORTCUT_EVENT, () => {
+      if (
+        disposed
+        || !isActive
+        || document.querySelector(".settings-backdrop, .dialog-backdrop, .kk-dlg-backdrop")
+      ) {
+        return;
+      }
+      const state = useWorkspaceStore.getState();
+      const activeTab = state.tabs.find((entry) => entry.id === state.activeTabId);
+      const isFocusedRemoteDesktop =
+        tab.id === state.activeTabId || activeTab?.focusedPaneId === tab.id;
+      if (isFocusedRemoteDesktop) {
+        openFullscreenRef.current();
+      }
+    }).then((unlisten) => {
+      if (disposed) {
+        unlisten();
+      } else {
+        dispose = unlisten;
+      }
+    });
+    return () => {
+      disposed = true;
+      dispose?.();
+    };
+  }, [isActive, tab.id]);
+
+  const handleRemoteDesktopMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
     if (!connection || !showRemoteDesktopToolbar) {
       return;
     }
     const rect = event.currentTarget.getBoundingClientRect();
     const options = remoteDesktopViewModeOptions(t);
+    const fullscreenBinding = effectiveWorkspaceShortcutBindings(
+      generalSettings.workspaceShortcuts,
+    ).get("remoteFullscreen");
     void showNativeContextMenu(
-      options.map((option) => ({
-        kind: "item" as const,
-        label: option.value === viewMode ? `✓ ${option.label}` : option.label,
-        disabled: option.value === viewMode,
-        action: () => void saveViewMode(option.value),
-      })),
+      [
+        {
+          kind: "item",
+          label: fullscreenBinding
+            ? `${t("remoteDesktop.fullscreen.enter")}\t${displayShortcutBinding(fullscreenBinding)}`
+            : t("remoteDesktop.fullscreen.enter"),
+          disabled: !sessionIdRef.current,
+          action: openFullscreen,
+        },
+        { kind: "separator" },
+        ...options.map((option) => ({
+          kind: "item" as const,
+          label: option.value === viewMode ? `✓ ${option.label}` : option.label,
+          disabled: option.value === viewMode,
+          action: () => void saveViewMode(option.value),
+        })),
+      ],
       { x: rect.left, y: rect.bottom },
     );
   };
@@ -1554,40 +1624,15 @@ export function RemoteDesktopWorkspace({
           {rdpStatus ? <span className="webview-toolbar-status">{rdpStatus}</span> : null}
           {showRemoteDesktopToolbar ? (
             <button
-              aria-label={t("remoteDesktop.viewModeButton", { mode: viewModeLabel(t, viewMode) })}
+              aria-label={t("remoteDesktop.actionsMenu")}
               className="terminal-pane-action"
               data-tutorial-id="remoteDesktop.viewMode"
               disabled={!isTauriRuntime()}
-              onClick={handleViewModeMenu}
-              title={t("remoteDesktop.viewModeButton", { mode: viewModeLabel(t, viewMode) })}
+              onClick={handleRemoteDesktopMenu}
+              title={t("remoteDesktop.actionsMenu")}
               type="button"
             >
-              <Scaling size={13} />
-            </button>
-          ) : null}
-          {showRemoteDesktopToolbar && (connection?.type === "rdp" || connection?.type === "vnc") ? (
-            <button
-              aria-label={t("remoteDesktop.fullscreen.enter")}
-              className="terminal-pane-action"
-              disabled={!isTauriRuntime()}
-              onClick={() => {
-                const sessionId = sessionIdRef.current;
-                if (!sessionId || !connection) {
-                  return;
-                }
-                void openRemoteFullscreen({
-                  sessionId,
-                  connectionId: connection.id,
-                  kind: connection.type as "rdp" | "vnc",
-                  monitorMode: "current",
-                }).catch((error) =>
-                  reportRemoteDesktopError(error instanceof Error ? error.message : String(error)),
-                );
-              }}
-              title={t("remoteDesktop.fullscreen.enter")}
-              type="button"
-            >
-              <Maximize2 size={13} />
+              <Menu size={13} />
             </button>
           ) : null}
           {showRemoteDesktopToolbar ? (

@@ -20,13 +20,30 @@
 
 use serde::{Deserialize, Serialize};
 use tauri::{
-    AppHandle, Manager, PhysicalPosition, PhysicalSize, Position, Size, WebviewUrl,
+    AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, Position, Size, WebviewUrl,
     WebviewWindowBuilder,
 };
 
 use crate::window_state::MAIN_WINDOW_LABEL;
 
 const LABEL_PREFIX: &str = "remote-fullscreen-";
+const TOGGLE_SHORTCUT_EVENT: &str = "kkterm://toggle-remote-fullscreen";
+
+pub(crate) fn emit_toggle_shortcut(app: &AppHandle) {
+    let target = app
+        .webview_windows()
+        .into_values()
+        .find(|window| {
+            window.label().starts_with(LABEL_PREFIX) && window.is_focused().unwrap_or(false)
+        })
+        .or_else(|| {
+            app.get_webview_window(MAIN_WINDOW_LABEL)
+                .filter(|window| window.is_focused().unwrap_or(false))
+        });
+    if let Some(window) = target {
+        let _ = window.emit(TOGGLE_SHORTCUT_EVENT, ());
+    }
+}
 
 /// One physical display, reported to the frontend monitor picker.
 #[derive(Clone, Debug, Serialize)]
@@ -79,6 +96,12 @@ struct Rect {
 
 fn label_for(session_id: &str) -> String {
     format!("{LABEL_PREFIX}{session_id}")
+}
+
+pub(crate) fn session_id_from_label(label: &str) -> Option<&str> {
+    label
+        .strip_prefix(LABEL_PREFIX)
+        .filter(|value| !value.is_empty())
 }
 
 fn collect_monitors(app: &AppHandle) -> Result<Vec<MonitorInfo>, String> {
@@ -155,8 +178,8 @@ fn resolve_target(
 ) -> Result<(Rect, bool), String> {
     match request.monitor_mode {
         MonitorMode::Span => {
-            let rect = span_rect(monitors)
-                .ok_or_else(|| "no monitors available to span".to_string())?;
+            let rect =
+                span_rect(monitors).ok_or_else(|| "no monitors available to span".to_string())?;
             Ok((rect, false))
         }
         MonitorMode::Named => {
@@ -323,5 +346,15 @@ mod tests {
                 height: 720,
             }
         );
+    }
+
+    #[test]
+    fn session_id_is_recovered_from_fullscreen_window_label() {
+        assert_eq!(
+            session_id_from_label("remote-fullscreen-rdp-123"),
+            Some("rdp-123")
+        );
+        assert_eq!(session_id_from_label("remote-fullscreen-"), None);
+        assert_eq!(session_id_from_label("main"), None);
     }
 }

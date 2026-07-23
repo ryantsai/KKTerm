@@ -8,6 +8,7 @@ import {
   WORKSPACE_SHORTCUT_ACTIONS,
   bindingFromKeyboardEvent,
   conflictingWorkspaceShortcutAction,
+  defaultWorkspaceShortcutBinding,
   displayShortcutBinding,
   type WorkspaceShortcutActionId,
   type WorkspaceShortcutOverrides,
@@ -68,14 +69,16 @@ export function ShortcutsSettings() {
   function effectiveBinding(actionId: WorkspaceShortcutActionId) {
     const action = WORKSPACE_SHORTCUT_ACTIONS.find((entry) => entry.id === actionId);
     const override = draft[actionId];
-    return override !== undefined ? override : (action?.defaultBinding ?? null);
+    return override !== undefined
+      ? override
+      : (action ? defaultWorkspaceShortcutBinding(action) : null);
   }
 
   function setOverride(actionId: WorkspaceShortcutActionId, binding: string | null) {
     const action = WORKSPACE_SHORTCUT_ACTIONS.find((entry) => entry.id === actionId);
     setDraft((current) => {
       const next = { ...current };
-      if (binding === (action?.defaultBinding ?? null)) {
+      if (binding === (action ? defaultWorkspaceShortcutBinding(action) : null)) {
         delete next[actionId];
       } else {
         next[actionId] = binding;
@@ -232,6 +235,10 @@ export function ShortcutsSettings() {
       <fieldset className="settings-subsection settings-fieldset">
         <legend>{t("settings.sectionTerminal")}</legend>
         <div className="shortcut-list">{renderRows("terminal")}</div>
+      </fieldset>
+      <fieldset className="settings-subsection settings-fieldset">
+        <legend>{t("remoteDesktop.typeLabel")}</legend>
+        <div className="shortcut-list">{renderRows("remoteDesktop")}</div>
       </fieldset>
       <fieldset className="settings-subsection settings-fieldset">
         <legend>{t("settings.sectionScreenshots")}</legend>

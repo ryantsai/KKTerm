@@ -174,7 +174,7 @@
 .remote-fullscreen-root {
   position: fixed;
   inset: 0;
-  background: #000;
+  background: var(--terminal);
   overflow: hidden;
 }
 
@@ -197,7 +197,7 @@
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  color: var(--text-muted, #cbd5e1);
+  color: var(--text-muted);
   font-size: 0.85rem;
   pointer-events: none;
 }
@@ -210,7 +210,7 @@
 .remote-fullscreen-status {
   bottom: 1rem;
   padding: 0.35rem 0.75rem;
-  background: rgba(0, 0, 0, 0.7);
+  background: color-mix(in srgb, var(--terminal) 70%, transparent);
   border-radius: 6px;
 }
 
@@ -234,13 +234,13 @@
   gap: 6px;
   padding: 5px 8px;
   border-radius: 0 0 10px 10px;
-  background: rgba(17, 24, 39, 0.94);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
   border-top: none;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--shadow);
   transform: translateY(-100%);
   transition: transform 140ms ease;
-  color: var(--text, #f8fafc);
+  color: var(--text);
 }
 
 .remote-fullscreen-bar-zone.revealed .remote-fullscreen-bar {
@@ -271,17 +271,17 @@
 }
 
 .remote-fullscreen-bar-button:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--hover);
 }
 
 .remote-fullscreen-bar-button.active {
-  background: var(--accent, #3b82f6);
-  color: #fff;
+  background: var(--accent);
+  color: var(--terminal-fg);
 }
 
 .remote-fullscreen-bar-exit:hover {
-  background: #dc2626;
-  color: #fff;
+  background: var(--red);
+  color: var(--terminal-fg);
 }
 
 .remote-fullscreen-bar-cad {
@@ -301,10 +301,10 @@
   margin: 0;
   padding: 4px;
   list-style: none;
-  background: rgba(17, 24, 39, 0.98);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow);
 }
 
 .remote-fullscreen-bar-menu-item {
@@ -321,5 +321,5 @@
 }
 
 .remote-fullscreen-bar-menu-item:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--hover);
 }
