@@ -157,6 +157,13 @@ export function defaultWorkspaceShortcutBinding(
   return action.defaultBinding;
 }
 
+export function workspaceShortcutIsFixed(
+  action: WorkspaceShortcutAction,
+  platform: RuntimePlatform = currentPlatform(),
+): boolean {
+  return platform === "windows" && action.id === "remoteFullscreen";
+}
+
 /**
  * Normalize a keydown event into the canonical binding string, e.g.
  * "Ctrl+Shift+T". Returns null for presses that cannot be a shortcut: bare
@@ -210,7 +217,9 @@ export function effectiveWorkspaceShortcutBindings(
     const override = overrides?.[action.id];
     bindings.set(
       action.id,
-      override !== undefined ? override : defaultWorkspaceShortcutBinding(action),
+      override !== undefined && !workspaceShortcutIsFixed(action)
+        ? override
+        : defaultWorkspaceShortcutBinding(action),
     );
   }
   return bindings;

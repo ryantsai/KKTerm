@@ -35,6 +35,16 @@ const DEFAULT_BINDING: &str = "Ctrl+Cmd+F";
 #[cfg(target_os = "linux")]
 const DEFAULT_BINDING: &str = "F11";
 
+#[cfg(target_os = "windows")]
+fn binding(settings: &GeneralSettings) -> Option<String> {
+    // The ActiveX control owns this chord while its native full-screen HWND has
+    // focus. Keep any persisted override intact for cross-platform settings,
+    // but register the same fixed chord for entering from KKTerm's WebView.
+    let _ = settings.workspace_shortcut_override(ACTION_ID);
+    Some(DEFAULT_BINDING.to_string())
+}
+
+#[cfg(not(target_os = "windows"))]
 fn binding(settings: &GeneralSettings) -> Option<String> {
     match settings.workspace_shortcut_override(ACTION_ID) {
         Some(binding) => binding.map(str::to_string),
@@ -68,7 +78,7 @@ pub(crate) fn apply(app: &tauri::AppHandle, settings: &GeneralSettings) -> Resul
 
 /// Register only while one of KKTerm's windows is focused. The native
 /// registration is needed above Windows ActiveX airspace, but must not reserve
-/// F11 or another user-selected binding while the user works in another app.
+/// the platform binding while the user works in another app.
 pub(crate) fn sync_focus(app: &tauri::AppHandle) -> Result<(), String> {
     let manager = app.global_shortcut();
     let window_is_focused = app

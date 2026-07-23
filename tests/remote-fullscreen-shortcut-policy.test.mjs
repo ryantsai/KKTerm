@@ -29,6 +29,14 @@ test("RDP and VNC expose full screen from the native hamburger menu", () => {
 });
 
 test("Windows RDP uses the ActiveX control's own full-screen host", () => {
+  const preConnectConfig = fullscreenBackend.slice(
+    fullscreenBackend.indexOf("fn configure_rdp_control"),
+    fullscreenBackend.indexOf("fn default_remote_resolution"),
+  );
+  const fullscreenConfig = fullscreenBackend.slice(
+    fullscreenBackend.indexOf("fn configure_native_fullscreen"),
+    fullscreenBackend.indexOf("fn get_advanced_settings"),
+  );
   assert.match(workspace, /if \(canStartRdp\)/);
   assert.match(workspace, /invokeCommand\("enter_rdp_fullscreen"/);
   assert.match(
@@ -36,19 +44,40 @@ test("Windows RDP uses the ActiveX control's own full-screen host", () => {
     /set_property_bool\(&session\.dispatch, "FullScreen", true\)/,
   );
   assert.match(
-    fullscreenBackend,
+    preConnectConfig,
     /set_property_bool\(&advanced, "DisplayConnectionBar", true\)/,
   );
   assert.match(
-    fullscreenBackend,
+    preConnectConfig,
     /set_property_bool\(&advanced, "PinConnectionBar", false\)/,
   );
+  assert.doesNotMatch(fullscreenConfig, /DisplayConnectionBar|PinConnectionBar/);
   assert.match(
     fullscreenBackend,
     /set_connection_bar_text\(dispatch, "KKTerm"\)/,
   );
   assert.doesNotMatch(fullscreenBackend, /position_rdp_over_fullscreen/);
   assert.doesNotMatch(fullscreenBackend, /HWND_TOP/);
+});
+
+test("Windows RDP resizes the live remote display for full screen and restores it on exit", () => {
+  const enterFullscreen = fullscreenBackend.slice(
+    fullscreenBackend.indexOf("pub fn enter_fullscreen"),
+    fullscreenBackend.indexOf("pub fn exit_fullscreen"),
+  );
+  assert.match(fullscreenBackend, /fullscreen_restore_display: Option<RdpDisplaySettings>/);
+  assert.match(enterFullscreen, /current_monitor\(\)/);
+  assert.match(enterFullscreen, /fullscreen_display_settings/);
+  assert.match(enterFullscreen, /sync_remote_desktop_size\(session, display_settings, true\)/);
+  assert.match(enterFullscreen, /apply_smart_sizing\(&session\.dispatch, true\)/);
+  assert.ok(
+    enterFullscreen.indexOf("sync_remote_desktop_size") <
+      enterFullscreen.indexOf('"FullScreen", true'),
+    "the remote desktop should resize before ActiveX opens its full-screen host",
+  );
+  assert.match(fullscreenBackend, /fn leave_native_fullscreen/);
+  assert.match(fullscreenBackend, /fullscreen_restore_display\.take\(\)/);
+  assert.doesNotMatch(enterFullscreen, /sync_rdp_display_size|stage_rdp/);
 });
 
 test("detached full screen remains a WebView path only for VNC and canvas RDP", () => {
@@ -67,7 +96,7 @@ test("the revealed full-screen toolbar keeps its natural control height", () => 
   assert.match(zoneRule, /align-items:\s*flex-start/);
 });
 
-test("the configurable native shortcut exits ActiveX full screen before WebView routing", () => {
+test("the native shortcut exits ActiveX full screen before WebView routing", () => {
   assert.match(shortcutBackend, /DEFAULT_BINDING: &str = "Ctrl\+Alt\+Pause"/);
   assert.match(shortcutBackend, /DEFAULT_BINDING: &str = "Ctrl\+Cmd\+F"/);
   assert.match(shortcutBackend, /DEFAULT_BINDING: &str = "F11"/);
@@ -81,6 +110,14 @@ test("the configurable native shortcut exits ActiveX full screen before WebView 
   assert.match(fullscreenApp, /closeCurrentWindow/);
   assert.match(settings, /renderRows\("remoteDesktop"\)/);
   assert.doesNotMatch(fullscreenApp, /keyboardGrab/);
+});
+
+test("Windows exposes the ActiveX full-screen shortcut as fixed Ctrl+Alt+Break", () => {
+  assert.match(shortcutBackend, /cfg\(target_os = "windows"\)[\s\S]*fn binding\(settings: &GeneralSettings\)/);
+  assert.match(shortcutBackend, /Some\(DEFAULT_BINDING\.to_string\(\)\)/);
+  assert.match(settings, /workspaceShortcutIsFixed\(action\)/);
+  assert.match(settings, /disabled=\{fixed\}/);
+  assert.match(settings, /!\s*fixed && binding/);
 });
 
 test("screenshot re-registration preserves other global shortcuts", () => {

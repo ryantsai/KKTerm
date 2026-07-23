@@ -567,6 +567,7 @@ mod platform {
         device_scale_factor: i32,
         dynamic_resize_failures: u32,
         resolution_mode: RemoteResolutionMode,
+        fullscreen_restore_display: Option<RdpDisplaySettings>,
     }
 
     // These values are always created, used, and destroyed through closures
@@ -622,6 +623,11 @@ mod platform {
                 if is_native_fullscreen(session) {
                     // ActiveX owns its native full-screen window; ignore Pane bounds.
                     return Ok(());
+                }
+                if session.fullscreen_restore_display.take().is_some() {
+                    // The user may have left ActiveX full screen through its
+                    // connection bar or built-in Ctrl+Alt+Break handling.
+                    apply_smart_sizing(&session.dispatch, session.resolution_mode.smart_sizing());
                 }
                 show_and_resize_rdp(
                     session,
@@ -765,13 +771,49 @@ mod platform {
         ) -> Result<(), String> {
             let sessions = Arc::clone(&self.sessions);
             let session_id = request.session_id;
-            run_on_main_thread("enter_rdp_fullscreen", app, move |_app| {
-                let sessions = lock_sessions(&sessions)?;
+            run_on_main_thread("enter_rdp_fullscreen", app, move |app| {
+                let host_window = app
+                    .get_webview_window(HOST_WINDOW_LABEL)
+                    .ok_or_else(|| format!("host window '{HOST_WINDOW_LABEL}' is not available"))?;
+                let monitor = host_window
+                    .current_monitor()
+                    .ok()
+                    .flatten()
+                    .or_else(|| host_window.primary_monitor().ok().flatten())
+                    .ok_or_else(|| "no monitor is available for RDP full screen".to_string())?;
+                let monitor_size = monitor.size();
+                let monitor_scale_factor = monitor.scale_factor();
+                let mut sessions = lock_sessions(&sessions)?;
                 let session = sessions
-                    .get(&session_id)
+                    .get_mut(&session_id)
                     .ok_or_else(|| format!("RDP session '{session_id}' was not found"))?;
+                let display_settings = fullscreen_display_settings(
+                    session,
+                    monitor_size.width,
+                    monitor_size.height,
+                    monitor_scale_factor,
+                );
+                let restore_display = current_rdp_display_settings(session);
+                session
+                    .fullscreen_restore_display
+                    .get_or_insert(restore_display);
+                let display_sync_completed =
+                    sync_remote_desktop_size(session, display_settings, true);
+                // SmartSizing fills the native host even when the server no
+                // longer accepts dynamic display-control updates.
+                apply_smart_sizing(&session.dispatch, true);
                 configure_native_fullscreen(&session.dispatch)?;
                 set_property_bool(&session.dispatch, "FullScreen", true)?;
+                rdp_debug(
+                    "fullscreen.enter",
+                    &json!({
+                        "sessionId": &session.session_id,
+                        "monitorWidth": monitor_size.width,
+                        "monitorHeight": monitor_size.height,
+                        "monitorScaleFactor": monitor_scale_factor,
+                        "displaySyncCompleted": display_sync_completed,
+                    }),
+                );
                 Ok(())
             })
         }
@@ -786,22 +828,21 @@ mod platform {
             let sessions = Arc::clone(&self.sessions);
             let session_id = request.session_id;
             run_on_main_thread("exit_rdp_fullscreen", app, move |_app| {
-                let sessions = lock_sessions(&sessions)?;
+                let mut sessions = lock_sessions(&sessions)?;
                 let session = sessions
-                    .get(&session_id)
+                    .get_mut(&session_id)
                     .ok_or_else(|| format!("RDP session '{session_id}' was not found"))?;
-                set_property_bool(&session.dispatch, "FullScreen", false)?;
-                Ok(())
+                leave_native_fullscreen(session)
             })
         }
 
         /// Called only from Tauri's native shortcut callback, which runs on the
         /// UI thread that owns the ActiveX controls.
         pub fn exit_active_fullscreen(&self) -> Result<bool, String> {
-            let sessions = lock_sessions(&self.sessions)?;
-            for session in sessions.values() {
+            let mut sessions = lock_sessions(&self.sessions)?;
+            for session in sessions.values_mut() {
                 if is_native_fullscreen(session) {
-                    set_property_bool(&session.dispatch, "FullScreen", false)?;
+                    leave_native_fullscreen(session)?;
                     rdp_debug(
                         "fullscreen.shortcut.exit",
                         &json!({ "sessionId": &session.session_id }),
@@ -1329,6 +1370,7 @@ mod platform {
                 device_scale_factor: display_settings.device_scale_factor,
                 dynamic_resize_failures: 0,
                 resolution_mode,
+                fullscreen_restore_display: None,
             },
         );
 
@@ -1640,6 +1682,14 @@ mod platform {
         if let Some(advanced) = get_advanced_settings(dispatch) {
             let _ = set_property_bool(&advanced, "AllowPromptingForCredentials", true);
             let _ = set_property_i32(&advanced, "RDPPort", i32::from(port));
+            // Connection-bar preferences are creation-time ActiveX settings.
+            // Some mstscax versions expose these through IDispatch after Connect
+            // but reject writes with DISP_E_EXCEPTION. Configure them here; the
+            // bar itself defaults to enabled if a version rejects an option.
+            let _ = set_property_bool(&advanced, "DisplayConnectionBar", true);
+            let _ = set_property_bool(&advanced, "PinConnectionBar", false);
+            let _ = set_property_bool(&advanced, "ConnectionBarShowRestoreButton", true);
+            let _ = set_property_bool(&advanced, "ConnectionBarShowMinimizeButton", false);
             let _ = set_property_bool(
                 &advanced,
                 "ConnectToAdministerServer",
@@ -1843,13 +1893,50 @@ mod platform {
     }
 
     fn configure_native_fullscreen(dispatch: &IDispatch) -> Result<(), String> {
-        set_connection_bar_text(dispatch, "KKTerm")?;
-        let advanced = get_advanced_settings(dispatch)
-            .ok_or_else(|| "RDP ActiveX advanced settings are unavailable".to_string())?;
-        set_property_bool(&advanced, "DisplayConnectionBar", true)?;
-        set_property_bool(&advanced, "PinConnectionBar", false)?;
-        let _ = set_property_bool(&advanced, "ConnectionBarShowRestoreButton", true);
-        let _ = set_property_bool(&advanced, "ConnectionBarShowMinimizeButton", false);
+        set_connection_bar_text(dispatch, "KKTerm")
+    }
+
+    fn current_rdp_display_settings(session: &RdpSession) -> RdpDisplaySettings {
+        RdpDisplaySettings {
+            desktop_width: session.desktop_width,
+            desktop_height: session.desktop_height,
+            physical_width: RDP_UNKNOWN_PHYSICAL_SIZE_MM,
+            physical_height: RDP_UNKNOWN_PHYSICAL_SIZE_MM,
+            desktop_scale_factor: session.desktop_scale_factor,
+            device_scale_factor: session.device_scale_factor,
+        }
+    }
+
+    fn fullscreen_display_settings(
+        session: &RdpSession,
+        monitor_width: u32,
+        monitor_height: u32,
+        scale_factor: f64,
+    ) -> RdpDisplaySettings {
+        let physical_width = i32::try_from(monitor_width).unwrap_or(i32::MAX);
+        let physical_height = i32::try_from(monitor_height).unwrap_or(i32::MAX);
+        session.resolution_mode.display_settings(
+            f64::from(monitor_width) / scale_factor,
+            f64::from(monitor_height) / scale_factor,
+            physical_width,
+            physical_height,
+            scale_factor,
+        )
+    }
+
+    fn leave_native_fullscreen(session: &mut RdpSession) -> Result<(), String> {
+        set_property_bool(&session.dispatch, "FullScreen", false)?;
+        if let Some(display_settings) = session.fullscreen_restore_display.take() {
+            let display_sync_completed = sync_remote_desktop_size(session, display_settings, true);
+            rdp_debug(
+                "fullscreen.exit",
+                &json!({
+                    "sessionId": &session.session_id,
+                    "displaySyncCompleted": display_sync_completed,
+                }),
+            );
+        }
+        apply_smart_sizing(&session.dispatch, session.resolution_mode.smart_sizing());
         Ok(())
     }
 
