@@ -4040,7 +4040,20 @@
     "session": "sesión",
     "displayAria": "Pantalla VNC",
     "viewModeButton": "Modo de vista: {{mode}}",
-    "viewModeSaved": "Modo de vista guardado: {{mode}}"
+    "viewModeSaved": "Modo de vista guardado: {{mode}}",
+    "fullscreen": {
+      "enter": "Full screen",
+      "exit": "Exit full screen",
+      "windowTitle": "Remote session",
+      "barAria": "Full-screen controls",
+      "display": "Display",
+      "spanAll": "Span all displays",
+      "displayIndex": "Display {{index}}",
+      "sendSystemKeys": "Send system keys",
+      "pin": "Pin toolbar",
+      "unpin": "Unpin toolbar",
+      "rdpPending": "Full-screen RDP is not available yet."
+    }
   },
   "ai": {
     "title": "Asistente IA",

@@ -4040,7 +4040,20 @@
     "session": "Sitzung",
     "displayAria": "VNC-Anzeige",
     "viewModeButton": "Ansichtsmodus: {{mode}}",
-    "viewModeSaved": "Ansichtsmodus gespeichert: {{mode}}"
+    "viewModeSaved": "Ansichtsmodus gespeichert: {{mode}}",
+    "fullscreen": {
+      "enter": "Full screen",
+      "exit": "Exit full screen",
+      "windowTitle": "Remote session",
+      "barAria": "Full-screen controls",
+      "display": "Display",
+      "spanAll": "Span all displays",
+      "displayIndex": "Display {{index}}",
+      "sendSystemKeys": "Send system keys",
+      "pin": "Pin toolbar",
+      "unpin": "Unpin toolbar",
+      "rdpPending": "Full-screen RDP is not available yet."
+    }
   },
   "ai": {
     "title": "KI-Assistent",

@@ -4201,6 +4201,39 @@ export async function closeRemoteFullscreen(sessionId: string): Promise<void> {
   await invokeCommand("close_remote_fullscreen_window", { sessionId });
 }
 
+/** Close the window this code is running in (used by the detached full-screen host). */
+export async function closeCurrentWindow(): Promise<void> {
+  if (!isTauriRuntime()) {
+    return;
+  }
+  await getCurrentWindow().close();
+}
+
+/**
+ * Re-place the current window over the given physical rectangle. `native`
+ * requests true OS full screen (single monitor); span mode passes `native:false`
+ * and stays borderless across the virtual desktop.
+ */
+export async function setCurrentWindowBounds(bounds: {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  native: boolean;
+}): Promise<void> {
+  if (!isTauriRuntime()) {
+    return;
+  }
+  const { PhysicalPosition, PhysicalSize } = await import("@tauri-apps/api/dpi");
+  const win = getCurrentWindow();
+  await win.setFullscreen(false);
+  await win.setPosition(new PhysicalPosition(bounds.x, bounds.y));
+  await win.setSize(new PhysicalSize(Math.max(1, bounds.width), Math.max(1, bounds.height)));
+  if (bounds.native) {
+    await win.setFullscreen(true);
+  }
+}
+
 export function logUiDebug(event: string, payload: Record<string, unknown>) {
   if (!isTauriRuntime()) {
     return;

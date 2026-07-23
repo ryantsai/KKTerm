@@ -3,7 +3,7 @@ import { ScreenshotMenu } from "../../ScreenshotMenu";
 
 import { documentHasRdpBlockingOverlay } from "../../nativeOverlay";
 import { showNativeContextMenu } from "../../../../lib/nativeContextMenu";
-import { Bot, Keyboard, Monitor, RotateCcw, Scaling } from "../../../../lib/reicon";
+import { Bot, Keyboard, Maximize2, Monitor, RotateCcw, Scaling } from "../../../../lib/reicon";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -13,7 +13,7 @@ import type {
   PointerEvent as ReactPointerEvent,
   WheelEvent as ReactWheelEvent,
 } from "react";
-import { invokeCommand, isTauriRuntime, logUiDebug, type AssistantScreenshot } from "../../../../lib/tauri";
+import { invokeCommand, isTauriRuntime, logUiDebug, openRemoteFullscreen, type AssistantScreenshot } from "../../../../lib/tauri";
 import { useWorkspaceStore } from "../../../../store";
 import type {
   Connection,
@@ -35,42 +35,13 @@ import {
 import { usesCanvasRdp } from "../../../../lib/platform";
 import { RdpCanvasView } from "./RdpCanvasView";
 import { scancodeForCode } from "./rdpScancodes";
-
-type VncSessionEvent =
-  | { kind: "connected"; sessionId: string; name: string }
-  | { kind: "resolution"; sessionId: string; width: number; height: number }
-  | {
-      kind: "rawImage";
-      sessionId: string;
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-      rgba: string;
-    }
-  | {
-      kind: "copy";
-      sessionId: string;
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-      sourceX: number;
-      sourceY: number;
-    }
-  | { kind: "bell"; sessionId: string }
-  | {
-      kind: "setCursor";
-      sessionId: string;
-      width: number;
-      height: number;
-      hotX: number;
-      hotY: number;
-      rgba: string;
-    }
-  | { kind: "clipboardText"; sessionId: string; text: string }
-  | { kind: "error"; sessionId: string; message: string }
-  | { kind: "disconnected"; sessionId: string };
+import {
+  decodeBase64Bytes,
+  pointerButtonMask,
+  vncKeysymForEvent,
+  vncRenderedContentRect,
+  type VncSessionEvent,
+} from "./vncSurface";
 
 const RDP_ESTABLISHING_STATE = 2;
 const RDP_PRE_CAPTURE_INTERVAL_MS = 800;
@@ -1594,6 +1565,31 @@ export function RemoteDesktopWorkspace({
               <Scaling size={13} />
             </button>
           ) : null}
+          {showRemoteDesktopToolbar && (connection?.type === "rdp" || connection?.type === "vnc") ? (
+            <button
+              aria-label={t("remoteDesktop.fullscreen.enter")}
+              className="terminal-pane-action"
+              disabled={!isTauriRuntime()}
+              onClick={() => {
+                const sessionId = sessionIdRef.current;
+                if (!sessionId || !connection) {
+                  return;
+                }
+                void openRemoteFullscreen({
+                  sessionId,
+                  connectionId: connection.id,
+                  kind: connection.type as "rdp" | "vnc",
+                  monitorMode: "current",
+                }).catch((error) =>
+                  reportRemoteDesktopError(error instanceof Error ? error.message : String(error)),
+                );
+              }}
+              title={t("remoteDesktop.fullscreen.enter")}
+              type="button"
+            >
+              <Maximize2 size={13} />
+            </button>
+          ) : null}
           {showRemoteDesktopToolbar ? (
             <button
               aria-label={`${t("remoteDesktop.sendCtrlAltDel")} ${typeLabel} ${t("remoteDesktop.session")}`}
@@ -1712,37 +1708,6 @@ export function RemoteDesktopWorkspace({
   );
 }
 
-function vncRenderedContentRect(
-  rect: DOMRect,
-  intrinsicWidth: number,
-  intrinsicHeight: number,
-  viewMode: RemoteDesktopViewMode,
-) {
-  if (viewMode !== "fit") {
-    return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
-  }
-  const width = Math.max(1, intrinsicWidth);
-  const height = Math.max(1, intrinsicHeight);
-  const boxAspect = rect.width / Math.max(1, rect.height);
-  const contentAspect = width / height;
-  if (contentAspect > boxAspect) {
-    const contentHeight = rect.width / contentAspect;
-    return {
-      left: rect.left,
-      top: rect.top + (rect.height - contentHeight) / 2,
-      width: rect.width,
-      height: contentHeight,
-    };
-  }
-  const contentWidth = rect.height * contentAspect;
-  return {
-    left: rect.left + (rect.width - contentWidth) / 2,
-    top: rect.top,
-    width: contentWidth,
-    height: rect.height,
-  };
-}
-
 async function captureCanvasScreenshotForAssistant(
   canvas: HTMLCanvasElement | null,
   request: { x: number; y: number; width: number; height: number },
@@ -1820,25 +1785,6 @@ async function copyCanvasDataUrlToClipboard(dataUrl: string) {
       [blob.type || "image/png"]: blob,
     }),
   ]);
-}
-
-function decodeBase64Bytes(value: string) {
-  const binary = window.atob(value);
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
-  }
-  return bytes;
-}
-
-function pointerButtonMask(button: number) {
-  if (button === 1) {
-    return 2;
-  }
-  if (button === 2) {
-    return 4;
-  }
-  return 1;
 }
 
 async function sendRdpCanvasText(sessionId: string, text: string, pressEnter: boolean) {
@@ -2031,33 +1977,6 @@ function connectionUpdateRequest(connection: Connection) {
     vncOptions: connection.vncOptions,
     ftpOptions: connection.ftpOptions,
   };
-}
-
-function vncKeysymForEvent(event: ReactKeyboardEvent<HTMLCanvasElement>) {
-  if (event.key.length === 1) {
-    return event.key.charCodeAt(0);
-  }
-  const specialKeys: Record<string, number> = {
-    Backspace: 0xff08,
-    Tab: 0xff09,
-    Enter: 0xff0d,
-    Escape: 0xff1b,
-    Delete: 0xffff,
-    Home: 0xff50,
-    ArrowLeft: 0xff51,
-    ArrowUp: 0xff52,
-    ArrowRight: 0xff53,
-    ArrowDown: 0xff54,
-    PageUp: 0xff55,
-    PageDown: 0xff56,
-    End: 0xff57,
-    Insert: 0xff63,
-    Shift: 0xffe1,
-    Control: 0xffe3,
-    Alt: 0xffe9,
-    Meta: 0xffe7,
-  };
-  return specialKeys[event.key] ?? 0;
 }
 
 function normalizeRemoteDesktopKeyName(value: string) {

@@ -4040,7 +4040,20 @@
     "session": "工作階段",
     "displayAria": "VNC 畫面",
     "viewModeButton": "檢視模式：{{mode}}",
-    "viewModeSaved": "已儲存檢視模式：{{mode}}"
+    "viewModeSaved": "已儲存檢視模式：{{mode}}",
+    "fullscreen": {
+      "enter": "Full screen",
+      "exit": "Exit full screen",
+      "windowTitle": "Remote session",
+      "barAria": "Full-screen controls",
+      "display": "Display",
+      "spanAll": "Span all displays",
+      "displayIndex": "Display {{index}}",
+      "sendSystemKeys": "Send system keys",
+      "pin": "Pin toolbar",
+      "unpin": "Unpin toolbar",
+      "rdpPending": "Full-screen RDP is not available yet."
+    }
   },
   "ai": {
     "title": "AI 助理",
