@@ -3,7 +3,7 @@ import { ScreenshotMenu } from "../../ScreenshotMenu";
 
 import { documentHasRdpBlockingOverlay } from "../../nativeOverlay";
 import { showNativeContextMenu } from "../../../../lib/nativeContextMenu";
-import { Bot, Keyboard, Monitor, RotateCcw, Scaling } from "../../../../lib/reicon";
+import { Bot, Keyboard, Menu, Monitor, RotateCcw } from "../../../../lib/reicon";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -13,7 +13,7 @@ import type {
   PointerEvent as ReactPointerEvent,
   WheelEvent as ReactWheelEvent,
 } from "react";
-import { invokeCommand, isTauriRuntime, logUiDebug, type AssistantScreenshot } from "../../../../lib/tauri";
+import { invokeCommand, isTauriRuntime, logUiDebug, openRemoteFullscreen, type AssistantScreenshot } from "../../../../lib/tauri";
 import { useWorkspaceStore } from "../../../../store";
 import type {
   Connection,
@@ -33,44 +33,19 @@ import {
   type RemoteDesktopController,
 } from "../../paneRegistry";
 import { usesCanvasRdp } from "../../../../lib/platform";
+import {
+  displayShortcutBinding,
+  effectiveWorkspaceShortcutBindings,
+} from "../../keymap";
 import { RdpCanvasView } from "./RdpCanvasView";
 import { scancodeForCode } from "./rdpScancodes";
-
-type VncSessionEvent =
-  | { kind: "connected"; sessionId: string; name: string }
-  | { kind: "resolution"; sessionId: string; width: number; height: number }
-  | {
-      kind: "rawImage";
-      sessionId: string;
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-      rgba: string;
-    }
-  | {
-      kind: "copy";
-      sessionId: string;
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-      sourceX: number;
-      sourceY: number;
-    }
-  | { kind: "bell"; sessionId: string }
-  | {
-      kind: "setCursor";
-      sessionId: string;
-      width: number;
-      height: number;
-      hotX: number;
-      hotY: number;
-      rgba: string;
-    }
-  | { kind: "clipboardText"; sessionId: string; text: string }
-  | { kind: "error"; sessionId: string; message: string }
-  | { kind: "disconnected"; sessionId: string };
+import {
+  decodeBase64Bytes,
+  pointerButtonMask,
+  vncKeysymForEvent,
+  vncRenderedContentRect,
+  type VncSessionEvent,
+} from "./vncSurface";
 
 const RDP_ESTABLISHING_STATE = 2;
 const RDP_PRE_CAPTURE_INTERVAL_MS = 800;
@@ -81,6 +56,7 @@ const RDP_PRE_CAPTURE_INTERVAL_MS = 800;
 const RDP_DISPLAY_SETTLE_INTERVAL_MS = 2000;
 const RDP_DISPLAY_SETTLE_PASSES = 6;
 const RDP_DISPLAY_SETTLE_SUCCESS_PASSES = 2;
+const REMOTE_FULLSCREEN_SHORTCUT_EVENT = "kkterm://toggle-remote-fullscreen";
 
 function currentRdpPixelScale() {
   return window.devicePixelRatio || 1;
@@ -109,6 +85,7 @@ export function RemoteDesktopWorkspace({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const sessionStartedRef = useRef(false);
   const sessionStartingRef = useRef(false);
+  const openFullscreenRef = useRef<() => void>(() => undefined);
   const rdpConnectionCountedRef = useRef(false);
   const sessionIdRef = useRef<string | null>(null);
   const lastBoundsRef = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
@@ -885,19 +862,91 @@ export function RemoteDesktopWorkspace({
     });
   };
 
-  const handleViewModeMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
+  const openFullscreen = () => {
+    const sessionId = sessionIdRef.current;
+    if (!sessionId || !connection || (connection.type !== "rdp" && connection.type !== "vnc")) {
+      return;
+    }
+    if (canStartRdp) {
+      void invokeCommand("enter_rdp_fullscreen", {
+        request: { sessionId, connectionName: connection.name },
+      }).catch((error) =>
+        reportRemoteDesktopError(error instanceof Error ? error.message : String(error)),
+      );
+      return;
+    }
+    void openRemoteFullscreen({
+      sessionId,
+      connectionId: connection.id,
+      kind: connection.type,
+      monitorMode: "current",
+    }).catch((error) =>
+      reportRemoteDesktopError(error instanceof Error ? error.message : String(error)),
+    );
+  };
+  openFullscreenRef.current = openFullscreen;
+
+  useEffect(() => {
+    if (!isTauriRuntime()) {
+      return;
+    }
+    let disposed = false;
+    let dispose: (() => void) | undefined;
+    void listen(REMOTE_FULLSCREEN_SHORTCUT_EVENT, () => {
+      if (
+        disposed
+        || !isActive
+        || document.querySelector(".settings-backdrop, .dialog-backdrop, .kk-dlg-backdrop")
+      ) {
+        return;
+      }
+      const state = useWorkspaceStore.getState();
+      const activeTab = state.tabs.find((entry) => entry.id === state.activeTabId);
+      const isFocusedRemoteDesktop =
+        tab.id === state.activeTabId || activeTab?.focusedPaneId === tab.id;
+      if (isFocusedRemoteDesktop) {
+        openFullscreenRef.current();
+      }
+    }).then((unlisten) => {
+      if (disposed) {
+        unlisten();
+      } else {
+        dispose = unlisten;
+      }
+    });
+    return () => {
+      disposed = true;
+      dispose?.();
+    };
+  }, [isActive, tab.id]);
+
+  const handleRemoteDesktopMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
     if (!connection || !showRemoteDesktopToolbar) {
       return;
     }
     const rect = event.currentTarget.getBoundingClientRect();
     const options = remoteDesktopViewModeOptions(t);
+    const fullscreenBinding = effectiveWorkspaceShortcutBindings(
+      generalSettings.workspaceShortcuts,
+    ).get("remoteFullscreen");
     void showNativeContextMenu(
-      options.map((option) => ({
-        kind: "item" as const,
-        label: option.value === viewMode ? `✓ ${option.label}` : option.label,
-        disabled: option.value === viewMode,
-        action: () => void saveViewMode(option.value),
-      })),
+      [
+        {
+          kind: "item",
+          label: fullscreenBinding
+            ? `${t("remoteDesktop.fullscreen.enter")}\t${displayShortcutBinding(fullscreenBinding)}`
+            : t("remoteDesktop.fullscreen.enter"),
+          disabled: !sessionIdRef.current,
+          action: openFullscreen,
+        },
+        { kind: "separator" },
+        ...options.map((option) => ({
+          kind: "item" as const,
+          label: option.value === viewMode ? `✓ ${option.label}` : option.label,
+          disabled: option.value === viewMode,
+          action: () => void saveViewMode(option.value),
+        })),
+      ],
       { x: rect.left, y: rect.bottom },
     );
   };
@@ -1583,19 +1632,6 @@ export function RemoteDesktopWorkspace({
           {rdpStatus ? <span className="webview-toolbar-status">{rdpStatus}</span> : null}
           {showRemoteDesktopToolbar ? (
             <button
-              aria-label={t("remoteDesktop.viewModeButton", { mode: viewModeLabel(t, viewMode) })}
-              className="terminal-pane-action"
-              data-tutorial-id="remoteDesktop.viewMode"
-              disabled={!isTauriRuntime()}
-              onClick={handleViewModeMenu}
-              title={t("remoteDesktop.viewModeButton", { mode: viewModeLabel(t, viewMode) })}
-              type="button"
-            >
-              <Scaling size={13} />
-            </button>
-          ) : null}
-          {showRemoteDesktopToolbar ? (
-            <button
               aria-label={`${t("remoteDesktop.sendCtrlAltDel")} ${typeLabel} ${t("remoteDesktop.session")}`}
               className="terminal-pane-action"
               data-tutorial-id="remoteDesktop.sendCtrlAltDel"
@@ -1637,6 +1673,19 @@ export function RemoteDesktopWorkspace({
               type="button"
             >
               <Bot size={13} />
+            </button>
+          ) : null}
+          {showRemoteDesktopToolbar ? (
+            <button
+              aria-label={t("remoteDesktop.actionsMenu")}
+              className="terminal-pane-action"
+              data-tutorial-id="remoteDesktop.viewMode"
+              disabled={!isTauriRuntime()}
+              onClick={handleRemoteDesktopMenu}
+              title={t("remoteDesktop.actionsMenu")}
+              type="button"
+            >
+              <Menu size={13} />
             </button>
           ) : null}
         
@@ -1710,37 +1759,6 @@ export function RemoteDesktopWorkspace({
       </article>
     </section>
   );
-}
-
-function vncRenderedContentRect(
-  rect: DOMRect,
-  intrinsicWidth: number,
-  intrinsicHeight: number,
-  viewMode: RemoteDesktopViewMode,
-) {
-  if (viewMode !== "fit") {
-    return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
-  }
-  const width = Math.max(1, intrinsicWidth);
-  const height = Math.max(1, intrinsicHeight);
-  const boxAspect = rect.width / Math.max(1, rect.height);
-  const contentAspect = width / height;
-  if (contentAspect > boxAspect) {
-    const contentHeight = rect.width / contentAspect;
-    return {
-      left: rect.left,
-      top: rect.top + (rect.height - contentHeight) / 2,
-      width: rect.width,
-      height: contentHeight,
-    };
-  }
-  const contentWidth = rect.height * contentAspect;
-  return {
-    left: rect.left + (rect.width - contentWidth) / 2,
-    top: rect.top,
-    width: contentWidth,
-    height: rect.height,
-  };
 }
 
 async function captureCanvasScreenshotForAssistant(
@@ -1820,25 +1838,6 @@ async function copyCanvasDataUrlToClipboard(dataUrl: string) {
       [blob.type || "image/png"]: blob,
     }),
   ]);
-}
-
-function decodeBase64Bytes(value: string) {
-  const binary = window.atob(value);
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
-  }
-  return bytes;
-}
-
-function pointerButtonMask(button: number) {
-  if (button === 1) {
-    return 2;
-  }
-  if (button === 2) {
-    return 4;
-  }
-  return 1;
 }
 
 async function sendRdpCanvasText(sessionId: string, text: string, pressEnter: boolean) {
@@ -2031,33 +2030,6 @@ function connectionUpdateRequest(connection: Connection) {
     vncOptions: connection.vncOptions,
     ftpOptions: connection.ftpOptions,
   };
-}
-
-function vncKeysymForEvent(event: ReactKeyboardEvent<HTMLCanvasElement>) {
-  if (event.key.length === 1) {
-    return event.key.charCodeAt(0);
-  }
-  const specialKeys: Record<string, number> = {
-    Backspace: 0xff08,
-    Tab: 0xff09,
-    Enter: 0xff0d,
-    Escape: 0xff1b,
-    Delete: 0xffff,
-    Home: 0xff50,
-    ArrowLeft: 0xff51,
-    ArrowUp: 0xff52,
-    ArrowRight: 0xff53,
-    ArrowDown: 0xff54,
-    PageUp: 0xff55,
-    PageDown: 0xff56,
-    End: 0xff57,
-    Insert: 0xff63,
-    Shift: 0xffe1,
-    Control: 0xffe3,
-    Alt: 0xffe9,
-    Meta: 0xffe7,
-  };
-  return specialKeys[event.key] ?? 0;
 }
 
 function normalizeRemoteDesktopKeyName(value: string) {

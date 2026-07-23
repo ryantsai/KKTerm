@@ -4039,8 +4039,22 @@
     "transportUnavailable": "Trasporto desktop remoto non disponibile.",
     "session": "sessione",
     "displayAria": "Display VNC",
+    "actionsMenu": "Menu Desktop remoto",
     "viewModeButton": "Modalità di visualizzazione: {{mode}}",
-    "viewModeSaved": "Modalità di visualizzazione salvata: {{mode}}"
+    "viewModeSaved": "Modalità di visualizzazione salvata: {{mode}}",
+    "fullscreen": {
+      "enter": "Full screen",
+      "toggle": "Attiva/disattiva schermo intero",
+      "exit": "Exit full screen",
+      "windowTitle": "Remote session",
+      "barAria": "Full-screen controls",
+      "display": "Display",
+      "spanAll": "Span all displays",
+      "displayIndex": "Display {{index}}",
+      "pin": "Pin toolbar",
+      "unpin": "Unpin toolbar",
+      "rdpPending": "Full-screen RDP is not available yet."
+    }
   },
   "ai": {
     "title": "Assistente IA",

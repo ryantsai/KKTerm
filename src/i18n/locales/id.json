@@ -4039,8 +4039,22 @@
     "transportUnavailable": "Transport desktop jarak jauh tidak tersedia.",
     "session": "sesi",
     "displayAria": "Tampilan VNC",
+    "actionsMenu": "Menu desktop jarak jauh",
     "viewModeButton": "Mode tampilan: {{mode}}",
-    "viewModeSaved": "Mode tampilan disimpan: {{mode}}"
+    "viewModeSaved": "Mode tampilan disimpan: {{mode}}",
+    "fullscreen": {
+      "enter": "Full screen",
+      "toggle": "Alihkan layar penuh",
+      "exit": "Exit full screen",
+      "windowTitle": "Remote session",
+      "barAria": "Full-screen controls",
+      "display": "Display",
+      "spanAll": "Span all displays",
+      "displayIndex": "Display {{index}}",
+      "pin": "Pin toolbar",
+      "unpin": "Unpin toolbar",
+      "rdpPending": "Full-screen RDP is not available yet."
+    }
   },
   "ai": {
     "title": "AI Assistant",

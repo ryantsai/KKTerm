@@ -196,7 +196,7 @@ export const SETTINGS_SEARCH_KEYS: Record<SettingsSectionId, readonly string[]> 
   ],
   "dont-sleep-settings": ["settings.dontSleepForegroundOnly"],
   "shortcuts-settings": [
-    "settings.workspaceTabs", "settings.sectionTerminal", "settings.shortcutPressKeys",
+    "settings.workspaceTabs", "settings.sectionTerminal", "remoteDesktop.fullscreen.toggle", "settings.shortcutPressKeys",
     "settings.shortcutClear", "settings.shortcutReset", "settings.shortcutResetAll",
     "settings.shortcutsHint", "settings.sectionScreenshots", "settings.screenshotsShortcuts",
     "screenshots.captureRegion", "screenshots.captureWindow", "screenshots.captureFullscreen",

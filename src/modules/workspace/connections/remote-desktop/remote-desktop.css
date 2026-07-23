@@ -169,3 +169,158 @@
   text-align: center;
   pointer-events: none;
 }
+
+/* ── Detached full-screen window (RemoteFullscreenApp) ───────────────────── */
+.remote-fullscreen-root {
+  position: fixed;
+  inset: 0;
+  background: var(--terminal);
+  overflow: hidden;
+}
+
+.remote-fullscreen-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  outline: none;
+  touch-action: none;
+}
+
+.remote-fullscreen-canvas:not(.ready) {
+  visibility: hidden;
+}
+
+.remote-fullscreen-pending,
+.remote-fullscreen-status {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  pointer-events: none;
+}
+
+.remote-fullscreen-pending {
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.remote-fullscreen-status {
+  bottom: 1rem;
+  padding: 0.35rem 0.75rem;
+  background: color-mix(in srgb, var(--terminal) 70%, transparent);
+  border-radius: 6px;
+}
+
+/* Reveal-on-hover / pinnable connection bar. A thin top hot-zone catches the
+   pointer so the bar can slide back into view when it has auto-hidden. */
+.remote-fullscreen-bar-zone {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 4px;
+  height: 12px;
+}
+
+.remote-fullscreen-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 0 0 10px 10px;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-top: none;
+  box-shadow: var(--shadow);
+  transform: translateY(-100%);
+  transition: transform 140ms ease;
+  color: var(--text);
+}
+
+.remote-fullscreen-bar-zone.revealed .remote-fullscreen-bar {
+  transform: translateY(0);
+}
+
+.remote-fullscreen-bar-title {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  opacity: 0.85;
+  padding: 0 4px;
+}
+
+.remote-fullscreen-bar-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 26px;
+  padding: 0 7px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.remote-fullscreen-bar-button:hover {
+  background: var(--hover);
+}
+
+.remote-fullscreen-bar-button.active {
+  background: var(--accent);
+  color: var(--terminal-fg);
+}
+
+.remote-fullscreen-bar-exit:hover {
+  background: var(--red);
+  color: var(--terminal-fg);
+}
+
+.remote-fullscreen-bar-cad {
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+}
+
+.remote-fullscreen-bar-monitor {
+  position: relative;
+}
+
+.remote-fullscreen-bar-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 180px;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.remote-fullscreen-bar-menu-item {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.remote-fullscreen-bar-menu-item:hover {
+  background: var(--hover);
+}

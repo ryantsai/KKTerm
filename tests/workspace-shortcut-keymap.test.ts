@@ -5,9 +5,11 @@ import {
   activeConnectionForNewTab,
   bindingFromKeyboardEvent,
   conflictingWorkspaceShortcutAction,
+  defaultWorkspaceShortcutBinding,
   displayShortcutBinding,
   effectiveWorkspaceShortcutBindings,
   fixedTerminalShortcutFromKeyboardEvent,
+  workspaceShortcutIsFixed,
   workspaceShortcutFromKeyboardEvent,
 } from "../src/modules/workspace/keymap";
 import type { Connection, WorkspaceTab } from "../src/types";
@@ -70,7 +72,26 @@ test("displayShortcutBinding names every canonical modifier for macOS", () => {
   assert.equal(displayShortcutBinding("Control+Option+K", "macos"), "Control+Option+K");
   assert.equal(displayShortcutBinding("Ctrl+Alt+R", "linux"), "Ctrl+Alt+R");
   assert.equal(displayShortcutBinding("Ctrl+Alt+R", "windows"), "Ctrl+Alt+R");
+  assert.equal(displayShortcutBinding("Ctrl+Alt+Pause", "windows"), "Ctrl+Alt+Break");
   assert.equal(displayShortcutBinding("Cmd+Alt+R", "linux"), "Cmd+Alt+R");
+});
+
+test("remote desktop full screen uses a native platform convention by default", () => {
+  const action = WORKSPACE_SHORTCUT_ACTIONS.find((entry) => entry.id === "remoteFullscreen");
+  assert.ok(action);
+  assert.equal(defaultWorkspaceShortcutBinding(action, "windows"), "Ctrl+Alt+Pause");
+  assert.equal(defaultWorkspaceShortcutBinding(action, "macos"), "Ctrl+Cmd+F");
+  assert.equal(defaultWorkspaceShortcutBinding(action, "linux"), "F11");
+  assert.equal(workspaceShortcutIsFixed(action, "windows"), true);
+  assert.equal(workspaceShortcutIsFixed(action, "macos"), false);
+  assert.equal(workspaceShortcutIsFixed(action, "linux"), false);
+});
+
+test("Windows ignores stored overrides for the ActiveX full-screen shortcut", () => {
+  const bindings = effectiveWorkspaceShortcutBindings({
+    remoteFullscreen: "Ctrl+Alt+PageDown",
+  });
+  assert.equal(bindings.get("remoteFullscreen"), "Ctrl+Alt+Pause");
 });
 
 test("bindingFromKeyboardEvent ignores bare keys and lone modifiers", () => {

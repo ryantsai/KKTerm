@@ -4039,8 +4039,22 @@
     "transportUnavailable": "การขนส่งเดสก์ท็อประยะไกลไม่พร้อมใช้งาน",
     "session": "เซสชัน",
     "displayAria": "การแสดงผล VNC",
+    "actionsMenu": "เมนูเดสก์ท็อประยะไกล",
     "viewModeButton": "โหมดมุมมอง: {{mode}}",
-    "viewModeSaved": "บันทึกโหมดมุมมองแล้ว: {{mode}}"
+    "viewModeSaved": "บันทึกโหมดมุมมองแล้ว: {{mode}}",
+    "fullscreen": {
+      "enter": "Full screen",
+      "toggle": "สลับโหมดเต็มหน้าจอ",
+      "exit": "Exit full screen",
+      "windowTitle": "Remote session",
+      "barAria": "Full-screen controls",
+      "display": "Display",
+      "spanAll": "Span all displays",
+      "displayIndex": "Display {{index}}",
+      "pin": "Pin toolbar",
+      "unpin": "Unpin toolbar",
+      "rdpPending": "Full-screen RDP is not available yet."
+    }
   },
   "ai": {
     "title": "ผู้ช่วย AI",

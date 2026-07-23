@@ -593,6 +593,12 @@ impl CredentialSettings {
 }
 
 impl GeneralSettings {
+    pub(crate) fn workspace_shortcut_override(&self, action_id: &str) -> Option<Option<&str>> {
+        self.workspace_shortcuts
+            .get(action_id)
+            .map(|binding| binding.as_deref())
+    }
+
     pub(crate) fn allow_clipboard_read(&self) -> bool {
         // Clipboard read is always enabled; the stored flag is retained only for
         // settings serialization back-compat and no longer gates the permission.

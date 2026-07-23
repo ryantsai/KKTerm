@@ -41,6 +41,8 @@ mod power;
 mod rdp;
 #[cfg(not(target_os = "windows"))]
 mod rdp_client;
+mod remote_fullscreen;
+mod remote_fullscreen_shortcut;
 mod screenshot;
 mod screenshot_shortcuts;
 mod secrets;
@@ -814,6 +816,7 @@ fn update_general_settings(
     webviews: tauri::State<'_, webview::WebviewSessionManager>,
     mut request: storage::GeneralSettings,
 ) -> Result<storage::GeneralSettings, String> {
+    remote_fullscreen_shortcut::validate(&request)?;
     if app.state::<app_paths::AppPaths>().is_portable() {
         // Auto-start is unsupported and hidden in portable mode, but imported
         // installed-mode backups can still carry the flag; drop it instead of
@@ -823,6 +826,7 @@ fn update_general_settings(
         auto_start::sync_auto_start_with_windows(request.auto_start_with_windows())?;
     }
     let saved = storage.update_general_settings(request)?;
+    remote_fullscreen_shortcut::apply(&app, &saved)?;
     net::proxy::set(net::proxy::from_settings(
         saved.proxy_mode(),
         saved.proxy_url(),
@@ -3851,6 +3855,24 @@ fn set_rdp_visibility(
 }
 
 #[tauri::command]
+fn enter_rdp_fullscreen(
+    app: tauri::AppHandle,
+    rdp_sessions: tauri::State<'_, rdp::RdpSessionManager>,
+    request: rdp::EnterRdpFullscreenRequest,
+) -> Result<(), String> {
+    rdp_sessions.enter_fullscreen(app, request)
+}
+
+#[tauri::command]
+fn exit_rdp_fullscreen(
+    app: tauri::AppHandle,
+    rdp_sessions: tauri::State<'_, rdp::RdpSessionManager>,
+    request: rdp::RdpSimpleRequest,
+) -> Result<(), String> {
+    rdp_sessions.exit_fullscreen(app, request)
+}
+
+#[tauri::command]
 fn sync_rdp_display_size(
     app: tauri::AppHandle,
     rdp_sessions: tauri::State<'_, rdp::RdpSessionManager>,
@@ -4064,6 +4086,15 @@ fn send_rdp_client_ctrl_alt_delete(
     request: rdp_client::RdpClientSimpleRequest,
 ) -> Result<(), String> {
     rdp_sessions.send_ctrl_alt_delete(request)
+}
+
+#[cfg(not(target_os = "windows"))]
+#[tauri::command]
+fn refresh_rdp_client_session(
+    rdp_sessions: tauri::State<'_, rdp_client::RdpClientSessionManager>,
+    request: rdp_client::RdpClientSimpleRequest,
+) -> Result<(), String> {
+    rdp_sessions.refresh(request)
 }
 
 #[cfg(not(target_os = "windows"))]
@@ -4400,6 +4431,9 @@ pub fn run() {
                     eprintln!("failed to load screenshot settings for capture shortcuts: {error}");
                 }
             }
+            if let Err(error) = remote_fullscreen_shortcut::apply(app.handle(), &general_settings) {
+                eprintln!("failed to register remote desktop full-screen shortcut: {error}");
+            }
             app.manage(storage);
             app.manage(performance::PerformanceMonitor::new());
             app.manage(pc_info::PcInfoCache::new());
@@ -4439,6 +4473,11 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
+            if matches!(event, tauri::WindowEvent::Focused(_)) {
+                if let Err(error) = remote_fullscreen_shortcut::sync_focus(window.app_handle()) {
+                    eprintln!("failed to update remote desktop full-screen shortcut: {error}");
+                }
+            }
             if window.label() != window_state::MAIN_WINDOW_LABEL {
                 return;
             }
@@ -4519,6 +4558,9 @@ pub fn run() {
             focus_main_window,
             show_native_tooltip,
             hide_native_tooltip,
+            remote_fullscreen::list_display_monitors,
+            remote_fullscreen::open_remote_fullscreen_window,
+            remote_fullscreen::close_remote_fullscreen_window,
             // ── Connections & folders
             list_connection_tree,
             list_workspaces,
@@ -4839,6 +4881,8 @@ pub fn run() {
             start_rdp_session,
             update_rdp_bounds,
             set_rdp_visibility,
+            enter_rdp_fullscreen,
+            exit_rdp_fullscreen,
             sync_rdp_display_size,
             close_rdp_session,
             get_rdp_session_status,
@@ -4868,6 +4912,8 @@ pub fn run() {
             paste_rdp_client_clipboard,
             #[cfg(not(target_os = "windows"))]
             send_rdp_client_ctrl_alt_delete,
+            #[cfg(not(target_os = "windows"))]
+            refresh_rdp_client_session,
             #[cfg(not(target_os = "windows"))]
             close_rdp_client_session,
             #[cfg(not(target_os = "windows"))]

@@ -8,7 +8,9 @@ import {
   WORKSPACE_SHORTCUT_ACTIONS,
   bindingFromKeyboardEvent,
   conflictingWorkspaceShortcutAction,
+  defaultWorkspaceShortcutBinding,
   displayShortcutBinding,
+  workspaceShortcutIsFixed,
   type WorkspaceShortcutActionId,
   type WorkspaceShortcutOverrides,
   type WorkspaceShortcutScope,
@@ -68,14 +70,16 @@ export function ShortcutsSettings() {
   function effectiveBinding(actionId: WorkspaceShortcutActionId) {
     const action = WORKSPACE_SHORTCUT_ACTIONS.find((entry) => entry.id === actionId);
     const override = draft[actionId];
-    return override !== undefined ? override : (action?.defaultBinding ?? null);
+    return override !== undefined && action && !workspaceShortcutIsFixed(action)
+      ? override
+      : (action ? defaultWorkspaceShortcutBinding(action) : null);
   }
 
   function setOverride(actionId: WorkspaceShortcutActionId, binding: string | null) {
     const action = WORKSPACE_SHORTCUT_ACTIONS.find((entry) => entry.id === actionId);
     setDraft((current) => {
       const next = { ...current };
-      if (binding === (action?.defaultBinding ?? null)) {
+      if (binding === (action ? defaultWorkspaceShortcutBinding(action) : null)) {
         delete next[actionId];
       } else {
         next[actionId] = binding;
@@ -139,8 +143,9 @@ export function ShortcutsSettings() {
 
   function renderRows(scope: WorkspaceShortcutScope) {
     return WORKSPACE_SHORTCUT_ACTIONS.filter((action) => action.scope === scope).map((action) => {
+      const fixed = workspaceShortcutIsFixed(action);
       const binding = effectiveBinding(action.id);
-      const overridden = action.id in draft;
+      const overridden = !fixed && action.id in draft;
       const recording = recordingActionId === action.id;
       return (
         <div className="shortcut-row" key={action.id}>
@@ -148,6 +153,7 @@ export function ShortcutsSettings() {
           <span className="shortcut-row-controls">
             <button
               className={`shortcut-binding-button${recording ? " recording" : ""}${binding ? "" : " unbound"}`}
+              disabled={fixed}
               onBlur={() => {
                 if (recording) {
                   stopRecording();
@@ -168,7 +174,7 @@ export function ShortcutsSettings() {
                 ? t("settings.shortcutPressKeys")
                 : (binding ? displayShortcutBinding(binding) : t("settings.shortcutNotSet"))}
             </button>
-            {binding ? (
+            {!fixed && binding ? (
               <button
                 aria-label={t("settings.shortcutClear")}
                 className="shortcut-icon-button"
@@ -232,6 +238,10 @@ export function ShortcutsSettings() {
       <fieldset className="settings-subsection settings-fieldset">
         <legend>{t("settings.sectionTerminal")}</legend>
         <div className="shortcut-list">{renderRows("terminal")}</div>
+      </fieldset>
+      <fieldset className="settings-subsection settings-fieldset">
+        <legend>{t("remoteDesktop.typeLabel")}</legend>
+        <div className="shortcut-list">{renderRows("remoteDesktop")}</div>
       </fieldset>
       <fieldset className="settings-subsection settings-fieldset">
         <legend>{t("settings.sectionScreenshots")}</legend>

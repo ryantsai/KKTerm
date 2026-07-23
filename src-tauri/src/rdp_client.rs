@@ -133,6 +133,11 @@ enum RdpInput {
     LocalClipboardText(String),
     PasteLocalClipboardText(String),
     CtrlAltDelete,
+    /// Re-emit the current framebuffer as one full-desktop RawImage. Used when a
+    /// detached full-screen window attaches to a live session and needs an
+    /// immediate repaint (the server only sends deltas). This never touches the
+    /// RDP wire; it replays IronRDP's already-decoded image.
+    ResendFullFrame,
 }
 
 #[derive(Deserialize)]
@@ -458,6 +463,12 @@ impl RdpClientSessionManager {
 
     pub fn send_ctrl_alt_delete(&self, request: RdpClientSimpleRequest) -> Result<(), String> {
         self.queue_input(&request.session_id, RdpInput::CtrlAltDelete)
+    }
+
+    /// Request a full-frame repaint (used when a detached full-screen window
+    /// attaches to a running session).
+    pub fn refresh(&self, request: RdpClientSimpleRequest) -> Result<(), String> {
+        self.queue_input(&request.session_id, RdpInput::ResendFullFrame)
     }
 
     pub fn close_session(&self, request: RdpClientSimpleRequest) -> Result<(), String> {
@@ -1751,6 +1762,27 @@ fn spawn_rdp_event_loop(
                 }
                 input = input_rx.recv() => {
                     match input {
+                        Some(RdpInput::ResendFullFrame) => {
+                            // Replay the whole decoded framebuffer so a freshly
+                            // attached surface (detached full-screen window) paints
+                            // immediately instead of waiting for server deltas.
+                            emit_rdp_event(
+                                &app,
+                                RdpCanvasEvent::Resolution {
+                                    session_id: session_id.clone(),
+                                    width,
+                                    height,
+                                },
+                            );
+                            emit_rdp_event(&app, RdpCanvasEvent::RawImage {
+                                session_id: session_id.clone(),
+                                x: 0,
+                                y: 0,
+                                width,
+                                height,
+                                rgba: BASE64.encode(image.data()),
+                            });
+                        }
                         Some(rdp_input) => {
                             if let Err(e) = send_rdp_input(
                                 &session_id,

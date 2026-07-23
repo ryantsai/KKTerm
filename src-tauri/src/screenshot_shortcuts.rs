@@ -4,7 +4,10 @@
 //! hotkey, and in-app captures all share the same frontend command path
 //! (Status Bar notices, library refresh).
 
-use std::str::FromStr;
+use std::{
+    str::FromStr,
+    sync::{Mutex, OnceLock},
+};
 
 use tauri::Emitter;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
@@ -17,9 +20,16 @@ use crate::storage::ScreenshotSettings;
 /// so this works without restoring the window.
 pub const CAPTURE_EVENT: &str = "kkterm://capture-screenshot";
 
+static REGISTERED_SHORTCUTS: OnceLock<Mutex<Vec<Shortcut>>> = OnceLock::new();
+
+fn registered_shortcuts() -> &'static Mutex<Vec<Shortcut>> {
+    REGISTERED_SHORTCUTS.get_or_init(|| Mutex::new(Vec::new()))
+}
+
 fn parse(label: &str, accelerator: &str) -> Result<Shortcut, String> {
-    Shortcut::from_str(accelerator)
-        .map_err(|_| format!("the {label} capture shortcut '{accelerator}' is not a valid key combination"))
+    Shortcut::from_str(accelerator).map_err(|_| {
+        format!("the {label} capture shortcut '{accelerator}' is not a valid key combination")
+    })
 }
 
 fn entries(settings: &ScreenshotSettings) -> [(bool, &str, &'static str, &'static str); 3] {
@@ -56,14 +66,21 @@ pub fn validate(settings: &ScreenshotSettings) -> Result<(), String> {
     Ok(())
 }
 
-/// Re-registers the capture hotkeys from settings, dropping every previously
-/// registered shortcut first. Registration failures (typically another app
-/// holding the key) are reported without stopping the remaining shortcuts.
+/// Re-registers only the capture hotkeys owned by this module. Other global
+/// shortcuts, such as the RDP/VNC full-screen toggle, must remain registered.
+/// Registration failures (typically another app holding the key) are reported
+/// without stopping the remaining shortcuts.
 pub fn apply(app: &tauri::AppHandle, settings: &ScreenshotSettings) -> Result<(), String> {
     let manager = app.global_shortcut();
-    manager
-        .unregister_all()
-        .map_err(|error| format!("failed to reset capture shortcuts: {error}"))?;
+    let mut registered = registered_shortcuts()
+        .lock()
+        .map_err(|_| "capture shortcut registration state is unavailable".to_string())?;
+    if !registered.is_empty() {
+        manager
+            .unregister_multiple(registered.iter().copied())
+            .map_err(|error| format!("failed to reset capture shortcuts: {error}"))?;
+        registered.clear();
+    }
 
     let mut errors = Vec::new();
     for (enabled, accelerator, mode, label) in entries(settings) {
@@ -78,6 +95,8 @@ pub fn apply(app: &tauri::AppHandle, settings: &ScreenshotSettings) -> Result<()
         });
         if let Err(error) = register_result {
             errors.push(format!("{label} ({accelerator}): {error}"));
+        } else {
+            registered.push(shortcut);
         }
     }
 

@@ -58,7 +58,14 @@ test("macOS package script loads the updater private key for Tauri signing", () 
   assert.match(packageMacosScript, /TAURI_SIGNING_PRIVATE_KEY_PATH:-\$HOME\/\.tauri\/kkterm-updater\.key/);
   assert.match(packageMacosScript, /normalize_tauri_signing_key\(\) \{/);
   assert.match(packageMacosScript, /extract_tauri_signing_key\(\) \{/);
-  assert.match(packageMacosScript, /\| base64$/m);
+  assert.match(
+    packageMacosScript,
+    /normalized="\$\(printf '%s' "\$key_content" \| base64\)"/,
+  );
+  assert.match(
+    packageMacosScript,
+    /printf '%s' "\$normalized" \| tr -d '\[:space:\]' \| tr -- '-_' '\+\/'/,
+  );
   assert.match(packageMacosScript, /export TAURI_SIGNING_PRIVATE_KEY="\$\(extract_tauri_signing_key "\$KEY_PATH"\)"/);
   assert.match(packageMacosScript, /export TAURI_SIGNING_PRIVATE_KEY="\$\(normalize_tauri_signing_key "\$TAURI_SIGNING_PRIVATE_KEY"\)"/);
   assert.match(packageMacosScript, /npm exec tauri -- build --target universal-apple-darwin --bundles app,dmg "\$@"/);

@@ -19,7 +19,11 @@
 import type { Connection, WorkspaceTab } from "../../types";
 import { currentPlatform, type RuntimePlatform } from "../../lib/platform";
 
-export type WorkspaceShortcutScope = "workspace" | "terminal" | "screenshotEditor";
+export type WorkspaceShortcutScope =
+  | "workspace"
+  | "terminal"
+  | "remoteDesktop"
+  | "screenshotEditor";
 
 export type WorkspaceShortcutActionId =
   | "newTab"
@@ -37,6 +41,7 @@ export type WorkspaceShortcutActionId =
   | "splitLeft"
   | "splitDown"
   | "splitUp"
+  | "remoteFullscreen"
   | "screenshotEditorCopy"
   | "screenshotEditorSave"
   | "screenshotEditorSaveAs";
@@ -78,6 +83,12 @@ export const WORKSPACE_SHORTCUT_ACTIONS: readonly WorkspaceShortcutAction[] = [
   { id: "splitLeft", scope: "terminal", labelKey: "terminal.splitLeft", defaultBinding: null },
   { id: "splitDown", scope: "terminal", labelKey: "terminal.splitDown", defaultBinding: null },
   { id: "splitUp", scope: "terminal", labelKey: "terminal.splitUp", defaultBinding: null },
+  {
+    id: "remoteFullscreen",
+    scope: "remoteDesktop",
+    labelKey: "remoteDesktop.fullscreen.toggle",
+    defaultBinding: "Ctrl+Alt+Pause",
+  },
   { id: "screenshotEditorCopy", scope: "screenshotEditor", labelKey: "screenshots.menu.copy", defaultBinding: "Ctrl+C" },
   { id: "screenshotEditorSave", scope: "screenshotEditor", labelKey: "common.save", defaultBinding: "Ctrl+S" },
   { id: "screenshotEditorSaveAs", scope: "screenshotEditor", labelKey: "screenshots.editor.saveAs", defaultBinding: "Ctrl+Shift+S" },
@@ -115,6 +126,12 @@ export function displayShortcutBinding(
   binding: string,
   platform: RuntimePlatform = currentPlatform(),
 ): string {
+  if (platform === "windows") {
+    return binding
+      .split("+")
+      .map((part) => part === "Pause" || part === "PauseBreak" ? "Break" : part)
+      .join("+");
+  }
   if (platform !== "macos") {
     return binding;
   }
@@ -122,6 +139,29 @@ export function displayShortcutBinding(
     .split("+")
     .map((part) => MAC_MODIFIER_LABELS[part] ?? part)
     .join("+");
+}
+
+export function defaultWorkspaceShortcutBinding(
+  action: WorkspaceShortcutAction,
+  platform: RuntimePlatform = currentPlatform(),
+): string | null {
+  if (action.id !== "remoteFullscreen") {
+    return action.defaultBinding;
+  }
+  if (platform === "macos") {
+    return "Ctrl+Cmd+F";
+  }
+  if (platform === "linux") {
+    return "F11";
+  }
+  return action.defaultBinding;
+}
+
+export function workspaceShortcutIsFixed(
+  action: WorkspaceShortcutAction,
+  platform: RuntimePlatform = currentPlatform(),
+): boolean {
+  return platform === "windows" && action.id === "remoteFullscreen";
 }
 
 /**
@@ -175,7 +215,12 @@ export function effectiveWorkspaceShortcutBindings(
   const bindings = new Map<WorkspaceShortcutActionId, string | null>();
   for (const action of WORKSPACE_SHORTCUT_ACTIONS) {
     const override = overrides?.[action.id];
-    bindings.set(action.id, override !== undefined ? override : action.defaultBinding);
+    bindings.set(
+      action.id,
+      override !== undefined && !workspaceShortcutIsFixed(action)
+        ? override
+        : defaultWorkspaceShortcutBinding(action),
+    );
   }
   return bindings;
 }
