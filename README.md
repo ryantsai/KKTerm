@@ -62,7 +62,7 @@
 
 ## The 45-Second Pitch
 
-KKTerm brings local terminals, SSH/SFTP, FTP/FTPS, Telnet, serial, RDP/VNC, embedded web pages, local files, and documents into one desktop workspace. Tabs can mix different Pane types, so the terminal, file browser, and remote screen for one job stay together.
+KKTerm brings local terminals, SSH/SFTP, FTP/FTPS, Telnet, Serial, RDP/VNC, embedded web pages, local files, and documents into one desktop workspace. Tabs can mix different Pane types, so the terminal, file browser, and remote screen for one job stay together.
 
 It runs on Windows, macOS, and Linux with local-first storage and no telemetry. Approval-gated AI, customizable Dashboard widgets, Workspaces, IT Ops, and the Windows Install Helper are built in.
 
