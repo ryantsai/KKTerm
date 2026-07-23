@@ -19,6 +19,8 @@ test("screenshot settings share shortcut rows and clear bindings without toggles
   assert.doesNotMatch(rows, /<input/);
   assert.match(rows, /shortcut-binding-button/);
   assert.match(rows, /bindingFromKeyboardEvent/);
+  assert.match(rows, /displayShortcutBinding\(value\)/);
+  assert.match(shortcuts, /displayShortcutBinding\(binding\)/);
   assert.match(rows, /settings\.shortcutPressKeys/);
   assert.match(rows, /\[enabledKey\]: value\.trim\(\)\.length > 0/);
 });

@@ -8,6 +8,7 @@ import {
   WORKSPACE_SHORTCUT_ACTIONS,
   bindingFromKeyboardEvent,
   conflictingWorkspaceShortcutAction,
+  displayShortcutBinding,
   type WorkspaceShortcutActionId,
   type WorkspaceShortcutOverrides,
   type WorkspaceShortcutScope,
@@ -165,7 +166,7 @@ export function ShortcutsSettings() {
             >
               {recording
                 ? t("settings.shortcutPressKeys")
-                : (binding ?? t("settings.shortcutNotSet"))}
+                : (binding ? displayShortcutBinding(binding) : t("settings.shortcutNotSet"))}
             </button>
             {binding ? (
               <button

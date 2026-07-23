@@ -5,6 +5,7 @@ import {
   activeConnectionForNewTab,
   bindingFromKeyboardEvent,
   conflictingWorkspaceShortcutAction,
+  displayShortcutBinding,
   effectiveWorkspaceShortcutBindings,
   fixedTerminalShortcutFromKeyboardEvent,
   workspaceShortcutFromKeyboardEvent,
@@ -56,6 +57,20 @@ test("bindingFromKeyboardEvent canonicalizes modifier order and key casing", () 
   );
   assert.equal(bindingFromKeyboardEvent(keyEvent(" ", { ctrlKey: true, shiftKey: true })), "Ctrl+Shift+Space");
   assert.equal(bindingFromKeyboardEvent(keyEvent("Tab", { ctrlKey: true })), "Ctrl+Tab");
+});
+
+test("displayShortcutBinding names every canonical modifier for macOS", () => {
+  assert.equal(displayShortcutBinding("Ctrl+Alt+R", "macos"), "Control+Option+R");
+  assert.equal(displayShortcutBinding("Alt+Shift+F", "macos"), "Option+Shift+F");
+  assert.equal(displayShortcutBinding("Cmd+Shift+S", "macos"), "Command+Shift+S");
+  assert.equal(displayShortcutBinding("Meta+Alt+P", "macos"), "Command+Option+P");
+  assert.equal(displayShortcutBinding("Super+K", "macos"), "Command+K");
+  assert.equal(displayShortcutBinding("CmdOrCtrl+P", "macos"), "Command+P");
+  assert.equal(displayShortcutBinding("CommandOrControl+P", "macos"), "Command+P");
+  assert.equal(displayShortcutBinding("Control+Option+K", "macos"), "Control+Option+K");
+  assert.equal(displayShortcutBinding("Ctrl+Alt+R", "linux"), "Ctrl+Alt+R");
+  assert.equal(displayShortcutBinding("Ctrl+Alt+R", "windows"), "Ctrl+Alt+R");
+  assert.equal(displayShortcutBinding("Cmd+Alt+R", "linux"), "Cmd+Alt+R");
 });
 
 test("bindingFromKeyboardEvent ignores bare keys and lone modifiers", () => {
