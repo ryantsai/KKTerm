@@ -41,6 +41,7 @@ mod power;
 mod rdp;
 #[cfg(not(target_os = "windows"))]
 mod rdp_client;
+mod remote_fullscreen;
 mod screenshot;
 mod screenshot_shortcuts;
 mod secrets;
@@ -4519,6 +4520,9 @@ pub fn run() {
             focus_main_window,
             show_native_tooltip,
             hide_native_tooltip,
+            remote_fullscreen::list_display_monitors,
+            remote_fullscreen::open_remote_fullscreen_window,
+            remote_fullscreen::close_remote_fullscreen_window,
             // ── Connections & folders
             list_connection_tree,
             list_workspaces,

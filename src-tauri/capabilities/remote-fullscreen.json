@@ -1,0 +1,24 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "remote-fullscreen",
+  "description": "Capability for detached RDP/VNC full-screen windows",
+  "windows": ["remote-fullscreen-*"],
+  "permissions": [
+    "core:default",
+    "core:app:allow-version",
+    "core:window:allow-start-dragging",
+    "core:window:allow-minimize",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-unminimize",
+    "core:window:allow-set-focus",
+    "core:window:allow-set-fullscreen",
+    "core:window:allow-set-position",
+    "core:window:allow-set-size",
+    "core:window:allow-close",
+    "core:window:allow-is-fullscreen",
+    "core:window:allow-current-monitor",
+    "core:window:allow-available-monitors",
+    "core:webview:allow-set-webview-focus"
+  ]
+}

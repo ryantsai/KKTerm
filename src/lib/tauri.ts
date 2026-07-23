@@ -1185,6 +1185,18 @@ type CommandMap = {
     args: undefined;
     result: void;
   };
+  list_display_monitors: {
+    args: undefined;
+    result: DisplayMonitor[];
+  };
+  open_remote_fullscreen_window: {
+    args: { request: OpenRemoteFullscreenParams };
+    result: void;
+  };
+  close_remote_fullscreen_window: {
+    args: { sessionId: string };
+    result: void;
+  };
   show_native_tooltip: {
     args: {
       request: {
@@ -4141,6 +4153,52 @@ export async function closeMainWindow() {
     return;
   }
   await getCurrentWindow().close();
+}
+
+export type DisplayMonitor = {
+  name: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  scaleFactor: number;
+  isPrimary: boolean;
+};
+
+export type RemoteFullscreenMonitorMode = "current" | "named" | "span";
+
+export type OpenRemoteFullscreenParams = {
+  sessionId: string;
+  connectionId: string;
+  kind: "rdp" | "vnc";
+  monitorMode: RemoteFullscreenMonitorMode;
+  monitorName?: string;
+};
+
+/** Enumerate physical displays for the full-screen monitor picker. */
+export async function listDisplayMonitors(): Promise<DisplayMonitor[]> {
+  if (!isTauriRuntime()) {
+    return [];
+  }
+  return invokeCommand("list_display_monitors");
+}
+
+/** Open (or focus) the detached full-screen window for a live RDP/VNC Session. */
+export async function openRemoteFullscreen(
+  params: OpenRemoteFullscreenParams,
+): Promise<void> {
+  if (!isTauriRuntime()) {
+    return;
+  }
+  await invokeCommand("open_remote_fullscreen_window", { request: params });
+}
+
+/** Close the detached full-screen window for a Session; the Session keeps running. */
+export async function closeRemoteFullscreen(sessionId: string): Promise<void> {
+  if (!isTauriRuntime()) {
+    return;
+  }
+  await invokeCommand("close_remote_fullscreen_window", { sessionId });
 }
 
 export function logUiDebug(event: string, payload: Record<string, unknown>) {
