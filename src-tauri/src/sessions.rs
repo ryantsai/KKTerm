@@ -1500,6 +1500,7 @@ impl SessionManager {
             .clone()
             .unwrap_or_else(|| make_session_id(&request.title));
         let encoding = TerminalEncodingState::new(&request.text_encoding)?;
+        #[cfg(target_os = "windows")]
         let is_local_start = request.connection_type.trim().eq_ignore_ascii_case("local");
         let password = connection_password_for(secrets, &request);
         let mut managed_x_server_display = None;

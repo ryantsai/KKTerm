@@ -2046,6 +2046,9 @@ async fn send_rdp_input(
                 Operation::KeyReleased(ctrl),
             ]);
         }
+        // Handled by the session event loop because it replays the decoded
+        // framebuffer locally and must not emit an RDP input packet.
+        RdpInput::ResendFullFrame => return Ok(()),
     }
 
     let events = db.apply(ops);

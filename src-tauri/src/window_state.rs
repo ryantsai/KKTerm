@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
-use tauri::{PhysicalPosition, PhysicalSize, Position, Runtime, Size, Window};
+use tauri::{PhysicalSize, Runtime, Size, Window};
+#[cfg(target_os = "windows")]
+use tauri::{PhysicalPosition, Position};
 
 #[cfg(target_os = "windows")]
 use windows::Win32::{
