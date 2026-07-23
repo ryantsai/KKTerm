@@ -869,7 +869,7 @@ export function RemoteDesktopWorkspace({
     }
     if (canStartRdp) {
       void invokeCommand("enter_rdp_fullscreen", {
-        request: { sessionId },
+        request: { sessionId, connectionName: connection.name },
       }).catch((error) =>
         reportRemoteDesktopError(error instanceof Error ? error.message : String(error)),
       );

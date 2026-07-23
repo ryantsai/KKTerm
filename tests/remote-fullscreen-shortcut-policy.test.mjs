@@ -54,7 +54,7 @@ test("Windows RDP uses the ActiveX control's own full-screen host", () => {
   assert.doesNotMatch(fullscreenConfig, /DisplayConnectionBar|PinConnectionBar/);
   assert.match(
     fullscreenBackend,
-    /set_connection_bar_text\(dispatch, "KKTerm"\)/,
+    /set_connection_bar_text\(dispatch, connection_name\)/,
   );
   assert.doesNotMatch(fullscreenBackend, /position_rdp_over_fullscreen/);
   assert.doesNotMatch(fullscreenBackend, /HWND_TOP/);
@@ -118,6 +118,16 @@ test("Windows exposes the ActiveX full-screen shortcut as fixed Ctrl+Alt+Break",
   assert.match(settings, /workspaceShortcutIsFixed\(action\)/);
   assert.match(settings, /disabled=\{fixed\}/);
   assert.match(settings, /!\s*fixed && binding/);
+});
+
+test("Windows ActiveX connection bar uses the durable Connection name", () => {
+  assert.match(workspace, /request:\s*\{\s*sessionId,\s*connectionName:\s*connection\.name\s*\}/);
+  assert.match(fullscreenBackend, /struct EnterRdpFullscreenRequest[\s\S]*connection_name:\s*String/);
+  assert.match(
+    fullscreenBackend,
+    /configure_native_fullscreen\(&session\.dispatch,\s*&connection_name\)/,
+  );
+  assert.doesNotMatch(fullscreenBackend, /set_connection_bar_text\(dispatch,\s*"KKTerm"\)/);
 });
 
 test("screenshot re-registration preserves other global shortcuts", () => {

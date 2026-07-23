@@ -945,6 +945,10 @@ export interface RdpSimpleRequest {
   sessionId: string;
 }
 
+export interface EnterRdpFullscreenRequest extends RdpSimpleRequest {
+  connectionName: string;
+}
+
 export type RdpTextMode = "clipboard" | "sendKeys";
 
 export interface SendRdpTextRequest {
@@ -3161,7 +3165,7 @@ type CommandMap = {
     result: null;
   };
   enter_rdp_fullscreen: {
-    args: { request: RdpSimpleRequest };
+    args: { request: EnterRdpFullscreenRequest };
     result: null;
   };
   exit_rdp_fullscreen: {

@@ -524,6 +524,13 @@ mod platform {
 
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
+    pub struct EnterRdpFullscreenRequest {
+        session_id: String,
+        connection_name: String,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
     pub struct SendRdpTextRequest {
         session_id: String,
         text: String,
@@ -767,10 +774,11 @@ mod platform {
         pub fn enter_fullscreen(
             &self,
             app: AppHandle,
-            request: RdpSimpleRequest,
+            request: EnterRdpFullscreenRequest,
         ) -> Result<(), String> {
             let sessions = Arc::clone(&self.sessions);
             let session_id = request.session_id;
+            let connection_name = required_field("RDP connection name", request.connection_name)?;
             run_on_main_thread("enter_rdp_fullscreen", app, move |app| {
                 let host_window = app
                     .get_webview_window(HOST_WINDOW_LABEL)
@@ -802,7 +810,7 @@ mod platform {
                 // SmartSizing fills the native host even when the server no
                 // longer accepts dynamic display-control updates.
                 apply_smart_sizing(&session.dispatch, true);
-                configure_native_fullscreen(&session.dispatch)?;
+                configure_native_fullscreen(&session.dispatch, &connection_name)?;
                 set_property_bool(&session.dispatch, "FullScreen", true)?;
                 rdp_debug(
                     "fullscreen.enter",
@@ -1892,8 +1900,11 @@ mod platform {
         }
     }
 
-    fn configure_native_fullscreen(dispatch: &IDispatch) -> Result<(), String> {
-        set_connection_bar_text(dispatch, "KKTerm")
+    fn configure_native_fullscreen(
+        dispatch: &IDispatch,
+        connection_name: &str,
+    ) -> Result<(), String> {
+        set_connection_bar_text(dispatch, connection_name)
     }
 
     fn current_rdp_display_settings(session: &RdpSession) -> RdpDisplaySettings {
@@ -3667,6 +3678,13 @@ mod platform {
 
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
+    pub struct EnterRdpFullscreenRequest {
+        pub session_id: String,
+        pub connection_name: String,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
     pub struct SendRdpTextRequest {
         pub session_id: String,
         pub text: String,
@@ -3731,7 +3749,7 @@ mod platform {
         pub fn enter_fullscreen(
             &self,
             _app: AppHandle,
-            _request: RdpSimpleRequest,
+            _request: EnterRdpFullscreenRequest,
         ) -> Result<(), String> {
             Err(
                 "RDP full screen requires Windows and the Microsoft RDP ActiveX control"

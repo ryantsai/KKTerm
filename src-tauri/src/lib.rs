@@ -3858,7 +3858,7 @@ fn set_rdp_visibility(
 fn enter_rdp_fullscreen(
     app: tauri::AppHandle,
     rdp_sessions: tauri::State<'_, rdp::RdpSessionManager>,
-    request: rdp::RdpSimpleRequest,
+    request: rdp::EnterRdpFullscreenRequest,
 ) -> Result<(), String> {
     rdp_sessions.enter_fullscreen(app, request)
 }
