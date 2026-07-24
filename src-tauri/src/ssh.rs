@@ -429,12 +429,15 @@ impl client::Handler for VerifyingClient {
         channel: Channel<Msg>,
         _originator_address: &str,
         _originator_port: u32,
+        reply: client::ChannelOpenHandle,
         _session: &mut Session,
     ) -> impl Future<Output = Result<(), Self::Error>> + Send {
         let x11_forwarding = self.x11_forwarding.clone();
         let bridge_tasks = self.bridge_tasks.clone();
         async move {
+            // Dropping `reply` without accepting rejects the channel open.
             if let Some(x11_forwarding) = x11_forwarding {
+                reply.accept().await;
                 spawn_bridge_task(&bridge_tasks, async move {
                     if let Err(error) = bridge_x11_channel(channel, x11_forwarding.display).await {
                         ssh_debug("bridge.x11.error", json!({ "error": error }));
@@ -452,6 +455,7 @@ impl client::Handler for VerifyingClient {
         connected_port: u32,
         _originator_address: &str,
         _originator_port: u32,
+        reply: client::ChannelOpenHandle,
         _session: &mut Session,
     ) -> impl Future<Output = Result<(), Self::Error>> + Send {
         let target = self.remote_forward_targets.as_ref().and_then(|targets| {
@@ -469,7 +473,9 @@ impl client::Handler for VerifyingClient {
         });
         let bridge_tasks = self.bridge_tasks.clone();
         async move {
+            // Dropping `reply` without accepting rejects the channel open.
             if let Some((dest_host, dest_port)) = target {
+                reply.accept().await;
                 spawn_bridge_task(&bridge_tasks, async move {
                     if let Err(error) =
                         bridge_remote_forward_channel(channel, dest_host, dest_port).await

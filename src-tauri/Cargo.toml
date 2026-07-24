@@ -51,7 +51,11 @@ portable-pty = "0.9.0"
 keyring-core = "1.0.0"
 # Keep pinned until russh and IronRDP both release stable dependency lines that
 # no longer need the local RustCrypto/Dalek compatibility patches below.
-russh = { version = "=0.61.2", default-features = false, features = ["des", "flate2", "ring", "rsa"] }
+# 0.62.4 moves most of the RustCrypto/Dalek line to stable (the vendored picky/
+# sspi pins were relaxed to match) and adds upstream panic/security fixes. It
+# does NOT fix the compression.rs compress_into truncation that corrupts the
+# stream when zlib output exceeds input+10 bytes (incompressible SFTP uploads).
+russh = { version = "=0.62.4", default-features = false, features = ["des", "flate2", "ring", "rsa"] }
 russh-sftp = "2.3.0"
 suppaftp = { version = "10.0.0", default-features = false, features = ["tokio", "tokio-async-native-tls", "deprecated"] }
 async-native-tls = { version = "0.6", default-features = false, features = ["runtime-tokio"] }
@@ -217,8 +221,9 @@ opt-level = "s"
 opt-level = 1
 
 [patch.crates-io]
-# Temporary downstream application of Devolutions/IronRDP#1363 so russh 0.61.2
-# and the macOS/Linux IronRDP client share one RustCrypto/Dalek prerelease line.
+# Temporary downstream application of Devolutions/IronRDP#1363 so russh 0.62.4
+# and the macOS/Linux IronRDP client share one RustCrypto/Dalek line (now mostly
+# the stabilized releases; rsa/pkcs1/ssh-key/ff/group are still upstream rc pins).
 # Remove these patches when IronRDP/picky-rs/sspi-rs publish the aligned stack.
 picky = { path = "vendor/picky-rs-russh-061/picky" }
 picky-asn1 = { path = "vendor/picky-rs-russh-061/picky-asn1" }

@@ -49,12 +49,12 @@ rand = "0.10"
 rand_core = "0.10"
 crypto-bigint = "0.7"
 
-ed25519-dalek = { version = "=3.0.0-rc.0", features = ["hazmat", "rand_core"] }
-x25519-dalek = { version = "=3.0.0-rc.0", features = ["static_secrets"] }
+ed25519-dalek = { version = "3", features = ["hazmat", "rand_core"] }
+x25519-dalek = { version = "3", features = ["static_secrets"] }
 
-p256 = { version = "=0.14.0-rc.10", features = ["ecdh"] }
-p384 = { version = "=0.14.0-rc.10", features = ["ecdh"] }
-p521 = { version = "=0.14.0-rc.10", features = ["ecdh"] }
+p256 = { version = "0.14", features = ["ecdh"] }
+p384 = { version = "0.14", features = ["ecdh"] }
+p521 = { version = "0.14", features = ["ecdh"] }
 
 rsa = { version = "=0.10.0-rc.18", features = ["std"] }
 
@@ -64,7 +64,7 @@ sha1 = { version = "0.11", features = ["oid"] }
 sha2 = { version = "0.11", features = ["oid"] }
 sha3 = { version = "0.12", features = ["oid"] }
 
-aes-gcm = { version = "=0.11.0-rc.4", optional = true }
+aes-gcm = { version = "0.11", optional = true }
 aes = { version = "0.9", optional = true }
 aes-kw = { version = "0.3", optional = true }
 argon2 = { version = "=0.6.0-rc.8", optional = true }
@@ -80,20 +80,20 @@ inout = "0.2.2"
 
 # Pin transitive dependencies versions.
 # TODO: Remove when stable versions will be released.
-aead = { version = "=0.6.0-rc.10", optional = true }
+aead = { version = "0.6", optional = true }
 blake2 = { version = "=0.11.0-rc.6", optional = true }
 ed25519 = "=3.0.0"
-ecdsa = "=0.17.0-rc.18"
-elliptic-curve = "=0.14.0-rc.33"
+ecdsa = "0.17"
+elliptic-curve = "0.14"
 pkcs1 = "=0.8.0-rc.4"
-primefield = "=0.14.0-rc.10"
-primeorder = "=0.14.0-rc.10"
+primefield = "0.14"
+primeorder = "0.14"
 ff = { version = "=0.14.0", default-features = false }
 group = "=0.14.0"
 rustcrypto-ff = "=0.14.0-rc.1"
 rustcrypto-ff_derive = "=0.14.0-rc.0"
 rustcrypto-group = "=0.14.0-rc.1"
-curve25519-dalek = "=5.0.0-rc.0"
+curve25519-dalek = "5"
 
 [dev-dependencies]
 pretty_assertions = "1.4"

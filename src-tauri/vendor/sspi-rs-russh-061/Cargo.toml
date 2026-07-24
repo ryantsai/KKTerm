@@ -196,11 +196,11 @@ tokio = { workspace = true, features = ["time", "rt", "rt-multi-thread"] }
 pkcs1 = "=0.8.0-rc.4"
 pkcs8 = "=0.11.0"
 signature = "=3.0.0"
-p256 = "=0.14.0-rc.10"
-primefield = "=0.14.0-rc.10"
-primeorder = "=0.14.0-rc.10"
-p384 = "=0.14.0-rc.10"
-p521 = "=0.14.0-rc.10"
+p256 = "0.14"
+primefield = "0.14"
+primeorder = "0.14"
+p384 = "0.14"
+p521 = "0.14"
 
 # "Zero-knowledge Cryptography in Rust" crates
 ff = { version = "=0.14.0", default-features = false }
@@ -210,8 +210,8 @@ rustcrypto-ff_derive = "=0.14.0-rc.0"
 rustcrypto-group = "=0.14.0-rc.1"
 
 # "dalek cryptography" crates
-ed25519-dalek = "=3.0.0-rc.0"
-curve25519-dalek = "=5.0.0-rc.0"
+ed25519-dalek = "3"
+curve25519-dalek = "5"
 
 [dev-dependencies]
 base64.workspace = true
