@@ -3189,11 +3189,14 @@ input.settings-credential-search {
 .settings-popup .settings-nav {
   position: relative;
   top: auto;
-  align-self: start;
+  align-self: stretch;
   width: 198px;
+  min-height: 0;
   gap: 1px;
-  overflow: visible;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 6px;
+  scrollbar-gutter: stable;
 }
 
 .settings-popup .settings-nav-item {

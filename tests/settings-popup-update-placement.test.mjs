@@ -78,7 +78,10 @@ test("Settings renders as an app-owned popup over the active base Module", async
   assert.match(settingsStyles, /\.settings-unsaved-dialog\s*\{[^}]*width:\s*min\(420px,\s*calc\(100vw - 48px\)\);/s);
   assert.match(settingsStyles, /\.settings-popup\.settings-page\s*\{[^}]*grid-template-rows:\s*auto minmax\(0,\s*1fr\);/s);
   assert.match(settingsStyles, /\.settings-popup\s+\.settings-layout\s*\{[^}]*min-height:\s*0;[^}]*overflow:\s*hidden;/s);
-  assert.match(settingsStyles, /\.settings-popup\s+\.settings-nav\s*\{[^}]*overflow:\s*visible;/s);
+  assert.match(
+    settingsStyles,
+    /\.settings-popup\s+\.settings-nav\s*\{[^}]*align-self:\s*stretch;[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto;/s,
+  );
   assert.match(settingsStyles, /\.settings-popup\s+\.settings-nav-item\s*\{[^}]*min-height:\s*34px;/s);
   assert.match(settingsStyles, /\.settings-popup\s+\.settings-content\s*\{[^}]*overflow:\s*auto;/s);
   assert.match(settingsStyles, /\.settings-popup\s+\.connection-dialog-close\s*\{[^}]*position:\s*absolute;[^}]*top:\s*6px;[^}]*right:\s*4px;/s);
