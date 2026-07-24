@@ -251,7 +251,10 @@ The library now supports persisted sort/group controls (defaulting to Date
 descending and Date grouping), multi-selection, non-destructive batch resize
 and PNG/JPEG conversion, capture delay presets, and a unified viewer/editor
 with Fit/zoom plus stage-wide crop (including transparent padding beyond the source image), freehand pencil strokes, arrows, rectangles, ellipses, text, and mosaic regions. Highlight,
-after-capture editor automation, per-monitor fullscreen capture, and filename
+after-capture editor automation, and non-destructive editor drafts that survive
+capture-driven editor switching and app restarts are shipped. Drafts retain
+editable crop and annotation layers beside the library without modifying the
+original image until Save. Per-monitor fullscreen capture and filename
 patterns remain later work.
 
 **Phase 3 — Parity stretch (each needs its own design pass)**

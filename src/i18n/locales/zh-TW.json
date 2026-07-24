@@ -1680,6 +1680,7 @@
   "screenshots": {
     "railLabel": "螢幕截圖",
     "title": "螢幕截圖",
+    "draft": "草稿",
     "totalCount": "共 {{count}} 張",
     "captureRegion": "擷取區域",
     "captureWindow": "擷取視窗",

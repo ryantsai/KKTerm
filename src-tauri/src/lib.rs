@@ -2048,6 +2048,39 @@ async fn save_edited_screenshot(
 }
 
 #[tauri::command]
+async fn read_screenshot_draft(
+    app: tauri::AppHandle,
+    id: String,
+) -> Result<Option<String>, String> {
+    run_blocking_screenshot_command("screenshot draft loading", move || {
+        let settings = app.state::<storage::Storage>().screenshot_settings()?;
+        screenshot::read_library_screenshot_draft(id, settings.folder_path().to_string())
+    })
+    .await
+}
+
+#[tauri::command]
+async fn save_screenshot_draft(
+    app: tauri::AppHandle,
+    request: screenshot::SaveScreenshotDraftRequest,
+) -> Result<(), String> {
+    run_blocking_screenshot_command("screenshot draft save", move || {
+        let settings = app.state::<storage::Storage>().screenshot_settings()?;
+        screenshot::save_library_screenshot_draft(request, settings.folder_path().to_string())
+    })
+    .await
+}
+
+#[tauri::command]
+async fn delete_screenshot_draft(app: tauri::AppHandle, id: String) -> Result<(), String> {
+    run_blocking_screenshot_command("screenshot draft deletion", move || {
+        let settings = app.state::<storage::Storage>().screenshot_settings()?;
+        screenshot::delete_library_screenshot_draft(id, settings.folder_path().to_string())
+    })
+    .await
+}
+
+#[tauri::command]
 async fn clear_screenshots(app: tauri::AppHandle) -> Result<(), String> {
     run_blocking_screenshot_command("screenshot library clearing", move || {
         let settings = app.state::<storage::Storage>().screenshot_settings()?;
@@ -4716,6 +4749,9 @@ pub fn run() {
             resize_screenshots,
             convert_screenshots,
             save_edited_screenshot,
+            read_screenshot_draft,
+            save_screenshot_draft,
+            delete_screenshot_draft,
             clear_screenshots,
             open_screenshots_folder,
             reveal_screenshot,

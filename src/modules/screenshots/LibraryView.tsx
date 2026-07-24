@@ -133,7 +133,12 @@ export function LibraryView({
                       {selected ? <Check size={12} aria-hidden="true" /> : null}
                     </span>
                   </td>
-                  <td className="screenshots-details__name">{screenshot.fileName}</td>
+                  <td className="screenshots-details__name">
+                    <span>{screenshot.fileName}</span>
+                    {screenshot.hasDraft ? (
+                      <span className="screenshots-draft-badge">{t("screenshots.draft")}</span>
+                    ) : null}
+                  </td>
                   <td>{screenshotFileType(screenshot)}</td>
                   <td className="screenshots-details__mono">
                     {screenshot.width}×{screenshot.height}
@@ -184,6 +189,9 @@ export function LibraryView({
                     <span className="screenshots-card__check" aria-hidden="true">
                       <Check size={13} />
                     </span>
+                    {screenshot.hasDraft ? (
+                      <span className="screenshots-draft-badge">{t("screenshots.draft")}</span>
+                    ) : null}
                   </span>
                   <span className="screenshots-card__name">{screenshot.fileName}</span>
                   <span className="screenshots-card__meta">

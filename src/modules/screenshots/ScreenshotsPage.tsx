@@ -146,6 +146,7 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const selectionAnchorRef = useRef<string | null>(null);
   const [viewerId, setViewerId] = useState<string | null>(null);
+  const [pendingEditorRequestId, setPendingEditorRequestId] = useState<string | null>(null);
   const [renameTarget, setRenameTarget] = useState<StoredScreenshot | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [deleteTargets, setDeleteTargets] = useState<StoredScreenshot[]>([]);
@@ -177,9 +178,13 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
       return;
     }
     setSelectedIds(new Set([editorRequestId]));
-    setViewerId(editorRequestId);
+    if (viewerId && viewerId !== editorRequestId) {
+      setPendingEditorRequestId(editorRequestId);
+    } else {
+      setViewerId(editorRequestId);
+    }
     useScreenshotsStore.getState().clearEditorRequest();
-  }, [editorRequestId, screenshots]);
+  }, [editorRequestId, screenshots, viewerId]);
 
   const selectedScreenshots = useMemo(
     () => screenshots.filter((screenshot) => selectedIds.has(screenshot.id)),
@@ -646,6 +651,15 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
           onDelete={() => setDeleteTargets([viewerScreenshot])}
           onError={notifyError}
           onClose={() => setViewerId(null)}
+          requestedScreenshotId={pendingEditorRequestId}
+          onRequestedScreenshotReady={(id) => {
+            setPendingEditorRequestId(null);
+            setSelectedIds(new Set([id]));
+            setViewerId(id);
+          }}
+          onDraftChanged={(id, hasDraft) => {
+            useScreenshotsStore.getState().setDraftState(id, hasDraft);
+          }}
           onExported={(fileName) => {
             void useScreenshotsStore.getState().refresh();
             showStatusBarNotice(t("screenshots.captureSaved", { name: fileName }), {

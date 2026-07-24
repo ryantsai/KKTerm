@@ -341,6 +341,26 @@
   object-fit: contain;
 }
 
+.screenshots-draft-badge {
+  display: inline-flex;
+  align-items: center;
+  width: max-content;
+  padding: 2px 6px;
+  border: 1px solid color-mix(in srgb, var(--accent) 48%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 15%, var(--surface));
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.screenshots-card__frame .screenshots-draft-badge {
+  position: absolute;
+  bottom: 7px;
+  left: 7px;
+}
+
 .screenshots-card__name {
   font-size: 12px;
   overflow: hidden;
@@ -448,6 +468,11 @@
   max-width: 26rem;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.screenshots-details__name .screenshots-draft-badge {
+  margin-left: 8px;
+  vertical-align: middle;
 }
 
 .screenshots-details__mono {

@@ -1680,6 +1680,7 @@
   "screenshots": {
     "railLabel": "Tangkapan Layar",
     "title": "Tangkapan Layar",
+    "draft": "Draf",
     "totalCount": "Jumlah: {{count}}",
     "captureRegion": "Tangkap area",
     "captureWindow": "Tangkap jendela",

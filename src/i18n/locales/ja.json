@@ -1680,6 +1680,7 @@
   "screenshots": {
     "railLabel": "スクリーンショット",
     "title": "スクリーンショット",
+    "draft": "下書き",
     "totalCount": "合計: {{count}}",
     "captureRegion": "範囲をキャプチャ",
     "captureWindow": "ウィンドウをキャプチャ",

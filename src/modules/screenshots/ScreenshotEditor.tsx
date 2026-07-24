@@ -92,6 +92,13 @@ type TextAnnotation = {
 };
 type Annotation = ShapeAnnotation | MosaicAnnotation | FreehandAnnotation | TextAnnotation;
 type EditorSnapshot = { annotations: Annotation[]; cropRect: Rect | null };
+type ScreenshotEditorDraft = {
+  version: 1;
+  sourceWidth: number;
+  sourceHeight: number;
+  annotations: Annotation[];
+  cropRect: Rect | null;
+};
 type TextDraft = {
   id: number | null;
   x: number;
@@ -109,6 +116,7 @@ const ZOOM_STEPS = [25, 50, 75, 100, 125, 150, 200] as const;
 const FIT_PADDING = 18;
 const TEXT_LINE_HEIGHT = 1.25;
 const UNDO_LIMIT = 50;
+const DRAFT_AUTOSAVE_DELAY_MS = 300;
 const EDITOR_TOOLS: Array<{
   id: EditorTool;
   icon: typeof ArrowRight;
@@ -129,6 +137,75 @@ const STROKE_OPTIONS = [
   { width: 4, dot: 6, key: "screenshots.editor.strokeMedium" },
   { width: 7, dot: 9, key: "screenshots.editor.strokeThick" },
 ] as const;
+
+function isPoint(value: unknown): value is Point {
+  const point = value as Point;
+  return !!point && Number.isFinite(point.x) && Number.isFinite(point.y);
+}
+
+function isRect(value: unknown): value is Rect {
+  const rect = value as Rect;
+  return !!rect
+    && Number.isFinite(rect.x)
+    && Number.isFinite(rect.y)
+    && Number.isFinite(rect.width)
+    && Number.isFinite(rect.height)
+    && rect.width > 0
+    && rect.height > 0;
+}
+
+function isAnnotation(value: unknown): value is Annotation {
+  const annotation = value as Annotation;
+  if (!annotation || !Number.isInteger(annotation.id) || annotation.id < 0) {
+    return false;
+  }
+  if (annotation.kind === "mosaic") {
+    return isPoint(annotation.start) && isPoint(annotation.end);
+  }
+  if (annotation.kind === "pencil") {
+    return Array.isArray(annotation.points)
+      && annotation.points.every(isPoint)
+      && typeof annotation.color === "string"
+      && Number.isFinite(annotation.stroke);
+  }
+  if (annotation.kind === "text") {
+    return isPoint(annotation)
+      && typeof annotation.text === "string"
+      && typeof annotation.color === "string"
+      && Number.isFinite(annotation.size)
+      && ["app", "sans-serif", "serif", "monospace"].includes(annotation.font)
+      && typeof annotation.bold === "boolean"
+      && typeof annotation.italic === "boolean";
+  }
+  return ["arrow", "rectangle", "ellipse"].includes(annotation.kind)
+    && isPoint(annotation.start)
+    && isPoint(annotation.end)
+    && typeof annotation.color === "string"
+    && Number.isFinite(annotation.stroke);
+}
+
+function parseEditorDraft(
+  value: string | null,
+  sourceWidth: number,
+  sourceHeight: number,
+): ScreenshotEditorDraft | null {
+  if (!value) {
+    return null;
+  }
+  try {
+    const draft = JSON.parse(value) as ScreenshotEditorDraft;
+    return draft.version === 1
+      && draft.sourceWidth === sourceWidth
+      && draft.sourceHeight === sourceHeight
+      && Array.isArray(draft.annotations)
+      && draft.annotations.every(isAnnotation)
+      && (draft.cropRect === null || isRect(draft.cropRect))
+      ? draft
+      : null;
+  } catch {
+    return null;
+  }
+}
 const TEXT_FONTS: TextFont[] = ["app", "sans-serif", "serif", "monospace"];
 const TEXT_FONT_KEYS: Record<TextFont, string> = {
   app: "screenshots.editor.appFont",
@@ -579,6 +656,9 @@ export function ScreenshotEditor({
   onReveal,
   onDelete,
   onSaved,
+  requestedScreenshotId,
+  onRequestedScreenshotReady,
+  onDraftChanged,
   onExported,
   onError,
   onClose,
@@ -592,6 +672,9 @@ export function ScreenshotEditor({
   onReveal: () => void;
   onDelete: () => void;
   onSaved: (saved: StoredScreenshot, navigateDirection?: -1 | 1) => void;
+  requestedScreenshotId: string | null;
+  onRequestedScreenshotReady: (id: string) => void;
+  onDraftChanged: (id: string, hasDraft: boolean) => void;
   onExported: (fileName: string) => void;
   onError: (error: unknown) => void;
   onClose: () => void;
@@ -638,6 +721,12 @@ export function ScreenshotEditor({
     width: number;
     height: number;
   } | null>(null);
+  const draftAutosaveTimerRef = useRef<number | null>(null);
+  const draftQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const onDraftChangedRef = useRef(onDraftChanged);
+  const onErrorRef = useRef(onError);
+  onDraftChangedRef.current = onDraftChanged;
+  onErrorRef.current = onError;
   const [tool, setTool] = useState<EditorTool>("arrow");
   const [swatches] = useState(annotationSwatches);
   const [color, setColor] = useState(swatches[0].value);
@@ -656,6 +745,7 @@ export function ScreenshotEditor({
   const [undoCount, setUndoCount] = useState(0);
   const [saving, setSaving] = useState(false);
   const [pendingAction, setPendingAction] = useState<PendingEditorAction | null>(null);
+  const [draftReady, setDraftReady] = useState(false);
   const dirty = annotations.length > 0 || cropRect !== null;
   const editingId = editing?.id ?? null;
 
@@ -682,6 +772,60 @@ export function ScreenshotEditor({
     canvas.width = width;
     canvas.height = height;
     setCanvasSize({ width, height });
+  }
+
+  function queueDraftOperation(operation: () => Promise<void>) {
+    const next = draftQueueRef.current.catch(() => undefined).then(operation);
+    draftQueueRef.current = next;
+    return next;
+  }
+
+  function currentDraftJson() {
+    const base = baseRef.current;
+    if (!base) {
+      return null;
+    }
+    const draft: ScreenshotEditorDraft = {
+      version: 1,
+      sourceWidth: base.width,
+      sourceHeight: base.height,
+      annotations: annotationsRef.current,
+      cropRect: cropRectRef.current,
+    };
+    return JSON.stringify(draft);
+  }
+
+  function clearDraftTimer() {
+    if (draftAutosaveTimerRef.current !== null) {
+      window.clearTimeout(draftAutosaveTimerRef.current);
+      draftAutosaveTimerRef.current = null;
+    }
+  }
+
+  function deleteDraftNow() {
+    clearDraftTimer();
+    return queueDraftOperation(async () => {
+      await invokeCommand("delete_screenshot_draft", { id: screenshot.id });
+      onDraftChangedRef.current(screenshot.id, false);
+    });
+  }
+
+  function persistDraftNow() {
+    clearDraftTimer();
+    commitTextDraft();
+    const draftJson = currentDraftJson();
+    if (
+      !draftJson
+      || (annotationsRef.current.length === 0 && cropRectRef.current === null)
+    ) {
+      return deleteDraftNow();
+    }
+    return queueDraftOperation(async () => {
+      await invokeCommand("save_screenshot_draft", {
+        request: { id: screenshot.id, draftJson },
+      });
+      onDraftChangedRef.current(screenshot.id, true);
+    });
   }
 
   function drawBase(context: CanvasRenderingContext2D) {
@@ -730,6 +874,7 @@ export function ScreenshotEditor({
   useEffect(() => {
     let disposed = false;
     setReady(false);
+    setDraftReady(false);
     setSaving(false);
     setPendingAction(null);
     setZoom("fit");
@@ -749,8 +894,11 @@ export function ScreenshotEditor({
     moveDragRef.current = null;
     handleDragRef.current = null;
     panRef.current = null;
-    invokeCommand("read_screenshot", { id: screenshot.id })
-      .then((full: FullScreenshot) => {
+    Promise.all([
+      invokeCommand("read_screenshot", { id: screenshot.id }),
+      invokeCommand("read_screenshot_draft", { id: screenshot.id }),
+    ])
+      .then(([full, draftJson]: [FullScreenshot, string | null]) => {
         const image = new Image();
         image.onload = () => {
           if (disposed || !canvasRef.current) {
@@ -765,9 +913,22 @@ export function ScreenshotEditor({
           canvas.width = full.width;
           canvas.height = full.height;
           canvas.getContext("2d")?.drawImage(image, 0, 0);
-          setCanvasSize({ width: full.width, height: full.height });
+          const draft = parseEditorDraft(draftJson, full.width, full.height);
+          if (draft) {
+            applyCropRect(draft.cropRect);
+            applyAnnotations(draft.annotations);
+            idRef.current = Math.max(0, ...draft.annotations.map((annotation) => annotation.id)) + 1;
+          } else {
+            setCanvasSize({ width: full.width, height: full.height });
+            if (draftJson) {
+              void invokeCommand("delete_screenshot_draft", { id: screenshot.id })
+                .then(() => onDraftChangedRef.current(screenshot.id, false))
+                .catch(onError);
+            }
+          }
           setTextSize(Math.round(Math.max(22, full.width / 44)));
           setReady(true);
+          setDraftReady(true);
         };
         image.onerror = () => {
           if (!disposed) {
@@ -779,8 +940,39 @@ export function ScreenshotEditor({
       .catch(onError);
     return () => {
       disposed = true;
+      if (draftAutosaveTimerRef.current !== null) {
+        window.clearTimeout(draftAutosaveTimerRef.current);
+        draftAutosaveTimerRef.current = null;
+      }
     };
   }, [onError, screenshot.id, t]);
+
+  useEffect(() => {
+    if (!ready || !draftReady) {
+      return;
+    }
+    clearDraftTimer();
+    draftAutosaveTimerRef.current = window.setTimeout(() => {
+      draftAutosaveTimerRef.current = null;
+      const hasEdits = annotationsRef.current.length > 0 || cropRectRef.current !== null;
+      const operation = hasEdits ? persistDraftNow() : deleteDraftNow();
+      void operation.catch((error) => onErrorRef.current(error));
+    }, DRAFT_AUTOSAVE_DELAY_MS);
+    return clearDraftTimer;
+    // The refs provide the exact serialized values; state values trigger the debounce.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [annotations, cropRect, draftReady, ready, screenshot.id]);
+
+  useEffect(() => {
+    if (!requestedScreenshotId || requestedScreenshotId === screenshot.id || saving) {
+      return;
+    }
+    void persistDraftNow()
+      .then(() => onRequestedScreenshotReady(requestedScreenshotId))
+      .catch((error) => onErrorRef.current(error));
+    // The request id is consumed only after the current draft has been flushed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestedScreenshotId, saving, screenshot.id]);
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -1532,8 +1724,10 @@ export function ScreenshotEditor({
     if (annotationsRef.current.length === 0 && cropRectRef.current === null) {
       return;
     }
+    clearDraftTimer();
     setSaving(true);
     try {
+      await draftQueueRef.current.catch(() => undefined);
       const flattened = exportComposite();
       const created = await invokeCommand("save_edited_screenshot", {
         request: {
@@ -1554,6 +1748,7 @@ export function ScreenshotEditor({
       setSelectedId(null);
       renderCanvas();
       setSaving(false);
+      onDraftChangedRef.current(screenshot.id, false);
       onSaved(created, navigateDirection);
     } catch (error) {
       setSaving(false);
@@ -1583,13 +1778,18 @@ export function ScreenshotEditor({
     }
   }
 
-  function continueWithoutSaving() {
+  async function continueWithoutSaving() {
     const action = pendingAction;
     setPendingAction(null);
-    if (action === "close") {
-      onClose();
-    } else if (action) {
-      onNavigate(action);
+    try {
+      await deleteDraftNow();
+      if (action === "close") {
+        onClose();
+      } else if (action) {
+        onNavigate(action);
+      }
+    } catch (error) {
+      onError(error);
     }
   }
 

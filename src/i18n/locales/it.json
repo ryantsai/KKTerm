@@ -1680,6 +1680,7 @@
   "screenshots": {
     "railLabel": "Screenshot",
     "title": "Screenshot",
+    "draft": "Bozza",
     "totalCount": "Totale: {{count}}",
     "captureRegion": "Cattura area",
     "captureWindow": "Cattura finestra",

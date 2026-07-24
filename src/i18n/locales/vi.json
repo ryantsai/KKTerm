@@ -1680,6 +1680,7 @@
   "screenshots": {
     "railLabel": "Ảnh chụp màn hình",
     "title": "Ảnh chụp màn hình",
+    "draft": "Bản nháp",
     "totalCount": "Tổng cộng: {{count}}",
     "captureRegion": "Chụp vùng chọn",
     "captureWindow": "Chụp cửa sổ",

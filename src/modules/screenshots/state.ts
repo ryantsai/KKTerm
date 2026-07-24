@@ -27,6 +27,7 @@ type ScreenshotsState = {
   prepend: (screenshot: StoredScreenshot) => void;
   addMany: (screenshots: StoredScreenshot[]) => void;
   replace: (id: string, screenshot: StoredScreenshot) => void;
+  setDraftState: (id: string, hasDraft: boolean) => void;
   remove: (id: string) => void;
   clear: () => void;
 };
@@ -151,6 +152,12 @@ export const useScreenshotsStore = create<ScreenshotsState>((set, get) => ({
     set((state) => ({
       screenshots: state.screenshots.map((existing) =>
         existing.id === id ? screenshot : existing,
+      ),
+    })),
+  setDraftState: (id, hasDraft) =>
+    set((state) => ({
+      screenshots: state.screenshots.map((screenshot) =>
+        screenshot.id === id ? { ...screenshot, hasDraft } : screenshot,
       ),
     })),
   remove: (id) =>

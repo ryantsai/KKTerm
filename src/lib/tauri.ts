@@ -777,6 +777,7 @@ export interface StoredScreenshot {
   path: string;
   fileName: string;
   thumbnailDataUrl: string;
+  hasDraft: boolean;
   width: number;
   height: number;
   fileSizeBytes: number;
@@ -2193,6 +2194,18 @@ type CommandMap = {
   save_edited_screenshot: {
     args: { request: { id: string; dataUrl: string; saveAsCopy: boolean } };
     result: StoredScreenshot;
+  };
+  read_screenshot_draft: {
+    args: { id: string };
+    result: string | null;
+  };
+  save_screenshot_draft: {
+    args: { request: { id: string; draftJson: string } };
+    result: null;
+  };
+  delete_screenshot_draft: {
+    args: { id: string };
+    result: null;
   };
   clear_screenshots: {
     args: undefined;

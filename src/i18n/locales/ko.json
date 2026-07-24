@@ -1680,6 +1680,7 @@
   "screenshots": {
     "railLabel": "스크린샷",
     "title": "스크린샷",
+    "draft": "초안",
     "totalCount": "총 {{count}}개",
     "captureRegion": "영역 캡처",
     "captureWindow": "창 캡처",

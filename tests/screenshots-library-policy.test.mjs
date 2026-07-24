@@ -127,6 +127,34 @@ test("unified screenshot dialog follows the Sheet contract and bounds image zoom
   assert.match(backend, /if request\.save_as_copy/);
 });
 
+test("screenshot editor drafts persist layers and gate capture-driven switching", async () => {
+  const [editor, page, library, state, backend, tauri] = await Promise.all([
+    read("src/modules/screenshots/ScreenshotEditor.tsx"),
+    read("src/modules/screenshots/ScreenshotsPage.tsx"),
+    read("src/modules/screenshots/LibraryView.tsx"),
+    read("src/modules/screenshots/state.ts"),
+    read("src-tauri/src/screenshot.rs"),
+    read("src/lib/tauri.ts"),
+  ]);
+
+  assert.match(editor, /type ScreenshotEditorDraft = \{[\s\S]*?annotations: Annotation\[\][\s\S]*?cropRect: Rect \| null/);
+  assert.match(editor, /Promise\.all\(\[[\s\S]*?read_screenshot[\s\S]*?read_screenshot_draft/);
+  assert.match(editor, /DRAFT_AUTOSAVE_DELAY_MS/);
+  assert.match(editor, /save_screenshot_draft/);
+  assert.match(editor, /delete_screenshot_draft/);
+  assert.match(editor, /persistDraftNow\(\)[\s\S]*?onRequestedScreenshotReady/);
+  assert.match(page, /pendingEditorRequestId/);
+  assert.match(page, /viewerId && viewerId !== editorRequestId/);
+  assert.match(page, /requestedScreenshotId=\{pendingEditorRequestId\}/);
+  assert.match(state, /setDraftState/);
+  assert.match(library, /screenshot\.hasDraft[\s\S]*?screenshots\.draft/);
+  assert.match(backend, /const DRAFTS_DIR_NAME: &str = "\.kkterm-drafts"/);
+  assert.match(backend, /remove_draft_for\(&folder, &request\.id\)/);
+  assert.match(tauri, /read_screenshot_draft:/);
+  assert.match(tauri, /save_screenshot_draft:/);
+  assert.match(tauri, /delete_screenshot_draft:/);
+});
+
 test("macOS and Linux screenshot delivery use xcap-backed images and native image clipboard support", async () => {
   const [backend, cargo] = await Promise.all([
     read("src-tauri/src/screenshot.rs"),

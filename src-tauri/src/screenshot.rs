@@ -39,6 +39,7 @@ pub struct StoredScreenshot {
     path: String,
     file_name: String,
     thumbnail_data_url: String,
+    has_draft: bool,
     width: u32,
     height: u32,
     file_size_bytes: u64,
@@ -175,6 +176,13 @@ pub struct SaveEditedScreenshotRequest {
     id: String,
     data_url: String,
     save_as_copy: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SaveScreenshotDraftRequest {
+    id: String,
+    draft_json: String,
 }
 
 #[derive(Serialize)]
@@ -1447,7 +1455,9 @@ fn rgba_to_jpeg_assistant(
 }
 
 const THUMBS_DIR_NAME: &str = ".kkterm-thumbs";
+const DRAFTS_DIR_NAME: &str = ".kkterm-drafts";
 const THUMB_LONG_EDGE: u32 = 320;
+const MAX_DRAFT_BYTES: usize = 10 * 1024 * 1024;
 
 pub fn list_library_screenshots(
     request: ListScreenshotsRequest,
@@ -1534,6 +1544,56 @@ pub fn read_library_screenshot(id: String, folder_path: String) -> Result<FullSc
     })
 }
 
+pub fn read_library_screenshot_draft(
+    id: String,
+    folder_path: String,
+) -> Result<Option<String>, String> {
+    let folder = ensure_screenshots_folder(&folder_path)?;
+    screenshot_path_from_id(&folder, &id)?;
+    let path = screenshot_draft_path(&folder, &id);
+    match fs::read_to_string(path) {
+        Ok(draft) => Ok(Some(draft)),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(format!("failed to load screenshot draft: {error}")),
+    }
+}
+
+pub fn save_library_screenshot_draft(
+    request: SaveScreenshotDraftRequest,
+    folder_path: String,
+) -> Result<(), String> {
+    let folder = ensure_screenshots_folder(&folder_path)?;
+    screenshot_path_from_id(&folder, &request.id)?;
+    if request.draft_json.len() > MAX_DRAFT_BYTES {
+        return Err("screenshot draft exceeds the 10 MB limit".to_string());
+    }
+    let value: serde_json::Value = serde_json::from_str(&request.draft_json)
+        .map_err(|error| format!("screenshot draft is not valid JSON: {error}"))?;
+    if !value.is_object() {
+        return Err("screenshot draft must be a JSON object".to_string());
+    }
+    let drafts = folder.join(DRAFTS_DIR_NAME);
+    fs::create_dir_all(&drafts)
+        .map_err(|error| format!("failed to create screenshot draft folder: {error}"))?;
+    let target = screenshot_draft_path(&folder, &request.id);
+    let temporary = drafts.join(format!("{}.{}.tmp", request.id, now_millis()));
+    fs::write(&temporary, request.draft_json)
+        .map_err(|error| format!("failed to write screenshot draft: {error}"))?;
+    if target.exists() {
+        fs::remove_file(&target)
+            .map_err(|error| format!("failed to replace screenshot draft: {error}"))?;
+    }
+    fs::rename(&temporary, &target)
+        .map_err(|error| format!("failed to finish screenshot draft save: {error}"))
+}
+
+pub fn delete_library_screenshot_draft(id: String, folder_path: String) -> Result<(), String> {
+    let folder = ensure_screenshots_folder(&folder_path)?;
+    screenshot_path_from_id(&folder, &id)?;
+    remove_draft_for(&folder, &id);
+    Ok(())
+}
+
 pub fn rename_library_screenshot(
     id: String,
     new_name: String,
@@ -1570,6 +1630,16 @@ pub fn rename_library_screenshot(
         return Err("a screenshot with that name already exists".to_string());
     }
     fs::rename(&path, &target).map_err(|error| format!("failed to rename screenshot: {error}"))?;
+    let old_draft = screenshot_draft_path(&folder, &id);
+    if old_draft.is_file() {
+        let new_id = target_name.replace('\\', "/");
+        let new_draft = screenshot_draft_path(&folder, &new_id);
+        let _ = fs::remove_file(&new_draft);
+        if let Err(error) = fs::rename(old_draft, new_draft) {
+            let _ = fs::rename(&target, &path);
+            return Err(format!("failed to rename screenshot draft: {error}"));
+        }
+    }
     remove_thumbnail_for(&folder, &id);
     stored_screenshot_from_path(&folder, target)
 }
@@ -1613,6 +1683,7 @@ pub fn delete_library_screenshot(id: String, folder_path: String) -> Result<(), 
     let path = screenshot_path_from_id(&folder, &id)?;
     fs::remove_file(&path).map_err(|error| format!("failed to delete screenshot: {error}"))?;
     remove_thumbnail_for(&folder, &id);
+    remove_draft_for(&folder, &id);
     Ok(())
 }
 
@@ -1625,6 +1696,7 @@ pub fn delete_library_screenshots(ids: Vec<String>, folder_path: String) -> Resu
     for (id, path) in paths {
         fs::remove_file(&path).map_err(|error| format!("failed to delete screenshot: {error}"))?;
         remove_thumbnail_for(&folder, id);
+        remove_draft_for(&folder, id);
     }
     Ok(())
 }
@@ -1714,6 +1786,7 @@ pub fn save_edited_library_screenshot(
     write_dynamic_image(&image, &target, format, 90)?;
     if !request.save_as_copy {
         remove_thumbnail_for(&folder, &request.id);
+        remove_draft_for(&folder, &request.id);
     }
     stored_screenshot_from_path(&folder, target)
 }
@@ -1731,6 +1804,7 @@ pub fn clear_library_screenshots(folder_path: String) -> Result<(), String> {
         }
     }
     let _ = fs::remove_dir_all(folder.join(THUMBS_DIR_NAME));
+    let _ = fs::remove_dir_all(folder.join(DRAFTS_DIR_NAME));
     Ok(())
 }
 
@@ -1878,12 +1952,14 @@ fn stored_screenshot_from_path(
     let id = relative.to_string_lossy().replace('\\', "/");
     let kind = kind_from_file_name(&file_name);
     let thumbnail_data_url = ensure_thumbnail_data_url(screenshots_folder, &path, &file_name)?;
+    let has_draft = screenshot_draft_path(screenshots_folder, &id).is_file();
 
     Ok(StoredScreenshot {
         id,
         path: path.to_string_lossy().to_string(),
         file_name,
         thumbnail_data_url,
+        has_draft,
         width,
         height,
         file_size_bytes: metadata.len(),
@@ -2119,6 +2195,14 @@ fn ensure_thumbnail_data_url(
 
 fn remove_thumbnail_for(folder: &Path, id: &str) {
     let _ = fs::remove_file(folder.join(THUMBS_DIR_NAME).join(format!("{id}.thumb.jpg")));
+}
+
+fn screenshot_draft_path(folder: &Path, id: &str) -> PathBuf {
+    folder.join(DRAFTS_DIR_NAME).join(format!("{id}.json"))
+}
+
+fn remove_draft_for(folder: &Path, id: &str) {
+    let _ = fs::remove_file(screenshot_draft_path(folder, id));
 }
 
 fn screenshot_path_from_id(folder: &Path, id: &str) -> Result<PathBuf, String> {
@@ -3409,6 +3493,59 @@ mod tests {
         }
         assert_eq!(gif_speed_for_quality(1), 30);
         assert_eq!(gif_speed_for_quality(100), 1);
+    }
+
+    #[test]
+    fn screenshot_drafts_follow_library_items() {
+        let folder = tempfile::tempdir().expect("temp folder");
+        let folder_path = folder.path().to_string_lossy().to_string();
+        image::DynamicImage::new_rgba8(2, 2)
+            .save(folder.path().join("capture.png"))
+            .expect("save source image");
+
+        save_library_screenshot_draft(
+            SaveScreenshotDraftRequest {
+                id: "capture.png".to_string(),
+                draft_json: r#"{"version":1,"annotations":[]}"#.to_string(),
+            },
+            folder_path.clone(),
+        )
+        .expect("save draft");
+        assert_eq!(
+            read_library_screenshot_draft("capture.png".to_string(), folder_path.clone())
+                .expect("read draft")
+                .as_deref(),
+            Some(r#"{"version":1,"annotations":[]}"#)
+        );
+
+        let listed = list_library_screenshots(
+            ListScreenshotsRequest {
+                offset: None,
+                limit: None,
+                sort_by: None,
+                sort_direction: None,
+            },
+            folder_path.clone(),
+        )
+        .expect("list screenshots");
+        assert!(listed.screenshots[0].has_draft);
+
+        let renamed = rename_library_screenshot(
+            "capture.png".to_string(),
+            "renamed".to_string(),
+            folder_path.clone(),
+        )
+        .expect("rename screenshot");
+        assert!(renamed.has_draft);
+        assert_eq!(
+            read_library_screenshot_draft(renamed.id.clone(), folder_path.clone())
+                .expect("read renamed draft")
+                .as_deref(),
+            Some(r#"{"version":1,"annotations":[]}"#)
+        );
+
+        delete_library_screenshot(renamed.id.clone(), folder_path).expect("delete screenshot");
+        assert!(!screenshot_draft_path(folder.path(), &renamed.id).exists());
     }
 
     #[test]
