@@ -159,7 +159,7 @@ fn run_timer_worker(
         return;
     }
 
-    status.phase = ShutdownTimerPhase::Warning;
+    status = warning_status(&status, unix_time_ms().ok());
     if !update_if_current(&app, &state, generation, status.clone()) {
         return;
     }
@@ -178,6 +178,21 @@ fn run_timer_worker(
     if let Err(error) = platform::force_shutdown() {
         close_warning_window(&app);
         let _ = app.emit(ERROR_EVENT, error);
+    }
+}
+
+/// Re-anchors the final warning on the moment the warning actually opens. The
+/// scheduled deadline can already be minutes or hours in the past when the
+/// machine resumes from sleep or the clock jumps forward, and the warning
+/// deadline computed at schedule time would then be expired too, powering the
+/// machine off with no chance to cancel.
+fn warning_status(status: &ShutdownTimerStatus, now_unix_ms: Option<u64>) -> ShutdownTimerStatus {
+    ShutdownTimerStatus {
+        phase: ShutdownTimerPhase::Warning,
+        scheduled_for_unix_ms: status.scheduled_for_unix_ms,
+        shutdown_at_unix_ms: now_unix_ms
+            .map(|now_ms| now_ms.saturating_add(FINAL_WARNING_SECONDS * 1_000))
+            .unwrap_or(status.shutdown_at_unix_ms),
     }
 }
 
@@ -412,6 +427,40 @@ mod tests {
         for delay in [0, 14, 31, 59, 61, 1_441] {
             assert!(validate_delay(delay).is_err(), "{delay} should be rejected");
         }
+    }
+
+    #[test]
+    fn warning_keeps_a_full_minute_after_a_stale_deadline() {
+        let scheduled_for_unix_ms = 1_000_000;
+        let status = ShutdownTimerStatus {
+            phase: ShutdownTimerPhase::Scheduled,
+            scheduled_for_unix_ms,
+            shutdown_at_unix_ms: scheduled_for_unix_ms + FINAL_WARNING_SECONDS * 1_000,
+        };
+
+        // Resuming three hours after the deadline must still leave the whole
+        // warning window, not an already-expired one.
+        let resumed_ms = scheduled_for_unix_ms + 3 * 60 * 60 * 1_000;
+        let warning = warning_status(&status, Some(resumed_ms));
+        assert_eq!(warning.phase, ShutdownTimerPhase::Warning);
+        assert_eq!(warning.scheduled_for_unix_ms, scheduled_for_unix_ms);
+        assert_eq!(
+            warning.shutdown_at_unix_ms,
+            resumed_ms + FINAL_WARNING_SECONDS * 1_000
+        );
+    }
+
+    #[test]
+    fn warning_falls_back_to_the_scheduled_deadline_without_a_clock() {
+        let status = ShutdownTimerStatus {
+            phase: ShutdownTimerPhase::Scheduled,
+            scheduled_for_unix_ms: 1_000_000,
+            shutdown_at_unix_ms: 1_060_000,
+        };
+
+        let warning = warning_status(&status, None);
+        assert_eq!(warning.phase, ShutdownTimerPhase::Warning);
+        assert_eq!(warning.shutdown_at_unix_ms, 1_060_000);
     }
 
     #[test]
