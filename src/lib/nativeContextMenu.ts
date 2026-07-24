@@ -189,6 +189,7 @@ const macosTemplateNativeIconsBySvg = new Map<string, MenuIcon>([
   [nativeMenuIcons.plus, "Add"],
   [nativeMenuIcons.rotateCcw, "Refresh"],
   [nativeMenuIcons.save, "Path"],
+  [nativeMenuIcons.saveAs, "Path"],
   [nativeMenuIcons.scanLine, "QuickLook"],
   [nativeMenuIcons.scissors, "MultipleDocuments"],
   [nativeMenuIcons.server, "Network"],

@@ -49,12 +49,13 @@ test("capture delay and selection-based batch actions stay connected", async () 
 });
 
 test("unified screenshot dialog follows the Sheet contract and bounds image zoom", async () => {
-  const [editor, page, styles, backend, bridge] = await Promise.all([
+  const [editor, page, styles, backend, bridge, saveAsIcon] = await Promise.all([
     read("src/modules/screenshots/ScreenshotEditor.tsx"),
     read("src/modules/screenshots/ScreenshotsPage.tsx"),
     read("src/modules/screenshots/screenshots.css"),
     read("src-tauri/src/screenshot.rs"),
     read("src/lib/tauri.ts"),
+    read("src/app/ui/SaveAsIcon.tsx"),
   ]);
 
   for (const tool of ["pan", "select", "pencil", "arrow", "rectangle", "ellipse", "text", "mosaic", "crop"]) {
@@ -114,7 +115,8 @@ test("unified screenshot dialog follows the Sheet contract and bounds image zoom
   assert.match(editor, /screenshots-editor__stage\$\{zoom === "fit" \? " is-fit" : ""\}/);
   assert.match(styles, /screenshots-editor__stage\.is-fit \{[\s\S]*?overflow: hidden/);
   assert.match(editor, /<Floppy size=\{15\}/);
-  assert.match(editor, /MultipleFloppy/);
+  assert.match(editor, /<SaveAsIcon \/>/);
+  assert.equal(saveAsIcon.match(/<Floppy/g)?.length, 2);
   assert.match(page, /write_screenshot_data_url_to_clipboard/);
   assert.match(editor, /screenshots\.editor\.saveAs/);
   assert.match(editor, /void save\(\)/);

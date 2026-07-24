@@ -121,9 +121,10 @@ export function UrlSettings() {
             <div className="screenshots-folder-row">
               <input
                 {...technicalInputProps}
-                onChange={(event) =>
-                  setDraft((settings) => ({ ...settings, downloadFolder: event.currentTarget.value }))
-                }
+                onChange={(event) => {
+                  const downloadFolder = event.currentTarget.value;
+                  setDraft((settings) => ({ ...settings, downloadFolder }));
+                }}
                 placeholder={t("settings.urlDownloadFolderSystemDefault")}
                 value={draft.downloadFolder ?? ""}
               />
