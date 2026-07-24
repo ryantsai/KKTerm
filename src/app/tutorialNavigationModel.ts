@@ -2,14 +2,16 @@ import type { ActivePage } from "./ActivityRail";
 import type { SettingsSectionId } from "../modules/settings/settingsAssistantContext";
 
 /** An IT Ops navigator destination the tutorial overlay can open: a Site's
- * predefined virtual pages, or the global Task Library root surface. */
+ * predefined virtual pages, or one of the global Library root surfaces. */
 export type ItOpsNavigationDestination =
   | "site"
   | "serverRooms"
   | "hosts"
   | "automations"
   | "runHistory"
-  | "taskLibrary";
+  | "taskLibrary"
+  | "ipam"
+  | "networkMaps";
 
 export type TutorialNavigationTarget = {
   page: ActivePage;
@@ -27,6 +29,8 @@ const ITOPS_NAVIGATION_DESTINATIONS = new Set<ItOpsNavigationDestination>([
   "automations",
   "runHistory",
   "taskLibrary",
+  "ipam",
+  "networkMaps",
 ]);
 
 const SETTINGS_SECTION_IDS = new Set<SettingsSectionId>([
@@ -181,6 +185,10 @@ const ITOPS_DESTINATION_TUTORIAL_TARGETS: Record<string, ItOpsNavigationDestinat
   "itops.runHistoryPanel": "runHistory",
   "itops.taskLibrary": "taskLibrary",
   "itops.taskLibraryNew": "taskLibrary",
+  "itops.ipam": "ipam",
+  "itops.ipamNew": "ipam",
+  "itops.networkMaps": "networkMaps",
+  "itops.networkMapNew": "networkMaps",
 };
 
 // Entity-scoped dynamic targets (`itops.<entity>:<id>`), advertised through the

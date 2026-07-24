@@ -1484,6 +1484,99 @@ type CommandMap = {
     args: { id: string };
     result: void;
   };
+  itops_ipam_snapshot: {
+    args: undefined;
+    result: import("../types").IpamSnapshot;
+  };
+  itops_create_ip_prefix: {
+    args: {
+      cidr: string;
+      vrf: string;
+      role: string;
+      status: import("../types").PrefixStatus;
+      description: string;
+      siteId: string | null;
+    };
+    result: import("../types").IpPrefix;
+  };
+  itops_update_ip_prefix: {
+    args: {
+      id: string;
+      cidr: string;
+      vrf: string;
+      role: string;
+      status: import("../types").PrefixStatus;
+      description: string;
+      siteId: string | null;
+    };
+    result: import("../types").IpPrefix;
+  };
+  itops_remove_ip_prefix: {
+    args: { id: string };
+    result: void;
+  };
+  itops_create_ip_address: {
+    args: {
+      address: string;
+      vrf: string;
+      status: import("../types").AddressStatus;
+      dnsName: string;
+      description: string;
+      hostId: string | null;
+      connectionId: string | null;
+      rackItemId: string | null;
+    };
+    result: import("../types").IpAddressRecord;
+  };
+  itops_update_ip_address: {
+    args: {
+      id: string;
+      address: string;
+      vrf: string;
+      status: import("../types").AddressStatus;
+      dnsName: string;
+      description: string;
+      hostId: string | null;
+      connectionId: string | null;
+      rackItemId: string | null;
+    };
+    result: import("../types").IpAddressRecord;
+  };
+  itops_remove_ip_address: {
+    args: { id: string };
+    result: void;
+  };
+  itops_suggest_free_addresses: {
+    args: { cidr: string; vrf: string; limit?: number };
+    result: string[];
+  };
+  itops_list_network_maps: {
+    args: undefined;
+    result: import("../types").NetworkMap[];
+  };
+  itops_create_network_map: {
+    args: {
+      name: string;
+      description: string;
+      siteId: string | null;
+      graph?: import("../types").NetworkGraph | null;
+    };
+    result: import("../types").NetworkMap;
+  };
+  itops_update_network_map: {
+    args: {
+      id: string;
+      name: string;
+      description: string;
+      siteId: string | null;
+      graph: import("../types").NetworkGraph;
+    };
+    result: import("../types").NetworkMap;
+  };
+  itops_remove_network_map: {
+    args: { id: string };
+    result: void;
+  };
   itops_list_automations: {
     args: undefined;
     result: Automation[];

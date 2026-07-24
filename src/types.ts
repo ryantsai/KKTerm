@@ -538,6 +538,123 @@ export interface Automation {
   siteId?: string | null;
 }
 
+// IPAM (docs/ITOPS.md IP Address Management). A global IT Ops destination, not
+// scoped to one Site. Only IpPrefix and IpAddressRecord are stored; hierarchy
+// and utilization are recomputed by the backend on every snapshot, so the tree
+// can never disagree with the records inside it.
+
+// `container` prefixes are aggregates whose utilization comes from the child
+// prefixes carved out of them; the rest are leaves measured by their addresses.
+export type PrefixStatus = "container" | "active" | "reserved" | "deprecated";
+export type AddressStatus = "active" | "reserved" | "deprecated";
+
+export interface IpPrefix {
+  id: string;
+  // Stored canonicalized (host bits cleared), e.g. "10.20.0.0/16".
+  cidr: string;
+  // Free-text routing-table label; "" is the default table. Overlapping RFC
+  // 1918 space in different VRFs stays distinct.
+  vrf: string;
+  // Free-text purpose label ("Management", "DMZ", …).
+  role: string;
+  status: PrefixStatus;
+  description: string;
+  // Soft reference: deleting a Site leaves the prefix as unscoped global space.
+  siteId?: string | null;
+}
+
+export interface IpAddressRecord {
+  id: string;
+  address: string;
+  vrf: string;
+  status: AddressStatus;
+  dnsName: string;
+  description: string;
+  // Soft references to a Site Host, a Connection, and a Rack Device: the
+  // address stays documented after whatever it pointed at is deleted.
+  hostId?: string | null;
+  connectionId?: string | null;
+  rackItemId?: string | null;
+}
+
+// A Prefix plus everything derived from the rest of the table. Never stored.
+export interface IpamPrefixNode extends IpPrefix {
+  // Innermost enclosing prefix in the same VRF; null at the top level.
+  parentId?: string | null;
+  depth: number;
+  network: string;
+  broadcast: string;
+  firstUsable: string;
+  lastUsable: string;
+  // Assignable addresses (network/broadcast excluded except on /31 and /32).
+  usable: number;
+  // Covered child-prefix space on a container, assigned records otherwise.
+  used: number;
+  // `used / usable` clamped to 0..1, or 0 when the denominator is 0.
+  utilization: number;
+  childCount: number;
+  addressCount: number;
+}
+
+export interface IpamSnapshot {
+  prefixes: IpamPrefixNode[];
+  addresses: IpAddressRecord[];
+}
+
+// Network Map (docs/ITOPS.md Network Map). The logical link diagram, distinct
+// from the physical Site → Server Room → Rack topology that "topology" names.
+// One row per map holds the whole graph, following the Room Objects precedent.
+export type NetworkNodeKind =
+  | "router"
+  | "switch"
+  | "firewall"
+  | "server"
+  | "loadBalancer"
+  | "cloud";
+
+export type NetworkLinkKind = "ethernet" | "fiber" | "wan" | "wireless";
+
+export interface NetworkNode {
+  id: string;
+  label: string;
+  kind: NetworkNodeKind;
+  // Canvas position in flow coordinates.
+  x: number;
+  y: number;
+  // Optional management address, matched against IPAM Address Records.
+  address: string;
+  hostId?: string | null;
+  connectionId?: string | null;
+  rackItemId?: string | null;
+  note: string;
+}
+
+// An undirected link between two Network Nodes; `from`/`to` are node ids.
+export interface NetworkLink {
+  id: string;
+  from: string;
+  to: string;
+  label: string;
+  kind: NetworkLinkKind;
+}
+
+export interface NetworkGraph {
+  nodes: NetworkNode[];
+  links: NetworkLink[];
+  // Entry points for the What-If reachability walk. Empty = use the first node.
+  roots: string[];
+}
+
+export interface NetworkMap {
+  id: string;
+  name: string;
+  description: string;
+  // Optional soft reference; null means the map spans Sites (WAN diagrams).
+  siteId?: string | null;
+  sortOrder: number;
+  graph: NetworkGraph;
+}
+
 // Result of a one-shot Automation test (docs/ITOPS.md): samples the trigger now
 // and reports whether the condition would fire. Actions are not executed.
 export interface AutomationTestResult {

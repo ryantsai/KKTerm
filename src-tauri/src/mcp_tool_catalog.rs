@@ -1461,7 +1461,7 @@ pub fn tool_descriptors() -> Vec<Value> {
                             "page": {"type": "string", "enum": ["workspace", "dashboard", "itops", "installer", "screenshots", "settings"]},
                             "settingsSectionId": {"type": "string"},
                             "itopsSiteId": {"type": "string"},
-                            "itopsDestination": {"type": "string", "enum": ["site", "serverRooms", "hosts", "automations", "runHistory", "taskLibrary"]},
+                            "itopsDestination": {"type": "string", "enum": ["site", "serverRooms", "hosts", "automations", "runHistory", "taskLibrary", "ipam", "networkMaps"]},
                         },
                         "additionalProperties": false,
                     },

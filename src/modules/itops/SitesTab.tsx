@@ -37,6 +37,8 @@ import { SiteDialog } from "./SiteDialog";
 import { BatchRunsTab } from "./BatchRunsTab";
 import { AutomationsTab } from "./AutomationsTab";
 import { HostsPanel } from "./HostsPanel";
+import { IpamPanel } from "./IpamPanel";
+import { NetworkMapDesigner } from "./NetworkMapDesigner";
 import { TaskLibrary } from "./TaskLibrary";
 import { RackElevation } from "./RackElevation";
 import { RackDialog } from "./RackDialog";
@@ -50,7 +52,7 @@ import { RackItemDialog, RACK_ITEM_KINDS, type RackItemDraft } from "./RackItemD
 import { RackDevice } from "./RackDevice";
 import { RackItemBindingsDialog } from "./RackItemBindingsDialog";
 import { RackItemConnectPopover, type ConnectPopoverAnchor } from "./RackItemConnectPopover";
-import { useItOpsStore, type RackPlacementKind } from "./state";
+import { useItOpsStore, type ItOpsDestination, type RackPlacementKind } from "./state";
 import {
   EMPTY_DRILL,
   groupRackTopology,
@@ -158,6 +160,21 @@ const DEFAULT_SITE_ID = "default-fleet";
 
 type SiteDestination = "site" | "serverRooms" | "hosts" | "runHistory" | "automations";
 
+/** Which top-level surface the detail pane shows: one Site's drill-down, or a
+ * global Library page that stands outside the Site tree entirely. */
+type RootSurface = "site" | "tasks" | "ipam" | "networkMaps";
+
+/** Library surfaces mapped to the navigation destination they report and the
+ * tree node id they highlight. Keyed so adding a page touches one place. */
+const LIBRARY_SURFACES = {
+  tasks: { destination: "taskLibrary", nodeId: "itops:tasks" },
+  ipam: { destination: "ipam", nodeId: "itops:ipam" },
+  networkMaps: { destination: "networkMaps", nodeId: "itops:networkMaps" },
+} as const satisfies Record<
+  Exclude<RootSurface, "site">,
+  { destination: ItOpsDestination; nodeId: string }
+>;
+
 // A stable per-group tile colour (Sites don't store one); hashing the id
 // keeps a group's colour steady across reloads without a durable field.
 function groupColor(id: string): string {
@@ -206,11 +223,13 @@ export function SitesTab({
   const removeSite = useItOpsStore((state) => state.removeSite);
   const deleteServerRoom = useItOpsStore((state) => state.deleteServerRoom);
   const taskCount = useItOpsStore((state) => state.tasks.length);
+  const prefixCount = useItOpsStore((state) => state.ipam.prefixes.length);
+  const networkMapCount = useItOpsStore((state) => state.networkMaps.length);
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [drill, setDrill] = useState<DrillPath>(EMPTY_DRILL);
   const [selectedDestination, setSelectedDestination] = useState<SiteDestination>("site");
-  const [rootSurface, setRootSurface] = useState<"site" | "tasks">("site");
+  const [rootSurface, setRootSurface] = useState<RootSurface>("site");
   const [members, setMembers] = useState<ResolvedHost[]>([]);
   const [dialog, setDialog] = useState<{ group: Site | null } | null>(null);
   const [rackDialog, setRackDialog] = useState<{
@@ -402,8 +421,15 @@ export function SitesTab({
       return;
     }
     useItOpsStore.getState().clearNavigation();
-    if (pendingNavigation.destination === "taskLibrary") {
+    // Library destinations stand outside the Site tree, so they resolve without
+    // one. Matching them here also narrows the rest to a Site destination.
+    const destination = pendingNavigation.destination ?? "site";
+    if (destination === "taskLibrary") {
       setRootSurface("tasks");
+      return;
+    }
+    if (destination === "ipam" || destination === "networkMaps") {
+      setRootSurface(destination);
       return;
     }
     const requestedSiteId = pendingNavigation.siteId;
@@ -417,7 +443,7 @@ export function SitesTab({
     if (!siteId) {
       return;
     }
-    selectSiteDestination(siteId, pendingNavigation.destination ?? "site");
+    selectSiteDestination(siteId, destination);
   }, [pendingNavigation, loaded, sites, activeId]);
 
   // Mirror the navigator's position into the store so the assistant page
@@ -425,7 +451,8 @@ export function SitesTab({
   useEffect(() => {
     useItOpsStore.getState().setNavigationSnapshot({
       siteId: activeId,
-      destination: rootSurface === "tasks" ? "taskLibrary" : selectedDestination,
+      destination:
+        rootSurface === "site" ? selectedDestination : LIBRARY_SURFACES[rootSurface].destination,
       serverRoom: drill.serverRoom,
       rackId: drill.rackId,
     });
@@ -781,8 +808,8 @@ export function SitesTab({
   }
 
   // The deepest selected node id, for tree-row highlighting.
-  const selectedId = rootSurface === "tasks"
-    ? "itops:tasks"
+  const selectedId = rootSurface !== "site"
+    ? LIBRARY_SURFACES[rootSurface].nodeId
     : !activeGroup
     ? ""
     : drill.rackId
@@ -1116,6 +1143,8 @@ export function SitesTab({
               })}
               <div className="ft-tree-library-label">{t("itops.navigation.library")}</div>
               <TreeRow depth={0} icon="code" label={t("itops.tasks.heading")} count={taskCount} hasChildren={false} open={false} selected={rootSurface === "tasks"} onSelect={() => setRootSurface("tasks")} />
+              <TreeRow depth={0} icon="table" label={t("itops.ipam.heading")} count={prefixCount} hasChildren={false} open={false} selected={rootSurface === "ipam"} onSelect={() => setRootSurface("ipam")} />
+              <TreeRow depth={0} icon="network" label={t("itops.networkMap.heading")} count={networkMapCount} hasChildren={false} open={false} selected={rootSurface === "networkMaps"} onSelect={() => setRootSurface("networkMaps")} />
             </div>
           </>
         ) : null}
@@ -1129,6 +1158,14 @@ export function SitesTab({
       {rootSurface === "tasks" ? (
         <div className="hg-detail it-destination-page">
         <TaskLibrary onOpenRunHistory={(siteId) => selectSiteDestination(siteId, "runHistory")} />
+        </div>
+      ) : rootSurface === "ipam" ? (
+        <div className="hg-detail it-destination-page">
+          <IpamPanel />
+        </div>
+      ) : rootSurface === "networkMaps" ? (
+        <div className="hg-detail it-destination-page">
+          <NetworkMapDesigner />
         </div>
       ) : activeGroup && selectedDestination === "hosts" ? (
         <div className="hg-detail it-destination-page">

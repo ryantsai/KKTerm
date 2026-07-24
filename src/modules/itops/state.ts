@@ -6,11 +6,16 @@
 import { create } from "zustand";
 import { invokeCommand, isTauriRuntime } from "../../lib/tauri";
 import type {
+  AddressStatus,
   Automation,
   AutomationAction,
   AutomationTestResult,
   BatchTask,
+  IpamSnapshot,
   ItopsTask,
+  NetworkGraph,
+  NetworkMap,
+  PrefixStatus,
   TaskOperatingSystem,
   HostImportResult,
   HostKind,
@@ -34,30 +39,30 @@ import type { DashboardBackground } from "../dashboard/types";
 import type { WatchdogConfig } from "../../watchdog/types";
 import { sanitizeRoomObjects, type RoomObject } from "./roomObjects";
 
+/** Every place the IT Ops navigator can land. The last three are global Library
+ * destinations that stand outside any one Site. */
+export type ItOpsDestination =
+  | "site"
+  | "serverRooms"
+  | "hosts"
+  | "automations"
+  | "runHistory"
+  | "taskLibrary"
+  | "ipam"
+  | "networkMaps";
+
 /** A navigator selection requested from outside the Module: which Site to
- * select and which of its destinations (or the global Task Library) to open. */
+ * select and which of its destinations (or a global Library page) to open. */
 export interface ItOpsNavigationRequest {
   siteId?: string;
-  destination?:
-    | "site"
-    | "serverRooms"
-    | "hosts"
-    | "automations"
-    | "runHistory"
-    | "taskLibrary";
+  destination?: ItOpsDestination;
 }
 
 /** Where the IT Ops navigator currently is. Mirrored by the Sites tab so the
  * assistant page context can describe the user's position; never persisted. */
 export interface ItOpsNavigationSnapshot {
   siteId: string | null;
-  destination:
-    | "site"
-    | "serverRooms"
-    | "hosts"
-    | "automations"
-    | "runHistory"
-    | "taskLibrary";
+  destination: ItOpsDestination;
   serverRoom: string | null;
   rackId: string | null;
 }
@@ -133,6 +138,55 @@ export interface HostInput {
   kind: HostKind;
   parentHostId: string | null;
   notes: string;
+}
+
+/** What the Prefix dialog collects; the backend canonicalizes the CIDR. */
+export interface PrefixInput {
+  cidr: string;
+  vrf: string;
+  role: string;
+  status: PrefixStatus;
+  description: string;
+  siteId: string | null;
+}
+
+export interface AddressInput {
+  address: string;
+  vrf: string;
+  status: AddressStatus;
+  dnsName: string;
+  description: string;
+  hostId: string | null;
+  connectionId: string | null;
+  rackItemId: string | null;
+}
+
+const EMPTY_IPAM: IpamSnapshot = { prefixes: [], addresses: [] };
+
+// The command args are the input fields verbatim; naming them once keeps the
+// create and update calls from drifting apart as fields are added.
+function prefixArgs(input: PrefixInput) {
+  return {
+    cidr: input.cidr,
+    vrf: input.vrf,
+    role: input.role,
+    status: input.status,
+    description: input.description,
+    siteId: input.siteId,
+  };
+}
+
+function addressArgs(input: AddressInput) {
+  return {
+    address: input.address,
+    vrf: input.vrf,
+    status: input.status,
+    dnsName: input.dnsName,
+    description: input.description,
+    hostId: input.hostId,
+    connectionId: input.connectionId,
+    rackItemId: input.rackItemId,
+  };
 }
 
 export type LiveRunHostStatus = "pending" | "running" | "ok" | "failed";
@@ -393,6 +447,40 @@ interface ItOpsState {
   createTask: (name: string, description: string, applicableOs: TaskOperatingSystem[], task: BatchTask) => Promise<ItopsTask>;
   updateTask: (id: string, name: string, description: string, applicableOs: TaskOperatingSystem[], task: BatchTask) => Promise<ItopsTask>;
   removeTask: (id: string) => Promise<void>;
+
+  // ── Global IPAM ──
+  // One snapshot holds both tables. Every mutation reloads it rather than
+  // patching in place: hierarchy and utilization are derived server-side, so a
+  // local splice would leave the parent's numbers stale.
+  ipam: IpamSnapshot;
+  ipamLoaded: boolean;
+  loadIpam: () => Promise<void>;
+  createPrefix: (input: PrefixInput) => Promise<void>;
+  updatePrefix: (id: string, input: PrefixInput) => Promise<void>;
+  removePrefix: (id: string) => Promise<void>;
+  createAddress: (input: AddressInput) => Promise<void>;
+  updateAddress: (id: string, input: AddressInput) => Promise<void>;
+  removeAddress: (id: string) => Promise<void>;
+  suggestFreeAddresses: (cidr: string, vrf: string, limit?: number) => Promise<string[]>;
+
+  // ── Global Network Maps ──
+  networkMaps: NetworkMap[];
+  networkMapsLoaded: boolean;
+  loadNetworkMaps: () => Promise<void>;
+  createNetworkMap: (
+    name: string,
+    description: string,
+    siteId: string | null,
+    graph?: NetworkGraph,
+  ) => Promise<NetworkMap>;
+  saveNetworkMap: (
+    id: string,
+    name: string,
+    description: string,
+    siteId: string | null,
+    graph: NetworkGraph,
+  ) => Promise<NetworkMap>;
+  removeNetworkMap: (id: string) => Promise<void>;
 
   // ── Automations (Phase 3) ──
   automations: Automation[];
@@ -832,6 +920,95 @@ export const useItOpsStore = create<ItOpsState>((set, get) => ({
   async removeTask(id) {
     await invokeCommand("itops_remove_task", { id });
     set({ tasks: get().tasks.filter((entry) => entry.id !== id) });
+  },
+
+  // ── Global IPAM ──
+  ipam: EMPTY_IPAM,
+  ipamLoaded: false,
+
+  async loadIpam() {
+    if (!isTauriRuntime()) {
+      set({ ipamLoaded: true });
+      return;
+    }
+    const ipam = await invokeCommand("itops_ipam_snapshot");
+    set({ ipam, ipamLoaded: true });
+  },
+
+  async createPrefix(input) {
+    await invokeCommand("itops_create_ip_prefix", prefixArgs(input));
+    await get().loadIpam();
+  },
+
+  async updatePrefix(id, input) {
+    await invokeCommand("itops_update_ip_prefix", { id, ...prefixArgs(input) });
+    await get().loadIpam();
+  },
+
+  async removePrefix(id) {
+    await invokeCommand("itops_remove_ip_prefix", { id });
+    await get().loadIpam();
+  },
+
+  async createAddress(input) {
+    await invokeCommand("itops_create_ip_address", addressArgs(input));
+    await get().loadIpam();
+  },
+
+  async updateAddress(id, input) {
+    await invokeCommand("itops_update_ip_address", { id, ...addressArgs(input) });
+    await get().loadIpam();
+  },
+
+  async removeAddress(id) {
+    await invokeCommand("itops_remove_ip_address", { id });
+    await get().loadIpam();
+  },
+
+  async suggestFreeAddresses(cidr, vrf, limit) {
+    if (!isTauriRuntime()) return [];
+    return await invokeCommand("itops_suggest_free_addresses", { cidr, vrf, limit });
+  },
+
+  // ── Global Network Maps ──
+  networkMaps: [],
+  networkMapsLoaded: false,
+
+  async loadNetworkMaps() {
+    if (!isTauriRuntime()) {
+      set({ networkMapsLoaded: true });
+      return;
+    }
+    const networkMaps = await invokeCommand("itops_list_network_maps");
+    set({ networkMaps, networkMapsLoaded: true });
+  },
+
+  async createNetworkMap(name, description, siteId, graph) {
+    const created = await invokeCommand("itops_create_network_map", {
+      name,
+      description,
+      siteId,
+      graph: graph ?? null,
+    });
+    set({ networkMaps: [...get().networkMaps, created] });
+    return created;
+  },
+
+  async saveNetworkMap(id, name, description, siteId, graph) {
+    const saved = await invokeCommand("itops_update_network_map", {
+      id,
+      name,
+      description,
+      siteId,
+      graph,
+    });
+    set({ networkMaps: get().networkMaps.map((entry) => (entry.id === id ? saved : entry)) });
+    return saved;
+  },
+
+  async removeNetworkMap(id) {
+    await invokeCommand("itops_remove_network_map", { id });
+    set({ networkMaps: get().networkMaps.filter((entry) => entry.id !== id) });
   },
 
   // ── Automations ──

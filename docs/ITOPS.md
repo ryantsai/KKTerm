@@ -26,6 +26,10 @@ The IT Ops Module owns:
   per-host live output and a consolidated, saved run report.
 - **Automations** — durable trigger → condition → action rules (the
   evolved Watchdog), including the live run loop and Status Bar surface.
+- **IPAM** — the global IP Prefix / IP Address Record plan, with derived
+  containment nesting and utilization (see "IPAM" below).
+- **Network Maps** — global hand-drawn logical link diagrams plus the pure
+  What-If reachability analysis over them (see "Network Map" below).
 - The Tauri commands the AI Assistant uses to draft and manage Sites and
   Automations.
 - The IT Ops page-context projection supplied to the shared AI Assistant
@@ -203,6 +207,63 @@ The catalog is closed and typed on purpose: it is the "light n8n" payoff
 without becoming an open agent. Actions do not pass arbitrary data
 between each other (no DAG); each reads the trigger snapshot.
 
+**IP Prefix** — a durable IPv4 CIDR block in `itops_ip_prefixes`, with a
+role, status (`container` / `active` / `reserved` / `deprecated`), optional
+VRF, optional soft Site reference, and description. Host bits are cleared on
+save, so the stored `cidr` is always the network address. `/31` and `/32`
+keep every address (RFC 3021).
+_Avoid_: subnet record, network object
+
+**IP Address Record** — a durable single IPv4 address in
+`itops_ip_address_records`, with an optional DNS name, status, VRF,
+description, and soft references back to the Host, Connection, or Rack
+Device it was imported from. It is a documentation record, not a lease or a
+reservation KKTerm enforces anywhere.
+_Avoid_: IP entry, host record (that is **Host**)
+
+**IPAM** — the global Module surface over those two, standing outside the
+Site tree in the navigator's Library section next to the Task Library. Its
+tree nesting, per-prefix `depth`, child counts, and utilization are
+**derived on every snapshot** from containment and VRF, never stored: adding
+a wider prefix silently re-parents everything it now contains, and no
+migration or repair pass is needed. Utilization counts documented addresses
+against usable addresses; nothing is scanned or probed.
+
+**Network Node** — one box on a Network Map: id, label, kind (`router` /
+`switch` / `firewall` / `server` / `loadBalancer` / `cloud`), canvas
+position, and optional free-text address and note. The address is a caption
+drawn under the label; it is not a foreign key into IPAM.
+
+**Network Link** — one **undirected** edge between two Network Nodes, with
+an optional label (a port, a circuit id, a VLAN) and a kind (`ethernet` /
+`fiber` / `wan` / `wireless`). Undirected is deliberate: a link asserts
+mutual reachability, not a traffic direction, and the reachability maths
+treats it symmetrically. The stored link carries no handle/anchor fields —
+the canvas picks the two anchors geometrically at render time.
+
+**Network Map** — a durable named canvas in `itops_network_maps`, global
+like IPAM with an optional soft Site reference that only tags it. The whole
+graph (nodes, links, and the `roots` entry-point id list) is persisted as
+one `graph_json` document, following the Room Objects and Automations
+`actions_json` precedent rather than a row per node.
+_Avoid_: topology, topology map, network topology — "topology" is already
+the physical Site → Server Room → Rack drill-down and must not be reused.
+
+**Entry point** — a Network Node id listed in the map's `roots`.
+Reachability is measured from the entry points; with none marked, the first
+node stands in so a half-drawn map still analyses.
+
+**What-If** — the second mode of the Network Map designer. The operator
+switches nodes and links off on the canvas and the panel reports which nodes
+lose every path to an entry point, plus the **single points of failure**
+(each node and each link that, alone, would cut something off) and any
+stranded nodes with no link at all. This is pure graph maths over the drawn
+map, in `src/modules/itops/reachability.ts`. **KKTerm has no live device
+binding**: the existing `RackNetworkPort` / `RackSnmpHint` scaffolding and
+`net::snmp::refresh_ports` are future preparation and feed nothing here.
+The "down" set is only ever what the operator toggled, so a later SNMP or
+polling feed can supply the same pure input without changing the analysis.
+
 ## Persistence
 
 Three SQLite tables (new schema version):
@@ -227,6 +288,19 @@ Three SQLite tables (new schema version):
   report blob. Local-first; no telemetry.
 - `itops_tasks` — global reusable Task definitions: id, name, description,
   ordered position, and typed `BatchTask` JSON. No target or live state.
+- `itops_ip_prefixes` — global IP Prefixes: id, normalized `cidr`, `vrf`,
+  role, status, description, and an optional soft `site_id`, unique on
+  `(vrf, cidr)`. Parent, depth, child counts, and utilization are **not**
+  columns; they are recomputed on every snapshot from containment.
+- `itops_ip_address_records` — global IP Address Records: id, `address`,
+  `vrf`, status, DNS name, description, plus soft `host_id` /
+  `connection_id` / `rack_item_id` references, unique on `(vrf, address)`.
+  A record belongs to a prefix by containment and matching VRF, not by a
+  stored parent id; the soft references let an address stay documented after
+  whatever it pointed at is deleted.
+- `itops_network_maps` — one row per Network Map: id, name, description,
+  optional soft `site_id`, `sort_order`, and the whole node/link/roots graph
+  as `graph_json`.
 
 Durable definitions only. **Live state never persists**: in-flight Batch
 Run progress, Automation poll ticks, tick ring buffers, and runtime state
@@ -313,8 +387,8 @@ and `fail` stops that Host as failed. Any provider error, invalid JSON, or value
 outside this closed enum fails the Host. AI nodes never turn model text into a
 shell command or choose an arbitrary graph edge.
 
-Hosts, Automations, Run History, and the global Task Library share one
-destination-page frame: the same content inset, compact title/description
+Hosts, Automations, Run History, and the global Library destinations (Task
+Library, IPAM, Network Maps) share one destination-page frame: the same content inset, compact title/description
 header, right-aligned primary actions, divider, and bordered-row rhythm. The
 Task Library keeps its spreadsheet-style Task table inside that frame rather
 than owning a separate full-height chrome layout. Each row shows Task kind, Applicable OS,
@@ -322,11 +396,35 @@ execution count, failed-host count, and a link to the most recent Site Run
 History containing that Task. Statistics use the Task's stable id; ad-hoc,
 Automation, and older unattributed history rows are never guessed by label.
 
+IPAM (`src/modules/itops/IpamPanel.tsx`) reuses the Task Library's
+spreadsheet-style table inside the same frame. Rows are indented by the
+server-derived `depth`, so indentation always matches real containment; a
+twisty expands a prefix to reveal its IP Address Records. The CIDR field
+previews the network address, usable range, and usable count live while
+typing (`previewCidr` in `ipamModel.ts`), and the address dialog suggests
+free addresses from the same pure helpers. `collectClaimCandidates` derives
+importable addresses from existing Connections and Hosts; the import writes
+records only, and probes nothing.
+
+Network Maps (`src/modules/itops/NetworkMapDesigner.tsx`) is the one IT Ops
+destination with a canvas. It uses `@xyflow/react` the same way
+`AutomationEditor.tsx` does — controlled `nodes`/`edges` via `useMemo`,
+position-only `onNodesChange` filtering, `deleteKeyCode={null}`,
+`proOptions={{ hideAttribution: true }}`. Because a Network Link is
+undirected while xyflow edges are directed, every node renders four stacked
+source+target handles (`left`/`right`/`top`/`bottom`) and the edge picks its
+`sourceHandle`/`targetHandle` per render from the two node centres. That
+gives floating-edge behaviour with no custom edge component and keeps the
+stored link free of anchor state. The editor is keyed by map id so switching
+maps remounts rather than carrying unsaved edits across. In What-If mode the
+palette and the canvas's drag/connect affordances are disabled: that mode
+reads the map, it does not edit it.
+
 ### IT Ops destination-page UI contract
 
 This section is normative for future IT Ops frontend work. It applies to
-Hosts, Automations, Run History, Task Library, and any later non-spatial
-destination opened from the IT Ops navigator. Do not give a new destination an
+Hosts, Automations, Run History, Task Library, IPAM, Network Maps, and any
+later non-spatial destination opened from the IT Ops navigator. Do not give a new destination an
 independent page shell or visual language.
 
 #### Required page anatomy
@@ -555,11 +653,13 @@ rows; `itops_get_run_report` attaches per-host output tail-capped by
 
 The page-context projection includes the current navigator selection
 (Site, destination, drill-down), Site names/ids/counts, Automation
-names/states, the Task Library count, recent run counts, and the
-registered tutorial targets — never full run output, streamed host
-buffers, secrets, or credential references. The `tutorial_highlight`
+names/states, the Task Library count, recent run counts, IPAM and Network
+Map counts once those pages have been opened, and the registered tutorial
+targets — never full run output, streamed host buffers, secrets, or
+credential references. The `tutorial_highlight`
 tool's navigation payload accepts `itopsSiteId` and `itopsDestination`
-(`site | serverRooms | hosts | automations | runHistory | taskLibrary`)
+(`site | serverRooms | hosts | automations | runHistory | taskLibrary |
+ipam | networkMaps`)
 so the assistant can open a specific Site destination before
 highlighting; destination pages carry static targets
 (`itops.hostsPanel`, `itops.automationsNew`, `itops.taskLibrary`, …, see
@@ -571,6 +671,13 @@ assistant cannot run a site task silently. Over the built-in MCP bridge
 the same tools are published under `kkterm.itops.*`, with
 task-authoring, automation-mutating, and run-starting tools in
 `dangerous` sub-namespaces (see `docs/MCP.md`).
+
+IPAM and Network Maps ship without assistant or MCP tools. Their twelve
+Tauri commands are UI-only for now; the assistant sees the two destinations
+(so it can navigate and highlight them) and their counts, nothing more.
+Exposing them later means adding approval-gated `itops_*` tools the same way
+the existing surfaces did — the storage layer already returns the derived
+snapshot a tool would need.
 
 ## Migration from Watchdog
 
@@ -673,6 +780,58 @@ CREATE TABLE IF NOT EXISTS itops_tasks (
     description TEXT NOT NULL DEFAULT '',
     sort_order  INTEGER NOT NULL,
     task_json   TEXT NOT NULL,
+    created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- IPAM. Only what the operator typed is stored: hierarchy, depth, and
+-- utilization are recomputed on every read, so the tree can never disagree
+-- with its rows. UNIQUE(vrf, cidr) lets overlapping RFC 1918 space coexist
+-- in different routing tables.
+CREATE TABLE IF NOT EXISTS itops_ip_prefixes (
+    id          TEXT PRIMARY KEY,
+    -- Canonical 'a.b.c.d/len' with host bits cleared.
+    cidr        TEXT NOT NULL,
+    vrf         TEXT NOT NULL DEFAULT '',
+    role        TEXT NOT NULL DEFAULT '',
+    -- 'container' | 'active' | 'reserved' | 'deprecated'.
+    status      TEXT NOT NULL DEFAULT 'active',
+    description TEXT NOT NULL DEFAULT '',
+    site_id     TEXT,
+    created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(vrf, cidr)
+);
+
+-- One documented address. host_id / connection_id / rack_item_id are SOFT
+-- references: an address stays documented after whatever it pointed at is
+-- deleted, which is the whole point of an address record.
+CREATE TABLE IF NOT EXISTS itops_ip_address_records (
+    id            TEXT PRIMARY KEY,
+    address       TEXT NOT NULL,
+    vrf           TEXT NOT NULL DEFAULT '',
+    -- 'active' | 'reserved' | 'deprecated'.
+    status        TEXT NOT NULL DEFAULT 'active',
+    dns_name      TEXT NOT NULL DEFAULT '',
+    description   TEXT NOT NULL DEFAULT '',
+    host_id       TEXT,
+    connection_id TEXT,
+    rack_item_id  TEXT,
+    created_at    TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at    TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(vrf, address)
+);
+
+-- A Network Map. graph_json holds the whole document (nodes, links,
+-- reachability roots) like itops_automations.actions_json — the canvas is
+-- always saved as a unit, so per-node rows would buy no query the UI makes.
+CREATE TABLE IF NOT EXISTS itops_network_maps (
+    id          TEXT PRIMARY KEY,
+    name        TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    site_id     TEXT,
+    sort_order  INTEGER NOT NULL,
+    graph_json  TEXT NOT NULL DEFAULT '{}',
     created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -861,8 +1020,19 @@ as approval-gated assistant tools; emit `itops-changed` and add the
 store-reload listener (mirroring `dashboard-changed`); add the compact,
 metadata-only page-context projection.
 
+**Phase 9 — IPAM and Network Maps.** Schema bump to 51 with
+`itops_ip_prefixes`, `itops_ip_address_records`, and `itops_network_maps`;
+pure IPv4 maths in `src-tauri/src/itops/ipv4.rs`; repository +
+snapshot-derives-everything reads in `ipam_storage.rs` and
+`network_map_storage.rs`; twelve Tauri commands; two global Library
+destinations in the navigator (`IpamPanel.tsx`, `NetworkMapDesigner.tsx`);
+and pure What-If reachability in `src/modules/itops/reachability.ts`. No
+assistant or MCP tools yet, and **no dependency on live device state** — the
+SNMP scaffolding stays future preparation, and the What-If "down" set comes
+only from operator toggles.
+
 Phases 0–3 are the minimum that delivers durable monitoring + SSH batch.
-Phases 4–8 are independent and can be reordered by demand.
+Phases 4–9 are independent and can be reordered by demand.
 
 ## Planned / Deferred Enhancements
 
