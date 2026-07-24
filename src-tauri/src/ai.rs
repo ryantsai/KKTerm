@@ -7497,6 +7497,7 @@ fn model_context_limit_tokens(provider_kind: &str, model: &str) -> (usize, bool)
     if model.starts_with("claude-fable-5")
         || model.starts_with("claude-mythos-5")
         || model.starts_with("claude-mythos-preview")
+        || model.starts_with("claude-opus-5")
         || model.starts_with("claude-opus-4-8")
         || model.starts_with("claude-opus-4.8")
         || model.starts_with("claude-opus-4-7")
@@ -7505,6 +7506,7 @@ fn model_context_limit_tokens(provider_kind: &str, model: &str) -> (usize, bool)
         || model.starts_with("claude-opus-4.6")
         || model.starts_with("claude-sonnet-4-6")
         || model.starts_with("claude-sonnet-4.6")
+        || model.starts_with("claude-sonnet-5")
     {
         return (1_000_000, false);
     }

@@ -48,6 +48,17 @@ if (recommendedOpenAiModelIds.some((modelId) => modelId.startsWith("gpt-5.5"))) 
   throw new Error("OpenAI curated models should no longer include GPT-5.5 models.");
 }
 
+const anthropicDefinition = getAiProviderDefinition("anthropic");
+if (anthropicDefinition.defaultModel !== "claude-sonnet-5") {
+  throw new Error(`Anthropic should default to Claude Sonnet 5, got: ${anthropicDefinition.defaultModel}`);
+}
+if (!anthropicDefinition.modelOptions.some((model) => model.id === "claude-sonnet-5" && model.recommended)) {
+  throw new Error("Anthropic curated models should recommend Claude Sonnet 5.");
+}
+if (!anthropicDefinition.modelOptions.some((model) => model.id === "claude-opus-5" && model.recommended)) {
+  throw new Error("Anthropic curated models should include Claude Opus 5.");
+}
+
 const grokDefinition = getAiProviderDefinition("grok");
 if (!grokDefinition.modelOptions.some((model) => model.id === "grok-4.5" && model.recommended)) {
   throw new Error("Grok curated models should include Grok 4.5.");

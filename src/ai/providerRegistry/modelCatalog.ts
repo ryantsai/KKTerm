@@ -29,10 +29,12 @@ export const AI_PROVIDER_MODEL_CATALOG: AiProviderModelCatalog = {
     ],
   },
   anthropic: {
-    defaultModel: "claude-sonnet-4-6",
+    defaultModel: "claude-sonnet-5",
     defaultReasoningEffort: "medium",
     models: [
+      { id: "claude-opus-5", label: "Claude Opus 5", recommended: true, supportsImageInput: true },
       { id: "claude-opus-4-8", label: "Claude Opus 4.8", recommended: true, supportsImageInput: true },
+      { id: "claude-sonnet-5", label: "Claude Sonnet 5", recommended: true, supportsImageInput: true },
       { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6", recommended: true, supportsImageInput: true },
       { id: "claude-haiku-4-5", label: "Claude Haiku 4.5", recommended: true, supportsImageInput: true },
       { id: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5 snapshot", supportsImageInput: true },

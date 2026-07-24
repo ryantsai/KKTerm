@@ -184,6 +184,7 @@ Section header `settings.sectionAiAssistant`. Owned by `src/modules/settings/AiS
 
 - Provider picker; known-model picker is a real `<select>` showing every model — not an `<input list>`/`datalist` (Chromium hides non-matching options behind a `datalist`).
 - OpenAI's curated recommendations replace GPT-5.5 with GPT-5.6 Luna, Terra, and Sol; Luna is the default. GPT-5.6 access is a limited preview and requires an approved OpenAI API organization. Grok's curated recommendations include `grok-4.5`.
+- Anthropic's curated recommendations include `claude-opus-5` and `claude-sonnet-5`; Sonnet 5 remains the default.
 - OpenCode's curated recommendations include `kimi-k3`, as published by its Go model catalog, and use it as the default.
 - GitHub Copilot model refresh uses the signed-in account's Copilot CLI model catalog. The `settings.navigation.auto` model option leaves model choice to the Copilot runtime instead of sending a fixed model id; after a successful refresh, the picker shows `settings.navigation.auto` plus curated Copilot models that are also available to the signed-in account.
 - Custom model ID is a separate text input.

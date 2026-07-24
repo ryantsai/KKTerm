@@ -1506,6 +1506,14 @@ fn model_context_limit_tracks_current_large_context_families() {
         (1_000_000, false)
     );
     assert_eq!(
+        model_context_limit_tokens("anthropic", "claude-opus-5"),
+        (1_000_000, false)
+    );
+    assert_eq!(
+        model_context_limit_tokens("anthropic", "claude-sonnet-5"),
+        (1_000_000, false)
+    );
+    assert_eq!(
         model_context_limit_tokens("anthropic", "claude-sonnet-4.5"),
         (200_000, false)
     );
