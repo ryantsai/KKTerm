@@ -28,6 +28,8 @@ export const DEFAULT_AI_ASSISTANT_TOOLS: AiAssistantToolSettings = {
   email: false,
   dashboard: true,
   itops: true,
+  installer: true,
+  screenshots: true,
   connections: true,
   sessions: true,
   tutorial: true,

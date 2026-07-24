@@ -3935,12 +3935,16 @@ fn ai_provider_settings_round_trip_through_settings_table() {
     assert!(defaults.tools.current_time());
     assert!(defaults.tools.performance_counters());
     assert!(defaults.tools.dashboard());
+    assert!(defaults.tools.itops());
+    assert!(defaults.tools.installer());
+    assert!(defaults.tools.screenshots());
     assert!(defaults.tools.connections());
     assert!(defaults.tools.sessions());
     assert!(defaults.tools.tutorial());
     assert!(defaults.tools.manual());
     assert!(!defaults.tools.email());
     assert!(defaults.tools.network());
+    assert!(defaults.tools.watchdog());
 
     let updated = storage
         .update_ai_provider_settings(AiProviderSettings {

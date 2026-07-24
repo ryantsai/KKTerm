@@ -3,7 +3,7 @@
 ## AI grep hints
 
 - Keys: `installer.title`, `installer.subtitle`, `installer.railLabel`, `installer.refresh`, `installer.lastChecked`, `installer.checkingDots`, `installer.checkingForUpdates`, `installer.updateAll`, `installer.section.installed`, `installer.section.available`, `installer.section.essentials`, `installer.section.aiAgents`, `installer.section.aiPlatforms`, `installer.section.development`, `installer.section.design`, `installer.section.windowsPowerUser`, `installer.section.remoteAccess`, `installer.section.packageManagers`, `installer.section.utilities`, `installer.tile.latest`, `installer.tile.installed`, `installer.actions.install`, `installer.actions.update`, `installer.actions.uninstall`, `installer.actions.run`, `installer.actions.start`, `installer.actions.stop`, `installer.actions.openWebUi`, `installer.actions.addToWorkspace`, `installer.actions.installService`, `installer.actions.registerService`, `installer.actions.removeService`, `installer.actions.cancel`, `installer.options.scope`, `installer.options.scopeUser`, `installer.options.scopeMachine`, `installer.options.scopeSelfElevatingHint`, `installer.options.provider`, `installer.options.version`, `installer.options.location`, `installer.options.addToPath`, `installer.options.pinVersion`, `installer.status.installing`, `installer.status.uninstalling`, `installer.status.completed`, `installer.status.failed`, `installer.status.cancelled`, `installer.status.running`, `installer.status.stopped`, `installer.status.nodeStartFailed`, `installer.status.unknown`, `installer.status.serviceInstalled`, `installer.status.addedToWorkspace`, `installer.status.serviceRemoved`, `installer.status.partial`, `installer.status.noVersion`, `installer.status.web`, `installer.status.notInstalled`, `installer.status.retrieving`, `installer.status.neverChecked`, `installer.status.scanning`, `installer.empty.loading`, `installer.confirm.installTitle`, `installer.confirm.installWithPrereqsBody`, `installer.confirm.uacFooter`, `installer.confirm.uninstallTitle`, `installer.confirm.uninstallSimpleBody`, `installer.confirm.uninstallDependentsBody`, `installer.confirm.uninstallDependentsFooter`, `installer.confirm.updateAllTitle`, `installer.confirm.updateAllBody`, `installer.confirm.updateAllConfirm`, `installer.wslReboot`, `installer.dialog.installLocation`, `installer.dialog.provider`, `installer.dialog.installedVersion`, `installer.dialog.latestVersion`, `installer.dialog.lastChecked`, `installer.dialog.homepage`, `installer.dialog.releaseNotes`, `installer.dialog.webUi`, `installer.dialog.windowsService`, `installer.dialog.runtimeStatus`, `installer.dialog.nodeRuntime`, `installer.dialog.nodeVersionSummary`, `installer.dialog.serviceStartup`, `installer.dialog.runHints`, `installer.dialog.quickLaunch`, `installer.quickLaunch.search`, `installer.quickLaunch.openTerminal`, `installer.quickLaunch.cli`, `installer.quickLaunch.launch`, `installer.quickLaunch.noMatches`, `installer.launcher.title`, `installer.launcher.body`, `installer.launcher.samples`, `installer.launcher.commonOption`, `installer.launcher.defaultOption`, `installer.launcher.arguments`, `installer.launcher.openTerminal`, `installer.launcher.recentFolders`, `installer.launcher.chooseFolder`, `installer.launcher.showMore`, `installer.dialog.prerequisites`, `installer.dialog.prereqInstalled`, `installer.dialog.prereqMissing`, `installer.dialog.checkNow`, `installer.dialog.checkingDots`, `installer.dialog.updateAvailable`, `installer.dialog.installingTitle`, `installer.dialog.uninstallingTitle`, `installer.dialog.installedTitle`, `installer.dialog.failedTitle`, `installer.dialog.cancelledTitle`, `installer.stepper.failedBadge`, `installer.steps.resolve`, `installer.steps.download`, `installer.steps.verifyChecksum`, `installer.steps.extract`, `installer.steps.placeFiles`, `installer.steps.updatePath`, `installer.steps.install`, `installer.steps.verify`, `installer.steps.enable`
-- Topics: Install Helper Module, bundled catalog (compile-time embedded), ADR 0008 supersedes ADR 0007, winget recipes, Chocolatey recipes and Chocolatey alternate providers, npm recipes, uv pip recipes, download-installer recipes, github-release recipes and GitHub-release download providers, Windows feature recipes (DISM), WSL distro recipes, bundles (node-bundle, python-bundle), dependency resolution, UAC prompts, WSL reboot gating, pin version, in-flight cancellation, tutorial targets `app.activityRailInstaller`, `installer.updateAll`, `installer.toolOptions`
+- Topics: Install Helper Module, AI Assistant Install Helper tools, built-in MCP `kkterm.installer.*`, bundled catalog (compile-time embedded), ADR 0008 supersedes ADR 0007, winget recipes, Chocolatey recipes and Chocolatey alternate providers, npm recipes, uv pip recipes, download-installer recipes, github-release recipes and GitHub-release download providers, Windows feature recipes (DISM), WSL distro recipes, bundles (node-bundle, python-bundle), dependency resolution, UAC prompts, WSL reboot gating, pin version, in-flight cancellation, tutorial targets `app.activityRailInstaller`, `installer.updateAll`, `installer.toolOptions`
 - Synonyms: "install nvm", "install Node", "install Python", "install Docker", "install Claude Code", "set up dev tools", "developer tools installer", "package manager"
 
 ## What it is
@@ -116,6 +116,25 @@ Per row, an in-flight install/uninstall surfaces an `installer.actions.cancel` b
 
 For "Update all", cancel stops the **queue** (the next-up tools), not the in-flight install.
 
+## AI Assistant and built-in MCP
+
+When `settings.aiTools.installer.label` is enabled, the in-app assistant can
+list compact visible catalog metadata with current detection/state, start latest-version
+checks, install or update one catalog item with its missing prerequisites,
+uninstall, cancel, and launch a curated GUI app. It cannot submit arbitrary
+installer URLs, executable paths, or shell commands through this tool group.
+
+Native-provider calls cross the same frontend live-tool bridge used by live
+Session tools: dependency resolution uses `resolveInstallPlan`, operations use
+the existing `installer://progress` terminal events, and cancellation raises
+the existing per-tool flag. In Prompt mode, install/update, uninstall, and
+launch show the normal assistant approval card before execution.
+
+ACP-backed CLI providers and external clients reach the same surface through
+`kkterm.installer.*`. Catalog/state and update-check tools are safe; the
+install/update, uninstall, and launch names include a `dangerous` namespace
+segment and require `settings.builtInMcpAllowAllDangerous`.
+
 ## Options
 
 Each recipe declares a subset of these options (the set is closed):
@@ -168,6 +187,5 @@ The Module is tutorial-capable in v1 via two targets:
 
 ## Limits
 
-- AI Assistant integration is deferred. The AI does **not** have a Tauri command to trigger installs in v1.
 - "Latest version" detection for multi-step `bundle`, `windowsFeature`, and `wslDistro` recipes returns null — the rows do not surface update suggestions. One-step bundles inherit latest-version checks from their child recipe.
 - The UAC prompt count shown in confirm dialogs is a best-effort estimate; some installers (including Git for Windows, nvm-windows, Docker Desktop, and system MSIs) self-escalate even when `--scope user` is passed.

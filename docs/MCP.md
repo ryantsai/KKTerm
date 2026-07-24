@@ -27,6 +27,9 @@ Namespaces in this build:
   SFTP/FTP file browser.
 - `kkterm.dashboard.*` — Dashboard Module: views, widget instances,
   AI-Created Widgets.
+- `kkterm.installer.*` — Install Helper Module: curated catalog discovery,
+  installed-state detection, update checks, install/update/uninstall,
+  cancellation, and app launch.
 - `kkterm.screenshots.*` — Screenshots Module: captures, library reads,
   transforms, file actions, and destructive library management.
 - `kkterm.itops.*` — IT Ops Module: Sites, Server Rooms, Racks, Rack
@@ -250,6 +253,30 @@ same protection without any per-Module gate code.
 | `kkterm.dashboard.dangerous.remove_custom_widget` | Delete an AI-Created Widget definition (use `forceDeleteInstances` to also remove placements). |
 | `kkterm.dashboard.dangerous.reset` | Wipe the entire Dashboard. Irreversible. |
 
+### Install Helper Module (`kkterm.installer.*`)
+
+Install Helper tools use the bundled, validated recipe catalog and the same
+dependency planner, detection commands, progress stream, cancellation flags,
+and launch allowlist as the Module UI. Call `kkterm.installer.tools.list` first to discover real
+catalog ids and supported options. Installing an already-installed catalog item
+performs the Module's normal update path. The current curated recipe execution
+surface is Windows-only; on other platforms calls return the same unsupported
+or unavailable errors as the Module commands.
+
+Catalog/detection reads and update checks are safe. Install/update, uninstall,
+and launch can execute software or change the computer, so they use the
+`dangerous` namespace and require
+`built_in_mcp_allow_all_dangerous = true`.
+
+| Name | Description |
+|---|---|
+| `kkterm.installer.tools.list` | Return compact visible catalog metadata together with current installed detection, pinned state, and cached latest-version results; provider URLs, detection internals, and localization maps are omitted. |
+| `kkterm.installer.updates.check` | Start latest-version checks for selected catalog ids. Call `kkterm.installer.tools.list` again to read the refreshed cached results. |
+| `kkterm.installer.cancel` | Request cancellation for one catalog id, or pass `__check_updates__` for the active update sweep. |
+| `kkterm.installer.dangerous.install` | Install or update one catalog item, including missing declared prerequisites and optional supported install options. May download software, execute installers, and show elevation prompts. |
+| `kkterm.installer.dangerous.uninstall` | Uninstall one catalog item. May remove software and show elevation prompts. |
+| `kkterm.installer.dangerous.launch` | Launch an installed graphical app resolved through the curated recipe allowlist; arbitrary paths and commands are not accepted. |
+
 ### Screenshots Module (`kkterm.screenshots.*`)
 
 The Screenshots Module tools use the configured library folder, format,
@@ -422,7 +449,9 @@ permission, or capture fails with a clear error.
 All tool inputs use JSON schemas published in `tools/list`. The handler in
 the bridge translates the curated `kkterm.<module>.*` names into the
 existing AI assistant tool functions in `src-tauri/src/ai.rs`, so MCP and
-the in-app assistant share one implementation. The element-scoped Workspace
+the in-app assistant share one implementation. Install Helper operations also
+cross the shared frontend live-tool bridge so dependency planning and progress
+behavior remain identical to the Module UI. The element-scoped Workspace
 and Dashboard screenshot tools are safe read tools, but they may return
 sensitive visible content. Universal `kkterm.app.dangerous.capture_window` is
 separately gated because it can target any KKTerm-owned OS window. None of

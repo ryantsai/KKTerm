@@ -2606,6 +2606,18 @@
         "label": "仪表板",
         "description": "读取和修改仪表板视图、小组件实例及 AI 创建的小组件。"
       },
+      "itops": {
+        "label": "IT Ops",
+        "description": "Manage Sites, Hosts, Server Rooms, Racks, Tasks, Automations, and Batch Runs."
+      },
+      "installer": {
+        "label": "Install Helper",
+        "description": "Detect, install, update, uninstall, and launch curated developer tools."
+      },
+      "screenshots": {
+        "label": "Screenshots",
+        "description": "Capture, inspect, organize, transform, and open Screenshots Module library items."
+      },
       "connections": {
         "label": "连接",
         "description": "列出、创建、编辑和删除工作区、连接文件夹和已保存的连接。"
@@ -2625,6 +2637,10 @@
       "network": {
         "label": "网络管理工具",
         "description": "ping 主机、检查 TCP 端口、解析 DNS、运行 WHOIS、列出网络接口并发送网络唤醒。"
+      },
+      "watchdog": {
+        "label": "Watchdogs",
+        "description": "Create and manage background monitors for Sessions, performance counters, and network reachability."
       },
       "memory": {
         "label": "助手记忆",
@@ -4294,6 +4310,10 @@
     "toolEmail": "正在发送邮件…",
     "toolSecretRequest": "正在请求密钥条目…",
     "toolDashboard": "正在更新仪表板…",
+    "toolItOps": "Working with IT Ops...",
+    "toolInstaller": "Working with Install Helper...",
+    "toolScreenshots": "Working with Screenshots...",
+    "toolWatchdog": "Working with Watchdogs...",
     "toolConnections": "正在管理连接…",
     "toolSessions": "正在处理会话…",
     "toolTutorial": "正在显示教程帮助...",
@@ -4307,6 +4327,10 @@
     "toolEmailDone": "邮件已发送",
     "toolSecretRequestDone": "已请求密钥条目",
     "toolDashboardDone": "已更新仪表板",
+    "toolItOpsDone": "Worked with IT Ops",
+    "toolInstallerDone": "Worked with Install Helper",
+    "toolScreenshotsDone": "Worked with Screenshots",
+    "toolWatchdogDone": "Worked with Watchdogs",
     "toolConnectionsDone": "已管理连接",
     "toolSessionsDone": "已处理会话",
     "toolTutorialDone": "已显示教程帮助",

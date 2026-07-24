@@ -511,6 +511,8 @@ fn live_tool_timeout(tool_name: &str) -> Duration {
         "session_remote_desktop_screenshot"
         | "session_terminal_read_buffer"
         | "session_file_browser_list" => Duration::from_secs(60),
+        "installer_list_tools" | "installer_check_updates" => Duration::from_secs(180),
+        "installer_install" | "installer_uninstall" => Duration::from_secs(1_800),
         _ => Duration::from_secs(15),
     }
 }
@@ -2754,6 +2756,106 @@ fn ai_tool_definitions_with_skills(
             send_email_schema(),
         ));
     }
+    if settings.installer() {
+        tools.push(tool_definition(
+            "installer_list_tools",
+            "List compact visible Install Helper catalog metadata with current installed detection, pinned state, and cached latest-version data. Provider URLs, detection internals, and localization maps are omitted. Call this before installing, updating, uninstalling, or launching a tool so you use a real catalog id and available options.",
+            json!({"type":"object","properties":{}}),
+        ));
+        tools.push(tool_definition(
+            "installer_check_updates",
+            "Start latest-version checks for selected Install Helper catalog ids. After results stream, call installer_list_tools again to read the refreshed cached state.",
+            json!({"type":"object","properties":{"toolIds":{"type":"array","items":{"type":"string"},"minItems":1,"maxItems":50}},"required":["toolIds"]}),
+        ));
+        tools.push(tool_definition(
+            "installer_install",
+            "Install or update one curated Install Helper tool by catalog id, including missing declared prerequisites. The operation may download software, execute installers, and show operating-system elevation prompts.",
+            json!({"type":"object","properties":{"toolId":{"type":"string"},"options":{"type":"object","properties":{"scope":{"type":"string","enum":["user","machine"]},"version":{"type":"string"},"location":{"type":"string"},"addToPath":{"type":"boolean"},"provider":{"type":"string","enum":["default","download","chocolatey","npm"]}}}},"required":["toolId"]}),
+        ));
+        tools.push(tool_definition(
+            "installer_uninstall",
+            "Uninstall one curated Install Helper tool by catalog id. This removes software from the computer and may show an operating-system elevation prompt.",
+            json!({"type":"object","properties":{"toolId":{"type":"string"}},"required":["toolId"]}),
+        ));
+        tools.push(tool_definition(
+            "installer_cancel",
+            "Request cancellation of a running Install Helper install, update, uninstall, or update-check operation.",
+            json!({"type":"object","properties":{"toolId":{"type":"string","description":"Catalog id, or __check_updates__ for the active update sweep."}},"required":["toolId"]}),
+        ));
+        tools.push(tool_definition(
+            "installer_launch",
+            "Launch an installed graphical app from the curated Install Helper catalog. Does not run arbitrary paths or commands.",
+            json!({"type":"object","properties":{"toolId":{"type":"string"}},"required":["toolId"]}),
+        ));
+    }
+    if settings.screenshots() {
+        tools.push(tool_definition(
+            "screenshot_list",
+            "List captures in the Screenshots Module library with paging and sorting. Returns metadata only; thumbnail and full-resolution image bytes are omitted.",
+            json!({"type":"object","properties":{"offset":{"type":"integer","minimum":0},"limit":{"type":"integer","minimum":1,"maximum":200},"sortBy":{"type":"string","enum":["name","date","type"]},"sortDirection":{"type":"string","enum":["asc","desc"]}}}),
+        ));
+        tools.push(tool_definition(
+            "screenshot_read",
+            "Read one Screenshots Module library item by id, including its image data URL. The image may contain sensitive screen content.",
+            json!({"type":"object","properties":{"id":{"type":"string"}},"required":["id"]}),
+        ));
+        tools.push(tool_definition(
+            "screenshot_rename",
+            "Rename one Screenshots Module library item.",
+            json!({"type":"object","properties":{"id":{"type":"string"},"newName":{"type":"string"}},"required":["id","newName"]}),
+        ));
+        tools.push(tool_definition(
+            "screenshot_copy_to_clipboard",
+            "Copy one Screenshots Module library item to the operating-system clipboard.",
+            json!({"type":"object","properties":{"id":{"type":"string"}},"required":["id"]}),
+        ));
+        tools.push(tool_definition(
+            "screenshot_resize",
+            "Resize one or more Screenshots Module library items.",
+            json!({"type":"object","properties":{"ids":{"type":"array","items":{"type":"string"},"minItems":1},"mode":{"type":"string","enum":["exact","percentage"]},"width":{"type":"integer","minimum":1},"height":{"type":"integer","minimum":1},"percentage":{"type":"integer","minimum":1,"maximum":1000},"preserveAspectRatio":{"type":"boolean"}},"required":["ids","mode","preserveAspectRatio"]}),
+        ));
+        tools.push(tool_definition(
+            "screenshot_convert",
+            "Convert one or more Screenshots Module library items to PNG, JPEG, WebP, or GIF.",
+            json!({"type":"object","properties":{"ids":{"type":"array","items":{"type":"string"},"minItems":1},"format":{"type":"string","enum":["png","jpeg","webp","gif"]},"quality":{"type":"integer","minimum":1,"maximum":100}},"required":["ids","format","quality"]}),
+        ));
+        tools.push(tool_definition(
+            "screenshot_delete",
+            "Delete one Screenshots Module library item.",
+            json!({"type":"object","properties":{"id":{"type":"string"}},"required":["id"]}),
+        ));
+        tools.push(tool_definition(
+            "screenshot_delete_batch",
+            "Delete selected Screenshots Module library items.",
+            json!({"type":"object","properties":{"ids":{"type":"array","items":{"type":"string"},"minItems":1}},"required":["ids"]}),
+        ));
+        tools.push(tool_definition(
+            "screenshot_open_folder",
+            "Open the configured Screenshots Module library folder in the operating-system file manager.",
+            json!({"type":"object","properties":{}}),
+        ));
+        tools.push(tool_definition(
+            "screenshot_reveal",
+            "Reveal one Screenshots Module library item in the operating-system file manager.",
+            json!({"type":"object","properties":{"id":{"type":"string"}},"required":["id"]}),
+        ));
+        tools.push(tool_definition(
+            "screenshot_open_file",
+            "Open one Screenshots Module library item with the operating system.",
+            json!({"type":"object","properties":{"id":{"type":"string"}},"required":["id"]}),
+        ));
+        for (name, description) in [
+            ("screenshot_capture_region", "Interactively capture a screen region into the Screenshots Module library."),
+            ("screenshot_capture_window", "Capture the active operating-system window into the Screenshots Module library."),
+            ("screenshot_capture_fullscreen", "Capture the full screen into the Screenshots Module library."),
+        ] {
+            tools.push(tool_definition(
+                name,
+                description,
+                json!({"type":"object","properties":{"minimizeWindow":{"type":"boolean"}}}),
+            ));
+        }
+    }
     if settings.dashboard() {
         tools.push(tool_definition(
             "dashboard_load_state",
@@ -3407,7 +3509,7 @@ fn ai_tool_definitions_with_skills(
             format!(
                 "Show a one-step in-app Tutorial overlay by navigating to a known app surface when needed, highlighting an app-owned target, dimming the rest of the window, and placing a short help balloon beside it. Use this only after the user explicitly asks to be shown where something is, or after the user accepts your offer to navigate. Only pass targetId values explicitly listed in current page context or documented by this tool; do not invent CSS selectors. Known targets include {TUTORIAL_TOOL_KNOWN_TARGETS}. The current IT Ops page context may additionally list entity-scoped targets (itops.site:<siteId>, itops.host:<hostId>, itops.automation:<automationId>, itops.task:<taskId>, itops.run:<runId>) that highlight one specific row; pair them with navigation.itopsSiteId when the entity belongs to a Site that is not selected. navigation.itopsSiteId and navigation.itopsDestination open one IT Ops Site's navigator destination (hosts, automations, runHistory, serverRooms, site) or the global taskLibrary before highlighting. The overlay disappears when the user clicks or presses any key."
             ),
-            json!({"type":"object","properties":{"targetId":{"type":"string"},"title":{"type":"string","maxLength":80},"body":{"type":"string","maxLength":240},"navigation":{"type":"object","properties":{"page":{"type":"string","enum":["workspace","dashboard","itops","installer","settings"]},"settingsSectionId":{"type":"string","enum":["general-settings","appearance-settings","dashboard-settings","workspace-settings","file-explorer-settings","dont-sleep-settings","installer-settings","credentials-settings","assistant-settings","ssh-settings","terminal-settings","url-settings","rdp-settings","vnc-settings","shortcuts-settings","proxy-settings","about-settings"]},"itopsSiteId":{"type":"string","description":"IT Ops only: the Site to select before highlighting."},"itopsDestination":{"type":"string","enum":["site","serverRooms","hosts","automations","runHistory","taskLibrary"],"description":"IT Ops only: which navigator destination to open."}},"additionalProperties":false},"page":{"type":"string","enum":["workspace","dashboard","itops","installer","settings"]},"settingsSectionId":{"type":"string","enum":["general-settings","appearance-settings","dashboard-settings","workspace-settings","file-explorer-settings","dont-sleep-settings","installer-settings","credentials-settings","assistant-settings","ssh-settings","terminal-settings","url-settings","rdp-settings","vnc-settings","shortcuts-settings","proxy-settings","about-settings"]}},"required":["targetId","title","body"]}),
+            json!({"type":"object","properties":{"targetId":{"type":"string"},"title":{"type":"string","maxLength":80},"body":{"type":"string","maxLength":240},"navigation":{"type":"object","properties":{"page":{"type":"string","enum":["workspace","dashboard","itops","installer","screenshots","settings"]},"settingsSectionId":{"type":"string","enum":["general-settings","appearance-settings","dashboard-settings","workspace-settings","file-explorer-settings","dont-sleep-settings","installer-settings","credentials-settings","assistant-settings","ssh-settings","terminal-settings","url-settings","rdp-settings","vnc-settings","shortcuts-settings","proxy-settings","about-settings"]},"itopsSiteId":{"type":"string","description":"IT Ops only: the Site to select before highlighting."},"itopsDestination":{"type":"string","enum":["site","serverRooms","hosts","automations","runHistory","taskLibrary"],"description":"IT Ops only: which navigator destination to open."}},"additionalProperties":false},"page":{"type":"string","enum":["workspace","dashboard","itops","installer","screenshots","settings"]},"settingsSectionId":{"type":"string","enum":["general-settings","appearance-settings","dashboard-settings","workspace-settings","file-explorer-settings","dont-sleep-settings","installer-settings","credentials-settings","assistant-settings","ssh-settings","terminal-settings","url-settings","rdp-settings","vnc-settings","shortcuts-settings","proxy-settings","about-settings"]}},"required":["targetId","title","body"]}),
         ));
     }
     if settings.network() {
@@ -4239,6 +4341,12 @@ async fn run_ai_tool(
         name if tool_settings.itops() && name.starts_with("itops_") => {
             itops_tool(app, name, args).await
         }
+        name if tool_settings.installer() && name.starts_with("installer_") => {
+            installer_tool(app, name, args).await
+        }
+        name if tool_settings.screenshots() && name.starts_with("screenshot_") => {
+            screenshot_tool(app, name, args).await
+        }
         name if tool_settings.connections() && name.starts_with("workspace_") => {
             workspace_tool(app, name, args)
         }
@@ -4345,6 +4453,11 @@ fn tool_requires_allow_all(tool_name: &str) -> bool {
             && !(tool_name.starts_with("itops_list")
                 || tool_name.starts_with("itops_get")
                 || tool_name == "itops_test_automation"))
+        || matches!(
+            tool_name,
+            "installer_install" | "installer_uninstall" | "installer_launch"
+        )
+        || (tool_name.starts_with("screenshot_") && tool_name != "screenshot_list")
         || matches!(
             tool_name,
             "workspace_create"
@@ -5558,6 +5671,152 @@ pub(crate) async fn live_session_tool(app: &tauri::AppHandle, name: &str, args: 
     match app.try_state::<AssistantLiveToolBridge>() {
         Some(bridge) => bridge.request(app, name, args).await,
         None => json!({"ok": false, "error": "live session tools are unavailable"}).to_string(),
+    }
+}
+
+pub(crate) async fn installer_tool(
+    app: &tauri::AppHandle,
+    name: &str,
+    args: Value,
+) -> String {
+    live_session_tool(app, name, args).await
+}
+
+fn strip_screenshot_thumbnails(value: &mut Value) {
+    let Some(screenshots) = value
+        .get_mut("screenshots")
+        .and_then(Value::as_array_mut)
+    else {
+        return;
+    };
+    for screenshot in screenshots {
+        if let Some(screenshot) = screenshot.as_object_mut() {
+            screenshot.remove("thumbnailDataUrl");
+        }
+    }
+}
+
+pub(crate) async fn screenshot_tool(
+    app: &tauri::AppHandle,
+    name: &str,
+    args: Value,
+) -> String {
+    let required_string = |key: &str| {
+        args.get(key)
+            .and_then(Value::as_str)
+            .map(str::to_string)
+            .filter(|value| !value.trim().is_empty())
+            .ok_or_else(|| format!("{key} is required"))
+    };
+    let result: Result<Value, String> = async {
+        match name {
+            "screenshot_list" => {
+                let request =
+                    serde_json::from_value(args.clone()).map_err(|error| error.to_string())?;
+                let mut value =
+                    serde_json::to_value(crate::list_screenshots(app.clone(), request).await?)
+                        .map_err(|error| error.to_string())?;
+                strip_screenshot_thumbnails(&mut value);
+                Ok(value)
+            }
+            "screenshot_read" => {
+                let id = required_string("id")?;
+                serde_json::to_value(crate::read_screenshot(app.clone(), id).await?)
+                    .map_err(|error| error.to_string())
+            }
+            "screenshot_rename" => {
+                let id = required_string("id")?;
+                let new_name = required_string("newName")?;
+                serde_json::to_value(crate::rename_screenshot(app.clone(), id, new_name).await?)
+                    .map_err(|error| error.to_string())
+            }
+            "screenshot_copy_to_clipboard" => {
+                crate::copy_stored_screenshot_to_clipboard(
+                    app.clone(),
+                    required_string("id")?,
+                )
+                .await?;
+                Ok(json!({"ok": true}))
+            }
+            "screenshot_resize" => {
+                let request =
+                    serde_json::from_value(args.clone()).map_err(|error| error.to_string())?;
+                serde_json::to_value(crate::resize_screenshots(app.clone(), request).await?)
+                    .map_err(|error| error.to_string())
+            }
+            "screenshot_convert" => {
+                let request =
+                    serde_json::from_value(args.clone()).map_err(|error| error.to_string())?;
+                serde_json::to_value(crate::convert_screenshots(app.clone(), request).await?)
+                    .map_err(|error| error.to_string())
+            }
+            "screenshot_delete" => {
+                crate::delete_screenshot(app.clone(), required_string("id")?).await?;
+                Ok(json!({"ok": true}))
+            }
+            "screenshot_delete_batch" => {
+                let ids = args
+                    .get("ids")
+                    .cloned()
+                    .ok_or_else(|| "ids is required".to_string())?;
+                let ids = serde_json::from_value(ids).map_err(|error| error.to_string())?;
+                crate::delete_screenshots(app.clone(), ids).await?;
+                Ok(json!({"ok": true}))
+            }
+            "screenshot_open_folder" => {
+                crate::open_screenshots_folder(app.clone(), app.state())?;
+                Ok(json!({"ok": true}))
+            }
+            "screenshot_reveal" => {
+                crate::reveal_screenshot(app.clone(), app.state(), required_string("id")?)?;
+                Ok(json!({"ok": true}))
+            }
+            "screenshot_open_file" => {
+                crate::open_screenshot_file(app.clone(), app.state(), required_string("id")?)?;
+                Ok(json!({"ok": true}))
+            }
+            "screenshot_capture_region"
+            | "screenshot_capture_window"
+            | "screenshot_capture_fullscreen" => {
+                let minimize_window = args
+                    .get("minimizeWindow")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false);
+                let result = match name {
+                    "screenshot_capture_region" => {
+                        crate::capture_interactive_region_screenshot_to_library(
+                            app.clone(),
+                            "region".to_string(),
+                            minimize_window,
+                        )
+                        .await?
+                    }
+                    "screenshot_capture_window" => {
+                        crate::capture_active_window_screenshot_to_library(
+                            app.clone(),
+                            "window".to_string(),
+                            minimize_window,
+                        )
+                        .await?
+                    }
+                    _ => {
+                        crate::capture_fullscreen_screenshot_to_library(
+                            app.clone(),
+                            "fullscreen".to_string(),
+                            minimize_window,
+                        )
+                        .await?
+                    }
+                };
+                serde_json::to_value(result).map_err(|error| error.to_string())
+            }
+            _ => Err(format!("unknown Screenshots tool: {name}")),
+        }
+    }
+    .await;
+    match result {
+        Ok(value) => value.to_string(),
+        Err(error) => json!({"ok": false, "error": error}).to_string(),
     }
 }
 

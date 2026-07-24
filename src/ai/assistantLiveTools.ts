@@ -24,6 +24,12 @@ import {
 import { prepareAssistantTerminalInput } from "./terminalCommandSend";
 import { waitForScreenshotSurface } from "./assistantScreenshotRegion";
 import { assistantQuickCommandId } from "./assistantComposer";
+import { resolveInstallPlan } from "../modules/installer/dag";
+import {
+  installRecipeAndWait,
+  uninstallRecipeAndWait,
+} from "../modules/installer/progress";
+import type { InstallOptions } from "../modules/installer/types";
 import type { QuickCommand } from "../types";
 
 export interface AssistantLiveToolDeps {
@@ -81,9 +87,147 @@ export async function runAssistantLiveTool(
       return assistantQuickCommandCreate(args);
     case "quick_command_edit":
       return assistantQuickCommandEdit(args);
+    case "installer_list_tools":
+      return assistantInstallerListTools();
+    case "installer_check_updates":
+      return assistantInstallerCheckUpdates(args);
+    case "installer_install":
+      return assistantInstallerInstall(args);
+    case "installer_uninstall":
+      return assistantInstallerUninstall(args);
+    case "installer_cancel":
+      return assistantInstallerCancel(args);
+    case "installer_launch":
+      return assistantInstallerLaunch(args);
     default:
-      return { ok: false, error: `Unknown live Session tool: ${toolName}` };
+      return { ok: false, error: `Unknown live app tool: ${toolName}` };
   }
+}
+
+async function assistantInstallerListTools() {
+  const catalog = await invokeCommand("installer_load_catalog", {});
+  const [detected, state] = await Promise.all([
+    invokeCommand("installer_detect_all"),
+    invokeCommand("installer_get_state"),
+  ]);
+  const stateById = new Map(state.map((entry) => [entry.toolId, entry]));
+  const tools = catalog.recipes
+    .filter((recipe) => recipe.section !== "internal")
+    .map((recipe) => ({
+      id: recipe.id,
+      name: recipe.name,
+      section: recipe.section,
+      description: recipe.descriptionEn,
+      needs: recipe.needs ?? [],
+      options: recipe.options ?? [],
+      provider: recipe.provider.kind,
+      alternateProviders: [
+        recipe.downloadProvider?.kind,
+        recipe.chocolateyProvider?.kind,
+        recipe.npmProvider?.kind,
+      ].filter((kind): kind is NonNullable<typeof kind> => Boolean(kind)),
+      detected: detected[recipe.id] ?? null,
+      state: stateById.get(recipe.id) ?? null,
+    }));
+  return { ok: true, tools };
+}
+
+async function assistantInstallerCheckUpdates(args: Record<string, unknown>) {
+  const toolIds = Array.isArray(args.toolIds)
+    ? args.toolIds.filter((value): value is string => typeof value === "string" && value.trim() !== "")
+    : [];
+  if (toolIds.length === 0) {
+    return { ok: false, error: "toolIds is required." };
+  }
+  const catalog = await invokeCommand("installer_load_catalog", {});
+  const knownIds = new Set(catalog.recipes.map((recipe) => recipe.id));
+  const unknown = toolIds.find((toolId) => !knownIds.has(toolId));
+  if (unknown) {
+    return { ok: false, error: `Unknown Install Helper tool id: ${unknown}` };
+  }
+  await invokeCommand("installer_check_latest_versions", { toolIds });
+  return {
+    ok: true,
+    started: true,
+    toolIds,
+    message: "Update checks started. Read the Install Helper tool state again after results stream.",
+  };
+}
+
+async function assistantInstallerInstall(args: Record<string, unknown>) {
+  const toolId = typeof args.toolId === "string" ? args.toolId.trim() : "";
+  if (!toolId) {
+    return { ok: false, error: "toolId is required." };
+  }
+  const options =
+    args.options && typeof args.options === "object"
+      ? (args.options as InstallOptions)
+      : undefined;
+  const catalog = await invokeCommand("installer_load_catalog", {});
+  const detected = await invokeCommand("installer_detect_all");
+  if (!catalog.recipes.some((recipe) => recipe.id === toolId)) {
+    return { ok: false, error: `Unknown Install Helper tool id: ${toolId}` };
+  }
+  const plan = resolveInstallPlan(toolId, catalog, detected, options);
+  for (const step of plan.actionable) {
+    const result = await installRecipeAndWait(
+      step.recipe.id,
+      step.recipe.id === toolId ? options : undefined,
+    );
+    if (result.kind !== "completed") {
+      return {
+        ok: false,
+        toolId,
+        stepToolId: step.recipe.id,
+        result,
+        error: result.kind === "failed" ? result.message : "Installation was cancelled.",
+      };
+    }
+  }
+  const next = await invokeCommand("installer_redetect", { toolId });
+  return { ok: true, toolId, detected: next };
+}
+
+async function assistantInstallerUninstall(args: Record<string, unknown>) {
+  const toolId = typeof args.toolId === "string" ? args.toolId.trim() : "";
+  if (!toolId) {
+    return { ok: false, error: "toolId is required." };
+  }
+  const catalog = await invokeCommand("installer_load_catalog", {});
+  if (!catalog.recipes.some((recipe) => recipe.id === toolId)) {
+    return { ok: false, error: `Unknown Install Helper tool id: ${toolId}` };
+  }
+  const result = await uninstallRecipeAndWait(toolId);
+  if (result.kind !== "completed") {
+    return {
+      ok: false,
+      toolId,
+      result,
+      error: result.kind === "failed" ? result.message : "Uninstall was cancelled.",
+    };
+  }
+  const next = await invokeCommand("installer_redetect", { toolId });
+  return { ok: true, toolId, detected: next };
+}
+
+async function assistantInstallerCancel(args: Record<string, unknown>) {
+  const toolId = typeof args.toolId === "string" ? args.toolId.trim() : "";
+  if (!toolId) {
+    return { ok: false, error: "toolId is required." };
+  }
+  await invokeCommand("installer_cancel", { toolId });
+  return { ok: true, toolId };
+}
+
+async function assistantInstallerLaunch(args: Record<string, unknown>) {
+  const toolId = typeof args.toolId === "string" ? args.toolId.trim() : "";
+  if (!toolId) {
+    return { ok: false, error: "toolId is required." };
+  }
+  const launched = await invokeCommand("installer_launch_app", { toolId });
+  return launched
+    ? { ok: true, toolId }
+    : { ok: false, toolId, error: "The installed app could not be launched." };
 }
 
 function attrSelector(name: string, value: string) {

@@ -2606,6 +2606,18 @@
         "label": "ダッシュボード",
         "description": "ダッシュボードビュー、ウィジェットインスタンス、および AI 作成ウィジェットを読み取り・変更します。"
       },
+      "itops": {
+        "label": "IT Ops",
+        "description": "Manage Sites, Hosts, Server Rooms, Racks, Tasks, Automations, and Batch Runs."
+      },
+      "installer": {
+        "label": "Install Helper",
+        "description": "Detect, install, update, uninstall, and launch curated developer tools."
+      },
+      "screenshots": {
+        "label": "Screenshots",
+        "description": "Capture, inspect, organize, transform, and open Screenshots Module library items."
+      },
       "connections": {
         "label": "接続",
         "description": "ワークスペース、接続フォルダー、保存された接続の一覧表示、作成、編集、削除。"
@@ -2625,6 +2637,10 @@
       "network": {
         "label": "ネットワーク管理ツール",
         "description": "ホストへの ping、TCP ポートの確認、DNS 解決、WHOIS の実行、インターフェイスの一覧表示、Wake-on-LAN の送信を行います。"
+      },
+      "watchdog": {
+        "label": "Watchdogs",
+        "description": "Create and manage background monitors for Sessions, performance counters, and network reachability."
       },
       "memory": {
         "label": "アシスタントメモリー",
@@ -4294,6 +4310,10 @@
     "toolEmail": "メール送信中…",
     "toolSecretRequest": "シークレットエントリをリクエスト中…",
     "toolDashboard": "ダッシュボードを更新中…",
+    "toolItOps": "Working with IT Ops...",
+    "toolInstaller": "Working with Install Helper...",
+    "toolScreenshots": "Working with Screenshots...",
+    "toolWatchdog": "Working with Watchdogs...",
     "toolConnections": "接続を管理中…",
     "toolSessions": "セッションを処理中…",
     "toolTutorial": "チュートリアルヘルプを表示しています...",
@@ -4307,6 +4327,10 @@
     "toolEmailDone": "メール送信完了",
     "toolSecretRequestDone": "シークレットエントリをリクエストしました",
     "toolDashboardDone": "ダッシュボードを更新しました",
+    "toolItOpsDone": "Worked with IT Ops",
+    "toolInstallerDone": "Worked with Install Helper",
+    "toolScreenshotsDone": "Worked with Screenshots",
+    "toolWatchdogDone": "Worked with Watchdogs",
     "toolConnectionsDone": "接続を管理しました",
     "toolSessionsDone": "セッションを処理しました",
     "toolTutorialDone": "チュートリアルヘルプを表示しました",

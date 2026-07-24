@@ -123,7 +123,22 @@ export function toolCallLabel(
     tutorial_highlight: t("ai.toolTutorialDone"),
   };
   const labels = status === "running" ? runningLabels : completedLabels;
-  return labels[normalizedToolName] ?? normalizedToolName;
+  if (labels[normalizedToolName]) {
+    return labels[normalizedToolName];
+  }
+  if (normalizedToolName.startsWith("itops_")) {
+    return status === "running" ? t("ai.toolItOps") : t("ai.toolItOpsDone");
+  }
+  if (normalizedToolName.startsWith("installer_")) {
+    return status === "running" ? t("ai.toolInstaller") : t("ai.toolInstallerDone");
+  }
+  if (normalizedToolName.startsWith("screenshot_")) {
+    return status === "running" ? t("ai.toolScreenshots") : t("ai.toolScreenshotsDone");
+  }
+  if (normalizedToolName.startsWith("watchdog_")) {
+    return status === "running" ? t("ai.toolWatchdog") : t("ai.toolWatchdogDone");
+  }
+  return normalizedToolName;
 }
 
 export function isDashboardMutatingTool(toolName: unknown) {

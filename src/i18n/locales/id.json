@@ -2606,6 +2606,18 @@
         "label": "Dasbor",
         "description": "Baca dan modifikasi tampilan Dashboard, instansi widget, dan Widget Buatan AI."
       },
+      "itops": {
+        "label": "IT Ops",
+        "description": "Manage Sites, Hosts, Server Rooms, Racks, Tasks, Automations, and Batch Runs."
+      },
+      "installer": {
+        "label": "Install Helper",
+        "description": "Detect, install, update, uninstall, and launch curated developer tools."
+      },
+      "screenshots": {
+        "label": "Screenshots",
+        "description": "Capture, inspect, organize, transform, and open Screenshots Module library items."
+      },
       "connections": {
         "label": "Koneksi",
         "description": "Buat daftar, buat, edit, dan hapus ruang kerja, folder koneksi, dan koneksi tersimpan."
@@ -2625,6 +2637,10 @@
       "network": {
         "label": "Alat admin jaringan",
         "description": "Ping host, periksa port TCP, resolusi DNS, jalankan WHOIS, daftar antarmuka, dan kirim Wake-on-LAN."
+      },
+      "watchdog": {
+        "label": "Watchdogs",
+        "description": "Create and manage background monitors for Sessions, performance counters, and network reachability."
       },
       "memory": {
         "label": "Memori asisten",
@@ -4294,6 +4310,10 @@
     "toolEmail": "Mengirim email…",
     "toolSecretRequest": "Meminta entri rahasia…",
     "toolDashboard": "Memperbarui Dasbor…",
+    "toolItOps": "Working with IT Ops...",
+    "toolInstaller": "Working with Install Helper...",
+    "toolScreenshots": "Working with Screenshots...",
+    "toolWatchdog": "Working with Watchdogs...",
     "toolConnections": "Mengelola koneksi…",
     "toolSessions": "Bekerja dengan sesi…",
     "toolTutorial": "Menampilkan bantuan tutorial...",
@@ -4307,6 +4327,10 @@
     "toolEmailDone": "Email terkirim",
     "toolSecretRequestDone": "Entri rahasia diminta",
     "toolDashboardDone": "Dasbor Diperbarui",
+    "toolItOpsDone": "Worked with IT Ops",
+    "toolInstallerDone": "Worked with Install Helper",
+    "toolScreenshotsDone": "Worked with Screenshots",
+    "toolWatchdogDone": "Worked with Watchdogs",
     "toolConnectionsDone": "Koneksi dikelola",
     "toolSessionsDone": "Bekerja dengan sesi",
     "toolTutorialDone": "Bantuan tutorial ditampilkan",

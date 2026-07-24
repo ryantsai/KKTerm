@@ -2606,6 +2606,18 @@
         "label": "대시보드",
         "description": "대시보드 보기, 위젯 인스턴스 및 AI 생성 위젯을 읽고 수정합니다."
       },
+      "itops": {
+        "label": "IT Ops",
+        "description": "Manage Sites, Hosts, Server Rooms, Racks, Tasks, Automations, and Batch Runs."
+      },
+      "installer": {
+        "label": "Install Helper",
+        "description": "Detect, install, update, uninstall, and launch curated developer tools."
+      },
+      "screenshots": {
+        "label": "Screenshots",
+        "description": "Capture, inspect, organize, transform, and open Screenshots Module library items."
+      },
       "connections": {
         "label": "연결",
         "description": "작업 영역, 연결 폴더 및 저장된 연결 나열, 생성, 편집, 삭제."
@@ -2625,6 +2637,10 @@
       "network": {
         "label": "네트워크 관리 도구",
         "description": "호스트 ping, TCP 포트 확인, DNS 조회, WHOIS 실행, 인터페이스 목록 표시, Wake-on-LAN 전송을 수행합니다."
+      },
+      "watchdog": {
+        "label": "Watchdogs",
+        "description": "Create and manage background monitors for Sessions, performance counters, and network reachability."
       },
       "memory": {
         "label": "어시스턴트 메모리",
@@ -4294,6 +4310,10 @@
     "toolEmail": "이메일 전송 중…",
     "toolSecretRequest": "비밀 항목 요청 중…",
     "toolDashboard": "대시보드 업데이트 중…",
+    "toolItOps": "Working with IT Ops...",
+    "toolInstaller": "Working with Install Helper...",
+    "toolScreenshots": "Working with Screenshots...",
+    "toolWatchdog": "Working with Watchdogs...",
     "toolConnections": "연결 관리 중…",
     "toolSessions": "세션 작업 중…",
     "toolTutorial": "튜토리얼 도움말 표시 중...",
@@ -4307,6 +4327,10 @@
     "toolEmailDone": "이메일 전송됨",
     "toolSecretRequestDone": "비밀 항목 요청됨",
     "toolDashboardDone": "대시보드 업데이트 완료",
+    "toolItOpsDone": "Worked with IT Ops",
+    "toolInstallerDone": "Worked with Install Helper",
+    "toolScreenshotsDone": "Worked with Screenshots",
+    "toolWatchdogDone": "Worked with Watchdogs",
     "toolConnectionsDone": "연결 관리됨",
     "toolSessionsDone": "세션 작업 완료",
     "toolTutorialDone": "튜토리얼 도움말을 표시함",

@@ -2606,6 +2606,18 @@
         "label": "Dashboard",
         "description": "Leggi e modifica le viste della Dashboard, le istanze di widget e i widget creati dall’IA."
       },
+      "itops": {
+        "label": "IT Ops",
+        "description": "Manage Sites, Hosts, Server Rooms, Racks, Tasks, Automations, and Batch Runs."
+      },
+      "installer": {
+        "label": "Install Helper",
+        "description": "Detect, install, update, uninstall, and launch curated developer tools."
+      },
+      "screenshots": {
+        "label": "Screenshots",
+        "description": "Capture, inspect, organize, transform, and open Screenshots Module library items."
+      },
       "connections": {
         "label": "Connessioni",
         "description": "Elenca, crea, modifica ed elimina aree di lavoro, cartelle di connessioni e connessioni salvate."
@@ -2625,6 +2637,10 @@
       "network": {
         "label": "Strumenti di amministrazione rete",
         "description": "Esegui ping sugli host, controlla le porte TCP, risolvi DNS, esegui WHOIS, elenca le interfacce e invia Wake-on-LAN."
+      },
+      "watchdog": {
+        "label": "Watchdogs",
+        "description": "Create and manage background monitors for Sessions, performance counters, and network reachability."
       },
       "memory": {
         "label": "Memoria dell'assistente",
@@ -4294,6 +4310,10 @@
     "toolEmail": "Invio e-mail…",
     "toolSecretRequest": "Richiesta voce segreta…",
     "toolDashboard": "Aggiornamento dashboard…",
+    "toolItOps": "Working with IT Ops...",
+    "toolInstaller": "Working with Install Helper...",
+    "toolScreenshots": "Working with Screenshots...",
+    "toolWatchdog": "Working with Watchdogs...",
     "toolConnections": "Gestione connessioni…",
     "toolSessions": "Lavorando con le sessioni…",
     "toolTutorial": "Visualizzazione della guida tutorial...",
@@ -4307,6 +4327,10 @@
     "toolEmailDone": "E-mail inviata",
     "toolSecretRequestDone": "Voce segreta richiesta",
     "toolDashboardDone": "Dashboard aggiornato",
+    "toolItOpsDone": "Worked with IT Ops",
+    "toolInstallerDone": "Worked with Install Helper",
+    "toolScreenshotsDone": "Worked with Screenshots",
+    "toolWatchdogDone": "Worked with Watchdogs",
     "toolConnectionsDone": "Connessioni gestite",
     "toolSessionsDone": "Ha lavorato con le sessioni",
     "toolTutorialDone": "Guida tutorial mostrata",

@@ -2606,6 +2606,18 @@
         "label": "Dashboard",
         "description": "Dashboard-Ansichten, Widget-Instanzen und KI-erstellte Widgets lesen und ändern."
       },
+      "itops": {
+        "label": "IT Ops",
+        "description": "Manage Sites, Hosts, Server Rooms, Racks, Tasks, Automations, and Batch Runs."
+      },
+      "installer": {
+        "label": "Install Helper",
+        "description": "Detect, install, update, uninstall, and launch curated developer tools."
+      },
+      "screenshots": {
+        "label": "Screenshots",
+        "description": "Capture, inspect, organize, transform, and open Screenshots Module library items."
+      },
       "connections": {
         "label": "Verbindungen",
         "description": "Arbeitsbereiche, Verbindungsordner und gespeicherte Verbindungen auflisten, erstellen, bearbeiten und löschen."
@@ -2625,6 +2637,10 @@
       "network": {
         "label": "Netzwerk-Verwaltungstools",
         "description": "Hosts anpingen, TCP-Ports prüfen, DNS auflösen, WHOIS ausführen, Schnittstellen auflisten und Wake-on-LAN senden."
+      },
+      "watchdog": {
+        "label": "Watchdogs",
+        "description": "Create and manage background monitors for Sessions, performance counters, and network reachability."
       },
       "memory": {
         "label": "Assistenten-Gedächtnis",
@@ -4294,6 +4310,10 @@
     "toolEmail": "E-Mail senden…",
     "toolSecretRequest": "Fordere geheimen Eintrag an…",
     "toolDashboard": "Dashboard wird aktualisiert…",
+    "toolItOps": "Working with IT Ops...",
+    "toolInstaller": "Working with Install Helper...",
+    "toolScreenshots": "Working with Screenshots...",
+    "toolWatchdog": "Working with Watchdogs...",
     "toolConnections": "Verbindungen verwalten…",
     "toolSessions": "Arbeite mit Sitzungen…",
     "toolTutorial": "Tutorial-Hilfe wird angezeigt...",
@@ -4307,6 +4327,10 @@
     "toolEmailDone": "E-Mail gesendet",
     "toolSecretRequestDone": "Geheimen Eintrag angefordert",
     "toolDashboardDone": "Dashboard aktualisiert",
+    "toolItOpsDone": "Worked with IT Ops",
+    "toolInstallerDone": "Worked with Install Helper",
+    "toolScreenshotsDone": "Worked with Screenshots",
+    "toolWatchdogDone": "Worked with Watchdogs",
     "toolConnectionsDone": "Verbindungen verwaltet",
     "toolSessionsDone": "Mit Sitzungen gearbeitet",
     "toolTutorialDone": "Tutorial-Hilfe angezeigt",

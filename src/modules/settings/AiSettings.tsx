@@ -841,11 +841,15 @@ const AI_ASSISTANT_TOOL_IDS: AiAssistantToolId[] = [
   "email",
   "shellCommand",
   "dashboard",
+  "itops",
+  "installer",
+  "screenshots",
   "connections",
   "sessions",
   "tutorial",
   "manual",
   "network",
+  "watchdog",
   "memory",
 ];
 

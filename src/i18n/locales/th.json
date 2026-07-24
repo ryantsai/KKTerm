@@ -2606,6 +2606,18 @@
         "label": "แดชบอร์ด",
         "description": "อ่านและแก้ไขมุมมอง Dashboard อินสแตนซ์วิดเจ็ต และวิดเจ็ตที่สร้างโดย AI"
       },
+      "itops": {
+        "label": "IT Ops",
+        "description": "Manage Sites, Hosts, Server Rooms, Racks, Tasks, Automations, and Batch Runs."
+      },
+      "installer": {
+        "label": "Install Helper",
+        "description": "Detect, install, update, uninstall, and launch curated developer tools."
+      },
+      "screenshots": {
+        "label": "Screenshots",
+        "description": "Capture, inspect, organize, transform, and open Screenshots Module library items."
+      },
       "connections": {
         "label": "การเชื่อมต่อ",
         "description": "แสดงรายการ สร้าง แก้ไข และลบพื้นที่ทำงาน โฟลเดอร์การเชื่อมต่อ และการเชื่อมต่อที่บันทึกไว้"
@@ -2625,6 +2637,10 @@
       "network": {
         "label": "เครื่องมือจัดการเครือข่าย",
         "description": "Ping โฮสต์ ตรวจสอบพอร์ต TCP แก้ไข DNS รัน WHOIS แสดงรายการอินเทอร์เฟซ และส่ง Wake-on-LAN"
+      },
+      "watchdog": {
+        "label": "Watchdogs",
+        "description": "Create and manage background monitors for Sessions, performance counters, and network reachability."
       },
       "memory": {
         "label": "หน่วยความจำผู้ช่วย",
@@ -4294,6 +4310,10 @@
     "toolEmail": "กำลังส่งอีเมล…",
     "toolSecretRequest": "กำลังขอรายการลับ…",
     "toolDashboard": "กำลังอัปเดตแดชบอร์ด…",
+    "toolItOps": "Working with IT Ops...",
+    "toolInstaller": "Working with Install Helper...",
+    "toolScreenshots": "Working with Screenshots...",
+    "toolWatchdog": "Working with Watchdogs...",
     "toolConnections": "กำลังจัดการการเชื่อมต่อ…",
     "toolSessions": "กำลังทำงานกับเซสชัน…",
     "toolTutorial": "กำลังแสดงความช่วยเหลือบทแนะนำ...",
@@ -4307,6 +4327,10 @@
     "toolEmailDone": "ส่งอีเมลแล้ว",
     "toolSecretRequestDone": "ขอรายการลับแล้ว",
     "toolDashboardDone": "อัปเดตแดชบอร์ดแล้ว",
+    "toolItOpsDone": "Worked with IT Ops",
+    "toolInstallerDone": "Worked with Install Helper",
+    "toolScreenshotsDone": "Worked with Screenshots",
+    "toolWatchdogDone": "Worked with Watchdogs",
     "toolConnectionsDone": "จัดการการเชื่อมต่อแล้ว",
     "toolSessionsDone": "ทำงานกับเซสชันแล้ว",
     "toolTutorialDone": "แสดงความช่วยเหลือบทแนะนำแล้ว",

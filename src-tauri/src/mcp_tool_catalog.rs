@@ -560,6 +560,59 @@ pub fn tool_descriptors() -> Vec<Value> {
             "inputSchema": {"type": "object", "properties": {}, "additionalProperties": false},
         }),
         json!({
+            "name": "kkterm.installer.tools.list",
+            "description": "List compact visible Install Helper catalog metadata with current installed detection, pinned state, and cached latest-version data. Provider URLs, detection internals, and localization maps are omitted. Use the returned catalog ids for later calls.",
+            "inputSchema": {"type": "object", "properties": {}, "additionalProperties": false},
+        }),
+        json!({
+            "name": "kkterm.installer.updates.check",
+            "description": "Start latest-version checks for selected Install Helper catalog ids. Results stream into the app and are returned by a later tools.list call.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {"toolIds": {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 50}},
+                "required": ["toolIds"],
+                "additionalProperties": false,
+            },
+        }),
+        json!({
+            "name": "kkterm.installer.dangerous.install",
+            "description": "DANGEROUS: install or update one curated Install Helper tool, including missing declared prerequisites. May download software, execute installers, and show elevation prompts. Requires Allow-all.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "toolId": {"type": "string"},
+                    "options": {
+                        "type": "object",
+                        "properties": {
+                            "scope": {"type": "string", "enum": ["user", "machine"]},
+                            "version": {"type": "string"},
+                            "location": {"type": "string"},
+                            "addToPath": {"type": "boolean"},
+                            "provider": {"type": "string", "enum": ["default", "download", "chocolatey", "npm"]},
+                        },
+                        "additionalProperties": false,
+                    },
+                },
+                "required": ["toolId"],
+                "additionalProperties": false,
+            },
+        }),
+        json!({
+            "name": "kkterm.installer.dangerous.uninstall",
+            "description": "DANGEROUS: uninstall one curated Install Helper tool by catalog id. Removes software and may show elevation prompts. Requires Allow-all.",
+            "inputSchema": id_input_schema("toolId"),
+        }),
+        json!({
+            "name": "kkterm.installer.cancel",
+            "description": "Request cancellation of a running Install Helper operation. Pass the catalog id, or __check_updates__ for the update sweep.",
+            "inputSchema": id_input_schema("toolId"),
+        }),
+        json!({
+            "name": "kkterm.installer.dangerous.launch",
+            "description": "DANGEROUS: launch an installed graphical app from the curated Install Helper catalog. Does not accept arbitrary paths or commands. Requires Allow-all.",
+            "inputSchema": id_input_schema("toolId"),
+        }),
+        json!({
             "name": "kkterm.screenshots.list",
             "description": "List the Screenshots Module library with paginated thumbnails and metadata. sortBy is date, name, or type; sortDirection is asc or desc.",
             "inputSchema": {

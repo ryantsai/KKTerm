@@ -37,6 +37,21 @@ export async function installRecipeAndWait(
   return waiter.done;
 }
 
+export async function uninstallRecipeAndWait(
+  toolId: string,
+  onProgress?: (event: ProgressEvent) => void,
+): Promise<TerminalProgressEvent> {
+  const waiter = waitForTerminalProgress(toolId, onProgress);
+  await waiter.ready;
+  try {
+    await invokeCommand("installer_uninstall_recipe", { toolId });
+  } catch (error) {
+    waiter.cancel();
+    throw error;
+  }
+  return waiter.done;
+}
+
 function waitForTerminalProgress(
   toolId: string,
   onProgress?: (event: ProgressEvent) => void,

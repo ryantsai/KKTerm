@@ -53,6 +53,13 @@ Each workspace surface exposes a screenshot toolbar menu (native Tauri context m
 - `workspace.sendRegionToAi` — region capture → AI Assistant input. Status `workspace.sentToAi`.
 - `workspace.sendEntirePanelToAi` — whole Pane → AI Assistant input.
 
+When the Screenshots AI tool group (`settings.aiTools.screenshots.label`) is
+enabled, the assistant can also work with the saved Module library directly:
+list metadata, read one full image, rename/copy/resize/convert/delete captures,
+open or reveal files, and start region/window/full-screen captures. Metadata
+listing is read-only; image reads and every action that captures, changes, or
+opens external state use the normal assistant approval flow.
+
 Tutorial target: `workspace.screenshotMenu`.
 
 Region selection overlay accessible label: `workspace.selectRegion`. Generic noun: `workspace.screenshot`.

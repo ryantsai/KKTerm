@@ -81,6 +81,25 @@ In Prompt / Default permissions mode, mutating tool calls pause the current assi
 
 Built-in AI tools default on except `settings.aiTools.email.label`. The email tool stays off until enabled in Settings because it requires delivery configuration and an email secret.
 
+Every major Module has an explicit tool group in Settings: Dashboard
+(`settings.aiTools.dashboard.label`), IT Ops (`settings.aiTools.itops.label`),
+Install Helper (`settings.aiTools.installer.label`), Screenshots
+(`settings.aiTools.screenshots.label`), and the Workspace paths split between
+Connections (`settings.aiTools.connections.label`) and live Sessions
+(`settings.aiTools.sessions.label`). Watchdogs are controlled by
+`settings.aiTools.watchdog.label`. Turning a group off removes its tool
+definitions from native-provider turns; ACP-backed CLI providers see the same
+major Module surface through the built-in MCP server.
+
+Install Helper tools first enumerate the curated catalog and current detection
+state. Install/update and uninstall calls use the Module's dependency plan and
+progress stream, can be cancelled, and require the normal in-chat approval in
+Prompt mode. Screenshots tools can list saved-library metadata without image
+bytes, read one full image, rename, copy,
+resize, convert, delete, open/reveal files, and capture a region, window, or
+full screen; every action except metadata listing requires approval because it
+can expose screen content or modify files/clipboard state.
+
 The assistant memory tools (`settings.aiTools.memory.label`, default on) let the assistant keep short durable notes about the user's environment. `assistant_memory_remember` saves a note scoped to the active Connection (`connection:<id>`) or `global`; `assistant_memory_recall` lists notes in scope; `assistant_memory_forget` deletes one by id. Notes are stored in the SQLite `assistant_memories` table — never secrets, which stay in the OS keychain. At the start of each turn the assistant is given the global notes plus the active Connection's notes as background knowledge. Memory tools are display/local-data only and never require an approval prompt.
 
 The assistant can also call the read-only `mcp_list_tools` tool to list the remote MCP servers configured in Settings together with their cached tool schemas. It serves the cached `tools/list` results from local storage without contacting the servers and is used to ground widget code that calls `KK.callMcpTool` in real tool names and argument shapes.
@@ -101,6 +120,10 @@ Names shown during a tool call (`ai.toolCallRunning` → `ai.toolCallComplete`):
 | Email | `ai.toolEmail` | `ai.toolEmailDone` |
 | Secret request | `ai.toolSecretRequest` | `ai.toolSecretRequestDone` |
 | Dashboard | `ai.toolDashboard` | `ai.toolDashboardDone` |
+| IT Ops | `ai.toolItOps` | `ai.toolItOpsDone` |
+| Install Helper | `ai.toolInstaller` | `ai.toolInstallerDone` |
+| Screenshots | `ai.toolScreenshots` | `ai.toolScreenshotsDone` |
+| Watchdogs | `ai.toolWatchdog` | `ai.toolWatchdogDone` |
 | Connections | `ai.toolConnections` | `ai.toolConnectionsDone` |
 | Sessions | `ai.toolSessions` | `ai.toolSessionsDone` |
 | Tutorial | `ai.toolTutorial` | `ai.toolTutorialDone` |

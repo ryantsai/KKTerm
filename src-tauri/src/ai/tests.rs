@@ -3826,6 +3826,16 @@ fn prompt_permission_mode_blocks_mutating_tools() {
     assert!(!tool_requires_allow_all("itops_get_task"));
     assert!(!tool_requires_allow_all("itops_get_run_report"));
     assert!(!tool_requires_allow_all("itops_test_automation"));
+    assert!(tool_requires_allow_all("installer_install"));
+    assert!(tool_requires_allow_all("installer_uninstall"));
+    assert!(tool_requires_allow_all("installer_launch"));
+    assert!(!tool_requires_allow_all("installer_list_tools"));
+    assert!(!tool_requires_allow_all("installer_check_updates"));
+    assert!(!tool_requires_allow_all("installer_cancel"));
+    assert!(tool_requires_allow_all("screenshot_read"));
+    assert!(tool_requires_allow_all("screenshot_capture_region"));
+    assert!(tool_requires_allow_all("screenshot_delete"));
+    assert!(!tool_requires_allow_all("screenshot_list"));
 
     let result = tool_permission_required_result("dashboard_reset");
     let value: Value = serde_json::from_str(&result).expect("permission result is JSON");
@@ -3983,6 +3993,68 @@ fn tutorial_tool_documents_add_connection_target() {
             .description
             .contains("navigation page=workspace")
     );
+    assert!(
+        tutorial
+            .function
+            .parameters
+            .pointer("/properties/navigation/properties/page/enum")
+            .and_then(Value::as_array)
+            .is_some_and(|pages| pages.contains(&json!("screenshots")))
+    );
+}
+
+#[test]
+fn tool_definitions_include_installer_and_screenshots_modules() {
+    let settings: AiAssistantToolSettings = serde_json::from_value(json!({
+        "installer": true,
+        "screenshots": true
+    }))
+    .expect("tool settings deserialize");
+
+    let tools = ai_tool_definitions(&settings);
+    let names: Vec<&str> = tools.iter().map(|tool| tool.function.name).collect();
+
+    for name in [
+        "installer_list_tools",
+        "installer_check_updates",
+        "installer_install",
+        "installer_uninstall",
+        "installer_cancel",
+        "installer_launch",
+        "screenshot_list",
+        "screenshot_read",
+        "screenshot_rename",
+        "screenshot_copy_to_clipboard",
+        "screenshot_resize",
+        "screenshot_convert",
+        "screenshot_delete",
+        "screenshot_delete_batch",
+        "screenshot_open_folder",
+        "screenshot_reveal",
+        "screenshot_open_file",
+        "screenshot_capture_region",
+        "screenshot_capture_window",
+        "screenshot_capture_fullscreen",
+    ] {
+        assert!(names.contains(&name), "missing assistant tool {name}");
+    }
+}
+
+#[test]
+fn assistant_screenshot_listing_omits_thumbnail_image_data() {
+    let mut listing = json!({
+        "screenshots": [{
+            "id": "capture-1",
+            "fileName": "capture.png",
+            "thumbnailDataUrl": "data:image/jpeg;base64,sensitive"
+        }],
+        "total": 1
+    });
+
+    strip_screenshot_thumbnails(&mut listing);
+
+    assert_eq!(listing["screenshots"][0]["id"], "capture-1");
+    assert!(listing["screenshots"][0].get("thumbnailDataUrl").is_none());
 }
 
 #[test]

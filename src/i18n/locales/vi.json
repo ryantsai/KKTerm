@@ -2606,6 +2606,18 @@
         "label": "Bảng điều khiển",
         "description": "Đọc và chỉnh sửa các chế độ xem Dashboard, phiên bản widget và Widget do AI tạo."
       },
+      "itops": {
+        "label": "IT Ops",
+        "description": "Manage Sites, Hosts, Server Rooms, Racks, Tasks, Automations, and Batch Runs."
+      },
+      "installer": {
+        "label": "Install Helper",
+        "description": "Detect, install, update, uninstall, and launch curated developer tools."
+      },
+      "screenshots": {
+        "label": "Screenshots",
+        "description": "Capture, inspect, organize, transform, and open Screenshots Module library items."
+      },
       "connections": {
         "label": "Kết nối",
         "description": "Liệt kê, tạo, chỉnh sửa và xóa các không gian làm việc, thư mục kết nối và kết nối đã lưu."
@@ -2625,6 +2637,10 @@
       "network": {
         "label": "Công cụ quản trị mạng",
         "description": "Ping các host, kiểm tra cổng TCP, phân giải DNS, chạy WHOIS, liệt kê giao diện và gửi Wake-on-LAN."
+      },
+      "watchdog": {
+        "label": "Watchdogs",
+        "description": "Create and manage background monitors for Sessions, performance counters, and network reachability."
       },
       "memory": {
         "label": "Bộ nhớ trợ lý",
@@ -4294,6 +4310,10 @@
     "toolEmail": "Đang gửi email…",
     "toolSecretRequest": "Đang yêu cầu mục bí mật…",
     "toolDashboard": "Đang cập nhật Bảng điều khiển…",
+    "toolItOps": "Working with IT Ops...",
+    "toolInstaller": "Working with Install Helper...",
+    "toolScreenshots": "Working with Screenshots...",
+    "toolWatchdog": "Working with Watchdogs...",
     "toolConnections": "Đang quản lý kết nối…",
     "toolSessions": "Đang làm việc với phiên…",
     "toolTutorial": "Đang hiển thị trợ giúp hướng dẫn...",
@@ -4307,6 +4327,10 @@
     "toolEmailDone": "Đã gửi email",
     "toolSecretRequestDone": "Đã yêu cầu mục bí mật",
     "toolDashboardDone": "Đã cập nhật Bảng điều khiển",
+    "toolItOpsDone": "Worked with IT Ops",
+    "toolInstallerDone": "Worked with Install Helper",
+    "toolScreenshotsDone": "Worked with Screenshots",
+    "toolWatchdogDone": "Worked with Watchdogs",
     "toolConnectionsDone": "Đã quản lý kết nối",
     "toolSessionsDone": "Đã làm việc với phiên",
     "toolTutorialDone": "Đã hiển thị trợ giúp hướng dẫn",

@@ -1170,6 +1170,31 @@ async fn dispatch_tool(app: &AppHandle, name: &str, args: Value) -> Result<Value
             let raw = crate::ai::dashboard_tool(app, "dashboard_reset", json!({}));
             parse_dashboard_json(&raw)
         }
+        "kkterm.installer.tools.list" => {
+            parse_tool_json(&crate::ai::installer_tool(
+                app,
+                "installer_list_tools",
+                json!({}),
+            )
+            .await)
+        }
+        "kkterm.installer.updates.check" => {
+            parse_tool_json(
+                &crate::ai::installer_tool(app, "installer_check_updates", args).await,
+            )
+        }
+        "kkterm.installer.dangerous.install" => {
+            parse_tool_json(&crate::ai::installer_tool(app, "installer_install", args).await)
+        }
+        "kkterm.installer.dangerous.uninstall" => {
+            parse_tool_json(&crate::ai::installer_tool(app, "installer_uninstall", args).await)
+        }
+        "kkterm.installer.cancel" => {
+            parse_tool_json(&crate::ai::installer_tool(app, "installer_cancel", args).await)
+        }
+        "kkterm.installer.dangerous.launch" => {
+            parse_tool_json(&crate::ai::installer_tool(app, "installer_launch", args).await)
+        }
         "kkterm.screenshots.list" => {
             let request = serde_json::from_value(args).map_err(|error| error.to_string())?;
             serde_json::to_value(crate::list_screenshots(app.clone(), request).await?)
@@ -1885,6 +1910,12 @@ mod tests {
         ));
         assert!(dangerous_tool("kkterm.dashboard.dangerous.create_widget"));
         assert!(dangerous_tool("kkterm.dashboard.dangerous.reset"));
+        assert!(dangerous_tool("kkterm.installer.dangerous.install"));
+        assert!(dangerous_tool("kkterm.installer.dangerous.uninstall"));
+        assert!(dangerous_tool("kkterm.installer.dangerous.launch"));
+        assert!(!dangerous_tool("kkterm.installer.tools.list"));
+        assert!(!dangerous_tool("kkterm.installer.updates.check"));
+        assert!(!dangerous_tool("kkterm.installer.cancel"));
         assert!(dangerous_tool(
             "kkterm.workspace.file_browser.dangerous.create_folder"
         ));
@@ -1967,6 +1998,16 @@ mod tests {
         assert!(names.contains(&"kkterm.dashboard.dangerous.create_widget".to_string()));
         assert!(names.contains(&"kkterm.dashboard.dangerous.update_custom_widget".to_string()));
         assert!(names.contains(&"kkterm.dashboard.dangerous.reset".to_string()));
+        for name in [
+            "kkterm.installer.tools.list",
+            "kkterm.installer.updates.check",
+            "kkterm.installer.dangerous.install",
+            "kkterm.installer.dangerous.uninstall",
+            "kkterm.installer.cancel",
+            "kkterm.installer.dangerous.launch",
+        ] {
+            assert!(names.contains(&name.to_string()));
+        }
         // File browser surface
         assert!(names.contains(&"kkterm.workspace.file_browser.list".to_string()));
         assert!(

@@ -2606,6 +2606,18 @@
         "label": "Dashboard",
         "description": "Read and modify Dashboard views, widget instances, and AI Created Widgets."
       },
+      "itops": {
+        "label": "IT Ops",
+        "description": "Manage Sites, Hosts, Server Rooms, Racks, Tasks, Automations, and Batch Runs."
+      },
+      "installer": {
+        "label": "Install Helper",
+        "description": "Detect, install, update, uninstall, and launch curated developer tools."
+      },
+      "screenshots": {
+        "label": "Screenshots",
+        "description": "Capture, inspect, organize, transform, and open Screenshots Module library items."
+      },
       "connections": {
         "label": "Connections",
         "description": "List, create, edit, and delete Workspaces, Connection folders, and saved Connections."
@@ -2625,6 +2637,10 @@
       "network": {
         "label": "Network admin tools",
         "description": "Ping hosts, check TCP ports, resolve DNS, run WHOIS, list interfaces, and send Wake-on-LAN."
+      },
+      "watchdog": {
+        "label": "Watchdogs",
+        "description": "Create and manage background monitors for Sessions, performance counters, and network reachability."
       },
       "memory": {
         "label": "Assistant memory",
@@ -4294,6 +4310,10 @@
     "toolEmail": "Sending email…",
     "toolSecretRequest": "Requesting secret entry…",
     "toolDashboard": "Updating Dashboard...",
+    "toolItOps": "Working with IT Ops...",
+    "toolInstaller": "Working with Install Helper...",
+    "toolScreenshots": "Working with Screenshots...",
+    "toolWatchdog": "Working with Watchdogs...",
     "toolConnections": "Managing Connections...",
     "toolSessions": "Working with Sessions...",
     "toolTutorial": "Showing tutorial help...",
@@ -4307,6 +4327,10 @@
     "toolEmailDone": "Sent email",
     "toolSecretRequestDone": "Requested secret entry",
     "toolDashboardDone": "Updated Dashboard",
+    "toolItOpsDone": "Worked with IT Ops",
+    "toolInstallerDone": "Worked with Install Helper",
+    "toolScreenshotsDone": "Worked with Screenshots",
+    "toolWatchdogDone": "Worked with Watchdogs",
     "toolConnectionsDone": "Managed Connections",
     "toolSessionsDone": "Worked with Sessions",
     "toolTutorialDone": "Showed tutorial help",

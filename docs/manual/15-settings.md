@@ -143,6 +143,15 @@ Section header `settings.fileExplorer`. Selector `settings.fileExplorerOpenMode`
   - Interval dropdown `settings.installerCheckInterval` (hint `settings.installerCheckIntervalDesc`) with options `settings.installerCheckInterval3600` (hour), `settings.installerCheckInterval86400` (day, default), `settings.installerCheckInterval604800` (week), `settings.installerCheckInterval2592000` (month). Controls how often the Install Helper auto-checks for the latest tool versions when you switch to the Module; the in-Module Refresh button always checks immediately.
 - Save status: `settings.installerSaved`.
 
+The AI Assistant tool list has a separate
+`settings.aiTools.installer.label` toggle for curated catalog discovery,
+detection, update checks, install/update/uninstall, cancellation, and
+allowlisted app launch. The IT Ops, Screenshots, and Watchdog backend groups are
+also individually visible through `settings.aiTools.itops.label`,
+`settings.aiTools.screenshots.label`, and
+`settings.aiTools.watchdog.label`; these rows must not be omitted from the
+toggle list while their persisted backend settings remain enabled.
+
 ## Credentials & MCP
 
 This is the central manager for secrets stored in the selected credential backend.
@@ -258,6 +267,11 @@ Manual app update checks live in General -> `settings.softwareUpdates`, not Abou
 ## Built-in MCP Server
 
 - Location: Settings → AI Assistant section on Windows, macOS, and Linux. The bridge transport is a named pipe on Windows and a `0600` Unix domain socket on macOS/Linux; the built-in MCP rows are shown on all three.
+- The published major-Module namespaces are Workspace, Dashboard, Install
+  Helper, Screenshots, and IT Ops. Install/update, uninstall, and launch tools
+  live under `kkterm.installer.dangerous.*` and obey
+  `settings.builtInMcpAllowAllDangerous`; catalog/detection reads, update
+  checks, and cancellation remain safe tools.
 - Toggle keys: `settings.builtInMcpServerEnabled` (`settings.builtInMcpServerEnabledHint`) and `settings.builtInMcpAllowAllDangerous` (`settings.builtInMcpAllowAllDangerousHint`).
 - Config dialog keys: `settings.builtInMcpShowConfig`, `settings.builtInMcpConfigTitle`, `settings.builtInMcpConfigIntro`, `settings.builtInMcpConfigFormatJson`, `settings.builtInMcpConfigFormatToml`, `settings.builtInMcpConfigCopy`, `settings.builtInMcpConfigCopied`, `settings.builtInMcpConfigLocationsTitle`, `settings.builtInMcpConfig*Header`, and `settings.builtInMcpConfigMethod*`.
 - Config dialog behavior: opens only when the user activates `settings.builtInMcpShowConfig`; changing either MCP toggle never opens the dialog. It shows copyable JSON (`mcpServers.kkterm`) and TOML (`[mcp_servers.kkterm]`) snippets for stdio MCP clients using the resolved `kkterm-cli` path beside the running KKTerm executable (`kkterm-cli.exe` on Windows). The setup table shows localized Agent/Method/Project/Global headings. Codex and Claude Code rows include documented CLI commands where supported; VS Code/GitHub Copilot, Antigravity, and OpenCode rows use `settings.builtInMcpConfigMethodManualEdit` and list config locations.

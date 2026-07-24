@@ -1251,6 +1251,8 @@ export type AiAssistantToolId =
   | "email"
   | "dashboard"
   | "itops"
+  | "installer"
+  | "screenshots"
   | "connections"
   | "sessions"
   | "tutorial"

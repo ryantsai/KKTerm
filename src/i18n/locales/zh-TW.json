@@ -2606,6 +2606,18 @@
         "label": "儀表板",
         "description": "讀取和修改儀表板檢視、小工具實例及 AI 建立的小工具。"
       },
+      "itops": {
+        "label": "IT Ops",
+        "description": "Manage Sites, Hosts, Server Rooms, Racks, Tasks, Automations, and Batch Runs."
+      },
+      "installer": {
+        "label": "Install Helper",
+        "description": "Detect, install, update, uninstall, and launch curated developer tools."
+      },
+      "screenshots": {
+        "label": "Screenshots",
+        "description": "Capture, inspect, organize, transform, and open Screenshots Module library items."
+      },
       "connections": {
         "label": "連線",
         "description": "列出、建立、編輯和刪除工作區、連線資料夾和已儲存的連線。"
@@ -2625,6 +2637,10 @@
       "network": {
         "label": "網路管理工具",
         "description": "ping 主機、檢查 TCP 連接埠、解析 DNS、執行 WHOIS、列出網路介面並傳送網路喚醒。"
+      },
+      "watchdog": {
+        "label": "Watchdogs",
+        "description": "Create and manage background monitors for Sessions, performance counters, and network reachability."
       },
       "memory": {
         "label": "助理記憶",
@@ -4294,6 +4310,10 @@
     "toolEmail": "正在傳送郵件…",
     "toolSecretRequest": "正在請求金鑰項目…",
     "toolDashboard": "正在更新儀表板…",
+    "toolItOps": "Working with IT Ops...",
+    "toolInstaller": "Working with Install Helper...",
+    "toolScreenshots": "Working with Screenshots...",
+    "toolWatchdog": "Working with Watchdogs...",
     "toolConnections": "正在管理連線…",
     "toolSessions": "正在處理工作階段…",
     "toolTutorial": "正在顯示教學說明...",
@@ -4307,6 +4327,10 @@
     "toolEmailDone": "郵件已傳送",
     "toolSecretRequestDone": "已請求金鑰項目",
     "toolDashboardDone": "已更新儀表板",
+    "toolItOpsDone": "Worked with IT Ops",
+    "toolInstallerDone": "Worked with Install Helper",
+    "toolScreenshotsDone": "Worked with Screenshots",
+    "toolWatchdogDone": "Worked with Watchdogs",
     "toolConnectionsDone": "已管理連線",
     "toolSessionsDone": "已處理工作階段",
     "toolTutorialDone": "已顯示教學說明",

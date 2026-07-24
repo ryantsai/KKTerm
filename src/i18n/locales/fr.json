@@ -2606,6 +2606,18 @@
         "label": "Tableau de bord",
         "description": "Lire et modifier les vues du tableau de bord, les instances de widgets et les widgets créés par l’IA."
       },
+      "itops": {
+        "label": "IT Ops",
+        "description": "Manage Sites, Hosts, Server Rooms, Racks, Tasks, Automations, and Batch Runs."
+      },
+      "installer": {
+        "label": "Install Helper",
+        "description": "Detect, install, update, uninstall, and launch curated developer tools."
+      },
+      "screenshots": {
+        "label": "Screenshots",
+        "description": "Capture, inspect, organize, transform, and open Screenshots Module library items."
+      },
       "connections": {
         "label": "Connexions",
         "description": "Lister, créer, modifier et supprimer les espaces de travail, les dossiers de connexion et les connexions enregistrées."
@@ -2625,6 +2637,10 @@
       "network": {
         "label": "Outils d'administration réseau",
         "description": "Envoyer un ping aux hôtes, vérifier les ports TCP, résoudre le DNS, exécuter WHOIS, lister les interfaces et envoyer Wake-on-LAN."
+      },
+      "watchdog": {
+        "label": "Watchdogs",
+        "description": "Create and manage background monitors for Sessions, performance counters, and network reachability."
       },
       "memory": {
         "label": "Mémoire de l'assistant",
@@ -4294,6 +4310,10 @@
     "toolEmail": "Envoi d’un e-mail…",
     "toolSecretRequest": "Demande d’entrée secrète…",
     "toolDashboard": "Mise à jour du tableau de bord…",
+    "toolItOps": "Working with IT Ops...",
+    "toolInstaller": "Working with Install Helper...",
+    "toolScreenshots": "Working with Screenshots...",
+    "toolWatchdog": "Working with Watchdogs...",
     "toolConnections": "Gestion des connexions…",
     "toolSessions": "Travail avec les sessions…",
     "toolTutorial": "Affichage de l’aide du tutoriel...",
@@ -4307,6 +4327,10 @@
     "toolEmailDone": "E-mail envoyé",
     "toolSecretRequestDone": "Entrée secrète demandée",
     "toolDashboardDone": "Tableau de bord mis à jour",
+    "toolItOpsDone": "Worked with IT Ops",
+    "toolInstallerDone": "Worked with Install Helper",
+    "toolScreenshotsDone": "Worked with Screenshots",
+    "toolWatchdogDone": "Worked with Watchdogs",
     "toolConnectionsDone": "Connexions gérées",
     "toolSessionsDone": "A travaillé avec les sessions",
     "toolTutorialDone": "Aide du tutoriel affichée",
