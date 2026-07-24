@@ -1313,7 +1313,7 @@ export function WebViewWorkspace({
         {
           kind: "item",
           label: t("dashboard.qrSaveImage"),
-          iconSvg: nativeMenuIcons.save,
+          iconSvg: nativeMenuIcons.saveAs,
           action: () => void saveFullWebviewPageAs(),
         },
         {

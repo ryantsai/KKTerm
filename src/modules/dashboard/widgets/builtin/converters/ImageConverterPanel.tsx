@@ -1,4 +1,5 @@
-import { ImageUp, Link, Save, Unlink, X } from "../../../../../lib/reicon";
+import { ImageUp, Link, Unlink, X } from "../../../../../lib/reicon";
+import { SaveAsIcon } from "../../../../../app/ui/SaveAsIcon";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { technicalInputProps } from "../../../../../lib/inputBehavior";
@@ -261,7 +262,7 @@ export function ImageConverterPanel() {
               : t("dashboard.imageConverter.selectHint")}
         </span>
         <button type="button" className="primary-button" disabled={!source || Boolean(dimensionError) || busy} onClick={() => void convertAndSave()}>
-          <Save size={13} />
+          <SaveAsIcon size={13} />
           {busy ? t("dashboard.imageConverter.converting") : t("dashboard.imageConverter.convertAndSave")}
         </button>
       </div>

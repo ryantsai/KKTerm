@@ -399,7 +399,7 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
         {
           kind: "item",
           label: t("screenshots.batch.convert", { count: targets.length }),
-          iconSvg: nativeMenuIcons.save,
+          iconSvg: nativeMenuIcons.saveAs,
           action: () => setConvertTargets(targets),
         },
         { kind: "separator" },

@@ -37,6 +37,7 @@ import {
   Sheet,
 } from "../../app/ui/dialog";
 import { ColorPalettePicker } from "../../app/ui/ColorPalettePicker";
+import { SaveAsIcon } from "../../app/ui/SaveAsIcon";
 import { writeToClipboard } from "../../lib/clipboard";
 import {
   showNativeContextMenu,
@@ -491,15 +492,6 @@ function initialEditorSize() {
     width: Math.max(720, Math.round(window.innerWidth * 0.8)),
     height: Math.max(480, Math.round(window.innerHeight * 0.8)),
   };
-}
-
-function MultipleFloppy({ size = 15 }: { size?: number }) {
-  return (
-    <span className="screenshots-editor__multi-floppy" aria-hidden="true">
-      <Floppy size={size} />
-      <Floppy size={size} />
-    </span>
-  );
 }
 
 function drawShape(
@@ -2000,7 +1992,7 @@ export function ScreenshotEditor({
                 disabled={!ready || saving}
                 onClick={() => void saveAs()}
               >
-                <MultipleFloppy />
+                <SaveAsIcon />
               </button>
               <button
                 type="button"

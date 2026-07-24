@@ -1,8 +1,9 @@
-import { Copy, Save } from "../../../../../lib/reicon";
+import { Copy } from "../../../../../lib/reicon";
 import QRCode from "qrcode";
 import JsBarcode from "jsbarcode";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { SaveAsIcon } from "../../../../../app/ui/SaveAsIcon";
 import type { BuiltInWidgetBodyProps } from "../../../registry/builtInRegistry";
 import { technicalInputProps } from "../../../../../lib/inputBehavior";
 import { isTauriRuntime, pickAndSaveFile } from "../../../../../lib/tauri";
@@ -184,7 +185,7 @@ export function QrCodeBody({ instance }: BuiltInWidgetBodyProps) {
               disabled={!showCode}
               onClick={saveImage}
             >
-              <Save size={14} />
+              <SaveAsIcon size={14} />
             </button>
           ) : null}
         </div>

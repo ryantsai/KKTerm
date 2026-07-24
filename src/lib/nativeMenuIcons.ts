@@ -27,6 +27,7 @@ export const nativeMenuIcons = {
   squarePlus: lucide(`<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 12h8"/><path d="M12 8v8"/>`),
   rotateCcw: lucide(`<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>`),
   save: lucide(`<path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8A2 2 0 0 1 21 8.8V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7H7v7"/><path d="M7 3v5h8"/>`),
+  saveAs: lucide(`<path d="M9 3h7l4 4v10H9z"/><path d="M16 3v4h4"/><path d="M12 17v-5h5v5"/><path d="M4 7h7l4 4v10H4z"/><path d="M11 7v4h4"/><path d="M7 21v-5h5v5"/>`),
   scanLine: lucide(`<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/>`),
   scissors: lucide(`<circle cx="6" cy="7" r="3"/><path d="M8.7 8.3 21 14.5"/><circle cx="6" cy="17" r="3"/><path d="m8.7 15.7 4.2-2.1"/><path d="M14.5 10.5 21 7"/>`),
   server: lucide(`<rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><path d="M6 6h.01"/><path d="M6 18h.01"/>`),

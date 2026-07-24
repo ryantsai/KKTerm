@@ -616,30 +616,6 @@
   gap: 1px;
 }
 
-.screenshots-editor__multi-floppy {
-  position: relative;
-  display: inline-flex;
-  width: 18px;
-  height: 18px;
-  align-items: center;
-  justify-content: center;
-}
-
-.screenshots-editor__multi-floppy svg:first-child {
-  position: absolute;
-  width: 14px;
-  height: 14px;
-  transform: translate(3px, -3px);
-  opacity: 0.72;
-}
-
-.screenshots-editor__multi-floppy svg:last-child {
-  position: absolute;
-  width: 15px;
-  height: 15px;
-  transform: translate(-2px, 2px);
-}
-
 .screenshots-editor__footer-meta {
   position: absolute;
   left: 50%;
