@@ -2465,10 +2465,10 @@
     "urlSecurityHint": "URL 接続の証明書処理を制御します。内部サイトとネットワークを信頼する場合を除き、バイパスはオフにしてください。",
     "ignoreCertificateErrors": "無効な HTTPS 証明書を無視する",
     "ignoreCertificateErrorsHint": "ブラウザ警告なしに自己署名または信頼できない証明書を持つ URL 接続を読み込みます。新しく開いた URL タブに適用されます。",
-    "urlDownloadFolder": "Download folder",
-    "urlDownloadFolderHint": "Files downloaded from URL Connections are saved here. Leave blank to use the operating system Downloads folder.",
-    "urlDownloadFolderSystemDefault": "System Downloads folder",
-    "urlDownloadFolderBrowse": "Browse…",
+    "urlDownloadFolder": "ダウンロード フォルダー",
+    "urlDownloadFolderHint": "URL 接続からダウンロードしたファイルはここに保存されます。空欄にすると、オペレーティング システムのダウンロード フォルダーが使用されます。",
+    "urlDownloadFolderSystemDefault": "システムのダウンロード フォルダー",
+    "urlDownloadFolderBrowse": "参照…",
     "sectionShortcuts": "ショートカット",
     "shortcutsHint": "ワークスペースモジュールのキーボードショートカットです。ショートカットをクリックして新しいキーの組み合わせを記録するか、クリアしてショートカットなしにできます。",
     "shortcutCloseTab": "タブを閉じる",
@@ -2608,15 +2608,15 @@
       },
       "itops": {
         "label": "IT Ops",
-        "description": "Manage Sites, Hosts, Server Rooms, Racks, Tasks, Automations, and Batch Runs."
+        "description": "サイト、ホスト、サーバールーム、ラック、タスク、自動化、バッチ実行を管理します。"
       },
       "installer": {
-        "label": "Install Helper",
-        "description": "Detect, install, update, uninstall, and launch curated developer tools."
+        "label": "インストールヘルパー",
+        "description": "厳選された開発ツールの検出、インストール、更新、アンインストール、起動を行います。"
       },
       "screenshots": {
-        "label": "Screenshots",
-        "description": "Capture, inspect, organize, transform, and open Screenshots Module library items."
+        "label": "スクリーンショット",
+        "description": "スクリーンショット モジュールのライブラリ項目をキャプチャ、検査、整理、変換、開きます。"
       },
       "connections": {
         "label": "接続",
@@ -2639,8 +2639,8 @@
         "description": "ホストへの ping、TCP ポートの確認、DNS 解決、WHOIS の実行、インターフェイスの一覧表示、Wake-on-LAN の送信を行います。"
       },
       "watchdog": {
-        "label": "Watchdogs",
-        "description": "Create and manage background monitors for Sessions, performance counters, and network reachability."
+        "label": "監視",
+        "description": "セッション、パフォーマンスカウンター、ネットワーク到達性のバックグラウンドモニターを作成および管理します。"
       },
       "memory": {
         "label": "アシスタントメモリー",
@@ -3812,10 +3812,10 @@
     "downloadComplete": "ダウンロードが完了しました",
     "downloadFailed": "ダウンロードに失敗しました",
     "downloads": "Downloads",
-    "downloadInProgress": "{{file}} — Downloading",
-    "downloadSucceeded": "{{file}} — Complete",
-    "downloadFailedItem": "{{file}} — Failed",
-    "openDownloadFolder": "Open download folder",
+    "downloadInProgress": "{{file}} — ダウンロード中",
+    "downloadSucceeded": "{{file}} — 完了",
+    "downloadFailedItem": "{{file}} — 失敗",
+    "openDownloadFolder": "ダウンロード フォルダーを開く",
     "invalidCertificateWarning": "このサイトは HTTPS 証明書が無効なため開けません。続行するには、［設定］→［URL］で証明書の検証を無効にしてください。",
     "noUrlConfigured": "この URL コネクションには URL が設定されていません。",
     "openExternally": "外部で開く",
@@ -4069,17 +4069,17 @@
     "viewModeButton": "表示モード: {{mode}}",
     "viewModeSaved": "表示モードを保存しました: {{mode}}",
     "fullscreen": {
-      "enter": "Full screen",
+      "enter": "全画面表示",
       "toggle": "全画面表示を切り替え",
-      "exit": "Exit full screen",
-      "windowTitle": "Remote session",
-      "barAria": "Full-screen controls",
-      "display": "Display",
-      "spanAll": "Span all displays",
-      "displayIndex": "Display {{index}}",
-      "pin": "Pin toolbar",
-      "unpin": "Unpin toolbar",
-      "rdpPending": "Full-screen RDP is not available yet."
+      "exit": "全画面表示を終了",
+      "windowTitle": "リモートセッション",
+      "barAria": "全画面表示コントロール",
+      "display": "ディスプレイ",
+      "spanAll": "すべてのディスプレイにまたがる",
+      "displayIndex": "ディスプレイ {{index}}",
+      "pin": "ツールバーを固定",
+      "unpin": "ツールバーの固定を解除",
+      "rdpPending": "全画面 RDP はまだ利用できません。"
     }
   },
   "ai": {
@@ -4310,10 +4310,10 @@
     "toolEmail": "メール送信中…",
     "toolSecretRequest": "シークレットエントリをリクエスト中…",
     "toolDashboard": "ダッシュボードを更新中…",
-    "toolItOps": "Working with IT Ops...",
-    "toolInstaller": "Working with Install Helper...",
-    "toolScreenshots": "Working with Screenshots...",
-    "toolWatchdog": "Working with Watchdogs...",
+    "toolItOps": "IT Opsを操作中…",
+    "toolInstaller": "インストールヘルパーを操作中…",
+    "toolScreenshots": "スクリーンショットを操作中…",
+    "toolWatchdog": "監視を操作中…",
     "toolConnections": "接続を管理中…",
     "toolSessions": "セッションを処理中…",
     "toolTutorial": "チュートリアルヘルプを表示しています...",
@@ -4327,10 +4327,10 @@
     "toolEmailDone": "メール送信完了",
     "toolSecretRequestDone": "シークレットエントリをリクエストしました",
     "toolDashboardDone": "ダッシュボードを更新しました",
-    "toolItOpsDone": "Worked with IT Ops",
-    "toolInstallerDone": "Worked with Install Helper",
-    "toolScreenshotsDone": "Worked with Screenshots",
-    "toolWatchdogDone": "Worked with Watchdogs",
+    "toolItOpsDone": "IT Opsを操作しました",
+    "toolInstallerDone": "インストールヘルパーを操作しました",
+    "toolScreenshotsDone": "スクリーンショットを操作しました",
+    "toolWatchdogDone": "監視を操作しました",
     "toolConnectionsDone": "接続を管理しました",
     "toolSessionsDone": "セッションを処理しました",
     "toolTutorialDone": "チュートリアルヘルプを表示しました",

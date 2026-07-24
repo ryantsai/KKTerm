@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use oxc_allocator::Allocator;
 use oxc_ast_visit::Visit;
-use oxc_parser::Parser;
+use oxc_parser::{ParseOptions, Parser};
 use oxc_span::SourceType;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -1137,7 +1137,12 @@ fn parse_script_source_ast(source: &str) -> Result<HashSet<String>, String> {
     let wrapped = format!("(function(){{\n{source}\n}})();");
     let allocator = Allocator::default();
     let source_type = SourceType::cjs();
-    let ret = Parser::new(&allocator, &wrapped, source_type).parse();
+    let ret = Parser::new(&allocator, &wrapped, source_type)
+        .with_options(ParseOptions {
+            enable_ident_hashes: false,
+            ..Default::default()
+        })
+        .parse();
     // Prefer the structured error (with location) over the bare panic flag,
     // since oxc sets `panicked` for unrecoverable parses but usually also
     // populates `diagnostics` with the precise failure.

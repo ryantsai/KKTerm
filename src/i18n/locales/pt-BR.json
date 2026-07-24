@@ -2465,10 +2465,10 @@
     "urlSecurityHint": "Controla o manuseio de certificados para Conexões URL. Mantenha a omissão desativada a menos que confie no site e na rede internos.",
     "ignoreCertificateErrors": "Ignorar certificados HTTPS inválidos",
     "ignoreCertificateErrorsHint": "Carrega Conexões URL com certificados autoassinados ou não confiáveis sem o aviso do navegador. Aplica-se a abas URL recém-abertas.",
-    "urlDownloadFolder": "Download folder",
-    "urlDownloadFolderHint": "Files downloaded from URL Connections are saved here. Leave blank to use the operating system Downloads folder.",
-    "urlDownloadFolderSystemDefault": "System Downloads folder",
-    "urlDownloadFolderBrowse": "Browse…",
+    "urlDownloadFolder": "Pasta de downloads",
+    "urlDownloadFolderHint": "Os arquivos baixados de Conexões URL são salvos aqui. Deixe em branco para usar a pasta Downloads do sistema operacional.",
+    "urlDownloadFolderSystemDefault": "Pasta Downloads do sistema",
+    "urlDownloadFolderBrowse": "Procurar…",
     "sectionShortcuts": "Atalhos",
     "shortcutsHint": "Atalhos de teclado do módulo Área de trabalho. Clique em um atalho para gravar uma nova combinação de teclas, ou limpe-o para deixar a ação sem atalho.",
     "shortcutCloseTab": "Fechar aba",
@@ -2608,15 +2608,15 @@
       },
       "itops": {
         "label": "IT Ops",
-        "description": "Manage Sites, Hosts, Server Rooms, Racks, Tasks, Automations, and Batch Runs."
+        "description": "Gerenciar Sites, Hosts, Salas de servidores, Racks, Tarefas, Automações e Execuções em lote."
       },
       "installer": {
-        "label": "Install Helper",
-        "description": "Detect, install, update, uninstall, and launch curated developer tools."
+        "label": "Assistente de instalação",
+        "description": "Detectar, instalar, atualizar, desinstalar e executar ferramentas de desenvolvimento selecionadas."
       },
       "screenshots": {
-        "label": "Screenshots",
-        "description": "Capture, inspect, organize, transform, and open Screenshots Module library items."
+        "label": "Capturas de tela",
+        "description": "Capturar, inspecionar, organizar, transformar e abrir itens da biblioteca do módulo Capturas de tela."
       },
       "connections": {
         "label": "Conexões",
@@ -2639,8 +2639,8 @@
         "description": "Executar ping em hosts, verificar portas TCP, resolver DNS, executar WHOIS, listar interfaces e enviar Wake-on-LAN."
       },
       "watchdog": {
-        "label": "Watchdogs",
-        "description": "Create and manage background monitors for Sessions, performance counters, and network reachability."
+        "label": "Vigilantes",
+        "description": "Criar e gerenciar monitores em segundo plano para sessões, contadores de desempenho e acessibilidade de rede."
       },
       "memory": {
         "label": "Memória do assistente",
@@ -3812,10 +3812,10 @@
     "downloadComplete": "Download concluído",
     "downloadFailed": "Falha no download",
     "downloads": "Downloads",
-    "downloadInProgress": "{{file}} — Downloading",
-    "downloadSucceeded": "{{file}} — Complete",
-    "downloadFailedItem": "{{file}} — Failed",
-    "openDownloadFolder": "Open download folder",
+    "downloadInProgress": "{{file}} — Baixando",
+    "downloadSucceeded": "{{file}} — Concluído",
+    "downloadFailedItem": "{{file}} — Falhou",
+    "openDownloadFolder": "Abrir pasta de downloads",
     "invalidCertificateWarning": "Não é possível abrir este site porque o certificado HTTPS é inválido. Desative a validação de certificados em Configurações → URL para continuar.",
     "noUrlConfigured": "Esta conexão URL não tem URL configurada.",
     "openExternally": "Abrir externamente",
@@ -4069,17 +4069,17 @@
     "viewModeButton": "Modo de visualização: {{mode}}",
     "viewModeSaved": "Modo de visualização salvo: {{mode}}",
     "fullscreen": {
-      "enter": "Full screen",
+      "enter": "Tela cheia",
       "toggle": "Alternar tela cheia",
-      "exit": "Exit full screen",
-      "windowTitle": "Remote session",
-      "barAria": "Full-screen controls",
-      "display": "Display",
-      "spanAll": "Span all displays",
-      "displayIndex": "Display {{index}}",
-      "pin": "Pin toolbar",
-      "unpin": "Unpin toolbar",
-      "rdpPending": "Full-screen RDP is not available yet."
+      "exit": "Sair da tela cheia",
+      "windowTitle": "Sessão remota",
+      "barAria": "Controles de tela cheia",
+      "display": "Tela",
+      "spanAll": "Estender por todas as telas",
+      "displayIndex": "Tela {{index}}",
+      "pin": "Fixar barra de ferramentas",
+      "unpin": "Desafixar barra de ferramentas",
+      "rdpPending": "RDP em tela cheia ainda não está disponível."
     }
   },
   "ai": {
@@ -4310,10 +4310,10 @@
     "toolEmail": "Enviando e-mail…",
     "toolSecretRequest": "Solicitando entrada secreta…",
     "toolDashboard": "Atualizando painel…",
-    "toolItOps": "Working with IT Ops...",
-    "toolInstaller": "Working with Install Helper...",
-    "toolScreenshots": "Working with Screenshots...",
-    "toolWatchdog": "Working with Watchdogs...",
+    "toolItOps": "Trabalhando com IT Ops…",
+    "toolInstaller": "Trabalhando com Assistente de instalação…",
+    "toolScreenshots": "Trabalhando com Capturas de tela…",
+    "toolWatchdog": "Trabalhando com Vigilantes…",
     "toolConnections": "Gerenciando conexões…",
     "toolSessions": "Trabalhando com sessões…",
     "toolTutorial": "Mostrando ajuda do tutorial...",
@@ -4327,10 +4327,10 @@
     "toolEmailDone": "E-mail enviado",
     "toolSecretRequestDone": "Entrada secreta solicitada",
     "toolDashboardDone": "Painel atualizado",
-    "toolItOpsDone": "Worked with IT Ops",
-    "toolInstallerDone": "Worked with Install Helper",
-    "toolScreenshotsDone": "Worked with Screenshots",
-    "toolWatchdogDone": "Worked with Watchdogs",
+    "toolItOpsDone": "Trabalhou com IT Ops",
+    "toolInstallerDone": "Trabalhou com Assistente de instalação",
+    "toolScreenshotsDone": "Trabalhou com Capturas de tela",
+    "toolWatchdogDone": "Trabalhou com Vigilantes",
     "toolConnectionsDone": "Conexões gerenciadas",
     "toolSessionsDone": "Trabalhou com sessões",
     "toolTutorialDone": "Ajuda do tutorial exibida",

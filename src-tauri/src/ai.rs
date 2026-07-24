@@ -2060,7 +2060,7 @@ fn build_copilot_sdk_session_config(
     config.streaming = Some(false);
     config.tools = Some(Vec::new());
     config.available_tools = Some(Vec::new());
-    config.mcp_servers = Some(HashMap::new());
+    config.mcp_servers = Some(Default::default());
     config.enable_config_discovery = Some(false);
     config.github_token = Some(token.to_string());
     config

@@ -73,7 +73,7 @@ jobs:
           node-version: 22
           cache: npm
 
-      - uses: dtolnay/rust-toolchain@1.95.0
+      - uses: dtolnay/rust-toolchain@1.97.1
 
       - run: npm ci
 
@@ -141,7 +141,7 @@ jobs:
           node-version: 22
           cache: npm
 
-      - uses: dtolnay/rust-toolchain@1.96.0
+      - uses: dtolnay/rust-toolchain@1.97.1
         with:
           targets: aarch64-apple-darwin, x86_64-apple-darwin
 
@@ -198,7 +198,7 @@ jobs:
           node-version: 22
           cache: npm
 
-      - uses: dtolnay/rust-toolchain@1.96.0
+      - uses: dtolnay/rust-toolchain@1.97.1
 
       - name: Install Tauri Linux build dependencies
         run: |

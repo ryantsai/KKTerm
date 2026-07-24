@@ -2465,10 +2465,10 @@
     "urlSecurityHint": "Steuert die Zertifikatsbehandlung für URL-Verbindungen. Lassen Sie die Umgehung deaktiviert, es sei denn, Sie vertrauen der internen Website und dem Netzwerk.",
     "ignoreCertificateErrors": "Ungültige HTTPS-Zertifikate ignorieren",
     "ignoreCertificateErrorsHint": "Lädt URL-Verbindungen mit selbstsignierten oder nicht vertrauenswürdigen Zertifikaten ohne Browserwarnung. Gilt für neu geöffnete URL-Tabs.",
-    "urlDownloadFolder": "Download folder",
-    "urlDownloadFolderHint": "Files downloaded from URL Connections are saved here. Leave blank to use the operating system Downloads folder.",
-    "urlDownloadFolderSystemDefault": "System Downloads folder",
-    "urlDownloadFolderBrowse": "Browse…",
+    "urlDownloadFolder": "Download-Ordner",
+    "urlDownloadFolderHint": "Hier werden Dateien aus URL-Verbindungen gespeichert. Leer lassen, um den Downloads-Ordner des Betriebssystems zu verwenden.",
+    "urlDownloadFolderSystemDefault": "Downloads-Ordner des Systems",
+    "urlDownloadFolderBrowse": "Durchsuchen…",
     "sectionShortcuts": "Tastenkürzel",
     "shortcutsHint": "Tastenkürzel für das Arbeitsbereich-Modul. Klicken Sie auf ein Kürzel, um eine neue Tastenkombination aufzuzeichnen, oder entfernen Sie es, um die Aktion ohne Kürzel zu lassen.",
     "shortcutCloseTab": "Tab schließen",
@@ -2608,15 +2608,15 @@
       },
       "itops": {
         "label": "IT Ops",
-        "description": "Manage Sites, Hosts, Server Rooms, Racks, Tasks, Automations, and Batch Runs."
+        "description": "Sites, Hosts, Serverräume, Racks, Tasks, Automatisierungen und Batch-Ausführungen verwalten."
       },
       "installer": {
-        "label": "Install Helper",
-        "description": "Detect, install, update, uninstall, and launch curated developer tools."
+        "label": "Installationshelfer",
+        "description": "Ausgewählte Entwicklertools erkennen, installieren, aktualisieren, deinstallieren und starten."
       },
       "screenshots": {
         "label": "Screenshots",
-        "description": "Capture, inspect, organize, transform, and open Screenshots Module library items."
+        "description": "Elemente der Screenshots-Modul-Bibliothek erfassen, prüfen, organisieren, umwandeln und öffnen."
       },
       "connections": {
         "label": "Verbindungen",
@@ -2639,8 +2639,8 @@
         "description": "Hosts anpingen, TCP-Ports prüfen, DNS auflösen, WHOIS ausführen, Schnittstellen auflisten und Wake-on-LAN senden."
       },
       "watchdog": {
-        "label": "Watchdogs",
-        "description": "Create and manage background monitors for Sessions, performance counters, and network reachability."
+        "label": "Wachhunde",
+        "description": "Hintergrundmonitore für Sitzungen, Leistungsindikatoren und Netzwerkerreichbarkeit erstellen und verwalten."
       },
       "memory": {
         "label": "Assistenten-Gedächtnis",
@@ -3812,10 +3812,10 @@
     "downloadComplete": "Download abgeschlossen",
     "downloadFailed": "Download fehlgeschlagen",
     "downloads": "Downloads",
-    "downloadInProgress": "{{file}} — Downloading",
-    "downloadSucceeded": "{{file}} — Complete",
-    "downloadFailedItem": "{{file}} — Failed",
-    "openDownloadFolder": "Open download folder",
+    "downloadInProgress": "{{file}} — Wird heruntergeladen",
+    "downloadSucceeded": "{{file}} — Abgeschlossen",
+    "downloadFailedItem": "{{file}} — Fehlgeschlagen",
+    "openDownloadFolder": "Download-Ordner öffnen",
     "invalidCertificateWarning": "Diese Website kann nicht geöffnet werden, da ihr HTTPS-Zertifikat ungültig ist. Deaktivieren Sie unter Einstellungen → URL die Zertifikatsprüfung, um fortzufahren.",
     "noUrlConfigured": "Für diese URL-Verbindung ist keine URL konfiguriert.",
     "openExternally": "Extern öffnen",
@@ -4069,17 +4069,17 @@
     "viewModeButton": "Ansichtsmodus: {{mode}}",
     "viewModeSaved": "Ansichtsmodus gespeichert: {{mode}}",
     "fullscreen": {
-      "enter": "Full screen",
+      "enter": "Vollbild",
       "toggle": "Vollbild umschalten",
-      "exit": "Exit full screen",
-      "windowTitle": "Remote session",
-      "barAria": "Full-screen controls",
-      "display": "Display",
-      "spanAll": "Span all displays",
-      "displayIndex": "Display {{index}}",
-      "pin": "Pin toolbar",
-      "unpin": "Unpin toolbar",
-      "rdpPending": "Full-screen RDP is not available yet."
+      "exit": "Vollbild verlassen",
+      "windowTitle": "Remote-Sitzung",
+      "barAria": "Vollbild-Steuerelemente",
+      "display": "Anzeige",
+      "spanAll": "Auf alle Anzeigen erweitern",
+      "displayIndex": "Anzeige {{index}}",
+      "pin": "Symbolleiste anheften",
+      "unpin": "Symbolleiste lösen",
+      "rdpPending": "Vollbild-RDP ist noch nicht verfügbar."
     }
   },
   "ai": {
@@ -4310,10 +4310,10 @@
     "toolEmail": "E-Mail senden…",
     "toolSecretRequest": "Fordere geheimen Eintrag an…",
     "toolDashboard": "Dashboard wird aktualisiert…",
-    "toolItOps": "Working with IT Ops...",
-    "toolInstaller": "Working with Install Helper...",
-    "toolScreenshots": "Working with Screenshots...",
-    "toolWatchdog": "Working with Watchdogs...",
+    "toolItOps": "Arbeite mit IT Ops…",
+    "toolInstaller": "Arbeite mit Installationshelfer…",
+    "toolScreenshots": "Arbeite mit Screenshots…",
+    "toolWatchdog": "Arbeite mit Wachhunde…",
     "toolConnections": "Verbindungen verwalten…",
     "toolSessions": "Arbeite mit Sitzungen…",
     "toolTutorial": "Tutorial-Hilfe wird angezeigt...",
@@ -4327,10 +4327,10 @@
     "toolEmailDone": "E-Mail gesendet",
     "toolSecretRequestDone": "Geheimen Eintrag angefordert",
     "toolDashboardDone": "Dashboard aktualisiert",
-    "toolItOpsDone": "Worked with IT Ops",
-    "toolInstallerDone": "Worked with Install Helper",
-    "toolScreenshotsDone": "Worked with Screenshots",
-    "toolWatchdogDone": "Worked with Watchdogs",
+    "toolItOpsDone": "Mit IT Ops gearbeitet",
+    "toolInstallerDone": "Mit Installationshelfer gearbeitet",
+    "toolScreenshotsDone": "Mit Screenshots gearbeitet",
+    "toolWatchdogDone": "Mit Wachhunde gearbeitet",
     "toolConnectionsDone": "Verbindungen verwaltet",
     "toolSessionsDone": "Mit Sitzungen gearbeitet",
     "toolTutorialDone": "Tutorial-Hilfe angezeigt",

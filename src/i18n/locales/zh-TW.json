@@ -2465,10 +2465,10 @@
     "urlSecurityHint": "控制 URL 連線的憑證處理。除非信任內部網站及網路，否則請勿關閉繞過。",
     "ignoreCertificateErrors": "忽略無效的 HTTPS 憑證",
     "ignoreCertificateErrorsHint": "載入使用自簽或不受信任憑證的 URL 連線，不會顯示瀏覽器警告。僅對新開啟的 URL 分頁生效。",
-    "urlDownloadFolder": "Download folder",
-    "urlDownloadFolderHint": "Files downloaded from URL Connections are saved here. Leave blank to use the operating system Downloads folder.",
-    "urlDownloadFolderSystemDefault": "System Downloads folder",
-    "urlDownloadFolderBrowse": "Browse…",
+    "urlDownloadFolder": "下載資料夾",
+    "urlDownloadFolderHint": "URL 連線下載的檔案儲存於此。留空以使用作業系統的下載資料夾。",
+    "urlDownloadFolderSystemDefault": "系統下載資料夾",
+    "urlDownloadFolderBrowse": "瀏覽…",
     "sectionShortcuts": "快速鍵",
     "shortcutsHint": "工作區模組的鍵盤快速鍵。點選快速鍵以錄製新的按鍵組合，或清除它讓該動作不使用快速鍵。",
     "shortcutCloseTab": "關閉分頁",
@@ -2608,15 +2608,15 @@
       },
       "itops": {
         "label": "IT Ops",
-        "description": "Manage Sites, Hosts, Server Rooms, Racks, Tasks, Automations, and Batch Runs."
+        "description": "管理站台、主機、機房、機櫃、任務、自動化和批次執行。"
       },
       "installer": {
-        "label": "Install Helper",
-        "description": "Detect, install, update, uninstall, and launch curated developer tools."
+        "label": "安裝小幫手",
+        "description": "偵測、安裝、更新、解除安裝並啟動精選的開發者工具。"
       },
       "screenshots": {
-        "label": "Screenshots",
-        "description": "Capture, inspect, organize, transform, and open Screenshots Module library items."
+        "label": "螢幕截圖",
+        "description": "擷取、檢查、整理、轉換並開啟螢幕截圖模組庫中的項目。"
       },
       "connections": {
         "label": "連線",
@@ -2639,8 +2639,8 @@
         "description": "ping 主機、檢查 TCP 連接埠、解析 DNS、執行 WHOIS、列出網路介面並傳送網路喚醒。"
       },
       "watchdog": {
-        "label": "Watchdogs",
-        "description": "Create and manage background monitors for Sessions, performance counters, and network reachability."
+        "label": "監視",
+        "description": "為工作階段、效能計數器和網路可及性建立並管理背景監視器。"
       },
       "memory": {
         "label": "助理記憶",
@@ -3812,10 +3812,10 @@
     "downloadComplete": "下載完成",
     "downloadFailed": "下載失敗",
     "downloads": "Downloads",
-    "downloadInProgress": "{{file}} — Downloading",
-    "downloadSucceeded": "{{file}} — Complete",
-    "downloadFailedItem": "{{file}} — Failed",
-    "openDownloadFolder": "Open download folder",
+    "downloadInProgress": "{{file}} — 下載中",
+    "downloadSucceeded": "{{file}} — 已完成",
+    "downloadFailedItem": "{{file}} — 失敗",
+    "openDownloadFolder": "開啟下載資料夾",
     "invalidCertificateWarning": "此網站的 HTTPS 憑證無效，因此無法開啟。若要繼續，請在「設定」→「URL」中停用憑證驗證。",
     "noUrlConfigured": "此 URL 連線未設定 URL。",
     "openExternally": "從外部開啟",
@@ -4069,17 +4069,17 @@
     "viewModeButton": "檢視模式：{{mode}}",
     "viewModeSaved": "已儲存檢視模式：{{mode}}",
     "fullscreen": {
-      "enter": "Full screen",
+      "enter": "進入全螢幕",
       "toggle": "切換全螢幕",
-      "exit": "Exit full screen",
-      "windowTitle": "Remote session",
-      "barAria": "Full-screen controls",
-      "display": "Display",
-      "spanAll": "Span all displays",
-      "displayIndex": "Display {{index}}",
-      "pin": "Pin toolbar",
-      "unpin": "Unpin toolbar",
-      "rdpPending": "Full-screen RDP is not available yet."
+      "exit": "離開全螢幕",
+      "windowTitle": "遠端工作階段",
+      "barAria": "全螢幕控制項",
+      "display": "顯示器",
+      "spanAll": "跨所有顯示器",
+      "displayIndex": "顯示器 {{index}}",
+      "pin": "釘選工具列",
+      "unpin": "取消釘選工具列",
+      "rdpPending": "全螢幕 RDP 尚未提供。"
     }
   },
   "ai": {
@@ -4310,10 +4310,10 @@
     "toolEmail": "正在傳送郵件…",
     "toolSecretRequest": "正在請求金鑰項目…",
     "toolDashboard": "正在更新儀表板…",
-    "toolItOps": "Working with IT Ops...",
-    "toolInstaller": "Working with Install Helper...",
-    "toolScreenshots": "Working with Screenshots...",
-    "toolWatchdog": "Working with Watchdogs...",
+    "toolItOps": "正在處理 IT Ops…",
+    "toolInstaller": "正在處理安裝小幫手…",
+    "toolScreenshots": "正在處理螢幕截圖…",
+    "toolWatchdog": "正在處理監視…",
     "toolConnections": "正在管理連線…",
     "toolSessions": "正在處理工作階段…",
     "toolTutorial": "正在顯示教學說明...",
@@ -4327,10 +4327,10 @@
     "toolEmailDone": "郵件已傳送",
     "toolSecretRequestDone": "已請求金鑰項目",
     "toolDashboardDone": "已更新儀表板",
-    "toolItOpsDone": "Worked with IT Ops",
-    "toolInstallerDone": "Worked with Install Helper",
-    "toolScreenshotsDone": "Worked with Screenshots",
-    "toolWatchdogDone": "Worked with Watchdogs",
+    "toolItOpsDone": "已處理 IT Ops",
+    "toolInstallerDone": "已處理安裝小幫手",
+    "toolScreenshotsDone": "已處理螢幕截圖",
+    "toolWatchdogDone": "已處理監視",
     "toolConnectionsDone": "已管理連線",
     "toolSessionsDone": "已處理工作階段",
     "toolTutorialDone": "已顯示教學說明",

@@ -2465,10 +2465,10 @@
     "urlSecurityHint": "Kiểm soát xử lý chứng chỉ cho Kết nối URL. Tắt bỏ qua trừ khi bạn tin tưởng trang web và mạng nội bộ.",
     "ignoreCertificateErrors": "Bỏ qua chứng chỉ HTTPS không hợp lệ",
     "ignoreCertificateErrorsHint": "Tải Kết nối URL với chứng chỉ tự ký hoặc không đáng tin cậy mà không có cảnh báo trình duyệt. Áp dụng cho các tab URL mới mở.",
-    "urlDownloadFolder": "Download folder",
-    "urlDownloadFolderHint": "Files downloaded from URL Connections are saved here. Leave blank to use the operating system Downloads folder.",
-    "urlDownloadFolderSystemDefault": "System Downloads folder",
-    "urlDownloadFolderBrowse": "Browse…",
+    "urlDownloadFolder": "Thư mục tải xuống",
+    "urlDownloadFolderHint": "Tệp tải xuống từ Kết nối URL được lưu tại đây. Để trống để dùng thư mục Tải xuống của hệ điều hành.",
+    "urlDownloadFolderSystemDefault": "Thư mục Tải xuống của hệ thống",
+    "urlDownloadFolderBrowse": "Duyệt…",
     "sectionShortcuts": "Phím tắt",
     "shortcutsHint": "Phím tắt bàn phím cho mô-đun Không gian làm việc. Nhấp vào một phím tắt để ghi tổ hợp phím mới, hoặc xóa để thao tác không có phím tắt.",
     "shortcutCloseTab": "Đóng tab",
@@ -2608,15 +2608,15 @@
       },
       "itops": {
         "label": "IT Ops",
-        "description": "Manage Sites, Hosts, Server Rooms, Racks, Tasks, Automations, and Batch Runs."
+        "description": "Quản lý Site, Máy chủ, Phòng máy chủ, Rack, Tác vụ, Tự động hóa, và Lần chạy hàng loạt."
       },
       "installer": {
-        "label": "Install Helper",
-        "description": "Detect, install, update, uninstall, and launch curated developer tools."
+        "label": "Trợ lý cài đặt",
+        "description": "Phát hiện, cài đặt, cập nhật, gỡ cài đặt và khởi chạy công cụ nhà phát triển đã chọn."
       },
       "screenshots": {
-        "label": "Screenshots",
-        "description": "Capture, inspect, organize, transform, and open Screenshots Module library items."
+        "label": "Ảnh chụp màn hình",
+        "description": "Chụp, kiểm tra, sắp xếp, biến đổi và mở các mục thư viện của mô-đun Ảnh chụp màn hình."
       },
       "connections": {
         "label": "Kết nối",
@@ -2639,8 +2639,8 @@
         "description": "Ping các host, kiểm tra cổng TCP, phân giải DNS, chạy WHOIS, liệt kê giao diện và gửi Wake-on-LAN."
       },
       "watchdog": {
-        "label": "Watchdogs",
-        "description": "Create and manage background monitors for Sessions, performance counters, and network reachability."
+        "label": "Giám sát",
+        "description": "Tạo và quản lý các trình giám sát nền cho phiên, bộ đếm hiệu suất và khả năng tiếp cận mạng."
       },
       "memory": {
         "label": "Bộ nhớ trợ lý",
@@ -3812,10 +3812,10 @@
     "downloadComplete": "Download complete",
     "downloadFailed": "Download failed",
     "downloads": "Downloads",
-    "downloadInProgress": "{{file}} — Downloading",
-    "downloadSucceeded": "{{file}} — Complete",
-    "downloadFailedItem": "{{file}} — Failed",
-    "openDownloadFolder": "Open download folder",
+    "downloadInProgress": "{{file}} — Đang tải xuống",
+    "downloadSucceeded": "{{file}} — Hoàn tất",
+    "downloadFailedItem": "{{file}} — Thất bại",
+    "openDownloadFolder": "Mở thư mục tải xuống",
     "invalidCertificateWarning": "Không thể mở trang web này vì chứng chỉ HTTPS không hợp lệ. Hãy tắt xác thực chứng chỉ trong Cài đặt → URL để tiếp tục.",
     "noUrlConfigured": "This URL Connection has no URL configured.",
     "openExternally": "Open externally",
@@ -4069,17 +4069,17 @@
     "viewModeButton": "Chế độ xem: {{mode}}",
     "viewModeSaved": "Đã lưu chế độ xem: {{mode}}",
     "fullscreen": {
-      "enter": "Full screen",
+      "enter": "Toàn màn hình",
       "toggle": "Bật/tắt toàn màn hình",
-      "exit": "Exit full screen",
-      "windowTitle": "Remote session",
-      "barAria": "Full-screen controls",
-      "display": "Display",
-      "spanAll": "Span all displays",
-      "displayIndex": "Display {{index}}",
-      "pin": "Pin toolbar",
-      "unpin": "Unpin toolbar",
-      "rdpPending": "Full-screen RDP is not available yet."
+      "exit": "Thoát toàn màn hình",
+      "windowTitle": "Phiên từ xa",
+      "barAria": "Điều khiển toàn màn hình",
+      "display": "Màn hình",
+      "spanAll": "Trải trên tất cả màn hình",
+      "displayIndex": "Màn hình {{index}}",
+      "pin": "Ghim thanh công cụ",
+      "unpin": "Bỏ ghim thanh công cụ",
+      "rdpPending": "RDP toàn màn hình chưa khả dụng."
     }
   },
   "ai": {
@@ -4310,10 +4310,10 @@
     "toolEmail": "Đang gửi email…",
     "toolSecretRequest": "Đang yêu cầu mục bí mật…",
     "toolDashboard": "Đang cập nhật Bảng điều khiển…",
-    "toolItOps": "Working with IT Ops...",
-    "toolInstaller": "Working with Install Helper...",
-    "toolScreenshots": "Working with Screenshots...",
-    "toolWatchdog": "Working with Watchdogs...",
+    "toolItOps": "Đang làm việc với IT Ops…",
+    "toolInstaller": "Đang làm việc với Trợ lý cài đặt…",
+    "toolScreenshots": "Đang làm việc với Ảnh chụp màn hình…",
+    "toolWatchdog": "Đang làm việc với Giám sát…",
     "toolConnections": "Đang quản lý kết nối…",
     "toolSessions": "Đang làm việc với phiên…",
     "toolTutorial": "Đang hiển thị trợ giúp hướng dẫn...",
@@ -4327,10 +4327,10 @@
     "toolEmailDone": "Đã gửi email",
     "toolSecretRequestDone": "Đã yêu cầu mục bí mật",
     "toolDashboardDone": "Đã cập nhật Bảng điều khiển",
-    "toolItOpsDone": "Worked with IT Ops",
-    "toolInstallerDone": "Worked with Install Helper",
-    "toolScreenshotsDone": "Worked with Screenshots",
-    "toolWatchdogDone": "Worked with Watchdogs",
+    "toolItOpsDone": "Đã làm việc với IT Ops",
+    "toolInstallerDone": "Đã làm việc với Trợ lý cài đặt",
+    "toolScreenshotsDone": "Đã làm việc với Ảnh chụp màn hình",
+    "toolWatchdogDone": "Đã làm việc với Giám sát",
     "toolConnectionsDone": "Đã quản lý kết nối",
     "toolSessionsDone": "Đã làm việc với phiên",
     "toolTutorialDone": "Đã hiển thị trợ giúp hướng dẫn",

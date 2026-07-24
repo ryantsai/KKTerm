@@ -2465,10 +2465,10 @@
     "urlSecurityHint": "控制 URL 连接的证书处理。除非信任内部站点和网络，否则请保持绕过关闭。",
     "ignoreCertificateErrors": "忽略无效的 HTTPS 证书",
     "ignoreCertificateErrorsHint": "加载具有自签名或不受信任证书的 URL 连接，而不显示浏览器警告。适用于新打开的 URL 标签页。",
-    "urlDownloadFolder": "Download folder",
-    "urlDownloadFolderHint": "Files downloaded from URL Connections are saved here. Leave blank to use the operating system Downloads folder.",
-    "urlDownloadFolderSystemDefault": "System Downloads folder",
-    "urlDownloadFolderBrowse": "Browse…",
+    "urlDownloadFolder": "下载文件夹",
+    "urlDownloadFolderHint": "URL 连接下载的文件保存在此处。留空以使用操作系统的下载文件夹。",
+    "urlDownloadFolderSystemDefault": "系统下载文件夹",
+    "urlDownloadFolderBrowse": "浏览…",
     "sectionShortcuts": "快捷键",
     "shortcutsHint": "工作区模块的键盘快捷键。点击快捷键以录制新的按键组合，或清除它让该操作不使用快捷键。",
     "shortcutCloseTab": "关闭标签页",
@@ -2608,15 +2608,15 @@
       },
       "itops": {
         "label": "IT Ops",
-        "description": "Manage Sites, Hosts, Server Rooms, Racks, Tasks, Automations, and Batch Runs."
+        "description": "管理站点、主机、机房、机架、任务、自动化和批量运行。"
       },
       "installer": {
-        "label": "Install Helper",
-        "description": "Detect, install, update, uninstall, and launch curated developer tools."
+        "label": "安装助手",
+        "description": "检测、安装、更新、卸载并启动精选的开发者工具。"
       },
       "screenshots": {
-        "label": "Screenshots",
-        "description": "Capture, inspect, organize, transform, and open Screenshots Module library items."
+        "label": "截图",
+        "description": "捕获、检查、整理、转换并打开截图模块库中的项目。"
       },
       "connections": {
         "label": "连接",
@@ -2639,8 +2639,8 @@
         "description": "ping 主机、检查 TCP 端口、解析 DNS、运行 WHOIS、列出网络接口并发送网络唤醒。"
       },
       "watchdog": {
-        "label": "Watchdogs",
-        "description": "Create and manage background monitors for Sessions, performance counters, and network reachability."
+        "label": "监视",
+        "description": "为会话、性能计数器和网络可达性创建并管理后台监视器。"
       },
       "memory": {
         "label": "助手记忆",
@@ -3812,10 +3812,10 @@
     "downloadComplete": "下载完成",
     "downloadFailed": "下载失败",
     "downloads": "Downloads",
-    "downloadInProgress": "{{file}} — Downloading",
-    "downloadSucceeded": "{{file}} — Complete",
-    "downloadFailedItem": "{{file}} — Failed",
-    "openDownloadFolder": "Open download folder",
+    "downloadInProgress": "{{file}} — 下载中",
+    "downloadSucceeded": "{{file}} — 已完成",
+    "downloadFailedItem": "{{file}} — 失败",
+    "openDownloadFolder": "打开下载文件夹",
     "invalidCertificateWarning": "此网站的 HTTPS 证书无效，因此无法打开。若要继续，请在“设置”→“URL”中关闭证书验证。",
     "noUrlConfigured": "此 URL 连接未配置 URL。",
     "openExternally": "从外部打开",
@@ -4069,17 +4069,17 @@
     "viewModeButton": "视图模式：{{mode}}",
     "viewModeSaved": "已保存视图模式：{{mode}}",
     "fullscreen": {
-      "enter": "Full screen",
+      "enter": "全屏",
       "toggle": "切换全屏",
-      "exit": "Exit full screen",
-      "windowTitle": "Remote session",
-      "barAria": "Full-screen controls",
-      "display": "Display",
-      "spanAll": "Span all displays",
-      "displayIndex": "Display {{index}}",
-      "pin": "Pin toolbar",
-      "unpin": "Unpin toolbar",
-      "rdpPending": "Full-screen RDP is not available yet."
+      "exit": "退出全屏",
+      "windowTitle": "远程会话",
+      "barAria": "全屏控件",
+      "display": "显示器",
+      "spanAll": "跨所有显示器",
+      "displayIndex": "显示器 {{index}}",
+      "pin": "固定工具栏",
+      "unpin": "取消固定工具栏",
+      "rdpPending": "全屏 RDP 尚不可用。"
     }
   },
   "ai": {
@@ -4310,10 +4310,10 @@
     "toolEmail": "正在发送邮件…",
     "toolSecretRequest": "正在请求密钥条目…",
     "toolDashboard": "正在更新仪表板…",
-    "toolItOps": "Working with IT Ops...",
-    "toolInstaller": "Working with Install Helper...",
-    "toolScreenshots": "Working with Screenshots...",
-    "toolWatchdog": "Working with Watchdogs...",
+    "toolItOps": "正在处理 IT Ops…",
+    "toolInstaller": "正在处理安装助手…",
+    "toolScreenshots": "正在处理截图…",
+    "toolWatchdog": "正在处理监视…",
     "toolConnections": "正在管理连接…",
     "toolSessions": "正在处理会话…",
     "toolTutorial": "正在显示教程帮助...",
@@ -4327,10 +4327,10 @@
     "toolEmailDone": "邮件已发送",
     "toolSecretRequestDone": "已请求密钥条目",
     "toolDashboardDone": "已更新仪表板",
-    "toolItOpsDone": "Worked with IT Ops",
-    "toolInstallerDone": "Worked with Install Helper",
-    "toolScreenshotsDone": "Worked with Screenshots",
-    "toolWatchdogDone": "Worked with Watchdogs",
+    "toolItOpsDone": "已处理 IT Ops",
+    "toolInstallerDone": "已处理安装助手",
+    "toolScreenshotsDone": "已处理截图",
+    "toolWatchdogDone": "已处理监视",
     "toolConnectionsDone": "已管理连接",
     "toolSessionsDone": "已处理会话",
     "toolTutorialDone": "已显示教程帮助",

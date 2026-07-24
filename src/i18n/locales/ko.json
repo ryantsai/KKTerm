@@ -2465,10 +2465,10 @@
     "urlSecurityHint": "URL 연결의 인증서 처리를 제어합니다. 내부 사이트와 네트워크를 신뢰하는 경우가 아니면 바이패스를 끄십시오.",
     "ignoreCertificateErrors": "잘못된 HTTPS 인증서 무시",
     "ignoreCertificateErrorsHint": "브라우저 경고 없이 자체 서명 또는 신뢰할 수 없는 인증서로 URL 연결을 로드합니다. 새로 열린 URL 탭에 적용됩니다.",
-    "urlDownloadFolder": "Download folder",
-    "urlDownloadFolderHint": "Files downloaded from URL Connections are saved here. Leave blank to use the operating system Downloads folder.",
-    "urlDownloadFolderSystemDefault": "System Downloads folder",
-    "urlDownloadFolderBrowse": "Browse…",
+    "urlDownloadFolder": "다운로드 폴더",
+    "urlDownloadFolderHint": "URL 연결에서 다운로드한 파일이 여기에 저장됩니다. 운영 체제 다운로드 폴더를 사용하려면 비워 두세요.",
+    "urlDownloadFolderSystemDefault": "시스템 다운로드 폴더",
+    "urlDownloadFolderBrowse": "찾아보기…",
     "sectionShortcuts": "단축키",
     "shortcutsHint": "작업 영역 모듈의 키보드 단축키입니다. 단축키를 클릭해 새 키 조합을 기록하거나, 지워서 해당 동작을 단축키 없이 둘 수 있습니다.",
     "shortcutCloseTab": "탭 닫기",
@@ -2608,15 +2608,15 @@
       },
       "itops": {
         "label": "IT Ops",
-        "description": "Manage Sites, Hosts, Server Rooms, Racks, Tasks, Automations, and Batch Runs."
+        "description": "사이트, 호스트, 서버실, 랙, 작업, 자동화, 일괄 실행을 관리합니다."
       },
       "installer": {
-        "label": "Install Helper",
-        "description": "Detect, install, update, uninstall, and launch curated developer tools."
+        "label": "설치 도우미",
+        "description": "선택된 개발자 도구를 감지, 설치, 업데이트, 제거, 실행합니다."
       },
       "screenshots": {
-        "label": "Screenshots",
-        "description": "Capture, inspect, organize, transform, and open Screenshots Module library items."
+        "label": "스크린샷",
+        "description": "스크린샷 모듈 라이브러리 항목을 캡처, 검사, 구성, 변환 및 엽니다."
       },
       "connections": {
         "label": "연결",
@@ -2639,8 +2639,8 @@
         "description": "호스트 ping, TCP 포트 확인, DNS 조회, WHOIS 실행, 인터페이스 목록 표시, Wake-on-LAN 전송을 수행합니다."
       },
       "watchdog": {
-        "label": "Watchdogs",
-        "description": "Create and manage background monitors for Sessions, performance counters, and network reachability."
+        "label": "감시",
+        "description": "세션, 성능 카운터 및 네트워크 접근성에 대한 백그라운드 모니터를 만들고 관리합니다."
       },
       "memory": {
         "label": "어시스턴트 메모리",
@@ -3812,10 +3812,10 @@
     "downloadComplete": "다운로드 완료",
     "downloadFailed": "다운로드 실패",
     "downloads": "Downloads",
-    "downloadInProgress": "{{file}} — Downloading",
-    "downloadSucceeded": "{{file}} — Complete",
-    "downloadFailedItem": "{{file}} — Failed",
-    "openDownloadFolder": "Open download folder",
+    "downloadInProgress": "{{file}} — 다운로드 중",
+    "downloadSucceeded": "{{file}} — 완료",
+    "downloadFailedItem": "{{file}} — 실패",
+    "openDownloadFolder": "다운로드 폴더 열기",
     "invalidCertificateWarning": "이 사이트는 HTTPS 인증서가 유효하지 않아 열 수 없습니다. 계속하려면 설정 → URL에서 인증서 유효성 검사를 사용 중지하세요.",
     "noUrlConfigured": "이 URL 연결에는 URL이 구성되어 있지 않습니다.",
     "openExternally": "외부에서 열기",
@@ -4069,17 +4069,17 @@
     "viewModeButton": "보기 모드: {{mode}}",
     "viewModeSaved": "보기 모드를 저장했습니다: {{mode}}",
     "fullscreen": {
-      "enter": "Full screen",
+      "enter": "전체 화면",
       "toggle": "전체 화면 전환",
-      "exit": "Exit full screen",
-      "windowTitle": "Remote session",
-      "barAria": "Full-screen controls",
-      "display": "Display",
-      "spanAll": "Span all displays",
-      "displayIndex": "Display {{index}}",
-      "pin": "Pin toolbar",
-      "unpin": "Unpin toolbar",
-      "rdpPending": "Full-screen RDP is not available yet."
+      "exit": "전체 화면 종료",
+      "windowTitle": "원격 세션",
+      "barAria": "전체 화면 컨트롤",
+      "display": "디스플레이",
+      "spanAll": "모든 디스플레이 확장",
+      "displayIndex": "디스플레이 {{index}}",
+      "pin": "도구 모음 고정",
+      "unpin": "도구 모음 고정 해제",
+      "rdpPending": "전체 화면 RDP는 아직 사용할 수 없습니다."
     }
   },
   "ai": {
@@ -4310,10 +4310,10 @@
     "toolEmail": "이메일 전송 중…",
     "toolSecretRequest": "비밀 항목 요청 중…",
     "toolDashboard": "대시보드 업데이트 중…",
-    "toolItOps": "Working with IT Ops...",
-    "toolInstaller": "Working with Install Helper...",
-    "toolScreenshots": "Working with Screenshots...",
-    "toolWatchdog": "Working with Watchdogs...",
+    "toolItOps": "IT Ops 작업 중…",
+    "toolInstaller": "설치 도우미 작업 중…",
+    "toolScreenshots": "스크린샷 작업 중…",
+    "toolWatchdog": "감시 작업 중…",
     "toolConnections": "연결 관리 중…",
     "toolSessions": "세션 작업 중…",
     "toolTutorial": "튜토리얼 도움말 표시 중...",
@@ -4327,10 +4327,10 @@
     "toolEmailDone": "이메일 전송됨",
     "toolSecretRequestDone": "비밀 항목 요청됨",
     "toolDashboardDone": "대시보드 업데이트 완료",
-    "toolItOpsDone": "Worked with IT Ops",
-    "toolInstallerDone": "Worked with Install Helper",
-    "toolScreenshotsDone": "Worked with Screenshots",
-    "toolWatchdogDone": "Worked with Watchdogs",
+    "toolItOpsDone": "IT Ops 작업 완료",
+    "toolInstallerDone": "설치 도우미 작업 완료",
+    "toolScreenshotsDone": "스크린샷 작업 완료",
+    "toolWatchdogDone": "감시 작업 완료",
     "toolConnectionsDone": "연결 관리됨",
     "toolSessionsDone": "세션 작업 완료",
     "toolTutorialDone": "튜토리얼 도움말을 표시함",

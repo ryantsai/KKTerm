@@ -5,7 +5,7 @@ description = "Fast local-first administration workspace for terminals, SSH, SFT
 authors = ["Ryan Tsai"]
 license = "MIT"
 edition = "2024"
-rust-version = "1.96"
+rust-version = "1.97.1"
 default-run = "kkterm"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -35,7 +35,7 @@ argon2 = "0.5.3"
 # the Copilot CLI, which bloats the KKTerm installer by embedding a large binary.
 github-copilot-sdk = { version = "1.0.6", default-features = false }
 rand = "0.10"
-base64 = "0.22"
+base64 = "0.23"
 # Document Connection text decoding: encoding_rs is the standard (Firefox) decoder
 # and chardetng its companion charset detector, used for the file viewer's
 # Auto/named-encoding text reads. See file_viewer.rs::read_text.
@@ -81,11 +81,11 @@ lettre = { version = "0.11", default-features = false, features = ["builder", "s
 # AST-based validation of AI-authored script widget source. oxc is ~3x faster
 # than swc on the parse-only path and ships a stable visitor API for
 # IdentifierReference walks. Used by validate_script_body_json_detailed.
-oxc_allocator = "0.139"
-oxc_parser = "0.139"
-oxc_span = "0.139"
-oxc_ast = "0.139"
-oxc_ast_visit = "0.139"
+oxc_allocator = "0.141"
+oxc_parser = "0.141"
+oxc_span = "0.141"
+oxc_ast = "0.141"
+oxc_ast_visit = "0.141"
 
 # Network admin tools - AV-friendly choices.
 # MVP scope: DNS, ping, port scan/check, WoL, interfaces, WHOIS. SNMP + traceroute deferred.

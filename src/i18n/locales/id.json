@@ -2465,10 +2465,10 @@
     "urlSecurityHint": "Mengontrol penanganan sertifikat untuk Koneksi URL. Matikan bypass kecuali Anda memercayai situs dan jaringan internal.",
     "ignoreCertificateErrors": "Abaikan sertifikat HTTPS tidak valid",
     "ignoreCertificateErrorsHint": "Memuat Koneksi URL dengan sertifikat self-signed atau tidak tepercaya tanpa peringatan browser. Berlaku untuk tab URL yang baru dibuka.",
-    "urlDownloadFolder": "Download folder",
-    "urlDownloadFolderHint": "Files downloaded from URL Connections are saved here. Leave blank to use the operating system Downloads folder.",
-    "urlDownloadFolderSystemDefault": "System Downloads folder",
-    "urlDownloadFolderBrowse": "Browse…",
+    "urlDownloadFolder": "Folder unduhan",
+    "urlDownloadFolderHint": "File yang diunduh dari Koneksi URL disimpan di sini. Biarkan kosong untuk menggunakan folder Unduhan sistem operasi.",
+    "urlDownloadFolderSystemDefault": "Folder Unduhan sistem",
+    "urlDownloadFolderBrowse": "Telusuri…",
     "sectionShortcuts": "Pintasan",
     "shortcutsHint": "Pintasan keyboard untuk modul Ruang kerja. Klik pintasan untuk merekam kombinasi tombol baru, atau hapus untuk membiarkan aksi tanpa pintasan.",
     "shortcutCloseTab": "Tutup tab",
@@ -2608,15 +2608,15 @@
       },
       "itops": {
         "label": "IT Ops",
-        "description": "Manage Sites, Hosts, Server Rooms, Racks, Tasks, Automations, and Batch Runs."
+        "description": "Mengelola Situs, Host, Ruang server, Rak, Tugas, Otomatisasi, dan Eksekusi batch."
       },
       "installer": {
-        "label": "Install Helper",
-        "description": "Detect, install, update, uninstall, and launch curated developer tools."
+        "label": "Pembantu Instalasi",
+        "description": "Mendeteksi, memasang, memperbarui, mencopot, dan meluncurkan alat pengembang yang dikurasi."
       },
       "screenshots": {
-        "label": "Screenshots",
-        "description": "Capture, inspect, organize, transform, and open Screenshots Module library items."
+        "label": "Tangkapan Layar",
+        "description": "Tangkap, periksa, atur, ubah, dan buka item pustaka modul Tangkapan Layar."
       },
       "connections": {
         "label": "Koneksi",
@@ -2639,8 +2639,8 @@
         "description": "Ping host, periksa port TCP, resolusi DNS, jalankan WHOIS, daftar antarmuka, dan kirim Wake-on-LAN."
       },
       "watchdog": {
-        "label": "Watchdogs",
-        "description": "Create and manage background monitors for Sessions, performance counters, and network reachability."
+        "label": "Pengawas",
+        "description": "Membuat dan mengelola monitor latar belakang untuk sesi, pencacah kinerja, dan jangkauan jaringan."
       },
       "memory": {
         "label": "Memori asisten",
@@ -3812,10 +3812,10 @@
     "downloadComplete": "Unduhan selesai",
     "downloadFailed": "Unduhan gagal",
     "downloads": "Downloads",
-    "downloadInProgress": "{{file}} — Downloading",
-    "downloadSucceeded": "{{file}} — Complete",
-    "downloadFailedItem": "{{file}} — Failed",
-    "openDownloadFolder": "Open download folder",
+    "downloadInProgress": "{{file}} — Mengunduh",
+    "downloadSucceeded": "{{file}} — Selesai",
+    "downloadFailedItem": "{{file}} — Gagal",
+    "openDownloadFolder": "Buka folder unduhan",
     "invalidCertificateWarning": "Situs ini tidak dapat dibuka karena sertifikat HTTPS-nya tidak valid. Nonaktifkan validasi sertifikat di Pengaturan → URL untuk melanjutkan.",
     "noUrlConfigured": "Koneksi URL ini tidak memiliki URL yang dikonfigurasi.",
     "openExternally": "Buka secara eksternal",
@@ -4069,17 +4069,17 @@
     "viewModeButton": "Mode tampilan: {{mode}}",
     "viewModeSaved": "Mode tampilan disimpan: {{mode}}",
     "fullscreen": {
-      "enter": "Full screen",
+      "enter": "Layar penuh",
       "toggle": "Alihkan layar penuh",
-      "exit": "Exit full screen",
-      "windowTitle": "Remote session",
-      "barAria": "Full-screen controls",
-      "display": "Display",
-      "spanAll": "Span all displays",
-      "displayIndex": "Display {{index}}",
-      "pin": "Pin toolbar",
-      "unpin": "Unpin toolbar",
-      "rdpPending": "Full-screen RDP is not available yet."
+      "exit": "Keluar dari layar penuh",
+      "windowTitle": "Sesi jarak jauh",
+      "barAria": "Kontrol layar penuh",
+      "display": "Tampilan",
+      "spanAll": "Bentang semua tampilan",
+      "displayIndex": "Tampilan {{index}}",
+      "pin": "Sematkan toolbar",
+      "unpin": "Lepaskan sematan toolbar",
+      "rdpPending": "RDP layar penuh belum tersedia."
     }
   },
   "ai": {
@@ -4310,10 +4310,10 @@
     "toolEmail": "Mengirim email…",
     "toolSecretRequest": "Meminta entri rahasia…",
     "toolDashboard": "Memperbarui Dasbor…",
-    "toolItOps": "Working with IT Ops...",
-    "toolInstaller": "Working with Install Helper...",
-    "toolScreenshots": "Working with Screenshots...",
-    "toolWatchdog": "Working with Watchdogs...",
+    "toolItOps": "Bekerja dengan IT Ops…",
+    "toolInstaller": "Bekerja dengan Pembantu Instalasi…",
+    "toolScreenshots": "Bekerja dengan Tangkapan Layar…",
+    "toolWatchdog": "Bekerja dengan Pengawas…",
     "toolConnections": "Mengelola koneksi…",
     "toolSessions": "Bekerja dengan sesi…",
     "toolTutorial": "Menampilkan bantuan tutorial...",
@@ -4327,10 +4327,10 @@
     "toolEmailDone": "Email terkirim",
     "toolSecretRequestDone": "Entri rahasia diminta",
     "toolDashboardDone": "Dasbor Diperbarui",
-    "toolItOpsDone": "Worked with IT Ops",
-    "toolInstallerDone": "Worked with Install Helper",
-    "toolScreenshotsDone": "Worked with Screenshots",
-    "toolWatchdogDone": "Worked with Watchdogs",
+    "toolItOpsDone": "Bekerja dengan IT Ops",
+    "toolInstallerDone": "Bekerja dengan Pembantu Instalasi",
+    "toolScreenshotsDone": "Bekerja dengan Tangkapan Layar",
+    "toolWatchdogDone": "Bekerja dengan Pengawas",
     "toolConnectionsDone": "Koneksi dikelola",
     "toolSessionsDone": "Bekerja dengan sesi",
     "toolTutorialDone": "Bantuan tutorial ditampilkan",
