@@ -2107,6 +2107,13 @@ type CommandMap = {
     args: { request: { dataUrl: string } };
     result: null;
   };
+  deliver_screenshot_data_url: {
+    args: {
+      request: { dataUrl: string };
+      kind: StoredScreenshot["kind"];
+    };
+    result: ScreenshotCaptureResult;
+  };
   capture_screenshot_for_assistant: {
     args: { request: CaptureScreenshotRequest };
     result: AssistantScreenshot;

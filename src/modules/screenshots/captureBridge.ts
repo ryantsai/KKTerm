@@ -7,7 +7,11 @@ import { useEffect, useRef } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import { invokeCommand, isTauriRuntime } from "../../lib/tauri";
+import {
+  invokeCommand,
+  isTauriRuntime,
+  type ScreenshotCaptureResult,
+} from "../../lib/tauri";
 import { useWorkspaceStore } from "../../store";
 import { useScreenshotsStore } from "./state";
 
@@ -18,6 +22,21 @@ const CAPTURE_EVENT = "kkterm://capture-screenshot";
 
 function isCaptureMode(value: unknown): value is ScreenshotCaptureMode {
   return value === "region" || value === "window" || value === "fullscreen";
+}
+
+export function finishScreenshotCapture(result: ScreenshotCaptureResult, t: TFunction) {
+  if (result.storedScreenshot) {
+    useScreenshotsStore.getState().prepend(result.storedScreenshot);
+    if (result.openInEditor) {
+      useScreenshotsStore.getState().requestEditor(result.storedScreenshot.id);
+    }
+  }
+  const message = result.storedScreenshot && result.copiedToClipboard
+    ? t("screenshots.captureSavedAndCopied", { name: result.storedScreenshot.fileName })
+    : result.storedScreenshot
+      ? t("screenshots.captureSaved", { name: result.storedScreenshot.fileName })
+      : t("screenshots.captureCopied");
+  useWorkspaceStore.getState().showStatusBarNotice(message, { tone: "success" });
 }
 
 export async function performScreenshotCapture(
@@ -56,20 +75,7 @@ export async function performScreenshotCapture(
               kind: "fullscreen",
               minimizeWindow,
             });
-    if (result.storedScreenshot) {
-      useScreenshotsStore.getState().prepend(result.storedScreenshot);
-      if (result.openInEditor) {
-        useScreenshotsStore.getState().requestEditor(result.storedScreenshot.id);
-      }
-    }
-    const message = result.storedScreenshot && result.copiedToClipboard
-      ? t("screenshots.captureSavedAndCopied", { name: result.storedScreenshot.fileName })
-      : result.storedScreenshot
-        ? t("screenshots.captureSaved", { name: result.storedScreenshot.fileName })
-        : t("screenshots.captureCopied");
-    notify(message, {
-      tone: "success",
-    });
+    finishScreenshotCapture(result, t);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     // Backing out of the region/window picker is a silent non-event.

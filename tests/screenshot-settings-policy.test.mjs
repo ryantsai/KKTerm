@@ -104,3 +104,25 @@ test("saved captures can request the built-in editor", async () => {
   assert.match(app, /navigateToPage\("screenshots"\)/);
   assert.match(app, /mainWindow\.show\(\)/);
 });
+
+test("workspace Pane captures use screenshot delivery settings across native and canvas surfaces", async () => {
+  const [menu, remoteDesktop, webview, backend, commands] = await Promise.all([
+    read("src/modules/workspace/ScreenshotMenu.tsx"),
+    read("src/modules/workspace/connections/remote-desktop/RemoteDesktopWorkspace.tsx"),
+    read("src/modules/workspace/connections/webview/WebViewWorkspace.tsx"),
+    read("src-tauri/src/screenshot.rs"),
+    read("src-tauri/src/lib.rs"),
+  ]);
+
+  assert.match(menu, /capture_screenshot_to_library/);
+  assert.match(menu, /finishScreenshotCapture\(result, t\)/);
+  assert.match(remoteDesktop, /capture_screenshot_to_library/);
+  assert.match(remoteDesktop, /deliver_screenshot_data_url/);
+  assert.match(webview, /captureFullWebviewPageWithSettings/);
+  assert.match(webview, /deliver_screenshot_data_url/);
+  assert.match(commands, /screenshot::deliver_data_url_to_library/);
+  assert.match(backend, /pub fn deliver_data_url_to_library/);
+  assert.match(backend, /options\.capture_mode != "folder"/);
+  assert.match(backend, /options\.capture_mode != "clipboard"/);
+  assert.match(backend, /options\.open_in_editor_after_capture/);
+});

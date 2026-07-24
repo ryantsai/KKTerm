@@ -675,7 +675,6 @@ fn write_rgba_to_clipboard(rgba: &[u8], width: u32, height: u32) -> Result<(), S
         .map_err(|error| format!("failed to copy screenshot to the clipboard: {error}"))
 }
 
-#[cfg(not(target_os = "windows"))]
 fn save_rgba_to_library(
     rgba: &[u8],
     width: u32,
@@ -707,6 +706,76 @@ fn save_rgba_to_library(
         options.quality,
     )?;
     stored_screenshot_from_path(&folder, path)
+}
+
+pub fn deliver_data_url_to_library(
+    app: &tauri::AppHandle,
+    request: ScreenshotDataUrlRequest,
+    kind: String,
+    options: LibrarySaveOptions,
+) -> Result<ScreenshotCaptureResult, String> {
+    let (_, encoded) = request
+        .data_url
+        .split_once(",")
+        .filter(|(header, _)| header.starts_with("data:image/") && header.ends_with(";base64"))
+        .ok_or_else(|| "screenshot is not a base64 image data URL".to_string())?;
+    let bytes = STANDARD
+        .decode(encoded)
+        .map_err(|error| format!("failed to decode screenshot: {error}"))?;
+    let mut image = image::load_from_memory(&bytes)
+        .map_err(|error| format!("failed to read screenshot: {error}"))?
+        .to_rgba8();
+    let width = image.width();
+    let height = image.height();
+
+    if options.border_enabled {
+        let (r, g, b) = parse_border_color(&options.border_color);
+        apply_border_pixels(
+            image.as_mut(),
+            width,
+            height,
+            options.border_width,
+            &options.border_style,
+            [r, g, b, 0xFF],
+        );
+    }
+
+    let copy_to_clipboard = options.capture_mode != "folder";
+    let save_to_folder = options.capture_mode != "clipboard";
+    if copy_to_clipboard {
+        #[cfg(target_os = "windows")]
+        {
+            let window = app
+                .get_webview_window("main")
+                .ok_or_else(|| "main window is not available".to_string())?;
+            let hwnd = window
+                .hwnd()
+                .map_err(|error| format!("failed to resolve window handle: {error}"))?;
+            platform::write_rgba_to_clipboard(hwnd.0, image.as_raw(), width, height)?;
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            let _ = app;
+            write_rgba_to_clipboard(image.as_raw(), width, height)?;
+        }
+    }
+
+    let stored_screenshot = if save_to_folder {
+        Some(save_rgba_to_library(
+            image.as_raw(),
+            width,
+            height,
+            kind,
+            &options,
+        )?)
+    } else {
+        None
+    };
+    Ok(ScreenshotCaptureResult {
+        open_in_editor: stored_screenshot.is_some() && options.open_in_editor_after_capture,
+        stored_screenshot,
+        copied_to_clipboard: copy_to_clipboard,
+    })
 }
 
 #[cfg(not(target_os = "windows"))]

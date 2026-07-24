@@ -32,7 +32,7 @@ When a doc says "right-click on X", the implementation is a Tauri native context
 | 11 | [11-app-launcher.md](11-app-launcher.md) | App Launcher widget — adding apps/files/folders, run modes | `appLauncher` |
 | 12 | [12-it-ops.md](12-it-ops.md) | IT Ops Module — Sites, topology, Task Library, Batch Runs, Automations, run reports | `itops`, `watchdog` |
 | 13 | [13-ai-assistant.md](13-ai-assistant.md) | AI Assistant panel, chats, tools, intents (Watchdog / Create Widget / Extension Draft), MCP | `ai` |
-| 14 | [14-screenshots.md](14-screenshots.md) | Screenshots Module — library, capture region / window / full screen, tray captures, global shortcuts; Pane capture to clipboard or AI Assistant | `screenshots`, `workspace` |
+| 14 | [14-screenshots.md](14-screenshots.md) | Screenshots Module — library, capture region / window / full screen, tray captures, global shortcuts; settings-aware Pane capture or AI Assistant attachment | `screenshots`, `workspace` |
 | 15 | [15-settings.md](15-settings.md) | Every Settings section: General, Appearance, Dashboard, Workspace, File Explorer, Install Helper, Credentials, AI, SSH, Terminal, RDP, VNC, URL, Screenshots, Don't Sleep, Proxy, About | `settings` |
 | 16 | [16-localization.md](16-localization.md) | Switching language, supported locales | `settings`, `languages` |
 | 17 | [17-data-backup-secrets.md](17-data-backup-secrets.md) | SQLite store, OS keychain, settings Import/Export `.kkbackup`, startup backup ZIP snapshots, sharing connections without passwords | `settings`, `common` |

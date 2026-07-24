@@ -79,6 +79,7 @@ test("known expensive filesystem, archive, image, and process commands use block
     "generate_ssh_key_pair",
     "create_diagnostics_bundle",
     "capture_screenshot_to_clipboard",
+    "deliver_screenshot_data_url",
     "capture_screenshot_for_assistant",
     "capture_fullscreen_screenshot_for_assistant",
     "capture_screenshot_to_library",

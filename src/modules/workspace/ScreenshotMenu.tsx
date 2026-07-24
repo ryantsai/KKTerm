@@ -5,7 +5,14 @@ import { useTranslation } from "react-i18next";
 import { menuButtonAria } from "../../lib/aria";
 import { nativeMenuIcons } from "../../lib/nativeMenuIcons";
 import { showNativeContextMenu } from "../../lib/nativeContextMenu";
-import { invokeCommand, isTauriRuntime, type CaptureScreenshotRequest } from "../../lib/tauri";
+import {
+  invokeCommand,
+  isTauriRuntime,
+  type CaptureScreenshotRequest,
+  type ScreenshotCaptureResult,
+  type StoredScreenshot,
+} from "../../lib/tauri";
+import { finishScreenshotCapture } from "../screenshots/captureBridge";
 import { useWorkspaceStore } from "../../store";
 
 type ScreenshotRect = CaptureScreenshotRequest;
@@ -24,8 +31,8 @@ export function ScreenshotMenu({
   targetRef,
   targetLabel: _targetLabel,
   onPreCapture,
-  onCaptureToClipboard,
-  onCaptureEntirePanelToClipboard,
+  onCapture,
+  onCaptureEntirePanel,
   entirePanelLabel,
 }: {
   buttonLabel?: string;
@@ -34,8 +41,11 @@ export function ScreenshotMenu({
   targetRef: RefObject<HTMLElement | null>;
   targetLabel?: string;
   onPreCapture?: () => void;
-  onCaptureToClipboard?: (rect: ScreenshotRect) => Promise<void>;
-  onCaptureEntirePanelToClipboard?: () => Promise<void>;
+  onCapture?: (
+    rect: ScreenshotRect,
+    kind: StoredScreenshot["kind"],
+  ) => Promise<ScreenshotCaptureResult>;
+  onCaptureEntirePanel?: () => Promise<ScreenshotCaptureResult>;
   entirePanelLabel?: string;
 }) {
   const { t } = useTranslation();
@@ -61,7 +71,7 @@ export function ScreenshotMenu({
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [menuOpen]);
 
-  async function runCapture(capture: () => Promise<void>) {
+  async function runCapture(capture: () => Promise<ScreenshotCaptureResult>) {
     if (!isTauriRuntime()) {
       showStatusBarNotice(t("workspace.screenshotsRequireRuntime"), { tone: "warning" });
       return;
@@ -69,9 +79,9 @@ export function ScreenshotMenu({
 
     try {
       await waitForScreenshotSurface();
-      await capture();
-      setCopiedStatus(t("workspace.copied"));
-      showStatusBarNotice(t("workspace.copied"), { tone: "success" });
+      const result = await capture();
+      finishScreenshotCapture(result, t);
+      setCopiedStatus(t("workspace.takeScreenshot"));
       window.setTimeout(() => setCopiedStatus(""), 1600);
     } catch (error) {
       showStatusBarNotice(
@@ -83,10 +93,13 @@ export function ScreenshotMenu({
     }
   }
 
-  async function captureRect(rect: ScreenshotRect) {
-    await runCapture(() => onCaptureToClipboard
-      ? onCaptureToClipboard(rect)
-      : invokeCommand("capture_screenshot_to_clipboard", { request: rect }).then(() => undefined));
+  async function captureRect(
+    rect: ScreenshotRect,
+    kind: StoredScreenshot["kind"],
+  ) {
+    await runCapture(() => onCapture
+      ? onCapture(rect, kind)
+      : invokeCommand("capture_screenshot_to_library", { request: rect, kind }));
   }
 
   function targetBounds() {
@@ -103,15 +116,15 @@ export function ScreenshotMenu({
 
   function handleEntirePanel() {
     setMenuOpen(false);
-    if (onCaptureEntirePanelToClipboard) {
-      void runCapture(onCaptureEntirePanelToClipboard);
+    if (onCaptureEntirePanel) {
+      void runCapture(onCaptureEntirePanel);
       return;
     }
     const bounds = targetBounds();
     if (!bounds) {
       return;
     }
-    void captureRect(rectFromBounds(bounds));
+    void captureRect(rectFromBounds(bounds), "window");
   }
 
   function handleRegion() {
@@ -187,7 +200,7 @@ export function ScreenshotMenu({
     if (rect.width < 4 || rect.height < 4) {
       return;
     }
-    void captureRect(rect);
+    void captureRect(rect, "region");
   }
 
   function handleRegionKeyDown(event: KeyboardEvent<HTMLDivElement>) {

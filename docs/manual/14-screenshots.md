@@ -40,7 +40,7 @@ Settings → `settings.sectionScreenshots` → `settings.screenshotsShortcuts` d
 
 Settings → `settings.sectionScreenshots` owns the library folder (`settings.screenshotsFolder`, default: the platform Pictures/Screenshots folder), Capture Mode (`settings.screenshotsCaptureMode`: folder, clipboard, or Both by default), the optional `settings.screenshotsOpenInEditorAfterCapture` behavior for saved captures, image format (`settings.screenshotsFormat`: PNG by default or JPEG), the shared 1–100 `settings.screenshotsQuality` control, Windows-only DirectX capture acceleration (`settings.useDirectxScreenCapture`), and the global shortcuts. JPEG interprets Quality as lossy image quality. PNG remains lossless and maps Quality to compression effort.
 
-The `settings.screenshotsBorder` subsection controls the automatic capture border. `settings.screenshotsBorderEnabled` is on by default and draws a border inset along the image edges of every new Screenshots Module capture — both the saved library file and the clipboard copy — without changing the capture dimensions. While enabled, `settings.screenshotsBorderWidth` (1–64 px, default 1), `settings.screenshotsBorderStyle` (`settings.screenshotsBorderStyleSolid` by default, `settings.screenshotsBorderStyleDashed`, or `settings.screenshotsBorderStyleDotted`), and `settings.screenshotsBorderColor` (default black) customize it. The border applies only to new captures; existing library images and Pane captures are unaffected.
+The `settings.screenshotsBorder` subsection controls the automatic capture border. `settings.screenshotsBorderEnabled` is on by default and draws a border inset along the image edges of every new Module or Pane capture — both the saved library file and the clipboard copy — without changing the capture dimensions. While enabled, `settings.screenshotsBorderWidth` (1–64 px, default 1), `settings.screenshotsBorderStyle` (`settings.screenshotsBorderStyleSolid` by default, `settings.screenshotsBorderStyleDashed`, or `settings.screenshotsBorderStyleDotted`), and `settings.screenshotsBorderColor` (default black) customize it. The border applies only to new captures; existing library images are unaffected.
 
 On Windows, the Capture Mode subsection also offers `settings.screenshotsIncludeCursor` (off by default), which draws the mouse pointer at its on-screen position into new region, window, and full-screen captures. For region and window captures the pointer is frozen where it was when the capture started.
 
@@ -48,8 +48,8 @@ On Windows, the Capture Mode subsection also offers `settings.screenshotsInclude
 
 Each workspace surface exposes a screenshot toolbar menu (native Tauri context menu). The menu label is `workspace.takeScreenshot`. Variants:
 
-- `workspace.copyRegion` — region capture → clipboard. Status `workspace.copied`.
-- `workspace.copyEntirePanel` — whole window/Pane → clipboard.
+- `workspace.copyRegion` — capture a selected region and deliver it according to `settings.screenshotsCaptureMode`.
+- `workspace.copyEntirePanel` — capture the whole window/Pane using the same delivery setting.
 - `workspace.sendRegionToAi` — region capture → AI Assistant input. Status `workspace.sentToAi`.
 - `workspace.sendEntirePanelToAi` — whole Pane → AI Assistant input.
 
@@ -66,7 +66,7 @@ Failure: `workspace.screenshotCaptureError`. Outside the Tauri runtime: `workspa
 
 ## Capture targets
 
-Pane captures are transient by design: a capture is either copied to the clipboard or attached to the AI Assistant context; they do not enter the Screenshots Module library. Screenshots Module region/window/fullscreen actions follow Capture Mode and can save to the library, copy to the clipboard, or do both.
+Pane Region and Entire Window/Panel captures follow `settings.screenshotsCaptureMode`: save to the Screenshots library folder, copy to the clipboard, or both. Saved Pane captures are prepended to the library and honor `settings.screenshotsOpenInEditorAfterCapture`; when enabled, KKTerm switches to the Screenshots Module and opens the capture in the editor. Capture format, quality, and automatic border settings also apply. AI Assistant capture actions remain transient attachments and do not enter the library.
 
 ## RDP screenshots
 

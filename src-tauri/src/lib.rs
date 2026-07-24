@@ -1870,6 +1870,19 @@ async fn write_screenshot_data_url_to_clipboard(
 }
 
 #[tauri::command]
+async fn deliver_screenshot_data_url(
+    app: tauri::AppHandle,
+    request: screenshot::ScreenshotDataUrlRequest,
+    kind: String,
+) -> Result<screenshot::ScreenshotCaptureResult, String> {
+    run_blocking_screenshot_command("screenshot data URL delivery", move || {
+        let (options, _) = screenshot_library_context(&app)?;
+        screenshot::deliver_data_url_to_library(&app, request, kind, options)
+    })
+    .await
+}
+
+#[tauri::command]
 async fn capture_screenshot_for_assistant(
     app: tauri::AppHandle,
     request: screenshot::CaptureScreenshotRequest,
@@ -4734,6 +4747,7 @@ pub fn run() {
             // ── Screenshots
             capture_screenshot_to_clipboard,
             write_screenshot_data_url_to_clipboard,
+            deliver_screenshot_data_url,
             capture_screenshot_for_assistant,
             capture_fullscreen_screenshot_for_assistant,
             capture_screenshot_to_library,

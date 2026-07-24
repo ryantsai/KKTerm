@@ -1302,10 +1302,11 @@ export function WebViewWorkspace({
     return dataUrl;
   }
 
-  async function captureFullWebviewPageToClipboard() {
+  async function captureFullWebviewPageWithSettings() {
     const dataUrl = await captureFullWebviewPage();
-    await invokeCommand("write_screenshot_data_url_to_clipboard", {
+    return invokeCommand("deliver_screenshot_data_url", {
       request: { dataUrl },
+      kind: "screenshot",
     });
   }
 
@@ -1615,7 +1616,7 @@ export function WebViewWorkspace({
               buttonClassName="terminal-pane-action"
               dataTutorialId="workspace.screenshotMenu"
               entirePanelLabel={t("webview.capturePageToClipboard")}
-              onCaptureEntirePanelToClipboard={captureFullWebviewPageToClipboard}
+              onCaptureEntirePanel={captureFullWebviewPageWithSettings}
               onPreCapture={triggerPreCapture}
               targetLabel={t("webview.screenshotTarget", { title: tab.title })}
               targetRef={workspaceRef}

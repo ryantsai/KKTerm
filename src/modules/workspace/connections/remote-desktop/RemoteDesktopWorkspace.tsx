@@ -13,7 +13,14 @@ import type {
   PointerEvent as ReactPointerEvent,
   WheelEvent as ReactWheelEvent,
 } from "react";
-import { invokeCommand, isTauriRuntime, logUiDebug, openRemoteFullscreen, type AssistantScreenshot } from "../../../../lib/tauri";
+import {
+  invokeCommand,
+  isTauriRuntime,
+  logUiDebug,
+  openRemoteFullscreen,
+  type AssistantScreenshot,
+  type StoredScreenshot,
+} from "../../../../lib/tauri";
 import { useWorkspaceStore } from "../../../../store";
 import type {
   Connection,
@@ -417,22 +424,27 @@ export function RemoteDesktopWorkspace({
     return invokeCommand("capture_screenshot_for_assistant", { request });
   };
 
-  const captureRemoteDesktopCanvasToClipboard = async (request: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  }) => {
+  const captureRemoteDesktopCanvas = async (
+    request: {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    },
+    kind: StoredScreenshot["kind"],
+  ) => {
     if (!(useRdpCanvas || canStartVnc)) {
-      await invokeCommand("capture_screenshot_to_clipboard", { request });
-      return;
+      return invokeCommand("capture_screenshot_to_library", { request, kind });
     }
     const screenshot = await captureCanvasScreenshotForAssistant(
       canvasRef.current,
       request,
       useRdpCanvas ? "stretch" : viewMode,
     );
-    await copyCanvasDataUrlToClipboard(screenshot.dataUrl);
+    return invokeCommand("deliver_screenshot_data_url", {
+      request: { dataUrl: screenshot.dataUrl },
+      kind,
+    });
   };
 
   const sendVncText = async (text: string, pressEnter: boolean) => {
@@ -1659,7 +1671,7 @@ export function RemoteDesktopWorkspace({
           <ScreenshotMenu
             buttonClassName="terminal-pane-action"
             dataTutorialId="workspace.screenshotMenu"
-            onCaptureToClipboard={captureRemoteDesktopCanvasToClipboard}
+            onCapture={captureRemoteDesktopCanvas}
             targetRef={connection?.type === "rdp" || connection?.type === "vnc" ? hostRef : workspaceRef}
           />
           {showRemoteDesktopToolbar ? (
@@ -1826,18 +1838,6 @@ async function captureCanvasScreenshotForAssistant(
     width: sourceWidth,
     height: sourceHeight,
   };
-}
-
-async function copyCanvasDataUrlToClipboard(dataUrl: string) {
-  if (!navigator.clipboard || typeof ClipboardItem === "undefined") {
-    throw new Error("Image clipboard is not available in this runtime.");
-  }
-  const blob = await fetch(dataUrl).then((response) => response.blob());
-  await navigator.clipboard.write([
-    new ClipboardItem({
-      [blob.type || "image/png"]: blob,
-    }),
-  ]);
 }
 
 async function sendRdpCanvasText(sessionId: string, text: string, pressEnter: boolean) {

@@ -51,8 +51,9 @@ Backend (`src-tauri/src/screenshot.rs`, commands in `src-tauri/src/lib.rs`):
 Frontend:
 
 - Typed wrappers for every command above already exist in `src/lib/tauri.ts`.
-- `src/modules/workspace/ScreenshotMenu.tsx` — per-Pane copy-to-clipboard menu
-  (stays as-is; it is a Workspace affordance, not part of this Module).
+- `src/modules/workspace/ScreenshotMenu.tsx` — per-Pane capture menu; its
+  Region and Entire Window/Panel actions use the Module's persisted delivery
+  settings, while its AI Assistant capture actions remain transient.
 - App Launcher widget already implements the list / details / tile view-mode
   pattern this Module's library will mirror.
 - Tray (`src-tauri/src/app_tray.rs`) builds its menu from a localized snapshot

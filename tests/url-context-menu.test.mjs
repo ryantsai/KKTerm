@@ -49,21 +49,21 @@ test("URL full-page capture tiles both axes, stitches at device scale, and resto
   assert.match(frontend, /requestPageCaptureState\(initialState\.x, initialState\.y\)/);
   assert.match(frontend, /finally \{[\s\S]*fullPageCaptureInFlightRef\.current = false/);
   assert.match(tauriTypes, /request_webview_page_capture_state/);
-  assert.match(tauriTypes, /write_screenshot_data_url_to_clipboard/);
+  assert.match(tauriTypes, /deliver_screenshot_data_url/);
   assert.match(tauriBackend, /request_webview_page_capture_state/);
-  assert.match(tauriBackend, /write_screenshot_data_url_to_clipboard/);
+  assert.match(tauriBackend, /deliver_screenshot_data_url/);
   assert.match(screenshotBackend, /write_rgba_to_clipboard/);
 });
 
-test("URL toolbar copies the full page while the context menu saves it immediately", () => {
-  assert.match(screenshotMenu, /onCaptureEntirePanelToClipboard/);
+test("URL toolbar delivers the full page through screenshot settings while the context menu saves it immediately", () => {
+  assert.match(screenshotMenu, /onCaptureEntirePanel/);
   assert.match(
     frontend,
-    /onCaptureEntirePanelToClipboard=\{captureFullWebviewPageToClipboard\}/,
+    /onCaptureEntirePanel=\{captureFullWebviewPageWithSettings\}/,
   );
   assert.match(frontend, /selectPngSavePath\(filename,[\s\S]*captureFullWebviewPage\(\)/);
   assert.match(frontend, /writeDataUrlFile\(path, dataUrl\)/);
-  assert.match(frontend, /captureFullWebviewPageToClipboard\(\)[\s\S]*write_screenshot_data_url_to_clipboard/);
+  assert.match(frontend, /captureFullWebviewPageWithSettings\(\)[\s\S]*deliver_screenshot_data_url/);
 });
 
 test("URL Send to AI captures only the visible pane bounds", () => {
