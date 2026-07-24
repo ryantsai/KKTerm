@@ -3,7 +3,7 @@
 ## AI grep hints
 
 - Keys: `webview.*` (full namespace), `connections.embeddedWebApp`
-- Topics: URL Connection, embedded WebView2, HTTP proxy, HTTPS proxy, SOCKS5 proxy, direct connection, proxy override, address bar, back/forward/reload, auto-refresh, save form data, restore form data, credential fill, password capture, external open, saved Pane layout, Shift-click link, downloads, URL Connection debug log, tutorial targets `webview.toolbar`, `webview.address`, `webview.openExternally`, `webview.autoRefresh`, `webview.savePassword`, `webview.fillCredential`, `webview.sendToAi`, `webview.surface`
+- Topics: URL Connection, embedded WebView2, HTTP proxy, HTTPS proxy, SOCKS5 proxy, direct connection, proxy override, address bar, back/forward/reload, auto-refresh, save form data, restore form data, credential fill, password capture, external open, saved Pane layout, Shift-click link, download folder, download progress, downloads, URL Connection debug log, tutorial targets `webview.toolbar`, `webview.address`, `webview.openExternally`, `webview.autoRefresh`, `webview.savePassword`, `webview.fillCredential`, `webview.sendToAi`, `webview.surface`
 - Synonyms: "open a webpage", "embed a site", "browser tab", "internal web tool", "fill in saved password", "save form data", "restore form fields", "remember what I typed", "open link in browser", "external browser", "url.connection.debug.log", "URL debug log"
 
 > **Term:** a **URL Connection** is a Connection of kind `url` storing one http(s) URL, an optional `dataPartition` label, and a proxy routing choice. The `dataPartition` field is persisted but currently a no-op. Settings -> URL can provide the global default shard and user agent, and the add/edit Connection dialog's right-column `connections.urlOptions` can override them per URL Connection. On Windows, proxied Sessions use an internal data directory per effective proxy so WebView2 Environments with different proxy arguments can coexist; this isolation is an implementation requirement, not the user-facing `dataPartition` feature.
@@ -45,6 +45,7 @@ The URL Pane chrome follows the File Explorer (SFTP) Apple-esque design language
 - Address bar: `webview.address`, placeholder `webview.urlPlaceholder`. The bar accepts hosts without a scheme; the backend assumes `https://` when no scheme is present. A leading glyph reflects the current transport state: HTTPS uses a lock, plain HTTP uses a red unlocked glyph and address text, and non-http(s) drafts use the neutral globe.
 - The address bar disables OS autocorrect, autocapitalization, and spellcheck in the KKTerm WebView on Windows and macOS so URLs and hostnames are not rewritten while typing. Keyboard/IME suggestions outside the WebView may still appear.
 - Auto-refresh: `webview.autoRefresh` / `webview.autoRefreshOff`. Interval label `webview.autoRefreshSeconds`.
+- Downloads: after the first download starts, `webview.downloads` appears immediately to the left of `webview.openExternally`. It opens a native menu so the menu remains visible above the owned URL WebView surface. Each entry shows the filename with `webview.downloadInProgress`, `webview.downloadSucceeded`, or `webview.downloadFailedItem`; `webview.openDownloadFolder` opens the effective download folder.
 - Open externally: toolbar button `webview.openExternally` (opens the current URL in the OS default browser).
 - In-page links: normal http(s) link clicks navigate inside the URL Pane. Links that request a new browser window, such as `target="_blank"`, open a new KKTerm Workspace Tab for that URL. Shift-click an http(s) link in the embedded page opens it in the OS default browser instead of navigating the URL Pane.
 - Restore saved form data: `webview.fillSavedCredential` (disabled tooltip `webview.noSavedCredential`).
@@ -109,11 +110,15 @@ page metadata and its secret-store password.
 
 ## Downloads
 
-The host WebView2 emits download events. KKTerm shows transient status messages on the Status Bar:
+Settings → URL → `settings.urlDownloadFolder` chooses the destination for new URL Sessions. Blank uses the operating system Downloads folder (`settings.urlDownloadFolderSystemDefault`); `settings.urlDownloadFolderBrowse` opens the native directory picker. Close and reopen an existing URL Tab after changing the setting.
+
+The host webview emits download start and finish events. KKTerm avoids overwriting an existing same-named file by adding a numeric suffix, updates the toolbar's native Downloads menu, and shows transient status messages on the Status Bar:
 
 - Started: `webview.downloadStarted`
 - Complete: `webview.downloadComplete`
 - Failed: `webview.downloadFailed`
+
+The webview API does not expose portable byte counts, so the native menu reports lifecycle progress (Downloading / Complete / Failed), not a percentage. Reopen the menu to see status changes that occurred while it was open.
 
 ## Empty / runtime states
 

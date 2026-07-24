@@ -1,11 +1,11 @@
 import { ScreenshotMenu } from "../../ScreenshotMenu";
 import { documentHasWebviewBlockingOverlay } from "../../nativeOverlay";
 
-import { ArrowLeft, ArrowRight, Bot, ExternalLink, Floppy, Globe2, KeyRound, Lock, RefreshCw, Unlock, X } from "../../../../lib/reicon";
+import { ArrowLeft, ArrowRight, Bot, Download, ExternalLink, Floppy, Globe2, KeyRound, Lock, RefreshCw, Unlock, X } from "../../../../lib/reicon";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { FormEvent } from "react";
+import type { FormEvent, MouseEvent as ReactMouseEvent } from "react";
 import { resolveAppliedColorScheme } from "../../../../app/appShellEffects";
 import { writeToClipboard } from "../../../../lib/clipboard";
 import { technicalInputProps } from "../../../../lib/inputBehavior";
@@ -15,6 +15,7 @@ import {
   invokeCommand,
   isTauriRuntime,
   logUrlConnectionDebug,
+  openFilesystemPath,
   openExternalUrl,
   selectPngSavePath,
   writeDataUrlFile,
@@ -56,6 +57,13 @@ type WebviewDownloadEvent = {
   status: "requested" | "finished" | "unknown";
   path?: string;
   success?: boolean;
+};
+
+type WebviewDownload = {
+  id: number;
+  url: string;
+  path?: string;
+  status: "downloading" | "complete" | "failed";
 };
 
 interface WebviewSessionLease {
@@ -344,6 +352,8 @@ export function WebViewWorkspace({
   const pendingPageCaptureStatesRef = useRef(new Map<string, PendingPageCaptureState>());
   const fullPageCaptureInFlightRef = useRef(false);
   const externalLinkTokenRef = useRef<string | null>(null);
+  const downloadFolderRef = useRef<string | null>(null);
+  const nextDownloadIdRef = useRef(1);
   const faviconUpdatedRef = useRef(false);
   const connectionSessionCountedRef = useRef(false);
   const credentialRef = useRef({ canFillCredential: false });
@@ -353,6 +363,7 @@ export function WebViewWorkspace({
   const [webviewReady, setWebviewReady] = useState(false);
   const [webviewEventsReady, setWebviewEventsReady] = useState(!isTauriRuntime());
   const [autoRefreshSeconds, setAutoRefreshSeconds] = useState<AutoRefreshIntervalSeconds>(0);
+  const [downloads, setDownloads] = useState<WebviewDownload[]>([]);
 
   const initialUrl = tab.url ?? "";
   const [hasSavedCredential, setHasSavedCredential] = useState(Boolean(tab.connection?.hasUrlCredential));
@@ -634,6 +645,7 @@ export function WebViewWorkspace({
           url: initialUrl,
           dataPartition,
           userAgent,
+          downloadFolder: urlSettings.downloadFolder?.trim() || undefined,
           proxyUrl,
           ignoreCertificateErrors,
           ...bounds,
@@ -647,6 +659,7 @@ export function WebViewWorkspace({
           return;
         }
         externalLinkTokenRef.current = started.externalLinkToken;
+        downloadFolderRef.current = started.downloadFolder;
         sessionStartedRef.current = true;
         setWebviewReady(true);
         pushWebviewVisibility();
@@ -912,11 +925,46 @@ export function WebViewWorkspace({
           return;
         }
         if (event.payload.status === "requested") {
-          setFillStatus(t("webview.downloadStarted"));
+          if (!downloadFolderRef.current && event.payload.path) {
+            downloadFolderRef.current = parentDirectory(event.payload.path);
+          }
+          setDownloads((current) => [
+            ...current,
+            {
+              id: nextDownloadIdRef.current++,
+              path: event.payload.path,
+              status: "downloading",
+              url: event.payload.url,
+            },
+          ]);
+          showStatusBarNotice(t("webview.downloadStarted"), { tone: "info" });
           return;
         }
         if (event.payload.status === "finished") {
-          setFillStatus(event.payload.success ? t("webview.downloadComplete") : t("webview.downloadFailed"));
+          setDownloads((current) => {
+            const matchingIndex = current.findIndex(
+              (download) =>
+                download.status === "downloading" &&
+                ((event.payload.path && download.path === event.payload.path) ||
+                  download.url === event.payload.url),
+            );
+            if (matchingIndex < 0) {
+              return current;
+            }
+            return current.map((download, index) =>
+              index === matchingIndex
+                ? {
+                    ...download,
+                    path: event.payload.path ?? download.path,
+                    status: event.payload.success ? "complete" : "failed",
+                  }
+                : download,
+            );
+          });
+          showStatusBarNotice(
+            event.payload.success ? t("webview.downloadComplete") : t("webview.downloadFailed"),
+            { tone: event.payload.success ? "success" : "error" },
+          );
         }
       }),
     ]).then((unlistenFns) => {
@@ -952,6 +1000,47 @@ export function WebViewWorkspace({
     }).catch((error) => {
       setNavError(error instanceof Error ? error.message : String(error));
     });
+  }
+
+  async function handleDownloadsMenu(event: ReactMouseEvent<HTMLButtonElement>) {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const downloadItems = downloads.map((download) => ({
+      kind: "item" as const,
+      label: t(
+        download.status === "downloading"
+          ? "webview.downloadInProgress"
+          : download.status === "complete"
+            ? "webview.downloadSucceeded"
+            : "webview.downloadFailedItem",
+        { file: downloadFileName(download) },
+      ),
+      iconSvg: nativeMenuIcons.download,
+      disabled: true,
+      action: () => undefined,
+    }));
+    const openFolderItem = {
+      kind: "item",
+      label: t("webview.openDownloadFolder"),
+      iconSvg: nativeMenuIcons.folderOpen,
+      disabled: false,
+      action: () => {
+        const folder = downloadFolderRef.current;
+        if (!folder) {
+          return;
+        }
+        void openFilesystemPath(folder).catch((error) => {
+          showStatusBarNotice(error instanceof Error ? error.message : String(error), { tone: "error" });
+        });
+      },
+    } as const;
+    await showNativeContextMenu(
+      [
+        ...downloadItems,
+        { kind: "separator" },
+        openFolderItem,
+      ],
+      { x: bounds.left, y: bounds.bottom },
+    );
   }
 
   function handleSimple(name: "webview_reload" | "webview_go_back" | "webview_go_forward") {
@@ -1461,6 +1550,17 @@ export function WebViewWorkspace({
           </div>
           <div className="terminal-pane-actions">
             {fillStatus ? <span className="webview-toolbar-status">{fillStatus}</span> : null}
+            {downloads.length > 0 ? (
+              <button
+                aria-label={t("webview.downloads")}
+                className="terminal-pane-action"
+                onClick={(event) => void handleDownloadsMenu(event)}
+                title={t("webview.downloads")}
+                type="button"
+              >
+                <Download size={15} />
+              </button>
+            ) : null}
             <button
               aria-label={t("webview.openExternally")}
               className="terminal-pane-action"
@@ -1567,6 +1667,25 @@ export function WebViewWorkspace({
       </article>
     </section>
   );
+}
+
+function parentDirectory(path: string) {
+  const separatorIndex = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
+  return separatorIndex > 0 ? path.slice(0, separatorIndex) : null;
+}
+
+function downloadFileName(download: WebviewDownload) {
+  const path = download.path?.trim();
+  if (path) {
+    const separatorIndex = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
+    return path.slice(separatorIndex + 1) || path;
+  }
+  try {
+    const pathname = new URL(download.url).pathname;
+    return decodeURIComponent(pathname.slice(pathname.lastIndexOf("/") + 1)) || download.url;
+  } catch {
+    return download.url;
+  }
 }
 
 function formatWebviewSubtitle(url: string) {

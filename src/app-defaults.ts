@@ -141,6 +141,7 @@ export const defaultUrlSettings: UrlSettings = {
   ignoreCertificateErrors: false,
   defaultDataPartition: "",
   defaultUserAgent: "",
+  downloadFolder: "",
 };
 
 export const defaultRdpSettings: RdpSettings = {

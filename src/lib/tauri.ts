@@ -813,6 +813,7 @@ export interface StartWebviewSessionRequest {
   url: string;
   dataPartition?: string;
   userAgent?: string;
+  downloadFolder?: string;
   proxyUrl?: string;
   ignoreCertificateErrors?: boolean;
   x: number;
@@ -826,6 +827,7 @@ export interface WebviewSessionStarted {
   label: string;
   partition: string;
   externalLinkToken: string;
+  downloadFolder: string;
 }
 
 export interface UpdateWebviewBoundsRequest {
@@ -4403,6 +4405,22 @@ export async function writeDataUrlFile(path: string, dataUrl: string) {
 }
 
 export async function selectScreenshotFolder(options: {
+  defaultPath?: string;
+  title: string;
+}) {
+  if (!isTauriRuntime()) {
+    return null;
+  }
+  const selectedPath = await openDialog({
+    defaultPath: options.defaultPath,
+    directory: true,
+    multiple: false,
+    title: options.title,
+  });
+  return typeof selectedPath === "string" ? selectedPath : null;
+}
+
+export async function selectUrlDownloadFolder(options: {
   defaultPath?: string;
   title: string;
 }) {

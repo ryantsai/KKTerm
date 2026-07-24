@@ -1079,6 +1079,7 @@ export interface UrlSettings {
   ignoreCertificateErrors: boolean;
   defaultDataPartition?: string;
   defaultUserAgent?: string;
+  downloadFolder?: string;
 }
 
 export type RdpPerformanceProfile = "balanced" | "quality" | "speed";

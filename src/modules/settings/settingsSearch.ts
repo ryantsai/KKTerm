@@ -156,7 +156,8 @@ export const SETTINGS_SEARCH_KEYS: Record<SettingsSectionId, readonly string[]> 
     "settings.systemFonts", "settings.underline",
   ],
   "url-settings": [
-    "settings.urlSecurity", "settings.ignoreCertificateErrors", "settings.urlUserAgent",
+    "settings.urlSecurity", "settings.ignoreCertificateErrors", "settings.urlDownloadFolder",
+    "settings.urlDownloadFolderHint", "settings.urlUserAgent",
     "settings.savedWebsitePasswords", "settings.urlDataShards", "settings.clearShard",
     "settings.urlDefaults", "settings.urlUserAgentDefault",
   ],

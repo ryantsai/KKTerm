@@ -3543,23 +3543,32 @@ fn url_settings_round_trip_through_settings_table() {
     assert!(!defaults.ignore_certificate_errors);
     assert_eq!(defaults.default_data_partition, None);
     assert_eq!(defaults.default_user_agent, None);
+    assert_eq!(defaults.download_folder, None);
+
+    let download_folder = std::env::temp_dir()
+        .join("kkterm-url-downloads")
+        .to_string_lossy()
+        .to_string();
 
     let updated = storage
         .update_url_settings(UrlSettings {
             ignore_certificate_errors: true,
             default_data_partition: Some(" ops ".to_string()),
             default_user_agent: Some(" CustomUA ".to_string()),
+            download_folder: Some(format!(" {download_folder} ")),
         })
         .expect("URL settings update");
 
     assert!(updated.ignore_certificate_errors);
     assert_eq!(updated.default_data_partition.as_deref(), Some("ops"));
     assert_eq!(updated.default_user_agent.as_deref(), Some("CustomUA"));
+    assert_eq!(updated.download_folder.as_deref(), Some(download_folder.as_str()));
 
     let reloaded = storage.url_settings().expect("URL settings reload");
     assert!(reloaded.ignore_certificate_errors);
     assert_eq!(reloaded.default_data_partition.as_deref(), Some("ops"));
     assert_eq!(reloaded.default_user_agent.as_deref(), Some("CustomUA"));
+    assert_eq!(reloaded.download_folder.as_deref(), Some(download_folder.as_str()));
 }
 
 #[test]

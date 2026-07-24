@@ -878,6 +878,8 @@ pub struct UrlSettings {
     default_data_partition: Option<String>,
     #[serde(default)]
     default_user_agent: Option<String>,
+    #[serde(default)]
+    download_folder: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
@@ -5628,6 +5630,7 @@ fn default_url_settings() -> UrlSettings {
         ignore_certificate_errors: false,
         default_data_partition: None,
         default_user_agent: None,
+        download_folder: None,
     }
 }
 
@@ -6439,6 +6442,18 @@ fn validate_url_settings(mut settings: UrlSettings) -> Result<UrlSettings, Strin
         .map(|partition| partition.trim().to_string())
         .filter(|partition| !partition.is_empty());
     settings.default_user_agent = normalize_user_agent(settings.default_user_agent)?;
+    settings.download_folder = settings
+        .download_folder
+        .map(|folder| folder.trim().to_string())
+        .filter(|folder| !folder.is_empty());
+    if let Some(folder) = settings.download_folder.as_deref() {
+        if folder.chars().any(char::is_control) {
+            return Err("URL download folder must not contain control characters".to_string());
+        }
+        if !Path::new(folder).is_absolute() {
+            return Err("URL download folder must be an absolute path".to_string());
+        }
+    }
     Ok(settings)
 }
 

@@ -1,7 +1,7 @@
 import { Globe, Trash2 } from "../../lib/reicon";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { invokeCommand, isTauriRuntime } from "../../lib/tauri";
+import { invokeCommand, isTauriRuntime, selectUrlDownloadFolder } from "../../lib/tauri";
 import { technicalInputProps } from "../../lib/inputBehavior";
 import { useWorkspaceStore } from "../../store";
 import type { UrlCredentialSummary, UrlDataPartitionSummary } from "../../types";
@@ -23,11 +23,13 @@ export function UrlSettings() {
       ...draft,
       defaultDataPartition: draft.defaultDataPartition?.trim() || undefined,
       defaultUserAgent: draft.defaultUserAgent?.trim() || undefined,
+      downloadFolder: draft.downloadFolder?.trim() || undefined,
     }) !==
     JSON.stringify({
       ...urlSettings,
       defaultDataPartition: urlSettings.defaultDataPartition?.trim() || undefined,
       defaultUserAgent: urlSettings.defaultUserAgent?.trim() || undefined,
+      downloadFolder: urlSettings.downloadFolder?.trim() || undefined,
     });
 
   useEffect(() => {
@@ -61,7 +63,8 @@ export function UrlSettings() {
       const request = {
         ...draft,
         defaultDataPartition: draft.defaultDataPartition?.trim() || undefined,
-      defaultUserAgent: draft.defaultUserAgent?.trim() || undefined,
+        defaultUserAgent: draft.defaultUserAgent?.trim() || undefined,
+        downloadFolder: draft.downloadFolder?.trim() || undefined,
       };
       const saved = isTauriRuntime() ? await invokeCommand("update_url_settings", { request }) : request;
       setUrlSettings(saved);
@@ -69,6 +72,20 @@ export function UrlSettings() {
       showStatusBarNotice(t("settings.urlSettingsSaved"), { tone: "success" });
     } catch (saveError) {
       showStatusBarNotice(saveError instanceof Error ? saveError.message : String(saveError), { tone: "error" });
+    }
+  }
+
+  async function browseDownloadFolder() {
+    try {
+      const selection = await selectUrlDownloadFolder({
+        defaultPath: draft.downloadFolder || undefined,
+        title: t("settings.urlDownloadFolderBrowse"),
+      });
+      if (selection) {
+        setDraft((settings) => ({ ...settings, downloadFolder: selection }));
+      }
+    } catch (browseError) {
+      showStatusBarNotice(browseError instanceof Error ? browseError.message : String(browseError), { tone: "error" });
     }
   }
 
@@ -92,6 +109,35 @@ export function UrlSettings() {
         label={t("settings.sectionUrl")}
         title={t("settings.urlDefaults")}
       />
+
+      <fieldset className="settings-subsection settings-fieldset">
+        <legend>{t("settings.urlDownloadFolder")}</legend>
+        <div>
+          <p className="field-hint">{t("settings.urlDownloadFolderHint")}</p>
+        </div>
+        <div className="form-grid one-column">
+          <label>
+            <span>{t("settings.urlDownloadFolder")}</span>
+            <div className="screenshots-folder-row">
+              <input
+                {...technicalInputProps}
+                onChange={(event) =>
+                  setDraft((settings) => ({ ...settings, downloadFolder: event.currentTarget.value }))
+                }
+                placeholder={t("settings.urlDownloadFolderSystemDefault")}
+                value={draft.downloadFolder ?? ""}
+              />
+              <button
+                className="secondary-button"
+                onClick={() => void browseDownloadFolder()}
+                type="button"
+              >
+                {t("settings.urlDownloadFolderBrowse")}
+              </button>
+            </div>
+          </label>
+        </div>
+      </fieldset>
 
       <fieldset className="settings-subsection settings-fieldset">
         <legend>{t("settings.urlSecurity")}</legend>

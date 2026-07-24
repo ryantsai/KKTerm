@@ -8,6 +8,8 @@
 
 use std::{
     collections::{HashMap, HashSet},
+    fs,
+    path::{Path, PathBuf},
     sync::{
         Arc, Mutex, MutexGuard,
         atomic::{AtomicBool, Ordering},
@@ -441,6 +443,7 @@ pub struct StartWebviewSessionRequest {
     data_partition: Option<String>,
     proxy_url: Option<String>,
     user_agent: Option<String>,
+    download_folder: Option<String>,
     #[serde(default)]
     ignore_certificate_errors: bool,
     x: f64,
@@ -456,6 +459,7 @@ pub struct WebviewSessionStarted {
     label: String,
     partition: String,
     external_link_token: String,
+    download_folder: String,
 }
 
 #[derive(Deserialize)]
@@ -614,6 +618,7 @@ impl WebviewSessionManager {
             data_partition,
             proxy_url,
             user_agent,
+            download_folder,
             ignore_certificate_errors,
             x: initial_x,
             y: initial_y,
@@ -634,6 +639,10 @@ impl WebviewSessionManager {
             proxy_url.as_deref().map(parse_proxy_url).transpose()?
         };
         let partition = resolve_partition(data_partition);
+        let custom_download_folder_configured = download_folder
+            .as_deref()
+            .is_some_and(|value| !value.trim().is_empty());
+        let download_folder = resolve_download_folder(app, download_folder)?;
         logging::url_connection_debug(
             "backend.session.start.request",
             &json!({
@@ -645,6 +654,7 @@ impl WebviewSessionManager {
                 "partition": partition,
                 "ignoreCertificateErrors": ignore_certificate_errors,
                 "userAgentConfigured": user_agent.as_ref().is_some_and(|value| !value.trim().is_empty()),
+                "customDownloadFolderConfigured": custom_download_folder_configured,
                 "proxy": proxy_url.as_ref().map(|proxy| json!({
                     "scheme": proxy.scheme(),
                     "host": proxy.host_str(),
@@ -692,6 +702,7 @@ impl WebviewSessionManager {
         let title_session_id = session_id.clone();
         let download_app = app.clone();
         let download_session_id = session_id.clone();
+        let download_destination_folder = download_folder.clone();
         let new_window_app = app.clone();
         let new_window_session_id = session_id.clone();
         let defer_initial_navigation =
@@ -766,13 +777,20 @@ impl WebviewSessionManager {
             })
             .on_download(move |_webview, event| {
                 let payload = match event {
-                    DownloadEvent::Requested { url, destination } => WebviewDownloadPayload {
-                        session_id: download_session_id.clone(),
-                        url: url.to_string(),
-                        status: "requested",
-                        path: Some(destination.display().to_string()),
-                        success: None,
-                    },
+                    DownloadEvent::Requested { url, destination } => {
+                        let selected_destination = available_download_path(
+                            &download_destination_folder,
+                            destination.file_name(),
+                        );
+                        *destination = selected_destination;
+                        WebviewDownloadPayload {
+                            session_id: download_session_id.clone(),
+                            url: url.to_string(),
+                            status: "requested",
+                            path: Some(destination.display().to_string()),
+                            success: None,
+                        }
+                    }
                     DownloadEvent::Finished { url, path, success } => WebviewDownloadPayload {
                         session_id: download_session_id.clone(),
                         url: url.to_string(),
@@ -895,6 +913,7 @@ impl WebviewSessionManager {
                 "sessionId": session_id,
                 "label": label,
                 "partition": partition,
+                "customDownloadFolderConfigured": custom_download_folder_configured,
             }),
         );
 
@@ -903,6 +922,7 @@ impl WebviewSessionManager {
             label,
             partition,
             external_link_token,
+            download_folder: download_folder.display().to_string(),
         })
     }
 
@@ -2140,6 +2160,69 @@ fn resolve_partition(data_partition: Option<String>) -> String {
         .unwrap_or_else(|| DEFAULT_PARTITION.to_string())
 }
 
+fn resolve_download_folder(
+    app: &AppHandle,
+    configured_folder: Option<String>,
+) -> Result<PathBuf, String> {
+    let folder = match configured_folder
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+    {
+        Some(value) => {
+            let path = PathBuf::from(value);
+            if !path.is_absolute() {
+                return Err("URL download folder must be an absolute path".to_string());
+            }
+            path
+        }
+        None => app
+            .path()
+            .download_dir()
+            .map_err(|error| format!("failed to resolve the system Downloads folder: {error}"))?,
+    };
+    fs::create_dir_all(&folder).map_err(|error| {
+        format!(
+            "failed to create URL download folder {}: {error}",
+            folder.display()
+        )
+    })?;
+    folder.canonicalize().map_err(|error| {
+        format!(
+            "failed to resolve URL download folder {}: {error}",
+            folder.display()
+        )
+    })
+}
+
+fn available_download_path(folder: &Path, suggested_name: Option<&std::ffi::OsStr>) -> PathBuf {
+    let suggested_name = suggested_name
+        .filter(|name| !name.is_empty())
+        .unwrap_or_else(|| std::ffi::OsStr::new("download"));
+    let candidate = folder.join(suggested_name);
+    if !candidate.exists() {
+        return candidate;
+    }
+
+    let suggested = Path::new(suggested_name);
+    let stem = suggested
+        .file_stem()
+        .filter(|stem| !stem.is_empty())
+        .unwrap_or(suggested_name)
+        .to_string_lossy();
+    let extension = suggested.extension().map(|value| value.to_string_lossy());
+    for index in 1.. {
+        let file_name = match extension.as_deref() {
+            Some(extension) => format!("{stem} ({index}).{extension}"),
+            None => format!("{stem} ({index})"),
+        };
+        let candidate = folder.join(file_name);
+        if !candidate.exists() {
+            return candidate;
+        }
+    }
+    unreachable!("the download filename suffix space is exhausted")
+}
+
 fn external_link_bridge_token() -> String {
     let mut random = [0_u8; 16];
     rand::rng().fill_bytes(&mut random);
@@ -2199,5 +2282,22 @@ mod tests {
         assert_ne!(first, other);
         assert_eq!(first.len(), 24);
         assert!(!first.contains("proxy.example"));
+    }
+
+    #[test]
+    fn download_paths_keep_the_suggested_name_and_avoid_overwriting() {
+        let folder = std::env::temp_dir().join(format!(
+            "kkterm-webview-download-test-{}",
+            external_link_bridge_token()
+        ));
+        fs::create_dir_all(&folder).expect("test folder is created");
+        let first = available_download_path(&folder, Some(std::ffi::OsStr::new("report.pdf")));
+        assert_eq!(first, folder.join("report.pdf"));
+        fs::write(&first, b"existing").expect("existing download is written");
+        assert_eq!(
+            available_download_path(&folder, Some(std::ffi::OsStr::new("report.pdf"))),
+            folder.join("report (1).pdf")
+        );
+        fs::remove_dir_all(folder).expect("test folder is removed");
     }
 }
