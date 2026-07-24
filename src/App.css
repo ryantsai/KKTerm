@@ -3,6 +3,7 @@
 @import "./styles/base.css";
 @import "./app/ui/dialog/dialogs.css";
 @import "./app/app.css";
+@import "./app/shutdownWarning.css";
 @import "./app/moduleHeader.css";
 @import "./modules/dashboard/widgets/builtin/app-launcher/app-launcher.css";
 @import "./modules/dashboard/dashboard.css";

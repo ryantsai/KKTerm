@@ -68,7 +68,6 @@ import type { WorkspaceTab } from "./types";
 import { StatusBar } from "./modules/workspace/StatusBar";
 import { TabStrip, WorkspaceCanvas } from "./modules/workspace/WorkspaceCanvas";
 import "@xterm/xterm/css/xterm.css";
-import "./App.css";
 
 const DashboardPage = lazy(() =>
   import("./modules/dashboard/DashboardPage").then(({ DashboardPage }) => ({
