@@ -57,7 +57,16 @@ const FILE_BROWSER_FAVORITES_STORAGE_KEY = "kkterm.fileBrowserFavorites.v1";
 const FILE_BROWSER_SIDEBAR_STORAGE_KEY = "kkterm.fileBrowserSidebarCollapsed.v1";
 const SSH_FILE_BROWSER_PROTOCOL_STORAGE_KEY = "kkterm.sshFileBrowserProtocol.v1";
 const SSH_FILE_BROWSER_LOCAL_PATH_STORAGE_KEY = "kkterm.sshFileBrowserLocalPath.v1";
+const SFTP_SESSION_INVALIDATED_MARKER = "[KKTERM_SFTP_SESSION_INVALIDATED]";
 const RECENT_PATH_LIMIT = 5;
+
+function parseSftpTransferError(error: unknown) {
+  const rawMessage = error instanceof Error ? error.message : String(error);
+  return {
+    message: rawMessage.replace(SFTP_SESSION_INVALIDATED_MARKER, ""),
+    sessionInvalidated: rawMessage.includes(SFTP_SESSION_INVALIDATED_MARKER),
+  };
+}
 
 type SshFileBrowserProtocol = "sftp" | "ftpsExplicit" | "ftpsImplicit" | "ftp";
 
@@ -224,6 +233,7 @@ export function SftpWorkspace({
   );
   const viewOptionsRef = useRef(viewOptions);
   const [status, setStatus] = useState(t("sftp.connecting"));
+  const [sessionRestartKey, setSessionRestartKey] = useState(0);
   const [remoteError, setRemoteError] = useState("");
   const [localStatus, setLocalStatus] = useState("");
   const [isLocalLoading, setIsLocalLoading] = useState(false);
@@ -746,7 +756,7 @@ export function SftpWorkspace({
     };
     // rememberRemotePath is an inline closure over stable refs; including it would restart the session every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeProtocolLabel, commands, connection, effectiveBrowserKind, isLocalFilesBrowser, markConnectionSessionEnded, markConnectionSessionStarted, showStatusBarNotice, sourceConnection, sshFileBrowserPort, sshFileBrowserProtocol, t]);
+  }, [activeProtocolLabel, commands, connection, effectiveBrowserKind, isLocalFilesBrowser, markConnectionSessionEnded, markConnectionSessionStarted, sessionRestartKey, showStatusBarNotice, sourceConnection, sshFileBrowserPort, sshFileBrowserProtocol, t]);
 
   const refreshRemoteDirectory = async () => {
     await loadRemoteDirectory(remotePath, t("sftp.refreshing"));
@@ -878,6 +888,17 @@ export function SftpWorkspace({
     return match?.[1]?.trim() || fallbackPath;
   };
 
+  const handleSftpTransferError = (error: unknown) => {
+    const parsed = parseSftpTransferError(error);
+    if (parsed.sessionInvalidated && effectiveBrowserKind === "sftp") {
+      sessionIdRef.current = null;
+      setRemoteError("");
+      setStatus(t("sftp.connecting"));
+      setSessionRestartKey((current) => current + 1);
+    }
+    return parsed;
+  };
+
   const runQueuedTransfer = async (transfer: TransferRecord) => {
     const sessionId = sessionIdRef.current;
     if (!sessionId || !isTauriRuntime()) {
@@ -948,7 +969,7 @@ export function SftpWorkspace({
         }
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const { message } = handleSftpTransferError(error);
       if (
         transfer.overwriteBehavior !== "overwrite" &&
         isExistingDestinationError(message) &&
@@ -1027,6 +1048,12 @@ export function SftpWorkspace({
     if (activeTransferIdRef.current) {
       return;
     }
+    if (
+      !isLocalFilesBrowser &&
+      (status !== t("sftp.connected") || !sessionIdRef.current)
+    ) {
+      return;
+    }
 
     const nextTransfer = transfers.find((transfer) => transfer.state === "queued");
     if (!nextTransfer) {
@@ -1037,7 +1064,7 @@ export function SftpWorkspace({
     void runQueuedTransfer(nextTransfer);
     // Drain the queue when transfers change; runQueuedTransfer is recreated each render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [transfers]);
+  }, [isLocalFilesBrowser, status, t, transfers]);
 
   useEffect(() => {
     if (transfers.some((transfer) => transfer.state === "queued" || transfer.state === "active")) {
@@ -1868,7 +1895,8 @@ export function SftpWorkspace({
         origin: `${remoteFilePath} @ ${hostLabel}`,
       };
     } catch (error) {
-      showStatusBarNotice(error instanceof Error ? error.message : String(error), { tone: "error" });
+      const { message } = handleSftpTransferError(error);
+      showStatusBarNotice(message, { tone: "error" });
       return null;
     }
   };

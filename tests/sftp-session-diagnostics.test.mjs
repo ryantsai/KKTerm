@@ -33,12 +33,12 @@ test("SFTP uploads bound remote writes and clean up new partial files", async ()
   assert.match(source, /const SFTP_TRANSFER_IO_TIMEOUT:\s*Duration = Duration::from_secs\(60\);/);
   assert.match(
     source,
-    /with_sftp_io_timeout\("opening remote upload file"[\s\S]*?open_with_flags/,
+    /with_sftp_transfer_io_timeout\(\s*"opening remote upload file"[\s\S]*?open_with_flags/,
     "remote file creation should be bounded so a server stall becomes a failed transfer",
   );
   assert.match(
     source,
-    /with_sftp_io_timeout\("uploading remote file chunk"[\s\S]*?write_all/,
+    /with_sftp_transfer_io_timeout\(\s*"uploading remote file chunk"[\s\S]*?write_all/,
     "remote chunk writes should be bounded so progress cannot remain at 0% forever",
   );
   assert.match(
@@ -50,6 +50,49 @@ test("SFTP uploads bound remote writes and clean up new partial files", async ()
     source,
     /"transfer\.upload\.partial_cleanup"/,
     "partial-upload cleanup should be visible in SFTP debug logs",
+  );
+});
+
+test("SFTP disables russh compression and serializes acknowledged writes", async () => {
+  const source = await readFile(new URL("../src-tauri/src/sftp.rs", import.meta.url), "utf8");
+
+  assert.match(source, /const SFTP_MAX_CONCURRENT_WRITES:\s*usize = 1;/);
+  assert.match(
+    source,
+    /SftpConfig\s*\{[\s\S]*?max_concurrent_writes:\s*SFTP_MAX_CONCURRENT_WRITES/,
+    "SFTP must wait for each WRITE acknowledgement before issuing another write",
+  );
+  assert.match(
+    source,
+    /fn effective_sftp_ssh_compression\(_requested: Option<bool>\) -> bool[\s\S]*?\bfalse\b/,
+    "the backend must force SFTP SSH compression off regardless of frontend settings",
+  );
+  assert.match(source, /"compressionRequested": requested_compression/);
+  assert.match(source, /"compression": compression/);
+});
+
+test("SFTP cancellation wakes blocked I/O and reconnects before draining its queue", async () => {
+  const [backend, frontend] = await Promise.all([
+    readFile(new URL("../src-tauri/src/sftp.rs", import.meta.url), "utf8"),
+    readFile(
+      new URL(
+        "../src/modules/workspace/connections/sftp/SftpWorkspace.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  ]);
+
+  assert.match(backend, /transfers:\s*Mutex<HashMap<String,\s*CancellationToken>>/);
+  assert.match(backend, /tokio::select![\s\S]*?cancellation\.cancelled\(\)/);
+  assert.match(backend, /SFTP_SESSION_INVALIDATED_MARKER/);
+  assert.match(backend, /fn invalidate_session[\s\S]*?sessions\.remove\(session_id\)/);
+  assert.match(frontend, /SFTP_SESSION_INVALIDATED_MARKER/);
+  assert.match(frontend, /setSessionRestartKey\(\(current\) => current \+ 1\)/);
+  assert.match(
+    frontend,
+    /status !== t\("sftp\.connected"\) \|\| !sessionIdRef\.current/,
+    "queued transfers must pause until the replacement session is connected",
   );
 });
 

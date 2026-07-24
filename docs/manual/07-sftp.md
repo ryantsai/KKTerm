@@ -81,9 +81,11 @@ Per-transfer controls:
 - Cancel: `sftp.cancelTransfer` / `sftp.cancelTransferName`, in-flight `sftp.canceling`, post-state `sftp.canceledBeforeStart` or `sftp.transferCanceled`.
 - Skip existing target: `sftp.skippedExisting`.
 
+For transfer integrity, KKTerm disables SSH compression inside native SFTP Sessions even when compression is enabled for the parent SSH Connection; the SSH terminal continues to use its configured compression setting. KKTerm sends one SFTP write at a time and waits for its acknowledgement. Canceling an in-flight transfer or reaching its I/O timeout closes the affected SFTP Session and reconnects before the next queued transfer starts. The interrupted transfer is not retried automatically. If the remote protocol stream had already stopped responding, a partial upload may remain because KKTerm does not issue cleanup commands through the unusable Session.
+
 ## SFTP Debug Logging
 
-Debug builds write SFTP startup and transfer records to `sftp.debug.log` beside `kkterm.log`. Release builds write the same JSONL log only when Settings → General → Debug → `settings.advancedDebugging` is enabled. Records include SFTP browser startup stages, per-session operation waits, transfer start/completion/error summaries, upload open/write/shutdown timeouts, and whether KKTerm removed a newly-created partial remote file after a failed upload. The log omits passwords, SSH key passphrases, terminal contents, and file contents, but it may include remote hostnames, usernames, local paths, and remote paths, so users should review it before sharing.
+Debug builds write SFTP startup and transfer records to `sftp.debug.log` beside `kkterm.log`. Release builds write the same JSONL log only when Settings → General → Debug → `settings.advancedDebugging` is enabled. Records include SFTP browser startup stages, requested and effective compression, per-session operation waits, transfer start/completion/error summaries, upload open/write/shutdown timeouts, Session invalidation and close results, and whether KKTerm removed a newly-created partial remote file or skipped cleanup because the Session was unusable. The log omits passwords, SSH key passphrases, terminal contents, and file contents, but it may include remote hostnames, usernames, local paths, and remote paths, so users should review it before sharing.
 
 ## Conflict resolution
 
