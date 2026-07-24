@@ -3,6 +3,66 @@
 All notable changes to KKTerm are documented here.
 
 ## Direct Downloads
+* 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.131/kkterm-0.1.131-windows-x64-setup.exe)
+* 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.131/kkterm-0.1.131-windows-arm64-setup.exe)
+* 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.131/kkterm-0.1.131-windows-x64-portable.zip)
+* 📦 [Portable for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.131/kkterm-0.1.131-windows-arm64-portable.zip)
+
+## Highlights
+- Improved SFTP transfer integrity and error handling for better reliability (SFTP compression is disabled in SFTP Sessions—because corrupted streams are not a great “feature”).  
+- New screenshot draft workflow so you can work on an image without immediately committing it to the library.
+
+## New
+- Add download folder settings and download status messages for files downloaded from URL Connections.
+- Screenshot enhancements:
+  - New screenshot delivery command (`deliver_screenshot_data_url`) and settings-aware delivery to the library.
+  - Screenshot draft functionality (read/save/delete drafts; “Draft” label in the UI).
+- Add IT Ops, Install Helper, Screenshots, and Watchdogs modules with localization support.
+- SaveAsIcon support across multiple areas (dashboard widgets, screenshot editor/page, and workspaces).
+
+## Improved
+- Updated native context menu and Settings search to improve download folder options.
+- Improved settings popup navigation layout and scrolling behavior.
+
+## Fixed
+- Enhanced SFTP transfer integrity and error handling; disabled SSH compression in SFTP sessions.
+- Upgraded russh (0.61.2 -> 0.62.4) to pull in upstream fixes affecting Session handling (including client-triggerable Session handler panics, channel close compliance, and kex guess handling) as part of PR https://github.com/ryantsai/KKTerm/pull/678 (by @ryantsai, merged via https://github.com/ryantsai/KKTerm/commit/2d9a3c9 short SHA references not available in provided context).
+
+## Internal
+- chore(ssh): upgrade russh 0.61.2 -> 0.62.4 on the stabilized RustCrypto line (https://github.com/ryantsai/KKTerm/pull/678).
+- Translate UI strings to Simplified/Traditional Chinese and update icon imports for consistency/accuracy (includes i18n files: `zh-CN.json`, `zh-TW.json`).
+- Installer: enhance automatic check throttling and detection persistence across relaunches.
+- Refactor: clarify command parameter naming in multiple functions.
+
+---
+
+## 重點
+- 強化 SFTP 傳輸完整性與錯誤處理，讓可靠度更好（在 SFTP Session 中停用 SSH 壓縮——因為壞掉的串流不是什麼「特色」）。  
+- 新增截圖草稿流程：在不立刻提交到截圖庫前先整理、編修。
+
+## 新增
+- 新增下載資料夾設定，以及針對 URL Connection 下載檔案的下載狀態訊息。
+- 截圖功能增強：
+  - 新的截圖交付指令 `deliver_screenshot_data_url`，以及支援設定感知的方式交付到截圖庫。
+  - 截圖草稿功能（支援讀取/儲存/刪除草稿；介面提供「Draft」標籤）。
+- 新增 IT Ops、Install Helper、Screenshots、Watchdogs 等模組，並加入多語系在地化支援。
+- 支援 SaveAsIcon（套用到儀表板 Widget、截圖編輯器/頁面，以及工作區等多處）。
+
+## 改進
+- 更新原生情境選單與「設定」搜尋，讓下載資料夾選項更好找。
+- 改善設定彈出視窗的導覽版面與捲動行為。
+
+## 修正
+- 強化 SFTP 傳輸完整性與錯誤處理；在 SFTP Session 中停用 SSH 壓縮。
+- 升級 russh（0.61.2 -> 0.62.4）以納入上游修正，影響 Session 處理（包含：客戶端觸發的 Session handler panic、channel close 相容性、kex guess 處理），作為 https://github.com/ryantsai/KKTerm/pull/678 的一部分（@ryantsai；合併資訊見提供的上下文）。
+
+## Internal
+- chore(ssh)：在穩定的 RustCrypto 路線上升級 russh 0.61.2 -> 0.62.4（https://github.com/ryantsai/KKTerm/pull/678）。
+- 將 UI 字串翻譯到簡中/繁中，並更新 icon 匯入以提升一致性與正確性（含 `zh-CN.json`、`zh-TW.json` 等 i18n 檔）。
+- 安裝程式：強化自動檢查節流與重新啟動後的偵測持久性。
+- 重構：在多個函式中更新指令參數命名以提升可讀性。
+
+## Direct Downloads
 * 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.130/kkterm-0.1.130-windows-x64-setup.exe)
 * 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.130/kkterm-0.1.130-windows-arm64-setup.exe)
 * 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.130/kkterm-0.1.130-windows-x64-portable.zip)
