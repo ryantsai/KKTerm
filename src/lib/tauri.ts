@@ -642,6 +642,12 @@ export interface TrayMenuSnapshot {
   captureFullscreenLabel: string;
 }
 
+export interface ShutdownTimerStatus {
+  phase: "scheduled" | "warning";
+  scheduledForUnixMs: number;
+  shutdownAtUnixMs: number;
+}
+
 export interface CommandProposalPlan {
   prompt: string;
   command: string;
@@ -2093,6 +2099,18 @@ type CommandMap = {
   };
   set_dont_sleep_enabled: {
     args: { enabled: boolean };
+    result: boolean;
+  };
+  get_shutdown_timer_status: {
+    args: undefined;
+    result: ShutdownTimerStatus | null;
+  };
+  schedule_shutdown_timer: {
+    args: { delayMinutes: number };
+    result: ShutdownTimerStatus;
+  };
+  cancel_shutdown_timer: {
+    args: undefined;
     result: boolean;
   };
   update_tray_menu: {
