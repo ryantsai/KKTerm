@@ -21,6 +21,7 @@ import { invokeCommand, isTauriRuntime } from "./tauri";
 // or begins with one (the per-id families end in a separator). Keep in sync
 // with the reset flow in GeneralSettings and the constants that produce them.
 export const DURABLE_UI_STATE_PREFIXES = [
+  "kkterm.quickCommandBar.",
   "kkterm.quickCommands.",
   "kkterm.quickCommandBundles.v1",
   "kkterm.quickCommandBundleSelection.",

@@ -2,8 +2,8 @@
  * Per-connection text presentation for the Document Connection (font family,
  * font size, and decode encoding), persisted in `localStorage` keyed by
  * connection id. These are workspace UI preferences, not durable Connection
- * data, so they live in browser storage (matching the Quick Command Bar /
- * layout persistence pattern in `store.ts`) rather than SQLite.
+ * data, so they live in browser storage (matching the layout persistence
+ * pattern in `store.ts`) rather than SQLite.
  */
 
 const STORAGE_PREFIX = "kkterm.fileViewer.text.";

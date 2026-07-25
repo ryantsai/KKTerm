@@ -784,18 +784,25 @@
 
 .shortcut-list {
   display: grid;
-  gap: 6px;
+  gap: 0;
 }
 
 .shortcut-row {
-  display: flex;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: minmax(180px, 280px) minmax(0, 1fr);
+  gap: 16px;
   align-items: center;
-  justify-content: space-between;
   min-width: 0;
+  min-height: 36px;
+  padding: 5px 0;
+}
+
+.shortcut-row + .shortcut-row {
+  border-top: 1px solid var(--hairline);
 }
 
 .shortcut-row-label {
+  min-width: 0;
   color: var(--text);
   font-size: 13px;
 }
@@ -804,15 +811,23 @@
   display: inline-flex;
   gap: 4px;
   align-items: center;
+  justify-self: start;
+  min-width: 0;
 }
 
 .shortcut-binding-button {
-  min-width: 130px;
+  box-sizing: border-box;
+  width: 168px;
+  min-width: 168px;
+  height: 28px;
   padding: 3px 10px;
+  overflow: hidden;
   color: var(--text);
   font-family: inherit;
   font-size: 12px;
   text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   background: var(--surface-muted);
   border: 1px solid var(--border);
   border-radius: 6px;

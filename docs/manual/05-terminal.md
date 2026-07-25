@@ -113,7 +113,7 @@ Transparency and the default shared background are saved on the durable Connecti
 
 ## Quick Command Bar
 
-The **Quick Command Bar** is the optional bottom bar for terminal Tabs. `terminal.quickCommandsShow` / `terminal.quickCommandsHide` toggles it. The default is off. The visible state is remembered per Connection id in frontend workspace storage and restored when that Connection is opened again.
+The **Quick Command Bar** is the optional bottom bar for terminal Tabs. `terminal.quickCommandsShow` / `terminal.quickCommandsHide` toggles it. The default is off. The visible state is remembered per Connection id in durable frontend workspace storage and restored when that Connection is opened again, whether Workspace uses the top Tab Strip or Child Connection Tabs.
 
 The Quick Command Bar shows the active Connection's saved Quick Commands and sends one to the focused terminal Pane. If the Tab has no active terminal Pane, KKTerm reports `terminal.quickCommandsNoPane` through the Status Bar. Quick Commands can optionally append Enter to the command text, and commands marked as risky show the app-owned confirmation dialog `terminal.quickCommandsConfirmTitle` / `terminal.quickCommandsConfirm` before sending input.
 

@@ -317,22 +317,17 @@ function loadStoredQuickCommandBarVisible(connectionId: string | undefined) {
   if (!connectionId || typeof window === "undefined") {
     return false;
   }
-  try {
-    return window.localStorage.getItem(`${QUICK_COMMAND_BAR_STORAGE_PREFIX}${connectionId}`) === "true";
-  } catch {
-    return false;
-  }
+  return readDurableUiState(`${QUICK_COMMAND_BAR_STORAGE_PREFIX}${connectionId}`) === "true";
 }
 
 function persistQuickCommandBarVisible(connectionId: string | undefined, visible: boolean) {
   if (!connectionId || typeof window === "undefined") {
     return;
   }
-  try {
-    window.localStorage.setItem(`${QUICK_COMMAND_BAR_STORAGE_PREFIX}${connectionId}`, visible ? "true" : "false");
-  } catch {
-    // Storage may be unavailable (private mode, quota); fail silently.
-  }
+  writeDurableUiState(
+    `${QUICK_COMMAND_BAR_STORAGE_PREFIX}${connectionId}`,
+    visible ? "true" : "false",
+  );
 }
 
 function loadStoredQuickCommands(connectionId: string | undefined): QuickCommand[] {
@@ -397,18 +392,18 @@ function persistQuickCommandBundleSelection(connectionId: string, bundleId: stri
   }
 }
 
-// Remove a deleted Connection's durable Quick Commands plus its local-only
-// per-Connection reopen hints (layout, tmux session ids, quick-command-bar
-// visibility) so they do not orphan and accumulate. Bundles themselves are
-// app-global and survive; only this Connection's selection is dropped.
+// Remove a deleted Connection's durable Quick Commands and Quick Command Bar
+// preferences plus its local-only layout/tmux reopen hints so they do not
+// orphan and accumulate. Bundles themselves are app-global and survive; only
+// this Connection's selection is dropped.
 export function forgetConnectionLocalState(connectionId: string) {
   if (typeof window === "undefined") {
     return;
   }
+  removeDurableUiState(`${QUICK_COMMAND_BAR_STORAGE_PREFIX}${connectionId}`);
   removeDurableUiState(`${QUICK_COMMANDS_STORAGE_PREFIX}${connectionId}`);
   removeDurableUiState(`${QUICK_COMMAND_BUNDLE_SELECTION_PREFIX}${connectionId}`);
   try {
-    window.localStorage.removeItem(`${QUICK_COMMAND_BAR_STORAGE_PREFIX}${connectionId}`);
     window.localStorage.removeItem(`${LAYOUT_STORAGE_PREFIX}${connectionId}`);
     window.localStorage.removeItem(`${TMUX_SESSION_STORAGE_PREFIX}${connectionId}`);
   } catch {
@@ -2371,7 +2366,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         : layoutForChildPanes(childPanes),
       focusedPaneId: focusedPaneIdForChildLayout(existingGroupTab, childPanes),
       maximizedPaneId: undefined,
-      quickCommandBarVisible: false,
+      quickCommandBarVisible:
+        existingGroupTab?.quickCommandBarVisible ??
+        loadStoredQuickCommandBarVisible(connection.id),
       connection,
     };
     const terminalPaneIdsToMove = childPanes

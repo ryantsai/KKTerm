@@ -337,9 +337,10 @@ export function GeneralSettings() {
       } catch {
         // Storage may be unavailable.
       }
-      // Wipe durable frontend UI state (Quick Commands, Child Connection Tabs,
-      // Notes content, favorites, CLI labels, IT Ops layout) from both the
-      // database and the cache so it does not survive a settings reset.
+      // Wipe durable frontend UI state (Quick Commands and bar visibility,
+      // Child Connection Tabs, Notes content, favorites, CLI labels, IT Ops
+      // layout) from both the database and the cache so it does not survive a
+      // settings reset.
       await resetDurableUiState();
       resetQuickCommandState();
       window.dispatchEvent(new CustomEvent(CHILD_CONNECTIONS_UPDATED_EVENT));

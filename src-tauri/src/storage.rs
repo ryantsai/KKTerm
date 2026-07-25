@@ -1956,10 +1956,11 @@ pub struct AssistantMemoryRecord {
 
 /// One durable frontend UI-state entry: a namespaced key mapping to an opaque
 /// JSON string the frontend owns. Backs data that used to live only in
-/// `localStorage` (Quick Commands, Child Connection Tabs, Notes widget content,
-/// file-browser favorites, remembered CLI account labels) so it survives a
-/// reinstall, rides along in database backups/exports, and is cleared by the
-/// Settings reset and per-connection delete flows. Never holds secrets.
+/// `localStorage` (Quick Commands and their bar visibility, Child Connection
+/// Tabs, Notes widget content, file-browser favorites, remembered CLI account
+/// labels) so it survives a reinstall, rides along in database backups/exports,
+/// and is cleared by the Settings reset and per-connection delete flows. Never
+/// holds secrets.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DurableUiStateRecord {
