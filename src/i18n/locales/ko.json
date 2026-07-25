@@ -2362,6 +2362,7 @@
     "customModelId": "사용자 정의 모델 ID",
     "extraHeaders": "추가 헤더",
     "extraHeadersPlaceholder": "sid=1, \"env\"=\"3\"",
+    "hideSensitiveHeaderValues": "민감한 값 숨기기",
     "reasoningEffort": "추론 노력",
     "howToGetApiKey": "API 키 받기",
     "sshDefaults": "SSH 및 SFTP 기본값",

@@ -2362,6 +2362,7 @@
     "customModelId": "ID model kustom",
     "extraHeaders": "Header tambahan",
     "extraHeadersPlaceholder": "sid=1, \"env\"=\"3\"",
+    "hideSensitiveHeaderValues": "Sembunyikan nilai sensitif",
     "reasoningEffort": "Upaya penalaran",
     "howToGetApiKey": "Cara mendapatkan",
     "sshDefaults": "Default SSH dan SFTP",

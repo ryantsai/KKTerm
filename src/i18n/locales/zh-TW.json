@@ -2362,6 +2362,7 @@
     "customModelId": "自訂模型 ID",
     "extraHeaders": "額外標頭",
     "extraHeadersPlaceholder": "sid=1, \"env\"=\"3\"",
+    "hideSensitiveHeaderValues": "隱藏敏感值",
     "reasoningEffort": "推理強度",
     "howToGetApiKey": "如何取得",
     "sshDefaults": "SSH 與 SFTP 預設值",
