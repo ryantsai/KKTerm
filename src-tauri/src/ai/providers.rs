@@ -4,6 +4,7 @@ mod deepseek;
 mod gemini;
 mod grok;
 mod litellm;
+mod moonshot;
 mod nvidia;
 mod ollama;
 mod ollama_cloud;
@@ -11,6 +12,7 @@ mod openai;
 mod openai_compatible;
 mod opencode;
 mod openrouter;
+mod zai;
 
 use super::{AgentProviderAdapter, GitHubCopilotProvider};
 
@@ -21,8 +23,10 @@ pub(super) fn provider_for(kind: &str) -> Result<AgentProviderAdapter, String> {
         "gemini" => Ok(AgentProviderAdapter::OpenAi(gemini::provider())),
         "grok" => Ok(AgentProviderAdapter::OpenAi(grok::provider())),
         "litellm" => Ok(AgentProviderAdapter::OpenAi(litellm::provider())),
+        "moonshot" => Ok(AgentProviderAdapter::OpenAi(moonshot::provider())),
         "openai" => Ok(AgentProviderAdapter::OpenAi(openai::provider())),
         "openrouter" => Ok(AgentProviderAdapter::OpenAi(openrouter::provider())),
+        "zai" => Ok(AgentProviderAdapter::OpenAi(zai::provider())),
         "ollama" => Ok(AgentProviderAdapter::OpenAi(ollama::provider())),
         "ollama-cloud" => Ok(AgentProviderAdapter::OpenAi(ollama_cloud::provider())),
         "nvidia" => Ok(AgentProviderAdapter::OpenAi(nvidia::provider())),

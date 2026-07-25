@@ -1345,6 +1345,8 @@ export type AiProviderKind =
   | "openai"
   | "anthropic"
   | "openrouter"
+  | "zai"
+  | "moonshot"
   | "deepseek"
   | "gemini"
   | "grok"

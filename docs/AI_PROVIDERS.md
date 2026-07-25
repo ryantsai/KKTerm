@@ -17,6 +17,11 @@ or streaming format, do **not** force it into the OpenAI-compatible adapter. Add
 proper `AgentProvider` implementation in Rust and document the new runtime shape.
 That is intentionally more than a one-file provider addition.
 
+Z.ai and Moonshot AI use this metadata-adapter path. Their hosted endpoints are
+OpenAI-compatible Chat Completions APIs with Bearer authentication and
+OpenAI-compatible model lists, so they reuse the shared streaming, tool-calling,
+approval, keychain, and model-refresh behavior.
+
 Some OpenAI-compatible providers emit small Chat Completions streaming variants.
 For example, Gemini's OpenAI-compatible SSE tool-call deltas may omit
 `tool_calls[].index` even though OpenAI includes it; other compatible services

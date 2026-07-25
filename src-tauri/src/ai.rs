@@ -1852,8 +1852,9 @@ fn model_list_strategy_for_provider(
             Ok(AiProviderModelListStrategy::GitHubCopilotSdk)
         }
         "ollama" | "ollama-cloud" => Ok(AiProviderModelListStrategy::OllamaTags),
-        "openai" | "openrouter" | "deepseek" | "gemini" | "grok" | "litellm" | "nvidia"
-        | "opencode" | "openai-compatible" | "openai_compatible" | "openai compatible" => {
+        "openai" | "openrouter" | "zai" | "moonshot" | "deepseek" | "gemini" | "grok"
+        | "litellm" | "nvidia" | "opencode" | "openai-compatible" | "openai_compatible"
+        | "openai compatible" => {
             Ok(AiProviderModelListStrategy::OpenAiCompatible)
         }
         "azure-openai" | "azure_openai" | "azure openai" => Err(
@@ -7552,6 +7553,18 @@ fn model_context_limit_tokens(provider_kind: &str, model: &str) -> (usize, bool)
     }
     if model.starts_with("grok-") || provider == "grok" {
         return (128_000, true);
+    }
+    if model.starts_with("glm-5.2") {
+        return (1_000_000, false);
+    }
+    if model.starts_with("glm-") || provider == "zai" {
+        return (200_000, false);
+    }
+    if model.starts_with("kimi-k3") {
+        return (1_000_000, false);
+    }
+    if model.starts_with("kimi-") || provider == "moonshot" {
+        return (256_000, false);
     }
     if provider == "ollama" {
         return (16_000, true);

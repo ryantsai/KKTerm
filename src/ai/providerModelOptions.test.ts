@@ -64,6 +64,38 @@ if (!grokDefinition.modelOptions.some((model) => model.id === "grok-4.5" && mode
   throw new Error("Grok curated models should include Grok 4.5.");
 }
 
+const openRouterDefinition = getAiProviderDefinition("openrouter");
+for (const modelId of [
+  "openrouter/auto",
+  "anthropic/claude-opus-5",
+  "google/gemini-3.6-flash",
+  "x-ai/grok-4.5",
+  "moonshotai/kimi-k3",
+  "xiaomi/mimo-v2.5",
+  "z-ai/glm-5.2",
+  "deepseek/deepseek-v4-flash",
+]) {
+  if (!openRouterDefinition.modelOptions.some((model) => model.id === modelId && model.recommended)) {
+    throw new Error(`OpenRouter curated models should recommend ${modelId}.`);
+  }
+}
+
+const zaiDefinition = getAiProviderDefinition("zai");
+if (zaiDefinition.defaultModel !== "glm-5.2") {
+  throw new Error(`Z.ai should default to GLM-5.2, got: ${zaiDefinition.defaultModel}`);
+}
+if (!zaiDefinition.modelOptions.some((model) => model.id === "glm-5.2" && model.recommended)) {
+  throw new Error("Z.ai curated models should recommend GLM-5.2.");
+}
+
+const moonshotDefinition = getAiProviderDefinition("moonshot");
+if (moonshotDefinition.defaultModel !== "kimi-k3") {
+  throw new Error(`Moonshot AI should default to Kimi K3, got: ${moonshotDefinition.defaultModel}`);
+}
+if (!moonshotDefinition.modelOptions.some((model) => model.id === "kimi-k3" && model.recommended)) {
+  throw new Error("Moonshot AI curated models should recommend Kimi K3.");
+}
+
 const opencodeDefinition = getAiProviderDefinition("opencode");
 if (opencodeDefinition.defaultModel !== "kimi-k3") {
   throw new Error(`OpenCode should default to Kimi K3, got: ${opencodeDefinition.defaultModel}`);

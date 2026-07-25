@@ -1522,6 +1522,22 @@ fn model_context_limit_tracks_current_large_context_families() {
         (500_000, false)
     );
     assert_eq!(
+        model_context_limit_tokens("zai", "glm-5.2"),
+        (1_000_000, false)
+    );
+    assert_eq!(
+        model_context_limit_tokens("zai", "glm-5v-turbo"),
+        (200_000, false)
+    );
+    assert_eq!(
+        model_context_limit_tokens("moonshot", "kimi-k3"),
+        (1_000_000, false)
+    );
+    assert_eq!(
+        model_context_limit_tokens("moonshot", "kimi-k2.7-code"),
+        (256_000, false)
+    );
+    assert_eq!(
         model_context_limit_tokens("openai-compatible", "custom-local-model"),
         (32_000, true)
     );
@@ -3093,6 +3109,8 @@ fn explicit_strict_tool_flags_are_only_sent_to_openai_family_providers() {
         "opencode",
         "openai-compatible",
         "openrouter",
+        "zai",
+        "moonshot",
     ] {
         let provider = openai_provider(provider_kind);
         let provider_tools = provider.tool_definitions_for_provider(&tools);
@@ -3145,7 +3163,7 @@ fn chat_completions_only_providers_never_use_responses_api() {
     // These providers' OpenAI-compatibility layers do not implement the
     // Responses API (/responses returns HTTP 404), so they must resolve to
     // Chat Completions regardless of the requested api mode.
-    for provider_kind in ["gemini", "nvidia"] {
+    for provider_kind in ["gemini", "nvidia", "zai", "moonshot"] {
         let provider = openai_provider(provider_kind);
         for api_mode in ["chatCompletions", "responses", ""] {
             assert!(

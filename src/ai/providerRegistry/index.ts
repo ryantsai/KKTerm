@@ -6,6 +6,7 @@ import { geminiProvider } from "./gemini";
 import { githubCopilotProvider } from "./githubCopilot";
 import { grokProvider } from "./grok";
 import { liteLlmProvider } from "./litellm";
+import { moonshotProvider } from "./moonshot";
 import { nvidiaProvider } from "./nvidia";
 import { ollamaProvider } from "./ollama";
 import { ollamaCloudProvider } from "./ollamaCloud";
@@ -13,6 +14,7 @@ import { opencodeProvider } from "./opencode";
 import { openAiCompatibleProvider } from "./openAiCompatible";
 import { openAiProvider } from "./openai";
 import { openRouterProvider } from "./openrouter";
+import { zaiProvider } from "./zai";
 import { applyModelCatalog } from "./modelCatalog";
 import type { AiProviderDefinition } from "./types";
 export { modelSupportsImageInput } from "./imageInput";
@@ -23,6 +25,8 @@ export const AI_PROVIDER_DEFINITIONS: AiProviderDefinition[] = [
   anthropicProvider,
   cursorProvider,
   openRouterProvider,
+  zaiProvider,
+  moonshotProvider,
   deepSeekProvider,
   geminiProvider,
   grokProvider,
