@@ -132,6 +132,24 @@ function sanitizeHexColor(value: string, fallback: string) {
     return trimmed.startsWith("#") ? trimmed : `#${trimmed}`;
 }
 
+export function applyHeroGeometricFrame(
+    material: THREE.ShaderMaterial,
+    elapsedTime: number,
+    size: { width: number; height: number },
+    color1: string,
+    color2: string,
+    speed: number
+) {
+    material.uniforms.uTime.value = elapsedTime * speed;
+    material.uniforms.uResolution.value.set(size.width, size.height);
+    material.uniforms.uColor1.value.set(
+        sanitizeHexColor(color1, HERO_GEOMETRIC_FALLBACK_COLOR_1)
+    );
+    material.uniforms.uColor2.value.set(
+        sanitizeHexColor(color2, HERO_GEOMETRIC_FALLBACK_COLOR_2)
+    );
+}
+
 const GradientPlane = ({
     color1,
     color2,
@@ -141,7 +159,7 @@ const GradientPlane = ({
     color2: string;
     speed?: number
 }) => {
-    const meshRef = useRef<THREE.Mesh>(null);
+    const materialRef = useRef<THREE.ShaderMaterial>(null);
     const uniforms = useMemo(
         () => ({
             uTime: { value: 0 },
@@ -154,16 +172,22 @@ const GradientPlane = ({
 
     useFrame((state) => {
         const { clock, size } = state;
-        uniforms.uTime.value = clock.getElapsedTime() * speed;
-        uniforms.uResolution.value.set(size.width, size.height);
-        uniforms.uColor1.value.set(sanitizeHexColor(color1, HERO_GEOMETRIC_FALLBACK_COLOR_1));
-        uniforms.uColor2.value.set(sanitizeHexColor(color2, HERO_GEOMETRIC_FALLBACK_COLOR_2));
+        if (!materialRef.current) return;
+        applyHeroGeometricFrame(
+            materialRef.current,
+            clock.getElapsedTime(),
+            size,
+            color1,
+            color2,
+            speed
+        );
     });
 
     return (
-        <mesh ref={meshRef} scale={[2, 2, 1]}>
+        <mesh scale={[2, 2, 1]}>
             <planeGeometry args={[2, 2]} />
             <shaderMaterial
+                ref={materialRef}
                 vertexShader={vertexShader}
                 fragmentShader={fragmentShader}
                 uniforms={uniforms}
@@ -273,4 +297,3 @@ export default function HeroGeometric({
         </div>
     );
 }
-
