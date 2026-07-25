@@ -45,8 +45,26 @@ test("IT Ops manual reserves SNMP metadata for future automatic discovery", asyn
   const manual = await readFile(new URL("../docs/manual/12-it-ops.md", import.meta.url), "utf8");
 
   assert.match(manual, /SNMP/);
-  assert.doesNotMatch(manual, /IPAM|rack-audit|relationship details/);
+  assert.doesNotMatch(manual, /rack-audit|relationship details/);
   assert.match(manual, /not exposed in the Rack Device editor/i);
   assert.match(manual, /future automatic SNMP discovery/i);
   assert.doesNotMatch(manual, /background SNMP polling|user-triggered manual refresh|target\/OID hints/i);
+  // IPAM is now a real destination, but it stays a separate global page: the
+  // Rack Device editor must not grow per-device address metadata.
+  const rackDeviceParagraph = manual
+    .split("\n")
+    .find((line) => line.includes("not exposed in the Rack Device editor"));
+  assert.doesNotMatch(rackDeviceParagraph, /IPAM/);
+});
+
+test("IPAM and Network Maps document that they carry no live device state", async () => {
+  const manual = await readFile(new URL("../docs/manual/12-it-ops.md", import.meta.url), "utf8");
+
+  assert.match(manual, /^## IPAM$/m);
+  assert.match(manual, /^## Network Maps$/m);
+  // The SNMP scaffolding is future preparation, so nothing on these pages may
+  // claim to reflect, poll, or discover live devices.
+  assert.match(manual, /does not poll, monitor, or discover devices/i);
+  assert.match(manual, /never a live scan/i);
+  assert.doesNotMatch(manual, /IPAM (scans|discovers|probes)/i);
 });

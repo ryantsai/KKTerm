@@ -127,6 +127,10 @@ const itOpsDestinationTargets = [
   ["itops.automationsNew", "automations"],
   ["itops.runHistoryPanel", "runHistory"],
   ["itops.taskLibraryNew", "taskLibrary"],
+  ["itops.ipam", "ipam"],
+  ["itops.ipamNew", "ipam"],
+  ["itops.networkMaps", "networkMaps"],
+  ["itops.networkMapNew", "networkMaps"],
   ["itops.host:host-1", "hosts"],
   ["itops.run:run-1", "runHistory"],
 ] as const;

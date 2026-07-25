@@ -1046,3 +1046,208 @@ pub enum RunEvent {
         run_id: String,
     },
 }
+
+// ── IPAM (docs/ITOPS.md IP Address Management) ────────────────────────────────
+// Two durable tables, one derived view. A Prefix stores only what the user
+// typed; hierarchy, utilization, and address counts are recomputed on every
+// read from `ipv4` so a prefix can never disagree with the records inside it.
+
+/// Lifecycle of a Prefix. `Container` prefixes are aggregates whose utilization
+/// comes from the child prefixes carved out of them; the rest are leaves whose
+/// utilization comes from the IP Address Records inside them.
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum PrefixStatus {
+    Container,
+    #[default]
+    Active,
+    Reserved,
+    Deprecated,
+}
+
+/// Lifecycle of a single assigned address.
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum AddressStatus {
+    #[default]
+    Active,
+    Reserved,
+    Deprecated,
+}
+
+/// A durable IPv4 prefix. `cidr` is stored canonicalized (host bits cleared).
+/// `vrf` is a free-text routing-table label so overlapping RFC 1918 space in
+/// different VRFs stays distinct; the empty string is the default table.
+/// `site_id` is a soft reference (no FK): deleting a Site leaves the prefix as
+/// unscoped global space rather than erasing addressing records.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IpPrefix {
+    pub id: String,
+    pub cidr: String,
+    #[serde(default)]
+    pub vrf: String,
+    /// Free-text purpose label ("Management", "DMZ", …).
+    #[serde(default)]
+    pub role: String,
+    #[serde(default)]
+    pub status: PrefixStatus,
+    #[serde(default)]
+    pub description: String,
+    #[serde(default)]
+    pub site_id: Option<String>,
+}
+
+/// One assigned address inside a Prefix. The three optional ids are soft
+/// references to a Site Host, a Connection, and a Rack Device: an address stays
+/// documented after whatever it pointed at is deleted.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IpAddressRecord {
+    pub id: String,
+    pub address: String,
+    #[serde(default)]
+    pub vrf: String,
+    #[serde(default)]
+    pub status: AddressStatus,
+    #[serde(default)]
+    pub dns_name: String,
+    #[serde(default)]
+    pub description: String,
+    #[serde(default)]
+    pub host_id: Option<String>,
+    #[serde(default)]
+    pub connection_id: Option<String>,
+    #[serde(default)]
+    pub rack_item_id: Option<String>,
+}
+
+/// A Prefix plus everything derived from the rest of the table. Never stored:
+/// recomputed on each list so hierarchy and utilization cannot drift.
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IpamPrefixNode {
+    #[serde(flatten)]
+    pub prefix: IpPrefix,
+    /// Innermost enclosing prefix in the same VRF, or `None` at the top level.
+    pub parent_id: Option<String>,
+    pub depth: u32,
+    pub network: String,
+    pub broadcast: String,
+    pub first_usable: String,
+    pub last_usable: String,
+    /// Assignable addresses (network/broadcast excluded except on /31 and /32).
+    pub usable: u64,
+    /// Addresses accounted for: covered child-prefix space on a Container,
+    /// assigned Address Records otherwise.
+    pub used: u64,
+    /// `used / usable` clamped to 0..=1, or 0 when the denominator is 0.
+    pub utilization: f64,
+    pub child_count: u32,
+    pub address_count: u32,
+}
+
+/// One read of the whole IPAM destination.
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IpamSnapshot {
+    pub prefixes: Vec<IpamPrefixNode>,
+    pub addresses: Vec<IpAddressRecord>,
+}
+
+// ── Network Map (docs/ITOPS.md Network Map) ───────────────────────────────────
+// The logical link diagram, distinct from the physical Site → Server Room →
+// Rack topology. One row per map holds the whole graph as JSON, following the
+// Room Objects / Automation `actions_json` precedent: the canvas always saves
+// as a whole document, so per-node CRUD would only add round trips.
+
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum NetworkNodeKind {
+    Router,
+    #[default]
+    Switch,
+    Firewall,
+    Server,
+    LoadBalancer,
+    Cloud,
+}
+
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum NetworkLinkKind {
+    #[default]
+    Ethernet,
+    Fiber,
+    Wan,
+    Wireless,
+}
+
+/// One device on a Network Map. `address` optionally ties the node to an IPAM
+/// record; the three id fields are soft references like an Address Record's.
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkNode {
+    pub id: String,
+    #[serde(default)]
+    pub label: String,
+    #[serde(default)]
+    pub kind: NetworkNodeKind,
+    #[serde(default)]
+    pub x: f64,
+    #[serde(default)]
+    pub y: f64,
+    /// Optional management address, matched against IPAM Address Records.
+    #[serde(default)]
+    pub address: String,
+    #[serde(default)]
+    pub host_id: Option<String>,
+    #[serde(default)]
+    pub connection_id: Option<String>,
+    #[serde(default)]
+    pub rack_item_id: Option<String>,
+    #[serde(default)]
+    pub note: String,
+}
+
+/// An undirected link between two Network Nodes. `from`/`to` are node ids.
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkLink {
+    pub id: String,
+    pub from: String,
+    pub to: String,
+    #[serde(default)]
+    pub label: String,
+    #[serde(default)]
+    pub kind: NetworkLinkKind,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkGraph {
+    #[serde(default)]
+    pub nodes: Vec<NetworkNode>,
+    #[serde(default)]
+    pub links: Vec<NetworkLink>,
+    /// Node ids treated as the network's entry points for reachability. Empty
+    /// means "use the first node"; the What-If analysis walks outward from here.
+    #[serde(default)]
+    pub roots: Vec<String>,
+}
+
+/// A durable Network Map. `site_id` is an optional soft reference; `None` means
+/// the map spans Sites, which is the common case for WAN diagrams.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkMap {
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub description: String,
+    #[serde(default)]
+    pub site_id: Option<String>,
+    pub sort_order: i64,
+    #[serde(default)]
+    pub graph: NetworkGraph,
+}

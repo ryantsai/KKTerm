@@ -28,6 +28,10 @@ export function ItOpsPage({
   const activeRun = useItOpsStore((state) => state.activeRun);
   const racksBySite = useItOpsStore((state) => state.racksBySite);
   const tasks = useItOpsStore((state) => state.tasks);
+  const ipam = useItOpsStore((state) => state.ipam);
+  const ipamLoaded = useItOpsStore((state) => state.ipamLoaded);
+  const networkMaps = useItOpsStore((state) => state.networkMaps);
+  const networkMapsLoaded = useItOpsStore((state) => state.networkMapsLoaded);
   const navigationSnapshot = useItOpsStore((state) => state.navigationSnapshot);
 
   useEffect(() => {
@@ -46,17 +50,25 @@ export function ItOpsPage({
       ? (sites.find((site) => site.id === navigationSnapshot.siteId)?.name ??
         navigationSnapshot.siteId)
       : null;
-    const selectionSummary = navigationSnapshot
-      ? navigationSnapshot.destination === "taskLibrary"
+    // Library destinations stand outside the Site tree, so naming a Site
+    // alongside them would misdescribe the selection.
+    const librarySelection =
+      navigationSnapshot?.destination === "taskLibrary"
         ? "global Task Library"
-        : [
+        : navigationSnapshot?.destination === "ipam"
+          ? "global IPAM"
+          : navigationSnapshot?.destination === "networkMaps"
+            ? "global Network Maps"
+            : null;
+    const selectionSummary = navigationSnapshot
+      ? (librarySelection ?? [
             selectedSiteName ? `Site "${selectedSiteName}" (id ${navigationSnapshot.siteId})` : "no Site",
             `destination ${navigationSnapshot.destination}`,
             navigationSnapshot.serverRoom ? `Server Room "${navigationSnapshot.serverRoom}"` : null,
             navigationSnapshot.rackId ? `Rack id ${navigationSnapshot.rackId}` : null,
           ]
             .filter(Boolean)
-            .join(", ")
+            .join(", "))
       : "unknown";
 
     onAssistantContextChange({
@@ -67,12 +79,14 @@ export function ItOpsPage({
       text: [
         "Active Module: IT Ops.",
         `Current navigator selection: ${selectionSummary}.`,
-        "Tutorial targets: itops.sitesTree (left navigator), itops.siteView (Site topology drill-down), itops.hostsPanel, itops.hostsRunTask, itops.hostsImport, itops.hostsScan (Hosts page), itops.automationsPanel, itops.automationsNew (Automations page), itops.runHistoryPanel (Run History page), itops.taskLibrary, itops.taskLibraryNew (Task Library).",
+        "Tutorial targets: itops.sitesTree (left navigator), itops.siteView (Site topology drill-down), itops.hostsPanel, itops.hostsRunTask, itops.hostsImport, itops.hostsScan (Hosts page), itops.automationsPanel, itops.automationsNew (Automations page), itops.runHistoryPanel (Run History page), itops.taskLibrary, itops.taskLibraryNew (Task Library), itops.ipam, itops.ipamNew (IPAM), itops.networkMaps, itops.networkMapNew (Network Maps).",
         "Entity tutorial targets highlight one row: itops.site:<siteId>, itops.host:<hostId>, itops.automation:<automationId>, itops.task:<taskId>, itops.run:<runId> — use ids from the itops_* list tools and pass navigation.itopsSiteId/itopsDestination so the destination opens first.",
         `Sites (${sites.length}): ${sites.map((group) => `${group.name} [id ${group.id}, ${group.memberIds.length} saved members, ${group.transport}]`).join(", ") || "none"}.`,
         `Rack topology (loaded Sites only): ${rackSummary || "none loaded"}.`,
         `Automations (${automations.length}): ${automations.map((automation) => `${automation.name} [${automation.enabled ? "armed" : "disabled"}]`).join(", ") || "none"}.`,
         `Task Library: ${tasks.length} reusable Tasks (itops_list_tasks reads them).`,
+        `IPAM: ${ipamLoaded ? `${ipam.prefixes.length} top-level IP Prefixes, ${ipam.addresses.length} IP Address Records` : "not loaded yet"}.`,
+        `Network Maps: ${networkMapsLoaded ? `${networkMaps.length} maps` : "not loaded yet"} (hand-drawn; they carry no live device state).`,
         `Recent completed Batch Runs: ${runHistory.length}.`,
         activeRun
           ? `Live Batch Run: ${activeRun.taskSummary} [${activeRun.state}], ${activeRun.hosts.length} hosts.`
@@ -80,7 +94,21 @@ export function ItOpsPage({
         "For operational instructions, search and read the IT Ops chapter in the KKTerm Operation Manual before answering. Do not infer host output, scripts, secrets, or trigger details from this compact metadata.",
       ].join("\n"),
     });
-  }, [activeRun, automations, sites, navigationSnapshot, onAssistantContextChange, racksBySite, runHistory, tasks, t]);
+  }, [
+    activeRun,
+    automations,
+    sites,
+    ipam,
+    ipamLoaded,
+    navigationSnapshot,
+    networkMaps,
+    networkMapsLoaded,
+    onAssistantContextChange,
+    racksBySite,
+    runHistory,
+    tasks,
+    t,
+  ]);
 
   return (
     <section

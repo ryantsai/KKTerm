@@ -210,6 +210,25 @@ fn segment_tables(segment: &str) -> Option<&'static [TableSpec]> {
                 pk: Pk::Generated("run"),
                 fks: &[],
             },
+            // IPAM and Network Maps are global to the Module (no owning Site
+            // FK); their optional site_id and the address records' host /
+            // connection / rack item ids are soft references remapped in
+            // `rewrite_soft_references`.
+            TableSpec {
+                name: "itops_ip_prefixes",
+                pk: Pk::Generated("ipfx"),
+                fks: &[],
+            },
+            TableSpec {
+                name: "itops_ip_address_records",
+                pk: Pk::Generated("ipaddr"),
+                fks: &[],
+            },
+            TableSpec {
+                name: "itops_network_maps",
+                pk: Pk::Generated("nmap"),
+                fks: &[],
+            },
         ]),
         // AI Assistant chat history and durable memories. Memory scope
         // ("connection:<id>") follows a Connection imported in the same bundle.
@@ -1109,6 +1128,21 @@ fn rewrite_soft_references(
                     }
                 }
             });
+        }
+        "itops_ip_prefixes" => {
+            remap_soft_id(row, "site_id", "itops_sites", remap);
+        }
+        "itops_ip_address_records" => {
+            // An address record documents an address, so it survives its
+            // origin: an id whose target is absent stays verbatim.
+            remap_soft_id(row, "host_id", "itops_hosts", remap);
+            remap_soft_id(row, "connection_id", "connections", remap);
+            remap_soft_id(row, "rack_item_id", "itops_site_rack_items", remap);
+        }
+        "itops_network_maps" => {
+            remap_soft_id(row, "site_id", "itops_sites", remap);
+            // The graph is self-contained: node ids are map-local and links
+            // reference them, so nothing inside graph_json needs remapping.
         }
         "itops_tasks" => {
             // The selective bundle does not carry IT Ops vault entries. Drop
@@ -2098,7 +2132,15 @@ mod tests {
                  actions_json TEXT NOT NULL DEFAULT '[]', site_id TEXT);
              CREATE TABLE itops_run_history (id TEXT PRIMARY KEY, source TEXT NOT NULL,
                  site_id TEXT, task_id TEXT, task_summary TEXT NOT NULL, started_at TEXT NOT NULL,
-                 report_json TEXT NOT NULL DEFAULT '{}');",
+                 report_json TEXT NOT NULL DEFAULT '{}');
+             CREATE TABLE itops_ip_prefixes (id TEXT PRIMARY KEY, cidr TEXT NOT NULL,
+                 vrf TEXT NOT NULL DEFAULT '', site_id TEXT, UNIQUE(vrf, cidr));
+             CREATE TABLE itops_ip_address_records (id TEXT PRIMARY KEY, address TEXT NOT NULL,
+                 vrf TEXT NOT NULL DEFAULT '', host_id TEXT, connection_id TEXT,
+                 rack_item_id TEXT, UNIQUE(vrf, address));
+             CREATE TABLE itops_network_maps (id TEXT PRIMARY KEY, name TEXT NOT NULL,
+                 site_id TEXT, sort_order INTEGER NOT NULL,
+                 graph_json TEXT NOT NULL DEFAULT '{}');",
         )
         .expect("itops schema");
     }
@@ -2132,7 +2174,15 @@ mod tests {
              INSERT INTO itops_run_history
                  (id, source, site_id, task_id, task_summary, started_at, report_json) VALUES
                  ('r1','automation:a1','s1','t1','Reboot','2026-01-01T00:00:00Z',
-                 '{\"ok\":1,\"failed\":0,\"total\":1,\"hosts\":[{\"connectionId\":\"c1\"}]}');",
+                 '{\"ok\":1,\"failed\":0,\"total\":1,\"hosts\":[{\"connectionId\":\"c1\"}]}');
+             INSERT INTO itops_ip_prefixes (id, cidr, site_id) VALUES ('p1','10.20.0.0/16','s1');
+             INSERT INTO itops_ip_address_records
+                 (id, address, host_id, connection_id, rack_item_id) VALUES
+                 ('ip1','10.20.0.5','h1','c1','it1'),
+                 ('ip2','10.20.0.6','h-foreign','c-foreign','it-foreign');
+             INSERT INTO itops_network_maps (id, name, site_id, sort_order, graph_json) VALUES
+                 ('nm1','Core','s1',0,
+                 '{\"nodes\":[{\"id\":\"n1\"},{\"id\":\"n2\"}],\"links\":[{\"id\":\"l1\",\"from\":\"n1\",\"to\":\"n2\"}],\"roots\":[\"n1\"]}');",
         )
         .unwrap();
 
@@ -2297,6 +2347,66 @@ mod tests {
                 .get("secretOwnerId")
                 .is_none()
         );
+        // IPAM keeps its optional Site tag pointed at the imported Site.
+        let prefix_site: String = dst
+            .query_row("SELECT site_id FROM itops_ip_prefixes", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(prefix_site, new_site);
+        // An address record follows every origin imported alongside it, and
+        // keeps ids whose target is absent: the address stays documented.
+        let (addr_host, addr_conn, addr_item): (String, String, String) = dst
+            .query_row(
+                "SELECT host_id, connection_id, rack_item_id FROM itops_ip_address_records
+                 WHERE address = '10.20.0.5'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(
+            addr_host,
+            *remap
+                .get(&("itops_hosts".to_string(), "h1".to_string()))
+                .unwrap()
+        );
+        assert_eq!(addr_conn, "conn-new");
+        assert_eq!(
+            addr_item,
+            *remap
+                .get(&("itops_site_rack_items".to_string(), "it1".to_string()))
+                .unwrap()
+        );
+        let orphan: (String, String, String) = dst
+            .query_row(
+                "SELECT host_id, connection_id, rack_item_id FROM itops_ip_address_records
+                 WHERE address = '10.20.0.6'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(
+            orphan,
+            (
+                "h-foreign".to_string(),
+                "c-foreign".to_string(),
+                "it-foreign".to_string()
+            )
+        );
+        // A Network Map keeps its Site tag; its graph ids are map-local and
+        // must survive the import byte for byte.
+        let (map_site, graph): (String, String) = dst
+            .query_row(
+                "SELECT site_id, graph_json FROM itops_network_maps",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!(map_site, new_site);
+        let graph: Value = serde_json::from_str(&graph).unwrap();
+        assert_eq!(graph["nodes"][0]["id"], "n1");
+        assert_eq!(graph["links"][0]["from"], "n1");
+        assert_eq!(graph["roots"][0], "n1");
     }
 
     /// A source database migrated in place may still carry retired legacy
@@ -2711,6 +2821,11 @@ mod tests {
                  INSERT INTO itops_automations (id, name, sort_order, config_json) VALUES ('a1','Watch',0,'{}');
                  INSERT INTO itops_run_history (id, source, task_summary, started_at)
                      VALUES ('r1','manual','Reboot','2026-01-01T00:00:00Z');
+                 INSERT INTO itops_ip_prefixes (id, cidr, site_id) VALUES ('p1','10.20.0.0/16','s1');
+                 INSERT INTO itops_ip_address_records (id, address, host_id, rack_item_id)
+                     VALUES ('ip1','10.20.0.5','h1','it1');
+                 INSERT INTO itops_network_maps (id, name, site_id, sort_order, graph_json)
+                     VALUES ('nm1','Core','s1',0,'{\"nodes\":[],\"links\":[],\"roots\":[]}');
                  INSERT INTO assistant_chat_threads (id, title, context_label, messages_json, created_at, updated_at)
                      VALUES ('th1','Session','global','[]','t','t');
                  INSERT INTO assistant_memories (id, scope, content, created_at, updated_at)
@@ -2736,7 +2851,7 @@ mod tests {
             bundles.push((segment, seg));
         }
 
-        const ROUND_TRIP_TABLES: [&str; 11] = [
+        const ROUND_TRIP_TABLES: [&str; 14] = [
             "itops_sites",
             "itops_server_rooms",
             "itops_site_racks",
@@ -2746,6 +2861,9 @@ mod tests {
             "itops_tasks",
             "itops_automations",
             "itops_run_history",
+            "itops_ip_prefixes",
+            "itops_ip_address_records",
+            "itops_network_maps",
             "assistant_chat_threads",
             "assistant_memories",
         ];

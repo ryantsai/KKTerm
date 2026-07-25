@@ -13,7 +13,7 @@ use std::{
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use zip::{ZipArchive, ZipWriter, write::SimpleFileOptions};
 
-const SCHEMA_USER_VERSION: i32 = 50;
+const SCHEMA_USER_VERSION: i32 = 51;
 
 const DEFAULT_TERMINAL_OPACITY: u8 = 50;
 
@@ -367,6 +367,63 @@ CREATE TABLE IF NOT EXISTS itops_tasks (
     task_json    TEXT NOT NULL,
     created_at   TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at   TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- IPAM: durable IPv4 prefixes, global to the Module like itops_tasks. Only what
+-- the user typed is stored — the parent/child hierarchy and the utilization
+-- percentages are recomputed on every read from the prefix math, so the tree can
+-- never disagree with its rows. `vrf` is a free-text routing-table label ('' =
+-- the default table) so overlapping RFC 1918 space stays distinct; `site_id` is
+-- a SOFT reference (no FK) so deleting a Site leaves the addressing documented
+-- rather than erasing it. v51.
+CREATE TABLE IF NOT EXISTS itops_ip_prefixes (
+    id          TEXT PRIMARY KEY,
+    -- Canonical 'a.b.c.d/len' with host bits cleared.
+    cidr        TEXT NOT NULL,
+    vrf         TEXT NOT NULL DEFAULT '',
+    role        TEXT NOT NULL DEFAULT '',
+    -- 'container' | 'active' | 'reserved' | 'deprecated'.
+    status      TEXT NOT NULL DEFAULT 'active',
+    description TEXT NOT NULL DEFAULT '',
+    site_id     TEXT,
+    created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(vrf, cidr)
+);
+
+-- One documented address inside a prefix. host_id / connection_id /
+-- rack_item_id are SOFT references: an address stays documented after whatever
+-- it pointed at is deleted, which is the whole point of an address record. v51.
+CREATE TABLE IF NOT EXISTS itops_ip_address_records (
+    id            TEXT PRIMARY KEY,
+    address       TEXT NOT NULL,
+    vrf           TEXT NOT NULL DEFAULT '',
+    -- 'active' | 'reserved' | 'deprecated'.
+    status        TEXT NOT NULL DEFAULT 'active',
+    dns_name      TEXT NOT NULL DEFAULT '',
+    description   TEXT NOT NULL DEFAULT '',
+    host_id       TEXT,
+    connection_id TEXT,
+    rack_item_id  TEXT,
+    created_at    TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at    TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(vrf, address)
+);
+
+-- A Network Map: the logical link diagram, distinct from the physical Site →
+-- Server Room → Rack topology. graph_json holds the whole document (nodes,
+-- links, reachability roots) like itops_automations.actions_json — the canvas is
+-- always saved as a unit, so per-node rows would buy no query the UI makes.
+-- site_id is an optional SOFT reference; NULL means the map spans Sites. v51.
+CREATE TABLE IF NOT EXISTS itops_network_maps (
+    id          TEXT PRIMARY KEY,
+    name        TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    site_id     TEXT,
+    sort_order  INTEGER NOT NULL,
+    graph_json  TEXT NOT NULL DEFAULT '{}',
+    created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- A durable Automation (docs/ITOPS.md Phase 3): the persistent definition of a

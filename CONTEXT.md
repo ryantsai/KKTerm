@@ -130,7 +130,7 @@ A built-in Activity Rail Module that captures screenshots into a user-configurab
 _Avoid_: screenshot gallery page, capture tool, snipping module
 
 **IT Ops Module**:
-A built-in Activity Rail Module for site operations: **Sites**, **Hosts**, global reusable **Tasks**, **Batch Runs**, and **Automations**. Its operational navigator exposes Site-owned Server Rooms, Hosts, Automations, and Run History as separate destinations, plus a global Task Library; topology drills through Site View, Server Room View, and Rack View. The Site destination is its overview-only Site View and has no Hosts, Batch Runs, or Automations segmented control. Lives with Dashboard and Install Helper above Settings. Not a Connection, Session, or Dashboard widget. See `docs/ITOPS.md` and `docs/ADR/0011-it-ops-module.md`.
+A built-in Activity Rail Module for site operations: **Sites**, **Hosts**, global reusable **Tasks**, **Batch Runs**, **Automations**, **IPAM**, and **Network Maps**. Its operational navigator exposes Site-owned Server Rooms, Hosts, Automations, and Run History as separate destinations, plus a global Library section holding the Task Library, IPAM, and Network Maps; topology drills through Site View, Server Room View, and Rack View. The Site destination is its overview-only Site View and has no Hosts, Batch Runs, or Automations segmented control. Lives with Dashboard and Install Helper above Settings. Not a Connection, Session, or Dashboard widget. See `docs/ITOPS.md` and `docs/ADR/0011-it-ops-module.md`.
 _Avoid_: operations center, site manager, orchestrator
 
 **Task**:
@@ -140,6 +140,38 @@ _Avoid_: Site task, saved run, workflow
 **Task Library**:
 The global IT Ops collection of reusable Tasks, including the app-owned diagnostic catalog. It appears once in the operational navigator as a sibling of Sites, never once beneath every Site. Opening a user Task shows and manages its definition; built-in Tasks are duplicated before customization. Manual execution starts from selected Hosts, where the launcher offers Tasks from this library. The Task Library is a view/collection, not a durable entity, target container, or run launcher.
 _Avoid_: Site Tasks, scripts folder, workflow library, job catalog
+
+**IPAM**:
+The global IT Ops address-plan destination, a sibling of Sites and the Task Library in the navigator's Library section. It documents **IP Prefixes** and **IP Address Records** the operator writes down; it does not scan, probe, lease, or reserve anything on the network. Prefix nesting, depth, and utilization are recomputed from containment on every read and are never stored, so adding a wider prefix silently re-parents the blocks it now contains. IPAM is a view over two durable tables, not a durable entity itself.
+_Avoid_: subnet manager, DHCP, address scanner, DDI
+
+**IP Prefix**:
+A durable IPv4 CIDR block stored in `itops_ip_prefixes`, with a role, a status (`container`, `active`, `reserved`, or `deprecated`), an optional free-text VRF label, an optional Site tag, and a description. Host bits are cleared on save, so the stored value is always the network address. It is global to the IT Ops Module; the Site tag labels it and never scopes its visibility.
+_Avoid_: subnet record, network object, VLAN
+
+**IP Address Record**:
+A durable single documented IPv4 address stored in `itops_ip_address_records`, with an optional DNS name, status, VRF, description, and soft references to the Host, Connection, or Rack Device it was imported from. It belongs to an **IP Prefix** by containment and matching VRF, not by a stored parent id. It is documentation, not a lease, reservation, or live binding — deleting it changes nothing on the network.
+_Avoid_: IP entry, lease, reservation, host record (that is **Host**)
+
+**Network Map**:
+A durable, hand-drawn logical link diagram stored in `itops_network_maps`, global like the Task Library with an optional Site tag that only labels it. One map is one canvas of **Network Nodes** and **Network Links**, persisted whole as a graph document. It is deliberately **not** the physical Site → Server Room → Rack drill-down that **topology** names in KKTerm, and it carries no live device state: KKTerm never discovers, polls, or refreshes a map.
+_Avoid_: topology, topology map, network topology, discovery map, live map
+
+**Network Node**:
+One box on a **Network Map**: a label, a kind (router, switch, firewall, server, load balancer, or cloud), a canvas position, and optional free-text address and note. The address is a caption drawn under the label, not a reference into **IPAM**. A Network Node is not a **Host**, a **Rack Device**, or a **Connection**, though a map can be seeded from a Site's Hosts.
+_Avoid_: device, host (on a map), rack item
+
+**Network Link**:
+One undirected edge between two **Network Nodes**, with an optional label (a port, a circuit id, a VLAN) and a kind (ethernet, fiber, WAN, or wireless). Undirected is deliberate: a link asserts that the two nodes can reach each other, not a traffic direction.
+_Avoid_: connection (that is the durable Connection model), edge, cable, circuit
+
+**Entry point**:
+A **Network Node** marked as a root of its **Network Map**. Reachability is measured from the entry points; with none marked, the first node stands in so a half-drawn map still analyses.
+_Avoid_: root node, gateway, source
+
+**What-If**:
+The Network Map mode where the operator switches **Network Nodes** and **Network Links** off on the canvas and sees which nodes lose every path to an **entry point**, which single nodes or links would cut something off on their own, and which nodes have no link at all. It is pure graph maths over the map as drawn: the "down" set is only ever what the operator toggled, and nothing here reflects, polls, or reports live device state.
+_Avoid_: simulation (as in traffic simulation), monitoring, health check, outage detection
 
 **Sites**:
 The IT Ops collection of Site records in the operational navigator. Expanding a Site exposes predefined virtual destinations for Server Rooms, Hosts, Automations, and Run History; those rows are navigation state, not stored folders. A Site row selects a **Site**. The plural term names the collection, not a durable data type.
@@ -278,6 +310,9 @@ _Avoid_: settings nav, settings menu
 - A native SSH **Session** must not use an app-side idle timeout. Quiet, unfocused SSH Sessions are expected to remain connected unless the remote server, network, or an explicit user close ends them.
 - A tmux-enabled native SSH **Session** may silently attempt a small bounded reattach to the same Pane tmux id if the SSH channel unexpectedly closes.
 - A **Session** is intentionally ended only by an explicit close action on the presenting **Tab** or by the remote/process ending itself.
+- An **IP Address Record** belongs to an **IP Prefix** by containment and matching VRF; neither stores a parent id, and both survive the other's deletion.
+- A **Network Map** owns its **Network Nodes** and **Network Links**; deleting the map deletes the drawing and nothing else.
+- A **Network Node** may be seeded from a **Host**, but it does not become one, reference one durably, or reflect its state.
 
 ## Example Dialogue
 
@@ -289,4 +324,5 @@ _Avoid_: settings nav, settings menu
 - "Profile" and "saved connection" were both used for durable openable resources. Resolved: use **Connection** as the canonical term.
 - "Session" was previously easy to confuse with a saved connection or visible tab. Resolved: a **Session** is live runtime state, while a **Tab** is only the frontend container.
 - "Child connection" can sound like a nested durable Connection. Resolved: use **Child Connection Tab** for the saved child row that reopens a Tab under a parent Connection.
+- "Topology" was at risk of naming two different things once logical network diagrams arrived. Resolved: **topology** stays the physical Site → Server Room → Rack drill-down; the logical diagram is a **Network Map** made of **Network Nodes** and **Network Links**, and must never be called a topology map.
 - "Workspace" was previously an implicit singleton — the term named both the rail Module and the single Connection Tree. Resolved: **Workspace** is now an instanceable container of Connections; the seeded **Default Workspace** is permanent. The Workspace Module / Workspace Canvas keep their names and render the active Workspace. **Tab** remains the frontend container for a Session, distinct from the capital-W Workspace instance.
