@@ -1,3 +1,4 @@
+import { listen } from "@tauri-apps/api/event";
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
@@ -11,6 +12,7 @@ import {
   LoaderCircle,
   MemoryStick,
   TriangleAlert,
+  Timer,
   Unlock,
   X,
 } from "../../lib/reicon";
@@ -28,6 +30,11 @@ import type { CredentialSecretStoreStatus, StatusBarNotice } from "../../types";
 import { currentPlatform } from "../../lib/platform";
 import { EncryptedSecretStoreDialog } from "../settings/EncryptedSecretStoreDialog";
 import { WatchdogStatusBar } from "../../watchdog/WatchdogStatusBar";
+import { showShutdownTimerMenu } from "../../app/shutdownTimerMenu";
+import {
+  formatShutdownTimerRemaining,
+  type ShutdownTimerStatus,
+} from "../../app/shutdownTimerModel";
 
 const NOTIFICATION_FADE_MS = 220;
 
@@ -40,8 +47,9 @@ export function StatusBar({
   onOpenDashboardView: (viewId: string) => void;
   installerActive: boolean;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const notice = useWorkspaceStore((state) => state.statusBarNotice);
+  const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
   const statusBarMonitorEnabled = useWorkspaceStore(
     (state) => state.generalSettings.statusBarMonitorEnabled,
   );
@@ -49,6 +57,44 @@ export function StatusBar({
   const setDocumentStatusSlot = useWorkspaceStore((state) => state.setDocumentStatusSlot);
   const [renderedNotice, setRenderedNotice] = useState(notice);
   const [isNoticeExiting, setIsNoticeExiting] = useState(false);
+  const [shutdownTimerStatus, setShutdownTimerStatus] =
+    useState<ShutdownTimerStatus | null>(null);
+
+  useEffect(() => {
+    if (!isTauriRuntime()) {
+      return;
+    }
+
+    void invokeCommand("get_shutdown_timer_status")
+      .then(setShutdownTimerStatus)
+      .catch(() => undefined);
+    const language = i18n.resolvedLanguage ?? i18n.language;
+    const unlistenPromises = [
+      listen<ShutdownTimerStatus | null>("kkterm://shutdown-timer-changed", (event) => {
+        setShutdownTimerStatus(event.payload);
+      }),
+      listen<ShutdownTimerStatus>("kkterm://shutdown-timer-scheduled", (event) => {
+        const time = new Intl.DateTimeFormat(language, {
+          hour: "numeric",
+          minute: "2-digit",
+        }).format(event.payload.scheduledForUnixMs);
+        showStatusBarNotice(t("app.shutdownTimerScheduled", { time }), { tone: "success" });
+      }),
+      listen("kkterm://shutdown-timer-cancelled", () => {
+        showStatusBarNotice(t("app.shutdownTimerCancelled"), { tone: "info" });
+      }),
+      listen<string>("kkterm://shutdown-timer-error", (event) => {
+        showStatusBarNotice(t("app.shutdownTimerError", { message: event.payload }), {
+          tone: "error",
+        });
+      }),
+    ];
+    return () => {
+      for (const unlistenPromise of unlistenPromises) {
+        void unlistenPromise.then((unlisten) => unlisten());
+      }
+    };
+  }, [i18n.language, i18n.resolvedLanguage, showStatusBarNotice, t]);
 
   useEffect(() => {
     if (!notice) {
@@ -125,6 +171,9 @@ export function StatusBar({
         <CredentialStoreStatusButton />
         <XServerStatusIcon />
         <DontSleepStatusIcon />
+        {shutdownTimerStatus ? (
+          <ShutdownTimerStatusButton status={shutdownTimerStatus} />
+        ) : null}
       </div>
     </footer>
   );
@@ -389,10 +438,24 @@ function XServerStatusIcon() {
 }
 
 function DontSleepStatusIcon() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const dontSleepEnabled = useWorkspaceStore(
     (state) => state.generalSettings.dontSleepEnabled,
   );
+  const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
+
+  async function handleContextMenu(event: MouseEvent<HTMLElement>) {
+    event.preventDefault();
+    await showShutdownTimerMenu({
+      language: i18n.resolvedLanguage ?? i18n.language,
+      onError: (error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        showStatusBarNotice(t("app.shutdownTimerError", { message }), { tone: "error" });
+      },
+      position: { x: event.clientX, y: event.clientY },
+      t,
+    });
+  }
 
   if (!dontSleepEnabled) {
     return null;
@@ -402,10 +465,52 @@ function DontSleepStatusIcon() {
     <span
       className="status-bar-action status-bar-dont-sleep-enabled"
       aria-label={t("app.dontSleep")}
+      onContextMenu={(event) => void handleContextMenu(event)}
       role="status"
     >
       <Coffee size={14} />
       <RailTooltip label={t("app.dontSleep")} />
+    </span>
+  );
+}
+
+function ShutdownTimerStatusButton({ status }: { status: ShutdownTimerStatus }) {
+  const { t, i18n } = useTranslation();
+  const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
+  const [nowUnixMs, setNowUnixMs] = useState(Date.now());
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNowUnixMs(Date.now()), 250);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  const remaining = formatShutdownTimerRemaining(status, nowUnixMs);
+  const label = t("app.shutdownTimerCountdown", { time: remaining });
+
+  async function handleContextMenu(event: MouseEvent<HTMLElement>) {
+    event.preventDefault();
+    await showShutdownTimerMenu({
+      cancelOnly: true,
+      language: i18n.resolvedLanguage ?? i18n.language,
+      onError: (error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        showStatusBarNotice(t("app.shutdownTimerError", { message }), { tone: "error" });
+      },
+      position: { x: event.clientX, y: event.clientY },
+      t,
+    });
+  }
+
+  return (
+    <span
+      aria-label={label}
+      className={`status-bar-action status-bar-shutdown-timer is-${status.phase}`}
+      onContextMenu={(event) => void handleContextMenu(event)}
+      role="timer"
+    >
+      <Timer size={13} />
+      <strong>{remaining}</strong>
+      <RailTooltip label={label} />
     </span>
   );
 }

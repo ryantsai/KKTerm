@@ -10,7 +10,7 @@ import {
   Settings,
 } from "../lib/reicon";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { PointerEvent as ReactPointerEvent } from "react";
+import type { MouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { loadStoredChildConnections } from "../modules/workspace/connections/childConnections";
 import { ConnectionIcon } from "../modules/workspace/connections/ConnectionIcon";
@@ -29,6 +29,7 @@ import { WorkspaceIcon } from "../modules/workspace/workspaceIcons";
 import { ItOpsModuleIcon } from "../modules/itops/icons";
 import { InstallHelperModuleIcon, ScreenshotsModuleIcon } from "./moduleIdentityIcons";
 import { RailTooltip } from "./RailTooltip";
+import { showShutdownTimerMenu } from "./shutdownTimerMenu";
 
 export type ActivePage =
   | "workspace"
@@ -105,7 +106,7 @@ export function ActivityRail({
   onConnectionsToggle: () => void;
   onNavigate: (page: ActivePage) => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
   const activeWorkspaceId = useWorkspaceStore((state) => state.activeWorkspaceId);
   const workspaces = useWorkspaceStore((state) => state.workspaces);
@@ -222,6 +223,19 @@ export function ActivityRail({
     } finally {
       setDontSleepUpdating(false);
     }
+  }
+
+  async function handleDontSleepContextMenu(event: MouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    await showShutdownTimerMenu({
+      language: i18n.resolvedLanguage ?? i18n.language,
+      onError: (error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        showStatusBarNotice(t("app.shutdownTimerError", { message }), { tone: "error" });
+      },
+      position: { x: event.clientX, y: event.clientY },
+      t,
+    });
   }
 
   useEffect(() => {
@@ -919,6 +933,7 @@ export function ActivityRail({
           {...ariaPressed(dontSleepEnabled)}
           disabled={dontSleepUpdating}
           onClick={() => void handleDontSleepClick()}
+          onContextMenu={(event) => void handleDontSleepContextMenu(event)}
         >
           {dontSleepEnabled ? <Coffee size={18} /> : <BedSingle size={18} />}
           <RailTooltip label={dontSleepTooltip} />

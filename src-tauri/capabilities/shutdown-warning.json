@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "shutdown-warning",
+  "description": "Capability for the scheduled-shutdown final warning window",
+  "windows": ["shutdown-warning"],
+  "permissions": ["core:default"]
+}

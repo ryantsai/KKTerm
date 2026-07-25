@@ -49,6 +49,7 @@ mod secrets;
 mod selective_export;
 mod serial;
 mod sessions;
+mod shutdown_timer;
 mod sftp;
 mod socks;
 mod ssh;
@@ -1834,6 +1835,28 @@ fn set_dont_sleep_enabled(
         eprintln!("failed to refresh tray menu after Don't Sleep change: {error}");
     }
     Ok(saved)
+}
+
+#[tauri::command]
+fn get_shutdown_timer_status(
+    timer: tauri::State<'_, shutdown_timer::ShutdownTimerManager>,
+) -> Option<shutdown_timer::ShutdownTimerStatus> {
+    timer.status()
+}
+
+#[tauri::command]
+fn schedule_shutdown_timer(
+    timer: tauri::State<'_, shutdown_timer::ShutdownTimerManager>,
+    delay_minutes: u64,
+) -> Result<shutdown_timer::ShutdownTimerStatus, String> {
+    timer.schedule(delay_minutes)
+}
+
+#[tauri::command]
+fn cancel_shutdown_timer(
+    timer: tauri::State<'_, shutdown_timer::ShutdownTimerManager>,
+) -> Result<bool, String> {
+    timer.cancel()
 }
 
 #[tauri::command]
@@ -4484,6 +4507,9 @@ pub fn run() {
             app.manage(performance::PerformanceMonitor::new());
             app.manage(pc_info::PcInfoCache::new());
             app.manage(power_manager);
+            app.manage(shutdown_timer::ShutdownTimerManager::new(
+                app.handle().clone(),
+            ));
             app.manage(secrets::Secrets::new(
                 credential_settings.secret_store(),
                 secret_db_path,
@@ -4743,6 +4769,9 @@ pub fn run() {
             create_diagnostics_bundle,
             get_dont_sleep_enabled,
             set_dont_sleep_enabled,
+            get_shutdown_timer_status,
+            schedule_shutdown_timer,
+            cancel_shutdown_timer,
             update_tray_menu,
             // ── Screenshots
             capture_screenshot_to_clipboard,
