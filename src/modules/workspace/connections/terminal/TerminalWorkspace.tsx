@@ -31,7 +31,7 @@ import {
   fixedTerminalShortcutFromKeyboardEvent,
   workspaceShortcutFromKeyboardEvent,
 } from "../../keymap";
-import { ensureLayout } from "../../layout";
+import { ensureLayout, leafOrder } from "../../layout";
 import {
   broadcastInputToOtherPanes,
   getPaneRenderer,
@@ -177,18 +177,13 @@ export function TerminalWorkspace({
   const focusedTerminalPane = tab.panes.find((pane): pane is TerminalPane => (
     isTerminalPane(pane) && pane.id === focusedPaneId
   ));
-  const firstTerminalPane = tab.panes.find(isTerminalPane);
-  const focusedTerminalBackground = focusedTerminalPane?.connection
-    ? focusedTerminalPane.connection.terminalBackground
-    : firstTerminalPane?.connection?.terminalBackground;
+  const firstTerminalPane = leafOrder(layout)
+    .map((paneId) => tab.panes.find((pane) => pane.id === paneId))
+    .filter((pane): pane is WorkspacePane => Boolean(pane))
+    .find(isTerminalPane);
   const workspaceTerminalBackground = usePaneTerminalBackgrounds
     ? null
-    : resolveVisibleTerminalBackground({
-        connectionBackground: tab.connection?.terminalBackground,
-        paneBackground: focusedTerminalBackground,
-        sharedBackground: undefined,
-        usePaneBackground: true,
-      });
+    : (firstTerminalPane?.connection?.terminalBackground ?? null);
   const sftpDialogTab = useMemo<WorkspaceTab | null>(() => {
     if (!sftpDialogConnection) {
       return null;
@@ -544,6 +539,7 @@ export function TerminalWorkspace({
             onFocusPane={(paneId) => setFocusedPane(tab.id, paneId)}
             canSplit={canSplit}
             sharedTerminalBackground={workspaceTerminalBackground}
+            sharedTerminalBackgroundOwnerPane={firstTerminalPane}
             usePaneTerminalBackgrounds={usePaneTerminalBackgrounds}
             onFontChange={handleFontChange}
             onOpenAssistant={onOpenAssistant}
@@ -622,6 +618,7 @@ function TerminalLayoutView({
   onFocusPane,
   canSplit,
   sharedTerminalBackground,
+  sharedTerminalBackgroundOwnerPane,
   usePaneTerminalBackgrounds,
   onFontChange,
   onOpenAssistant,
@@ -645,6 +642,7 @@ function TerminalLayoutView({
   onFocusPane: (paneId: string) => void;
   canSplit: boolean;
   sharedTerminalBackground: Connection["terminalBackground"];
+  sharedTerminalBackgroundOwnerPane: TerminalPane | undefined;
   usePaneTerminalBackgrounds: boolean;
   onFontChange: (delta: number | "reset") => void;
   onOpenAssistant: () => void;
@@ -688,6 +686,7 @@ function TerminalLayoutView({
             onClosePane={panes.length === 1 ? onCloseSinglePane : undefined}
             onFontChange={onFontChange}
             sharedTerminalBackground={sharedTerminalBackground}
+            sharedTerminalBackgroundOwnerPane={sharedTerminalBackgroundOwnerPane}
             usePaneTerminalBackgrounds={usePaneTerminalBackgrounds}
             onOpenAssistant={onOpenAssistant}
             onOpenSftp={onOpenSftp}
@@ -737,6 +736,7 @@ function TerminalLayoutView({
           onFocusPane={onFocusPane}
           canSplit={canSplit}
           sharedTerminalBackground={sharedTerminalBackground}
+          sharedTerminalBackgroundOwnerPane={sharedTerminalBackgroundOwnerPane}
           usePaneTerminalBackgrounds={usePaneTerminalBackgrounds}
           onFontChange={onFontChange}
           onOpenAssistant={onOpenAssistant}
@@ -1581,6 +1581,7 @@ function TerminalPaneView({
   onClosePane,
   onFontChange,
   sharedTerminalBackground,
+  sharedTerminalBackgroundOwnerPane,
   usePaneTerminalBackgrounds,
   onOpenAssistant,
   onOpenSftp,
@@ -1602,6 +1603,7 @@ function TerminalPaneView({
   onClosePane?: () => void;
   onFontChange: (delta: number | "reset") => void;
   sharedTerminalBackground: Connection["terminalBackground"];
+  sharedTerminalBackgroundOwnerPane: TerminalPane | undefined;
   usePaneTerminalBackgrounds: boolean;
   onOpenAssistant: () => void;
   onOpenSftp: (connection: Connection, paneId: string) => void;
@@ -2627,8 +2629,12 @@ function TerminalPaneView({
     }));
   }, [searchOpen, searchTerm]);
 
-  async function saveTerminalAppearance(nextOpacity: number, nextBackground = terminalBackground) {
-    const connection = pane.connection;
+  async function saveTerminalAppearance(
+    nextOpacity: number,
+    nextBackground = pane.connection?.terminalBackground ?? null,
+    targetPane = pane,
+  ) {
+    const connection = targetPane.connection;
     if (!connection) {
       return;
     }
@@ -2636,8 +2642,8 @@ function TerminalPaneView({
       terminalOpacity: Math.min(Math.max(Math.round(nextOpacity), 0), 100),
       terminalBackground: nextBackground,
     };
-    if (pane.childConnectionId) {
-      updateOpenTerminalPaneAppearance(tabId, pane.id, appearance);
+    if (targetPane.childConnectionId) {
+      updateOpenTerminalPaneAppearance(tabId, targetPane.id, appearance);
       return;
     }
     updateOpenConnectionTerminalAppearance(connection.id, appearance);
@@ -2667,6 +2673,17 @@ function TerminalPaneView({
   }
 
   function handleBackgroundChange(nextBackground: typeof terminalBackground) {
+    if (!usePaneTerminalBackgrounds && sharedTerminalBackgroundOwnerPane) {
+      const ownerOpacity =
+        sharedTerminalBackgroundOwnerPane.connection?.terminalOpacity ??
+        (100 - terminalSettings.defaultTransparency);
+      void saveTerminalAppearance(
+        ownerOpacity,
+        nextBackground,
+        sharedTerminalBackgroundOwnerPane,
+      );
+      return;
+    }
     if (pane.childConnectionId) {
       updateOpenTerminalPaneAppearance(tabId, pane.id, {
         terminalOpacity,

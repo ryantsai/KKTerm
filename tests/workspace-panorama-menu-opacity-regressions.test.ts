@@ -158,6 +158,54 @@ test("an explicit default terminal background does not fall back to the last bac
   );
 });
 
+test("shared Panorama backgrounds belong to the first terminal Pane in visual layout order", async () => {
+  const panes = [pane("one"), pane("two"), pane("three")];
+  const manuallyReorderedLayout: LayoutNode = {
+    type: "split",
+    orientation: "horizontal",
+    children: [
+      { type: "leaf", paneId: "two" },
+      { type: "leaf", paneId: "one" },
+      { type: "leaf", paneId: "three" },
+    ],
+  };
+  assert.equal(
+    leafOrder(manuallyReorderedLayout)[0],
+    "two",
+    "manual drag/drop order, not the backing pane array, defines the first visual Pane",
+  );
+
+  const terminalWorkspace = await readFile(
+    new URL("../src/modules/workspace/connections/terminal/TerminalWorkspace.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    terminalWorkspace,
+    /const firstTerminalPane = leafOrder\(layout\)[\s\S]*\.find\(isTerminalPane\);/,
+    "shared background ownership should follow the first terminal Pane in layout order",
+  );
+  assert.doesNotMatch(
+    terminalWorkspace,
+    /focusedTerminalBackground/,
+    "changing focus must not change the shared Panorama background",
+  );
+  assert.match(
+    terminalWorkspace,
+    /sharedTerminalBackgroundOwnerPane=\{firstTerminalPane\}/,
+    "every Pane background picker needs the same first-Pane owner",
+  );
+  assert.match(
+    terminalWorkspace,
+    /if \(!usePaneTerminalBackgrounds && sharedTerminalBackgroundOwnerPane\) \{[\s\S]*saveTerminalAppearance\([\s\S]*sharedTerminalBackgroundOwnerPane/,
+    "a background edit from any shared-mode Pane should persist through the first Pane",
+  );
+  assert.match(
+    terminalWorkspace,
+    /if \(targetPane\.childConnectionId\) \{[\s\S]*updateOpenTerminalPaneAppearance\(tabId, targetPane\.id, appearance\)/,
+    "a first-Pane owner that is a Child Connection Tab should retain child-scoped persistence",
+  );
+});
+
 test("terminal action menu portals above the Activity Rail and flips edge submenus", async () => {
   const [terminalWorkspace, baseCss, terminalCss] = await Promise.all([
     readFile(

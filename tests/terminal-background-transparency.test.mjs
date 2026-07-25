@@ -73,7 +73,7 @@ test("terminal appearance menu presents transparency while storing opacity", () 
   );
   assert.match(
     terminalWorkspace,
-    /pane\.childConnectionId[\s\S]*updateOpenTerminalPaneAppearance\(tabId,\s*pane\.id,\s*appearance\)/,
-    "Child Connection Tabs should save terminal opacity as child pane appearance instead of rewriting the parent Connection",
+    /targetPane\.childConnectionId[\s\S]*updateOpenTerminalPaneAppearance\(tabId,\s*targetPane\.id,\s*appearance\)/,
+    "Child Connection Tabs, including a shared-background owner, should save appearance on the target child Pane instead of rewriting the parent Connection",
   );
 });
