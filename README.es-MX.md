@@ -145,6 +145,8 @@ La mayoría de los demos de «IA en tu terminal» se quedan en el chat. El asist
 
 El Dashboard es una cuadrícula de widgets que arrastras y redimensionas. No es para observabilidad a escala de petabytes — es para «quiero un botón que abra mis cinco apps favoritas y un panel que muestre el uptime de mi host SSH, *al lado* de mi chat».
 
+Las Views del Dashboard ofrecen 45 fondos animados integrados en KKTerm. Los ocho más recientes son escenas WebGL procedurales: `heroGeometric`, `ditherPrismHero`, `webglLiquid`, `silkAurora`, `closingPlasma`, `animatedGradient`, `prismGradient` y `liquidChrome`. El mismo selector de fondos está disponible en las Connections de terminal, el Document viewer y las vistas detalladas de IT Ops; las escenas ocultas o fuera de pantalla dejan de renderizarse y liberan sus recursos WebGL.
+
 <p align="center">
   <img src="docs/assets/screenshots/ai-widgets.png" alt="Una cuadrícula de panel llena de widgets creados por la IA" width="720" />
 </p>
@@ -155,6 +157,14 @@ El módulo **IT Ops** agrupa conexiones en sitios, representa cuartos de servido
 
 <p align="center">
   <img src="docs/assets/screenshots/itops.png" alt="La vista de elevaciones del cuarto de servidores de IT Ops con seis racks equipados e indicadores de estado de los hosts" width="720" />
+</p>
+
+### Captura, organiza y anota capturas de pantalla
+
+El módulo **Screenshots** captura una región, una ventana o todo el escritorio en una biblioteca local, en el portapapeles o en ambos. Ordena y agrupa las capturas, cambia su tamaño o formato por lotes y abre cualquier imagen en el editor integrado para recortar, dibujar a mano alzada, añadir flechas, figuras y texto, o pixelar información. Los atajos globales y el menú de la bandeja dejan la captura a una sola tecla.
+
+<p align="center">
+  <img src="docs/assets/screenshots/screenshots-module.png" alt="El módulo Screenshots con controles de captura y una biblioteca de miniaturas" width="720" />
 </p>
 
 ### Mantén vivos a tus agentes de IA

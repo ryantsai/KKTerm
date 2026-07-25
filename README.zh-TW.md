@@ -145,6 +145,8 @@ KKTerm 做得像一個工具，而不是一整個平台。現在的桌面版不�
 
 Dashboard 是一個可拖曳、可縮放的 widget 網格。它不是給你做 PB 級觀測用的 — 它是給「我想要一個按鈕啟動我最愛的五個 app，旁邊一個面板顯示我 SSH 主機的 uptime，*再旁邊*就是我的聊天視窗」用的。
 
+Dashboard View 可使用 45 款 KKTerm 內建的動態背景；最新加入的八款 WebGL 程序化場景是 `heroGeometric`、`ditherPrismHero`、`webglLiquid`、`silkAurora`、`closingPlasma`、`animatedGradient`、`prismGradient` 與 `liquidChrome`。終端機 Connection、Document viewer 與 IT Ops 深入檢視也共用同一個背景選擇器；場景隱藏或移出畫面後便會停止繪製並釋放 WebGL 資源。
+
 <p align="center">
   <img src="docs/assets/screenshots/ai-widgets.png" alt="一整片 AI 打造的 Dashboard widget" width="720" />
 </p>
@@ -155,6 +157,14 @@ Dashboard 是一個可拖曳、可縮放的 widget 網格。它不是給你做 P
 
 <p align="center">
   <img src="docs/assets/screenshots/itops.png" alt="IT Ops 伺服器機房立面檢視，顯示六座已配置設備的機櫃與主機狀態指示器" width="720" />
+</p>
+
+### 擷取、整理與標註螢幕截圖
+
+**螢幕截圖** Module 可將選取區域、視窗或整個桌面擷取到本機圖庫、剪貼簿，或同時存入兩者。你可以排序與分組截圖、批次調整尺寸或轉換格式，也能在內建編輯器中裁切、手繪、加入箭頭、圖形與文字，或以馬賽克遮蔽內容。透過全域快速鍵與系統匣操作，按下快速鍵就能開始擷取。
+
+<p align="center">
+  <img src="docs/assets/screenshots/screenshots-module.png" alt="螢幕截圖 Module，顯示擷取控制項與縮圖圖庫" width="720" />
 </p>
 
 ### 讓你的 AI agent 活著

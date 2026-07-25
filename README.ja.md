@@ -145,6 +145,8 @@ KKTerm はプラットフォームではなく、道具として感じられる�
 
 Dashboard はドラッグ＆リサイズできるWidgetのグリッドだ。ペタバイト規模の可観測性のためのものではない——「お気に入りのアプリ5つを起動するボタンと、SSHホストの稼働時間を表示するパネルが、チャットの*隣に*ほしい」のためのものだ。
 
+Dashboard View では、KKTerm 内蔵のアニメーション背景を45種類利用できます。新たに加わった8つのプロシージャル WebGL シーンは `heroGeometric`、`ditherPrismHero`、`webglLiquid`、`silkAurora`、`closingPlasma`、`animatedGradient`、`prismGradient`、`liquidChrome` です。同じ背景ピッカーは Terminal Connection、Document viewer、IT Ops の詳細ビューでも利用でき、非表示または画面外のシーンは描画を停止して WebGL リソースを解放します。
+
 <p align="center">
   <img src="docs/assets/screenshots/ai-widgets.png" alt="AIが作ったWidgetが並ぶDashboardグリッド" width="720" />
 </p>
@@ -155,6 +157,14 @@ Dashboard はドラッグ＆リサイズできるWidgetのグリッドだ。ペ�
 
 <p align="center">
   <img src="docs/assets/screenshots/itops.png" alt="6台の機器ラックとホストの稼働状況を表示する IT Ops のサーバールーム正面図" width="720" />
+</p>
+
+### スクリーンショットを撮影・整理・注釈
+
+**Screenshots** Module では、選択範囲、ウィンドウ、デスクトップ全体をローカルライブラリ、クリップボード、またはその両方に取り込めます。画像の並べ替えやグループ化、一括リサイズ・形式変換に加え、内蔵エディターで切り抜き、手描き、矢印、図形、テキスト、モザイク処理ができます。グローバルショートカットとトレイメニューから、いつでもすぐに撮影できます。
+
+<p align="center">
+  <img src="docs/assets/screenshots/screenshots-module.png" alt="撮影コントロールとサムネイルライブラリを表示した Screenshots Module" width="720" />
 </p>
 
 ### AIエージェントを生かし続ける

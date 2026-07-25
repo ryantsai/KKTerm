@@ -10,6 +10,7 @@ Each file name below maps to a README screenshot (PNG, ~720px wide recommended).
 | `ai-assistant.png` | AI assistant that builds tools |
 | `ai-widgets.png` | AI-created dashboard widgets |
 | `backgrounds.png` | Animated dashboard backgrounds |
+| `screenshots-module.png` | Screenshots Module capture controls and thumbnail library |
 | `tmux-reattach.png` | Keep remote AI agents alive |
 | `usage-meter.png` | AI usage meter |
 | `file-viewer.png` | File Explorer & Document viewer |

@@ -145,6 +145,8 @@ La plupart des démos d'« IA dans le terminal » s'arrêtent au chat. L'assista
 
 Le Dashboard est une grille de widgets que l'on glisse et redimensionne. Ce n'est pas pour l'observabilité à l'échelle du pétaoctet — c'est pour « je veux un bouton pour lancer mes cinq applis préférées et un panneau montrant la disponibilité de mon hôte SSH, *à côté* de mon chat ».
 
+Les Views du Dashboard proposent 45 arrière-plans animés intégrés à KKTerm. Les huit nouveautés sont des scènes WebGL procédurales : `heroGeometric`, `ditherPrismHero`, `webglLiquid`, `silkAurora`, `closingPlasma`, `animatedGradient`, `prismGradient` et `liquidChrome`. Le même sélecteur d’arrière-plan est disponible pour les Connections de terminal, le Document viewer et les vues détaillées d’IT Ops ; une scène masquée ou hors écran cesse son rendu et libère ses ressources WebGL.
+
 <p align="center">
   <img src="docs/assets/screenshots/ai-widgets.png" alt="Une grille de tableau de bord remplie de widgets créés par l'IA" width="720" />
 </p>
@@ -155,6 +157,14 @@ Le Module **IT Ops** regroupe les connexions par sites, représente les salles s
 
 <p align="center">
   <img src="docs/assets/screenshots/itops.png" alt="La vue en élévation de la salle serveurs IT Ops avec six racks équipés et des indicateurs d’état des hôtes" width="720" />
+</p>
+
+### Capturer, classer et annoter des captures d’écran
+
+Le Module **Screenshots** capture une zone, une fenêtre ou l’ensemble du bureau dans une bibliothèque locale, dans le presse-papiers, ou dans les deux. Triez et regroupez les captures, redimensionnez-les ou convertissez-les par lot, puis ouvrez n’importe quelle image dans l’éditeur intégré pour la recadrer, dessiner à main levée, ajouter des flèches, des formes ou du texte, et masquer des éléments en mosaïque. Les raccourcis globaux et le menu de la zone de notification gardent la capture à portée de touche.
+
+<p align="center">
+  <img src="docs/assets/screenshots/screenshots-module.png" alt="Le Module Screenshots avec ses commandes de capture et sa bibliothèque de miniatures" width="720" />
 </p>
 
 ### Garder vos agents IA en vie

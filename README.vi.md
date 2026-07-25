@@ -145,6 +145,8 @@ Phần lớn các demo "AI trong terminal" dừng ở chat. Trợ lý của KKTe
 
 Dashboard là một lưới widget mà bạn kéo và đổi kích thước. Nó không dành cho observability quy mô petabyte — nó dành cho "tôi muốn một nút mở năm app yêu thích và một bảng hiện uptime của host SSH, *bên cạnh* khung chat của tôi".
 
+Dashboard View có 45 hình nền động tích hợp sẵn trong KKTerm. Tám hình nền mới nhất là các cảnh WebGL được tạo theo thủ tục: `heroGeometric`, `ditherPrismHero`, `webglLiquid`, `silkAurora`, `closingPlasma`, `animatedGradient`, `prismGradient` và `liquidChrome`. Cùng một bộ chọn hình nền cũng dùng được cho Terminal Connection, Document viewer và các chế độ xem chi tiết của IT Ops; cảnh bị ẩn hoặc nằm ngoài màn hình sẽ dừng kết xuất và giải phóng tài nguyên WebGL.
+
 <p align="center">
   <img src="docs/assets/screenshots/ai-widgets.png" alt="Một lưới dashboard đầy widget do AI tạo" width="720" />
 </p>
@@ -155,6 +157,14 @@ Module **IT Ops** nhóm Connection thành Site, mô phỏng Server Room và Rack
 
 <p align="center">
   <img src="docs/assets/screenshots/itops.png" alt="Chế độ xem mặt trước Server Room của IT Ops với sáu Rack chứa thiết bị và chỉ báo trạng thái Host" width="720" />
+</p>
+
+### Chụp, sắp xếp và chú thích ảnh chụp màn hình
+
+Module **Screenshots** chụp một vùng, một cửa sổ hoặc toàn bộ desktop vào thư viện cục bộ, clipboard hoặc cả hai. Bạn có thể sắp xếp và nhóm ảnh, đổi kích thước hoặc định dạng hàng loạt, rồi mở bất kỳ ảnh nào trong trình chỉnh sửa tích hợp để cắt, vẽ tự do, thêm mũi tên, hình khối và chữ, hoặc che thông tin bằng hiệu ứng mosaic. Phím tắt toàn cục và menu khay hệ thống giúp bạn bắt đầu chụp chỉ với một tổ hợp phím.
+
+<p align="center">
+  <img src="docs/assets/screenshots/screenshots-module.png" alt="Module Screenshots với các nút chụp và thư viện ảnh thu nhỏ" width="720" />
 </p>
 
 ### Giữ cho các agent AI của bạn sống

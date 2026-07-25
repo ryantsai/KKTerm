@@ -145,6 +145,8 @@ KKTerm은 플랫폼이 아니라 도구처럼 느껴지도록 만든다. 현재 
 
 Dashboard는 드래그·리사이즈 가능한 위젯 그리드다. 페타바이트급 관측을 위한 게 아니다 — "내가 좋아하는 앱 다섯 개를 실행하는 버튼과, 내 SSH 호스트 가동 시간을 보여주는 패널을, *내 채팅 옆에* 두고 싶다"를 위한 것이다.
 
+Dashboard View에서는 KKTerm에 내장된 애니메이션 배경 45종을 사용할 수 있습니다. 새로 추가된 프로시저럴 WebGL 장면 8종은 `heroGeometric`, `ditherPrismHero`, `webglLiquid`, `silkAurora`, `closingPlasma`, `animatedGradient`, `prismGradient`, `liquidChrome`입니다. 같은 배경 선택기는 Terminal Connection, Document viewer, IT Ops 상세 보기에서도 제공되며, 숨겨졌거나 화면 밖에 있는 장면은 렌더링을 멈추고 WebGL 리소스를 해제합니다.
+
 <p align="center">
   <img src="docs/assets/screenshots/ai-widgets.png" alt="AI가 만든 위젯이 채워진 Dashboard 그리드" width="720" />
 </p>
@@ -155,6 +157,14 @@ Dashboard는 드래그·리사이즈 가능한 위젯 그리드다. 페타바이
 
 <p align="center">
   <img src="docs/assets/screenshots/itops.png" alt="장비가 배치된 랙 6개와 호스트 상태 표시기를 보여 주는 IT Ops 서버실 정면도" width="720" />
+</p>
+
+### 스크린샷 캡처, 정리, 주석 달기
+
+**Screenshots** Module은 선택 영역, 창 또는 전체 데스크톱을 로컬 라이브러리나 클립보드, 또는 두 곳 모두에 캡처합니다. 캡처 이미지를 정렬하고 그룹화하거나 크기와 형식을 일괄 변환할 수 있으며, 내장 편집기에서 자르기, 자유 그리기, 화살표, 도형, 텍스트, 모자이크 가리기를 적용할 수 있습니다. 전역 단축키와 트레이 메뉴로 언제든 한 번에 캡처할 수 있습니다.
+
+<p align="center">
+  <img src="docs/assets/screenshots/screenshots-module.png" alt="캡처 도구와 썸네일 라이브러리를 보여 주는 Screenshots Module" width="720" />
 </p>
 
 ### AI 에이전트를 살아 있게 유지

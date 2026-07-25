@@ -145,6 +145,8 @@ KKTerm 做得像一个工具，而不是一整套平台。现在的桌面版不�
 
 Dashboard 是一个可拖拽、可缩放的 widget 网格。它不是给你做 PB 级观测用的 — 它是给「我想要一个按钮启动我最爱的五个 app，旁边一个面板显示我 SSH 主机的 uptime，*再旁边*就是我的聊天窗口」用的。
 
+Dashboard View 可使用 45 款 KKTerm 内置动态背景；最新加入的八款 WebGL 程序化场景是 `heroGeometric`、`ditherPrismHero`、`webglLiquid`、`silkAurora`、`closingPlasma`、`animatedGradient`、`prismGradient` 和 `liquidChrome`。终端 Connection、Document viewer 和 IT Ops 下钻视图也共用同一个背景选择器；场景隐藏或移出屏幕后会停止渲染并释放 WebGL 资源。
+
 <p align="center">
   <img src="docs/assets/screenshots/ai-widgets.png" alt="一整片 AI 打造的 Dashboard widget" width="720" />
 </p>
@@ -155,6 +157,14 @@ Dashboard 是一个可拖拽、可缩放的 widget 网格。它不是给你做 P
 
 <p align="center">
   <img src="docs/assets/screenshots/itops.png" alt="IT Ops 服务器机房立面视图，显示六个已部署设备的机架和主机状态指示器" width="720" />
+</p>
+
+### 截取、整理和标注屏幕截图
+
+**屏幕截图** 模块可将选定区域、窗口或整个桌面截取到本地图库、剪贴板，或同时保存到两者。你可以对截图进行排序和分组，批量调整尺寸或转换格式，还能在内置编辑器中裁剪、手绘、添加箭头、图形和文字，或用马赛克遮挡内容。全局快捷键和系统托盘操作让截图始终一键可用。
+
+<p align="center">
+  <img src="docs/assets/screenshots/screenshots-module.png" alt="屏幕截图模块，显示截图控件和缩略图库" width="720" />
 </p>
 
 ### 让你的 AI agent 活着

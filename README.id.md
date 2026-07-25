@@ -145,6 +145,8 @@ Kebanyakan demo "AI di terminalmu" berhenti di obrolan. Asisten KKTerm bekerja *
 
 Dashboard adalah grid widget yang bisa kamu seret dan ubah ukurannya. Ini bukan untuk observability skala petabyte — ini untuk "aku mau satu tombol untuk meluncurkan lima aplikasi favoritku dan satu panel yang menampilkan uptime host SSH-ku, *di samping* obrolanku".
 
+Dashboard View menyediakan 45 latar animasi bawaan KKTerm. Delapan yang terbaru adalah adegan WebGL prosedural: `heroGeometric`, `ditherPrismHero`, `webglLiquid`, `silkAurora`, `closingPlasma`, `animatedGradient`, `prismGradient`, dan `liquidChrome`. Pemilih latar yang sama juga tersedia untuk Terminal Connection, Document viewer, dan tampilan mendalam IT Ops; adegan yang disembunyikan atau berada di luar layar akan berhenti dirender dan melepaskan sumber daya WebGL.
+
 <p align="center">
   <img src="docs/assets/screenshots/ai-widgets.png" alt="Grid dashboard penuh widget buatan AI" width="720" />
 </p>
@@ -155,6 +157,14 @@ Module **IT Ops** mengelompokkan Connection ke dalam Site, memetakan Server Room
 
 <p align="center">
   <img src="docs/assets/screenshots/itops.png" alt="Tampilan elevasi Server Room IT Ops dengan enam Rack berisi perangkat dan indikator status Host" width="720" />
+</p>
+
+### Ambil, tata, dan anotasi tangkapan layar
+
+Module **Screenshots** menangkap area, jendela, atau seluruh desktop ke pustaka lokal, clipboard, atau keduanya. Urutkan dan kelompokkan hasil tangkapan, ubah ukuran atau format beberapa gambar sekaligus, lalu buka gambar apa pun di editor bawaan untuk memotong, menggambar bebas, menambahkan panah, bentuk, dan teks, atau menyamarkan informasi dengan mosaik. Pintasan global dan menu baki sistem membuat pengambilan gambar selalu dapat dilakukan dalam satu kombinasi tombol.
+
+<p align="center">
+  <img src="docs/assets/screenshots/screenshots-module.png" alt="Module Screenshots dengan kontrol pengambilan dan pustaka gambar mini" width="720" />
 </p>
 
 ### Jaga agar agen AI-mu tetap hidup
