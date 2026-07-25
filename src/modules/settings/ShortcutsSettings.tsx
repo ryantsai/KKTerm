@@ -1,6 +1,16 @@
 import { useEffect, useState } from "react";
-import type { KeyboardEvent as ReactKeyboardEvent } from "react";
-import { Keyboard, RotateCcw, X } from "../../lib/reicon";
+import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
+import {
+  Camera,
+  Crop,
+  Keyboard,
+  Monitor,
+  PanelsTopLeft,
+  RotateCcw,
+  Terminal,
+  X,
+  type IconComponent,
+} from "../../lib/reicon";
 import { useTranslation } from "react-i18next";
 import { invokeCommand, isTauriRuntime } from "../../lib/tauri";
 import { useWorkspaceStore } from "../../store";
@@ -26,6 +36,32 @@ function overridesEqual(a: WorkspaceShortcutOverrides, b: WorkspaceShortcutOverr
   const aKeys = Object.keys(a);
   const bKeys = Object.keys(b);
   return aKeys.length === bKeys.length && aKeys.every((key) => key in b && a[key] === b[key]);
+}
+
+function ShortcutSection({
+  children,
+  icon: Icon,
+  title,
+  tone,
+}: {
+  children: ReactNode;
+  icon: IconComponent;
+  title: string;
+  tone: "accent" | "amber" | "green" | "red";
+}) {
+  return (
+    <fieldset className="settings-subsection settings-fieldset shortcut-section">
+      <legend className="shortcut-section-legend">
+        <span className="shortcut-section-heading">
+          <span className={`shortcut-section-icon ${tone}`}>
+            <Icon size={15} />
+          </span>
+          <span>{title}</span>
+        </span>
+      </legend>
+      {children}
+    </fieldset>
+  );
 }
 
 export function ShortcutsSettings() {
@@ -209,7 +245,10 @@ export function ShortcutsSettings() {
   }
 
   return (
-    <section className="settings-card settings-section" data-tutorial-id="settings.shortcuts">
+    <section
+      className="settings-card settings-section settings-shortcuts"
+      data-tutorial-id="settings.shortcuts"
+    >
       <SettingsSectionHeader
         actions={
           <button
@@ -231,34 +270,49 @@ export function ShortcutsSettings() {
       />
       <p className="field-hint">{t("settings.shortcutsHint")}</p>
       {conflictNotice ? <p className="shortcut-conflict-notice">{conflictNotice}</p> : null}
-      <fieldset className="settings-subsection settings-fieldset">
-        <legend>{t("settings.workspaceTabs")}</legend>
+      <ShortcutSection
+        icon={PanelsTopLeft}
+        title={t("settings.workspaceTabs")}
+        tone="accent"
+      >
         <div className="shortcut-list">{renderRows("workspace")}</div>
-      </fieldset>
-      <fieldset className="settings-subsection settings-fieldset">
-        <legend>{t("settings.sectionTerminal")}</legend>
+      </ShortcutSection>
+      <ShortcutSection
+        icon={Terminal}
+        title={t("settings.sectionTerminal")}
+        tone="green"
+      >
         <div className="shortcut-list">{renderRows("terminal")}</div>
-      </fieldset>
-      <fieldset className="settings-subsection settings-fieldset">
-        <legend>{t("remoteDesktop.typeLabel")}</legend>
+      </ShortcutSection>
+      <ShortcutSection
+        icon={Monitor}
+        title={t("remoteDesktop.typeLabel")}
+        tone="amber"
+      >
         <div className="shortcut-list">{renderRows("remoteDesktop")}</div>
-      </fieldset>
-      <fieldset className="settings-subsection settings-fieldset">
-        <legend>{t("settings.sectionScreenshots")}</legend>
+      </ShortcutSection>
+      <ShortcutSection
+        icon={Camera}
+        title={t("settings.sectionScreenshots")}
+        tone="red"
+      >
         <div>
           <p className="field-hint">{t("settings.screenshotsShortcutsHint")}</p>
         </div>
         <div className="shortcut-list">
           <ScreenshotShortcutRows />
         </div>
-      </fieldset>
-      <fieldset className="settings-subsection settings-fieldset">
-        <legend>{t("settings.screenshotsEditorShortcuts")}</legend>
+      </ShortcutSection>
+      <ShortcutSection
+        icon={Crop}
+        title={t("settings.screenshotsEditorShortcuts")}
+        tone="accent"
+      >
         <div>
           <p className="field-hint">{t("settings.screenshotsEditorShortcutsHint")}</p>
         </div>
         <div className="shortcut-list">{renderRows("screenshotEditor")}</div>
-      </fieldset>
+      </ShortcutSection>
     </section>
   );
 }

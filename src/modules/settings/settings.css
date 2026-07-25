@@ -787,9 +787,77 @@
   gap: 0;
 }
 
+.settings-shortcuts {
+  width: min(100%, 900px);
+  margin-inline: auto;
+}
+
+.settings-shortcuts .shortcut-section {
+  gap: 0;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.settings-shortcuts .shortcut-section-legend {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.shortcut-section-heading {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  width: 100%;
+  min-height: 40px;
+  padding: 7px 12px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  background: var(--surface-muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.shortcut-section-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+}
+
+.shortcut-section-icon.accent {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.shortcut-section-icon.green {
+  color: var(--green);
+  background: color-mix(in srgb, var(--green) 14%, transparent);
+}
+
+.shortcut-section-icon.amber {
+  color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 15%, transparent);
+}
+
+.shortcut-section-icon.red {
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 13%, transparent);
+}
+
+.settings-shortcuts .shortcut-list {
+  padding: 6px 12px;
+}
+
 .shortcut-row {
   display: grid;
-  grid-template-columns: minmax(180px, 280px) minmax(0, 1fr);
+  grid-template-columns: minmax(180px, 1fr) minmax(220px, 1fr);
   gap: 16px;
   align-items: center;
   min-width: 0;
