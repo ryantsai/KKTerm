@@ -181,9 +181,15 @@ export function TerminalWorkspace({
     .map((paneId) => tab.panes.find((pane) => pane.id === paneId))
     .filter((pane): pane is WorkspacePane => Boolean(pane))
     .find(isTerminalPane);
+  const maximizedTerminalPane = maximizedPaneId
+    ? tab.panes.find((pane): pane is TerminalPane => (
+        pane.id === maximizedPaneId && isTerminalPane(pane)
+      ))
+    : undefined;
+  const sharedTerminalBackgroundOwnerPane = maximizedTerminalPane ?? firstTerminalPane;
   const workspaceTerminalBackground = usePaneTerminalBackgrounds
     ? null
-    : (firstTerminalPane?.connection?.terminalBackground ?? null);
+    : (sharedTerminalBackgroundOwnerPane?.connection?.terminalBackground ?? null);
   const sftpDialogTab = useMemo<WorkspaceTab | null>(() => {
     if (!sftpDialogConnection) {
       return null;
@@ -539,7 +545,7 @@ export function TerminalWorkspace({
             onFocusPane={(paneId) => setFocusedPane(tab.id, paneId)}
             canSplit={canSplit}
             sharedTerminalBackground={workspaceTerminalBackground}
-            sharedTerminalBackgroundOwnerPane={firstTerminalPane}
+            sharedTerminalBackgroundOwnerPane={sharedTerminalBackgroundOwnerPane}
             usePaneTerminalBackgrounds={usePaneTerminalBackgrounds}
             onFontChange={handleFontChange}
             onOpenAssistant={onOpenAssistant}

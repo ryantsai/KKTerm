@@ -191,8 +191,13 @@ test("shared Panorama backgrounds belong to the first terminal Pane in visual la
   );
   assert.match(
     terminalWorkspace,
-    /sharedTerminalBackgroundOwnerPane=\{firstTerminalPane\}/,
-    "every Pane background picker needs the same first-Pane owner",
+    /const maximizedTerminalPane = maximizedPaneId[\s\S]*const sharedTerminalBackgroundOwnerPane = maximizedTerminalPane \?\? firstTerminalPane;/,
+    "a maximized child should temporarily own the shared background until Panorama view returns",
+  );
+  assert.match(
+    terminalWorkspace,
+    /sharedTerminalBackgroundOwnerPane=\{sharedTerminalBackgroundOwnerPane\}/,
+    "every Pane background picker needs the same current shared-background owner",
   );
   assert.match(
     terminalWorkspace,
