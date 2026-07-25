@@ -10,6 +10,8 @@
 
 Right-side resizable, collapsible. Title `ai.title`. Refresh `ai.refresh`. Settings shortcut `ai.settings`. New chat `ai.newChat` (`ai.newAiChat`). The custom title-bar `app.aiAssistant` robot icon toggles the panel in every Module and page; when collapsed, that icon becomes muted and the right-edge collapsed strip is hidden. The resize handle uses `app.resizeAiAssistant` while the panel is expanded. Empty state `ai.noActiveSession` plus `ai.workspace` indicator. The same panel is available on Workspace, Dashboard, and Settings; on Settings it shows `ai.settingsContextLabel` as the context detail and receives the active Settings section plus visible control keys.
 
+The compact context rail beneath the panel title identifies the active Connection or Module context. Its title and detail reveal briefly when that context changes. Explicit text, screenshot, pasted-image, and file attachments appear in a compact shelf above the composer; screenshots use thumbnails, pasted images scroll horizontally, and every attachment keeps an individual remove action.
+
 ## Chat history
 
 Header `ai.chats`. View all `ai.viewAll` → dialog `ai.allChats`. Empty `ai.noChatsYet`. Per-chat:
@@ -153,6 +155,7 @@ Thinking / progress markers:
 - `ai.thinking`, `ai.thoughtFor`, `ai.workedFor`, `ai.thinkingStep`.
 - Duration formatting: `ai.workDurationUnderSecond`, `ai.workDurationSeconds`, `ai.workDurationMinutesSeconds`.
 - While a response is streaming, the work panel stays collapsed by default. During normal thinking it shows the rotating waiting phrase. During an active tool call the collapsed summary switches to `ai.toolCallUsing`, then returns to the waiting phrase after the tool completes.
+- Waiting, active tool, and invoked-skill labels use a short word-stagger reveal with a soft tonal sweep while work remains active. The animation becomes static when the operating system requests reduced motion.
 - The expanded work panel only shows `ai.thinkingStep` when the provider streams actual reasoning text or a reasoning summary. Empty thinking rows are not shown. Reasoning text is rendered as markdown.
 - For multi-step tasks, the assistant can publish a work plan through its `update_plan` tool. The expanded work panel then shows an `ai.workPlanTitle` step listing the plan's steps with their live statuses (pending, running, completed, blocked); step labels are model-generated text in the user's language. The plan replaces the synthesized progress entry for that response and is saved with the chat. `update_plan` calls do not appear as tool chips and never require approval.
 

@@ -570,6 +570,7 @@ React form events are handler-scoped. When an input/select/textarea handler feed
 - `src/ai/AssistantMessageView.tsx` — one chat message: bubble, attachments, markdown body, work panel, copy/expand actions, image preview, and the inline secret-entry cards (which store secrets locally without exposing them to the model).
 - `src/ai/AssistantMarkdownContent.tsx` — assistant markdown rendering, code-block copy/send controls, and safe external-link handoff.
 - `src/ai/AssistantWorkPanel.tsx` — assistant work/timeline disclosure for reasoning content, skill invocations, tool-call progress, the model-published work plan (`update_plan`), and waiting phrases.
+- `src/ai/AssistantKineticText.tsx` — reduced-motion-aware Componentry-derived kinetic status text used by Assistant waiting, skill, and tool-call progress states.
 - `src/ai/AssistantToolApprovalCards.tsx` — prompt-mode tool approval cards and allow/allow-for-session/deny action UI, including the risk-reason warning block for command-bearing tool calls flagged by the backend heuristic.
 - `src/ai/streamMessage.ts` — pure stream-event reducer that folds `AiStreamEvent`s (content/reasoning deltas, tool-call lifecycle, plan updates) into the in-flight assistant message snapshot.
 - `src/ai/assistantToolLabels.ts` — assistant tool-name normalization plus running/completed tool label mapping.

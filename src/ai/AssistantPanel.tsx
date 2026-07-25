@@ -71,6 +71,7 @@ import { parseAssistantSecretRequests } from "./secretRequest";
 import { scrollAssistantChatToBottom, shouldFollowAssistantChat } from "./assistantScroll";
 import type { AiToolPermissionMode, AssistantContextSnippet } from "../types";
 import { AssistantMessageView, formatBytes } from "./AssistantMessageView";
+import { AssistantKineticText, AssistantWaitingDots } from "./AssistantKineticText";
 import { runAssistantLiveTool } from "./assistantLiveTools";
 import { AssistantToolApprovalCards } from "./AssistantToolApprovalCards";
 import {
@@ -1938,26 +1939,39 @@ export function AssistantPanel({
         </button>
       </div>
 
-      <div className="assistant-context active-session-hint">
-        {!pageContext && activeTab?.connection ? (
-          <ConnectionIcon
-            localShell={activeTab.connection.localShell}
-            size={32}
-            type={activeTab.connection.type}
-          />
-        ) : (
-          <Bot size={16} />
-        )}
-        <span>
-          <strong>{contextLabel}</strong>
-          <small>{connectionLabel}</small>
+      <div
+        className="assistant-context active-session-hint"
+        data-context-kind={
+          !pageContext && activeTab?.connection
+            ? "connection"
+            : pageContext?.contextKind ?? "workspace"
+        }
+      >
+        <span className="assistant-context-icon" aria-hidden="true">
+          {!pageContext && activeTab?.connection ? (
+            <ConnectionIcon
+              localShell={activeTab.connection.localShell}
+              size={24}
+              type={activeTab.connection.type}
+            />
+          ) : (
+            <Bot size={15} />
+          )}
+        </span>
+        <span className="assistant-context-copy">
+          <strong>
+            <AssistantKineticText className="assistant-context-title-text" text={contextLabel} />
+          </strong>
+          <small>
+            <AssistantKineticText className="assistant-context-detail-text" text={connectionLabel} />
+          </small>
         </span>
       </div>
 
       {assistantIntent === "extensionCreation" ? (
         <div className="assistant-context assistant-extension-context">
           <Plus size={16} />
-          <span>
+          <span className="assistant-context-copy">
             <strong>{t("ai.extensionDraft")}</strong>
             <small>{t("ai.extensionReviewOnly")}</small>
           </span>
@@ -1967,7 +1981,7 @@ export function AssistantPanel({
       {pageContext?.contextKind === "dashboard" && !dashboardToolsEnabled ? (
         <div className="assistant-context assistant-dashboard-tools-context">
           <Bot size={16} />
-          <span>
+          <span className="assistant-context-copy">
             <strong>{t("ai.dashboardToolsDisabledTitle")}</strong>
             <small>{t("ai.dashboardToolsDisabledHint")}</small>
           </span>
@@ -2096,8 +2110,8 @@ export function AssistantPanel({
         ) : null}
         {shouldShowPreStreamWaiting ? (
           <article className="assistant-message assistant-waiting" aria-live="polite">
-            <span className="assistant-spinner" aria-hidden="true" />
-            <span>{t("ai.preparingResponse")}</span>
+            <AssistantKineticText active text={t("ai.preparingResponse")} />
+            <AssistantWaitingDots />
           </article>
         ) : null}
       </div>
@@ -2106,9 +2120,19 @@ export function AssistantPanel({
 
       <form className="assistant-chat-composer" onSubmit={handleChatSubmit}>
         {assistantContextSnippet ? (
-          <section className="assistant-selection-context">
+          <section
+            className="assistant-selection-context"
+            data-context-kind={assistantContextSnippet.kind}
+          >
             <header>
-              <span>{assistantContextSnippet.sourceLabel}</span>
+              <div className="assistant-selection-context-heading">
+                {assistantContextSnippet.kind === "screenshot" ? (
+                  <Camera aria-hidden="true" size={13} />
+                ) : (
+                  <ScrollText aria-hidden="true" size={13} />
+                )}
+                <span>{assistantContextSnippet.sourceLabel}</span>
+              </div>
               <button
                 className="row-action"
                 aria-label={t("ai.clearContext")}
@@ -2134,9 +2158,12 @@ export function AssistantPanel({
           </section>
         ) : null}
         {pastedImageContexts.length > 0 ? (
-          <section className="assistant-selection-context">
+          <section className="assistant-selection-context" data-context-kind="images">
             <header>
-              <span>{t("ai.pastedImages", { count: pastedImageContexts.length })}</span>
+              <div className="assistant-selection-context-heading">
+                <Camera aria-hidden="true" size={13} />
+                <span>{t("ai.pastedImages", { count: pastedImageContexts.length })}</span>
+              </div>
               <button
                 className="row-action"
                 aria-label={t("ai.clearContext")}
@@ -2179,9 +2206,12 @@ export function AssistantPanel({
           </section>
         ) : null}
         {fileContexts.length > 0 ? (
-          <section className="assistant-selection-context">
+          <section className="assistant-selection-context" data-context-kind="files">
             <header>
-              <span>{t("ai.attachedFiles", { count: fileContexts.length })}</span>
+              <div className="assistant-selection-context-heading">
+                <FileImage aria-hidden="true" size={13} />
+                <span>{t("ai.attachedFiles", { count: fileContexts.length })}</span>
+              </div>
               <button
                 className="row-action"
                 aria-label={t("ai.clearContext")}

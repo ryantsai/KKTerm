@@ -15,12 +15,12 @@ import {
   assistantWorkPanelShouldShowThinkingStep,
   latestRunningAssistantToolCall,
 } from "./streamMessage";
+import { AssistantKineticText, AssistantWaitingDots } from "./AssistantKineticText";
 
 export function AssistantWorkPanel({ message }: { message: AssistantChatMessage }) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [waitingPhrase, setWaitingPhrase] = useState(randomAssistantWaitingPhrase);
-  const [waitingDots, setWaitingDots] = useState(0);
   const wasStreamingRef = useRef(Boolean(message.isStreaming));
   const reasoningContent = message.reasoningContent?.trim() ?? "";
   const toolCalls = message.toolCalls ?? [];
@@ -46,21 +46,6 @@ export function AssistantWorkPanel({ message }: { message: AssistantChatMessage 
       setExpanded(false);
     }
     wasStreamingRef.current = Boolean(message.isStreaming);
-  }, [message.isStreaming]);
-
-  useEffect(() => {
-    if (!message.isStreaming) {
-      setWaitingDots(0);
-      return;
-    }
-
-    const interval = window.setInterval(() => {
-      setWaitingDots((current) => (current + 1) % 4);
-    }, 300);
-
-    return () => {
-      window.clearInterval(interval);
-    };
   }, [message.isStreaming]);
 
   useEffect(() => {
@@ -107,21 +92,13 @@ export function AssistantWorkPanel({ message }: { message: AssistantChatMessage 
         onClick={() => setExpanded((e) => !e)}
         type="button"
       >
-        <span
-          className={
-            latestToolCall
-              ? "assistant-work-tool-label"
-              : skillNames.length > 0
-                ? "assistant-work-skill-label"
-                : undefined
-          }
-        >
-          {label}
-          {message.isStreaming ? (
-            <span className="assistant-waiting-dots" aria-hidden="true">
-              {".".repeat(waitingDots)}
-            </span>
-          ) : null}
+        <span className="assistant-work-status">
+          <AssistantKineticText
+            active={Boolean(message.isStreaming)}
+            text={label}
+            tone={latestToolCall ? "tool" : skillNames.length > 0 ? "skill" : "waiting"}
+          />
+          {message.isStreaming ? <AssistantWaitingDots /> : null}
         </span>
         {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
       </button>
@@ -173,7 +150,14 @@ export function AssistantWorkPanel({ message }: { message: AssistantChatMessage 
             <div className="assistant-work-step" data-state="skill" key={skillName}>
               <span className="assistant-work-step-icon" aria-hidden="true" />
               <div>
-                <strong>{t("ai.skillInvoked", { skills: humanizeAssistantToolName(skillName) })}</strong>
+                <strong>
+                  <AssistantKineticText
+                    text={t("ai.skillInvoked", {
+                      skills: humanizeAssistantToolName(skillName),
+                    })}
+                    tone="skill"
+                  />
+                </strong>
               </div>
             </div>
           ))}
@@ -183,7 +167,13 @@ export function AssistantWorkPanel({ message }: { message: AssistantChatMessage 
                 {toolCall.status === "running" ? <LoaderCircle size={13} /> : null}
               </span>
               <div>
-                <strong>{toolCallLabel(toolCall.toolName, toolCall.status, t)}</strong>
+                <strong>
+                  <AssistantKineticText
+                    active={toolCall.status === "running"}
+                    text={toolCallLabel(toolCall.toolName, toolCall.status, t)}
+                    tone="tool"
+                  />
+                </strong>
                 <small>
                   {toolCall.status === "running" ? t("ai.toolCallRunning") : t("ai.toolCallComplete")}
                 </small>

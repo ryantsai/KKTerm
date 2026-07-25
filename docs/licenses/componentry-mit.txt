@@ -3,7 +3,7 @@ https://github.com/harshjdhv/componentry
 
 KKTerm includes adapted portions of Componentry's Hero Geometric, Dither Prism
 Hero, WebGL Liquid, Silk Aurora, Closing Plasma, Animated Gradient, Prism
-Gradient, and Liquid Chrome components.
+Gradient, Liquid Chrome, and Kinetic Text Reveal components.
 
 MIT License
 
