@@ -12,6 +12,7 @@ import {
   toolCallLabel,
 } from "./assistantToolLabels";
 import {
+  assistantWorkPanelStatusKind,
   assistantWorkPanelShouldShowThinkingStep,
   latestRunningAssistantToolCall,
 } from "./streamMessage";
@@ -72,14 +73,15 @@ export function AssistantWorkPanel({ message }: { message: AssistantChatMessage 
       ? formatAssistantWorkDuration(message.workStartedAt, message.workCompletedAt, t)
       : "";
   const latestToolCall = latestRunningAssistantToolCall(message);
+  const statusKind = assistantWorkPanelStatusKind(message);
   const label =
-    latestToolCall
+    statusKind === "tool" && latestToolCall
       ? t("ai.toolCallUsing", {
           tool: humanizeAssistantToolName(latestToolCall.toolName),
         })
-      : skillNames.length > 0
+      : statusKind === "skill"
         ? t("ai.skillInvoked", { skills: skillNames.map(humanizeAssistantToolName).join(", ") })
-        : message.isStreaming
+        : statusKind === "waiting"
           ? waitingPhrase || t("ai.chargingBeacon")
           : t("ai.workedFor", { duration: duration || t("ai.workDurationUnderSecond") });
   const thinkingStatus = message.isStreaming ? "running" : "completed";
@@ -94,10 +96,9 @@ export function AssistantWorkPanel({ message }: { message: AssistantChatMessage 
       >
         <span className="assistant-work-status">
           <AssistantKineticText
-            active={Boolean(message.isStreaming)}
-            repel={Boolean(message.isStreaming) && !latestToolCall && skillNames.length === 0}
+            repel={statusKind === "waiting"}
             text={label}
-            tone={latestToolCall ? "tool" : skillNames.length > 0 ? "skill" : "waiting"}
+            tone={statusKind === "tool" ? "tool" : statusKind === "skill" ? "skill" : "waiting"}
           />
           {message.isStreaming ? <AssistantWaitingDots /> : null}
         </span>
@@ -170,7 +171,6 @@ export function AssistantWorkPanel({ message }: { message: AssistantChatMessage 
               <div>
                 <strong>
                   <AssistantKineticText
-                    active={toolCall.status === "running"}
                     text={toolCallLabel(toolCall.toolName, toolCall.status, t)}
                     tone="tool"
                   />

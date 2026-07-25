@@ -1,4 +1,5 @@
 import {
+  assistantWorkPanelStatusKind,
   assistantWorkPanelShouldShowThinkingStep,
   latestRunningAssistantToolCall,
   completeAssistantStreamMessageFromResponse,
@@ -60,6 +61,26 @@ if (
   })
 ) {
   throw new Error("Completed tool calls should not replace the waiting phrase.");
+}
+
+if (
+  assistantWorkPanelStatusKind({
+    content: "Done.",
+    isStreaming: false,
+    skillNames: ["terminal-command-planner"],
+  }) !== "completed"
+) {
+  throw new Error("Completed assistant work should not retain the live skill indication.");
+}
+
+if (
+  assistantWorkPanelStatusKind({
+    content: "",
+    isStreaming: true,
+    skillNames: ["terminal-command-planner"],
+  }) !== "skill"
+) {
+  throw new Error("A skill indication should remain live while the assistant is streaming.");
 }
 
 if (assistantWorkPanelShouldShowThinkingStep(streamingWithTool)) {

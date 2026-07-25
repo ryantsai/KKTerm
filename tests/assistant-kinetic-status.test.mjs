@@ -30,10 +30,10 @@ test("assistant progress states use the accessible Componentry-derived kinetic t
   assert.match(kineticSource, /aria-hidden="true"/);
   assert.match(kineticSource, /useSpring/);
   assert.match(kineticSource, /data-text-repel=\{shouldRepel \? true : undefined\}/);
-  assert.match(workPanelSource, /repel=\{Boolean\(message\.isStreaming\)/);
+  assert.match(workPanelSource, /repel=\{statusKind === "waiting"\}/);
   assert.match(workPanelSource, /<AssistantKineticText[\s\S]*tone="skill"/);
   assert.match(workPanelSource, /<AssistantKineticText[\s\S]*tone="tool"/);
-  assert.match(panelSource, /<AssistantKineticText active repel text=\{t\("ai\.preparingResponse"\)\}/);
+  assert.match(panelSource, /<AssistantKineticText repel text=\{t\("ai\.preparingResponse"\)\}/);
   assert.match(componentryLicense, /Kinetic Text Reveal, and Text Repel/);
 });
 
@@ -45,13 +45,13 @@ test("assistant waiting phrase cycles always select a different phrase", () => {
   assert.match(workPanelSource, /phrases\.filter\(\(phrase\) => phrase !== previousPhrase\)/);
 });
 
-test("assistant kinetic status motion has an explicit reduced-motion fallback", () => {
-  assert.match(assistantCss, /@keyframes assistant-status-text-sweep/);
-  assert.match(assistantCss, /@keyframes assistant-waiting-dot/);
-  assert.match(
+test("assistant waiting text reveals and repels without the old shimmer", () => {
+  assert.doesNotMatch(assistantCss, /assistant-status-text-sweep/);
+  assert.doesNotMatch(
     assistantCss,
-    /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.assistant-kinetic-text/,
+    /\.assistant-kinetic-text\[data-active="true"\] \.assistant-kinetic-segment/,
   );
+  assert.match(assistantCss, /@keyframes assistant-waiting-dot/);
   assert.match(
     assistantCss,
     /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.assistant-waiting-dots/,

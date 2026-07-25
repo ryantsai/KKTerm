@@ -172,6 +172,23 @@ export function latestRunningAssistantToolCall(message: AssistantStreamMessage) 
   return undefined;
 }
 
+export type AssistantWorkPanelStatusKind = "tool" | "skill" | "waiting" | "completed";
+
+export function assistantWorkPanelStatusKind(
+  message: AssistantStreamMessage,
+): AssistantWorkPanelStatusKind {
+  if (!message.isStreaming) {
+    return "completed";
+  }
+  if (latestRunningAssistantToolCall(message)) {
+    return "tool";
+  }
+  if ((message.skillNames?.length ?? 0) > 0) {
+    return "skill";
+  }
+  return "waiting";
+}
+
 export function assistantWorkPanelShouldShowThinkingStep(message: AssistantStreamMessage) {
   return Boolean(message.reasoningContent?.trim());
 }

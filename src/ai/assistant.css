@@ -211,7 +211,6 @@
 
 .active-session-hint .assistant-context-title-text {
   --assistant-kinetic-base: var(--text);
-  --assistant-kinetic-highlight: var(--text);
   flex-wrap: nowrap;
   max-width: 100%;
   overflow: hidden;
@@ -219,7 +218,6 @@
 
 .active-session-hint .assistant-context-detail-text {
   --assistant-kinetic-base: var(--text-faint);
-  --assistant-kinetic-highlight: var(--text-muted);
   flex-wrap: nowrap;
   max-width: 100%;
   overflow: hidden;
@@ -584,7 +582,6 @@
 
 .assistant-kinetic-text {
   --assistant-kinetic-base: var(--text-muted);
-  --assistant-kinetic-highlight: var(--text);
   display: inline-flex;
   flex-wrap: wrap;
   min-width: 0;
@@ -602,12 +599,10 @@
 
 .assistant-kinetic-text[data-tone="tool"] {
   --assistant-kinetic-base: var(--accent);
-  --assistant-kinetic-highlight: color-mix(in srgb, var(--accent) 48%, var(--text));
 }
 
 .assistant-kinetic-text[data-tone="skill"] {
   --assistant-kinetic-base: var(--green);
-  --assistant-kinetic-highlight: color-mix(in srgb, var(--green) 48%, var(--text));
 }
 
 .assistant-kinetic-mask {
@@ -632,24 +627,6 @@
   display: inline-block;
   white-space: pre;
   will-change: transform;
-}
-
-.assistant-kinetic-text[data-active="true"] .assistant-kinetic-segment {
-  color: transparent;
-  background-image: linear-gradient(
-    96deg,
-    var(--assistant-kinetic-base) 0%,
-    var(--assistant-kinetic-base) 38%,
-    var(--assistant-kinetic-highlight) 50%,
-    var(--assistant-kinetic-base) 62%,
-    var(--assistant-kinetic-base) 100%
-  );
-  background-position: 110% 50%;
-  background-size: 240% 100%;
-  background-clip: text;
-  animation: assistant-status-text-sweep 2.4s ease-in-out infinite;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
 }
 
 .assistant-waiting-dots {
@@ -1178,18 +1155,6 @@
   }
 }
 
-@keyframes assistant-status-text-sweep {
-  0%,
-  18% {
-    background-position: 110% 50%;
-  }
-
-  72%,
-  100% {
-    background-position: -110% 50%;
-  }
-}
-
 @keyframes assistant-waiting-dot {
   0%,
   64%,
@@ -1205,13 +1170,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .assistant-kinetic-text[data-active="true"] .assistant-kinetic-segment {
-    color: var(--assistant-kinetic-base);
-    background: none;
-    animation: none;
-    -webkit-text-fill-color: currentColor;
-  }
-
   .assistant-waiting-dots > span {
     opacity: 0.55;
     animation: none;

@@ -16,13 +16,11 @@ import { useEffect, useMemo, useRef, type MouseEvent } from "react";
 type AssistantKineticTextTone = "waiting" | "tool" | "skill";
 
 export function AssistantKineticText({
-  active = false,
   className,
   repel = false,
   text,
   tone = "waiting",
 }: {
-  active?: boolean;
   className?: string;
   repel?: boolean;
   text: string;
@@ -49,7 +47,6 @@ export function AssistantKineticText({
     <span
       aria-label={text}
       className={`assistant-kinetic-text${className ? ` ${className}` : ""}`}
-      data-active={active}
       data-text-repel={shouldRepel ? true : undefined}
       data-tone={tone}
       onMouseLeave={shouldRepel ? handleMouseLeave : undefined}
