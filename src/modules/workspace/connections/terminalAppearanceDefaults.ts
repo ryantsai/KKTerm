@@ -18,9 +18,10 @@ export function resolveVisibleTerminalBackground({
   sharedBackground: DashboardBackground | null | undefined;
   usePaneBackground: boolean;
 }): DashboardBackground | null {
-  return usePaneBackground
-    ? (paneBackground ?? connectionBackground ?? null)
-    : (sharedBackground ?? connectionBackground ?? null);
+  const selectedBackground = usePaneBackground ? paneBackground : sharedBackground;
+  return selectedBackground !== undefined
+    ? selectedBackground
+    : (connectionBackground ?? null);
 }
 
 function terminalSettingsForConnection(

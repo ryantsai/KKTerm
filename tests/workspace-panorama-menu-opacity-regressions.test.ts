@@ -78,11 +78,13 @@ test("terminal toolbar transparency stays 25 points below terminal transparency"
   assert.equal(terminalToolbarOpacity(100), 100, "values below 25% transparency clamp at zero");
 });
 
-test("every xterm-backed Connection uses the visible shared background for toolbar opacity", () => {
-  const dynamicBackground: DashboardBackground = {
-    kind: "dynamic",
-    dynamic: "rainyWindow",
-  };
+test("every xterm-backed Connection uses every custom background type for toolbar opacity", async () => {
+  const customBackgrounds: DashboardBackground[] = [
+    { kind: "preset", preset: "softGradient" },
+    { kind: "image", file: "custom.png", fit: "fill", dim: 0 },
+    { kind: "video", file: "custom.mp4", fit: "fill", dim: 0 },
+    { kind: "dynamic", dynamic: "rainyWindow" },
+  ];
   const xtermConnectionTypes: ConnectionType[] = ["local", "ssh", "telnet", "serial"];
 
   for (const connectionType of xtermConnectionTypes) {
@@ -91,17 +93,69 @@ test("every xterm-backed Connection uses the visible shared background for toolb
       true,
       `${connectionType} should use the shared xterm appearance path`,
     );
-    assert.equal(
-      resolveVisibleTerminalBackground({
-        connectionBackground: null,
-        paneBackground: null,
-        sharedBackground: dynamicBackground,
-        usePaneBackground: false,
-      }),
-      dynamicBackground,
-      `${connectionType} should derive toolbar opacity from the background painted behind its xterm`,
-    );
+    for (const background of customBackgrounds) {
+      assert.equal(
+        resolveVisibleTerminalBackground({
+          connectionBackground: null,
+          paneBackground: undefined,
+          sharedBackground: background,
+          usePaneBackground: false,
+        }),
+        background,
+        `${connectionType} should derive toolbar opacity from its ${background.kind} background`,
+      );
+    }
   }
+
+  const terminalWorkspace = await readFile(
+    new URL("../src/modules/workspace/connections/terminal/TerminalWorkspace.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    terminalWorkspace,
+    /terminalToolbarBackground\s*=\s*terminalBackground\s*\?/,
+    "every non-null background kind should enable the relative toolbar opacity",
+  );
+  assert.doesNotMatch(
+    terminalWorkspace,
+    /terminalBackground\?\.kind\s*===\s*"dynamic"/,
+    "toolbar opacity must not be restricted to dynamic backgrounds",
+  );
+});
+
+test("an explicit default terminal background does not fall back to the last background", () => {
+  const previousBackground: DashboardBackground = { kind: "preset", preset: "softGradient" };
+
+  assert.equal(
+    resolveVisibleTerminalBackground({
+      connectionBackground: previousBackground,
+      paneBackground: null,
+      sharedBackground: undefined,
+      usePaneBackground: true,
+    }),
+    null,
+    "explicit per-Pane null should remove the background",
+  );
+  assert.equal(
+    resolveVisibleTerminalBackground({
+      connectionBackground: previousBackground,
+      paneBackground: undefined,
+      sharedBackground: null,
+      usePaneBackground: false,
+    }),
+    null,
+    "explicit shared null should remove the background",
+  );
+  assert.equal(
+    resolveVisibleTerminalBackground({
+      connectionBackground: previousBackground,
+      paneBackground: undefined,
+      sharedBackground: undefined,
+      usePaneBackground: false,
+    }),
+    previousBackground,
+    "only an absent background value should inherit the Connection background",
+  );
 });
 
 test("terminal action menu portals above the Activity Rail and flips edge submenus", async () => {

@@ -178,14 +178,17 @@ export function TerminalWorkspace({
     isTerminalPane(pane) && pane.id === focusedPaneId
   ));
   const firstTerminalPane = tab.panes.find(isTerminalPane);
+  const focusedTerminalBackground = focusedTerminalPane?.connection
+    ? focusedTerminalPane.connection.terminalBackground
+    : firstTerminalPane?.connection?.terminalBackground;
   const workspaceTerminalBackground = usePaneTerminalBackgrounds
     ? null
-    : (
-        focusedTerminalPane?.connection?.terminalBackground ??
-        firstTerminalPane?.connection?.terminalBackground ??
-        tab.connection?.terminalBackground ??
-        null
-      );
+    : resolveVisibleTerminalBackground({
+        connectionBackground: tab.connection?.terminalBackground,
+        paneBackground: focusedTerminalBackground,
+        sharedBackground: undefined,
+        usePaneBackground: true,
+      });
   const sftpDialogTab = useMemo<WorkspaceTab | null>(() => {
     if (!sftpDialogConnection) {
       return null;
@@ -1760,7 +1763,7 @@ function TerminalPaneView({
   const terminalColorScheme = pane.connection?.terminalColorScheme ?? terminalSettings.colorScheme;
   const globalTerminalColorScheme = resolveTerminalColorScheme(terminalSettings.colorScheme);
   const terminalToolbarBackground =
-    terminalBackground?.kind === "dynamic"
+    terminalBackground
       ? hexColorWithAlpha(
           resolveTerminalColorScheme(terminalColorScheme).palette.background,
           terminalToolbarOpacity(terminalOpacity) / 100,

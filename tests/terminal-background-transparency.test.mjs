@@ -27,8 +27,8 @@ test("terminal renderer allows connection background transparency", () => {
   );
   assert.match(
     rendererSource,
-    /background:\s*schemeBackgroundColor\(scheme,\s*backgroundOpacity\)/,
-    "terminal opacity should continue to drive the xterm rgba theme background",
+    /background:\s*schemeBackgroundColor\(scheme,\s*0\)/,
+    "xterm's canvas must stay transparent so the host is the only opacity layer",
   );
 });
 
@@ -40,21 +40,21 @@ test("terminal xterm viewport does not mask connection backgrounds", () => {
   );
 });
 
-test("terminal padding ring matches xterm opacity without double-compositing the content", () => {
+test("terminal host owns one edge-to-edge opacity layer", () => {
   assert.match(
     terminalCss,
-    /\.xterm-host\s*\{[^}]*background:\s*transparent;/,
-    "the host must stay transparent so xterm content is not composited over the same RGBA layer twice",
+    /\.xterm-host\s*\{[^}]*background:\s*var\(--terminal-surface-background/,
+    "the host must paint the text inset and unused row space with the terminal surface background",
   );
-  assert.match(
+  assert.doesNotMatch(
     terminalCss,
-    /\.xterm-host::before\s*\{[^}]*border:\s*8px solid var\(--terminal-surface-background/,
-    "a non-overlapping ring should paint the xterm padding with the same RGBA terminal surface",
+    /\.xterm-host::before\s*\{/,
+    "a fixed padding ring cannot cover xterm's variable unused row space",
   );
   assert.match(
     rendererSource,
     /"--terminal-surface-background",\s*schemeBackgroundColor\(this\.colorScheme,\s*opacity\)/,
-    "the padding ring must follow the same opacity as the xterm theme background",
+    "the full-size host background must follow the configured terminal opacity",
   );
 });
 

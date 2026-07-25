@@ -207,9 +207,7 @@ class XtermTerminalRenderer implements TerminalRenderer, TerminalFontAtlasRefres
   constructor(settings: TerminalSettings, backgroundOpacity: number) {
     this.backgroundOpacity = backgroundOpacity;
     this.colorScheme = resolveTerminalColorScheme(settings.colorScheme);
-    this.terminal = new XtermTerminal(
-      terminalOptionsFor(settings, this.colorScheme, backgroundOpacity),
-    );
+    this.terminal = new XtermTerminal(terminalOptionsFor(settings, this.colorScheme));
     this.terminal.attachCustomWheelEventHandler((event) => this.handleWheelEvent(event));
     // xterm defaults to its built-in Unicode v6 width tables, where emoji are
     // still 1 cell wide. Modern shells emit emoji that fonts paint two cells
@@ -455,7 +453,7 @@ class XtermTerminalRenderer implements TerminalRenderer, TerminalFontAtlasRefres
       return;
     }
     this.colorScheme = scheme;
-    this.terminal.options.theme = themeForScheme(scheme, this.backgroundOpacity);
+    this.terminal.options.theme = themeForScheme(scheme);
     this.applyHostBackground(this.backgroundOpacity);
   }
 
@@ -550,7 +548,7 @@ class XtermTerminalRenderer implements TerminalRenderer, TerminalFontAtlasRefres
     this.backgroundOpacity = opacity;
     this.terminal.options.theme = {
       ...this.terminal.options.theme,
-      background: schemeBackgroundColor(this.colorScheme, opacity),
+      background: schemeBackgroundColor(this.colorScheme, 0),
     };
     this.applyHostBackground(opacity);
   }
@@ -903,11 +901,11 @@ function schemeBackgroundColor(scheme: TerminalColorScheme, opacity: number) {
   return hexColorWithAlpha(scheme.palette.background, alpha);
 }
 
-export function themeForScheme(scheme: TerminalColorScheme, backgroundOpacity: number): ITheme {
+export function themeForScheme(scheme: TerminalColorScheme): ITheme {
   const palette = scheme.palette;
   const selection = palette.selectionBackground ?? "#305f95";
   return {
-    background: schemeBackgroundColor(scheme, backgroundOpacity),
+    background: schemeBackgroundColor(scheme, 0),
     foreground: palette.foreground,
     cursor: palette.cursor ?? palette.foreground,
     selectionBackground: selection,
@@ -934,11 +932,7 @@ export function themeForScheme(scheme: TerminalColorScheme, backgroundOpacity: n
   };
 }
 
-function terminalOptionsFor(
-  settings: TerminalSettings,
-  scheme: TerminalColorScheme,
-  backgroundOpacity: number,
-): ITerminalOptions {
+function terminalOptionsFor(settings: TerminalSettings, scheme: TerminalColorScheme): ITerminalOptions {
   return {
     altClickMovesCursor: false,
     // @xterm/addon-search renders match decorations through xterm's proposed
@@ -965,7 +959,7 @@ function terminalOptionsFor(
     scrollOnUserInput: true,
     scrollback: clampScrollback(settings.scrollbackLines),
     smoothScrollDuration: 0,
-    theme: themeForScheme(scheme, backgroundOpacity),
+    theme: themeForScheme(scheme),
   };
 }
 
