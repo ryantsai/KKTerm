@@ -20,7 +20,7 @@ import { AssistantKineticText, AssistantWaitingDots } from "./AssistantKineticTe
 export function AssistantWorkPanel({ message }: { message: AssistantChatMessage }) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
-  const [waitingPhrase, setWaitingPhrase] = useState(randomAssistantWaitingPhrase);
+  const [waitingPhrase, setWaitingPhrase] = useState<string>(() => randomAssistantWaitingPhrase());
   const wasStreamingRef = useRef(Boolean(message.isStreaming));
   const reasoningContent = message.reasoningContent?.trim() ?? "";
   const toolCalls = message.toolCalls ?? [];
@@ -53,9 +53,9 @@ export function AssistantWorkPanel({ message }: { message: AssistantChatMessage 
       return;
     }
 
-    setWaitingPhrase(randomAssistantWaitingPhrase());
+    setWaitingPhrase((currentPhrase) => randomAssistantWaitingPhrase(currentPhrase));
     const interval = window.setInterval(() => {
-      setWaitingPhrase(randomAssistantWaitingPhrase());
+      setWaitingPhrase((currentPhrase) => randomAssistantWaitingPhrase(currentPhrase));
     }, 3000);
 
     return () => {
@@ -95,6 +95,7 @@ export function AssistantWorkPanel({ message }: { message: AssistantChatMessage 
         <span className="assistant-work-status">
           <AssistantKineticText
             active={Boolean(message.isStreaming)}
+            repel={Boolean(message.isStreaming) && !latestToolCall && skillNames.length === 0}
             text={label}
             tone={latestToolCall ? "tool" : skillNames.length > 0 ? "skill" : "waiting"}
           />
@@ -186,12 +187,14 @@ export function AssistantWorkPanel({ message }: { message: AssistantChatMessage 
   );
 }
 
-function randomAssistantWaitingPhrase() {
+function randomAssistantWaitingPhrase(previousPhrase?: string) {
   const phrases = i18next.t("ai.waitingPhrases", { returnObjects: true }) as readonly string[];
   if (!Array.isArray(phrases) || phrases.length === 0) {
     return i18next.t("ai.chargingBeacon");
   }
-  return phrases[Math.floor(Math.random() * phrases.length)] ?? i18next.t("ai.chargingBeacon");
+  const candidates = phrases.filter((phrase) => phrase !== previousPhrase);
+  const phrasePool = candidates.length > 0 ? candidates : phrases;
+  return phrasePool[Math.floor(Math.random() * phrasePool.length)] ?? i18next.t("ai.chargingBeacon");
 }
 
 function formatAssistantWorkDuration(

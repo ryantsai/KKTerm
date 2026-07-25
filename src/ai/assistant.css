@@ -592,6 +592,14 @@
   vertical-align: baseline;
 }
 
+.assistant-kinetic-text[data-text-repel="true"] {
+  cursor: default;
+}
+
+.assistant-kinetic-text[data-text-repel="true"] .assistant-kinetic-mask {
+  overflow: visible;
+}
+
 .assistant-kinetic-text[data-tone="tool"] {
   --assistant-kinetic-base: var(--accent);
   --assistant-kinetic-highlight: color-mix(in srgb, var(--accent) 48%, var(--text));
@@ -618,6 +626,12 @@
   display: inline-block;
   color: var(--assistant-kinetic-base);
   will-change: filter, opacity, transform;
+}
+
+.assistant-repel-letter {
+  display: inline-block;
+  white-space: pre;
+  will-change: transform;
 }
 
 .assistant-kinetic-text[data-active="true"] .assistant-kinetic-segment {

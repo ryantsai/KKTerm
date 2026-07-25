@@ -2110,7 +2110,7 @@ export function AssistantPanel({
         ) : null}
         {shouldShowPreStreamWaiting ? (
           <article className="assistant-message assistant-waiting" aria-live="polite">
-            <AssistantKineticText active text={t("ai.preparingResponse")} />
+            <AssistantKineticText active repel text={t("ai.preparingResponse")} />
             <AssistantWaitingDots />
           </article>
         ) : null}

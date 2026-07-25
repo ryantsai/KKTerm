@@ -24,14 +24,25 @@ const componentryLicense = await readFile(
 );
 
 test("assistant progress states use the accessible Componentry-derived kinetic text", () => {
-  assert.match(kineticSource, /Adapted from Componentry's Kinetic Text Reveal/);
+  assert.match(kineticSource, /Componentry's Kinetic Text Reveal and Text Repel/);
   assert.match(kineticSource, /useReducedMotion/);
   assert.match(kineticSource, /aria-label=\{text\}/);
   assert.match(kineticSource, /aria-hidden="true"/);
+  assert.match(kineticSource, /useSpring/);
+  assert.match(kineticSource, /data-text-repel=\{shouldRepel \? true : undefined\}/);
+  assert.match(workPanelSource, /repel=\{Boolean\(message\.isStreaming\)/);
   assert.match(workPanelSource, /<AssistantKineticText[\s\S]*tone="skill"/);
   assert.match(workPanelSource, /<AssistantKineticText[\s\S]*tone="tool"/);
-  assert.match(panelSource, /<AssistantKineticText active text=\{t\("ai\.preparingResponse"\)\}/);
-  assert.match(componentryLicense, /Kinetic Text Reveal/);
+  assert.match(panelSource, /<AssistantKineticText active repel text=\{t\("ai\.preparingResponse"\)\}/);
+  assert.match(componentryLicense, /Kinetic Text Reveal, and Text Repel/);
+});
+
+test("assistant waiting phrase cycles always select a different phrase", () => {
+  assert.match(
+    workPanelSource,
+    /setWaitingPhrase\(\(currentPhrase\) => randomAssistantWaitingPhrase\(currentPhrase\)\)/,
+  );
+  assert.match(workPanelSource, /phrases\.filter\(\(phrase\) => phrase !== previousPhrase\)/);
 });
 
 test("assistant kinetic status motion has an explicit reduced-motion fallback", () => {
@@ -45,4 +56,5 @@ test("assistant kinetic status motion has an explicit reduced-motion fallback", 
     assistantCss,
     /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.assistant-waiting-dots/,
   );
+  assert.match(kineticSource, /const shouldRepel = repel && !shouldReduceMotion/);
 });
