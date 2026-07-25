@@ -179,7 +179,15 @@
       "taipei101": "台北101",
       "thunderstorm": "雷雨",
       "confetti": "紙吹雪",
-      "particleCursor": "パーティクルカーソル"
+      "particleCursor": "パーティクルカーソル",
+      "heroGeometric": "Hero Geometric",
+      "ditherPrismHero": "Dither Prism Hero",
+      "webglLiquid": "WebGL Liquid",
+      "silkAurora": "Silk Aurora",
+      "closingPlasma": "Closing Plasma",
+      "animatedGradient": "Animated Gradient",
+      "prismGradient": "Prism Gradient",
+      "liquidChrome": "Liquid Chrome"
     },
     "scriptNetwork": "ネットワークを許可",
     "scriptPollSeconds": "ポーリング間隔（秒）",

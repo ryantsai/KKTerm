@@ -5,6 +5,16 @@ import { BalloonsBg, DunesBg, JellyfishBg, LighthouseBg, SavannaBg } from "./ext
 import { FujiBg } from "./fujiBackground";
 import { MistySeaBg } from "./mistySeaBackground";
 import {
+  AnimatedGradientBg,
+  ClosingPlasmaBg,
+  DitherPrismHeroBg,
+  HeroGeometricBg,
+  LiquidChromeBg,
+  PrismGradientBg,
+  SilkAuroraBg,
+  WebGLLiquidBg,
+} from "./componentryBackgrounds";
+import {
   DashboardAnimationGate,
   useDashboardAnimationActive,
   useElementOnScreen,
@@ -3844,6 +3854,14 @@ const DYNAMIC_BACKGROUND_COMPONENTS = {
   thunderstorm: ThunderstormBg,
   confetti: ConfettiBg,
   particleCursor: ParticleCursorBg,
+  heroGeometric: HeroGeometricBg,
+  ditherPrismHero: DitherPrismHeroBg,
+  webglLiquid: WebGLLiquidBg,
+  silkAurora: SilkAuroraBg,
+  closingPlasma: ClosingPlasmaBg,
+  animatedGradient: AnimatedGradientBg,
+  prismGradient: PrismGradientBg,
+  liquidChrome: LiquidChromeBg,
 } satisfies Record<string, ComponentType>;
 
 export type DynamicBackgroundId = keyof typeof DYNAMIC_BACKGROUND_COMPONENTS;
@@ -3873,9 +3891,16 @@ export const DYNAMIC_BACKGROUNDS: readonly {
   { id: "balloons", labelKey: "dashboard.dynamicBackgrounds.balloons", mood: "calm" },
   { id: "ricefield", labelKey: "dashboard.dynamicBackgrounds.ricefield", mood: "calm" },
   { id: "lanterns", labelKey: "dashboard.dynamicBackgrounds.lanterns", mood: "calm" },
+  { id: "heroGeometric", labelKey: "dashboard.dynamicBackgrounds.heroGeometric", mood: "calm" },
+  { id: "webglLiquid", labelKey: "dashboard.dynamicBackgrounds.webglLiquid", mood: "calm" },
+  { id: "silkAurora", labelKey: "dashboard.dynamicBackgrounds.silkAurora", mood: "calm" },
+  { id: "animatedGradient", labelKey: "dashboard.dynamicBackgrounds.animatedGradient", mood: "calm" },
   { id: "starfield", labelKey: "dashboard.dynamicBackgrounds.starfield", mood: "spacey" },
   { id: "nebula", labelKey: "dashboard.dynamicBackgrounds.nebula", mood: "spacey" },
   { id: "orbitals", labelKey: "dashboard.dynamicBackgrounds.orbitals", mood: "spacey" },
+  { id: "ditherPrismHero", labelKey: "dashboard.dynamicBackgrounds.ditherPrismHero", mood: "spacey" },
+  { id: "closingPlasma", labelKey: "dashboard.dynamicBackgrounds.closingPlasma", mood: "spacey" },
+  { id: "prismGradient", labelKey: "dashboard.dynamicBackgrounds.prismGradient", mood: "spacey" },
   { id: "embers", labelKey: "dashboard.dynamicBackgrounds.embers", mood: "warm" },
   { id: "lava", labelKey: "dashboard.dynamicBackgrounds.lava", mood: "warm" },
   { id: "ink", labelKey: "dashboard.dynamicBackgrounds.ink", mood: "warm" },
@@ -3891,6 +3916,7 @@ export const DYNAMIC_BACKGROUNDS: readonly {
   { id: "thunderstorm", labelKey: "dashboard.dynamicBackgrounds.thunderstorm", mood: "erratic" },
   { id: "confetti", labelKey: "dashboard.dynamicBackgrounds.confetti", mood: "erratic" },
   { id: "particleCursor", labelKey: "dashboard.dynamicBackgrounds.particleCursor", mood: "erratic" },
+  { id: "liquidChrome", labelKey: "dashboard.dynamicBackgrounds.liquidChrome", mood: "erratic" },
 ];
 
 export function isDynamicBackgroundId(value: string): value is DynamicBackgroundId {

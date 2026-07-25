@@ -668,6 +668,14 @@ pub const DYNAMIC_BACKGROUND_IDS: &[&str] = &[
     "thunderstorm",
     "confetti",
     "particleCursor",
+    "heroGeometric",
+    "ditherPrismHero",
+    "webglLiquid",
+    "silkAurora",
+    "closingPlasma",
+    "animatedGradient",
+    "prismGradient",
+    "liquidChrome",
 ];
 
 pub const BACKGROUND_FITS: &[&str] = &["fill", "fit", "stretch", "tile", "center"];
@@ -2094,6 +2102,22 @@ mod tests {
         assert!(validate_dynamic_background("orbitals").is_ok());
         assert!(validate_dynamic_background("ink").is_ok());
         assert!(validate_dynamic_background("crystals").is_ok());
+    }
+
+    #[test]
+    fn dynamic_background_accepts_componentry_backgrounds() {
+        for id in [
+            "heroGeometric",
+            "ditherPrismHero",
+            "webglLiquid",
+            "silkAurora",
+            "closingPlasma",
+            "animatedGradient",
+            "prismGradient",
+            "liquidChrome",
+        ] {
+            assert!(validate_dynamic_background(id).is_ok(), "{id}");
+        }
     }
 
     #[test]

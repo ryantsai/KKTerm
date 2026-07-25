@@ -179,7 +179,15 @@
       "taipei101": "타이베이 101",
       "thunderstorm": "뇌우",
       "confetti": "컨페티",
-      "particleCursor": "파티클 커서"
+      "particleCursor": "파티클 커서",
+      "heroGeometric": "Hero Geometric",
+      "ditherPrismHero": "Dither Prism Hero",
+      "webglLiquid": "WebGL Liquid",
+      "silkAurora": "Silk Aurora",
+      "closingPlasma": "Closing Plasma",
+      "animatedGradient": "Animated Gradient",
+      "prismGradient": "Prism Gradient",
+      "liquidChrome": "Liquid Chrome"
     },
     "scriptNetwork": "네트워크 허용",
     "scriptPollSeconds": "폴링 간격（초）",

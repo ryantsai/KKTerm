@@ -179,7 +179,15 @@
       "taipei101": "Taipei 101",
       "thunderstorm": "Badai Petir",
       "confetti": "Konfeti",
-      "particleCursor": "Kursor Partikel"
+      "particleCursor": "Kursor Partikel",
+      "heroGeometric": "Hero Geometric",
+      "ditherPrismHero": "Dither Prism Hero",
+      "webglLiquid": "WebGL Liquid",
+      "silkAurora": "Silk Aurora",
+      "closingPlasma": "Closing Plasma",
+      "animatedGradient": "Animated Gradient",
+      "prismGradient": "Prism Gradient",
+      "liquidChrome": "Liquid Chrome"
     },
     "scriptNetwork": "Izinkan jaringan",
     "scriptPollSeconds": "Interval polling（detik）",

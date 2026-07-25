@@ -179,7 +179,15 @@
       "taipei101": "Taipei 101",
       "thunderstorm": "Tormenta eléctrica",
       "confetti": "Confeti",
-      "particleCursor": "Cursor de partículas"
+      "particleCursor": "Cursor de partículas",
+      "heroGeometric": "Hero Geometric",
+      "ditherPrismHero": "Dither Prism Hero",
+      "webglLiquid": "WebGL Liquid",
+      "silkAurora": "Silk Aurora",
+      "closingPlasma": "Closing Plasma",
+      "animatedGradient": "Animated Gradient",
+      "prismGradient": "Prism Gradient",
+      "liquidChrome": "Liquid Chrome"
     },
     "scriptNetwork": "Permitir red",
     "scriptPollSeconds": "Intervalo de sondeo (segundos)",

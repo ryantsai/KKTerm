@@ -179,7 +179,15 @@
       "taipei101": "ไทเป 101",
       "thunderstorm": "พายุฝนฟ้าคะนอง",
       "confetti": "คอนเฟตตี",
-      "particleCursor": "เคอร์เซอร์อนุภาค"
+      "particleCursor": "เคอร์เซอร์อนุภาค",
+      "heroGeometric": "Hero Geometric",
+      "ditherPrismHero": "Dither Prism Hero",
+      "webglLiquid": "WebGL Liquid",
+      "silkAurora": "Silk Aurora",
+      "closingPlasma": "Closing Plasma",
+      "animatedGradient": "Animated Gradient",
+      "prismGradient": "Prism Gradient",
+      "liquidChrome": "Liquid Chrome"
     },
     "scriptNetwork": "อนุญาตเครือข่าย",
     "scriptPollSeconds": "ช่วงเวลาการโพล（วินาที）",

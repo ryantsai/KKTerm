@@ -43,6 +43,14 @@ const expectedIds = [
   "thunderstorm",
   "confetti",
   "particleCursor",
+  "heroGeometric",
+  "webglLiquid",
+  "silkAurora",
+  "animatedGradient",
+  "ditherPrismHero",
+  "closingPlasma",
+  "prismGradient",
+  "liquidChrome",
 ] as const satisfies readonly DynamicBackgroundId[];
 
 if (DYNAMIC_BACKGROUNDS.length !== expectedIds.length) {

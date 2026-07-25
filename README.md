@@ -145,7 +145,7 @@ Most "AI in your terminal" demos stop at chat. KKTerm's assistant works *inside*
 
 The Dashboard is a drag-and-resize grid of widgets. It's not for petabyte observability — it's for "I want a button to launch my five favorite apps and a panel showing my SSH host's uptime, *next to* my chat."
 
-Dashboard views can use app-owned animated backgrounds: `fuji`, `aurora`, `halftone`, `clouds`, `ocean`, `mistySea`, `raindrops`, `rainyWindow`, `frostedWindow`, `snow`, `sakura`, `fireflies`, `bubbles`, `aquarium`, `jellyfish`, `lighthouse`, `balloons`, `ricefield`, `lanterns`, `starfield`, `nebula`, `orbitals`, `embers`, `lava`, `ink`, `dunes`, `savanna`, `matrix`, `topo`, `synthwave`, `circuit`, `crystals`, `cyberpunk`, `taipei101`, `thunderstorm`, `confetti`, and `particleCursor`.
+Dashboard views can use app-owned animated backgrounds: `fuji`, `aurora`, `halftone`, `clouds`, `ocean`, `mistySea`, `raindrops`, `rainyWindow`, `frostedWindow`, `snow`, `sakura`, `fireflies`, `bubbles`, `aquarium`, `jellyfish`, `lighthouse`, `balloons`, `ricefield`, `lanterns`, `starfield`, `nebula`, `orbitals`, `embers`, `lava`, `ink`, `dunes`, `savanna`, `matrix`, `topo`, `synthwave`, `circuit`, `crystals`, `cyberpunk`, `taipei101`, `thunderstorm`, `confetti`, `particleCursor`, `heroGeometric`, `ditherPrismHero`, `webglLiquid`, `silkAurora`, `closingPlasma`, `animatedGradient`, `prismGradient`, and `liquidChrome`.
 
 <p align="center">
   <img src="docs/assets/screenshots/ai-widgets.png" alt="A dashboard grid of AI-created widgets" width="720" />

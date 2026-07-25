@@ -11,7 +11,20 @@ export interface DashboardVisualContext {
   requiresOpaqueTextSurface: boolean;
 }
 
-const DARK_DYNAMIC_BACKGROUND_IDS = new Set(["starfield", "nebula", "matrix", "synthwave", "particleCursor"]);
+const DARK_DYNAMIC_BACKGROUND_IDS = new Set([
+  "starfield",
+  "nebula",
+  "matrix",
+  "synthwave",
+  "particleCursor",
+  "ditherPrismHero",
+  "webglLiquid",
+  "silkAurora",
+  "closingPlasma",
+  "animatedGradient",
+  "prismGradient",
+  "liquidChrome",
+]);
 const DARK_BACKGROUND_PRESET_IDS = new Set([
   "graphite",
   "midnight",

@@ -690,6 +690,90 @@ BUILDERS.crystals = (id) => {
   return svgWrap(id, inner, d);
 };
 
+/* 38. Componentry Hero Geometric — pale field with refracted planes */
+BUILDERS.heroGeometric = (id) => {
+  const defs = lg(id + 'hero', [[0, '#f8fbff'], [.52, '#dbeafe'], [1, '#7bb5ff']], 0, 0, 1, 1);
+  const inner = `<rect width="160" height="100" fill="url(#${id}hero)"/>
+    <path d="M-8 92 L48 12 L86 88 Z" fill="#fff" opacity=".5"/>
+    <path d="M52 100 L108 5 L168 88 Z" fill="#3b82f6" opacity=".2"/>
+    <path d="M84 100 L126 30 L160 70 L160 100 Z" fill="#1d4ed8" opacity=".16"/>`;
+  return svgWrap(id, inner, defs);
+};
+
+/* 39. Componentry Dither Prism Hero — prismatic energy with dither specks */
+BUILDERS.ditherPrismHero = (id) => {
+  const defs = rg(id + 'dither', [[0, '#f472b6', .9], [.34, '#6366f1', .7], [1, '#08091d', 1]], 90, 46, 78);
+  let dots = '';
+  for (let y = 5; y < 100; y += 8) {
+    for (let x = 4; x < 160; x += 8) {
+      const opacity = .12 + ((x * 7 + y * 3) % 11) / 36;
+      dots += `<circle cx="${x}" cy="${y}" r="${opacity > .3 ? 1.1 : .7}" fill="#fff" opacity="${f2(opacity)}"/>`;
+    }
+  }
+  const inner = `<rect width="160" height="100" fill="#08091d"/><ellipse cx="92" cy="48" rx="80" ry="62" fill="url(#${id}dither)"/>${dots}`;
+  return svgWrap(id, inner, defs);
+};
+
+/* 40. Componentry WebGL Liquid — deep blue cinematic flow */
+BUILDERS.webglLiquid = (id) => {
+  const defs = blurFilter(id + 'liquidBlur', 7)
+    + rg(id + 'liquid', [[0, '#8cecff', .92], [.4, '#134d93', .7], [1, '#04050b', 0]], 104, 38, 74);
+  const inner = `<rect width="160" height="100" fill="#04050b"/>
+    <g filter="url(#${id}liquidBlur)"><ellipse cx="104" cy="40" rx="76" ry="38" fill="url(#${id}liquid)" transform="rotate(-12 104 40)"/>
+    <path d="M-10 80 Q36 34 78 70 T170 42" fill="none" stroke="#2d8ee8" stroke-width="17" opacity=".36"/></g>`;
+  return svgWrap(id, inner, defs);
+};
+
+/* 41. Componentry Silk Aurora — satin-dark pearlescent ribbons */
+BUILDERS.silkAurora = (id) => {
+  const defs = blurFilter(id + 'silkBlur', 3)
+    + lg(id + 'silk', [[0, '#050507'], [.45, '#6ed6c9'], [.7, '#f4dfb8'], [1, '#14151d']], 0, 1, 1, 0);
+  const inner = `<rect width="160" height="100" fill="#050507"/>
+    <g filter="url(#${id}silkBlur)" opacity=".86"><path d="M-12 76 C28 8 56 8 82 54 C108 100 132 78 174 12" fill="none" stroke="url(#${id}silk)" stroke-width="22"/>
+    <path d="M-8 98 C34 48 62 54 88 78 C112 100 140 80 168 48" fill="none" stroke="#6ed6c9" stroke-width="8" opacity=".24"/></g>`;
+  return svgWrap(id, inner, defs);
+};
+
+/* 42. Componentry Closing Plasma — atmospheric blue plasma field */
+BUILDERS.closingPlasma = (id) => {
+  const defs = blurFilter(id + 'plasmaBlur', 9)
+    + rg(id + 'plasmaA', [[0, '#b9cbff', .75], [.4, '#4a6191', .48], [1, '#0d0d14', 0]], 52, 48, 62)
+    + rg(id + 'plasmaB', [[0, '#788fc9', .66], [.55, '#1f2540', .4], [1, '#0d0d14', 0]], 124, 52, 64);
+  const inner = `<rect width="160" height="100" fill="#0d0d14"/><g filter="url(#${id}plasmaBlur)"><circle cx="48" cy="50" r="62" fill="url(#${id}plasmaA)"/><circle cx="124" cy="50" r="64" fill="url(#${id}plasmaB)"/></g>`;
+  return svgWrap(id, inner, defs);
+};
+
+/* 43. Componentry Animated Gradient — magenta aurora checker field */
+BUILDERS.animatedGradient = (id) => {
+  const defs = rg(id + 'animated', [[0, '#f20089', .9], [.42, '#1a0b2e', .86], [1, '#0a001a', 1]], 104, 46, 92);
+  let checks = '';
+  for (let y = 0; y < 100; y += 16) {
+    for (let x = 0; x < 160; x += 16) {
+      if ((x / 16 + y / 16) % 2 === 0) checks += `<rect x="${x}" y="${y}" width="16" height="16" fill="#fff" opacity=".035"/>`;
+    }
+  }
+  return svgWrap(id, `<rect width="160" height="100" fill="url(#${id}animated)"/>${checks}`, defs);
+};
+
+/* 44. Componentry Prism Gradient — electric-blue refracted checker field */
+BUILDERS.prismGradient = (id) => {
+  const defs = lg(id + 'prism', [[0, '#050505'], [.5, '#66b3ff'], [1, '#fff']], 0, 1, 1, 0);
+  const inner = `<rect width="160" height="100" fill="#050505"/>
+    <path d="M-18 100 L54 -8 L104 100 Z" fill="url(#${id}prism)" opacity=".88"/>
+    <path d="M48 100 L116 -10 L174 100 Z" fill="url(#${id}prism)" opacity=".54"/>`;
+  return svgWrap(id, inner, defs);
+};
+
+/* 45. Componentry Liquid Chrome — fluid monochrome metal */
+BUILDERS.liquidChrome = (id) => {
+  const defs = blurFilter(id + 'chromeBlur', 4)
+    + lg(id + 'chrome', [[0, '#050609'], [.28, '#d5d9e2'], [.52, '#343844'], [.76, '#fff'], [1, '#090a0e']], 0, 0, 1, 1);
+  const inner = `<rect width="160" height="100" fill="#08090d"/>
+    <g filter="url(#${id}chromeBlur)"><path d="M-14 76 C18 4 58 8 76 54 C94 98 124 96 176 18 L176 112 L-14 112 Z" fill="url(#${id}chrome)"/>
+    <path d="M-8 36 C42 84 82 0 168 62" fill="none" stroke="#fff" stroke-width="7" opacity=".56"/></g>`;
+  return svgWrap(id, inner, defs);
+};
+
 
 
 export function dynamicBackgroundPreviewSvg(id: DynamicBackgroundId): string {
