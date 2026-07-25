@@ -1098,9 +1098,10 @@ pub struct IpPrefix {
     pub site_id: Option<String>,
 }
 
-/// One assigned address inside a Prefix. The three optional ids are soft
-/// references to a Site Host, a Connection, and a Rack Device: an address stays
-/// documented after whatever it pointed at is deleted.
+/// One assigned address inside a Prefix. The optional ids are soft references
+/// to a Site, Site Host, Connection, and Rack Device. A live Host binding
+/// implies its owning Site; otherwise a snapshot inherits the Site of the
+/// most-specific containing Prefix when `site_id` is not set directly.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IpAddressRecord {
@@ -1114,6 +1115,12 @@ pub struct IpAddressRecord {
     pub dns_name: String,
     #[serde(default)]
     pub description: String,
+    #[serde(default)]
+    pub site_id: Option<String>,
+    /// True only in snapshot responses when `site_id` was inherited from a
+    /// containing Prefix rather than stored directly on this address.
+    #[serde(default)]
+    pub site_inherited: bool,
     #[serde(default)]
     pub host_id: Option<String>,
     #[serde(default)]

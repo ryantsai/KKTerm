@@ -156,6 +156,7 @@ export interface AddressInput {
   status: AddressStatus;
   dnsName: string;
   description: string;
+  siteId: string | null;
   hostId: string | null;
   connectionId: string | null;
   rackItemId: string | null;
@@ -183,6 +184,7 @@ function addressArgs(input: AddressInput) {
     status: input.status,
     dnsName: input.dnsName,
     description: input.description,
+    siteId: input.siteId,
     hostId: input.hostId,
     connectionId: input.connectionId,
     rackItemId: input.rackItemId,

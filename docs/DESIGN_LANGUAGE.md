@@ -101,6 +101,14 @@ layer rules.** Existing legacy dialogs use the shared
 - `ConnTile` + `Swatches` — connection identity tile and accent swatches.
 - `DIcon` — the shared SF-Symbols-ish glyph set (`src/app/ui/dialog/icons.tsx`).
 
+`Sheet` supplies the private design-token bridge used by all of these
+primitives. When a primitive is intentionally rendered on a custom non-`Sheet`
+surface—such as a full-canvas editor inspector—the nearest surface root must
+carry `kk-surface`. Do not copy the primitive CSS or allow unresolved
+`--radius-field`, `--field`, `--field-h`, `--text-2`, or `--text-3` variables
+to fall back to native square controls. The surface marker keeps field radii,
+fills, shadows, typography, and focus rings identical to normal dialogs.
+
 CSS: `src/app/ui/dialog/dialogs.css`, kk- prefixed classes aliased onto the app
 tokens. Existing shared dialog classes (`.connection-dialog`, `.settings-*`,
 `.primary-button`, `.secondary-button`, dialog inputs, `.dialog-backdrop`) are

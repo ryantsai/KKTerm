@@ -1685,6 +1685,11 @@
       "siteLabel": "サイト",
       "siteHint": "任意。プレフィックスはどのサイトからでも表示されます。",
       "siteUnscoped": "すべてのサイト",
+      "addressSiteHint": "任意。サイトまたはホストを直接指定しない場合、アドレスは所属セグメントのサイトを継承します。",
+      "hostLabel": "ホスト",
+      "hostHint": "任意。ホストを選択すると、そのサイトも選択されます。",
+      "hostUnbound": "ホストなし",
+      "hostOption": "{{host}} — {{site}}",
       "descriptionLabel": "説明",
       "prefixStatus": {
         "container": "コンテナ",

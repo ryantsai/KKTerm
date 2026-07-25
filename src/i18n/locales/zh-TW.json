@@ -1685,6 +1685,11 @@
       "siteLabel": "站台",
       "siteHint": "選填。前綴在任何站台都看得到。",
       "siteUnscoped": "所有站台",
+      "addressSiteHint": "選填。未直接指定站台或主機時，位址會繼承所屬網段的站台。",
+      "hostLabel": "主機",
+      "hostHint": "選填。選取主機時也會選取其所屬站台。",
+      "hostUnbound": "無主機",
+      "hostOption": "{{host}} — {{site}}",
       "descriptionLabel": "說明",
       "prefixStatus": {
         "container": "容器",

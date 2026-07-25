@@ -1595,8 +1595,8 @@ fn assigning_connection_password_credential_allows_cross_protocol_reuse() {
 
 #[test]
 fn connection_password_credential_metadata_uses_custom_label_when_given() {
-    let storage = Storage::open(temp_db_path("connection-password-credential-label"))
-        .expect("storage opens");
+    let storage =
+        Storage::open(temp_db_path("connection-password-credential-label")).expect("storage opens");
     let connection = create_test_ssh_connection(&storage, "Bastion", "bastion.internal", None);
 
     let credential = storage
@@ -1607,10 +1607,9 @@ fn connection_password_credential_metadata_uses_custom_label_when_given() {
         .expect("credential metadata is created");
     assert_eq!(credential.label, "Corp admin");
 
-    let error = match storage.create_connection_password_credential_metadata(
-        connection.id,
-        Some("   ".to_string()),
-    ) {
+    let error = match storage
+        .create_connection_password_credential_metadata(connection.id, Some("   ".to_string()))
+    {
         Ok(_) => panic!("blank custom label is rejected"),
         Err(error) => error,
     };
@@ -1663,21 +1662,18 @@ fn update_connection_password_credential_updates_editable_metadata() {
     };
     assert_eq!(error, "credential label is required");
 
-    let error = match storage.update_connection_password_credential(
-        "missing".to_string(),
-        None,
-        None,
-    ) {
-        Ok(_) => panic!("unknown credential is rejected"),
-        Err(error) => error,
-    };
+    let error =
+        match storage.update_connection_password_credential("missing".to_string(), None, None) {
+            Ok(_) => panic!("unknown credential is rejected"),
+            Err(error) => error,
+        };
     assert_eq!(error, "password credential was not found");
 }
 
 #[test]
 fn connection_password_credential_usage_counts_and_lists_linked_connections() {
-    let storage = Storage::open(temp_db_path("connection-password-credential-usage"))
-        .expect("storage opens");
+    let storage =
+        Storage::open(temp_db_path("connection-password-credential-usage")).expect("storage opens");
     let first = create_test_ssh_connection(&storage, "Alpha", "alpha.internal", None);
     let second = create_test_ssh_connection(&storage, "Beta", "beta.internal", None);
     let credential = storage
@@ -1713,9 +1709,7 @@ fn connection_password_credential_usage_counts_and_lists_linked_connections() {
         .list_connection_password_credential_usage(credential.id.clone())
         .expect("usage list after unassign");
     assert_eq!(usage.len(), 1);
-    let remaining = storage
-        .get_connection(&first.id)
-        .expect("connection loads");
+    let remaining = storage.get_connection(&first.id).expect("connection loads");
     assert_eq!(remaining.password_credential_id, None);
 }
 
@@ -1735,21 +1729,19 @@ fn standalone_connection_password_credential_needs_only_label_and_username() {
     assert_eq!(credential.created_from_connection_id, None);
     assert_eq!(credential.usage_count, 0);
 
-    let error = match storage.create_standalone_connection_password_credential(
-        "  ".to_string(),
-        "admin".to_string(),
-    ) {
+    let error = match storage
+        .create_standalone_connection_password_credential("  ".to_string(), "admin".to_string())
+    {
         Ok(_) => panic!("blank label is rejected"),
         Err(error) => error,
     };
     assert_eq!(error, "credential label is required");
-
 }
 
 #[test]
 fn merge_connection_password_credentials_relinks_and_removes_sources() {
-    let storage = Storage::open(temp_db_path("connection-password-credential-merge"))
-        .expect("storage opens");
+    let storage =
+        Storage::open(temp_db_path("connection-password-credential-merge")).expect("storage opens");
     let first = create_test_ssh_connection(&storage, "One", "one.internal", None);
     let second = create_test_ssh_connection(&storage, "Two", "two.internal", None);
     let third = create_test_ssh_connection(&storage, "Three", "three.internal", None);
@@ -1780,7 +1772,9 @@ fn merge_connection_password_credentials_relinks_and_removes_sources() {
         .expect("merge succeeds");
     assert_eq!(relinked, 2);
     for connection_id in [first.id.clone(), second.id.clone()] {
-        let connection = storage.get_connection(&connection_id).expect("connection loads");
+        let connection = storage
+            .get_connection(&connection_id)
+            .expect("connection loads");
         assert_eq!(
             connection.password_credential_id.as_deref(),
             Some(target.id.as_str())
@@ -1793,10 +1787,9 @@ fn merge_connection_password_credentials_relinks_and_removes_sources() {
     assert_eq!(listed[0].id, target.id);
     assert_eq!(listed[0].usage_count, 2);
 
-    let error = match storage.merge_connection_password_credentials(
-        target.id.clone(),
-        vec![target.id.clone()],
-    ) {
+    let error = match storage
+        .merge_connection_password_credentials(target.id.clone(), vec![target.id.clone()])
+    {
         Ok(_) => panic!("self-merge is rejected"),
         Err(error) => error,
     };
@@ -1820,10 +1813,7 @@ fn merge_connection_password_credentials_relinks_and_removes_sources() {
         })
         .expect("legacy origin metadata is changed to RDP");
     let relinked = storage
-        .merge_connection_password_credentials(
-            target.id.clone(),
-            vec![rdp_credential.id.clone()],
-        )
+        .merge_connection_password_credentials(target.id.clone(), vec![rdp_credential.id.clone()])
         .expect("credentials created from different protocols can be merged");
     assert_eq!(relinked, 0);
 
@@ -1838,14 +1828,13 @@ fn merge_connection_password_credentials_relinks_and_removes_sources() {
 
 #[test]
 fn merge_connection_password_credentials_rolls_back_relinks_when_delete_fails() {
-    let storage = Storage::open(temp_db_path("connection-password-credential-merge-rollback"))
-        .expect("storage opens");
+    let storage = Storage::open(temp_db_path(
+        "connection-password-credential-merge-rollback",
+    ))
+    .expect("storage opens");
     let connection = create_test_ssh_connection(&storage, "One", "one.internal", None);
     let target = storage
-        .create_standalone_connection_password_credential(
-            "Target".to_string(),
-            "admin".to_string(),
-        )
+        .create_standalone_connection_password_credential("Target".to_string(), "admin".to_string())
         .expect("target credential is created");
     let source = storage
         .create_connection_password_credential_metadata(connection.id.clone(), None)
@@ -1890,8 +1879,8 @@ fn merge_connection_password_credentials_rolls_back_relinks_when_delete_fails() 
 
 #[test]
 fn find_reusable_connection_password_credentials_matches_username_across_hosts() {
-    let storage = Storage::open(temp_db_path("connection-password-credential-reuse"))
-        .expect("storage opens");
+    let storage =
+        Storage::open(temp_db_path("connection-password-credential-reuse")).expect("storage opens");
     let bastion = create_test_ssh_connection(&storage, "Bastion", "bastion.internal", None);
     let other = create_test_ssh_connection(&storage, "Other", "other.internal", None);
     let _different_user = storage
@@ -3562,13 +3551,19 @@ fn url_settings_round_trip_through_settings_table() {
     assert!(updated.ignore_certificate_errors);
     assert_eq!(updated.default_data_partition.as_deref(), Some("ops"));
     assert_eq!(updated.default_user_agent.as_deref(), Some("CustomUA"));
-    assert_eq!(updated.download_folder.as_deref(), Some(download_folder.as_str()));
+    assert_eq!(
+        updated.download_folder.as_deref(),
+        Some(download_folder.as_str())
+    );
 
     let reloaded = storage.url_settings().expect("URL settings reload");
     assert!(reloaded.ignore_certificate_errors);
     assert_eq!(reloaded.default_data_partition.as_deref(), Some("ops"));
     assert_eq!(reloaded.default_user_agent.as_deref(), Some("CustomUA"));
-    assert_eq!(reloaded.download_folder.as_deref(), Some(download_folder.as_str()));
+    assert_eq!(
+        reloaded.download_folder.as_deref(),
+        Some(download_folder.as_str())
+    );
 }
 
 #[test]
@@ -5048,8 +5043,8 @@ fn rename_workspace_updates_icon_properties() {
 
 #[test]
 fn portable_credential_default_applies_only_until_the_user_saves_a_choice() {
-    let storage = Storage::open(temp_db_path("portable-credential-default"))
-        .expect("storage opens");
+    let storage =
+        Storage::open(temp_db_path("portable-credential-default")).expect("storage opens");
 
     assert_eq!(
         storage

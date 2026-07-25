@@ -570,8 +570,13 @@ export interface IpAddressRecord {
   status: AddressStatus;
   dnsName: string;
   description: string;
-  // Soft references to a Site Host, a Connection, and a Rack Device: the
-  // address stays documented after whatever it pointed at is deleted.
+  // Soft references to a Site, Site Host, Connection, and Rack Device. A Host
+  // binding implies its owning Site. Without a direct Site or Host, snapshots
+  // inherit the most-specific containing Prefix's Site.
+  siteId?: string | null;
+  // Snapshot-only marker distinguishing a derived Prefix Site from a direct
+  // address binding, so editing does not accidentally make inheritance fixed.
+  siteInherited?: boolean;
   hostId?: string | null;
   connectionId?: string | null;
   rackItemId?: string | null;

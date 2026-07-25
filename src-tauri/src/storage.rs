@@ -391,7 +391,7 @@ CREATE TABLE IF NOT EXISTS itops_ip_prefixes (
     UNIQUE(vrf, cidr)
 );
 
--- One documented address inside a prefix. host_id / connection_id /
+-- One documented address inside a prefix. site_id / host_id / connection_id /
 -- rack_item_id are SOFT references: an address stays documented after whatever
 -- it pointed at is deleted, which is the whole point of an address record. v51.
 CREATE TABLE IF NOT EXISTS itops_ip_address_records (
@@ -402,6 +402,7 @@ CREATE TABLE IF NOT EXISTS itops_ip_address_records (
     status        TEXT NOT NULL DEFAULT 'active',
     dns_name      TEXT NOT NULL DEFAULT '',
     description   TEXT NOT NULL DEFAULT '',
+    site_id       TEXT,
     host_id       TEXT,
     connection_id TEXT,
     rack_item_id  TEXT,

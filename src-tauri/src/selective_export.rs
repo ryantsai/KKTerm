@@ -1135,6 +1135,7 @@ fn rewrite_soft_references(
         "itops_ip_address_records" => {
             // An address record documents an address, so it survives its
             // origin: an id whose target is absent stays verbatim.
+            remap_soft_id(row, "site_id", "itops_sites", remap);
             remap_soft_id(row, "host_id", "itops_hosts", remap);
             remap_soft_id(row, "connection_id", "connections", remap);
             remap_soft_id(row, "rack_item_id", "itops_site_rack_items", remap);
@@ -2136,7 +2137,7 @@ mod tests {
              CREATE TABLE itops_ip_prefixes (id TEXT PRIMARY KEY, cidr TEXT NOT NULL,
                  vrf TEXT NOT NULL DEFAULT '', site_id TEXT, UNIQUE(vrf, cidr));
              CREATE TABLE itops_ip_address_records (id TEXT PRIMARY KEY, address TEXT NOT NULL,
-                 vrf TEXT NOT NULL DEFAULT '', host_id TEXT, connection_id TEXT,
+                 vrf TEXT NOT NULL DEFAULT '', site_id TEXT, host_id TEXT, connection_id TEXT,
                  rack_item_id TEXT, UNIQUE(vrf, address));
              CREATE TABLE itops_network_maps (id TEXT PRIMARY KEY, name TEXT NOT NULL,
                  site_id TEXT, sort_order INTEGER NOT NULL,
@@ -2177,9 +2178,9 @@ mod tests {
                  '{\"ok\":1,\"failed\":0,\"total\":1,\"hosts\":[{\"connectionId\":\"c1\"}]}');
              INSERT INTO itops_ip_prefixes (id, cidr, site_id) VALUES ('p1','10.20.0.0/16','s1');
              INSERT INTO itops_ip_address_records
-                 (id, address, host_id, connection_id, rack_item_id) VALUES
-                 ('ip1','10.20.0.5','h1','c1','it1'),
-                 ('ip2','10.20.0.6','h-foreign','c-foreign','it-foreign');
+                 (id, address, site_id, host_id, connection_id, rack_item_id) VALUES
+                 ('ip1','10.20.0.5','s1','h1','c1','it1'),
+                 ('ip2','10.20.0.6','s-foreign','h-foreign','c-foreign','it-foreign');
              INSERT INTO itops_network_maps (id, name, site_id, sort_order, graph_json) VALUES
                  ('nm1','Core','s1',0,
                  '{\"nodes\":[{\"id\":\"n1\"},{\"id\":\"n2\"}],\"links\":[{\"id\":\"l1\",\"from\":\"n1\",\"to\":\"n2\"}],\"roots\":[\"n1\"]}');",
@@ -2356,14 +2357,15 @@ mod tests {
         assert_eq!(prefix_site, new_site);
         // An address record follows every origin imported alongside it, and
         // keeps ids whose target is absent: the address stays documented.
-        let (addr_host, addr_conn, addr_item): (String, String, String) = dst
+        let (addr_site, addr_host, addr_conn, addr_item): (String, String, String, String) = dst
             .query_row(
-                "SELECT host_id, connection_id, rack_item_id FROM itops_ip_address_records
+                "SELECT site_id, host_id, connection_id, rack_item_id FROM itops_ip_address_records
                  WHERE address = '10.20.0.5'",
                 [],
-                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
             )
             .unwrap();
+        assert_eq!(addr_site, new_site);
         assert_eq!(
             addr_host,
             *remap
@@ -2377,17 +2379,18 @@ mod tests {
                 .get(&("itops_site_rack_items".to_string(), "it1".to_string()))
                 .unwrap()
         );
-        let orphan: (String, String, String) = dst
+        let orphan: (String, String, String, String) = dst
             .query_row(
-                "SELECT host_id, connection_id, rack_item_id FROM itops_ip_address_records
+                "SELECT site_id, host_id, connection_id, rack_item_id FROM itops_ip_address_records
                  WHERE address = '10.20.0.6'",
                 [],
-                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
             )
             .unwrap();
         assert_eq!(
             orphan,
             (
+                "s-foreign".to_string(),
                 "h-foreign".to_string(),
                 "c-foreign".to_string(),
                 "it-foreign".to_string()
@@ -2822,8 +2825,8 @@ mod tests {
                  INSERT INTO itops_run_history (id, source, task_summary, started_at)
                      VALUES ('r1','manual','Reboot','2026-01-01T00:00:00Z');
                  INSERT INTO itops_ip_prefixes (id, cidr, site_id) VALUES ('p1','10.20.0.0/16','s1');
-                 INSERT INTO itops_ip_address_records (id, address, host_id, rack_item_id)
-                     VALUES ('ip1','10.20.0.5','h1','it1');
+                 INSERT INTO itops_ip_address_records (id, address, site_id, host_id, rack_item_id)
+                     VALUES ('ip1','10.20.0.5','s1','h1','it1');
                  INSERT INTO itops_network_maps (id, name, site_id, sort_order, graph_json)
                      VALUES ('nm1','Core','s1',0,'{\"nodes\":[],\"links\":[],\"roots\":[]}');
                  INSERT INTO assistant_chat_threads (id, title, context_label, messages_json, created_at, updated_at)

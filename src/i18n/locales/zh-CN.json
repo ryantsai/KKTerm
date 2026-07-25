@@ -1685,6 +1685,11 @@
       "siteLabel": "站点",
       "siteHint": "可选。前缀在任何站点都可见。",
       "siteUnscoped": "所有站点",
+      "addressSiteHint": "可选。未直接指定站点或主机时，地址会继承所属网段的站点。",
+      "hostLabel": "主机",
+      "hostHint": "可选。选择主机时也会选择其所属站点。",
+      "hostUnbound": "无主机",
+      "hostOption": "{{host}} — {{site}}",
       "descriptionLabel": "说明",
       "prefixStatus": {
         "container": "容器",

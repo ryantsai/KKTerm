@@ -610,7 +610,12 @@ export function AutomationEditor({
 
   return (
     <DialogShell onBackdrop={onClose}>
-      <div className="au-editor" role="dialog" aria-modal="true" aria-label={t("itops.editor.title")}>
+      <div
+        className="au-editor kk-surface"
+        role="dialog"
+        aria-modal="true"
+        aria-label={t("itops.editor.title")}
+      >
         <div className="au-editor-head">
           <span className="au-editor-tile">
             <ItIcon name="auto" size={17} sw={1.7} />

@@ -218,14 +218,25 @@ function AddressDialog({
   const createAddress = useItOpsStore((state) => state.createAddress);
   const updateAddress = useItOpsStore((state) => state.updateAddress);
   const suggestFreeAddresses = useItOpsStore((state) => state.suggestFreeAddresses);
+  const sites = useItOpsStore((state) => state.sites);
+  const hostsBySite = useItOpsStore((state) => state.hostsBySite);
   const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
   const [address, setAddress] = useState(record?.address ?? seed?.address ?? "");
   const [vrf, setVrf] = useState(record?.vrf ?? prefix?.vrf ?? "");
   const [status, setStatus] = useState<AddressStatus>(record?.status ?? "active");
   const [dnsName, setDnsName] = useState(record?.dnsName ?? seed?.label ?? "");
   const [description, setDescription] = useState(record?.description ?? "");
+  const [siteId, setSiteId] = useState(
+    record?.siteId ?? seed?.siteId ?? prefix?.siteId ?? "",
+  );
+  const [siteInherited, setSiteInherited] = useState(
+    record?.siteInherited ?? (!seed?.siteId && Boolean(prefix?.siteId)),
+  );
+  const [hostId, setHostId] = useState(record?.hostId ?? seed?.hostId ?? "");
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const hosts = useMemo(() => Object.values(hostsBySite).flat(), [hostsBySite]);
+  const visibleHosts = siteId ? hosts.filter((host) => host.siteId === siteId) : hosts;
 
   // Only offered for a new record inside a known prefix: editing an existing
   // one should not nudge the operator toward renumbering it.
@@ -251,7 +262,8 @@ function AddressDialog({
       status,
       dnsName: dnsName.trim(),
       description,
-      hostId: record?.hostId ?? seed?.hostId ?? null,
+      siteId: siteInherited ? null : siteId || null,
+      hostId: hostId || null,
       connectionId: record?.connectionId ?? seed?.connectionId ?? null,
       rackItemId: record?.rackItemId ?? null,
     };
@@ -334,6 +346,47 @@ function AddressDialog({
             onChange={(event) => setVrf(event.currentTarget.value)}
           />
         </Field>
+        <Field label={t("itops.ipam.siteLabel")} hint={t("itops.ipam.addressSiteHint")}>
+          <Select
+            value={siteId}
+            onChange={(event) => {
+              const nextSiteId = event.currentTarget.value;
+              setSiteId(nextSiteId);
+              setSiteInherited(false);
+              if (hostId && hosts.find((host) => host.id === hostId)?.siteId !== nextSiteId) {
+                setHostId("");
+              }
+            }}
+            options={[
+              { value: "", label: t("itops.ipam.siteUnscoped") },
+              ...sites.map((site) => ({ value: site.id, label: site.name })),
+            ]}
+          />
+        </Field>
+        <Field label={t("itops.ipam.hostLabel")} hint={t("itops.ipam.hostHint")}>
+          <Select
+            value={hostId}
+            onChange={(event) => {
+              const nextHostId = event.currentTarget.value;
+              setHostId(nextHostId);
+              const host = hosts.find((entry) => entry.id === nextHostId);
+              if (host) {
+                setSiteId(host.siteId);
+                setSiteInherited(false);
+              }
+            }}
+            options={[
+              { value: "", label: t("itops.ipam.hostUnbound") },
+              ...visibleHosts.map((host) => ({
+                value: host.id,
+                label: t("itops.ipam.hostOption", {
+                  host: host.label.trim() || host.hostname,
+                  site: sites.find((site) => site.id === host.siteId)?.name ?? host.siteId,
+                }),
+              })),
+            ]}
+          />
+        </Field>
         <Field label={t("itops.ipam.descriptionLabel")}>
           <TextArea
             rows={3}
@@ -375,6 +428,7 @@ function ClaimDialog({
           status: "active",
           dnsName: entry.label,
           description: "",
+          siteId: entry.siteId,
           hostId: entry.hostId,
           connectionId: entry.connectionId,
           rackItemId: null,

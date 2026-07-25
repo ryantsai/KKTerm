@@ -4566,6 +4566,11 @@
 .itops-page .it-drill-action:active {
   transform: translateY(1px);
 }
+.itops-page .nm-toolbar .it-drill-action:disabled {
+  opacity: 0.4;
+  cursor: default;
+  transform: none;
+}
 .itops-page .it-drill-export {
   position: relative;
 }
@@ -8479,44 +8484,15 @@
   background: var(--surface);
 }
 .itops-page .nm-toolbar {
+  position: relative;
+  flex: 0 0 34px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
+  justify-content: flex-end;
+  padding: 4px 8px;
   border-bottom: 1px solid var(--hairline);
 }
-.itops-page .nm-palette {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  flex: 1;
-  min-width: 0;
-}
-.itops-page .nm-palette-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 28px;
-  padding: 0 9px 0 5px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--surface);
-  color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.itops-page .nm-palette-btn:hover:not(:disabled) { background: var(--hover); color: var(--text); }
-.itops-page .nm-palette-btn:disabled { opacity: 0.4; cursor: default; }
-.itops-page .nm-palette-ic {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  color: #fff;
-}
+.itops-page .nm-toolbar .it-room-view-controls { top: 50%; }
 
 .itops-page .nm-body {
   display: flex;
@@ -8526,6 +8502,42 @@
 .itops-page .nm-canvas { min-height: 360px; }
 .itops-page .nm-canvas[data-mode="impact"] { background: var(--surface-muted); }
 .itops-page .nm-side { flex: 0 0 296px; }
+
+.itops-page .nm-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+.itops-page .nm-picker-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 5px 8px;
+  border: 0.5px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 560;
+  cursor: pointer;
+}
+.itops-page .nm-picker-card:hover {
+  border-color: var(--border-strong);
+  background: var(--hover);
+  color: var(--text);
+}
+.itops-page .nm-picker-ic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  color: #fff;
+}
 
 /* node card */
 .nm-node {

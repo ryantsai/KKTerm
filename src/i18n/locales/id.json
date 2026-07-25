@@ -1685,6 +1685,11 @@
       "siteLabel": "Situs",
       "siteHint": "Opsional. Prefiks tetap terlihat dari setiap Situs.",
       "siteUnscoped": "Semua Situs",
+      "addressSiteHint": "Opsional. Tanpa Situs atau Host langsung, alamat mewarisi Situs segmennya.",
+      "hostLabel": "Host",
+      "hostHint": "Opsional. Memilih Host juga memilih Situsnya.",
+      "hostUnbound": "Tanpa Host",
+      "hostOption": "{{host}} — {{site}}",
       "descriptionLabel": "Deskripsi",
       "prefixStatus": {
         "container": "Wadah",

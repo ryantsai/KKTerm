@@ -216,9 +216,11 @@ _Avoid_: subnet record, network object
 
 **IP Address Record** — a durable single IPv4 address in
 `itops_ip_address_records`, with an optional DNS name, status, VRF,
-description, and soft references back to the Host, Connection, or Rack
-Device it was imported from. It is a documentation record, not a lease or a
-reservation KKTerm enforces anywhere.
+description, optional direct Site binding, and soft references back to the
+Host, Connection, or Rack Device it was imported from. Binding a Host implies
+that Host's Site; a Site binding remains valid without a Host. With neither,
+the record inherits the Site of its most-specific containing IP Prefix. It is
+a documentation record, not a lease or a reservation KKTerm enforces anywhere.
 _Avoid_: IP entry, host record (that is **Host**)
 
 **IPAM** — the global Module surface over those two, standing outside the
@@ -293,11 +295,15 @@ Three SQLite tables (new schema version):
   `(vrf, cidr)`. Parent, depth, child counts, and utilization are **not**
   columns; they are recomputed on every snapshot from containment.
 - `itops_ip_address_records` — global IP Address Records: id, `address`,
-  `vrf`, status, DNS name, description, plus soft `host_id` /
+  `vrf`, status, DNS name, description, plus soft `site_id` / `host_id` /
   `connection_id` / `rack_item_id` references, unique on `(vrf, address)`.
   A record belongs to a prefix by containment and matching VRF, not by a
-  stored parent id; the soft references let an address stay documented after
-  whatever it pointed at is deleted.
+  stored parent id. A valid Host binding makes its owning Site authoritative;
+  `site_id` may also stand alone when no Host is selected. With neither
+  binding, the snapshot derives the Site from the most-specific containing
+  prefix, so changing a prefix's Site immediately changes its otherwise-unbound
+  records without rewriting them. The soft references let an address stay
+  documented after whatever it pointed at is deleted.
 - `itops_network_maps` — one row per Network Map: id, name, description,
   optional soft `site_id`, `sort_order`, and the whole node/link/roots graph
   as `graph_json`.
@@ -491,6 +497,11 @@ independent page shell or visual language.
 - Read colors, borders, hover states, radii, and typography from app tokens.
   IT Ops hardware artwork may use its documented physical-equipment palette,
   but destination chrome must not hard-code colors.
+- Build forms from the shared `src/app/ui/dialog` primitives. A normal `Sheet`
+  provides their design tokens automatically; any IT Ops canvas, inspector, or
+  custom editor that renders those primitives outside `Sheet` must mark its
+  nearest surface root with `kk-surface`. Never duplicate their field CSS or
+  accept browser-native square input/select fallbacks.
 - Route all text through `itops.*` i18n keys and follow the localization backlog
   workflow. Inline action markers such as `<addRack>` and `<editMode>` are part
   of the translation contract.
@@ -803,9 +814,10 @@ CREATE TABLE IF NOT EXISTS itops_ip_prefixes (
     UNIQUE(vrf, cidr)
 );
 
--- One documented address. host_id / connection_id / rack_item_id are SOFT
--- references: an address stays documented after whatever it pointed at is
--- deleted, which is the whole point of an address record.
+-- One documented address. site_id / host_id / connection_id / rack_item_id
+-- are SOFT references: an address stays documented after whatever it pointed
+-- at is deleted, which is the whole point of an address record. A Host binding
+-- implies its owning Site, while site_id can stand alone.
 CREATE TABLE IF NOT EXISTS itops_ip_address_records (
     id            TEXT PRIMARY KEY,
     address       TEXT NOT NULL,
@@ -814,6 +826,7 @@ CREATE TABLE IF NOT EXISTS itops_ip_address_records (
     status        TEXT NOT NULL DEFAULT 'active',
     dns_name      TEXT NOT NULL DEFAULT '',
     description   TEXT NOT NULL DEFAULT '',
+    site_id       TEXT,
     host_id       TEXT,
     connection_id TEXT,
     rack_item_id  TEXT,
@@ -1030,6 +1043,13 @@ and pure What-If reachability in `src/modules/itops/reachability.ts`. No
 assistant or MCP tools yet, and **no dependency on live device state** — the
 SNMP scaffolding stays future preparation, and the What-If "down" set comes
 only from operator toggles.
+
+**IPAM Address Site binding.** `itops_ip_address_records.site_id` is an
+optional soft direct binding in the unreleased schema-v51 shape; it requires no
+upgrade or backfill migration. New writes derive Site from a valid Host binding,
+while Site-only records remain valid. Snapshot reads also derive Site from the
+most-specific containing bound prefix when the address has neither, preserving
+the containment model without a stored prefix id or reconciliation writes.
 
 Phases 0–3 are the minimum that delivers durable monitoring + SSH batch.
 Phases 4–9 are independent and can be reordered by demand.

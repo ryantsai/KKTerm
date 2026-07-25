@@ -1685,6 +1685,11 @@
       "siteLabel": "ไซต์",
       "siteHint": "ไม่บังคับ prefix ยังคงมองเห็นได้จากทุกไซต์",
       "siteUnscoped": "ทุกไซต์",
+      "addressSiteHint": "ไม่บังคับ หากไม่ระบุไซต์หรือโฮสต์โดยตรง ที่อยู่จะสืบทอดไซต์ของเซกเมนต์",
+      "hostLabel": "โฮสต์",
+      "hostHint": "ไม่บังคับ การเลือกโฮสต์จะเลือกไซต์ของโฮสต์นั้นด้วย",
+      "hostUnbound": "ไม่มีโฮสต์",
+      "hostOption": "{{host}} — {{site}}",
       "descriptionLabel": "คำอธิบาย",
       "prefixStatus": {
         "container": "คอนเทนเนอร์",

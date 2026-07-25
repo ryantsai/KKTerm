@@ -34,7 +34,6 @@ import {
   ConfirmSheet,
   DialogShell,
   Field,
-  Segmented,
   Select,
   Sheet,
   TextArea,
@@ -522,46 +521,60 @@ function MapEditor({ map }: { map: NetworkMap }) {
 
   return (
     <div className="nm-editor">
-      <div className="nm-toolbar">
-        <div className="nm-palette" role="group" aria-label={t("itops.networkMap.paletteLabel")}>
-          {NODE_KINDS.map((kind) => (
+      <div className="nm-toolbar it-drill-toolbar">
+        <div className="it-drill-spacer" />
+        <div className="it-room-view-controls">
+          <div
+            className="rm-segmented"
+            role="group"
+            aria-label={t("itops.networkMap.heading")}
+          >
             <button
-              key={kind}
               type="button"
-              className="nm-palette-btn"
-              disabled={mode === "impact"}
-              onClick={() => addNode(kind)}
+              data-active={mode === "design"}
+              onClick={() => {
+                setMode("design");
+                setSelection(null);
+              }}
             >
-              <span className="nm-palette-ic" style={{ background: NODE_STYLE[kind].accent }}>
-                <ItIcon name={NODE_STYLE[kind].icon} size={13} />
-              </span>
-              {t(`itops.networkMap.nodeKind.${kind}`)}
+              <ItIcon name="edit" size={13} />
+              {t("itops.networkMap.modeDesign")}
             </button>
-          ))}
+            <button
+              type="button"
+              data-active={mode === "impact"}
+              onClick={() => {
+                setMode("impact");
+                setSelection(null);
+              }}
+            >
+              <ItIcon name="pulse" size={13} />
+              {t("itops.networkMap.modeImpact")}
+            </button>
+          </div>
+        </div>
+        <div className="it-drill-actions" aria-label={t("itops.actions.viewActions")}>
           <button
             type="button"
-            className="nm-palette-btn"
+            className="it-drill-action"
+            title={t("itops.networkMap.importTitle")}
+            aria-label={t("itops.networkMap.importTitle")}
             disabled={mode === "impact"}
             onClick={() => setImporting(true)}
           >
-            <ItIcon name="download" size={13} />
-            {t("itops.networkMap.importTitle")}
+            <ItIcon name="download" size={15} />
+          </button>
+          <button
+            type="button"
+            className={`it-drill-action${dirty ? " active" : ""}`}
+            title={dirty ? t("itops.networkMap.saveChanges") : t("itops.networkMap.saved")}
+            aria-label={dirty ? t("itops.networkMap.saveChanges") : t("itops.networkMap.saved")}
+            disabled={!dirty || busy}
+            onClick={() => void save()}
+          >
+            <ItIcon name="check" size={15} />
           </button>
         </div>
-        <Segmented
-          value={mode}
-          onChange={(value) => {
-            setMode(value as EditorMode);
-            setSelection(null);
-          }}
-          options={[
-            { value: "design", label: t("itops.networkMap.modeDesign") },
-            { value: "impact", label: t("itops.networkMap.modeImpact") },
-          ]}
-        />
-        <Btn kind="primary" icon="check" disabled={!dirty || busy} onClick={() => void save()}>
-          {dirty ? t("itops.networkMap.saveChanges") : t("itops.networkMap.saved")}
-        </Btn>
       </div>
 
       <div className="nm-body">
@@ -590,7 +603,7 @@ function MapEditor({ map }: { map: NetworkMap }) {
           </ReactFlow>
         </div>
 
-        <aside className="au-side nm-side">
+        <aside className="au-side nm-side kk-surface">
           <div className="au-side-in">
             {mode === "impact" ? (
               <ImpactPanel
@@ -694,7 +707,29 @@ function MapEditor({ map }: { map: NetworkMap }) {
               </>
             ) : (
               <>
-                <div className="au-side-title">{t("itops.networkMap.designHeading")}</div>
+                <div className="au-side-title">{t("itops.networkMap.paletteLabel")}</div>
+                <div
+                  className="nm-picker-grid"
+                  role="group"
+                  aria-label={t("itops.networkMap.paletteLabel")}
+                >
+                  {NODE_KINDS.map((kind) => (
+                    <button
+                      key={kind}
+                      type="button"
+                      className="nm-picker-card"
+                      onClick={() => addNode(kind)}
+                    >
+                      <span
+                        className="nm-picker-ic"
+                        style={{ background: NODE_STYLE[kind].accent }}
+                      >
+                        <ItIcon name={NODE_STYLE[kind].icon} size={18} />
+                      </span>
+                      <span>{t(`itops.networkMap.nodeKind.${kind}`)}</span>
+                    </button>
+                  ))}
+                </div>
                 <p className="au-side-hint">{t("itops.networkMap.designHint")}</p>
                 <dl className="nm-stats">
                   <div>

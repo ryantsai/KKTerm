@@ -1685,6 +1685,11 @@
       "siteLabel": "Site",
       "siteHint": "Facultatif. Les préfixes restent visibles depuis tous les Sites.",
       "siteUnscoped": "Tous les Sites",
+      "addressSiteHint": "Facultatif. Sans Site ni Hôte direct, l'adresse hérite du Site de son segment.",
+      "hostLabel": "Hôte",
+      "hostHint": "Facultatif. La sélection d’un Hôte sélectionne aussi son Site.",
+      "hostUnbound": "Aucun Hôte",
+      "hostOption": "{{host}} — {{site}}",
       "descriptionLabel": "Description",
       "prefixStatus": {
         "container": "Conteneur",

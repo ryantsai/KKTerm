@@ -80,6 +80,7 @@ export interface ClaimCandidate {
   label: string;
   origin: "connection" | "host";
   connectionId: string | null;
+  siteId: string | null;
   hostId: string | null;
 }
 
@@ -115,6 +116,7 @@ export function collectClaimCandidates(
       label: connection.name,
       origin: "connection",
       connectionId: connection.id,
+      siteId: null,
       hostId: null,
     });
   }
@@ -123,6 +125,7 @@ export function collectClaimCandidates(
       label: host.label.trim() || host.hostname,
       origin: "host",
       connectionId: host.connectionIds[0] ?? null,
+      siteId: host.siteId,
       hostId: host.id,
     });
   }

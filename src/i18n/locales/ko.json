@@ -1685,6 +1685,11 @@
       "siteLabel": "사이트",
       "siteHint": "선택 사항. 프리픽스는 어느 사이트에서나 보입니다.",
       "siteUnscoped": "모든 사이트",
+      "addressSiteHint": "선택 사항입니다. 사이트나 호스트를 직접 지정하지 않으면 주소는 해당 세그먼트의 사이트를 상속합니다.",
+      "hostLabel": "호스트",
+      "hostHint": "선택 사항입니다. 호스트를 선택하면 해당 사이트도 선택됩니다.",
+      "hostUnbound": "호스트 없음",
+      "hostOption": "{{host}} — {{site}}",
       "descriptionLabel": "설명",
       "prefixStatus": {
         "container": "컨테이너",

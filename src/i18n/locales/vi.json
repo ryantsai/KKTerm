@@ -1685,6 +1685,11 @@
       "siteLabel": "Site",
       "siteHint": "Tùy chọn. Tiền tố vẫn hiển thị từ mọi Site.",
       "siteUnscoped": "Tất cả Site",
+      "addressSiteHint": "Tùy chọn. Nếu không chọn trực tiếp Site hoặc Máy chủ, địa chỉ sẽ kế thừa Site của phân đoạn.",
+      "hostLabel": "Máy chủ",
+      "hostHint": "Tùy chọn. Chọn Máy chủ cũng sẽ chọn Site của máy chủ đó.",
+      "hostUnbound": "Không có Máy chủ",
+      "hostOption": "{{host}} — {{site}}",
       "descriptionLabel": "Mô tả",
       "prefixStatus": {
         "container": "Vùng chứa",

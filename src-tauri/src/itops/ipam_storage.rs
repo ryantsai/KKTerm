@@ -8,7 +8,9 @@ use std::collections::HashMap;
 use rusqlite::{Connection as SqliteConnection, OptionalExtension, params};
 
 use super::ipv4::{self, Prefix};
-use super::types::{AddressStatus, IpAddressRecord, IpPrefix, IpamPrefixNode, IpamSnapshot, PrefixStatus};
+use super::types::{
+    AddressStatus, IpAddressRecord, IpPrefix, IpamPrefixNode, IpamSnapshot, PrefixStatus,
+};
 
 #[derive(Debug)]
 pub enum IpamStorageError {
@@ -109,8 +111,7 @@ fn list_prefix_rows(conn: &SqliteConnection) -> Result<Vec<IpPrefix>> {
     Ok(rows)
 }
 
-const ADDRESS_COLUMNS: &str =
-    "id, address, vrf, status, dns_name, description, host_id, connection_id, rack_item_id";
+const ADDRESS_COLUMNS: &str = "id, address, vrf, status, dns_name, description, site_id, host_id, connection_id, rack_item_id";
 
 fn read_address(row: &rusqlite::Row<'_>) -> rusqlite::Result<IpAddressRecord> {
     let status: String = row.get(3)?;
@@ -121,9 +122,11 @@ fn read_address(row: &rusqlite::Row<'_>) -> rusqlite::Result<IpAddressRecord> {
         status: address_status_from_key(&status),
         dns_name: row.get(4)?,
         description: row.get(5)?,
-        host_id: row.get(6)?,
-        connection_id: row.get(7)?,
-        rack_item_id: row.get(8)?,
+        site_id: row.get(6)?,
+        site_inherited: false,
+        host_id: row.get(7)?,
+        connection_id: row.get(8)?,
+        rack_item_id: row.get(9)?,
     })
 }
 
@@ -144,6 +147,7 @@ fn list_address_rows(conn: &SqliteConnection) -> Result<Vec<IpAddressRecord>> {
 pub fn snapshot(conn: &SqliteConnection) -> Result<IpamSnapshot> {
     let rows = list_prefix_rows(conn)?;
     let mut addresses = list_address_rows(conn)?;
+    apply_prefix_site_bindings(&rows, &mut addresses);
     addresses.sort_by_key(|record| {
         (
             record.vrf.clone(),
@@ -154,6 +158,31 @@ pub fn snapshot(conn: &SqliteConnection) -> Result<IpamSnapshot> {
         prefixes: build_prefix_nodes(&rows, &addresses),
         addresses,
     })
+}
+
+/// An address with no direct Site or live Host binding inherits the Site of
+/// the most-specific containing Prefix in its VRF. The value is derived for
+/// the snapshot only: changing a Prefix binding immediately changes all
+/// otherwise-unbound addresses beneath it without rewriting their rows.
+fn apply_prefix_site_bindings(rows: &[IpPrefix], addresses: &mut [IpAddressRecord]) {
+    let bound_prefixes: Vec<(&IpPrefix, Prefix)> = rows
+        .iter()
+        .filter(|row| row.site_id.is_some())
+        .filter_map(|row| Prefix::parse(&row.cidr).map(|prefix| (row, prefix)))
+        .collect();
+
+    for record in addresses.iter_mut().filter(|record| record.site_id.is_none()) {
+        let Some(value) = ipv4::parse_address(&record.address) else {
+            continue;
+        };
+        let inherited = bound_prefixes
+            .iter()
+            .filter(|(row, prefix)| row.vrf == record.vrf && prefix.contains_address(value))
+            .max_by_key(|(_, prefix)| prefix.length)
+            .and_then(|(row, _)| row.site_id.clone());
+        record.site_inherited = inherited.is_some();
+        record.site_id = inherited;
+    }
 }
 
 /// The pure half of `snapshot`, split out so the arithmetic is unit-testable
@@ -285,9 +314,12 @@ fn group_indices_by_vrf(parsed: &[(IpPrefix, Prefix)]) -> Vec<Vec<usize>> {
 }
 
 fn canonical_cidr(cidr: &str) -> Result<String> {
-    Prefix::parse(cidr)
-        .map(Prefix::to_cidr)
-        .ok_or_else(|| invalid(format!("'{}' is not a valid IPv4 prefix (expected a.b.c.d/len)", cidr.trim())))
+    Prefix::parse(cidr).map(Prefix::to_cidr).ok_or_else(|| {
+        invalid(format!(
+            "'{}' is not a valid IPv4 prefix (expected a.b.c.d/len)",
+            cidr.trim()
+        ))
+    })
 }
 
 pub fn create_prefix(
@@ -399,6 +431,27 @@ pub fn remove_prefix(conn: &SqliteConnection, id: &str) -> Result<()> {
 
 // ── Address Records ──────────────────────────────────────────────────────────
 
+fn effective_address_site(
+    conn: &SqliteConnection,
+    site_id: Option<&str>,
+    host_id: Option<&str>,
+) -> Result<Option<String>> {
+    let host_id = optional_id(host_id);
+    if let Some(host_id) = host_id {
+        let host_site = conn
+            .query_row(
+                "SELECT site_id FROM itops_hosts WHERE id = ?",
+                params![host_id],
+                |row| row.get(0),
+            )
+            .optional()?;
+        if host_site.is_some() {
+            return Ok(host_site);
+        }
+    }
+    Ok(optional_id(site_id))
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn create_address(
     conn: &SqliteConnection,
@@ -408,6 +461,7 @@ pub fn create_address(
     status: AddressStatus,
     dns_name: &str,
     description: &str,
+    site_id: Option<&str>,
     host_id: Option<&str>,
     connection_id: Option<&str>,
     rack_item_id: Option<&str>,
@@ -421,14 +475,16 @@ pub fn create_address(
         status,
         dns_name: dns_name.trim().to_string(),
         description: description.trim().to_string(),
+        site_id: effective_address_site(conn, site_id, host_id)?,
+        site_inherited: false,
         host_id: optional_id(host_id),
         connection_id: optional_id(connection_id),
         rack_item_id: optional_id(rack_item_id),
     };
     let affected = conn.execute(
         "INSERT OR IGNORE INTO itops_ip_address_records
-            (id, address, vrf, status, dns_name, description, host_id, connection_id, rack_item_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (id, address, vrf, status, dns_name, description, site_id, host_id, connection_id, rack_item_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             record.id,
             record.address,
@@ -436,6 +492,7 @@ pub fn create_address(
             address_status_key(record.status),
             record.dns_name,
             record.description,
+            record.site_id,
             record.host_id,
             record.connection_id,
             record.rack_item_id
@@ -459,6 +516,7 @@ pub fn update_address(
     status: AddressStatus,
     dns_name: &str,
     description: &str,
+    site_id: Option<&str>,
     host_id: Option<&str>,
     connection_id: Option<&str>,
     rack_item_id: Option<&str>,
@@ -475,7 +533,9 @@ pub fn update_address(
         )
         .optional()?;
     if clash.is_some() {
-        return Err(invalid(format!("{address} is already assigned in this VRF")));
+        return Err(invalid(format!(
+            "{address} is already assigned in this VRF"
+        )));
     }
     let record = IpAddressRecord {
         id: id.to_string(),
@@ -484,6 +544,8 @@ pub fn update_address(
         status,
         dns_name: dns_name.trim().to_string(),
         description: description.trim().to_string(),
+        site_id: effective_address_site(conn, site_id, host_id)?,
+        site_inherited: false,
         host_id: optional_id(host_id),
         connection_id: optional_id(connection_id),
         rack_item_id: optional_id(rack_item_id),
@@ -491,7 +553,8 @@ pub fn update_address(
     let affected = conn.execute(
         "UPDATE itops_ip_address_records
          SET address = ?, vrf = ?, status = ?, dns_name = ?, description = ?,
-             host_id = ?, connection_id = ?, rack_item_id = ?, updated_at = CURRENT_TIMESTAMP
+             site_id = ?, host_id = ?, connection_id = ?, rack_item_id = ?,
+             updated_at = CURRENT_TIMESTAMP
          WHERE id = ?",
         params![
             record.address,
@@ -499,6 +562,7 @@ pub fn update_address(
             address_status_key(record.status),
             record.dns_name,
             record.description,
+            record.site_id,
             record.host_id,
             record.connection_id,
             record.rack_item_id,
@@ -584,12 +648,18 @@ mod tests {
                 status TEXT NOT NULL DEFAULT 'active',
                 dns_name TEXT NOT NULL DEFAULT '',
                 description TEXT NOT NULL DEFAULT '',
+                site_id TEXT,
                 host_id TEXT,
                 connection_id TEXT,
                 rack_item_id TEXT,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(vrf, address)
+            );
+            CREATE TABLE itops_hosts (
+                id TEXT PRIMARY KEY,
+                site_id TEXT NOT NULL,
+                hostname TEXT NOT NULL
             );",
         )
         .unwrap();
@@ -618,9 +688,33 @@ mod tests {
         assert_eq!(created.role, "Access");
         assert_eq!(created.description, "floor 2");
         assert!(created.site_id.is_none());
-        assert!(create_prefix(&conn, "p2", "10.1.2.0/33", "", "", PrefixStatus::Active, "", None).is_err());
+        assert!(
+            create_prefix(
+                &conn,
+                "p2",
+                "10.1.2.0/33",
+                "",
+                "",
+                PrefixStatus::Active,
+                "",
+                None
+            )
+            .is_err()
+        );
         // Same canonical network in the same VRF is a duplicate.
-        assert!(create_prefix(&conn, "p3", "10.1.2.9/24", "", "", PrefixStatus::Active, "", None).is_err());
+        assert!(
+            create_prefix(
+                &conn,
+                "p3",
+                "10.1.2.9/24",
+                "",
+                "",
+                PrefixStatus::Active,
+                "",
+                None
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -629,8 +723,34 @@ mod tests {
         add_prefix(&conn, "root", "10.0.0.0/8", PrefixStatus::Container);
         add_prefix(&conn, "mid", "10.1.0.0/16", PrefixStatus::Container);
         add_prefix(&conn, "leaf", "10.1.2.0/24", PrefixStatus::Active);
-        create_address(&conn, "a1", "10.1.2.10", "", AddressStatus::Active, "", "", None, None, None).unwrap();
-        create_address(&conn, "a2", "10.1.2.11", "", AddressStatus::Active, "", "", None, None, None).unwrap();
+        create_address(
+            &conn,
+            "a1",
+            "10.1.2.10",
+            "",
+            AddressStatus::Active,
+            "",
+            "",
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap();
+        create_address(
+            &conn,
+            "a2",
+            "10.1.2.11",
+            "",
+            AddressStatus::Active,
+            "",
+            "",
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap();
 
         let snapshot = snapshot(&conn).unwrap();
         let by_id = |id: &str| {
@@ -664,10 +784,40 @@ mod tests {
     #[test]
     fn keeps_vrfs_as_separate_trees() {
         let conn = open_test_db();
-        create_prefix(&conn, "a", "10.0.0.0/8", "blue", "", PrefixStatus::Container, "", None).unwrap();
-        create_prefix(&conn, "b", "10.1.0.0/16", "red", "", PrefixStatus::Active, "", None).unwrap();
+        create_prefix(
+            &conn,
+            "a",
+            "10.0.0.0/8",
+            "blue",
+            "",
+            PrefixStatus::Container,
+            "",
+            None,
+        )
+        .unwrap();
+        create_prefix(
+            &conn,
+            "b",
+            "10.1.0.0/16",
+            "red",
+            "",
+            PrefixStatus::Active,
+            "",
+            None,
+        )
+        .unwrap();
         // Same CIDR in another VRF is not a duplicate.
-        create_prefix(&conn, "c", "10.0.0.0/8", "red", "", PrefixStatus::Container, "", None).unwrap();
+        create_prefix(
+            &conn,
+            "c",
+            "10.0.0.0/8",
+            "red",
+            "",
+            PrefixStatus::Container,
+            "",
+            None,
+        )
+        .unwrap();
         let snapshot = snapshot(&conn).unwrap();
         let red_child = snapshot
             .prefixes
@@ -681,8 +831,34 @@ mod tests {
     fn suggests_the_lowest_free_addresses() {
         let conn = open_test_db();
         add_prefix(&conn, "leaf", "192.168.5.0/24", PrefixStatus::Active);
-        create_address(&conn, "a1", "192.168.5.1", "", AddressStatus::Active, "", "", None, None, None).unwrap();
-        create_address(&conn, "a2", "192.168.5.3", "", AddressStatus::Active, "", "", None, None, None).unwrap();
+        create_address(
+            &conn,
+            "a1",
+            "192.168.5.1",
+            "",
+            AddressStatus::Active,
+            "",
+            "",
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap();
+        create_address(
+            &conn,
+            "a2",
+            "192.168.5.3",
+            "",
+            AddressStatus::Active,
+            "",
+            "",
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap();
         let free = suggest_free_addresses(&conn, "192.168.5.0/24", "", 3).unwrap();
         assert_eq!(free, vec!["192.168.5.2", "192.168.5.4", "192.168.5.5"]);
         // A /31 has no network/broadcast pair to skip.
@@ -697,10 +873,51 @@ mod tests {
     fn updates_and_removes_records() {
         let conn = open_test_db();
         add_prefix(&conn, "leaf", "172.16.0.0/24", PrefixStatus::Active);
-        create_address(&conn, "a1", "172.16.0.5", "", AddressStatus::Active, "", "", None, None, None).unwrap();
-        create_address(&conn, "a2", "172.16.0.6", "", AddressStatus::Active, "", "", None, None, None).unwrap();
+        create_address(
+            &conn,
+            "a1",
+            "172.16.0.5",
+            "",
+            AddressStatus::Active,
+            "",
+            "",
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap();
+        create_address(
+            &conn,
+            "a2",
+            "172.16.0.6",
+            "",
+            AddressStatus::Active,
+            "",
+            "",
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap();
         // Moving onto a taken address is rejected before anything is written.
-        assert!(update_address(&conn, "a1", "172.16.0.6", "", AddressStatus::Active, "", "", None, None, None).is_err());
+        assert!(
+            update_address(
+                &conn,
+                "a1",
+                "172.16.0.6",
+                "",
+                AddressStatus::Active,
+                "",
+                "",
+                None,
+                None,
+                None,
+                None
+            )
+            .is_err()
+        );
         let updated = update_address(
             &conn,
             "a1",
@@ -709,6 +926,7 @@ mod tests {
             AddressStatus::Reserved,
             " gw.example ",
             "",
+            Some("site-only"),
             Some(""),
             Some("conn-1"),
             None,
@@ -716,6 +934,7 @@ mod tests {
         .unwrap();
         assert_eq!(updated.address, "172.16.0.7");
         assert_eq!(updated.dns_name, "gw.example");
+        assert_eq!(updated.site_id.as_deref(), Some("site-only"));
         assert!(updated.host_id.is_none());
         assert_eq!(updated.connection_id.as_deref(), Some("conn-1"));
         remove_address(&conn, "a1").unwrap();
@@ -723,6 +942,147 @@ mod tests {
         // Deleting a prefix leaves its addresses documented.
         remove_prefix(&conn, "leaf").unwrap();
         assert_eq!(snapshot(&conn).unwrap().addresses.len(), 1);
+    }
+
+    #[test]
+    fn host_binding_implies_site_while_site_only_remains_valid() {
+        let conn = open_test_db();
+        conn.execute(
+            "INSERT INTO itops_hosts (id, site_id, hostname) VALUES ('host-1', 'site-1', 'router-1')",
+            [],
+        )
+        .unwrap();
+
+        let host_bound = create_address(
+            &conn,
+            "host-address",
+            "10.20.0.1",
+            "",
+            AddressStatus::Active,
+            "",
+            "",
+            Some("wrong-site"),
+            Some("host-1"),
+            None,
+            None,
+        )
+        .unwrap();
+        assert_eq!(host_bound.site_id.as_deref(), Some("site-1"));
+
+        let site_only = create_address(
+            &conn,
+            "site-address",
+            "10.20.0.2",
+            "",
+            AddressStatus::Active,
+            "",
+            "",
+            Some("site-2"),
+            None,
+            None,
+            None,
+        )
+        .unwrap();
+        assert_eq!(site_only.site_id.as_deref(), Some("site-2"));
+        assert!(site_only.host_id.is_none());
+    }
+
+    #[test]
+    fn unbound_addresses_inherit_the_most_specific_prefix_site() {
+        let conn = open_test_db();
+        create_prefix(
+            &conn,
+            "root",
+            "10.0.0.0/8",
+            "",
+            "",
+            PrefixStatus::Container,
+            "",
+            Some("site-root"),
+        )
+        .unwrap();
+        create_prefix(
+            &conn,
+            "segment",
+            "10.20.0.0/16",
+            "",
+            "",
+            PrefixStatus::Active,
+            "",
+            Some("site-segment"),
+        )
+        .unwrap();
+        for (id, address, site_id) in [
+            ("segment-address", "10.20.0.10", None),
+            ("root-address", "10.30.0.10", None),
+            ("direct-address", "10.20.0.11", Some("site-direct")),
+        ] {
+            create_address(
+                &conn,
+                id,
+                address,
+                "",
+                AddressStatus::Active,
+                "",
+                "",
+                site_id,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+        }
+
+        let initial_snapshot = snapshot(&conn).unwrap();
+        let address = |id: &str| {
+            initial_snapshot
+                .addresses
+                .iter()
+                .find(|record| record.id == id)
+                .unwrap()
+        };
+        assert_eq!(
+            address("segment-address").site_id.as_deref(),
+            Some("site-segment")
+        );
+        assert!(address("segment-address").site_inherited);
+        assert_eq!(
+            address("root-address").site_id.as_deref(),
+            Some("site-root")
+        );
+        assert!(address("root-address").site_inherited);
+        assert_eq!(
+            address("direct-address").site_id.as_deref(),
+            Some("site-direct")
+        );
+        assert!(!address("direct-address").site_inherited);
+
+        update_prefix(
+            &conn,
+            "segment",
+            "10.20.0.0/16",
+            "",
+            "",
+            PrefixStatus::Active,
+            "",
+            Some("site-moved"),
+        )
+        .unwrap();
+        let refreshed = snapshot(&conn).unwrap();
+        let inherited = refreshed
+            .addresses
+            .iter()
+            .find(|record| record.id == "segment-address")
+            .unwrap();
+        let direct = refreshed
+            .addresses
+            .iter()
+            .find(|record| record.id == "direct-address")
+            .unwrap();
+        assert_eq!(inherited.site_id.as_deref(), Some("site-moved"));
+        assert!(inherited.site_inherited);
+        assert_eq!(direct.site_id.as_deref(), Some("site-direct"));
+        assert!(!direct.site_inherited);
     }
 
     #[test]
@@ -737,6 +1097,7 @@ mod tests {
                 AddressStatus::Active,
                 "",
                 "",
+                None,
                 None,
                 None,
                 None,

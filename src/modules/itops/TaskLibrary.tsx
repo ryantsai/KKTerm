@@ -387,7 +387,7 @@ function TaskEditor({ task, onClose }: { task: ItopsTask | null; onClose: () => 
 
   return (
     <DialogShell onBackdrop={onClose}>
-      <div className="au-editor pb-editor" role="dialog" aria-modal="true" aria-label={task ? t("itops.tasks.editTitle") : t("itops.tasks.newTitle")}>
+      <div className="au-editor pb-editor kk-surface" role="dialog" aria-modal="true" aria-label={task ? t("itops.tasks.editTitle") : t("itops.tasks.newTitle")}>
         <div className="au-editor-head">
           <span className="au-editor-tile"><ItIcon name="book" size={17} /></span>
           <strong className="pb-editor-title">{task ? t("itops.tasks.editTitle") : t("itops.tasks.newTitle")}</strong>

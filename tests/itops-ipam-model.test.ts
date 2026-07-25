@@ -95,10 +95,10 @@ test("claim candidates come from literal IPs only, deduplicated and sorted", () 
   // 10.0.0.2 is already documented in the default VRF. The corp-VRF copy of
   // 10.0.0.9 does not hide the default-VRF candidate.
   assert.deepEqual(
-    candidates.map((entry) => [entry.address, entry.label, entry.origin]),
+    candidates.map((entry) => [entry.address, entry.label, entry.origin, entry.siteId]),
     [
-      ["10.0.0.9", "Edge switch", "connection"],
-      ["10.0.0.10", "Core", "host"],
+      ["10.0.0.9", "Edge switch", "connection", null],
+      ["10.0.0.10", "Core", "host", "site-1"],
     ],
   );
 });

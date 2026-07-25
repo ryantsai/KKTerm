@@ -1685,6 +1685,11 @@
       "siteLabel": "Sito",
       "siteHint": "Facoltativo. I prefissi restano visibili da ogni Sito.",
       "siteUnscoped": "Tutti i Siti",
+      "addressSiteHint": "Facoltativo. Senza un Sito o Host diretto, l'indirizzo eredita il Sito del segmento.",
+      "hostLabel": "Host",
+      "hostHint": "Facoltativo. Selezionando un Host viene selezionato anche il relativo Sito.",
+      "hostUnbound": "Nessun Host",
+      "hostOption": "{{host}} — {{site}}",
       "descriptionLabel": "Descrizione",
       "prefixStatus": {
         "container": "Contenitore",
