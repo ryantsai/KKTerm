@@ -7,6 +7,22 @@ export type DefaultTerminalAppearance = {
   terminalBackground: DashboardBackground | null;
 };
 
+export function resolveVisibleTerminalBackground({
+  connectionBackground,
+  paneBackground,
+  sharedBackground,
+  usePaneBackground,
+}: {
+  connectionBackground: DashboardBackground | null | undefined;
+  paneBackground: DashboardBackground | null | undefined;
+  sharedBackground: DashboardBackground | null | undefined;
+  usePaneBackground: boolean;
+}): DashboardBackground | null {
+  return usePaneBackground
+    ? (paneBackground ?? connectionBackground ?? null)
+    : (sharedBackground ?? connectionBackground ?? null);
+}
+
 function terminalSettingsForConnection(
   type: ConnectionType,
   sshSettings: SshSettings,

@@ -9,7 +9,12 @@ import {
 import {
   terminalToolbarOpacity,
 } from "../src/modules/workspace/connections/terminal/colorSchemes";
-import type { LayoutNode, WorkspacePane } from "../src/types";
+import {
+  resolveVisibleTerminalBackground,
+  supportsTerminalAppearanceDefaults,
+} from "../src/modules/workspace/connections/terminalAppearanceDefaults";
+import type { ConnectionType, LayoutNode, WorkspacePane } from "../src/types";
+import type { DashboardBackground } from "../src/modules/dashboard/types";
 
 function pane(id: string): WorkspacePane {
   return { id } as WorkspacePane;
@@ -73,6 +78,32 @@ test("terminal toolbar transparency stays 25 points below terminal transparency"
   assert.equal(terminalToolbarOpacity(100), 100, "values below 25% transparency clamp at zero");
 });
 
+test("every xterm-backed Connection uses the visible shared background for toolbar opacity", () => {
+  const dynamicBackground: DashboardBackground = {
+    kind: "dynamic",
+    dynamic: "rainyWindow",
+  };
+  const xtermConnectionTypes: ConnectionType[] = ["local", "ssh", "telnet", "serial"];
+
+  for (const connectionType of xtermConnectionTypes) {
+    assert.equal(
+      supportsTerminalAppearanceDefaults(connectionType),
+      true,
+      `${connectionType} should use the shared xterm appearance path`,
+    );
+    assert.equal(
+      resolveVisibleTerminalBackground({
+        connectionBackground: null,
+        paneBackground: null,
+        sharedBackground: dynamicBackground,
+        usePaneBackground: false,
+      }),
+      dynamicBackground,
+      `${connectionType} should derive toolbar opacity from the background painted behind its xterm`,
+    );
+  }
+});
+
 test("terminal action menu portals above the Activity Rail and flips edge submenus", async () => {
   const [terminalWorkspace, baseCss, terminalCss] = await Promise.all([
     readFile(
@@ -89,6 +120,10 @@ test("terminal action menu portals above the Activity Rail and flips edge submen
   assert.match(
     terminalWorkspace,
     /actionsMenuOpen\s*\?\s*createPortal\([\s\S]*terminal-actions-menu-portal[\s\S]*document\.body/,
+  );
+  assert.match(
+    terminalWorkspace,
+    /resolveVisibleTerminalBackground\(\{[\s\S]*sharedBackground:\s*sharedTerminalBackground,[\s\S]*usePaneBackground:\s*usePaneTerminalBackgrounds/,
   );
   assert.match(terminalWorkspace, /terminal-actions-menu-submenus-right/);
   assert.match(

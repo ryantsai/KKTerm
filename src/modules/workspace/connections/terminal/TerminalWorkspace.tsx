@@ -21,6 +21,7 @@ import { markOsIconAutoDetectDone, osIconIdForDetection, osIconRefForId, shouldA
 import { notifyConnectionTreeInvalidated } from "../connectionSidebarState";
 import { defaultTerminalSettings } from "../../../../app-defaults";
 import { forgetTmuxSessionId, useWorkspaceStore } from "../../../../store";
+import { resolveVisibleTerminalBackground } from "../terminalAppearanceDefaults";
 import { GitIcon } from "../../../git/GitIcon";
 import { useGitRepoDetection } from "../../../git/useGitRepoDetection";
 import { createTerminalRenderer, logTerminalFontAtlasState, scheduleTerminalFontAtlasRefresh, type TerminalDimensions, type TerminalRenderer } from "./renderer";
@@ -539,6 +540,7 @@ export function TerminalWorkspace({
             onCloseSinglePane={onClose}
             onFocusPane={(paneId) => setFocusedPane(tab.id, paneId)}
             canSplit={canSplit}
+            sharedTerminalBackground={workspaceTerminalBackground}
             usePaneTerminalBackgrounds={usePaneTerminalBackgrounds}
             onFontChange={handleFontChange}
             onOpenAssistant={onOpenAssistant}
@@ -616,6 +618,7 @@ function TerminalLayoutView({
   onCloseSinglePane,
   onFocusPane,
   canSplit,
+  sharedTerminalBackground,
   usePaneTerminalBackgrounds,
   onFontChange,
   onOpenAssistant,
@@ -638,6 +641,7 @@ function TerminalLayoutView({
   onCloseSinglePane?: () => void;
   onFocusPane: (paneId: string) => void;
   canSplit: boolean;
+  sharedTerminalBackground: Connection["terminalBackground"];
   usePaneTerminalBackgrounds: boolean;
   onFontChange: (delta: number | "reset") => void;
   onOpenAssistant: () => void;
@@ -680,6 +684,7 @@ function TerminalLayoutView({
             canClosePane={panes.length > 1 || canCloseSinglePane}
             onClosePane={panes.length === 1 ? onCloseSinglePane : undefined}
             onFontChange={onFontChange}
+            sharedTerminalBackground={sharedTerminalBackground}
             usePaneTerminalBackgrounds={usePaneTerminalBackgrounds}
             onOpenAssistant={onOpenAssistant}
             onOpenSftp={onOpenSftp}
@@ -728,6 +733,7 @@ function TerminalLayoutView({
           onCloseSinglePane={onCloseSinglePane}
           onFocusPane={onFocusPane}
           canSplit={canSplit}
+          sharedTerminalBackground={sharedTerminalBackground}
           usePaneTerminalBackgrounds={usePaneTerminalBackgrounds}
           onFontChange={onFontChange}
           onOpenAssistant={onOpenAssistant}
@@ -1571,6 +1577,7 @@ function TerminalPaneView({
   canClosePane,
   onClosePane,
   onFontChange,
+  sharedTerminalBackground,
   usePaneTerminalBackgrounds,
   onOpenAssistant,
   onOpenSftp,
@@ -1591,6 +1598,7 @@ function TerminalPaneView({
   canClosePane: boolean;
   onClosePane?: () => void;
   onFontChange: (delta: number | "reset") => void;
+  sharedTerminalBackground: Connection["terminalBackground"];
   usePaneTerminalBackgrounds: boolean;
   onOpenAssistant: () => void;
   onOpenSftp: (connection: Connection, paneId: string) => void;
@@ -1741,9 +1749,12 @@ function TerminalPaneView({
   const terminalOpacity =
     pane.connection?.terminalOpacity ?? (100 - terminalSettings.defaultTransparency);
   const terminalTransparency = 100 - terminalOpacity;
-  const terminalBackground = usePaneTerminalBackgrounds
-    ? (pane.terminalBackground ?? pane.connection?.terminalBackground ?? null)
-    : (pane.connection?.terminalBackground ?? null);
+  const terminalBackground = resolveVisibleTerminalBackground({
+    connectionBackground: pane.connection?.terminalBackground,
+    paneBackground: pane.terminalBackground,
+    sharedBackground: sharedTerminalBackground,
+    usePaneBackground: usePaneTerminalBackgrounds,
+  });
   // Per-Connection color scheme override wins over the global Terminal
   // Settings default; both live-apply to the open renderer below.
   const terminalColorScheme = pane.connection?.terminalColorScheme ?? terminalSettings.colorScheme;
