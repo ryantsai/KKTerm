@@ -618,3 +618,7 @@ export function hexColorWithAlpha(hex: string, alpha: number) {
   const b = value & 0xff;
   return `rgba(${r}, ${g}, ${b}, ${clampedAlpha})`;
 }
+
+export function terminalToolbarOpacity(terminalOpacity: number) {
+  return Math.min(100, Math.max(0, Math.round(terminalOpacity) + 25));
+}

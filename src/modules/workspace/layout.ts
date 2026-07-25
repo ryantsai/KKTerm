@@ -22,6 +22,56 @@ export function defaultLayoutFor(panes: WorkspacePane[]): LayoutNode | undefined
   };
 }
 
+export function panoramaLayoutFor(panes: WorkspacePane[]): LayoutNode | undefined {
+  if (panes.length <= 2) {
+    return defaultLayoutFor(panes);
+  }
+
+  const leaf = (pane: WorkspacePane): LayoutNode => ({ type: "leaf", paneId: pane.id });
+  const rowCount = Math.max(2, Math.floor(Math.sqrt(panes.length)));
+  const baseRowSize = Math.floor(panes.length / rowCount);
+  const largerRowCount = panes.length % rowCount;
+  const rows: LayoutNode[] = [];
+  let offset = 0;
+
+  for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
+    const rowSize = baseRowSize + (rowIndex < largerRowCount ? 1 : 0);
+    const rowPanes = panes.slice(offset, offset + rowSize);
+    offset += rowSize;
+    rows.push(
+      rowPanes.length === 1
+        ? leaf(rowPanes[0]!)
+        : {
+            type: "split",
+            orientation: "horizontal",
+            children: rowPanes.map(leaf),
+          },
+    );
+  }
+
+  return {
+    type: "split",
+    orientation: "vertical",
+    children: rows,
+  };
+}
+
+export function reconcilePanoramaLayout(
+  layout: LayoutNode | undefined,
+  panes: WorkspacePane[],
+): LayoutNode | undefined {
+  const next = ensureLayout(layout, panes);
+  if (
+    panes.length > 3 &&
+    next?.type === "split" &&
+    next.orientation === "horizontal" &&
+    next.children.every((child) => child.type === "leaf")
+  ) {
+    return panoramaLayoutFor(panes);
+  }
+  return next;
+}
+
 export function ensureLayout(layout: LayoutNode | undefined, panes: WorkspacePane[]): LayoutNode | undefined {
   if (!layout) {
     return defaultLayoutFor(panes);

@@ -18,6 +18,8 @@ import {
   ensureLayout,
   hydrateLayout,
   leafOrder,
+  panoramaLayoutFor,
+  reconcilePanoramaLayout,
   serializeLayout,
   splitLayout,
 } from "./modules/workspace/layout";
@@ -47,7 +49,6 @@ import type {
   QuickCommandTarget,
   TerminalSettings,
   TerminalStartMetric,
-  LayoutNode,
   WorkspacePane,
   StatusBarNotice,
   Workspace,
@@ -1136,44 +1137,6 @@ function connectionForChild(connection: Connection, child: WorkspaceChildConnect
       ? child.terminalBackground
       : connection.terminalBackground,
   };
-}
-
-function layoutForChildPanes(panes: WorkspacePane[]): LayoutNode | undefined {
-  if (panes.length <= 2) {
-    return defaultLayoutFor(panes);
-  }
-  const leaf = (pane: WorkspacePane): LayoutNode => ({ type: "leaf", paneId: pane.id });
-  if (panes.length === 3) {
-    return {
-      type: "split",
-      orientation: "vertical",
-      children: [
-        {
-          type: "split",
-          orientation: "horizontal",
-          children: [leaf(panes[0]!), leaf(panes[1]!)],
-        },
-        leaf(panes[2]!),
-      ],
-    };
-  }
-  const columns = Math.ceil(Math.sqrt(panes.length));
-  const rows: LayoutNode[] = [];
-  for (let index = 0; index < panes.length; index += columns) {
-    const rowPanes = panes.slice(index, index + columns);
-    rows.push(
-      rowPanes.length === 1
-        ? leaf(rowPanes[0]!)
-        : {
-            type: "split",
-            orientation: "horizontal",
-            children: rowPanes.map(leaf),
-          },
-    );
-  }
-  return rows.length === 1
-    ? rows[0]
-    : { type: "split", orientation: "vertical", children: rows };
 }
 
 function createPaneId(connectionId: string) {
@@ -2362,8 +2325,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       kind: "terminal",
       panes: childPanes,
       layout: existingGroupTab && convertedPlainPaneIds.size === 0
-        ? ensureLayout(existingGroupTab.layout, childPanes)
-        : layoutForChildPanes(childPanes),
+        ? reconcilePanoramaLayout(existingGroupTab.layout, childPanes)
+        : panoramaLayoutFor(childPanes),
       focusedPaneId: focusedPaneIdForChildLayout(existingGroupTab, childPanes),
       maximizedPaneId: undefined,
       quickCommandBarVisible:
@@ -2440,7 +2403,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       subtitle: "",
       kind: "terminal",
       panes,
-      layout: layoutForChildPanes(panes),
+      layout: panoramaLayoutFor(panes),
       focusedPaneId: panes[0]?.id,
       quickCommandBarVisible: false,
     };
@@ -2950,7 +2913,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         subtitle: sourceConnection.localStartupDirectory || sourceConnection.host || "",
         kind: "terminal",
         panes,
-        layout: layoutForChildPanes(panes),
+        layout: panoramaLayoutFor(panes),
         focusedPaneId: filePane.id,
         maximizedPaneId: filePane.id,
         quickCommandBarVisible: false,

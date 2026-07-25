@@ -297,7 +297,7 @@
   justify-content: space-between;
   padding: 0 10px;
   color: #95a7bb;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--terminal-toolbar-background, rgba(255, 255, 255, 0.03));
   border-bottom: 1px solid var(--terminal-border);
 }
 
@@ -2333,6 +2333,14 @@
 }
 
 .terminal-bg-popover {
+  z-index: 260;
+}
+
+.terminal-actions-menu-portal {
+  position: fixed;
+  top: 0;
+  right: auto;
+  left: 0;
   z-index: 260;
 }
 

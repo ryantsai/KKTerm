@@ -29,8 +29,8 @@ test("Connection Tree supports forced new Tabs from Ctrl-click and Add to menu",
   );
   assert.match(
     storeSource,
-    /layout: existingGroupTab && convertedPlainPaneIds\.size === 0\s*\?\s*ensureLayout\(existingGroupTab\.layout,\s*childPanes\)\s*:\s*layoutForChildPanes\(childPanes\)/,
-    "parent panorama rebuilds should reset to the balanced grid when plain parent Panes are converted",
+    /layout: existingGroupTab && convertedPlainPaneIds\.size === 0\s*\?\s*reconcilePanoramaLayout\(existingGroupTab\.layout,\s*childPanes\)\s*:\s*panoramaLayoutFor\(childPanes\)/,
+    "parent panorama rebuilds should retain deliberate mixed splits while balancing legacy flat rows",
   );
   assert.match(
     storeSource,

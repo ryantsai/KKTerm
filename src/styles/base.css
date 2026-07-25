@@ -291,6 +291,16 @@ h2 {
   display: grid;
 }
 
+.terminal-actions-menu-submenus-right .terminal-menu-submenu-panel {
+  right: auto;
+  left: calc(100% + 4px);
+}
+
+.terminal-actions-menu-submenus-right .terminal-menu-submenu::after {
+  right: -8px;
+  left: auto;
+}
+
 
 .tree-context-menu {
   position: fixed;

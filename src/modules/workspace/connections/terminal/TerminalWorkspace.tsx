@@ -11,7 +11,7 @@ import { SaveAsIcon } from "../../../../app/ui/SaveAsIcon";
 import { listen } from "@tauri-apps/api/event";
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { FormEvent, KeyboardEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode } from "react";
+import type { CSSProperties, FormEvent, KeyboardEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import i18next from "../../../../i18n/config";
 import { ariaInvalid, dialogButtonAria, menuButtonAria } from "../../../../lib/aria";
@@ -24,7 +24,7 @@ import { forgetTmuxSessionId, useWorkspaceStore } from "../../../../store";
 import { GitIcon } from "../../../git/GitIcon";
 import { useGitRepoDetection } from "../../../git/useGitRepoDetection";
 import { createTerminalRenderer, logTerminalFontAtlasState, scheduleTerminalFontAtlasRefresh, type TerminalDimensions, type TerminalRenderer } from "./renderer";
-import { resolveTerminalColorScheme, TERMINAL_COLOR_SCHEMES } from "./colorSchemes";
+import { hexColorWithAlpha, resolveTerminalColorScheme, terminalToolbarOpacity, TERMINAL_COLOR_SCHEMES } from "./colorSchemes";
 import { findQuickSelectMatches, labelQuickSelectMatches, quickSelectPointerAction, type LabeledQuickSelectMatch } from "./quickSelect";
 import {
   fixedTerminalShortcutFromKeyboardEvent,
@@ -1687,6 +1687,8 @@ function TerminalPaneView({
   }
 
   const actionsMenuRef = useRef<HTMLDivElement | null>(null);
+  const actionsMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const actionsMenuPortalRef = useRef<HTMLDivElement | null>(null);
   const terminalSettings = useWorkspaceStore((state) => state.terminalSettings);
   const sshSettings = useWorkspaceStore((state) => state.sshSettings);
   const generalSettings = useWorkspaceStore((state) => state.generalSettings);
@@ -1746,6 +1748,13 @@ function TerminalPaneView({
   // Settings default; both live-apply to the open renderer below.
   const terminalColorScheme = pane.connection?.terminalColorScheme ?? terminalSettings.colorScheme;
   const globalTerminalColorScheme = resolveTerminalColorScheme(terminalSettings.colorScheme);
+  const terminalToolbarBackground =
+    terminalBackground?.kind === "dynamic"
+      ? hexColorWithAlpha(
+          resolveTerminalColorScheme(terminalColorScheme).palette.background,
+          terminalToolbarOpacity(terminalOpacity) / 100,
+        )
+      : undefined;
   const committedTerminalColorSchemeRef = useRef(terminalColorScheme);
 
   useEffect(() => {
@@ -1856,13 +1865,84 @@ function TerminalPaneView({
 
     function onPointerDown(event: PointerEvent) {
       const target = event.target as Node | null;
-      if (actionsMenuRef.current && target && !actionsMenuRef.current.contains(target)) {
+      const clickedTrigger = Boolean(
+        actionsMenuRef.current && target && actionsMenuRef.current.contains(target),
+      );
+      const clickedMenu = Boolean(
+        actionsMenuPortalRef.current && target && actionsMenuPortalRef.current.contains(target),
+      );
+      if (!clickedTrigger && !clickedMenu) {
         setActionsMenuOpen(false);
       }
     }
 
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [actionsMenuOpen]);
+
+  useLayoutEffect(() => {
+    if (!actionsMenuOpen) {
+      return;
+    }
+
+    function positionActionsMenu() {
+      const trigger = actionsMenuTriggerRef.current;
+      const menu = actionsMenuPortalRef.current;
+      if (!trigger || !menu) {
+        return;
+      }
+
+      menu.classList.remove("terminal-actions-menu-submenus-right");
+      const triggerBounds = trigger.getBoundingClientRect();
+      const menuBounds = menu.getBoundingClientRect();
+      const viewportPadding = 8;
+      const gap = 4;
+      const maxLeft = window.innerWidth - menuBounds.width - viewportPadding;
+      const below = triggerBounds.bottom + gap;
+      const above = triggerBounds.top - menuBounds.height - gap;
+      const top =
+        below + menuBounds.height > window.innerHeight - viewportPadding && above >= viewportPadding
+          ? above
+          : Math.min(below, window.innerHeight - menuBounds.height - viewportPadding);
+      const left = Math.max(
+        viewportPadding,
+        Math.min(triggerBounds.right - menuBounds.width, maxLeft),
+      );
+
+      menu.style.left = `${left}px`;
+      menu.style.top = `${Math.max(viewportPadding, top)}px`;
+
+      let widestSubmenu = 0;
+      const submenuPanels = menu.querySelectorAll<HTMLElement>(".terminal-menu-submenu-panel");
+      for (const panel of submenuPanels) {
+        const display = panel.style.display;
+        const visibility = panel.style.visibility;
+        panel.style.display = "grid";
+        panel.style.visibility = "hidden";
+        widestSubmenu = Math.max(widestSubmenu, panel.getBoundingClientRect().width);
+        panel.style.display = display;
+        panel.style.visibility = visibility;
+      }
+
+      const positionedBounds = menu.getBoundingClientRect();
+      const activityRailRight =
+        document.querySelector(".activity-rail")?.getBoundingClientRect().right ?? 0;
+      const fitsLeft = positionedBounds.left - gap - widestSubmenu >= activityRailRight + gap;
+      const fitsRight =
+        positionedBounds.right + gap + widestSubmenu <= window.innerWidth - viewportPadding;
+      menu.classList.toggle(
+        "terminal-actions-menu-submenus-right",
+        !fitsLeft && fitsRight,
+      );
+    }
+
+    positionActionsMenu();
+    window.addEventListener("resize", positionActionsMenu);
+    window.addEventListener("scroll", positionActionsMenu, true);
+    return () => {
+      window.removeEventListener("resize", positionActionsMenu);
+      window.removeEventListener("scroll", positionActionsMenu, true);
+    };
   }, [actionsMenuOpen]);
 
   useEffect(() => {
@@ -2962,6 +3042,11 @@ function TerminalPaneView({
         focusTerminalRenderer();
       }}
       ref={paneRef}
+      style={
+        terminalToolbarBackground
+          ? ({ "--terminal-toolbar-background": terminalToolbarBackground } as CSSProperties)
+          : undefined
+      }
     >
       <header>
         <span className="terminal-pane-title">
@@ -3111,13 +3196,18 @@ function TerminalPaneView({
               data-tutorial-id="terminal.actions"
               {...menuButtonAria(actionsMenuOpen)}
               onClick={() => setActionsMenuOpen((open) => !open)}
+              ref={actionsMenuTriggerRef}
               title={t("terminal.actions")}
               type="button"
             >
               <Menu size={13} />
             </button>
-            {actionsMenuOpen ? (
-              <div className="terminal-menu terminal-actions-menu" role="menu">
+            {actionsMenuOpen ? createPortal(
+              <div
+                className="terminal-menu terminal-actions-menu terminal-actions-menu-portal"
+                ref={actionsMenuPortalRef}
+                role="menu"
+              >
                 {isSshPane && pane.connection ? (
                   <button
                     className="terminal-menu-item"
@@ -3383,7 +3473,8 @@ function TerminalPaneView({
                     })}
                   </div>
                 </div>
-              </div>
+              </div>,
+              document.body,
             ) : null}
           </div>
           {canClosePane ? (
