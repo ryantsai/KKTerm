@@ -2362,6 +2362,7 @@
     "customModelId": "カスタムモデルID",
     "extraHeaders": "追加ヘッダー",
     "extraHeadersPlaceholder": "sid=1, \"env\"=\"3\"",
+    "hideSensitiveHeaderValues": "機密値を非表示",
     "reasoningEffort": "推論の強度",
     "howToGetApiKey": "取得方法",
     "sshDefaults": "SSHとSFTPのデフォルト",

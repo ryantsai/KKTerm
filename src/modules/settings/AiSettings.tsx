@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Bot, Copy, RefreshCw, X } from "../../lib/reicon";
+import { Bot, Copy, Eye, EyeOff, Plus, RefreshCw, Trash2, X } from "../../lib/reicon";
 import { useTranslation } from "react-i18next";
 import {
   AI_PROVIDER_DEFINITIONS,
@@ -40,6 +40,12 @@ import {
   selectModelOptionsForProvider,
   sortModelOptionsForProvider,
 } from "../../ai/providerModelOptions";
+import {
+  isSensitiveExtraHeader,
+  parseExtraHeaders,
+  serializeExtraHeaders,
+  type ExtraHeaderRow,
+} from "../../ai/extraHeaders";
 import { McpServersControl } from "./McpServers";
 import { AssistantSkillsControl } from "./AssistantSkills";
 import {
@@ -470,18 +476,140 @@ function AiProviderSettingsFieldControl({
       );
     case "extraHeaders":
       return (
-        <label>
-          <span>{t("settings.extraHeaders")}</span>
-          <input
-            onChange={(event) => onDraftChange({ extraHeaders: event.currentTarget.value })}
-            placeholder={t("settings.extraHeadersPlaceholder")}
-            value={draft.extraHeaders}
-          />
-        </label>
+        <ExtraHeadersEditor
+          key={definition.kind}
+          onChange={(extraHeaders) => onDraftChange({ extraHeaders })}
+          value={draft.extraHeaders}
+        />
       );
     default:
       return null;
   }
+}
+
+function ExtraHeadersEditor({
+  onChange,
+  value,
+}: {
+  onChange: (value: string) => void;
+  value: string;
+}) {
+  const { t } = useTranslation();
+  const [hideSensitiveValues, setHideSensitiveValues] = useState(true);
+  const [revealedRows, setRevealedRows] = useState<Set<number>>(() => new Set());
+  const rows = parseExtraHeaders(value);
+
+  function updateRows(nextRows: ExtraHeaderRow[]) {
+    onChange(serializeExtraHeaders(nextRows));
+  }
+
+  function updateRow(index: number, patch: Partial<ExtraHeaderRow>) {
+    updateRows(rows.map((row, rowIndex) => (rowIndex === index ? { ...row, ...patch } : row)));
+  }
+
+  function toggleRowVisibility(index: number) {
+    setRevealedRows((current) => {
+      const next = new Set(current);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  }
+
+  return (
+    <section className="settings-extra-headers-editor">
+      <div className="settings-extra-headers-heading">
+        <strong>{t("settings.extraHeaders")}</strong>
+        <div className="settings-extra-headers-sensitive-toggle">
+          <span>{t("settings.hideSensitiveHeaderValues")}</span>
+          <ToggleSwitch
+            ariaLabel={t("settings.hideSensitiveHeaderValues")}
+            checked={hideSensitiveValues}
+            onChange={(checked) => {
+              setHideSensitiveValues(checked);
+              setRevealedRows(new Set());
+            }}
+          />
+        </div>
+      </div>
+      {rows.length > 0 ? (
+        <>
+          <div aria-hidden="true" className="settings-extra-header-columns">
+            <span>{t("settings.environmentVariableName")}</span>
+            <span>{t("settings.environmentVariableValue")}</span>
+          </div>
+          <div className="settings-extra-header-rows">
+            {rows.map((row, index) => {
+              const isSensitive = isSensitiveExtraHeader(row);
+              const isRevealed = revealedRows.has(index);
+              const isMasked = hideSensitiveValues && isSensitive && !isRevealed;
+              return (
+                <div className="settings-extra-header-row" key={index}>
+                  <input
+                    aria-label={t("settings.environmentVariableName")}
+                    autoComplete="off"
+                    onChange={(event) => {
+                      setRevealedRows(new Set());
+                      updateRow(index, { name: event.currentTarget.value });
+                    }}
+                    placeholder={t("settings.environmentVariableName")}
+                    value={row.name}
+                  />
+                  <div className="settings-extra-header-value">
+                    <input
+                      aria-label={t("settings.environmentVariableValue")}
+                      autoComplete="off"
+                      onChange={(event) => updateRow(index, { value: event.currentTarget.value })}
+                      placeholder={t("settings.environmentVariableValue")}
+                      type={isMasked ? "password" : "text"}
+                      value={row.value}
+                    />
+                    {hideSensitiveValues && isSensitive ? (
+                      <button
+                        aria-label={t(
+                          isRevealed
+                            ? "settings.urlCredentialHideValue"
+                            : "settings.urlCredentialShowValue",
+                        )}
+                        className="settings-extra-header-icon-button"
+                        onClick={() => toggleRowVisibility(index)}
+                        type="button"
+                      >
+                        {isRevealed ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
+                    ) : null}
+                  </div>
+                  <button
+                    aria-label={t("common.remove")}
+                    className="toolbar-button settings-extra-header-remove"
+                    onClick={() => {
+                      setRevealedRows(new Set());
+                      updateRows(rows.filter((_, rowIndex) => rowIndex !== index));
+                    }}
+                    title={t("common.remove")}
+                    type="button"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      ) : null}
+      <button
+        className="toolbar-button settings-inline-add-button settings-extra-header-add"
+        onClick={() => updateRows([...rows, { name: "", value: "" }])}
+        type="button"
+      >
+        <Plus size={15} />
+        {t("common.add")}
+      </button>
+    </section>
+  );
 }
 
 function providerCliBackend(providerKind: AiProviderKind): {

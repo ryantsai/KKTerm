@@ -2362,6 +2362,7 @@
     "customModelId": "Custom model ID",
     "extraHeaders": "Extra headers",
     "extraHeadersPlaceholder": "sid=1, \"env\"=\"3\"",
+    "hideSensitiveHeaderValues": "Hide sensitive values",
     "reasoningEffort": "Reasoning effort",
     "howToGetApiKey": "How to get",
     "sshDefaults": "SSH defaults",

@@ -2362,6 +2362,7 @@
     "customModelId": "ID modello personalizzato",
     "extraHeaders": "Intestazioni aggiuntive",
     "extraHeadersPlaceholder": "sid=1, \"env\"=\"3\"",
+    "hideSensitiveHeaderValues": "Nascondi valori sensibili",
     "reasoningEffort": "Livello di ragionamento",
     "howToGetApiKey": "Come ottenere",
     "sshDefaults": "Predefiniti SSH e SFTP",

@@ -2362,6 +2362,7 @@
     "customModelId": "Custom model ID",
     "extraHeaders": "Tiêu đề bổ sung",
     "extraHeadersPlaceholder": "sid=1, \"env\"=\"3\"",
+    "hideSensitiveHeaderValues": "Ẩn giá trị nhạy cảm",
     "reasoningEffort": "Reasoning effort",
     "howToGetApiKey": "Cách lấy",
     "sshDefaults": "SSH defaults",

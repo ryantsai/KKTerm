@@ -2362,6 +2362,7 @@
     "customModelId": "ID โมเดลที่กำหนดเอง",
     "extraHeaders": "ส่วนหัวเพิ่มเติม",
     "extraHeadersPlaceholder": "sid=1, \"env\"=\"3\"",
+    "hideSensitiveHeaderValues": "ซ่อนค่าที่ละเอียดอ่อน",
     "reasoningEffort": "ความพยายามในการให้เหตุผล",
     "howToGetApiKey": "วิธีรับ",
     "sshDefaults": "ค่าเริ่มต้น SSH และ SFTP",
