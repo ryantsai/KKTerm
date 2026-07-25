@@ -19,13 +19,24 @@ import {
 } from "../../../../app/ui/dialog";
 import { technicalInputProps } from "../../../../lib/inputBehavior";
 import { invokeCommand, isTauriRuntime } from "../../../../lib/tauri";
-import { Plus, Settings, Terminal, WandSparkles } from "../../../../lib/reicon";
+import { ChevronDown, Layers, Plus, Settings, Terminal, WandSparkles } from "../../../../lib/reicon";
 import { getReiconIconComponent } from "../../../../lib/reiconCatalog";
-import { useWorkspaceStore } from "../../../../store";
-import type { Connection, QuickCommand, WorkspaceTab } from "../../../../types";
+import {
+  quickCommandId,
+  quickCommandsForTarget,
+  selectedQuickCommandBundle,
+  useWorkspaceStore,
+} from "../../../../store";
+import type {
+  Connection,
+  QuickCommand,
+  QuickCommandTarget,
+  WorkspaceTab,
+} from "../../../../types";
 import { ACCENT_PALETTE } from "../../../dashboard/registry/palette";
 import { ICON_NAMES, type AccentName, type IconName } from "../../../dashboard/types";
 import { getPaneRenderer, writeInputToPane } from "../../paneRegistry";
+import { QuickCommandBundleList } from "./QuickCommandBundles";
 import {
   QUICK_COMMAND_LIBRARY,
   QUICK_COMMAND_LIBRARY_CATEGORIES,
@@ -42,14 +53,6 @@ const DEFAULT_DRAFT: QuickCommandDraft = {
   sendEnter: true,
   confirm: false,
 };
-const EMPTY_QUICK_COMMANDS: QuickCommand[] = [];
-
-function quickCommandId() {
-  return typeof crypto !== "undefined" && "randomUUID" in crypto
-    ? `quick-${crypto.randomUUID()}`
-    : `quick-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
 function payloadFor(command: QuickCommand) {
   const text = command.command.replace(/\r\n/g, "\n");
   if (!command.sendEnter) {
@@ -137,12 +140,21 @@ function sanitizeGeneratedCommand(value: string) {
 export function QuickCommandBar({ tab }: { tab: WorkspaceTab }) {
   const { t } = useTranslation();
   const connectionId = tab.connection?.id;
-  const quickCommands = useWorkspaceStore((state) =>
-    connectionId ? state.quickCommandsByConnection[connectionId] ?? EMPTY_QUICK_COMMANDS : EMPTY_QUICK_COMMANDS,
-  );
+  // The bar shows the selected Quick Command Bundle when the Connection has
+  // one, and the Connection's own unbundled list otherwise.
+  const activeBundle = useWorkspaceStore((state) => selectedQuickCommandBundle(state, connectionId));
+  const activeBundleId = activeBundle?.id;
+  const target = useMemo<QuickCommandTarget | undefined>(() => {
+    if (activeBundleId) {
+      return { kind: "bundle", bundleId: activeBundleId };
+    }
+    return connectionId ? { kind: "connection", connectionId } : undefined;
+  }, [activeBundleId, connectionId]);
+  const quickCommands = useWorkspaceStore((state) => quickCommandsForTarget(state, target));
   const ensureQuickCommandsLoaded = useWorkspaceStore((state) => state.ensureQuickCommandsLoaded);
   const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [bundlesDialogOpen, setBundlesDialogOpen] = useState(false);
   const [pendingCommand, setPendingCommand] = useState<QuickCommand | null>(null);
 
   useEffect(() => {
@@ -171,6 +183,18 @@ export function QuickCommandBar({ tab }: { tab: WorkspaceTab }) {
   return (
     <>
       <div className="quick-command-bar" aria-label={t("terminal.quickCommandsBar")}>
+        {connectionId ? (
+          <button
+            className="quick-command-bundle"
+            onClick={() => setBundlesDialogOpen(true)}
+            title={t("terminal.quickCommandBundleSwitch")}
+            type="button"
+          >
+            <Layers size={13} />
+            <span>{activeBundle?.name ?? t("terminal.quickCommandBundleNone")}</span>
+            <ChevronDown size={12} />
+          </button>
+        ) : null}
         {quickCommands.length === 0 ? (
           <button className="quick-command-empty" onClick={() => setDialogOpen(true)} type="button">
             <Plus size={13} />
@@ -205,13 +229,20 @@ export function QuickCommandBar({ tab }: { tab: WorkspaceTab }) {
       </div>
       {dialogOpen ? (
         <QuickCommandManagerDialog
+          bundleName={activeBundle?.name}
           connection={tab.connection}
-          connectionId={connectionId}
+          target={target}
           onClose={() => setDialogOpen(false)}
           onRunCommand={(command) => {
             setDialogOpen(false);
             run(command);
           }}
+        />
+      ) : null}
+      {bundlesDialogOpen && connectionId ? (
+        <QuickCommandBundlesDialog
+          connectionId={connectionId}
+          onClose={() => setBundlesDialogOpen(false)}
         />
       ) : null}
       {pendingCommand ? (
@@ -233,21 +264,51 @@ export function QuickCommandBar({ tab }: { tab: WorkspaceTab }) {
 }
 
 
-function QuickCommandManagerDialog({
-  connection,
+/** Switch this Connection between its own Quick Commands and a global bundle,
+ *  and create/rename/delete bundles without leaving the Quick Command Bar. */
+function QuickCommandBundlesDialog({
   connectionId,
+  onClose,
+}: {
+  connectionId: string;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <DialogShell onBackdrop={onClose}>
+      <Sheet
+        width={460}
+        title={t("terminal.quickCommandBundlesTitle")}
+        ariaLabel={t("terminal.quickCommandBundlesTitle")}
+        footer={
+          <Actions cancel={<Btn onClick={onClose}>{t("terminal.quickCommandsDone")}</Btn>} />
+        }
+      >
+        <p className="kk-dlg-sub" style={{ margin: "-2px 0 0" }}>
+          {t("terminal.quickCommandBundlesSubtitle")}
+        </p>
+        <QuickCommandBundleList connectionId={connectionId} subdialogZClassName="kk-qc-subdialog" />
+      </Sheet>
+    </DialogShell>
+  );
+}
+
+export function QuickCommandManagerDialog({
+  bundleName,
+  connection,
+  target,
   onClose,
   onRunCommand,
 }: {
+  /** Set when the edited list is a global bundle, so the dialog can say so. */
+  bundleName?: string;
   connection: Connection | undefined;
-  connectionId: string | undefined;
+  target: QuickCommandTarget | undefined;
   onClose: () => void;
-  onRunCommand: (command: QuickCommand) => void;
+  onRunCommand?: (command: QuickCommand) => void;
 }) {
   const { t } = useTranslation();
-  const quickCommands = useWorkspaceStore((state) =>
-    connectionId ? state.quickCommandsByConnection[connectionId] ?? EMPTY_QUICK_COMMANDS : EMPTY_QUICK_COMMANDS,
-  );
+  const quickCommands = useWorkspaceStore((state) => quickCommandsForTarget(state, target));
   const moveQuickCommand = useWorkspaceStore((state) => state.moveQuickCommand);
   const reorderQuickCommand = useWorkspaceStore((state) => state.reorderQuickCommand);
   const removeQuickCommand = useWorkspaceStore((state) => state.removeQuickCommand);
@@ -269,8 +330,8 @@ function QuickCommandManagerDialog({
     const activeDraggingCommandId = draggingCommandId;
 
     function onPointerMove(event: PointerEvent) {
-      const target = document.elementFromPoint(event.clientX, event.clientY);
-      const row = target instanceof Element ? target.closest<HTMLElement>(".kk-qc-row") : null;
+      const element = document.elementFromPoint(event.clientX, event.clientY);
+      const row = element instanceof Element ? element.closest<HTMLElement>(".kk-qc-row") : null;
       const targetCommandId = row?.dataset.commandId ?? null;
       if (targetCommandId && targetCommandId !== activeDraggingCommandId) {
         setDragOverCommandId(targetCommandId);
@@ -282,7 +343,7 @@ function QuickCommandManagerDialog({
     function onPointerUp() {
       const targetCommandId = dragOverCommandIdRef.current;
       if (targetCommandId && targetCommandId !== activeDraggingCommandId) {
-        reorderQuickCommand(connectionId, activeDraggingCommandId, targetCommandId);
+        reorderQuickCommand(target, activeDraggingCommandId, targetCommandId);
       }
       setDraggingCommandId(null);
       setDragOverCommandId(null);
@@ -294,7 +355,7 @@ function QuickCommandManagerDialog({
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
     };
-  }, [connectionId, draggingCommandId, reorderQuickCommand]);
+  }, [draggingCommandId, reorderQuickCommand, target]);
 
   function openCustomDialog(command: QuickCommand | null = null) {
     setEditingCommand(command);
@@ -339,7 +400,9 @@ function QuickCommandManagerDialog({
           }
         >
           <p className="kk-dlg-sub" style={{ margin: "-2px 0 0" }}>
-            {t("terminal.quickCommandsManageSubtitle")}
+            {bundleName
+              ? t("terminal.quickCommandsBundleSubtitle", { name: bundleName })
+              : t("terminal.quickCommandsManageSubtitle")}
           </p>
           {quickCommands.length === 0 ? (
             <p className="kk-qc-muted">{t("terminal.quickCommandsEmpty")}</p>
@@ -376,7 +439,7 @@ function QuickCommandManagerDialog({
                     <div className="kk-qc-acts">
                       <button
                         className="kk-iconbtn"
-                        onClick={() => moveQuickCommand(connectionId, command.id, -1)}
+                        onClick={() => moveQuickCommand(target, command.id, -1)}
                         disabled={index === 0}
                         type="button"
                         aria-label={t("terminal.quickCommandsMoveUp", { label: command.label })}
@@ -386,7 +449,7 @@ function QuickCommandManagerDialog({
                       </button>
                       <button
                         className="kk-iconbtn"
-                        onClick={() => moveQuickCommand(connectionId, command.id, 1)}
+                        onClick={() => moveQuickCommand(target, command.id, 1)}
                         disabled={index === quickCommands.length - 1}
                         type="button"
                         aria-label={t("terminal.quickCommandsMoveDown", { label: command.label })}
@@ -396,7 +459,7 @@ function QuickCommandManagerDialog({
                       </button>
                       <button
                         className="kk-iconbtn danger"
-                        onClick={() => removeQuickCommand(connectionId, command.id)}
+                        onClick={() => removeQuickCommand(target, command.id)}
                         type="button"
                         aria-label={t("terminal.quickCommandsDelete", { label: command.label })}
                         title={t("terminal.quickCommandsDelete", { label: command.label })}
@@ -415,7 +478,7 @@ function QuickCommandManagerDialog({
         <CustomCommandDialog
           command={editingCommand}
           connection={connection}
-          connectionId={connectionId}
+          target={target}
           onClose={() => {
             setCustomDialogOpen(false);
             setEditingCommand(null);
@@ -424,7 +487,7 @@ function QuickCommandManagerDialog({
       ) : null}
       {presetDialogOpen ? (
         <PresetLibraryDialog
-          connectionId={connectionId}
+          target={target}
           onClose={() => setPresetDialogOpen(false)}
           onRunCommand={onRunCommand}
         />
@@ -436,12 +499,12 @@ function QuickCommandManagerDialog({
 function CustomCommandDialog({
   command: existingCommand,
   connection,
-  connectionId,
+  target,
   onClose,
 }: {
   command: QuickCommand | null;
   connection: Connection | undefined;
-  connectionId: string | undefined;
+  target: QuickCommandTarget | undefined;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -528,9 +591,9 @@ function CustomCommandDialog({
       command: commandText,
     };
     if (existingCommand) {
-      updateQuickCommand(connectionId, saved);
+      updateQuickCommand(target, saved);
     } else {
-      addQuickCommand(connectionId, saved);
+      addQuickCommand(target, saved);
     }
     onClose();
   }
@@ -737,13 +800,13 @@ function CustomCommandDialog({
 }
 
 function PresetLibraryDialog({
-  connectionId,
+  target,
   onClose,
   onRunCommand,
 }: {
-  connectionId: string | undefined;
+  target: QuickCommandTarget | undefined;
   onClose: () => void;
-  onRunCommand: (command: QuickCommand) => void;
+  onRunCommand?: (command: QuickCommand) => void;
 }) {
   const { t } = useTranslation();
   const addQuickCommand = useWorkspaceStore((state) => state.addQuickCommand);
@@ -868,12 +931,14 @@ function PresetLibraryDialog({
                   <code>{entry.command}</code>
                 </div>
                 <div className="kk-qc-lib-entry-actions">
-                  <Btn sm icon="plus" onClick={() => addQuickCommand(connectionId, commandFromLibrary(entry, t))}>
+                  <Btn sm icon="plus" onClick={() => addQuickCommand(target, commandFromLibrary(entry, t))}>
                     {t("terminal.quickCommandsAdd")}
                   </Btn>
-                  <Btn sm icon="send" onClick={() => onRunCommand(commandFromLibrary(entry, t))}>
-                    {t("terminal.quickCommandsRun")}
-                  </Btn>
+                  {onRunCommand ? (
+                    <Btn sm icon="send" onClick={() => onRunCommand(commandFromLibrary(entry, t))}>
+                      {t("terminal.quickCommandsRun")}
+                    </Btn>
+                  ) : null}
                 </div>
               </article>
             ))}

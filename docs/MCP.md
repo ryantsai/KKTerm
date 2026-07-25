@@ -187,6 +187,8 @@ Workspace id as `workspaceId` when creating a Connection or Connection folder.
 
 ### Workspace Module — Quick Commands dangerous (`kkterm.workspace.quick_commands.dangerous.*`)
 
+Every `quick_commands.*` tool follows the Connection's Quick Command Bundle selection, so it reads and writes exactly the list that Connection's Quick Command Bar shows. When a Connection uses a shared bundle, a create or edit changes that bundle for every Connection using it; when it has no bundle, only that Connection's own list changes.
+
 | Name | Description |
 |---|---|
 | `kkterm.workspace.quick_commands.dangerous.create` | Create a saved Quick Command for a Connection's Quick Command Bar. Requires `built_in_mcp_allow_all_dangerous = true`. Backed by `quick_command_create`; it saves a runnable shortcut but does not execute the command. |

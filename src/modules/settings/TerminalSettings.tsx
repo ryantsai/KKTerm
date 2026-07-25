@@ -23,7 +23,13 @@ import {
   resolveTerminalColorScheme,
   TERMINAL_COLOR_SCHEMES,
 } from "../workspace/connections/terminal/colorSchemes";
-import type { TerminalCursorStyle, TerminalSettings as TerminalSettingsType } from "../../types";
+import { QuickCommandManagerDialog } from "../workspace/connections/terminal/QuickCommandBar";
+import { QuickCommandBundleList } from "../workspace/connections/terminal/QuickCommandBundles";
+import type {
+  QuickCommandBundle,
+  TerminalCursorStyle,
+  TerminalSettings as TerminalSettingsType,
+} from "../../types";
 import { localShellOptionsForPlatform, resolveAvailableLocalShell } from "../workspace/connections/utils";
 import { customShellPresetsForPlatform, findCustomShellPreset } from "./customShellPresets";
 import { SettingsSectionHeader, useSettingsSaveRegistration } from "./shared";
@@ -249,6 +255,9 @@ export function TerminalSettings() {
   const setTerminalSettings = useWorkspaceStore((state) => state.setTerminalSettings);
   const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
   const [draft, setDraft] = useState(terminalSettings);
+  // Quick Command Bundles save immediately through the workspace store; they are
+  // app-global and deliberately outside this page's draft/save cycle.
+  const [editingBundle, setEditingBundle] = useState<QuickCommandBundle | null>(null);
   const {
     customFonts,
     systemFonts,
@@ -830,6 +839,16 @@ export function TerminalSettings() {
       </fieldset>
 
       <fieldset className="settings-subsection settings-fieldset">
+        <legend>{t("settings.quickCommandBundles")}</legend>
+        <div>
+          <p className="field-hint">{t("settings.quickCommandBundlesHint")}</p>
+        </div>
+        <div className="settings-quick-command-bundles kk-surface">
+          <QuickCommandBundleList onEditCommands={setEditingBundle} />
+        </div>
+      </fieldset>
+
+      <fieldset className="settings-subsection settings-fieldset">
         <legend>{t("settings.terminalClipboard")}</legend>
         <div>
           <p className="field-hint">{t("settings.terminalClipboardHint")}</p>
@@ -893,6 +912,14 @@ export function TerminalSettings() {
         </div>
       </fieldset>
 
+      {editingBundle ? (
+        <QuickCommandManagerDialog
+          bundleName={editingBundle.name}
+          connection={undefined}
+          target={{ kind: "bundle", bundleId: editingBundle.id }}
+          onClose={() => setEditingBundle(null)}
+        />
+      ) : null}
     </section>
   );
 }

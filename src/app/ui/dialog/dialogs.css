@@ -759,6 +759,36 @@ textarea.kk-inp {
   gap: 2px;
 }
 
+/* ---------------------- quick command bundles ------------------------- */
+.kk-qc-main small {
+  display: block;
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: var(--text-2);
+}
+.kk-qcb-row.selected {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.kk-qcb-check {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  color: var(--accent);
+}
+.kk-qcb-add {
+  display: flex;
+  margin-top: 9px;
+}
+.kk-qcb-copy {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+
 .kk-iconbtn {
   display: inline-flex;
   align-items: center;
