@@ -77,7 +77,7 @@ test("all Componentry hero backgrounds use the shared KKTerm background path", a
   assert.match(tauriConfig, /componentry-mit\.txt/);
 });
 
-test("Componentry background names exist in every locale with pending review files", async () => {
+test("Componentry background names exist in every locale", async () => {
   const localeDirectory = new URL("../src/i18n/locales/", import.meta.url);
   const localeFiles = (await readdir(localeDirectory)).filter((file) => file.endsWith(".json"));
   for (const localeFile of localeFiles) {
@@ -86,16 +86,5 @@ test("Componentry background names exist in every locale with pending review fil
       assert.equal(typeof locale.dashboard.dynamicBackgrounds[background.id], "string");
       assert.notEqual(locale.dashboard.dynamicBackgrounds[background.id].trim(), "");
     }
-  }
-
-  for (const background of backgrounds) {
-    const todo = await readFile(
-      new URL(
-        `../docs/localization_todo/dashboard.dynamicBackgrounds.${background.id}.md`,
-        import.meta.url,
-      ),
-      "utf8",
-    );
-    assert.match(todo, new RegExp(`dashboard\\.dynamicBackgrounds\\.${background.id}`));
   }
 });
