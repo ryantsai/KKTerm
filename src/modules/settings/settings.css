@@ -3331,6 +3331,7 @@ input.settings-credential-search {
   position: relative;
   top: auto;
   align-self: stretch;
+  align-content: start;
   width: 198px;
   min-height: 0;
   gap: 1px;

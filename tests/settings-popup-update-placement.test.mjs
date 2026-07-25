@@ -80,7 +80,7 @@ test("Settings renders as an app-owned popup over the active base Module", async
   assert.match(settingsStyles, /\.settings-popup\s+\.settings-layout\s*\{[^}]*min-height:\s*0;[^}]*overflow:\s*hidden;/s);
   assert.match(
     settingsStyles,
-    /\.settings-popup\s+\.settings-nav\s*\{[^}]*align-self:\s*stretch;[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto;/s,
+    /\.settings-popup\s+\.settings-nav\s*\{[^}]*align-self:\s*stretch;[^}]*align-content:\s*start;[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto;/s,
   );
   assert.match(settingsStyles, /\.settings-popup\s+\.settings-nav-item\s*\{[^}]*min-height:\s*34px;/s);
   assert.match(settingsStyles, /\.settings-popup\s+\.settings-content\s*\{[^}]*overflow:\s*auto;/s);
