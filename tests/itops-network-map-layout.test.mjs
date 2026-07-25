@@ -28,7 +28,7 @@ test("Network Maps open as a gallery and keep map switching inside the focused w
   assert.doesNotMatch(styles, /\.nm-palette-btn/);
 });
 
-test("Network Nodes use SVG device artwork and links expose medium, count, and speed", async () => {
+test("Network Nodes use the expanded device catalog and links expose complete documented properties", async () => {
   const [designer, types] = await Promise.all([
     read("src/modules/itops/NetworkMapDesigner.tsx"),
     read("src/types.ts"),
@@ -36,12 +36,23 @@ test("Network Nodes use SVG device artwork and links expose medium, count, and s
 
   assert.match(designer, /function NetworkNodeArtwork/);
   assert.match(designer, /className="nm-device-art"/);
+  assert.match(designer, /"gateway"/);
+  assert.match(designer, /"switchL3"/);
+  assert.match(designer, /"vpnGateway"/);
+  assert.match(designer, /"wirelessController"/);
+  assert.match(designer, /"camera"/);
+  assert.match(designer, /NODE_CATEGORIES/);
+  assert.match(designer, /function NetworkLinkEdge/);
+  assert.match(designer, /edgeTypes=\{edgeTypes\}/);
   assert.match(designer, /itops\.networkMap\.linkKindLabel/);
   assert.match(designer, /itops\.networkMap\.linkCountLabel/);
   assert.match(designer, /itops\.networkMap\.linkSpeedLabel/);
+  assert.match(designer, /itops\.networkMap\.statusLabel/);
   assert.match(designer, /link\.connectionCount > 1 \? `×\$\{link\.connectionCount\}`/);
   assert.match(types, /connectionCount: number;/);
   assert.match(types, /speed: string;/);
+  assert.match(types, /status: NetworkMapStatus;/);
+  assert.match(types, /\| "wirelessController"/);
 });
 
 test("leaving the IT Ops Module exits the focused Network Map editor", async () => {

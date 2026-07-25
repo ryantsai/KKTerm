@@ -9,11 +9,11 @@ import {
 } from "../src/modules/itops/reachability";
 
 function node(id: string): NetworkNode {
-  return { id, label: id, kind: "switch", x: 0, y: 0, address: "", note: "" };
+  return { id, label: id, kind: "switch", x: 0, y: 0, address: "", status: "up", note: "" };
 }
 
 function link(id: string, from: string, to: string): NetworkLink {
-  return { id, from, to, label: "", kind: "ethernet", connectionCount: 1, speed: "" };
+  return { id, from, to, label: "", kind: "ethernet", connectionCount: 1, speed: "", status: "up" };
 }
 
 // core ── dist ── access, with an isolated-by-design spare hanging off core.

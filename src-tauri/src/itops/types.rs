@@ -1189,12 +1189,31 @@ pub struct IpamScanResult {
 #[serde(rename_all = "camelCase")]
 pub enum NetworkNodeKind {
     Router,
+    Gateway,
     #[default]
     Switch,
+    SwitchL3,
+    Hub,
     Firewall,
+    VpnGateway,
+    IdsIps,
     Server,
     LoadBalancer,
+    Proxy,
+    Dns,
+    Database,
+    Storage,
     Cloud,
+    Isp,
+    AccessPoint,
+    WirelessController,
+    Desktop,
+    Laptop,
+    Smartphone,
+    Iot,
+    Voip,
+    Printer,
+    Camera,
 }
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
@@ -1207,12 +1226,20 @@ pub enum NetworkLinkKind {
     Wireless,
 }
 
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum NetworkMapStatus {
+    #[default]
+    Up,
+    Warning,
+}
+
 fn default_network_link_count() -> u16 {
     1
 }
 
-/// One device on a Network Map. `address` optionally ties the node to an IPAM
-/// record; the three id fields are soft references like an Address Record's.
+/// One device on a Network Map. `address` is a free-text canvas caption; the
+/// three id fields are optional soft references retained for imported Hosts.
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NetworkNode {
@@ -1225,9 +1252,12 @@ pub struct NetworkNode {
     pub x: f64,
     #[serde(default)]
     pub y: f64,
-    /// Optional management address, matched against IPAM Address Records.
+    /// Optional free-text address/caption shown beneath the node label.
     #[serde(default)]
     pub address: String,
+    /// Operator-authored documentation, never a live monitoring result.
+    #[serde(default)]
+    pub status: NetworkMapStatus,
     #[serde(default)]
     pub host_id: Option<String>,
     #[serde(default)]
@@ -1254,6 +1284,9 @@ pub struct NetworkLink {
     pub connection_count: u16,
     #[serde(default)]
     pub speed: String,
+    /// Operator-authored documentation; What-If outages remain transient.
+    #[serde(default)]
+    pub status: NetworkMapStatus,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]

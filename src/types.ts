@@ -623,13 +623,33 @@ export interface IpamScanResult {
 // One row per map holds the whole graph, following the Room Objects precedent.
 export type NetworkNodeKind =
   | "router"
+  | "gateway"
   | "switch"
+  | "switchL3"
+  | "hub"
   | "firewall"
+  | "vpnGateway"
+  | "idsIps"
   | "server"
   | "loadBalancer"
-  | "cloud";
+  | "proxy"
+  | "dns"
+  | "database"
+  | "storage"
+  | "cloud"
+  | "isp"
+  | "accessPoint"
+  | "wirelessController"
+  | "desktop"
+  | "laptop"
+  | "smartphone"
+  | "iot"
+  | "voip"
+  | "printer"
+  | "camera";
 
 export type NetworkLinkKind = "ethernet" | "fiber" | "wan" | "wireless";
+export type NetworkMapStatus = "up" | "warning";
 
 export interface NetworkNode {
   id: string;
@@ -638,8 +658,10 @@ export interface NetworkNode {
   // Canvas position in flow coordinates.
   x: number;
   y: number;
-  // Optional management address, matched against IPAM Address Records.
+  // Optional free-text address/caption shown beneath the node label.
   address: string;
+  // Documented operator-authored state; never live monitoring data.
+  status: NetworkMapStatus;
   hostId?: string | null;
   connectionId?: string | null;
   rackItemId?: string | null;
@@ -658,6 +680,8 @@ export interface NetworkLink {
   connectionCount: number;
   // Free text keeps units and aggregate notation operator-defined.
   speed: string;
+  // Documented operator-authored state; What-If outages remain transient.
+  status: NetworkMapStatus;
 }
 
 export interface NetworkGraph {

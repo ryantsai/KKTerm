@@ -162,11 +162,11 @@ A durable, hand-drawn logical link diagram stored in `itops_network_maps`, globa
 _Avoid_: topology, topology map, network topology, discovery map, live map
 
 **Network Node**:
-One box on a **Network Map**: a label, a kind (router, switch, firewall, server, load balancer, or cloud), a canvas position, and optional free-text address and note. The address is a caption drawn under the label, not a reference into **IPAM**. A Network Node is not a **Host**, a **Rack Device**, or a **Connection**, though a map can be seeded from a Site's Hosts.
+One box on a **Network Map**: a label, one of the designer's routing, security, traffic-management, compute/storage, cloud/WAN, wireless, or endpoint kinds, a canvas position, optional free-text address and note, and a documented operational/warning status. The address is a caption drawn under the label, not a reference into **IPAM**. Status is operator-authored documentation, never live monitoring data. A Network Node is not a **Host**, a **Rack Device**, or a **Connection**, though a map can be seeded from a Site's Hosts.
 _Avoid_: device, host (on a map), rack item
 
 **Network Link**:
-One undirected edge between two **Network Nodes**, with an optional name/label (a port, a circuit id, a VLAN), a kind (ethernet, fiber, WAN, or wireless), a free-text speed, and a count of parallel physical links represented by the one drawn line. Undirected is deliberate: a link asserts that the two nodes can reach each other, not a traffic direction.
+One undirected edge between two **Network Nodes**, with an optional name/label (a port, a circuit id, a VLAN), a kind (ethernet, fiber, WAN, or wireless), a free-text speed, a documented operational/warning status, and a count of parallel physical links represented by the drawn strands. Undirected is deliberate: a link asserts that the two nodes can reach each other, not a traffic direction. Its status is operator-authored documentation and remains separate from the transient What-If down set.
 _Avoid_: connection (that is the durable Connection model), edge, cable, circuit
 
 **Entry point**:

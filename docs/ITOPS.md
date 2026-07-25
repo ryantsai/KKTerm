@@ -231,15 +231,22 @@ a wider prefix silently re-parents everything it now contains, and no
 migration or repair pass is needed. Utilization counts documented addresses
 against usable addresses; nothing is scanned or probed.
 
-**Network Node** — one box on a Network Map: id, label, kind (`router` /
-`switch` / `firewall` / `server` / `loadBalancer` / `cloud`), canvas
-position, and optional free-text address and note. The address is a caption
-drawn under the label; it is not a foreign key into IPAM.
+**Network Node** — one box on a Network Map: id, label, kind, canvas
+position, optional free-text address and note, and documented status (`up` /
+`warning`). Kinds are grouped in the designer as Core & Routing (`router`,
+`gateway`, `switch`, `switchL3`, `hub`), Security (`firewall`, `vpnGateway`,
+`idsIps`), Traffic Management (`loadBalancer`, `proxy`, `dns`), Compute &
+Storage (`server`, `database`, `storage`), Cloud & WAN (`cloud`, `isp`),
+Wireless (`accessPoint`, `wirelessController`), and Endpoints (`desktop`,
+`laptop`, `smartphone`, `iot`, `voip`, `printer`, `camera`). The address is a
+caption drawn under the label; it is not a foreign key into IPAM. Status is
+operator-authored documentation, not a polled device state.
 
 **Network Link** — one **undirected** edge between two Network Nodes, with
 an optional label (a port, a circuit id, a VLAN) and a kind (`ethernet` /
-`fiber` / `wan` / `wireless`), a free-text speed, and a count of parallel
-physical links represented by the one drawn line. Undirected is deliberate:
+`fiber` / `wan` / `wireless`), a free-text speed, documented status (`up` /
+`warning`), and a count of parallel physical links represented by up to four
+drawn strands. Undirected is deliberate:
 a link asserts mutual reachability, not a traffic direction, and the
 reachability maths treats it symmetrically. The stored link carries no
 handle/anchor fields — the canvas picks the two anchors geometrically at
@@ -438,9 +445,10 @@ position-only `onNodesChange` filtering, `deleteKeyCode={null}`,
 `proOptions={{ hideAttribution: true }}`. Because a Network Link is
 undirected while xyflow edges are directed, every node renders four stacked
 source+target handles (`left`/`right`/`top`/`bottom`) and the edge picks its
-`sourceHandle`/`targetHandle` per render from the two node centres. That
-gives floating-edge behaviour with no custom edge component and keeps the
-stored link free of anchor state. The editor is keyed by map id so switching
+`sourceHandle`/`targetHandle` per render from the two node centres. The
+custom edge renderer draws an orthogonal route and expands a parallel-link
+count into up to four visible strands while keeping handle/anchor state out
+of the stored graph. The editor is keyed by map id so switching
 maps remounts rather than carrying unsaved edits across. In What-If mode the
 palette and the canvas's drag/connect affordances are disabled: that mode
 reads the map, it does not edit it. What-If is a contextual toolbar action,
