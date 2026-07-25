@@ -169,6 +169,7 @@ export function GeneralSettings() {
   );
   const closeAllTabs = useWorkspaceStore((state) => state.closeAllTabs);
   const resetAllLayouts = useWorkspaceStore((state) => state.resetAllLayouts);
+  const resetQuickCommandState = useWorkspaceStore((state) => state.resetQuickCommandState);
   const setAiProviderHasApiKey = useWorkspaceStore(
     (state) => state.setAiProviderHasApiKey,
   );
@@ -340,6 +341,7 @@ export function GeneralSettings() {
       // Notes content, favorites, CLI labels, IT Ops layout) from both the
       // database and the cache so it does not survive a settings reset.
       await resetDurableUiState();
+      resetQuickCommandState();
       window.dispatchEvent(new CustomEvent(CHILD_CONNECTIONS_UPDATED_EVENT));
       const resetLanguage = detectLanguage();
       await switchLanguage(resetLanguage);

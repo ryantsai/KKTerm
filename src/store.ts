@@ -1593,6 +1593,7 @@ export interface WorkspaceState {
   setQuickCommandBarVisible: (tabId: string, visible: boolean) => void;
   ensureQuickCommandsLoaded: (connectionId: string | undefined) => void;
   ensureQuickCommandBundlesLoaded: () => void;
+  resetQuickCommandState: () => void;
   addQuickCommand: (target: QuickCommandTarget | undefined, command: QuickCommand) => void;
   updateQuickCommand: (target: QuickCommandTarget | undefined, command: QuickCommand) => void;
   moveQuickCommand: (
@@ -3425,13 +3426,21 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       return;
     }
     const selectedBundleId = loadStoredQuickCommandBundleSelection(connectionId);
+    const resolvedBundleId = get().quickCommandBundles.some(
+      (bundle) => bundle.id === selectedBundleId,
+    )
+      ? selectedBundleId
+      : "";
+    if (selectedBundleId && !resolvedBundleId) {
+      persistQuickCommandBundleSelection(connectionId, "");
+    }
     set((state) => ({
       quickCommandsByConnection: {
         ...state.quickCommandsByConnection,
         [connectionId]: loadStoredQuickCommands(connectionId),
       },
-      quickCommandBundleByConnection: selectedBundleId
-        ? { ...state.quickCommandBundleByConnection, [connectionId]: selectedBundleId }
+      quickCommandBundleByConnection: resolvedBundleId
+        ? { ...state.quickCommandBundleByConnection, [connectionId]: resolvedBundleId }
         : state.quickCommandBundleByConnection,
     }));
   },
@@ -3440,6 +3449,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       return;
     }
     set({ quickCommandBundles: loadStoredQuickCommandBundles(), quickCommandBundlesLoaded: true });
+  },
+  resetQuickCommandState: () => {
+    set({
+      quickCommandsByConnection: {},
+      quickCommandBundles: [],
+      quickCommandBundlesLoaded: true,
+      quickCommandBundleByConnection: {},
+    });
   },
   addQuickCommand: (target, command) => {
     if (!target) {

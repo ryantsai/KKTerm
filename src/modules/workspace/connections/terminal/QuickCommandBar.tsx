@@ -281,10 +281,7 @@ function QuickCommandBundlesDialog({
         title={t("terminal.quickCommandBundlesTitle")}
         ariaLabel={t("terminal.quickCommandBundlesTitle")}
         footer={
-          <>
-            <span className="kk-spacer" />
-            <Btn onClick={onClose}>{t("terminal.quickCommandsDone")}</Btn>
-          </>
+          <Actions cancel={<Btn onClick={onClose}>{t("terminal.quickCommandsDone")}</Btn>} />
         }
       >
         <p className="kk-dlg-sub" style={{ margin: "-2px 0 0" }}>
