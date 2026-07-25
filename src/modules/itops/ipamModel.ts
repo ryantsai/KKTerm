@@ -95,7 +95,11 @@ export function collectClaimCandidates(
   hosts: readonly SiteHost[],
   existing: readonly IpAddressRecord[],
 ): ClaimCandidate[] {
-  const taken = new Set(existing.map((record) => record.address));
+  // Bulk claims are created in the default VRF. The same address documented in
+  // another VRF must not hide a valid default-VRF candidate.
+  const taken = new Set(
+    existing.filter((record) => !record.vrf.trim()).map((record) => record.address),
+  );
   const seen = new Set<string>();
   const candidates: ClaimCandidate[] = [];
 

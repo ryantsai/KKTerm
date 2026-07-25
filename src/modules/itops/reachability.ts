@@ -24,6 +24,8 @@ export interface WhatIfResult {
   isolated: string[];
   /** The down nodes, echoed back for rendering. */
   down: string[];
+  /** Links the operator explicitly cut, excluding links severed by a down node. */
+  downLinks: string[];
   /** Links dropped because they were cut or an endpoint went down. */
   severedLinks: string[];
 }
@@ -102,7 +104,8 @@ function walk(
 export function analyzeWhatIf(graph: NetworkGraph, selection: WhatIfSelection): WhatIfResult {
   const adjacency = buildAdjacency(graph);
   const downNodes = new Set(selection.nodes.filter((id) => adjacency.edges.has(id)));
-  const downLinks = new Set(selection.links);
+  const knownLinks = new Set(graph.links.map((link) => link.id));
+  const downLinks = new Set(selection.links.filter((id) => knownLinks.has(id)));
   const roots = effectiveRoots(graph);
   const reachable = walk(adjacency, roots, downNodes, downLinks);
 
@@ -113,7 +116,14 @@ export function analyzeWhatIf(graph: NetworkGraph, selection: WhatIfSelection): 
     )
     .map((link) => link.id);
 
-  return { roots, reachable, isolated, down: [...downNodes], severedLinks };
+  return {
+    roots,
+    reachable,
+    isolated,
+    down: [...downNodes],
+    downLinks: [...downLinks],
+    severedLinks,
+  };
 }
 
 /**
@@ -126,18 +136,20 @@ export function findWeakPoints(graph: NetworkGraph): WeakPoint[] {
   const adjacency = buildAdjacency(graph);
   const roots = effectiveRoots(graph);
   if (roots.length === 0) return [];
-  const total = adjacency.nodeIds.length;
+  const baseline = walk(adjacency, roots, new Set(), new Set());
 
   const points: WeakPoint[] = [];
   for (const id of adjacency.nodeIds) {
     const reachable = walk(adjacency, roots, new Set([id]), new Set());
     // The failed node does not count as collateral damage from its own outage.
-    const isolates = total - 1 - reachable.size;
+    const isolates = [...baseline].filter(
+      (baselineId) => baselineId !== id && !reachable.has(baselineId),
+    ).length;
     if (isolates > 0) points.push({ kind: "node", id, isolates });
   }
   for (const link of graph.links) {
     const reachable = walk(adjacency, roots, new Set(), new Set([link.id]));
-    const isolates = total - reachable.size;
+    const isolates = [...baseline].filter((baselineId) => !reachable.has(baselineId)).length;
     if (isolates > 0) points.push({ kind: "link", id: link.id, isolates });
   }
 

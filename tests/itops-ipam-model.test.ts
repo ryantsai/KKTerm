@@ -89,10 +89,11 @@ test("claim candidates come from literal IPs only, deduplicated and sorted", () 
       connection("c3", "Duplicate", "10.0.0.9"),
     ],
     [host("h1", "10.0.0.10", "  Core  "), host("h2", "10.0.0.2"), host("h3", "not-an-ip")],
-    [record("10.0.0.2")],
+    [record("10.0.0.2"), { ...record("10.0.0.9"), vrf: "corp" }],
     );
 
-  // 10.0.0.2 is already documented; the hostname entries never had an address.
+  // 10.0.0.2 is already documented in the default VRF. The corp-VRF copy of
+  // 10.0.0.9 does not hide the default-VRF candidate.
   assert.deepEqual(
     candidates.map((entry) => [entry.address, entry.label, entry.origin]),
     [

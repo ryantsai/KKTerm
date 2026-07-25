@@ -48,6 +48,7 @@ fn read_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<MapRow> {
 
 fn row_to_map(row: MapRow) -> NetworkMap {
     let (id, name, description, site_id, sort_order, graph_json) = row;
+    let graph = serde_json::from_str(&graph_json).unwrap_or_default();
     NetworkMap {
         id,
         name,
@@ -55,8 +56,9 @@ fn row_to_map(row: MapRow) -> NetworkMap {
         site_id,
         sort_order,
         // A map with an unreadable blob still lists (as an empty canvas) rather
-        // than failing the whole destination.
-        graph: serde_json::from_str(&graph_json).unwrap_or_default(),
+        // than failing the whole destination. Sanitize valid blobs too because
+        // selective imports write rows directly instead of using create/update.
+        graph: sanitize_graph(&graph),
     }
 }
 
@@ -298,5 +300,29 @@ mod tests {
         remove_map(&conn, "map-2").unwrap();
         assert!(remove_map(&conn, "map-2").is_err());
         assert_eq!(list_maps(&conn).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn sanitizes_graphs_loaded_from_direct_imports() {
+        let conn = open_test_db();
+        conn.execute(
+            "INSERT INTO itops_network_maps (id, name, sort_order, graph_json)
+             VALUES ('map-1', 'Imported', 0, ?)",
+            [r#"{
+                "nodes":[{"id":"core","label":"Core"},{"id":"edge","label":"Edge"}],
+                "links":[
+                    {"id":"valid","from":"core","to":"edge"},
+                    {"id":"dangling","from":"core","to":"ghost"},
+                    {"id":"self","from":"core","to":"core"}
+                ],
+                "roots":["core","ghost"]
+            }"#],
+        )
+        .unwrap();
+
+        let loaded = get_map(&conn, "map-1").unwrap().unwrap();
+        assert_eq!(loaded.graph.links.len(), 1);
+        assert_eq!(loaded.graph.links[0].id, "valid");
+        assert_eq!(loaded.graph.roots, vec!["core".to_string()]);
     }
 }

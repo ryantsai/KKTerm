@@ -46,6 +46,13 @@ test("cutting a link isolates without downing a device", () => {
   const result = analyzeWhatIf(chain(), { nodes: [], links: ["l1"] });
   assert.deepEqual(result.isolated, ["dist", "access"]);
   assert.deepEqual(result.down, []);
+  assert.deepEqual(result.downLinks, ["l1"]);
+});
+
+test("links severed by a down node are not reported as separately cut", () => {
+  const result = analyzeWhatIf(chain(), { nodes: ["dist"], links: [] });
+  assert.deepEqual(result.downLinks, []);
+  assert.deepEqual(result.severedLinks, ["l1", "l2"]);
 });
 
 test("a redundant ring survives any single loss", () => {
@@ -102,4 +109,16 @@ test("self-links and dangling endpoints never make a node look connected", () =>
     findStrandedNodes(graph).map((entry) => entry.id),
     ["a", "b"],
   );
+});
+
+test("weak points do not count nodes that were already unreachable", () => {
+  const graph: NetworkGraph = {
+    nodes: ["core", "edge", "island"].map(node),
+    links: [link("uplink", "core", "edge")],
+    roots: ["core"],
+  };
+  assert.deepEqual(findWeakPoints(graph), [
+    { kind: "node", id: "core", isolates: 1 },
+    { kind: "link", id: "uplink", isolates: 1 },
+  ]);
 });

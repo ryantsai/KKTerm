@@ -759,7 +759,7 @@ function ImpactPanel({
     return link.label.trim() || `${name(link.from)} ↔ ${name(link.to)}`;
   };
 
-  const touched = analysis.down.length + analysis.severedLinks.length > 0;
+  const touched = analysis.down.length + analysis.downLinks.length > 0;
   return (
     <>
       <div className="au-side-title">{t("itops.networkMap.impactHeading")}</div>
@@ -792,7 +792,7 @@ function ImpactPanel({
               <ItIcon name="xmark" size={11} />
             </button>
           ))}
-          {analysis.severedLinks.map((id) => (
+          {analysis.downLinks.map((id) => (
             <button key={id} type="button" className="nm-chip" onClick={() => onRestore("link", id)}>
               {linkName(id)}
               <ItIcon name="xmark" size={11} />
