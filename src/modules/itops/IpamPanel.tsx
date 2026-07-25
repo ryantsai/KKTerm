@@ -26,10 +26,14 @@ import { flattenConnections } from "../workspace/connections/treeUtils";
 import { ItIcon } from "./icons";
 import { ItOpsEmptyHint } from "./ItOpsEmptyHint";
 import {
+  addressCoveredByPrefixes,
+  addressInCidr,
   addressesInPrefix,
   collectClaimCandidates,
   filterPrefixTree,
   previewCidr,
+  suggestMissingPrefixes,
+  uncontainedAddresses,
   utilizationTone,
   type ClaimCandidate,
 } from "./ipamModel";
@@ -403,25 +407,68 @@ function AddressDialog({
 /** Bulk-claim sheet: turn addresses KKTerm already knows into Address Records. */
 function ClaimDialog({
   candidates,
+  prefixes,
   onClose,
+  onImported,
 }: {
   candidates: ClaimCandidate[];
+  prefixes: IpamPrefixNode[];
   onClose: () => void;
+  onImported: (createdCidrs: string[]) => void;
 }) {
   const { t } = useTranslation();
+  const createPrefix = useItOpsStore((state) => state.createPrefix);
   const createAddress = useItOpsStore((state) => state.createAddress);
   const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
+  const missingSuggestions = useMemo(
+    () => suggestMissingPrefixes(candidates, prefixes),
+    [candidates, prefixes],
+  );
   const [chosen, setChosen] = useState<Set<string>>(
     () => new Set(candidates.map((entry) => entry.address)),
   );
+  const [prefixDrafts, setPrefixDrafts] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      suggestMissingPrefixes(candidates, prefixes).map((suggestion) => [
+        suggestion.id,
+        suggestion.cidr,
+      ]),
+    ),
+  );
   const [busy, setBusy] = useState(false);
+  const picked = candidates.filter((entry) => chosen.has(entry.address));
+  const uncoveredPicked = picked.filter(
+    (entry) => !addressCoveredByPrefixes(entry.address, prefixes),
+  );
+  const activeMissingSuggestions = missingSuggestions.filter((suggestion) =>
+    suggestion.addresses.some((address) => chosen.has(address)),
+  );
+  const proposedPrefixes = activeMissingSuggestions
+    .map((suggestion) => previewCidr(prefixDrafts[suggestion.id] ?? suggestion.cidr))
+    .filter((preview): preview is NonNullable<typeof preview> => preview !== null);
+  const prefixPlanValid =
+    proposedPrefixes.length === activeMissingSuggestions.length &&
+    uncoveredPicked.every((entry) =>
+      proposedPrefixes.some((prefix) => addressInCidr(entry.address, prefix.cidr)),
+    );
 
   async function claim() {
-    if (busy) return;
+    if (busy || !prefixPlanValid) return;
     setBusy(true);
-    const picked = candidates.filter((entry) => chosen.has(entry.address));
     let imported = 0;
+    const createdCidrs: string[] = [];
     try {
+      for (const cidr of new Set(proposedPrefixes.map((prefix) => prefix.cidr))) {
+        await createPrefix({
+          cidr,
+          vrf: "",
+          role: "",
+          status: "active",
+          description: "",
+          siteId: null,
+        });
+        createdCidrs.push(cidr);
+      }
       for (const entry of picked) {
         await createAddress({
           address: entry.address,
@@ -437,7 +484,7 @@ function ClaimDialog({
         imported += 1;
       }
       showStatusBarNotice(t("itops.ipam.claimedNotice", { count: imported }), { tone: "success" });
-      onClose();
+      onImported(createdCidrs);
     } catch (error) {
       // A partial import is still progress: report what landed, then stop.
       showStatusBarNotice(t("itops.errorNotice", { message: errorMessage(error) }), {
@@ -461,7 +508,7 @@ function ClaimDialog({
                 kind="primary"
                 icon="download"
                 onClick={() => void claim()}
-                disabled={chosen.size === 0 || busy}
+                disabled={chosen.size === 0 || !prefixPlanValid || busy}
               >
                 {t("itops.ipam.claimAction", { count: chosen.size })}
               </Btn>
@@ -469,6 +516,41 @@ function ClaimDialog({
           />
         }
       >
+        {uncoveredPicked.length > 0 ? (
+          <div className="it-ipam-claim-prefixes">
+            <p>
+              {t("itops.ipam.claimMissingPrefixes", { count: uncoveredPicked.length })}
+            </p>
+            {activeMissingSuggestions.map((suggestion) => (
+              <Field
+                key={suggestion.id}
+                label={t("itops.ipam.cidrLabel")}
+                hint={suggestion.addresses
+                  .filter((address) => chosen.has(address))
+                  .join(", ")}
+              >
+                <TextInput
+                  mono
+                  value={prefixDrafts[suggestion.id] ?? suggestion.cidr}
+                  aria-invalid={
+                    previewCidr(prefixDrafts[suggestion.id] ?? suggestion.cidr) === null
+                  }
+                  onChange={(event) =>
+                    setPrefixDrafts((current) => ({
+                      ...current,
+                      [suggestion.id]: event.currentTarget.value,
+                    }))
+                  }
+                />
+              </Field>
+            ))}
+            {!prefixPlanValid ? (
+              <p className="it-ipam-claim-prefix-error">
+                {t("itops.ipam.claimPrefixCoverageInvalid")}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
         <div className="it-ipam-claim-list">
           {candidates.map((entry) => (
             <label key={entry.address} className="it-ipam-claim-row">
@@ -740,6 +822,10 @@ export function IpamPanel() {
     [allHosts, connections, ipam.addresses],
   );
   const visible = useMemo(() => filterPrefixTree(ipam.prefixes, query), [ipam.prefixes, query]);
+  const unassigned = useMemo(
+    () => uncontainedAddresses(ipam.addresses, ipam.prefixes),
+    [ipam.addresses, ipam.prefixes],
+  );
 
   async function confirmDelete() {
     if (!pendingDelete) return;
@@ -813,7 +899,7 @@ export function IpamPanel() {
           ) : null}
         </div>
 
-        {visible.length > 0 ? (
+        {visible.length > 0 || (!query.trim() && unassigned.length > 0) ? (
           <div className="it-ipam-table" role="table">
             <div className="it-ipam-head" role="row">
               <span>{t("itops.ipam.columnPrefix")}</span>
@@ -933,6 +1019,47 @@ export function IpamPanel() {
                 </div>
               );
             })}
+            {!query.trim() && unassigned.length > 0 ? (
+              <div className="it-ipam-group it-ipam-unassigned-group">
+                <div className="it-ipam-row it-ipam-unassigned-row" role="row">
+                  <span className="it-ipam-unassigned-copy">
+                    <strong>{t("itops.ipam.unassignedAddresses")}</strong>
+                    <small>{t("itops.ipam.unassignedHint")}</small>
+                  </span>
+                  <span className="it-ipam-number">{unassigned.length}</span>
+                  <span />
+                </div>
+                <div className="it-ipam-addresses">
+                  {unassigned.map((record) => (
+                    <div key={record.id} className="it-ipam-address-row">
+                      <strong>{record.address}</strong>
+                      <span>{record.dnsName || record.description || "—"}</span>
+                      <em className="it-ipam-pill" data-status={record.status}>
+                        {t(`itops.ipam.addressStatus.${record.status}`)}
+                      </em>
+                      <span className="it-task-row-actions">
+                        <button
+                          type="button"
+                          className="it-icon-btn"
+                          aria-label={t("itops.actions.edit")}
+                          onClick={() => setAddressDialog({ record, prefix: null })}
+                        >
+                          <ItIcon name="edit" size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          className="it-icon-btn"
+                          aria-label={t("itops.actions.delete")}
+                          onClick={() => setPendingDelete({ kind: "address", record })}
+                        >
+                          <ItIcon name="trash" size={14} />
+                        </button>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         ) : loaded ? (
           <ItOpsEmptyHint>
@@ -952,7 +1079,20 @@ export function IpamPanel() {
         />
       ) : null}
       {claiming ? (
-        <ClaimDialog candidates={candidates} onClose={() => setClaiming(false)} />
+        <ClaimDialog
+          candidates={candidates}
+          prefixes={ipam.prefixes}
+          onClose={() => setClaiming(false)}
+          onImported={(createdCidrs) => {
+            const created = new Set(createdCidrs);
+            const createdIds = useItOpsStore
+              .getState()
+              .ipam.prefixes.filter((prefix) => created.has(prefix.cidr))
+              .map((prefix) => prefix.id);
+            setExpanded((current) => new Set([...current, ...createdIds]));
+            setClaiming(false);
+          }}
+        />
       ) : null}
       {scanning ? (
         <ScanDialog prefixes={ipam.prefixes} onClose={() => setScanning(false)} />

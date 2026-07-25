@@ -84,6 +84,70 @@ export interface ClaimCandidate {
   hostId: string | null;
 }
 
+export interface MissingPrefixSuggestion {
+  /** Stable key for the editable suggestion, based on its initial /24. */
+  id: string;
+  cidr: string;
+  addresses: string[];
+}
+
+/** Whether one IPv4 address is contained by a valid CIDR. */
+export function addressInCidr(address: string, cidr: string): boolean {
+  const value = parseIpv4(address);
+  const bounds = previewCidr(cidr);
+  if (value === null || !bounds) return false;
+  const low = parseIpv4(bounds.network) ?? 0;
+  const high = parseIpv4(bounds.broadcast) ?? 0;
+  return value >= low && value <= high;
+}
+
+/** Whether an address is already covered by a Prefix in the requested VRF. */
+export function addressCoveredByPrefixes(
+  address: string,
+  prefixes: readonly IpamPrefixNode[],
+  vrf = "",
+): boolean {
+  return prefixes.some((prefix) => prefix.vrf === vrf && addressInCidr(address, prefix.cidr));
+}
+
+/**
+ * Suggest one editable /24 per uncovered address group. An address alone cannot
+ * reveal its real subnet mask, so the import dialog must present these as
+ * suggestions and require the operator to confirm or alter them.
+ */
+export function suggestMissingPrefixes(
+  candidates: readonly ClaimCandidate[],
+  prefixes: readonly IpamPrefixNode[],
+): MissingPrefixSuggestion[] {
+  const groups = new Map<string, string[]>();
+  for (const candidate of candidates) {
+    if (addressCoveredByPrefixes(candidate.address, prefixes)) continue;
+    const value = parseIpv4(candidate.address);
+    if (value === null) continue;
+    const cidr = `${formatIpv4(value & 0xffffff00)}/24`;
+    const addresses = groups.get(cidr) ?? [];
+    addresses.push(candidate.address);
+    groups.set(cidr, addresses);
+  }
+  return [...groups.entries()]
+    .sort(
+      ([left], [right]) =>
+        (parseIpv4(left.split("/")[0] ?? "") ?? 0) -
+        (parseIpv4(right.split("/")[0] ?? "") ?? 0),
+    )
+    .map(([cidr, addresses]) => ({ id: cidr, cidr, addresses }));
+}
+
+/** Records that are not contained by any Prefix in their own VRF. */
+export function uncontainedAddresses(
+  addresses: readonly IpAddressRecord[],
+  prefixes: readonly IpamPrefixNode[],
+): IpAddressRecord[] {
+  return addresses.filter(
+    (record) => !addressCoveredByPrefixes(record.address, prefixes, record.vrf),
+  );
+}
+
 /**
  * Addresses already visible elsewhere in KKTerm but missing from IPAM. This is
  * the "you already told us about these" list — a Connection pointed at a literal
@@ -169,15 +233,10 @@ export function addressesInPrefix(
   addresses: readonly IpAddressRecord[],
   prefix: IpamPrefixNode,
 ): IpAddressRecord[] {
-  const bounds = previewCidr(prefix.cidr);
-  if (!bounds) return [];
-  const low = parseIpv4(bounds.network) ?? 0;
-  const high = parseIpv4(bounds.broadcast) ?? 0;
   return addresses
     .filter((record) => {
       if (record.vrf !== prefix.vrf) return false;
-      const value = parseIpv4(record.address);
-      return value !== null && value >= low && value <= high;
+      return addressInCidr(record.address, prefix.cidr);
     })
     .sort((left, right) => (parseIpv4(left.address) ?? 0) - (parseIpv4(right.address) ?? 0));
 }

@@ -407,15 +407,19 @@ Automation, and older unattributed history rows are never guessed by label.
 IPAM (`src/modules/itops/IpamPanel.tsx`) reuses the Task Library's
 spreadsheet-style table inside the same frame. Rows are indented by the
 server-derived `depth`, so indentation always matches real containment; a
-twisty expands a prefix to reveal its IP Address Records. The CIDR field
+twisty expands an IP Prefix to reveal its IP Address Records. The CIDR field
 previews the network address, usable range, and usable count live while
 typing (`previewCidr` in `ipamModel.ts`), and the address dialog suggests
 free addresses from the same pure helpers. `collectClaimCandidates` derives
-importable addresses from existing Connections and Hosts; the import writes
-records only, and probes nothing.
+importable addresses from existing Connections and Hosts. Before import,
+`suggestMissingPrefixes` groups selected uncovered addresses into editable `/24`
+CIDR suggestions; every address must be covered by a confirmed suggestion or an
+existing IP Prefix. The import creates those IP Prefixes before their Address Records
+and probes nothing. Records that have no containing Prefix remain visible in an
+Unassigned addresses group rather than disappearing from the IP Prefix-only tree.
 
 The explicit IPAM scan sheet is a separate operator action. It scans only
-checked Prefixes and treats an address as used when ICMP ping, an SNMPv2c
+checked IP Prefixes and treats an address as used when ICMP ping, an SNMPv2c
 `sysDescr` request, or one of the common TCP management/service ports answers.
 The backend deduplicates overlap per VRF, caps a request at 4,096 usable
 addresses, and limits address-level concurrency. Results are transient: the

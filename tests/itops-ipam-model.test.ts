@@ -2,11 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { Connection, IpAddressRecord, IpamPrefixNode, SiteHost } from "../src/types";
 import {
+  addressInCidr,
   addressesInPrefix,
   collectClaimCandidates,
   filterPrefixTree,
   parseIpv4,
   previewCidr,
+  suggestMissingPrefixes,
+  uncontainedAddresses,
   utilizationTone,
 } from "../src/modules/itops/ipamModel";
 
@@ -153,5 +156,47 @@ test("addresses are matched to a prefix by containment and VRF, in numeric order
     // String order would put .20 before .3, and the corp-VRF row is a different
     // routing table that happens to overlap.
     ["10.1.1.3", "10.1.1.20"],
+  );
+});
+
+test("missing-prefix suggestions group uncovered imports into editable /24 defaults", () => {
+  const candidates = collectClaimCandidates(
+    [
+      connection("c1", "First", "10.0.0.9"),
+      connection("c2", "Second", "10.0.0.20"),
+      connection("c3", "Third", "10.0.1.7"),
+      connection("c4", "Covered", "192.168.5.10"),
+    ],
+    [],
+    [],
+  );
+  const suggestions = suggestMissingPrefixes(
+    candidates,
+    [prefix("existing", "192.168.5.0/24", null)],
+  );
+
+  assert.deepEqual(suggestions, [
+    {
+      id: "10.0.0.0/24",
+      cidr: "10.0.0.0/24",
+      addresses: ["10.0.0.9", "10.0.0.20"],
+    },
+    {
+      id: "10.0.1.0/24",
+      cidr: "10.0.1.0/24",
+      addresses: ["10.0.1.7"],
+    },
+  ]);
+  assert.equal(addressInCidr("10.0.1.7", "10.0.0.0/16"), true);
+  assert.equal(addressInCidr("10.1.1.7", "10.0.0.0/16"), false);
+});
+
+test("uncontained Address Records remain discoverable without a Prefix row", () => {
+  assert.deepEqual(
+    uncontainedAddresses(
+      [record("10.0.0.5"), record("192.168.1.8")],
+      [prefix("covered", "192.168.1.0/24", null)],
+    ).map((entry) => entry.address),
+    ["10.0.0.5"],
   );
 });

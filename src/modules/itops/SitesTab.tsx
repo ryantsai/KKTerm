@@ -225,7 +225,9 @@ export function SitesTab({
   const removeSite = useItOpsStore((state) => state.removeSite);
   const deleteServerRoom = useItOpsStore((state) => state.deleteServerRoom);
   const taskCount = useItOpsStore((state) => state.tasks.length);
-  const prefixCount = useItOpsStore((state) => state.ipam.prefixes.length);
+  const ipamItemCount = useItOpsStore(
+    (state) => state.ipam.prefixes.length + state.ipam.addresses.length,
+  );
   const networkMapCount = useItOpsStore((state) => state.networkMaps.length);
 
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -1145,7 +1147,7 @@ export function SitesTab({
               })}
               <div className="ft-tree-library-label">{t("itops.navigation.library")}</div>
               <TreeRow depth={0} icon="code" label={t("itops.tasks.heading")} count={taskCount} hasChildren={false} open={false} selected={rootSurface === "tasks"} onSelect={() => setRootSurface("tasks")} />
-              <TreeRow depth={0} icon="table" label={t("itops.ipam.heading")} count={prefixCount} hasChildren={false} open={false} selected={rootSurface === "ipam"} onSelect={() => setRootSurface("ipam")} />
+              <TreeRow depth={0} icon="table" label={t("itops.ipam.heading")} count={ipamItemCount} hasChildren={false} open={false} selected={rootSurface === "ipam"} onSelect={() => setRootSurface("ipam")} />
               <TreeRow depth={0} icon="network" label={t("itops.networkMap.heading")} count={networkMapCount} hasChildren={false} open={false} selected={rootSurface === "networkMaps"} onSelect={() => setRootSurface("networkMaps")} />
             </div>
           </>

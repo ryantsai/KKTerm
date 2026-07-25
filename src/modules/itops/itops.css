@@ -8428,6 +8428,41 @@
 }
 .it-ipam-claim-row small { color: var(--text-faint); font-size: 10px; }
 
+.it-ipam-claim-prefixes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 11px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+.it-ipam-claim-prefixes > p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+.it-ipam-claim-prefixes > .it-ipam-claim-prefix-error {
+  color: var(--red);
+}
+
+.it-ipam-unassigned-row .it-ipam-unassigned-copy {
+  grid-column: 1 / 5;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.it-ipam-unassigned-copy small {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 400;
+}
+.it-ipam-unassigned-group .it-ipam-addresses {
+  display: block;
+}
+
 .it-ipam-scan-copy {
   margin: 0;
   color: var(--text-muted);
