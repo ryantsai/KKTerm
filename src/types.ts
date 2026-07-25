@@ -829,6 +829,20 @@ export interface QuickCommand {
   confirm: boolean;
 }
 
+/** A named, app-global list of Quick Commands that any Connection can select.
+ *  Editing a bundle changes it for every Connection that selected it. */
+export interface QuickCommandBundle {
+  id: string;
+  name: string;
+  commands: QuickCommand[];
+}
+
+/** Where a Quick Command edit is written: a global bundle, or the Connection's
+ *  own unbundled list. Resolved from the Connection's bundle selection. */
+export type QuickCommandTarget =
+  | { kind: "connection"; connectionId: string }
+  | { kind: "bundle"; bundleId: string };
+
 export type SplitDirection = "right" | "left" | "down" | "up";
 export type SplitOrientation = "horizontal" | "vertical";
 

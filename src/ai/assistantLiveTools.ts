@@ -12,7 +12,11 @@ import {
 } from "../app/tutorialNavigationModel";
 import { invokeCommand, isTauriRuntime } from "../lib/tauri";
 import type { CaptureScreenshotRequest } from "../lib/tauri";
-import { useWorkspaceStore } from "../store";
+import {
+  quickCommandTargetForConnection,
+  quickCommandsForConnectionState,
+  useWorkspaceStore,
+} from "../store";
 import { isAccentName, isIconName } from "../modules/dashboard/registry/palette";
 import { useDashboardStore } from "../modules/dashboard/state/dashboardStore";
 import {
@@ -586,10 +590,17 @@ async function assistantFileBrowserDelete(args: Record<string, unknown>) {
   return { ok: true, tabId, kind: controller.kind, result };
 }
 
+// Reads and writes follow the Connection's Quick Command Bundle selection, so
+// the assistant edits exactly what that Connection's Quick Command Bar shows.
 function quickCommandsForConnection(connectionId: string) {
   const store = useWorkspaceStore.getState();
   store.ensureQuickCommandsLoaded(connectionId);
-  return useWorkspaceStore.getState().quickCommandsByConnection[connectionId] ?? [];
+  return quickCommandsForConnectionState(useWorkspaceStore.getState(), connectionId);
+}
+
+function quickCommandTarget(connectionId: string) {
+  useWorkspaceStore.getState().ensureQuickCommandsLoaded(connectionId);
+  return quickCommandTargetForConnection(useWorkspaceStore.getState(), connectionId);
 }
 
 function assistantQuickCommandList(args: Record<string, unknown>) {
@@ -639,7 +650,7 @@ function assistantQuickCommandCreate(args: Record<string, unknown>) {
     sendEnter: args.sendEnter === true,
     confirm: args.confirm === true,
   };
-  useWorkspaceStore.getState().addQuickCommand(connectionId, quickCommand);
+  useWorkspaceStore.getState().addQuickCommand(quickCommandTarget(connectionId), quickCommand);
   return { ok: true, connectionId, quickCommand };
 }
 
@@ -671,6 +682,6 @@ function assistantQuickCommandEdit(args: Record<string, unknown>) {
     sendEnter: typeof args.sendEnter === "boolean" ? args.sendEnter : existing.sendEnter,
     confirm: typeof args.confirm === "boolean" ? args.confirm : existing.confirm,
   };
-  useWorkspaceStore.getState().updateQuickCommand(connectionId, quickCommand);
+  useWorkspaceStore.getState().updateQuickCommand(quickCommandTarget(connectionId), quickCommand);
   return { ok: true, connectionId, quickCommand };
 }

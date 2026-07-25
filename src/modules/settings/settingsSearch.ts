@@ -148,6 +148,7 @@ export const SETTINGS_SEARCH_KEYS: Record<SettingsSectionId, readonly string[]> 
     "settings.allowTerminalNotifications", "settings.terminalClipboard",
     "settings.copyOnSelect", "settings.rightClickPaste", "settings.allowLocalOsc52Clipboard",
     "settings.terminalIntegrations", "settings.enableInlineImages", "settings.hyperlinkRules",
+    "settings.quickCommandBundles", "terminal.quickCommandBundleNew",
     "settings.addCustomShell", "settings.addHyperlinkRule", "settings.bar", "settings.block",
     "settings.customFonts", "settings.customShell", "settings.customShellCommandLine",
     "settings.customShellName", "settings.hyperlinkRule", "settings.hyperlinkRulePattern",

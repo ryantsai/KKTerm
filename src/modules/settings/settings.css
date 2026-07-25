@@ -2371,6 +2371,15 @@ input.settings-credential-search {
 }
 
 /*
+ * Quick Command Bundles reuse the shared kk- dialog list grammar so the manager
+ * looks identical in Settings and in the Quick Command Bar. `kk-surface` bridges
+ * the dialog tokens onto the active color scheme outside a dialog.
+ */
+.settings-quick-command-bundles {
+  padding: 4px 0 2px;
+}
+
+/*
  * Merge consecutive Settings row blocks inside one subsection so related
  * controls read as one grouped card divided by rules instead of separate cards.
  */

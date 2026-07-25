@@ -43,6 +43,8 @@ import type {
   GeneralSettings,
   DashboardSettings,
   QuickCommand,
+  QuickCommandBundle,
+  QuickCommandTarget,
   TerminalSettings,
   TerminalStartMetric,
   LayoutNode,
@@ -77,6 +79,8 @@ const LAYOUT_STORAGE_PREFIX = "kkterm.layout.";
 const TMUX_SESSION_STORAGE_PREFIX = "kkterm.tmuxSessions.";
 const QUICK_COMMAND_BAR_STORAGE_PREFIX = "kkterm.quickCommandBar.";
 const QUICK_COMMANDS_STORAGE_PREFIX = "kkterm.quickCommands.";
+const QUICK_COMMAND_BUNDLES_STORAGE_KEY = "kkterm.quickCommandBundles.v1";
+const QUICK_COMMAND_BUNDLE_SELECTION_PREFIX = "kkterm.quickCommandBundleSelection.";
 const TMUX_SESSION_ID_PATTERN = /^[^\s:;]+$/u;
 export const CHILD_CONNECTION_CLOSED_EVENT = "kkterm:workspace-child-connection-closed";
 let statusBarNoticeSequence = 0;
@@ -353,14 +357,56 @@ function persistQuickCommands(connectionId: string | undefined, commands: QuickC
   writeDurableUiState(`${QUICK_COMMANDS_STORAGE_PREFIX}${connectionId}`, JSON.stringify(commands));
 }
 
+function loadStoredQuickCommandBundles(): QuickCommandBundle[] {
+  if (typeof window === "undefined") {
+    return [];
+  }
+  try {
+    const raw = readDurableUiState(QUICK_COMMAND_BUNDLES_STORAGE_KEY);
+    const parsed = raw ? (JSON.parse(raw) as unknown) : [];
+    return Array.isArray(parsed) ? parsed.filter(isQuickCommandBundle) : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistQuickCommandBundles(bundles: QuickCommandBundle[]) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  // Bundles are app-global durable configuration shared by every Connection
+  // that selected one: SQLite is the source of truth, mirrored to the cache.
+  writeDurableUiState(QUICK_COMMAND_BUNDLES_STORAGE_KEY, JSON.stringify(bundles));
+}
+
+function loadStoredQuickCommandBundleSelection(connectionId: string | undefined) {
+  if (!connectionId || typeof window === "undefined") {
+    return "";
+  }
+  return readDurableUiState(`${QUICK_COMMAND_BUNDLE_SELECTION_PREFIX}${connectionId}`) ?? "";
+}
+
+function persistQuickCommandBundleSelection(connectionId: string, bundleId: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  if (bundleId) {
+    writeDurableUiState(`${QUICK_COMMAND_BUNDLE_SELECTION_PREFIX}${connectionId}`, bundleId);
+  } else {
+    removeDurableUiState(`${QUICK_COMMAND_BUNDLE_SELECTION_PREFIX}${connectionId}`);
+  }
+}
+
 // Remove a deleted Connection's durable Quick Commands plus its local-only
 // per-Connection reopen hints (layout, tmux session ids, quick-command-bar
-// visibility) so they do not orphan and accumulate.
+// visibility) so they do not orphan and accumulate. Bundles themselves are
+// app-global and survive; only this Connection's selection is dropped.
 export function forgetConnectionLocalState(connectionId: string) {
   if (typeof window === "undefined") {
     return;
   }
   removeDurableUiState(`${QUICK_COMMANDS_STORAGE_PREFIX}${connectionId}`);
+  removeDurableUiState(`${QUICK_COMMAND_BUNDLE_SELECTION_PREFIX}${connectionId}`);
   try {
     window.localStorage.removeItem(`${QUICK_COMMAND_BAR_STORAGE_PREFIX}${connectionId}`);
     window.localStorage.removeItem(`${LAYOUT_STORAGE_PREFIX}${connectionId}`);
@@ -384,6 +430,141 @@ function isQuickCommand(value: unknown): value is QuickCommand {
     typeof command.sendEnter === "boolean" &&
     typeof command.confirm === "boolean"
   );
+}
+
+const EMPTY_QUICK_COMMANDS: QuickCommand[] = [];
+
+function isQuickCommandBundle(value: unknown): value is QuickCommandBundle {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const bundle = value as Partial<QuickCommandBundle>;
+  return (
+    typeof bundle.id === "string" &&
+    typeof bundle.name === "string" &&
+    Array.isArray(bundle.commands) &&
+    bundle.commands.every(isQuickCommand)
+  );
+}
+
+export function quickCommandId() {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? `quick-${crypto.randomUUID()}`
+    : `quick-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export function quickCommandBundleId() {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? `qcb-${crypto.randomUUID()}`
+    : `qcb-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/** The bundle a Connection currently uses, or undefined when it keeps its own
+ *  unbundled Quick Commands. A selection pointing at a deleted bundle reads as
+ *  undefined so the Connection falls back instead of showing nothing. */
+export function selectedQuickCommandBundle(
+  state: WorkspaceState,
+  connectionId: string | undefined,
+): QuickCommandBundle | undefined {
+  if (!connectionId) {
+    return undefined;
+  }
+  const bundleId = state.quickCommandBundleByConnection[connectionId];
+  if (!bundleId) {
+    return undefined;
+  }
+  return state.quickCommandBundles.find((bundle) => bundle.id === bundleId);
+}
+
+/** Where this Connection's Quick Command edits are written. */
+export function quickCommandTargetForConnection(
+  state: WorkspaceState,
+  connectionId: string | undefined,
+): QuickCommandTarget | undefined {
+  if (!connectionId) {
+    return undefined;
+  }
+  const bundle = selectedQuickCommandBundle(state, connectionId);
+  return bundle ? { kind: "bundle", bundleId: bundle.id } : { kind: "connection", connectionId };
+}
+
+/** The Quick Commands a Connection shows on its Quick Command Bar. */
+export function quickCommandsForConnectionState(
+  state: WorkspaceState,
+  connectionId: string | undefined,
+): QuickCommand[] {
+  if (!connectionId) {
+    return EMPTY_QUICK_COMMANDS;
+  }
+  const bundle = selectedQuickCommandBundle(state, connectionId);
+  return bundle
+    ? bundle.commands
+    : state.quickCommandsByConnection[connectionId] ?? EMPTY_QUICK_COMMANDS;
+}
+
+/** The Quick Commands stored at an explicit edit target. */
+export function quickCommandsForTarget(
+  state: WorkspaceState,
+  target: QuickCommandTarget | undefined,
+): QuickCommand[] {
+  if (!target) {
+    return EMPTY_QUICK_COMMANDS;
+  }
+  if (target.kind === "bundle") {
+    return state.quickCommandBundles.find((bundle) => bundle.id === target.bundleId)?.commands
+      ?? EMPTY_QUICK_COMMANDS;
+  }
+  return state.quickCommandsByConnection[target.connectionId] ?? EMPTY_QUICK_COMMANDS;
+}
+
+/** Move one command inside a list, or return null when the move is out of range
+ *  so the caller can leave state untouched. */
+function moveQuickCommandTo(commands: QuickCommand[], index: number, nextIndex: number) {
+  if (index < 0 || nextIndex < 0 || nextIndex >= commands.length) {
+    return null;
+  }
+  const next = [...commands];
+  const [command] = next.splice(index, 1);
+  if (!command) {
+    return null;
+  }
+  next.splice(nextIndex, 0, command);
+  return next;
+}
+
+/** Apply a Quick Command list edit to whichever store slice the target names —
+ *  a global bundle or one Connection's unbundled list — and persist it. */
+function mutateQuickCommandsAtTarget(
+  state: WorkspaceState,
+  target: QuickCommandTarget,
+  mutate: (commands: QuickCommand[]) => QuickCommand[] | null,
+): Partial<WorkspaceState> {
+  if (target.kind === "bundle") {
+    const bundle = state.quickCommandBundles.find((entry) => entry.id === target.bundleId);
+    const commands = bundle ? mutate(bundle.commands) : null;
+    if (!commands) {
+      return {};
+    }
+    const bundles = state.quickCommandBundles.map((entry) =>
+      entry.id === target.bundleId ? { ...entry, commands } : entry,
+    );
+    persistQuickCommandBundles(bundles);
+    return { quickCommandBundles: bundles };
+  }
+  const existing =
+    state.quickCommandsByConnection[target.connectionId]
+    ?? loadStoredQuickCommands(target.connectionId);
+  const commands = mutate(existing);
+  if (!commands) {
+    return {};
+  }
+  persistQuickCommands(target.connectionId, commands);
+  return {
+    quickCommandsByConnection: {
+      ...state.quickCommandsByConnection,
+      [target.connectionId]: commands,
+    },
+  };
 }
 
 function connectionUsesTmux(connection: Connection) {
@@ -1231,7 +1412,7 @@ function tabIdForWorkspace(
     : firstTabIdForWorkspace(tabs, workspaceId);
 }
 
-interface WorkspaceState {
+export interface WorkspaceState {
   query: string;
   tabs: WorkspaceTab[];
   activeTabId: string;
@@ -1281,6 +1462,12 @@ interface WorkspaceState {
    * its status segments into. Set by `StatusBar`; null when the bar is hidden. */
   documentStatusSlot: HTMLElement | null;
   quickCommandsByConnection: Record<string, QuickCommand[]>;
+  /** App-global Quick Command Bundles, shared by every Connection that selects one. */
+  quickCommandBundles: QuickCommandBundle[];
+  quickCommandBundlesLoaded: boolean;
+  /** Connection id -> selected bundle id. A missing entry means the Connection
+   *  keeps its own unbundled Quick Commands. */
+  quickCommandBundleByConnection: Record<string, string>;
   setQuery: (query: string) => void;
   setWorkspaces: (workspaces: Workspace[]) => void;
   setAppModeInfo: (info: AppModeInfo) => void;
@@ -1405,15 +1592,24 @@ interface WorkspaceState {
   updatePaneCwd: (tabId: string, paneId: string, cwd: string) => void;
   setQuickCommandBarVisible: (tabId: string, visible: boolean) => void;
   ensureQuickCommandsLoaded: (connectionId: string | undefined) => void;
-  addQuickCommand: (connectionId: string | undefined, command: QuickCommand) => void;
-  updateQuickCommand: (connectionId: string | undefined, command: QuickCommand) => void;
-  moveQuickCommand: (connectionId: string | undefined, commandId: string, direction: -1 | 1) => void;
+  ensureQuickCommandBundlesLoaded: () => void;
+  addQuickCommand: (target: QuickCommandTarget | undefined, command: QuickCommand) => void;
+  updateQuickCommand: (target: QuickCommandTarget | undefined, command: QuickCommand) => void;
+  moveQuickCommand: (
+    target: QuickCommandTarget | undefined,
+    commandId: string,
+    direction: -1 | 1,
+  ) => void;
   reorderQuickCommand: (
-    connectionId: string | undefined,
+    target: QuickCommandTarget | undefined,
     commandId: string,
     targetCommandId: string,
   ) => void;
-  removeQuickCommand: (connectionId: string | undefined, commandId: string) => void;
+  removeQuickCommand: (target: QuickCommandTarget | undefined, commandId: string) => void;
+  createQuickCommandBundle: (name: string, commands?: QuickCommand[]) => string;
+  renameQuickCommandBundle: (bundleId: string, name: string) => void;
+  deleteQuickCommandBundle: (bundleId: string) => void;
+  setConnectionQuickCommandBundle: (connectionId: string | undefined, bundleId: string) => void;
   openTmuxSessionInPane: (
     tabId: string,
     connection: Connection,
@@ -1492,6 +1688,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   terminalRecordingsBrowser: undefined,
   documentStatusSlot: null,
   quickCommandsByConnection: {},
+  quickCommandBundles: [],
+  quickCommandBundlesLoaded: false,
+  quickCommandBundleByConnection: {},
   setQuery: (query) => set({ query }),
   setAppModeInfo: (appModeInfo) => set({ appModeInfo }),
   setWorkspaces: (workspaces) => {
@@ -3221,118 +3420,135 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     }));
   },
   ensureQuickCommandsLoaded: (connectionId) => {
+    get().ensureQuickCommandBundlesLoaded();
     if (!connectionId || get().quickCommandsByConnection[connectionId]) {
       return;
     }
+    const selectedBundleId = loadStoredQuickCommandBundleSelection(connectionId);
     set((state) => ({
       quickCommandsByConnection: {
         ...state.quickCommandsByConnection,
         [connectionId]: loadStoredQuickCommands(connectionId),
       },
+      quickCommandBundleByConnection: selectedBundleId
+        ? { ...state.quickCommandBundleByConnection, [connectionId]: selectedBundleId }
+        : state.quickCommandBundleByConnection,
     }));
   },
-  addQuickCommand: (connectionId, command) => {
-    if (!connectionId) {
+  ensureQuickCommandBundlesLoaded: () => {
+    if (get().quickCommandBundlesLoaded) {
       return;
     }
-    set((state) => {
-      const quickCommands = [
-        ...(state.quickCommandsByConnection[connectionId] ?? loadStoredQuickCommands(connectionId)),
-        command,
-      ];
-      persistQuickCommands(connectionId, quickCommands);
-      return {
-        quickCommandsByConnection: {
-          ...state.quickCommandsByConnection,
-          [connectionId]: quickCommands,
-        },
-      };
-    });
+    set({ quickCommandBundles: loadStoredQuickCommandBundles(), quickCommandBundlesLoaded: true });
   },
-  updateQuickCommand: (connectionId, command) => {
-    if (!connectionId) {
+  addQuickCommand: (target, command) => {
+    if (!target) {
+      return;
+    }
+    set((state) => mutateQuickCommandsAtTarget(state, target, (commands) => [...commands, command]));
+  },
+  updateQuickCommand: (target, command) => {
+    if (!target) {
+      return;
+    }
+    set((state) =>
+      mutateQuickCommandsAtTarget(state, target, (commands) =>
+        commands.map((entry) => (entry.id === command.id ? command : entry)),
+      ),
+    );
+  },
+  moveQuickCommand: (target, commandId, direction) => {
+    if (!target) {
+      return;
+    }
+    set((state) =>
+      mutateQuickCommandsAtTarget(state, target, (commands) => {
+        const index = commands.findIndex((entry) => entry.id === commandId);
+        return moveQuickCommandTo(commands, index, index + direction);
+      }),
+    );
+  },
+  reorderQuickCommand: (target, commandId, targetCommandId) => {
+    if (!target || commandId === targetCommandId) {
+      return;
+    }
+    set((state) =>
+      mutateQuickCommandsAtTarget(state, target, (commands) =>
+        moveQuickCommandTo(
+          commands,
+          commands.findIndex((entry) => entry.id === commandId),
+          commands.findIndex((entry) => entry.id === targetCommandId),
+        ),
+      ),
+    );
+  },
+  removeQuickCommand: (target, commandId) => {
+    if (!target) {
+      return;
+    }
+    set((state) =>
+      mutateQuickCommandsAtTarget(state, target, (commands) =>
+        commands.filter((entry) => entry.id !== commandId),
+      ),
+    );
+  },
+  createQuickCommandBundle: (name, commands) => {
+    get().ensureQuickCommandBundlesLoaded();
+    const bundle: QuickCommandBundle = {
+      id: quickCommandBundleId(),
+      name: name.trim(),
+      // Copied commands keep their own ids so editing the bundle never writes
+      // back into the Connection list they were copied from.
+      commands: (commands ?? []).map((command) => ({ ...command, id: quickCommandId() })),
+    };
+    set((state) => {
+      const bundles = [...state.quickCommandBundles, bundle];
+      persistQuickCommandBundles(bundles);
+      return { quickCommandBundles: bundles };
+    });
+    return bundle.id;
+  },
+  renameQuickCommandBundle: (bundleId, name) => {
+    const trimmed = name.trim();
+    if (!trimmed) {
       return;
     }
     set((state) => {
-      const existing = state.quickCommandsByConnection[connectionId] ?? loadStoredQuickCommands(connectionId);
-      const quickCommands = existing.map((entry) =>
-        entry.id === command.id ? command : entry,
+      const bundles = state.quickCommandBundles.map((bundle) =>
+        bundle.id === bundleId ? { ...bundle, name: trimmed } : bundle,
       );
-      persistQuickCommands(connectionId, quickCommands);
-      return {
-        quickCommandsByConnection: {
-          ...state.quickCommandsByConnection,
-          [connectionId]: quickCommands,
-        },
-      };
+      persistQuickCommandBundles(bundles);
+      return { quickCommandBundles: bundles };
     });
   },
-  moveQuickCommand: (connectionId, commandId, direction) => {
+  deleteQuickCommandBundle: (bundleId) => {
+    set((state) => {
+      const bundles = state.quickCommandBundles.filter((bundle) => bundle.id !== bundleId);
+      persistQuickCommandBundles(bundles);
+      // Every Connection that used this bundle falls back to its own list.
+      const selections = { ...state.quickCommandBundleByConnection };
+      for (const [connectionId, selectedId] of Object.entries(selections)) {
+        if (selectedId === bundleId) {
+          delete selections[connectionId];
+          persistQuickCommandBundleSelection(connectionId, "");
+        }
+      }
+      return { quickCommandBundles: bundles, quickCommandBundleByConnection: selections };
+    });
+  },
+  setConnectionQuickCommandBundle: (connectionId, bundleId) => {
     if (!connectionId) {
       return;
     }
+    persistQuickCommandBundleSelection(connectionId, bundleId);
     set((state) => {
-      const existing = state.quickCommandsByConnection[connectionId] ?? loadStoredQuickCommands(connectionId);
-      const index = existing.findIndex((entry) => entry.id === commandId);
-      const nextIndex = index + direction;
-      if (index < 0 || nextIndex < 0 || nextIndex >= existing.length) {
-        return {};
+      const selections = { ...state.quickCommandBundleByConnection };
+      if (bundleId) {
+        selections[connectionId] = bundleId;
+      } else {
+        delete selections[connectionId];
       }
-      const quickCommands = [...existing];
-      const [command] = quickCommands.splice(index, 1);
-      if (!command) {
-        return {};
-      }
-      quickCommands.splice(nextIndex, 0, command);
-      persistQuickCommands(connectionId, quickCommands);
-      return {
-        quickCommandsByConnection: {
-          ...state.quickCommandsByConnection,
-          [connectionId]: quickCommands,
-        },
-      };
-    });
-  },
-  reorderQuickCommand: (connectionId, commandId, targetCommandId) => {
-    if (!connectionId || commandId === targetCommandId) {
-      return;
-    }
-    set((state) => {
-      const existing = state.quickCommandsByConnection[connectionId] ?? loadStoredQuickCommands(connectionId);
-      const index = existing.findIndex((entry) => entry.id === commandId);
-      const targetIndex = existing.findIndex((entry) => entry.id === targetCommandId);
-      if (index < 0 || targetIndex < 0) {
-        return {};
-      }
-      const quickCommands = [...existing];
-      const [command] = quickCommands.splice(index, 1);
-      if (!command) {
-        return {};
-      }
-      quickCommands.splice(targetIndex, 0, command);
-      persistQuickCommands(connectionId, quickCommands);
-      return {
-        quickCommandsByConnection: {
-          ...state.quickCommandsByConnection,
-          [connectionId]: quickCommands,
-        },
-      };
-    });
-  },
-  removeQuickCommand: (connectionId, commandId) => {
-    if (!connectionId) {
-      return;
-    }
-    set((state) => {
-      const existing = state.quickCommandsByConnection[connectionId] ?? loadStoredQuickCommands(connectionId);
-      const quickCommands = existing.filter((entry) => entry.id !== commandId);
-      persistQuickCommands(connectionId, quickCommands);
-      return {
-        quickCommandsByConnection: {
-          ...state.quickCommandsByConnection,
-          [connectionId]: quickCommands,
-        },
-      };
+      return { quickCommandBundleByConnection: selections };
     });
   },
   openTmuxSessionInPane: (tabId, connection, tmuxSessionId, direction) => {

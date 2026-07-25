@@ -722,6 +722,7 @@
 
 .quick-command-button,
 .quick-command-empty,
+.quick-command-bundle,
 .quick-command-manage {
   display: inline-flex;
   flex: 0 0 auto;
@@ -758,6 +759,31 @@
 .quick-command-empty {
   color: var(--text-muted);
   border-left-color: var(--border-strong);
+}
+
+/* Quick Command Bundle picker: the bar's leading chip naming the shared bundle
+   this Connection uses, separated from the command chips by a hairline. */
+.quick-command-bundle {
+  max-width: 200px;
+  padding-right: 6px;
+  color: var(--text-muted);
+  background: transparent;
+  border-color: transparent;
+  border-left-width: 1px;
+  border-right: 1px solid var(--border);
+  border-radius: 6px 0 0 6px;
+}
+
+.quick-command-bundle span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quick-command-bundle:hover,
+.quick-command-bundle:focus-visible {
+  color: var(--text);
+  background: var(--accent-soft);
 }
 
 .quick-command-manage {

@@ -57,8 +57,12 @@ _Avoid_: Temporary profile, ad hoc host, one-off session
 A reusable terminal command shortcut the user can send to the focused terminal Pane from the **Quick Command Bar**. Quick Commands are per-Connection workspace UI shortcuts; they do not create Connections and do not own Session lifecycle.
 _Avoid_: Connection command, Session command, profile command
 
+**Quick Command Bundle**:
+A durable, app-global named list of Quick Commands that any Connection can select from its Quick Command Bar. Bundles are shared, not copied: editing one changes it for every Connection that selected it. A Connection either uses one bundle or keeps its own unbundled Quick Commands, and that choice is remembered per Connection. Bundles and per-Connection selections are durable frontend state (SQLite-backed, mirrored to the local cache); deleting a Connection drops only its selection. Managed in Settings → Terminal and from the Quick Command Bar's bundle picker.
+_Avoid_: Command group, command profile, command set (as a Connection field), package
+
 **Quick Command Bar**:
-The optional bottom bar in a terminal Tab that displays the active Connection's Quick Commands. The Quick Command Bar is off by default, can be toggled from the terminal Pane toolbar, and remembers visibility per Connection.
+The optional bottom bar in a terminal Tab that displays the active Connection's Quick Commands — the selected Quick Command Bundle's commands when the Connection uses one, otherwise the Connection's own list. The Quick Command Bar is off by default, can be toggled from the terminal Pane toolbar, and remembers visibility per Connection. Its leading bundle chip switches the Connection's Quick Command Bundle.
 _Avoid_: Command bar, shortcut bar, Session command bar
 
 **Session**:
@@ -299,6 +303,7 @@ _Avoid_: settings nav, settings menu
 - A **VNC Connection** starts a Rust-managed remote framebuffer **Session** rendered into its **Tab**.
 - A **Quick Connect** persists a **Connection** (reusing an identical existing SSH Connection when present) and starts a **Session** on it; the only non-persisted case is the external elevated admin shell launched when KKTerm is not elevated.
 - A **Quick Command** writes input from the **Quick Command Bar** to a terminal **Pane** in an existing **Session**.
+- A **Quick Command Bundle** owns an ordered list of **Quick Commands**; many **Connections** may select the same bundle, and editing it changes every one of them.
 - A **Session** may be presented by one **Tab**.
 - A terminal **Tab** may contain one or more **Panes**.
 - A **Child Connection Tab** is a named, saved frontend Tab instance under a parent **Connection**; opening it creates or activates the corresponding **Tab** and then the live **Session**.

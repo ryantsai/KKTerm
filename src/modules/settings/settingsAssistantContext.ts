@@ -326,6 +326,10 @@ const SETTINGS_SECTIONS: Record<SettingsSectionId, SettingsSectionSummary> = {
         key: "settings.randomDynamicBackgroundOnCreate",
         description: "Random dynamic terminal backgrounds for new local terminal Connections, new tabs, and Child Connection Tabs.",
       },
+      {
+        key: "settings.quickCommandBundles",
+        description: "App-global named Quick Command lists that any Connection can select from its Quick Command Bar.",
+      },
     ],
   },
   "url-settings": {
