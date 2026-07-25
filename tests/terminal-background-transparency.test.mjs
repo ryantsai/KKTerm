@@ -40,16 +40,21 @@ test("terminal xterm viewport does not mask connection backgrounds", () => {
   );
 });
 
-test("terminal host paints the terminal surface behind xterm padding", () => {
+test("terminal padding ring matches xterm opacity without double-compositing the content", () => {
   assert.match(
     terminalCss,
-    /\.xterm-host\s*\{[\s\S]*background:\s*var\(--terminal-surface-background/,
-    "the terminal host should paint behind xterm's padded content area",
+    /\.xterm-host\s*\{[^}]*background:\s*transparent;/,
+    "the host must stay transparent so xterm content is not composited over the same RGBA layer twice",
+  );
+  assert.match(
+    terminalCss,
+    /\.xterm-host::before\s*\{[^}]*border:\s*8px solid var\(--terminal-surface-background/,
+    "a non-overlapping ring should paint the xterm padding with the same RGBA terminal surface",
   );
   assert.match(
     rendererSource,
     /"--terminal-surface-background",\s*schemeBackgroundColor\(this\.colorScheme,\s*opacity\)/,
-    "the host background must follow the same opacity as the xterm theme background",
+    "the padding ring must follow the same opacity as the xterm theme background",
   );
 });
 

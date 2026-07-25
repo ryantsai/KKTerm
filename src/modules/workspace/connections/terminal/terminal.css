@@ -2228,7 +2228,16 @@
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  background: var(--terminal-surface-background, rgba(12, 18, 25, 0.95));
+  background: transparent;
+}
+
+.xterm-host::before {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  border: 8px solid var(--terminal-surface-background, rgba(12, 18, 25, 0.95));
+  pointer-events: none;
+  content: "";
 }
 
 .xterm-host .xterm {
