@@ -9240,6 +9240,8 @@
   .nm-device-art-orbit,
   .nm-device-art-glyph,
   .nm-device-art-ping,
+  .itops-page .nm-picker-card,
+  .nm-node,
   .nm-node[data-state="warning"],
   .nm-node-root,
   .nm-node-warning,
@@ -9249,5 +9251,7 @@
     transition: none;
   }
   .itops-page .nm-gallery-card:hover,
-  .itops-page .nm-gallery-card:focus-within { transform: none; }
+  .itops-page .nm-gallery-card:focus-within,
+  .itops-page .nm-picker-card:hover,
+  .nm-node:hover { transform: none; }
 }

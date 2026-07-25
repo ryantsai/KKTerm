@@ -161,6 +161,7 @@ interface MapNodeData extends Record<string, unknown> {
   root: boolean;
   selected: boolean;
   rootLabel: string;
+  warningLabel: string;
 }
 
 function NetworkNodeArtwork({
@@ -387,7 +388,7 @@ function MapNode({ data }: NodeProps<Node<MapNodeData>>) {
         </span>
       ) : null}
       {data.state === "warning" ? (
-        <span className="nm-node-warning" aria-hidden="true">
+        <span className="nm-node-warning" title={data.warningLabel}>
           !
         </span>
       ) : null}
@@ -417,8 +418,10 @@ function orthogonalLinkPath({
 > & { offset?: number }): { path: string; labelX: number; labelY: number } {
   const horizontal =
     sourcePosition === Position.Left || sourcePosition === Position.Right;
+  // The mid jog shifts with the strand: offsetting only the runs parallel to the
+  // route would stack every strand of a bundle back onto one line at the step.
   if (horizontal) {
-    const midX = Math.round((sourceX + targetX) / 2);
+    const midX = Math.round((sourceX + targetX) / 2) + offset;
     const fromY = sourceY + offset;
     const toY = targetY + offset;
     return {
@@ -428,7 +431,7 @@ function orthogonalLinkPath({
     };
   }
 
-  const midY = Math.round((sourceY + targetY) / 2);
+  const midY = Math.round((sourceY + targetY) / 2) + offset;
   const fromX = sourceX + offset;
   const toX = targetX + offset;
   return {
@@ -802,6 +805,7 @@ function MapEditor({
         root: rootIds.has(node.id),
         selected: selection?.kind === "node" && selection.id === node.id,
         rootLabel: t("itops.networkMap.rootBadge"),
+        warningLabel: t("itops.networkMap.status.warning"),
       },
     }));
   }, [analysis.down, analysis.isolated, graph.nodes, rootIds, selection, t, unnamed]);
