@@ -412,6 +412,16 @@ free addresses from the same pure helpers. `collectClaimCandidates` derives
 importable addresses from existing Connections and Hosts; the import writes
 records only, and probes nothing.
 
+The explicit IPAM scan sheet is a separate operator action. It scans only
+checked Prefixes and treats an address as used when ICMP ping, an SNMPv2c
+`sysDescr` request, or one of the common TCP management/service ports answers.
+The backend deduplicates overlap per VRF, caps a request at 4,096 usable
+addresses, and limits address-level concurrency. Results are transient: the
+scan itself writes nothing, already documented addresses are read-only in the
+result list, and only checked new results become Address Records. A scanned
+record copies the selected Prefix's optional soft Site tag; a Prefix with no
+Site imports a record with `site_id = NULL`.
+
 Network Maps (`src/modules/itops/NetworkMapDesigner.tsx`) is the one IT Ops
 destination with a canvas. It uses `@xyflow/react` the same way
 `AutomationEditor.tsx` does — controlled `nodes`/`edges` via `useMemo`,
@@ -1045,11 +1055,18 @@ SNMP scaffolding stays future preparation, and the What-If "down" set comes
 only from operator toggles.
 
 **IPAM Address Site binding.** `itops_ip_address_records.site_id` is an
-optional soft direct binding in the unreleased schema-v51 shape; it requires no
-upgrade or backfill migration. New writes derive Site from a valid Host binding,
+optional soft direct binding. Schema v52 repairs v51 databases whose already
+created IPAM tables predated the nullable `site_id` columns; no data backfill is
+needed. New writes derive Site from a valid Host binding,
 while Site-only records remain valid. Snapshot reads also derive Site from the
 most-specific containing bound prefix when the address has neither, preserving
 the containment model without a stored prefix id or reconciliation writes.
+
+**Phase 10 — IPAM discovery and optional-Site repair.** Schema bump to 52
+adds the version-gated nullable `site_id` repair for both IPAM tables. The
+explicit scan combines ping, SNMP, and common TCP full-connect probes over
+operator-selected Prefixes, with a 4,096-address request cap and transient
+results that are durable only after an explicit import.
 
 Phases 0–3 are the minimum that delivers durable monitoring + SSH batch.
 Phases 4–9 are independent and can be reordered by demand.

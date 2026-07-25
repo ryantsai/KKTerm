@@ -13,7 +13,7 @@ use std::{
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use zip::{ZipArchive, ZipWriter, write::SimpleFileOptions};
 
-const SCHEMA_USER_VERSION: i32 = 51;
+const SCHEMA_USER_VERSION: i32 = 52;
 
 const DEFAULT_TERMINAL_OPACITY: u8 = 50;
 
@@ -2915,6 +2915,21 @@ impl Storage {
                      ALTER TABLE connection_password_credentials DROP COLUMN host;",
                 )
                 .map_err(to_storage_error)?;
+        }
+        // v52: repair databases that received the v51 IPAM tables before their
+        // optional Site metadata was added. CREATE TABLE IF NOT EXISTS cannot
+        // add columns to those existing tables, and v51's current-version fast
+        // path therefore surfaced "no column named site_id" during imports.
+        // Both references remain nullable and soft: IPAM is global, and a
+        // Prefix or Address Record never requires a Site.
+        if stored_version < 52 {
+            ensure_column(&connection, "itops_ip_prefixes", "site_id", "TEXT")?;
+            ensure_column(
+                &connection,
+                "itops_ip_address_records",
+                "site_id",
+                "TEXT",
+            )?;
         }
         connection
             .execute_batch(&format!("PRAGMA user_version = {SCHEMA_USER_VERSION}"))

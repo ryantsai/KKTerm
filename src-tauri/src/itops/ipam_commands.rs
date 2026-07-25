@@ -3,8 +3,10 @@
 use tauri::{AppHandle, Manager};
 
 use super::ids::new_itops_id;
-use super::ipam_storage;
-use super::types::{AddressStatus, IpAddressRecord, IpPrefix, IpamSnapshot, PrefixStatus};
+use super::types::{
+    AddressStatus, IpAddressRecord, IpPrefix, IpamScanResult, IpamSnapshot, PrefixStatus,
+};
+use super::{ipam_scan, ipam_storage};
 
 /// The whole IPAM view in one call: prefixes with their derived hierarchy and
 /// utilization, plus every Address Record. Small enough to reload wholesale
@@ -170,4 +172,18 @@ pub fn itops_suggest_free_addresses(
             ipam_storage::suggest_free_addresses(conn, &cidr, &vrf, limit)
                 .map_err(|error| error.to_string())
         })
+}
+
+/// Probes only the explicitly selected Prefixes. The database lock is held
+/// only while expanding the durable selection into targets; network I/O runs
+/// asynchronously and never writes scan state.
+#[tauri::command]
+pub async fn itops_scan_ip_prefixes(
+    app: AppHandle,
+    prefix_ids: Vec<String>,
+) -> Result<Vec<IpamScanResult>, String> {
+    let storage = app.state::<crate::storage::Storage>();
+    let targets =
+        storage.with_connection_infallible(|conn| ipam_scan::load_targets(conn, &prefix_ids))?;
+    Ok(ipam_scan::scan_targets(targets).await)
 }

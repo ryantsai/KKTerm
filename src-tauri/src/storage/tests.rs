@@ -260,6 +260,89 @@ fn schema_initialization_is_idempotent_without_initial_data() {
 }
 
 #[test]
+fn v51_ipam_site_columns_are_added_and_current_reopen_keeps_them_optional() {
+    let db_path = temp_db_path("v51-ipam-optional-site");
+    {
+        let connection = rusqlite::Connection::open(&db_path).expect("v51 database opens");
+        connection
+            .execute_batch(
+                r#"
+                CREATE TABLE itops_ip_prefixes (
+                    id TEXT PRIMARY KEY,
+                    cidr TEXT NOT NULL,
+                    vrf TEXT NOT NULL DEFAULT '',
+                    role TEXT NOT NULL DEFAULT '',
+                    status TEXT NOT NULL DEFAULT 'active',
+                    description TEXT NOT NULL DEFAULT '',
+                    UNIQUE(vrf, cidr)
+                );
+                CREATE TABLE itops_ip_address_records (
+                    id TEXT PRIMARY KEY,
+                    address TEXT NOT NULL,
+                    vrf TEXT NOT NULL DEFAULT '',
+                    status TEXT NOT NULL DEFAULT 'active',
+                    dns_name TEXT NOT NULL DEFAULT '',
+                    description TEXT NOT NULL DEFAULT '',
+                    host_id TEXT,
+                    connection_id TEXT,
+                    rack_item_id TEXT,
+                    UNIQUE(vrf, address)
+                );
+                INSERT INTO itops_ip_prefixes
+                    (id, cidr, vrf, role, status, description)
+                VALUES ('prefix-1', '10.0.0.0/24', '', '', 'active', '');
+                INSERT INTO itops_ip_address_records
+                    (id, address, vrf, status, dns_name, description)
+                VALUES ('address-1', '10.0.0.10', '', 'active', '', '');
+                PRAGMA user_version = 51;
+                "#,
+            )
+            .expect("legacy v51 IPAM schema is created");
+    }
+
+    let storage = Storage::open(db_path.clone()).expect("v51 IPAM schema migrates");
+    storage
+        .with_connection(|connection| {
+            assert!(column_exists(connection, "itops_ip_prefixes", "site_id")?);
+            assert!(column_exists(
+                connection,
+                "itops_ip_address_records",
+                "site_id"
+            )?);
+            connection
+                .execute(
+                    "INSERT INTO itops_ip_address_records
+                        (id, address, vrf, status, dns_name, description, site_id)
+                     VALUES ('address-2', '10.0.0.11', '', 'active', '', '', NULL)",
+                    [],
+                )
+                .map_err(to_storage_error)?;
+            Ok(())
+        })
+        .expect("site-less IPAM address imports after migration");
+    drop(storage);
+
+    let reopened = Storage::open(db_path).expect("current v52 storage reopens");
+    reopened
+        .with_connection(|connection| {
+            let version: i32 =
+                connection.pragma_query_value(None, "user_version", |row| row.get(0))
+                    .map_err(to_storage_error)?;
+            let site_id: Option<String> = connection
+                .query_row(
+                    "SELECT site_id FROM itops_ip_address_records WHERE id = 'address-2'",
+                    [],
+                    |row| row.get(0),
+                )
+                .map_err(to_storage_error)?;
+            assert_eq!(version, SCHEMA_USER_VERSION);
+            assert!(site_id.is_none());
+            Ok(())
+        })
+        .expect("current-version reopen is write-free and keeps NULL Site");
+}
+
+#[test]
 fn current_schema_fast_path_skips_legacy_data_migrations() {
     let db_path = temp_db_path("current-schema-fast-path");
     drop(Storage::open(db_path.clone()).expect("initial storage opens"));

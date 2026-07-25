@@ -606,6 +606,18 @@ export interface IpamSnapshot {
   addresses: IpAddressRecord[];
 }
 
+export interface IpamScanResult {
+  address: string;
+  prefixId: string;
+  cidr: string;
+  vrf: string;
+  siteId?: string | null;
+  ping: boolean;
+  snmp: boolean;
+  openPorts: number[];
+  documented: boolean;
+}
+
 // Network Map (docs/ITOPS.md Network Map). The logical link diagram, distinct
 // from the physical Site → Server Room → Rack topology that "topology" names.
 // One row per map holds the whole graph, following the Room Objects precedent.

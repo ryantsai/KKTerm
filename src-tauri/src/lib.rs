@@ -5072,6 +5072,7 @@ pub fn run() {
             itops::ipam_commands::itops_update_ip_address,
             itops::ipam_commands::itops_remove_ip_address,
             itops::ipam_commands::itops_suggest_free_addresses,
+            itops::ipam_commands::itops_scan_ip_prefixes,
             itops::network_map_commands::itops_list_network_maps,
             itops::network_map_commands::itops_create_network_map,
             itops::network_map_commands::itops_update_network_map,

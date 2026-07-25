@@ -88,6 +88,25 @@ async fn resolve_first(host: &str) -> Result<IpAddr, NetError> {
         })
 }
 
+/// One ICMP-only liveness probe for callers that combine several discovery
+/// signals themselves. Unlike `run_ping`, this never falls back to TCP because
+/// an IPAM scan probes its TCP evidence independently.
+pub async fn probe_once(host: &str, timeout_ms: u64) -> Option<u128> {
+    let ip = resolve_first(host).await.ok()?;
+    let options = PingOptions {
+        count: 1,
+        interval_ms: 0,
+        timeout_ms,
+        ..PingOptions::default()
+    };
+    match backend::ping_one(ip, &options).await {
+        IcmpOutcome::Ok { rtt_ms, .. } => Some(rtt_ms),
+        IcmpOutcome::Timeout
+        | IcmpOutcome::PermissionDenied(_)
+        | IcmpOutcome::OtherError(_) => None,
+    }
+}
+
 /// Outcome of a single ICMP probe attempt before TCP-fallback decision.
 enum IcmpOutcome {
     Ok {

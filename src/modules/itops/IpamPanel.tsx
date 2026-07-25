@@ -18,6 +18,7 @@ import type {
   Connection,
   IpAddressRecord,
   IpamPrefixNode,
+  IpamScanResult,
   PrefixStatus,
   SiteHost,
 } from "../../types";
@@ -492,6 +493,204 @@ function ClaimDialog({
   );
 }
 
+function ScanDialog({
+  prefixes,
+  onClose,
+}: {
+  prefixes: IpamPrefixNode[];
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const loadIpam = useItOpsStore((state) => state.loadIpam);
+  const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
+  const showStatusBarProgress = useWorkspaceStore((state) => state.showStatusBarProgress);
+  const clearStatusBarNotice = useWorkspaceStore((state) => state.clearStatusBarNotice);
+  const [selectedPrefixes, setSelectedPrefixes] = useState<Set<string>>(new Set());
+  const [results, setResults] = useState<IpamScanResult[] | null>(null);
+  const [chosen, setChosen] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState(false);
+  const selectedAddressCount = prefixes
+    .filter((prefix) => selectedPrefixes.has(prefix.id))
+    .reduce((total, prefix) => total + prefix.usable, 0);
+  const selectionTooLarge = selectedAddressCount > 4096;
+
+  async function scan() {
+    if (busy || selectedPrefixes.size === 0 || selectionTooLarge) return;
+    setBusy(true);
+    const progressId = showStatusBarProgress(
+      t("itops.ipam.scanningNotice", { count: selectedAddressCount }),
+      { progress: 10 },
+    );
+    try {
+      const discovered = await invokeCommand("itops_scan_ip_prefixes", {
+        prefixIds: [...selectedPrefixes],
+      });
+      setResults(discovered);
+      setChosen(
+        new Set(
+          discovered
+            .filter((entry) => !entry.documented)
+            .map((entry) => `${entry.vrf}\u0000${entry.address}`),
+        ),
+      );
+    } catch (error) {
+      showStatusBarNotice(t("itops.errorNotice", { message: errorMessage(error) }), {
+        tone: "error",
+      });
+    } finally {
+      clearStatusBarNotice(progressId);
+      setBusy(false);
+    }
+  }
+
+  async function importResults() {
+    if (busy || !results || chosen.size === 0) return;
+    setBusy(true);
+    let imported = 0;
+    try {
+      for (const entry of results) {
+        if (!chosen.has(`${entry.vrf}\u0000${entry.address}`) || entry.documented) continue;
+        await invokeCommand("itops_create_ip_address", {
+          address: entry.address,
+          vrf: entry.vrf,
+          status: "active",
+          dnsName: "",
+          description: "",
+          siteId: entry.siteId ?? null,
+          hostId: null,
+          connectionId: null,
+          rackItemId: null,
+        });
+        imported += 1;
+      }
+      await loadIpam();
+      showStatusBarNotice(t("itops.ipam.scanImportedNotice", { count: imported }), {
+        tone: "success",
+      });
+      onClose();
+    } catch (error) {
+      if (imported > 0) await loadIpam().catch(() => undefined);
+      showStatusBarNotice(t("itops.errorNotice", { message: errorMessage(error) }), {
+        tone: "error",
+      });
+      setBusy(false);
+    }
+  }
+
+  return (
+    <DialogShell onBackdrop={onClose}>
+      <Sheet
+        width={620}
+        title={t("itops.ipam.scanTitle")}
+        footer={
+          <Actions
+            cancel={<Btn onClick={onClose}>{t("itops.actions.cancel")}</Btn>}
+            primary={
+              results === null ? (
+                <Btn
+                  kind="primary"
+                  icon="network"
+                  onClick={() => void scan()}
+                  disabled={
+                    selectedPrefixes.size === 0 || selectionTooLarge || busy
+                  }
+                >
+                  {t("itops.ipam.scanStartAction")}
+                </Btn>
+              ) : (
+                <Btn
+                  kind="primary"
+                  icon="download"
+                  onClick={() => void importResults()}
+                  disabled={chosen.size === 0 || busy}
+                >
+                  {t("itops.ipam.scanImportAction", { count: chosen.size })}
+                </Btn>
+              )
+            }
+          />
+        }
+      >
+        {results === null ? (
+          <>
+            <p className="it-ipam-scan-copy">{t("itops.ipam.scanIntro")}</p>
+            <div className="it-ipam-scan-prefixes">
+              {prefixes.map((prefix) => (
+                <label key={prefix.id} className="it-ipam-scan-prefix">
+                  <input
+                    type="checkbox"
+                    checked={selectedPrefixes.has(prefix.id)}
+                    onChange={(event) => {
+                      const next = new Set(selectedPrefixes);
+                      if (event.currentTarget.checked) next.add(prefix.id);
+                      else next.delete(prefix.id);
+                      setSelectedPrefixes(next);
+                    }}
+                  />
+                  <strong>{prefix.cidr}</strong>
+                  <span>{prefix.role || vrfLabel(prefix.vrf, t("itops.ipam.defaultVrf"))}</span>
+                  <small>{prefix.usable.toLocaleString()}</small>
+                </label>
+              ))}
+            </div>
+            <p className={selectionTooLarge ? "it-ipam-scan-limit error" : "it-ipam-scan-limit"}>
+              {selectionTooLarge
+                ? t("itops.ipam.scanTooLarge")
+                : t("itops.ipam.scanAddressBudget", {
+                    count: selectedAddressCount.toLocaleString(),
+                  })}
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="it-ipam-scan-copy">
+              {results.length > 0
+                ? t("itops.ipam.scanResultsSummary", { count: results.length })
+                : t("itops.ipam.scanNoResults")}
+            </p>
+            {results.length > 0 ? (
+              <div className="it-ipam-scan-results">
+                {results.map((entry) => {
+                  const key = `${entry.vrf}\u0000${entry.address}`;
+                  const evidence = [
+                    entry.ping ? t("itops.ipam.scanEvidencePing") : null,
+                    entry.snmp ? t("itops.ipam.scanEvidenceSnmp") : null,
+                    entry.openPorts.length > 0
+                      ? t("itops.ipam.scanEvidencePorts", {
+                          ports: entry.openPorts.join(", "),
+                        })
+                      : null,
+                  ].filter(Boolean);
+                  return (
+                    <label key={`${entry.prefixId}:${key}`} className="it-ipam-scan-result">
+                      <input
+                        type="checkbox"
+                        checked={!entry.documented && chosen.has(key)}
+                        disabled={entry.documented}
+                        onChange={(event) => {
+                          const next = new Set(chosen);
+                          if (event.currentTarget.checked) next.add(key);
+                          else next.delete(key);
+                          setChosen(next);
+                        }}
+                      />
+                      <strong>{entry.address}</strong>
+                      <span>{evidence.join(" · ")}</span>
+                      <small>
+                        {entry.documented ? t("itops.ipam.scanDocumented") : entry.cidr}
+                      </small>
+                    </label>
+                  );
+                })}
+              </div>
+            ) : null}
+          </>
+        )}
+      </Sheet>
+    </DialogShell>
+  );
+}
+
 export function IpamPanel() {
   const { t } = useTranslation();
   const ipam = useItOpsStore((state) => state.ipam);
@@ -512,6 +711,7 @@ export function IpamPanel() {
     { record: IpAddressRecord | null; prefix: IpamPrefixNode | null } | undefined
   >(undefined);
   const [claiming, setClaiming] = useState(false);
+  const [scanning, setScanning] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<
     { kind: "prefix"; prefix: IpamPrefixNode } | { kind: "address"; record: IpAddressRecord } | null
   >(null);
@@ -603,6 +803,12 @@ export function IpamPanel() {
             <button type="button" className="it-ipam-claim-btn" onClick={() => setClaiming(true)}>
               <ItIcon name="download" size={13} />
               {t("itops.ipam.claimPrompt", { count: candidates.length })}
+            </button>
+          ) : null}
+          {ipam.prefixes.length > 0 ? (
+            <button type="button" className="it-ipam-claim-btn" onClick={() => setScanning(true)}>
+              <ItIcon name="pulse" size={13} />
+              {t("itops.ipam.scanAction")}
             </button>
           ) : null}
         </div>
@@ -747,6 +953,9 @@ export function IpamPanel() {
       ) : null}
       {claiming ? (
         <ClaimDialog candidates={candidates} onClose={() => setClaiming(false)} />
+      ) : null}
+      {scanning ? (
+        <ScanDialog prefixes={ipam.prefixes} onClose={() => setScanning(false)} />
       ) : null}
       {pendingDelete ? (
         <ConfirmSheet

@@ -1528,6 +1528,7 @@ type CommandMap = {
       status: import("../types").AddressStatus;
       dnsName: string;
       description: string;
+      siteId: string | null;
       hostId: string | null;
       connectionId: string | null;
       rackItemId: string | null;
@@ -1542,6 +1543,7 @@ type CommandMap = {
       status: import("../types").AddressStatus;
       dnsName: string;
       description: string;
+      siteId: string | null;
       hostId: string | null;
       connectionId: string | null;
       rackItemId: string | null;
@@ -1555,6 +1557,10 @@ type CommandMap = {
   itops_suggest_free_addresses: {
     args: { cidr: string; vrf: string; limit?: number };
     result: string[];
+  };
+  itops_scan_ip_prefixes: {
+    args: { prefixIds: string[] };
+    result: import("../types").IpamScanResult[];
   };
   itops_list_network_maps: {
     args: undefined;

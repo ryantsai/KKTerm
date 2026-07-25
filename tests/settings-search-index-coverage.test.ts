@@ -102,6 +102,7 @@ const NON_SEARCHABLE_KEYS: Record<SettingsSectionId, readonly string[]> = {
     "settings.copilotCliStatusMissing", "settings.copilotCliStatusReady",
     "settings.copilotCliStatusUnknown", "settings.copilotConnected",
     "settings.copilotDisconnected", "settings.extraHeadersPlaceholder",
+    "settings.environmentVariableName", "settings.environmentVariableValue",
     "settings.keychainSaveFailedTitle", "settings.lastCheckedAt",
     "settings.mcpAuthBadge", "settings.mcpServersEmpty",
     "settings.mcpStatusAuthError", "settings.mcpStatusOk",

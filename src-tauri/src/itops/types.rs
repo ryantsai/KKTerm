@@ -1162,6 +1162,23 @@ pub struct IpamSnapshot {
     pub addresses: Vec<IpAddressRecord>,
 }
 
+/// One address that answered at least one explicit IPAM scan probe. Results are
+/// transient operator evidence; importing one creates the durable Address
+/// Record, while the scan itself never writes network state to SQLite.
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IpamScanResult {
+    pub address: String,
+    pub prefix_id: String,
+    pub cidr: String,
+    pub vrf: String,
+    pub site_id: Option<String>,
+    pub ping: bool,
+    pub snmp: bool,
+    pub open_ports: Vec<u16>,
+    pub documented: bool,
+}
+
 // ── Network Map (docs/ITOPS.md Network Map) ───────────────────────────────────
 // The logical link diagram, distinct from the physical Site → Server Room →
 // Rack topology. One row per map holds the whole graph as JSON, following the

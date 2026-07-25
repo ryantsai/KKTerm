@@ -57,14 +57,14 @@ test("IT Ops manual reserves SNMP metadata for future automatic discovery", asyn
   assert.doesNotMatch(rackDeviceParagraph, /IPAM/);
 });
 
-test("IPAM and Network Maps document that they carry no live device state", async () => {
+test("IPAM scanning stays transient and Network Maps carry no live device state", async () => {
   const manual = await readFile(new URL("../docs/manual/12-it-ops.md", import.meta.url), "utf8");
 
   assert.match(manual, /^## IPAM$/m);
   assert.match(manual, /^## Network Maps$/m);
-  // The SNMP scaffolding is future preparation, so nothing on these pages may
-  // claim to reflect, poll, or discover live devices.
+  // Network Maps remain operator drawings; IPAM discovery is an explicit,
+  // transient action and must not turn into durable background monitoring.
   assert.match(manual, /does not poll, monitor, or discover devices/i);
-  assert.match(manual, /never a live scan/i);
-  assert.doesNotMatch(manual, /IPAM (scans|discovers|probes)/i);
+  assert.match(manual, /Scanning alone writes nothing/i);
+  assert.match(manual, /authorized to probe/i);
 });

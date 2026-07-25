@@ -8428,6 +8428,61 @@
 }
 .it-ipam-claim-row small { color: var(--text-faint); font-size: 10px; }
 
+.it-ipam-scan-copy {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.it-ipam-scan-prefixes,
+.it-ipam-scan-results {
+  display: flex;
+  flex-direction: column;
+  max-height: 330px;
+  overflow: auto;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+}
+.it-ipam-scan-prefix,
+.it-ipam-scan-result {
+  display: grid;
+  grid-template-columns: 18px 150px 1fr auto;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 10px;
+  font-size: 11px;
+}
+.it-ipam-scan-prefix + .it-ipam-scan-prefix,
+.it-ipam-scan-result + .it-ipam-scan-result {
+  border-top: 1px solid var(--hairline);
+}
+.it-ipam-scan-prefix input,
+.it-ipam-scan-result input { accent-color: var(--accent); }
+.it-ipam-scan-prefix strong,
+.it-ipam-scan-result strong {
+  font-family: var(--app-mono-font-family, ui-monospace, monospace);
+}
+.it-ipam-scan-prefix span,
+.it-ipam-scan-result span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+.it-ipam-scan-prefix small,
+.it-ipam-scan-result small {
+  color: var(--text-faint);
+  font-size: 10px;
+}
+.it-ipam-scan-result:has(input:disabled) { opacity: 0.58; }
+.it-ipam-scan-limit {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 10px;
+}
+.it-ipam-scan-limit.error { color: var(--red); }
+
 /* ══════════════════════════════════════════════════════════════════════════
    Global Network Map designer (docs/ITOPS.md Network Map).
    `data-state` on a card is the What-If verdict for the drawn map — never a
