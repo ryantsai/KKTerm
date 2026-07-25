@@ -116,7 +116,11 @@ export function ItOpsPage({
       aria-label={t("itops.title")}
       data-active={active ? "true" : "false"}
     >
-      <ItOpsModule siteTreeCollapsed={siteTreeCollapsed} onShowWorkspace={onShowWorkspace} />
+      <ItOpsModule
+        active={active}
+        siteTreeCollapsed={siteTreeCollapsed}
+        onShowWorkspace={onShowWorkspace}
+      />
     </section>
   );
 }

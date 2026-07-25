@@ -1788,7 +1788,7 @@
         "cloud": "클라우드"
       },
       "linkKind": {
-        "ethernet": "이더넷",
+        "ethernet": "구리선 / 이더넷",
         "fiber": "광케이블",
         "wan": "WAN",
         "wireless": "무선"
@@ -1810,10 +1810,13 @@
       "removeNode": "노드 제거",
       "linkHeading": "링크",
       "linkBetween": "{{from}} ↔ {{to}}",
-      "linkLabelLabel": "레이블",
+      "linkLabelLabel": "링크 이름",
       "linkLabelHint": "선택 사항. 포트, 회선 ID, VLAN 등.",
       "linkLabelPlaceholder": "예: Gi1/0/24",
       "linkKindLabel": "종류",
+      "linkCountLabel": "병렬 링크 수",
+      "linkSpeedLabel": "속도",
+      "linkSpeedPlaceholder": "예: 10 Gbps",
       "removeLink": "링크 제거",
       "designHeading": "맵",
       "designHint": "노드 가장자리에서 끌어 다른 노드와 연결하세요. 노드나 링크를 고르면 편집할 수 있습니다.",

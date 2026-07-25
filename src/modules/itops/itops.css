@@ -8493,40 +8493,254 @@
   flex-direction: column;
 }
 
-.itops-page .nm-tabs {
+.itops-page .nm-gallery {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  padding: 14px 0 18px;
+  overflow: auto;
+}
+.itops-page .nm-gallery-card {
+  position: relative;
+  min-height: 142px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+.itops-page .nm-gallery-card:hover,
+.itops-page .nm-gallery-card:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+  background: color-mix(in srgb, var(--accent-soft) 34%, var(--surface));
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--accent) 9%, transparent);
+  transform: translateY(-1px);
+}
+.itops-page .nm-gallery-open {
+  display: grid;
+  width: 100%;
+  min-height: 142px;
+  grid-template-columns: minmax(210px, 32%) minmax(0, 1fr);
+  gap: 18px;
+  align-items: stretch;
+  padding: 12px 84px 12px 12px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.itops-page .nm-gallery-open:focus-visible,
+.itops-page .nm-back:focus-visible,
+.itops-page .nm-tab:focus-visible,
+.itops-page .nm-mode-action:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 76%, transparent);
+  outline-offset: -2px;
+}
+.itops-page .nm-gallery-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+}
+.itops-page .nm-gallery-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-faint);
+  font-size: 10px;
+  font-weight: 650;
+}
+.itops-page .nm-gallery-copy > strong {
+  max-width: 100%;
+  margin-top: 6px;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 690;
+  letter-spacing: -0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.itops-page .nm-gallery-description {
+  display: -webkit-box;
+  max-width: 68ch;
+  margin-top: 4px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+.itops-page .nm-gallery-stats {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 16px;
+  margin-top: 13px;
+}
+.itops-page .nm-gallery-stats > span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  color: var(--text-faint);
+  font-size: 9.5px;
+  font-weight: 650;
+}
+.itops-page .nm-gallery-stats b {
+  color: var(--text);
+  font-family: var(--app-mono-font-family, ui-monospace, monospace);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.itops-page .nm-gallery-actions {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: inline-flex;
+  gap: 3px;
+  padding: 2px;
+  border: 0.5px solid var(--border);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  opacity: 0;
+  transform: translateY(-2px);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+.itops-page .nm-gallery-card:hover .nm-gallery-actions,
+.itops-page .nm-gallery-card:focus-within .nm-gallery-actions {
+  opacity: 1;
+  transform: translateY(0);
+}
+.itops-page .nm-map-preview {
+  width: 100%;
+  height: 118px;
+  align-self: center;
+  border: 1px solid var(--hairline);
+  border-radius: 9px;
+  background: var(--surface-muted);
+}
+.itops-page .nm-map-preview-grid { fill: var(--border-strong); opacity: 0.55; }
+.itops-page .nm-map-preview-link {
+  stroke: var(--text-faint);
+  stroke-width: 1.45;
+  stroke-dasharray: 5 7;
+  animation: nmPreviewFlow 1.8s linear infinite;
+}
+.itops-page .nm-map-preview-link.fiber { stroke: var(--accent); }
+.itops-page .nm-map-preview-link.wan { stroke-dasharray: 10 6; }
+.itops-page .nm-map-preview-link.wireless { stroke-dasharray: 1.5 5; }
+.itops-page .nm-map-preview-node {
+  color: var(--accent);
+  animation: nmPreviewNodeIn 420ms cubic-bezier(.2, .8, .2, 1) both;
+}
+.itops-page .nm-map-preview-node[data-kind="firewall"] { color: var(--amber); }
+.itops-page .nm-map-preview-node[data-kind="server"] { color: var(--text-muted); }
+.itops-page .nm-map-preview-node[data-kind="loadBalancer"] { color: var(--green); }
+.itops-page .nm-map-preview-node[data-kind="cloud"] { color: var(--accent); }
+.itops-page .nm-map-preview-node rect {
+  fill: var(--surface);
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+.itops-page .nm-map-preview-halo {
+  fill: currentColor;
+  opacity: 0.12;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: nmPreviewHalo 2.4s ease-out infinite;
+}
+.itops-page .nm-map-preview-led { fill: currentColor; }
+.itops-page .nm-map-preview-empty {
+  fill: none;
+  stroke: var(--text-faint);
+  stroke-width: 1.25;
+  stroke-dasharray: 3 4;
+  opacity: 0.52;
+}
+
+.itops-page .nm-detail {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+.itops-page .nm-detail-nav {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
   padding: 10px 0;
+}
+.itops-page .nm-back {
+  display: inline-flex;
+  height: 29px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  padding: 0 9px 0 7px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+.itops-page .nm-back:hover {
+  border-color: var(--border-strong);
+  background: var(--hover);
+  color: var(--text);
+}
+.itops-page .nm-tabs {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  gap: 3px;
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 .itops-page .nm-tab {
   display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding-right: 3px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-}
-.itops-page .nm-tab > button:first-child {
-  display: inline-flex;
+  height: 29px;
+  min-width: 0;
+  max-width: 210px;
+  flex: 0 0 auto;
   align-items: center;
   gap: 6px;
-  height: 28px;
-  padding: 0 10px;
-  border: 0;
+  padding: 0 11px;
+  border: 1px solid transparent;
   border-radius: 7px;
   background: transparent;
   color: var(--text-muted);
+  font: inherit;
   font-size: 11.5px;
   font-weight: 600;
   cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
 }
-.itops-page .nm-tab.active {
-  border-color: var(--accent);
+.itops-page .nm-tab span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.itops-page .nm-tab:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.itops-page .nm-tab[data-active="true"] {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
   background: var(--accent-soft);
+  color: var(--accent);
 }
-.itops-page .nm-tab.active > button:first-child { color: var(--accent); }
 
 .itops-page .nm-editor {
   display: flex;
@@ -8543,11 +8757,41 @@
   flex: 0 0 34px;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   padding: 4px 8px;
   border-bottom: 1px solid var(--hairline);
 }
-.itops-page .nm-toolbar .it-room-view-controls { top: 50%; }
+.itops-page .nm-mode-action-wrap {
+  display: inline-flex;
+  align-items: center;
+}
+.itops-page .nm-mode-action {
+  display: inline-flex;
+  height: 25px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 9px;
+  border: 0.5px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+.itops-page .nm-mode-action:hover {
+  border-color: var(--border-strong);
+  background: var(--hover);
+  color: var(--text);
+}
+.itops-page .nm-mode-action[data-active="true"] {
+  border-color: color-mix(in srgb, var(--red) 44%, var(--border));
+  background: color-mix(in srgb, var(--red) 10%, var(--surface));
+  color: var(--red);
+}
+.itops-page .nm-toolbar .it-drill-action.danger:hover { color: var(--red); }
 
 .itops-page .nm-body {
   display: flex;
@@ -8626,11 +8870,29 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 42px;
+  height: 42px;
   flex: 0 0 auto;
-  border-radius: 8px;
+  overflow: hidden;
+  border-radius: 11px;
   color: #fff;
+}
+.nm-device-art { overflow: visible; }
+.nm-device-art-orbit {
+  opacity: 0.2;
+  stroke-dasharray: 3 5;
+  transform-origin: center;
+  animation: nmDeviceOrbit 8s linear infinite;
+}
+.nm-device-art-glyph {
+  transform-origin: center;
+  animation: nmDeviceBreathe 3.2s ease-in-out infinite;
+}
+.nm-device-art-ping {
+  fill: currentColor;
+  stroke: none;
+  transform-origin: 26px 6px;
+  animation: nmDevicePing 2.2s ease-out infinite;
 }
 .nm-node-tx { flex: 1 1 auto; min-width: 0; }
 .nm-node-lab,
@@ -8673,9 +8935,17 @@
   stroke: var(--text-faint);
   stroke-width: 1.6;
 }
-.react-flow__edge.nm-edge.fiber .react-flow__edge-path { stroke: var(--accent); }
-.react-flow__edge.nm-edge.wan .react-flow__edge-path { stroke-dasharray: 7 4; }
-.react-flow__edge.nm-edge.wireless .react-flow__edge-path { stroke-dasharray: 1.5 4; }
+.react-flow__edge.nm-edge.up .react-flow__edge-path {
+  stroke-dasharray: 9 7;
+  animation: nmLinkFlow 1.3s linear infinite;
+}
+.react-flow__edge.nm-edge.fiber .react-flow__edge-path {
+  stroke: var(--accent);
+  stroke-dasharray: 14 5;
+}
+.react-flow__edge.nm-edge.wan .react-flow__edge-path { stroke-dasharray: 7 5; }
+.react-flow__edge.nm-edge.wireless .react-flow__edge-path { stroke-dasharray: 1.5 5; }
+.react-flow__edge.nm-edge.multi .react-flow__edge-path { stroke-width: 2.5; }
 .react-flow__edge.nm-edge.sel .react-flow__edge-path {
   stroke: var(--accent);
   stroke-width: 2.4;
@@ -8686,7 +8956,11 @@
 }
 .react-flow__edge.nm-edge.severed .react-flow__edge-path { opacity: 0.35; }
 .react-flow__edge.nm-edge .react-flow__edge-textbg { fill: var(--surface); }
-.react-flow__edge.nm-edge .react-flow__edge-text { fill: var(--text-muted); font-size: 10px; }
+.react-flow__edge.nm-edge .react-flow__edge-text {
+  fill: var(--text-muted);
+  font-family: var(--app-mono-font-family, ui-monospace, monospace);
+  font-size: 10px;
+}
 
 /* side panel */
 .itops-page .nm-root-toggle {
@@ -8703,6 +8977,11 @@
 .itops-page .nm-root-toggle input { margin-top: 2px; accent-color: var(--accent); }
 .itops-page .nm-root-toggle strong { display: block; font-size: 12px; }
 .itops-page .nm-root-toggle small { display: block; margin-top: 2px; color: var(--text-faint); font-size: 10.5px; }
+.itops-page .nm-link-meta-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 8px;
+}
 
 .itops-page .nm-stats {
   display: flex;
@@ -8799,3 +9078,55 @@
   white-space: nowrap;
 }
 .itops-page .nm-weak-row small { color: var(--text-muted); font-size: 10px; }
+
+@keyframes nmPreviewFlow {
+  to { stroke-dashoffset: -24; }
+}
+@keyframes nmPreviewNodeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes nmPreviewHalo {
+  0%, 100% { opacity: 0.08; transform: scale(0.72); }
+  50% { opacity: 0.2; transform: scale(1.15); }
+}
+@keyframes nmDeviceOrbit {
+  to { transform: rotate(360deg); }
+}
+@keyframes nmDeviceBreathe {
+  0%, 100% { opacity: 0.88; transform: scale(0.96); }
+  50% { opacity: 1; transform: scale(1.04); }
+}
+@keyframes nmDevicePing {
+  0%, 35% { opacity: 0; transform: scale(0.2); }
+  52% { opacity: 0.9; }
+  100% { opacity: 0; transform: scale(2.6); }
+}
+@keyframes nmLinkFlow {
+  to { stroke-dashoffset: -32; }
+}
+
+@media (max-width: 980px) {
+  .itops-page .nm-gallery-open {
+    grid-template-columns: minmax(170px, 38%) minmax(0, 1fr);
+  }
+  .itops-page .nm-side { flex-basis: 260px; }
+  .itops-page .nm-link-meta-grid { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .itops-page .nm-gallery-card,
+  .itops-page .nm-gallery-actions,
+  .itops-page .nm-map-preview-link,
+  .itops-page .nm-map-preview-node,
+  .itops-page .nm-map-preview-halo,
+  .nm-device-art-orbit,
+  .nm-device-art-glyph,
+  .nm-device-art-ping,
+  .react-flow__edge.nm-edge.up .react-flow__edge-path {
+    animation: none;
+    transition: none;
+  }
+  .itops-page .nm-gallery-card:hover,
+  .itops-page .nm-gallery-card:focus-within { transform: none; }
+}

@@ -1788,7 +1788,7 @@
         "cloud": "Cloud"
       },
       "linkKind": {
-        "ethernet": "Ethernet",
+        "ethernet": "Copper / Ethernet",
         "fiber": "Fiber",
         "wan": "WAN",
         "wireless": "Wireless"
@@ -1810,10 +1810,13 @@
       "removeNode": "Remove node",
       "linkHeading": "Link",
       "linkBetween": "{{from}} ↔ {{to}}",
-      "linkLabelLabel": "Label",
+      "linkLabelLabel": "Link name",
       "linkLabelHint": "Optional. A port, a circuit id, a VLAN.",
       "linkLabelPlaceholder": "e.g. Gi1/0/24",
       "linkKindLabel": "Type",
+      "linkCountLabel": "Parallel links",
+      "linkSpeedLabel": "Speed",
+      "linkSpeedPlaceholder": "e.g. 10 Gbps",
       "removeLink": "Remove link",
       "designHeading": "Map",
       "designHint": "Drag from the edge of a node to link it to another. Pick a node or a link to edit it.",

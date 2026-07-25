@@ -1788,7 +1788,7 @@
         "cloud": "雲端"
       },
       "linkKind": {
-        "ethernet": "乙太網路",
+        "ethernet": "銅纜 / 乙太網路",
         "fiber": "光纖",
         "wan": "廣域網路",
         "wireless": "無線"
@@ -1810,10 +1810,13 @@
       "removeNode": "移除節點",
       "linkHeading": "連線",
       "linkBetween": "{{from}} ↔ {{to}}",
-      "linkLabelLabel": "標籤",
+      "linkLabelLabel": "鏈路名稱",
       "linkLabelHint": "選填。連接埠、線路編號或 VLAN。",
       "linkLabelPlaceholder": "例如 Gi1/0/24",
       "linkKindLabel": "類型",
+      "linkCountLabel": "平行鏈路數",
+      "linkSpeedLabel": "速率",
+      "linkSpeedPlaceholder": "例如 10 Gbps",
       "removeLink": "移除連線",
       "designHeading": "拓撲圖",
       "designHint": "從節點邊緣拖曳即可連到另一個節點。選取節點或連線即可編輯。",

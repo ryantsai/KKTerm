@@ -28,9 +28,11 @@ type AutomationActionEvent = {
 };
 
 export function ItOpsModule({
+  active,
   siteTreeCollapsed,
   onShowWorkspace,
 }: {
+  active: boolean;
   siteTreeCollapsed: boolean;
   onShowWorkspace: () => void;
 }) {
@@ -125,6 +127,7 @@ export function ItOpsModule({
     <div className="it">
       <div className="it-content">
         <SitesTab
+          active={active}
           treeCollapsed={siteTreeCollapsed}
           onShowWorkspace={onShowWorkspace}
           renderSidebarHeader={({ actions, collapsed }) => (

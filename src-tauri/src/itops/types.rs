@@ -1207,6 +1207,10 @@ pub enum NetworkLinkKind {
     Wireless,
 }
 
+fn default_network_link_count() -> u16 {
+    1
+}
+
 /// One device on a Network Map. `address` optionally ties the node to an IPAM
 /// record; the three id fields are soft references like an Address Record's.
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -1235,6 +1239,7 @@ pub struct NetworkNode {
 }
 
 /// An undirected link between two Network Nodes. `from`/`to` are node ids.
+/// Speed and parallel-link count are operator-authored documentation.
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NetworkLink {
@@ -1245,6 +1250,10 @@ pub struct NetworkLink {
     pub label: String,
     #[serde(default)]
     pub kind: NetworkLinkKind,
+    #[serde(default = "default_network_link_count")]
+    pub connection_count: u16,
+    #[serde(default)]
+    pub speed: String,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]

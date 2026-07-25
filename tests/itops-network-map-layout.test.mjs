@@ -4,17 +4,59 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("Network Map designer uses the Server Room spatial control layout", async () => {
+test("Network Maps open as a gallery and keep map switching inside the focused workspace", async () => {
   const designer = await read("src/modules/itops/NetworkMapDesigner.tsx");
   const styles = await read("src/modules/itops/itops.css");
 
+  assert.match(designer, /className="nm-gallery"/);
+  assert.match(designer, /<NetworkMapPreview map=\{map\}/);
+  assert.match(designer, /className="nm-detail-nav"/);
+  assert.match(designer, /className="nm-tabs" role="tablist"/);
+  assert.match(designer, /onClick=\{\(\) => setSelectedId\(""\)\}/);
   assert.match(designer, /className="nm-toolbar it-drill-toolbar"/);
-  assert.match(designer, /className="it-room-view-controls"[\s\S]*className="rm-segmented"/);
+  assert.match(designer, /className="nm-mode-action"/);
+  assert.doesNotMatch(designer, /className="rm-segmented"/);
   assert.match(designer, /className="it-drill-actions"/);
   assert.match(designer, /className="au-side nm-side kk-surface"/);
   assert.match(designer, /className="nm-picker-grid"/);
   assert.doesNotMatch(designer, /className="nm-palette"|className="nm-palette-btn"/);
 
+  assert.match(styles, /\.nm-gallery-card\s*\{/);
+  assert.match(styles, /@keyframes nmPreviewFlow/);
+  assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(styles, /\.nm-picker-grid\s*\{[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.doesNotMatch(styles, /\.nm-palette-btn/);
+});
+
+test("Network Nodes use SVG device artwork and links expose medium, count, and speed", async () => {
+  const [designer, types] = await Promise.all([
+    read("src/modules/itops/NetworkMapDesigner.tsx"),
+    read("src/types.ts"),
+  ]);
+
+  assert.match(designer, /function NetworkNodeArtwork/);
+  assert.match(designer, /className="nm-device-art"/);
+  assert.match(designer, /itops\.networkMap\.linkKindLabel/);
+  assert.match(designer, /itops\.networkMap\.linkCountLabel/);
+  assert.match(designer, /itops\.networkMap\.linkSpeedLabel/);
+  assert.match(designer, /link\.connectionCount > 1 \? `×\$\{link\.connectionCount\}`/);
+  assert.match(types, /connectionCount: number;/);
+  assert.match(types, /speed: string;/);
+});
+
+test("leaving the IT Ops Module exits the focused Network Map editor", async () => {
+  const [page, module, sites, designer] = await Promise.all([
+    read("src/modules/itops/ItOpsPage.tsx"),
+    read("src/modules/itops/ItOpsModule.tsx"),
+    read("src/modules/itops/SitesTab.tsx"),
+    read("src/modules/itops/NetworkMapDesigner.tsx"),
+  ]);
+
+  assert.match(page, /<ItOpsModule[\s\S]*active=\{active\}/);
+  assert.match(module, /<SitesTab[\s\S]*active=\{active\}/);
+  assert.match(sites, /<NetworkMapDesigner active=\{active\} \/>/);
+  assert.match(
+    designer,
+    /useEffect\(\(\) => \{\s*if \(!active\) \{\s*setSelectedId\(""\);[\s\S]*setDialog\(undefined\);[\s\S]*setPendingDelete\(null\);/,
+  );
 });

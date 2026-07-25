@@ -166,7 +166,7 @@ One box on a **Network Map**: a label, a kind (router, switch, firewall, server,
 _Avoid_: device, host (on a map), rack item
 
 **Network Link**:
-One undirected edge between two **Network Nodes**, with an optional label (a port, a circuit id, a VLAN) and a kind (ethernet, fiber, WAN, or wireless). Undirected is deliberate: a link asserts that the two nodes can reach each other, not a traffic direction.
+One undirected edge between two **Network Nodes**, with an optional name/label (a port, a circuit id, a VLAN), a kind (ethernet, fiber, WAN, or wireless), a free-text speed, and a count of parallel physical links represented by the one drawn line. Undirected is deliberate: a link asserts that the two nodes can reach each other, not a traffic direction.
 _Avoid_: connection (that is the durable Connection model), edge, cable, circuit
 
 **Entry point**:

@@ -647,12 +647,17 @@ export interface NetworkNode {
 }
 
 // An undirected link between two Network Nodes; `from`/`to` are node ids.
+// Link metadata is documentation only and is never measured live.
 export interface NetworkLink {
   id: string;
   from: string;
   to: string;
   label: string;
   kind: NetworkLinkKind;
+  // One drawn link may stand for several parallel physical links.
+  connectionCount: number;
+  // Free text keeps units and aggregate notation operator-defined.
+  speed: string;
 }
 
 export interface NetworkGraph {

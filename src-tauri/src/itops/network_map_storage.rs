@@ -88,6 +88,11 @@ fn sanitize_graph(graph: &NetworkGraph) -> NetworkGraph {
                     && node_ids.contains(&link.to.as_str())
             })
             .cloned()
+            .map(|mut link| {
+                link.connection_count = link.connection_count.clamp(1, 64);
+                link.speed = link.speed.trim().to_string();
+                link
+            })
             .collect(),
         roots: graph
             .roots
@@ -252,16 +257,21 @@ mod tests {
             to: to.to_string(),
             label: String::new(),
             kind: NetworkLinkKind::Ethernet,
+            connection_count: 1,
+            speed: String::new(),
         }
     }
 
     #[test]
     fn round_trips_a_graph_and_drops_dangling_links() {
         let conn = open_test_db();
+        let mut primary_link = link("l1", "core", "edge");
+        primary_link.connection_count = 4;
+        primary_link.speed = " 100 Gbps ".to_string();
         let graph = NetworkGraph {
             nodes: vec![node("core"), node("edge")],
             links: vec![
-                link("l1", "core", "edge"),
+                primary_link,
                 link("l2", "core", "ghost"),
                 link("l3", "core", "core"),
             ],
@@ -278,6 +288,8 @@ mod tests {
         assert_eq!(listed.len(), 1);
         assert_eq!(listed[0].graph.nodes.len(), 2);
         assert_eq!(listed[0].graph.links[0].id, "l1");
+        assert_eq!(listed[0].graph.links[0].connection_count, 4);
+        assert_eq!(listed[0].graph.links[0].speed, "100 Gbps");
     }
 
     #[test]
@@ -323,6 +335,7 @@ mod tests {
         let loaded = get_map(&conn, "map-1").unwrap().unwrap();
         assert_eq!(loaded.graph.links.len(), 1);
         assert_eq!(loaded.graph.links[0].id, "valid");
+        assert_eq!(loaded.graph.links[0].connection_count, 1);
         assert_eq!(loaded.graph.roots, vec!["core".to_string()]);
     }
 }

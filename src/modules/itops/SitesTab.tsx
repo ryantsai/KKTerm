@@ -201,10 +201,12 @@ function iconForegroundForBackground(color?: string | null) {
 }
 
 export function SitesTab({
+  active,
   renderSidebarHeader,
   treeCollapsed,
   onShowWorkspace,
 }: {
+  active: boolean;
   renderSidebarHeader?: (props: { actions?: ReactNode; collapsed: boolean }) => ReactNode;
   treeCollapsed: boolean;
   /** Navigate the app shell to the Workspace Module (connect popover jumps). */
@@ -1165,7 +1167,7 @@ export function SitesTab({
         </div>
       ) : rootSurface === "networkMaps" ? (
         <div className="hg-detail it-destination-page">
-          <NetworkMapDesigner />
+          <NetworkMapDesigner active={active} />
         </div>
       ) : activeGroup && selectedDestination === "hosts" ? (
         <div className="hg-detail it-destination-page">

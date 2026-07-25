@@ -1788,7 +1788,7 @@
         "cloud": "Nube"
       },
       "linkKind": {
-        "ethernet": "Ethernet",
+        "ethernet": "Cobre / Ethernet",
         "fiber": "Fibra",
         "wan": "WAN",
         "wireless": "Inalámbrico"
@@ -1810,10 +1810,13 @@
       "removeNode": "Quitar nodo",
       "linkHeading": "Enlace",
       "linkBetween": "{{from}} ↔ {{to}}",
-      "linkLabelLabel": "Etiqueta",
+      "linkLabelLabel": "Nombre del enlace",
       "linkLabelHint": "Opcional. Un puerto, un id de circuito, una VLAN.",
       "linkLabelPlaceholder": "p. ej. Gi1/0/24",
       "linkKindLabel": "Tipo",
+      "linkCountLabel": "Enlaces paralelos",
+      "linkSpeedLabel": "Velocidad",
+      "linkSpeedPlaceholder": "p. ej., 10 Gbps",
       "removeLink": "Quitar enlace",
       "designHeading": "Mapa",
       "designHint": "Arrastra desde el borde de un nodo para enlazarlo con otro. Selecciona un nodo o un enlace para editarlo.",

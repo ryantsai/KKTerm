@@ -1788,7 +1788,7 @@
         "cloud": "Cloud"
       },
       "linkKind": {
-        "ethernet": "Ethernet",
+        "ethernet": "Kupfer / Ethernet",
         "fiber": "Glasfaser",
         "wan": "WAN",
         "wireless": "Funk"
@@ -1810,10 +1810,13 @@
       "removeNode": "Knoten entfernen",
       "linkHeading": "Verbindung",
       "linkBetween": "{{from}} ↔ {{to}}",
-      "linkLabelLabel": "Bezeichnung",
+      "linkLabelLabel": "Linkname",
       "linkLabelHint": "Optional. Ein Port, eine Leitungskennung, ein VLAN.",
       "linkLabelPlaceholder": "z. B. Gi1/0/24",
       "linkKindLabel": "Typ",
+      "linkCountLabel": "Parallele Verbindungen",
+      "linkSpeedLabel": "Geschwindigkeit",
+      "linkSpeedPlaceholder": "z. B. 10 Gbit/s",
       "removeLink": "Verbindung entfernen",
       "designHeading": "Karte",
       "designHint": "Ziehen Sie vom Rand eines Knotens, um ihn mit einem anderen zu verbinden. Wählen Sie einen Knoten oder eine Verbindung, um sie zu bearbeiten.",

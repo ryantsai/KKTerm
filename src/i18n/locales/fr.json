@@ -1788,7 +1788,7 @@
         "cloud": "Cloud"
       },
       "linkKind": {
-        "ethernet": "Ethernet",
+        "ethernet": "Cuivre / Ethernet",
         "fiber": "Fibre",
         "wan": "WAN",
         "wireless": "Sans fil"
@@ -1810,10 +1810,13 @@
       "removeNode": "Retirer le nœud",
       "linkHeading": "Lien",
       "linkBetween": "{{from}} ↔ {{to}}",
-      "linkLabelLabel": "Libellé",
+      "linkLabelLabel": "Nom de la liaison",
       "linkLabelHint": "Facultatif. Un port, un identifiant de circuit, un VLAN.",
       "linkLabelPlaceholder": "ex. Gi1/0/24",
       "linkKindLabel": "Type",
+      "linkCountLabel": "Liaisons parallèles",
+      "linkSpeedLabel": "Débit",
+      "linkSpeedPlaceholder": "p. ex. 10 Gbit/s",
       "removeLink": "Retirer le lien",
       "designHeading": "Carte",
       "designHint": "Tirez depuis le bord d’un nœud pour le relier à un autre. Sélectionnez un nœud ou un lien pour le modifier.",

@@ -238,10 +238,12 @@ drawn under the label; it is not a foreign key into IPAM.
 
 **Network Link** — one **undirected** edge between two Network Nodes, with
 an optional label (a port, a circuit id, a VLAN) and a kind (`ethernet` /
-`fiber` / `wan` / `wireless`). Undirected is deliberate: a link asserts
-mutual reachability, not a traffic direction, and the reachability maths
-treats it symmetrically. The stored link carries no handle/anchor fields —
-the canvas picks the two anchors geometrically at render time.
+`fiber` / `wan` / `wireless`), a free-text speed, and a count of parallel
+physical links represented by the one drawn line. Undirected is deliberate:
+a link asserts mutual reachability, not a traffic direction, and the
+reachability maths treats it symmetrically. The stored link carries no
+handle/anchor fields — the canvas picks the two anchors geometrically at
+render time.
 
 **Network Map** — a durable named canvas in `itops_network_maps`, global
 like IPAM with an optional soft Site reference that only tags it. The whole
@@ -423,7 +425,10 @@ record copies the selected Prefix's optional soft Site tag; a Prefix with no
 Site imports a record with `site_id = NULL`.
 
 Network Maps (`src/modules/itops/NetworkMapDesigner.tsx`) is the one IT Ops
-destination with a canvas. It uses `@xyflow/react` the same way
+destination with a canvas. Its initial state is a card list of every map,
+with a compact animated SVG preview and graph counts; opening a card enters
+one full map workspace, where the tab strip switches between the other maps
+and Back returns to the list. It uses `@xyflow/react` the same way
 `AutomationEditor.tsx` does — controlled `nodes`/`edges` via `useMemo`,
 position-only `onNodesChange` filtering, `deleteKeyCode={null}`,
 `proOptions={{ hideAttribution: true }}`. Because a Network Link is
@@ -434,7 +439,9 @@ gives floating-edge behaviour with no custom edge component and keeps the
 stored link free of anchor state. The editor is keyed by map id so switching
 maps remounts rather than carrying unsaved edits across. In What-If mode the
 palette and the canvas's drag/connect affordances are disabled: that mode
-reads the map, it does not edit it.
+reads the map, it does not edit it. What-If is a contextual toolbar action,
+not a permanent Design / What-If segmented control; while active, the same
+action returns to Design.
 
 ### IT Ops destination-page UI contract
 

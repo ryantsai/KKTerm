@@ -1788,7 +1788,7 @@
         "cloud": "云"
       },
       "linkKind": {
-        "ethernet": "以太网",
+        "ethernet": "铜缆 / 以太网",
         "fiber": "光纤",
         "wan": "广域网",
         "wireless": "无线"
@@ -1810,10 +1810,13 @@
       "removeNode": "移除节点",
       "linkHeading": "链路",
       "linkBetween": "{{from}} ↔ {{to}}",
-      "linkLabelLabel": "标签",
+      "linkLabelLabel": "链路名称",
       "linkLabelHint": "可选。端口、电路编号或 VLAN。",
       "linkLabelPlaceholder": "例如 Gi1/0/24",
       "linkKindLabel": "类型",
+      "linkCountLabel": "并行链路数",
+      "linkSpeedLabel": "速率",
+      "linkSpeedPlaceholder": "例如 10 Gbps",
       "removeLink": "移除链路",
       "designHeading": "拓扑图",
       "designHint": "从节点边缘拖动即可连到另一个节点。选中节点或链路即可编辑。",

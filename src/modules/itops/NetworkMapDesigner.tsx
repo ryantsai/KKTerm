@@ -49,7 +49,7 @@ import type {
   NetworkNodeKind,
   SiteHost,
 } from "../../types";
-import { ItIcon, IT_ACCENTS, type ItIconName } from "./icons";
+import { ItIcon, IT_ACCENTS } from "./icons";
 import { ItOpsEmptyHint } from "./ItOpsEmptyHint";
 import {
   analyzeWhatIf,
@@ -70,18 +70,18 @@ const NODE_KINDS: NetworkNodeKind[] = [
 const LINK_KINDS: NetworkLinkKind[] = ["ethernet", "fiber", "wan", "wireless"];
 
 /** Glyph and accent per device kind, so a map reads at a glance while zoomed out. */
-const NODE_STYLE: Record<NetworkNodeKind, { icon: ItIconName; accent: string }> = {
-  router: { icon: "network", accent: IT_ACCENTS.indigo },
-  switch: { icon: "grid", accent: IT_ACCENTS.blue },
-  firewall: { icon: "filter", accent: IT_ACCENTS.orange },
-  server: { icon: "server", accent: IT_ACCENTS.steel },
-  loadBalancer: { icon: "share", accent: IT_ACCENTS.teal },
-  cloud: { icon: "globe", accent: IT_ACCENTS.purple },
+const NODE_STYLE: Record<NetworkNodeKind, { accent: string }> = {
+  router: { accent: IT_ACCENTS.indigo },
+  switch: { accent: IT_ACCENTS.blue },
+  firewall: { accent: IT_ACCENTS.orange },
+  server: { accent: IT_ACCENTS.steel },
+  loadBalancer: { accent: IT_ACCENTS.teal },
+  cloud: { accent: IT_ACCENTS.purple },
 };
 
 // Card geometry is fixed so link anchors can be picked from coordinates alone.
-const NODE_WIDTH = 158;
-const NODE_HEIGHT = 56;
+const NODE_WIDTH = 196;
+const NODE_HEIGHT = 72;
 
 function newId(prefix: string): string {
   const id = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -105,6 +105,75 @@ interface MapNodeData extends Record<string, unknown> {
   rootLabel: string;
 }
 
+function NetworkNodeArtwork({
+  kind,
+  size = 30,
+}: {
+  kind: NetworkNodeKind;
+  size?: number;
+}) {
+  const artwork = {
+    router: (
+      <>
+        <circle cx="16" cy="16" r="9.5" />
+        <path d="M8.5 16h15M16 8.5v15M11.5 11.5 8.8 8.8M20.5 20.5l2.7 2.7M20.5 11.5l2.7-2.7M11.5 20.5l-2.7 2.7" />
+      </>
+    ),
+    switch: (
+      <>
+        <rect x="5.5" y="8" width="21" height="16" rx="4" />
+        <path d="M10 13h3M16 13h3M22 13h1M10 19h3M16 19h3M22 19h1" />
+      </>
+    ),
+    firewall: (
+      <>
+        <path d="M6.5 24V9.5L16 5l9.5 4.5V24L16 28Z" />
+        <path d="M7 14h18M7 20h18M12 8v6M19.5 7.5V14M12 14v6M20 14v6M12 20v5.5M20 20v5.5" />
+      </>
+    ),
+    server: (
+      <>
+        <rect x="6" y="5.5" width="20" height="8" rx="2.5" />
+        <rect x="6" y="18.5" width="20" height="8" rx="2.5" />
+        <path d="M10 9.5h.1M10 22.5h.1M14 9.5h8M14 22.5h8" />
+      </>
+    ),
+    loadBalancer: (
+      <>
+        <circle cx="16" cy="7" r="3" />
+        <circle cx="8" cy="24" r="3" />
+        <circle cx="24" cy="24" r="3" />
+        <path d="M16 10v5M16 15H8v6M16 15h8v6" />
+      </>
+    ),
+    cloud: (
+      <>
+        <path d="M9 24.5h14.5a5 5 0 0 0 .6-10A8.2 8.2 0 0 0 8.5 13 5.8 5.8 0 0 0 9 24.5Z" />
+        <path d="M12 19h8" />
+      </>
+    ),
+  }[kind];
+
+  return (
+    <svg
+      className="nm-device-art"
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.65"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle className="nm-device-art-orbit" cx="16" cy="16" r="14" />
+      <g className="nm-device-art-glyph">{artwork}</g>
+      <circle className="nm-device-art-ping" cx="26" cy="6" r="2" />
+    </svg>
+  );
+}
+
 function MapNode({ data }: NodeProps<Node<MapNodeData>>) {
   const style = NODE_STYLE[data.kind];
   return (
@@ -123,7 +192,7 @@ function MapNode({ data }: NodeProps<Node<MapNodeData>>) {
         </span>
       ))}
       <span className="nm-node-ic" style={{ background: style.accent }}>
-        <ItIcon name={style.icon} size={15} />
+        <NetworkNodeArtwork kind={data.kind} size={34} />
       </span>
       <span className="nm-node-tx">
         <span className="nm-node-lab">{data.label}</span>
@@ -139,6 +208,71 @@ function MapNode({ data }: NodeProps<Node<MapNodeData>>) {
 }
 
 const nodeTypes = { networkNode: MapNode };
+
+function NetworkMapPreview({ map }: { map: NetworkMap }) {
+  const nodesById = new Map(map.graph.nodes.map((node) => [node.id, node]));
+  const xs = map.graph.nodes.map((node) => node.x);
+  const ys = map.graph.nodes.map((node) => node.y);
+  const minX = xs.length > 0 ? Math.min(...xs) : 0;
+  const maxX = xs.length > 0 ? Math.max(...xs) : 1;
+  const minY = ys.length > 0 ? Math.min(...ys) : 0;
+  const maxY = ys.length > 0 ? Math.max(...ys) : 1;
+  const point = (node: NetworkNode) => ({
+    x: 22 + ((node.x - minX) / Math.max(maxX - minX, 1)) * 196,
+    y: 18 + ((node.y - minY) / Math.max(maxY - minY, 1)) * 78,
+  });
+
+  return (
+    <svg className="nm-map-preview" viewBox="0 0 240 114" aria-hidden="true">
+      <defs>
+        <pattern id={`nm-grid-${map.id}`} width="12" height="12" patternUnits="userSpaceOnUse">
+          <circle cx="1" cy="1" r=".65" className="nm-map-preview-grid" />
+        </pattern>
+      </defs>
+      <rect width="240" height="114" rx="10" fill={`url(#nm-grid-${map.id})`} />
+      {map.graph.links.map((link, index) => {
+        const from = nodesById.get(link.from);
+        const to = nodesById.get(link.to);
+        if (!from || !to) return null;
+        const a = point(from);
+        const b = point(to);
+        return (
+          <line
+            key={link.id}
+            className={`nm-map-preview-link ${link.kind}`}
+            style={{ animationDelay: `${index * -180}ms` }}
+            x1={a.x}
+            y1={a.y}
+            x2={b.x}
+            y2={b.y}
+          />
+        );
+      })}
+      {map.graph.nodes.length === 0 ? (
+        <g className="nm-map-preview-empty">
+          <circle cx="120" cy="57" r="18" />
+          <path d="M120 39v36M102 57h36" />
+        </g>
+      ) : null}
+      {map.graph.nodes.map((node, index) => {
+        const p = point(node);
+        return (
+          <g
+            key={node.id}
+            className="nm-map-preview-node"
+            data-kind={node.kind}
+            style={{ animationDelay: `${index * 90}ms` }}
+            transform={`translate(${p.x} ${p.y})`}
+          >
+            <circle className="nm-map-preview-halo" r="9" />
+            <rect x="-5" y="-5" width="10" height="10" rx="3" />
+            <circle className="nm-map-preview-led" cx="3" cy="-3" r="1.2" />
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
 
 /**
  * Which side of each card a link should leave from. Comparing the centres keeps
@@ -187,7 +321,15 @@ function hostsAsNodes(hosts: readonly SiteHost[], offset: number): NetworkNode[]
   }));
 }
 
-function MapDialog({ map, onClose }: { map: NetworkMap | null; onClose: () => void }) {
+function MapDialog({
+  map,
+  onSaved,
+  onClose,
+}: {
+  map: NetworkMap | null;
+  onSaved: (saved: NetworkMap) => void;
+  onClose: () => void;
+}) {
   const { t } = useTranslation();
   const createNetworkMap = useItOpsStore((state) => state.createNetworkMap);
   const saveNetworkMap = useItOpsStore((state) => state.saveNetworkMap);
@@ -202,8 +344,10 @@ function MapDialog({ map, onClose }: { map: NetworkMap | null; onClose: () => vo
     if (!name.trim() || busy) return;
     setBusy(true);
     try {
-      if (map) await saveNetworkMap(map.id, name.trim(), description, siteId || null, map.graph);
-      else await createNetworkMap(name.trim(), description, siteId || null);
+      const saved = map
+        ? await saveNetworkMap(map.id, name.trim(), description, siteId || null, map.graph)
+        : await createNetworkMap(name.trim(), description, siteId || null);
+      onSaved(saved);
       onClose();
     } catch (error) {
       showStatusBarNotice(t("itops.errorNotice", { message: errorMessage(error) }), {
@@ -323,7 +467,15 @@ function ImportDialog({
 type EditorMode = "design" | "impact";
 type Selection = { kind: "node" | "link"; id: string } | null;
 
-function MapEditor({ map }: { map: NetworkMap }) {
+function MapEditor({
+  map,
+  onEditMap,
+  onDeleteMap,
+}: {
+  map: NetworkMap;
+  onEditMap: () => void;
+  onDeleteMap: () => void;
+}) {
   const { t } = useTranslation();
   const saveNetworkMap = useItOpsStore((state) => state.saveNetworkMap);
   const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
@@ -380,6 +532,13 @@ function MapEditor({ map }: { map: NetworkMap }) {
       if (!from || !to) return [];
       const { source, target } = anchors(from, to);
       const state = cut.has(link.id) ? "cut" : severed.has(link.id) ? "severed" : "up";
+      const label = [
+        link.label.trim(),
+        link.speed.trim(),
+        link.connectionCount > 1 ? `×${link.connectionCount}` : "",
+      ]
+        .filter(Boolean)
+        .join(" · ");
       return [
         {
           id: link.id,
@@ -387,8 +546,9 @@ function MapEditor({ map }: { map: NetworkMap }) {
           target: link.to,
           sourceHandle: source,
           targetHandle: target,
-          label: link.label || undefined,
-          className: `nm-edge ${link.kind} ${state}${
+          label: label || undefined,
+          animated: state === "up",
+          className: `nm-edge ${link.kind} ${state}${link.connectionCount > 1 ? " multi" : ""}${
             selection?.kind === "link" && selection.id === link.id ? " sel" : ""
           }`,
         },
@@ -428,6 +588,8 @@ function MapEditor({ map }: { map: NetworkMap }) {
         to: connection.target!,
         label: "",
         kind: "ethernet",
+        connectionCount: 1,
+        speed: "",
       };
       return { ...current, links: [...current.links, link] };
     });
@@ -522,38 +684,43 @@ function MapEditor({ map }: { map: NetworkMap }) {
   return (
     <div className="nm-editor">
       <div className="nm-toolbar it-drill-toolbar">
-        <div className="it-drill-spacer" />
-        <div className="it-room-view-controls">
-          <div
-            className="rm-segmented"
-            role="group"
-            aria-label={t("itops.networkMap.heading")}
+        <div className="nm-mode-action-wrap">
+          <button
+            type="button"
+            className="nm-mode-action"
+            data-active={mode === "impact"}
+            onClick={() => {
+              setMode(mode === "impact" ? "design" : "impact");
+              setSelection(null);
+            }}
           >
-            <button
-              type="button"
-              data-active={mode === "design"}
-              onClick={() => {
-                setMode("design");
-                setSelection(null);
-              }}
-            >
-              <ItIcon name="edit" size={13} />
-              {t("itops.networkMap.modeDesign")}
-            </button>
-            <button
-              type="button"
-              data-active={mode === "impact"}
-              onClick={() => {
-                setMode("impact");
-                setSelection(null);
-              }}
-            >
-              <ItIcon name="pulse" size={13} />
-              {t("itops.networkMap.modeImpact")}
-            </button>
-          </div>
+            <ItIcon name={mode === "impact" ? "chevL" : "pulse"} size={13} />
+            {t(
+              mode === "impact"
+                ? "itops.networkMap.modeDesign"
+                : "itops.networkMap.modeImpact",
+            )}
+          </button>
         </div>
         <div className="it-drill-actions" aria-label={t("itops.actions.viewActions")}>
+          <button
+            type="button"
+            className="it-drill-action"
+            title={t("itops.actions.edit")}
+            aria-label={t("itops.actions.edit")}
+            onClick={onEditMap}
+          >
+            <ItIcon name="edit" size={15} />
+          </button>
+          <button
+            type="button"
+            className="it-drill-action danger"
+            title={t("itops.actions.delete")}
+            aria-label={t("itops.actions.delete")}
+            onClick={onDeleteMap}
+          >
+            <ItIcon name="trash" size={15} />
+          </button>
           <button
             type="button"
             className="it-drill-action"
@@ -701,6 +868,36 @@ function MapEditor({ map }: { map: NetworkMap }) {
                     }))}
                   />
                 </Field>
+                <div className="nm-link-meta-grid">
+                  <Field label={t("itops.networkMap.linkCountLabel")}>
+                    <TextInput
+                      mono
+                      type="number"
+                      min={1}
+                      max={64}
+                      step={1}
+                      value={selectedLink.connectionCount}
+                      onChange={(event) => {
+                        const value = Number.parseInt(event.currentTarget.value, 10);
+                        patchLink(selectedLink.id, {
+                          connectionCount: Number.isFinite(value)
+                            ? Math.min(64, Math.max(1, value))
+                            : 1,
+                        });
+                      }}
+                    />
+                  </Field>
+                  <Field label={t("itops.networkMap.linkSpeedLabel")}>
+                    <TextInput
+                      mono
+                      value={selectedLink.speed}
+                      placeholder={t("itops.networkMap.linkSpeedPlaceholder")}
+                      onChange={(event) =>
+                        patchLink(selectedLink.id, { speed: event.currentTarget.value })
+                      }
+                    />
+                  </Field>
+                </div>
                 <Btn kind="danger" icon="trash" onClick={() => removeLink(selectedLink.id)}>
                   {t("itops.networkMap.removeLink")}
                 </Btn>
@@ -724,7 +921,7 @@ function MapEditor({ map }: { map: NetworkMap }) {
                         className="nm-picker-ic"
                         style={{ background: NODE_STYLE[kind].accent }}
                       >
-                        <ItIcon name={NODE_STYLE[kind].icon} size={18} />
+                        <NetworkNodeArtwork kind={kind} size={30} />
                       </span>
                       <span>{t(`itops.networkMap.nodeKind.${kind}`)}</span>
                     </button>
@@ -868,9 +1065,10 @@ function ImpactPanel({
   );
 }
 
-export function NetworkMapDesigner() {
+export function NetworkMapDesigner({ active }: { active: boolean }) {
   const { t } = useTranslation();
   const maps = useItOpsStore((state) => state.networkMaps);
+  const sites = useItOpsStore((state) => state.sites);
   const loaded = useItOpsStore((state) => state.networkMapsLoaded);
   const loadNetworkMaps = useItOpsStore((state) => state.loadNetworkMaps);
   const removeNetworkMap = useItOpsStore((state) => state.removeNetworkMap);
@@ -884,7 +1082,19 @@ export function NetworkMapDesigner() {
     if (!loaded) void loadNetworkMaps().catch(() => undefined);
   }, [loaded, loadNetworkMaps]);
 
-  const selected = maps.find((map) => map.id === selectedId) ?? maps[0];
+  useEffect(() => {
+    if (!active) {
+      setSelectedId("");
+      setDialog(undefined);
+      setPendingDelete(null);
+    }
+  }, [active]);
+
+  const selected = maps.find((map) => map.id === selectedId);
+  const siteNames = useMemo(
+    () => new Map(sites.map((site) => [site.id, site.name])),
+    [sites],
+  );
 
   async function confirmDelete() {
     if (!pendingDelete) return;
@@ -892,6 +1102,7 @@ export function NetworkMapDesigner() {
     setPendingDelete(null);
     try {
       await removeNetworkMap(map.id);
+      if (selectedId === map.id) setSelectedId("");
       showStatusBarNotice(t("itops.networkMap.deletedNotice", { name: map.name }), {
         tone: "success",
       });
@@ -920,53 +1131,111 @@ export function NetworkMapDesigner() {
         </button>
       </div>
 
-      {maps.length > 0 ? (
-        <>
-          <div className="nm-tabs" role="tablist" aria-label={t("itops.networkMap.heading")}>
-            {maps.map((map) => (
-              <div key={map.id} className={`nm-tab${map.id === selected?.id ? " active" : ""}`}>
+      {maps.length > 0 && selected ? (
+        <div className="nm-detail">
+          <div className="nm-detail-nav">
+            <button
+              type="button"
+              className="nm-back"
+              onClick={() => setSelectedId("")}
+              aria-label={t("itops.actions.back")}
+            >
+              <ItIcon name="chevL" size={13} />
+              {t("itops.actions.back")}
+            </button>
+            <div className="nm-tabs" role="tablist" aria-label={t("itops.networkMap.heading")}>
+              {maps.map((map) => (
                 <button
+                  key={map.id}
                   type="button"
+                  className="nm-tab"
                   role="tab"
-                  aria-selected={map.id === selected?.id}
+                  aria-selected={map.id === selected.id}
+                  data-active={map.id === selected.id}
                   onClick={() => setSelectedId(map.id)}
                 >
                   <ItIcon name="network" size={13} />
-                  {map.name}
+                  <span>{map.name}</span>
                 </button>
-                {map.id === selected?.id ? (
-                  <>
-                    <button
-                      type="button"
-                      className="it-icon-btn"
-                      aria-label={t("itops.actions.edit")}
-                      onClick={() => setDialog(map)}
-                    >
-                      <ItIcon name="edit" size={13} />
-                    </button>
-                    <button
-                      type="button"
-                      className="it-icon-btn"
-                      aria-label={t("itops.actions.delete")}
-                      onClick={() => setPendingDelete(map)}
-                    >
-                      <ItIcon name="trash" size={13} />
-                    </button>
-                  </>
-                ) : null}
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
           {/* Keyed by id so switching maps starts a fresh draft rather than
               carrying the previous map's unsaved edits across. */}
-          {selected ? <MapEditor key={selected.id} map={selected} /> : null}
-        </>
+          <MapEditor
+            key={selected.id}
+            map={selected}
+            onEditMap={() => setDialog(selected)}
+            onDeleteMap={() => setPendingDelete(selected)}
+          />
+        </div>
+      ) : maps.length > 0 ? (
+        <div className="nm-gallery" role="list">
+          {maps.map((map) => (
+            <article key={map.id} className="nm-gallery-card" role="listitem">
+              <button
+                type="button"
+                className="nm-gallery-open"
+                onClick={() => setSelectedId(map.id)}
+                aria-label={`${t("common.open")} ${map.name}`}
+              >
+                <NetworkMapPreview map={map} />
+                <span className="nm-gallery-copy">
+                  <span className="nm-gallery-kicker">
+                    <ItIcon name="network" size={12} />
+                    {map.siteId
+                      ? siteNames.get(map.siteId) ?? t("itops.networkMap.siteUnscoped")
+                      : t("itops.networkMap.siteUnscoped")}
+                  </span>
+                  <strong>{map.name}</strong>
+                  {map.description ? <span className="nm-gallery-description">{map.description}</span> : null}
+                  <span className="nm-gallery-stats">
+                    <span>
+                      <b>{map.graph.nodes.length}</b>
+                      {t("itops.networkMap.statNodes")}
+                    </span>
+                    <span>
+                      <b>{map.graph.links.length}</b>
+                      {t("itops.networkMap.statLinks")}
+                    </span>
+                    <span>
+                      <b>{effectiveRoots(map.graph).length}</b>
+                      {t("itops.networkMap.statRoots")}
+                    </span>
+                  </span>
+                </span>
+              </button>
+              <div className="nm-gallery-actions">
+                <button
+                  type="button"
+                  className="it-icon-btn"
+                  aria-label={t("itops.actions.edit")}
+                  onClick={() => setDialog(map)}
+                >
+                  <ItIcon name="edit" size={13} />
+                </button>
+                <button
+                  type="button"
+                  className="it-icon-btn"
+                  aria-label={t("itops.actions.delete")}
+                  onClick={() => setPendingDelete(map)}
+                >
+                  <ItIcon name="trash" size={13} />
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
       ) : loaded ? (
         <ItOpsEmptyHint>{t("itops.networkMap.emptyBody")}</ItOpsEmptyHint>
       ) : null}
 
       {dialog !== undefined ? (
-        <MapDialog map={dialog} onClose={() => setDialog(undefined)} />
+        <MapDialog
+          map={dialog}
+          onSaved={(saved) => setSelectedId(saved.id)}
+          onClose={() => setDialog(undefined)}
+        />
       ) : null}
       {pendingDelete ? (
         <ConfirmSheet

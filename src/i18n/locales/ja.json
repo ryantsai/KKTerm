@@ -1788,7 +1788,7 @@
         "cloud": "クラウド"
       },
       "linkKind": {
-        "ethernet": "イーサネット",
+        "ethernet": "銅線 / イーサネット",
         "fiber": "光ファイバー",
         "wan": "WAN",
         "wireless": "無線"
@@ -1810,10 +1810,13 @@
       "removeNode": "ノードを削除",
       "linkHeading": "リンク",
       "linkBetween": "{{from}} ↔ {{to}}",
-      "linkLabelLabel": "ラベル",
+      "linkLabelLabel": "リンク名",
       "linkLabelHint": "任意。ポート、回線 ID、VLAN など。",
       "linkLabelPlaceholder": "例: Gi1/0/24",
       "linkKindLabel": "種類",
+      "linkCountLabel": "並列リンク数",
+      "linkSpeedLabel": "速度",
+      "linkSpeedPlaceholder": "例: 10 Gbps",
       "removeLink": "リンクを削除",
       "designHeading": "マップ",
       "designHint": "ノードの端からドラッグすると別のノードとつながります。ノードやリンクを選ぶと編集できます。",

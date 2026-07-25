@@ -1788,7 +1788,7 @@
         "cloud": "Cloud"
       },
       "linkKind": {
-        "ethernet": "Ethernet",
+        "ethernet": "Tembaga / Ethernet",
         "fiber": "Serat optik",
         "wan": "WAN",
         "wireless": "Nirkabel"
@@ -1810,10 +1810,13 @@
       "removeNode": "Hapus simpul",
       "linkHeading": "Tautan",
       "linkBetween": "{{from}} ↔ {{to}}",
-      "linkLabelLabel": "Label",
+      "linkLabelLabel": "Nama tautan",
       "linkLabelHint": "Opsional. Sebuah port, id sirkuit, atau VLAN.",
       "linkLabelPlaceholder": "mis. Gi1/0/24",
       "linkKindLabel": "Jenis",
+      "linkCountLabel": "Jumlah tautan paralel",
+      "linkSpeedLabel": "Kecepatan",
+      "linkSpeedPlaceholder": "mis. 10 Gbps",
       "removeLink": "Hapus tautan",
       "designHeading": "Peta",
       "designHint": "Tarik dari tepi sebuah simpul untuk menautkannya ke simpul lain. Pilih simpul atau tautan untuk menyuntingnya.",

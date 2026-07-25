@@ -1788,7 +1788,7 @@
         "cloud": "คลาวด์"
       },
       "linkKind": {
-        "ethernet": "อีเทอร์เน็ต",
+        "ethernet": "สายทองแดง / อีเทอร์เน็ต",
         "fiber": "ไฟเบอร์",
         "wan": "WAN",
         "wireless": "ไร้สาย"
@@ -1810,10 +1810,13 @@
       "removeNode": "นำโหนดออก",
       "linkHeading": "ลิงก์",
       "linkBetween": "{{from}} ↔ {{to}}",
-      "linkLabelLabel": "ป้ายชื่อ",
+      "linkLabelLabel": "ชื่อลิงก์",
       "linkLabelHint": "ไม่บังคับ เช่น พอร์ต รหัสวงจร หรือ VLAN",
       "linkLabelPlaceholder": "เช่น Gi1/0/24",
       "linkKindLabel": "ประเภท",
+      "linkCountLabel": "จำนวนลิงก์ขนาน",
+      "linkSpeedLabel": "ความเร็ว",
+      "linkSpeedPlaceholder": "เช่น 10 Gbps",
       "removeLink": "นำลิงก์ออก",
       "designHeading": "แผนผัง",
       "designHint": "ลากจากขอบของโหนดเพื่อเชื่อมไปยังอีกโหนด เลือกโหนดหรือลิงก์เพื่อแก้ไข",

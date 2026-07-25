@@ -13,7 +13,7 @@ function node(id: string): NetworkNode {
 }
 
 function link(id: string, from: string, to: string): NetworkLink {
-  return { id, from, to, label: "", kind: "ethernet" };
+  return { id, from, to, label: "", kind: "ethernet", connectionCount: 1, speed: "" };
 }
 
 // core ── dist ── access, with an isolated-by-design spare hanging off core.

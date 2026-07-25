@@ -1788,7 +1788,7 @@
         "cloud": "Cloud"
       },
       "linkKind": {
-        "ethernet": "Ethernet",
+        "ethernet": "Rame / Ethernet",
         "fiber": "Fibra",
         "wan": "WAN",
         "wireless": "Senza fili"
@@ -1810,10 +1810,13 @@
       "removeNode": "Rimuovi il nodo",
       "linkHeading": "Collegamento",
       "linkBetween": "{{from}} ↔ {{to}}",
-      "linkLabelLabel": "Etichetta",
+      "linkLabelLabel": "Nome collegamento",
       "linkLabelHint": "Facoltativo. Una porta, un id di circuito, una VLAN.",
       "linkLabelPlaceholder": "es. Gi1/0/24",
       "linkKindLabel": "Tipo",
+      "linkCountLabel": "Collegamenti paralleli",
+      "linkSpeedLabel": "Velocità",
+      "linkSpeedPlaceholder": "es. 10 Gbps",
       "removeLink": "Rimuovi il collegamento",
       "designHeading": "Mappa",
       "designHint": "Trascina dal bordo di un nodo per collegarlo a un altro. Scegli un nodo o un collegamento per modificarlo.",

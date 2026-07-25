@@ -1788,7 +1788,7 @@
         "cloud": "Đám mây"
       },
       "linkKind": {
-        "ethernet": "Ethernet",
+        "ethernet": "Cáp đồng / Ethernet",
         "fiber": "Cáp quang",
         "wan": "WAN",
         "wireless": "Không dây"
@@ -1810,10 +1810,13 @@
       "removeNode": "Bỏ nút",
       "linkHeading": "Liên kết",
       "linkBetween": "{{from}} ↔ {{to}}",
-      "linkLabelLabel": "Nhãn",
+      "linkLabelLabel": "Tên liên kết",
       "linkLabelHint": "Tùy chọn. Một cổng, một mã mạch, một VLAN.",
       "linkLabelPlaceholder": "vd. Gi1/0/24",
       "linkKindLabel": "Loại",
+      "linkCountLabel": "Số liên kết song song",
+      "linkSpeedLabel": "Tốc độ",
+      "linkSpeedPlaceholder": "ví dụ: 10 Gbps",
       "removeLink": "Bỏ liên kết",
       "designHeading": "Sơ đồ",
       "designHint": "Kéo từ mép một nút để nối sang nút khác. Chọn một nút hoặc liên kết để chỉnh sửa.",
