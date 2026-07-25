@@ -145,7 +145,7 @@ Most "AI in your terminal" demos stop at chat. KKTerm's assistant works *inside*
 
 The Dashboard is a drag-and-resize grid of widgets. It's not for petabyte observability — it's for "I want a button to launch my five favorite apps and a panel showing my SSH host's uptime, *next to* my chat."
 
-Dashboard views can use app-owned animated backgrounds: `fuji`, `aurora`, `halftone`, `clouds`, `ocean`, `mistySea`, `raindrops`, `rainyWindow`, `frostedWindow`, `snow`, `sakura`, `fireflies`, `bubbles`, `aquarium`, `jellyfish`, `lighthouse`, `balloons`, `ricefield`, `lanterns`, `starfield`, `nebula`, `orbitals`, `embers`, `lava`, `ink`, `dunes`, `savanna`, `matrix`, `topo`, `synthwave`, `circuit`, `crystals`, `cyberpunk`, `taipei101`, `thunderstorm`, `confetti`, `particleCursor`, `heroGeometric`, `ditherPrismHero`, `webglLiquid`, `silkAurora`, `closingPlasma`, `animatedGradient`, `prismGradient`, and `liquidChrome`.
+Dashboard Views can use 45 app-owned animated backgrounds. The newest eight are procedural WebGL scenes: `heroGeometric`, `ditherPrismHero`, `webglLiquid`, `silkAurora`, `closingPlasma`, `animatedGradient`, `prismGradient`, and `liquidChrome`. The same background picker is available for terminal Connections, the Document viewer, and IT Ops drill views; hidden or off-screen scenes stop rendering and release their WebGL resources.
 
 <p align="center">
   <img src="docs/assets/screenshots/ai-widgets.png" alt="A dashboard grid of AI-created widgets" width="720" />
@@ -157,6 +157,14 @@ The **IT Ops** Module groups Connections into Sites, maps Server Rooms and Racks
 
 <p align="center">
   <img src="docs/assets/screenshots/itops.png" alt="The IT Ops Server Room elevations view showing six populated equipment racks and host health indicators" width="720" />
+</p>
+
+### Capture, organize, and annotate screenshots
+
+The **Screenshots** Module captures a region, window, or full desktop to a local library, the clipboard, or both. Sort and group captures, resize or convert them in batches, and open any image in the built-in editor for cropping, pencil marks, arrows, shapes, text, and mosaic redaction. Global shortcuts and tray actions keep capture one keystroke away.
+
+<p align="center">
+  <img src="docs/assets/screenshots/screenshots-module.png" alt="The Screenshots Module with capture controls and a thumbnail library" width="720" />
 </p>
 
 ### Keep your AI agents alive

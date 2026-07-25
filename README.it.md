@@ -145,6 +145,8 @@ Gran parte delle demo «IA nel terminale» si ferma alla chat. L'assistente di K
 
 La Dashboard è una griglia di widget che trascini e ridimensioni. Non è per l'osservabilità su scala petabyte — è per «voglio un pulsante che lanci le mie cinque app preferite e un pannello che mostra l'uptime del mio host SSH, *accanto* alla mia chat».
 
+Le View della Dashboard offrono 45 sfondi animati integrati in KKTerm. Gli otto più recenti sono scene WebGL procedurali: `heroGeometric`, `ditherPrismHero`, `webglLiquid`, `silkAurora`, `closingPlasma`, `animatedGradient`, `prismGradient` e `liquidChrome`. Lo stesso selettore di sfondi è disponibile per le Connection del terminale, il Document viewer e le viste di dettaglio di IT Ops; le scene nascoste o fuori dallo schermo interrompono il rendering e rilasciano le risorse WebGL.
+
 <p align="center">
   <img src="docs/assets/screenshots/ai-widgets.png" alt="Una griglia di dashboard piena di widget creati dall'IA" width="720" />
 </p>
@@ -155,6 +157,14 @@ Il Modulo **IT Ops** raggruppa le connessioni in siti, rappresenta sale server e
 
 <p align="center">
   <img src="docs/assets/screenshots/itops.png" alt="La vista frontale della sala server di IT Ops con sei rack popolati e indicatori di stato degli host" width="720" />
+</p>
+
+### Acquisisci, organizza e annota schermate
+
+Il Modulo **Screenshots** acquisisce un’area, una finestra o l’intero desktop in una raccolta locale, negli appunti oppure in entrambi. Puoi ordinare e raggruppare le schermate, ridimensionarle o convertirle in gruppo e aprire qualsiasi immagine nell’editor integrato per ritagliare, disegnare a mano libera, aggiungere frecce, forme e testo oppure oscurare dettagli con l’effetto mosaico. Le scorciatoie globali e il menu dell’area di notifica rendono l’acquisizione sempre immediata.
+
+<p align="center">
+  <img src="docs/assets/screenshots/screenshots-module.png" alt="Il Modulo Screenshots con i controlli di acquisizione e una raccolta di anteprime" width="720" />
 </p>
 
 ### Tieni vivi i tuoi agenti IA

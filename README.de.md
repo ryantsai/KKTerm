@@ -145,6 +145,8 @@ Die meisten „KI im Terminal"-Demos hören beim Chat auf. Der Assistent von KKT
 
 Das Dashboard ist ein Raster aus Widgets, die man zieht und in der Größe ändert. Es ist nicht für Petabyte-Observability — es ist für „ich will einen Knopf, der meine fünf Lieblings-Apps startet, und ein Panel, das die Uptime meines SSH-Hosts zeigt, *neben* meinem Chat".
 
+Dashboard-Ansichten bieten 45 in KKTerm integrierte animierte Hintergründe. Neu hinzugekommen sind acht prozedurale WebGL-Szenen: `heroGeometric`, `ditherPrismHero`, `webglLiquid`, `silkAurora`, `closingPlasma`, `animatedGradient`, `prismGradient` und `liquidChrome`. Derselbe Hintergrundwähler steht auch für Terminal-Verbindungen, den Dokumentbetrachter und IT-Ops-Detailansichten bereit; ausgeblendete oder nicht sichtbare Szenen stoppen das Rendering und geben ihre WebGL-Ressourcen frei.
+
 <p align="center">
   <img src="docs/assets/screenshots/ai-widgets.png" alt="Ein Dashboard-Raster voller KI-erstellter Widgets" width="720" />
 </p>
@@ -155,6 +157,14 @@ Das **IT-Ops**-Modul gruppiert Verbindungen in Standorte, bildet Serverräume un
 
 <p align="center">
   <img src="docs/assets/screenshots/itops.png" alt="Die IT-Ops-Serverraumansicht mit sechs bestückten Racks und Host-Statusanzeigen" width="720" />
+</p>
+
+### Screenshots aufnehmen, organisieren und kommentieren
+
+Das **Screenshots**-Modul erfasst einen Bereich, ein Fenster oder den gesamten Desktop in einer lokalen Bibliothek, in der Zwischenablage oder in beidem. Aufnahmen lassen sich sortieren und gruppieren, stapelweise skalieren oder konvertieren und im integrierten Editor zuschneiden, freihändig markieren oder mit Pfeilen, Formen, Text und Mosaik-Unkenntlichmachung versehen. Globale Tastenkürzel und das Systemleistenmenü halten die Aufnahme jederzeit nur einen Tastendruck entfernt.
+
+<p align="center">
+  <img src="docs/assets/screenshots/screenshots-module.png" alt="Das Screenshots-Modul mit Aufnahmefunktionen und Vorschaubibliothek" width="720" />
 </p>
 
 ### Deine KI-Agenten am Leben halten
