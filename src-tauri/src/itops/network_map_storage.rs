@@ -12,8 +12,8 @@ use super::types::{
 };
 
 /// Ceiling on parallel physical links recorded for one drawn link. The canvas
-/// draws at most four strands; beyond that the count carries the truth and the
-/// list in the inspector stays the authoritative record.
+/// draws every strand or one bundled line, while the Properties list remains
+/// the authoritative inventory.
 const MAX_STRANDS: usize = 64;
 
 #[derive(Debug)]
@@ -350,7 +350,8 @@ pub fn remove_map(conn: &SqliteConnection, id: &str) -> Result<()> {
 mod tests {
     use super::*;
     use crate::itops::types::{
-        NetworkLinkKind, NetworkMapNote, NetworkMapStatus, NetworkNode, NetworkNodeKind,
+        NetworkLinkKind, NetworkLinkStrandDisplay, NetworkMapNote, NetworkMapStatus, NetworkNode,
+        NetworkNodeKind,
     };
 
     fn open_test_db() -> SqliteConnection {
@@ -417,6 +418,7 @@ mod tests {
         primary_link.from_address = Some(" 10.20.0.1 ".into());
         primary_link.to_address = Some("10.20.0.99".into());
         primary_link.status = NetworkMapStatus::Warning;
+        primary_link.strand_display = NetworkLinkStrandDisplay::Bundle;
         let mut core = node("core");
         core.addresses = vec![
             " 10.20.0.1 ".into(),
@@ -471,6 +473,10 @@ mod tests {
         // stay stable and one row can never patch or remove another.
         assert_eq!(stored.strands[1].id, "l1-strand-1");
         assert_eq!(stored.strands[2].id, "l1-strand-2");
+        assert_eq!(
+            stored.strand_display,
+            NetworkLinkStrandDisplay::Bundle
+        );
         assert_eq!(stored.native_vlan_id.as_deref(), Some("vlan-10"));
         // Blanks, duplicates, and the native VLAN drop out of the tagged set.
         assert_eq!(stored.tagged_vlan_ids, vec!["vlan-20".to_string()]);
@@ -502,6 +508,10 @@ mod tests {
         assert!(lag.strands.iter().all(|strand| strand.speed == "10 Gbps"));
         assert!(lag.strands.iter().all(|strand| strand.name.is_empty()));
         assert_eq!(lag.strands[2].id, "lag-strand-2");
+        assert_eq!(
+            lag.strand_display,
+            NetworkLinkStrandDisplay::Separate
+        );
         // A link that never had a count still stands for one physical link.
         assert_eq!(loaded.graph.links[1].strands.len(), 1);
         assert_eq!(loaded.graph.nodes[0].width, 120.0);
@@ -522,6 +532,7 @@ mod tests {
         assert!(first.get("connectionCount").is_none());
         assert!(first.get("speed").is_none());
         assert_eq!(first["strands"][0]["speed"], "10 Gbps");
+        assert_eq!(first["strandDisplay"], "separate");
     }
 
     #[test]

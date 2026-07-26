@@ -9235,16 +9235,45 @@
   stroke-width: 1.6;
   stroke-linecap: round;
 }
+.itops-page .nm-canvas .react-flow__edgelabel-renderer {
+  z-index: 2;
+}
 .nm-edge-label {
   position: absolute;
-  padding: 1px 5px;
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  z-index: 3;
+  display: flex;
+  max-width: 360px;
+  flex-direction: column;
+  gap: 3px;
+  padding: 3px 5px;
+  border: 1px solid var(--hairline);
+  border-radius: 5px;
+  background: var(--surface);
+  box-shadow: 0 2px 7px color-mix(in srgb, var(--text) 14%, transparent);
   color: var(--text-muted);
   font-family: var(--app-mono-font-family, ui-monospace, monospace);
   font-size: 9.5px;
-  line-height: 1.6;
+  line-height: 1.35;
   pointer-events: none;
+}
+.nm-edge-label-main {
+  white-space: nowrap;
+}
+.nm-edge-speed-list {
+  display: flex;
+  max-width: 350px;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+.nm-edge-label-main + .nm-edge-speed-list {
+  padding-top: 3px;
+  border-top: 1px solid var(--hairline);
+}
+.nm-edge-speed {
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--surface-muted);
+  color: var(--text);
   white-space: nowrap;
 }
 .nm-edge-label[data-spotlit="true"] {

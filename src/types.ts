@@ -769,6 +769,8 @@ export interface NetworkLinkStrand {
   speed: string;
 }
 
+export type NetworkLinkStrandDisplay = "separate" | "bundle";
+
 // An undirected link between two Network Nodes; `from`/`to` are node ids.
 // Link metadata is documentation only and is never measured live.
 export interface NetworkLink {
@@ -782,6 +784,9 @@ export interface NetworkLink {
   toAddress?: string | null;
   // One entry per parallel physical link; the backend guarantees at least one.
   strands: NetworkLinkStrand[];
+  // Separate preserves one visible line per physical link. Bundle compresses
+  // the same strand inventory into one thicker line for dense maps.
+  strandDisplay: NetworkLinkStrandDisplay;
   // The untagged VLAN carried on this link — a soft reference into the global
   // VLAN records. null means the operator has not documented one.
   nativeVlanId?: string | null;

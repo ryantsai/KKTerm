@@ -1430,6 +1430,14 @@ pub struct NetworkLinkStrand {
     pub speed: String,
 }
 
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum NetworkLinkStrandDisplay {
+    #[default]
+    Separate,
+    Bundle,
+}
+
 /// An undirected link between two Network Nodes. `from`/`to` are node ids.
 /// Strands, VLAN membership, and status are operator-authored documentation.
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -1450,6 +1458,9 @@ pub struct NetworkLink {
     /// One entry per parallel physical link; never empty after sanitizing.
     #[serde(default)]
     pub strands: Vec<NetworkLinkStrand>,
+    /// Whether the canvas draws each strand or one aggregate line.
+    #[serde(default)]
+    pub strand_display: NetworkLinkStrandDisplay,
     /// The untagged VLAN carried on this link — a soft reference into
     /// `itops_vlans`. `None` means the operator has not documented one.
     #[serde(default)]

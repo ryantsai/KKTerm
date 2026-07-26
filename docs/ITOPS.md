@@ -276,8 +276,10 @@ names and speeds live per strand rather than per link because a 2×10G LAG
 lands on a different port at each end of each member. `sanitize_graph`
 guarantees at least one strand and folds the pre-strand `connectionCount` /
 `speed` pair from older saved graphs into the list on read, then stops writing
-those fields back. Up to four strands are drawn; the `×N` edge label carries
-the true count beyond that.
+those fields back. `strand_display` is either `separate` (the default for
+existing maps, with every strand drawn) or `bundle` (one thicker line). Both
+presentations keep the complete per-strand speed inventory in the opaque edge
+readout.
 
 **VLAN membership on a Network Link** — `native_vlan_id` (the untagged VLAN)
 and `tagged_vlan_ids` (the 802.1Q VLANs it trunks), both soft references into
@@ -532,10 +534,12 @@ undirected while xyflow edges are directed, every node renders one loose-mode
 handle on each side (`left`/`right`/`top`/`bottom`), usable as either endpoint,
 and the edge picks its
 `sourceHandle`/`targetHandle` per render from the two node centres. The
-custom edge renderer draws an orthogonal route and expands a parallel-link
-count into up to four visible strands while keeping handle/anchor state out
-of the stored graph. The editor is keyed by map id so switching maps remounts
-rather than carrying unsaved edits across.
+custom edge renderer draws an orthogonal route as either every parallel strand
+or one thickness-scaled bundle while keeping handle/anchor state out of the
+stored graph. Its opaque, bordered readout is rendered above the route and
+lists each strand speed in separate mode or speed-group counts in bundle mode.
+The editor is keyed by map id so switching maps remounts rather than carrying
+unsaved edits across.
 
 A map opens in view-only mode. Its icon-only pen action follows the Site /
 Server Room / Rack drill-down contract: the pen enters edit mode and stays a
@@ -543,11 +547,13 @@ pen while active. Selecting it again saves a changed graph and returns to
 view-only mode. It is the only action in the active map's top-right toolbar;
 map deletion remains in the navigator and overview-card menus. View-only mode
 permits canvas navigation and selection but disables node movement, resizing,
-linking, placement, import, and element Properties dialogs. The right-side
+linking, placement, and import. Double-clicking a Network Node, Note, or Network
+Link opens its Properties dialog in view-only mode; Save persists that property
+change immediately, and the dialog omits its destructive action. The right-side
 Nodes pane is mounted only in edit mode, so the read-only canvas uses the full
-workspace width. The pane owns the Import Hosts action. The What-If entry
-action is temporarily not exposed while that workflow is redesigned; the pure
-analysis code and graph model remain available for that later work.
+workspace width. The pane owns the Import Hosts action. The What-If entry action
+is temporarily not exposed while that workflow is redesigned; the pure analysis
+code and graph model remain available for that later work.
 
 Network Nodes use a compact, left-anchored card: a small icon tile, thin
 internal padding, and the remaining width reserved for the label and caption.

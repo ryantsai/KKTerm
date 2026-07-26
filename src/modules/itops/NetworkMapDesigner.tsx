@@ -61,6 +61,8 @@ import type {
   NetworkGraph,
   NetworkLink,
   NetworkLinkKind,
+  NetworkLinkStrand,
+  NetworkLinkStrandDisplay,
   NetworkMap,
   NetworkMapNote,
   NetworkMapStatus,
@@ -496,6 +498,8 @@ interface NetworkLinkEdgeData extends Record<string, unknown> {
   kind: NetworkLinkKind;
   state: "up" | "warning" | "cut" | "severed";
   strandCount: number;
+  strands: NetworkLinkStrand[];
+  strandDisplay: NetworkLinkStrandDisplay;
   label: string;
   /** Set for a trunk, so the midpoint gets the 802.1Q double-tick and
    * trunk-vs-access reads without hovering. */
@@ -542,12 +546,39 @@ function orthogonalLinkPath({
 
 function NetworkLinkEdge(props: EdgeProps<Edge<NetworkLinkEdgeData>>) {
   const { id, data, sourcePosition } = props;
-  const count = Math.min(Math.max(data?.strandCount ?? 1, 1), 4);
+  const count = Math.max(data?.strandCount ?? 1, 1);
+  const strandDisplay = data?.strandDisplay ?? "separate";
   const offsets = Array.from(
-    { length: count },
+    { length: strandDisplay === "separate" ? count : 1 },
     (_entry, index) => (index - (count - 1) / 2) * 5,
   );
+  if (strandDisplay === "bundle") offsets[0] = 0;
   const centre = orthogonalLinkPath(props);
+  const bundleWidth = Math.min(4 + count * 0.75, 12);
+  const readouts =
+    strandDisplay === "bundle"
+      ? Array.from(
+          (data?.strands ?? []).reduce((groups, strand) => {
+            const speed = strand.speed.trim() || "—";
+            groups.set(speed, (groups.get(speed) ?? 0) + 1);
+            return groups;
+          }, new Map<string, number>()),
+          ([speed, quantity]) => `${quantity}× ${speed}`,
+        )
+      : (data?.strands ?? [])
+          .flatMap((strand, index) =>
+            strand.name.trim() || strand.speed.trim()
+              ? [
+                  [
+                    `${index + 1}`,
+                    strand.name.trim(),
+                    strand.speed.trim() ? `· ${strand.speed.trim()}` : "· —",
+                  ]
+                    .filter(Boolean)
+                    .join(" "),
+                ]
+              : [],
+          );
   // The mid jog runs across the route, so the ticks are drawn along the other
   // axis to stay perpendicular to the line they mark.
   const horizontal =
@@ -562,7 +593,11 @@ function NetworkLinkEdge(props: EdgeProps<Edge<NetworkLinkEdgeData>>) {
         className="react-flow__edge-interaction nm-edge-hit"
         fill="none"
         stroke="transparent"
-        strokeWidth={18}
+        strokeWidth={
+          strandDisplay === "separate"
+            ? Math.max(18, (count - 1) * 5 + 12)
+            : bundleWidth + 12
+        }
       />
       {offsets.map((offset, index) => {
         const { path } = orthogonalLinkPath({ ...props, offset });
@@ -570,8 +605,15 @@ function NetworkLinkEdge(props: EdgeProps<Edge<NetworkLinkEdgeData>>) {
           <path
             key={`${id}:${index}`}
             d={path}
-            className="react-flow__edge-path nm-edge-strand"
+            className={`react-flow__edge-path nm-edge-strand${
+              strandDisplay === "bundle" ? " nm-edge-bundle" : ""
+            }`}
             fill="none"
+            style={
+              strandDisplay === "bundle"
+                ? ({ strokeWidth: bundleWidth } as CSSProperties)
+                : undefined
+            }
           />
         );
       })}
@@ -586,19 +628,28 @@ function NetworkLinkEdge(props: EdgeProps<Edge<NetworkLinkEdgeData>>) {
           }
         />
       ) : null}
-      {data?.label ? (
+      {data?.label || readouts.length > 0 ? (
         <EdgeLabelRenderer>
           <div
             className="nm-edge-label"
-            data-spotlit={data.spotlightAccent ? "true" : undefined}
+            data-spotlit={data?.spotlightAccent ? "true" : undefined}
             style={{
               transform: `translate(-50%, -50%) translate(${centre.labelX}px, ${centre.labelY}px)`,
-              ...(data.spotlightAccent
+              ...(data?.spotlightAccent
                 ? ({ "--nm-vlan-accent": data.spotlightAccent } as CSSProperties)
                 : {}),
             }}
           >
-            {data.label}
+            {data?.label ? <span className="nm-edge-label-main">{data.label}</span> : null}
+            {readouts.length > 0 ? (
+              <span className="nm-edge-speed-list">
+                {readouts.map((readout, index) => (
+                  <span key={`${id}:speed:${index}`} className="nm-edge-speed">
+                    {readout}
+                  </span>
+                ))}
+              </span>
+            ) : null}
           </div>
         </EdgeLabelRenderer>
       ) : null}
@@ -1132,6 +1183,26 @@ function LinkPropertiesFields({
           }))}
         />
       </Field>
+      <Field label={t("itops.networkMap.strandDisplayLabel")}>
+        <Select
+          value={link.strandDisplay ?? "separate"}
+          onChange={(event) =>
+            patch({
+              strandDisplay: event.currentTarget.value as NetworkLinkStrandDisplay,
+            })
+          }
+          options={[
+            {
+              value: "separate",
+              label: t("itops.networkMap.strandDisplaySeparate"),
+            },
+            {
+              value: "bundle",
+              label: t("itops.networkMap.strandDisplayBundle"),
+            },
+          ]}
+        />
+      </Field>
       <Field
         label={t("itops.networkMap.endpointAddressLabel", {
           node: endpointName(nodesById, link.from, unnamed),
@@ -1345,7 +1416,7 @@ function LinkPropertiesDialog({
   nodesById: Map<string, NetworkNode>;
   vlans: Vlan[];
   onSubmit: (link: NetworkLink) => void;
-  onDelete: () => void;
+  onDelete?: () => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -1358,16 +1429,18 @@ function LinkPropertiesDialog({
         footer={
           <Actions
             extraLeft={
-              <Btn
-                kind="danger"
-                icon="trash"
-                onClick={() => {
-                  onDelete();
-                  onClose();
-                }}
-              >
-                {t("itops.networkMap.removeLink")}
-              </Btn>
+              onDelete ? (
+                <Btn
+                  kind="danger"
+                  icon="trash"
+                  onClick={() => {
+                    onDelete();
+                    onClose();
+                  }}
+                >
+                  {t("itops.networkMap.removeLink")}
+                </Btn>
+              ) : undefined
             }
             cancel={<Btn onClick={onClose}>{t("itops.actions.cancel")}</Btn>}
             primary={
@@ -1796,16 +1869,12 @@ function MapEditor({ map }: { map: NetworkMap }) {
             ? "warning"
             : "up";
       const strandCount = Math.max(link.strands.length, 1);
-      // Every strand at the same speed reads as one figure; a mixed bundle
-      // would be a lie compressed into one chip, so it falls back to the count.
-      const speeds = new Set(link.strands.map((strand) => strand.speed.trim()).filter(Boolean));
       const label = [
         link.label.trim(),
         link.fromAddress || link.toAddress
           ? `${link.fromAddress || "—"} ↔ ${link.toAddress || "—"}`
           : "",
-        speeds.size === 1 ? [...speeds][0] : "",
-        strandCount > 1 ? `×${strandCount}` : "",
+        link.strandDisplay === "bundle" && strandCount > 1 ? `×${strandCount}` : "",
         vlanChip(link, vlanIndex, t),
       ]
         .filter(Boolean)
@@ -1829,6 +1898,8 @@ function MapEditor({ map }: { map: NetworkMap }) {
             kind: link.kind,
             state,
             strandCount,
+            strands: link.strands,
+            strandDisplay: link.strandDisplay ?? "separate",
             label,
             trunk,
             spotlightAccent:
@@ -1876,6 +1947,7 @@ function MapEditor({ map }: { map: NetworkMap }) {
         // starts with one strand rather than an empty list the operator has to
         // notice is empty.
         strands: [{ id: newId("nms"), name: "", speed: "" }],
+        strandDisplay: "separate",
         nativeVlanId: null,
         taggedVlanIds: [],
         status: "up",
@@ -1947,10 +2019,10 @@ function MapEditor({ map }: { map: NetworkMap }) {
 
   function updateNodeProperties(node: NetworkNode, root: boolean) {
     const retained = new Set(node.addresses);
-    setGraph((current) => ({
-      ...current,
-      nodes: current.nodes.map((entry) => (entry.id === node.id ? node : entry)),
-      links: current.links.map((link) => ({
+    const nextGraph = {
+      ...graph,
+      nodes: graph.nodes.map((entry) => (entry.id === node.id ? node : entry)),
+      links: graph.links.map((link) => ({
         ...link,
         fromAddress:
           link.from === node.id && link.fromAddress && !retained.has(link.fromAddress)
@@ -1962,25 +2034,31 @@ function MapEditor({ map }: { map: NetworkMap }) {
             : link.toAddress,
       })),
       roots: root
-        ? current.roots.includes(node.id)
-          ? current.roots
-          : [...current.roots, node.id]
-        : current.roots.filter((id) => id !== node.id),
-    }));
+        ? graph.roots.includes(node.id)
+          ? graph.roots
+          : [...graph.roots, node.id]
+        : graph.roots.filter((id) => id !== node.id),
+    };
+    setGraph(nextGraph);
+    if (mode === "view") void save(nextGraph);
   }
 
   function patchNote(id: string, patch: Partial<NetworkMapNote>) {
-    setGraph((current) => ({
-      ...current,
-      notes: current.notes.map((note) => (note.id === id ? { ...note, ...patch } : note)),
-    }));
+    const nextGraph = {
+      ...graph,
+      notes: graph.notes.map((note) => (note.id === id ? { ...note, ...patch } : note)),
+    };
+    setGraph(nextGraph);
+    if (mode === "view") void save(nextGraph);
   }
 
   function patchLink(id: string, patch: Partial<NetworkLink>) {
-    setGraph((current) => ({
-      ...current,
-      links: current.links.map((link) => (link.id === id ? { ...link, ...patch } : link)),
-    }));
+    const nextGraph = {
+      ...graph,
+      links: graph.links.map((link) => (link.id === id ? { ...link, ...patch } : link)),
+    };
+    setGraph(nextGraph);
+    if (mode === "view") void save(nextGraph);
   }
 
   function removeNode(id: string) {
@@ -2097,11 +2175,17 @@ function MapEditor({ map }: { map: NetworkMap }) {
     );
   }
 
-  async function save() {
+  async function save(nextGraph: NetworkGraph = graph) {
     if (busy) return;
     setBusy(true);
     try {
-      const saved = await saveNetworkMap(map.id, map.name, map.description, map.siteId ?? null, graph);
+      const saved = await saveNetworkMap(
+        map.id,
+        map.name,
+        map.description,
+        map.siteId ?? null,
+        nextGraph,
+      );
       setGraph(saved.graph);
       setSavedJson(JSON.stringify(saved.graph));
       showStatusBarNotice(t("itops.networkMap.savedNotice", { name: map.name }), {
@@ -2204,7 +2288,7 @@ function MapEditor({ map }: { map: NetworkMap }) {
               else setSelection({ kind: "node", id: node.id });
             }}
             onNodeDoubleClick={(_event, node) => {
-              if (placementDraft || mode !== "design") return;
+              if (placementDraft || mode === "impact") return;
               if (node.type === "networkNote") openNoteProperties(node.id);
               else if (node.type === "networkNode") openNodeProperties(node.id);
             }}
@@ -2221,6 +2305,10 @@ function MapEditor({ map }: { map: NetworkMap }) {
                     ? openLinkProperties(edge.id)
                     : setSelection({ kind: "link", id: edge.id })
             }
+            onEdgeDoubleClick={(_event, edge) => {
+              if (placementDraft || mode === "impact") return;
+              openLinkProperties(edge.id);
+            }}
             onPaneClick={() => {
               if (!placementDraft) setSelection(null);
             }}
@@ -2354,7 +2442,9 @@ function MapEditor({ map }: { map: NetworkMap }) {
           placement={nodeDialog.placement}
           onClose={() => setNodeDialog(null)}
           onDelete={
-            nodeDialog.placement ? undefined : () => removeNode(nodeDialog.node.id)
+            nodeDialog.placement || mode === "view"
+              ? undefined
+              : () => removeNode(nodeDialog.node.id)
           }
           onSubmit={(node, root) => {
             if (nodeDialog.placement) armNodePlacement(node, root);
@@ -2369,7 +2459,9 @@ function MapEditor({ map }: { map: NetworkMap }) {
           placement={noteDialog.placement}
           onClose={() => setNoteDialog(null)}
           onDelete={
-            noteDialog.placement ? undefined : () => removeNote(noteDialog.note.id)
+            noteDialog.placement || mode === "view"
+              ? undefined
+              : () => removeNote(noteDialog.note.id)
           }
           onSubmit={(note) => {
             if (noteDialog.placement) armNotePlacement(note);
@@ -2384,7 +2476,7 @@ function MapEditor({ map }: { map: NetworkMap }) {
           nodesById={nodesById}
           vlans={vlans}
           onClose={() => setLinkDialog(null)}
-          onDelete={() => removeLink(linkDialog.link.id)}
+          onDelete={mode === "design" ? () => removeLink(linkDialog.link.id) : undefined}
           onSubmit={(link) => patchLink(link.id, link)}
         />
       ) : null}

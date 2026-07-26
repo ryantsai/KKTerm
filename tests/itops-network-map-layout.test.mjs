@@ -48,6 +48,18 @@ test("IT Ops separates Batch Tasks from Networking in every locale", async () =>
     const messages = JSON.parse(await read(`src/i18n/locales/${locale}.json`));
     assert.ok(messages.itops.navigation.batchTasks, `${locale} should translate Batch Tasks`);
     assert.ok(messages.itops.navigation.networking, `${locale} should translate Networking`);
+    assert.ok(
+      messages.itops.networkMap.strandDisplayLabel,
+      `${locale} should translate the line display property`,
+    );
+    assert.ok(
+      messages.itops.networkMap.strandDisplaySeparate,
+      `${locale} should translate separate lines`,
+    );
+    assert.ok(
+      messages.itops.networkMap.strandDisplayBundle,
+      `${locale} should translate bundled line`,
+    );
     assert.notEqual(
       messages.itops.navigation.batchTasks,
       messages.itops.tasks.heading,
@@ -62,9 +74,10 @@ test("IT Ops separates Batch Tasks from Networking in every locale", async () =>
 });
 
 test("Network Nodes use the expanded device catalog and links expose complete documented properties", async () => {
-  const [designer, types] = await Promise.all([
+  const [designer, types, styles] = await Promise.all([
     read("src/modules/itops/NetworkMapDesigner.tsx"),
     read("src/types.ts"),
+    read("src/modules/itops/itops.css"),
   ]);
 
   assert.match(designer, /function NetworkNodeArtwork/);
@@ -87,11 +100,25 @@ test("Network Nodes use the expanded device catalog and links expose complete do
   assert.match(designer, /itops\.networkMap\.strandSpeedPlaceholder/);
   assert.match(designer, /<datalist id=\{speedListId\}>/);
   assert.match(designer, /COMMON_LINK_SPEEDS/);
-  assert.match(designer, /strandCount > 1 \? `×\$\{strandCount\}`/);
+  assert.match(designer, /itops\.networkMap\.strandDisplayLabel/);
+  assert.match(designer, /itops\.networkMap\.strandDisplaySeparate/);
+  assert.match(designer, /itops\.networkMap\.strandDisplayBundle/);
+  assert.match(designer, /strandDisplay === "separate" \? count : 1/);
+  assert.doesNotMatch(designer, /Math\.min\(Math\.max\(data\?\.strandCount/);
+  assert.match(designer, /className="nm-edge-speed-list"/);
+  assert.match(designer, /groups\.set\(speed, \(groups\.get\(speed\) \?\? 0\) \+ 1\)/);
+  assert.match(styles, /\.nm-edge-label\s*\{[\s\S]*background: var\(--surface\);/);
+  assert.match(styles, /\.nm-edge-speed-list\s*\{[\s\S]*flex-wrap: wrap;/);
+  assert.match(
+    styles,
+    /\.react-flow__edgelabel-renderer\s*\{[\s\S]*z-index: 2;/,
+  );
   // The pre-strand link-level count and speed are gone from the model.
   assert.doesNotMatch(designer, /itops\.networkMap\.linkCountLabel/);
   assert.doesNotMatch(designer, /connectionCount/);
   assert.match(types, /strands: NetworkLinkStrand\[\];/);
+  assert.match(types, /type NetworkLinkStrandDisplay = "separate" \| "bundle"/);
+  assert.match(types, /strandDisplay: NetworkLinkStrandDisplay;/);
   assert.match(types, /interface NetworkLinkStrand/);
   assert.match(types, /speed: string;/);
   assert.match(types, /status: NetworkMapStatus;/);
@@ -161,9 +188,14 @@ test("Network Maps configure palette items before ghost placement and expose nat
   );
   assert.match(
     designer,
-    /onNodeDoubleClick=\{\(_event, node\) =>[\s\S]*node\.type === "networkNote"[\s\S]*openNoteProperties\(node\.id\)[\s\S]*openNodeProperties\(node\.id\)/,
+    /onNodeDoubleClick=\{\(_event, node\) =>[\s\S]*mode === "impact"[\s\S]*node\.type === "networkNote"[\s\S]*openNoteProperties\(node\.id\)[\s\S]*openNodeProperties\(node\.id\)/,
   );
   assert.match(designer, /onEdgeClick=\{\(_event, edge\) =>[\s\S]*openLinkProperties\(edge\.id\)/);
+  assert.match(
+    designer,
+    /onEdgeDoubleClick=\{\(_event, edge\) => \{[\s\S]*mode === "impact"[\s\S]*openLinkProperties\(edge\.id\)/,
+  );
+  assert.match(designer, /if \(mode === "view"\) void save\(nextGraph\);/);
   assert.doesNotMatch(designer, /\) : selected(?:Node|Note|Link) \? \(/);
   assert.match(
     designer,
