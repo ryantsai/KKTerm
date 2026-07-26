@@ -1711,6 +1711,7 @@
       "dnsLabel": "Tên DNS",
       "dnsHint": "Tên mà địa chỉ này đáp ứng.",
       "dnsPlaceholder": "vd. core-sw-01.example.com",
+      "deviceTypeLabel": "Loại thiết bị",
       "claimTitle": "Nhập các địa chỉ đã biết",
       "claimSub": "Những địa chỉ KKTerm đã thấy trên các Kết nối và Máy chủ của bạn.",
       "claimMissingPrefixes_one": "{{count}} địa chỉ đã chọn không nằm trong Tiền tố IP nào. Hãy xem lại CIDR được đề xuất trước khi nhập.",

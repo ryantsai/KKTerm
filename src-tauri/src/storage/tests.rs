@@ -322,7 +322,7 @@ fn v51_ipam_site_columns_are_added_and_current_reopen_keeps_them_optional() {
         .expect("site-less IPAM address imports after migration");
     drop(storage);
 
-    let reopened = Storage::open(db_path).expect("current v52 storage reopens");
+    let reopened = Storage::open(db_path).expect("current storage reopens");
     reopened
         .with_connection(|connection| {
             let version: i32 =
@@ -340,6 +340,95 @@ fn v51_ipam_site_columns_are_added_and_current_reopen_keeps_them_optional() {
             Ok(())
         })
         .expect("current-version reopen is write-free and keeps NULL Site");
+}
+
+#[test]
+fn v52_ipam_device_identity_columns_upgrade_and_survive_current_reopen() {
+    let db_path = temp_db_path("v52-ipam-device-identity");
+    {
+        let connection = rusqlite::Connection::open(&db_path).expect("v52 database opens");
+        connection
+            .execute_batch(
+                r#"
+                CREATE TABLE itops_ip_address_records (
+                    id TEXT PRIMARY KEY,
+                    address TEXT NOT NULL,
+                    vrf TEXT NOT NULL DEFAULT '',
+                    status TEXT NOT NULL DEFAULT 'active',
+                    dns_name TEXT NOT NULL DEFAULT '',
+                    description TEXT NOT NULL DEFAULT '',
+                    site_id TEXT,
+                    host_id TEXT,
+                    connection_id TEXT,
+                    rack_item_id TEXT,
+                    UNIQUE(vrf, address)
+                );
+                INSERT INTO itops_ip_address_records
+                    (id, address, vrf, status, dns_name, description)
+                VALUES ('address-1', '10.0.0.10', '', 'active', 'host.example', '');
+                PRAGMA user_version = 52;
+                "#,
+            )
+            .expect("legacy v52 IPAM schema is created");
+    }
+
+    let storage = Storage::open(db_path.clone()).expect("v52 IPAM schema migrates");
+    storage
+        .with_connection(|connection| {
+            assert!(column_exists(
+                connection,
+                "itops_ip_address_records",
+                "device_type"
+            )?);
+            assert!(column_exists(
+                connection,
+                "itops_ip_address_records",
+                "device_model"
+            )?);
+            let defaults: (String, String) = connection
+                .query_row(
+                    "SELECT device_type, device_model
+                     FROM itops_ip_address_records WHERE id = 'address-1'",
+                    [],
+                    |row| Ok((row.get(0)?, row.get(1)?)),
+                )
+                .map_err(to_storage_error)?;
+            assert_eq!(defaults, (String::new(), String::new()));
+            connection
+                .execute(
+                    "UPDATE itops_ip_address_records
+                     SET device_type = 'switch', device_model = 'Catalyst C9300'
+                     WHERE id = 'address-1'",
+                    [],
+                )
+                .map_err(to_storage_error)?;
+            Ok(())
+        })
+        .expect("device identity fields are writable after migration");
+    drop(storage);
+
+    let reopened = Storage::open(db_path).expect("current v53 storage reopens");
+    reopened
+        .with_connection(|connection| {
+            let version: i32 =
+                connection.pragma_query_value(None, "user_version", |row| row.get(0))
+                    .map_err(to_storage_error)?;
+            let identity: (String, String) = connection
+                .query_row(
+                    "SELECT device_type, device_model
+                     FROM itops_ip_address_records WHERE id = 'address-1'",
+                    [],
+                    |row| Ok((row.get(0)?, row.get(1)?)),
+                )
+                .map_err(to_storage_error)?;
+            assert_eq!(version, SCHEMA_USER_VERSION);
+            assert_eq!(
+                identity,
+                ("switch".to_string(), "Catalyst C9300".to_string())
+            );
+            Ok(())
+        })
+        .expect("current-version reopen preserves device identity");
 }
 
 #[test]

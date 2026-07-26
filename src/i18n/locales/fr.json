@@ -1711,6 +1711,7 @@
       "dnsLabel": "Nom DNS",
       "dnsHint": "Le nom auquel cette adresse répond.",
       "dnsPlaceholder": "ex. core-sw-01.example.com",
+      "deviceTypeLabel": "Type d’appareil",
       "claimTitle": "Importer les adresses connues",
       "claimSub": "Les adresses que KKTerm voit déjà sur vos Connexions et vos Hôtes.",
       "claimMissingPrefixes_one": "{{count}} adresse sélectionnée n’est couverte par aucun préfixe IP. Vérifiez le CIDR suggéré avant l’importation.",

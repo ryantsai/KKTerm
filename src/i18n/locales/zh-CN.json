@@ -1711,6 +1711,7 @@
       "dnsLabel": "DNS 名称",
       "dnsHint": "这个地址对应的名称。",
       "dnsPlaceholder": "例如 core-sw-01.example.com",
+      "deviceTypeLabel": "设备类型",
       "claimTitle": "导入已知地址",
       "claimSub": "KKTerm 已在你的连接和主机上看到的地址。",
       "claimMissingPrefixes_one": "已选择的 {{count}} 个地址不在任何 IP 前缀内。导入前请检查建议的 CIDR。",

@@ -4,7 +4,8 @@ use tauri::{AppHandle, Manager};
 
 use super::ids::new_itops_id;
 use super::types::{
-    AddressStatus, IpAddressRecord, IpPrefix, IpamScanResult, IpamSnapshot, PrefixStatus,
+    AddressStatus, IpAddressRecord, IpPrefix, IpamDeviceType, IpamScanResult, IpamSnapshot,
+    PrefixStatus,
 };
 use super::{ipam_scan, ipam_storage};
 
@@ -89,6 +90,8 @@ pub fn itops_create_ip_address(
     vrf: String,
     status: AddressStatus,
     dns_name: String,
+    device_type: Option<IpamDeviceType>,
+    device_model: String,
     description: String,
     site_id: Option<String>,
     host_id: Option<String>,
@@ -105,6 +108,8 @@ pub fn itops_create_ip_address(
                 &vrf,
                 status,
                 &dns_name,
+                device_type,
+                &device_model,
                 &description,
                 site_id.as_deref(),
                 host_id.as_deref(),
@@ -124,6 +129,8 @@ pub fn itops_update_ip_address(
     vrf: String,
     status: AddressStatus,
     dns_name: String,
+    device_type: Option<IpamDeviceType>,
+    device_model: String,
     description: String,
     site_id: Option<String>,
     host_id: Option<String>,
@@ -139,6 +146,8 @@ pub fn itops_update_ip_address(
                 &vrf,
                 status,
                 &dns_name,
+                device_type,
+                &device_model,
                 &description,
                 site_id.as_deref(),
                 host_id.as_deref(),

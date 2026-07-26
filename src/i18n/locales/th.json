@@ -1711,6 +1711,7 @@
       "dnsLabel": "ชื่อ DNS",
       "dnsHint": "ชื่อที่ที่อยู่นี้ตอบสนอง",
       "dnsPlaceholder": "เช่น core-sw-01.example.com",
+      "deviceTypeLabel": "ประเภทอุปกรณ์",
       "claimTitle": "นำเข้าที่อยู่ที่รู้จักแล้ว",
       "claimSub": "ที่อยู่ที่ KKTerm เห็นอยู่แล้วจากการเชื่อมต่อและโฮสต์ของคุณ",
       "claimMissingPrefixes_one": "ที่อยู่ที่เลือก {{count}} รายการไม่อยู่ใน IP Prefix โปรดตรวจสอบ CIDR ที่แนะนำก่อนนำเข้า",

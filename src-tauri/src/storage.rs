@@ -13,7 +13,7 @@ use std::{
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use zip::{ZipArchive, ZipWriter, write::SimpleFileOptions};
 
-const SCHEMA_USER_VERSION: i32 = 52;
+const SCHEMA_USER_VERSION: i32 = 53;
 
 const DEFAULT_TERMINAL_OPACITY: u8 = 50;
 
@@ -401,6 +401,10 @@ CREATE TABLE IF NOT EXISTS itops_ip_address_records (
     -- 'active' | 'reserved' | 'deprecated'.
     status        TEXT NOT NULL DEFAULT 'active',
     dns_name      TEXT NOT NULL DEFAULT '',
+    -- Broad operator-facing class inferred conservatively during explicit scans.
+    device_type   TEXT NOT NULL DEFAULT '',
+    -- Free-text model/product detail, commonly sourced from SNMP sysDescr.
+    device_model  TEXT NOT NULL DEFAULT '',
     description   TEXT NOT NULL DEFAULT '',
     site_id       TEXT,
     host_id       TEXT,
@@ -2929,6 +2933,24 @@ impl Storage {
                 "itops_ip_address_records",
                 "site_id",
                 "TEXT",
+            )?;
+        }
+        // v53: optional device identity on each durable IP Address Record.
+        // These are ordinary one-time additive columns: there is no ongoing
+        // startup reconciliation, and existing records remain intentionally
+        // blank until an operator edits or imports a discovered identity.
+        if stored_version < 53 {
+            ensure_column(
+                &connection,
+                "itops_ip_address_records",
+                "device_type",
+                "TEXT NOT NULL DEFAULT ''",
+            )?;
+            ensure_column(
+                &connection,
+                "itops_ip_address_records",
+                "device_model",
+                "TEXT NOT NULL DEFAULT ''",
             )?;
         }
         connection

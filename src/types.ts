@@ -547,6 +547,18 @@ export interface Automation {
 // prefixes carved out of them; the rest are leaves measured by their addresses.
 export type PrefixStatus = "container" | "active" | "reserved" | "deprecated";
 export type AddressStatus = "active" | "reserved" | "deprecated";
+export type IpamDeviceType =
+  | "router"
+  | "switch"
+  | "firewall"
+  | "server"
+  | "storage"
+  | "accessPoint"
+  | "desktop"
+  | "printer"
+  | "camera"
+  | "voip"
+  | "iot";
 
 export interface IpPrefix {
   id: string;
@@ -569,6 +581,8 @@ export interface IpAddressRecord {
   vrf: string;
   status: AddressStatus;
   dnsName: string;
+  deviceType: IpamDeviceType | null;
+  deviceModel: string;
   description: string;
   // Soft references to a Site, Site Host, Connection, and Rack Device. A Host
   // binding implies its owning Site. Without a direct Site or Host, snapshots
@@ -612,6 +626,9 @@ export interface IpamScanResult {
   cidr: string;
   vrf: string;
   siteId?: string | null;
+  hostname: string;
+  deviceType: IpamDeviceType | null;
+  deviceModel: string;
   ping: boolean;
   snmp: boolean;
   openPorts: number[];

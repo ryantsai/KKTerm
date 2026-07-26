@@ -12,6 +12,7 @@ import type {
   AutomationTestResult,
   BatchTask,
   IpamSnapshot,
+  IpamDeviceType,
   ItopsTask,
   NetworkGraph,
   NetworkMap,
@@ -155,6 +156,8 @@ export interface AddressInput {
   vrf: string;
   status: AddressStatus;
   dnsName: string;
+  deviceType: IpamDeviceType | null;
+  deviceModel: string;
   description: string;
   siteId: string | null;
   hostId: string | null;
@@ -183,6 +186,8 @@ function addressArgs(input: AddressInput) {
     vrf: input.vrf,
     status: input.status,
     dnsName: input.dnsName,
+    deviceType: input.deviceType,
+    deviceModel: input.deviceModel,
     description: input.description,
     siteId: input.siteId,
     hostId: input.hostId,

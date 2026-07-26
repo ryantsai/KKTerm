@@ -8218,6 +8218,19 @@
 }
 .itops-page .it-ipam-head > span:last-child,
 .itops-page .it-ipam-row > span:last-child { border-right: 0; }
+.itops-page .it-ipam-site-row {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.itops-page .it-ipam-site-group + .it-ipam-site-group .it-ipam-site-row {
+  border-top: 1px solid var(--border);
+}
 .itops-page .it-ipam-row {
   min-height: 44px;
   border-bottom: 1px solid var(--hairline);
@@ -8339,6 +8352,22 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--text-muted);
+}
+.itops-page .it-ipam-address-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.itops-page .it-ipam-address-identity > span,
+.itops-page .it-ipam-address-identity > small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.itops-page .it-ipam-address-identity > span { color: var(--text); }
+.itops-page .it-ipam-address-identity > small {
+  color: var(--text-faint);
+  font-size: 9.5px;
 }
 .itops-page .it-ipam-address-empty {
   margin: 0;
