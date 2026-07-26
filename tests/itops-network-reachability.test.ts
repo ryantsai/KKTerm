@@ -9,11 +9,31 @@ import {
 } from "../src/modules/itops/reachability";
 
 function node(id: string): NetworkNode {
-  return { id, label: id, kind: "switch", x: 0, y: 0, address: "", status: "up", note: "" };
+  return {
+    id,
+    label: id,
+    kind: "switch",
+    x: 0,
+    y: 0,
+    width: 190,
+    height: 80,
+    addresses: [],
+    status: "up",
+    note: "",
+  };
 }
 
 function link(id: string, from: string, to: string): NetworkLink {
-  return { id, from, to, label: "", kind: "ethernet", connectionCount: 1, speed: "", status: "up" };
+  return {
+    id,
+    from,
+    to,
+    label: "",
+    kind: "ethernet",
+    strands: [{ id: `${id}-strand`, name: "", speed: "" }],
+    taggedVlanIds: [],
+    status: "up",
+  };
 }
 
 // core ── dist ── access, with an isolated-by-design spare hanging off core.
@@ -22,6 +42,7 @@ function chain(): NetworkGraph {
     nodes: ["core", "dist", "access", "spare"].map(node),
     links: [link("l1", "core", "dist"), link("l2", "dist", "access"), link("l3", "core", "spare")],
     roots: ["core"],
+    notes: [],
   };
 }
 
@@ -65,6 +86,7 @@ test("a redundant ring survives any single loss", () => {
       link("da", "d", "a"),
     ],
     roots: ["a"],
+    notes: [],
   };
   assert.deepEqual(analyzeWhatIf(graph, { nodes: ["b"], links: [] }).isolated, []);
   assert.deepEqual(analyzeWhatIf(graph, { nodes: [], links: ["ab"] }).isolated, []);
@@ -95,7 +117,7 @@ test("an unset root list falls back to the first node", () => {
   assert.deepEqual(effectiveRoots(graph), ["core"]);
   // A root id left behind by a deleted node falls back the same way.
   assert.deepEqual(effectiveRoots({ ...chain(), roots: ["ghost"] }), ["core"]);
-  assert.deepEqual(effectiveRoots({ nodes: [], links: [], roots: [] }), []);
+  assert.deepEqual(effectiveRoots({ nodes: [], links: [], notes: [], roots: [] }), []);
 });
 
 test("self-links and dangling endpoints never make a node look connected", () => {
@@ -103,6 +125,7 @@ test("self-links and dangling endpoints never make a node look connected", () =>
     nodes: ["a", "b"].map(node),
     links: [link("loop", "b", "b"), link("ghost", "a", "missing")],
     roots: ["a"],
+    notes: [],
   };
   assert.deepEqual(analyzeWhatIf(graph, { nodes: [], links: [] }).isolated, ["b"]);
   assert.deepEqual(
@@ -116,6 +139,7 @@ test("weak points do not count nodes that were already unreachable", () => {
     nodes: ["core", "edge", "island"].map(node),
     links: [link("uplink", "core", "edge")],
     roots: ["core"],
+    notes: [],
   };
   assert.deepEqual(findWeakPoints(graph), [
     { kind: "node", id: "core", isolates: 1 },

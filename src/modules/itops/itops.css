@@ -8955,6 +8955,8 @@
   color: var(--text);
   transform: translateY(-1px);
 }
+.itops-page .nm-picker-card[draggable="true"] { cursor: grab; }
+.itops-page .nm-picker-card[draggable="true"]:active { cursor: grabbing; }
 .itops-page .nm-picker-ic {
   display: inline-flex;
   align-items: center;
@@ -8968,6 +8970,22 @@
     color-mix(in srgb, var(--nm-node-accent) 78%, black)
   );
   color: #fff;
+}
+.itops-page .nm-picker-note {
+  width: calc(50% - 4px);
+}
+.itops-page .nm-picker-note-preview {
+  display: inline-flex;
+  width: 54px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--amber) 28%, var(--surface));
+  color: var(--text);
+  font-family: ui-serif, Georgia, serif;
+  font-size: 17px;
+  font-weight: 650;
 }
 
 /* node card */
@@ -9093,6 +9111,47 @@
   opacity: 0;
 }
 .nm-node:hover .nm-handle.react-flow__handle { opacity: 1; }
+.nm-resize-line {
+  border-color: var(--accent) !important;
+}
+.nm-resize-handle {
+  width: 7px !important;
+  height: 7px !important;
+  border: 1px solid var(--surface) !important;
+  border-radius: 2px !important;
+  background: var(--accent) !important;
+}
+
+/* Notes, links, and device nodes use explicit React Flow z-orders (0/1/2), so
+   links stay interactive above annotations without hiding Notes behind the pane. */
+.nm-note {
+  display: flex;
+  box-sizing: border-box;
+  align-items: flex-start;
+  padding: 15px 16px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--nm-note-accent) 42%, var(--border));
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--nm-note-accent) 24%, var(--surface));
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 7%, transparent);
+  color: var(--text);
+  cursor: grab;
+  font-family: ui-serif, Georgia, serif;
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+.nm-note:active { cursor: grabbing; }
+.nm-note.sel {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.nm-note > span {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 12;
+}
 
 /* links: kind picks the dash pattern, What-If state picks the colour */
 .react-flow__edge.nm-edge .react-flow__edge-path {
@@ -9164,6 +9223,18 @@
 .itops-page .nm-root-toggle input { margin-top: 2px; accent-color: var(--accent); }
 .itops-page .nm-root-toggle strong { display: block; font-size: 12px; }
 .itops-page .nm-root-toggle small { display: block; margin-top: 2px; color: var(--text-faint); font-size: 10.5px; }
+.itops-page .nm-addresses { display: flex; flex-direction: column; gap: 6px; }
+.itops-page .nm-address-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 20px;
+  align-items: center;
+  gap: 5px;
+}
+.itops-page .nm-address-row .kk-inp {
+  padding-inline: 7px;
+  font-family: var(--app-mono-font-family, ui-monospace, monospace);
+  font-size: 11px;
+}
 /* Parallel-link editor: one row per physical link, each with its own port name
    and speed, because a LAG lands on a different port at each end. */
 .itops-page .nm-strands { display: flex; flex-direction: column; gap: 6px; }

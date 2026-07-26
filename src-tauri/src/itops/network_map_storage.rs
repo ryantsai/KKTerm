@@ -7,7 +7,9 @@ use rusqlite::{Connection as SqliteConnection, OptionalExtension, params};
 
 use std::collections::HashSet;
 
-use super::types::{NetworkGraph, NetworkLink, NetworkLinkStrand, NetworkMap};
+use super::types::{
+    NetworkGraph, NetworkLink, NetworkLinkStrand, NetworkMap, NetworkMapNote, NetworkNode,
+};
 
 /// Ceiling on parallel physical links recorded for one drawn link. The canvas
 /// draws at most four strands; beyond that the count carries the truth and the
@@ -86,31 +88,78 @@ fn validate_name(name: &str) -> Result<String> {
 /// are deliberately not validated here, so a map keeps documenting VLAN 30
 /// after the record is renamed or deleted.
 fn sanitize_graph(graph: &NetworkGraph) -> NetworkGraph {
-    let node_ids: Vec<&str> = graph.nodes.iter().map(|node| node.id.as_str()).collect();
+    let nodes: Vec<NetworkNode> = graph.nodes.iter().cloned().map(sanitize_node).collect();
+    let node_ids: HashSet<String> = nodes.iter().map(|node| node.id.clone()).collect();
+    let links = graph
+        .links
+        .iter()
+        .filter(|link| {
+            link.from != link.to && node_ids.contains(&link.from) && node_ids.contains(&link.to)
+        })
+        .cloned()
+        .map(|link| sanitize_link(link, &nodes))
+        .collect();
+    let roots = graph
+        .roots
+        .iter()
+        .filter(|root| node_ids.contains(*root))
+        .cloned()
+        .collect();
     NetworkGraph {
-        nodes: graph.nodes.clone(),
-        links: graph
-            .links
-            .iter()
-            .filter(|link| {
-                link.from != link.to
-                    && node_ids.contains(&link.from.as_str())
-                    && node_ids.contains(&link.to.as_str())
-            })
-            .cloned()
-            .map(sanitize_link)
-            .collect(),
-        roots: graph
-            .roots
-            .iter()
-            .filter(|root| node_ids.contains(&root.as_str()))
-            .cloned()
-            .collect(),
+        nodes,
+        links,
+        notes: graph.notes.iter().cloned().map(sanitize_note).collect(),
+        roots,
     }
 }
 
-fn sanitize_link(mut link: NetworkLink) -> NetworkLink {
+fn sanitize_node(mut node: NetworkNode) -> NetworkNode {
+    let mut seen = HashSet::new();
+    if node.addresses.is_empty() {
+        node.addresses
+            .push(std::mem::take(&mut node.legacy_address));
+    }
+    node.addresses = node
+        .addresses
+        .drain(..)
+        .filter_map(non_empty)
+        .filter(|address| seen.insert(address.clone()))
+        .take(32)
+        .collect();
+    node.width = node.width.clamp(140.0, 360.0);
+    node.height = node.height.clamp(64.0, 220.0);
+    node
+}
+
+fn sanitize_note(mut note: NetworkMapNote) -> NetworkMapNote {
+    note.text = note.text.trim().to_string();
+    note.width = note.width.clamp(180.0, 600.0);
+    note.height = note.height.clamp(90.0, 400.0);
+    note
+}
+
+fn sanitize_link(mut link: NetworkLink, nodes: &[NetworkNode]) -> NetworkLink {
     link.strands = migrate_strands(&link);
+    let from_addresses = nodes
+        .iter()
+        .find(|node| node.id == link.from)
+        .map(|node| node.addresses.as_slice())
+        .unwrap_or_default();
+    let to_addresses = nodes
+        .iter()
+        .find(|node| node.id == link.to)
+        .map(|node| node.addresses.as_slice())
+        .unwrap_or_default();
+    link.from_address = link
+        .from_address
+        .take()
+        .and_then(non_empty)
+        .filter(|address| from_addresses.contains(address));
+    link.to_address = link
+        .to_address
+        .take()
+        .and_then(non_empty)
+        .filter(|address| to_addresses.contains(address));
     // A native VLAN is untagged by definition, so listing it as tagged too is
     // a contradiction rather than extra information.
     let native = link.native_vlan_id.take().and_then(non_empty);
@@ -300,7 +349,9 @@ pub fn remove_map(conn: &SqliteConnection, id: &str) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::itops::types::{NetworkLinkKind, NetworkMapStatus, NetworkNode, NetworkNodeKind};
+    use crate::itops::types::{
+        NetworkLinkKind, NetworkMapNote, NetworkMapStatus, NetworkNode, NetworkNodeKind,
+    };
 
     fn open_test_db() -> SqliteConnection {
         let conn = SqliteConnection::open_in_memory().unwrap();
@@ -363,14 +414,33 @@ mod tests {
             " ".into(),
             "vlan-10".into(),
         ];
+        primary_link.from_address = Some(" 10.20.0.1 ".into());
+        primary_link.to_address = Some("10.20.0.99".into());
         primary_link.status = NetworkMapStatus::Warning;
+        let mut core = node("core");
+        core.addresses = vec![
+            " 10.20.0.1 ".into(),
+            "10.20.0.1".into(),
+            "2001:db8::1".into(),
+        ];
+        core.width = 500.0;
+        core.height = 40.0;
+        let mut edge = node("edge");
+        edge.addresses = vec!["10.20.0.2".into()];
         let graph = NetworkGraph {
-            nodes: vec![node("core"), node("edge")],
+            nodes: vec![core, edge],
             links: vec![
                 primary_link,
                 link("l2", "core", "ghost"),
                 link("l3", "core", "core"),
             ],
+            notes: vec![NetworkMapNote {
+                id: "note-1".into(),
+                text: " Maintenance boundary ".into(),
+                width: 100.0,
+                height: 800.0,
+                ..NetworkMapNote::default()
+            }],
             roots: vec!["core".into(), "ghost".into()],
         };
         let created = create_map(&conn, "map-1", " Campus ", " main ", Some("  "), &graph).unwrap();
@@ -383,6 +453,15 @@ mod tests {
         let listed = list_maps(&conn).unwrap();
         assert_eq!(listed.len(), 1);
         assert_eq!(listed[0].graph.nodes.len(), 2);
+        assert_eq!(
+            listed[0].graph.nodes[0].addresses,
+            vec!["10.20.0.1".to_string(), "2001:db8::1".to_string()]
+        );
+        assert_eq!(listed[0].graph.nodes[0].width, 360.0);
+        assert_eq!(listed[0].graph.nodes[0].height, 64.0);
+        assert_eq!(listed[0].graph.notes[0].text, "Maintenance boundary");
+        assert_eq!(listed[0].graph.notes[0].width, 180.0);
+        assert_eq!(listed[0].graph.notes[0].height, 400.0);
         let stored = &listed[0].graph.links[0];
         assert_eq!(stored.id, "l1");
         assert_eq!(stored.strands.len(), 3);
@@ -395,6 +474,8 @@ mod tests {
         assert_eq!(stored.native_vlan_id.as_deref(), Some("vlan-10"));
         // Blanks, duplicates, and the native VLAN drop out of the tagged set.
         assert_eq!(stored.tagged_vlan_ids, vec!["vlan-20".to_string()]);
+        assert_eq!(stored.from_address.as_deref(), Some("10.20.0.1"));
+        assert!(stored.to_address.is_none());
         assert_eq!(stored.status, NetworkMapStatus::Warning);
     }
 
@@ -405,7 +486,7 @@ mod tests {
             "INSERT INTO itops_network_maps (id, name, sort_order, graph_json)
              VALUES ('map-1', 'Legacy', 0, ?)",
             [r#"{
-                "nodes":[{"id":"core"},{"id":"edge"},{"id":"leaf"}],
+                "nodes":[{"id":"core","address":" 10.0.0.1 "},{"id":"edge"},{"id":"leaf"}],
                 "links":[
                     {"id":"lag","from":"core","to":"edge","connectionCount":3,"speed":" 10 Gbps "},
                     {"id":"single","from":"core","to":"leaf"}
@@ -423,6 +504,9 @@ mod tests {
         assert_eq!(lag.strands[2].id, "lag-strand-2");
         // A link that never had a count still stands for one physical link.
         assert_eq!(loaded.graph.links[1].strands.len(), 1);
+        assert_eq!(loaded.graph.nodes[0].width, 140.0);
+        assert_eq!(loaded.graph.nodes[0].height, 64.0);
+        assert_eq!(loaded.graph.nodes[0].addresses, vec!["10.0.0.1"]);
 
         // The legacy pair is never written back once folded in.
         update_map(&conn, "map-1", "Legacy", "", None, &loaded.graph).unwrap();
@@ -433,6 +517,8 @@ mod tests {
             .unwrap();
         let value: serde_json::Value = serde_json::from_str(&stored).unwrap();
         let first = &value["links"][0];
+        assert!(value["nodes"][0].get("address").is_none());
+        assert_eq!(value["nodes"][0]["addresses"][0], "10.0.0.1");
         assert!(first.get("connectionCount").is_none());
         assert!(first.get("speed").is_none());
         assert_eq!(first["strands"][0]["speed"], "10 Gbps");

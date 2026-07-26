@@ -20,6 +20,7 @@ import {
   EdgeLabelRenderer,
   Controls,
   Handle,
+  NodeResizer,
   Position,
   ReactFlow,
   type Connection as FlowConnection,
@@ -28,6 +29,7 @@ import {
   type Node,
   type NodeChange,
   type NodeProps,
+  type ReactFlowInstance,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
@@ -39,6 +41,7 @@ import {
   Field,
   Select,
   Sheet,
+  Swatches,
   TextArea,
   TextInput,
 } from "../../app/ui/dialog";
@@ -49,6 +52,7 @@ import type {
   NetworkLinkKind,
   NetworkLinkStrand,
   NetworkMap,
+  NetworkMapNote,
   NetworkMapStatus,
   NetworkNode,
   NetworkNodeKind,
@@ -122,6 +126,7 @@ const COMMON_LINK_SPEEDS = [
 
 /** Matches the backend's strand ceiling in `network_map_storage`. */
 const MAX_STRANDS = 64;
+const MAP_ACCENTS = Object.values(IT_ACCENTS);
 
 /** Glyph and accent per device kind, so a map reads at a glance while zoomed out. */
 const NODE_STYLE: Record<NetworkNodeKind, { accent: string }> = {
@@ -152,9 +157,18 @@ const NODE_STYLE: Record<NetworkNodeKind, { accent: string }> = {
   camera: { accent: IT_ACCENTS.red },
 };
 
-// Card geometry is fixed so link anchors can be picked from coordinates alone.
 const NODE_WIDTH = 190;
 const NODE_HEIGHT = 80;
+const NODE_MIN_WIDTH = 140;
+const NODE_MIN_HEIGHT = 64;
+const NODE_MAX_WIDTH = 360;
+const NODE_MAX_HEIGHT = 220;
+const NOTE_WIDTH = 240;
+const NOTE_HEIGHT = 130;
+const NOTE_MIN_WIDTH = 180;
+const NOTE_MIN_HEIGHT = 90;
+const NOTE_MAX_WIDTH = 600;
+const NOTE_MAX_HEIGHT = 400;
 
 function newId(prefix: string): string {
   const id = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -177,6 +191,8 @@ interface MapNodeData extends Record<string, unknown> {
   selected: boolean;
   rootLabel: string;
   warningLabel: string;
+  accent: string;
+  resizable: boolean;
 }
 
 function NetworkNodeArtwork({
@@ -372,16 +388,24 @@ function NetworkNodeArtwork({
 }
 
 function MapNode({ data }: NodeProps<Node<MapNodeData>>) {
-  const style = NODE_STYLE[data.kind];
-  const accentStyle = { "--nm-node-accent": style.accent } as CSSProperties;
+  const accentStyle = { "--nm-node-accent": data.accent } as CSSProperties;
   return (
     <div
       className={`nm-node${data.selected ? " sel" : ""}`}
       data-state={data.state}
       data-kind={data.kind}
       data-root={data.root ? "true" : undefined}
-      style={{ width: NODE_WIDTH, height: NODE_HEIGHT }}
+      style={{ width: "100%", height: "100%" }}
     >
+      <NodeResizer
+        isVisible={data.selected && data.resizable}
+        minWidth={NODE_MIN_WIDTH}
+        minHeight={NODE_MIN_HEIGHT}
+        maxWidth={NODE_MAX_WIDTH}
+        maxHeight={NODE_MAX_HEIGHT}
+        lineClassName="nm-resize-line"
+        handleClassName="nm-resize-handle"
+      />
       {/* One stacked source/target pair per side: links are undirected, and the
           edge builder picks the side facing the far end. */}
       {[Position.Left, Position.Right, Position.Top, Position.Bottom].map((position) => (
@@ -411,7 +435,38 @@ function MapNode({ data }: NodeProps<Node<MapNodeData>>) {
   );
 }
 
-const nodeTypes = { networkNode: MapNode };
+interface MapNoteData extends Record<string, unknown> {
+  text: string;
+  accent: string;
+  selected: boolean;
+  resizable: boolean;
+}
+
+function MapNote({ data }: NodeProps<Node<MapNoteData>>) {
+  return (
+    <div
+      className={`nm-note${data.selected ? " sel" : ""}`}
+      style={{
+        width: "100%",
+        height: "100%",
+        "--nm-note-accent": data.accent,
+      } as CSSProperties}
+    >
+      <NodeResizer
+        isVisible={data.selected && data.resizable}
+        minWidth={NOTE_MIN_WIDTH}
+        minHeight={NOTE_MIN_HEIGHT}
+        maxWidth={NOTE_MAX_WIDTH}
+        maxHeight={NOTE_MAX_HEIGHT}
+        lineClassName="nm-resize-line"
+        handleClassName="nm-resize-handle"
+      />
+      <span>{data.text}</span>
+    </div>
+  );
+}
+
+const nodeTypes = { networkNode: MapNode, networkNote: MapNote };
 
 interface NetworkLinkEdgeData extends Record<string, unknown> {
   kind: NetworkLinkKind;
@@ -599,8 +654,8 @@ function NetworkMapPreview({ map }: { map: NetworkMap }) {
  * the drawn line short and stops every edge from stacking on one handle.
  */
 function anchors(from: NetworkNode, to: NetworkNode): { source: Position; target: Position } {
-  const dx = to.x - from.x;
-  const dy = to.y - from.y;
+  const dx = to.x + to.width / 2 - (from.x + from.width / 2);
+  const dy = to.y + to.height / 2 - (from.y + from.height / 2);
   if (Math.abs(dx) >= Math.abs(dy)) {
     return dx >= 0
       ? { source: Position.Right, target: Position.Left }
@@ -612,7 +667,17 @@ function anchors(from: NetworkNode, to: NetworkNode): { source: Position; target
 }
 
 function nodeLabel(node: NetworkNode, fallback: string): string {
-  return node.label.trim() || node.address.trim() || fallback;
+  return node.label.trim() || node.addresses[0]?.trim() || fallback;
+}
+
+function nodeAccent(node: NetworkNode): string {
+  return node.iconAccent == null
+    ? NODE_STYLE[node.kind].accent
+    : MAP_ACCENTS[node.iconAccent % MAP_ACCENTS.length];
+}
+
+function noteAccent(note: NetworkMapNote): string {
+  return MAP_ACCENTS[note.backgroundAccent % MAP_ACCENTS.length];
 }
 
 /** Whether a link carries a VLAN at all, tagged or untagged. Membership is the
@@ -663,7 +728,10 @@ function hostsAsNodes(hosts: readonly SiteHost[], offset: number): NetworkNode[]
     kind: "server" as NetworkNodeKind,
     x: 60 + ((index + offset) % 4) * (NODE_WIDTH + 46),
     y: 60 + Math.floor((index + offset) / 4) * (NODE_HEIGHT + 54),
-    address: host.hostname,
+    width: NODE_WIDTH,
+    height: NODE_HEIGHT,
+    iconAccent: null,
+    addresses: [host.hostname],
     status: "up",
     hostId: host.id,
     connectionId: host.connectionIds[0] ?? null,
@@ -816,7 +884,7 @@ function ImportDialog({
 }
 
 type EditorMode = "design" | "impact";
-type Selection = { kind: "node" | "link"; id: string } | null;
+type Selection = { kind: "node" | "link" | "note"; id: string } | null;
 
 function MapEditor({
   map,
@@ -842,6 +910,7 @@ function MapEditor({
   // Which VLAN the overlay spotlights. Purely a view filter: it never edits the
   // graph and never feeds the reachability analysis, which stays VLAN-blind.
   const [spotlightVlanId, setSpotlightVlanId] = useState<string | null>(null);
+  const [flowInstance, setFlowInstance] = useState<ReactFlowInstance | null>(null);
 
   const vlans = useItOpsStore((state) => state.vlans);
   const vlansLoaded = useItOpsStore((state) => state.vlansLoaded);
@@ -896,16 +965,31 @@ function MapEditor({
   );
 
   const unnamed = t("itops.networkMap.unnamedNode");
-  const nodes = useMemo<Node<MapNodeData>[]>(() => {
+  const nodes = useMemo<Node<MapNodeData | MapNoteData>[]>(() => {
     const downSet = new Set(analysis.down);
     const isolatedSet = new Set(analysis.isolated);
-    return graph.nodes.map((node) => ({
+    const noteNodes: Node<MapNoteData>[] = graph.notes.map((note) => ({
+      id: note.id,
+      type: "networkNote",
+      position: { x: note.x, y: note.y },
+      zIndex: 0,
+      style: { width: note.width, height: note.height },
+      data: {
+        text: note.text || t("itops.networkMap.notePlaceholder"),
+        accent: noteAccent(note),
+        selected: selection?.kind === "note" && selection.id === note.id,
+        resizable: mode === "design",
+      },
+    }));
+    const deviceNodes: Node<MapNodeData>[] = graph.nodes.map((node) => ({
       id: node.id,
       type: "networkNode",
       position: { x: node.x, y: node.y },
+      zIndex: 2,
+      style: { width: node.width, height: node.height },
       data: {
         label: nodeLabel(node, unnamed),
-        sub: node.address || t(`itops.networkMap.nodeKind.${node.kind}`),
+        sub: node.addresses.join(" · ") || t(`itops.networkMap.nodeKind.${node.kind}`),
         kind: node.kind,
         state: downSet.has(node.id)
           ? "down"
@@ -918,9 +1002,22 @@ function MapEditor({
         selected: selection?.kind === "node" && selection.id === node.id,
         rootLabel: t("itops.networkMap.rootBadge"),
         warningLabel: t("itops.networkMap.status.warning"),
+        accent: nodeAccent(node),
+        resizable: mode === "design",
       },
     }));
-  }, [analysis.down, analysis.isolated, graph.nodes, rootIds, selection, t, unnamed]);
+    return [...noteNodes, ...deviceNodes];
+  }, [
+    analysis.down,
+    analysis.isolated,
+    graph.nodes,
+    graph.notes,
+    mode,
+    rootIds,
+    selection,
+    t,
+    unnamed,
+  ]);
 
   const edges = useMemo<Edge<NetworkLinkEdgeData>[]>(() => {
     const severed = new Set(analysis.severedLinks);
@@ -943,6 +1040,9 @@ function MapEditor({
       const speeds = new Set(link.strands.map((strand) => strand.speed.trim()).filter(Boolean));
       const label = [
         link.label.trim(),
+        link.fromAddress || link.toAddress
+          ? `${link.fromAddress || "—"} ↔ ${link.toAddress || "—"}`
+          : "",
         speeds.size === 1 ? [...speeds][0] : "",
         strandCount > 1 ? `×${strandCount}` : "",
         vlanChip(link, vlanIndex, t),
@@ -960,6 +1060,7 @@ function MapEditor({
           target: link.to,
           sourceHandle: source,
           targetHandle: target,
+          zIndex: 1,
           className: `nm-edge ${link.kind} ${state}${strandCount > 1 ? " multi" : ""}${
             selection?.kind === "link" && selection.id === link.id ? " sel" : ""
           }${spotlightVlanId && !spotlit ? " dimmed" : ""}`,
@@ -987,19 +1088,41 @@ function MapEditor({
   ]);
 
   const onNodesChange = useCallback((changes: NodeChange[]) => {
-    // Only drags matter: everything else about a node lives in the side panel.
+    // Positions and dimensions are the two canvas-owned properties.
     setGraph((current) => {
-      let next = current.nodes;
+      let nextNodes = current.nodes;
+      let nextNotes = current.notes;
       for (const change of changes) {
-        if (change.type !== "position" || !change.position) continue;
-        const position = change.position;
-        next = next.map((node) =>
-          node.id === change.id
-            ? { ...node, x: Math.round(position.x), y: Math.round(position.y) }
-            : node,
-        );
+        if (change.type === "position" && change.position) {
+          const position = change.position;
+          nextNodes = nextNodes.map((node) =>
+            node.id === change.id
+              ? { ...node, x: Math.round(position.x), y: Math.round(position.y) }
+              : node,
+          );
+          nextNotes = nextNotes.map((note) =>
+            note.id === change.id
+              ? { ...note, x: Math.round(position.x), y: Math.round(position.y) }
+              : note,
+          );
+        }
+        if (change.type === "dimensions" && change.dimensions) {
+          const { width, height } = change.dimensions;
+          nextNodes = nextNodes.map((node) =>
+            node.id === change.id
+              ? { ...node, width: Math.round(width), height: Math.round(height) }
+              : node,
+          );
+          nextNotes = nextNotes.map((note) =>
+            note.id === change.id
+              ? { ...note, width: Math.round(width), height: Math.round(height) }
+              : note,
+          );
+        }
       }
-      return next === current.nodes ? current : { ...current, nodes: next };
+      return nextNodes === current.nodes && nextNotes === current.notes
+        ? current
+        : { ...current, nodes: nextNodes, notes: nextNotes };
     });
   }, []);
 
@@ -1019,6 +1142,8 @@ function MapEditor({
         to: connection.target!,
         label: "",
         kind: "ethernet",
+        fromAddress: null,
+        toAddress: null,
         // A drawn link always stands for at least one physical link, so it
         // starts with one strand rather than an empty list the operator has to
         // notice is empty.
@@ -1031,14 +1156,17 @@ function MapEditor({
     });
   }, []);
 
-  function addNode(kind: NetworkNodeKind) {
+  function addNode(kind: NetworkNodeKind, position?: { x: number; y: number }) {
     const node: NetworkNode = {
       id: newId("nmn"),
       label: "",
       kind,
-      x: 60 + (graph.nodes.length % 4) * (NODE_WIDTH + 46),
-      y: 60 + Math.floor(graph.nodes.length / 4) * (NODE_HEIGHT + 54),
-      address: "",
+      x: position?.x ?? 60 + (graph.nodes.length % 4) * (NODE_WIDTH + 46),
+      y: position?.y ?? 60 + Math.floor(graph.nodes.length / 4) * (NODE_HEIGHT + 54),
+      width: NODE_WIDTH,
+      height: NODE_HEIGHT,
+      iconAccent: null,
+      addresses: [],
       status: "up",
       hostId: null,
       connectionId: null,
@@ -1049,10 +1177,50 @@ function MapEditor({
     setSelection({ kind: "node", id: node.id });
   }
 
+  function addNote(position?: { x: number; y: number }) {
+    const note: NetworkMapNote = {
+      id: newId("nmt"),
+      text: "",
+      x: position?.x ?? 80 + (graph.notes.length % 3) * 48,
+      y: position?.y ?? 80 + (graph.notes.length % 3) * 42,
+      width: NOTE_WIDTH,
+      height: NOTE_HEIGHT,
+      backgroundAccent: 1,
+    };
+    setGraph((current) => ({ ...current, notes: [...current.notes, note] }));
+    setSelection({ kind: "note", id: note.id });
+  }
+
   function patchNode(id: string, patch: Partial<NetworkNode>) {
     setGraph((current) => ({
       ...current,
       nodes: current.nodes.map((node) => (node.id === id ? { ...node, ...patch } : node)),
+    }));
+  }
+
+  function updateNodeAddresses(id: string, addresses: string[]) {
+    const retained = new Set(addresses);
+    setGraph((current) => ({
+      ...current,
+      nodes: current.nodes.map((node) => (node.id === id ? { ...node, addresses } : node)),
+      links: current.links.map((link) => ({
+        ...link,
+        fromAddress:
+          link.from === id && link.fromAddress && !retained.has(link.fromAddress)
+            ? null
+            : link.fromAddress,
+        toAddress:
+          link.to === id && link.toAddress && !retained.has(link.toAddress)
+            ? null
+            : link.toAddress,
+      })),
+    }));
+  }
+
+  function patchNote(id: string, patch: Partial<NetworkMapNote>) {
+    setGraph((current) => ({
+      ...current,
+      notes: current.notes.map((note) => (note.id === id ? { ...note, ...patch } : note)),
     }));
   }
 
@@ -1126,6 +1294,7 @@ function MapEditor({
 
   function removeNode(id: string) {
     setGraph((current) => ({
+      ...current,
       nodes: current.nodes.filter((node) => node.id !== id),
       // A node's links go with it, and it stops being an entry point.
       links: current.links.filter((link) => link.from !== id && link.to !== id),
@@ -1137,6 +1306,21 @@ function MapEditor({
   function removeLink(id: string) {
     setGraph((current) => ({ ...current, links: current.links.filter((link) => link.id !== id) }));
     setSelection(null);
+  }
+
+  function removeNote(id: string) {
+    setGraph((current) => ({ ...current, notes: current.notes.filter((note) => note.id !== id) }));
+    setSelection(null);
+  }
+
+  function dropPaletteItem(event: import("react").DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    if (mode !== "design" || !flowInstance) return;
+    const item = event.dataTransfer.getData("application/x-kkterm-network-map");
+    if (!item) return;
+    const position = flowInstance.screenToFlowPosition({ x: event.clientX, y: event.clientY });
+    if (item === "note") addNote(position);
+    else if (NODE_KINDS.includes(item as NetworkNodeKind)) addNode(item as NetworkNodeKind, position);
   }
 
   function toggleRoot(id: string) {
@@ -1178,6 +1362,8 @@ function MapEditor({
     selection?.kind === "node" ? graph.nodes.find((node) => node.id === selection.id) : undefined;
   const selectedLink =
     selection?.kind === "link" ? graph.links.find((link) => link.id === selection.id) : undefined;
+  const selectedNote =
+    selection?.kind === "note" ? graph.notes.find((note) => note.id === selection.id) : undefined;
 
   return (
     <div className="nm-editor">
@@ -1243,7 +1429,16 @@ function MapEditor({
       </div>
 
       <div className="nm-body">
-        <div className="au-canvas nm-canvas" data-mode={mode}>
+        <div
+          className="au-canvas nm-canvas"
+          data-mode={mode}
+          onDragOver={(event) => {
+            if (mode !== "design") return;
+            event.preventDefault();
+            event.dataTransfer.dropEffect = "copy";
+          }}
+          onDrop={dropPaletteItem}
+        >
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -1251,9 +1446,15 @@ function MapEditor({
             edgeTypes={edgeTypes}
             onNodesChange={onNodesChange}
             onConnect={onConnect}
-            onNodeClick={(_event, node) =>
-              mode === "impact" ? toggleDown("node", node.id) : setSelection({ kind: "node", id: node.id })
-            }
+            onInit={setFlowInstance}
+            onNodeClick={(_event, node) => {
+              if (node.type === "networkNote") {
+                if (mode === "design") setSelection({ kind: "note", id: node.id });
+                return;
+              }
+              if (mode === "impact") toggleDown("node", node.id);
+              else setSelection({ kind: "node", id: node.id });
+            }}
             onEdgeClick={(_event, edge) =>
               mode === "impact" ? toggleDown("link", edge.id) : setSelection({ kind: "link", id: edge.id })
             }
@@ -1307,12 +1508,63 @@ function MapEditor({
                     }))}
                   />
                 </Field>
-                <Field label={t("itops.networkMap.addressLabel")} hint={t("itops.networkMap.addressHint")}>
-                  <TextInput
-                    mono
-                    value={selectedNode.address}
-                    placeholder={t("itops.networkMap.addressPlaceholder")}
-                    onChange={(event) => patchNode(selectedNode.id, { address: event.currentTarget.value })}
+                <div className="nm-addresses">
+                  <div className="nm-strands-head">
+                    <span className="kk-lbl">{t("itops.networkMap.addressesLabel")}</span>
+                    <button
+                      type="button"
+                      className="nm-strand-add"
+                      onClick={() =>
+                        updateNodeAddresses(selectedNode.id, [...selectedNode.addresses, ""])
+                      }
+                    >
+                      <ItIcon name="plus" size={12} />
+                      {t("itops.networkMap.addressAdd")}
+                    </button>
+                  </div>
+                  {selectedNode.addresses.map((address, index) => (
+                    <div key={`${selectedNode.id}:address:${index}`} className="nm-address-row">
+                      <TextInput
+                        mono
+                        value={address}
+                        aria-label={t("itops.networkMap.addressItemLabel", { index: index + 1 })}
+                        placeholder={t("itops.networkMap.addressPlaceholder")}
+                        onChange={(event) =>
+                          updateNodeAddresses(
+                            selectedNode.id,
+                            selectedNode.addresses.map((entry, entryIndex) =>
+                              entryIndex === index ? event.currentTarget.value : entry,
+                            ),
+                          )
+                        }
+                      />
+                      <button
+                        type="button"
+                        className="nm-strand-remove"
+                        aria-label={t("itops.networkMap.addressRemove")}
+                        title={t("itops.networkMap.addressRemove")}
+                        onClick={() =>
+                          updateNodeAddresses(
+                            selectedNode.id,
+                            selectedNode.addresses.filter((_entry, entryIndex) => entryIndex !== index),
+                          )
+                        }
+                      >
+                        <ItIcon name="xmark" size={12} />
+                      </button>
+                    </div>
+                  ))}
+                  <span className="kk-hint">{t("itops.networkMap.addressesHint")}</span>
+                </div>
+                <Field label={t("itops.networkMap.iconBackgroundLabel")}>
+                  <Swatches
+                    accents={MAP_ACCENTS}
+                    value={nodeAccent(selectedNode)}
+                    onChange={(color) =>
+                      patchNode(selectedNode.id, {
+                        iconAccent: MAP_ACCENTS.findIndex((accent) => accent === color),
+                      })
+                    }
                   />
                 </Field>
                 <Field label={t("itops.networkMap.statusLabel")}>
@@ -1349,6 +1601,34 @@ function MapEditor({
                 </Field>
                 <Btn kind="danger" icon="trash" onClick={() => removeNode(selectedNode.id)}>
                   {t("itops.networkMap.removeNode")}
+                </Btn>
+              </>
+            ) : selectedNote ? (
+              <>
+                <div className="au-side-title">{t("itops.networkMap.noteElement")}</div>
+                <Field label={t("itops.networkMap.noteLabel")}>
+                  <TextArea
+                    rows={6}
+                    value={selectedNote.text}
+                    placeholder={t("itops.networkMap.notePlaceholder")}
+                    onChange={(event) =>
+                      patchNote(selectedNote.id, { text: event.currentTarget.value })
+                    }
+                  />
+                </Field>
+                <Field label={t("itops.networkMap.noteBackgroundLabel")}>
+                  <Swatches
+                    accents={MAP_ACCENTS}
+                    value={noteAccent(selectedNote)}
+                    onChange={(color) =>
+                      patchNote(selectedNote.id, {
+                        backgroundAccent: MAP_ACCENTS.findIndex((accent) => accent === color),
+                      })
+                    }
+                  />
+                </Field>
+                <Btn kind="danger" icon="trash" onClick={() => removeNote(selectedNote.id)}>
+                  {t("itops.networkMap.removeNote")}
                 </Btn>
               </>
             ) : selectedLink ? (
@@ -1393,6 +1673,46 @@ function MapEditor({
                       value: status,
                       label: t(`itops.networkMap.status.${status}`),
                     }))}
+                  />
+                </Field>
+                <Field
+                  label={t("itops.networkMap.endpointAddressLabel", {
+                    node: endpointName(nodesById, selectedLink.from, unnamed),
+                  })}
+                >
+                  <Select
+                    value={selectedLink.fromAddress ?? ""}
+                    onChange={(event) =>
+                      patchLink(selectedLink.id, {
+                        fromAddress: event.currentTarget.value || null,
+                      })
+                    }
+                    options={[
+                      { value: "", label: t("itops.networkMap.addressUnbound") },
+                      ...(nodesById.get(selectedLink.from)?.addresses ?? [])
+                        .filter(Boolean)
+                        .map((address) => ({ value: address, label: address })),
+                    ]}
+                  />
+                </Field>
+                <Field
+                  label={t("itops.networkMap.endpointAddressLabel", {
+                    node: endpointName(nodesById, selectedLink.to, unnamed),
+                  })}
+                >
+                  <Select
+                    value={selectedLink.toAddress ?? ""}
+                    onChange={(event) =>
+                      patchLink(selectedLink.id, {
+                        toAddress: event.currentTarget.value || null,
+                      })
+                    }
+                    options={[
+                      { value: "", label: t("itops.networkMap.addressUnbound") },
+                      ...(nodesById.get(selectedLink.to)?.addresses ?? [])
+                        .filter(Boolean)
+                        .map((address) => ({ value: address, label: address })),
+                    ]}
                   />
                 </Field>
                 <div className="nm-strands">
@@ -1552,6 +1872,14 @@ function MapEditor({
                             key={kind}
                             type="button"
                             className="nm-picker-card"
+                            draggable
+                            onDragStart={(event) => {
+                              event.dataTransfer.effectAllowed = "copy";
+                              event.dataTransfer.setData(
+                                "application/x-kkterm-network-map",
+                                kind,
+                              );
+                            }}
                             onClick={() => addNode(kind)}
                           >
                             <span
@@ -1566,6 +1894,25 @@ function MapEditor({
                       </div>
                     </section>
                   ))}
+                  <section className="nm-picker-group">
+                    <h3>{t("itops.networkMap.annotationCategory")}</h3>
+                    <button
+                      type="button"
+                      className="nm-picker-card nm-picker-note"
+                      draggable
+                      onDragStart={(event) => {
+                        event.dataTransfer.effectAllowed = "copy";
+                        event.dataTransfer.setData(
+                          "application/x-kkterm-network-map",
+                          "note",
+                        );
+                      }}
+                      onClick={() => addNote()}
+                    >
+                      <span className="nm-picker-note-preview">Aa</span>
+                      <span>{t("itops.networkMap.noteElement")}</span>
+                    </button>
+                  </section>
                 </div>
                 <p className="au-side-hint">{t("itops.networkMap.designHint")}</p>
                 <VlanLegend

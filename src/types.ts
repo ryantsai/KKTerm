@@ -693,8 +693,14 @@ export interface NetworkNode {
   // Canvas position in flow coordinates.
   x: number;
   y: number;
-  // Optional free-text address/caption shown beneath the node label.
-  address: string;
+  // Canvas size in flow coordinates. Older maps are hydrated to the defaults.
+  width: number;
+  height: number;
+  // Optional palette index overriding the node kind's icon background.
+  iconAccent?: number | null;
+  // Operator-authored IP/interface addresses. Links can bind each endpoint to
+  // one address from the corresponding node.
+  addresses: string[];
   // Documented operator-authored state; never live monitoring data.
   status: NetworkMapStatus;
   hostId?: string | null;
@@ -722,6 +728,9 @@ export interface NetworkLink {
   to: string;
   label: string;
   kind: NetworkLinkKind;
+  // Optional endpoint bindings into the corresponding node's `addresses`.
+  fromAddress?: string | null;
+  toAddress?: string | null;
   // One entry per parallel physical link; the backend guarantees at least one.
   strands: NetworkLinkStrand[];
   // The untagged VLAN carried on this link — a soft reference into the global
@@ -733,9 +742,22 @@ export interface NetworkLink {
   status: NetworkMapStatus;
 }
 
+export interface NetworkMapNote {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  // Index into the shared IT Ops content-accent palette.
+  backgroundAccent: number;
+}
+
 export interface NetworkGraph {
   nodes: NetworkNode[];
   links: NetworkLink[];
+  // Free-form canvas annotations. Notes always render beneath links and nodes.
+  notes: NetworkMapNote[];
   // Entry points for the What-If reachability walk. Empty = use the first node.
   roots: string[];
 }
