@@ -32,7 +32,8 @@ test("Server Room topology stays inside its destination and selection is exclusi
 });
 
 test("Collapse All closes every Site and Server Rooms container", () => {
-  const collapseBlock = sites.match(/const collapseAllNodes = useCallback\([\s\S]*?\n  \}, \[racksBySite/)?.[0] ?? "";
+  const collapseBlock =
+    sites.match(/const collapseAllNodes = useCallback\([\s\S]*?\n  \}, \[[^\]]*\]\);/)?.[0] ?? "";
   assert.match(collapseBlock, /next\.add\(siteId\);/);
   assert.match(collapseBlock, /next\.add\(`\$\{siteId\}:rooms`\);/);
   assert.doesNotMatch(collapseBlock, /if \(siteTopo\.length > 0\) \{\s*next\.add\(siteId\)/);
