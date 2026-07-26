@@ -1854,6 +1854,7 @@
       "saveChanges": "Salva le modifiche",
       "saved": "Salvata",
       "paletteLabel": "Aggiungi alla mappa",
+      "addNode": "Aggiungi nodo",
       "nodeCategory": {
         "core": "Core e routing",
         "security": "Sicurezza",

@@ -259,7 +259,9 @@ Wireless (`accessPoint`, `wirelessController`), and Endpoints (`desktop`,
 `laptop`, `smartphone`, `iot`, `voip`, `printer`, `camera`), plus Maps
 (`geomap`). A Geomap is resizable cosmetic artwork backed by the built-in
 world-map SVG; its normalized zoom and pan viewport are saved with the node so
-the Properties dialog can select a crop before placement. The address is a
+the Properties dialog can select a crop from 100% through 10,000% before
+placement. The canvas Geomap shows only that artwork, without label, caption,
+note, status, or entry-point text. The address is a
 caption drawn under the label; it is not a foreign key into IPAM. Status is
 operator-authored documentation, not a polled device state.
 
@@ -574,18 +576,27 @@ the map canvas's capture-phase pointer events so React Flow child layers cannot
 swallow either interaction. A Network Node or Note native right-click menu
 contains Duplicate, Delete, then a separated final Properties item. Duplicate opens the
 same prefilled Properties dialog and arms the resulting copy for placement.
+The Network Node kind chosen in the object browser stays fixed while adding or
+duplicating a node, so those Properties dialogs do not repeat the Type field;
+editing an existing node still permits changing its Type. Right-clicking empty
+canvas opens a native menu with Add Node, which opens the object browser, and
+Properties, which edits the current Network Map.
 The object browser remains the object picker and map summary at all times;
 it never becomes a property inspector. Single-clicking an existing Network
 Node or Note selects it and exposes its drag-resize handles. The element
 updates continuously while a handle is dragged; double-clicking opens its
 Properties dialog. Clicking a Network Link opens that link's
 Properties dialog. Edits are applied to the in-memory graph only when that
-dialog's Save action is confirmed.
+dialog's Save action is confirmed. Moving a Network Node keeps its existing
+animated Links visible and attached throughout the drag, then recalculates the
+shortest handle sides when the drag ends.
 Network Node Properties puts the device artwork and palette-backed icon
 background choices in one compact identity header. Small status choices use
-icon-backed radio cards; the 26-item node-kind list remains a select. Geomap
-Properties includes a draggable world-map preview with scroll/slider zoom, and
-the selected crop is visible in the placement ghost and saved node. Each node
+icon-backed radio cards; the 26-item node-kind list remains a select when
+editing an existing node. Geomap
+Properties includes a draggable world-map preview with scroll/slider zoom from
+100% through 10,000%, and the selected crop is visible in the placement ghost
+and saved node. The canvas Geomap renders only the cropped artwork. Each node
 persists its individual width/height and an ordered interface inventory. An
 interface has a stable id, name, and optional documented IP address, and is
 added or edited in a focused nested dialog instead of expanding the parent
@@ -603,10 +614,11 @@ Resizable Network Map Notes store Markdown source in their existing text field
 and a palette-backed background. Their Properties dialog provides a compact
 formatting toolbar plus a sanitized live preview; the canvas renders the same
 sanitized Markdown with heading, emphasis, list, quote, link, and code styling.
-Notes use a neutral hairline border. Notes, links, and Network Nodes use
-explicit ascending React Flow z-orders, and selected-node elevation is disabled
-for the canvas so every link and Network Node remains above a selected Note.
-Notes never enter the reachability graph.
+Notes use a neutral hairline border. Geomaps, Notes, links, and regular Network
+Nodes use explicit ascending React Flow z-orders, and selected-node elevation is
+disabled for the canvas. A Geomap therefore remains the bottom-most node even
+while selected; Notes remain below every link and regular Network Node. Notes
+never enter the reachability graph.
 
 ### IT Ops destination-page UI contract
 

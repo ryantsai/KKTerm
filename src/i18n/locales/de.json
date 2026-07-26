@@ -1854,6 +1854,7 @@
       "saveChanges": "Änderungen speichern",
       "saved": "Gespeichert",
       "paletteLabel": "Zur Karte hinzufügen",
+      "addNode": "Knoten hinzufügen",
       "nodeCategory": {
         "core": "Kern & Routing",
         "security": "Sicherheit",

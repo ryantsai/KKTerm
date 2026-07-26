@@ -1854,6 +1854,7 @@
       "saveChanges": "Save changes",
       "saved": "Saved",
       "paletteLabel": "Add to map",
+      "addNode": "Add Node",
       "nodeCategory": {
         "core": "Core & Routing",
         "security": "Security",

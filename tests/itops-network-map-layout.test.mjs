@@ -89,6 +89,10 @@ test("Network Nodes use the expanded device catalog and links expose complete do
   assert.match(designer, /"wirelessController"/);
   assert.match(designer, /"camera"/);
   assert.match(designer, /"geomap"/);
+  assert.match(designer, /zoom: Math\.min\(100, Math\.max\(1, viewport\.zoom\)\)/);
+  assert.match(designer, /max="100"/);
+  assert.doesNotMatch(designer, /className="nm-geomap-node-caption"/);
+  assert.match(designer, /data-state=\{data\.kind === "geomap" \? undefined : data\.state\}/);
   assert.match(designer, /NODE_CATEGORIES/);
   assert.match(types, /\| "geomap"/);
   assert.match(types, /interface NetworkGeomapViewport/);
@@ -174,6 +178,9 @@ test("Network Maps configure palette items before ghost placement and expose nat
   assert.match(storage, /to_interface_id[\s\S]*to_interfaces/);
 
   assert.match(designer, /<NodeResizer/);
+  assert.match(styles, /\.nm-node\s*\{[\s\S]*overflow: visible;/);
+  assert.match(styles, /\.nm-note\s*\{[\s\S]*overflow: visible;/);
+  assert.match(styles, /\.nm-resize-handle\s*\{[\s\S]*z-index: 6 !important;/);
   assert.match(canvasChanges, /NETWORK_NODE_WIDTH = 156;/);
   assert.match(canvasChanges, /NETWORK_NODE_HEIGHT = 52;/);
   assert.match(canvasChanges, /NETWORK_NODE_MIN_WIDTH = 120;/);
@@ -184,6 +191,14 @@ test("Network Maps configure palette items before ghost placement and expose nat
   );
   assert.match(designer, /screenToFlowPosition/);
   assert.match(designer, /function NodePropertiesDialog/);
+  assert.match(
+    designer,
+    /<NodePropertiesFields[\s\S]*showKindPicker=\{!placement\}/,
+  );
+  assert.match(
+    designer,
+    /\{showKindPicker \? \(\s*<Field label=\{t\("itops\.networkMap\.kindLabel"\)\}>/,
+  );
   assert.match(designer, /function NotePropertiesDialog/);
   assert.match(designer, /function LinkPropertiesDialog/);
   assert.match(designer, /setNodeDialog\(\{ node: newNodeDraft\(kind\), root: false, placement: true \}\)/);
@@ -191,7 +206,7 @@ test("Network Maps configure palette items before ghost placement and expose nat
   assert.match(designer, /className: "nm-placement-ghost-node"/);
   assert.match(
     designer,
-    /position: placementPoint,\s*width: node\.width,\s*height: node\.height,\s*zIndex: 3/,
+    /position: placementPoint,\s*width: node\.width,\s*height: node\.height,\s*zIndex: 4/,
   );
   assert.match(
     designer,
@@ -210,6 +225,19 @@ test("Network Maps configure palette items before ghost placement and expose nat
     /onPaneClick=\{\(event\) => \{[\s\S]*placeDraftAt\(event\.clientX, event\.clientY\)/,
   );
   assert.match(designer, /onNodeContextMenu=\{\(event, node\) =>/);
+  assert.match(
+    designer,
+    /const edgeAnchorNodes = dragAnchorNodes \?\? graph\.nodes;[\s\S]*new Map\(edgeAnchorNodes\.map/,
+  );
+  assert.match(
+    designer,
+    /onNodeDragStart=\{\(\) => setDragAnchorNodes\(graph\.nodes\)\}[\s\S]*onNodeDragStop=\{\(\) => setDragAnchorNodes\(null\)\}/,
+  );
+  assert.match(designer, /onPaneContextMenu=\{showCanvasContextMenu\}/);
+  assert.match(
+    designer,
+    /function showCanvasContextMenu[\s\S]*label: t\("itops\.networkMap\.addNode"\)[\s\S]*setObjectBrowserOpen\(true\)[\s\S]*label: t\("common\.properties"\)[\s\S]*onOpenProperties\(\{ \.\.\.map, graph \}\)/,
+  );
   assert.match(
     designer,
     /node\.type === "networkNote"\) showNoteContextMenu\(event, node\.id\)/,
@@ -247,7 +275,7 @@ test("Network Maps configure palette items before ghost placement and expose nat
   assert.doesNotMatch(designer, /itops\.networkMap\.rootLabel/);
   assert.match(designer, /className="nm-choice-grid"/);
   assert.match(designer, /type: "networkNote"/);
-  assert.match(designer, /zIndex: 0/);
+  assert.match(designer, /zIndex: node\.kind === "geomap" \? 0 : 3/);
   assert.match(designer, /zIndex: 1/);
   assert.match(designer, /zIndex: 2/);
   assert.match(designer, /elevateNodesOnSelect=\{false\}/);

@@ -1854,6 +1854,7 @@
       "saveChanges": "변경 사항 저장",
       "saved": "저장됨",
       "paletteLabel": "맵에 추가",
+      "addNode": "노드 추가",
       "nodeCategory": {
         "core": "코어 / 라우팅",
         "security": "보안",
