@@ -1861,7 +1861,8 @@
         "compute": "Rechner & Speicher",
         "cloud": "Cloud & WAN",
         "wireless": "WLAN",
-        "endpoints": "Endgeräte"
+        "endpoints": "Endgeräte",
+        "maps": "Karten"
       },
       "nodeKind": {
         "router": "Router",
@@ -1888,7 +1889,8 @@
         "iot": "IoT-Gerät",
         "voip": "VoIP-Telefon",
         "printer": "Drucker",
-        "camera": "Überwachungskamera"
+        "camera": "Überwachungskamera",
+        "geomap": "Geokarte"
       },
       "linkKind": {
         "ethernet": "Kupfer / Ethernet",
@@ -1904,6 +1906,11 @@
       "labelLabel": "Bezeichnung",
       "labelPlaceholder": "z. B. Core-Switch",
       "kindLabel": "Typ",
+      "geomapViewportLabel": "Kartenansicht",
+      "geomapPreviewLabel": "Ausgewählter Weltkartenausschnitt",
+      "geomapViewportHint": "Ziehen Sie die Karte zum Verschieben. Scrollen Sie oder verwenden Sie den Regler zum Zoomen.",
+      "geomapZoomLabel": "Kartenzoom",
+      "geomapReset": "Ansicht zurücksetzen",
       "addressLabel": "Adresse",
       "addressHint": "Optional. Wird auf der Zeichenfläche unter der Bezeichnung angezeigt.",
       "addressPlaceholder": "z. B. 10.20.0.1",
@@ -1921,8 +1928,9 @@
       "iconBackgroundLabel": "Icon background",
       "statusLabel": "Status",
       "status": {
-        "up": "Betriebsbereit",
-        "warning": "Beeinträchtigt / Warnung"
+        "up": "Funktionsfähig",
+        "warning": "Beeinträchtigt",
+        "down": "Ausgefallen"
       },
       "rootLabel": "Einstiegspunkt",
       "rootHint": "Die Erreichbarkeit wird von hier aus gemessen. Ohne Angabe tritt der erste Knoten ein.",
@@ -1940,7 +1948,12 @@
       "strandDisplayLabel": "Linienanzeige",
       "strandDisplaySeparate": "Einzelne Linien",
       "strandDisplayBundle": "Gebündelte Linie",
-      "strandsHint": "Eine Zeile pro physischer Verbindung. Portnamen und Geschwindigkeiten gelten je Verbindung, sodass eine LAG jedes Mitglied auflisten kann.",
+      "strandEditorTitle": "Physische Verbindungen",
+      "strandCount_one": "{{count}} physische Verbindung",
+      "strandCount_other": "{{count}} physische Verbindungen",
+      "strandEditAction": "Physische Verbindungen bearbeiten",
+      "strandEditHint": "Kompakten Mitgliedereditor öffnen.",
+      "strandsHint": "Jede physische Verbindung besitzt an beiden Endknoten eine Schnittstelle. Beim Hinzufügen werden beide Schnittstellen erstellt und gebunden.",
       "strandAdd": "Verbindung hinzufügen",
       "strandNameLabel": "Portname",
       "strandNamePlaceholder": "z. B. Gi1/0/24",

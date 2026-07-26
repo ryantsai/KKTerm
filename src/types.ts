@@ -730,10 +730,18 @@ export type NetworkNodeKind =
   | "iot"
   | "voip"
   | "printer"
-  | "camera";
+  | "camera"
+  | "geomap";
 
 export type NetworkLinkKind = "ethernet" | "fiber" | "wan" | "wireless";
 export type NetworkMapStatus = "up" | "warning";
+export type NetworkLinkStatus = "up" | "warning" | "down";
+
+export interface NetworkGeomapViewport {
+  zoom: number;
+  x: number;
+  y: number;
+}
 
 export interface NetworkNodeInterface {
   id: string;
@@ -753,6 +761,9 @@ export interface NetworkNode {
   height: number;
   // Optional palette index overriding the node kind's icon background.
   iconAccent?: number | null;
+  // Cosmetic crop of the shared world-map asset. Future region-specific map
+  // kinds can reuse this normalized pan/zoom contract.
+  geomapViewport?: NetworkGeomapViewport | null;
   // Durable interface inventory. Physical link members bind these stable ids,
   // so renaming an interface or changing its address keeps the link intact.
   interfaces: NetworkNodeInterface[];
@@ -799,7 +810,7 @@ export interface NetworkLink {
   // Tagged (802.1Q) VLANs. Non-empty makes this link a trunk.
   taggedVlanIds: string[];
   // Documented operator-authored state; What-If outages remain transient.
-  status: NetworkMapStatus;
+  status: NetworkLinkStatus;
 }
 
 export interface NetworkMapNote {

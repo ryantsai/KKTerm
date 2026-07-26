@@ -256,7 +256,10 @@ position, optional free-text address and note, and documented status (`up` /
 `idsIps`), Traffic Management (`loadBalancer`, `proxy`, `dns`), Compute &
 Storage (`server`, `database`, `storage`), Cloud & WAN (`cloud`, `isp`),
 Wireless (`accessPoint`, `wirelessController`), and Endpoints (`desktop`,
-`laptop`, `smartphone`, `iot`, `voip`, `printer`, `camera`). The address is a
+`laptop`, `smartphone`, `iot`, `voip`, `printer`, `camera`), plus Maps
+(`geomap`). A Geomap is resizable cosmetic artwork backed by the built-in
+world-map SVG; its normalized zoom and pan viewport are saved with the node so
+the Properties dialog can select a crop before placement. The address is a
 caption drawn under the label; it is not a foreign key into IPAM. Status is
 operator-authored documentation, not a polled device state.
 
@@ -264,11 +267,12 @@ operator-authored documentation, not a polled device state.
 an optional label naming the whole link (a circuit id, an uplink name — **not**
 a port and **not** a VLAN, both of which are now structured), a kind
 (`ethernet` / `fiber` / `wan` / `wireless`), documented status (`up` /
-`warning`), an ordered list of **strands**, and its VLAN membership.
+`warning` / `down`), an ordered list of **strands**, and its VLAN membership.
 Undirected is deliberate: a link asserts mutual reachability, not a traffic
 direction, and the reachability maths treats it symmetrically. The stored link
 carries no handle/anchor fields — the canvas picks the two anchors
-geometrically at render time.
+geometrically at render time. The canvas draws an animated traffic trace over
+each route: green means healthy, amber means degraded, and red means down.
 
 **Network Link Strand** — one of the parallel physical links a drawn Network
 Link stands for: an id, a free-text port name, and a free-text speed. Port
@@ -538,6 +542,8 @@ custom edge renderer draws an orthogonal route as either every parallel strand
 or one thickness-scaled bundle while keeping handle/anchor state out of the
 stored graph. Its opaque, bordered readout is rendered above the route and
 lists each strand speed in separate mode or speed-group counts in bundle mode.
+Every route carries a reduced-motion-aware animated trace, colored from its
+operator-authored healthy, degraded, or down status.
 The editor is keyed by map id so switching maps remounts rather than carrying
 unsaved edits across.
 
@@ -577,16 +583,22 @@ Properties dialog. Edits are applied to the in-memory graph only when that
 dialog's Save action is confirmed.
 Network Node Properties puts the device artwork and palette-backed icon
 background choices in one compact identity header. Small status choices use
-icon-backed radio cards; the 25-item node-kind list remains a select. Each node
+icon-backed radio cards; the 26-item node-kind list remains a select. Geomap
+Properties includes a draggable world-map preview with scroll/slider zoom, and
+the selected crop is visible in the placement ghost and saved node. Each node
 persists its individual width/height and an ordered interface inventory. An
 interface has a stable id, name, and optional documented IP address, and is
 added or edited in a focused nested dialog instead of expanding the parent
 Properties dialog.
 A Network Link's small medium, status, and strand-display choices also use
-icon-backed radio cards. Every physical strand independently binds one
-interface at each endpoint; removing an interface clears only bindings that
-used its stable id. Legacy node address lists and link-wide endpoint address
-bindings are migrated into interfaces and the first strand when maps are read.
+icon-backed radio cards. The base Properties sheet shows only the physical-link
+count; activating it opens a compact, independently scrolling member grid, so
+large bundles do not make the base dialog taller. The user's canvas connection
+gesture always creates one physical member. Every new member automatically
+creates a uniquely named interface on both endpoint nodes and binds their stable
+ids, while the grid edits those interface names and the member speed. Legacy
+node address lists and link-wide endpoint address bindings are migrated into
+interfaces and the first strand when maps are read.
 Resizable Network Map Notes store Markdown source in their existing text field
 and a palette-backed background. Their Properties dialog provides a compact
 formatting toolbar plus a sanitized live preview; the canvas renders the same

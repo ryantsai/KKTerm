@@ -1861,7 +1861,8 @@
         "compute": "Cómputo y almacenamiento",
         "cloud": "Nube y WAN",
         "wireless": "Inalámbrico",
-        "endpoints": "Dispositivos finales"
+        "endpoints": "Dispositivos finales",
+        "maps": "Mapas"
       },
       "nodeKind": {
         "router": "Router",
@@ -1888,7 +1889,8 @@
         "iot": "Dispositivo IoT",
         "voip": "Teléfono VoIP",
         "printer": "Impresora",
-        "camera": "Cámara de seguridad"
+        "camera": "Cámara de seguridad",
+        "geomap": "Geomapa"
       },
       "linkKind": {
         "ethernet": "Cobre / Ethernet",
@@ -1904,6 +1906,11 @@
       "labelLabel": "Etiqueta",
       "labelPlaceholder": "p. ej. Switch troncal",
       "kindLabel": "Tipo",
+      "geomapViewportLabel": "Vista del mapa",
+      "geomapPreviewLabel": "Vista seleccionada del mapa mundial",
+      "geomapViewportHint": "Arrastra el mapa para desplazarlo. Desplázate o usa el control para acercar.",
+      "geomapZoomLabel": "Zoom del mapa",
+      "geomapReset": "Restablecer vista",
       "addressLabel": "Dirección",
       "addressHint": "Opcional. Se muestra debajo de la etiqueta en el lienzo.",
       "addressPlaceholder": "p. ej. 10.20.0.1",
@@ -1921,8 +1928,9 @@
       "iconBackgroundLabel": "Icon background",
       "statusLabel": "Estado",
       "status": {
-        "up": "Operativo",
-        "warning": "Degradado / advertencia"
+        "up": "Saludable",
+        "warning": "Degradado",
+        "down": "Inactivo"
       },
       "rootLabel": "Punto de entrada",
       "rootHint": "La alcanzabilidad se mide desde aquí. Si no defines ninguno, se usa el primer nodo.",
@@ -1940,7 +1948,12 @@
       "strandDisplayLabel": "Visualización de líneas",
       "strandDisplaySeparate": "Líneas separadas",
       "strandDisplayBundle": "Línea agrupada",
-      "strandsHint": "Una fila por enlace físico. Los nombres de puerto y las velocidades son por enlace, así que un LAG puede listar cada miembro.",
+      "strandEditorTitle": "Enlaces físicos",
+      "strandCount_one": "{{count}} enlace físico",
+      "strandCount_other": "{{count}} enlaces físicos",
+      "strandEditAction": "Editar enlaces físicos",
+      "strandEditHint": "Abre el editor compacto de miembros.",
+      "strandsHint": "Cada enlace físico tiene una interfaz en ambos nodos extremos. Al agregarlo se crean y vinculan las dos interfaces.",
       "strandAdd": "Agregar enlace",
       "strandNameLabel": "Nombre de puerto",
       "strandNamePlaceholder": "p. ej. Gi1/0/24",

@@ -1861,7 +1861,8 @@
         "compute": "コンピュート / ストレージ",
         "cloud": "クラウド / WAN",
         "wireless": "無線",
-        "endpoints": "エンドポイント"
+        "endpoints": "エンドポイント",
+        "maps": "マップ"
       },
       "nodeKind": {
         "router": "ルーター",
@@ -1888,7 +1889,8 @@
         "iot": "IoT デバイス",
         "voip": "VoIP 電話",
         "printer": "プリンター",
-        "camera": "防犯カメラ"
+        "camera": "防犯カメラ",
+        "geomap": "ジオマップ"
       },
       "linkKind": {
         "ethernet": "銅線 / イーサネット",
@@ -1904,6 +1906,11 @@
       "labelLabel": "ラベル",
       "labelPlaceholder": "例: コアスイッチ",
       "kindLabel": "種類",
+      "geomapViewportLabel": "地図表示",
+      "geomapPreviewLabel": "選択した世界地図の表示",
+      "geomapViewportHint": "ドラッグして地図を移動します。スクロールまたはスライダーで拡大縮小します。",
+      "geomapZoomLabel": "地図のズーム",
+      "geomapReset": "表示をリセット",
       "addressLabel": "アドレス",
       "addressHint": "任意。キャンバス上でラベルの下に表示されます。",
       "addressPlaceholder": "例: 10.20.0.1",
@@ -1921,8 +1928,9 @@
       "iconBackgroundLabel": "Icon background",
       "statusLabel": "ステータス",
       "status": {
-        "up": "正常稼働",
-        "warning": "劣化 / 警告"
+        "up": "正常",
+        "warning": "低下",
+        "down": "停止"
       },
       "rootLabel": "起点",
       "rootHint": "到達性はここを基準に測ります。指定がなければ最初のノードが使われます。",
@@ -1940,7 +1948,12 @@
       "strandDisplayLabel": "回線表示",
       "strandDisplaySeparate": "個別の回線",
       "strandDisplayBundle": "集約回線",
-      "strandsHint": "物理リンク 1 本につき 1 行です。ポート名と速度はリンクごとなので、LAG の各メンバーを列挙できます。",
+      "strandEditorTitle": "物理リンク",
+      "strandCount_one": "物理リンク {{count}} 本",
+      "strandCount_other": "物理リンク {{count}} 本",
+      "strandEditAction": "物理リンクを編集",
+      "strandEditHint": "コンパクトなメンバーエディターを開きます。",
+      "strandsHint": "各物理リンクは両端ノードに 1 つずつインターフェイスを持ちます。リンクを追加すると両方が作成され、結び付けられます。",
       "strandAdd": "リンクを追加",
       "strandNameLabel": "ポート名",
       "strandNamePlaceholder": "例: Gi1/0/24",

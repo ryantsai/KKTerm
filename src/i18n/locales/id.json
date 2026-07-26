@@ -1861,7 +1861,8 @@
         "compute": "Komputasi & Penyimpanan",
         "cloud": "Cloud & WAN",
         "wireless": "Nirkabel",
-        "endpoints": "Perangkat Akhir"
+        "endpoints": "Perangkat Akhir",
+        "maps": "Peta"
       },
       "nodeKind": {
         "router": "Router",
@@ -1888,7 +1889,8 @@
         "iot": "Perangkat IoT",
         "voip": "Telepon VoIP",
         "printer": "Printer",
-        "camera": "Kamera Keamanan"
+        "camera": "Kamera Keamanan",
+        "geomap": "Peta geografis"
       },
       "linkKind": {
         "ethernet": "Tembaga / Ethernet",
@@ -1904,6 +1906,11 @@
       "labelLabel": "Label",
       "labelPlaceholder": "mis. Switch inti",
       "kindLabel": "Jenis",
+      "geomapViewportLabel": "Tampilan peta",
+      "geomapPreviewLabel": "Tampilan peta dunia yang dipilih",
+      "geomapViewportHint": "Seret peta untuk menggeser. Gulir atau gunakan penggeser untuk memperbesar.",
+      "geomapZoomLabel": "Zoom peta",
+      "geomapReset": "Atur ulang tampilan",
       "addressLabel": "Alamat",
       "addressHint": "Opsional. Ditampilkan di bawah label pada kanvas.",
       "addressPlaceholder": "mis. 10.20.0.1",
@@ -1921,8 +1928,9 @@
       "iconBackgroundLabel": "Icon background",
       "statusLabel": "Status",
       "status": {
-        "up": "Beroperasi",
-        "warning": "Menurun / peringatan"
+        "up": "Sehat",
+        "warning": "Menurun",
+        "down": "Tidak aktif"
       },
       "rootLabel": "Titik masuk",
       "rootHint": "Keterjangkauan diukur dari sini. Bila tidak ada yang ditetapkan, simpul pertama yang dipakai.",
@@ -1940,7 +1948,12 @@
       "strandDisplayLabel": "Tampilan garis",
       "strandDisplaySeparate": "Garis terpisah",
       "strandDisplayBundle": "Garis gabungan",
-      "strandsHint": "Satu baris per tautan fisik. Nama port dan kecepatan berlaku per tautan, sehingga LAG dapat mencantumkan setiap anggotanya.",
+      "strandEditorTitle": "Tautan fisik",
+      "strandCount_one": "{{count}} tautan fisik",
+      "strandCount_other": "{{count}} tautan fisik",
+      "strandEditAction": "Edit tautan fisik",
+      "strandEditHint": "Buka editor anggota ringkas.",
+      "strandsHint": "Setiap tautan fisik memiliki satu antarmuka pada kedua node ujung. Menambah tautan akan membuat dan mengikat kedua antarmuka.",
       "strandAdd": "Tambah tautan",
       "strandNameLabel": "Nama port",
       "strandNamePlaceholder": "mis. Gi1/0/24",

@@ -1861,7 +1861,8 @@
         "compute": "컴퓨트 / 스토리지",
         "cloud": "클라우드 / WAN",
         "wireless": "무선",
-        "endpoints": "엔드포인트"
+        "endpoints": "엔드포인트",
+        "maps": "지도"
       },
       "nodeKind": {
         "router": "라우터",
@@ -1888,7 +1889,8 @@
         "iot": "IoT 장치",
         "voip": "VoIP 전화",
         "printer": "프린터",
-        "camera": "보안 카메라"
+        "camera": "보안 카메라",
+        "geomap": "지리 지도"
       },
       "linkKind": {
         "ethernet": "구리선 / 이더넷",
@@ -1904,6 +1906,11 @@
       "labelLabel": "레이블",
       "labelPlaceholder": "예: 코어 스위치",
       "kindLabel": "종류",
+      "geomapViewportLabel": "지도 보기",
+      "geomapPreviewLabel": "선택한 세계 지도 보기",
+      "geomapViewportHint": "지도를 끌어 이동합니다. 스크롤하거나 슬라이더를 사용해 확대/축소합니다.",
+      "geomapZoomLabel": "지도 확대/축소",
+      "geomapReset": "보기 초기화",
       "addressLabel": "주소",
       "addressHint": "선택 사항. 캔버스에서 레이블 아래에 표시됩니다.",
       "addressPlaceholder": "예: 10.20.0.1",
@@ -1921,8 +1928,9 @@
       "iconBackgroundLabel": "Icon background",
       "statusLabel": "상태",
       "status": {
-        "up": "정상 운영",
-        "warning": "성능 저하 / 경고"
+        "up": "정상",
+        "warning": "성능 저하",
+        "down": "중단"
       },
       "rootLabel": "기점",
       "rootHint": "도달 가능성은 여기서부터 측정합니다. 지정하지 않으면 첫 번째 노드를 씁니다.",
@@ -1940,7 +1948,12 @@
       "strandDisplayLabel": "회선 표시",
       "strandDisplaySeparate": "개별 회선",
       "strandDisplayBundle": "묶음 회선",
-      "strandsHint": "물리 링크마다 한 행입니다. 포트 이름과 속도는 링크별이므로 LAG의 각 구성원을 모두 적을 수 있습니다.",
+      "strandEditorTitle": "물리 링크",
+      "strandCount_one": "물리 링크 {{count}}개",
+      "strandCount_other": "물리 링크 {{count}}개",
+      "strandEditAction": "물리 링크 편집",
+      "strandEditHint": "간결한 멤버 편집기를 엽니다.",
+      "strandsHint": "각 물리 링크는 양쪽 끝 노드에 인터페이스를 하나씩 가집니다. 링크를 추가하면 두 인터페이스가 생성되고 연결됩니다.",
       "strandAdd": "링크 추가",
       "strandNameLabel": "포트 이름",
       "strandNamePlaceholder": "예: Gi1/0/24",

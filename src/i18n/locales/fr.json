@@ -1861,7 +1861,8 @@
         "compute": "Calcul & stockage",
         "cloud": "Cloud & WAN",
         "wireless": "Sans fil",
-        "endpoints": "Terminaux"
+        "endpoints": "Terminaux",
+        "maps": "Cartes"
       },
       "nodeKind": {
         "router": "Routeur",
@@ -1888,7 +1889,8 @@
         "iot": "Appareil IoT",
         "voip": "Téléphone VoIP",
         "printer": "Imprimante",
-        "camera": "Caméra de sécurité"
+        "camera": "Caméra de sécurité",
+        "geomap": "Géocarte"
       },
       "linkKind": {
         "ethernet": "Cuivre / Ethernet",
@@ -1904,6 +1906,11 @@
       "labelLabel": "Libellé",
       "labelPlaceholder": "ex. Commutateur cœur",
       "kindLabel": "Type",
+      "geomapViewportLabel": "Vue de la carte",
+      "geomapPreviewLabel": "Vue du monde sélectionnée",
+      "geomapViewportHint": "Faites glisser la carte pour la déplacer. Faites défiler ou utilisez le curseur pour zoomer.",
+      "geomapZoomLabel": "Zoom de la carte",
+      "geomapReset": "Réinitialiser la vue",
       "addressLabel": "Adresse",
       "addressHint": "Facultatif. Affichée sous le libellé sur le canevas.",
       "addressPlaceholder": "ex. 10.20.0.1",
@@ -1922,7 +1929,8 @@
       "statusLabel": "État",
       "status": {
         "up": "Opérationnel",
-        "warning": "Dégradé / avertissement"
+        "warning": "Dégradé",
+        "down": "Hors service"
       },
       "rootLabel": "Point d’entrée",
       "rootHint": "L’accessibilité est mesurée à partir d’ici. Sans point d’entrée, le premier nœud fait office de repère.",
@@ -1940,7 +1948,12 @@
       "strandDisplayLabel": "Affichage des lignes",
       "strandDisplaySeparate": "Lignes séparées",
       "strandDisplayBundle": "Ligne groupée",
-      "strandsHint": "Une ligne par lien physique. Les noms de port et les débits sont propres à chaque lien, un LAG peut donc lister tous ses membres.",
+      "strandEditorTitle": "Liens physiques",
+      "strandCount_one": "{{count}} lien physique",
+      "strandCount_other": "{{count}} liens physiques",
+      "strandEditAction": "Modifier les liens physiques",
+      "strandEditHint": "Ouvrir l’éditeur compact des membres.",
+      "strandsHint": "Chaque lien physique possède une interface sur les deux nœuds d’extrémité. L’ajout crée et lie les deux interfaces.",
       "strandAdd": "Ajouter un lien",
       "strandNameLabel": "Nom du port",
       "strandNamePlaceholder": "par ex. Gi1/0/24",

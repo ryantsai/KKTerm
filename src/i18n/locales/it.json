@@ -1861,7 +1861,8 @@
         "compute": "Calcolo e storage",
         "cloud": "Cloud e WAN",
         "wireless": "Wireless",
-        "endpoints": "Dispositivi finali"
+        "endpoints": "Dispositivi finali",
+        "maps": "Mappe"
       },
       "nodeKind": {
         "router": "Router",
@@ -1888,7 +1889,8 @@
         "iot": "Dispositivo IoT",
         "voip": "Telefono VoIP",
         "printer": "Stampante",
-        "camera": "Telecamera di sicurezza"
+        "camera": "Telecamera di sicurezza",
+        "geomap": "Geomappa"
       },
       "linkKind": {
         "ethernet": "Rame / Ethernet",
@@ -1904,6 +1906,11 @@
       "labelLabel": "Etichetta",
       "labelPlaceholder": "es. Switch di dorsale",
       "kindLabel": "Tipo",
+      "geomapViewportLabel": "Vista mappa",
+      "geomapPreviewLabel": "Vista del mondo selezionata",
+      "geomapViewportHint": "Trascina la mappa per spostarla. Scorri o usa il cursore per ingrandire.",
+      "geomapZoomLabel": "Zoom mappa",
+      "geomapReset": "Reimposta vista",
       "addressLabel": "Indirizzo",
       "addressHint": "Facoltativo. Compare sotto l’etichetta sulla tela.",
       "addressPlaceholder": "es. 10.20.0.1",
@@ -1921,8 +1928,9 @@
       "iconBackgroundLabel": "Icon background",
       "statusLabel": "Stato",
       "status": {
-        "up": "Operativo",
-        "warning": "Degradato / avviso"
+        "up": "Integro",
+        "warning": "Degradato",
+        "down": "Non attivo"
       },
       "rootLabel": "Punto di ingresso",
       "rootHint": "La raggiungibilità si misura da qui. Senza nessuno impostato subentra il primo nodo.",
@@ -1940,7 +1948,12 @@
       "strandDisplayLabel": "Visualizzazione linee",
       "strandDisplaySeparate": "Linee separate",
       "strandDisplayBundle": "Linea raggruppata",
-      "strandsHint": "Una riga per collegamento fisico. Nomi delle porte e velocità sono per collegamento, così un LAG può elencare ogni membro.",
+      "strandEditorTitle": "Collegamenti fisici",
+      "strandCount_one": "{{count}} collegamento fisico",
+      "strandCount_other": "{{count}} collegamenti fisici",
+      "strandEditAction": "Modifica collegamenti fisici",
+      "strandEditHint": "Apri l’editor compatto dei membri.",
+      "strandsHint": "Ogni collegamento fisico possiede un’interfaccia su entrambi i nodi terminali. L’aggiunta crea e associa entrambe le interfacce.",
       "strandAdd": "Aggiungi collegamento",
       "strandNameLabel": "Nome della porta",
       "strandNamePlaceholder": "es. Gi1/0/24",

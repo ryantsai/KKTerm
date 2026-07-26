@@ -1861,7 +1861,8 @@
         "compute": "การประมวลผลและสตอเรจ",
         "cloud": "คลาวด์และ WAN",
         "wireless": "ไร้สาย",
-        "endpoints": "อุปกรณ์ปลายทาง"
+        "endpoints": "อุปกรณ์ปลายทาง",
+        "maps": "แผนที่"
       },
       "nodeKind": {
         "router": "เราเตอร์",
@@ -1888,7 +1889,8 @@
         "iot": "อุปกรณ์ IoT",
         "voip": "โทรศัพท์ VoIP",
         "printer": "เครื่องพิมพ์",
-        "camera": "กล้องวงจรปิด"
+        "camera": "กล้องวงจรปิด",
+        "geomap": "แผนที่ภูมิศาสตร์"
       },
       "linkKind": {
         "ethernet": "สายทองแดง / อีเทอร์เน็ต",
@@ -1904,6 +1906,11 @@
       "labelLabel": "ป้ายชื่อ",
       "labelPlaceholder": "เช่น สวิตช์แกนหลัก",
       "kindLabel": "ประเภท",
+      "geomapViewportLabel": "มุมมองแผนที่",
+      "geomapPreviewLabel": "มุมมองแผนที่โลกที่เลือก",
+      "geomapViewportHint": "ลากแผนที่เพื่อเลื่อน ใช้ล้อเลื่อนหรือแถบเลื่อนเพื่อซูม",
+      "geomapZoomLabel": "ซูมแผนที่",
+      "geomapReset": "รีเซ็ตมุมมอง",
       "addressLabel": "ที่อยู่",
       "addressHint": "ไม่บังคับ จะแสดงใต้ป้ายชื่อบนผืนผ้าใบ",
       "addressPlaceholder": "เช่น 10.20.0.1",
@@ -1921,8 +1928,9 @@
       "iconBackgroundLabel": "Icon background",
       "statusLabel": "สถานะ",
       "status": {
-        "up": "ทำงานปกติ",
-        "warning": "ประสิทธิภาพลด / คำเตือน"
+        "up": "ปกติ",
+        "warning": "ประสิทธิภาพลดลง",
+        "down": "หยุดทำงาน"
       },
       "rootLabel": "จุดตั้งต้น",
       "rootHint": "วัดการเข้าถึงจากจุดนี้ ถ้าไม่ได้กำหนดไว้ จะใช้โหนดแรกแทน",
@@ -1940,7 +1948,12 @@
       "strandDisplayLabel": "การแสดงเส้น",
       "strandDisplaySeparate": "แยกเส้น",
       "strandDisplayBundle": "รวมเป็นเส้นเดียว",
-      "strandsHint": "หนึ่งแถวต่อหนึ่งลิงก์กายภาพ ชื่อพอร์ตและความเร็วกำหนดแยกต่อลิงก์ จึงระบุสมาชิกของ LAG ได้ครบทุกเส้น",
+      "strandEditorTitle": "ลิงก์กายภาพ",
+      "strandCount_one": "ลิงก์กายภาพ {{count}} เส้น",
+      "strandCount_other": "ลิงก์กายภาพ {{count}} เส้น",
+      "strandEditAction": "แก้ไขลิงก์กายภาพ",
+      "strandEditHint": "เปิดตัวแก้ไขสมาชิกแบบกะทัดรัด",
+      "strandsHint": "แต่ละลิงก์กายภาพมีอินเทอร์เฟซที่โหนดปลายทางทั้งสองด้าน การเพิ่มลิงก์จะสร้างและผูกอินเทอร์เฟซทั้งสอง",
       "strandAdd": "เพิ่มลิงก์",
       "strandNameLabel": "ชื่อพอร์ต",
       "strandNamePlaceholder": "เช่น Gi1/0/24",

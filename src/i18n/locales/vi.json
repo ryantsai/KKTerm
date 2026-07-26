@@ -1861,7 +1861,8 @@
         "compute": "Máy chủ & lưu trữ",
         "cloud": "Đám mây & WAN",
         "wireless": "Không dây",
-        "endpoints": "Thiết bị đầu cuối"
+        "endpoints": "Thiết bị đầu cuối",
+        "maps": "Bản đồ"
       },
       "nodeKind": {
         "router": "Bộ định tuyến",
@@ -1888,7 +1889,8 @@
         "iot": "Thiết bị IoT",
         "voip": "Điện thoại VoIP",
         "printer": "Máy in",
-        "camera": "Camera an ninh"
+        "camera": "Camera an ninh",
+        "geomap": "Bản đồ địa lý"
       },
       "linkKind": {
         "ethernet": "Cáp đồng / Ethernet",
@@ -1904,6 +1906,11 @@
       "labelLabel": "Nhãn",
       "labelPlaceholder": "vd. Switch lõi",
       "kindLabel": "Loại",
+      "geomapViewportLabel": "Khung bản đồ",
+      "geomapPreviewLabel": "Khung bản đồ thế giới đã chọn",
+      "geomapViewportHint": "Kéo bản đồ để di chuyển. Cuộn hoặc dùng thanh trượt để thu phóng.",
+      "geomapZoomLabel": "Thu phóng bản đồ",
+      "geomapReset": "Đặt lại khung nhìn",
       "addressLabel": "Địa chỉ",
       "addressHint": "Tùy chọn. Hiển thị bên dưới nhãn trên khung vẽ.",
       "addressPlaceholder": "vd. 10.20.0.1",
@@ -1921,8 +1928,9 @@
       "iconBackgroundLabel": "Icon background",
       "statusLabel": "Trạng thái",
       "status": {
-        "up": "Hoạt động",
-        "warning": "Suy giảm / cảnh báo"
+        "up": "Tốt",
+        "warning": "Suy giảm",
+        "down": "Ngừng hoạt động"
       },
       "rootLabel": "Điểm vào",
       "rootHint": "Khả năng tiếp cận được đo từ đây. Nếu chưa đặt, nút đầu tiên sẽ được dùng thay.",
@@ -1940,7 +1948,12 @@
       "strandDisplayLabel": "Hiển thị đường truyền",
       "strandDisplaySeparate": "Các đường riêng biệt",
       "strandDisplayBundle": "Đường gộp",
-      "strandsHint": "Mỗi liên kết vật lý một dòng. Tên cổng và tốc độ tính theo từng liên kết, nên một LAG có thể liệt kê đủ các thành viên.",
+      "strandEditorTitle": "Liên kết vật lý",
+      "strandCount_one": "{{count}} liên kết vật lý",
+      "strandCount_other": "{{count}} liên kết vật lý",
+      "strandEditAction": "Sửa liên kết vật lý",
+      "strandEditHint": "Mở trình sửa thành viên thu gọn.",
+      "strandsHint": "Mỗi liên kết vật lý có một giao diện ở cả hai nút đầu cuối. Khi thêm liên kết, cả hai giao diện được tạo và liên kết.",
       "strandAdd": "Thêm liên kết",
       "strandNameLabel": "Tên cổng",
       "strandNamePlaceholder": "ví dụ Gi1/0/24",

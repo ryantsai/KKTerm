@@ -8,8 +8,8 @@ use rusqlite::{Connection as SqliteConnection, OptionalExtension, params};
 use std::collections::HashSet;
 
 use super::types::{
-    NetworkGraph, NetworkLink, NetworkLinkStrand, NetworkMap, NetworkMapNote, NetworkNode,
-    NetworkNodeInterface,
+    NetworkGeomapViewport, NetworkGraph, NetworkLink, NetworkLinkStrand, NetworkMap,
+    NetworkMapNote, NetworkNode, NetworkNodeInterface, NetworkNodeKind,
 };
 
 /// Ceiling on parallel physical links recorded for one drawn link. The canvas
@@ -156,7 +156,26 @@ fn sanitize_node(mut node: NetworkNode) -> NetworkNode {
         .collect();
     node.width = node.width.clamp(120.0, 360.0);
     node.height = node.height.clamp(44.0, 220.0);
+    node.geomap_viewport = if node.kind == NetworkNodeKind::Geomap {
+        let mut viewport = node
+            .geomap_viewport
+            .unwrap_or(NetworkGeomapViewport {
+                zoom: 1.0,
+                x: 50.0,
+                y: 50.0,
+            });
+        viewport.zoom = finite_or(viewport.zoom, 1.0).clamp(1.0, 4.0);
+        viewport.x = finite_or(viewport.x, 50.0).clamp(0.0, 100.0);
+        viewport.y = finite_or(viewport.y, 50.0).clamp(0.0, 100.0);
+        Some(viewport)
+    } else {
+        None
+    };
     node
+}
+
+fn finite_or(value: f64, fallback: f64) -> f64 {
+    value.is_finite().then_some(value).unwrap_or(fallback)
 }
 
 fn sanitize_note(mut note: NetworkMapNote) -> NetworkMapNote {
@@ -436,8 +455,8 @@ pub fn remove_map(conn: &SqliteConnection, id: &str) -> Result<()> {
 mod tests {
     use super::*;
     use crate::itops::types::{
-        NetworkLinkKind, NetworkLinkStrandDisplay, NetworkMapNote, NetworkMapStatus, NetworkNode,
-        NetworkNodeKind,
+        NetworkGeomapViewport, NetworkLinkKind, NetworkLinkStatus, NetworkLinkStrandDisplay,
+        NetworkMapNote, NetworkNode, NetworkNodeKind,
     };
 
     fn open_test_db() -> SqliteConnection {
@@ -505,7 +524,7 @@ mod tests {
         primary_link.strands[0].from_interface_id = Some("core-uplink".into());
         primary_link.strands[0].to_interface_id = Some("edge-uplink".into());
         primary_link.strands[1].from_interface_id = Some("missing".into());
-        primary_link.status = NetworkMapStatus::Warning;
+        primary_link.status = NetworkLinkStatus::Warning;
         primary_link.strand_display = NetworkLinkStrandDisplay::Bundle;
         let mut core = node("core");
         core.interfaces = vec![
@@ -590,7 +609,39 @@ mod tests {
             Some("edge-uplink")
         );
         assert!(stored.strands[1].from_interface_id.is_none());
-        assert_eq!(stored.status, NetworkMapStatus::Warning);
+        assert_eq!(stored.status, NetworkLinkStatus::Warning);
+    }
+
+    #[test]
+    fn clamps_geomap_viewports_and_clears_them_from_other_nodes() {
+        let mut map = node("map");
+        map.kind = NetworkNodeKind::Geomap;
+        map.geomap_viewport = Some(NetworkGeomapViewport {
+            zoom: 12.0,
+            x: -20.0,
+            y: 140.0,
+        });
+        let mut switch = node("switch");
+        switch.geomap_viewport = Some(NetworkGeomapViewport {
+            zoom: 2.0,
+            x: 25.0,
+            y: 75.0,
+        });
+
+        let sanitized = sanitize_graph(&NetworkGraph {
+            nodes: vec![map, switch],
+            ..NetworkGraph::default()
+        });
+
+        assert_eq!(
+            sanitized.nodes[0].geomap_viewport,
+            Some(NetworkGeomapViewport {
+                zoom: 4.0,
+                x: 0.0,
+                y: 100.0,
+            })
+        );
+        assert!(sanitized.nodes[1].geomap_viewport.is_none());
     }
 
     #[test]

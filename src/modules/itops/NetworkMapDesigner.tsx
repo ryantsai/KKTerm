@@ -44,6 +44,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
+import worldMapUrl from "../../assets/network-map/world-map.svg";
 import {
   Actions,
   Btn,
@@ -61,8 +62,10 @@ import { nativeMenuIcons } from "../../lib/nativeMenuIcons";
 import { useWorkspaceStore } from "../../store";
 import type {
   NetworkGraph,
+  NetworkGeomapViewport,
   NetworkLink,
   NetworkLinkKind,
+  NetworkLinkStatus,
   NetworkLinkStrand,
   NetworkLinkStrandDisplay,
   NetworkMap,
@@ -121,6 +124,7 @@ const NODE_CATEGORIES = [
     id: "endpoints",
     kinds: ["desktop", "laptop", "smartphone", "iot", "voip", "printer", "camera"],
   },
+  { id: "maps", kinds: ["geomap"] },
 ] as const satisfies ReadonlyArray<{
   id: string;
   kinds: readonly NetworkNodeKind[];
@@ -187,6 +191,7 @@ const NODE_STYLE: Record<NetworkNodeKind, { accent: string }> = {
   voip: { accent: IT_ACCENTS.pink },
   printer: { accent: IT_ACCENTS.pink },
   camera: { accent: IT_ACCENTS.red },
+  geomap: { accent: IT_ACCENTS.green },
 };
 
 function newId(prefix: string): string {
@@ -213,7 +218,135 @@ interface MapNodeData extends Record<string, unknown> {
   warningLabel: string;
   accent: string;
   resizable: boolean;
+  geomapViewport: NetworkGeomapViewport;
   ghost?: boolean;
+}
+
+const DEFAULT_GEOMAP_VIEWPORT: NetworkGeomapViewport = {
+  zoom: 1,
+  x: 50,
+  y: 50,
+};
+
+function geomapViewport(node: NetworkNode): NetworkGeomapViewport {
+  return node.geomapViewport ?? DEFAULT_GEOMAP_VIEWPORT;
+}
+
+function GeomapArtwork({
+  viewport = DEFAULT_GEOMAP_VIEWPORT,
+  className = "",
+}: {
+  viewport?: NetworkGeomapViewport;
+  className?: string;
+}) {
+  return (
+    <span
+      className={`nm-geomap-artwork${className ? ` ${className}` : ""}`}
+      style={{
+        maskImage: `url("${worldMapUrl}")`,
+        WebkitMaskImage: `url("${worldMapUrl}")`,
+        maskSize: `${viewport.zoom * 100}% auto`,
+        WebkitMaskSize: `${viewport.zoom * 100}% auto`,
+        maskPosition: `${viewport.x}% ${viewport.y}%`,
+        WebkitMaskPosition: `${viewport.x}% ${viewport.y}%`,
+      }}
+      aria-hidden="true"
+    />
+  );
+}
+
+function clampGeomapViewport(viewport: NetworkGeomapViewport): NetworkGeomapViewport {
+  return {
+    zoom: Math.min(4, Math.max(1, viewport.zoom)),
+    x: Math.min(100, Math.max(0, viewport.x)),
+    y: Math.min(100, Math.max(0, viewport.y)),
+  };
+}
+
+function GeomapViewportEditor({
+  value,
+  onChange,
+}: {
+  value: NetworkGeomapViewport;
+  onChange: (value: NetworkGeomapViewport) => void;
+}) {
+  const { t } = useTranslation();
+  const dragStart = useRef<{
+    pointerX: number;
+    pointerY: number;
+    viewportX: number;
+    viewportY: number;
+  } | null>(null);
+
+  const setZoom = (zoom: number) =>
+    onChange(clampGeomapViewport({ ...value, zoom }));
+
+  return (
+    <div className="nm-geomap-editor">
+      <div
+        className="nm-geomap-editor-preview"
+        role="img"
+        aria-label={t("itops.networkMap.geomapPreviewLabel")}
+        tabIndex={0}
+        onPointerDown={(event) => {
+          event.currentTarget.setPointerCapture(event.pointerId);
+          dragStart.current = {
+            pointerX: event.clientX,
+            pointerY: event.clientY,
+            viewportX: value.x,
+            viewportY: value.y,
+          };
+        }}
+        onPointerMove={(event) => {
+          const start = dragStart.current;
+          if (!start || !event.currentTarget.hasPointerCapture(event.pointerId)) return;
+          const rect = event.currentTarget.getBoundingClientRect();
+          onChange(clampGeomapViewport({
+            ...value,
+            x: start.viewportX + ((event.clientX - start.pointerX) / rect.width) * 100,
+            y: start.viewportY + ((event.clientY - start.pointerY) / rect.height) * 100,
+          }));
+        }}
+        onPointerUp={(event) => {
+          event.currentTarget.releasePointerCapture(event.pointerId);
+          dragStart.current = null;
+        }}
+        onPointerCancel={() => {
+          dragStart.current = null;
+        }}
+        onWheel={(event) => {
+          event.preventDefault();
+          setZoom(value.zoom + (event.deltaY < 0 ? 0.1 : -0.1));
+        }}
+      >
+        <GeomapArtwork viewport={value} className="nm-geomap-editor-image" />
+        <span className="nm-geomap-editor-frame" aria-hidden="true" />
+      </div>
+      <div className="nm-geomap-editor-controls">
+        <ItIcon name="minus" size={14} />
+        <input
+          type="range"
+          min="1"
+          max="4"
+          step="0.05"
+          value={value.zoom}
+          aria-label={t("itops.networkMap.geomapZoomLabel")}
+          onChange={(event) => setZoom(Number(event.currentTarget.value))}
+        />
+        <ItIcon name="plus" size={14} />
+        <output>{Math.round(value.zoom * 100)}%</output>
+        <button
+          type="button"
+          className="nm-geomap-reset"
+          onClick={() => onChange(DEFAULT_GEOMAP_VIEWPORT)}
+        >
+          <ItIcon name="center" size={13} />
+          {t("itops.networkMap.geomapReset")}
+        </button>
+      </div>
+      <span className="kk-hint">{t("itops.networkMap.geomapViewportHint")}</span>
+    </div>
+  );
 }
 
 function NetworkNodeArtwork({
@@ -223,6 +356,13 @@ function NetworkNodeArtwork({
   kind: NetworkNodeKind;
   size?: number;
 }) {
+  if (kind === "geomap") {
+    return (
+      <span className="nm-device-art nm-device-art-geomap" style={{ width: size, height: size }}>
+        <GeomapArtwork />
+      </span>
+    );
+  }
   const artwork = {
     router: (
       <>
@@ -446,15 +586,28 @@ function MapNode({ data }: NodeProps<Node<MapNodeData>>) {
               className="nm-handle"
             />
           ))}
-      <span className="nm-node-content">
-        <span className="nm-node-ic" style={accentStyle}>
-          <NetworkNodeArtwork kind={data.kind} size={24} />
+      {data.kind === "geomap" ? (
+        <span className="nm-geomap-node">
+          <GeomapArtwork
+            viewport={data.geomapViewport}
+            className="nm-geomap-node-image"
+          />
+          <span className="nm-geomap-node-caption">
+            <strong>{data.label}</strong>
+            {data.sub ? <small>{data.sub}</small> : null}
+          </span>
         </span>
-        <span className="nm-node-tx">
-          <span className="nm-node-lab">{data.label}</span>
-          <span className="nm-node-sub">{data.sub}</span>
+      ) : (
+        <span className="nm-node-content">
+          <span className="nm-node-ic" style={accentStyle}>
+            <NetworkNodeArtwork kind={data.kind} size={24} />
+          </span>
+          <span className="nm-node-tx">
+            <span className="nm-node-lab">{data.label}</span>
+            <span className="nm-node-sub">{data.sub}</span>
+          </span>
         </span>
-      </span>
+      )}
       {note ? <span className="nm-node-note">{note}</span> : null}
       {data.root ? (
         <span className="nm-node-root" title={data.rootLabel}>
@@ -518,7 +671,7 @@ const nodeTypes = { networkNode: MapNode, networkNote: MapNote };
 
 interface NetworkLinkEdgeData extends Record<string, unknown> {
   kind: NetworkLinkKind;
-  state: "up" | "warning" | "cut" | "severed";
+  state: "up" | "warning" | "down" | "cut" | "severed";
   strandCount: number;
   strands: NetworkLinkStrand[];
   strandDisplay: NetworkLinkStrandDisplay;
@@ -624,19 +777,30 @@ function NetworkLinkEdge(props: EdgeProps<Edge<NetworkLinkEdgeData>>) {
       {offsets.map((offset, index) => {
         const { path } = orthogonalLinkPath({ ...props, offset });
         return (
-          <path
-            key={`${id}:${index}`}
-            d={path}
-            className={`react-flow__edge-path nm-edge-strand${
-              strandDisplay === "bundle" ? " nm-edge-bundle" : ""
-            }`}
-            fill="none"
-            style={
-              strandDisplay === "bundle"
-                ? ({ strokeWidth: bundleWidth } as CSSProperties)
-                : undefined
-            }
-          />
+          <g key={`${id}:${index}`}>
+            <path
+              d={path}
+              className={`react-flow__edge-path nm-edge-strand${
+                strandDisplay === "bundle" ? " nm-edge-bundle" : ""
+              }`}
+              fill="none"
+              style={
+                strandDisplay === "bundle"
+                  ? ({ strokeWidth: bundleWidth } as CSSProperties)
+                  : undefined
+              }
+            />
+            <path
+              d={path}
+              className="nm-edge-flow"
+              fill="none"
+              style={
+                strandDisplay === "bundle"
+                  ? ({ strokeWidth: Math.min(bundleWidth, 3.5) } as CSSProperties)
+                  : undefined
+              }
+            />
+          </g>
         );
       })}
       {data?.trunk ? (
@@ -711,7 +875,7 @@ function NetworkMapPreview({ map }: { map: NetworkMap }) {
         return (
           <line
             key={link.id}
-            className={`nm-map-preview-link ${link.kind}`}
+            className={`nm-map-preview-link ${link.kind} ${link.status ?? "up"}`}
             style={{ animationDelay: `${index * -180}ms` }}
             x1={a.x}
             y1={a.y}
@@ -851,14 +1015,15 @@ function hostsAsNodes(hosts: readonly SiteHost[], offset: number): NetworkNode[]
 }
 
 function newNodeDraft(kind: NetworkNodeKind): NetworkNode {
+  const isGeomap = kind === "geomap";
   return {
     id: newId("nmn"),
     label: "",
     kind,
     x: 0,
     y: 0,
-    width: NODE_WIDTH,
-    height: NODE_HEIGHT,
+    width: isGeomap ? 320 : NODE_WIDTH,
+    height: isGeomap ? 190 : NODE_HEIGHT,
     iconAccent: null,
     interfaces: [],
     status: "up",
@@ -866,6 +1031,7 @@ function newNodeDraft(kind: NetworkNodeKind): NetworkNode {
     connectionId: null,
     rackItemId: null,
     note: "",
+    geomapViewport: isGeomap ? DEFAULT_GEOMAP_VIEWPORT : null,
   };
 }
 
@@ -878,6 +1044,59 @@ function newNoteDraft(): NetworkMapNote {
     width: NOTE_WIDTH,
     height: NOTE_HEIGHT,
     backgroundAccent: 1,
+  };
+}
+
+function appendGeneratedInterface(node: NetworkNode): {
+  node: NetworkNode;
+  interfaceId: string;
+} {
+  const names = new Set(
+    node.interfaces.map((entry) => entry.name.trim().toLocaleLowerCase()),
+  );
+  let ordinal = 1;
+  while (names.has(`port${ordinal}`)) ordinal += 1;
+  const entry: NetworkNodeInterface = {
+    id: newId("nmi"),
+    name: `port${ordinal}`,
+    address: "",
+  };
+  return {
+    node: { ...node, interfaces: [...node.interfaces, entry] },
+    interfaceId: entry.id,
+  };
+}
+
+function appendBoundStrand(
+  link: NetworkLink,
+  fromNode: NetworkNode,
+  toNode: NetworkNode,
+  speed = "",
+): {
+  link: NetworkLink;
+  fromNode: NetworkNode;
+  toNode: NetworkNode;
+  generatedInterfaceIds: string[];
+} {
+  const nextFrom = appendGeneratedInterface(fromNode);
+  const nextTo = appendGeneratedInterface(toNode);
+  return {
+    link: {
+      ...link,
+      strands: [
+        ...link.strands,
+        {
+          id: newId("nms"),
+          name: "",
+          fromInterfaceId: nextFrom.interfaceId,
+          toInterfaceId: nextTo.interfaceId,
+          speed,
+        },
+      ],
+    },
+    fromNode: nextFrom.node,
+    toNode: nextTo.node,
+    generatedInterfaceIds: [nextFrom.interfaceId, nextTo.interfaceId],
   };
 }
 
@@ -1038,17 +1257,33 @@ function NodePropertiesFields({
       <Field label={t("itops.networkMap.kindLabel")}>
         <Select
           value={node.kind}
-          onChange={(event) =>
+          onChange={(event) => {
+            const kind = event.currentTarget.value as NetworkNodeKind;
             onChange({
-              kind: event.currentTarget.value as NetworkNodeKind,
-            })
-          }
+              kind,
+              geomapViewport:
+                kind === "geomap"
+                  ? node.geomapViewport ?? DEFAULT_GEOMAP_VIEWPORT
+                  : null,
+              ...(kind === "geomap" && node.kind !== "geomap"
+                ? { width: 320, height: 190 }
+                : {}),
+            });
+          }}
           options={NODE_KINDS.map((kind) => ({
             value: kind,
             label: t(`itops.networkMap.nodeKind.${kind}`),
           }))}
         />
       </Field>
+      {node.kind === "geomap" ? (
+        <Field label={t("itops.networkMap.geomapViewportLabel")}>
+          <GeomapViewportEditor
+            value={geomapViewport(node)}
+            onChange={(geomapViewport) => onChange({ geomapViewport })}
+          />
+        </Field>
+      ) : null}
       <Field label={t("itops.networkMap.statusLabel")}>
         <ChoiceGrid
           value={node.status ?? "up"}
@@ -1389,31 +1624,310 @@ function NotePropertiesDialog({
   );
 }
 
+type LinkMembersDraft = {
+  link: NetworkLink;
+  fromNode: NetworkNode;
+  toNode: NetworkNode;
+  generatedInterfaceIds: Set<string>;
+};
+
+function createLinkMembersDraft(
+  link: NetworkLink,
+  fromNode: NetworkNode,
+  toNode: NetworkNode,
+): LinkMembersDraft {
+  const draft: LinkMembersDraft = {
+    link: { ...link, strands: [] },
+    fromNode: { ...fromNode, interfaces: [...fromNode.interfaces] },
+    toNode: { ...toNode, interfaces: [...toNode.interfaces] },
+    generatedInterfaceIds: new Set(),
+  };
+  const strands = link.strands.length > 0 ? link.strands : [{
+    id: newId("nms"),
+    name: "",
+    fromInterfaceId: null,
+    toInterfaceId: null,
+    speed: "",
+  }];
+  for (const strand of strands) {
+    const nextStrand = { ...strand };
+    const fromExists = draft.fromNode.interfaces.some(
+      (entry) => entry.id === nextStrand.fromInterfaceId,
+    );
+    if (!fromExists) {
+      const next = appendGeneratedInterface(draft.fromNode);
+      draft.fromNode = next.node;
+      nextStrand.fromInterfaceId = next.interfaceId;
+      draft.generatedInterfaceIds.add(next.interfaceId);
+    }
+    const toExists = draft.toNode.interfaces.some(
+      (entry) => entry.id === nextStrand.toInterfaceId,
+    );
+    if (!toExists) {
+      const next = appendGeneratedInterface(draft.toNode);
+      draft.toNode = next.node;
+      nextStrand.toInterfaceId = next.interfaceId;
+      draft.generatedInterfaceIds.add(next.interfaceId);
+    }
+    draft.link.strands.push(nextStrand);
+  }
+  return draft;
+}
+
+function LinkMembersEditor({
+  link,
+  fromNode,
+  toNode,
+  onSave,
+  onClose,
+}: {
+  link: NetworkLink;
+  fromNode: NetworkNode;
+  toNode: NetworkNode;
+  onSave: (link: NetworkLink, endpointNodes: NetworkNode[]) => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const [draft, setDraft] = useState(() =>
+    createLinkMembersDraft(link, fromNode, toNode),
+  );
+  const speedListId = `nm-link-members-speeds-${link.id}`;
+  const fromInterfaceLabel = t("itops.networkMap.endpointInterfaceLabel", {
+    node: nodeLabel(draft.fromNode, t("itops.networkMap.unnamedNode")),
+  });
+  const toInterfaceLabel = t("itops.networkMap.endpointInterfaceLabel", {
+    node: nodeLabel(draft.toNode, t("itops.networkMap.unnamedNode")),
+  });
+  const canSave = draft.link.strands.every((strand) => {
+    const fromInterface = draft.fromNode.interfaces.find(
+      (entry) => entry.id === strand.fromInterfaceId,
+    );
+    const toInterface = draft.toNode.interfaces.find(
+      (entry) => entry.id === strand.toInterfaceId,
+    );
+    return Boolean(fromInterface?.name.trim() && toInterface?.name.trim());
+  });
+
+  function patchInterface(
+    endpoint: "from" | "to",
+    interfaceId: string,
+    name: string,
+  ) {
+    setDraft((current) => {
+      const key = endpoint === "from" ? "fromNode" : "toNode";
+      return {
+        ...current,
+        [key]: {
+          ...current[key],
+          interfaces: current[key].interfaces.map((entry) =>
+            entry.id === interfaceId ? { ...entry, name } : entry,
+          ),
+        },
+      };
+    });
+  }
+
+  function removeStrand(strand: NetworkLinkStrand) {
+    setDraft((current) => {
+      if (current.link.strands.length <= 1) return current;
+      const removedIds = [strand.fromInterfaceId, strand.toInterfaceId].filter(
+        (id): id is string => Boolean(id && current.generatedInterfaceIds.has(id)),
+      );
+      const generatedInterfaceIds = new Set(current.generatedInterfaceIds);
+      for (const id of removedIds) generatedInterfaceIds.delete(id);
+      return {
+        link: {
+          ...current.link,
+          strands: current.link.strands.filter((entry) => entry.id !== strand.id),
+        },
+        fromNode: {
+          ...current.fromNode,
+          interfaces: current.fromNode.interfaces.filter(
+            (entry) => !removedIds.includes(entry.id),
+          ),
+        },
+        toNode: {
+          ...current.toNode,
+          interfaces: current.toNode.interfaces.filter(
+            (entry) => !removedIds.includes(entry.id),
+          ),
+        },
+        generatedInterfaceIds,
+      };
+    });
+  }
+
+  return (
+    <DialogShell onBackdrop={onClose} zClassName="itops-page">
+      <Sheet
+        width={860}
+        title={t("itops.networkMap.strandEditorTitle")}
+        footer={
+          <Actions
+            cancel={<Btn onClick={onClose}>{t("common.cancel")}</Btn>}
+            primary={
+              <Btn
+                kind="primary"
+                icon="check"
+                disabled={!canSave}
+                onClick={() =>
+                  onSave(draft.link, [draft.fromNode, draft.toNode])
+                }
+              >
+                {t("common.save")}
+              </Btn>
+            }
+          />
+        }
+      >
+        <div className="nm-member-editor-heading">
+          <span>{t("itops.networkMap.linkBetween", {
+            from: nodeLabel(draft.fromNode, t("itops.networkMap.unnamedNode")),
+            to: nodeLabel(draft.toNode, t("itops.networkMap.unnamedNode")),
+          })}</span>
+          <button
+            type="button"
+            className="nm-strand-add"
+            disabled={draft.link.strands.length >= MAX_STRANDS}
+            onClick={() =>
+              setDraft((current) => {
+                const next = appendBoundStrand(
+                  current.link,
+                  current.fromNode,
+                  current.toNode,
+                  current.link.strands[current.link.strands.length - 1]?.speed ?? "",
+                );
+                return {
+                  link: next.link,
+                  fromNode: next.fromNode,
+                  toNode: next.toNode,
+                  generatedInterfaceIds: new Set([
+                    ...current.generatedInterfaceIds,
+                    ...next.generatedInterfaceIds,
+                  ]),
+                };
+              })
+            }
+          >
+            <ItIcon name="plus" size={12} />
+            {t("itops.networkMap.strandAdd")}
+          </button>
+        </div>
+        <div className="nm-member-grid" role="table">
+          <div className="nm-member-grid-head" role="row">
+            <span role="columnheader">#</span>
+            <span role="columnheader">{fromInterfaceLabel}</span>
+            <span role="columnheader">{toInterfaceLabel}</span>
+            <span role="columnheader">{t("itops.networkMap.strandSpeedLabel")}</span>
+            <span role="columnheader" aria-label={t("itops.networkMap.strandRemove")} />
+          </div>
+          <div className="nm-member-grid-body" role="rowgroup">
+            {draft.link.strands.map((strand, index) => {
+              const fromInterface = draft.fromNode.interfaces.find(
+                (entry) => entry.id === strand.fromInterfaceId,
+              );
+              const toInterface = draft.toNode.interfaces.find(
+                (entry) => entry.id === strand.toInterfaceId,
+              );
+              return (
+                <div key={strand.id} className="nm-member-grid-row" role="row">
+                  <span className="nm-member-grid-index" role="cell">
+                    {index + 1}
+                  </span>
+                  <div className="nm-member-interface-cell" role="cell">
+                    <TextInput
+                      mono
+                      value={fromInterface?.name ?? ""}
+                      aria-label={fromInterfaceLabel}
+                      placeholder={t("itops.networkMap.strandNamePlaceholder")}
+                      onChange={(event) => {
+                        const name = event.currentTarget.value;
+                        if (strand.fromInterfaceId) {
+                          patchInterface("from", strand.fromInterfaceId, name);
+                        }
+                      }}
+                    />
+                    {fromInterface?.address ? <small>{fromInterface.address}</small> : null}
+                  </div>
+                  <div className="nm-member-interface-cell" role="cell">
+                    <TextInput
+                      mono
+                      value={toInterface?.name ?? ""}
+                      aria-label={toInterfaceLabel}
+                      placeholder={t("itops.networkMap.strandNamePlaceholder")}
+                      onChange={(event) => {
+                        const name = event.currentTarget.value;
+                        if (strand.toInterfaceId) {
+                          patchInterface("to", strand.toInterfaceId, name);
+                        }
+                      }}
+                    />
+                    {toInterface?.address ? <small>{toInterface.address}</small> : null}
+                  </div>
+                  <div role="cell">
+                    <TextInput
+                      mono
+                      list={speedListId}
+                      value={strand.speed}
+                      aria-label={t("itops.networkMap.strandSpeedLabel")}
+                      placeholder={t("itops.networkMap.strandSpeedPlaceholder")}
+                      onChange={(event) => {
+                        const speed = event.currentTarget.value;
+                        setDraft((current) => ({
+                          ...current,
+                          link: {
+                            ...current.link,
+                            strands: current.link.strands.map((entry) =>
+                              entry.id === strand.id ? { ...entry, speed } : entry,
+                            ),
+                          },
+                        }));
+                      }}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="nm-strand-remove"
+                    disabled={draft.link.strands.length <= 1}
+                    aria-label={t("itops.networkMap.strandRemove")}
+                    title={t("itops.networkMap.strandRemove")}
+                    onClick={() => removeStrand(strand)}
+                  >
+                    <ItIcon name="trash" size={12} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <datalist id={speedListId}>
+          {COMMON_LINK_SPEEDS.map((speed) => (
+            <option key={speed} value={speed} />
+          ))}
+        </datalist>
+        <span className="kk-hint">{t("itops.networkMap.strandsHint")}</span>
+      </Sheet>
+    </DialogShell>
+  );
+}
+
 function LinkPropertiesFields({
   link,
   nodesById,
   vlans,
   onChange,
+  onEditMembers,
 }: {
   link: NetworkLink;
   nodesById: Map<string, NetworkNode>;
   vlans: Vlan[];
   onChange: (link: NetworkLink) => void;
+  onEditMembers: () => void;
 }) {
   const { t } = useTranslation();
   const unnamed = t("itops.networkMap.unnamedNode");
   const vlanIndex = useMemo(() => vlansById(vlans), [vlans]);
-  const speedListId = `nm-link-dialog-speeds-${link.id}`;
   const patch = (change: Partial<NetworkLink>) => onChange({ ...link, ...change });
-  const interfaceOptions = (nodeId: string) => [
-    { value: "", label: t("itops.networkMap.interfaceUnbound") },
-    ...(nodesById.get(nodeId)?.interfaces ?? []).map((entry) => ({
-      value: entry.id,
-      label: entry.name.trim()
-        ? [entry.name.trim(), entry.address].filter(Boolean).join(" · ")
-        : entry.address || t("itops.networkMap.interfaceUnbound"),
-    })),
-  ];
 
   return (
     <>
@@ -1448,7 +1962,7 @@ function LinkPropertiesFields({
       <Field label={t("itops.networkMap.statusLabel")}>
         <ChoiceGrid
           value={link.status ?? "up"}
-          onChange={(value) => patch({ status: value as NetworkMapStatus })}
+          onChange={(value) => patch({ status: value as NetworkLinkStatus })}
           options={[
             {
               value: "up",
@@ -1459,6 +1973,11 @@ function LinkPropertiesFields({
               value: "warning",
               label: t("itops.networkMap.status.warning"),
               icon: "alert",
+            },
+            {
+              value: "down",
+              label: t("itops.networkMap.status.down"),
+              icon: "stop",
             },
           ]}
         />
@@ -1483,117 +2002,32 @@ function LinkPropertiesFields({
           ]}
         />
       </Field>
-      <div className="nm-strands">
-        <div className="nm-strands-head">
-          <span className="kk-lbl">{t("itops.networkMap.strandsLabel")}</span>
-          <button
-            type="button"
-            className="nm-strand-add"
-            disabled={link.strands.length >= MAX_STRANDS}
-            onClick={() => {
-              const last = link.strands[link.strands.length - 1];
-              patch({
-                strands: [
-                  ...link.strands,
-                  {
-                    id: newId("nms"),
-                    name: "",
-                    fromInterfaceId: null,
-                    toInterfaceId: null,
-                    speed: last?.speed ?? "",
-                  },
-                ],
-              });
-            }}
-          >
-            <ItIcon name="plus" size={12} />
-            {t("itops.networkMap.strandAdd")}
-          </button>
-        </div>
-        {link.strands.map((strand, index) => (
-          <div key={strand.id} className="nm-strand-card">
-            <div className="nm-strand-card-head">
-              <span className="nm-strand-index">#{index + 1}</span>
-              <button
-                type="button"
-                className="nm-strand-remove"
-                disabled={link.strands.length <= 1}
-                aria-label={t("itops.networkMap.strandRemove")}
-                title={t("itops.networkMap.strandRemove")}
-                onClick={() =>
-                  patch({
-                    strands: link.strands.filter((entry) => entry.id !== strand.id),
-                  })
-                }
-              >
-                <ItIcon name="trash" size={12} />
-              </button>
-            </div>
-            <div className="nm-strand-endpoints">
-              <Field
-                label={t("itops.networkMap.endpointInterfaceLabel", {
-                  node: endpointName(nodesById, link.from, unnamed),
-                })}
-              >
-                <Select
-                  value={strand.fromInterfaceId ?? ""}
-                  onChange={(event) => {
-                    const fromInterfaceId = event.currentTarget.value || null;
-                    patch({
-                      strands: link.strands.map((entry) =>
-                        entry.id === strand.id
-                          ? { ...entry, fromInterfaceId }
-                          : entry,
-                      ),
-                    });
-                  }}
-                  options={interfaceOptions(link.from)}
-                />
-              </Field>
-              <Field
-                label={t("itops.networkMap.endpointInterfaceLabel", {
-                  node: endpointName(nodesById, link.to, unnamed),
-                })}
-              >
-                <Select
-                  value={strand.toInterfaceId ?? ""}
-                  onChange={(event) => {
-                    const toInterfaceId = event.currentTarget.value || null;
-                    patch({
-                      strands: link.strands.map((entry) =>
-                        entry.id === strand.id ? { ...entry, toInterfaceId } : entry,
-                      ),
-                    });
-                  }}
-                  options={interfaceOptions(link.to)}
-                />
-              </Field>
-            </div>
-            <Field label={t("itops.networkMap.strandSpeedLabel")}>
-              <TextInput
-                mono
-                list={speedListId}
-                value={strand.speed}
-                placeholder={t("itops.networkMap.strandSpeedPlaceholder")}
-                onChange={(event) => {
-                  const speed = event.currentTarget.value;
-                  patch({
-                    strands: link.strands.map((entry) =>
-                      entry.id === strand.id ? { ...entry, speed } : entry,
-                    ),
-                  });
-                }}
-              />
-            </Field>
-          </div>
-        ))}
-        <datalist id={speedListId}>
-          {COMMON_LINK_SPEEDS.map((speed) => (
-            <option key={speed} value={speed} />
-          ))}
-        </datalist>
-        <span className="kk-hint">{t("itops.networkMap.strandsHint")}</span>
-      </div>
+      <Field
+        label={t("itops.networkMap.strandsLabel")}
+        hint={t("itops.networkMap.strandsHint")}
+      >
+        <button
+          type="button"
+          className="nm-member-count"
+          onClick={onEditMembers}
+          aria-label={t("itops.networkMap.strandEditAction", {
+            count: Math.max(link.strands.length, 1),
+          })}
+        >
+          <span className="nm-member-count-icon">
+            <ItIcon name="rows" size={16} />
+          </span>
+          <span className="nm-member-count-copy">
+            <strong>
+              {t("itops.networkMap.strandCount", {
+                count: Math.max(link.strands.length, 1),
+              })}
+            </strong>
+            <small>{t("itops.networkMap.strandEditHint")}</small>
+          </span>
+          <ItIcon name="chevR" size={14} />
+        </button>
+      </Field>
       <Field
         label={t("itops.networkMap.nativeVlanLabel")}
         hint={t("itops.networkMap.nativeVlanHint")}
@@ -1698,56 +2132,86 @@ function LinkPropertiesDialog({
   link: NetworkLink;
   nodesById: Map<string, NetworkNode>;
   vlans: Vlan[];
-  onSubmit: (link: NetworkLink) => void;
+  onSubmit: (link: NetworkLink, endpointNodes: NetworkNode[]) => void;
   onDelete?: () => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState(link);
+  const [endpointNodes, setEndpointNodes] = useState(() =>
+    [link.from, link.to]
+      .map((id) => nodesById.get(id))
+      .filter((node): node is NetworkNode => Boolean(node))
+      .map((node) => ({ ...node, interfaces: [...node.interfaces] })),
+  );
+  const [membersOpen, setMembersOpen] = useState(false);
+  const draftNodesById = useMemo(() => {
+    const next = new Map(nodesById);
+    for (const node of endpointNodes) next.set(node.id, node);
+    return next;
+  }, [endpointNodes, nodesById]);
+  const fromNode = draftNodesById.get(link.from);
+  const toNode = draftNodesById.get(link.to);
   return (
-    <DialogShell onBackdrop={onClose} zClassName="itops-page">
-      <Sheet
-        width={680}
-        title={t("itops.networkMap.linkHeading")}
-        footer={
-          <Actions
-            extraLeft={
-              onDelete ? (
+    <>
+      <DialogShell onBackdrop={onClose} zClassName="itops-page">
+        <Sheet
+          width={680}
+          title={t("itops.networkMap.linkHeading")}
+          footer={
+            <Actions
+              extraLeft={
+                onDelete ? (
+                  <Btn
+                    kind="danger"
+                    icon="trash"
+                    onClick={() => {
+                      onDelete();
+                      onClose();
+                    }}
+                  >
+                    {t("itops.networkMap.removeLink")}
+                  </Btn>
+                ) : undefined
+              }
+              cancel={<Btn onClick={onClose}>{t("itops.actions.cancel")}</Btn>}
+              primary={
                 <Btn
-                  kind="danger"
-                  icon="trash"
+                  kind="primary"
                   onClick={() => {
-                    onDelete();
+                    onSubmit(draft, endpointNodes);
                     onClose();
                   }}
                 >
-                  {t("itops.networkMap.removeLink")}
+                  {t("itops.actions.save")}
                 </Btn>
-              ) : undefined
-            }
-            cancel={<Btn onClick={onClose}>{t("itops.actions.cancel")}</Btn>}
-            primary={
-              <Btn
-                kind="primary"
-                onClick={() => {
-                  onSubmit(draft);
-                  onClose();
-                }}
-              >
-                {t("itops.actions.save")}
-              </Btn>
-            }
+              }
+            />
+          }
+        >
+          <LinkPropertiesFields
+            link={draft}
+            nodesById={draftNodesById}
+            vlans={vlans}
+            onChange={setDraft}
+            onEditMembers={() => setMembersOpen(true)}
           />
-        }
-      >
-        <LinkPropertiesFields
+        </Sheet>
+      </DialogShell>
+      {membersOpen && fromNode && toNode ? (
+        <LinkMembersEditor
           link={draft}
-          nodesById={nodesById}
-          vlans={vlans}
-          onChange={setDraft}
+          fromNode={fromNode}
+          toNode={toNode}
+          onClose={() => setMembersOpen(false)}
+          onSave={(nextLink, nextEndpointNodes) => {
+            setDraft(nextLink);
+            setEndpointNodes(nextEndpointNodes);
+            setMembersOpen(false);
+          }}
         />
-      </Sheet>
-    </DialogShell>
+      ) : null}
+    </>
   );
 }
 
@@ -2124,6 +2588,7 @@ function MapEditor({ map }: { map: NetworkMap }) {
         warningLabel: t("itops.networkMap.status.warning"),
         accent: nodeAccent(node),
         resizable: true,
+        geomapViewport: geomapViewport(node),
       },
     }));
     if (placementDraft && placementPoint) {
@@ -2155,6 +2620,7 @@ function MapEditor({ map }: { map: NetworkMap }) {
             warningLabel: t("itops.networkMap.status.warning"),
             accent: nodeAccent(node),
             resizable: false,
+            geomapViewport: geomapViewport(node),
             ghost: true,
           },
         });
@@ -2204,9 +2670,11 @@ function MapEditor({ map }: { map: NetworkMap }) {
       const { source, target } = anchors(from, to);
       const state = severed.has(link.id)
         ? "severed"
-        : link.status === "warning"
-          ? "warning"
-          : "up";
+        : link.status === "down"
+          ? "down"
+          : link.status === "warning"
+            ? "warning"
+            : "up";
       const strandCount = Math.max(link.strands.length, 1);
       const label = [
         link.label.trim(),
@@ -2267,29 +2735,36 @@ function MapEditor({ map }: { map: NetworkMap }) {
           (link.from === connection.target && link.to === connection.source),
       );
       if (exists) return current;
+      const fromNode = current.nodes.find((node) => node.id === connection.source);
+      const toNode = current.nodes.find((node) => node.id === connection.target);
+      if (!fromNode || !toNode) return current;
       const id = newId("nml");
-      const link: NetworkLink = {
+      const baseLink: NetworkLink = {
         id,
         from: connection.source!,
         to: connection.target!,
         label: "",
         kind: "ethernet",
-        // A drawn link always stands for at least one physical link, so it
-        // starts with one strand rather than an empty list the operator has to
-        // notice is empty.
-        strands: [{
-          id: newId("nms"),
-          name: "",
-          fromInterfaceId: null,
-          toInterfaceId: null,
-          speed: "",
-        }],
+        strands: [],
         strandDisplay: "separate",
         nativeVlanId: null,
         taggedVlanIds: [],
         status: "up",
       };
-      return { ...current, links: [...current.links, link] };
+      // Drawing a cable implies one physical member and therefore one interface
+      // at each endpoint. The member editor can rename those generated ports.
+      const created = appendBoundStrand(baseLink, fromNode, toNode);
+      return {
+        ...current,
+        nodes: current.nodes.map((node) =>
+          node.id === created.fromNode.id
+            ? created.fromNode
+            : node.id === created.toNode.id
+              ? created.toNode
+              : node,
+        ),
+        links: [...current.links, created.link],
+      };
     });
   }, []);
 
@@ -2394,12 +2869,16 @@ function MapEditor({ map }: { map: NetworkMap }) {
     setGraph(nextGraph);
   }
 
-  function patchLink(id: string, patch: Partial<NetworkLink>) {
-    const nextGraph = {
-      ...graph,
-      links: graph.links.map((link) => (link.id === id ? { ...link, ...patch } : link)),
-    };
-    setGraph(nextGraph);
+  function updateLinkProperties(
+    link: NetworkLink,
+    endpointNodes: NetworkNode[],
+  ) {
+    const nodeUpdates = new Map(endpointNodes.map((node) => [node.id, node]));
+    setGraph((current) => ({
+      ...current,
+      nodes: current.nodes.map((node) => nodeUpdates.get(node.id) ?? node),
+      links: current.links.map((entry) => (entry.id === link.id ? link : entry)),
+    }));
   }
 
   function removeNode(id: string) {
@@ -2801,7 +3280,7 @@ function MapEditor({ map }: { map: NetworkMap }) {
           vlans={vlans}
           onClose={() => setLinkDialog(null)}
           onDelete={() => removeLink(linkDialog.link.id)}
-          onSubmit={(link) => patchLink(link.id, link)}
+          onSubmit={updateLinkProperties}
         />
       ) : null}
     </div>

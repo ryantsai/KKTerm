@@ -74,10 +74,11 @@ test("IT Ops separates Batch Tasks from Networking in every locale", async () =>
 });
 
 test("Network Nodes use the expanded device catalog and links expose complete documented properties", async () => {
-  const [designer, types, styles] = await Promise.all([
+  const [designer, types, styles, worldMap] = await Promise.all([
     read("src/modules/itops/NetworkMapDesigner.tsx"),
     read("src/types.ts"),
     read("src/modules/itops/itops.css"),
+    read("src/assets/network-map/world-map.svg"),
   ]);
 
   assert.match(designer, /function NetworkNodeArtwork/);
@@ -87,19 +88,37 @@ test("Network Nodes use the expanded device catalog and links expose complete do
   assert.match(designer, /"vpnGateway"/);
   assert.match(designer, /"wirelessController"/);
   assert.match(designer, /"camera"/);
+  assert.match(designer, /"geomap"/);
   assert.match(designer, /NODE_CATEGORIES/);
+  assert.match(types, /\| "geomap"/);
+  assert.match(types, /interface NetworkGeomapViewport/);
+  assert.match(types, /geomapViewport\?: NetworkGeomapViewport \| null;/);
+  assert.match(designer, /function GeomapViewportEditor/);
+  assert.match(designer, /onPointerMove=.*geomap|onPointerMove=\{\(event\) =>/);
+  assert.match(designer, /type="range"/);
+  assert.match(designer, /geomapViewport: isGeomap \? DEFAULT_GEOMAP_VIEWPORT : null/);
+  assert.match(styles, /\.nm-geomap-editor-preview\s*\{[\s\S]*touch-action: none;/);
+  assert.match(worldMap, /<svg[\s\S]*id="land"/);
   assert.match(designer, /function NetworkLinkEdge/);
   assert.match(designer, /edgeTypes=\{edgeTypes\}/);
   assert.match(designer, /itops\.networkMap\.linkKindLabel/);
   assert.match(designer, /itops\.networkMap\.statusLabel/);
-  // Parallel links are an editable list, one row per physical link, so a port
-  // name and a speed can differ per member of a LAG.
+  // The base dialog exposes only a count; a compact scrolling grid owns the
+  // physical members so a large LAG cannot stretch Link Properties.
   assert.match(designer, /itops\.networkMap\.strandsLabel/);
+  assert.match(designer, /function LinkMembersEditor/);
+  assert.match(designer, /className="nm-member-count"/);
+  assert.match(designer, /className="nm-member-grid"/);
   assert.match(designer, /itops\.networkMap\.strandAdd/);
   assert.match(designer, /itops\.networkMap\.strandNamePlaceholder/);
   assert.match(designer, /itops\.networkMap\.strandSpeedPlaceholder/);
   assert.match(designer, /<datalist id=\{speedListId\}>/);
   assert.match(designer, /COMMON_LINK_SPEEDS/);
+  assert.match(designer, /appendBoundStrand/);
+  assert.match(designer, /generatedInterfaceIds/);
+  assert.doesNotMatch(designer, /className="nm-strand-card"/);
+  assert.match(styles, /\.nm-member-grid\s*\{[\s\S]*overflow: auto;/);
+  assert.match(styles, /\.nm-member-grid-row\s*\{[\s\S]*grid-template-columns:/);
   assert.match(designer, /itops\.networkMap\.strandDisplayLabel/);
   assert.match(designer, /itops\.networkMap\.strandDisplaySeparate/);
   assert.match(designer, /itops\.networkMap\.strandDisplayBundle/);
@@ -122,6 +141,14 @@ test("Network Nodes use the expanded device catalog and links expose complete do
   assert.match(types, /interface NetworkLinkStrand/);
   assert.match(types, /speed: string;/);
   assert.match(types, /status: NetworkMapStatus;/);
+  assert.match(types, /type NetworkLinkStatus = "up" \| "warning" \| "down"/);
+  assert.match(types, /status: NetworkLinkStatus;/);
+  assert.match(designer, /itops\.networkMap\.status\.down/);
+  assert.match(designer, /className="nm-edge-flow"/);
+  assert.match(styles, /\.react-flow__edge\.nm-edge .react-flow__edge-path\s*\{[\s\S]*stroke: var\(--green\)/);
+  assert.match(styles, /\.react-flow__edge\.nm-edge\.warning .nm-edge-flow \{ stroke: var\(--amber\); \}/);
+  assert.match(styles, /\.react-flow__edge\.nm-edge\.down .nm-edge-flow[\s\S]*stroke: var\(--red\)/);
+  assert.match(styles, /@keyframes nmLinkFlow/);
   assert.match(types, /\| "wirelessController"/);
 });
 

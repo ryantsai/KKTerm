@@ -1355,6 +1355,7 @@ pub enum NetworkNodeKind {
     Voip,
     Printer,
     Camera,
+    Geomap,
 }
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
@@ -1373,6 +1374,23 @@ pub enum NetworkMapStatus {
     #[default]
     Up,
     Warning,
+}
+
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum NetworkLinkStatus {
+    #[default]
+    Up,
+    Warning,
+    Down,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkGeomapViewport {
+    pub zoom: f64,
+    pub x: f64,
+    pub y: f64,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -1406,6 +1424,9 @@ pub struct NetworkNode {
     /// Optional palette index overriding the node kind's icon background.
     #[serde(default)]
     pub icon_accent: Option<u8>,
+    /// Cosmetic crop of the built-in world map for Geomap nodes.
+    #[serde(default)]
+    pub geomap_viewport: Option<NetworkGeomapViewport>,
     /// Named interfaces. Link members bind these stable ids.
     #[serde(default)]
     pub interfaces: Vec<NetworkNodeInterface>,
@@ -1487,7 +1508,7 @@ pub struct NetworkLink {
     pub tagged_vlan_ids: Vec<String>,
     /// Operator-authored documentation; What-If outages remain transient.
     #[serde(default)]
-    pub status: NetworkMapStatus,
+    pub status: NetworkLinkStatus,
     /// Pre-strand shape, read from saved graphs and folded into `strands` by
     /// `network_map_storage::sanitize_graph`. Never written back.
     #[serde(default, skip_serializing)]

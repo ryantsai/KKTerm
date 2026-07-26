@@ -1861,7 +1861,8 @@
         "compute": "计算与存储",
         "cloud": "云与广域网",
         "wireless": "无线",
-        "endpoints": "终端设备"
+        "endpoints": "终端设备",
+        "maps": "地图"
       },
       "nodeKind": {
         "router": "路由器",
@@ -1888,7 +1889,8 @@
         "iot": "物联网设备",
         "voip": "VoIP 电话",
         "printer": "打印机",
-        "camera": "监控摄像头"
+        "camera": "监控摄像头",
+        "geomap": "地理地图"
       },
       "linkKind": {
         "ethernet": "铜缆 / 以太网",
@@ -1904,6 +1906,11 @@
       "labelLabel": "标签",
       "labelPlaceholder": "例如 核心交换机",
       "kindLabel": "类型",
+      "geomapViewportLabel": "地图视图",
+      "geomapPreviewLabel": "所选世界地图视图",
+      "geomapViewportHint": "拖动地图以平移。滚动或使用滑块进行缩放。",
+      "geomapZoomLabel": "地图缩放",
+      "geomapReset": "重置视图",
       "addressLabel": "地址",
       "addressHint": "可选。显示在画布上标签的下方。",
       "addressPlaceholder": "例如 10.20.0.1",
@@ -1921,8 +1928,9 @@
       "iconBackgroundLabel": "Icon background",
       "statusLabel": "状态",
       "status": {
-        "up": "运行正常",
-        "warning": "性能下降 / 警告"
+        "up": "正常",
+        "warning": "性能下降",
+        "down": "中断"
       },
       "rootLabel": "入口节点",
       "rootHint": "可达性从这里开始衡量。未指定时，以第一个节点代替。",
@@ -1940,7 +1948,12 @@
       "strandDisplayLabel": "线路显示",
       "strandDisplaySeparate": "分开显示",
       "strandDisplayBundle": "合并为粗线",
-      "strandsHint": "每条物理链路一行。端口名称和速率按链路记录，因此可以逐条列出 LAG 的成员。",
+      "strandEditorTitle": "物理链路",
+      "strandCount_one": "{{count}} 条物理链路",
+      "strandCount_other": "{{count}} 条物理链路",
+      "strandEditAction": "编辑物理链路",
+      "strandEditHint": "打开紧凑的成员编辑器。",
+      "strandsHint": "每条物理链路在两个端点节点各有一个网络接口。添加链路时会创建并绑定两端接口。",
       "strandAdd": "添加链路",
       "strandNameLabel": "端口名称",
       "strandNamePlaceholder": "例如 Gi1/0/24",

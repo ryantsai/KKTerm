@@ -1861,7 +1861,8 @@
         "compute": "運算與儲存",
         "cloud": "雲端與廣域網路",
         "wireless": "無線",
-        "endpoints": "端點裝置"
+        "endpoints": "端點裝置",
+        "maps": "地圖"
       },
       "nodeKind": {
         "router": "路由器",
@@ -1888,7 +1889,8 @@
         "iot": "物聯網裝置",
         "voip": "VoIP 電話",
         "printer": "印表機",
-        "camera": "監視攝影機"
+        "camera": "監視攝影機",
+        "geomap": "地理地圖"
       },
       "linkKind": {
         "ethernet": "銅纜 / 乙太網路",
@@ -1904,6 +1906,11 @@
       "labelLabel": "標籤",
       "labelPlaceholder": "例如 核心交換器",
       "kindLabel": "類型",
+      "geomapViewportLabel": "地圖檢視",
+      "geomapPreviewLabel": "選取的世界地圖檢視",
+      "geomapViewportHint": "拖曳地圖即可平移。捲動或使用滑桿即可縮放。",
+      "geomapZoomLabel": "地圖縮放",
+      "geomapReset": "重設檢視",
       "addressLabel": "位址",
       "addressHint": "選填。顯示在畫布上標籤的下方。",
       "addressPlaceholder": "例如 10.20.0.1",
@@ -1921,8 +1928,9 @@
       "iconBackgroundLabel": "Icon background",
       "statusLabel": "狀態",
       "status": {
-        "up": "運作正常",
-        "warning": "效能下降 / 警告"
+        "up": "正常",
+        "warning": "效能降低",
+        "down": "中斷"
       },
       "rootLabel": "進入點",
       "rootHint": "可達性從這裡開始衡量。未指定時，會以第一個節點代替。",
@@ -1940,7 +1948,12 @@
       "strandDisplayLabel": "連線顯示",
       "strandDisplaySeparate": "分開顯示",
       "strandDisplayBundle": "合併為粗線",
-      "strandsHint": "每條實體鏈路一列。連接埠名稱與速率是逐條記錄的，因此可以列出 LAG 的每個成員。",
+      "strandEditorTitle": "實體連線",
+      "strandCount_one": "{{count}} 條實體連線",
+      "strandCount_other": "{{count}} 條實體連線",
+      "strandEditAction": "編輯實體連線",
+      "strandEditHint": "開啟精簡的成員編輯器。",
+      "strandsHint": "每條實體連線在兩端節點各有一個網路介面。新增連線時會建立並繫結兩端介面。",
       "strandAdd": "新增鏈路",
       "strandNameLabel": "連接埠名稱",
       "strandNamePlaceholder": "例如 Gi1/0/24",

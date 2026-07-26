@@ -1861,7 +1861,8 @@
         "compute": "Compute & Storage",
         "cloud": "Cloud & WAN",
         "wireless": "Wireless",
-        "endpoints": "Endpoints"
+        "endpoints": "Endpoints",
+        "maps": "Maps"
       },
       "nodeKind": {
         "router": "Router",
@@ -1888,7 +1889,8 @@
         "iot": "IoT Device",
         "voip": "VoIP Phone",
         "printer": "Printer",
-        "camera": "Security Camera"
+        "camera": "Security Camera",
+        "geomap": "Geomap"
       },
       "linkKind": {
         "ethernet": "Copper / Ethernet",
@@ -1904,6 +1906,11 @@
       "labelLabel": "Label",
       "labelPlaceholder": "e.g. Core switch",
       "kindLabel": "Type",
+      "geomapViewportLabel": "Map view",
+      "geomapPreviewLabel": "Selected world map view",
+      "geomapViewportHint": "Drag the map to pan. Scroll or use the slider to zoom.",
+      "geomapZoomLabel": "Map zoom",
+      "geomapReset": "Reset view",
       "addressLabel": "Address",
       "addressHint": "Optional. Shown under the label on the canvas.",
       "addressPlaceholder": "e.g. 10.20.0.1",
@@ -1921,8 +1928,9 @@
       "iconBackgroundLabel": "Icon background",
       "statusLabel": "Status",
       "status": {
-        "up": "Operational",
-        "warning": "Degraded / warning"
+        "up": "Healthy",
+        "warning": "Degraded",
+        "down": "Down"
       },
       "rootLabel": "Entry point",
       "rootHint": "Reachability is measured from here. With none set, the first node stands in.",
@@ -1940,7 +1948,12 @@
       "strandDisplayLabel": "Line display",
       "strandDisplaySeparate": "Separate lines",
       "strandDisplayBundle": "Bundled line",
-      "strandsHint": "One row per physical link. Port names and speeds are per link, so a LAG can list every member.",
+      "strandEditorTitle": "Physical links",
+      "strandCount_one": "{{count}} physical link",
+      "strandCount_other": "{{count}} physical links",
+      "strandEditAction": "Edit physical links",
+      "strandEditHint": "Open the compact member editor.",
+      "strandsHint": "Each physical link owns one interface on both endpoint nodes. Adding a link creates and binds both interfaces.",
       "strandAdd": "Add link",
       "strandNameLabel": "Port name",
       "strandNamePlaceholder": "e.g. Gi1/0/24",
