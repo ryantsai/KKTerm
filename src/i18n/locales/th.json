@@ -1052,7 +1052,8 @@
     "navigation": {
       "serverRooms": "ห้องเซิร์ฟเวอร์",
       "runHistory": "ประวัติการทำงาน",
-      "library": "คลัง"
+      "batchTasks": "งานแบบแบตช์",
+      "networking": "เครือข่าย"
     },
     "actions": {
       "newSite": "ไซต์ใหม่",

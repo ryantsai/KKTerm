@@ -1052,7 +1052,8 @@
     "navigation": {
       "serverRooms": "Sale server",
       "runHistory": "Storico delle esecuzioni",
-      "library": "Libreria"
+      "batchTasks": "Attività in batch",
+      "networking": "Rete"
     },
     "actions": {
       "newSite": "Nuovo sito",

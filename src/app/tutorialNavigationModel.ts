@@ -2,7 +2,7 @@ import type { ActivePage } from "./ActivityRail";
 import type { SettingsSectionId } from "../modules/settings/settingsAssistantContext";
 
 /** An IT Ops navigator destination the tutorial overlay can open: a Site's
- * predefined virtual pages, or one of the global Library root surfaces. */
+ * predefined virtual pages, or one of the global IT Ops root surfaces. */
 export type ItOpsNavigationDestination =
   | "site"
   | "serverRooms"

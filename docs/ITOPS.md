@@ -240,8 +240,8 @@ VLAN clears that reference and deletes nothing else.
 _Avoid_: subnet, broadcast domain (as the stored entity), IP Prefix
 
 **IPAM** — the global Module surface over those three durable tables, standing
-outside the Site tree in the navigator's Library section next to the Task
-Library. VLANs and IP Prefixes appear in one typed record grid; IP Address
+outside the Site tree in the navigator's Networking section next to Network
+Maps. VLANs and IP Prefixes appear in one typed record grid; IP Address
 Records remain nested beneath their containing Prefix. Its
 tree nesting, per-prefix `depth`, child counts, and utilization are
 **derived on every snapshot** from containment and VRF, never stored: adding
@@ -452,8 +452,8 @@ and `fail` stops that Host as failed. Any provider error, invalid JSON, or value
 outside this closed enum fails the Host. AI nodes never turn model text into a
 shell command or choose an arbitrary graph edge.
 
-Hosts, Automations, Run History, and the global Library destinations (Task
-Library, IPAM, Network Maps) share one destination-page frame: the same content inset, compact title/description
+Hosts, Automations, Run History, and the global Batch Tasks and Networking
+destinations (Task Library, IPAM, Network Maps) share one destination-page frame: the same content inset, compact title/description
 header, right-aligned primary actions, divider, and bordered-row rhythm. The
 Task Library keeps its spreadsheet-style Task table inside that frame rather
 than owning a separate full-height chrome layout. Each row shows Task kind, Applicable OS,
@@ -499,9 +499,11 @@ Network Maps (`src/modules/itops/NetworkMapDesigner.tsx`) is the one IT Ops
 destination with a canvas. Its initial state is a card list of every map,
 with a compact animated SVG preview and graph counts. The card list responds
 to the destination's available width from one to four columns, and its search
-matches map metadata plus every saved Network Node and Network Link field;
-opening a card enters one full map workspace, where the tab strip switches
-between the other maps and Back returns to the list. Every saved map also
+matches map metadata plus every saved Network Node and Network Link field.
+The overview alone owns its title, description, search, and New Map action.
+Opening a card enters one full map workspace with only the map name centered in
+the canvas toolbar; map selection and returning to the overview stay in the
+left navigator. Every saved map also
 appears as a depth-one child beneath the expandable Network Maps row in the IT
 Ops navigator; selecting a child opens that map directly, while selecting the
 parent opens the card list. It uses `@xyflow/react` the same way
@@ -1156,7 +1158,7 @@ metadata-only page-context projection.
 `itops_ip_prefixes`, `itops_ip_address_records`, and `itops_network_maps`;
 pure IPv4 maths in `src-tauri/src/itops/ipv4.rs`; repository +
 snapshot-derives-everything reads in `ipam_storage.rs` and
-`network_map_storage.rs`; twelve Tauri commands; two global Library
+`network_map_storage.rs`; twelve Tauri commands; two global Networking
 destinations in the navigator (`IpamPanel.tsx`, `NetworkMapDesigner.tsx`);
 and pure What-If reachability in `src/modules/itops/reachability.ts`. No
 assistant or MCP tools yet, and **no dependency on live device state** — the

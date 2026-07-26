@@ -134,7 +134,7 @@ A built-in Activity Rail Module that captures screenshots into a user-configurab
 _Avoid_: screenshot gallery page, capture tool, snipping module
 
 **IT Ops Module**:
-A built-in Activity Rail Module for site operations: **Sites**, **Hosts**, global reusable **Tasks**, **Batch Runs**, **Automations**, **VLANs**, **IPAM**, and **Network Maps**. Its operational navigator exposes Site-owned Server Rooms, Hosts, Automations, and Run History as separate destinations, plus a global Library section holding the Task Library, IPAM, and Network Maps; VLAN records are managed inside IPAM. Topology drills through Site View, Server Room View, and Rack View. The Site destination is its overview-only Site View and has no Hosts, Batch Runs, or Automations segmented control. Lives with Dashboard and Install Helper above Settings. Not a Connection, Session, or Dashboard widget. See `docs/ITOPS.md` and `docs/ADR/0011-it-ops-module.md`.
+A built-in Activity Rail Module for site operations: **Sites**, **Hosts**, global reusable **Tasks**, **Batch Runs**, **Automations**, **VLANs**, **IPAM**, and **Network Maps**. Its operational navigator exposes Site-owned Server Rooms, Hosts, Automations, and Run History as separate destinations, plus a global **Batch Tasks** section for the Task Library and a global **Networking** section for IPAM and Network Maps; VLAN records are managed inside IPAM. Topology drills through Site View, Server Room View, and Rack View. The Site destination is its overview-only Site View and has no Hosts, Batch Runs, or Automations segmented control. Lives with Dashboard and Install Helper above Settings. Not a Connection, Session, or Dashboard widget. See `docs/ITOPS.md` and `docs/ADR/0011-it-ops-module.md`.
 _Avoid_: operations center, site manager, orchestrator
 
 **Task**:
@@ -150,7 +150,7 @@ A durable 802.1Q VLAN record stored in `itops_vlans`, global to the IT Ops Modul
 _Avoid_: subnet, broadcast domain (as the stored entity), IP Prefix, network segment
 
 **IPAM**:
-The global IT Ops address-plan destination in the navigator's Library section. It manages **VLANs** and **IP Prefixes** in one typed record grid, with **IP Address Records** nested under Prefixes. It never scans automatically, and an explicit bounded discovery scan stays transient until the operator imports selected results. It does not lease or reserve anything on the network. Prefix nesting, depth, and utilization are recomputed from containment on every read and are never stored, so adding a wider prefix silently re-parents the blocks it now contains. IPAM is a view over three durable tables, not a durable entity itself.
+The global IT Ops address-plan destination in the navigator's Networking section. It manages **VLANs** and **IP Prefixes** in one typed record grid, with **IP Address Records** nested under Prefixes. It never scans automatically, and an explicit bounded discovery scan stays transient until the operator imports selected results. It does not lease or reserve anything on the network. Prefix nesting, depth, and utilization are recomputed from containment on every read and are never stored, so adding a wider prefix silently re-parents the blocks it now contains. IPAM is a view over three durable tables, not a durable entity itself.
 _Avoid_: subnet manager, DHCP, address scanner, DDI
 
 **IP Prefix**:

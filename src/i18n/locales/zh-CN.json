@@ -1052,7 +1052,8 @@
     "navigation": {
       "serverRooms": "机房",
       "runHistory": "运行历史",
-      "library": "库"
+      "batchTasks": "批量任务",
+      "networking": "网络"
     },
     "actions": {
       "newSite": "新建站点",

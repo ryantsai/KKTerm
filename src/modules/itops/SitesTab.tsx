@@ -161,10 +161,10 @@ const DEFAULT_SITE_ID = "default-fleet";
 type SiteDestination = "site" | "serverRooms" | "hosts" | "runHistory" | "automations";
 
 /** Which top-level surface the detail pane shows: one Site's drill-down, or a
- * global Library page that stands outside the Site tree entirely. */
+ * global destination that stands outside the Site tree entirely. */
 type RootSurface = "site" | "tasks" | "ipam" | "networkMaps";
 
-/** Library surfaces mapped to the navigation destination they report and the
+/** Global surfaces mapped to the navigation destination they report and the
  * tree node id they highlight. Keyed so adding a page touches one place. */
 const LIBRARY_SURFACES = {
   tasks: { destination: "taskLibrary", nodeId: "itops:tasks" },
@@ -445,7 +445,7 @@ export function SitesTab({
       return;
     }
     useItOpsStore.getState().clearNavigation();
-    // Library destinations stand outside the Site tree, so they resolve without
+    // Global destinations stand outside the Site tree, so they resolve without
     // one. Matching them here also narrows the rest to a Site destination.
     const destination = pendingNavigation.destination ?? "site";
     if (destination === "taskLibrary") {
@@ -1172,8 +1172,9 @@ export function SitesTab({
                   </div>
                 );
               })}
-              <div className="ft-tree-library-label">{t("itops.navigation.library")}</div>
+              <div className="ft-tree-section-label">{t("itops.navigation.batchTasks")}</div>
               <TreeRow depth={0} icon="code" label={t("itops.tasks.heading")} count={taskCount} hasChildren={false} open={false} selected={rootSurface === "tasks"} onSelect={() => setRootSurface("tasks")} />
+              <div className="ft-tree-section-label">{t("itops.navigation.networking")}</div>
               <TreeRow depth={0} icon="table" label={t("itops.ipam.heading")} count={ipamItemCount} hasChildren={false} open={false} selected={rootSurface === "ipam"} onSelect={() => setRootSurface("ipam")} />
               <TreeRow
                 depth={0}

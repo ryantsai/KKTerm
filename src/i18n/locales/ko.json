@@ -1052,7 +1052,8 @@
     "navigation": {
       "serverRooms": "서버실",
       "runHistory": "실행 기록",
-      "library": "라이브러리"
+      "batchTasks": "일괄 작업",
+      "networking": "네트워크"
     },
     "actions": {
       "newSite": "새 사이트",

@@ -7722,8 +7722,8 @@
 .itops-page .it-host-select-all input { accent-color: var(--accent); }
 .itops-page .it-host-select:disabled { opacity: 0.35; }
 
-/* Global Task Library: reusable definitions stay outside Site ownership. */
-.itops-page .ft-tree-library-label {
+/* Global navigator sections: reusable definitions stay outside Site ownership. */
+.itops-page .ft-tree-section-label {
   margin: 14px 10px 5px;
   color: var(--text-faint);
   font-size: 10px;
@@ -8637,8 +8637,6 @@
   cursor: pointer;
 }
 .itops-page .nm-gallery-open:focus-visible,
-.itops-page .nm-back:focus-visible,
-.itops-page .nm-tab:focus-visible,
 .itops-page .nm-mode-action:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--accent) 76%, transparent);
   outline-offset: -2px;
@@ -8804,77 +8802,6 @@
   min-height: 0;
   flex-direction: column;
 }
-.itops-page .nm-detail-nav {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 9px;
-  padding: 10px 0;
-}
-.itops-page .nm-back {
-  display: inline-flex;
-  height: 29px;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 4px;
-  padding: 0 9px 0 7px;
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  background: var(--surface);
-  color: var(--text-muted);
-  font: inherit;
-  font-size: 11px;
-  cursor: pointer;
-  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
-}
-.itops-page .nm-back:hover {
-  border-color: var(--border-strong);
-  background: var(--hover);
-  color: var(--text);
-}
-.itops-page .nm-tabs {
-  display: flex;
-  min-width: 0;
-  flex: 1;
-  gap: 3px;
-  overflow-x: auto;
-  scrollbar-width: thin;
-}
-.itops-page .nm-tab {
-  display: inline-flex;
-  height: 29px;
-  min-width: 0;
-  max-width: 210px;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 6px;
-  padding: 0 11px;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--text-muted);
-  font: inherit;
-  font-size: 11.5px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
-}
-.itops-page .nm-tab span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.itops-page .nm-tab:hover {
-  background: var(--hover);
-  color: var(--text);
-}
-.itops-page .nm-tab[data-active="true"] {
-  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-
 .itops-page .nm-editor {
   display: flex;
   flex: 1;
@@ -8893,6 +8820,20 @@
   justify-content: space-between;
   padding: 4px 8px;
   border-bottom: 1px solid var(--hairline);
+}
+.itops-page .nm-editor-title {
+  position: absolute;
+  left: 50%;
+  max-width: min(42%, 420px);
+  margin: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 680;
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  transform: translateX(-50%);
+  white-space: nowrap;
 }
 .itops-page .nm-mode-action-wrap {
   display: inline-flex;
@@ -8933,7 +8874,11 @@
 }
 /* .au-canvas already supplies the surface-muted background for both modes. */
 .itops-page .nm-canvas { min-height: 360px; }
-.itops-page .nm-side { flex: 0 0 300px; }
+.itops-page .nm-side {
+  flex: 0 0 300px;
+  align-items: stretch;
+}
+.itops-page .nm-side > .au-side-in { width: 100%; }
 
 .itops-page .nm-picker-groups {
   display: flex;

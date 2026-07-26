@@ -41,7 +41,7 @@ import type { DashboardBackground } from "../dashboard/types";
 import type { WatchdogConfig } from "../../watchdog/types";
 import { sanitizeRoomObjects, type RoomObject } from "./roomObjects";
 
-/** Every place the IT Ops navigator can land. The last three are global Library
+/** Every place the IT Ops navigator can land. The last three are global
  * destinations that stand outside any one Site. */
 export type ItOpsDestination =
   | "site"
@@ -55,7 +55,7 @@ export type ItOpsDestination =
   | "networkMaps";
 
 /** A navigator selection requested from outside the Module: which Site to
- * select and which of its destinations (or a global Library page) to open. */
+ * select and which of its destinations (or a global destination) to open. */
 export interface ItOpsNavigationRequest {
   siteId?: string;
   destination?: ItOpsDestination;

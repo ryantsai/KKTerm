@@ -1052,7 +1052,8 @@
     "navigation": {
       "serverRooms": "Salles de serveurs",
       "runHistory": "Historique d’exécutions",
-      "library": "Bibliothèque"
+      "batchTasks": "Tâches par lots",
+      "networking": "Réseau"
     },
     "actions": {
       "newSite": "Nouveau site",

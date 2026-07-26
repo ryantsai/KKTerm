@@ -1052,7 +1052,8 @@
     "navigation": {
       "serverRooms": "Server Rooms",
       "runHistory": "Run History",
-      "library": "Library"
+      "batchTasks": "Batch Tasks",
+      "networking": "Networking"
     },
     "actions": {
       "newSite": "New Site",

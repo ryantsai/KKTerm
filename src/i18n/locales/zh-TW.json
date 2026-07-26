@@ -1052,7 +1052,8 @@
     "navigation": {
       "serverRooms": "機房",
       "runHistory": "執行記錄",
-      "library": "任務庫"
+      "batchTasks": "批次工作",
+      "networking": "網路"
     },
     "actions": {
       "newSite": "新增站台",

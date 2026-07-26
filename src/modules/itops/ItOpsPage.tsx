@@ -52,7 +52,7 @@ export function ItOpsPage({
       ? (sites.find((site) => site.id === navigationSnapshot.siteId)?.name ??
         navigationSnapshot.siteId)
       : null;
-    // Library destinations stand outside the Site tree, so naming a Site
+    // Global destinations stand outside the Site tree, so naming a Site
     // alongside them would misdescribe the selection.
     const librarySelection =
       navigationSnapshot?.destination === "taskLibrary"

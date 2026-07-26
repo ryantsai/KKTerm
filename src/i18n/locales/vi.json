@@ -1052,7 +1052,8 @@
     "navigation": {
       "serverRooms": "Phòng máy chủ",
       "runHistory": "Lịch sử chạy",
-      "library": "Thư viện"
+      "batchTasks": "Tác vụ hàng loạt",
+      "networking": "Mạng"
     },
     "actions": {
       "newSite": "Site mới",

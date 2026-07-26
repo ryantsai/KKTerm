@@ -11,7 +11,7 @@
 // Built on @xyflow/react like the Automation editor. Node positions live in the
 // graph itself (they are part of the saved document), so a drag is an edit.
 
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import {
@@ -1567,6 +1567,7 @@ function MapEditor({
   const [linkDialog, setLinkDialog] = useState<LinkDialogRequest | null>(null);
   const [placementDraft, setPlacementDraft] = useState<PlacementDraft | null>(null);
   const [placementPoint, setPlacementPoint] = useState<{ x: number; y: number } | null>(null);
+  const suppressPlacementClickRef = useRef(false);
   // Which VLAN the overlay spotlights. Purely a view filter: it never edits the
   // graph and never feeds the reachability analysis, which stays VLAN-blind.
   const [spotlightVlanId, setSpotlightVlanId] = useState<string | null>(null);
@@ -1655,8 +1656,9 @@ function MapEditor({
       id: note.id,
       type: "networkNote",
       position: { x: note.x, y: note.y },
+      width: note.width,
+      height: note.height,
       zIndex: 0,
-      style: { width: note.width, height: note.height },
       data: {
         text: note.text || t("itops.networkMap.notePlaceholder"),
         accent: noteAccent(note),
@@ -1668,8 +1670,9 @@ function MapEditor({
       id: node.id,
       type: "networkNode",
       position: { x: node.x, y: node.y },
+      width: node.width,
+      height: node.height,
       zIndex: 2,
-      style: { width: node.width, height: node.height },
       data: {
         label: nodeLabel(node, unnamed),
         sub: node.addresses.join(" · ") || t(`itops.networkMap.nodeKind.${node.kind}`),
@@ -1696,13 +1699,14 @@ function MapEditor({
           id: node.id,
           type: "networkNode",
           position: placementPoint,
+          width: node.width,
+          height: node.height,
           zIndex: 3,
           className: "nm-placement-ghost-node",
           draggable: false,
           selectable: false,
           connectable: false,
           focusable: false,
-          style: { width: node.width, height: node.height },
           data: {
             label: nodeLabel(node, unnamed),
             sub: node.addresses.join(" · ") || t(`itops.networkMap.nodeKind.${node.kind}`),
@@ -1723,12 +1727,13 @@ function MapEditor({
           id: note.id,
           type: "networkNote",
           position: placementPoint,
+          width: note.width,
+          height: note.height,
           zIndex: 3,
           className: "nm-placement-ghost-node",
           draggable: false,
           selectable: false,
           focusable: false,
-          style: { width: note.width, height: note.height },
           data: {
             text: note.text || t("itops.networkMap.notePlaceholder"),
             accent: noteAccent(note),
@@ -2145,6 +2150,7 @@ function MapEditor({
             )}
           </button>
         </div>
+        <h2 className="nm-editor-title" title={map.name}>{map.name}</h2>
         <div className="it-drill-actions" aria-label={t("itops.actions.viewActions")}>
           <button
             type="button"
@@ -2206,7 +2212,14 @@ function MapEditor({
             }
             event.preventDefault();
             event.stopPropagation();
+            suppressPlacementClickRef.current = true;
             placeDraftAt(event.clientX, event.clientY);
+          }}
+          onClickCapture={(event) => {
+            if (!suppressPlacementClickRef.current) return;
+            suppressPlacementClickRef.current = false;
+            event.preventDefault();
+            event.stopPropagation();
           }}
           onContextMenu={(event) => {
             if (!placementDraft) return;
@@ -2652,21 +2665,23 @@ export function NetworkMapDesigner({
 
   return (
     <div className="nm-page it-destination-surface" data-tutorial-id="itops.networkMaps">
-      <div className="it-destination-page-head">
-        <div>
-          <h2>{t("itops.networkMap.heading")}</h2>
-          <p>{t("itops.networkMap.pageDescription")}</p>
+      {!selected ? (
+        <div className="it-destination-page-head">
+          <div>
+            <h2>{t("itops.networkMap.heading")}</h2>
+            <p>{t("itops.networkMap.pageDescription")}</p>
+          </div>
+          <button
+            type="button"
+            className="it-btn primary"
+            data-tutorial-id="itops.networkMapNew"
+            onClick={() => setDialog(null)}
+          >
+            <ItIcon name="plus" size={14} />
+            {t("itops.networkMap.newMapTitle")}
+          </button>
         </div>
-        <button
-          type="button"
-          className="it-btn primary"
-          data-tutorial-id="itops.networkMapNew"
-          onClick={() => setDialog(null)}
-        >
-          <ItIcon name="plus" size={14} />
-          {t("itops.networkMap.newMapTitle")}
-        </button>
-      </div>
+      ) : null}
 
       {maps.length > 0 && !selected ? (
         <div className="nm-gallery-toolbar" role="search">
@@ -2685,33 +2700,6 @@ export function NetworkMapDesigner({
 
       {maps.length > 0 && selected ? (
         <div className="nm-detail">
-          <div className="nm-detail-nav">
-            <button
-              type="button"
-              className="nm-back"
-              onClick={() => selectMap("")}
-              aria-label={t("itops.actions.back")}
-            >
-              <ItIcon name="chevL" size={13} />
-              {t("itops.actions.back")}
-            </button>
-            <div className="nm-tabs" role="tablist" aria-label={t("itops.networkMap.heading")}>
-              {maps.map((map) => (
-                <button
-                  key={map.id}
-                  type="button"
-                  className="nm-tab"
-                  role="tab"
-                  aria-selected={map.id === selected.id}
-                  data-active={map.id === selected.id}
-                  onClick={() => selectMap(map.id)}
-                >
-                  <ItIcon name="network" size={13} />
-                  <span>{map.name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
           {/* Keyed by id so switching maps starts a fresh draft rather than
               carrying the previous map's unsaved edits across. */}
           <MapEditor

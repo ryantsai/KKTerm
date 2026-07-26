@@ -1052,7 +1052,8 @@
     "navigation": {
       "serverRooms": "サーバールーム",
       "runHistory": "実行履歴",
-      "library": "ライブラリ"
+      "batchTasks": "バッチタスク",
+      "networking": "ネットワーク"
     },
     "actions": {
       "newSite": "新規サイト",

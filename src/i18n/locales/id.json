@@ -1052,7 +1052,8 @@
     "navigation": {
       "serverRooms": "Ruang server",
       "runHistory": "Riwayat eksekusi",
-      "library": "Pustaka"
+      "batchTasks": "Tugas batch",
+      "networking": "Jaringan"
     },
     "actions": {
       "newSite": "Situs baru",

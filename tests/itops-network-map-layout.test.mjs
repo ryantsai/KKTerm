@@ -4,15 +4,17 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("Network Maps open as a gallery and keep map switching inside the focused workspace", async () => {
+test("Network Maps keep overview chrome out of the focused map workspace", async () => {
   const designer = await read("src/modules/itops/NetworkMapDesigner.tsx");
   const styles = await read("src/modules/itops/itops.css");
 
   assert.match(designer, /className="nm-gallery"/);
   assert.match(designer, /<NetworkMapPreview map=\{map\}/);
-  assert.match(designer, /className="nm-detail-nav"/);
-  assert.match(designer, /className="nm-tabs" role="tablist"/);
-  assert.match(designer, /onClick=\{\(\) => selectMap\(""\)\}/);
+  assert.match(designer, /\{!selected \? \([\s\S]*className="it-destination-page-head"/);
+  assert.match(designer, /className="nm-editor-title" title=\{map\.name\}>\{map\.name\}<\/h2>/);
+  assert.doesNotMatch(designer, /className="nm-detail-nav"/);
+  assert.doesNotMatch(designer, /className="nm-tabs" role="tablist"/);
+  assert.doesNotMatch(designer, /className="nm-back"/);
   assert.match(designer, /className="nm-toolbar it-drill-toolbar"/);
   assert.match(designer, /className="nm-mode-action"/);
   assert.doesNotMatch(designer, /className="rm-segmented"/);
@@ -25,7 +27,38 @@ test("Network Maps open as a gallery and keep map switching inside the focused w
   assert.match(styles, /@keyframes nmPreviewFlow/);
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(styles, /\.nm-picker-grid\s*\{[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(styles, /\.nm-editor-title\s*\{/);
+  assert.doesNotMatch(styles, /\.nm-detail-nav\s*\{|\.nm-back\s*\{|\.nm-tabs\s*\{|\.nm-tab\s*\{/);
   assert.doesNotMatch(styles, /\.nm-palette-btn/);
+});
+
+test("IT Ops separates Batch Tasks from Networking in every locale", async () => {
+  const sites = await read("src/modules/itops/SitesTab.tsx");
+  const locales = [
+    "en", "de", "es", "es-MX", "fr", "id", "it",
+    "ja", "ko", "pt-BR", "th", "vi", "zh-CN", "zh-TW",
+  ];
+
+  assert.match(
+    sites,
+    /itops\.navigation\.batchTasks[\s\S]*itops\.tasks\.heading[\s\S]*itops\.navigation\.networking[\s\S]*itops\.ipam\.heading[\s\S]*itops\.networkMap\.heading/,
+  );
+
+  for (const locale of locales) {
+    const messages = JSON.parse(await read(`src/i18n/locales/${locale}.json`));
+    assert.ok(messages.itops.navigation.batchTasks, `${locale} should translate Batch Tasks`);
+    assert.ok(messages.itops.navigation.networking, `${locale} should translate Networking`);
+    assert.notEqual(
+      messages.itops.navigation.batchTasks,
+      messages.itops.tasks.heading,
+      `${locale} section header should stay distinct from Task Library`,
+    );
+  }
+
+  const zhTw = JSON.parse(await read("src/i18n/locales/zh-TW.json"));
+  assert.equal(zhTw.itops.navigation.batchTasks, "批次工作");
+  assert.equal(zhTw.itops.navigation.networking, "網路");
+  assert.equal(zhTw.itops.tasks.heading, "任務庫");
 });
 
 test("Network Nodes use the expanded device catalog and links expose complete documented properties", async () => {
@@ -94,11 +127,19 @@ test("Network Maps configure palette items before ghost placement and expose nat
   assert.match(designer, /className: "nm-placement-ghost-node"/);
   assert.match(
     designer,
+    /position: placementPoint,\s*width: node\.width,\s*height: node\.height,\s*zIndex: 3/,
+  );
+  assert.match(
+    designer,
     /onPointerMoveCapture=\{\(event\) =>[\s\S]*updatePlacementPoint\(event\.clientX, event\.clientY\)/,
   );
   assert.match(
     designer,
     /onPointerDownCapture=\{\(event\) => \{[\s\S]*event\.button !== 0[\s\S]*placeDraftAt\(event\.clientX, event\.clientY\)/,
+  );
+  assert.match(
+    designer,
+    /onClickCapture=\{\(event\) => \{[\s\S]*suppressPlacementClickRef\.current[\s\S]*event\.stopPropagation\(\)/,
   );
   assert.doesNotMatch(
     designer,
@@ -133,6 +174,7 @@ test("Network Maps configure palette items before ghost placement and expose nat
   assert.match(styles, /--nm-note-accent/);
   assert.match(styles, /\.nm-placement-ghost-node\s*\{/);
   assert.match(styles, /\.nm-node\.ghost,/);
+  assert.match(styles, /\.nm-side\s*\{[\s\S]*align-items: stretch;/);
 
   assert.match(sites, /const networkMaps = useItOpsStore\(\(state\) => state\.networkMaps\)/);
   assert.match(
