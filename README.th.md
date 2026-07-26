@@ -256,18 +256,6 @@ Module **Screenshots** จับภาพพื้นที่ที่เลื
 
 ---
 
-## ประวัติดาว
-
-<a href="https://www.star-history.com/#ryantsai/KKTerm&Date">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=ryantsai/KKTerm&type=Date&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=ryantsai/KKTerm&type=Date" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=ryantsai/KKTerm&type=Date" />
-  </picture>
-</a>
-
----
-
 ## สัญญาอนุญาต
 
 MIT ดู [LICENSE](LICENSE) ใช้มัน fork มัน ส่งมันออกไป เอามันไปไว้ในโฮมแล็บที่ไม่มีใครหาเจอ — นั่นแหละข้อตกลง

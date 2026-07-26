@@ -256,18 +256,6 @@ L'installation complète, la structure du projet et la checklist de PR sont dans
 
 ---
 
-## Historique des étoiles
-
-<a href="https://www.star-history.com/#ryantsai/KKTerm&Date">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=ryantsai/KKTerm&type=Date&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=ryantsai/KKTerm&type=Date" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=ryantsai/KKTerm&type=Date" />
-  </picture>
-</a>
-
----
-
 ## Licence
 
 MIT. Voir [LICENSE](LICENSE). Utilisez-le, forkez-le, livrez-le, mettez-le dans un homelab que personne d'autre ne trouvera — c'est le marché.
