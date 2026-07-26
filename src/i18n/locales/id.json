@@ -1854,6 +1854,7 @@
       "saveChanges": "Simpan perubahan",
       "saved": "Tersimpan",
       "paletteLabel": "Tambahkan ke peta",
+      "addNode": "Tambah simpul",
       "nodeCategory": {
         "core": "Inti & Routing",
         "security": "Keamanan",

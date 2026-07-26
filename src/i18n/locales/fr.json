@@ -1854,6 +1854,7 @@
       "saveChanges": "Enregistrer les modifications",
       "saved": "Enregistré",
       "paletteLabel": "Ajouter à la carte",
+      "addNode": "Ajouter un nœud",
       "nodeCategory": {
         "core": "Cœur & routage",
         "security": "Sécurité",

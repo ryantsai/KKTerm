@@ -257,7 +257,7 @@ function GeomapArtwork({
 
 function clampGeomapViewport(viewport: NetworkGeomapViewport): NetworkGeomapViewport {
   return {
-    zoom: Math.min(4, Math.max(1, viewport.zoom)),
+    zoom: Math.min(100, Math.max(1, viewport.zoom)),
     x: Math.min(100, Math.max(0, viewport.x)),
     y: Math.min(100, Math.max(0, viewport.y)),
   };
@@ -316,7 +316,7 @@ function GeomapViewportEditor({
         }}
         onWheel={(event) => {
           event.preventDefault();
-          setZoom(value.zoom + (event.deltaY < 0 ? 0.1 : -0.1));
+          setZoom(value.zoom * (event.deltaY < 0 ? 1.1 : 1 / 1.1));
         }}
       >
         <GeomapArtwork viewport={value} className="nm-geomap-editor-image" />
@@ -327,7 +327,7 @@ function GeomapViewportEditor({
         <input
           type="range"
           min="1"
-          max="4"
+          max="100"
           step="0.05"
           value={value.zoom}
           aria-label={t("itops.networkMap.geomapZoomLabel")}
@@ -554,10 +554,10 @@ function MapNode({ data }: NodeProps<Node<MapNodeData>>) {
   return (
     <div
       className={`nm-node${data.selected ? " sel" : ""}${data.ghost ? " ghost" : ""}`}
-      data-state={data.state}
+      data-state={data.kind === "geomap" ? undefined : data.state}
       data-kind={data.kind}
-      data-root={data.root ? "true" : undefined}
-      data-has-note={note ? "true" : undefined}
+      data-root={data.kind !== "geomap" && data.root ? "true" : undefined}
+      data-has-note={data.kind !== "geomap" && note ? "true" : undefined}
       data-placement-ghost={data.ghost ? "true" : undefined}
       style={{ width: "100%", height: "100%" }}
     >
@@ -592,10 +592,6 @@ function MapNode({ data }: NodeProps<Node<MapNodeData>>) {
             viewport={data.geomapViewport}
             className="nm-geomap-node-image"
           />
-          <span className="nm-geomap-node-caption">
-            <strong>{data.label}</strong>
-            {data.sub ? <small>{data.sub}</small> : null}
-          </span>
         </span>
       ) : (
         <span className="nm-node-content">
@@ -608,13 +604,13 @@ function MapNode({ data }: NodeProps<Node<MapNodeData>>) {
           </span>
         </span>
       )}
-      {note ? <span className="nm-node-note">{note}</span> : null}
-      {data.root ? (
+      {data.kind !== "geomap" && note ? <span className="nm-node-note">{note}</span> : null}
+      {data.kind !== "geomap" && data.root ? (
         <span className="nm-node-root" title={data.rootLabel}>
           <ItIcon name="pulse" size={11} />
         </span>
       ) : null}
-      {data.state === "warning" ? (
+      {data.kind !== "geomap" && data.state === "warning" ? (
         <span className="nm-node-warning" title={data.warningLabel}>
           !
         </span>
@@ -1212,9 +1208,11 @@ function NodeInterfaceEditor({
 
 function NodePropertiesFields({
   node,
+  showKindPicker,
   onChange,
 }: {
   node: NetworkNode;
+  showKindPicker: boolean;
   onChange: (patch: Partial<NetworkNode>) => void;
 }) {
   const { t } = useTranslation();
@@ -1254,28 +1252,30 @@ function NodePropertiesFields({
           autoFocus
         />
       </Field>
-      <Field label={t("itops.networkMap.kindLabel")}>
-        <Select
-          value={node.kind}
-          onChange={(event) => {
-            const kind = event.currentTarget.value as NetworkNodeKind;
-            onChange({
-              kind,
-              geomapViewport:
-                kind === "geomap"
-                  ? node.geomapViewport ?? DEFAULT_GEOMAP_VIEWPORT
-                  : null,
-              ...(kind === "geomap" && node.kind !== "geomap"
-                ? { width: 320, height: 190 }
-                : {}),
-            });
-          }}
-          options={NODE_KINDS.map((kind) => ({
-            value: kind,
-            label: t(`itops.networkMap.nodeKind.${kind}`),
-          }))}
-        />
-      </Field>
+      {showKindPicker ? (
+        <Field label={t("itops.networkMap.kindLabel")}>
+          <Select
+            value={node.kind}
+            onChange={(event) => {
+              const kind = event.currentTarget.value as NetworkNodeKind;
+              onChange({
+                kind,
+                geomapViewport:
+                  kind === "geomap"
+                    ? node.geomapViewport ?? DEFAULT_GEOMAP_VIEWPORT
+                    : null,
+                ...(kind === "geomap" && node.kind !== "geomap"
+                  ? { width: 320, height: 190 }
+                  : {}),
+              });
+            }}
+            options={NODE_KINDS.map((kind) => ({
+              value: kind,
+              label: t(`itops.networkMap.nodeKind.${kind}`),
+            }))}
+          />
+        </Field>
+      ) : null}
       {node.kind === "geomap" ? (
         <Field label={t("itops.networkMap.geomapViewportLabel")}>
           <GeomapViewportEditor
@@ -1433,6 +1433,7 @@ function NodePropertiesDialog({
       >
         <NodePropertiesFields
           node={draft}
+          showKindPicker={!placement}
           onChange={(patch) => setDraft((current) => ({ ...current, ...patch }))}
         />
       </Sheet>
@@ -2387,7 +2388,13 @@ type LinkDialogRequest = {
   link: NetworkLink;
 };
 
-function MapEditor({ map }: { map: NetworkMap }) {
+function MapEditor({
+  map,
+  onOpenProperties,
+}: {
+  map: NetworkMap;
+  onOpenProperties: (map: NetworkMap) => void;
+}) {
   const { t } = useTranslation();
   const saveNetworkMap = useItOpsStore((state) => state.saveNetworkMap);
   const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
@@ -2404,6 +2411,7 @@ function MapEditor({ map }: { map: NetworkMap }) {
   const [linkDialog, setLinkDialog] = useState<LinkDialogRequest | null>(null);
   const [placementDraft, setPlacementDraft] = useState<PlacementDraft | null>(null);
   const [placementPoint, setPlacementPoint] = useState<{ x: number; y: number } | null>(null);
+  const [dragAnchorNodes, setDragAnchorNodes] = useState<NetworkNode[] | null>(null);
   const suppressPlacementClickRef = useRef(false);
   // Which VLAN the overlay spotlights. Purely a view filter: it never edits the
   // graph and never feeds the reachability analysis, which stays VLAN-blind.
@@ -2540,6 +2548,20 @@ function MapEditor({ map }: { map: NetworkMap }) {
     () => new Map(graph.nodes.map((node) => [node.id, node])),
     [graph.nodes],
   );
+  // Keep each Link attached to the same pair of side handles while a node is
+  // moving. React Flow can then update the existing SVG path from its live node
+  // coordinates instead of receiving a rebuilt Edge on every drag frame,
+  // which preserves the link's CSS animation until the drag settles.
+  const edgeAnchorNodes = dragAnchorNodes ?? graph.nodes;
+  const edgeNodesById = useMemo(
+    () => new Map(edgeAnchorNodes.map((node) => [node.id, node])),
+    [edgeAnchorNodes],
+  );
+  const severedLinkSignature = analysis.severedLinks.join("\u0000");
+  const severedLinkIds = useMemo(
+    () => new Set(severedLinkSignature ? severedLinkSignature.split("\u0000") : []),
+    [severedLinkSignature],
+  );
 
   const unnamed = t("itops.networkMap.unnamedNode");
   const nodes = useMemo<Node<MapNodeData | MapNoteData>[]>(() => {
@@ -2552,7 +2574,7 @@ function MapEditor({ map }: { map: NetworkMap }) {
       width: note.width,
       height: note.height,
       selected: selection?.kind === "note" && selection.id === note.id,
-      zIndex: 0,
+      zIndex: 1,
       data: {
         text: note.text || t("itops.networkMap.notePlaceholder"),
         accent: noteAccent(note),
@@ -2567,7 +2589,7 @@ function MapEditor({ map }: { map: NetworkMap }) {
       width: node.width,
       height: node.height,
       selected: selection?.kind === "node" && selection.id === node.id,
-      zIndex: 2,
+      zIndex: node.kind === "geomap" ? 0 : 3,
       data: {
         label: nodeLabel(node, unnamed),
         sub:
@@ -2600,7 +2622,7 @@ function MapEditor({ map }: { map: NetworkMap }) {
           position: placementPoint,
           width: node.width,
           height: node.height,
-          zIndex: 3,
+          zIndex: 4,
           className: "nm-placement-ghost-node",
           draggable: false,
           selectable: false,
@@ -2632,7 +2654,7 @@ function MapEditor({ map }: { map: NetworkMap }) {
           position: placementPoint,
           width: note.width,
           height: note.height,
-          zIndex: 3,
+          zIndex: 4,
           className: "nm-placement-ghost-node",
           draggable: false,
           selectable: false,
@@ -2662,13 +2684,12 @@ function MapEditor({ map }: { map: NetworkMap }) {
   ]);
 
   const edges = useMemo<Edge<NetworkLinkEdgeData>[]>(() => {
-    const severed = new Set(analysis.severedLinks);
     return graph.links.flatMap((link) => {
-      const from = nodesById.get(link.from);
-      const to = nodesById.get(link.to);
+      const from = edgeNodesById.get(link.from);
+      const to = edgeNodesById.get(link.to);
       if (!from || !to) return [];
       const { source, target } = anchors(from, to);
-      const state = severed.has(link.id)
+      const state = severedLinkIds.has(link.id)
         ? "severed"
         : link.status === "down"
           ? "down"
@@ -2694,7 +2715,7 @@ function MapEditor({ map }: { map: NetworkMap }) {
           target: link.to,
           sourceHandle: source,
           targetHandle: target,
-          zIndex: 1,
+          zIndex: 2,
           className: `nm-edge ${link.kind} ${state}${strandCount > 1 ? " multi" : ""}${
             selection?.kind === "link" && selection.id === link.id ? " sel" : ""
           }${spotlightVlanId && !spotlit ? " dimmed" : ""}`,
@@ -2713,10 +2734,10 @@ function MapEditor({ map }: { map: NetworkMap }) {
       ];
     });
   }, [
-    analysis.severedLinks,
+    edgeNodesById,
     graph.links,
-    nodesById,
     selection,
+    severedLinkIds,
     spotlightVlanId,
     t,
     vlanIndex,
@@ -3039,6 +3060,39 @@ function MapEditor({ map }: { map: NetworkMap }) {
     );
   }
 
+  function showCanvasContextMenu(
+    event: MouseEvent | ReactMouseEvent<Element>,
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (placementDraft) {
+      cancelPlacement();
+      return;
+    }
+    setSelection(null);
+    void showNativeContextMenu(
+      [
+        {
+          kind: "item",
+          label: t("itops.networkMap.addNode"),
+          iconSvg: nativeMenuIcons.plus,
+          action: () => {
+            setObjectBrowserOpen(true);
+            setSelection(null);
+            cancelPlacement();
+          },
+        },
+        {
+          kind: "item",
+          label: t("common.properties"),
+          iconSvg: nativeMenuIcons.pencil,
+          action: () => onOpenProperties({ ...map, graph }),
+        },
+      ],
+      { x: event.clientX, y: event.clientY },
+    );
+  }
+
   return (
     <div className="nm-editor">
       <div className="nm-toolbar it-drill-toolbar">
@@ -3103,6 +3157,8 @@ function MapEditor({ map }: { map: NetworkMap }) {
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             onNodesChange={onNodesChange}
+            onNodeDragStart={() => setDragAnchorNodes(graph.nodes)}
+            onNodeDragStop={() => setDragAnchorNodes(null)}
             onConnect={onConnect}
             onInit={setFlowInstance}
             onNodeClick={(_event, node) => {
@@ -3132,6 +3188,7 @@ function MapEditor({ map }: { map: NetworkMap }) {
             onPaneClick={() => {
               if (!placementDraft) setSelection(null);
             }}
+            onPaneContextMenu={showCanvasContextMenu}
             connectionMode={ConnectionMode.Loose}
             nodesDraggable={!placementDraft}
             nodesConnectable={!placementDraft}
@@ -3494,7 +3551,11 @@ export function NetworkMapDesigner({
         <div className="nm-detail">
           {/* Keyed by id so switching maps starts a fresh draft rather than
               carrying the previous map's unsaved edits across. */}
-          <MapEditor key={selected.id} map={selected} />
+          <MapEditor
+            key={selected.id}
+            map={selected}
+            onOpenProperties={(currentMap) => setDialog(currentMap)}
+          />
         </div>
       ) : visibleMaps.length > 0 ? (
         <div className="nm-gallery" role="list">

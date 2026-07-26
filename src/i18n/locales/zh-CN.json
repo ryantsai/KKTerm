@@ -1854,6 +1854,7 @@
       "saveChanges": "保存更改",
       "saved": "已保存",
       "paletteLabel": "添加到拓扑图",
+      "addNode": "添加节点",
       "nodeCategory": {
         "core": "核心与路由",
         "security": "安全",

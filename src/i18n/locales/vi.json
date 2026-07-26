@@ -1854,6 +1854,7 @@
       "saveChanges": "Lưu thay đổi",
       "saved": "Đã lưu",
       "paletteLabel": "Thêm vào sơ đồ",
+      "addNode": "Thêm nút",
       "nodeCategory": {
         "core": "Lõi & định tuyến",
         "security": "Bảo mật",

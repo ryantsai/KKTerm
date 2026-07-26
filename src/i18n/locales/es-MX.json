@@ -1854,6 +1854,7 @@
       "saveChanges": "Guardar cambios",
       "saved": "Guardado",
       "paletteLabel": "Agregar al mapa",
+      "addNode": "Agregar nodo",
       "nodeCategory": {
         "core": "Núcleo y ruteo",
         "security": "Seguridad",
