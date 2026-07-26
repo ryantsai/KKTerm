@@ -503,7 +503,7 @@ matches map metadata plus every saved Network Node and Network Link field;
 opening a card enters one full map workspace, where the tab strip switches
 between the other maps and Back returns to the list. It uses `@xyflow/react` the same way
 `AutomationEditor.tsx` does — controlled `nodes`/`edges` via `useMemo`,
-position-only `onNodesChange` filtering, `deleteKeyCode={null}`,
+position-and-dimension-only `onNodesChange` filtering, `deleteKeyCode={null}`,
 `proOptions={{ hideAttribution: true }}`. Because a Network Link is
 undirected while xyflow edges are directed, every node renders four stacked
 source+target handles (`left`/`right`/`top`/`bottom`) and the edge picks its
@@ -516,6 +516,16 @@ palette and the canvas's drag/connect affordances are disabled: that mode
 reads the map, it does not edit it. What-If is a contextual toolbar action,
 not a permanent Design / What-If segmented control; while active, the same
 action returns to Design.
+
+In Design mode, palette cards support both click-to-add and drag-and-drop at an
+exact canvas position. Network Nodes persist their individual width/height,
+palette-backed icon background, and an ordered list of documented IP addresses.
+A Network Link may bind each endpoint independently to one address exposed by
+that endpoint node; removing the address clears the corresponding binding.
+Resizable Network Map Notes store text and a palette-backed background. Notes,
+links, and Network Nodes use explicit ascending React Flow z-orders so every
+link and Network Node remains above a Note. Notes never enter the reachability
+graph.
 
 ### IT Ops destination-page UI contract
 

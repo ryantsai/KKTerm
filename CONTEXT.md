@@ -166,12 +166,16 @@ A durable, hand-drawn logical link diagram stored in `itops_network_maps`, globa
 _Avoid_: topology, topology map, network topology, discovery map, live map
 
 **Network Node**:
-One box on a **Network Map**: a label, one of the designer's routing, security, traffic-management, compute/storage, cloud/WAN, wireless, or endpoint kinds, a canvas position, optional free-text address and note, and a documented operational/warning status. The address is a caption drawn under the label, not a reference into **IPAM**. Status is operator-authored documentation, never live monitoring data. A Network Node is not a **Host**, a **Rack Device**, or a **Connection**, though a map can be seeded from a Site's Hosts.
+One resizable box on a **Network Map**: a label, one of the designer's routing, security, traffic-management, compute/storage, cloud/WAN, wireless, or endpoint kinds, a canvas position and size, a selectable icon background, optional free-text IP addresses and note, and a documented operational/warning status. Its addresses are captions and link-binding choices, not references into **IPAM**. Status is operator-authored documentation, never live monitoring data. A Network Node is not a **Host**, a **Rack Device**, or a **Connection**, though a map can be seeded from a Site's Hosts.
 _Avoid_: device, host (on a map), rack item
 
 **Network Link**:
-One undirected edge between two **Network Nodes**, with an optional name/label for the whole link (a circuit id or an uplink name — not a port and not a VLAN, both of which are structured), a kind (ethernet, fiber, WAN, or wireless), a documented operational/warning status, an ordered list of **Network Link Strands**, and its VLAN membership. Undirected is deliberate: a link asserts that the two nodes can reach each other, not a traffic direction. Its status is operator-authored documentation and remains separate from the transient What-If down set.
+One undirected edge between two **Network Nodes**, with an optional binding from each endpoint to one of that node's documented IP addresses, an optional name/label for the whole link (a circuit id or an uplink name — not a port and not a VLAN, both of which are structured), a kind (ethernet, fiber, WAN, or wireless), a documented operational/warning status, an ordered list of **Network Link Strands**, and its VLAN membership. Undirected is deliberate: a link asserts that the two nodes can reach each other, not a traffic direction. Its status is operator-authored documentation and remains separate from the transient What-If down set.
 _Avoid_: connection (that is the durable Connection model), edge, cable, circuit
+
+**Network Map Note**:
+A resizable text annotation with an operator-selected background color on a **Network Map**. It always renders behind every **Network Node** and **Network Link** and participates in no reachability or What-If analysis.
+_Avoid_: node, device, status notice
 
 **Network Link Strand**:
 One of the parallel physical links a drawn **Network Link** stands for: a free-text port name and a free-text speed. Port names and speeds belong to the strand rather than the link because a 2×10G LAG lands on a different port at each end of each member. A link always has at least one strand; the canvas draws up to four, and the `×N` edge label carries the true count beyond that.

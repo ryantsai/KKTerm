@@ -18,7 +18,10 @@ const map: NetworkMap = {
         kind: "firewall",
         x: 10,
         y: 20,
-        address: "10.20.0.1",
+        width: 190,
+        height: 80,
+        iconAccent: 2,
+        addresses: ["10.20.0.1", "2001:db8::1"],
         status: "warning",
         hostId: "host-1",
         connectionId: "connection-1",
@@ -33,6 +36,8 @@ const map: NetworkMap = {
         to: "node-2",
         label: "WAN uplink",
         kind: "fiber",
+        fromAddress: "10.20.0.1",
+        toAddress: "10.20.0.2",
         strands: [
           { id: "strand-1", name: "TenGigabitEthernet1/1", speed: "10 Gbps" },
           { id: "strand-2", name: "TenGigabitEthernet1/2", speed: "10 Gbps" },
@@ -40,6 +45,17 @@ const map: NetworkMap = {
         nativeVlanId: "vlan-20",
         taggedVlanIds: ["vlan-30"],
         status: "up",
+      },
+    ],
+    notes: [
+      {
+        id: "note-1",
+        text: "Maintenance boundary",
+        x: 0,
+        y: 0,
+        width: 240,
+        height: 130,
+        backgroundAccent: 1,
       },
     ],
   },
@@ -51,6 +67,7 @@ test("Network Map search covers map, node, and link metadata", () => {
   assert.equal(matchesNetworkMapSearch(map, "WAN fiber TenGigabitEthernet1/2 10 Gbps"), true);
   assert.equal(matchesNetworkMapSearch(map, "vlan-20 vlan-30"), true);
   assert.equal(matchesNetworkMapSearch(map, "rack-item-1"), true);
+  assert.equal(matchesNetworkMapSearch(map, "2001:db8::1 maintenance boundary"), true);
   assert.equal(matchesNetworkMapSearch(map, "Singapore"), false);
 });
 

@@ -1307,9 +1307,19 @@ pub struct NetworkNode {
     pub x: f64,
     #[serde(default)]
     pub y: f64,
-    /// Optional free-text address/caption shown beneath the node label.
     #[serde(default)]
-    pub address: String,
+    pub width: f64,
+    #[serde(default)]
+    pub height: f64,
+    /// Optional palette index overriding the node kind's icon background.
+    #[serde(default)]
+    pub icon_accent: Option<u8>,
+    /// Operator-authored IP/interface addresses.
+    #[serde(default)]
+    pub addresses: Vec<String>,
+    /// Pre-address-list shape, folded into `addresses` while reading.
+    #[serde(default, rename = "address", skip_serializing)]
+    pub legacy_address: String,
     /// Operator-authored documentation, never a live monitoring result.
     #[serde(default)]
     pub status: NetworkMapStatus,
@@ -1350,6 +1360,11 @@ pub struct NetworkLink {
     pub label: String,
     #[serde(default)]
     pub kind: NetworkLinkKind,
+    /// Optional bindings to one address on each endpoint node.
+    #[serde(default)]
+    pub from_address: Option<String>,
+    #[serde(default)]
+    pub to_address: Option<String>,
     /// One entry per parallel physical link; never empty after sanitizing.
     #[serde(default)]
     pub strands: Vec<NetworkLinkStrand>,
@@ -1372,6 +1387,25 @@ pub struct NetworkLink {
     pub speed: Option<String>,
 }
 
+/// A free-form annotation behind every Network Link and Network Node.
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkMapNote {
+    pub id: String,
+    #[serde(default)]
+    pub text: String,
+    #[serde(default)]
+    pub x: f64,
+    #[serde(default)]
+    pub y: f64,
+    #[serde(default)]
+    pub width: f64,
+    #[serde(default)]
+    pub height: f64,
+    #[serde(default)]
+    pub background_accent: u8,
+}
+
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NetworkGraph {
@@ -1379,6 +1413,8 @@ pub struct NetworkGraph {
     pub nodes: Vec<NetworkNode>,
     #[serde(default)]
     pub links: Vec<NetworkLink>,
+    #[serde(default)]
+    pub notes: Vec<NetworkMapNote>,
     /// Node ids treated as the network's entry points for reachability. Empty
     /// means "use the first node"; the What-If analysis walks outward from here.
     #[serde(default)]

@@ -65,6 +65,38 @@ test("Network Nodes use the expanded device catalog and links expose complete do
   assert.match(types, /\| "wirelessController"/);
 });
 
+test("Network Maps support address-bound links, palette drops, resizing, colors, and background Notes", async () => {
+  const [designer, types, rustTypes, storage, styles] = await Promise.all([
+    read("src/modules/itops/NetworkMapDesigner.tsx"),
+    read("src/types.ts"),
+    read("src-tauri/src/itops/types.rs"),
+    read("src-tauri/src/itops/network_map_storage.rs"),
+    read("src/modules/itops/itops.css"),
+  ]);
+
+  assert.match(types, /addresses: string\[\];/);
+  assert.match(types, /fromAddress\?: string \| null;/);
+  assert.match(types, /toAddress\?: string \| null;/);
+  assert.match(types, /notes: NetworkMapNote\[\];/);
+  assert.match(rustTypes, /pub addresses: Vec<String>/);
+  assert.match(storage, /legacy_address/);
+  assert.match(storage, /from_address[\s\S]*from_addresses\.contains/);
+  assert.match(storage, /to_address[\s\S]*to_addresses\.contains/);
+
+  assert.match(designer, /<NodeResizer/);
+  assert.match(designer, /screenToFlowPosition/);
+  assert.match(designer, /application\/x-kkterm-network-map/);
+  assert.match(designer, /onDrop=\{dropPaletteItem\}/);
+  assert.match(designer, /itops\.networkMap\.iconBackgroundLabel/);
+  assert.match(designer, /itops\.networkMap\.endpointAddressLabel/);
+  assert.match(designer, /type: "networkNote"/);
+  assert.match(designer, /zIndex: 0/);
+  assert.match(designer, /zIndex: 1/);
+  assert.match(designer, /zIndex: 2/);
+  assert.match(styles, /\.nm-note\s*\{/);
+  assert.match(styles, /--nm-note-accent/);
+});
+
 test("VLANs are durable global records that Network Links reference and the overlay spotlights", async () => {
   const [designer, types, sites, styles] = await Promise.all([
     read("src/modules/itops/NetworkMapDesigner.tsx"),
