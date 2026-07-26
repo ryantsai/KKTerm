@@ -8833,10 +8833,31 @@
   flex: 1;
   min-height: 0;
 }
-.itops-page .nm-canvas { min-height: 360px; }
+.itops-page .nm-canvas {
+  min-height: 360px;
+  background: var(--surface-muted);
+}
 .itops-page .nm-canvas[data-mode="impact"] { background: var(--surface-muted); }
-.itops-page .nm-side { flex: 0 0 296px; }
+.itops-page .nm-side { flex: 0 0 300px; }
 
+.itops-page .nm-picker-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+.itops-page .nm-picker-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.itops-page .nm-picker-group h3 {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 9.5px;
+  font-weight: 720;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
 .itops-page .nm-picker-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -8848,20 +8869,23 @@
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  padding: 9px 5px 8px;
+  padding: 8px 5px 7px;
   border: 0.5px solid var(--border);
   border-radius: 8px;
   background: var(--surface);
   color: var(--text-muted);
   font: inherit;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 560;
   cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease,
+    transform 140ms ease;
 }
 .itops-page .nm-picker-card:hover {
   border-color: var(--border-strong);
   background: var(--hover);
   color: var(--text);
+  transform: translateY(-1px);
 }
 .itops-page .nm-picker-ic {
   display: inline-flex;
@@ -8870,6 +8894,11 @@
   width: 36px;
   height: 36px;
   border-radius: 9px;
+  background: linear-gradient(
+    155deg,
+    color-mix(in srgb, var(--nm-node-accent) 76%, white),
+    color-mix(in srgb, var(--nm-node-accent) 78%, black)
+  );
   color: #fff;
 }
 
@@ -8878,15 +8907,18 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
   box-sizing: border-box;
-  padding: 8px 10px;
+  padding: 9px 10px;
   border: 1px solid var(--border);
   border-radius: 11px;
   background: var(--surface);
   box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 8%, transparent);
   cursor: pointer;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease,
+    opacity 160ms ease;
 }
+.nm-node:hover { transform: translateY(-2px); }
 .nm-node.sel {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
@@ -8901,15 +8933,25 @@
   border-color: var(--red);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--red) 28%, transparent);
 }
+.nm-node[data-state="warning"] {
+  border-color: color-mix(in srgb, var(--amber) 58%, var(--border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber) 16%, transparent);
+  animation: nmNodeWarning 2.2s ease-in-out infinite;
+}
 .nm-node-ic {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 42px;
-  height: 42px;
+  width: 46px;
+  height: 46px;
   flex: 0 0 auto;
   overflow: hidden;
-  border-radius: 11px;
+  border-radius: 12px;
+  background: linear-gradient(
+    155deg,
+    color-mix(in srgb, var(--nm-node-accent) 76%, white),
+    color-mix(in srgb, var(--nm-node-accent) 78%, black)
+  );
   color: #fff;
 }
 .nm-device-art { overflow: visible; }
@@ -8955,6 +8997,25 @@
   border-radius: 50%;
   background: var(--accent);
   color: #fff;
+  box-shadow: 0 0 0 2px var(--surface);
+  animation: nmRootPulse 2.4s ease-in-out infinite;
+}
+.nm-node-warning {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  display: inline-flex;
+  width: 17px;
+  height: 17px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 0 2px var(--surface);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  animation: nmWarningBlink 1.6s ease-in-out infinite;
 }
 .nm-handle.react-flow__handle {
   width: 7px;
@@ -8971,8 +9032,7 @@
   stroke-width: 1.6;
 }
 .react-flow__edge.nm-edge.up .react-flow__edge-path {
-  stroke-dasharray: 9 7;
-  animation: nmLinkFlow 1.3s linear infinite;
+  stroke-dasharray: none;
 }
 .react-flow__edge.nm-edge.fiber .react-flow__edge-path {
   stroke: var(--accent);
@@ -8980,7 +9040,11 @@
 }
 .react-flow__edge.nm-edge.wan .react-flow__edge-path { stroke-dasharray: 7 5; }
 .react-flow__edge.nm-edge.wireless .react-flow__edge-path { stroke-dasharray: 1.5 5; }
-.react-flow__edge.nm-edge.multi .react-flow__edge-path { stroke-width: 2.5; }
+.react-flow__edge.nm-edge.warning .react-flow__edge-path {
+  stroke: var(--amber);
+  stroke-dasharray: 8 6;
+  animation: nmLinkFlow 2.2s linear infinite;
+}
 .react-flow__edge.nm-edge.sel .react-flow__edge-path {
   stroke: var(--accent);
   stroke-width: 2.4;
@@ -8990,11 +9054,17 @@
   stroke-dasharray: 4 4;
 }
 .react-flow__edge.nm-edge.severed .react-flow__edge-path { opacity: 0.35; }
-.react-flow__edge.nm-edge .react-flow__edge-textbg { fill: var(--surface); }
-.react-flow__edge.nm-edge .react-flow__edge-text {
-  fill: var(--text-muted);
+.nm-edge-label {
+  position: absolute;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  color: var(--text-muted);
   font-family: var(--app-mono-font-family, ui-monospace, monospace);
-  font-size: 10px;
+  font-size: 9.5px;
+  line-height: 1.6;
+  pointer-events: none;
+  white-space: nowrap;
 }
 
 /* side panel */
@@ -9137,6 +9207,18 @@
   52% { opacity: 0.9; }
   100% { opacity: 0; transform: scale(2.6); }
 }
+@keyframes nmRootPulse {
+  0%, 100% { box-shadow: 0 0 0 2px var(--surface), 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); }
+  50% { box-shadow: 0 0 0 2px var(--surface), 0 0 0 6px color-mix(in srgb, var(--accent) 0%, transparent); }
+}
+@keyframes nmNodeWarning {
+  0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber) 16%, transparent); }
+  50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--amber) 7%, transparent); }
+}
+@keyframes nmWarningBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.38; }
+}
 @keyframes nmLinkFlow {
   to { stroke-dashoffset: -32; }
 }
@@ -9158,10 +9240,18 @@
   .nm-device-art-orbit,
   .nm-device-art-glyph,
   .nm-device-art-ping,
-  .react-flow__edge.nm-edge.up .react-flow__edge-path {
+  .itops-page .nm-picker-card,
+  .nm-node,
+  .nm-node[data-state="warning"],
+  .nm-node-root,
+  .nm-node-warning,
+  .react-flow__edge.nm-edge.up .react-flow__edge-path,
+  .react-flow__edge.nm-edge.warning .react-flow__edge-path {
     animation: none;
     transition: none;
   }
   .itops-page .nm-gallery-card:hover,
-  .itops-page .nm-gallery-card:focus-within { transform: none; }
+  .itops-page .nm-gallery-card:focus-within,
+  .itops-page .nm-picker-card:hover,
+  .nm-node:hover { transform: none; }
 }

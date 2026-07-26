@@ -221,7 +221,9 @@ pub fn remove_map(conn: &SqliteConnection, id: &str) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::itops::types::{NetworkLink, NetworkLinkKind, NetworkNode, NetworkNodeKind};
+    use crate::itops::types::{
+        NetworkLink, NetworkLinkKind, NetworkMapStatus, NetworkNode, NetworkNodeKind,
+    };
 
     fn open_test_db() -> SqliteConnection {
         let conn = SqliteConnection::open_in_memory().unwrap();
@@ -259,6 +261,7 @@ mod tests {
             kind: NetworkLinkKind::Ethernet,
             connection_count: 1,
             speed: String::new(),
+            status: Default::default(),
         }
     }
 
@@ -268,6 +271,7 @@ mod tests {
         let mut primary_link = link("l1", "core", "edge");
         primary_link.connection_count = 4;
         primary_link.speed = " 100 Gbps ".to_string();
+        primary_link.status = NetworkMapStatus::Warning;
         let graph = NetworkGraph {
             nodes: vec![node("core"), node("edge")],
             links: vec![
@@ -290,6 +294,7 @@ mod tests {
         assert_eq!(listed[0].graph.links[0].id, "l1");
         assert_eq!(listed[0].graph.links[0].connection_count, 4);
         assert_eq!(listed[0].graph.links[0].speed, "100 Gbps");
+        assert_eq!(listed[0].graph.links[0].status, NetworkMapStatus::Warning);
     }
 
     #[test]
