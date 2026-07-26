@@ -14,6 +14,7 @@ import type {
   IpamSnapshot,
   IpamDeviceType,
   ItopsTask,
+  Vlan,
   NetworkGraph,
   NetworkMap,
   PrefixStatus,
@@ -49,6 +50,7 @@ export type ItOpsDestination =
   | "automations"
   | "runHistory"
   | "taskLibrary"
+  | "vlans"
   | "ipam"
   | "networkMaps";
 
@@ -149,6 +151,15 @@ export interface PrefixInput {
   status: PrefixStatus;
   description: string;
   siteId: string | null;
+  vlanId: string | null;
+}
+
+export interface VlanInput {
+  vid: number;
+  name: string;
+  description: string;
+  siteId: string | null;
+  accent: number;
 }
 
 export interface AddressInput {
@@ -167,6 +178,12 @@ export interface AddressInput {
 
 const EMPTY_IPAM: IpamSnapshot = { prefixes: [], addresses: [] };
 
+/** VLANs list by 802.1Q id, matching the order the backend returns them in, so
+ * a locally-patched list never reorders under the user after a save. */
+function sortVlans(vlans: Vlan[]): Vlan[] {
+  return [...vlans].sort((a, b) => a.vid - b.vid);
+}
+
 // The command args are the input fields verbatim; naming them once keeps the
 // create and update calls from drifting apart as fields are added.
 function prefixArgs(input: PrefixInput) {
@@ -177,6 +194,7 @@ function prefixArgs(input: PrefixInput) {
     status: input.status,
     description: input.description,
     siteId: input.siteId,
+    vlanId: input.vlanId,
   };
 }
 
@@ -454,6 +472,17 @@ interface ItOpsState {
   createTask: (name: string, description: string, applicableOs: TaskOperatingSystem[], task: BatchTask) => Promise<ItopsTask>;
   updateTask: (id: string, name: string, description: string, applicableOs: TaskOperatingSystem[], task: BatchTask) => Promise<ItopsTask>;
   removeTask: (id: string) => Promise<void>;
+
+  // ── Global VLANs ──
+  // Durable global records, a sibling of IPAM in the Library section. VLANs are
+  // referenced by IP Prefixes and Network Links, so every surface reads this
+  // one list rather than each keeping its own copy.
+  vlans: Vlan[];
+  vlansLoaded: boolean;
+  loadVlans: () => Promise<void>;
+  createVlan: (input: VlanInput) => Promise<Vlan>;
+  updateVlan: (id: string, input: VlanInput) => Promise<Vlan>;
+  removeVlan: (id: string) => Promise<void>;
 
   // ── Global IPAM ──
   // One snapshot holds both tables. Every mutation reloads it rather than
@@ -927,6 +956,49 @@ export const useItOpsStore = create<ItOpsState>((set, get) => ({
   async removeTask(id) {
     await invokeCommand("itops_remove_task", { id });
     set({ tasks: get().tasks.filter((entry) => entry.id !== id) });
+  },
+
+  // ── Global VLANs ──
+  vlans: [],
+  vlansLoaded: false,
+
+  async loadVlans() {
+    if (!isTauriRuntime()) {
+      set({ vlansLoaded: true });
+      return;
+    }
+    const vlans = await invokeCommand("itops_list_vlans");
+    set({ vlans, vlansLoaded: true });
+  },
+
+  async createVlan(input) {
+    const created = await invokeCommand("itops_create_vlan", input);
+    set({ vlans: sortVlans([...get().vlans, created]) });
+    return created;
+  },
+
+  async updateVlan(id, input) {
+    const saved = await invokeCommand("itops_update_vlan", { id, ...input });
+    set({
+      vlans: sortVlans(get().vlans.map((entry) => (entry.id === id ? saved : entry))),
+    });
+    return saved;
+  },
+
+  async removeVlan(id) {
+    await invokeCommand("itops_remove_vlan", { id });
+    set({
+      vlans: get().vlans.filter((entry) => entry.id !== id),
+      // The backend clears these references in the same transaction. Mirror
+      // that result locally instead of issuing a second request that could fail
+      // after the deletion already succeeded.
+      ipam: {
+        ...get().ipam,
+        prefixes: get().ipam.prefixes.map((entry) =>
+          entry.vlanId === id ? { ...entry, vlanId: null } : entry,
+        ),
+      },
+    });
   },
 
   // ── Global IPAM ──

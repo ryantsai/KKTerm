@@ -28,6 +28,8 @@ The IT Ops Module owns:
   evolved Watchdog), including the live run loop and Status Bar surface.
 - **IPAM** — the global IP Prefix / IP Address Record plan, with derived
   containment nesting and utilization (see "IPAM" below).
+- **VLANs** — global durable 802.1Q VLAN records, referenced by IP Prefixes
+  and Network Links (see "VLAN" below).
 - **Network Maps** — global hand-drawn logical link diagrams plus the pure
   What-If reachability analysis over them (see "Network Map" below).
 - The Tauri commands the AI Assistant uses to draft and manage Sites and
@@ -224,8 +226,23 @@ most-specific containing IP Prefix. It is a documentation record, not a lease
 or a reservation KKTerm enforces anywhere.
 _Avoid_: IP entry, host record (that is **Host**)
 
+**VLAN** — a durable global record of an 802.1Q VLAN in `itops_vlans`: `vid`
+(1–4094, unique), name, description, an optional soft `site_id` that only
+labels it, and an `accent` **index** into the frontend `IT_ACCENTS` list
+(resolved modulo its length, so no stored value can be invalid — never a hex
+colour, per `docs/DESIGN_LANGUAGE.md`). A VLAN is a table rather than a field
+inside a Network Map's `graph_json` because VLAN 30 drawn on two maps has to
+be the same VLAN; map-local VLANs would make that a coincidence of spelling
+and would need a dedup migration across every saved graph to promote later.
+An **IP Prefix** joins to it through a soft `vlan_id`, which documents
+"VLAN 30 is 10.20.30.0/24" without conflating the two — a prefix references a
+VLAN, it is not one, so IPAM's _Avoid: VLAN_ stays literally true. Deleting a
+VLAN clears that reference and deletes nothing else.
+_Avoid_: subnet, broadcast domain (as the stored entity), IP Prefix
+
 **IPAM** — the global Module surface over those two, standing outside the
-Site tree in the navigator's Library section next to the Task Library. Its
+Site tree in the navigator's Library section next to VLANs and the Task
+Library. Its
 tree nesting, per-prefix `depth`, child counts, and utilization are
 **derived on every snapshot** from containment and VRF, never stored: adding
 a wider prefix silently re-parents everything it now contains, and no
@@ -244,14 +261,38 @@ caption drawn under the label; it is not a foreign key into IPAM. Status is
 operator-authored documentation, not a polled device state.
 
 **Network Link** — one **undirected** edge between two Network Nodes, with
-an optional label (a port, a circuit id, a VLAN) and a kind (`ethernet` /
-`fiber` / `wan` / `wireless`), a free-text speed, documented status (`up` /
-`warning`), and a count of parallel physical links represented by up to four
-drawn strands. Undirected is deliberate:
-a link asserts mutual reachability, not a traffic direction, and the
-reachability maths treats it symmetrically. The stored link carries no
-handle/anchor fields — the canvas picks the two anchors geometrically at
-render time.
+an optional label naming the whole link (a circuit id, an uplink name — **not**
+a port and **not** a VLAN, both of which are now structured), a kind
+(`ethernet` / `fiber` / `wan` / `wireless`), documented status (`up` /
+`warning`), an ordered list of **strands**, and its VLAN membership.
+Undirected is deliberate: a link asserts mutual reachability, not a traffic
+direction, and the reachability maths treats it symmetrically. The stored link
+carries no handle/anchor fields — the canvas picks the two anchors
+geometrically at render time.
+
+**Network Link Strand** — one of the parallel physical links a drawn Network
+Link stands for: an id, a free-text port name, and a free-text speed. Port
+names and speeds live per strand rather than per link because a 2×10G LAG
+lands on a different port at each end of each member. `sanitize_graph`
+guarantees at least one strand and folds the pre-strand `connectionCount` /
+`speed` pair from older saved graphs into the list on read, then stops writing
+those fields back. Up to four strands are drawn; the `×N` edge label carries
+the true count beyond that.
+
+**VLAN membership on a Network Link** — `native_vlan_id` (the untagged VLAN)
+and `tagged_vlan_ids` (the 802.1Q VLANs it trunks), both soft references into
+`itops_vlans` and both `#[serde(default)]`, so saved graphs need no migration.
+A non-empty tagged set makes the link a trunk. The native VLAN is dropped from
+the tagged set on save because untagged-and-tagged is a contradiction, not
+extra information. VLAN ids are deliberately **not** validated against
+`itops_vlans` on save: a map keeps documenting the VLAN it was drawn with
+after the record is renamed or deleted. **Network Nodes carry no VLAN field** —
+"VLANs terminated here" for an L3 switch is tempting and speculative.
+Rendering rules: VLANs are never mapped onto the strands (a 2×10G LAG carrying
+six VLANs is two strands, not six), there is no VLAN node kind (a VLAN is not
+a box on the canvas), and the overlay is a side-panel legend whose selection
+dims every link that does not carry the VLAN, reusing the dimming
+`.nm-edge.severed` already establishes.
 
 **Network Map** — a durable named canvas in `itops_network_maps`, global
 like IPAM with an optional soft Site reference that only tags it. The whole
@@ -300,9 +341,14 @@ Three SQLite tables (new schema version):
   report blob. Local-first; no telemetry.
 - `itops_tasks` — global reusable Task definitions: id, name, description,
   ordered position, and typed `BatchTask` JSON. No target or live state.
+- `itops_vlans` — global VLAN records: id, `vid` (unique 1–4094), name,
+  description, an optional soft `site_id`, and an `accent` index. Deleting a
+  row clears the soft `vlan_id` on any IP Prefix that referenced it; Network
+  Link references live inside each map's `graph_json` and simply stop
+  resolving, which the canvas renders as an unknown VLAN.
 - `itops_ip_prefixes` — global IP Prefixes: id, normalized `cidr`, `vrf`,
-  role, status, description, and an optional soft `site_id`, unique on
-  `(vrf, cidr)`. Parent, depth, child counts, and utilization are **not**
+  role, status, description, an optional soft `site_id`, an optional soft
+  `vlan_id` into `itops_vlans`, unique on `(vrf, cidr)`. Parent, depth, child counts, and utilization are **not**
   columns; they are recomputed on every snapshot from containment.
 - `itops_ip_address_records` — global IP Address Records: id, `address`,
   `vrf`, status, hostname (`dns_name`), optional broad `device_type`, free-text
@@ -317,7 +363,9 @@ Three SQLite tables (new schema version):
   documented after whatever it pointed at is deleted.
 - `itops_network_maps` — one row per Network Map: id, name, description,
   optional soft `site_id`, `sort_order`, and the whole node/link/roots graph
-  as `graph_json`.
+  as `graph_json`. Node and link ids are map-local; the one exception is each
+  link's `nativeVlanId` / `taggedVlanIds`, which are soft references into
+  `itops_vlans` and are remapped on selective import like any other soft id.
 
 Durable definitions only. **Live state never persists**: in-flight Batch
 Run progress, Automation poll ticks, tick ring buffers, and runtime state
@@ -405,7 +453,7 @@ outside this closed enum fails the Host. AI nodes never turn model text into a
 shell command or choose an arbitrary graph edge.
 
 Hosts, Automations, Run History, and the global Library destinations (Task
-Library, IPAM, Network Maps) share one destination-page frame: the same content inset, compact title/description
+Library, VLANs, IPAM, Network Maps) share one destination-page frame: the same content inset, compact title/description
 header, right-aligned primary actions, divider, and bordered-row rhythm. The
 Task Library keeps its spreadsheet-style Task table inside that frame rather
 than owning a separate full-height chrome layout. Each row shows Task kind, Applicable OS,
@@ -470,7 +518,7 @@ action returns to Design.
 ### IT Ops destination-page UI contract
 
 This section is normative for future IT Ops frontend work. It applies to
-Hosts, Automations, Run History, Task Library, IPAM, Network Maps, and any
+Hosts, Automations, Run History, Task Library, VLANs, IPAM, Network Maps, and any
 later non-spatial destination opened from the IT Ops navigator. Do not give a new destination an
 independent page shell or visual language.
 
@@ -724,7 +772,7 @@ the same tools are published under `kkterm.itops.*`, with
 task-authoring, automation-mutating, and run-starting tools in
 `dangerous` sub-namespaces (see `docs/MCP.md`).
 
-IPAM and Network Maps ship without assistant or MCP tools. Their twelve
+VLANs, IPAM, and Network Maps ship without assistant or MCP tools. Their twelve
 Tauri commands are UI-only for now; the assistant sees the two destinations
 (so it can navigate and highlight them) and their counts, nothing more.
 Exposing them later means adding approval-gated `itops_*` tools the same way
@@ -1108,8 +1156,30 @@ enrich responsive results with bounded PTR reverse DNS, SNMP MIB-II
 fallbacks. Existing and uncertain records remain blank; there is no current-
 version startup reconciliation.
 
+**Phase 12 — VLANs and per-link parallel-link records.** Schema bump to 54
+adds `itops_vlans` and the version-gated nullable `vlan_id` on
+`itops_ip_prefixes` (the table itself is covered by `CREATE TABLE IF NOT
+EXISTS`; only the column on an existing prefix table needs backfilling — the
+same failure v52 repaired for `site_id`). Four Tauri commands, a third global
+Library destination (`VlanPanel.tsx`), the soft `vlanId` on the IP Prefix
+dialog, and on a Network Link a `strands` list plus `nativeVlanId` /
+`taggedVlanIds`, all `#[serde(default)]` so saved graphs need no migration —
+`sanitize_graph` folds the pre-strand `connectionCount` / `speed` pair into
+`strands` on read. The designer gains the VLAN spotlight overlay.
+
+Two deliberate non-goals in this phase. **Reachability stays VLAN-blind**:
+per-VLAN What-If ("this trunk drops, VLAN 30 is severed but VLAN 10 survives")
+is the obvious follow-up and genuinely useful, but it multiplies the analysis
+surface — `effectiveRoots`, `findWeakPoints`, and `findStrandedNodes` all
+become per-VLAN — and `reachability.ts` states plainly that the switched-off
+set is the analysis's only input. **Nothing auto-parses "VLAN 30" out of
+existing free-text link labels**: silently reinterpreting operator prose as
+structured data is how you get wrong documentation that looks authoritative.
+`linkLabelHint` therefore stopped advertising VLAN when the structured field
+landed, so the two are never double-entered.
+
 Phases 0–3 are the minimum that delivers durable monitoring + SSH batch.
-Phases 4–9 are independent and can be reordered by demand.
+Phases 4–12 are independent and can be reordered by demand.
 
 ## Planned / Deferred Enhancements
 

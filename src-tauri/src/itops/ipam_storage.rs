@@ -120,7 +120,7 @@ fn optional_id(value: Option<&str>) -> Option<String> {
 
 // ── Prefixes ─────────────────────────────────────────────────────────────────
 
-const PREFIX_COLUMNS: &str = "id, cidr, vrf, role, status, description, site_id";
+const PREFIX_COLUMNS: &str = "id, cidr, vrf, role, status, description, site_id, vlan_id";
 
 fn read_prefix(row: &rusqlite::Row<'_>) -> rusqlite::Result<IpPrefix> {
     let status: String = row.get(4)?;
@@ -132,6 +132,7 @@ fn read_prefix(row: &rusqlite::Row<'_>) -> rusqlite::Result<IpPrefix> {
         status: prefix_status_from_key(&status),
         description: row.get(5)?,
         site_id: row.get(6)?,
+        vlan_id: row.get(7)?,
     })
 }
 
@@ -368,6 +369,7 @@ pub fn create_prefix(
     status: PrefixStatus,
     description: &str,
     site_id: Option<&str>,
+    vlan_id: Option<&str>,
 ) -> Result<IpPrefix> {
     let cidr = canonical_cidr(cidr)?;
     let vrf = vrf.trim().to_string();
@@ -379,11 +381,12 @@ pub fn create_prefix(
         status,
         description: description.trim().to_string(),
         site_id: optional_id(site_id),
+        vlan_id: optional_id(vlan_id),
     };
     let affected = conn.execute(
         "INSERT OR IGNORE INTO itops_ip_prefixes
-            (id, cidr, vrf, role, status, description, site_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (id, cidr, vrf, role, status, description, site_id, vlan_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             prefix.id,
             prefix.cidr,
@@ -391,7 +394,8 @@ pub fn create_prefix(
             prefix.role,
             prefix_status_key(prefix.status),
             prefix.description,
-            prefix.site_id
+            prefix.site_id,
+            prefix.vlan_id
         ],
     )?;
     if affected == 0 {
@@ -412,6 +416,7 @@ pub fn update_prefix(
     status: PrefixStatus,
     description: &str,
     site_id: Option<&str>,
+    vlan_id: Option<&str>,
 ) -> Result<IpPrefix> {
     let cidr = canonical_cidr(cidr)?;
     let vrf = vrf.trim().to_string();
@@ -433,11 +438,12 @@ pub fn update_prefix(
         status,
         description: description.trim().to_string(),
         site_id: optional_id(site_id),
+        vlan_id: optional_id(vlan_id),
     };
     let affected = conn.execute(
         "UPDATE itops_ip_prefixes
          SET cidr = ?, vrf = ?, role = ?, status = ?, description = ?, site_id = ?,
-             updated_at = CURRENT_TIMESTAMP
+             vlan_id = ?, updated_at = CURRENT_TIMESTAMP
          WHERE id = ?",
         params![
             prefix.cidr,
@@ -446,6 +452,7 @@ pub fn update_prefix(
             prefix_status_key(prefix.status),
             prefix.description,
             prefix.site_id,
+            prefix.vlan_id,
             id
         ],
     )?;
@@ -688,6 +695,7 @@ mod tests {
                 status TEXT NOT NULL DEFAULT 'active',
                 description TEXT NOT NULL DEFAULT '',
                 site_id TEXT,
+                vlan_id TEXT,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(vrf, cidr)
@@ -720,7 +728,7 @@ mod tests {
     }
 
     fn add_prefix(conn: &SqliteConnection, id: &str, cidr: &str, status: PrefixStatus) {
-        create_prefix(conn, id, cidr, "", "", status, "", None).unwrap();
+        create_prefix(conn, id, cidr, "", "", status, "", None, None).unwrap();
     }
 
     #[test]
@@ -735,12 +743,14 @@ mod tests {
             PrefixStatus::Active,
             " floor 2 ",
             Some("  "),
+            None,
         )
         .unwrap();
         assert_eq!(created.cidr, "10.1.2.0/24");
         assert_eq!(created.role, "Access");
         assert_eq!(created.description, "floor 2");
         assert!(created.site_id.is_none());
+        assert!(created.vlan_id.is_none());
         assert!(
             create_prefix(
                 &conn,
@@ -750,7 +760,8 @@ mod tests {
                 "",
                 PrefixStatus::Active,
                 "",
-                None
+                None,
+                None,
             )
             .is_err()
         );
@@ -764,7 +775,8 @@ mod tests {
                 "",
                 PrefixStatus::Active,
                 "",
-                None
+                None,
+                None,
             )
             .is_err()
         );
@@ -839,6 +851,44 @@ mod tests {
     }
 
     #[test]
+    fn round_trips_the_soft_vlan_reference() {
+        let conn = open_test_db();
+        let created = create_prefix(
+            &conn,
+            "p1",
+            "10.20.30.0/24",
+            "",
+            "",
+            PrefixStatus::Active,
+            "",
+            None,
+            Some(" vlan-30 "),
+        )
+        .unwrap();
+        assert_eq!(created.vlan_id.as_deref(), Some("vlan-30"));
+        assert_eq!(
+            snapshot(&conn).unwrap().prefixes[0].prefix.vlan_id.as_deref(),
+            Some("vlan-30")
+        );
+
+        // Clearing the select sends an empty string, which must not persist as
+        // an empty soft reference.
+        let cleared = update_prefix(
+            &conn,
+            "p1",
+            "10.20.30.0/24",
+            "",
+            "",
+            PrefixStatus::Active,
+            "",
+            None,
+            Some("  "),
+        )
+        .unwrap();
+        assert!(cleared.vlan_id.is_none());
+    }
+
+    #[test]
     fn keeps_vrfs_as_separate_trees() {
         let conn = open_test_db();
         create_prefix(
@@ -849,6 +899,7 @@ mod tests {
             "",
             PrefixStatus::Container,
             "",
+            None,
             None,
         )
         .unwrap();
@@ -861,6 +912,7 @@ mod tests {
             PrefixStatus::Active,
             "",
             None,
+            None,
         )
         .unwrap();
         // Same CIDR in another VRF is not a duplicate.
@@ -872,6 +924,7 @@ mod tests {
             "",
             PrefixStatus::Container,
             "",
+            None,
             None,
         )
         .unwrap();
@@ -1074,6 +1127,7 @@ mod tests {
             PrefixStatus::Container,
             "",
             Some("site-root"),
+            None,
         )
         .unwrap();
         create_prefix(
@@ -1085,6 +1139,7 @@ mod tests {
             PrefixStatus::Active,
             "",
             Some("site-segment"),
+            None,
         )
         .unwrap();
         for (id, address, site_id) in [
@@ -1143,6 +1198,7 @@ mod tests {
             PrefixStatus::Active,
             "",
             Some("site-moved"),
+            None,
         )
         .unwrap();
         let refreshed = snapshot(&conn).unwrap();

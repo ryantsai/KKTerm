@@ -39,6 +39,7 @@ import { AutomationsTab } from "./AutomationsTab";
 import { HostsPanel } from "./HostsPanel";
 import { IpamPanel } from "./IpamPanel";
 import { NetworkMapDesigner } from "./NetworkMapDesigner";
+import { VlanPanel } from "./VlanPanel";
 import { TaskLibrary } from "./TaskLibrary";
 import { RackElevation } from "./RackElevation";
 import { RackDialog } from "./RackDialog";
@@ -162,12 +163,13 @@ type SiteDestination = "site" | "serverRooms" | "hosts" | "runHistory" | "automa
 
 /** Which top-level surface the detail pane shows: one Site's drill-down, or a
  * global Library page that stands outside the Site tree entirely. */
-type RootSurface = "site" | "tasks" | "ipam" | "networkMaps";
+type RootSurface = "site" | "tasks" | "vlans" | "ipam" | "networkMaps";
 
 /** Library surfaces mapped to the navigation destination they report and the
  * tree node id they highlight. Keyed so adding a page touches one place. */
 const LIBRARY_SURFACES = {
   tasks: { destination: "taskLibrary", nodeId: "itops:tasks" },
+  vlans: { destination: "vlans", nodeId: "itops:vlans" },
   ipam: { destination: "ipam", nodeId: "itops:ipam" },
   networkMaps: { destination: "networkMaps", nodeId: "itops:networkMaps" },
 } as const satisfies Record<
@@ -229,6 +231,7 @@ export function SitesTab({
     (state) => state.ipam.prefixes.length + state.ipam.addresses.length,
   );
   const networkMapCount = useItOpsStore((state) => state.networkMaps.length);
+  const vlanCount = useItOpsStore((state) => state.vlans.length);
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [drill, setDrill] = useState<DrillPath>(EMPTY_DRILL);
@@ -432,7 +435,7 @@ export function SitesTab({
       setRootSurface("tasks");
       return;
     }
-    if (destination === "ipam" || destination === "networkMaps") {
+    if (destination === "vlans" || destination === "ipam" || destination === "networkMaps") {
       setRootSurface(destination);
       return;
     }
@@ -1147,6 +1150,7 @@ export function SitesTab({
               })}
               <div className="ft-tree-library-label">{t("itops.navigation.library")}</div>
               <TreeRow depth={0} icon="code" label={t("itops.tasks.heading")} count={taskCount} hasChildren={false} open={false} selected={rootSurface === "tasks"} onSelect={() => setRootSurface("tasks")} />
+              <TreeRow depth={0} icon="rows" label={t("itops.vlan.heading")} count={vlanCount} hasChildren={false} open={false} selected={rootSurface === "vlans"} onSelect={() => setRootSurface("vlans")} />
               <TreeRow depth={0} icon="table" label={t("itops.ipam.heading")} count={ipamItemCount} hasChildren={false} open={false} selected={rootSurface === "ipam"} onSelect={() => setRootSurface("ipam")} />
               <TreeRow depth={0} icon="network" label={t("itops.networkMap.heading")} count={networkMapCount} hasChildren={false} open={false} selected={rootSurface === "networkMaps"} onSelect={() => setRootSurface("networkMaps")} />
             </div>
@@ -1162,6 +1166,10 @@ export function SitesTab({
       {rootSurface === "tasks" ? (
         <div className="hg-detail it-destination-page">
         <TaskLibrary onOpenRunHistory={(siteId) => selectSiteDestination(siteId, "runHistory")} />
+        </div>
+      ) : rootSurface === "vlans" ? (
+        <div className="hg-detail it-destination-page">
+          <VlanPanel />
         </div>
       ) : rootSurface === "ipam" ? (
         <div className="hg-detail it-destination-page">

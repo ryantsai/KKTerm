@@ -134,7 +134,7 @@ A built-in Activity Rail Module that captures screenshots into a user-configurab
 _Avoid_: screenshot gallery page, capture tool, snipping module
 
 **IT Ops Module**:
-A built-in Activity Rail Module for site operations: **Sites**, **Hosts**, global reusable **Tasks**, **Batch Runs**, **Automations**, **IPAM**, and **Network Maps**. Its operational navigator exposes Site-owned Server Rooms, Hosts, Automations, and Run History as separate destinations, plus a global Library section holding the Task Library, IPAM, and Network Maps; topology drills through Site View, Server Room View, and Rack View. The Site destination is its overview-only Site View and has no Hosts, Batch Runs, or Automations segmented control. Lives with Dashboard and Install Helper above Settings. Not a Connection, Session, or Dashboard widget. See `docs/ITOPS.md` and `docs/ADR/0011-it-ops-module.md`.
+A built-in Activity Rail Module for site operations: **Sites**, **Hosts**, global reusable **Tasks**, **Batch Runs**, **Automations**, **VLANs**, **IPAM**, and **Network Maps**. Its operational navigator exposes Site-owned Server Rooms, Hosts, Automations, and Run History as separate destinations, plus a global Library section holding the Task Library, VLANs, IPAM, and Network Maps; topology drills through Site View, Server Room View, and Rack View. The Site destination is its overview-only Site View and has no Hosts, Batch Runs, or Automations segmented control. Lives with Dashboard and Install Helper above Settings. Not a Connection, Session, or Dashboard widget. See `docs/ITOPS.md` and `docs/ADR/0011-it-ops-module.md`.
 _Avoid_: operations center, site manager, orchestrator
 
 **Task**:
@@ -145,12 +145,16 @@ _Avoid_: Site task, saved run, workflow
 The global IT Ops collection of reusable Tasks, including the app-owned diagnostic catalog. It appears once in the operational navigator as a sibling of Sites, never once beneath every Site. Opening a user Task shows and manages its definition; built-in Tasks are duplicated before customization. Manual execution starts from selected Hosts, where the launcher offers Tasks from this library. The Task Library is a view/collection, not a durable entity, target container, or run launcher.
 _Avoid_: Site Tasks, scripts folder, workflow library, job catalog
 
+**VLAN**:
+A durable 802.1Q VLAN record stored in `itops_vlans`, global to the IT Ops Module and a sibling of IPAM in the navigator's Library section. It carries a `vid` (1–4094, unique across the install), a name, a description, an optional soft Site tag that only labels it, and an accent index into the app's IT accent list (an index, never a stored hex colour). A VLAN is a durable record rather than a drawing detail: VLAN 30 drawn on two **Network Maps** is the same VLAN, not a coincidence of spelling. An **IP Prefix** may reference one, and a **Network Link** documents its native and tagged VLANs. Deleting a VLAN clears the IP Prefix reference and deletes nothing else; Network Link references remain in their map and resolve as unknown. KKTerm never reads a VLAN off a switch.
+_Avoid_: subnet, broadcast domain (as the stored entity), IP Prefix, network segment
+
 **IPAM**:
-The global IT Ops address-plan destination, a sibling of Sites and the Task Library in the navigator's Library section. It documents **IP Prefixes** and **IP Address Records** the operator writes down; it never scans automatically, and an explicit bounded discovery scan stays transient until the operator imports selected results. It does not lease or reserve anything on the network. Prefix nesting, depth, and utilization are recomputed from containment on every read and are never stored, so adding a wider prefix silently re-parents the blocks it now contains. IPAM is a view over two durable tables, not a durable entity itself.
+The global IT Ops address-plan destination, a sibling of Sites, VLANs, and the Task Library in the navigator's Library section. It documents **IP Prefixes** and **IP Address Records** the operator writes down; it never scans automatically, and an explicit bounded discovery scan stays transient until the operator imports selected results. It does not lease or reserve anything on the network. Prefix nesting, depth, and utilization are recomputed from containment on every read and are never stored, so adding a wider prefix silently re-parents the blocks it now contains. IPAM is a view over two durable tables, not a durable entity itself.
 _Avoid_: subnet manager, DHCP, address scanner, DDI
 
 **IP Prefix**:
-A durable IPv4 CIDR block stored in `itops_ip_prefixes`, with a role, a status (`container`, `active`, `reserved`, or `deprecated`), an optional free-text VRF label, an optional Site tag, and a description. Host bits are cleared on save, so the stored value is always the network address. It is global to the IT Ops Module; the Site tag labels it and never scopes its visibility.
+A durable IPv4 CIDR block stored in `itops_ip_prefixes`, with a role, a status (`container`, `active`, `reserved`, or `deprecated`), an optional free-text VRF label, an optional Site tag, an optional soft **VLAN** reference, and a description. Host bits are cleared on save, so the stored value is always the network address. It is global to the IT Ops Module; the Site tag labels it and never scopes its visibility. The VLAN reference documents "VLAN 30 is 10.20.30.0/24" — a prefix *references* a VLAN, it never *is* one.
 _Avoid_: subnet record, network object, VLAN
 
 **IP Address Record**:
@@ -166,8 +170,16 @@ One box on a **Network Map**: a label, one of the designer's routing, security, 
 _Avoid_: device, host (on a map), rack item
 
 **Network Link**:
-One undirected edge between two **Network Nodes**, with an optional name/label (a port, a circuit id, a VLAN), a kind (ethernet, fiber, WAN, or wireless), a free-text speed, a documented operational/warning status, and a count of parallel physical links represented by the drawn strands. Undirected is deliberate: a link asserts that the two nodes can reach each other, not a traffic direction. Its status is operator-authored documentation and remains separate from the transient What-If down set.
+One undirected edge between two **Network Nodes**, with an optional name/label for the whole link (a circuit id or an uplink name — not a port and not a VLAN, both of which are structured), a kind (ethernet, fiber, WAN, or wireless), a documented operational/warning status, an ordered list of **Network Link Strands**, and its VLAN membership. Undirected is deliberate: a link asserts that the two nodes can reach each other, not a traffic direction. Its status is operator-authored documentation and remains separate from the transient What-If down set.
 _Avoid_: connection (that is the durable Connection model), edge, cable, circuit
+
+**Network Link Strand**:
+One of the parallel physical links a drawn **Network Link** stands for: a free-text port name and a free-text speed. Port names and speeds belong to the strand rather than the link because a 2×10G LAG lands on a different port at each end of each member. A link always has at least one strand; the canvas draws up to four, and the `×N` edge label carries the true count beyond that.
+_Avoid_: link (the drawn edge is the Network Link), cable, member port (as the stored entity), LAG
+
+**VLAN membership**:
+A **Network Link**'s documented native (untagged) VLAN and its tagged (802.1Q) VLANs, held as soft references to durable **VLAN** records. A non-empty tagged set makes the link a trunk. Membership belongs to links only: **Network Nodes** carry no VLAN field, a VLAN is never a node kind on the canvas, and VLAN membership is never mapped onto the parallel strands — a 2×10G LAG carrying six VLANs is two strands, not six.
+_Avoid_: VLAN (that is the durable record), trunk (as the stored entity), port mode
 
 **Entry point**:
 A **Network Node** marked as a root of its **Network Map**. Reachability is measured from the entry points; with none marked, the first node stands in so a half-drawn map still analyses.
@@ -318,6 +330,7 @@ _Avoid_: settings nav, settings menu
 - An **IP Address Record** belongs to an **IP Prefix** by containment and matching VRF; neither stores a parent id, and both survive the other's deletion.
 - A **Network Map** owns its **Network Nodes** and **Network Links**; deleting the map deletes the drawing and nothing else.
 - A **Network Node** may be seeded from a **Host**, but it does not become one, reference one durably, or reflect its state.
+- An **IP Prefix** may reference one **VLAN**, and a **Network Link** may reference one native **VLAN** plus any number of tagged ones. All are soft references: deleting the **VLAN** clears them and leaves both the addressing and the drawing intact.
 
 ## Example Dialogue
 

@@ -40,6 +40,7 @@ import {
   type ClaimCandidate,
 } from "./ipamModel";
 import { useItOpsStore, type AddressInput, type PrefixInput } from "./state";
+import { vlanAccent, vlanLabel } from "./vlanModel";
 
 const PREFIX_STATUSES: PrefixStatus[] = ["container", "active", "reserved", "deprecated"];
 const ADDRESS_STATUSES: AddressStatus[] = ["active", "reserved", "deprecated"];
@@ -110,6 +111,7 @@ function PrefixDialog({
   const createPrefix = useItOpsStore((state) => state.createPrefix);
   const updatePrefix = useItOpsStore((state) => state.updatePrefix);
   const sites = useItOpsStore((state) => state.sites);
+  const vlans = useItOpsStore((state) => state.vlans);
   const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
   const [cidr, setCidr] = useState(prefix?.cidr ?? "");
   const [vrf, setVrf] = useState(prefix?.vrf ?? "");
@@ -117,6 +119,7 @@ function PrefixDialog({
   const [status, setStatus] = useState<PrefixStatus>(prefix?.status ?? "active");
   const [description, setDescription] = useState(prefix?.description ?? "");
   const [siteId, setSiteId] = useState(prefix?.siteId ?? "");
+  const [vlanId, setVlanId] = useState(prefix?.vlanId ?? "");
   const [busy, setBusy] = useState(false);
 
   // Live echo of what will actually be stored, so a typed host address visibly
@@ -133,6 +136,7 @@ function PrefixDialog({
       status,
       description,
       siteId: siteId || null,
+      vlanId: vlanId || null,
     };
     try {
       if (prefix) await updatePrefix(prefix.id, input);
@@ -214,6 +218,19 @@ function PrefixDialog({
             value={vrf}
             placeholder={t("itops.ipam.vrfPlaceholder")}
             onChange={(event) => setVrf(event.currentTarget.value)}
+          />
+        </Field>
+        <Field label={t("itops.ipam.vlanLabel")} hint={t("itops.ipam.vlanHint")}>
+          <Select
+            value={vlanId}
+            onChange={(event) => setVlanId(event.currentTarget.value)}
+            options={[
+              { value: "", label: t("itops.ipam.vlanNone") },
+              ...vlans.map((vlan) => ({
+                value: vlan.id,
+                label: t("itops.vlan.optionLabel", { label: vlanLabel(vlan) }),
+              })),
+            ]}
           />
         </Field>
         <Field label={t("itops.ipam.siteLabel")} hint={t("itops.ipam.siteHint")}>
@@ -524,6 +541,7 @@ function ClaimDialog({
           status: "active",
           description: "",
           siteId: null,
+          vlanId: null,
         });
         createdCidrs.push(cidr);
       }
@@ -855,6 +873,9 @@ export function IpamPanel() {
   const removePrefix = useItOpsStore((state) => state.removePrefix);
   const removeAddress = useItOpsStore((state) => state.removeAddress);
   const sites = useItOpsStore((state) => state.sites);
+  const vlans = useItOpsStore((state) => state.vlans);
+  const vlansLoaded = useItOpsStore((state) => state.vlansLoaded);
+  const loadVlans = useItOpsStore((state) => state.loadVlans);
   const hostsBySite = useItOpsStore((state) => state.hostsBySite);
   const loadHosts = useItOpsStore((state) => state.loadHosts);
   const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
@@ -876,6 +897,12 @@ export function IpamPanel() {
     if (!loaded) void loadIpam().catch(() => undefined);
   }, [loaded, loadIpam]);
 
+  // A prefix's VLAN is a soft reference, so the records have to be in hand
+  // before a row can name the VLAN it points at.
+  useEffect(() => {
+    if (!vlansLoaded) void loadVlans().catch(() => undefined);
+  }, [loadVlans, vlansLoaded]);
+
   useEffect(() => {
     if (!isTauriRuntime()) return;
     void invokeCommand("list_connection_tree")
@@ -896,6 +923,7 @@ export function IpamPanel() {
     [allHosts, connections, ipam.addresses],
   );
   const visible = useMemo(() => filterPrefixTree(ipam.prefixes, query), [ipam.prefixes, query]);
+  const vlansById = useMemo(() => new Map(vlans.map((vlan) => [vlan.id, vlan])), [vlans]);
   const prefixGroups = useMemo(() => groupPrefixesBySite(visible, sites), [sites, visible]);
   const siteNames = useMemo(
     () => new Map(sites.map((site) => [site.id, site.name])),
@@ -1004,6 +1032,9 @@ export function IpamPanel() {
                 {siteGroup.prefixes.map((prefix) => {
                   const records = addressesInPrefix(ipam.addresses, prefix);
                   const open = expanded.has(prefix.id);
+                  // A deleted VLAN clears the reference server-side, so a miss here
+                  // only ever means the VLAN list has not loaded yet.
+                  const vlan = prefix.vlanId ? vlansById.get(prefix.vlanId) : undefined;
                   return (
                     <div key={prefix.id} className="it-ipam-group">
                       <div className="it-ipam-row" role="row">
@@ -1022,11 +1053,23 @@ export function IpamPanel() {
                           >
                             <ItIcon name={open ? "chevD" : "chevR"} size={13} />
                           </button>
-                          <span>
-                            <strong>{prefix.cidr}</strong>
-                            <small>
-                              {prefix.description ||
-                                vrfLabel(prefix.vrf, t("itops.ipam.defaultVrf"))}
+                           <span>
+                             <strong>{prefix.cidr}</strong>
+                             <small>
+                               {vlan ? (
+                                 <em
+                                   className="it-vlan-chip"
+                                   style={
+                                     {
+                                       "--it-vlan-accent": vlanAccent(vlan),
+                                     } as React.CSSProperties
+                                   }
+                                 >
+                                   {t("itops.vlan.chip", { vid: vlan.vid })}
+                                 </em>
+                               ) : null}
+                               {prefix.description ||
+                                 vrfLabel(prefix.vrf, t("itops.ipam.defaultVrf"))}
                             </small>
                           </span>
                         </span>

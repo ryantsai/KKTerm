@@ -21,6 +21,7 @@ pub fn itops_ipam_snapshot(app: AppHandle) -> Result<IpamSnapshot, String> {
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub fn itops_create_ip_prefix(
     app: AppHandle,
     cidr: String,
@@ -29,6 +30,7 @@ pub fn itops_create_ip_prefix(
     status: PrefixStatus,
     description: String,
     site_id: Option<String>,
+    vlan_id: Option<String>,
 ) -> Result<IpPrefix, String> {
     let id = new_itops_id("prefix");
     app.state::<crate::storage::Storage>()
@@ -42,12 +44,14 @@ pub fn itops_create_ip_prefix(
                 status,
                 &description,
                 site_id.as_deref(),
+                vlan_id.as_deref(),
             )
             .map_err(|error| error.to_string())
         })
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub fn itops_update_ip_prefix(
     app: AppHandle,
     id: String,
@@ -57,6 +61,7 @@ pub fn itops_update_ip_prefix(
     status: PrefixStatus,
     description: String,
     site_id: Option<String>,
+    vlan_id: Option<String>,
 ) -> Result<IpPrefix, String> {
     app.state::<crate::storage::Storage>()
         .with_connection_infallible(|conn| {
@@ -69,6 +74,7 @@ pub fn itops_update_ip_prefix(
                 status,
                 &description,
                 site_id.as_deref(),
+                vlan_id.as_deref(),
             )
             .map_err(|error| error.to_string())
         })
