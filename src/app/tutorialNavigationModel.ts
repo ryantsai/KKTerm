@@ -10,6 +10,7 @@ export type ItOpsNavigationDestination =
   | "automations"
   | "runHistory"
   | "taskLibrary"
+  | "vlans"
   | "ipam"
   | "networkMaps";
 
@@ -29,6 +30,7 @@ const ITOPS_NAVIGATION_DESTINATIONS = new Set<ItOpsNavigationDestination>([
   "automations",
   "runHistory",
   "taskLibrary",
+  "vlans",
   "ipam",
   "networkMaps",
 ]);
@@ -185,6 +187,8 @@ const ITOPS_DESTINATION_TUTORIAL_TARGETS: Record<string, ItOpsNavigationDestinat
   "itops.runHistoryPanel": "runHistory",
   "itops.taskLibrary": "taskLibrary",
   "itops.taskLibraryNew": "taskLibrary",
+  "itops.vlans": "vlans",
+  "itops.vlanNew": "vlans",
   "itops.ipam": "ipam",
   "itops.ipamNew": "ipam",
   "itops.networkMaps": "networkMaps",

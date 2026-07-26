@@ -31,7 +31,9 @@ test("IP Address editor supports direct, Host-implied, and segment-inherited Sit
   assert.match(manual, /A Site can be selected without a Host/);
   assert.match(manual, /inherits the Site of its most-specific containing IP Prefix/);
 
-  assert.match(storage, /const SCHEMA_USER_VERSION: i32 = 52;/);
+  // The v52 repair stays in place under later bumps; only the current version
+  // moves, so this guard tracks the constant rather than pinning it to 52.
+  assert.match(storage, /const SCHEMA_USER_VERSION: i32 = 53;/);
   assert.match(storage, /if stored_version < 52/);
   assert.match(storage, /"itops_ip_address_records",\s*"site_id"/s);
   assert.match(ipamStorage, /fn apply_prefix_site_bindings/);

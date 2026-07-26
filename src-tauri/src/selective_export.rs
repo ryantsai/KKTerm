@@ -210,10 +210,17 @@ fn segment_tables(segment: &str) -> Option<&'static [TableSpec]> {
                 pk: Pk::Generated("run"),
                 fks: &[],
             },
-            // IPAM and Network Maps are global to the Module (no owning Site
-            // FK); their optional site_id and the address records' host /
-            // connection / rack item ids are soft references remapped in
-            // `rewrite_soft_references`.
+            // VLANs, IPAM, and Network Maps are global to the Module (no
+            // owning Site FK); their optional site_id, the prefixes' vlan_id,
+            // the address records' host / connection / rack item ids, and the
+            // VLAN ids inside a map's graph_json are soft references remapped
+            // in `rewrite_soft_references`. VLANs come first so prefixes and
+            // maps can resolve their new ids.
+            TableSpec {
+                name: "itops_vlans",
+                pk: Pk::Generated("vlan"),
+                fks: &[],
+            },
             TableSpec {
                 name: "itops_ip_prefixes",
                 pk: Pk::Generated("ipfx"),
@@ -1131,6 +1138,9 @@ fn rewrite_soft_references(
         }
         "itops_ip_prefixes" => {
             remap_soft_id(row, "site_id", "itops_sites", remap);
+            // A prefix documents addressing whether or not its VLAN travelled
+            // with it, so an unmatched id stays verbatim like the others.
+            remap_soft_id(row, "vlan_id", "itops_vlans", remap);
         }
         "itops_ip_address_records" => {
             // An address record documents an address, so it survives its
@@ -1142,8 +1152,19 @@ fn rewrite_soft_references(
         }
         "itops_network_maps" => {
             remap_soft_id(row, "site_id", "itops_sites", remap);
-            // The graph is self-contained: node ids are map-local and links
-            // reference them, so nothing inside graph_json needs remapping.
+            // Node ids are map-local and links reference them, so the drawing
+            // itself needs no remapping. A link's VLAN membership is the one
+            // exception: those are soft references into the global itops_vlans
+            // table, so they follow the same rule as every other soft id.
+            rewrite_json_column(row, "graph_json", |graph| {
+                let Some(links) = graph.get_mut("links").and_then(Value::as_array_mut) else {
+                    return;
+                };
+                for link in links {
+                    remap_json_id(link, "nativeVlanId", "itops_vlans", remap);
+                    remap_json_id_array(link, "taggedVlanIds", "itops_vlans", remap);
+                }
+            });
         }
         "itops_tasks" => {
             // The selective bundle does not carry IT Ops vault entries. Drop
@@ -2134,8 +2155,10 @@ mod tests {
              CREATE TABLE itops_run_history (id TEXT PRIMARY KEY, source TEXT NOT NULL,
                  site_id TEXT, task_id TEXT, task_summary TEXT NOT NULL, started_at TEXT NOT NULL,
                  report_json TEXT NOT NULL DEFAULT '{}');
+             CREATE TABLE itops_vlans (id TEXT PRIMARY KEY, vid INTEGER NOT NULL UNIQUE,
+                 name TEXT NOT NULL DEFAULT '', site_id TEXT);
              CREATE TABLE itops_ip_prefixes (id TEXT PRIMARY KEY, cidr TEXT NOT NULL,
-                 vrf TEXT NOT NULL DEFAULT '', site_id TEXT, UNIQUE(vrf, cidr));
+                 vrf TEXT NOT NULL DEFAULT '', site_id TEXT, vlan_id TEXT, UNIQUE(vrf, cidr));
              CREATE TABLE itops_ip_address_records (id TEXT PRIMARY KEY, address TEXT NOT NULL,
                  vrf TEXT NOT NULL DEFAULT '', site_id TEXT, host_id TEXT, connection_id TEXT,
                  rack_item_id TEXT, UNIQUE(vrf, address));
@@ -2176,14 +2199,16 @@ mod tests {
                  (id, source, site_id, task_id, task_summary, started_at, report_json) VALUES
                  ('r1','automation:a1','s1','t1','Reboot','2026-01-01T00:00:00Z',
                  '{\"ok\":1,\"failed\":0,\"total\":1,\"hosts\":[{\"connectionId\":\"c1\"}]}');
-             INSERT INTO itops_ip_prefixes (id, cidr, site_id) VALUES ('p1','10.20.0.0/16','s1');
+             INSERT INTO itops_vlans (id, vid, name, site_id) VALUES ('v1',30,'Voice','s1');
+             INSERT INTO itops_ip_prefixes (id, cidr, site_id, vlan_id)
+                 VALUES ('p1','10.20.0.0/16','s1','v1');
              INSERT INTO itops_ip_address_records
                  (id, address, site_id, host_id, connection_id, rack_item_id) VALUES
                  ('ip1','10.20.0.5','s1','h1','c1','it1'),
                  ('ip2','10.20.0.6','s-foreign','h-foreign','c-foreign','it-foreign');
              INSERT INTO itops_network_maps (id, name, site_id, sort_order, graph_json) VALUES
                  ('nm1','Core','s1',0,
-                 '{\"nodes\":[{\"id\":\"n1\"},{\"id\":\"n2\"}],\"links\":[{\"id\":\"l1\",\"from\":\"n1\",\"to\":\"n2\"}],\"roots\":[\"n1\"]}');",
+                 '{\"nodes\":[{\"id\":\"n1\"},{\"id\":\"n2\"}],\"links\":[{\"id\":\"l1\",\"from\":\"n1\",\"to\":\"n2\",\"nativeVlanId\":\"v1\",\"taggedVlanIds\":[\"v1\",\"v-foreign\"]}],\"roots\":[\"n1\"]}');",
         )
         .unwrap();
 
@@ -2348,13 +2373,21 @@ mod tests {
                 .get("secretOwnerId")
                 .is_none()
         );
-        // IPAM keeps its optional Site tag pointed at the imported Site.
-        let prefix_site: String = dst
-            .query_row("SELECT site_id FROM itops_ip_prefixes", [], |row| {
-                row.get(0)
-            })
+        // IPAM keeps its optional Site tag pointed at the imported Site, and
+        // its soft VLAN reference follows the VLAN imported alongside it.
+        let new_vlan = remap
+            .get(&("itops_vlans".to_string(), "v1".to_string()))
+            .unwrap()
+            .clone();
+        let (prefix_site, prefix_vlan): (String, String) = dst
+            .query_row(
+                "SELECT site_id, vlan_id FROM itops_ip_prefixes",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
             .unwrap();
         assert_eq!(prefix_site, new_site);
+        assert_eq!(prefix_vlan, new_vlan);
         // An address record follows every origin imported alongside it, and
         // keeps ids whose target is absent: the address stays documented.
         let (addr_site, addr_host, addr_conn, addr_item): (String, String, String, String) = dst
@@ -2410,6 +2443,12 @@ mod tests {
         assert_eq!(graph["nodes"][0]["id"], "n1");
         assert_eq!(graph["links"][0]["from"], "n1");
         assert_eq!(graph["roots"][0], "n1");
+        // A link's VLAN membership is the one part of the graph that is NOT
+        // map-local: those are soft references into itops_vlans and follow the
+        // same remap. An id with no imported target stays verbatim.
+        assert_eq!(graph["links"][0]["nativeVlanId"], new_vlan);
+        assert_eq!(graph["links"][0]["taggedVlanIds"][0], new_vlan);
+        assert_eq!(graph["links"][0]["taggedVlanIds"][1], "v-foreign");
     }
 
     /// A source database migrated in place may still carry retired legacy
@@ -2824,7 +2863,9 @@ mod tests {
                  INSERT INTO itops_automations (id, name, sort_order, config_json) VALUES ('a1','Watch',0,'{}');
                  INSERT INTO itops_run_history (id, source, task_summary, started_at)
                      VALUES ('r1','manual','Reboot','2026-01-01T00:00:00Z');
-                 INSERT INTO itops_ip_prefixes (id, cidr, site_id) VALUES ('p1','10.20.0.0/16','s1');
+                 INSERT INTO itops_vlans (id, vid, name, site_id) VALUES ('v1',30,'Voice','s1');
+                 INSERT INTO itops_ip_prefixes (id, cidr, site_id, vlan_id)
+                     VALUES ('p1','10.20.0.0/16','s1','v1');
                  INSERT INTO itops_ip_address_records (id, address, site_id, host_id, rack_item_id)
                      VALUES ('ip1','10.20.0.5','s1','h1','it1');
                  INSERT INTO itops_network_maps (id, name, site_id, sort_order, graph_json)

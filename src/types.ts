@@ -561,6 +561,9 @@ export interface IpPrefix {
   description: string;
   // Soft reference: deleting a Site leaves the prefix as unscoped global space.
   siteId?: string | null;
+  // Soft reference documenting "VLAN 30 is 10.20.30.0/24". A prefix references
+  // a VLAN; it is not one. Deleting the VLAN leaves the prefix documented.
+  vlanId?: string | null;
 }
 
 export interface IpAddressRecord {
@@ -618,6 +621,21 @@ export interface IpamScanResult {
   documented: boolean;
 }
 
+// VLAN (docs/ITOPS.md VLAN). A durable global record next to IPAM, not a
+// drawing detail: VLAN 30 drawn on two Network Maps has to be the same VLAN.
+export interface Vlan {
+  id: string;
+  // The 802.1Q id, 1–4094. Unique across the install.
+  vid: number;
+  name: string;
+  description: string;
+  // Soft reference that labels the VLAN without scoping its visibility.
+  siteId?: string | null;
+  // Index into IT_ACCENTS, resolved modulo its length — never a hex colour, so
+  // no stored value can be invalid (docs/DESIGN_LANGUAGE.md).
+  accent: number;
+}
+
 // Network Map (docs/ITOPS.md Network Map). The logical link diagram, distinct
 // from the physical Site → Server Room → Rack topology that "topology" names.
 // One row per map holds the whole graph, following the Room Objects precedent.
@@ -668,6 +686,17 @@ export interface NetworkNode {
   note: string;
 }
 
+// One of the parallel physical links a drawn Network Link stands for. Port
+// names and speeds belong here rather than on the link, because a 2×10G LAG
+// lands on a different port at each end of each member.
+export interface NetworkLinkStrand {
+  id: string;
+  // Free-text port/circuit identifier for this member.
+  name: string;
+  // Free text keeps units and aggregate notation operator-defined.
+  speed: string;
+}
+
 // An undirected link between two Network Nodes; `from`/`to` are node ids.
 // Link metadata is documentation only and is never measured live.
 export interface NetworkLink {
@@ -676,10 +705,13 @@ export interface NetworkLink {
   to: string;
   label: string;
   kind: NetworkLinkKind;
-  // One drawn link may stand for several parallel physical links.
-  connectionCount: number;
-  // Free text keeps units and aggregate notation operator-defined.
-  speed: string;
+  // One entry per parallel physical link; the backend guarantees at least one.
+  strands: NetworkLinkStrand[];
+  // The untagged VLAN carried on this link — a soft reference into the global
+  // VLAN records. null means the operator has not documented one.
+  nativeVlanId?: string | null;
+  // Tagged (802.1Q) VLANs. Non-empty makes this link a trunk.
+  taggedVlanIds: string[];
   // Documented operator-authored state; What-If outages remain transient.
   status: NetworkMapStatus;
 }

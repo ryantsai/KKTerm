@@ -2,8 +2,9 @@
 // durable Sites, Batch Runs, and Automations. Sites are stored in the
 // `itops_sites` table (CRUD commands + run-time resolver); the Site topology
 // layer (Racks / Rack Devices, docs/SITE.md Phase B) lives in `site_storage`.
-// The cross-Site addressing and logical-link layers (IPAM, Network Map) live in
-// `ipam_storage` and `network_map_storage`; both are global like `task_storage`.
+// The cross-Site addressing and logical-link layers (VLANs, IPAM, Network Map)
+// live in `vlan_storage`, `ipam_storage`, and `network_map_storage`; all three
+// are global like `task_storage`.
 
 pub mod actions;
 pub mod automation_commands;
@@ -25,3 +26,5 @@ pub mod storage;
 pub mod task_commands;
 pub mod task_storage;
 pub mod types;
+pub mod vlan_commands;
+pub mod vlan_storage;

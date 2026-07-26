@@ -129,6 +129,8 @@ const itOpsDestinationTargets = [
   ["itops.taskLibraryNew", "taskLibrary"],
   ["itops.ipam", "ipam"],
   ["itops.ipamNew", "ipam"],
+  ["itops.vlans", "vlans"],
+  ["itops.vlanNew", "vlans"],
   ["itops.networkMaps", "networkMaps"],
   ["itops.networkMapNew", "networkMaps"],
   ["itops.host:host-1", "hosts"],

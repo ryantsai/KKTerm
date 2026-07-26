@@ -433,6 +433,77 @@ fn v50_saved_credential_migration_drops_host_and_current_reopen_keeps_shape() {
         .expect("current schema remains host-free");
 }
 
+/// v53 adds the durable VLAN table and the soft `vlan_id` on IP Prefixes.
+/// `CREATE TABLE IF NOT EXISTS` cannot add a column to a prefix table that
+/// already exists, so the upgrade path has to backfill it explicitly — the
+/// exact failure v52 had to repair for `site_id`.
+#[test]
+fn v53_vlan_migration_adds_the_table_and_prefix_column_and_keeps_documented_prefixes() {
+    let db_path = temp_db_path("vlan-v53");
+    {
+        Storage::open(db_path.clone()).expect("current storage opens");
+    }
+    {
+        let connection = rusqlite::Connection::open(&db_path).expect("raw database opens");
+        connection
+            .execute_batch(
+                "DROP TABLE IF EXISTS itops_vlans;
+                 ALTER TABLE itops_ip_prefixes DROP COLUMN vlan_id;
+                 INSERT INTO itops_ip_prefixes (id, cidr, vrf)
+                     VALUES ('p-legacy', '10.20.30.0/24', '');
+                 PRAGMA user_version = 52;",
+            )
+            .expect("v52 IPAM shape is restored");
+    }
+
+    let upgraded = Storage::open(db_path.clone()).expect("v52 storage upgrades");
+    upgraded
+        .with_connection(|connection| {
+            assert!(table_exists(connection, "itops_vlans")?);
+            assert!(column_exists(connection, "itops_ip_prefixes", "vlan_id")?);
+            // The prefix documented before VLANs existed keeps documenting the
+            // same addressing, now with an empty VLAN reference.
+            let vlan_id: Option<String> = connection
+                .query_row(
+                    "SELECT vlan_id FROM itops_ip_prefixes WHERE id = 'p-legacy'",
+                    [],
+                    |row| row.get(0),
+                )
+                .map_err(to_storage_error)?;
+            assert!(vlan_id.is_none());
+            let version: i32 = connection
+                .pragma_query_value(None, "user_version", |row| row.get(0))
+                .map_err(to_storage_error)?;
+            assert_eq!(version, SCHEMA_USER_VERSION);
+            Ok(())
+        })
+        .expect("upgraded schema is inspected");
+    drop(upgraded);
+
+    // Reopening at the current version takes the write-free fast path and must
+    // leave the new table and column exactly as the upgrade left them.
+    let reopened = Storage::open(db_path).expect("current v53 storage reopens");
+    reopened
+        .with_connection(|connection| {
+            assert!(table_exists(connection, "itops_vlans")?);
+            assert!(column_exists(connection, "itops_ip_prefixes", "vlan_id")?);
+            connection
+                .execute(
+                    "INSERT INTO itops_vlans (id, vid, name) VALUES ('v1', 30, 'Voice')",
+                    [],
+                )
+                .map_err(to_storage_error)?;
+            connection
+                .execute(
+                    "UPDATE itops_ip_prefixes SET vlan_id = 'v1' WHERE id = 'p-legacy'",
+                    [],
+                )
+                .map_err(to_storage_error)?;
+            Ok(())
+        })
+        .expect("current schema accepts VLAN rows and references");
+}
+
 #[test]
 fn create_connection_can_persist_root_ssh_connection() {
     let storage = Storage::open(temp_db_path("create")).expect("storage opens");

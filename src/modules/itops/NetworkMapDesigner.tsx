@@ -12,6 +12,7 @@
 // graph itself (they are part of the saved document), so a drag is an edit.
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import {
   Background,
@@ -46,11 +47,13 @@ import type {
   NetworkGraph,
   NetworkLink,
   NetworkLinkKind,
+  NetworkLinkStrand,
   NetworkMap,
   NetworkMapStatus,
   NetworkNode,
   NetworkNodeKind,
   SiteHost,
+  Vlan,
 } from "../../types";
 import { ItIcon, IT_ACCENTS } from "./icons";
 import { ItOpsEmptyHint } from "./ItOpsEmptyHint";
@@ -61,37 +64,15 @@ import {
   findWeakPoints,
 } from "./reachability";
 import { useItOpsStore } from "./state";
+import { vlanAccent, vlanLabel, vlansById } from "./vlanModel";
 
-const NODE_KINDS: NetworkNodeKind[] = [
-  "router",
-  "gateway",
-  "switch",
-  "switchL3",
-  "hub",
-  "firewall",
-  "vpnGateway",
-  "idsIps",
-  "loadBalancer",
-  "proxy",
-  "dns",
-  "server",
-  "database",
-  "storage",
-  "cloud",
-  "isp",
-  "accessPoint",
-  "wirelessController",
-  "desktop",
-  "laptop",
-  "smartphone",
-  "iot",
-  "voip",
-  "printer",
-  "camera",
-];
 const LINK_KINDS: NetworkLinkKind[] = ["ethernet", "fiber", "wan", "wireless"];
 const MAP_STATUSES: NetworkMapStatus[] = ["up", "warning"];
 
+/** The palette groups, and the single source of the kind list. The inspector's
+ * dropdown is derived from these below rather than hand-maintained beside them:
+ * two parallel lists would let a new kind appear in one surface and silently
+ * vanish from the other. */
 const NODE_CATEGORIES = [
   { id: "core", kinds: ["router", "gateway", "switch", "switchL3", "hub"] },
   { id: "security", kinds: ["firewall", "vpnGateway", "idsIps"] },
@@ -107,6 +88,39 @@ const NODE_CATEGORIES = [
   id: string;
   kinds: readonly NetworkNodeKind[];
 }>;
+
+const NODE_KINDS: readonly NetworkNodeKind[] = NODE_CATEGORIES.flatMap(
+  (category) => category.kinds,
+);
+
+/** Compile-time coverage guard. `Record<never, never>` is `{}` while every kind
+ * is grouped; add a kind to `NetworkNodeKind` without a palette group and this
+ * demands a property that cannot be written, so the omission fails `tsc`
+ * instead of silently hiding the kind from both surfaces. */
+export const NODE_KINDS_COVER_EVERY_KIND: Record<
+  Exclude<NetworkNodeKind, (typeof NODE_CATEGORIES)[number]["kinds"][number]>,
+  never
+> = {};
+
+/** Speeds offered in the strand editor's combobox. It stays free text — an
+ * operator documenting a 2.5G uplink or "OC-3" must not be blocked by a list —
+ * so these are suggestions, not the accepted set. */
+const COMMON_LINK_SPEEDS = [
+  "10 Mbps",
+  "100 Mbps",
+  "1 Gbps",
+  "2.5 Gbps",
+  "5 Gbps",
+  "10 Gbps",
+  "25 Gbps",
+  "40 Gbps",
+  "100 Gbps",
+  "200 Gbps",
+  "400 Gbps",
+];
+
+/** Matches the backend's strand ceiling in `network_map_storage`. */
+const MAX_STRANDS = 64;
 
 /** Glyph and accent per device kind, so a map reads at a glance while zoomed out. */
 const NODE_STYLE: Record<NetworkNodeKind, { accent: string }> = {
@@ -401,8 +415,13 @@ const nodeTypes = { networkNode: MapNode };
 interface NetworkLinkEdgeData extends Record<string, unknown> {
   kind: NetworkLinkKind;
   state: "up" | "warning" | "cut" | "severed";
-  connectionCount: number;
+  strandCount: number;
   label: string;
+  /** Set for a trunk, so the midpoint gets the 802.1Q double-tick and
+   * trunk-vs-access reads without hovering. */
+  trunk: boolean;
+  /** Accent of the spotlit VLAN when this link carries it; drives the chip. */
+  spotlightAccent: string | null;
 }
 
 function orthogonalLinkPath({
@@ -442,13 +461,19 @@ function orthogonalLinkPath({
 }
 
 function NetworkLinkEdge(props: EdgeProps<Edge<NetworkLinkEdgeData>>) {
-  const { id, data } = props;
-  const count = Math.min(Math.max(data?.connectionCount ?? 1, 1), 4);
+  const { id, data, sourcePosition } = props;
+  const count = Math.min(Math.max(data?.strandCount ?? 1, 1), 4);
   const offsets = Array.from(
     { length: count },
     (_entry, index) => (index - (count - 1) / 2) * 5,
   );
   const centre = orthogonalLinkPath(props);
+  // The mid jog runs across the route, so the ticks are drawn along the other
+  // axis to stay perpendicular to the line they mark.
+  const horizontal =
+    sourcePosition === Position.Left || sourcePosition === Position.Right;
+  const tickX = centre.labelX - 9;
+  const tickY = centre.labelY;
 
   return (
     <>
@@ -470,12 +495,27 @@ function NetworkLinkEdge(props: EdgeProps<Edge<NetworkLinkEdgeData>>) {
           />
         );
       })}
+      {data?.trunk ? (
+        <path
+          className="nm-edge-trunk-tick"
+          fill="none"
+          d={
+            horizontal
+              ? `M ${tickX - 3} ${tickY - 5} L ${tickX - 3} ${tickY + 5} M ${tickX + 3} ${tickY - 5} L ${tickX + 3} ${tickY + 5}`
+              : `M ${tickX - 5} ${tickY - 3} L ${tickX + 5} ${tickY - 3} M ${tickX - 5} ${tickY + 3} L ${tickX + 5} ${tickY + 3}`
+          }
+        />
+      ) : null}
       {data?.label ? (
         <EdgeLabelRenderer>
           <div
             className="nm-edge-label"
+            data-spotlit={data.spotlightAccent ? "true" : undefined}
             style={{
               transform: `translate(-50%, -50%) translate(${centre.labelX}px, ${centre.labelY}px)`,
+              ...(data.spotlightAccent
+                ? ({ "--nm-vlan-accent": data.spotlightAccent } as CSSProperties)
+                : {}),
             }}
           >
             {data.label}
@@ -572,6 +612,36 @@ function anchors(from: NetworkNode, to: NetworkNode): { source: Position; target
 
 function nodeLabel(node: NetworkNode, fallback: string): string {
   return node.label.trim() || node.address.trim() || fallback;
+}
+
+/** Whether a link carries a VLAN at all, tagged or untagged. Membership is the
+ * only thing the spotlight asks; access-vs-trunk is drawn separately. */
+function linkCarriesVlan(link: NetworkLink, vlanId: string): boolean {
+  return link.nativeVlanId === vlanId || link.taggedVlanIds.includes(vlanId);
+}
+
+/** The VLAN fragment of an edge label: "VLAN 30" for an access link, "30 · +4T"
+ * for a trunk. A trunk's full tagged list would not survive at edge-label size,
+ * so the chip carries the native id and how many tags ride alongside it; the
+ * inspector holds the list. A reference to a deleted VLAN reads as "?" rather
+ * than vanishing, because a link that documents *some* VLAN is not the same as
+ * one that documents none. */
+function vlanChip(
+  link: NetworkLink,
+  vlans: ReadonlyMap<string, Vlan>,
+  t: TFunction,
+): string {
+  const native = link.nativeVlanId ? vlans.get(link.nativeVlanId) : undefined;
+  const nativeText = link.nativeVlanId
+    ? (native ? String(native.vid) : t("itops.networkMap.vlanUnknownShort"))
+    : "";
+  const tagged = link.taggedVlanIds.length;
+  if (!nativeText && tagged === 0) return "";
+  if (tagged === 0) return t("itops.networkMap.vlanAccessChip", { vid: nativeText });
+  return t("itops.networkMap.vlanTrunkChip", {
+    vid: nativeText || t("itops.networkMap.vlanNoneShort"),
+    count: tagged,
+  });
 }
 
 /** Endpoint name for prose, tolerating a link whose node was removed mid-edit. */
@@ -768,6 +838,42 @@ function MapEditor({
   const [downLinks, setDownLinks] = useState<string[]>([]);
   const [importing, setImporting] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Which VLAN the overlay spotlights. Purely a view filter: it never edits the
+  // graph and never feeds the reachability analysis, which stays VLAN-blind.
+  const [spotlightVlanId, setSpotlightVlanId] = useState<string | null>(null);
+
+  const vlans = useItOpsStore((state) => state.vlans);
+  const vlansLoaded = useItOpsStore((state) => state.vlansLoaded);
+  const loadVlans = useItOpsStore((state) => state.loadVlans);
+  useEffect(() => {
+    if (!vlansLoaded) void loadVlans().catch(() => undefined);
+  }, [loadVlans, vlansLoaded]);
+  const vlanIndex = useMemo(() => vlansById(vlans), [vlans]);
+  // Stable per-map id so two open editors cannot share one datalist element.
+  const speedListId = `nm-speeds-${map.id}`;
+
+  // How many links carry each VLAN. Drives the legend's counts and keeps VLANs
+  // this map never mentions out of the spotlight list — the global record set
+  // is deliberately larger than any one drawing.
+  const vlanUsage = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const link of graph.links) {
+      for (const id of new Set(
+        [link.nativeVlanId, ...link.taggedVlanIds].filter(
+          (value): value is string => Boolean(value),
+        ),
+      )) {
+        counts.set(id, (counts.get(id) ?? 0) + 1);
+      }
+    }
+    return counts;
+  }, [graph.links]);
+
+  // A VLAN removed from the map (or from the global list) must not leave the
+  // canvas stuck dimmed against a filter the operator can no longer see.
+  useEffect(() => {
+    if (spotlightVlanId && !vlanUsage.has(spotlightVlanId)) setSpotlightVlanId(null);
+  }, [spotlightVlanId, vlanUsage]);
 
   const dirty = JSON.stringify(graph) !== savedJson;
 
@@ -825,13 +931,21 @@ function MapEditor({
           : link.status === "warning"
             ? "warning"
             : "up";
+      const strandCount = Math.max(link.strands.length, 1);
+      // Every strand at the same speed reads as one figure; a mixed bundle
+      // would be a lie compressed into one chip, so it falls back to the count.
+      const speeds = new Set(link.strands.map((strand) => strand.speed.trim()).filter(Boolean));
       const label = [
         link.label.trim(),
-        link.speed.trim(),
-        link.connectionCount > 1 ? `×${link.connectionCount}` : "",
+        speeds.size === 1 ? [...speeds][0] : "",
+        strandCount > 1 ? `×${strandCount}` : "",
+        vlanChip(link, vlanIndex, t),
       ]
         .filter(Boolean)
         .join(" · ");
+      const trunk = link.taggedVlanIds.length > 0;
+      const spotlit = spotlightVlanId ? linkCarriesVlan(link, spotlightVlanId) : true;
+      const spotlightVlan = spotlightVlanId ? vlanIndex.get(spotlightVlanId) : undefined;
       return [
         {
           id: link.id,
@@ -840,19 +954,31 @@ function MapEditor({
           target: link.to,
           sourceHandle: source,
           targetHandle: target,
-          className: `nm-edge ${link.kind} ${state}${link.connectionCount > 1 ? " multi" : ""}${
+          className: `nm-edge ${link.kind} ${state}${strandCount > 1 ? " multi" : ""}${
             selection?.kind === "link" && selection.id === link.id ? " sel" : ""
-          }`,
+          }${spotlightVlanId && !spotlit ? " dimmed" : ""}`,
           data: {
             kind: link.kind,
             state,
-            connectionCount: link.connectionCount,
+            strandCount,
             label,
+            trunk,
+            spotlightAccent:
+              spotlit && spotlightVlan ? vlanAccent(spotlightVlan) : null,
           },
         },
       ];
     });
-  }, [analysis.severedLinks, downLinks, graph.links, nodesById, selection]);
+  }, [
+    analysis.severedLinks,
+    downLinks,
+    graph.links,
+    nodesById,
+    selection,
+    spotlightVlanId,
+    t,
+    vlanIndex,
+  ]);
 
   const onNodesChange = useCallback((changes: NodeChange[]) => {
     // Only drags matter: everything else about a node lives in the side panel.
@@ -880,14 +1006,19 @@ function MapEditor({
           (link.from === connection.target && link.to === connection.source),
       );
       if (exists) return current;
+      const id = newId("nml");
       const link: NetworkLink = {
-        id: newId("nml"),
+        id,
         from: connection.source!,
         to: connection.target!,
         label: "",
         kind: "ethernet",
-        connectionCount: 1,
-        speed: "",
+        // A drawn link always stands for at least one physical link, so it
+        // starts with one strand rather than an empty list the operator has to
+        // notice is empty.
+        strands: [{ id: newId("nms"), name: "", speed: "" }],
+        nativeVlanId: null,
+        taggedVlanIds: [],
         status: "up",
       };
       return { ...current, links: [...current.links, link] };
@@ -923,6 +1054,67 @@ function MapEditor({
     setGraph((current) => ({
       ...current,
       links: current.links.map((link) => (link.id === id ? { ...link, ...patch } : link)),
+    }));
+  }
+
+  function patchStrand(linkId: string, strandId: string, patch: Partial<NetworkLinkStrand>) {
+    setGraph((current) => ({
+      ...current,
+      links: current.links.map((link) =>
+        link.id === linkId
+          ? {
+              ...link,
+              strands: link.strands.map((strand) =>
+                strand.id === strandId ? { ...strand, ...patch } : strand,
+              ),
+            }
+          : link,
+      ),
+    }));
+  }
+
+  function addStrand(linkId: string) {
+    setGraph((current) => ({
+      ...current,
+      links: current.links.map((link) => {
+        if (link.id !== linkId || link.strands.length >= MAX_STRANDS) return link;
+        const last = link.strands[link.strands.length - 1];
+        return {
+          ...link,
+          // A LAG's members almost always run at one speed, so the new member
+          // inherits it; the port name is per-member and stays blank.
+          strands: [...link.strands, { id: newId("nms"), name: "", speed: last?.speed ?? "" }],
+        };
+      }),
+    }));
+  }
+
+  function removeStrand(linkId: string, strandId: string) {
+    setGraph((current) => ({
+      ...current,
+      links: current.links.map((link) =>
+        // The last strand stays: a drawn link with no physical link behind it
+        // is not something the model can express.
+        link.id === linkId && link.strands.length > 1
+          ? { ...link, strands: link.strands.filter((strand) => strand.id !== strandId) }
+          : link,
+      ),
+    }));
+  }
+
+  function toggleTaggedVlan(linkId: string, vlanId: string) {
+    setGraph((current) => ({
+      ...current,
+      links: current.links.map((link) =>
+        link.id === linkId
+          ? {
+              ...link,
+              taggedVlanIds: link.taggedVlanIds.includes(vlanId)
+                ? link.taggedVlanIds.filter((entry) => entry !== vlanId)
+                : [...link.taggedVlanIds, vlanId],
+            }
+          : link,
+      ),
     }));
   }
 
@@ -1197,35 +1389,115 @@ function MapEditor({
                     }))}
                   />
                 </Field>
-                <div className="nm-link-meta-grid">
-                  <Field label={t("itops.networkMap.linkCountLabel")}>
-                    <TextInput
-                      mono
-                      type="number"
-                      min={1}
-                      max={64}
-                      step={1}
-                      value={selectedLink.connectionCount}
-                      onChange={(event) => {
-                        const value = Number.parseInt(event.currentTarget.value, 10);
-                        patchLink(selectedLink.id, {
-                          connectionCount: Number.isFinite(value)
-                            ? Math.min(64, Math.max(1, value))
-                            : 1,
-                        });
-                      }}
-                    />
-                  </Field>
-                  <Field label={t("itops.networkMap.linkSpeedLabel")}>
-                    <TextInput
-                      mono
-                      value={selectedLink.speed}
-                      placeholder={t("itops.networkMap.linkSpeedPlaceholder")}
-                      onChange={(event) =>
-                        patchLink(selectedLink.id, { speed: event.currentTarget.value })
-                      }
-                    />
-                  </Field>
+                <div className="nm-strands">
+                  <div className="nm-strands-head">
+                    <span className="kk-lbl">{t("itops.networkMap.strandsLabel")}</span>
+                    <button
+                      type="button"
+                      className="nm-strand-add"
+                      disabled={selectedLink.strands.length >= MAX_STRANDS}
+                      onClick={() => addStrand(selectedLink.id)}
+                    >
+                      <ItIcon name="plus" size={12} />
+                      {t("itops.networkMap.strandAdd")}
+                    </button>
+                  </div>
+                  {selectedLink.strands.map((strand, index) => (
+                    <div key={strand.id} className="nm-strand-row">
+                      <span className="nm-strand-index">{index + 1}</span>
+                      <TextInput
+                        mono
+                        aria-label={t("itops.networkMap.strandNameLabel")}
+                        value={strand.name}
+                        placeholder={t("itops.networkMap.strandNamePlaceholder")}
+                        onChange={(event) =>
+                          patchStrand(selectedLink.id, strand.id, {
+                            name: event.currentTarget.value,
+                          })
+                        }
+                      />
+                      <TextInput
+                        mono
+                        list={speedListId}
+                        aria-label={t("itops.networkMap.strandSpeedLabel")}
+                        value={strand.speed}
+                        placeholder={t("itops.networkMap.strandSpeedPlaceholder")}
+                        onChange={(event) =>
+                          patchStrand(selectedLink.id, strand.id, {
+                            speed: event.currentTarget.value,
+                          })
+                        }
+                      />
+                      <button
+                        type="button"
+                        className="nm-strand-remove"
+                        disabled={selectedLink.strands.length <= 1}
+                        aria-label={t("itops.networkMap.strandRemove")}
+                        title={t("itops.networkMap.strandRemove")}
+                        onClick={() => removeStrand(selectedLink.id, strand.id)}
+                      >
+                        <ItIcon name="xmark" size={12} />
+                      </button>
+                    </div>
+                  ))}
+                  {/* Free text with suggestions: an operator documenting an
+                      OC-3 or a 2.5G uplink must not be blocked by the list. */}
+                  <datalist id={speedListId}>
+                    {COMMON_LINK_SPEEDS.map((speed) => (
+                      <option key={speed} value={speed} />
+                    ))}
+                  </datalist>
+                  <span className="kk-hint">{t("itops.networkMap.strandsHint")}</span>
+                </div>
+                <Field label={t("itops.networkMap.nativeVlanLabel")} hint={t("itops.networkMap.nativeVlanHint")}>
+                  <Select
+                    value={selectedLink.nativeVlanId ?? ""}
+                    onChange={(event) =>
+                      patchLink(selectedLink.id, {
+                        nativeVlanId: event.currentTarget.value || null,
+                        // A native VLAN is untagged by definition; keeping it in
+                        // the tagged set would contradict the field beside it.
+                        taggedVlanIds: selectedLink.taggedVlanIds.filter(
+                          (entry) => entry !== event.currentTarget.value,
+                        ),
+                      })
+                    }
+                    options={[
+                      { value: "", label: t("itops.networkMap.vlanNone") },
+                      ...vlans.map((vlan) => ({
+                        value: vlan.id,
+                        label: t("itops.vlan.optionLabel", { label: vlanLabel(vlan) }),
+                      })),
+                    ]}
+                  />
+                </Field>
+                <div className="nm-vlan-picker">
+                  <span className="kk-lbl">{t("itops.networkMap.taggedVlanLabel")}</span>
+                  {vlans.length > 0 ? (
+                    <div className="nm-vlan-options" role="group" aria-label={t("itops.networkMap.taggedVlanLabel")}>
+                      {vlans.map((vlan) => {
+                        const isNative = selectedLink.nativeVlanId === vlan.id;
+                        const on = selectedLink.taggedVlanIds.includes(vlan.id);
+                        return (
+                          <button
+                            key={vlan.id}
+                            type="button"
+                            className="nm-vlan-option"
+                            aria-pressed={on}
+                            disabled={isNative}
+                            title={isNative ? t("itops.networkMap.vlanIsNative") : undefined}
+                            style={{ "--nm-vlan-accent": vlanAccent(vlan) } as CSSProperties}
+                            onClick={() => toggleTaggedVlan(selectedLink.id, vlan.id)}
+                          >
+                            {vlanLabel(vlan)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <span className="kk-hint">{t("itops.networkMap.vlanEmptyHint")}</span>
+                  )}
+                  <span className="kk-hint">{t("itops.networkMap.taggedVlanHint")}</span>
                 </div>
                 <Btn kind="danger" icon="trash" onClick={() => removeLink(selectedLink.id)}>
                   {t("itops.networkMap.removeLink")}
@@ -1264,6 +1536,12 @@ function MapEditor({
                   ))}
                 </div>
                 <p className="au-side-hint">{t("itops.networkMap.designHint")}</p>
+                <VlanLegend
+                  vlans={vlans}
+                  usage={vlanUsage}
+                  spotlightVlanId={spotlightVlanId}
+                  onSpotlight={setSpotlightVlanId}
+                />
                 <dl className="nm-stats">
                   <div>
                     <dt>{t("itops.networkMap.statNodes")}</dt>
@@ -1299,6 +1577,63 @@ function MapEditor({
         />
       ) : null}
     </div>
+  );
+}
+
+/**
+ * VLAN spotlight legend. Selecting a VLAN dims every link that does not carry
+ * it, which is the one-click answer to "where does VLAN 30 actually go?".
+ *
+ * This is a view filter and nothing more: it never edits the graph, and the
+ * What-If analysis stays VLAN-blind — per-VLAN reachability would multiply
+ * `effectiveRoots` / `findWeakPoints` / `findStrandedNodes` by the VLAN count
+ * and is a separate piece of work.
+ */
+function VlanLegend({
+  vlans,
+  usage,
+  spotlightVlanId,
+  onSpotlight,
+}: {
+  vlans: readonly Vlan[];
+  usage: ReadonlyMap<string, number>;
+  spotlightVlanId: string | null;
+  onSpotlight: (vlanId: string | null) => void;
+}) {
+  const { t } = useTranslation();
+  // Only VLANs this map actually carries: the global list is documentation for
+  // the whole install, and listing all of it here would bury the drawn ones.
+  const drawn = vlans.filter((vlan) => usage.has(vlan.id));
+  if (drawn.length === 0) return null;
+
+  return (
+    <section className="nm-vlan-legend">
+      <div className="nm-vlan-legend-head">
+        <span className="nm-impact-caption">{t("itops.networkMap.vlanLegendHeading")}</span>
+        {spotlightVlanId ? (
+          <button type="button" className="nm-vlan-clear" onClick={() => onSpotlight(null)}>
+            {t("itops.networkMap.vlanSpotlightClear")}
+          </button>
+        ) : null}
+      </div>
+      <div className="nm-vlan-legend-rows">
+        {drawn.map((vlan) => (
+          <button
+            key={vlan.id}
+            type="button"
+            className="nm-vlan-legend-row"
+            aria-pressed={spotlightVlanId === vlan.id}
+            style={{ "--nm-vlan-accent": vlanAccent(vlan) } as CSSProperties}
+            onClick={() => onSpotlight(spotlightVlanId === vlan.id ? null : vlan.id)}
+          >
+            <em className="nm-vlan-dot" />
+            <span>{vlanLabel(vlan)}</span>
+            <small>{t("itops.networkMap.vlanLinkCount", { count: usage.get(vlan.id) ?? 0 })}</small>
+          </button>
+        ))}
+      </div>
+      <p className="au-side-hint">{t("itops.networkMap.vlanSpotlightHint")}</p>
+    </section>
   );
 }
 

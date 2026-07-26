@@ -5,7 +5,14 @@
 
 use rusqlite::{Connection as SqliteConnection, OptionalExtension, params};
 
-use super::types::{NetworkGraph, NetworkMap};
+use std::collections::HashSet;
+
+use super::types::{NetworkGraph, NetworkLink, NetworkLinkStrand, NetworkMap};
+
+/// Ceiling on parallel physical links recorded for one drawn link. The canvas
+/// draws at most four strands; beyond that the count carries the truth and the
+/// list in the inspector stays the authoritative record.
+const MAX_STRANDS: usize = 64;
 
 #[derive(Debug)]
 pub enum NetworkMapStorageError {
@@ -74,7 +81,10 @@ fn validate_name(name: &str) -> Result<String> {
 
 /// Drops links whose endpoints do not exist and links a node to itself, so a
 /// stale client payload can never persist a graph the reachability walk would
-/// have to defend against.
+/// have to defend against. Also normalizes each link's strands and VLAN
+/// membership; VLAN ids themselves are soft references into `itops_vlans` and
+/// are deliberately not validated here, so a map keeps documenting VLAN 30
+/// after the record is renamed or deleted.
 fn sanitize_graph(graph: &NetworkGraph) -> NetworkGraph {
     let node_ids: Vec<&str> = graph.nodes.iter().map(|node| node.id.as_str()).collect();
     NetworkGraph {
@@ -88,11 +98,7 @@ fn sanitize_graph(graph: &NetworkGraph) -> NetworkGraph {
                     && node_ids.contains(&link.to.as_str())
             })
             .cloned()
-            .map(|mut link| {
-                link.connection_count = link.connection_count.clamp(1, 64);
-                link.speed = link.speed.trim().to_string();
-                link
-            })
+            .map(sanitize_link)
             .collect(),
         roots: graph
             .roots
@@ -101,6 +107,61 @@ fn sanitize_graph(graph: &NetworkGraph) -> NetworkGraph {
             .cloned()
             .collect(),
     }
+}
+
+fn sanitize_link(mut link: NetworkLink) -> NetworkLink {
+    link.strands = migrate_strands(&link);
+    // A native VLAN is untagged by definition, so listing it as tagged too is
+    // a contradiction rather than extra information.
+    let native = link.native_vlan_id.take().and_then(non_empty);
+    let mut seen: HashSet<String> = HashSet::new();
+    link.tagged_vlan_ids = link
+        .tagged_vlan_ids
+        .drain(..)
+        .filter_map(non_empty)
+        .filter(|id| Some(id) != native.as_ref() && seen.insert(id.clone()))
+        .collect();
+    link.native_vlan_id = native;
+    link.connection_count = None;
+    link.speed = None;
+    link
+}
+
+/// Strand list for one link, folding the pre-strand `connectionCount`/`speed`
+/// pair from older saved graphs into the list. Never returns an empty list: a
+/// drawn link always stands for at least one physical link.
+fn migrate_strands(link: &NetworkLink) -> Vec<NetworkLinkStrand> {
+    let mut strands: Vec<NetworkLinkStrand> = link
+        .strands
+        .iter()
+        .take(MAX_STRANDS)
+        .enumerate()
+        .map(|(index, strand)| NetworkLinkStrand {
+            id: non_empty(strand.id.clone())
+                .unwrap_or_else(|| format!("{}-strand-{index}", link.id)),
+            name: strand.name.trim().to_string(),
+            speed: strand.speed.trim().to_string(),
+        })
+        .collect();
+    if strands.is_empty() {
+        let legacy_speed = link.speed.clone().unwrap_or_default().trim().to_string();
+        let count = usize::from(link.connection_count.unwrap_or(1)).clamp(1, MAX_STRANDS);
+        strands = (0..count)
+            .map(|index| NetworkLinkStrand {
+                id: format!("{}-strand-{index}", link.id),
+                // The pre-strand model had one speed for the whole bundle and
+                // no per-member port names, so every member inherits it.
+                name: String::new(),
+                speed: legacy_speed.clone(),
+            })
+            .collect();
+    }
+    strands
+}
+
+fn non_empty(value: String) -> Option<String> {
+    let trimmed = value.trim();
+    (!trimmed.is_empty()).then(|| trimmed.to_string())
 }
 
 fn graph_to_json(graph: &NetworkGraph) -> Result<String> {
@@ -222,7 +283,7 @@ pub fn remove_map(conn: &SqliteConnection, id: &str) -> Result<()> {
 mod tests {
     use super::*;
     use crate::itops::types::{
-        NetworkLink, NetworkLinkKind, NetworkMapStatus, NetworkNode, NetworkNodeKind,
+        NetworkLinkKind, NetworkMapStatus, NetworkNode, NetworkNodeKind,
     };
 
     fn open_test_db() -> SqliteConnection {
@@ -257,11 +318,16 @@ mod tests {
             id: id.to_string(),
             from: from.to_string(),
             to: to.to_string(),
-            label: String::new(),
             kind: NetworkLinkKind::Ethernet,
-            connection_count: 1,
-            speed: String::new(),
-            status: Default::default(),
+            ..NetworkLink::default()
+        }
+    }
+
+    fn strand(id: &str, name: &str, speed: &str) -> NetworkLinkStrand {
+        NetworkLinkStrand {
+            id: id.to_string(),
+            name: name.to_string(),
+            speed: speed.to_string(),
         }
     }
 
@@ -269,8 +335,17 @@ mod tests {
     fn round_trips_a_graph_and_drops_dangling_links() {
         let conn = open_test_db();
         let mut primary_link = link("l1", "core", "edge");
-        primary_link.connection_count = 4;
-        primary_link.speed = " 100 Gbps ".to_string();
+        primary_link.strands = vec![
+            strand("s1", " Gi1/0/1 ", " 10 Gbps "),
+            strand("", "Gi1/0/2", "10 Gbps"),
+        ];
+        primary_link.native_vlan_id = Some(" vlan-10 ".to_string());
+        primary_link.tagged_vlan_ids = vec![
+            "vlan-20".into(),
+            "vlan-20".into(),
+            " ".into(),
+            "vlan-10".into(),
+        ];
         primary_link.status = NetworkMapStatus::Warning;
         let graph = NetworkGraph {
             nodes: vec![node("core"), node("edge")],
@@ -291,10 +366,57 @@ mod tests {
         let listed = list_maps(&conn).unwrap();
         assert_eq!(listed.len(), 1);
         assert_eq!(listed[0].graph.nodes.len(), 2);
-        assert_eq!(listed[0].graph.links[0].id, "l1");
-        assert_eq!(listed[0].graph.links[0].connection_count, 4);
-        assert_eq!(listed[0].graph.links[0].speed, "100 Gbps");
-        assert_eq!(listed[0].graph.links[0].status, NetworkMapStatus::Warning);
+        let stored = &listed[0].graph.links[0];
+        assert_eq!(stored.id, "l1");
+        assert_eq!(stored.strands.len(), 2);
+        assert_eq!(stored.strands[0].name, "Gi1/0/1");
+        assert_eq!(stored.strands[0].speed, "10 Gbps");
+        // A blank strand id is backfilled so React keys and edits stay stable.
+        assert_eq!(stored.strands[1].id, "l1-strand-1");
+        assert_eq!(stored.native_vlan_id.as_deref(), Some("vlan-10"));
+        // Blanks, duplicates, and the native VLAN drop out of the tagged set.
+        assert_eq!(stored.tagged_vlan_ids, vec!["vlan-20".to_string()]);
+        assert_eq!(stored.status, NetworkMapStatus::Warning);
+    }
+
+    #[test]
+    fn folds_pre_strand_links_into_strands() {
+        let conn = open_test_db();
+        conn.execute(
+            "INSERT INTO itops_network_maps (id, name, sort_order, graph_json)
+             VALUES ('map-1', 'Legacy', 0, ?)",
+            [r#"{
+                "nodes":[{"id":"core"},{"id":"edge"},{"id":"leaf"}],
+                "links":[
+                    {"id":"lag","from":"core","to":"edge","connectionCount":3,"speed":" 10 Gbps "},
+                    {"id":"single","from":"core","to":"leaf"}
+                ],
+                "roots":[]
+            }"#],
+        )
+        .unwrap();
+
+        let loaded = get_map(&conn, "map-1").unwrap().unwrap();
+        let lag = &loaded.graph.links[0];
+        assert_eq!(lag.strands.len(), 3);
+        assert!(lag.strands.iter().all(|strand| strand.speed == "10 Gbps"));
+        assert!(lag.strands.iter().all(|strand| strand.name.is_empty()));
+        assert_eq!(lag.strands[2].id, "lag-strand-2");
+        // A link that never had a count still stands for one physical link.
+        assert_eq!(loaded.graph.links[1].strands.len(), 1);
+
+        // The legacy pair is never written back once folded in.
+        update_map(&conn, "map-1", "Legacy", "", None, &loaded.graph).unwrap();
+        let stored: String = conn
+            .query_row("SELECT graph_json FROM itops_network_maps", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        let value: serde_json::Value = serde_json::from_str(&stored).unwrap();
+        let first = &value["links"][0];
+        assert!(first.get("connectionCount").is_none());
+        assert!(first.get("speed").is_none());
+        assert_eq!(first["strands"][0]["speed"], "10 Gbps");
     }
 
     #[test]
@@ -340,7 +462,7 @@ mod tests {
         let loaded = get_map(&conn, "map-1").unwrap().unwrap();
         assert_eq!(loaded.graph.links.len(), 1);
         assert_eq!(loaded.graph.links[0].id, "valid");
-        assert_eq!(loaded.graph.links[0].connection_count, 1);
+        assert_eq!(loaded.graph.links[0].strands.len(), 1);
         assert_eq!(loaded.graph.roots, vec!["core".to_string()]);
     }
 }

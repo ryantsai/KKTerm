@@ -1096,6 +1096,11 @@ pub struct IpPrefix {
     pub description: String,
     #[serde(default)]
     pub site_id: Option<String>,
+    /// Soft reference to the VLAN this prefix is addressed on. It documents
+    /// "VLAN 30 is 10.20.30.0/24" — a prefix references a VLAN, it is not one.
+    /// Deleting the VLAN leaves the prefix documented and unlinked.
+    #[serde(default)]
+    pub vlan_id: Option<String>,
 }
 
 /// One assigned address inside a Prefix. The optional ids are soft references
@@ -1179,6 +1184,34 @@ pub struct IpamScanResult {
     pub documented: bool,
 }
 
+// ── VLANs (docs/ITOPS.md VLAN) ────────────────────────────────────────────────
+// A durable global record next to IPAM, deliberately NOT stashed inside a
+// Network Map's graph_json: VLAN 30 drawn on two maps has to be the same VLAN,
+// and map-local VLANs would make that a coincidence of spelling.
+
+/// The IEEE 802.1Q id range. 0 and 4095 are reserved by the standard.
+pub const VLAN_ID_MIN: u16 = 1;
+pub const VLAN_ID_MAX: u16 = 4094;
+
+/// A durable VLAN record. `vid` is the 802.1Q id; `accent` is an index into the
+/// frontend's `IT_ACCENTS` list (never a hex colour — `docs/DESIGN_LANGUAGE.md`)
+/// resolved modulo the list length, so no accent value can be invalid.
+/// `site_id` is a soft reference that labels the VLAN without scoping it.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Vlan {
+    pub id: String,
+    pub vid: u16,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub description: String,
+    #[serde(default)]
+    pub site_id: Option<String>,
+    #[serde(default)]
+    pub accent: u8,
+}
+
 // ── Network Map (docs/ITOPS.md Network Map) ───────────────────────────────────
 // The logical link diagram, distinct from the physical Site → Server Room →
 // Rack topology. One row per map holds the whole graph as JSON, following the
@@ -1234,10 +1267,6 @@ pub enum NetworkMapStatus {
     Warning,
 }
 
-fn default_network_link_count() -> u16 {
-    1
-}
-
 /// One device on a Network Map. `address` is a free-text canvas caption; the
 /// three id fields are optional soft references retained for imported Hosts.
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -1268,8 +1297,23 @@ pub struct NetworkNode {
     pub note: String,
 }
 
+/// One of the parallel physical links a drawn Network Link stands for. Port
+/// names and speeds belong here rather than on the link, because a 2×10G LAG
+/// lands on a different port at each end of each member.
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkLinkStrand {
+    pub id: String,
+    /// Free-text port/circuit identifier for this member.
+    #[serde(default)]
+    pub name: String,
+    /// Free text keeps units and aggregate notation operator-defined.
+    #[serde(default)]
+    pub speed: String,
+}
+
 /// An undirected link between two Network Nodes. `from`/`to` are node ids.
-/// Speed and parallel-link count are operator-authored documentation.
+/// Strands, VLAN membership, and status are operator-authored documentation.
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NetworkLink {
@@ -1280,13 +1324,26 @@ pub struct NetworkLink {
     pub label: String,
     #[serde(default)]
     pub kind: NetworkLinkKind,
-    #[serde(default = "default_network_link_count")]
-    pub connection_count: u16,
+    /// One entry per parallel physical link; never empty after sanitizing.
     #[serde(default)]
-    pub speed: String,
+    pub strands: Vec<NetworkLinkStrand>,
+    /// The untagged VLAN carried on this link — a soft reference into
+    /// `itops_vlans`. `None` means the operator has not documented one.
+    #[serde(default)]
+    pub native_vlan_id: Option<String>,
+    /// Tagged (802.1Q) VLANs carried on this link. Non-empty makes it a trunk;
+    /// soft references, so deleting a VLAN leaves the drawing intact.
+    #[serde(default)]
+    pub tagged_vlan_ids: Vec<String>,
     /// Operator-authored documentation; What-If outages remain transient.
     #[serde(default)]
     pub status: NetworkMapStatus,
+    /// Pre-strand shape, read from saved graphs and folded into `strands` by
+    /// `network_map_storage::sanitize_graph`. Never written back.
+    #[serde(default, skip_serializing)]
+    pub connection_count: Option<u16>,
+    #[serde(default, skip_serializing)]
+    pub speed: Option<String>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]

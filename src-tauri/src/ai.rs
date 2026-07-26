@@ -78,6 +78,7 @@ const TUTORIAL_TOOL_KNOWN_TARGETS: &str = concat!(
     "itops.automationsPanel, itops.automationsNew with navigation page=itops itopsDestination=automations; ",
     "itops.runHistoryPanel with navigation page=itops itopsDestination=runHistory; ",
     "itops.taskLibrary, itops.taskLibraryNew with navigation page=itops itopsDestination=taskLibrary; ",
+    "itops.vlans, itops.vlanNew with navigation page=itops itopsDestination=vlans; ",
     "itops.ipam, itops.ipamNew with navigation page=itops itopsDestination=ipam; ",
     "itops.networkMaps, itops.networkMapNew with navigation page=itops itopsDestination=networkMaps; ",
     "dashboard.views, dashboard.addView, dashboard.editLayout, dashboard.addWidget, dashboard.canvas with navigation page=dashboard; ",

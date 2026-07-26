@@ -1490,6 +1490,35 @@ type CommandMap = {
     args: { id: string };
     result: void;
   };
+  itops_list_vlans: {
+    args: undefined;
+    result: import("../types").Vlan[];
+  };
+  itops_create_vlan: {
+    args: {
+      vid: number;
+      name: string;
+      description: string;
+      siteId: string | null;
+      accent: number;
+    };
+    result: import("../types").Vlan;
+  };
+  itops_update_vlan: {
+    args: {
+      id: string;
+      vid: number;
+      name: string;
+      description: string;
+      siteId: string | null;
+      accent: number;
+    };
+    result: import("../types").Vlan;
+  };
+  itops_remove_vlan: {
+    args: { id: string };
+    result: void;
+  };
   itops_ipam_snapshot: {
     args: undefined;
     result: import("../types").IpamSnapshot;
@@ -1502,6 +1531,7 @@ type CommandMap = {
       status: import("../types").PrefixStatus;
       description: string;
       siteId: string | null;
+      vlanId: string | null;
     };
     result: import("../types").IpPrefix;
   };
@@ -1514,6 +1544,7 @@ type CommandMap = {
       status: import("../types").PrefixStatus;
       description: string;
       siteId: string | null;
+      vlanId: string | null;
     };
     result: import("../types").IpPrefix;
   };
