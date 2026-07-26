@@ -126,8 +126,8 @@ fn sanitize_node(mut node: NetworkNode) -> NetworkNode {
         .filter(|address| seen.insert(address.clone()))
         .take(32)
         .collect();
-    node.width = node.width.clamp(140.0, 360.0);
-    node.height = node.height.clamp(64.0, 220.0);
+    node.width = node.width.clamp(120.0, 360.0);
+    node.height = node.height.clamp(44.0, 220.0);
     node
 }
 
@@ -458,7 +458,7 @@ mod tests {
             vec!["10.20.0.1".to_string(), "2001:db8::1".to_string()]
         );
         assert_eq!(listed[0].graph.nodes[0].width, 360.0);
-        assert_eq!(listed[0].graph.nodes[0].height, 64.0);
+        assert_eq!(listed[0].graph.nodes[0].height, 44.0);
         assert_eq!(listed[0].graph.notes[0].text, "Maintenance boundary");
         assert_eq!(listed[0].graph.notes[0].width, 180.0);
         assert_eq!(listed[0].graph.notes[0].height, 400.0);
@@ -504,8 +504,8 @@ mod tests {
         assert_eq!(lag.strands[2].id, "lag-strand-2");
         // A link that never had a count still stands for one physical link.
         assert_eq!(loaded.graph.links[1].strands.len(), 1);
-        assert_eq!(loaded.graph.nodes[0].width, 140.0);
-        assert_eq!(loaded.graph.nodes[0].height, 64.0);
+        assert_eq!(loaded.graph.nodes[0].width, 120.0);
+        assert_eq!(loaded.graph.nodes[0].height, 44.0);
         assert_eq!(loaded.graph.nodes[0].addresses, vec!["10.0.0.1"]);
 
         // The legacy pair is never written back once folded in.

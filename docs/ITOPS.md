@@ -515,7 +515,9 @@ matches map metadata plus every saved Network Node and Network Link field.
 The overview alone owns its title, description, search, and New Map action.
 Opening a card enters one full map workspace with only the map name centered in
 the canvas toolbar; map selection and returning to the overview stay in the
-left navigator. Every saved map also
+left navigator. Each overview card has one bottom-right menu button for
+Properties and Delete instead of exposing destructive icon actions on the
+card. Every saved map also
 appears as a depth-one child beneath the expandable Network Maps row in the IT
 Ops navigator; selecting a child opens that map directly, while selecting the
 parent opens the card list. A map child row's native context menu contains
@@ -526,8 +528,9 @@ Properties edits the map name, description, and optional Site tag. It uses
 `AutomationEditor.tsx` does — controlled `nodes`/`edges` via `useMemo`,
 position-and-dimension-only `onNodesChange` filtering, `deleteKeyCode={null}`,
 `proOptions={{ hideAttribution: true }}`. Because a Network Link is
-undirected while xyflow edges are directed, every node renders four stacked
-source+target handles (`left`/`right`/`top`/`bottom`) and the edge picks its
+undirected while xyflow edges are directed, every node renders one loose-mode
+handle on each side (`left`/`right`/`top`/`bottom`), usable as either endpoint,
+and the edge picks its
 `sourceHandle`/`targetHandle` per render from the two node centres. The
 custom edge renderer draws an orthogonal route and expands a parallel-link
 count into up to four visible strands while keeping handle/anchor state out
@@ -535,15 +538,21 @@ of the stored graph. The editor is keyed by map id so switching maps remounts
 rather than carrying unsaved edits across.
 
 A map opens in view-only mode. Its icon-only pen action follows the Site /
-Server Room / Rack drill-down contract: pen enters edit mode, and the check
-icon returns to view-only mode. View-only mode permits canvas navigation and
-selection but disables node movement, resizing, linking, placement, import,
-and element Properties dialogs. The right-side Nodes pane is mounted only in
-edit mode, so the read-only canvas uses the full workspace width. In What-If
-mode the Nodes pane is replaced by the impact-analysis panel and the canvas's
-drag/connect affordances remain disabled. What-If is a contextual toolbar
-action, not a permanent mode segmented control; while active, the same action
-returns to edit mode.
+Server Room / Rack drill-down contract: the pen enters edit mode and stays a
+pen while active. Selecting it again saves a changed graph and returns to
+view-only mode. It is the only action in the active map's top-right toolbar;
+map deletion remains in the navigator and overview-card menus. View-only mode
+permits canvas navigation and selection but disables node movement, resizing,
+linking, placement, import, and element Properties dialogs. The right-side
+Nodes pane is mounted only in edit mode, so the read-only canvas uses the full
+workspace width. The pane owns the Import Hosts action. The What-If entry
+action is temporarily not exposed while that workflow is redesigned; the pure
+analysis code and graph model remain available for that later work.
+
+Network Nodes use a compact, left-anchored card: a small icon tile, thin
+internal padding, and the remaining width reserved for the label and caption.
+New and imported nodes start at the compact default size, while every saved
+node keeps its own persisted dimensions.
 
 In edit mode, Nodes-pane cards use the same configure-then-place interaction
 as Server Room editing: click a card, complete its Properties dialog, then
@@ -555,10 +564,11 @@ swallow either interaction. A Network Node's native right-click menu contains
 Duplicate, Delete, then a separated final Properties item. Duplicate opens the
 same prefilled Properties dialog and arms the resulting copy for placement.
 The edit-mode Nodes pane remains the object picker and map summary at all times;
-it never becomes a property inspector. Clicking an existing Network Node,
-Network Link, or Note opens that element's Properties dialog; explicitly
-double-clicking a Network Node opens the same dialog. Edits are applied to the
-in-memory graph only when that dialog's Save action is confirmed.
+it never becomes a property inspector. Single-clicking an existing Network
+Node or Note selects it and exposes its drag-resize handles; double-clicking
+opens its Properties dialog. Clicking a Network Link opens that link's
+Properties dialog. Edits are applied to the in-memory graph only when that
+dialog's Save action is confirmed.
 Network Nodes persist their individual width/height, palette-backed icon
 background, and an ordered list of documented IP addresses.
 A Network Link may bind each endpoint independently to one address exposed by

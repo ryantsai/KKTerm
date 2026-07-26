@@ -11,12 +11,21 @@
 // Built on @xyflow/react like the Automation editor. Node positions live in the
 // graph itself (they are part of the saved document), so a drag is an edit.
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import {
   Background,
   BackgroundVariant,
+  ConnectionMode,
   EdgeLabelRenderer,
   Controls,
   Handle,
@@ -159,10 +168,10 @@ const NODE_STYLE: Record<NetworkNodeKind, { accent: string }> = {
   camera: { accent: IT_ACCENTS.red },
 };
 
-const NODE_WIDTH = 190;
-const NODE_HEIGHT = 80;
-const NODE_MIN_WIDTH = 140;
-const NODE_MIN_HEIGHT = 64;
+const NODE_WIDTH = 156;
+const NODE_HEIGHT = 52;
+const NODE_MIN_WIDTH = 120;
+const NODE_MIN_HEIGHT = 44;
 const NODE_MAX_WIDTH = 360;
 const NODE_MAX_HEIGHT = 220;
 const NOTE_WIDTH = 240;
@@ -412,18 +421,22 @@ function MapNode({ data }: NodeProps<Node<MapNodeData>>) {
           handleClassName="nm-resize-handle"
         />
       )}
-      {/* One stacked source/target pair per side: links are undirected, and the
-          edge builder picks the side facing the far end. */}
+      {/* Loose connection mode makes one handle usable from either end. Keeping
+          a single hit target per side avoids overlapping source/target handles,
+          where the top handle made the one below impossible to drop onto. */}
       {data.ghost
         ? null
         : [Position.Left, Position.Right, Position.Top, Position.Bottom].map((position) => (
-            <span key={position}>
-              <Handle type="target" id={position} position={position} className="nm-handle" />
-              <Handle type="source" id={position} position={position} className="nm-handle" />
-            </span>
+            <Handle
+              key={position}
+              type="source"
+              id={position}
+              position={position}
+              className="nm-handle"
+            />
           ))}
       <span className="nm-node-ic" style={accentStyle}>
-        <NetworkNodeArtwork kind={data.kind} size={34} />
+        <NetworkNodeArtwork kind={data.kind} size={24} />
       </span>
       <span className="nm-node-tx">
         <span className="nm-node-lab">{data.label}</span>
@@ -1553,13 +1566,7 @@ type LinkDialogRequest = {
   link: NetworkLink;
 };
 
-function MapEditor({
-  map,
-  onDeleteMap,
-}: {
-  map: NetworkMap;
-  onDeleteMap: () => void;
-}) {
+function MapEditor({ map }: { map: NetworkMap }) {
   const { t } = useTranslation();
   const saveNetworkMap = useItOpsStore((state) => state.saveNetworkMap);
   const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
@@ -2143,25 +2150,7 @@ function MapEditor({
   return (
     <div className="nm-editor">
       <div className="nm-toolbar it-drill-toolbar">
-        <div className="nm-mode-action-wrap">
-          <button
-            type="button"
-            className="nm-mode-action"
-            data-active={mode === "impact"}
-            onClick={() => {
-              setMode(mode === "impact" ? "design" : "impact");
-              setSelection(null);
-              cancelPlacement();
-            }}
-          >
-            <ItIcon name={mode === "impact" ? "chevL" : "pulse"} size={13} />
-            {t(
-              mode === "impact"
-                ? "itops.networkMap.modeDesign"
-                : "itops.networkMap.modeImpact",
-            )}
-          </button>
-        </div>
+        <div className="it-drill-spacer" />
         <h2 className="nm-editor-title" title={map.name}>{map.name}</h2>
         <div className="it-drill-actions" aria-label={t("itops.actions.viewActions")}>
           <button
@@ -2178,42 +2167,15 @@ function MapEditor({
                 : t("itops.actions.edit")
             }
             aria-pressed={mode === "design"}
+            disabled={busy}
             onClick={() => {
+              if (mode === "design" && dirty) void save();
               setMode(mode === "design" ? "view" : "design");
               setSelection(null);
               cancelPlacement();
             }}
           >
-            <ItIcon name={mode === "design" ? "check" : "edit"} size={15} />
-          </button>
-          <button
-            type="button"
-            className="it-drill-action danger"
-            title={t("itops.actions.delete")}
-            aria-label={t("itops.actions.delete")}
-            onClick={onDeleteMap}
-          >
-            <ItIcon name="trash" size={15} />
-          </button>
-          <button
-            type="button"
-            className="it-drill-action"
-            title={t("itops.networkMap.importTitle")}
-            aria-label={t("itops.networkMap.importTitle")}
-            disabled={mode !== "design"}
-            onClick={() => setImporting(true)}
-          >
-            <ItIcon name="download" size={15} />
-          </button>
-          <button
-            type="button"
-            className={`it-drill-action${dirty ? " active" : ""}`}
-            title={dirty ? t("itops.networkMap.saveChanges") : t("itops.networkMap.saved")}
-            aria-label={dirty ? t("itops.networkMap.saveChanges") : t("itops.networkMap.saved")}
-            disabled={!dirty || busy}
-            onClick={() => void save()}
-          >
-            <ItIcon name="check" size={15} />
+            <ItIcon name="edit" size={15} />
           </button>
         </div>
       </div>
@@ -2264,23 +2226,18 @@ function MapEditor({
             onNodeClick={(_event, node) => {
               if (placementDraft) return;
               if (node.type === "networkNote") {
-                if (mode === "design") openNoteProperties(node.id);
+                if (mode === "design") setSelection({ kind: "note", id: node.id });
                 else if (mode === "view") setSelection({ kind: "note", id: node.id });
                 return;
               }
               if (mode === "impact") toggleDown("node", node.id);
-              else if (mode === "design") openNodeProperties(node.id);
+              else if (mode === "design") setSelection({ kind: "node", id: node.id });
               else setSelection({ kind: "node", id: node.id });
             }}
             onNodeDoubleClick={(_event, node) => {
-              if (
-                placementDraft ||
-                mode !== "design" ||
-                node.type !== "networkNode"
-              ) {
-                return;
-              }
-              openNodeProperties(node.id);
+              if (placementDraft || mode !== "design") return;
+              if (node.type === "networkNote") openNoteProperties(node.id);
+              else if (node.type === "networkNode") openNodeProperties(node.id);
             }}
             onNodeContextMenu={(event, node) => {
               if (node.type !== "networkNode") return;
@@ -2298,6 +2255,7 @@ function MapEditor({
             onPaneClick={() => {
               if (!placementDraft) setSelection(null);
             }}
+            connectionMode={ConnectionMode.Loose}
             nodesDraggable={mode === "design" && !placementDraft}
             nodesConnectable={mode === "design" && !placementDraft}
             deleteKeyCode={null}
@@ -2326,7 +2284,18 @@ function MapEditor({
               />
               ) : (
                 <>
-                <div className="au-side-title">{t("itops.networkMap.paletteLabel")}</div>
+                <div className="nm-side-heading">
+                  <div className="au-side-title">{t("itops.networkMap.paletteLabel")}</div>
+                  <button
+                    type="button"
+                    className="it-icon-btn"
+                    title={t("itops.networkMap.importTitle")}
+                    aria-label={t("itops.networkMap.importTitle")}
+                    onClick={() => setImporting(true)}
+                  >
+                    <ItIcon name="download" size={14} />
+                  </button>
+                </div>
                 <div className="nm-picker-groups">
                   {NODE_CATEGORIES.map((category) => (
                     <section key={category.id} className="nm-picker-group">
@@ -2694,6 +2663,33 @@ export function NetworkMapDesigner({
     }
   }
 
+  function showNetworkMapCardMenu(
+    event: ReactMouseEvent<HTMLButtonElement>,
+    map: NetworkMap,
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = event.currentTarget.getBoundingClientRect();
+    void showNativeContextMenu(
+      [
+        {
+          kind: "item",
+          label: t("common.properties"),
+          iconSvg: nativeMenuIcons.pencil,
+          action: () => setDialog(map),
+        },
+        { kind: "separator" },
+        {
+          kind: "item",
+          label: t("itops.actions.delete"),
+          iconSvg: nativeMenuIcons.trash,
+          action: () => setPendingDelete(map),
+        },
+      ],
+      { x: Math.round(rect.right), y: Math.round(rect.bottom) },
+    );
+  }
+
   return (
     <div className="nm-page it-destination-surface" data-tutorial-id="itops.networkMaps">
       {!selected ? (
@@ -2733,11 +2729,7 @@ export function NetworkMapDesigner({
         <div className="nm-detail">
           {/* Keyed by id so switching maps starts a fresh draft rather than
               carrying the previous map's unsaved edits across. */}
-          <MapEditor
-            key={selected.id}
-            map={selected}
-            onDeleteMap={() => setPendingDelete(selected)}
-          />
+          <MapEditor key={selected.id} map={selected} />
         </div>
       ) : visibleMaps.length > 0 ? (
         <div className="nm-gallery" role="list">
@@ -2775,24 +2767,19 @@ export function NetworkMapDesigner({
                   </span>
                 </span>
               </button>
-              <div className="nm-gallery-actions">
-                <button
-                  type="button"
-                  className="it-icon-btn"
-                  aria-label={t("common.properties")}
-                  onClick={() => setDialog(map)}
-                >
-                  <ItIcon name="edit" size={13} />
-                </button>
-                <button
-                  type="button"
-                  className="it-icon-btn"
-                  aria-label={t("itops.actions.delete")}
-                  onClick={() => setPendingDelete(map)}
-                >
-                  <ItIcon name="trash" size={13} />
-                </button>
-              </div>
+              <button
+                type="button"
+                className="it-icon-btn nm-gallery-menu"
+                aria-label={t("itops.actions.more")}
+                aria-haspopup="menu"
+                onClick={(event) => showNetworkMapCardMenu(event, map)}
+              >
+                <span className="nm-gallery-menu-glyph" aria-hidden="true">
+                  <span />
+                  <span />
+                  <span />
+                </span>
+              </button>
             </article>
           ))}
         </div>
