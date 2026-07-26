@@ -26,10 +26,9 @@ The IT Ops Module owns:
   per-host live output and a consolidated, saved run report.
 - **Automations** — durable trigger → condition → action rules (the
   evolved Watchdog), including the live run loop and Status Bar surface.
-- **IPAM** — the global IP Prefix / IP Address Record plan, with derived
-  containment nesting and utilization (see "IPAM" below).
-- **VLANs** — global durable 802.1Q VLAN records, referenced by IP Prefixes
-  and Network Links (see "VLAN" below).
+- **IPAM** — the global VLAN / IP Prefix / IP Address Record plan, with VLAN
+  and IP Prefix rows in one typed grid plus derived Prefix containment nesting
+  and utilization (see "IPAM" below).
 - **Network Maps** — global hand-drawn logical link diagrams plus the pure
   What-If reachability analysis over them (see "Network Map" below).
 - The Tauri commands the AI Assistant uses to draft and manage Sites and
@@ -240,9 +239,10 @@ VLAN, it is not one, so IPAM's _Avoid: VLAN_ stays literally true. Deleting a
 VLAN clears that reference and deletes nothing else.
 _Avoid_: subnet, broadcast domain (as the stored entity), IP Prefix
 
-**IPAM** — the global Module surface over those two, standing outside the
-Site tree in the navigator's Library section next to VLANs and the Task
-Library. Its
+**IPAM** — the global Module surface over those three durable tables, standing
+outside the Site tree in the navigator's Library section next to the Task
+Library. VLANs and IP Prefixes appear in one typed record grid; IP Address
+Records remain nested beneath their containing Prefix. Its
 tree nesting, per-prefix `depth`, child counts, and utilization are
 **derived on every snapshot** from containment and VRF, never stored: adding
 a wider prefix silently re-parents everything it now contains, and no
@@ -453,7 +453,7 @@ outside this closed enum fails the Host. AI nodes never turn model text into a
 shell command or choose an arbitrary graph edge.
 
 Hosts, Automations, Run History, and the global Library destinations (Task
-Library, VLANs, IPAM, Network Maps) share one destination-page frame: the same content inset, compact title/description
+Library, IPAM, Network Maps) share one destination-page frame: the same content inset, compact title/description
 header, right-aligned primary actions, divider, and bordered-row rhythm. The
 Task Library keeps its spreadsheet-style Task table inside that frame rather
 than owning a separate full-height chrome layout. Each row shows Task kind, Applicable OS,
@@ -462,9 +462,11 @@ History containing that Task. Statistics use the Task's stable id; ad-hoc,
 Automation, and older unattributed history rows are never guessed by label.
 
 IPAM (`src/modules/itops/IpamPanel.tsx`) reuses the Task Library's
-spreadsheet-style table inside the same frame. Prefix rows are grouped by their
+spreadsheet-style table inside the same frame. Its Add button opens a menu for
+creating either an IP Prefix or VLAN; both record types share the grid and have
+an explicit Type column. Rows are grouped by their
 optional Site tag, with Site-less or stale soft references collected under All
-Sites. Within each Site group, rows retain the snapshot's containment order and
+Sites. Within each Site group, Prefix rows retain the snapshot's containment order and
 are indented by the server-derived `depth`, so indentation always matches real
 containment; a twisty expands an IP Prefix to reveal its IP Address Records. The CIDR field
 previews the network address, usable range, and usable count live while
@@ -518,7 +520,7 @@ action returns to Design.
 ### IT Ops destination-page UI contract
 
 This section is normative for future IT Ops frontend work. It applies to
-Hosts, Automations, Run History, Task Library, VLANs, IPAM, Network Maps, and any
+Hosts, Automations, Run History, Task Library, IPAM, Network Maps, and any
 later non-spatial destination opened from the IT Ops navigator. Do not give a new destination an
 independent page shell or visual language.
 
@@ -1160,9 +1162,10 @@ version startup reconciliation.
 adds `itops_vlans` and the version-gated nullable `vlan_id` on
 `itops_ip_prefixes` (the table itself is covered by `CREATE TABLE IF NOT
 EXISTS`; only the column on an existing prefix table needs backfilling — the
-same failure v52 repaired for `site_id`). Four Tauri commands, a third global
-Library destination (`VlanPanel.tsx`), the soft `vlanId` on the IP Prefix
-dialog, and on a Network Link a `strands` list plus `nativeVlanId` /
+same failure v52 repaired for `site_id`). Four Tauri commands, VLAN management
+integrated into the IPAM destination (`IpamPanel.tsx` and its shared
+`VlanDialog`), the soft `vlanId` on the IP Prefix dialog, and on a Network Link
+a `strands` list plus `nativeVlanId` /
 `taggedVlanIds`, all `#[serde(default)]` so saved graphs need no migration —
 `sanitize_graph` folds the pre-strand `connectionCount` / `speed` pair into
 `strands` on read. The designer gains the VLAN spotlight overlay.

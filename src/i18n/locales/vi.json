@@ -1782,6 +1782,8 @@
       "scanEvidencePing": "Ping",
       "scanEvidenceSnmp": "SNMP",
       "scanEvidencePorts": "Cổng TCP {{ports}}",
+      "columnType": "Loại",
+      "columnRecord": "Bản ghi",
       "columnPrefix": "Tiền tố IP",
       "columnRole": "Vai trò",
       "columnStatus": "Trạng thái",

@@ -57,9 +57,7 @@ export function ItOpsPage({
     const librarySelection =
       navigationSnapshot?.destination === "taskLibrary"
         ? "global Task Library"
-        : navigationSnapshot?.destination === "vlans"
-          ? "global VLANs"
-          : navigationSnapshot?.destination === "ipam"
+        : navigationSnapshot?.destination === "ipam"
             ? "global IPAM"
             : navigationSnapshot?.destination === "networkMaps"
               ? "global Network Maps"
@@ -83,14 +81,13 @@ export function ItOpsPage({
       text: [
         "Active Module: IT Ops.",
         `Current navigator selection: ${selectionSummary}.`,
-        "Tutorial targets: itops.sitesTree (left navigator), itops.siteView (Site topology drill-down), itops.hostsPanel, itops.hostsRunTask, itops.hostsImport, itops.hostsScan (Hosts page), itops.automationsPanel, itops.automationsNew (Automations page), itops.runHistoryPanel (Run History page), itops.taskLibrary, itops.taskLibraryNew (Task Library), itops.vlans, itops.vlanNew (VLANs), itops.ipam, itops.ipamNew (IPAM), itops.networkMaps, itops.networkMapNew (Network Maps).",
+        "Tutorial targets: itops.sitesTree (left navigator), itops.siteView (Site topology drill-down), itops.hostsPanel, itops.hostsRunTask, itops.hostsImport, itops.hostsScan (Hosts page), itops.automationsPanel, itops.automationsNew (Automations page), itops.runHistoryPanel (Run History page), itops.taskLibrary, itops.taskLibraryNew (Task Library), itops.ipam, itops.ipamNew (IPAM), itops.networkMaps, itops.networkMapNew (Network Maps).",
         "Entity tutorial targets highlight one row: itops.site:<siteId>, itops.host:<hostId>, itops.automation:<automationId>, itops.task:<taskId>, itops.run:<runId> — use ids from the itops_* list tools and pass navigation.itopsSiteId/itopsDestination so the destination opens first.",
         `Sites (${sites.length}): ${sites.map((group) => `${group.name} [id ${group.id}, ${group.memberIds.length} saved members, ${group.transport}]`).join(", ") || "none"}.`,
         `Rack topology (loaded Sites only): ${rackSummary || "none loaded"}.`,
         `Automations (${automations.length}): ${automations.map((automation) => `${automation.name} [${automation.enabled ? "armed" : "disabled"}]`).join(", ") || "none"}.`,
         `Task Library: ${tasks.length} reusable Tasks (itops_list_tasks reads them).`,
-        `VLANs: ${vlansLoaded ? `${vlans.length} documented VLANs` : "not loaded yet"} (operator-authored records; nothing is read off a switch).`,
-        `IPAM: ${ipamLoaded ? `${ipam.prefixes.length} top-level IP Prefixes, ${ipam.addresses.length} IP Address Records` : "not loaded yet"}.`,
+        `IPAM: ${ipamLoaded && vlansLoaded ? `${vlans.length} VLANs, ${ipam.prefixes.length} top-level IP Prefixes, ${ipam.addresses.length} IP Address Records` : "not loaded yet"} (operator-authored records; nothing is read off a switch).`,
         `Network Maps: ${networkMapsLoaded ? `${networkMaps.length} maps` : "not loaded yet"} (hand-drawn; they carry no live device state).`,
         `Recent completed Batch Runs: ${runHistory.length}.`,
         activeRun

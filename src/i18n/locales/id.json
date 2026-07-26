@@ -1782,6 +1782,8 @@
       "scanEvidencePing": "Ping",
       "scanEvidenceSnmp": "SNMP",
       "scanEvidencePorts": "Port TCP {{ports}}",
+      "columnType": "Jenis",
+      "columnRecord": "Catatan",
       "columnPrefix": "Prefiks IP",
       "columnRole": "Peran",
       "columnStatus": "Status",

@@ -8189,14 +8189,14 @@
 }
 
 .itops-page .it-ipam-table {
-  min-width: 820px;
+  min-width: 920px;
   overflow: auto;
   border-top: 1px solid var(--hairline);
 }
 .itops-page .it-ipam-head,
 .itops-page .it-ipam-row {
   display: grid;
-  grid-template-columns: minmax(250px, 2fr) minmax(110px, 1fr) 104px 132px 84px 108px;
+  grid-template-columns: 84px minmax(250px, 2fr) minmax(110px, 1fr) 104px 132px 84px 108px;
   align-items: center;
 }
 .itops-page .it-ipam-head {
@@ -8238,6 +8238,33 @@
   font-size: 11px;
 }
 .itops-page .it-ipam-row:hover { background: var(--hover); }
+
+.itops-page .it-ipam-record-type {
+  display: inline-block;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+}
+.itops-page .it-ipam-vlan-record {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.itops-page .it-ipam-vlan-record > span { min-width: 0; }
+.itops-page .it-ipam-vlan-record strong,
+.itops-page .it-ipam-vlan-record small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.itops-page .it-ipam-vlan-record small {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
 
 .itops-page .it-ipam-cidr { display: flex; align-items: center; gap: 6px; }
 .itops-page .it-ipam-cidr > span { min-width: 0; }
@@ -8478,7 +8505,6 @@
 }
 
 .it-ipam-unassigned-row .it-ipam-unassigned-copy {
-  grid-column: 1 / 5;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -9283,7 +9309,7 @@
   background: var(--nm-vlan-accent);
 }
 
-/* ── VLANs destination ── */
+/* ── VLAN controls shared by IPAM and Network Maps ── */
 .itops-page .it-vlan-swatches { display: flex; flex-wrap: wrap; gap: 6px; }
 .itops-page .it-vlan-swatch {
   width: 20px;
@@ -9295,55 +9321,12 @@
 }
 .itops-page .it-vlan-swatch.sel { border-color: var(--text); }
 
-.itops-page .it-vlan-table { display: flex; flex-direction: column; }
-.itops-page .it-vlan-head,
-.itops-page .it-vlan-row {
-  display: grid;
-  grid-template-columns: 96px minmax(0, 1.2fr) minmax(0, 1.4fr) minmax(0, 0.8fr) 84px;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-}
-.itops-page .it-vlan-head {
-  border-bottom: 1px solid var(--hairline);
-  color: var(--text-faint);
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-.itops-page .it-vlan-row {
-  border-bottom: 1px solid var(--hairline);
-  font-size: 11.5px;
-}
-.itops-page .it-vlan-row:hover { background: var(--hover); }
-.itops-page .it-vlan-row > span { min-width: 0; }
-.itops-page .it-vlan-row strong,
-.itops-page .it-vlan-row small {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.itops-page .it-vlan-row small { margin-top: 2px; color: var(--text-muted); font-size: 10px; }
-.itops-page .it-vlan-vid { display: flex; align-items: center; gap: 7px; }
-.itops-page .it-vlan-vid strong {
-  font-family: var(--app-mono-font-family, ui-monospace, monospace);
-}
 .itops-page .it-vlan-dot {
   flex: 0 0 auto;
   width: 9px;
   height: 9px;
   border-radius: 50%;
   background: var(--it-vlan-accent);
-}
-.itops-page .it-vlan-prefixes {
-  overflow: hidden;
-  color: var(--text-muted);
-  font-family: var(--app-mono-font-family, ui-monospace, monospace);
-  font-size: 10.5px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 /* The VLAN a Prefix references, inline in the IPAM row's caption line. */
 .itops-page .it-vlan-chip {

@@ -94,9 +94,10 @@ test("VLANs are durable global records that Network Links reference and the over
   // switched-off set, so no VLAN filter may reach it.
   assert.doesNotMatch(designer, /analyzeWhatIf\([^)]*vlan/i);
 
-  // The destination lives in the navigator's Library section beside IPAM.
-  assert.match(sites, /<VlanPanel \/>/);
-  assert.match(sites, /itops\.vlan\.heading/);
+  // VLAN management is part of IPAM rather than a separate Library destination.
+  assert.doesNotMatch(sites, /<VlanPanel \/>/);
+  assert.doesNotMatch(sites, /itops\.vlan\.heading/);
+  assert.match(sites, /state\.vlans\.length \+ state\.ipam\.prefixes\.length/);
 });
 
 test("leaving the IT Ops Module exits the focused Network Map editor", async () => {

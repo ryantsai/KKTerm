@@ -22,6 +22,7 @@ import type {
   IpamScanResult,
   PrefixStatus,
   SiteHost,
+  Vlan,
 } from "../../types";
 import { flattenConnections } from "../workspace/connections/treeUtils";
 import { ItIcon } from "./icons";
@@ -40,6 +41,7 @@ import {
   type ClaimCandidate,
 } from "./ipamModel";
 import { useItOpsStore, type AddressInput, type PrefixInput } from "./state";
+import { VlanDialog } from "./VlanDialog";
 import { vlanAccent, vlanLabel } from "./vlanModel";
 
 const PREFIX_STATUSES: PrefixStatus[] = ["container", "active", "reserved", "deprecated"];
@@ -876,6 +878,7 @@ export function IpamPanel() {
   const vlans = useItOpsStore((state) => state.vlans);
   const vlansLoaded = useItOpsStore((state) => state.vlansLoaded);
   const loadVlans = useItOpsStore((state) => state.loadVlans);
+  const removeVlan = useItOpsStore((state) => state.removeVlan);
   const hostsBySite = useItOpsStore((state) => state.hostsBySite);
   const loadHosts = useItOpsStore((state) => state.loadHosts);
   const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
@@ -884,13 +887,18 @@ export function IpamPanel() {
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [prefixDialog, setPrefixDialog] = useState<IpamPrefixNode | null | undefined>(undefined);
+  const [vlanDialog, setVlanDialog] = useState<Vlan | null | undefined>(undefined);
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [addressDialog, setAddressDialog] = useState<
     { record: IpAddressRecord | null; prefix: IpamPrefixNode | null } | undefined
   >(undefined);
   const [claiming, setClaiming] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<
-    { kind: "prefix"; prefix: IpamPrefixNode } | { kind: "address"; record: IpAddressRecord } | null
+    | { kind: "prefix"; prefix: IpamPrefixNode }
+    | { kind: "address"; record: IpAddressRecord }
+    | { kind: "vlan"; vlan: Vlan }
+    | null
   >(null);
 
   useEffect(() => {
@@ -923,8 +931,33 @@ export function IpamPanel() {
     [allHosts, connections, ipam.addresses],
   );
   const visible = useMemo(() => filterPrefixTree(ipam.prefixes, query), [ipam.prefixes, query]);
+  const visibleVlans = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return vlans;
+    return vlans.filter((vlan) => {
+      const siteName = vlan.siteId ? sites.find((site) => site.id === vlan.siteId)?.name ?? "" : "";
+      return [String(vlan.vid), vlan.name, vlan.description, siteName, "vlan"]
+        .join(" ")
+        .toLowerCase()
+        .includes(needle);
+    });
+  }, [query, sites, vlans]);
   const vlansById = useMemo(() => new Map(vlans.map((vlan) => [vlan.id, vlan])), [vlans]);
   const prefixGroups = useMemo(() => groupPrefixesBySite(visible, sites), [sites, visible]);
+  const recordGroups = useMemo(() => {
+    const knownSiteIds = new Set(sites.map((site) => site.id));
+    const vlanSiteId = (vlan: Vlan) =>
+      vlan.siteId && knownSiteIds.has(vlan.siteId) ? vlan.siteId : null;
+    const siteIds = [...sites.map((site) => site.id), null];
+    return siteIds.flatMap((siteId) => {
+      const prefixes =
+        prefixGroups.find((group) => group.siteId === siteId)?.prefixes ?? [];
+      const groupVlans = visibleVlans.filter((vlan) => vlanSiteId(vlan) === siteId);
+      return prefixes.length > 0 || groupVlans.length > 0
+        ? [{ siteId, prefixes, vlans: groupVlans }]
+        : [];
+    });
+  }, [prefixGroups, sites, visibleVlans]);
   const siteNames = useMemo(
     () => new Map(sites.map((site) => [site.id, site.name])),
     [sites],
@@ -944,12 +977,17 @@ export function IpamPanel() {
         showStatusBarNotice(t("itops.ipam.prefixDeletedNotice", { cidr: target.prefix.cidr }), {
           tone: "success",
         });
-      } else {
+      } else if (target.kind === "address") {
         await removeAddress(target.record.id);
         showStatusBarNotice(
           t("itops.ipam.addressDeletedNotice", { address: target.record.address }),
           { tone: "success" },
         );
+      } else {
+        await removeVlan(target.vlan.id);
+        showStatusBarNotice(t("itops.vlan.deletedNotice", { vid: target.vlan.vid }), {
+          tone: "success",
+        });
       }
     } catch (error) {
       showStatusBarNotice(t("itops.errorNotice", { message: errorMessage(error) }), {
@@ -971,15 +1009,49 @@ export function IpamPanel() {
           <h2>{t("itops.ipam.heading")}</h2>
           <p>{t("itops.ipam.pageDescription")}</p>
         </div>
-        <button
-          type="button"
-          className="it-btn primary"
-          data-tutorial-id="itops.ipamNew"
-          onClick={() => setPrefixDialog(null)}
-        >
-          <ItIcon name="plus" size={14} />
-          {t("itops.ipam.newPrefixTitle")}
-        </button>
+        <div className="ft-add-wrap">
+          <button
+            type="button"
+            className="it-btn primary"
+            data-tutorial-id="itops.ipamNew"
+            aria-haspopup="menu"
+            aria-expanded={addMenuOpen}
+            onClick={() => setAddMenuOpen((open) => !open)}
+          >
+            <ItIcon name="plus" size={14} />
+            {t("common.add")}
+            <ItIcon name="chevD" size={12} />
+          </button>
+          {addMenuOpen ? (
+            <>
+              <div className="ft-add-backdrop" onClick={() => setAddMenuOpen(false)} />
+              <div className="ft-add-menu" role="menu">
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setAddMenuOpen(false);
+                    setPrefixDialog(null);
+                  }}
+                >
+                  <ItIcon name="table" size={14} />
+                  {t("itops.ipam.cidrLabel")}
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setAddMenuOpen(false);
+                    setVlanDialog(null);
+                  }}
+                >
+                  <ItIcon name="rows" size={14} />
+                  {t("itops.ipam.vlanLabel")}
+                </button>
+              </div>
+            </>
+          ) : null}
+        </div>
       </div>
 
       <div className="it-task-table-shell">
@@ -1006,17 +1078,18 @@ export function IpamPanel() {
           ) : null}
         </div>
 
-        {visible.length > 0 || (!query.trim() && unassigned.length > 0) ? (
+        {recordGroups.length > 0 || (!query.trim() && unassigned.length > 0) ? (
           <div className="it-ipam-table" role="table">
             <div className="it-ipam-head" role="row">
-              <span>{t("itops.ipam.columnPrefix")}</span>
+              <span>{t("itops.ipam.columnType")}</span>
+              <span>{t("itops.ipam.columnRecord")}</span>
               <span>{t("itops.ipam.columnRole")}</span>
               <span>{t("itops.ipam.columnStatus")}</span>
               <span>{t("itops.ipam.columnUtilization")}</span>
               <span>{t("itops.ipam.columnAddresses")}</span>
               <span>{t("itops.ipam.columnActions")}</span>
             </div>
-            {prefixGroups.map((siteGroup) => (
+            {recordGroups.map((siteGroup) => (
               <div
                 key={siteGroup.siteId ?? "unscoped"}
                 className="it-ipam-site-group"
@@ -1029,6 +1102,62 @@ export function IpamPanel() {
                       : t("itops.ipam.siteUnscoped")}
                   </span>
                 </div>
+                {siteGroup.vlans.map((vlan) => {
+                  const linkedPrefixes = ipam.prefixes.filter(
+                    (prefix) => prefix.vlanId === vlan.id,
+                  );
+                  return (
+                    <div key={vlan.id} className="it-ipam-group">
+                      <div className="it-ipam-row it-ipam-vlan-row" role="row">
+                        <span>
+                          <em className="it-ipam-record-type">{t("itops.ipam.vlanLabel")}</em>
+                        </span>
+                        <span className="it-ipam-vlan-record">
+                          <em
+                            className="it-vlan-dot"
+                            style={
+                              { "--it-vlan-accent": vlanAccent(vlan) } as React.CSSProperties
+                            }
+                          />
+                          <span>
+                            <strong>{t("itops.vlan.chip", { vid: vlan.vid })}</strong>
+                            <small>
+                              {[
+                                vlan.name || t("itops.vlan.unnamed"),
+                                vlan.description,
+                                linkedPrefixes.map((prefix) => prefix.cidr).join(", "),
+                              ]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </small>
+                          </span>
+                        </span>
+                        <span>—</span>
+                        <span>—</span>
+                        <span>—</span>
+                        <span className="it-ipam-number">—</span>
+                        <span className="it-task-row-actions">
+                          <button
+                            type="button"
+                            className="it-icon-btn"
+                            aria-label={t("itops.actions.edit")}
+                            onClick={() => setVlanDialog(vlan)}
+                          >
+                            <ItIcon name="edit" size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            className="it-icon-btn"
+                            aria-label={t("itops.actions.delete")}
+                            onClick={() => setPendingDelete({ kind: "vlan", vlan })}
+                          >
+                            <ItIcon name="trash" size={14} />
+                          </button>
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
                 {siteGroup.prefixes.map((prefix) => {
                   const records = addressesInPrefix(ipam.addresses, prefix);
                   const open = expanded.has(prefix.id);
@@ -1038,6 +1167,9 @@ export function IpamPanel() {
                   return (
                     <div key={prefix.id} className="it-ipam-group">
                       <div className="it-ipam-row" role="row">
+                        <span>
+                          <em className="it-ipam-record-type">{t("itops.ipam.cidrLabel")}</em>
+                        </span>
                         <span
                           className="it-ipam-cidr"
                           // Depth is derived server-side, so indentation always
@@ -1159,10 +1291,16 @@ export function IpamPanel() {
             {!query.trim() && unassigned.length > 0 ? (
               <div className="it-ipam-group it-ipam-unassigned-group">
                 <div className="it-ipam-row it-ipam-unassigned-row" role="row">
+                  <span>
+                    <em className="it-ipam-record-type">{t("itops.ipam.addressLabel")}</em>
+                  </span>
                   <span className="it-ipam-unassigned-copy">
                     <strong>{t("itops.ipam.unassignedAddresses")}</strong>
                     <small>{t("itops.ipam.unassignedHint")}</small>
                   </span>
+                  <span />
+                  <span />
+                  <span />
                   <span className="it-ipam-number">{unassigned.length}</span>
                   <span />
                 </div>
@@ -1198,7 +1336,7 @@ export function IpamPanel() {
               </div>
             ) : null}
           </div>
-        ) : loaded ? (
+        ) : loaded && vlansLoaded ? (
           <ItOpsEmptyHint>
             {query.trim() ? t("itops.ipam.noMatches") : t("itops.ipam.emptyBody")}
           </ItOpsEmptyHint>
@@ -1207,6 +1345,9 @@ export function IpamPanel() {
 
       {prefixDialog !== undefined ? (
         <PrefixDialog prefix={prefixDialog} onClose={() => setPrefixDialog(undefined)} />
+      ) : null}
+      {vlanDialog !== undefined ? (
+        <VlanDialog vlan={vlanDialog} onClose={() => setVlanDialog(undefined)} />
       ) : null}
       {addressDialog !== undefined ? (
         <AddressDialog
@@ -1237,16 +1378,16 @@ export function IpamPanel() {
       {pendingDelete ? (
         <ConfirmSheet
           tone="danger"
-          title={
-            pendingDelete.kind === "prefix"
-              ? t("itops.ipam.deletePrefixTitle")
-              : t("itops.ipam.deleteAddressTitle")
-          }
-          message={
-            pendingDelete.kind === "prefix"
-              ? t("itops.ipam.deletePrefixBody", { cidr: pendingDelete.prefix.cidr })
-              : t("itops.ipam.deleteAddressBody", { address: pendingDelete.record.address })
-          }
+          title={pendingDelete.kind === "prefix"
+            ? t("itops.ipam.deletePrefixTitle")
+            : pendingDelete.kind === "address"
+              ? t("itops.ipam.deleteAddressTitle")
+              : t("itops.vlan.deleteTitle")}
+          message={pendingDelete.kind === "prefix"
+            ? t("itops.ipam.deletePrefixBody", { cidr: pendingDelete.prefix.cidr })
+            : pendingDelete.kind === "address"
+              ? t("itops.ipam.deleteAddressBody", { address: pendingDelete.record.address })
+              : t("itops.vlan.deleteBody", { vid: pendingDelete.vlan.vid })}
           confirmLabel={t("itops.actions.delete")}
           confirmIcon="trash"
           onConfirm={() => void confirmDelete()}

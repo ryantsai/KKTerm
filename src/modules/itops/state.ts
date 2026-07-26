@@ -474,8 +474,8 @@ interface ItOpsState {
   removeTask: (id: string) => Promise<void>;
 
   // ── Global VLANs ──
-  // Durable global records, a sibling of IPAM in the Library section. VLANs are
-  // referenced by IP Prefixes and Network Links, so every surface reads this
+  // Durable global records managed in IPAM. VLANs are referenced by IP
+  // Prefixes and Network Links, so every surface reads this
   // one list rather than each keeping its own copy.
   vlans: Vlan[];
   vlansLoaded: boolean;

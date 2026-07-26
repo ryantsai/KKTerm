@@ -4,7 +4,7 @@
 
 - Keys: `itops.*`, `settings.sectionItOps`, `watchdog.*`
 - Topics: IT Ops Module, Sites, Site View, Server Room, Server Room View, Server Room floor plan, Server Room 2.5D view, Server Room blackout, Konami sequence, Rack View, racks, Rack Device, Rack Device Type, Rack Device Properties, rack unit (U), rack shell, tree navigator, Task Library, reusable Task, drill-down, virtual datacenter, click-to-connect, Hosts, Host inventory, host import, hostname list, connectivity scan, child hosts, VM guests, container guests, Host Connection bindings, Batch Runs, Automations, run history, Run Report, transport, SSH, WinRM, PsExec, trigger, condition, action, armed, disabled, Watchdog Status Bar, VLAN, VLAN ID, 802.1Q, native VLAN, tagged VLAN, trunk, access port, VLAN spotlight, IPAM, IP Prefix, IP Address Record, address plan, CIDR, VRF, utilization, Network Map, Network Node, Network Link, entry point, What-If, single point of failure, reachability
-- Tutorial targets: `app.activityRailItOps`, `itops.sitesTree`, `itops.siteView`, `itops.hostsPanel`, `itops.hostsRunTask`, `itops.hostsImport`, `itops.hostsScan`, `itops.automationsPanel`, `itops.automationsNew`, `itops.runHistoryPanel`, `itops.taskLibrary`, `itops.taskLibraryNew`, `itops.vlans`, `itops.vlanNew`, `itops.ipam`, `itops.ipamNew`, `itops.networkMaps`, `itops.networkMapNew`
+- Tutorial targets: `app.activityRailItOps`, `itops.sitesTree`, `itops.siteView`, `itops.hostsPanel`, `itops.hostsRunTask`, `itops.hostsImport`, `itops.hostsScan`, `itops.automationsPanel`, `itops.automationsNew`, `itops.runHistoryPanel`, `itops.taskLibrary`, `itops.taskLibraryNew`, `itops.ipam`, `itops.ipamNew`, `itops.networkMaps`, `itops.networkMapNew`
 - Synonyms: "run on many hosts", "bulk command", "site", "host group" (renamed to Site), "host collection", "host inventory", "import servers", "detect ssh", "detect winrm", "scan hosts", "virtual machines on a host", "rack diagram", "rack elevation", "top-down view", "floor plan", "floor-plan view", "room footprint", "DCIM map", "2.5D view", "isometric room", "3D server room", "axonometric view", "utilization heatmap", "capacity heatmap", "rack health map", "virtual datacenter", "data center map", "open from rack", "scheduled monitor", "saved watchdog", "automation rule", "batch script", "run report", "vlan list", "which vlan is this subnet", "where does vlan 30 go", "trunk or access", "ip address management", "subnet list", "subnet calculator", "who owns this IP", "free IP", "next available address", "network diagram", "network topology map", "logical topology", "draw the network", "what if this switch dies", "impact analysis", "blast radius", "single point of failure", "failure simulation"
 
 The **IT Ops Module** is an Activity Rail destination for operating across multiple existing Connections. Its left operational navigator contains Sites and the global `itops.tasks.heading` Task Library. Expanding a Site exposes `itops.navigation.serverRooms`, `itops.tabs.hosts`, `itops.tabs.autos`, and `itops.navigation.runHistory`; only the active Site normally needs to remain expanded. Settings → General → `settings.activityRail` controls whether the Module appears; it is visible by default.
@@ -91,19 +91,19 @@ Execution fans out with bounded concurrency. The live view shows queued, running
 
 The script is state-changing operator input. Review it and the target Site before starting. Authentication secrets remain in the OS keychain and are not copied into the Site or report.
 
-## VLANs
+## IPAM
 
-A **VLAN** is a durable record of an 802.1Q VLAN your network runs. Like IPAM it is global: open it from the navigator's Library section and it stays reachable whichever Site is selected. VLANs are deliberately not stored inside one Network Map, because VLAN 30 drawn on two maps has to be the same VLAN.
+**IPAM** is the global IP address plan. Like the Task Library it stands outside the Site tree: open it from the navigator's Library section and it stays reachable whichever Site is selected. Its grid includes a Type column and shows VLAN and IP Prefix records together. `common.add` opens a menu whose `itops.ipam.cidrLabel` and `itops.ipam.vlanLabel` items create the corresponding record type.
 
-`itops.vlan.newTitle` records a VLAN. `itops.vlan.vidLabel` is the 802.1Q id (1–4094) and must be unique; `itops.vlan.nameLabel`, `itops.vlan.descriptionLabel`, and an optional Site tag are documentation. `itops.vlan.accentLabel` picks the colour the VLAN uses on Network Map link chips and in the VLAN spotlight. The list shows each VLAN with the IP Prefixes that reference it.
+### VLANs
+
+A **VLAN** is a durable record of an 802.1Q VLAN your network runs. VLANs are deliberately not stored inside one Network Map, because VLAN 30 drawn on two maps has to be the same VLAN.
+
+Choose `itops.ipam.vlanLabel` from `common.add` to record a VLAN. `itops.vlan.vidLabel` is the 802.1Q id (1–4094) and must be unique; `itops.vlan.nameLabel`, `itops.vlan.descriptionLabel`, and an optional Site tag are documentation. `itops.vlan.accentLabel` picks the colour the VLAN uses on Network Map link chips and in the VLAN spotlight. Each VLAN grid row shows the IP Prefixes that reference it.
 
 An IP Prefix records which VLAN its addressing lives on through `itops.ipam.vlanLabel`. That documents "VLAN 30 is 10.20.30.0/24" without conflating the two: a prefix references a VLAN, it is not one. Deleting a VLAN leaves every IP Prefix in place and simply clears the reference, and leaves Network Map links drawn as they were.
 
 Nothing here reads a switch. A VLAN record is what you wrote down, exactly like the rest of the Module.
-
-## IPAM
-
-**IPAM** is the global IP address plan. Like the Task Library it stands outside the Site tree: open it from the navigator's Library section and it stays reachable whichever Site is selected.
 
 An **IP Prefix** is a block of addresses written in CIDR form (`10.20.0.0/16`). `itops.ipam.newPrefixTitle` opens the IP Prefix dialog; the CIDR field previews the network address, the usable range, and the usable-address count as you type, and host bits are cleared when you save, so `10.20.3.7/16` is stored as `10.20.0.0/16`. `/31` and `/32` keep every address, following RFC 3021. Give an IP Prefix a Role (what the block is for), a status, an optional VRF, an optional Site tag, and a description. The table groups IP Prefix rows by that Site tag. Site is never required: a Site-less IP Prefix remains global and appears under `itops.ipam.siteUnscoped`, including after export/import. Nesting is not chosen by hand: KKTerm derives each IP Prefix's parent and depth from containment every time the list is read, so a newly added `10.20.0.0/16` immediately adopts the `10.20.5.0/24` that was already there. Utilization is derived from documented records; scan results do not affect it until imported.
 

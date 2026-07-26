@@ -1782,6 +1782,8 @@
       "scanEvidencePing": "Ping",
       "scanEvidenceSnmp": "SNMP",
       "scanEvidencePorts": "TCP ポート {{ports}}",
+      "columnType": "種類",
+      "columnRecord": "レコード",
       "columnPrefix": "IP プレフィックス",
       "columnRole": "役割",
       "columnStatus": "状態",

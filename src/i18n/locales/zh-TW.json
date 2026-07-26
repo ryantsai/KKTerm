@@ -1782,6 +1782,8 @@
       "scanEvidencePing": "Ping",
       "scanEvidenceSnmp": "SNMP",
       "scanEvidencePorts": "TCP 連接埠 {{ports}}",
+      "columnType": "類型",
+      "columnRecord": "紀錄",
       "columnPrefix": "IP 前綴",
       "columnRole": "角色",
       "columnStatus": "狀態",

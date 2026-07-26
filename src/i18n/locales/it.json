@@ -1782,6 +1782,8 @@
       "scanEvidencePing": "Ping",
       "scanEvidenceSnmp": "SNMP",
       "scanEvidencePorts": "Porte TCP {{ports}}",
+      "columnType": "Tipo",
+      "columnRecord": "Voce",
       "columnPrefix": "Prefisso IP",
       "columnRole": "Ruolo",
       "columnStatus": "Stato",

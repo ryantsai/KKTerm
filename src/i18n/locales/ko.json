@@ -1782,6 +1782,8 @@
       "scanEvidencePing": "Ping",
       "scanEvidenceSnmp": "SNMP",
       "scanEvidencePorts": "TCP 포트 {{ports}}",
+      "columnType": "유형",
+      "columnRecord": "레코드",
       "columnPrefix": "IP 프리픽스",
       "columnRole": "역할",
       "columnStatus": "상태",

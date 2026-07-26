@@ -1782,6 +1782,8 @@
       "scanEvidencePing": "Ping",
       "scanEvidenceSnmp": "SNMP",
       "scanEvidencePorts": "Portas TCP {{ports}}",
+      "columnType": "Tipo",
+      "columnRecord": "Registro",
       "columnPrefix": "Prefixo IP",
       "columnRole": "Função",
       "columnStatus": "Status",

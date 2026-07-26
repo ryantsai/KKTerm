@@ -187,8 +187,6 @@ const ITOPS_DESTINATION_TUTORIAL_TARGETS: Record<string, ItOpsNavigationDestinat
   "itops.runHistoryPanel": "runHistory",
   "itops.taskLibrary": "taskLibrary",
   "itops.taskLibraryNew": "taskLibrary",
-  "itops.vlans": "vlans",
-  "itops.vlanNew": "vlans",
   "itops.ipam": "ipam",
   "itops.ipamNew": "ipam",
   "itops.networkMaps": "networkMaps",

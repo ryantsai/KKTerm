@@ -1782,6 +1782,8 @@
       "scanEvidencePing": "Ping",
       "scanEvidenceSnmp": "SNMP",
       "scanEvidencePorts": "พอร์ต TCP {{ports}}",
+      "columnType": "ประเภท",
+      "columnRecord": "ระเบียน",
       "columnPrefix": "IP Prefix",
       "columnRole": "บทบาท",
       "columnStatus": "สถานะ",
