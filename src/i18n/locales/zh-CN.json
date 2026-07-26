@@ -1803,6 +1803,8 @@
     "networkMap": {
       "heading": "网络拓扑图",
       "pageDescription": "画出网络是怎么连起来的，然后在真正动手之前先试一次改动。",
+      "searchPlaceholder": "搜索拓扑图、节点、链路和元数据…",
+      "noMatches": "没有与搜索匹配的网络拓扑图。",
       "emptyBody": "还没有网络拓扑图。新建一张，开始绘制。",
       "newMapTitle": "新建拓扑图",
       "editMapTitle": "编辑拓扑图",

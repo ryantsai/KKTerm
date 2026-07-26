@@ -1803,6 +1803,8 @@
     "networkMap": {
       "heading": "네트워크 맵",
       "pageDescription": "네트워크가 어떻게 얽혀 있는지 그리고, 실제로 바꾸기 전에 변경을 시험해 보세요.",
+      "searchPlaceholder": "맵, 노드, 링크 및 메타데이터 검색…",
+      "noMatches": "검색과 일치하는 네트워크 맵이 없습니다.",
       "emptyBody": "아직 네트워크 맵이 없습니다. 하나 만들어 그리기를 시작하세요.",
       "newMapTitle": "새 맵",
       "editMapTitle": "맵 편집",

@@ -1803,6 +1803,8 @@
     "networkMap": {
       "heading": "Mapas de Red",
       "pageDescription": "Dibuja cómo se conecta la red y prueba un cambio antes de hacerlo.",
+      "searchPlaceholder": "Buscar mapas, nodos, enlaces y metadatos…",
+      "noMatches": "Ningún mapa de red coincide con tu búsqueda.",
       "emptyBody": "Aún no hay Mapas de Red. Crea uno y empieza a dibujar.",
       "newMapTitle": "Nuevo Mapa",
       "editMapTitle": "Editar Mapa",

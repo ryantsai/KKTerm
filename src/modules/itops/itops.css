@@ -8555,6 +8555,15 @@
 .itops-page .nm-page {
   display: flex;
   flex-direction: column;
+  container: network-map-page / inline-size;
+}
+
+.itops-page .nm-gallery-toolbar {
+  display: flex;
+  padding-top: 10px;
+}
+.itops-page .nm-gallery-toolbar .it-task-search {
+  max-width: 520px;
 }
 
 .itops-page .nm-gallery {
@@ -8564,6 +8573,7 @@
   padding: 14px 0 18px;
   overflow: auto;
 }
+
 .itops-page .nm-gallery-card {
   position: relative;
   min-height: 142px;
@@ -8727,6 +8737,38 @@
   stroke-width: 1.25;
   stroke-dasharray: 3 4;
   opacity: 0.52;
+}
+
+@container network-map-page (min-width: 660px) {
+  .itops-page .nm-gallery {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .itops-page .nm-gallery-card {
+    min-height: 270px;
+  }
+  .itops-page .nm-gallery-open {
+    min-height: 270px;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 118px minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px;
+  }
+  .itops-page .nm-gallery-copy {
+    justify-content: flex-start;
+    padding: 0 2px 2px;
+  }
+}
+
+@container network-map-page (min-width: 970px) {
+  .itops-page .nm-gallery {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@container network-map-page (min-width: 1280px) {
+  .itops-page .nm-gallery {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 .itops-page .nm-detail {

@@ -57,6 +57,7 @@ import type {
 } from "../../types";
 import { ItIcon, IT_ACCENTS } from "./icons";
 import { ItOpsEmptyHint } from "./ItOpsEmptyHint";
+import { matchesNetworkMapSearch } from "./networkMapSearch";
 import {
   analyzeWhatIf,
   effectiveRoots,
@@ -1777,6 +1778,7 @@ export function NetworkMapDesigner({ active }: { active: boolean }) {
   const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
 
   const [selectedId, setSelectedId] = useState("");
+  const [query, setQuery] = useState("");
   const [dialog, setDialog] = useState<NetworkMap | null | undefined>(undefined);
   const [pendingDelete, setPendingDelete] = useState<NetworkMap | null>(null);
 
@@ -1787,6 +1789,7 @@ export function NetworkMapDesigner({ active }: { active: boolean }) {
   useEffect(() => {
     if (!active) {
       setSelectedId("");
+      setQuery("");
       setDialog(undefined);
       setPendingDelete(null);
     }
@@ -1796,6 +1799,25 @@ export function NetworkMapDesigner({ active }: { active: boolean }) {
   const siteNames = useMemo(
     () => new Map(sites.map((site) => [site.id, site.name])),
     [sites],
+  );
+  const visibleMaps = maps.filter((map) =>
+    matchesNetworkMapSearch(map, query, [
+      map.siteId
+        ? siteNames.get(map.siteId) ?? t("itops.networkMap.siteUnscoped")
+        : t("itops.networkMap.siteUnscoped"),
+      t("itops.networkMap.statNodes"),
+      t("itops.networkMap.statLinks"),
+      t("itops.networkMap.statRoots"),
+      ...(map.graph.roots.length > 0 ? [t("itops.networkMap.rootBadge")] : []),
+      ...map.graph.nodes.flatMap((node) => [
+        t(`itops.networkMap.nodeKind.${node.kind}`),
+        t(`itops.networkMap.status.${node.status}`),
+      ]),
+      ...map.graph.links.flatMap((link) => [
+        t(`itops.networkMap.linkKind.${link.kind}`),
+        t(`itops.networkMap.status.${link.status}`),
+      ]),
+    ]),
   );
 
   async function confirmDelete() {
@@ -1832,6 +1854,21 @@ export function NetworkMapDesigner({ active }: { active: boolean }) {
           {t("itops.networkMap.newMapTitle")}
         </button>
       </div>
+
+      {maps.length > 0 && !selected ? (
+        <div className="nm-gallery-toolbar" role="search">
+          <label className="it-task-search">
+            <ItIcon name="search" size={13} />
+            <input
+              type="search"
+              value={query}
+              placeholder={t("itops.networkMap.searchPlaceholder")}
+              aria-label={t("itops.networkMap.searchPlaceholder")}
+              onChange={(event) => setQuery(event.currentTarget.value)}
+            />
+          </label>
+        </div>
+      ) : null}
 
       {maps.length > 0 && selected ? (
         <div className="nm-detail">
@@ -1871,9 +1908,9 @@ export function NetworkMapDesigner({ active }: { active: boolean }) {
             onDeleteMap={() => setPendingDelete(selected)}
           />
         </div>
-      ) : maps.length > 0 ? (
+      ) : visibleMaps.length > 0 ? (
         <div className="nm-gallery" role="list">
-          {maps.map((map) => (
+          {visibleMaps.map((map) => (
             <article key={map.id} className="nm-gallery-card" role="listitem">
               <button
                 type="button"
@@ -1929,7 +1966,11 @@ export function NetworkMapDesigner({ active }: { active: boolean }) {
           ))}
         </div>
       ) : loaded ? (
-        <ItOpsEmptyHint>{t("itops.networkMap.emptyBody")}</ItOpsEmptyHint>
+        <ItOpsEmptyHint>
+          {maps.length > 0
+            ? t("itops.networkMap.noMatches")
+            : t("itops.networkMap.emptyBody")}
+        </ItOpsEmptyHint>
       ) : null}
 
       {dialog !== undefined ? (

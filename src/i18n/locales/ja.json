@@ -1803,6 +1803,8 @@
     "networkMap": {
       "heading": "ネットワークマップ",
       "pageDescription": "ネットワークのつながりを描き、変更を実施する前に試してみましょう。",
+      "searchPlaceholder": "マップ、ノード、リンク、メタデータを検索…",
+      "noMatches": "検索に一致するネットワークマップはありません。",
       "emptyBody": "ネットワークマップがまだありません。作成して描き始めましょう。",
       "newMapTitle": "新しいマップ",
       "editMapTitle": "マップを編集",

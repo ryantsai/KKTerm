@@ -1803,6 +1803,8 @@
     "networkMap": {
       "heading": "網路拓撲圖",
       "pageDescription": "畫出網路是怎麼串起來的，再於真正動手之前先試一次變更。",
+      "searchPlaceholder": "搜尋拓撲圖、節點、連結和中繼資料…",
+      "noMatches": "沒有符合搜尋條件的網路拓撲圖。",
       "emptyBody": "尚未有網路拓撲圖。建立一張，開始繪製。",
       "newMapTitle": "新增拓撲圖",
       "editMapTitle": "編輯拓撲圖",

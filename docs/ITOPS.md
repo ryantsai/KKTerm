@@ -495,9 +495,11 @@ Site imports a record with `site_id = NULL`.
 
 Network Maps (`src/modules/itops/NetworkMapDesigner.tsx`) is the one IT Ops
 destination with a canvas. Its initial state is a card list of every map,
-with a compact animated SVG preview and graph counts; opening a card enters
-one full map workspace, where the tab strip switches between the other maps
-and Back returns to the list. It uses `@xyflow/react` the same way
+with a compact animated SVG preview and graph counts. The card list responds
+to the destination's available width from one to four columns, and its search
+matches map metadata plus every saved Network Node and Network Link field;
+opening a card enters one full map workspace, where the tab strip switches
+between the other maps and Back returns to the list. It uses `@xyflow/react` the same way
 `AutomationEditor.tsx` does — controlled `nodes`/`edges` via `useMemo`,
 position-only `onNodesChange` filtering, `deleteKeyCode={null}`,
 `proOptions={{ hideAttribution: true }}`. Because a Network Link is
