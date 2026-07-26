@@ -1001,6 +1001,7 @@ textarea.kk-inp {
 /* ====================== quick command library ========================= */
 .kk-qc-library-sheet .kk-dlg-body {
   gap: 12px;
+  overflow-y: hidden;
 }
 .kk-qc-lib-tabs,
 .kk-qc-lib-subtabs {
@@ -1043,6 +1044,8 @@ textarea.kk-inp {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-height: 0;
+  overflow-y: auto;
 }
 .kk-qc-lib-entry {
   display: flex;

@@ -535,12 +535,13 @@ function ClaimDialog({
                   aria-invalid={
                     previewCidr(prefixDrafts[suggestion.id] ?? suggestion.cidr) === null
                   }
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    const value = event.currentTarget.value;
                     setPrefixDrafts((current) => ({
                       ...current,
-                      [suggestion.id]: event.currentTarget.value,
-                    }))
-                  }
+                      [suggestion.id]: value,
+                    }));
+                  }}
                 />
               </Field>
             ))}
