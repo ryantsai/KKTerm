@@ -9,7 +9,8 @@ use rusqlite::{Connection as SqliteConnection, OptionalExtension, params};
 
 use super::ipv4::{self, Prefix};
 use super::types::{
-    AddressStatus, IpAddressRecord, IpPrefix, IpamPrefixNode, IpamSnapshot, PrefixStatus,
+    AddressStatus, IpAddressRecord, IpPrefix, IpamDeviceType, IpamPrefixNode, IpamSnapshot,
+    PrefixStatus,
 };
 
 #[derive(Debug)]
@@ -75,6 +76,39 @@ fn address_status_from_key(key: &str) -> AddressStatus {
     }
 }
 
+fn device_type_key(device_type: IpamDeviceType) -> &'static str {
+    match device_type {
+        IpamDeviceType::Router => "router",
+        IpamDeviceType::Switch => "switch",
+        IpamDeviceType::Firewall => "firewall",
+        IpamDeviceType::Server => "server",
+        IpamDeviceType::Storage => "storage",
+        IpamDeviceType::AccessPoint => "accessPoint",
+        IpamDeviceType::Desktop => "desktop",
+        IpamDeviceType::Printer => "printer",
+        IpamDeviceType::Camera => "camera",
+        IpamDeviceType::Voip => "voip",
+        IpamDeviceType::Iot => "iot",
+    }
+}
+
+fn device_type_from_key(key: &str) -> Option<IpamDeviceType> {
+    match key {
+        "router" => Some(IpamDeviceType::Router),
+        "switch" => Some(IpamDeviceType::Switch),
+        "firewall" => Some(IpamDeviceType::Firewall),
+        "server" => Some(IpamDeviceType::Server),
+        "storage" => Some(IpamDeviceType::Storage),
+        "accessPoint" => Some(IpamDeviceType::AccessPoint),
+        "desktop" => Some(IpamDeviceType::Desktop),
+        "printer" => Some(IpamDeviceType::Printer),
+        "camera" => Some(IpamDeviceType::Camera),
+        "voip" => Some(IpamDeviceType::Voip),
+        "iot" => Some(IpamDeviceType::Iot),
+        _ => None,
+    }
+}
+
 /// Trims free text and collapses a blank optional id to `None` so the UI's
 /// empty select value never lands in the database as an empty soft reference.
 fn optional_id(value: Option<&str>) -> Option<String> {
@@ -112,22 +146,25 @@ fn list_prefix_rows(conn: &SqliteConnection) -> Result<Vec<IpPrefix>> {
     Ok(rows)
 }
 
-const ADDRESS_COLUMNS: &str = "id, address, vrf, status, dns_name, description, site_id, host_id, connection_id, rack_item_id";
+const ADDRESS_COLUMNS: &str = "id, address, vrf, status, dns_name, device_type, device_model, description, site_id, host_id, connection_id, rack_item_id";
 
 fn read_address(row: &rusqlite::Row<'_>) -> rusqlite::Result<IpAddressRecord> {
     let status: String = row.get(3)?;
+    let device_type: String = row.get(5)?;
     Ok(IpAddressRecord {
         id: row.get(0)?,
         address: row.get(1)?,
         vrf: row.get(2)?,
         status: address_status_from_key(&status),
         dns_name: row.get(4)?,
-        description: row.get(5)?,
-        site_id: row.get(6)?,
+        device_type: device_type_from_key(&device_type),
+        device_model: row.get(6)?,
+        description: row.get(7)?,
+        site_id: row.get(8)?,
         site_inherited: false,
-        host_id: row.get(7)?,
-        connection_id: row.get(8)?,
-        rack_item_id: row.get(9)?,
+        host_id: row.get(9)?,
+        connection_id: row.get(10)?,
+        rack_item_id: row.get(11)?,
     })
 }
 
@@ -467,6 +504,8 @@ pub fn create_address(
     vrf: &str,
     status: AddressStatus,
     dns_name: &str,
+    device_type: Option<IpamDeviceType>,
+    device_model: &str,
     description: &str,
     site_id: Option<&str>,
     host_id: Option<&str>,
@@ -481,6 +520,8 @@ pub fn create_address(
         vrf: vrf.trim().to_string(),
         status,
         dns_name: dns_name.trim().to_string(),
+        device_type,
+        device_model: device_model.trim().to_string(),
         description: description.trim().to_string(),
         site_id: effective_address_site(conn, site_id, host_id)?,
         site_inherited: false,
@@ -490,14 +531,17 @@ pub fn create_address(
     };
     let affected = conn.execute(
         "INSERT OR IGNORE INTO itops_ip_address_records
-            (id, address, vrf, status, dns_name, description, site_id, host_id, connection_id, rack_item_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (id, address, vrf, status, dns_name, device_type, device_model, description,
+             site_id, host_id, connection_id, rack_item_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             record.id,
             record.address,
             record.vrf,
             address_status_key(record.status),
             record.dns_name,
+            record.device_type.map(device_type_key).unwrap_or(""),
+            record.device_model,
             record.description,
             record.site_id,
             record.host_id,
@@ -522,6 +566,8 @@ pub fn update_address(
     vrf: &str,
     status: AddressStatus,
     dns_name: &str,
+    device_type: Option<IpamDeviceType>,
+    device_model: &str,
     description: &str,
     site_id: Option<&str>,
     host_id: Option<&str>,
@@ -550,6 +596,8 @@ pub fn update_address(
         vrf,
         status,
         dns_name: dns_name.trim().to_string(),
+        device_type,
+        device_model: device_model.trim().to_string(),
         description: description.trim().to_string(),
         site_id: effective_address_site(conn, site_id, host_id)?,
         site_inherited: false,
@@ -559,8 +607,9 @@ pub fn update_address(
     };
     let affected = conn.execute(
         "UPDATE itops_ip_address_records
-         SET address = ?, vrf = ?, status = ?, dns_name = ?, description = ?,
-             site_id = ?, host_id = ?, connection_id = ?, rack_item_id = ?,
+         SET address = ?, vrf = ?, status = ?, dns_name = ?, device_type = ?,
+             device_model = ?, description = ?, site_id = ?, host_id = ?,
+             connection_id = ?, rack_item_id = ?,
              updated_at = CURRENT_TIMESTAMP
          WHERE id = ?",
         params![
@@ -568,6 +617,8 @@ pub fn update_address(
             record.vrf,
             address_status_key(record.status),
             record.dns_name,
+            record.device_type.map(device_type_key).unwrap_or(""),
+            record.device_model,
             record.description,
             record.site_id,
             record.host_id,
@@ -655,6 +706,8 @@ mod tests {
                 vrf TEXT NOT NULL DEFAULT '',
                 status TEXT NOT NULL DEFAULT 'active',
                 dns_name TEXT NOT NULL DEFAULT '',
+                device_type TEXT NOT NULL DEFAULT '',
+                device_model TEXT NOT NULL DEFAULT '',
                 description TEXT NOT NULL DEFAULT '',
                 site_id TEXT,
                 host_id TEXT,
@@ -742,6 +795,8 @@ mod tests {
             "",
             AddressStatus::Active,
             "",
+            None,
+            "",
             "",
             None,
             None,
@@ -755,6 +810,8 @@ mod tests {
             "10.1.2.11",
             "",
             AddressStatus::Active,
+            "",
+            None,
             "",
             "",
             None,
@@ -891,6 +948,8 @@ mod tests {
             "",
             AddressStatus::Active,
             "",
+            None,
+            "",
             "",
             None,
             None,
@@ -904,6 +963,8 @@ mod tests {
             "192.168.5.3",
             "",
             AddressStatus::Active,
+            "",
+            None,
             "",
             "",
             None,
@@ -933,6 +994,8 @@ mod tests {
             "",
             AddressStatus::Active,
             "",
+            None,
+            "",
             "",
             None,
             None,
@@ -946,6 +1009,8 @@ mod tests {
             "172.16.0.6",
             "",
             AddressStatus::Active,
+            "",
+            None,
             "",
             "",
             None,
@@ -963,6 +1028,8 @@ mod tests {
                 "",
                 AddressStatus::Active,
                 "",
+                None,
+                "",
                 "",
                 None,
                 None,
@@ -978,6 +1045,8 @@ mod tests {
             "",
             AddressStatus::Reserved,
             " gw.example ",
+            Some(IpamDeviceType::Router),
+            " EdgeRouter X ",
             "",
             Some("site-only"),
             Some(""),
@@ -987,6 +1056,8 @@ mod tests {
         .unwrap();
         assert_eq!(updated.address, "172.16.0.7");
         assert_eq!(updated.dns_name, "gw.example");
+        assert_eq!(updated.device_type, Some(IpamDeviceType::Router));
+        assert_eq!(updated.device_model, "EdgeRouter X");
         assert_eq!(updated.site_id.as_deref(), Some("site-only"));
         assert!(updated.host_id.is_none());
         assert_eq!(updated.connection_id.as_deref(), Some("conn-1"));
@@ -1013,6 +1084,8 @@ mod tests {
             "",
             AddressStatus::Active,
             "",
+            None,
+            "",
             "",
             Some("wrong-site"),
             Some("host-1"),
@@ -1028,6 +1101,8 @@ mod tests {
             "10.20.0.2",
             "",
             AddressStatus::Active,
+            "",
+            None,
             "",
             "",
             Some("site-2"),
@@ -1078,6 +1153,8 @@ mod tests {
                 address,
                 "",
                 AddressStatus::Active,
+                "",
+                None,
                 "",
                 "",
                 site_id,
@@ -1151,6 +1228,8 @@ mod tests {
                 address,
                 "",
                 AddressStatus::Active,
+                "",
+                None,
                 "",
                 "",
                 None,

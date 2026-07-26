@@ -1746,6 +1746,7 @@
       "dnsLabel": "DNS 名稱",
       "dnsHint": "這個位址對應的名稱。",
       "dnsPlaceholder": "例如 core-sw-01.example.com",
+      "deviceTypeLabel": "裝置類型",
       "claimTitle": "匯入已知位址",
       "claimSub": "KKTerm 已在你的連線與主機上看到的位址。",
       "claimMissingPrefixes_one": "已選取的 {{count}} 個位址不在任何 IP 前綴內。匯入前請檢查建議的 CIDR。",

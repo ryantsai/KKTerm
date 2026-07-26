@@ -131,14 +131,14 @@ fn sanitize_link(mut link: NetworkLink) -> NetworkLink {
 /// pair from older saved graphs into the list. Never returns an empty list: a
 /// drawn link always stands for at least one physical link.
 fn migrate_strands(link: &NetworkLink) -> Vec<NetworkLinkStrand> {
+    let mut seen_ids = HashSet::new();
     let mut strands: Vec<NetworkLinkStrand> = link
         .strands
         .iter()
         .take(MAX_STRANDS)
         .enumerate()
         .map(|(index, strand)| NetworkLinkStrand {
-            id: non_empty(strand.id.clone())
-                .unwrap_or_else(|| format!("{}-strand-{index}", link.id)),
+            id: unique_strand_id(&mut seen_ids, &link.id, index, non_empty(strand.id.clone())),
             name: strand.name.trim().to_string(),
             speed: strand.speed.trim().to_string(),
         })
@@ -148,7 +148,7 @@ fn migrate_strands(link: &NetworkLink) -> Vec<NetworkLinkStrand> {
         let count = usize::from(link.connection_count.unwrap_or(1)).clamp(1, MAX_STRANDS);
         strands = (0..count)
             .map(|index| NetworkLinkStrand {
-                id: format!("{}-strand-{index}", link.id),
+                id: unique_strand_id(&mut seen_ids, &link.id, index, None),
                 // The pre-strand model had one speed for the whole bundle and
                 // no per-member port names, so every member inherits it.
                 name: String::new(),
@@ -157,6 +157,30 @@ fn migrate_strands(link: &NetworkLink) -> Vec<NetworkLinkStrand> {
             .collect();
     }
     strands
+}
+
+fn unique_strand_id(
+    seen: &mut HashSet<String>,
+    link_id: &str,
+    index: usize,
+    preferred: Option<String>,
+) -> String {
+    if let Some(id) = preferred
+        && seen.insert(id.clone())
+    {
+        return id;
+    }
+    let base = format!("{link_id}-strand-{index}");
+    if seen.insert(base.clone()) {
+        return base;
+    }
+    for suffix in 2.. {
+        let candidate = format!("{base}-{suffix}");
+        if seen.insert(candidate.clone()) {
+            return candidate;
+        }
+    }
+    unreachable!("the numeric suffix always yields another candidate")
 }
 
 fn non_empty(value: String) -> Option<String> {
@@ -253,13 +277,7 @@ pub fn update_map(
         "UPDATE itops_network_maps
          SET name = ?, description = ?, site_id = ?, graph_json = ?, updated_at = CURRENT_TIMESTAMP
          WHERE id = ?",
-        params![
-            name,
-            description,
-            site_id,
-            graph_to_json(&graph)?,
-            id
-        ],
+        params![name, description, site_id, graph_to_json(&graph)?, id],
     )?;
     Ok(NetworkMap {
         id: id.to_string(),
@@ -282,9 +300,7 @@ pub fn remove_map(conn: &SqliteConnection, id: &str) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::itops::types::{
-        NetworkLinkKind, NetworkMapStatus, NetworkNode, NetworkNodeKind,
-    };
+    use crate::itops::types::{NetworkLinkKind, NetworkMapStatus, NetworkNode, NetworkNodeKind};
 
     fn open_test_db() -> SqliteConnection {
         let conn = SqliteConnection::open_in_memory().unwrap();
@@ -337,7 +353,8 @@ mod tests {
         let mut primary_link = link("l1", "core", "edge");
         primary_link.strands = vec![
             strand("s1", " Gi1/0/1 ", " 10 Gbps "),
-            strand("", "Gi1/0/2", "10 Gbps"),
+            strand("s1", "Gi1/0/2", "10 Gbps"),
+            strand("", "Gi1/0/3", "10 Gbps"),
         ];
         primary_link.native_vlan_id = Some(" vlan-10 ".to_string());
         primary_link.tagged_vlan_ids = vec![
@@ -368,11 +385,13 @@ mod tests {
         assert_eq!(listed[0].graph.nodes.len(), 2);
         let stored = &listed[0].graph.links[0];
         assert_eq!(stored.id, "l1");
-        assert_eq!(stored.strands.len(), 2);
+        assert_eq!(stored.strands.len(), 3);
         assert_eq!(stored.strands[0].name, "Gi1/0/1");
         assert_eq!(stored.strands[0].speed, "10 Gbps");
-        // A blank strand id is backfilled so React keys and edits stay stable.
+        // Duplicate and blank strand ids are backfilled so React keys and edits
+        // stay stable and one row can never patch or remove another.
         assert_eq!(stored.strands[1].id, "l1-strand-1");
+        assert_eq!(stored.strands[2].id, "l1-strand-2");
         assert_eq!(stored.native_vlan_id.as_deref(), Some("vlan-10"));
         // Blanks, duplicates, and the native VLAN drop out of the tagged set.
         assert_eq!(stored.tagged_vlan_ids, vec!["vlan-20".to_string()]);

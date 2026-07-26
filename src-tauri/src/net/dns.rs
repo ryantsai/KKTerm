@@ -48,7 +48,7 @@ fn parse_record_type(kind: &str) -> Result<RecordType, NetError> {
     })
 }
 
-fn build_resolver() -> Result<TokioResolver, NetError> {
+pub(crate) fn build_resolver() -> Result<TokioResolver, NetError> {
     let builder = TokioResolver::builder_tokio().map_err(|e| NetError::ResolverError {
         reason: format!("resolver init: {}", e),
     })?;

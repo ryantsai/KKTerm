@@ -256,18 +256,6 @@ homelab、正职工作、还有那个客户的服务器，本来就不该挤在�
 
 ---
 
-## Star 历史
-
-<a href="https://www.star-history.com/#ryantsai/KKTerm&Date">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=ryantsai/KKTerm&type=Date&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=ryantsai/KKTerm&type=Date" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=ryantsai/KKTerm&type=Date" />
-  </picture>
-</a>
-
----
-
 ## 许可证
 
 MIT。见 [LICENSE](LICENSE)。用它、fork 它、拿去出货、把它放进一个没人找得到的 homelab — 这就是那个交易。

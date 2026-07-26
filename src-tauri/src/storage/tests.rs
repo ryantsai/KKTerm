@@ -322,7 +322,7 @@ fn v51_ipam_site_columns_are_added_and_current_reopen_keeps_them_optional() {
         .expect("site-less IPAM address imports after migration");
     drop(storage);
 
-    let reopened = Storage::open(db_path).expect("current v52 storage reopens");
+    let reopened = Storage::open(db_path).expect("current storage reopens");
     reopened
         .with_connection(|connection| {
             let version: i32 =
@@ -340,6 +340,95 @@ fn v51_ipam_site_columns_are_added_and_current_reopen_keeps_them_optional() {
             Ok(())
         })
         .expect("current-version reopen is write-free and keeps NULL Site");
+}
+
+#[test]
+fn v52_ipam_device_identity_columns_upgrade_and_survive_current_reopen() {
+    let db_path = temp_db_path("v52-ipam-device-identity");
+    {
+        let connection = rusqlite::Connection::open(&db_path).expect("v52 database opens");
+        connection
+            .execute_batch(
+                r#"
+                CREATE TABLE itops_ip_address_records (
+                    id TEXT PRIMARY KEY,
+                    address TEXT NOT NULL,
+                    vrf TEXT NOT NULL DEFAULT '',
+                    status TEXT NOT NULL DEFAULT 'active',
+                    dns_name TEXT NOT NULL DEFAULT '',
+                    description TEXT NOT NULL DEFAULT '',
+                    site_id TEXT,
+                    host_id TEXT,
+                    connection_id TEXT,
+                    rack_item_id TEXT,
+                    UNIQUE(vrf, address)
+                );
+                INSERT INTO itops_ip_address_records
+                    (id, address, vrf, status, dns_name, description)
+                VALUES ('address-1', '10.0.0.10', '', 'active', 'host.example', '');
+                PRAGMA user_version = 52;
+                "#,
+            )
+            .expect("legacy v52 IPAM schema is created");
+    }
+
+    let storage = Storage::open(db_path.clone()).expect("v52 IPAM schema migrates");
+    storage
+        .with_connection(|connection| {
+            assert!(column_exists(
+                connection,
+                "itops_ip_address_records",
+                "device_type"
+            )?);
+            assert!(column_exists(
+                connection,
+                "itops_ip_address_records",
+                "device_model"
+            )?);
+            let defaults: (String, String) = connection
+                .query_row(
+                    "SELECT device_type, device_model
+                     FROM itops_ip_address_records WHERE id = 'address-1'",
+                    [],
+                    |row| Ok((row.get(0)?, row.get(1)?)),
+                )
+                .map_err(to_storage_error)?;
+            assert_eq!(defaults, (String::new(), String::new()));
+            connection
+                .execute(
+                    "UPDATE itops_ip_address_records
+                     SET device_type = 'switch', device_model = 'Catalyst C9300'
+                     WHERE id = 'address-1'",
+                    [],
+                )
+                .map_err(to_storage_error)?;
+            Ok(())
+        })
+        .expect("device identity fields are writable after migration");
+    drop(storage);
+
+    let reopened = Storage::open(db_path).expect("current storage reopens");
+    reopened
+        .with_connection(|connection| {
+            let version: i32 =
+                connection.pragma_query_value(None, "user_version", |row| row.get(0))
+                    .map_err(to_storage_error)?;
+            let identity: (String, String) = connection
+                .query_row(
+                    "SELECT device_type, device_model
+                     FROM itops_ip_address_records WHERE id = 'address-1'",
+                    [],
+                    |row| Ok((row.get(0)?, row.get(1)?)),
+                )
+                .map_err(to_storage_error)?;
+            assert_eq!(version, SCHEMA_USER_VERSION);
+            assert_eq!(
+                identity,
+                ("switch".to_string(), "Catalyst C9300".to_string())
+            );
+            Ok(())
+        })
+        .expect("current-version reopen preserves device identity");
 }
 
 #[test]
@@ -433,13 +522,13 @@ fn v50_saved_credential_migration_drops_host_and_current_reopen_keeps_shape() {
         .expect("current schema remains host-free");
 }
 
-/// v53 adds the durable VLAN table and the soft `vlan_id` on IP Prefixes.
+/// v54 adds the durable VLAN table and the soft `vlan_id` on IP Prefixes.
 /// `CREATE TABLE IF NOT EXISTS` cannot add a column to a prefix table that
 /// already exists, so the upgrade path has to backfill it explicitly — the
 /// exact failure v52 had to repair for `site_id`.
 #[test]
-fn v53_vlan_migration_adds_the_table_and_prefix_column_and_keeps_documented_prefixes() {
-    let db_path = temp_db_path("vlan-v53");
+fn v54_vlan_migration_adds_the_table_and_prefix_column_and_keeps_documented_prefixes() {
+    let db_path = temp_db_path("vlan-v54");
     {
         Storage::open(db_path.clone()).expect("current storage opens");
     }
@@ -451,12 +540,12 @@ fn v53_vlan_migration_adds_the_table_and_prefix_column_and_keeps_documented_pref
                  ALTER TABLE itops_ip_prefixes DROP COLUMN vlan_id;
                  INSERT INTO itops_ip_prefixes (id, cidr, vrf)
                      VALUES ('p-legacy', '10.20.30.0/24', '');
-                 PRAGMA user_version = 52;",
+                 PRAGMA user_version = 53;",
             )
-            .expect("v52 IPAM shape is restored");
+            .expect("v53 IPAM shape is restored");
     }
 
-    let upgraded = Storage::open(db_path.clone()).expect("v52 storage upgrades");
+    let upgraded = Storage::open(db_path.clone()).expect("v53 storage upgrades");
     upgraded
         .with_connection(|connection| {
             assert!(table_exists(connection, "itops_vlans")?);
@@ -482,7 +571,7 @@ fn v53_vlan_migration_adds_the_table_and_prefix_column_and_keeps_documented_pref
 
     // Reopening at the current version takes the write-free fast path and must
     // leave the new table and column exactly as the upgrade left them.
-    let reopened = Storage::open(db_path).expect("current v53 storage reopens");
+    let reopened = Storage::open(db_path).expect("current v54 storage reopens");
     reopened
         .with_connection(|connection| {
             assert!(table_exists(connection, "itops_vlans")?);

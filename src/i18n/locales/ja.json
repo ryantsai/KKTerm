@@ -1746,6 +1746,7 @@
       "dnsLabel": "DNS 名",
       "dnsHint": "このアドレスが応答する名前。",
       "dnsPlaceholder": "例: core-sw-01.example.com",
+      "deviceTypeLabel": "デバイスの種類",
       "claimTitle": "既知のアドレスを取り込む",
       "claimSub": "KKTerm が接続とホストからすでに把握しているアドレスです。",
       "claimMissingPrefixes_one": "選択した {{count}} 件のアドレスは IP プレフィックスに含まれていません。取り込み前に提案された CIDR を確認してください。",

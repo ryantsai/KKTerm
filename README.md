@@ -145,7 +145,7 @@ Most "AI in your terminal" demos stop at chat. KKTerm's assistant works *inside*
 
 The Dashboard is a drag-and-resize grid of widgets. It's not for petabyte observability — it's for "I want a button to launch my five favorite apps and a panel showing my SSH host's uptime, *next to* my chat."
 
-Dashboard Views can use 45 app-owned animated backgrounds. The newest eight are procedural WebGL scenes: `heroGeometric`, `ditherPrismHero`, `webglLiquid`, `silkAurora`, `closingPlasma`, `animatedGradient`, `prismGradient`, and `liquidChrome`. The same background picker is available for terminal Connections, the Document viewer, and IT Ops drill views; hidden or off-screen scenes stop rendering and release their WebGL resources.
+Dashboard Views can use 45 app-owned animated backgrounds: `fuji`, `aurora`, `halftone`, `clouds`, `ocean`, `mistySea`, `raindrops`, `rainyWindow`, `frostedWindow`, `snow`, `sakura`, `fireflies`, `bubbles`, `aquarium`, `jellyfish`, `lighthouse`, `balloons`, `ricefield`, `lanterns`, `starfield`, `nebula`, `orbitals`, `embers`, `lava`, `ink`, `dunes`, `savanna`, `matrix`, `topo`, `synthwave`, `circuit`, `crystals`, `cyberpunk`, `taipei101`, `thunderstorm`, `confetti`, `particleCursor`, `heroGeometric`, `ditherPrismHero`, `webglLiquid`, `silkAurora`, `closingPlasma`, `animatedGradient`, `prismGradient`, and `liquidChrome`. The newest eight are procedural WebGL scenes. The same background picker is available for terminal Connections, the Document viewer, and IT Ops drill views; hidden or off-screen scenes stop rendering and release their WebGL resources.
 
 <p align="center">
   <img src="docs/assets/screenshots/ai-widgets.png" alt="A dashboard grid of AI-created widgets" width="720" />
@@ -255,18 +255,6 @@ Full setup, project layout, and the PR checklist live in [`CONTRIBUTING.md`](CON
 - [Dashboard architecture](docs/DASHBOARD.md)
 - [Built-in MCP server](docs/MCP.md)
 - [AI provider guide](docs/AI_PROVIDERS.md)
-
----
-
-## Star History
-
-<a href="https://www.star-history.com/#ryantsai/KKTerm&Date">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=ryantsai/KKTerm&type=Date&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=ryantsai/KKTerm&type=Date" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=ryantsai/KKTerm&type=Date" />
-  </picture>
-</a>
 
 ---
 

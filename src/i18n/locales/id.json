@@ -1746,6 +1746,7 @@
       "dnsLabel": "Nama DNS",
       "dnsHint": "Nama yang dijawab oleh alamat ini.",
       "dnsPlaceholder": "mis. core-sw-01.example.com",
+      "deviceTypeLabel": "Jenis perangkat",
       "claimTitle": "Impor alamat yang sudah dikenal",
       "claimSub": "Alamat yang sudah terlihat oleh KKTerm pada Koneksi dan Host Anda.",
       "claimMissingPrefixes_one": "{{count}} alamat yang dipilih tidak tercakup oleh Prefiks IP. Tinjau CIDR yang disarankan sebelum mengimpor.",

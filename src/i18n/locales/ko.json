@@ -1746,6 +1746,7 @@
       "dnsLabel": "DNS 이름",
       "dnsHint": "이 주소가 응답하는 이름입니다.",
       "dnsPlaceholder": "예: core-sw-01.example.com",
+      "deviceTypeLabel": "장치 유형",
       "claimTitle": "이미 아는 주소 가져오기",
       "claimSub": "KKTerm이 연결과 호스트에서 이미 확인한 주소입니다.",
       "claimMissingPrefixes_one": "선택한 주소 {{count}}개가 IP 프리픽스에 포함되지 않습니다. 가져오기 전에 제안된 CIDR을 검토하세요.",

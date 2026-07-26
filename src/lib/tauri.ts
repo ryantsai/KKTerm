@@ -1558,6 +1558,8 @@ type CommandMap = {
       vrf: string;
       status: import("../types").AddressStatus;
       dnsName: string;
+      deviceType: import("../types").IpamDeviceType | null;
+      deviceModel: string;
       description: string;
       siteId: string | null;
       hostId: string | null;
@@ -1573,6 +1575,8 @@ type CommandMap = {
       vrf: string;
       status: import("../types").AddressStatus;
       dnsName: string;
+      deviceType: import("../types").IpamDeviceType | null;
+      deviceModel: string;
       description: string;
       siteId: string | null;
       hostId: string | null;

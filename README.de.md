@@ -256,18 +256,6 @@ Komplettes Setup, Projektstruktur und PR-Checkliste stehen in [`CONTRIBUTING.md`
 
 ---
 
-## Stern-Verlauf
-
-<a href="https://www.star-history.com/#ryantsai/KKTerm&Date">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=ryantsai/KKTerm&type=Date&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=ryantsai/KKTerm&type=Date" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=ryantsai/KKTerm&type=Date" />
-  </picture>
-</a>
-
----
-
 ## Lizenz
 
 MIT. Siehe [LICENSE](LICENSE). Nutz es, fork es, liefer es aus, pack es in ein Homelab, das sonst niemand findet — das ist der Deal.

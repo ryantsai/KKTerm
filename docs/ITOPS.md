@@ -217,12 +217,13 @@ keep every address (RFC 3021).
 _Avoid_: subnet record, network object
 
 **IP Address Record** — a durable single IPv4 address in
-`itops_ip_address_records`, with an optional DNS name, status, VRF,
-description, optional direct Site binding, and soft references back to the
-Host, Connection, or Rack Device it was imported from. Binding a Host implies
-that Host's Site; a Site binding remains valid without a Host. With neither,
-the record inherits the Site of its most-specific containing IP Prefix. It is
-a documentation record, not a lease or a reservation KKTerm enforces anywhere.
+`itops_ip_address_records`, with an optional hostname, broad device type,
+free-text device model, status, VRF, description, optional direct Site binding,
+and soft references back to the Host, Connection, or Rack Device it was
+imported from. Binding a Host implies that Host's Site; a Site binding remains
+valid without a Host. With neither, the record inherits the Site of its
+most-specific containing IP Prefix. It is a documentation record, not a lease
+or a reservation KKTerm enforces anywhere.
 _Avoid_: IP entry, host record (that is **Host**)
 
 **VLAN** — a durable global record of an 802.1Q VLAN in `itops_vlans`: `vid`
@@ -246,7 +247,7 @@ tree nesting, per-prefix `depth`, child counts, and utilization are
 **derived on every snapshot** from containment and VRF, never stored: adding
 a wider prefix silently re-parents everything it now contains, and no
 migration or repair pass is needed. Utilization counts documented addresses
-against usable addresses; nothing is scanned or probed.
+against usable addresses; nothing is scanned or probed automatically.
 
 **Network Node** — one box on a Network Map: id, label, kind, canvas
 position, optional free-text address and note, and documented status (`up` /
@@ -350,7 +351,8 @@ Three SQLite tables (new schema version):
   `vlan_id` into `itops_vlans`, unique on `(vrf, cidr)`. Parent, depth, child counts, and utilization are **not**
   columns; they are recomputed on every snapshot from containment.
 - `itops_ip_address_records` — global IP Address Records: id, `address`,
-  `vrf`, status, DNS name, description, plus soft `site_id` / `host_id` /
+  `vrf`, status, hostname (`dns_name`), optional broad `device_type`, free-text
+  `device_model`, description, plus soft `site_id` / `host_id` /
   `connection_id` / `rack_item_id` references, unique on `(vrf, address)`.
   A record belongs to a prefix by containment and matching VRF, not by a
   stored parent id. A valid Host binding makes its owning Site authoritative;
@@ -460,9 +462,11 @@ History containing that Task. Statistics use the Task's stable id; ad-hoc,
 Automation, and older unattributed history rows are never guessed by label.
 
 IPAM (`src/modules/itops/IpamPanel.tsx`) reuses the Task Library's
-spreadsheet-style table inside the same frame. Rows are indented by the
-server-derived `depth`, so indentation always matches real containment; a
-twisty expands an IP Prefix to reveal its IP Address Records. The CIDR field
+spreadsheet-style table inside the same frame. Prefix rows are grouped by their
+optional Site tag, with Site-less or stale soft references collected under All
+Sites. Within each Site group, rows retain the snapshot's containment order and
+are indented by the server-derived `depth`, so indentation always matches real
+containment; a twisty expands an IP Prefix to reveal its IP Address Records. The CIDR field
 previews the network address, usable range, and usable count live while
 typing (`previewCidr` in `ipamModel.ts`), and the address dialog suggests
 free addresses from the same pure helpers. `collectClaimCandidates` derives
@@ -475,7 +479,13 @@ Unassigned addresses group rather than disappearing from the IP Prefix-only tree
 
 The explicit IPAM scan sheet is a separate operator action. It scans only
 checked IP Prefixes and treats an address as used when ICMP ping, an SNMPv2c
-`sysDescr` request, or one of the common TCP management/service ports answers.
+identity request, or one of the common TCP management/service ports answers.
+For responsive addresses, a bounded reverse-DNS PTR lookup supplies the
+hostname, with SNMP `sysName` as fallback. SNMP `sysDescr` supplies model/product
+detail and takes precedence when inferring a broad device type; only distinctive
+service ports (printing, RTSP camera, or SIP) provide a port-only type fallback.
+Ambiguous evidence leaves device type and model blank rather than inventing a
+match.
 The backend deduplicates overlap per VRF, caps a request at 4,096 usable
 addresses, and limits address-level concurrency. Results are transient: the
 scan itself writes nothing, already documented addresses are read-only in the
@@ -902,6 +912,8 @@ CREATE TABLE IF NOT EXISTS itops_ip_address_records (
     -- 'active' | 'reserved' | 'deprecated'.
     status        TEXT NOT NULL DEFAULT 'active',
     dns_name      TEXT NOT NULL DEFAULT '',
+    device_type   TEXT NOT NULL DEFAULT '',
+    device_model  TEXT NOT NULL DEFAULT '',
     description   TEXT NOT NULL DEFAULT '',
     site_id       TEXT,
     host_id       TEXT,
@@ -1135,7 +1147,14 @@ explicit scan combines ping, SNMP, and common TCP full-connect probes over
 operator-selected Prefixes, with a 4,096-address request cap and transient
 results that are durable only after an explicit import.
 
-**Phase 11 — VLANs and per-link parallel-link records.** Schema bump to 53
+**Phase 11 — IPAM device identity.** Schema bump to 53 adds optional
+`device_type` and `device_model` columns to IP Address Records. Explicit scans
+enrich responsive results with bounded PTR reverse DNS, SNMP MIB-II
+`sysDescr` / `sysObjectID` / `sysName`, and conservative distinctive-port
+fallbacks. Existing and uncertain records remain blank; there is no current-
+version startup reconciliation.
+
+**Phase 12 — VLANs and per-link parallel-link records.** Schema bump to 54
 adds `itops_vlans` and the version-gated nullable `vlan_id` on
 `itops_ip_prefixes` (the table itself is covered by `CREATE TABLE IF NOT
 EXISTS`; only the column on an existing prefix table needs backfilling — the
@@ -1158,7 +1177,7 @@ structured data is how you get wrong documentation that looks authoritative.
 landed, so the two are never double-entered.
 
 Phases 0–3 are the minimum that delivers durable monitoring + SSH batch.
-Phases 4–11 are independent and can be reordered by demand.
+Phases 4–12 are independent and can be reordered by demand.
 
 ## Planned / Deferred Enhancements
 

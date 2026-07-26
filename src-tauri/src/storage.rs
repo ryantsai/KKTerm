@@ -13,7 +13,7 @@ use std::{
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use zip::{ZipArchive, ZipWriter, write::SimpleFileOptions};
 
-const SCHEMA_USER_VERSION: i32 = 53;
+const SCHEMA_USER_VERSION: i32 = 54;
 
 const DEFAULT_TERMINAL_OPACITY: u8 = 50;
 
@@ -376,14 +376,14 @@ CREATE TABLE IF NOT EXISTS itops_tasks (
 -- dedup migration across every saved graph to promote later. `vid` is the
 -- 802.1Q id (1–4094), unique across the install; `accent` is an index into the
 -- frontend IT_ACCENTS list resolved modulo its length, never a hex colour.
--- site_id is a SOFT reference that labels a VLAN without scoping it. v53.
+-- site_id is a SOFT reference that labels a VLAN without scoping it. v54.
 CREATE TABLE IF NOT EXISTS itops_vlans (
     id          TEXT PRIMARY KEY,
-    vid         INTEGER NOT NULL UNIQUE,
+    vid         INTEGER NOT NULL UNIQUE CHECK (vid BETWEEN 1 AND 4094),
     name        TEXT NOT NULL DEFAULT '',
     description TEXT NOT NULL DEFAULT '',
     site_id     TEXT,
-    accent      INTEGER NOT NULL DEFAULT 0,
+    accent      INTEGER NOT NULL DEFAULT 0 CHECK (accent BETWEEN 0 AND 255),
     created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -406,7 +406,7 @@ CREATE TABLE IF NOT EXISTS itops_ip_prefixes (
     description TEXT NOT NULL DEFAULT '',
     site_id     TEXT,
     -- SOFT reference into itops_vlans documenting "VLAN 30 is 10.20.30.0/24".
-    -- A prefix references a VLAN; it is not one. v53.
+    -- A prefix references a VLAN; it is not one. v54.
     vlan_id     TEXT,
     created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -423,6 +423,10 @@ CREATE TABLE IF NOT EXISTS itops_ip_address_records (
     -- 'active' | 'reserved' | 'deprecated'.
     status        TEXT NOT NULL DEFAULT 'active',
     dns_name      TEXT NOT NULL DEFAULT '',
+    -- Broad operator-facing class inferred conservatively during explicit scans.
+    device_type   TEXT NOT NULL DEFAULT '',
+    -- Free-text model/product detail, commonly sourced from SNMP sysDescr.
+    device_model  TEXT NOT NULL DEFAULT '',
     description   TEXT NOT NULL DEFAULT '',
     site_id       TEXT,
     host_id       TEXT,
@@ -2953,12 +2957,30 @@ impl Storage {
                 "TEXT",
             )?;
         }
-        // v53: VLANs become a durable global record next to IPAM. The table
+        // v53: optional device identity on each durable IP Address Record.
+        // These are ordinary one-time additive columns: there is no ongoing
+        // startup reconciliation, and existing records remain intentionally
+        // blank until an operator edits or imports a discovered identity.
+        if stored_version < 53 {
+            ensure_column(
+                &connection,
+                "itops_ip_address_records",
+                "device_type",
+                "TEXT NOT NULL DEFAULT ''",
+            )?;
+            ensure_column(
+                &connection,
+                "itops_ip_address_records",
+                "device_model",
+                "TEXT NOT NULL DEFAULT ''",
+            )?;
+        }
+        // v54: VLANs become a durable global record next to IPAM. The table
         // itself is created by CREATE TABLE IF NOT EXISTS above; only the new
         // soft reference on an already-existing prefix table needs adding.
         // The reference stays nullable: a prefix documents addressing whether
         // or not a VLAN is recorded for it.
-        if stored_version < 53 {
+        if stored_version < 54 {
             ensure_column(&connection, "itops_ip_prefixes", "vlan_id", "TEXT")?;
         }
         connection

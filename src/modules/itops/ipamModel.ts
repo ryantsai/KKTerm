@@ -5,7 +5,7 @@
 // presentation: live feedback while the operator is still typing a CIDR, and
 // the harvest that turns Connections and Site Hosts into claimable addresses.
 
-import type { Connection, IpAddressRecord, IpamPrefixNode, SiteHost } from "../../types";
+import type { Connection, IpAddressRecord, IpamPrefixNode, Site, SiteHost } from "../../types";
 
 /** Dotted-quad to a 32-bit host-order number, or null when it is not one. */
 export function parseIpv4(text: string): number | null {
@@ -226,6 +226,39 @@ export function filterPrefixTree(
     }
   }
   return prefixes.filter((prefix) => keep.has(prefix.id));
+}
+
+export interface PrefixSiteGroup {
+  siteId: string | null;
+  prefixes: IpamPrefixNode[];
+}
+
+/**
+ * Groups visible Prefix rows in Site order without changing the backend's
+ * containment order inside each group. Missing Site references are unscoped,
+ * matching the soft-reference contract of the durable Prefix model.
+ */
+export function groupPrefixesBySite(
+  prefixes: readonly IpamPrefixNode[],
+  sites: readonly Site[],
+): PrefixSiteGroup[] {
+  const knownSiteIds = new Set(sites.map((site) => site.id));
+  const bySite = new Map<string | null, IpamPrefixNode[]>();
+
+  for (const prefix of prefixes) {
+    const siteId = prefix.siteId && knownSiteIds.has(prefix.siteId) ? prefix.siteId : null;
+    const group = bySite.get(siteId) ?? [];
+    group.push(prefix);
+    bySite.set(siteId, group);
+  }
+
+  const groups: PrefixSiteGroup[] = sites.flatMap((site) => {
+    const group = bySite.get(site.id);
+    return group ? [{ siteId: site.id, prefixes: group }] : [];
+  });
+  const unscoped = bySite.get(null);
+  if (unscoped) groups.push({ siteId: null, prefixes: unscoped });
+  return groups;
 }
 
 /** Address Records that fall inside a prefix, in numeric order. */

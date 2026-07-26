@@ -12,6 +12,7 @@ import type {
   AutomationTestResult,
   BatchTask,
   IpamSnapshot,
+  IpamDeviceType,
   ItopsTask,
   Vlan,
   NetworkGraph,
@@ -166,6 +167,8 @@ export interface AddressInput {
   vrf: string;
   status: AddressStatus;
   dnsName: string;
+  deviceType: IpamDeviceType | null;
+  deviceModel: string;
   description: string;
   siteId: string | null;
   hostId: string | null;
@@ -201,6 +204,8 @@ function addressArgs(input: AddressInput) {
     vrf: input.vrf,
     status: input.status,
     dnsName: input.dnsName,
+    deviceType: input.deviceType,
+    deviceModel: input.deviceModel,
     description: input.description,
     siteId: input.siteId,
     hostId: input.hostId,
@@ -982,9 +987,18 @@ export const useItOpsStore = create<ItOpsState>((set, get) => ({
 
   async removeVlan(id) {
     await invokeCommand("itops_remove_vlan", { id });
-    set({ vlans: get().vlans.filter((entry) => entry.id !== id) });
-    // Deleting a VLAN clears the soft reference on any Prefix that used it.
-    if (get().ipamLoaded) await get().loadIpam();
+    set({
+      vlans: get().vlans.filter((entry) => entry.id !== id),
+      // The backend clears these references in the same transaction. Mirror
+      // that result locally instead of issuing a second request that could fail
+      // after the deletion already succeeded.
+      ipam: {
+        ...get().ipam,
+        prefixes: get().ipam.prefixes.map((entry) =>
+          entry.vlanId === id ? { ...entry, vlanId: null } : entry,
+        ),
+      },
+    });
   },
 
   // ── Global IPAM ──

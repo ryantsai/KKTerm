@@ -256,18 +256,6 @@ Dashboard View에서는 KKTerm에 내장된 애니메이션 배경 45종을 사�
 
 ---
 
-## 스타 히스토리
-
-<a href="https://www.star-history.com/#ryantsai/KKTerm&Date">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=ryantsai/KKTerm&type=Date&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=ryantsai/KKTerm&type=Date" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=ryantsai/KKTerm&type=Date" />
-  </picture>
-</a>
-
----
-
 ## 라이선스
 
 MIT. [LICENSE](LICENSE) 참고. 쓰고, 포크하고, 출시하고, 아무도 못 찾는 홈랩에 넣어두라 — 그게 이 거래다.

@@ -50,8 +50,12 @@ function VlanDialog({ vlan, onClose }: { vlan: Vlan | null; onClose: () => void 
   const [accent, setAccent] = useState(vlan?.accent ?? vlans.length % VLAN_ACCENTS.length);
   const [busy, setBusy] = useState(false);
 
-  const parsed = Number.parseInt(vid, 10);
-  const validVid = Number.isFinite(parsed) && parsed >= VID_MIN && parsed <= VID_MAX;
+  const parsed = Number(vid);
+  const validVid =
+    vid.trim() !== "" &&
+    Number.isInteger(parsed) &&
+    parsed >= VID_MIN &&
+    parsed <= VID_MAX;
   const taken = vlans.some((entry) => entry.vid === parsed && entry.id !== vlan?.id);
 
   async function save() {

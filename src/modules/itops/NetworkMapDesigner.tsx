@@ -872,8 +872,13 @@ function MapEditor({
   // A VLAN removed from the map (or from the global list) must not leave the
   // canvas stuck dimmed against a filter the operator can no longer see.
   useEffect(() => {
-    if (spotlightVlanId && !vlanUsage.has(spotlightVlanId)) setSpotlightVlanId(null);
-  }, [spotlightVlanId, vlanUsage]);
+    if (
+      spotlightVlanId &&
+      (!vlanUsage.has(spotlightVlanId) || !vlanIndex.has(spotlightVlanId))
+    ) {
+      setSpotlightVlanId(null);
+    }
+  }, [spotlightVlanId, vlanIndex, vlanUsage]);
 
   const dirty = JSON.stringify(graph) !== savedJson;
 
@@ -1464,6 +1469,17 @@ function MapEditor({
                     }
                     options={[
                       { value: "", label: t("itops.networkMap.vlanNone") },
+                      ...(selectedLink.nativeVlanId &&
+                      !vlanIndex.has(selectedLink.nativeVlanId)
+                        ? [
+                            {
+                              value: selectedLink.nativeVlanId,
+                              label: t("itops.vlan.optionLabel", {
+                                label: t("itops.networkMap.vlanUnknownShort"),
+                              }),
+                            },
+                          ]
+                        : []),
                       ...vlans.map((vlan) => ({
                         value: vlan.id,
                         label: t("itops.vlan.optionLabel", { label: vlanLabel(vlan) }),
@@ -1473,7 +1489,8 @@ function MapEditor({
                 </Field>
                 <div className="nm-vlan-picker">
                   <span className="kk-lbl">{t("itops.networkMap.taggedVlanLabel")}</span>
-                  {vlans.length > 0 ? (
+                  {vlans.length > 0 ||
+                  selectedLink.taggedVlanIds.some((id) => !vlanIndex.has(id)) ? (
                     <div className="nm-vlan-options" role="group" aria-label={t("itops.networkMap.taggedVlanLabel")}>
                       {vlans.map((vlan) => {
                         const isNative = selectedLink.nativeVlanId === vlan.id;
@@ -1493,6 +1510,20 @@ function MapEditor({
                           </button>
                         );
                       })}
+                      {selectedLink.taggedVlanIds
+                        .filter((id) => !vlanIndex.has(id))
+                        .map((id) => (
+                          <button
+                            key={id}
+                            type="button"
+                            className="nm-vlan-option"
+                            aria-pressed="true"
+                            title={id}
+                            onClick={() => toggleTaggedVlan(selectedLink.id, id)}
+                          >
+                            {t("itops.networkMap.vlanUnknownShort")}
+                          </button>
+                        ))}
                     </div>
                   ) : (
                     <span className="kk-hint">{t("itops.networkMap.vlanEmptyHint")}</span>

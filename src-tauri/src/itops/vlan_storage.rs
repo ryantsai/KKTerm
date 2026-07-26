@@ -170,14 +170,16 @@ pub fn update_vlan(
 /// the prefix itself is never deleted here. Network Link references live inside
 /// each map's `graph_json` and resolve to "unknown VLAN" at render time.
 pub fn remove_vlan(conn: &SqliteConnection, id: &str) -> Result<()> {
-    let affected = conn.execute("DELETE FROM itops_vlans WHERE id = ?", params![id])?;
+    let tx = conn.unchecked_transaction()?;
+    let affected = tx.execute("DELETE FROM itops_vlans WHERE id = ?", params![id])?;
     if affected == 0 {
         return Err(VlanStorageError::NotFound);
     }
-    conn.execute(
+    tx.execute(
         "UPDATE itops_ip_prefixes SET vlan_id = NULL WHERE vlan_id = ?",
         params![id],
     )?;
+    tx.commit()?;
     Ok(())
 }
 
@@ -190,11 +192,11 @@ mod tests {
         conn.execute_batch(
             "CREATE TABLE itops_vlans (
                 id          TEXT PRIMARY KEY,
-                vid         INTEGER NOT NULL UNIQUE,
+                vid         INTEGER NOT NULL UNIQUE CHECK (vid BETWEEN 1 AND 4094),
                 name        TEXT NOT NULL DEFAULT '',
                 description TEXT NOT NULL DEFAULT '',
                 site_id     TEXT,
-                accent      INTEGER NOT NULL DEFAULT 0,
+                accent      INTEGER NOT NULL DEFAULT 0 CHECK (accent BETWEEN 0 AND 255),
                 created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
@@ -211,7 +213,8 @@ mod tests {
     #[test]
     fn creates_trims_and_rejects_duplicate_or_out_of_range_ids() {
         let conn = open_test_db();
-        let created = create_vlan(&conn, "v1", 30, "  Voice  ", "  phones ", Some("  "), 3).unwrap();
+        let created =
+            create_vlan(&conn, "v1", 30, "  Voice  ", "  phones ", Some("  "), 3).unwrap();
         assert_eq!(created.name, "Voice");
         assert_eq!(created.description, "phones");
         assert!(created.site_id.is_none());
@@ -241,10 +244,41 @@ mod tests {
 
         remove_vlan(&conn, "v2").unwrap();
         let orphaned: Option<String> = conn
-            .query_row("SELECT vlan_id FROM itops_ip_prefixes", [], |row| row.get(0))
+            .query_row("SELECT vlan_id FROM itops_ip_prefixes", [], |row| {
+                row.get(0)
+            })
             .unwrap();
         assert!(orphaned.is_none());
         assert!(remove_vlan(&conn, "v2").is_err());
         assert_eq!(list_vlans(&conn).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn delete_rolls_back_when_unlinking_a_prefix_fails() {
+        let conn = open_test_db();
+        create_vlan(&conn, "v1", 30, "Voice", "", None, 0).unwrap();
+        conn.execute(
+            "INSERT INTO itops_ip_prefixes (id, cidr, vlan_id)
+             VALUES ('p1', '10.20.30.0/24', 'v1')",
+            [],
+        )
+        .unwrap();
+        conn.execute_batch(
+            "CREATE TRIGGER reject_vlan_unlink
+             BEFORE UPDATE OF vlan_id ON itops_ip_prefixes
+             BEGIN
+                 SELECT RAISE(ABORT, 'unlink failed');
+             END;",
+        )
+        .unwrap();
+
+        assert!(remove_vlan(&conn, "v1").is_err());
+        assert_eq!(list_vlans(&conn).unwrap().len(), 1);
+        let vlan_id: Option<String> = conn
+            .query_row("SELECT vlan_id FROM itops_ip_prefixes", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(vlan_id.as_deref(), Some("v1"));
     }
 }

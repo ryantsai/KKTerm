@@ -146,11 +146,11 @@ The global IT Ops collection of reusable Tasks, including the app-owned diagnost
 _Avoid_: Site Tasks, scripts folder, workflow library, job catalog
 
 **VLAN**:
-A durable 802.1Q VLAN record stored in `itops_vlans`, global to the IT Ops Module and a sibling of IPAM in the navigator's Library section. It carries a `vid` (1–4094, unique across the install), a name, a description, an optional soft Site tag that only labels it, and an accent index into the app's IT accent list (an index, never a stored hex colour). A VLAN is a durable record rather than a drawing detail: VLAN 30 drawn on two **Network Maps** is the same VLAN, not a coincidence of spelling. An **IP Prefix** may reference one, and a **Network Link** documents its native and tagged VLANs; deleting a VLAN clears those references and deletes nothing else. KKTerm never reads a VLAN off a switch.
+A durable 802.1Q VLAN record stored in `itops_vlans`, global to the IT Ops Module and a sibling of IPAM in the navigator's Library section. It carries a `vid` (1–4094, unique across the install), a name, a description, an optional soft Site tag that only labels it, and an accent index into the app's IT accent list (an index, never a stored hex colour). A VLAN is a durable record rather than a drawing detail: VLAN 30 drawn on two **Network Maps** is the same VLAN, not a coincidence of spelling. An **IP Prefix** may reference one, and a **Network Link** documents its native and tagged VLANs. Deleting a VLAN clears the IP Prefix reference and deletes nothing else; Network Link references remain in their map and resolve as unknown. KKTerm never reads a VLAN off a switch.
 _Avoid_: subnet, broadcast domain (as the stored entity), IP Prefix, network segment
 
 **IPAM**:
-The global IT Ops address-plan destination, a sibling of Sites, VLANs, and the Task Library in the navigator's Library section. It documents **IP Prefixes** and **IP Address Records** the operator writes down; it does not scan, probe, lease, or reserve anything on the network. Prefix nesting, depth, and utilization are recomputed from containment on every read and are never stored, so adding a wider prefix silently re-parents the blocks it now contains. IPAM is a view over two durable tables, not a durable entity itself.
+The global IT Ops address-plan destination, a sibling of Sites, VLANs, and the Task Library in the navigator's Library section. It documents **IP Prefixes** and **IP Address Records** the operator writes down; it never scans automatically, and an explicit bounded discovery scan stays transient until the operator imports selected results. It does not lease or reserve anything on the network. Prefix nesting, depth, and utilization are recomputed from containment on every read and are never stored, so adding a wider prefix silently re-parents the blocks it now contains. IPAM is a view over two durable tables, not a durable entity itself.
 _Avoid_: subnet manager, DHCP, address scanner, DDI
 
 **IP Prefix**:
@@ -158,7 +158,7 @@ A durable IPv4 CIDR block stored in `itops_ip_prefixes`, with a role, a status (
 _Avoid_: subnet record, network object, VLAN
 
 **IP Address Record**:
-A durable single documented IPv4 address stored in `itops_ip_address_records`, with an optional DNS name, status, VRF, description, and soft references to the Host, Connection, or Rack Device it was imported from. It belongs to an **IP Prefix** by containment and matching VRF, not by a stored parent id. It is documentation, not a lease, reservation, or live binding — deleting it changes nothing on the network.
+A durable single documented IPv4 address stored in `itops_ip_address_records`, with an optional hostname, broad device type, free-text device model, status, VRF, description, and soft references to the Host, Connection, or Rack Device it was imported from. An explicit IPAM scan can suggest the hostname from reverse DNS or SNMP and can conservatively infer device identity from SNMP system metadata and distinctive open ports; the operator chooses whether to import those suggestions. It belongs to an **IP Prefix** by containment and matching VRF, not by a stored parent id. It is documentation, not a lease, reservation, or live binding — deleting it changes nothing on the network.
 _Avoid_: IP entry, lease, reservation, host record (that is **Host**)
 
 **Network Map**:

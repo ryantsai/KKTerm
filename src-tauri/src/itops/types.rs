@@ -1075,6 +1075,25 @@ pub enum AddressStatus {
     Deprecated,
 }
 
+/// Broad operator-facing class for an IPAM Address Record. This deliberately
+/// stays coarser than an OS fingerprint: scan heuristics leave it unset when
+/// the available evidence is ambiguous.
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum IpamDeviceType {
+    Router,
+    Switch,
+    Firewall,
+    Server,
+    Storage,
+    AccessPoint,
+    Desktop,
+    Printer,
+    Camera,
+    Voip,
+    Iot,
+}
+
 /// A durable IPv4 prefix. `cidr` is stored canonicalized (host bits cleared).
 /// `vrf` is a free-text routing-table label so overlapping RFC 1918 space in
 /// different VRFs stays distinct; the empty string is the default table.
@@ -1118,6 +1137,10 @@ pub struct IpAddressRecord {
     pub status: AddressStatus,
     #[serde(default)]
     pub dns_name: String,
+    #[serde(default)]
+    pub device_type: Option<IpamDeviceType>,
+    #[serde(default)]
+    pub device_model: String,
     #[serde(default)]
     pub description: String,
     #[serde(default)]
@@ -1178,6 +1201,9 @@ pub struct IpamScanResult {
     pub cidr: String,
     pub vrf: String,
     pub site_id: Option<String>,
+    pub hostname: String,
+    pub device_type: Option<IpamDeviceType>,
+    pub device_model: String,
     pub ping: bool,
     pub snmp: bool,
     pub open_ports: Vec<u16>,

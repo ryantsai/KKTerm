@@ -256,18 +256,6 @@ Dashboard View では、KKTerm 内蔵のアニメーション背景を45種類�
 
 ---
 
-## スター履歴
-
-<a href="https://www.star-history.com/#ryantsai/KKTerm&Date">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=ryantsai/KKTerm&type=Date&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=ryantsai/KKTerm&type=Date" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=ryantsai/KKTerm&type=Date" />
-  </picture>
-</a>
-
----
-
 ## ライセンス
 
 MIT。[LICENSE](LICENSE) を参照。使って、フォークして、出荷して、誰にも見つからないホームラボに入れて——それがこの取引だ。

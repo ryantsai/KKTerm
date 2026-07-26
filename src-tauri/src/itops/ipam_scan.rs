@@ -8,20 +8,33 @@
 use std::{collections::HashSet, sync::Arc, time::Duration};
 
 use futures::{StreamExt, stream};
+use hickory_resolver::{TokioResolver, proto::rr::RData};
 use rusqlite::{Connection as SqliteConnection, params_from_iter};
 use tokio::net::UdpSocket;
 
-use crate::net::{ping, scan};
+use crate::net::{dns, ping, scan};
 
 use super::{
     ipv4::{self, Prefix},
-    types::IpamScanResult,
+    types::{IpamDeviceType, IpamScanResult},
 };
 
 pub const MAX_SCAN_ADDRESSES: usize = 4096;
 const ADDRESS_CONCURRENCY: usize = 32;
 const PROBE_TIMEOUT_MS: u64 = 650;
-const COMMON_PORTS: [u16; 10] = [22, 23, 53, 80, 161, 443, 445, 3389, 5985, 5986];
+const COMMON_PORTS: [u16; 16] = [
+    22, 23, 53, 80, 161, 443, 445, 515, 554, 631, 3389, 5060, 5061, 5985, 5986, 9100,
+];
+const SYS_DESCR_OID: &[u8] = &[0x2b, 0x06, 0x01, 0x02, 0x01, 0x01, 0x01, 0x00];
+const SYS_OBJECT_ID_OID: &[u8] = &[0x2b, 0x06, 0x01, 0x02, 0x01, 0x01, 0x02, 0x00];
+const SYS_NAME_OID: &[u8] = &[0x2b, 0x06, 0x01, 0x02, 0x01, 0x01, 0x05, 0x00];
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+struct SnmpIdentity {
+    description: String,
+    object_id: String,
+    name: String,
+}
 
 #[derive(Clone, Debug)]
 pub(crate) struct ScanTarget {
@@ -34,10 +47,14 @@ pub(crate) struct ScanTarget {
 }
 
 pub async fn scan_targets(targets: Vec<ScanTarget>) -> Vec<IpamScanResult> {
+    let resolver = dns::build_resolver().ok().map(Arc::new);
     let results = stream::iter(
         targets
             .into_iter()
-            .map(|target| async move { probe_target(target).await }),
+            .map(|target| {
+                let resolver = resolver.clone();
+                async move { probe_target(target, resolver).await }
+            }),
     )
     .buffer_unordered(ADDRESS_CONCURRENCY)
     .filter_map(|result| async move { result })
@@ -156,23 +173,40 @@ fn usable_bounds(prefix: Prefix) -> (u32, u32) {
     }
 }
 
-async fn probe_target(target: ScanTarget) -> Option<IpamScanResult> {
+async fn probe_target(
+    target: ScanTarget,
+    resolver: Option<Arc<TokioResolver>>,
+) -> Option<IpamScanResult> {
     let address = target.address.clone();
     let ping_probe = ping::probe_once(&address, PROBE_TIMEOUT_MS);
     let snmp_probe = probe_snmp(&address, PROBE_TIMEOUT_MS);
     let port_probe = probe_common_ports(&address);
     let (ping_rtt, snmp, open_ports) = tokio::join!(ping_probe, snmp_probe, port_probe);
-    if ping_rtt.is_none() && !snmp && open_ports.is_empty() {
+    if ping_rtt.is_none() && snmp.is_none() && open_ports.is_empty() {
         return None;
     }
+    let hostname = match resolver {
+        Some(resolver) => probe_reverse_dns(&address, &resolver, PROBE_TIMEOUT_MS)
+            .await
+            .or_else(|| snmp.as_ref().and_then(|identity| normalize_hostname(&identity.name)))
+            .unwrap_or_default(),
+        None => snmp
+            .as_ref()
+            .and_then(|identity| normalize_hostname(&identity.name))
+            .unwrap_or_default(),
+    };
+    let (device_type, device_model) = infer_device_identity(snmp.as_ref(), &open_ports);
     Some(IpamScanResult {
         address,
         prefix_id: target.prefix_id,
         cidr: target.cidr,
         vrf: target.vrf,
         site_id: target.site_id,
+        hostname,
+        device_type,
+        device_model,
         ping: ping_rtt.is_some(),
-        snmp,
+        snmp: snmp.is_some(),
         open_ports,
         documented: target.documented,
     })
@@ -197,34 +231,154 @@ async fn probe_common_ports(host: &str) -> Vec<u16> {
     open
 }
 
-async fn probe_snmp(host: &str, timeout_ms: u64) -> bool {
-    let Ok(target) = format!("{host}:161").parse::<std::net::SocketAddr>() else {
-        return false;
-    };
-    let Ok(socket) = UdpSocket::bind("0.0.0.0:0").await else {
-        return false;
-    };
-    if socket.connect(target).await.is_err() {
-        return false;
-    }
-    let request = snmp_sysdescr_request(rand::random::<i32>());
-    if socket.send(&request).await.is_err() {
-        return false;
-    }
-    let mut response = [0u8; 1500];
-    matches!(
-        tokio::time::timeout(
-            Duration::from_millis(timeout_ms),
-            socket.recv(&mut response)
-        )
-        .await,
-        Ok(Ok(size)) if size > 2 && response[0] == 0x30
+async fn probe_reverse_dns(
+    host: &str,
+    resolver: &TokioResolver,
+    timeout_ms: u64,
+) -> Option<String> {
+    let octets = host
+        .parse::<std::net::Ipv4Addr>()
+        .ok()?
+        .octets();
+    let reverse_name = format!(
+        "{}.{}.{}.{}.in-addr.arpa.",
+        octets[3], octets[2], octets[1], octets[0]
+    );
+    let lookup = tokio::time::timeout(
+        Duration::from_millis(timeout_ms),
+        resolver.reverse_lookup(reverse_name),
     )
+    .await
+    .ok()?
+    .ok()?;
+    lookup.answers().iter().find_map(|record| match &record.data {
+        RData::PTR(name) => normalize_hostname(&name.0.to_utf8()),
+        _ => None,
+    })
 }
 
-fn snmp_sysdescr_request(request_id: i32) -> Vec<u8> {
-    // SNMPv2c GetRequest for 1.3.6.1.2.1.1.1.0 (sysDescr.0), community
-    // "public". All lengths are short-form because this fixed packet is tiny.
+fn normalize_hostname(value: &str) -> Option<String> {
+    let hostname = value.trim().trim_end_matches('.').trim();
+    (!hostname.is_empty()).then(|| hostname.to_string())
+}
+
+fn infer_device_identity(
+    snmp: Option<&SnmpIdentity>,
+    open_ports: &[u16],
+) -> (Option<IpamDeviceType>, String) {
+    let description = snmp
+        .map(|identity| identity.description.trim())
+        .unwrap_or_default();
+    let lower = description.to_lowercase();
+    let contains_any = |patterns: &[&str]| patterns.iter().any(|pattern| lower.contains(pattern));
+
+    let described_type = if contains_any(&[
+        "printer",
+        "laserjet",
+        "jetdirect",
+        "xerox",
+        "brother",
+        "epson",
+    ]) {
+        Some(IpamDeviceType::Printer)
+    } else if contains_any(&["camera", "ipcam", "hikvision", "dahua", "axis"]) {
+        Some(IpamDeviceType::Camera)
+    } else if contains_any(&["voip", "ip phone", "telephone"]) {
+        Some(IpamDeviceType::Voip)
+    } else if contains_any(&["synology", "diskstation", "qnap", "storage", " nas "]) {
+        Some(IpamDeviceType::Storage)
+    } else if contains_any(&[
+        "firewall",
+        "fortigate",
+        "fortios",
+        "palo alto",
+        "pfsense",
+        "checkpoint",
+    ]) {
+        Some(IpamDeviceType::Firewall)
+    } else if contains_any(&["access point", "wireless ap", "unifi ap"]) {
+        Some(IpamDeviceType::AccessPoint)
+    } else if contains_any(&["switch", "catalyst", "procurve"]) {
+        Some(IpamDeviceType::Switch)
+    } else if contains_any(&["router", "routing", "routeros", "mikrotik"]) {
+        Some(IpamDeviceType::Router)
+    } else if contains_any(&["windows server", " vmware esxi", " server"]) {
+        Some(IpamDeviceType::Server)
+    } else if contains_any(&["windows 10", "windows 11", "macos"]) {
+        Some(IpamDeviceType::Desktop)
+    } else {
+        None
+    };
+    let device_type = described_type.or_else(|| {
+        if open_ports.iter().any(|port| matches!(port, 515 | 631 | 9100)) {
+            Some(IpamDeviceType::Printer)
+        } else if open_ports.contains(&554) {
+            Some(IpamDeviceType::Camera)
+        } else if open_ports.iter().any(|port| matches!(port, 5060 | 5061)) {
+            Some(IpamDeviceType::Voip)
+        } else {
+            None
+        }
+    });
+
+    (device_type, description.to_string())
+}
+
+async fn probe_snmp(host: &str, timeout_ms: u64) -> Option<SnmpIdentity> {
+    let Ok(target) = format!("{host}:161").parse::<std::net::SocketAddr>() else {
+        return None;
+    };
+    let Ok(socket) = UdpSocket::bind("0.0.0.0:0").await else {
+        return None;
+    };
+    if socket.connect(target).await.is_err() {
+        return None;
+    }
+    let request = snmp_identity_request(rand::random::<i32>());
+    if socket.send(&request).await.is_err() {
+        return None;
+    }
+    let mut response = [0u8; 1500];
+    let size = tokio::time::timeout(
+        Duration::from_millis(timeout_ms),
+        socket.recv(&mut response),
+    )
+    .await
+    .ok()?
+    .ok()?;
+    parse_snmp_identity_response(&response[..size])
+}
+
+fn ber_tlv(tag: u8, content: &[u8]) -> Vec<u8> {
+    let mut value = vec![tag];
+    if content.len() < 128 {
+        value.push(content.len() as u8);
+    } else {
+        let length = content.len();
+        if length <= u8::MAX as usize {
+            value.extend_from_slice(&[0x81, length as u8]);
+        } else {
+            value.extend_from_slice(&[0x82, (length >> 8) as u8, length as u8]);
+        }
+    }
+    value.extend_from_slice(content);
+    value
+}
+
+fn snmp_varbind(oid: &[u8], value: &[u8]) -> Vec<u8> {
+    let mut content = ber_tlv(0x06, oid);
+    content.extend_from_slice(value);
+    ber_tlv(0x30, &content)
+}
+
+fn snmp_identity_request(request_id: i32) -> Vec<u8> {
+    // One SNMPv2c GetRequest asks for sysDescr.0, sysObjectID.0, and sysName.0.
+    // RFC 1213 defines these as the system description, vendor identity, and
+    // administratively assigned hostname respectively.
+    let mut varbinds = Vec::new();
+    for oid in [SYS_DESCR_OID, SYS_OBJECT_ID_OID, SYS_NAME_OID] {
+        varbinds.extend(snmp_varbind(oid, &[0x05, 0x00]));
+    }
     let mut pdu = vec![
         0x02,
         0x04,
@@ -238,31 +392,110 @@ fn snmp_sysdescr_request(request_id: i32) -> Vec<u8> {
         0x02,
         0x01,
         0x00,
-        0x30,
-        0x0e,
-        0x30,
-        0x0c,
-        0x06,
-        0x08,
-        0x2b,
-        0x06,
-        0x01,
-        0x02,
-        0x01,
-        0x01,
-        0x01,
-        0x00,
-        0x05,
-        0x00,
     ];
+    pdu.extend(ber_tlv(0x30, &varbinds));
+    let pdu = ber_tlv(0xa0, &pdu);
+
     let mut message = vec![0x02, 0x01, 0x01, 0x04, 0x06];
     message.extend_from_slice(b"public");
-    message.push(0xa0);
-    message.push(pdu.len() as u8);
-    message.append(&mut pdu);
-    let mut packet = vec![0x30, message.len() as u8];
-    packet.extend(message);
-    packet
+    message.extend(pdu);
+    ber_tlv(0x30, &message)
+}
+
+fn read_tlv<'a>(bytes: &'a [u8], cursor: &mut usize) -> Option<(u8, &'a [u8])> {
+    let tag = *bytes.get(*cursor)?;
+    *cursor += 1;
+    let first = *bytes.get(*cursor)?;
+    *cursor += 1;
+    let length = if first & 0x80 == 0 {
+        usize::from(first)
+    } else {
+        let count = usize::from(first & 0x7f);
+        if count == 0 || count > 2 {
+            return None;
+        }
+        let mut length = 0usize;
+        for _ in 0..count {
+            length = (length << 8) | usize::from(*bytes.get(*cursor)?);
+            *cursor += 1;
+        }
+        length
+    };
+    let end = cursor.checked_add(length)?;
+    let value = bytes.get(*cursor..end)?;
+    *cursor = end;
+    Some((tag, value))
+}
+
+fn format_oid(bytes: &[u8]) -> String {
+    let Some((&first, rest)) = bytes.split_first() else {
+        return String::new();
+    };
+    let mut parts = vec![u32::from(first / 40), u32::from(first % 40)];
+    let mut value = 0u32;
+    for byte in rest {
+        value = (value << 7) | u32::from(byte & 0x7f);
+        if byte & 0x80 == 0 {
+            parts.push(value);
+            value = 0;
+        }
+    }
+    parts
+        .into_iter()
+        .map(|part| part.to_string())
+        .collect::<Vec<_>>()
+        .join(".")
+}
+
+fn parse_snmp_identity_response(bytes: &[u8]) -> Option<SnmpIdentity> {
+    let mut cursor = 0;
+    let (tag, message) = read_tlv(bytes, &mut cursor)?;
+    if tag != 0x30 {
+        return None;
+    }
+    cursor = 0;
+    read_tlv(message, &mut cursor)?; // version
+    read_tlv(message, &mut cursor)?; // community
+    let (pdu_tag, pdu) = read_tlv(message, &mut cursor)?;
+    if pdu_tag != 0xa2 {
+        return None;
+    }
+    cursor = 0;
+    read_tlv(pdu, &mut cursor)?; // request id
+    read_tlv(pdu, &mut cursor)?; // error status
+    read_tlv(pdu, &mut cursor)?; // error index
+    let (list_tag, varbinds) = read_tlv(pdu, &mut cursor)?;
+    if list_tag != 0x30 {
+        return None;
+    }
+
+    let mut identity = SnmpIdentity::default();
+    cursor = 0;
+    while cursor < varbinds.len() {
+        let (binding_tag, binding) = read_tlv(varbinds, &mut cursor)?;
+        if binding_tag != 0x30 {
+            return None;
+        }
+        let mut binding_cursor = 0;
+        let (oid_tag, oid) = read_tlv(binding, &mut binding_cursor)?;
+        let (value_tag, value) = read_tlv(binding, &mut binding_cursor)?;
+        if oid_tag != 0x06 {
+            continue;
+        }
+        match oid {
+            SYS_DESCR_OID if value_tag == 0x04 => {
+                identity.description = String::from_utf8_lossy(value).trim().to_string();
+            }
+            SYS_OBJECT_ID_OID if value_tag == 0x06 => {
+                identity.object_id = format_oid(value);
+            }
+            SYS_NAME_OID if value_tag == 0x04 => {
+                identity.name = String::from_utf8_lossy(value).trim().to_string();
+            }
+            _ => {}
+        }
+    }
+    Some(identity)
 }
 
 #[cfg(test)]
@@ -319,14 +552,74 @@ mod tests {
     }
 
     #[test]
-    fn snmp_request_is_a_v2c_sysdescr_get() {
-        let packet = snmp_sysdescr_request(0x01020304);
+    fn snmp_request_collects_the_mib_ii_identity_fields() {
+        let packet = snmp_identity_request(0x01020304);
         assert_eq!(packet[0], 0x30);
         assert!(packet.windows(6).any(|window| window == b"public"));
-        assert!(
-            packet.windows(10).any(
-                |window| window == [0x06, 0x08, 0x2b, 0x06, 0x01, 0x02, 0x01, 0x01, 0x01, 0x00]
+        for oid in [SYS_DESCR_OID, SYS_OBJECT_ID_OID, SYS_NAME_OID] {
+            assert!(packet.windows(oid.len()).any(|window| window == oid));
+        }
+    }
+
+    #[test]
+    fn parses_snmp_identity_values_from_one_response() {
+        let bindings = [
+            snmp_varbind(SYS_DESCR_OID, &ber_tlv(0x04, b"Cisco Catalyst C9300")),
+            snmp_varbind(
+                SYS_OBJECT_ID_OID,
+                &ber_tlv(0x06, &[0x2b, 0x06, 0x01, 0x04, 0x01, 0x09, 0x01]),
+            ),
+            snmp_varbind(SYS_NAME_OID, &ber_tlv(0x04, b"core-sw-01.example.com")),
+        ]
+        .concat();
+        let mut pdu = [
+            ber_tlv(0x02, &[0x01]),
+            ber_tlv(0x02, &[0x00]),
+            ber_tlv(0x02, &[0x00]),
+            ber_tlv(0x30, &bindings),
+        ]
+        .concat();
+        pdu = ber_tlv(0xa2, &pdu);
+        let mut message = [ber_tlv(0x02, &[0x01]), ber_tlv(0x04, b"public")].concat();
+        message.extend(pdu);
+        let response = ber_tlv(0x30, &message);
+
+        assert_eq!(
+            parse_snmp_identity_response(&response),
+            Some(SnmpIdentity {
+                description: "Cisco Catalyst C9300".to_string(),
+                object_id: "1.3.6.1.4.1.9.1".to_string(),
+                name: "core-sw-01.example.com".to_string(),
+            })
+        );
+    }
+
+    #[test]
+    fn device_heuristics_prefer_specific_snmp_and_port_signals() {
+        let switch = SnmpIdentity {
+            description: "Cisco Catalyst C9300 Software".to_string(),
+            ..SnmpIdentity::default()
+        };
+        assert_eq!(
+            infer_device_identity(Some(&switch), &[22, 443, 9100]),
+            (
+                Some(IpamDeviceType::Switch),
+                "Cisco Catalyst C9300 Software".to_string()
             )
         );
+        assert_eq!(
+            infer_device_identity(None, &[80, 631]),
+            (Some(IpamDeviceType::Printer), String::new())
+        );
+        assert_eq!(infer_device_identity(None, &[22, 443]), (None, String::new()));
+    }
+
+    #[test]
+    fn hostnames_are_trimmed_and_root_dots_removed() {
+        assert_eq!(
+            normalize_hostname(" core-sw-01.example.com. "),
+            Some("core-sw-01.example.com".to_string())
+        );
+        assert_eq!(normalize_hostname(" . "), None);
     }
 }

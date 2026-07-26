@@ -6,6 +6,7 @@ import {
   addressesInPrefix,
   collectClaimCandidates,
   filterPrefixTree,
+  groupPrefixesBySite,
   parseIpv4,
   previewCidr,
   suggestMissingPrefixes,
@@ -81,7 +82,16 @@ function host(id: string, hostname: string, label = ""): SiteHost {
 }
 
 function record(address: string): IpAddressRecord {
-  return { id: `rec-${address}`, address, vrf: "", status: "active", dnsName: "", description: "" };
+  return {
+    id: `rec-${address}`,
+    address,
+    vrf: "",
+    status: "active",
+    dnsName: "",
+    deviceType: null,
+    deviceModel: "",
+    description: "",
+  };
 }
 
 test("claim candidates come from literal IPs only, deduplicated and sorted", () => {
@@ -141,6 +151,43 @@ test("filtering a prefix tree keeps the ancestors of each hit", () => {
   );
   // An empty query is not a filter.
   assert.equal(filterPrefixTree(tree, "  ").length, 4);
+});
+
+test("prefixes are grouped in Site order with unscoped and stale tags last", () => {
+  const sites = [
+    {
+      id: "site-b",
+      name: "Branch",
+      sortOrder: 0,
+      memberIds: [],
+      transport: "auto" as const,
+    },
+    {
+      id: "site-a",
+      name: "HQ",
+      sortOrder: 1,
+      memberIds: [],
+      transport: "auto" as const,
+    },
+  ];
+  const prefixes = [
+    { ...prefix("unscoped", "10.0.0.0/8", null), siteId: null },
+    { ...prefix("hq", "10.1.0.0/16", "unscoped"), siteId: "site-a" },
+    { ...prefix("branch", "10.2.0.0/16", "unscoped"), siteId: "site-b" },
+    { ...prefix("stale", "10.3.0.0/16", "unscoped"), siteId: "deleted-site" },
+  ];
+
+  assert.deepEqual(
+    groupPrefixesBySite(prefixes, sites).map((group) => [
+      group.siteId,
+      group.prefixes.map((entry) => entry.id),
+    ]),
+    [
+      ["site-b", ["branch"]],
+      ["site-a", ["hq"]],
+      [null, ["unscoped", "stale"]],
+    ],
+  );
 });
 
 test("addresses are matched to a prefix by containment and VRF, in numeric order", () => {

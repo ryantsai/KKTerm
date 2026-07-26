@@ -17,6 +17,7 @@ import type {
   AddressStatus,
   Connection,
   IpAddressRecord,
+  IpamDeviceType,
   IpamPrefixNode,
   IpamScanResult,
   PrefixStatus,
@@ -31,6 +32,7 @@ import {
   addressesInPrefix,
   collectClaimCandidates,
   filterPrefixTree,
+  groupPrefixesBySite,
   previewCidr,
   suggestMissingPrefixes,
   uncontainedAddresses,
@@ -42,6 +44,19 @@ import { vlanAccent, vlanLabel } from "./vlanModel";
 
 const PREFIX_STATUSES: PrefixStatus[] = ["container", "active", "reserved", "deprecated"];
 const ADDRESS_STATUSES: AddressStatus[] = ["active", "reserved", "deprecated"];
+const IPAM_DEVICE_TYPES: IpamDeviceType[] = [
+  "router",
+  "switch",
+  "firewall",
+  "server",
+  "storage",
+  "accessPoint",
+  "desktop",
+  "printer",
+  "camera",
+  "voip",
+  "iot",
+];
 
 /** The default routing table shows as a placeholder rather than an empty cell. */
 function vrfLabel(vrf: string, fallback: string): string {
@@ -65,6 +80,22 @@ function UtilizationMeter({ value, label }: { value: number; label: string }) {
         />
       </span>
       <small>{percent}%</small>
+    </span>
+  );
+}
+
+function AddressIdentity({ record }: { record: IpAddressRecord }) {
+  const { t } = useTranslation();
+  const device = [
+    record.deviceType ? t(`itops.networkMap.nodeKind.${record.deviceType}`) : null,
+    record.deviceModel || null,
+  ].filter(Boolean);
+  return (
+    <span className="it-ipam-address-identity">
+      <span>{record.dnsName || "—"}</span>
+      {device.length > 0 || record.description ? (
+        <small>{device.length > 0 ? device.join(" · ") : record.description}</small>
+      ) : null}
     </span>
   );
 }
@@ -247,6 +278,10 @@ function AddressDialog({
   const [vrf, setVrf] = useState(record?.vrf ?? prefix?.vrf ?? "");
   const [status, setStatus] = useState<AddressStatus>(record?.status ?? "active");
   const [dnsName, setDnsName] = useState(record?.dnsName ?? seed?.label ?? "");
+  const [deviceType, setDeviceType] = useState<IpamDeviceType | null>(
+    record?.deviceType ?? null,
+  );
+  const [deviceModel, setDeviceModel] = useState(record?.deviceModel ?? "");
   const [description, setDescription] = useState(record?.description ?? "");
   const [siteId, setSiteId] = useState(
     record?.siteId ?? seed?.siteId ?? prefix?.siteId ?? "",
@@ -283,6 +318,8 @@ function AddressDialog({
       vrf: vrf.trim(),
       status,
       dnsName: dnsName.trim(),
+      deviceType,
+      deviceModel: deviceModel.trim(),
       description,
       siteId: siteInherited ? null : siteId || null,
       hostId: hostId || null,
@@ -344,11 +381,32 @@ function AddressDialog({
             ))}
           </div>
         ) : null}
-        <Field label={t("itops.ipam.dnsLabel")} hint={t("itops.ipam.dnsHint")}>
+        <Field label={t("itops.hosts.hostnameLabel")}>
           <TextInput
             value={dnsName}
             placeholder={t("itops.ipam.dnsPlaceholder")}
             onChange={(event) => setDnsName(event.currentTarget.value)}
+          />
+        </Field>
+        <Field label={t("itops.ipam.deviceTypeLabel")}>
+          <Select
+            value={deviceType ?? ""}
+            onChange={(event) =>
+              setDeviceType((event.currentTarget.value || null) as IpamDeviceType | null)
+            }
+            options={[
+              { value: "", label: "—" },
+              ...IPAM_DEVICE_TYPES.map((value) => ({
+                value,
+                label: t(`itops.networkMap.nodeKind.${value}`),
+              })),
+            ]}
+          />
+        </Field>
+        <Field label={t("itops.racks.vendorLabel")}>
+          <TextInput
+            value={deviceModel}
+            onChange={(event) => setDeviceModel(event.currentTarget.value)}
           />
         </Field>
         <Field label={t("itops.ipam.statusLabel")}>
@@ -493,6 +551,8 @@ function ClaimDialog({
           vrf: "",
           status: "active",
           dnsName: entry.label,
+          deviceType: null,
+          deviceModel: "",
           description: "",
           siteId: entry.siteId,
           hostId: entry.hostId,
@@ -553,12 +613,13 @@ function ClaimDialog({
                   aria-invalid={
                     previewCidr(prefixDrafts[suggestion.id] ?? suggestion.cidr) === null
                   }
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    const value = event.currentTarget.value;
                     setPrefixDrafts((current) => ({
                       ...current,
-                      [suggestion.id]: event.currentTarget.value,
-                    }))
-                  }
+                      [suggestion.id]: value,
+                    }));
+                  }}
                 />
               </Field>
             ))}
@@ -654,7 +715,9 @@ function ScanDialog({
           address: entry.address,
           vrf: entry.vrf,
           status: "active",
-          dnsName: "",
+          dnsName: entry.hostname,
+          deviceType: entry.deviceType,
+          deviceModel: entry.deviceModel,
           description: "",
           siteId: entry.siteId ?? null,
           hostId: null,
@@ -761,6 +824,13 @@ function ScanDialog({
                         })
                       : null,
                   ].filter(Boolean);
+                  const identity = [
+                    entry.hostname || null,
+                    entry.deviceType
+                      ? t(`itops.networkMap.nodeKind.${entry.deviceType}`)
+                      : null,
+                    entry.deviceModel || null,
+                  ].filter(Boolean);
                   return (
                     <label key={`${entry.prefixId}:${key}`} className="it-ipam-scan-result">
                       <input
@@ -775,7 +845,11 @@ function ScanDialog({
                         }}
                       />
                       <strong>{entry.address}</strong>
-                      <span>{evidence.join(" · ")}</span>
+                      <span>
+                        {identity.length > 0
+                          ? `${identity.join(" · ")} — ${evidence.join(" · ")}`
+                          : evidence.join(" · ")}
+                      </span>
                       <small>
                         {entry.documented ? t("itops.ipam.scanDocumented") : entry.cidr}
                       </small>
@@ -850,6 +924,11 @@ export function IpamPanel() {
   );
   const visible = useMemo(() => filterPrefixTree(ipam.prefixes, query), [ipam.prefixes, query]);
   const vlansById = useMemo(() => new Map(vlans.map((vlan) => [vlan.id, vlan])), [vlans]);
+  const prefixGroups = useMemo(() => groupPrefixesBySite(visible, sites), [sites, visible]);
+  const siteNames = useMemo(
+    () => new Map(sites.map((site) => [site.id, site.name])),
+    [sites],
+  );
   const unassigned = useMemo(
     () => uncontainedAddresses(ipam.addresses, ipam.prefixes),
     [ipam.addresses, ipam.prefixes],
@@ -937,129 +1016,146 @@ export function IpamPanel() {
               <span>{t("itops.ipam.columnAddresses")}</span>
               <span>{t("itops.ipam.columnActions")}</span>
             </div>
-            {visible.map((prefix) => {
-              const records = addressesInPrefix(ipam.addresses, prefix);
-              const open = expanded.has(prefix.id);
-              // A deleted VLAN clears the reference server-side, so a miss here
-              // only ever means the VLAN list has not loaded yet.
-              const vlan = prefix.vlanId ? vlansById.get(prefix.vlanId) : undefined;
-              return (
-                <div key={prefix.id} className="it-ipam-group">
-                  <div className="it-ipam-row" role="row">
-                    <span
-                      className="it-ipam-cidr"
-                      // Depth is derived server-side, so indentation always
-                      // matches the real containment even after a re-parent.
-                      style={{ paddingInlineStart: `${prefix.depth * 18}px` }}
-                    >
-                      <button
-                        type="button"
-                        className="it-ipam-twisty"
-                        aria-expanded={open}
-                        aria-label={t("itops.ipam.toggleAddresses")}
-                        onClick={() => toggleExpanded(prefix.id)}
-                      >
-                        <ItIcon name={open ? "chevD" : "chevR"} size={13} />
-                      </button>
-                      <span>
-                        <strong>{prefix.cidr}</strong>
-                        <small>
-                          {vlan ? (
-                            <em
-                              className="it-vlan-chip"
-                              style={
-                                { "--it-vlan-accent": vlanAccent(vlan) } as React.CSSProperties
-                              }
-                            >
-                              {t("itops.vlan.chip", { vid: vlan.vid })}
-                            </em>
-                          ) : null}
-                          {prefix.description ||
-                            vrfLabel(prefix.vrf, t("itops.ipam.defaultVrf"))}
-                        </small>
-                      </span>
-                    </span>
-                    <span>{prefix.role || "—"}</span>
-                    <span>
-                      <em className="it-ipam-pill" data-status={prefix.status}>
-                        {t(`itops.ipam.prefixStatus.${prefix.status}`)}
-                      </em>
-                    </span>
-                    <span>
-                      <UtilizationMeter
-                        value={prefix.utilization}
-                        label={t("itops.ipam.utilizationDetail", {
-                          used: prefix.used.toLocaleString(),
-                          usable: prefix.usable.toLocaleString(),
-                        })}
-                      />
-                    </span>
-                    <span className="it-ipam-number">{prefix.addressCount}</span>
-                    <span className="it-task-row-actions">
-                      <button
-                        type="button"
-                        className="it-icon-btn"
-                        aria-label={t("itops.ipam.newAddressTitle")}
-                        onClick={() => setAddressDialog({ record: null, prefix })}
-                      >
-                        <ItIcon name="plus" size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        className="it-icon-btn"
-                        aria-label={t("itops.actions.edit")}
-                        onClick={() => setPrefixDialog(prefix)}
-                      >
-                        <ItIcon name="edit" size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        className="it-icon-btn"
-                        aria-label={t("itops.actions.delete")}
-                        onClick={() => setPendingDelete({ kind: "prefix", prefix })}
-                      >
-                        <ItIcon name="trash" size={14} />
-                      </button>
-                    </span>
-                  </div>
-                  {open ? (
-                    <div className="it-ipam-addresses">
-                      {records.length > 0 ? (
-                        records.map((record) => (
-                          <div key={record.id} className="it-ipam-address-row">
-                            <strong>{record.address}</strong>
-                            <span>{record.dnsName || record.description || "—"}</span>
-                            <em className="it-ipam-pill" data-status={record.status}>
-                              {t(`itops.ipam.addressStatus.${record.status}`)}
-                            </em>
-                            <span className="it-task-row-actions">
-                              <button
-                                type="button"
-                                className="it-icon-btn"
-                                aria-label={t("itops.actions.edit")}
-                                onClick={() => setAddressDialog({ record, prefix })}
-                              >
-                                <ItIcon name="edit" size={14} />
-                              </button>
-                              <button
-                                type="button"
-                                className="it-icon-btn"
-                                aria-label={t("itops.actions.delete")}
-                                onClick={() => setPendingDelete({ kind: "address", record })}
-                              >
-                                <ItIcon name="trash" size={14} />
-                              </button>
-                            </span>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="it-ipam-address-empty">{t("itops.ipam.noAddresses")}</p>
-                      )}
-                    </div>
-                  ) : null}
+            {prefixGroups.map((siteGroup) => (
+              <div
+                key={siteGroup.siteId ?? "unscoped"}
+                className="it-ipam-site-group"
+                role="rowgroup"
+              >
+                <div className="it-ipam-site-row" role="row">
+                  <span role="cell">
+                    {siteGroup.siteId
+                      ? siteNames.get(siteGroup.siteId)
+                      : t("itops.ipam.siteUnscoped")}
+                  </span>
                 </div>
-              );
-            })}
+                {siteGroup.prefixes.map((prefix) => {
+                  const records = addressesInPrefix(ipam.addresses, prefix);
+                  const open = expanded.has(prefix.id);
+                  // A deleted VLAN clears the reference server-side, so a miss here
+                  // only ever means the VLAN list has not loaded yet.
+                  const vlan = prefix.vlanId ? vlansById.get(prefix.vlanId) : undefined;
+                  return (
+                    <div key={prefix.id} className="it-ipam-group">
+                      <div className="it-ipam-row" role="row">
+                        <span
+                          className="it-ipam-cidr"
+                          // Depth is derived server-side, so indentation always
+                          // matches the real containment even after a re-parent.
+                          style={{ paddingInlineStart: `${prefix.depth * 18}px` }}
+                        >
+                          <button
+                            type="button"
+                            className="it-ipam-twisty"
+                            aria-expanded={open}
+                            aria-label={t("itops.ipam.toggleAddresses")}
+                            onClick={() => toggleExpanded(prefix.id)}
+                          >
+                            <ItIcon name={open ? "chevD" : "chevR"} size={13} />
+                          </button>
+                           <span>
+                             <strong>{prefix.cidr}</strong>
+                             <small>
+                               {vlan ? (
+                                 <em
+                                   className="it-vlan-chip"
+                                   style={
+                                     {
+                                       "--it-vlan-accent": vlanAccent(vlan),
+                                     } as React.CSSProperties
+                                   }
+                                 >
+                                   {t("itops.vlan.chip", { vid: vlan.vid })}
+                                 </em>
+                               ) : null}
+                               {prefix.description ||
+                                 vrfLabel(prefix.vrf, t("itops.ipam.defaultVrf"))}
+                            </small>
+                          </span>
+                        </span>
+                        <span>{prefix.role || "—"}</span>
+                        <span>
+                          <em className="it-ipam-pill" data-status={prefix.status}>
+                            {t(`itops.ipam.prefixStatus.${prefix.status}`)}
+                          </em>
+                        </span>
+                        <span>
+                          <UtilizationMeter
+                            value={prefix.utilization}
+                            label={t("itops.ipam.utilizationDetail", {
+                              used: prefix.used.toLocaleString(),
+                              usable: prefix.usable.toLocaleString(),
+                            })}
+                          />
+                        </span>
+                        <span className="it-ipam-number">{prefix.addressCount}</span>
+                        <span className="it-task-row-actions">
+                          <button
+                            type="button"
+                            className="it-icon-btn"
+                            aria-label={t("itops.ipam.newAddressTitle")}
+                            onClick={() => setAddressDialog({ record: null, prefix })}
+                          >
+                            <ItIcon name="plus" size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            className="it-icon-btn"
+                            aria-label={t("itops.actions.edit")}
+                            onClick={() => setPrefixDialog(prefix)}
+                          >
+                            <ItIcon name="edit" size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            className="it-icon-btn"
+                            aria-label={t("itops.actions.delete")}
+                            onClick={() => setPendingDelete({ kind: "prefix", prefix })}
+                          >
+                            <ItIcon name="trash" size={14} />
+                          </button>
+                        </span>
+                      </div>
+                      {open ? (
+                        <div className="it-ipam-addresses">
+                          {records.length > 0 ? (
+                            records.map((record) => (
+                              <div key={record.id} className="it-ipam-address-row">
+                                <strong>{record.address}</strong>
+                                <AddressIdentity record={record} />
+                                <em className="it-ipam-pill" data-status={record.status}>
+                                  {t(`itops.ipam.addressStatus.${record.status}`)}
+                                </em>
+                                <span className="it-task-row-actions">
+                                  <button
+                                    type="button"
+                                    className="it-icon-btn"
+                                    aria-label={t("itops.actions.edit")}
+                                    onClick={() => setAddressDialog({ record, prefix })}
+                                  >
+                                    <ItIcon name="edit" size={14} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="it-icon-btn"
+                                    aria-label={t("itops.actions.delete")}
+                                    onClick={() => setPendingDelete({ kind: "address", record })}
+                                  >
+                                    <ItIcon name="trash" size={14} />
+                                  </button>
+                                </span>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="it-ipam-address-empty">{t("itops.ipam.noAddresses")}</p>
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
             {!query.trim() && unassigned.length > 0 ? (
               <div className="it-ipam-group it-ipam-unassigned-group">
                 <div className="it-ipam-row it-ipam-unassigned-row" role="row">
@@ -1074,7 +1170,7 @@ export function IpamPanel() {
                   {unassigned.map((record) => (
                     <div key={record.id} className="it-ipam-address-row">
                       <strong>{record.address}</strong>
-                      <span>{record.dnsName || record.description || "—"}</span>
+                      <AddressIdentity record={record} />
                       <em className="it-ipam-pill" data-status={record.status}>
                         {t(`itops.ipam.addressStatus.${record.status}`)}
                       </em>
