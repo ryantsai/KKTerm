@@ -33,8 +33,8 @@ import type {
   QuickCommandTarget,
   WorkspaceTab,
 } from "../../../../types";
-import { ACCENT_PALETTE } from "../../../dashboard/registry/palette";
-import { ICON_NAMES, type AccentName, type IconName } from "../../../dashboard/types";
+import { ACCENT_PALETTE, resolveAccent } from "../../../dashboard/registry/palette";
+import { ICON_NAMES, type IconName } from "../../../dashboard/types";
 import { getPaneRenderer, writeInputToPane } from "../../paneRegistry";
 import { QuickCommandBundleList } from "./QuickCommandBundles";
 import {
@@ -83,30 +83,8 @@ function commandFromLibrary(entry: QuickCommandLibraryEntry, translate: (key: st
   };
 }
 
-// Quick Command chips use the design language's vivid Apple-system palette
-// rather than the app's muted dashboard ACCENT_PALETTE, so the icons read as
-// brightly as the redesign reference. Keyed by the stored accent name.
-const QUICK_COMMAND_ACCENT_COLORS: Record<AccentName, string> = {
-  default: "var(--accent)",
-  blue: "#0a84ff",
-  indigo: "#5e5ce6",
-  teal: "#30b0c7",
-  green: "#34c759",
-  amber: "#ff9f0a",
-  red: "#ff3b30",
-  purple: "#bf5af2",
-  pink: "#ff375f",
-  slate: "#8e8e93",
-  cyan: "#32ade6",
-  orange: "#ff9500",
-  rose: "#ff2d55",
-  emerald: "#30d158",
-  sky: "#5ac8fa",
-};
-
-function quickCommandColor(accentName: string): string {
-  if (isHexColor(accentName)) return accentName;
-  return QUICK_COMMAND_ACCENT_COLORS[accentName as AccentName] ?? QUICK_COMMAND_ACCENT_COLORS.default;
+function quickCommandColor(accentName: QuickCommand["accentName"]): string {
+  return resolveAccent(accentName).color;
 }
 
 function connectionAiContext(connection: Connection | undefined) {
@@ -284,7 +262,7 @@ function QuickCommandBundlesDialog({
           <Actions cancel={<Btn onClick={onClose}>{t("terminal.quickCommandsDone")}</Btn>} />
         }
       >
-        <p className="kk-dlg-sub" style={{ margin: "-2px 0 0" }}>
+        <p className="kk-dlg-sub kk-qc-intro">
           {t("terminal.quickCommandBundlesSubtitle")}
         </p>
         <QuickCommandBundleList connectionId={connectionId} subdialogZClassName="kk-qc-subdialog" />
@@ -387,19 +365,22 @@ export function QuickCommandManagerDialog({
           title={t("terminal.quickCommandsTitle")}
           ariaLabel={t("terminal.quickCommandsManage")}
           footer={
-            <>
-              <Btn kind="primary" icon="plus" onClick={() => openCustomDialog()}>
-                {t("terminal.quickCommandsAddCommand")}
-              </Btn>
-              <Btn icon="library" onClick={openPresetDialog}>
-                {t("terminal.quickCommandsLibraryAction")}
-              </Btn>
-              <span className="kk-spacer" />
-              <Btn onClick={onClose}>{t("terminal.quickCommandsDone")}</Btn>
-            </>
+            <Actions
+              extraLeft={
+                <>
+                  <Btn kind="primary" icon="plus" onClick={() => openCustomDialog()}>
+                    {t("terminal.quickCommandsAddCommand")}
+                  </Btn>
+                  <Btn icon="library" onClick={openPresetDialog}>
+                    {t("terminal.quickCommandsLibraryAction")}
+                  </Btn>
+                </>
+              }
+              cancel={<Btn onClick={onClose}>{t("terminal.quickCommandsDone")}</Btn>}
+            />
           }
         >
-          <p className="kk-dlg-sub" style={{ margin: "-2px 0 0" }}>
+          <p className="kk-dlg-sub kk-qc-intro">
             {bundleName
               ? t("terminal.quickCommandsBundleSubtitle", { name: bundleName })
               : t("terminal.quickCommandsManageSubtitle")}
@@ -429,7 +410,10 @@ export function QuickCommandManagerDialog({
                     >
                       <DIcon name="grip" size={15} />
                     </span>
-                    <span className="kk-qc-chip" style={{ background: quickCommandColor(command.accentName) }}>
+                    <span
+                      className="kk-qc-chip"
+                      style={{ "--quick-command-accent": quickCommandColor(command.accentName) } as CSSProperties}
+                    >
                       <Icon size={15} />
                     </span>
                     <button className="kk-qc-main" onClick={() => openCustomDialog(command)} type="button">
@@ -876,7 +860,7 @@ function PresetLibraryDialog({
       <Sheet
         width={720}
         height={640}
-        title={`${t("common.add")} ${t("terminal.quickCommandsLibrary")}`}
+        title={t("terminal.quickCommandsLibrary")}
         ariaLabel={t("terminal.quickCommandsLibrary")}
         onClose={onClose}
         className="kk-qc-library-sheet"
@@ -910,38 +894,42 @@ function PresetLibraryDialog({
         ) : null}
         {visibleEntries.length > 0 ? (
           <div className="kk-qc-lib-list">
-            {visibleEntries.map((entry) => (
-              <article
-                className={[
-                  "kk-qc-lib-entry",
-                  entry.confirm ? "danger" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-                key={entry.libraryId}
-              >
-                <div>
-                  <span className="kk-qc-lib-entry-title">
-                    <strong>{t(entry.labelKey)}</strong>
-                    {entry.confirm ? (
-                      <span className="kk-qc-danger-tag">{t("terminal.quickCommandsDangerous")}</span>
-                    ) : null}
+            {visibleEntries.map((entry) => {
+              const Icon = iconFor(entry.iconName);
+              return (
+                <article
+                  className={entry.confirm ? "kk-qc-lib-entry confirmation" : "kk-qc-lib-entry"}
+                  key={entry.libraryId}
+                  style={{ "--quick-command-accent": quickCommandColor(entry.accentName) } as CSSProperties}
+                >
+                  <span className="kk-qc-lib-entry-icon" aria-hidden="true">
+                    <Icon size={16} />
                   </span>
-                  <p>{t(entry.descriptionKey)}</p>
-                  <code>{entry.command}</code>
-                </div>
-                <div className="kk-qc-lib-entry-actions">
-                  <Btn sm icon="plus" onClick={() => addQuickCommand(target, commandFromLibrary(entry, t))}>
-                    {t("terminal.quickCommandsAdd")}
-                  </Btn>
-                  {onRunCommand ? (
-                    <Btn sm icon="send" onClick={() => onRunCommand(commandFromLibrary(entry, t))}>
-                      {t("terminal.quickCommandsRun")}
+                  <div className="kk-qc-lib-entry-content">
+                    <span className="kk-qc-lib-entry-title">
+                      <strong>{t(entry.labelKey)}</strong>
+                      {entry.confirm ? (
+                        <span className="kk-qc-confirm-tag">
+                          {t("terminal.quickCommandsRequireConfirm")}
+                        </span>
+                      ) : null}
+                    </span>
+                    <p>{t(entry.descriptionKey)}</p>
+                    <code>{entry.command}</code>
+                  </div>
+                  <div className="kk-qc-lib-entry-actions">
+                    <Btn sm icon="plus" onClick={() => addQuickCommand(target, commandFromLibrary(entry, t))}>
+                      {t("terminal.quickCommandsAdd")}
                     </Btn>
-                  ) : null}
-                </div>
-              </article>
-            ))}
+                    {onRunCommand ? (
+                      <Btn sm icon="send" onClick={() => onRunCommand(commandFromLibrary(entry, t))}>
+                        {t("terminal.quickCommandsRun")}
+                      </Btn>
+                    ) : null}
+                  </div>
+                </article>
+              );
+            })}
           </div>
         ) : (
           <p className="kk-qc-muted">{t("terminal.quickCommandsNoLibraryMatches")}</p>

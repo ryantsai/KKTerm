@@ -679,9 +679,13 @@ textarea.kk-inp {
 
 /* ======================= quick command manager ======================== */
 .kk-qc-muted {
-  margin: 4px 0;
+  margin: 10px 0;
   color: var(--text-2);
   font-size: 12.5px;
+  text-align: center;
+}
+.kk-qc-intro {
+  margin: -2px 0 2px;
 }
 .kk-qc-list {
   display: flex;
@@ -697,6 +701,13 @@ textarea.kk-inp {
   background: var(--muted);
   box-shadow: inset 0 0 0 0.5px var(--border);
   user-select: none;
+  transition:
+    background 120ms ease-out,
+    box-shadow 120ms ease-out;
+}
+.kk-qc-row:hover,
+.kk-qc-row:focus-within {
+  background: color-mix(in srgb, var(--muted) 72%, var(--bg));
 }
 .kk-qc-row.dragging {
   opacity: 0.5;
@@ -722,8 +733,9 @@ textarea.kk-inp {
   width: 28px;
   height: 28px;
   border-radius: 8px;
-  color: #fff;
-  box-shadow: 0 1px 1.5px rgba(0, 0, 0, 0.18);
+  color: var(--quick-command-accent, var(--accent));
+  background: color-mix(in srgb, var(--quick-command-accent, var(--accent)) 13%, var(--bg));
+  box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--quick-command-accent, var(--accent)) 26%, transparent);
 }
 .kk-qc-main {
   flex: 1 1 auto;
@@ -907,7 +919,7 @@ textarea.kk-inp {
   max-width: 100%;
   height: 40px;
   padding: 0 14px;
-  border-radius: 999px;
+  border-radius: 9px;
   background: var(--field);
   box-shadow: inset 0 0 0 0.5px var(--border-strong);
   font-size: 13px;
@@ -993,9 +1005,10 @@ textarea.kk-inp {
 .kk-qc-lib-tabs,
 .kk-qc-lib-subtabs {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
   padding: 3px;
+  overflow-x: auto;
   border-radius: 9px;
   background: var(--muted);
   box-shadow: inset 0 0 0 0.5px var(--border);
@@ -1033,14 +1046,33 @@ textarea.kk-inp {
 }
 .kk-qc-lib-entry {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   padding: 11px 13px;
   border-radius: 10px;
   background: var(--muted);
   box-shadow: inset 0 0 0 0.5px var(--border);
+  transition:
+    background 120ms ease-out,
+    box-shadow 120ms ease-out;
 }
-.kk-qc-lib-entry > div:first-child {
+.kk-qc-lib-entry:hover {
+  background: color-mix(in srgb, var(--muted) 72%, var(--bg));
+  box-shadow: inset 0 0 0 0.5px var(--border-strong);
+}
+.kk-qc-lib-entry-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  color: var(--quick-command-accent, var(--accent));
+  background: color-mix(in srgb, var(--quick-command-accent, var(--accent)) 13%, var(--bg));
+  box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--quick-command-accent, var(--accent)) 26%, transparent);
+}
+.kk-qc-lib-entry-content {
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -1065,30 +1097,27 @@ textarea.kk-inp {
   font-family: var(--font-mono, "SF Mono", ui-monospace, Menlo, monospace);
   font-size: 11.5px;
   color: var(--text-2);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.kk-qc-lib-entry.danger strong,
-.kk-qc-lib-entry.danger code {
-  color: var(--red);
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 .kk-qc-lib-entry-actions {
   flex: 0 0 auto;
   display: flex;
   gap: 7px;
+  align-self: center;
 }
-.kk-qc-danger-tag {
+.kk-qc-confirm-tag {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
   height: 18px;
   padding: 0 6px;
   border-radius: 6px;
-  background: color-mix(in srgb, var(--red) 14%, transparent);
-  color: var(--red);
+  background: var(--amber-soft);
+  color: var(--amber);
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 650;
 }
 
 /* Nested subdialogs (edit / library) stack above the manager. The manager
