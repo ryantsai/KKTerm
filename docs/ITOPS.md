@@ -524,6 +524,11 @@ does not enter the graph until that placement click; right-click or Escape
 cancels it. A Network Node's native right-click menu contains Duplicate,
 Delete, then a separated final Properties item. Duplicate opens the same
 prefilled Properties dialog and arms the resulting copy for placement.
+The Design-mode right pane remains the object picker and map summary at all
+times; it never becomes a property inspector. Clicking an existing Network
+Node, Network Link, or Note opens that element's Properties dialog; explicitly
+double-clicking a Network Node opens the same dialog. Edits are applied to the
+in-memory graph only when that dialog's Save action is confirmed.
 Network Nodes persist their individual width/height, palette-backed icon
 background, and an ordered list of documented IP addresses.
 A Network Link may bind each endpoint independently to one address exposed by

@@ -86,11 +86,24 @@ test("Network Maps configure palette items before ghost placement and expose nat
   assert.match(designer, /<NodeResizer/);
   assert.match(designer, /screenToFlowPosition/);
   assert.match(designer, /function NodePropertiesDialog/);
+  assert.match(designer, /function NotePropertiesDialog/);
+  assert.match(designer, /function LinkPropertiesDialog/);
   assert.match(designer, /setNodeDialog\(\{ node: newNodeDraft\(kind\), root: false, placement: true \}\)/);
   assert.match(designer, /setPlacementDraft\(\{ kind: "node", node, root \}\)/);
   assert.match(designer, /className: "nm-placement-ghost-node"/);
   assert.match(designer, /onPaneClick=\{\(event\) => \{[\s\S]*placeDraftAt\(event\.clientX, event\.clientY\)/);
   assert.match(designer, /onNodeContextMenu=\{\(event, node\) =>/);
+  assert.match(designer, /onNodeClick=\{\(_event, node\) =>[\s\S]*openNoteProperties\(node\.id\)[\s\S]*openNodeProperties\(node\.id\)/);
+  assert.match(
+    designer,
+    /onNodeDoubleClick=\{\(_event, node\) =>[\s\S]*node\.type !== "networkNode"[\s\S]*openNodeProperties\(node\.id\)/,
+  );
+  assert.match(designer, /onEdgeClick=\{\(_event, edge\) =>[\s\S]*openLinkProperties\(edge\.id\)/);
+  assert.doesNotMatch(designer, /\) : selected(?:Node|Note|Link) \? \(/);
+  assert.match(
+    designer,
+    /mode === "impact" \? \([\s\S]*<ImpactPanel[\s\S]*\) : \([\s\S]*itops\.networkMap\.paletteLabel/,
+  );
   assert.match(
     designer,
     /label: t\("itops\.actions\.duplicate"\)[\s\S]*label: t\("itops\.actions\.delete"\)[\s\S]*kind: "separator"[\s\S]*label: t\("common\.properties"\)/,
