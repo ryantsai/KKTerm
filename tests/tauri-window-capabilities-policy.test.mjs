@@ -152,6 +152,7 @@ test("frontend Tauri plugin commands have matching main-window capabilities", as
     "@tauri-apps/plugin-fs": {
       exists: "fs:allow-exists",
       readFile: "fs:allow-read-file",
+      stat: "fs:allow-stat",
       writeFile: "fs:allow-write-file",
       writeTextFile: "fs:allow-write-text-file",
     },

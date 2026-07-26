@@ -4,10 +4,10 @@ use tauri::{AppHandle, Manager};
 
 use super::ids::new_itops_id;
 use super::types::{
-    AddressStatus, IpAddressRecord, IpPrefix, IpamDeviceType, IpamScanResult, IpamSnapshot,
-    PrefixStatus,
+    AddressStatus, IpAddressRecord, IpPrefix, IpamDeviceType, IpamImportBatch, IpamImportResult,
+    IpamScanResult, IpamSnapshot, IpamWorkbookSheet, PrefixStatus,
 };
-use super::{ipam_scan, ipam_storage};
+use super::{ipam_import, ipam_scan, ipam_storage};
 
 /// The whole IPAM view in one call: prefixes with their derived hierarchy and
 /// utilization, plus every Address Record. Small enough to reload wholesale
@@ -187,6 +187,26 @@ pub fn itops_suggest_free_addresses(
             ipam_storage::suggest_free_addresses(conn, &cidr, &vrf, limit)
                 .map_err(|error| error.to_string())
         })
+}
+
+#[tauri::command]
+pub fn itops_import_ipam(
+    app: AppHandle,
+    batch: IpamImportBatch,
+) -> Result<IpamImportResult, String> {
+    app.state::<crate::storage::Storage>()
+        .with_connection_infallible(|conn| ipam_import::import_batch(conn, batch, new_itops_id))
+}
+
+/// Workbook parsing is blocking file/ZIP/XML work, so it stays off the async
+/// runtime worker used by network commands and never holds the SQLite lock.
+#[tauri::command]
+pub async fn itops_read_ipam_xlsx(path: String) -> Result<IpamWorkbookSheet, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        ipam_import::read_xlsx(std::path::Path::new(&path))
+    })
+    .await
+    .map_err(|error| format!("Excel import worker failed: {error}"))?
 }
 
 /// Probes only the explicitly selected Prefixes. The database lock is held

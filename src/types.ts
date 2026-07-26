@@ -623,6 +623,55 @@ export interface IpamSnapshot {
   addresses: IpAddressRecord[];
 }
 
+/** Create-only rows accepted by the atomic IPAM file-import command. */
+export interface IpamImportVlanInput {
+  vid: number;
+  name: string;
+  description: string;
+  siteId: string | null;
+  accent: number;
+}
+
+export interface IpamImportPrefixInput {
+  cidr: string;
+  vrf: string;
+  role: string;
+  status: PrefixStatus;
+  description: string;
+  siteId: string | null;
+  /** User-facing 802.1Q id, resolved to the durable VLAN id in the backend. */
+  vlanVid: number | null;
+}
+
+export interface IpamImportAddressInput {
+  address: string;
+  vrf: string;
+  status: AddressStatus;
+  dnsName: string;
+  deviceType: IpamDeviceType | null;
+  deviceModel: string;
+  description: string;
+  siteId: string | null;
+}
+
+export interface IpamImportBatch {
+  vlans: IpamImportVlanInput[];
+  prefixes: IpamImportPrefixInput[];
+  addresses: IpamImportAddressInput[];
+}
+
+export interface IpamImportResult {
+  vlans: number;
+  prefixes: number;
+  addresses: number;
+  skipped: number;
+}
+
+export interface IpamWorkbookSheet {
+  name: string;
+  rows: string[][];
+}
+
 export interface IpamScanResult {
   address: string;
   prefixId: string;

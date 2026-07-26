@@ -26,6 +26,7 @@ import type {
 } from "../../types";
 import { flattenConnections } from "../workspace/connections/treeUtils";
 import { ItIcon } from "./icons";
+import { IpamImportDialog } from "./IpamImportDialog";
 import { ItOpsEmptyHint } from "./ItOpsEmptyHint";
 import {
   addressCoveredByPrefixes,
@@ -893,6 +894,7 @@ export function IpamPanel() {
     { record: IpAddressRecord | null; prefix: IpamPrefixNode | null } | undefined
   >(undefined);
   const [claiming, setClaiming] = useState(false);
+  const [fileImporting, setFileImporting] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<
     | { kind: "prefix"; prefix: IpamPrefixNode }
@@ -1064,6 +1066,14 @@ export function IpamPanel() {
               onChange={(event) => setQuery(event.currentTarget.value)}
             />
           </label>
+          <button
+            type="button"
+            className="it-ipam-claim-btn"
+            onClick={() => setFileImporting(true)}
+          >
+            <ItIcon name="table" size={13} />
+            {t("itops.ipam.fileImportAction")}
+          </button>
           {candidates.length > 0 ? (
             <button type="button" className="it-ipam-claim-btn" onClick={() => setClaiming(true)}>
               <ItIcon name="download" size={13} />
@@ -1371,6 +1381,9 @@ export function IpamPanel() {
             setClaiming(false);
           }}
         />
+      ) : null}
+      {fileImporting ? (
+        <IpamImportDialog onClose={() => setFileImporting(false)} />
       ) : null}
       {scanning ? (
         <ScanDialog prefixes={ipam.prefixes} onClose={() => setScanning(false)} />

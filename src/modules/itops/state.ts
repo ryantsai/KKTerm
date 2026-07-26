@@ -12,6 +12,8 @@ import type {
   AutomationTestResult,
   BatchTask,
   IpamSnapshot,
+  IpamImportBatch,
+  IpamImportResult,
   IpamDeviceType,
   ItopsTask,
   Vlan,
@@ -491,6 +493,7 @@ interface ItOpsState {
   ipam: IpamSnapshot;
   ipamLoaded: boolean;
   loadIpam: () => Promise<void>;
+  importIpam: (batch: IpamImportBatch) => Promise<IpamImportResult>;
   createPrefix: (input: PrefixInput) => Promise<void>;
   updatePrefix: (id: string, input: PrefixInput) => Promise<void>;
   removePrefix: (id: string) => Promise<void>;
@@ -1012,6 +1015,12 @@ export const useItOpsStore = create<ItOpsState>((set, get) => ({
     }
     const ipam = await invokeCommand("itops_ipam_snapshot");
     set({ ipam, ipamLoaded: true });
+  },
+
+  async importIpam(batch) {
+    const result = await invokeCommand("itops_import_ipam", { batch });
+    await Promise.all([get().loadIpam(), get().loadVlans()]);
+    return result;
   },
 
   async createPrefix(input) {

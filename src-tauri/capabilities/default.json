@@ -26,6 +26,7 @@
     "dialog:allow-save",
     "fs:allow-exists",
     "fs:allow-read-file",
+    "fs:allow-stat",
     "fs:allow-write-file",
     "fs:allow-write-text-file",
     "opener:default",

@@ -8574,6 +8574,89 @@
 }
 .it-ipam-scan-limit.error { color: var(--red); }
 
+.it-ipam-import-intro,
+.it-ipam-import-summary {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.it-ipam-import-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.it-ipam-import-actions > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-faint);
+  font-size: 10px;
+}
+.it-ipam-import-preview {
+  display: flex;
+  flex-direction: column;
+  max-height: 340px;
+  overflow: auto;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+}
+.it-ipam-import-row {
+  display: grid;
+  grid-template-columns: 38px 88px minmax(150px, 1fr) minmax(190px, 1.4fr);
+  align-items: center;
+  gap: 9px;
+  min-height: 34px;
+  padding: 5px 10px;
+  font-size: 10px;
+}
+.it-ipam-import-row + .it-ipam-import-row {
+  border-top: 1px solid var(--hairline);
+}
+.it-ipam-import-row > span {
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+.it-ipam-import-row > em {
+  color: var(--text-muted);
+  font-style: normal;
+}
+.it-ipam-import-row > strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-family: var(--app-mono-font-family, ui-monospace, monospace);
+  font-weight: 600;
+}
+.it-ipam-import-row > small {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+.it-ipam-import-row[data-state="skipped"] {
+  background: color-mix(in srgb, var(--amber) 7%, transparent);
+}
+.it-ipam-import-row[data-state="error"],
+.it-ipam-import-file-error {
+  background: color-mix(in srgb, var(--red) 7%, transparent);
+  color: var(--red);
+}
+.it-ipam-import-file-error {
+  padding: 9px 10px;
+  border: 1px solid color-mix(in srgb, var(--red) 32%, var(--border));
+  border-radius: 8px;
+  font-size: 11px;
+}
+.it-ipam-import-preview > p {
+  margin: 0;
+  padding: 8px 10px;
+  border-top: 1px solid var(--hairline);
+  color: var(--text-faint);
+  font-size: 10px;
+}
+
 /* ══════════════════════════════════════════════════════════════════════════
    Global Network Map designer (docs/ITOPS.md Network Map).
    `data-state` on a card is the What-If verdict for the drawn map — never a

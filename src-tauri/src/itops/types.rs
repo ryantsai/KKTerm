@@ -1190,6 +1190,88 @@ pub struct IpamSnapshot {
     pub addresses: Vec<IpAddressRecord>,
 }
 
+/// Create-only rows accepted by the atomic IPAM file-import command. VLANs use
+/// their operator-facing 802.1Q id so a Prefix can reference a VLAN created by
+/// the same file without exposing or inventing KKTerm's durable record ids.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IpamImportVlanInput {
+    pub vid: u16,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub description: String,
+    #[serde(default)]
+    pub site_id: Option<String>,
+    #[serde(default)]
+    pub accent: u8,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IpamImportPrefixInput {
+    pub cidr: String,
+    #[serde(default)]
+    pub vrf: String,
+    #[serde(default)]
+    pub role: String,
+    #[serde(default)]
+    pub status: PrefixStatus,
+    #[serde(default)]
+    pub description: String,
+    #[serde(default)]
+    pub site_id: Option<String>,
+    #[serde(default)]
+    pub vlan_vid: Option<u16>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IpamImportAddressInput {
+    pub address: String,
+    #[serde(default)]
+    pub vrf: String,
+    #[serde(default)]
+    pub status: AddressStatus,
+    #[serde(default)]
+    pub dns_name: String,
+    #[serde(default)]
+    pub device_type: Option<IpamDeviceType>,
+    #[serde(default)]
+    pub device_model: String,
+    #[serde(default)]
+    pub description: String,
+    #[serde(default)]
+    pub site_id: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IpamImportBatch {
+    #[serde(default)]
+    pub vlans: Vec<IpamImportVlanInput>,
+    #[serde(default)]
+    pub prefixes: Vec<IpamImportPrefixInput>,
+    #[serde(default)]
+    pub addresses: Vec<IpamImportAddressInput>,
+}
+
+#[derive(Clone, Debug, Default, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct IpamImportResult {
+    pub vlans: u32,
+    pub prefixes: u32,
+    pub addresses: u32,
+    pub skipped: u32,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct IpamWorkbookSheet {
+    pub name: String,
+    pub rows: Vec<Vec<String>>,
+}
+
 /// One address that answered at least one explicit IPAM scan probe. Results are
 /// transient operator evidence; importing one creates the durable Address
 /// Record, while the scan itself never writes network state to SQLite.

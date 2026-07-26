@@ -14,6 +14,7 @@ pub mod host_storage;
 pub(crate) mod ids;
 pub mod inventory;
 pub mod ipam_commands;
+pub mod ipam_import;
 pub mod ipam_scan;
 pub mod ipam_storage;
 pub mod ipv4;

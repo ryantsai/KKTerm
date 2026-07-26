@@ -111,6 +111,30 @@ An **IP Address Record** is one address you want on record, with an optional Hos
 
 `itops.ipam.claimTitle` bulk-documents addresses KKTerm already holds elsewhere — the hostnames and addresses on your Connections and on IT Ops Hosts. Every candidate is pre-checked; clear the ones you do not want. When a selected address is not covered by an existing IP Prefix, the dialog proposes an editable CIDR (a `/24` per uncovered address group by default); review or alter every suggestion before importing because an address alone cannot reveal its real subnet mask. KKTerm creates the confirmed IP Prefixes before their Address Records and expands the new rows after import. Nothing is probed on the network, and importing changes only KKTerm's records. Address Records that still have no containing IP Prefix remain visible under `itops.ipam.unassignedAddresses` instead of disappearing from the destination.
 
+`itops.ipam.fileImportAction` imports a create-only table from CSV, TSV, or
+Excel (`.xlsx`). Excel uses the first non-empty worksheet. Choose
+`itops.ipam.fileImportSampleAction` for an importable CSV example with these
+canonical columns:
+
+```csv
+record_type,cidr,address,vrf,role,status,hostname,device_type,device_model,vlan_id,name,site,description,accent
+vlan,,,,,,,,,30,Management,,Management network,0
+prefix,10.20.30.0/24,,corp,Management,active,,,,30,,,Management subnet,
+address,,10.20.30.10,corp,,active,core-sw-01.example.com,switch,Model 9300,,,,Core switch,
+```
+
+`record_type` is `vlan`, `prefix`, or `address`. VLAN rows require
+`vlan_id` (1–4094); `name` and `accent` apply only to VLANs. Prefix rows
+require `cidr`, may use `container`, `active`, `reserved`, or `deprecated`
+status, and link to a VLAN by `vlan_id`. Address rows require `address`, may
+use `active`, `reserved`, or `deprecated` status, and accept the device types
+shown in the Address dialog. Blank status defaults to `active`; blank VRF means
+the default routing table. `site` is optional and must exactly name one
+existing Site, ignoring letter case. Existing records and later duplicates in
+the file are previewed as skipped and are never overwritten. Valid rows are
+created together in VLAN → IP Prefix → Address order; if the backend rejects
+any non-duplicate row, none of that batch is saved.
+
 `itops.ipam.scanAction` opens an explicit network scan. Select one or more IP Prefixes, up to 4,096 usable addresses in one request, then choose `itops.ipam.scanStartAction`. KKTerm combines one ICMP ping, one SNMP MIB-II identity query, and common TCP-port probes for each address. A response from any method marks the address as used. Responsive addresses also receive a bounded reverse-DNS lookup; a PTR result becomes the suggested hostname, with SNMP `sysName` as fallback. SNMP `sysDescr` supplies model details and supports a conservative broad device-type suggestion. When SNMP does not identify the device, only distinctive printing, RTSP-camera, or SIP ports produce a type suggestion; ordinary SSH, web, SMB, or management ports are not treated as proof. The result list shows the suggested identity and evidence, keeps addresses already in IPAM disabled, and preselects newly found addresses; `itops.ipam.scanImportAction_one` / `itops.ipam.scanImportAction_other` create only the checked Address Records with those suggestions. Scanning alone writes nothing. Run it only on IP Prefixes you are authorized to probe.
 
 Deleting an IP Prefix keeps the Address Records inside it; they simply re-parent to whatever still contains them, or sit at the top level.

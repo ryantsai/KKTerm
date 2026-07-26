@@ -479,6 +479,18 @@ existing IP Prefix. The import creates those IP Prefixes before their Address Re
 and probes nothing. Records that have no containing Prefix remain visible in an
 Unassigned addresses group rather than disappearing from the IP Prefix-only tree.
 
+The separate file import in `IpamImportDialog.tsx` accepts the canonical
+create-only table format as CSV, TSV, or `.xlsx`. CSV/TSV parsing reuses the
+already-bundled Papa Parse dependency; `.xlsx` parsing runs off the UI thread in
+the Rust backend through Calamine with optional features disabled, reads the
+first non-empty worksheet, and does not require Excel or downloaded runtime
+code. `ipamImportModel.ts` validates and previews every row, resolves Site names
+case-insensitively only when the match is unique, resolves Prefix VLAN references
+by 802.1Q id, and skips existing identities or later duplicates without
+overwriting them. The backend revalidates and creates VLANs, then Prefixes, then
+Address Records in one SQLite transaction; any non-duplicate failure rolls the
+whole batch back. The dialog generates the canonical CSV sample locally.
+
 The explicit IPAM scan sheet is a separate operator action. It scans only
 checked IP Prefixes and treats an address as used when ICMP ping, an SNMPv2c
 identity request, or one of the common TCP management/service ports answers.

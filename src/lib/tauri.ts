@@ -9,7 +9,7 @@ import {
   save as saveDialog,
 } from "@tauri-apps/plugin-dialog";
 import type { ConfirmDialogOptions } from "@tauri-apps/plugin-dialog";
-import { exists, readFile, writeFile, writeTextFile } from "@tauri-apps/plugin-fs";
+import { exists, readFile, stat, writeFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { documentDir, homeDir } from "@tauri-apps/api/path";
 import { isMacPlatform, isWindowsPlatform } from "./platform";
@@ -1522,6 +1522,14 @@ type CommandMap = {
   itops_ipam_snapshot: {
     args: undefined;
     result: import("../types").IpamSnapshot;
+  };
+  itops_import_ipam: {
+    args: { batch: import("../types").IpamImportBatch };
+    result: import("../types").IpamImportResult;
+  };
+  itops_read_ipam_xlsx: {
+    args: { path: string };
+    result: import("../types").IpamWorkbookSheet;
   };
   itops_create_ip_prefix: {
     args: {
@@ -4052,6 +4060,33 @@ export async function selectConnectionImportFile() {
   });
 
   return typeof selectedPath === "string" ? selectedPath : null;
+}
+
+export async function selectIpamImportFile(options: {
+  title: string;
+  filterName: string;
+}) {
+  if (!isTauriRuntime()) {
+    return null;
+  }
+  const selectedPath = await openDialog({
+    directory: false,
+    multiple: false,
+    title: options.title,
+    filters: [
+      { name: options.filterName, extensions: ["csv", "tsv", "xlsx"] },
+      { name: i18next.t("common.allFilesFilter"), extensions: ["*"] },
+    ],
+  });
+  return typeof selectedPath === "string" ? selectedPath : null;
+}
+
+export async function readUtf8File(path: string): Promise<string> {
+  return new TextDecoder().decode(await readFile(path));
+}
+
+export async function localFileSize(path: string): Promise<number> {
+  return (await stat(path)).size;
 }
 
 export async function selectAppLauncherFile(options: {

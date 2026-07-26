@@ -71,6 +71,9 @@ tauri-plugin-updater = "2"
 vnc = { package = "vnc-rs", path = "vendor/vnc-rs" }
 time = { version = "0.3", features = ["formatting", "macros", "local-offset"] }
 zip = "8"
+# IPAM .xlsx import only. Optional date/picture features stay disabled; the
+# crate shares KKTerm's existing zip 8 / quick-xml 0.41 / encoding_rs tree.
+calamine = { version = "0.36", default-features = false }
 futures = "0.3"
 filedescriptor = "0.8.3"
 lazy_static = "1.5.0"
