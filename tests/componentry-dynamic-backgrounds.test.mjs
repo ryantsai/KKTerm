@@ -21,7 +21,11 @@ const adapterSource = await readFile(
   new URL("../src/modules/dashboard/registry/componentryBackgrounds.tsx", import.meta.url),
   "utf8",
 );
-const [silkAuroraSource, closingPlasmaSource, liquidChromeSource] = await Promise.all([
+const [animatedGradientSource, silkAuroraSource, closingPlasmaSource, liquidChromeSource] = await Promise.all([
+  readFile(
+    new URL("../src/modules/dashboard/registry/componentry/animated-gradient.tsx", import.meta.url),
+    "utf8",
+  ),
   readFile(
     new URL("../src/modules/dashboard/registry/componentry/silk-aurora.tsx", import.meta.url),
     "utf8",
@@ -115,6 +119,21 @@ test("dynamic backgrounds ignore click and press input", () => {
   }
   assert.match(liquidChromeSource, /window\.addEventListener\("mousemove", handleMouseMove\)/);
   assert.match(liquidChromeSource, /e\.buttons !== 0/);
+});
+
+test("Animated Gradient keeps its default shader config stable across parent renders", () => {
+  assert.match(
+    animatedGradientSource,
+    /const DEFAULT_ANIMATED_GRADIENT_CONFIG = \{ preset: "Aurora" \} as const;/,
+  );
+  assert.match(
+    animatedGradientSource,
+    /config = DEFAULT_ANIMATED_GRADIENT_CONFIG/,
+  );
+  assert.doesNotMatch(
+    animatedGradientSource,
+    /config = \{ preset: "Aurora" \}/,
+  );
 });
 
 test("Componentry background names exist in every locale", async () => {

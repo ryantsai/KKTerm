@@ -141,6 +141,8 @@ export interface PresetConfig {
 
 export type GradientConfig = CustomConfig | PresetConfig;
 
+const DEFAULT_ANIMATED_GRADIENT_CONFIG = { preset: "Aurora" } as const;
+
 export interface NoiseConfig {
     opacity: number;
     scale?: number;
@@ -155,7 +157,7 @@ export interface AnimatedGradientProps {
 }
 
 export function AnimatedGradient({
-    config = { preset: "Aurora" },
+    config = DEFAULT_ANIMATED_GRADIENT_CONFIG,
     noise,
     radius = "0px",
     style,
@@ -582,5 +584,4 @@ void main() {
     fragColor = vec4(color_mix.rgb, color_mix.a);
 }
 `;
-
 
