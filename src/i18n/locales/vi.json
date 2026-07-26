@@ -1912,6 +1912,12 @@
       "addressAdd": "Add IP address",
       "addressItemLabel": "IP address {{index}}",
       "addressRemove": "Remove IP address",
+      "interfacesLabel": "Giao diện",
+      "interfaceAddTitle": "Thêm giao diện",
+      "interfaceEditTitle": "Sửa giao diện",
+      "interfaceEmpty": "Chưa ghi nhận giao diện nào.",
+      "interfaceUnbound": "Chưa liên kết với giao diện",
+      "endpointInterfaceLabel": "Giao diện của {{node}}",
       "iconBackgroundLabel": "Icon background",
       "statusLabel": "Trạng thái",
       "status": {

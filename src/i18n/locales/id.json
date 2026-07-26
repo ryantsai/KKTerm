@@ -1912,6 +1912,12 @@
       "addressAdd": "Add IP address",
       "addressItemLabel": "IP address {{index}}",
       "addressRemove": "Remove IP address",
+      "interfacesLabel": "Antarmuka",
+      "interfaceAddTitle": "Tambah antarmuka",
+      "interfaceEditTitle": "Edit antarmuka",
+      "interfaceEmpty": "Belum ada antarmuka yang didokumentasikan.",
+      "interfaceUnbound": "Tidak terikat ke antarmuka",
+      "endpointInterfaceLabel": "Antarmuka {{node}}",
       "iconBackgroundLabel": "Icon background",
       "statusLabel": "Status",
       "status": {

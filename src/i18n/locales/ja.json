@@ -1912,6 +1912,12 @@
       "addressAdd": "Add IP address",
       "addressItemLabel": "IP address {{index}}",
       "addressRemove": "Remove IP address",
+      "interfacesLabel": "インターフェース",
+      "interfaceAddTitle": "インターフェースを追加",
+      "interfaceEditTitle": "インターフェースを編集",
+      "interfaceEmpty": "インターフェースは記録されていません。",
+      "interfaceUnbound": "インターフェースに未接続",
+      "endpointInterfaceLabel": "{{node}} のインターフェース",
       "iconBackgroundLabel": "Icon background",
       "statusLabel": "ステータス",
       "status": {

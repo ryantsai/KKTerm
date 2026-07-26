@@ -1912,6 +1912,12 @@
       "addressAdd": "Add IP address",
       "addressItemLabel": "IP address {{index}}",
       "addressRemove": "Remove IP address",
+      "interfacesLabel": "网络接口",
+      "interfaceAddTitle": "添加网络接口",
+      "interfaceEditTitle": "编辑网络接口",
+      "interfaceEmpty": "尚未记录网络接口。",
+      "interfaceUnbound": "未绑定到网络接口",
+      "endpointInterfaceLabel": "{{node}} 网络接口",
       "iconBackgroundLabel": "Icon background",
       "statusLabel": "状态",
       "status": {

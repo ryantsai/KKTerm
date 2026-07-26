@@ -1912,6 +1912,12 @@
       "addressAdd": "Add IP address",
       "addressItemLabel": "IP address {{index}}",
       "addressRemove": "Remove IP address",
+      "interfacesLabel": "網路介面",
+      "interfaceAddTitle": "新增網路介面",
+      "interfaceEditTitle": "編輯網路介面",
+      "interfaceEmpty": "尚未記錄網路介面。",
+      "interfaceUnbound": "未繫結至網路介面",
+      "endpointInterfaceLabel": "{{node}} 網路介面",
       "iconBackgroundLabel": "Icon background",
       "statusLabel": "狀態",
       "status": {

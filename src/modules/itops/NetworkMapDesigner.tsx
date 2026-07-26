@@ -69,11 +69,12 @@ import type {
   NetworkMapNote,
   NetworkMapStatus,
   NetworkNode,
+  NetworkNodeInterface,
   NetworkNodeKind,
   SiteHost,
   Vlan,
 } from "../../types";
-import { ItIcon, IT_ACCENTS } from "./icons";
+import { ItIcon, IT_ACCENTS, type ItIconName } from "./icons";
 import { ItOpsEmptyHint } from "./ItOpsEmptyHint";
 import {
   applyNetworkMapCanvasNodeChanges,
@@ -99,14 +100,11 @@ import { nextTopologyDuplicateName } from "./topologyDuplicate";
 import {
   analyzeWhatIf,
   effectiveRoots,
-  findStrandedNodes,
-  findWeakPoints,
 } from "./reachability";
 import { useItOpsStore } from "./state";
 import { vlanAccent, vlanLabel, vlansById } from "./vlanModel";
 
 const LINK_KINDS: NetworkLinkKind[] = ["ethernet", "fiber", "wan", "wireless"];
-const MAP_STATUSES: NetworkMapStatus[] = ["up", "warning"];
 
 /** The palette groups, and the single source of the kind list. The inspector's
  * dropdown is derived from these below rather than hand-maintained beside them:
@@ -206,6 +204,7 @@ type NodeState = "up" | "warning" | "down" | "isolated";
 interface MapNodeData extends Record<string, unknown> {
   label: string;
   sub: string;
+  note: string;
   kind: NetworkNodeKind;
   state: NodeState;
   root: boolean;
@@ -411,12 +410,14 @@ function NetworkNodeArtwork({
 
 function MapNode({ data }: NodeProps<Node<MapNodeData>>) {
   const accentStyle = { "--nm-node-accent": data.accent } as CSSProperties;
+  const note = data.note.trim();
   return (
     <div
       className={`nm-node${data.selected ? " sel" : ""}${data.ghost ? " ghost" : ""}`}
       data-state={data.state}
       data-kind={data.kind}
       data-root={data.root ? "true" : undefined}
+      data-has-note={note ? "true" : undefined}
       data-placement-ghost={data.ghost ? "true" : undefined}
       style={{ width: "100%", height: "100%" }}
     >
@@ -445,13 +446,16 @@ function MapNode({ data }: NodeProps<Node<MapNodeData>>) {
               className="nm-handle"
             />
           ))}
-      <span className="nm-node-ic" style={accentStyle}>
-        <NetworkNodeArtwork kind={data.kind} size={24} />
+      <span className="nm-node-content">
+        <span className="nm-node-ic" style={accentStyle}>
+          <NetworkNodeArtwork kind={data.kind} size={24} />
+        </span>
+        <span className="nm-node-tx">
+          <span className="nm-node-lab">{data.label}</span>
+          <span className="nm-node-sub">{data.sub}</span>
+        </span>
       </span>
-      <span className="nm-node-tx">
-        <span className="nm-node-lab">{data.label}</span>
-        <span className="nm-node-sub">{data.sub}</span>
-      </span>
+      {note ? <span className="nm-node-note">{note}</span> : null}
       {data.root ? (
         <span className="nm-node-root" title={data.rootLabel}>
           <ItIcon name="pulse" size={11} />
@@ -760,7 +764,14 @@ function anchors(from: NetworkNode, to: NetworkNode): { source: Position; target
 }
 
 function nodeLabel(node: NetworkNode, fallback: string): string {
-  return node.label.trim() || node.addresses[0]?.trim() || fallback;
+  return node.label.trim() || node.interfaces[0]?.address.trim() || fallback;
+}
+
+function interfaceLabel(
+  entry: NetworkNodeInterface,
+  fallback: string,
+): string {
+  return entry.name.trim() || entry.address.trim() || fallback;
 }
 
 function nodeAccent(node: NetworkNode): string {
@@ -824,7 +835,13 @@ function hostsAsNodes(hosts: readonly SiteHost[], offset: number): NetworkNode[]
     width: NODE_WIDTH,
     height: NODE_HEIGHT,
     iconAccent: null,
-    addresses: [host.hostname],
+    interfaces: [
+      {
+        id: newId("nmi"),
+        name: "",
+        address: host.hostname,
+      },
+    ],
     status: "up",
     hostId: host.id,
     connectionId: host.connectionIds[0] ?? null,
@@ -843,7 +860,7 @@ function newNodeDraft(kind: NetworkNodeKind): NetworkNode {
     width: NODE_WIDTH,
     height: NODE_HEIGHT,
     iconAccent: null,
-    addresses: [],
+    interfaces: [],
     status: "up",
     hostId: null,
     connectionId: null,
@@ -864,22 +881,152 @@ function newNoteDraft(): NetworkMapNote {
   };
 }
 
-function NodePropertiesFields({
-  node,
-  root,
+function ChoiceGrid({
+  value,
+  options,
   onChange,
-  onAddressesChange,
-  onRootChange,
 }: {
-  node: NetworkNode;
-  root: boolean;
-  onChange: (patch: Partial<NetworkNode>) => void;
-  onAddressesChange: (addresses: string[]) => void;
-  onRootChange: (root: boolean) => void;
+  value: string;
+  options: Array<{ value: string; label: string; icon: ItIconName }>;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="nm-choice-grid" role="radiogroup">
+      {options.map((option) => {
+        const selected = option.value === value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            className={selected ? "nm-choice selected" : "nm-choice"}
+            role="radio"
+            aria-checked={selected}
+            onClick={() => onChange(option.value)}
+          >
+            <span className="nm-choice-icon">
+              <ItIcon name={option.icon} size={15} />
+            </span>
+            <span>{option.label}</span>
+            <span className="nm-choice-radio" aria-hidden="true" />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function NodeInterfaceEditor({
+  value,
+  onSave,
+  onDelete,
+  onClose,
+}: {
+  value: NetworkNodeInterface | null;
+  onSave: (entry: NetworkNodeInterface) => void;
+  onDelete?: () => void;
+  onClose: () => void;
 }) {
   const { t } = useTranslation();
+  const [draft, setDraft] = useState<NetworkNodeInterface>(
+    value ?? { id: newId("nmi"), name: "", address: "" },
+  );
+  const canSave = Boolean(draft.name.trim());
+
+  return (
+    <DialogShell onBackdrop={onClose} zClassName="itops-page">
+      <Sheet
+        width={420}
+        title={t(
+          value
+            ? "itops.networkMap.interfaceEditTitle"
+            : "itops.networkMap.interfaceAddTitle",
+        )}
+        footer={
+          <Actions
+            extraLeft={
+              onDelete ? (
+                <Btn kind="danger" icon="trash" onClick={onDelete}>
+                  {t("common.delete")}
+                </Btn>
+              ) : undefined
+            }
+            cancel={<Btn onClick={onClose}>{t("common.cancel")}</Btn>}
+            primary={
+              <Btn
+                kind="primary"
+                icon="check"
+                disabled={!canSave}
+                onClick={() => onSave({ ...draft, name: draft.name.trim(), address: draft.address.trim() })}
+              >
+                {t("common.save")}
+              </Btn>
+            }
+          />
+        }
+      >
+        <Field label={t("common.name")} req>
+          <TextInput
+            value={draft.name}
+            placeholder={t("itops.networkMap.strandNamePlaceholder")}
+            onChange={(event) => {
+              const name = event.currentTarget.value;
+              setDraft((current) => ({ ...current, name }));
+            }}
+            autoFocus
+          />
+        </Field>
+        <Field label={t("itops.networkMap.addressLabel")}>
+          <TextInput
+            mono
+            value={draft.address}
+            placeholder={t("itops.networkMap.addressPlaceholder")}
+            onChange={(event) => {
+              const address = event.currentTarget.value;
+              setDraft((current) => ({ ...current, address }));
+            }}
+          />
+        </Field>
+      </Sheet>
+    </DialogShell>
+  );
+}
+
+function NodePropertiesFields({
+  node,
+  onChange,
+}: {
+  node: NetworkNode;
+  onChange: (patch: Partial<NetworkNode>) => void;
+}) {
+  const { t } = useTranslation();
+  const [interfaceEditor, setInterfaceEditor] = useState<NetworkNodeInterface | null | undefined>(
+    undefined,
+  );
+  const unnamedInterface = t("itops.networkMap.interfaceUnbound");
+
   return (
     <>
+      <div className="nm-node-identity">
+        <span
+          className="nm-node-ic nm-node-identity-icon"
+          style={{ "--nm-node-accent": nodeAccent(node) } as CSSProperties}
+        >
+          <NetworkNodeArtwork kind={node.kind} size={32} />
+        </span>
+        <span className="nm-node-identity-copy">
+          <strong>{node.label.trim() || t("itops.networkMap.unnamedNode")}</strong>
+          <small>{t(`itops.networkMap.nodeKind.${node.kind}`)}</small>
+        </span>
+        <Swatches
+          accents={MAP_ACCENTS}
+          value={nodeAccent(node)}
+          onChange={(color) =>
+            onChange({
+              iconAccent: MAP_ACCENTS.findIndex((accent) => accent === color),
+            })
+          }
+        />
+      </div>
       <Field label={t("itops.networkMap.labelLabel")}>
         <TextInput
           value={node.label}
@@ -902,93 +1049,96 @@ function NodePropertiesFields({
           }))}
         />
       </Field>
-      <div className="nm-addresses">
+      <Field label={t("itops.networkMap.statusLabel")}>
+        <ChoiceGrid
+          value={node.status ?? "up"}
+          onChange={(value) => onChange({ status: value as NetworkMapStatus })}
+          options={[
+            {
+              value: "up",
+              label: t("itops.networkMap.status.up"),
+              icon: "check",
+            },
+            {
+              value: "warning",
+              label: t("itops.networkMap.status.warning"),
+              icon: "alert",
+            },
+          ]}
+        />
+      </Field>
+      <div className="nm-interfaces">
         <div className="nm-strands-head">
-          <span className="kk-lbl">{t("itops.networkMap.addressesLabel")}</span>
+          <span className="kk-lbl">{t("itops.networkMap.interfacesLabel")}</span>
           <button
             type="button"
             className="nm-strand-add"
-            onClick={() => onAddressesChange([...node.addresses, ""])}
+            onClick={() => setInterfaceEditor(null)}
           >
             <ItIcon name="plus" size={12} />
-            {t("itops.networkMap.addressAdd")}
+            {t("common.add")}
           </button>
         </div>
-        {node.addresses.map((address, index) => (
-          <div key={`${node.id}:address:${index}`} className="nm-address-row">
-            <TextInput
-              mono
-              value={address}
-              aria-label={t("itops.networkMap.addressItemLabel", { index: index + 1 })}
-              placeholder={t("itops.networkMap.addressPlaceholder")}
-              onChange={(event) =>
-                onAddressesChange(
-                  node.addresses.map((entry, entryIndex) =>
-                    entryIndex === index ? event.currentTarget.value : entry,
-                  ),
-                )
-              }
-            />
-            <button
-              type="button"
-              className="nm-strand-remove"
-              aria-label={t("itops.networkMap.addressRemove")}
-              title={t("itops.networkMap.addressRemove")}
-              onClick={() =>
-                onAddressesChange(
-                  node.addresses.filter((_entry, entryIndex) => entryIndex !== index),
-                )
-              }
-            >
-              <ItIcon name="xmark" size={12} />
-            </button>
+        {node.interfaces.length > 0 ? (
+          <div className="nm-interface-list">
+            {node.interfaces.map((entry) => (
+              <button
+                key={entry.id}
+                type="button"
+                className="nm-interface-row"
+                onClick={() => setInterfaceEditor(entry)}
+              >
+                <span className="nm-interface-port">
+                  <ItIcon name="network" size={15} />
+                </span>
+                <span className="nm-interface-copy">
+                  <strong>{interfaceLabel(entry, unnamedInterface)}</strong>
+                  {entry.address ? <small>{entry.address}</small> : null}
+                </span>
+                <ItIcon name="chevR" size={13} />
+              </button>
+            ))}
           </div>
-        ))}
-        <span className="kk-hint">{t("itops.networkMap.addressesHint")}</span>
+        ) : (
+          <p className="nm-interface-empty">{t("itops.networkMap.interfaceEmpty")}</p>
+        )}
       </div>
-      <Field label={t("itops.networkMap.iconBackgroundLabel")}>
-        <Swatches
-          accents={MAP_ACCENTS}
-          value={nodeAccent(node)}
-          onChange={(color) =>
-            onChange({
-              iconAccent: MAP_ACCENTS.findIndex((accent) => accent === color),
-            })
-          }
-        />
-      </Field>
-      <Field label={t("itops.networkMap.statusLabel")}>
-        <Select
-          value={node.status ?? "up"}
-          onChange={(event) =>
-            onChange({
-              status: event.currentTarget.value as NetworkMapStatus,
-            })
-          }
-          options={MAP_STATUSES.map((status) => ({
-            value: status,
-            label: t(`itops.networkMap.status.${status}`),
-          }))}
-        />
-      </Field>
-      <label className="nm-root-toggle">
-        <input
-          type="checkbox"
-          checked={root}
-          onChange={(event) => onRootChange(event.currentTarget.checked)}
-        />
-        <span>
-          <strong>{t("itops.networkMap.rootLabel")}</strong>
-          <small>{t("itops.networkMap.rootHint")}</small>
-        </span>
-      </label>
       <Field label={t("itops.networkMap.noteLabel")}>
         <TextArea
           rows={3}
           value={node.note}
           onChange={(event) => onChange({ note: event.currentTarget.value })}
+          spellCheck
         />
       </Field>
+      {interfaceEditor !== undefined ? (
+        <NodeInterfaceEditor
+          value={interfaceEditor}
+          onClose={() => setInterfaceEditor(undefined)}
+          onDelete={
+            interfaceEditor
+              ? () => {
+                  onChange({
+                    interfaces: node.interfaces.filter(
+                      (entry) => entry.id !== interfaceEditor.id,
+                    ),
+                  });
+                  setInterfaceEditor(undefined);
+                }
+              : undefined
+          }
+          onSave={(entry) => {
+            onChange({
+              interfaces: interfaceEditor
+                ? node.interfaces.map((current) =>
+                    current.id === entry.id ? entry : current,
+                  )
+                : [...node.interfaces, entry],
+            });
+            setInterfaceEditor(undefined);
+          }}
+        />
+      ) : null}
     </>
   );
 }
@@ -1010,11 +1160,10 @@ function NodePropertiesDialog({
 }) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState(node);
-  const [draftRoot, setDraftRoot] = useState(root);
   return (
     <DialogShell onBackdrop={onClose} zClassName="itops-page">
       <Sheet
-        width={520}
+        width={620}
         title={t("itops.networkMap.nodeHeading")}
         footer={
           <Actions
@@ -1037,7 +1186,7 @@ function NodePropertiesDialog({
               <Btn
                 kind="primary"
                 onClick={() => {
-                  onSubmit(draft, draftRoot);
+                  onSubmit(draft, root);
                   onClose();
                 }}
               >
@@ -1049,12 +1198,7 @@ function NodePropertiesDialog({
       >
         <NodePropertiesFields
           node={draft}
-          root={draftRoot}
           onChange={(patch) => setDraft((current) => ({ ...current, ...patch }))}
-          onAddressesChange={(addresses) =>
-            setDraft((current) => ({ ...current, addresses }))
-          }
-          onRootChange={setDraftRoot}
         />
       </Sheet>
     </DialogShell>
@@ -1261,6 +1405,15 @@ function LinkPropertiesFields({
   const vlanIndex = useMemo(() => vlansById(vlans), [vlans]);
   const speedListId = `nm-link-dialog-speeds-${link.id}`;
   const patch = (change: Partial<NetworkLink>) => onChange({ ...link, ...change });
+  const interfaceOptions = (nodeId: string) => [
+    { value: "", label: t("itops.networkMap.interfaceUnbound") },
+    ...(nodesById.get(nodeId)?.interfaces ?? []).map((entry) => ({
+      value: entry.id,
+      label: entry.name.trim()
+        ? [entry.name.trim(), entry.address].filter(Boolean).join(" · ")
+        : entry.address || t("itops.networkMap.interfaceUnbound"),
+    })),
+  ];
 
   return (
     <>
@@ -1282,78 +1435,51 @@ function LinkPropertiesFields({
         />
       </Field>
       <Field label={t("itops.networkMap.linkKindLabel")}>
-        <Select
+        <ChoiceGrid
           value={link.kind}
-          onChange={(event) =>
-            patch({ kind: event.currentTarget.value as NetworkLinkKind })
-          }
-          options={LINK_KINDS.map((kind) => ({
+          onChange={(value) => patch({ kind: value as NetworkLinkKind })}
+          options={LINK_KINDS.map((kind, index) => ({
             value: kind,
             label: t(`itops.networkMap.linkKind.${kind}`),
+            icon: (["link", "pulse", "globe", "network"] as ItIconName[])[index],
           }))}
         />
       </Field>
       <Field label={t("itops.networkMap.statusLabel")}>
-        <Select
+        <ChoiceGrid
           value={link.status ?? "up"}
-          onChange={(event) =>
-            patch({ status: event.currentTarget.value as NetworkMapStatus })
-          }
-          options={MAP_STATUSES.map((status) => ({
-            value: status,
-            label: t(`itops.networkMap.status.${status}`),
-          }))}
+          onChange={(value) => patch({ status: value as NetworkMapStatus })}
+          options={[
+            {
+              value: "up",
+              label: t("itops.networkMap.status.up"),
+              icon: "check",
+            },
+            {
+              value: "warning",
+              label: t("itops.networkMap.status.warning"),
+              icon: "alert",
+            },
+          ]}
         />
       </Field>
       <Field label={t("itops.networkMap.strandDisplayLabel")}>
-        <Select
+        <ChoiceGrid
           value={link.strandDisplay ?? "separate"}
-          onChange={(event) =>
-            patch({
-              strandDisplay: event.currentTarget.value as NetworkLinkStrandDisplay,
-            })
+          onChange={(value) =>
+            patch({ strandDisplay: value as NetworkLinkStrandDisplay })
           }
           options={[
             {
               value: "separate",
               label: t("itops.networkMap.strandDisplaySeparate"),
+              icon: "rows",
             },
             {
               value: "bundle",
               label: t("itops.networkMap.strandDisplayBundle"),
+              icon: "link",
             },
-          ]}
-        />
-      </Field>
-      <Field
-        label={t("itops.networkMap.endpointAddressLabel", {
-          node: endpointName(nodesById, link.from, unnamed),
-        })}
-      >
-        <Select
-          value={link.fromAddress ?? ""}
-          onChange={(event) => patch({ fromAddress: event.currentTarget.value || null })}
-          options={[
-            { value: "", label: t("itops.networkMap.addressUnbound") },
-            ...(nodesById.get(link.from)?.addresses ?? [])
-              .filter(Boolean)
-              .map((address) => ({ value: address, label: address })),
-          ]}
-        />
-      </Field>
-      <Field
-        label={t("itops.networkMap.endpointAddressLabel", {
-          node: endpointName(nodesById, link.to, unnamed),
-        })}
-      >
-        <Select
-          value={link.toAddress ?? ""}
-          onChange={(event) => patch({ toAddress: event.currentTarget.value || null })}
-          options={[
-            { value: "", label: t("itops.networkMap.addressUnbound") },
-            ...(nodesById.get(link.to)?.addresses ?? [])
-              .filter(Boolean)
-              .map((address) => ({ value: address, label: address })),
           ]}
         />
       </Field>
@@ -1369,7 +1495,13 @@ function LinkPropertiesFields({
               patch({
                 strands: [
                   ...link.strands,
-                  { id: newId("nms"), name: "", speed: last?.speed ?? "" },
+                  {
+                    id: newId("nms"),
+                    name: "",
+                    fromInterfaceId: null,
+                    toInterfaceId: null,
+                    speed: last?.speed ?? "",
+                  },
                 ],
               });
             }}
@@ -1379,51 +1511,80 @@ function LinkPropertiesFields({
           </button>
         </div>
         {link.strands.map((strand, index) => (
-          <div key={strand.id} className="nm-strand-row">
-            <span className="nm-strand-index">{index + 1}</span>
-            <TextInput
-              mono
-              aria-label={t("itops.networkMap.strandNameLabel")}
-              value={strand.name}
-              placeholder={t("itops.networkMap.strandNamePlaceholder")}
-              onChange={(event) => {
-                const name = event.currentTarget.value;
-                patch({
-                  strands: link.strands.map((entry) =>
-                    entry.id === strand.id ? { ...entry, name } : entry,
-                  ),
-                });
-              }}
-            />
-            <TextInput
-              mono
-              list={speedListId}
-              aria-label={t("itops.networkMap.strandSpeedLabel")}
-              value={strand.speed}
-              placeholder={t("itops.networkMap.strandSpeedPlaceholder")}
-              onChange={(event) => {
-                const speed = event.currentTarget.value;
-                patch({
-                  strands: link.strands.map((entry) =>
-                    entry.id === strand.id ? { ...entry, speed } : entry,
-                  ),
-                });
-              }}
-            />
-            <button
-              type="button"
-              className="nm-strand-remove"
-              disabled={link.strands.length <= 1}
-              aria-label={t("itops.networkMap.strandRemove")}
-              title={t("itops.networkMap.strandRemove")}
-              onClick={() =>
-                patch({
-                  strands: link.strands.filter((entry) => entry.id !== strand.id),
-                })
-              }
-            >
-              <ItIcon name="xmark" size={12} />
-            </button>
+          <div key={strand.id} className="nm-strand-card">
+            <div className="nm-strand-card-head">
+              <span className="nm-strand-index">#{index + 1}</span>
+              <button
+                type="button"
+                className="nm-strand-remove"
+                disabled={link.strands.length <= 1}
+                aria-label={t("itops.networkMap.strandRemove")}
+                title={t("itops.networkMap.strandRemove")}
+                onClick={() =>
+                  patch({
+                    strands: link.strands.filter((entry) => entry.id !== strand.id),
+                  })
+                }
+              >
+                <ItIcon name="trash" size={12} />
+              </button>
+            </div>
+            <div className="nm-strand-endpoints">
+              <Field
+                label={t("itops.networkMap.endpointInterfaceLabel", {
+                  node: endpointName(nodesById, link.from, unnamed),
+                })}
+              >
+                <Select
+                  value={strand.fromInterfaceId ?? ""}
+                  onChange={(event) => {
+                    const fromInterfaceId = event.currentTarget.value || null;
+                    patch({
+                      strands: link.strands.map((entry) =>
+                        entry.id === strand.id
+                          ? { ...entry, fromInterfaceId }
+                          : entry,
+                      ),
+                    });
+                  }}
+                  options={interfaceOptions(link.from)}
+                />
+              </Field>
+              <Field
+                label={t("itops.networkMap.endpointInterfaceLabel", {
+                  node: endpointName(nodesById, link.to, unnamed),
+                })}
+              >
+                <Select
+                  value={strand.toInterfaceId ?? ""}
+                  onChange={(event) => {
+                    const toInterfaceId = event.currentTarget.value || null;
+                    patch({
+                      strands: link.strands.map((entry) =>
+                        entry.id === strand.id ? { ...entry, toInterfaceId } : entry,
+                      ),
+                    });
+                  }}
+                  options={interfaceOptions(link.to)}
+                />
+              </Field>
+            </div>
+            <Field label={t("itops.networkMap.strandSpeedLabel")}>
+              <TextInput
+                mono
+                list={speedListId}
+                value={strand.speed}
+                placeholder={t("itops.networkMap.strandSpeedPlaceholder")}
+                onChange={(event) => {
+                  const speed = event.currentTarget.value;
+                  patch({
+                    strands: link.strands.map((entry) =>
+                      entry.id === strand.id ? { ...entry, speed } : entry,
+                    ),
+                  });
+                }}
+              />
+            </Field>
           </div>
         ))}
         <datalist id={speedListId}>
@@ -1546,7 +1707,7 @@ function LinkPropertiesDialog({
   return (
     <DialogShell onBackdrop={onClose} zClassName="itops-page">
       <Sheet
-        width={560}
+        width={680}
         title={t("itops.networkMap.linkHeading")}
         footer={
           <Actions
@@ -1745,7 +1906,6 @@ function ImportDialog({
   );
 }
 
-type EditorMode = "view" | "design" | "impact";
 type Selection = { kind: "node" | "link" | "note"; id: string } | null;
 type PlacementDraft =
   | { kind: "node"; node: NetworkNode; root: boolean }
@@ -1770,12 +1930,11 @@ function MapEditor({ map }: { map: NetworkMap }) {
 
   const [graph, setGraph] = useState<NetworkGraph>(map.graph);
   const [savedJson, setSavedJson] = useState(() => JSON.stringify(map.graph));
-  const [mode, setMode] = useState<EditorMode>("view");
+  const graphRef = useRef(graph);
+  const savedJsonRef = useRef(savedJson);
+  const [objectBrowserOpen, setObjectBrowserOpen] = useState(false);
   const [selection, setSelection] = useState<Selection>(null);
-  const [downNodes, setDownNodes] = useState<string[]>([]);
-  const [downLinks, setDownLinks] = useState<string[]>([]);
   const [importing, setImporting] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [nodeDialog, setNodeDialog] = useState<NodeDialogRequest | null>(null);
   const [noteDialog, setNoteDialog] = useState<NoteDialogRequest | null>(null);
   const [linkDialog, setLinkDialog] = useState<LinkDialogRequest | null>(null);
@@ -1848,14 +2007,70 @@ function MapEditor({ map }: { map: NetworkMap }) {
     }
   }, [spotlightVlanId, vlanIndex, vlanUsage]);
 
-  const dirty = JSON.stringify(graph) !== savedJson;
+  // With view and edit unified, canvas changes no longer wait for a mode toggle
+  // to persist. Debounce live drag/resize events into one durable save while
+  // leaving newer local changes intact if they arrive during the request.
+  useEffect(() => {
+    const submittedJson = JSON.stringify(graph);
+    if (submittedJson === savedJson) return;
+    let active = true;
+    const timer = window.setTimeout(() => {
+      void saveNetworkMap(
+        map.id,
+        map.name,
+        map.description,
+        map.siteId ?? null,
+        graph,
+      )
+        .then((saved) => {
+          if (!active) return;
+          const persistedJson = JSON.stringify(saved.graph);
+          setSavedJson(persistedJson);
+          setGraph((current) =>
+            JSON.stringify(current) === submittedJson ? saved.graph : current,
+          );
+        })
+        .catch((error) => {
+          if (!active) return;
+          showStatusBarNotice(t("itops.errorNotice", { message: errorMessage(error) }), {
+            tone: "error",
+          });
+        });
+    }, 350);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [graph, map.description, map.id, map.name, map.siteId, saveNetworkMap, savedJson, showStatusBarNotice, t]);
+
+  useEffect(() => {
+    graphRef.current = graph;
+    savedJsonRef.current = savedJson;
+  }, [graph, savedJson]);
+
+  useEffect(
+    () => () => {
+      const latestGraph = graphRef.current;
+      if (JSON.stringify(latestGraph) === savedJsonRef.current) return;
+      void saveNetworkMap(
+        map.id,
+        map.name,
+        map.description,
+        map.siteId ?? null,
+        latestGraph,
+      ).catch((error) => {
+        showStatusBarNotice(t("itops.errorNotice", { message: errorMessage(error) }), {
+          tone: "error",
+        });
+      });
+    },
+    [map.description, map.id, map.name, map.siteId, saveNetworkMap, showStatusBarNotice, t],
+  );
 
   const analysis = useMemo(
-    () => analyzeWhatIf(graph, { nodes: downNodes, links: downLinks }),
-    [downLinks, downNodes, graph],
+    () => analyzeWhatIf(graph, { nodes: [], links: [] }),
+    [graph],
   );
-  const weakPoints = useMemo(() => findWeakPoints(graph), [graph]);
-  const stranded = useMemo(() => findStrandedNodes(graph), [graph]);
   const rootIds = useMemo(() => new Set(effectiveRoots(graph)), [graph]);
   const nodesById = useMemo(
     () => new Map(graph.nodes.map((node) => [node.id, node])),
@@ -1878,7 +2093,7 @@ function MapEditor({ map }: { map: NetworkMap }) {
         text: note.text || t("itops.networkMap.notePlaceholder"),
         accent: noteAccent(note),
         selected: selection?.kind === "note" && selection.id === note.id,
-        resizable: mode === "design",
+        resizable: true,
       },
     }));
     const deviceNodes: Node<MapNodeData>[] = graph.nodes.map((node) => ({
@@ -1891,7 +2106,10 @@ function MapEditor({ map }: { map: NetworkMap }) {
       zIndex: 2,
       data: {
         label: nodeLabel(node, unnamed),
-        sub: node.addresses.join(" · ") || t(`itops.networkMap.nodeKind.${node.kind}`),
+        sub:
+          node.interfaces.map((entry) => entry.address).filter(Boolean).join(" · ") ||
+          t(`itops.networkMap.nodeKind.${node.kind}`),
+        note: node.note,
         kind: node.kind,
         state: downSet.has(node.id)
           ? "down"
@@ -1905,7 +2123,7 @@ function MapEditor({ map }: { map: NetworkMap }) {
         rootLabel: t("itops.networkMap.rootBadge"),
         warningLabel: t("itops.networkMap.status.warning"),
         accent: nodeAccent(node),
-        resizable: mode === "design",
+        resizable: true,
       },
     }));
     if (placementDraft && placementPoint) {
@@ -1925,7 +2143,10 @@ function MapEditor({ map }: { map: NetworkMap }) {
           focusable: false,
           data: {
             label: nodeLabel(node, unnamed),
-            sub: node.addresses.join(" · ") || t(`itops.networkMap.nodeKind.${node.kind}`),
+            sub:
+              node.interfaces.map((entry) => entry.address).filter(Boolean).join(" · ") ||
+              t(`itops.networkMap.nodeKind.${node.kind}`),
+            note: node.note,
             kind: node.kind,
             state: node.status === "warning" ? "warning" : "up",
             root: placementDraft.root,
@@ -1966,7 +2187,6 @@ function MapEditor({ map }: { map: NetworkMap }) {
     analysis.isolated,
     graph.nodes,
     graph.notes,
-    mode,
     placementDraft,
     placementPoint,
     rootIds,
@@ -1977,25 +2197,19 @@ function MapEditor({ map }: { map: NetworkMap }) {
 
   const edges = useMemo<Edge<NetworkLinkEdgeData>[]>(() => {
     const severed = new Set(analysis.severedLinks);
-    const cut = new Set(downLinks);
     return graph.links.flatMap((link) => {
       const from = nodesById.get(link.from);
       const to = nodesById.get(link.to);
       if (!from || !to) return [];
       const { source, target } = anchors(from, to);
-      const state = cut.has(link.id)
-        ? "cut"
-        : severed.has(link.id)
-          ? "severed"
-          : link.status === "warning"
-            ? "warning"
-            : "up";
+      const state = severed.has(link.id)
+        ? "severed"
+        : link.status === "warning"
+          ? "warning"
+          : "up";
       const strandCount = Math.max(link.strands.length, 1);
       const label = [
         link.label.trim(),
-        link.fromAddress || link.toAddress
-          ? `${link.fromAddress || "—"} ↔ ${link.toAddress || "—"}`
-          : "",
         link.strandDisplay === "bundle" && strandCount > 1 ? `×${strandCount}` : "",
         vlanChip(link, vlanIndex, t),
       ]
@@ -2032,7 +2246,6 @@ function MapEditor({ map }: { map: NetworkMap }) {
     });
   }, [
     analysis.severedLinks,
-    downLinks,
     graph.links,
     nodesById,
     selection,
@@ -2042,12 +2255,10 @@ function MapEditor({ map }: { map: NetworkMap }) {
   ]);
 
   const onNodesChange = useCallback((changes: NodeChange[]) => {
-    if (mode !== "design") return;
     setGraph((current) => applyNetworkMapCanvasNodeChanges(current, changes));
-  }, [mode]);
+  }, []);
 
   const onConnect = useCallback((connection: FlowConnection) => {
-    if (mode !== "design") return;
     if (!connection.source || !connection.target || connection.source === connection.target) return;
     setGraph((current) => {
       const exists = current.links.some(
@@ -2063,12 +2274,16 @@ function MapEditor({ map }: { map: NetworkMap }) {
         to: connection.target!,
         label: "",
         kind: "ethernet",
-        fromAddress: null,
-        toAddress: null,
         // A drawn link always stands for at least one physical link, so it
         // starts with one strand rather than an empty list the operator has to
         // notice is empty.
-        strands: [{ id: newId("nms"), name: "", speed: "" }],
+        strands: [{
+          id: newId("nms"),
+          name: "",
+          fromInterfaceId: null,
+          toInterfaceId: null,
+          speed: "",
+        }],
         strandDisplay: "separate",
         nativeVlanId: null,
         taggedVlanIds: [],
@@ -2076,7 +2291,7 @@ function MapEditor({ map }: { map: NetworkMap }) {
       };
       return { ...current, links: [...current.links, link] };
     });
-  }, [mode]);
+  }, []);
 
   function configureNewNode(kind: NetworkNodeKind) {
     cancelPlacement();
@@ -2140,20 +2355,27 @@ function MapEditor({ map }: { map: NetworkMap }) {
   }
 
   function updateNodeProperties(node: NetworkNode, root: boolean) {
-    const retained = new Set(node.addresses);
+    const retained = new Set(node.interfaces.map((entry) => entry.id));
     const nextGraph = {
       ...graph,
       nodes: graph.nodes.map((entry) => (entry.id === node.id ? node : entry)),
       links: graph.links.map((link) => ({
         ...link,
-        fromAddress:
-          link.from === node.id && link.fromAddress && !retained.has(link.fromAddress)
-            ? null
-            : link.fromAddress,
-        toAddress:
-          link.to === node.id && link.toAddress && !retained.has(link.toAddress)
-            ? null
-            : link.toAddress,
+        strands: link.strands.map((strand) => ({
+          ...strand,
+          fromInterfaceId:
+            link.from === node.id &&
+            strand.fromInterfaceId &&
+            !retained.has(strand.fromInterfaceId)
+              ? null
+              : strand.fromInterfaceId,
+          toInterfaceId:
+            link.to === node.id &&
+            strand.toInterfaceId &&
+            !retained.has(strand.toInterfaceId)
+              ? null
+              : strand.toInterfaceId,
+        })),
       })),
       roots: root
         ? graph.roots.includes(node.id)
@@ -2162,7 +2384,6 @@ function MapEditor({ map }: { map: NetworkMap }) {
         : graph.roots.filter((id) => id !== node.id),
     };
     setGraph(nextGraph);
-    if (mode === "view") void save(nextGraph);
   }
 
   function patchNote(id: string, patch: Partial<NetworkMapNote>) {
@@ -2171,7 +2392,6 @@ function MapEditor({ map }: { map: NetworkMap }) {
       notes: graph.notes.map((note) => (note.id === id ? { ...note, ...patch } : note)),
     };
     setGraph(nextGraph);
-    if (mode === "view") void save(nextGraph);
   }
 
   function patchLink(id: string, patch: Partial<NetworkLink>) {
@@ -2180,7 +2400,6 @@ function MapEditor({ map }: { map: NetworkMap }) {
       links: graph.links.map((link) => (link.id === id ? { ...link, ...patch } : link)),
     };
     setGraph(nextGraph);
-    if (mode === "view") void save(nextGraph);
   }
 
   function removeNode(id: string) {
@@ -2202,13 +2421,6 @@ function MapEditor({ map }: { map: NetworkMap }) {
   function removeNote(id: string) {
     setGraph((current) => ({ ...current, notes: current.notes.filter((note) => note.id !== id) }));
     setSelection(null);
-  }
-
-  function toggleDown(kind: "node" | "link", id: string) {
-    const setter = kind === "node" ? setDownNodes : setDownLinks;
-    setter((current) =>
-      current.includes(id) ? current.filter((entry) => entry !== id) : [...current, id],
-    );
   }
 
   function openNodeProperties(id: string) {
@@ -2265,7 +2477,6 @@ function MapEditor({ map }: { map: NetworkMap }) {
   ) {
     event.preventDefault();
     event.stopPropagation();
-    if (mode !== "design") return;
     if (placementDraft) {
       cancelPlacement();
       return;
@@ -2297,29 +2508,56 @@ function MapEditor({ map }: { map: NetworkMap }) {
     );
   }
 
-  async function save(nextGraph: NetworkGraph = graph) {
-    if (busy) return;
-    setBusy(true);
-    try {
-      const saved = await saveNetworkMap(
-        map.id,
-        map.name,
-        map.description,
-        map.siteId ?? null,
-        nextGraph,
-      );
-      setGraph(saved.graph);
-      setSavedJson(JSON.stringify(saved.graph));
-      showStatusBarNotice(t("itops.networkMap.savedNotice", { name: map.name }), {
-        tone: "success",
-      });
-    } catch (error) {
-      showStatusBarNotice(t("itops.errorNotice", { message: errorMessage(error) }), {
-        tone: "error",
-      });
-    } finally {
-      setBusy(false);
+  function duplicateNote(id: string) {
+    const source = graph.notes.find((entry) => entry.id === id);
+    if (!source) return;
+    setSelection(null);
+    setNoteDialog({
+      note: {
+        ...source,
+        id: newId("nma"),
+        x: 0,
+        y: 0,
+      },
+      placement: true,
+    });
+  }
+
+  function showNoteContextMenu(
+    event: import("react").MouseEvent<Element, MouseEvent>,
+    id: string,
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (placementDraft) {
+      cancelPlacement();
+      return;
     }
+    setSelection({ kind: "note", id });
+    void showNativeContextMenu(
+      [
+        {
+          kind: "item",
+          label: t("itops.actions.duplicate"),
+          iconSvg: nativeMenuIcons.copy,
+          action: () => duplicateNote(id),
+        },
+        {
+          kind: "item",
+          label: t("itops.actions.delete"),
+          iconSvg: nativeMenuIcons.trash,
+          action: () => removeNote(id),
+        },
+        { kind: "separator" },
+        {
+          kind: "item",
+          label: t("common.properties"),
+          iconSvg: nativeMenuIcons.pencil,
+          action: () => openNoteProperties(id),
+        },
+      ],
+      { x: event.clientX, y: event.clientY },
+    );
   }
 
   return (
@@ -2330,22 +2568,12 @@ function MapEditor({ map }: { map: NetworkMap }) {
         <div className="it-drill-actions" aria-label={t("itops.actions.viewActions")}>
           <button
             type="button"
-            className={`it-drill-action${mode === "design" ? " active" : ""}`}
-            title={
-              mode === "design"
-                ? t("itops.actions.editDone")
-                : t("itops.actions.edit")
-            }
-            aria-label={
-              mode === "design"
-                ? t("itops.actions.editDone")
-                : t("itops.actions.edit")
-            }
-            aria-pressed={mode === "design"}
-            disabled={busy}
+            className={`it-drill-action${objectBrowserOpen ? " active" : ""}`}
+            title={t("itops.networkMap.paletteLabel")}
+            aria-label={t("itops.networkMap.paletteLabel")}
+            aria-pressed={objectBrowserOpen}
             onClick={() => {
-              if (mode === "design" && dirty) void save();
-              setMode(mode === "design" ? "view" : "design");
+              setObjectBrowserOpen((open) => !open);
               setSelection(null);
               cancelPlacement();
             }}
@@ -2358,7 +2586,7 @@ function MapEditor({ map }: { map: NetworkMap }) {
       <div className="nm-body">
         <div
           className="au-canvas nm-canvas"
-          data-mode={mode}
+          data-mode="design"
           data-placing={placementDraft ? "true" : undefined}
           onPointerMoveCapture={(event) =>
             updatePlacementPoint(event.clientX, event.clientY)
@@ -2401,42 +2629,33 @@ function MapEditor({ map }: { map: NetworkMap }) {
             onNodeClick={(_event, node) => {
               if (placementDraft) return;
               if (node.type === "networkNote") {
-                if (mode === "design") setSelection({ kind: "note", id: node.id });
-                else if (mode === "view") setSelection({ kind: "note", id: node.id });
+                setSelection({ kind: "note", id: node.id });
                 return;
               }
-              if (mode === "impact") toggleDown("node", node.id);
-              else if (mode === "design") setSelection({ kind: "node", id: node.id });
-              else setSelection({ kind: "node", id: node.id });
+              setSelection({ kind: "node", id: node.id });
             }}
             onNodeDoubleClick={(_event, node) => {
-              if (placementDraft || mode === "impact") return;
+              if (placementDraft) return;
               if (node.type === "networkNote") openNoteProperties(node.id);
               else if (node.type === "networkNode") openNodeProperties(node.id);
             }}
             onNodeContextMenu={(event, node) => {
-              if (node.type !== "networkNode") return;
-              showNodeContextMenu(event, node.id);
+              if (node.type === "networkNote") showNoteContextMenu(event, node.id);
+              else if (node.type === "networkNode") showNodeContextMenu(event, node.id);
             }}
-            onEdgeClick={(_event, edge) =>
-              placementDraft
-                ? undefined
-                : mode === "impact"
-                  ? toggleDown("link", edge.id)
-                  : mode === "design"
-                    ? openLinkProperties(edge.id)
-                    : setSelection({ kind: "link", id: edge.id })
-            }
+            onEdgeClick={(_event, edge) => {
+              if (!placementDraft) openLinkProperties(edge.id);
+            }}
             onEdgeDoubleClick={(_event, edge) => {
-              if (placementDraft || mode === "impact") return;
+              if (placementDraft) return;
               openLinkProperties(edge.id);
             }}
             onPaneClick={() => {
               if (!placementDraft) setSelection(null);
             }}
             connectionMode={ConnectionMode.Loose}
-            nodesDraggable={mode === "design" && !placementDraft}
-            nodesConnectable={mode === "design" && !placementDraft}
+            nodesDraggable={!placementDraft}
+            nodesConnectable={!placementDraft}
             elevateNodesOnSelect={false}
             deleteKeyCode={null}
             fitView
@@ -2447,22 +2666,9 @@ function MapEditor({ map }: { map: NetworkMap }) {
           </ReactFlow>
         </div>
 
-        {mode !== "view" ? (
+        {objectBrowserOpen ? (
           <aside className="au-side nm-side kk-surface">
             <div className="au-side-in">
-              {mode === "impact" ? (
-              <ImpactPanel
-                analysis={analysis}
-                weakPoints={weakPoints}
-                stranded={stranded}
-                graph={graph}
-                onRestore={toggleDown}
-                onReset={() => {
-                  setDownNodes([]);
-                  setDownLinks([]);
-                }}
-              />
-              ) : (
                 <>
                 <div className="nm-side-heading">
                   <div className="au-side-title">{t("itops.networkMap.paletteLabel")}</div>
@@ -2540,7 +2746,6 @@ function MapEditor({ map }: { map: NetworkMap }) {
                   <p className="nm-notice">{t("itops.networkMap.noRootsHint")}</p>
                 ) : null}
                 </>
-              )}
             </div>
           </aside>
         ) : null}
@@ -2565,9 +2770,7 @@ function MapEditor({ map }: { map: NetworkMap }) {
           placement={nodeDialog.placement}
           onClose={() => setNodeDialog(null)}
           onDelete={
-            nodeDialog.placement || mode === "view"
-              ? undefined
-              : () => removeNode(nodeDialog.node.id)
+            nodeDialog.placement ? undefined : () => removeNode(nodeDialog.node.id)
           }
           onSubmit={(node, root) => {
             if (nodeDialog.placement) armNodePlacement(node, root);
@@ -2582,9 +2785,7 @@ function MapEditor({ map }: { map: NetworkMap }) {
           placement={noteDialog.placement}
           onClose={() => setNoteDialog(null)}
           onDelete={
-            noteDialog.placement || mode === "view"
-              ? undefined
-              : () => removeNote(noteDialog.note.id)
+            noteDialog.placement ? undefined : () => removeNote(noteDialog.note.id)
           }
           onSubmit={(note) => {
             if (noteDialog.placement) armNotePlacement(note);
@@ -2599,7 +2800,7 @@ function MapEditor({ map }: { map: NetworkMap }) {
           nodesById={nodesById}
           vlans={vlans}
           onClose={() => setLinkDialog(null)}
-          onDelete={mode === "design" ? () => removeLink(linkDialog.link.id) : undefined}
+          onDelete={() => removeLink(linkDialog.link.id)}
           onSubmit={(link) => patchLink(link.id, link)}
         />
       ) : null}
@@ -2661,105 +2862,6 @@ function VlanLegend({
       </div>
       <p className="au-side-hint">{t("itops.networkMap.vlanSpotlightHint")}</p>
     </section>
-  );
-}
-
-function ImpactPanel({
-  analysis,
-  weakPoints,
-  stranded,
-  graph,
-  onRestore,
-  onReset,
-}: {
-  analysis: ReturnType<typeof analyzeWhatIf>;
-  weakPoints: ReturnType<typeof findWeakPoints>;
-  stranded: NetworkNode[];
-  graph: NetworkGraph;
-  onRestore: (kind: "node" | "link", id: string) => void;
-  onReset: () => void;
-}) {
-  const { t } = useTranslation();
-  const unnamed = t("itops.networkMap.unnamedNode");
-  const byId = new Map(graph.nodes.map((node) => [node.id, node]));
-  const name = (id: string) => endpointName(byId, id, unnamed);
-  const linkName = (id: string) => {
-    const link = graph.links.find((entry) => entry.id === id);
-    if (!link) return id;
-    return link.label.trim() || `${name(link.from)} ↔ ${name(link.to)}`;
-  };
-
-  const touched = analysis.down.length + analysis.downLinks.length > 0;
-  return (
-    <>
-      <div className="au-side-title">{t("itops.networkMap.impactHeading")}</div>
-      <p className="au-side-hint">{t("itops.networkMap.impactHint")}</p>
-
-      <div className="nm-impact-summary" data-tone={analysis.isolated.length > 0 ? "bad" : "ok"}>
-        <strong>{analysis.isolated.length}</strong>
-        <span>
-          {t("itops.networkMap.impactSummary", { total: graph.nodes.length })}
-        </span>
-      </div>
-
-      {analysis.isolated.length > 0 ? (
-        <div className="nm-impact-list">
-          <span className="nm-impact-caption">{t("itops.networkMap.isolatedHeading")}</span>
-          {analysis.isolated.map((id) => (
-            <span key={id} className="nm-chip" data-tone="bad">
-              {name(id)}
-            </span>
-          ))}
-        </div>
-      ) : null}
-
-      {touched ? (
-        <div className="nm-impact-list">
-          <span className="nm-impact-caption">{t("itops.networkMap.downHeading")}</span>
-          {analysis.down.map((id) => (
-            <button key={id} type="button" className="nm-chip" onClick={() => onRestore("node", id)}>
-              {name(id)}
-              <ItIcon name="xmark" size={11} />
-            </button>
-          ))}
-          {analysis.downLinks.map((id) => (
-            <button key={id} type="button" className="nm-chip" onClick={() => onRestore("link", id)}>
-              {linkName(id)}
-              <ItIcon name="xmark" size={11} />
-            </button>
-          ))}
-          <Btn sm onClick={onReset}>
-            <span className="nm-btn-ic">
-              <ItIcon name="rotateL" size={12} />
-            </span>
-            {t("itops.networkMap.resetImpact")}
-          </Btn>
-        </div>
-      ) : null}
-
-      {weakPoints.length > 0 ? (
-        <div className="nm-weak">
-          <span className="nm-impact-caption">{t("itops.networkMap.weakHeading")}</span>
-          <p className="au-side-hint">{t("itops.networkMap.weakHint")}</p>
-          {weakPoints.slice(0, 6).map((point) => (
-            <div key={`${point.kind}:${point.id}`} className="nm-weak-row">
-              <ItIcon name={point.kind === "node" ? "server" : "link"} size={12} />
-              <span>{point.kind === "node" ? name(point.id) : linkName(point.id)}</span>
-              <small>{t("itops.networkMap.weakIsolates", { count: point.isolates })}</small>
-            </div>
-          ))}
-        </div>
-      ) : null}
-
-      {stranded.length > 0 ? (
-        <p className="nm-notice">
-          {t("itops.networkMap.strandedHint", {
-            count: stranded.length,
-            names: stranded.map((node) => nodeLabel(node, unnamed)).join(", "),
-          })}
-        </p>
-      ) : null}
-    </>
   );
 }
 

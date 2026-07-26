@@ -1912,6 +1912,12 @@
       "addressAdd": "Add IP address",
       "addressItemLabel": "IP address {{index}}",
       "addressRemove": "Remove IP address",
+      "interfacesLabel": "อินเทอร์เฟซ",
+      "interfaceAddTitle": "เพิ่มอินเทอร์เฟซ",
+      "interfaceEditTitle": "แก้ไขอินเทอร์เฟซ",
+      "interfaceEmpty": "ยังไม่มีอินเทอร์เฟซที่บันทึกไว้",
+      "interfaceUnbound": "ไม่ได้ผูกกับอินเทอร์เฟซ",
+      "endpointInterfaceLabel": "อินเทอร์เฟซของ {{node}}",
       "iconBackgroundLabel": "Icon background",
       "statusLabel": "สถานะ",
       "status": {

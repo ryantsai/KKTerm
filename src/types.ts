@@ -735,6 +735,12 @@ export type NetworkNodeKind =
 export type NetworkLinkKind = "ethernet" | "fiber" | "wan" | "wireless";
 export type NetworkMapStatus = "up" | "warning";
 
+export interface NetworkNodeInterface {
+  id: string;
+  name: string;
+  address: string;
+}
+
 export interface NetworkNode {
   id: string;
   label: string;
@@ -747,9 +753,9 @@ export interface NetworkNode {
   height: number;
   // Optional palette index overriding the node kind's icon background.
   iconAccent?: number | null;
-  // Operator-authored IP/interface addresses. Links can bind each endpoint to
-  // one address from the corresponding node.
-  addresses: string[];
+  // Durable interface inventory. Physical link members bind these stable ids,
+  // so renaming an interface or changing its address keeps the link intact.
+  interfaces: NetworkNodeInterface[];
   // Documented operator-authored state; never live monitoring data.
   status: NetworkMapStatus;
   hostId?: string | null;
@@ -763,8 +769,11 @@ export interface NetworkNode {
 // lands on a different port at each end of each member.
 export interface NetworkLinkStrand {
   id: string;
-  // Free-text port/circuit identifier for this member.
+  // Legacy single-ended port label retained for older saved maps.
   name: string;
+  // One interface binding on each endpoint for this physical member.
+  fromInterfaceId?: string | null;
+  toInterfaceId?: string | null;
   // Free text keeps units and aggregate notation operator-defined.
   speed: string;
 }
@@ -779,9 +788,6 @@ export interface NetworkLink {
   to: string;
   label: string;
   kind: NetworkLinkKind;
-  // Optional endpoint bindings into the corresponding node's `addresses`.
-  fromAddress?: string | null;
-  toAddress?: string | null;
   // One entry per parallel physical link; the backend guarantees at least one.
   strands: NetworkLinkStrand[];
   // Separate preserves one visible line per physical link. Bundle compresses

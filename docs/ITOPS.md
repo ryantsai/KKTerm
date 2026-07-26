@@ -541,45 +541,52 @@ lists each strand speed in separate mode or speed-group counts in bundle mode.
 The editor is keyed by map id so switching maps remounts rather than carrying
 unsaved edits across.
 
-A map opens in view-only mode. Its icon-only pen action follows the Site /
-Server Room / Rack drill-down contract: the pen enters edit mode and stays a
-pen while active. Selecting it again saves a changed graph and returns to
-view-only mode. It is the only action in the active map's top-right toolbar;
-map deletion remains in the navigator and overview-card menus. View-only mode
-permits canvas navigation and selection but disables node movement, resizing,
-linking, placement, and import. Double-clicking a Network Node, Note, or Network
-Link opens its Properties dialog in view-only mode; Save persists that property
-change immediately, and the dialog omits its destructive action. The right-side
-Nodes pane is mounted only in edit mode, so the read-only canvas uses the full
-workspace width. The pane owns the Import Hosts action. The What-If entry action
-is temporarily not exposed while that workflow is redesigned; the pure analysis
-code and graph model remain available for that later work.
+A map uses one canvas interaction mode: Network Nodes and Notes can always be
+selected, moved, resized, linked, duplicated, deleted, or opened in Properties.
+Changes save automatically after the interaction settles. The icon-only pen
+action only opens or closes the right-side object browser; it does not change
+canvas behavior. It is the only action in the active map's top-right toolbar;
+map deletion remains in the navigator and overview-card menus. The object
+browser owns placement and Import Hosts, while closing it gives the canvas the
+full workspace width. The What-If entry action is temporarily not exposed while
+that workflow is redesigned; the pure analysis code and graph model remain
+available for that later work.
 
 Network Nodes use a compact, left-anchored card: a small icon tile, thin
 internal padding, and the remaining width reserved for the label and caption.
-New and imported nodes start at the compact default size, while every saved
-node keeps its own persisted dimensions.
+When a Network Node has notes, a wide card uses the right side for the note;
+narrow cards put an ellipsized note preview along the bottom. New and imported
+nodes start at the compact default size, while every saved node keeps its own
+persisted dimensions.
 
-In edit mode, Nodes-pane cards use the same configure-then-place interaction
+Object-browser cards use the same configure-then-place interaction
 as Server Room editing: click a card, complete its Properties dialog, then
 move the cursor-tracked ghost and click the canvas to place it. The configured
 draft does not enter the graph until that placement click; right-click or
 Escape cancels it. Ghost tracking and the primary placement action run from
 the map canvas's capture-phase pointer events so React Flow child layers cannot
-swallow either interaction. A Network Node's native right-click menu contains
-Duplicate, Delete, then a separated final Properties item. Duplicate opens the
+swallow either interaction. A Network Node or Note native right-click menu
+contains Duplicate, Delete, then a separated final Properties item. Duplicate opens the
 same prefilled Properties dialog and arms the resulting copy for placement.
-The edit-mode Nodes pane remains the object picker and map summary at all times;
+The object browser remains the object picker and map summary at all times;
 it never becomes a property inspector. Single-clicking an existing Network
 Node or Note selects it and exposes its drag-resize handles. The element
 updates continuously while a handle is dragged; double-clicking opens its
 Properties dialog. Clicking a Network Link opens that link's
 Properties dialog. Edits are applied to the in-memory graph only when that
 dialog's Save action is confirmed.
-Network Nodes persist their individual width/height, palette-backed icon
-background, and an ordered list of documented IP addresses.
-A Network Link may bind each endpoint independently to one address exposed by
-that endpoint node; removing the address clears the corresponding binding.
+Network Node Properties puts the device artwork and palette-backed icon
+background choices in one compact identity header. Small status choices use
+icon-backed radio cards; the 25-item node-kind list remains a select. Each node
+persists its individual width/height and an ordered interface inventory. An
+interface has a stable id, name, and optional documented IP address, and is
+added or edited in a focused nested dialog instead of expanding the parent
+Properties dialog.
+A Network Link's small medium, status, and strand-display choices also use
+icon-backed radio cards. Every physical strand independently binds one
+interface at each endpoint; removing an interface clears only bindings that
+used its stable id. Legacy node address lists and link-wide endpoint address
+bindings are migrated into interfaces and the first strand when maps are read.
 Resizable Network Map Notes store Markdown source in their existing text field
 and a palette-backed background. Their Properties dialog provides a compact
 formatting toolbar plus a sanitized live preview; the canvas renders the same

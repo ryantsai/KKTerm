@@ -1375,8 +1375,18 @@ pub enum NetworkMapStatus {
     Warning,
 }
 
-/// One device on a Network Map. `address` is a free-text canvas caption; the
-/// three id fields are optional soft references retained for imported Hosts.
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkNodeInterface {
+    pub id: String,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub address: String,
+}
+
+/// One device on a Network Map. The three id fields are optional soft
+/// references retained for imported Hosts.
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NetworkNode {
@@ -1396,10 +1406,12 @@ pub struct NetworkNode {
     /// Optional palette index overriding the node kind's icon background.
     #[serde(default)]
     pub icon_accent: Option<u8>,
-    /// Operator-authored IP/interface addresses.
+    /// Named interfaces. Link members bind these stable ids.
     #[serde(default)]
+    pub interfaces: Vec<NetworkNodeInterface>,
+    /// Pre-interface-list shapes, folded into `interfaces` while reading.
+    #[serde(default, skip_serializing)]
     pub addresses: Vec<String>,
-    /// Pre-address-list shape, folded into `addresses` while reading.
     #[serde(default, rename = "address", skip_serializing)]
     pub legacy_address: String,
     /// Operator-authored documentation, never a live monitoring result.
@@ -1425,6 +1437,10 @@ pub struct NetworkLinkStrand {
     /// Free-text port/circuit identifier for this member.
     #[serde(default)]
     pub name: String,
+    #[serde(default)]
+    pub from_interface_id: Option<String>,
+    #[serde(default)]
+    pub to_interface_id: Option<String>,
     /// Free text keeps units and aggregate notation operator-defined.
     #[serde(default)]
     pub speed: String,
@@ -1450,10 +1466,10 @@ pub struct NetworkLink {
     pub label: String,
     #[serde(default)]
     pub kind: NetworkLinkKind,
-    /// Optional bindings to one address on each endpoint node.
-    #[serde(default)]
+    /// Pre-interface binding shape, folded into the first strand while reading.
+    #[serde(default, skip_serializing)]
     pub from_address: Option<String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub to_address: Option<String>,
     /// One entry per parallel physical link; never empty after sanitizing.
     #[serde(default)]

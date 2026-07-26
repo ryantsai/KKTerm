@@ -136,14 +136,15 @@ test("Network Maps configure palette items before ghost placement and expose nat
     read("src/modules/itops/itops.css"),
   ]);
 
-  assert.match(types, /addresses: string\[\];/);
-  assert.match(types, /fromAddress\?: string \| null;/);
-  assert.match(types, /toAddress\?: string \| null;/);
+  assert.match(types, /interface NetworkNodeInterface/);
+  assert.match(types, /interfaces: NetworkNodeInterface\[\];/);
+  assert.match(types, /fromInterfaceId\?: string \| null;/);
+  assert.match(types, /toInterfaceId\?: string \| null;/);
   assert.match(types, /notes: NetworkMapNote\[\];/);
-  assert.match(rustTypes, /pub addresses: Vec<String>/);
+  assert.match(rustTypes, /pub interfaces: Vec<NetworkNodeInterface>/);
   assert.match(storage, /legacy_address/);
-  assert.match(storage, /from_address[\s\S]*from_addresses\.contains/);
-  assert.match(storage, /to_address[\s\S]*to_addresses\.contains/);
+  assert.match(storage, /from_interface_id[\s\S]*from_interfaces/);
+  assert.match(storage, /to_interface_id[\s\S]*to_interfaces/);
 
   assert.match(designer, /<NodeResizer/);
   assert.match(canvasChanges, /NETWORK_NODE_WIDTH = 156;/);
@@ -184,32 +185,40 @@ test("Network Maps configure palette items before ghost placement and expose nat
   assert.match(designer, /onNodeContextMenu=\{\(event, node\) =>/);
   assert.match(
     designer,
-    /onNodeClick=\{\(_event, node\) =>[\s\S]*mode === "design"\) setSelection\(\{ kind: "note", id: node\.id \}\)[\s\S]*mode === "design"\) setSelection\(\{ kind: "node", id: node\.id \}\)/,
+    /node\.type === "networkNote"\) showNoteContextMenu\(event, node\.id\)/,
   );
   assert.match(
     designer,
-    /onNodeDoubleClick=\{\(_event, node\) =>[\s\S]*mode === "impact"[\s\S]*node\.type === "networkNote"[\s\S]*openNoteProperties\(node\.id\)[\s\S]*openNodeProperties\(node\.id\)/,
+    /onNodeClick=\{\(_event, node\) =>[\s\S]*setSelection\(\{ kind: "note", id: node\.id \}\)[\s\S]*setSelection\(\{ kind: "node", id: node\.id \}\)/,
+  );
+  assert.match(
+    designer,
+    /onNodeDoubleClick=\{\(_event, node\) =>[\s\S]*node\.type === "networkNote"[\s\S]*openNoteProperties\(node\.id\)[\s\S]*openNodeProperties\(node\.id\)/,
   );
   assert.match(designer, /onEdgeClick=\{\(_event, edge\) =>[\s\S]*openLinkProperties\(edge\.id\)/);
   assert.match(
     designer,
-    /onEdgeDoubleClick=\{\(_event, edge\) => \{[\s\S]*mode === "impact"[\s\S]*openLinkProperties\(edge\.id\)/,
+    /onEdgeDoubleClick=\{\(_event, edge\) => \{[\s\S]*placementDraft[\s\S]*openLinkProperties\(edge\.id\)/,
   );
-  assert.match(designer, /if \(mode === "view"\) void save\(nextGraph\);/);
+  assert.match(designer, /setTimeout\(\(\) => \{[\s\S]*saveNetworkMap\(/);
   assert.doesNotMatch(designer, /\) : selected(?:Node|Note|Link) \? \(/);
-  assert.match(
-    designer,
-    /mode === "impact" \? \([\s\S]*<ImpactPanel[\s\S]*\) : \([\s\S]*itops\.networkMap\.paletteLabel/,
-  );
+  assert.match(designer, /\{objectBrowserOpen \? \([\s\S]*itops\.networkMap\.paletteLabel/);
   assert.match(
     designer,
     /label: t\("itops\.actions\.duplicate"\)[\s\S]*label: t\("itops\.actions\.delete"\)[\s\S]*kind: "separator"[\s\S]*label: t\("common\.properties"\)/,
   );
+  assert.match(
+    designer,
+    /function showNoteContextMenu[\s\S]*label: t\("itops\.actions\.duplicate"\)[\s\S]*label: t\("itops\.actions\.delete"\)[\s\S]*label: t\("common\.properties"\)/,
+  );
   assert.doesNotMatch(designer, /application\/x-kkterm-network-map/);
   assert.doesNotMatch(designer, /onDrop=\{dropPaletteItem\}/);
   assert.doesNotMatch(designer, /\sdraggable(?:\s|=)/);
-  assert.match(designer, /itops\.networkMap\.iconBackgroundLabel/);
-  assert.match(designer, /itops\.networkMap\.endpointAddressLabel/);
+  assert.match(designer, /className="nm-node-identity"/);
+  assert.match(designer, /function NodeInterfaceEditor/);
+  assert.match(designer, /itops\.networkMap\.endpointInterfaceLabel/);
+  assert.doesNotMatch(designer, /itops\.networkMap\.rootLabel/);
+  assert.match(designer, /className="nm-choice-grid"/);
   assert.match(designer, /type: "networkNote"/);
   assert.match(designer, /zIndex: 0/);
   assert.match(designer, /zIndex: 1/);
@@ -233,8 +242,12 @@ test("Network Maps configure palette items before ghost placement and expose nat
   assert.match(styles, /\.nm-side\s*\{[\s\S]*align-items: stretch;/);
   assert.match(
     styles,
-    /\.nm-node\s*\{[\s\S]*justify-content: flex-start;[\s\S]*gap: 6px;[\s\S]*padding: 5px 6px;/,
+    /\.nm-node\s*\{[\s\S]*padding: 5px 6px;[\s\S]*container-name: network-map-node;/,
   );
+  assert.match(styles, /\.nm-node-note\s*\{/);
+  assert.match(styles, /@container network-map-node \(min-width: 240px\)/);
+  assert.match(designer, /note: node\.note/);
+  assert.match(designer, /className="nm-node-note"/);
   assert.match(
     styles,
     /\.nm-node-ic\s*\{[\s\S]*width: 32px;[\s\S]*height: 32px;[\s\S]*border-radius: 8px;/,
@@ -256,38 +269,33 @@ test("Network Maps configure palette items before ghost placement and expose nat
   );
 });
 
-test("Network Maps open view-only, use one edit pen, expose reliable link handles, and keep destructive map actions in menus", async () => {
+test("Network Maps use one interaction mode, a browser pen, reliable link handles, and menu-owned destructive map actions", async () => {
   const [designer, sites, styles] = await Promise.all([
     read("src/modules/itops/NetworkMapDesigner.tsx"),
     read("src/modules/itops/SitesTab.tsx"),
     read("src/modules/itops/itops.css"),
   ]);
 
-  assert.match(designer, /type EditorMode = "view" \| "design" \| "impact"/);
-  assert.match(designer, /useState<EditorMode>\("view"\)/);
+  assert.doesNotMatch(designer, /type EditorMode|useState<EditorMode>/);
   assert.match(
     designer,
-    /className=\{`it-drill-action\$\{mode === "design" \? " active" : ""\}`\}[\s\S]*setMode\(mode === "design" \? "view" : "design"\)[\s\S]*<ItIcon name="edit"/,
+    /className=\{`it-drill-action\$\{objectBrowserOpen \? " active" : ""\}`\}[\s\S]*setObjectBrowserOpen\(\(open\) => !open\)[\s\S]*<ItIcon name="edit"/,
   );
-  assert.doesNotMatch(designer, /<ItIcon name=\{mode === "design" \? "check" : "edit"\}/);
-  assert.match(designer, /if \(mode !== "design"\) return;[\s\S]*const onConnect/);
+  assert.doesNotMatch(designer, /setMode\(|mode !== "design"/);
   assert.match(designer, /connectionMode=\{ConnectionMode\.Loose\}/);
   assert.match(
     designer,
     /<Handle[\s\S]*?type="source"[\s\S]*?id=\{position\}[\s\S]*?position=\{position\}[\s\S]*?className="nm-handle"/,
   );
   assert.doesNotMatch(designer, /<Handle type="target" id=\{position\}/);
-  assert.match(designer, /nodesDraggable=\{mode === "design" && !placementDraft\}/);
-  assert.match(designer, /nodesConnectable=\{mode === "design" && !placementDraft\}/);
+  assert.match(designer, /nodesDraggable=\{!placementDraft\}/);
+  assert.match(designer, /nodesConnectable=\{!placementDraft\}/);
   assert.match(designer, /itops\.networkMap\.importTitle[\s\S]*setImporting\(true\)/);
   assert.match(
     designer,
-    /\{mode !== "view" \? \(\s*<aside className="au-side nm-side kk-surface">/,
+    /\{objectBrowserOpen \? \(\s*<aside className="au-side nm-side kk-surface">/,
   );
-  assert.match(
-    designer,
-    /mode === "design"\) setSelection\(\{ kind: "node", id: node\.id \}\);[\s\S]*else setSelection\(\{ kind: "node", id: node\.id \}\)/,
-  );
+  assert.match(designer, /setSelection\(\{ kind: "node", id: node\.id \}\)/);
   assert.doesNotMatch(designer, /itops\.networkMap\.modeImpact/);
   assert.match(
     designer,

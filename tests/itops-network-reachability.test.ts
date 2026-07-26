@@ -17,7 +17,7 @@ function node(id: string): NetworkNode {
     y: 0,
     width: 190,
     height: 80,
-    addresses: [],
+    interfaces: [],
     status: "up",
     note: "",
   };

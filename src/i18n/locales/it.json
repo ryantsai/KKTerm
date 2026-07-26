@@ -1912,6 +1912,12 @@
       "addressAdd": "Add IP address",
       "addressItemLabel": "IP address {{index}}",
       "addressRemove": "Remove IP address",
+      "interfacesLabel": "Interfacce",
+      "interfaceAddTitle": "Aggiungi interfaccia",
+      "interfaceEditTitle": "Modifica interfaccia",
+      "interfaceEmpty": "Nessuna interfaccia documentata.",
+      "interfaceUnbound": "Non associata a un’interfaccia",
+      "endpointInterfaceLabel": "Interfaccia di {{node}}",
       "iconBackgroundLabel": "Icon background",
       "statusLabel": "Stato",
       "status": {

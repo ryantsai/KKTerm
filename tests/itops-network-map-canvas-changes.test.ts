@@ -20,7 +20,7 @@ function graphFixture(): NetworkGraph {
         y: 20,
         width: 156,
         height: 52,
-        addresses: [],
+        interfaces: [],
         status: "up",
         note: "",
       },

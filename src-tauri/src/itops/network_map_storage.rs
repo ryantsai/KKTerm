@@ -9,6 +9,7 @@ use std::collections::HashSet;
 
 use super::types::{
     NetworkGraph, NetworkLink, NetworkLinkStrand, NetworkMap, NetworkMapNote, NetworkNode,
+    NetworkNodeInterface,
 };
 
 /// Ceiling on parallel physical links recorded for one drawn link. The canvas
@@ -114,16 +115,43 @@ fn sanitize_graph(graph: &NetworkGraph) -> NetworkGraph {
 }
 
 fn sanitize_node(mut node: NetworkNode) -> NetworkNode {
-    let mut seen = HashSet::new();
-    if node.addresses.is_empty() {
-        node.addresses
-            .push(std::mem::take(&mut node.legacy_address));
+    if node.interfaces.is_empty() {
+        if node.addresses.is_empty() {
+            node.addresses
+                .push(std::mem::take(&mut node.legacy_address));
+        }
+        node.interfaces = node
+            .addresses
+            .drain(..)
+            .filter_map(non_empty)
+            .enumerate()
+            .map(|(index, address)| NetworkNodeInterface {
+                id: format!("{}-interface-{index}", node.id),
+                name: String::new(),
+                address,
+            })
+            .collect();
     }
-    node.addresses = node
-        .addresses
+    node.addresses.clear();
+    node.legacy_address.clear();
+    let mut seen_ids = HashSet::new();
+    let mut seen_values = HashSet::new();
+    node.interfaces = node
+        .interfaces
         .drain(..)
-        .filter_map(non_empty)
-        .filter(|address| seen.insert(address.clone()))
+        .enumerate()
+        .filter_map(|(index, mut interface)| {
+            interface.name = interface.name.trim().to_string();
+            interface.address = interface.address.trim().to_string();
+            if interface.name.is_empty() && interface.address.is_empty() {
+                return None;
+            }
+            let preferred = non_empty(interface.id);
+            interface.id = unique_interface_id(&mut seen_ids, &node.id, index, preferred);
+            seen_values
+                .insert((interface.name.clone(), interface.address.clone()))
+                .then_some(interface)
+        })
         .take(32)
         .collect();
     node.width = node.width.clamp(120.0, 360.0);
@@ -140,26 +168,56 @@ fn sanitize_note(mut note: NetworkMapNote) -> NetworkMapNote {
 
 fn sanitize_link(mut link: NetworkLink, nodes: &[NetworkNode]) -> NetworkLink {
     link.strands = migrate_strands(&link);
-    let from_addresses = nodes
+    let from_interfaces = nodes
         .iter()
         .find(|node| node.id == link.from)
-        .map(|node| node.addresses.as_slice())
+        .map(|node| node.interfaces.as_slice())
         .unwrap_or_default();
-    let to_addresses = nodes
+    let to_interfaces = nodes
         .iter()
         .find(|node| node.id == link.to)
-        .map(|node| node.addresses.as_slice())
+        .map(|node| node.interfaces.as_slice())
         .unwrap_or_default();
-    link.from_address = link
-        .from_address
-        .take()
-        .and_then(non_empty)
-        .filter(|address| from_addresses.contains(address));
-    link.to_address = link
-        .to_address
-        .take()
-        .and_then(non_empty)
-        .filter(|address| to_addresses.contains(address));
+    for strand in &mut link.strands {
+        strand.from_interface_id = strand
+            .from_interface_id
+            .take()
+            .and_then(non_empty)
+            .filter(|id| from_interfaces.iter().any(|interface| interface.id == *id));
+        strand.to_interface_id = strand
+            .to_interface_id
+            .take()
+            .and_then(non_empty)
+            .filter(|id| to_interfaces.iter().any(|interface| interface.id == *id));
+    }
+    if let Some(first) = link.strands.first_mut() {
+        if first.from_interface_id.is_none() {
+            first.from_interface_id = link
+                .from_address
+                .take()
+                .and_then(non_empty)
+                .and_then(|address| {
+                    from_interfaces
+                        .iter()
+                        .find(|interface| interface.address == address)
+                        .map(|interface| interface.id.clone())
+                });
+        }
+        if first.to_interface_id.is_none() {
+            first.to_interface_id = link
+                .to_address
+                .take()
+                .and_then(non_empty)
+                .and_then(|address| {
+                    to_interfaces
+                        .iter()
+                        .find(|interface| interface.address == address)
+                        .map(|interface| interface.id.clone())
+                });
+        }
+    }
+    link.from_address = None;
+    link.to_address = None;
     // A native VLAN is untagged by definition, so listing it as tagged too is
     // a contradiction rather than extra information.
     let native = link.native_vlan_id.take().and_then(non_empty);
@@ -189,6 +247,8 @@ fn migrate_strands(link: &NetworkLink) -> Vec<NetworkLinkStrand> {
         .map(|(index, strand)| NetworkLinkStrand {
             id: unique_strand_id(&mut seen_ids, &link.id, index, non_empty(strand.id.clone())),
             name: strand.name.trim().to_string(),
+            from_interface_id: strand.from_interface_id.clone(),
+            to_interface_id: strand.to_interface_id.clone(),
             speed: strand.speed.trim().to_string(),
         })
         .collect();
@@ -201,11 +261,37 @@ fn migrate_strands(link: &NetworkLink) -> Vec<NetworkLinkStrand> {
                 // The pre-strand model had one speed for the whole bundle and
                 // no per-member port names, so every member inherits it.
                 name: String::new(),
+                from_interface_id: None,
+                to_interface_id: None,
                 speed: legacy_speed.clone(),
             })
             .collect();
     }
     strands
+}
+
+fn unique_interface_id(
+    seen: &mut HashSet<String>,
+    node_id: &str,
+    index: usize,
+    preferred: Option<String>,
+) -> String {
+    if let Some(id) = preferred
+        && seen.insert(id.clone())
+    {
+        return id;
+    }
+    let base = format!("{node_id}-interface-{index}");
+    if seen.insert(base.clone()) {
+        return base;
+    }
+    for suffix in 2.. {
+        let candidate = format!("{base}-{suffix}");
+        if seen.insert(candidate.clone()) {
+            return candidate;
+        }
+    }
+    unreachable!()
 }
 
 fn unique_strand_id(
@@ -396,6 +482,7 @@ mod tests {
             id: id.to_string(),
             name: name.to_string(),
             speed: speed.to_string(),
+            ..NetworkLinkStrand::default()
         }
     }
 
@@ -415,20 +502,32 @@ mod tests {
             " ".into(),
             "vlan-10".into(),
         ];
-        primary_link.from_address = Some(" 10.20.0.1 ".into());
-        primary_link.to_address = Some("10.20.0.99".into());
+        primary_link.strands[0].from_interface_id = Some("core-uplink".into());
+        primary_link.strands[0].to_interface_id = Some("edge-uplink".into());
+        primary_link.strands[1].from_interface_id = Some("missing".into());
         primary_link.status = NetworkMapStatus::Warning;
         primary_link.strand_display = NetworkLinkStrandDisplay::Bundle;
         let mut core = node("core");
-        core.addresses = vec![
-            " 10.20.0.1 ".into(),
-            "10.20.0.1".into(),
-            "2001:db8::1".into(),
+        core.interfaces = vec![
+            NetworkNodeInterface {
+                id: "core-uplink".into(),
+                name: " Gi1/0/1 ".into(),
+                address: " 10.20.0.1 ".into(),
+            },
+            NetworkNodeInterface {
+                id: "core-uplink".into(),
+                name: "Gi1/0/2".into(),
+                address: "2001:db8::1".into(),
+            },
         ];
         core.width = 500.0;
         core.height = 40.0;
         let mut edge = node("edge");
-        edge.addresses = vec!["10.20.0.2".into()];
+        edge.interfaces = vec![NetworkNodeInterface {
+            id: "edge-uplink".into(),
+            name: "eth0".into(),
+            address: "10.20.0.2".into(),
+        }];
         let graph = NetworkGraph {
             nodes: vec![core, edge],
             links: vec![
@@ -455,10 +554,12 @@ mod tests {
         let listed = list_maps(&conn).unwrap();
         assert_eq!(listed.len(), 1);
         assert_eq!(listed[0].graph.nodes.len(), 2);
-        assert_eq!(
-            listed[0].graph.nodes[0].addresses,
-            vec!["10.20.0.1".to_string(), "2001:db8::1".to_string()]
-        );
+        let core_interfaces = &listed[0].graph.nodes[0].interfaces;
+        assert_eq!(core_interfaces.len(), 2);
+        assert_eq!(core_interfaces[0].id, "core-uplink");
+        assert_eq!(core_interfaces[0].name, "Gi1/0/1");
+        assert_eq!(core_interfaces[0].address, "10.20.0.1");
+        assert_eq!(core_interfaces[1].id, "core-interface-1");
         assert_eq!(listed[0].graph.nodes[0].width, 360.0);
         assert_eq!(listed[0].graph.nodes[0].height, 44.0);
         assert_eq!(listed[0].graph.notes[0].text, "Maintenance boundary");
@@ -480,8 +581,15 @@ mod tests {
         assert_eq!(stored.native_vlan_id.as_deref(), Some("vlan-10"));
         // Blanks, duplicates, and the native VLAN drop out of the tagged set.
         assert_eq!(stored.tagged_vlan_ids, vec!["vlan-20".to_string()]);
-        assert_eq!(stored.from_address.as_deref(), Some("10.20.0.1"));
-        assert!(stored.to_address.is_none());
+        assert_eq!(
+            stored.strands[0].from_interface_id.as_deref(),
+            Some("core-uplink")
+        );
+        assert_eq!(
+            stored.strands[0].to_interface_id.as_deref(),
+            Some("edge-uplink")
+        );
+        assert!(stored.strands[1].from_interface_id.is_none());
         assert_eq!(stored.status, NetworkMapStatus::Warning);
     }
 
@@ -492,9 +600,21 @@ mod tests {
             "INSERT INTO itops_network_maps (id, name, sort_order, graph_json)
              VALUES ('map-1', 'Legacy', 0, ?)",
             [r#"{
-                "nodes":[{"id":"core","address":" 10.0.0.1 "},{"id":"edge"},{"id":"leaf"}],
+                "nodes":[
+                    {"id":"core","addresses":[" 10.0.0.1 "]},
+                    {"id":"edge","addresses":["10.0.0.2"]},
+                    {"id":"leaf"}
+                ],
                 "links":[
-                    {"id":"lag","from":"core","to":"edge","connectionCount":3,"speed":" 10 Gbps "},
+                    {
+                        "id":"lag",
+                        "from":"core",
+                        "to":"edge",
+                        "fromAddress":"10.0.0.1",
+                        "toAddress":"10.0.0.2",
+                        "connectionCount":3,
+                        "speed":" 10 Gbps "
+                    },
                     {"id":"single","from":"core","to":"leaf"}
                 ],
                 "roots":[]
@@ -516,7 +636,16 @@ mod tests {
         assert_eq!(loaded.graph.links[1].strands.len(), 1);
         assert_eq!(loaded.graph.nodes[0].width, 120.0);
         assert_eq!(loaded.graph.nodes[0].height, 44.0);
-        assert_eq!(loaded.graph.nodes[0].addresses, vec!["10.0.0.1"]);
+        assert_eq!(loaded.graph.nodes[0].interfaces.len(), 1);
+        assert_eq!(loaded.graph.nodes[0].interfaces[0].address, "10.0.0.1");
+        assert_eq!(
+            lag.strands[0].from_interface_id.as_deref(),
+            Some("core-interface-0")
+        );
+        assert_eq!(
+            lag.strands[0].to_interface_id.as_deref(),
+            Some("edge-interface-0")
+        );
 
         // The legacy pair is never written back once folded in.
         update_map(&conn, "map-1", "Legacy", "", None, &loaded.graph).unwrap();
@@ -528,9 +657,20 @@ mod tests {
         let value: serde_json::Value = serde_json::from_str(&stored).unwrap();
         let first = &value["links"][0];
         assert!(value["nodes"][0].get("address").is_none());
-        assert_eq!(value["nodes"][0]["addresses"][0], "10.0.0.1");
+        assert!(value["nodes"][0].get("addresses").is_none());
+        assert_eq!(value["nodes"][0]["interfaces"][0]["address"], "10.0.0.1");
+        assert!(first.get("fromAddress").is_none());
+        assert!(first.get("toAddress").is_none());
         assert!(first.get("connectionCount").is_none());
         assert!(first.get("speed").is_none());
+        assert_eq!(
+            first["strands"][0]["fromInterfaceId"],
+            "core-interface-0"
+        );
+        assert_eq!(
+            first["strands"][0]["toInterfaceId"],
+            "edge-interface-0"
+        );
         assert_eq!(first["strands"][0]["speed"], "10 Gbps");
         assert_eq!(first["strandDisplay"], "separate");
     }
