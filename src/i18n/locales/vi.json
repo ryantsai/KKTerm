@@ -1768,6 +1768,8 @@
     "networkMap": {
       "heading": "Sơ đồ Mạng",
       "pageDescription": "Vẽ ra cách mạng lưới gắn kết với nhau, rồi thử một thay đổi trước khi thực hiện.",
+      "searchPlaceholder": "Tìm kiếm sơ đồ, nút, liên kết và siêu dữ liệu…",
+      "noMatches": "Không có sơ đồ mạng nào khớp với tìm kiếm.",
       "emptyBody": "Chưa có Sơ đồ Mạng nào. Tạo một sơ đồ và bắt đầu vẽ.",
       "newMapTitle": "Sơ đồ mới",
       "editMapTitle": "Chỉnh sửa Sơ đồ",

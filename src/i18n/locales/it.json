@@ -1768,6 +1768,8 @@
     "networkMap": {
       "heading": "Mappe di Rete",
       "pageDescription": "Disegna come sta insieme la rete, poi prova una modifica prima di farla davvero.",
+      "searchPlaceholder": "Cerca mappe, nodi, collegamenti e metadati…",
+      "noMatches": "Nessuna mappa di rete corrisponde alla ricerca.",
       "emptyBody": "Ancora nessuna Mappa di Rete. Creane una e inizia a disegnare.",
       "newMapTitle": "Nuova Mappa",
       "editMapTitle": "Modifica Mappa",

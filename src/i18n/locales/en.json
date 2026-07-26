@@ -1768,6 +1768,8 @@
     "networkMap": {
       "heading": "Network Maps",
       "pageDescription": "Draw how the network hangs together, then test a change before you make it.",
+      "searchPlaceholder": "Search maps, nodes, links, and metadata…",
+      "noMatches": "No Network Maps match your search.",
       "emptyBody": "No Network Maps yet. Create one and start drawing.",
       "newMapTitle": "New Map",
       "editMapTitle": "Edit Map",

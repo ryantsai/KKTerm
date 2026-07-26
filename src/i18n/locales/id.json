@@ -1768,6 +1768,8 @@
     "networkMap": {
       "heading": "Peta Jaringan",
       "pageDescription": "Gambarkan bagaimana jaringan saling terhubung, lalu uji sebuah perubahan sebelum Anda melakukannya.",
+      "searchPlaceholder": "Cari peta, node, tautan, dan metadata…",
+      "noMatches": "Tidak ada peta jaringan yang cocok dengan pencarian Anda.",
       "emptyBody": "Belum ada Peta Jaringan. Buat satu dan mulailah menggambar.",
       "newMapTitle": "Peta Baru",
       "editMapTitle": "Edit Peta",

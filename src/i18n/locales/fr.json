@@ -1768,6 +1768,8 @@
     "networkMap": {
       "heading": "Cartes réseau",
       "pageDescription": "Dessinez la façon dont le réseau tient ensemble, puis testez un changement avant de le faire.",
+      "searchPlaceholder": "Rechercher dans les cartes, nœuds, liens et métadonnées…",
+      "noMatches": "Aucune carte réseau ne correspond à votre recherche.",
       "emptyBody": "Aucune Carte réseau pour l’instant. Créez-en une et commencez à dessiner.",
       "newMapTitle": "Nouvelle Carte",
       "editMapTitle": "Modifier la Carte",

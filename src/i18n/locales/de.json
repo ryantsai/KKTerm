@@ -1768,6 +1768,8 @@
     "networkMap": {
       "heading": "Netzwerkkarten",
       "pageDescription": "Zeichnen Sie, wie das Netzwerk zusammenhängt, und testen Sie eine Änderung, bevor Sie sie durchführen.",
+      "searchPlaceholder": "Karten, Knoten, Verbindungen und Metadaten durchsuchen…",
+      "noMatches": "Keine Netzwerkkarten entsprechen Ihrer Suche.",
       "emptyBody": "Noch keine Netzwerkkarten. Legen Sie eine an und beginnen Sie zu zeichnen.",
       "newMapTitle": "Neue Karte",
       "editMapTitle": "Karte bearbeiten",

@@ -1768,6 +1768,8 @@
     "networkMap": {
       "heading": "Mapas de Rede",
       "pageDescription": "Desenhe como a rede se sustenta e teste uma mudança antes de fazê-la.",
+      "searchPlaceholder": "Pesquisar mapas, nós, links e metadados…",
+      "noMatches": "Nenhum mapa de rede corresponde à pesquisa.",
       "emptyBody": "Ainda não há Mapas de Rede. Crie um e comece a desenhar.",
       "newMapTitle": "Novo Mapa",
       "editMapTitle": "Editar Mapa",
