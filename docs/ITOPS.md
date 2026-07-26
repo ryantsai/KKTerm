@@ -501,7 +501,10 @@ with a compact animated SVG preview and graph counts. The card list responds
 to the destination's available width from one to four columns, and its search
 matches map metadata plus every saved Network Node and Network Link field;
 opening a card enters one full map workspace, where the tab strip switches
-between the other maps and Back returns to the list. It uses `@xyflow/react` the same way
+between the other maps and Back returns to the list. Every saved map also
+appears as a depth-one child beneath the expandable Network Maps row in the IT
+Ops navigator; selecting a child opens that map directly, while selecting the
+parent opens the card list. It uses `@xyflow/react` the same way
 `AutomationEditor.tsx` does — controlled `nodes`/`edges` via `useMemo`,
 position-and-dimension-only `onNodesChange` filtering, `deleteKeyCode={null}`,
 `proOptions={{ hideAttribution: true }}`. Because a Network Link is
@@ -521,7 +524,9 @@ In Design mode, palette cards use the same configure-then-place interaction as
 Server Room editing: click a card, complete its Properties dialog, then move the
 cursor-tracked ghost and click the canvas to place it. The configured draft
 does not enter the graph until that placement click; right-click or Escape
-cancels it. A Network Node's native right-click menu contains Duplicate,
+cancels it. Ghost tracking and the primary placement action run from the map
+canvas's capture-phase pointer events so React Flow child layers cannot swallow
+either interaction. A Network Node's native right-click menu contains Duplicate,
 Delete, then a separated final Properties item. Duplicate opens the same
 prefilled Properties dialog and arms the resulting copy for placement.
 The Design-mode right pane remains the object picker and map summary at all

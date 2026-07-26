@@ -12,7 +12,7 @@ test("Network Maps open as a gallery and keep map switching inside the focused w
   assert.match(designer, /<NetworkMapPreview map=\{map\}/);
   assert.match(designer, /className="nm-detail-nav"/);
   assert.match(designer, /className="nm-tabs" role="tablist"/);
-  assert.match(designer, /onClick=\{\(\) => setSelectedId\(""\)\}/);
+  assert.match(designer, /onClick=\{\(\) => selectMap\(""\)\}/);
   assert.match(designer, /className="nm-toolbar it-drill-toolbar"/);
   assert.match(designer, /className="nm-mode-action"/);
   assert.doesNotMatch(designer, /className="rm-segmented"/);
@@ -66,8 +66,9 @@ test("Network Nodes use the expanded device catalog and links expose complete do
 });
 
 test("Network Maps configure palette items before ghost placement and expose native node commands", async () => {
-  const [designer, types, rustTypes, storage, styles] = await Promise.all([
+  const [designer, sites, types, rustTypes, storage, styles] = await Promise.all([
     read("src/modules/itops/NetworkMapDesigner.tsx"),
+    read("src/modules/itops/SitesTab.tsx"),
     read("src/types.ts"),
     read("src-tauri/src/itops/types.rs"),
     read("src-tauri/src/itops/network_map_storage.rs"),
@@ -91,7 +92,18 @@ test("Network Maps configure palette items before ghost placement and expose nat
   assert.match(designer, /setNodeDialog\(\{ node: newNodeDraft\(kind\), root: false, placement: true \}\)/);
   assert.match(designer, /setPlacementDraft\(\{ kind: "node", node, root \}\)/);
   assert.match(designer, /className: "nm-placement-ghost-node"/);
-  assert.match(designer, /onPaneClick=\{\(event\) => \{[\s\S]*placeDraftAt\(event\.clientX, event\.clientY\)/);
+  assert.match(
+    designer,
+    /onPointerMoveCapture=\{\(event\) =>[\s\S]*updatePlacementPoint\(event\.clientX, event\.clientY\)/,
+  );
+  assert.match(
+    designer,
+    /onPointerDownCapture=\{\(event\) => \{[\s\S]*event\.button !== 0[\s\S]*placeDraftAt\(event\.clientX, event\.clientY\)/,
+  );
+  assert.doesNotMatch(
+    designer,
+    /onPaneClick=\{\(event\) => \{[\s\S]*placeDraftAt\(event\.clientX, event\.clientY\)/,
+  );
   assert.match(designer, /onNodeContextMenu=\{\(event, node\) =>/);
   assert.match(designer, /onNodeClick=\{\(_event, node\) =>[\s\S]*openNoteProperties\(node\.id\)[\s\S]*openNodeProperties\(node\.id\)/);
   assert.match(
@@ -121,6 +133,20 @@ test("Network Maps configure palette items before ghost placement and expose nat
   assert.match(styles, /--nm-note-accent/);
   assert.match(styles, /\.nm-placement-ghost-node\s*\{/);
   assert.match(styles, /\.nm-node\.ghost,/);
+
+  assert.match(sites, /const networkMaps = useItOpsStore\(\(state\) => state\.networkMaps\)/);
+  assert.match(
+    sites,
+    /hasChildren=\{networkMaps\.length > 0\}[\s\S]*toggleNode\(LIBRARY_SURFACES\.networkMaps\.nodeId\)/,
+  );
+  assert.match(
+    sites,
+    /networkMaps[\s\S]*\.map\(\(map\) => \([\s\S]*depth=\{1\}[\s\S]*label=\{map\.name\}[\s\S]*setSelectedNetworkMapId\(map\.id\)/,
+  );
+  assert.match(
+    sites,
+    /<NetworkMapDesigner[\s\S]*selectedMapId=\{selectedNetworkMapId\}[\s\S]*onSelectedMapIdChange=\{setSelectedNetworkMapId\}/,
+  );
 });
 
 test("VLANs are durable global records that Network Links reference and the overlay spotlights", async () => {
@@ -168,9 +194,12 @@ test("leaving the IT Ops Module exits the focused Network Map editor", async () 
 
   assert.match(page, /<ItOpsModule[\s\S]*active=\{active\}/);
   assert.match(module, /<SitesTab[\s\S]*active=\{active\}/);
-  assert.match(sites, /<NetworkMapDesigner active=\{active\} \/>/);
+  assert.match(
+    sites,
+    /<NetworkMapDesigner[\s\S]*active=\{active\}[\s\S]*selectedMapId=\{selectedNetworkMapId\}/,
+  );
   assert.match(
     designer,
-    /useEffect\(\(\) => \{\s*if \(!active\) \{\s*setSelectedId\(""\);[\s\S]*setDialog\(undefined\);[\s\S]*setPendingDelete\(null\);/,
+    /useEffect\(\(\) => \{\s*if \(!active\) \{\s*setLocalSelectedId\(""\);[\s\S]*onSelectedMapIdChange\?\.\(""\);[\s\S]*setDialog\(undefined\);[\s\S]*setPendingDelete\(null\);/,
   );
 });

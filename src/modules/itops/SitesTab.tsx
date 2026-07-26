@@ -228,12 +228,15 @@ export function SitesTab({
   const ipamItemCount = useItOpsStore(
     (state) => state.vlans.length + state.ipam.prefixes.length + state.ipam.addresses.length,
   );
-  const networkMapCount = useItOpsStore((state) => state.networkMaps.length);
+  const networkMaps = useItOpsStore((state) => state.networkMaps);
+  const networkMapsLoaded = useItOpsStore((state) => state.networkMapsLoaded);
+  const loadNetworkMaps = useItOpsStore((state) => state.loadNetworkMaps);
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [drill, setDrill] = useState<DrillPath>(EMPTY_DRILL);
   const [selectedDestination, setSelectedDestination] = useState<SiteDestination>("site");
   const [rootSurface, setRootSurface] = useState<RootSurface>("site");
+  const [selectedNetworkMapId, setSelectedNetworkMapId] = useState("");
   const [members, setMembers] = useState<ResolvedHost[]>([]);
   const [dialog, setDialog] = useState<{ group: Site | null } | null>(null);
   const [rackDialog, setRackDialog] = useState<{
@@ -283,6 +286,20 @@ export function SitesTab({
   useEffect(() => saveCollapsedNodeIds(collapsed), [collapsed]);
   useEffect(() => saveServerRoomTreeSort(serverRoomSort), [serverRoomSort]);
   useEffect(() => saveRackTreeSort(rackSort), [rackSort]);
+  useEffect(() => {
+    if (!networkMapsLoaded) {
+      void loadNetworkMaps().catch(() => undefined);
+    }
+  }, [loadNetworkMaps, networkMapsLoaded]);
+  useEffect(() => {
+    if (
+      networkMapsLoaded &&
+      selectedNetworkMapId &&
+      !networkMaps.some((map) => map.id === selectedNetworkMapId)
+    ) {
+      setSelectedNetworkMapId("");
+    }
+  }, [networkMaps, networkMapsLoaded, selectedNetworkMapId]);
 
   const isExpanded = useCallback((id: string) => !collapsed.has(id), [collapsed]);
   const toggleNode = useCallback((id: string) => {
@@ -309,9 +326,12 @@ export function SitesTab({
           next.add(nodeId.serverRoom(site.id, room.key));
         }
       }
+      if (networkMaps.length > 0) {
+        next.add(LIBRARY_SURFACES.networkMaps.nodeId);
+      }
       return next;
     });
-  }, [racksBySite, serverRoomsBySite, sites]);
+  }, [networkMaps.length, racksBySite, serverRoomsBySite, sites]);
 
   // Drag the splitter to resize the tree. During the drag we set the width
   // directly on the DOM element so the cursor stays in sync with the bar —
@@ -438,6 +458,7 @@ export function SitesTab({
     }
     if (destination === "networkMaps") {
       setRootSurface("networkMaps");
+      setSelectedNetworkMapId("");
       return;
     }
     const requestedSiteId = pendingNavigation.siteId;
@@ -816,7 +837,9 @@ export function SitesTab({
   }
 
   // The deepest selected node id, for tree-row highlighting.
-  const selectedId = rootSurface !== "site"
+  const selectedId = rootSurface === "networkMaps" && selectedNetworkMapId
+    ? `itops:networkMap:${selectedNetworkMapId}`
+    : rootSurface !== "site"
     ? LIBRARY_SURFACES[rootSurface].nodeId
     : !activeGroup
     ? ""
@@ -838,7 +861,7 @@ export function SitesTab({
   const q = query.trim().toLowerCase();
   const matchQ = (s: string) => !q || (s || t("itops.racks.unassigned")).toLowerCase().includes(q);
   const effectiveTreeWidth = treeCollapsed ? SITE_TREE_COLLAPSED_WIDTH : treeWidth;
-  const hasExpandableTreeNodes = sites.length > 0;
+  const hasExpandableTreeNodes = sites.length > 0 || networkMaps.length > 0;
   const selectedServerRoomsSiteId =
     rootSurface === "site" && selectedDestination === "serverRooms" && drill.serverRoom == null
       ? activeGroup?.id ?? null
@@ -1152,7 +1175,39 @@ export function SitesTab({
               <div className="ft-tree-library-label">{t("itops.navigation.library")}</div>
               <TreeRow depth={0} icon="code" label={t("itops.tasks.heading")} count={taskCount} hasChildren={false} open={false} selected={rootSurface === "tasks"} onSelect={() => setRootSurface("tasks")} />
               <TreeRow depth={0} icon="table" label={t("itops.ipam.heading")} count={ipamItemCount} hasChildren={false} open={false} selected={rootSurface === "ipam"} onSelect={() => setRootSurface("ipam")} />
-              <TreeRow depth={0} icon="network" label={t("itops.networkMap.heading")} count={networkMapCount} hasChildren={false} open={false} selected={rootSurface === "networkMaps"} onSelect={() => setRootSurface("networkMaps")} />
+              <TreeRow
+                depth={0}
+                icon="network"
+                label={t("itops.networkMap.heading")}
+                count={networkMaps.length}
+                hasChildren={networkMaps.length > 0}
+                open={isExpanded(LIBRARY_SURFACES.networkMaps.nodeId)}
+                selected={selectedId === LIBRARY_SURFACES.networkMaps.nodeId}
+                onToggle={() => toggleNode(LIBRARY_SURFACES.networkMaps.nodeId)}
+                onSelect={() => {
+                  setRootSurface("networkMaps");
+                  setSelectedNetworkMapId("");
+                }}
+              />
+              {isExpanded(LIBRARY_SURFACES.networkMaps.nodeId)
+                ? networkMaps
+                    .filter((map) => matchQ(map.name))
+                    .map((map) => (
+                      <TreeRow
+                        key={map.id}
+                        depth={1}
+                        icon="network"
+                        label={map.name}
+                        hasChildren={false}
+                        open={false}
+                        selected={selectedId === `itops:networkMap:${map.id}`}
+                        onSelect={() => {
+                          setRootSurface("networkMaps");
+                          setSelectedNetworkMapId(map.id);
+                        }}
+                      />
+                    ))
+                : null}
             </div>
           </>
         ) : null}
@@ -1173,7 +1228,11 @@ export function SitesTab({
         </div>
       ) : rootSurface === "networkMaps" ? (
         <div className="hg-detail it-destination-page">
-          <NetworkMapDesigner active={active} />
+          <NetworkMapDesigner
+            active={active}
+            selectedMapId={selectedNetworkMapId}
+            onSelectedMapIdChange={setSelectedNetworkMapId}
+          />
         </div>
       ) : activeGroup && selectedDestination === "hosts" ? (
         <div className="hg-detail it-destination-page">

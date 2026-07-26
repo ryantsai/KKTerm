@@ -2192,7 +2192,22 @@ function MapEditor({
           className="au-canvas nm-canvas"
           data-mode={mode}
           data-placing={placementDraft ? "true" : undefined}
-          onPointerMove={(event) => updatePlacementPoint(event.clientX, event.clientY)}
+          onPointerMoveCapture={(event) =>
+            updatePlacementPoint(event.clientX, event.clientY)
+          }
+          onPointerDownCapture={(event) => {
+            if (!placementDraft || event.button !== 0) return;
+            const target = event.target;
+            if (
+              target instanceof Element &&
+              target.closest(".react-flow__controls")
+            ) {
+              return;
+            }
+            event.preventDefault();
+            event.stopPropagation();
+            placeDraftAt(event.clientX, event.clientY);
+          }}
           onContextMenu={(event) => {
             if (!placementDraft) return;
             event.preventDefault();
@@ -2238,9 +2253,8 @@ function MapEditor({
                   ? toggleDown("link", edge.id)
                   : openLinkProperties(edge.id)
             }
-            onPaneClick={(event) => {
-              if (placementDraft) placeDraftAt(event.clientX, event.clientY);
-              else setSelection(null);
+            onPaneClick={() => {
+              if (!placementDraft) setSelection(null);
             }}
             nodesDraggable={mode === "design" && !placementDraft}
             nodesConnectable={mode === "design" && !placementDraft}
@@ -2552,7 +2566,15 @@ function ImpactPanel({
   );
 }
 
-export function NetworkMapDesigner({ active }: { active: boolean }) {
+export function NetworkMapDesigner({
+  active,
+  selectedMapId,
+  onSelectedMapIdChange,
+}: {
+  active: boolean;
+  selectedMapId?: string;
+  onSelectedMapIdChange?: (id: string) => void;
+}) {
   const { t } = useTranslation();
   const maps = useItOpsStore((state) => state.networkMaps);
   const sites = useItOpsStore((state) => state.sites);
@@ -2561,7 +2583,8 @@ export function NetworkMapDesigner({ active }: { active: boolean }) {
   const removeNetworkMap = useItOpsStore((state) => state.removeNetworkMap);
   const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
 
-  const [selectedId, setSelectedId] = useState("");
+  const [localSelectedId, setLocalSelectedId] = useState("");
+  const selectedId = selectedMapId ?? localSelectedId;
   const [query, setQuery] = useState("");
   const [dialog, setDialog] = useState<NetworkMap | null | undefined>(undefined);
   const [pendingDelete, setPendingDelete] = useState<NetworkMap | null>(null);
@@ -2572,12 +2595,18 @@ export function NetworkMapDesigner({ active }: { active: boolean }) {
 
   useEffect(() => {
     if (!active) {
-      setSelectedId("");
+      setLocalSelectedId("");
+      onSelectedMapIdChange?.("");
       setQuery("");
       setDialog(undefined);
       setPendingDelete(null);
     }
-  }, [active]);
+  }, [active, onSelectedMapIdChange]);
+
+  function selectMap(id: string) {
+    setLocalSelectedId(id);
+    onSelectedMapIdChange?.(id);
+  }
 
   const selected = maps.find((map) => map.id === selectedId);
   const siteNames = useMemo(
@@ -2610,7 +2639,7 @@ export function NetworkMapDesigner({ active }: { active: boolean }) {
     setPendingDelete(null);
     try {
       await removeNetworkMap(map.id);
-      if (selectedId === map.id) setSelectedId("");
+      if (selectedId === map.id) selectMap("");
       showStatusBarNotice(t("itops.networkMap.deletedNotice", { name: map.name }), {
         tone: "success",
       });
@@ -2660,7 +2689,7 @@ export function NetworkMapDesigner({ active }: { active: boolean }) {
             <button
               type="button"
               className="nm-back"
-              onClick={() => setSelectedId("")}
+              onClick={() => selectMap("")}
               aria-label={t("itops.actions.back")}
             >
               <ItIcon name="chevL" size={13} />
@@ -2675,7 +2704,7 @@ export function NetworkMapDesigner({ active }: { active: boolean }) {
                   role="tab"
                   aria-selected={map.id === selected.id}
                   data-active={map.id === selected.id}
-                  onClick={() => setSelectedId(map.id)}
+                  onClick={() => selectMap(map.id)}
                 >
                   <ItIcon name="network" size={13} />
                   <span>{map.name}</span>
@@ -2699,7 +2728,7 @@ export function NetworkMapDesigner({ active }: { active: boolean }) {
               <button
                 type="button"
                 className="nm-gallery-open"
-                onClick={() => setSelectedId(map.id)}
+                onClick={() => selectMap(map.id)}
                 aria-label={`${t("common.open")} ${map.name}`}
               >
                 <NetworkMapPreview map={map} />
@@ -2760,7 +2789,7 @@ export function NetworkMapDesigner({ active }: { active: boolean }) {
       {dialog !== undefined ? (
         <MapDialog
           map={dialog}
-          onSaved={(saved) => setSelectedId(saved.id)}
+          onSaved={(saved) => selectMap(saved.id)}
           onClose={() => setDialog(undefined)}
         />
       ) : null}
