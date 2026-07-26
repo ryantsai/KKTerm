@@ -196,7 +196,7 @@ function StatusNoticePopup({
 
   return (
     <div
-      className={`status-popup status-popup-pulse ${notice.tone} ${
+      className={`status-popup status-popup-pulse ${isProgress ? "is-progress" : ""} ${notice.tone} ${
         isExiting ? "is-exiting" : "is-entering"
       }`}
     >

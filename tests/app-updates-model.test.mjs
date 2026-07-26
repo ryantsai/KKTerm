@@ -284,4 +284,14 @@ test("app update uses a cancellable download phase before delayed installation",
     /\.status-popup-content\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*center;/s,
     "update progress content should stay on one horizontal row",
   );
+  assert.match(
+    statusBarSource,
+    /isProgress \? "is-progress" : ""/,
+    "progress notices should opt into the wider popup treatment",
+  );
+  assert.match(
+    workspaceCss,
+    /\.status-popup\.is-progress\s*\{[^}]*width:\s*min\(520px,\s*calc\(100vw - 48px\)\)/s,
+    "update progress popup should be wide enough to keep the download label on one line",
+  );
 });

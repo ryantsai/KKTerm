@@ -698,6 +698,11 @@
   will-change: opacity, transform;
 }
 
+.status-popup.is-progress {
+  width: min(520px, calc(100vw - 48px));
+  max-width: min(520px, calc(100vw - 48px));
+}
+
 [data-color-scheme="blue-see"] .status-popup,
 [data-color-scheme="dark"] .status-popup,
 [data-color-scheme="purple"] .status-popup {
