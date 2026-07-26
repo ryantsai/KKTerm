@@ -25,6 +25,7 @@ test("IPAM manages VLANs and IP Prefixes in one typed grid", async () => {
   assert.match(ipam, /itops\.ipam\.columnRecord/);
   assert.match(ipam, /siteGroup\.vlans\.map/);
   assert.match(ipam, /siteGroup\.prefixes\.map/);
+  assert.match(styles, /\.it-destination-page-head > \.ft-add-wrap,[\s\S]*flex: 0 0 auto;/);
   assert.match(styles, /grid-template-columns: 84px minmax\(250px, 2fr\)/);
   assert.match(manual, /shows VLAN and IP Prefix records together/);
 });

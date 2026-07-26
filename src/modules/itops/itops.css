@@ -4239,6 +4239,7 @@
   height: 20px;
   border-radius: 4px;
 }
+.itops-page .it-destination-page-head > .ft-add-wrap,
 .itops-page .ft-add-wrap {
   position: relative;
   flex: 0 0 auto;
