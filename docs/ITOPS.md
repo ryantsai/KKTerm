@@ -565,8 +565,9 @@ Duplicate, Delete, then a separated final Properties item. Duplicate opens the
 same prefilled Properties dialog and arms the resulting copy for placement.
 The edit-mode Nodes pane remains the object picker and map summary at all times;
 it never becomes a property inspector. Single-clicking an existing Network
-Node or Note selects it and exposes its drag-resize handles; double-clicking
-opens its Properties dialog. Clicking a Network Link opens that link's
+Node or Note selects it and exposes its drag-resize handles. The element
+updates continuously while a handle is dragged; double-clicking opens its
+Properties dialog. Clicking a Network Link opens that link's
 Properties dialog. Edits are applied to the in-memory graph only when that
 dialog's Save action is confirmed.
 Network Nodes persist their individual width/height, palette-backed icon

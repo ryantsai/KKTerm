@@ -71,6 +71,21 @@ import type {
 } from "../../types";
 import { ItIcon, IT_ACCENTS } from "./icons";
 import { ItOpsEmptyHint } from "./ItOpsEmptyHint";
+import {
+  applyNetworkMapCanvasNodeChanges,
+  NETWORK_NODE_HEIGHT as NODE_HEIGHT,
+  NETWORK_NODE_MAX_HEIGHT as NODE_MAX_HEIGHT,
+  NETWORK_NODE_MAX_WIDTH as NODE_MAX_WIDTH,
+  NETWORK_NODE_MIN_HEIGHT as NODE_MIN_HEIGHT,
+  NETWORK_NODE_MIN_WIDTH as NODE_MIN_WIDTH,
+  NETWORK_NODE_WIDTH as NODE_WIDTH,
+  NETWORK_NOTE_HEIGHT as NOTE_HEIGHT,
+  NETWORK_NOTE_MAX_HEIGHT as NOTE_MAX_HEIGHT,
+  NETWORK_NOTE_MAX_WIDTH as NOTE_MAX_WIDTH,
+  NETWORK_NOTE_MIN_HEIGHT as NOTE_MIN_HEIGHT,
+  NETWORK_NOTE_MIN_WIDTH as NOTE_MIN_WIDTH,
+  NETWORK_NOTE_WIDTH as NOTE_WIDTH,
+} from "./networkMapCanvasChanges";
 import { matchesNetworkMapSearch } from "./networkMapSearch";
 import { nextTopologyDuplicateName } from "./topologyDuplicate";
 import {
@@ -167,19 +182,6 @@ const NODE_STYLE: Record<NetworkNodeKind, { accent: string }> = {
   printer: { accent: IT_ACCENTS.pink },
   camera: { accent: IT_ACCENTS.red },
 };
-
-const NODE_WIDTH = 156;
-const NODE_HEIGHT = 52;
-const NODE_MIN_WIDTH = 120;
-const NODE_MIN_HEIGHT = 44;
-const NODE_MAX_WIDTH = 360;
-const NODE_MAX_HEIGHT = 220;
-const NOTE_WIDTH = 240;
-const NOTE_HEIGHT = 130;
-const NOTE_MIN_WIDTH = 180;
-const NOTE_MIN_HEIGHT = 90;
-const NOTE_MAX_WIDTH = 600;
-const NOTE_MAX_HEIGHT = 400;
 
 function newId(prefix: string): string {
   const id = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -1675,6 +1677,7 @@ function MapEditor({ map }: { map: NetworkMap }) {
       position: { x: note.x, y: note.y },
       width: note.width,
       height: note.height,
+      selected: selection?.kind === "note" && selection.id === note.id,
       zIndex: 0,
       data: {
         text: note.text || t("itops.networkMap.notePlaceholder"),
@@ -1689,6 +1692,7 @@ function MapEditor({ map }: { map: NetworkMap }) {
       position: { x: node.x, y: node.y },
       width: node.width,
       height: node.height,
+      selected: selection?.kind === "node" && selection.id === node.id,
       zIndex: 2,
       data: {
         label: nodeLabel(node, unnamed),
@@ -1846,42 +1850,7 @@ function MapEditor({ map }: { map: NetworkMap }) {
 
   const onNodesChange = useCallback((changes: NodeChange[]) => {
     if (mode !== "design") return;
-    // Positions and dimensions are the two canvas-owned properties.
-    setGraph((current) => {
-      let nextNodes = current.nodes;
-      let nextNotes = current.notes;
-      for (const change of changes) {
-        if (change.type === "position" && change.position) {
-          const position = change.position;
-          nextNodes = nextNodes.map((node) =>
-            node.id === change.id
-              ? { ...node, x: Math.round(position.x), y: Math.round(position.y) }
-              : node,
-          );
-          nextNotes = nextNotes.map((note) =>
-            note.id === change.id
-              ? { ...note, x: Math.round(position.x), y: Math.round(position.y) }
-              : note,
-          );
-        }
-        if (change.type === "dimensions" && change.dimensions) {
-          const { width, height } = change.dimensions;
-          nextNodes = nextNodes.map((node) =>
-            node.id === change.id
-              ? { ...node, width: Math.round(width), height: Math.round(height) }
-              : node,
-          );
-          nextNotes = nextNotes.map((note) =>
-            note.id === change.id
-              ? { ...note, width: Math.round(width), height: Math.round(height) }
-              : note,
-          );
-        }
-      }
-      return nextNodes === current.nodes && nextNotes === current.notes
-        ? current
-        : { ...current, nodes: nextNodes, notes: nextNotes };
-    });
+    setGraph((current) => applyNetworkMapCanvasNodeChanges(current, changes));
   }, [mode]);
 
   const onConnect = useCallback((connection: FlowConnection) => {

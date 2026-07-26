@@ -99,8 +99,9 @@ test("Network Nodes use the expanded device catalog and links expose complete do
 });
 
 test("Network Maps configure palette items before ghost placement and expose native node commands", async () => {
-  const [designer, sites, types, rustTypes, storage, styles] = await Promise.all([
+  const [designer, canvasChanges, sites, types, rustTypes, storage, styles] = await Promise.all([
     read("src/modules/itops/NetworkMapDesigner.tsx"),
+    read("src/modules/itops/networkMapCanvasChanges.ts"),
     read("src/modules/itops/SitesTab.tsx"),
     read("src/types.ts"),
     read("src-tauri/src/itops/types.rs"),
@@ -118,10 +119,14 @@ test("Network Maps configure palette items before ghost placement and expose nat
   assert.match(storage, /to_address[\s\S]*to_addresses\.contains/);
 
   assert.match(designer, /<NodeResizer/);
-  assert.match(designer, /const NODE_WIDTH = 156;/);
-  assert.match(designer, /const NODE_HEIGHT = 52;/);
-  assert.match(designer, /const NODE_MIN_WIDTH = 120;/);
-  assert.match(designer, /const NODE_MIN_HEIGHT = 44;/);
+  assert.match(canvasChanges, /NETWORK_NODE_WIDTH = 156;/);
+  assert.match(canvasChanges, /NETWORK_NODE_HEIGHT = 52;/);
+  assert.match(canvasChanges, /NETWORK_NODE_MIN_WIDTH = 120;/);
+  assert.match(canvasChanges, /NETWORK_NODE_MIN_HEIGHT = 44;/);
+  assert.match(
+    designer,
+    /setGraph\(\(current\) => applyNetworkMapCanvasNodeChanges\(current, changes\)\)/,
+  );
   assert.match(designer, /screenToFlowPosition/);
   assert.match(designer, /function NodePropertiesDialog/);
   assert.match(designer, /function NotePropertiesDialog/);
