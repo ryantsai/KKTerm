@@ -3,6 +3,76 @@
 All notable changes to KKTerm are documented here.
 
 ## Direct Downloads
+* 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.132/kkterm-0.1.132-windows-x64-setup.exe)
+* 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.132/kkterm-0.1.132-windows-arm64-setup.exe)
+* 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.132/kkterm-0.1.132-windows-x64-portable.zip)
+* 📦 [Portable for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.132/kkterm-0.1.132-windows-arm64-portable.zip)
+
+## Highlights
+- **Scheduled shutdown timer**: Add/adjust timer behavior so the warning window opens with a full grace period (Cancel gets its whole minute).  
+- **Global Quick Command Bundles (Terminal)**: Quick Commands are no longer locked to a single Connection—edit a bundle once and have it apply anywhere it’s selected.  
+- **IT Ops: IPAM + Network Map backend + designer upgrades**: Expand IT Ops with new IPAM and Network Map capabilities, including richer Network Map authoring and interaction improvements.  
+
+## New
+- **Scheduled shutdown timer** (scheduled shutdown timer) — by @ryantsai in https://github.com/ryantsai/KKTerm/pull/680  
+- **IPAM and Network Map backend for IT Ops** — by @ryantsai in https://github.com/ryantsai/KKTerm/pull/681  
+- **Custom header editor** — by @ryantsai in https://github.com/ryantsai/KKTerm/pull/683  
+- **Global Quick Command Bundles (Terminal)** — by @ryantsai in https://github.com/ryantsai/KKTerm/pull/684  
+- **Network Map device catalog + status indicators** — by @ryantsai in https://github.com/ryantsai/KKTerm/pull/688  
+- **IT Ops VLAN records, per-strand parallel links, and VLAN spotlight overlay** — by @ryantsai in https://github.com/ryantsai/KKTerm/pull/689  
+- **Network Map designer enhancements** — by @ryantsai in https://github.com/ryantsai/KKTerm/pull/690  
+- **Network Map canvas interactions improvements** — by @ryantsai in https://github.com/ryantsai/KKTerm/pull/691  
+
+## Improved
+- **Localize Componentry background labels** — by @ryantsai in https://github.com/ryantsai/KKTerm/pull/686  
+- **Showcase screenshots and dynamic backgrounds (docs)** — by @ryantsai in https://github.com/ryantsai/KKTerm/pull/685  
+- **Hero Geometric background animation fix** — by @ryantsai in https://github.com/ryantsai/KKTerm/pull/682 *(a small animation got unstuck—network links are still way more stubborn)*  
+
+## Fixed
+- **Scheduled shutdown timer warning grace period and warning-window ACL**  
+  - Fixes the warning deadline so you can still cancel during the full grace period.  
+  - Adds the missing `shutdown-warning` window capability so status updates work as expected.  
+  - (Fix authored by the scheduled shutdown timer PR work; co-authored by Claude Opus 5 in https://claude.ai/code/session_01UYr8pvpvtF1xThZNnQi6UD; PR not provided in the supplied context.)  
+
+## Internal
+- Update regex in **Collapse All** test to correctly match `useCallback` pattern (bdbe597).  
+- Refactor IT Ops Network Map code structure and related tests (multiple changes; example SHAs: 61cc3bf, eeb2298, c5efffc).  
+- Terminal background handling updates for maximized Pane/shared background ownership and transparency/padding rendering (e.g., c67d0f6, f55446c, and related changes in the same v0.1.132 range).  
+
+---
+
+## Highlights（重點）
+- **排程式關機計時器**：調整警告視窗開啟時機與宽限期，確保 **Cancel 一定有完整 1 分鐘**（系統才不會像釋放版的網管一樣秒跳）。  
+- **終端機全域 Quick Command Bundles**：Quick Commands 不再只能綁在單一 **Connection**；編輯一次 bundle，就能套用到所有使用它的地方。  
+- **IT Ops：IPAM + Network Map 後端與設計器強化**：擴充 IT Ops 的能力，包含更豐富的 Network Map 編輯與互動。  
+
+## New（新增）
+- **排程式關機計時器**（scheduled shutdown timer）— 由 @ryantsai 於 https://github.com/ryantsai/KKTerm/pull/680  
+- **IT Ops 的 IPAM 與 Network Map 後端** — 由 @ryantsai 於 https://github.com/ryantsai/KKTerm/pull/681  
+- **自訂標頭編輯器** — 由 @ryantsai 於 https://github.com/ryantsai/KKTerm/pull/683  
+- **全域 Quick Command Bundles（終端機）** — 由 @ryantsai 於 https://github.com/ryantsai/KKTerm/pull/684  
+- **Network Map 裝置目錄擴充與狀態指示** — 由 @ryantsai 於 https://github.com/ryantsai/KKTerm/pull/688  
+- **IT Ops VLAN 記錄、每股絕緣線（strand）平行鏈路、以及 VLAN spotlight 覆蓋** — 由 @ryantsai 於 https://github.com/ryantsai/KKTerm/pull/689  
+- **Network Map 設計器強化** — 由 @ryantsai 於 https://github.com/ryantsai/KKTerm/pull/690  
+- **Network Map canvas 互動改進** — 由 @ryantsai 於 https://github.com/ryantsai/KKTerm/pull/691  
+
+## Improved（改進）
+- **本地化 Componentry 背景標籤** — 由 @ryantsai 於 https://github.com/ryantsai/KKTerm/pull/686  
+- **展示截圖與動態背景（文件）** — 由 @ryantsai 於 https://github.com/ryantsai/KKTerm/pull/685  
+- **Hero Geometric 背景動畫修正** — 由 @ryantsai 於 https://github.com/ryantsai/KKTerm/pull/682 *(小動畫終於乖了；但 Network Link 通常更固執)*  
+
+## Fixed（修正）
+- **排程式關機計時器：警告宽限期與警告視窗 ACL**  
+  - 修正警告期限：在警告視窗真正開啟後重新錨定時間，確保可在宽限期內取消。  
+  - 新增缺失的 `shutdown-warning` 視窗能力（capability），讓狀態更新能正常運作。  
+  - （本次修正由排程式關機相關 PR 的工作內容完成；供應的上下文中未提供對應 PR 編號；並在 https://claude.ai/code/session_01UYr8pvpvtF1xThZNnQi6UD 內提到由 Claude Opus 5 共同撰寫。）  
+
+## Internal（內部）
+- 更新 **Collapse All** 測試的 regex，以正確符合 `useCallback` pattern（bdbe597）。  
+- 重構 IT Ops Network Map 相關程式結構與測試（多處變更；範例 SHA：61cc3bf、eeb2298、c5efffc）。  
+- 終端機背景處理更新：支援最大化 **Pane** 的共用背景所有權，以及透明度/內距渲染（例如 c67d0f6、f55446c，以及同一版本區間內的相關變更）。
+
+## Direct Downloads
 * 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.131/kkterm-0.1.131-windows-x64-setup.exe)
 * 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.131/kkterm-0.1.131-windows-arm64-setup.exe)
 * 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.131/kkterm-0.1.131-windows-x64-portable.zip)
