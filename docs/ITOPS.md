@@ -517,9 +517,15 @@ reads the map, it does not edit it. What-If is a contextual toolbar action,
 not a permanent Design / What-If segmented control; while active, the same
 action returns to Design.
 
-In Design mode, palette cards support both click-to-add and drag-and-drop at an
-exact canvas position. Network Nodes persist their individual width/height,
-palette-backed icon background, and an ordered list of documented IP addresses.
+In Design mode, palette cards use the same configure-then-place interaction as
+Server Room editing: click a card, complete its Properties dialog, then move the
+cursor-tracked ghost and click the canvas to place it. The configured draft
+does not enter the graph until that placement click; right-click or Escape
+cancels it. A Network Node's native right-click menu contains Duplicate,
+Delete, then a separated final Properties item. Duplicate opens the same
+prefilled Properties dialog and arms the resulting copy for placement.
+Network Nodes persist their individual width/height, palette-backed icon
+background, and an ordered list of documented IP addresses.
 A Network Link may bind each endpoint independently to one address exposed by
 that endpoint node; removing the address clears the corresponding binding.
 Resizable Network Map Notes store text and a palette-backed background. Notes,

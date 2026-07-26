@@ -65,7 +65,7 @@ test("Network Nodes use the expanded device catalog and links expose complete do
   assert.match(types, /\| "wirelessController"/);
 });
 
-test("Network Maps support address-bound links, palette drops, resizing, colors, and background Notes", async () => {
+test("Network Maps configure palette items before ghost placement and expose native node commands", async () => {
   const [designer, types, rustTypes, storage, styles] = await Promise.all([
     read("src/modules/itops/NetworkMapDesigner.tsx"),
     read("src/types.ts"),
@@ -85,8 +85,19 @@ test("Network Maps support address-bound links, palette drops, resizing, colors,
 
   assert.match(designer, /<NodeResizer/);
   assert.match(designer, /screenToFlowPosition/);
-  assert.match(designer, /application\/x-kkterm-network-map/);
-  assert.match(designer, /onDrop=\{dropPaletteItem\}/);
+  assert.match(designer, /function NodePropertiesDialog/);
+  assert.match(designer, /setNodeDialog\(\{ node: newNodeDraft\(kind\), root: false, placement: true \}\)/);
+  assert.match(designer, /setPlacementDraft\(\{ kind: "node", node, root \}\)/);
+  assert.match(designer, /className: "nm-placement-ghost-node"/);
+  assert.match(designer, /onPaneClick=\{\(event\) => \{[\s\S]*placeDraftAt\(event\.clientX, event\.clientY\)/);
+  assert.match(designer, /onNodeContextMenu=\{\(event, node\) =>/);
+  assert.match(
+    designer,
+    /label: t\("itops\.actions\.duplicate"\)[\s\S]*label: t\("itops\.actions\.delete"\)[\s\S]*kind: "separator"[\s\S]*label: t\("common\.properties"\)/,
+  );
+  assert.doesNotMatch(designer, /application\/x-kkterm-network-map/);
+  assert.doesNotMatch(designer, /onDrop=\{dropPaletteItem\}/);
+  assert.doesNotMatch(designer, /\sdraggable(?:\s|=)/);
   assert.match(designer, /itops\.networkMap\.iconBackgroundLabel/);
   assert.match(designer, /itops\.networkMap\.endpointAddressLabel/);
   assert.match(designer, /type: "networkNote"/);
@@ -95,6 +106,8 @@ test("Network Maps support address-bound links, palette drops, resizing, colors,
   assert.match(designer, /zIndex: 2/);
   assert.match(styles, /\.nm-note\s*\{/);
   assert.match(styles, /--nm-note-accent/);
+  assert.match(styles, /\.nm-placement-ghost-node\s*\{/);
+  assert.match(styles, /\.nm-node\.ghost,/);
 });
 
 test("VLANs are durable global records that Network Links reference and the overlay spotlights", async () => {

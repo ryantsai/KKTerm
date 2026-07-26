@@ -8982,8 +8982,6 @@
   color: var(--text);
   transform: translateY(-1px);
 }
-.itops-page .nm-picker-card[draggable="true"] { cursor: grab; }
-.itops-page .nm-picker-card[draggable="true"]:active { cursor: grabbing; }
 .itops-page .nm-picker-ic {
   display: inline-flex;
   align-items: center;
@@ -9032,6 +9030,21 @@
     opacity 160ms ease;
 }
 .nm-node:hover { transform: translateY(-2px); }
+.nm-placement-ghost-node {
+  pointer-events: none;
+}
+.itops-page .nm-canvas[data-placing="true"],
+.itops-page .nm-canvas[data-placing="true"] .react-flow__pane {
+  cursor: crosshair;
+}
+.nm-node.ghost,
+.nm-note.ghost {
+  border-style: dashed;
+  border-color: var(--accent);
+  opacity: 0.72;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+  transform: none;
+}
 .nm-node.sel {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
