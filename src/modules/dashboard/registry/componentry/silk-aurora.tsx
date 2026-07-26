@@ -224,32 +224,30 @@ export function SilkAurora({
     ).matches;
 
     const handlePointerMove = (event: PointerEvent) => {
-      if (!settings.interactive) {
+      if (!settings.interactive || event.buttons !== 0) {
         return;
       }
 
       const rect = container.getBoundingClientRect();
+      if (
+        event.clientX < rect.left ||
+        event.clientX > rect.right ||
+        event.clientY < rect.top ||
+        event.clientY > rect.bottom
+      ) {
+        return;
+      }
       targetMouseRef.current = {
         x: (event.clientX - rect.left) / rect.width,
         y: 1 - (event.clientY - rect.top) / rect.height,
       };
     };
 
-    const handlePointerLeave = () => {
-      targetMouseRef.current = { x: 0.5, y: 0.5 };
-    };
-
-    container.addEventListener("pointermove", handlePointerMove);
-    container.addEventListener("pointerleave", handlePointerLeave);
-
     try {
       const gl = canvas.getContext("webgl", { antialias: false, alpha: false });
       if (!gl) {
         setHasWebGLError(true);
-        return () => {
-          container.removeEventListener("pointermove", handlePointerMove);
-          container.removeEventListener("pointerleave", handlePointerLeave);
-        };
+        return;
       }
 
       const compileShader = (type: number, source: string) => {
@@ -370,6 +368,7 @@ export function SilkAurora({
 
       let rafId = 0;
       const start = performance.now();
+      document.addEventListener("pointermove", handlePointerMove, { passive: true });
 
       const render = (now: number) => {
         mouseRef.current.x +=
@@ -397,8 +396,7 @@ export function SilkAurora({
       rafId = requestAnimationFrame(render);
 
       return () => {
-        container.removeEventListener("pointermove", handlePointerMove);
-        container.removeEventListener("pointerleave", handlePointerLeave);
+        document.removeEventListener("pointermove", handlePointerMove);
         cancelAnimationFrame(rafId);
         resizeObserver.disconnect();
         gl.deleteBuffer(buffer);
@@ -408,10 +406,7 @@ export function SilkAurora({
       };
     } catch {
       setHasWebGLError(true);
-      return () => {
-        container.removeEventListener("pointermove", handlePointerMove);
-        container.removeEventListener("pointerleave", handlePointerLeave);
-      };
+      return;
     }
   }, [hasWebGLError, settings]);
 
@@ -495,5 +490,3 @@ export function SilkAurora({
 }
 
 export default SilkAurora;
-
-

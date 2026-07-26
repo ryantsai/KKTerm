@@ -3702,6 +3702,7 @@ function useParticleCursorAnim() {
     }
 
     function followPointer(event: PointerEvent) {
+      if (event.buttons !== 0) return;
       const rect = parent.getBoundingClientRect();
       targetX = Math.max(0, Math.min(width, event.clientX - rect.left));
       targetY = Math.max(0, Math.min(height, event.clientY - rect.top));

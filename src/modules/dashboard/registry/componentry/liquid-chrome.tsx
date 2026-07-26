@@ -201,8 +201,16 @@ export function LiquidChrome({
     };
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (!interactiveRef.current) return;
+      if (!interactiveRef.current || e.buttons !== 0) return;
       const rect = canvas.getBoundingClientRect();
+      if (
+        e.clientX < rect.left ||
+        e.clientX > rect.right ||
+        e.clientY < rect.top ||
+        e.clientY > rect.bottom
+      ) {
+        return;
+      }
       mouse[0] = (e.clientX - rect.left) / rect.width;
       mouse[1] = 1.0 - (e.clientY - rect.top) / rect.height;
     };
@@ -241,4 +249,3 @@ export function LiquidChrome({
     />
   );
 }
-

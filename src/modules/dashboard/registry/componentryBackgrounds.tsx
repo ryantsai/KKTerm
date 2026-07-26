@@ -70,6 +70,7 @@ export function SilkAuroraBg() {
       <SilkAurora
         className="componentry-background-root"
         style={FULL_SIZE_STYLE}
+        interactive
       />
     </ActiveComponentryBackground>
   );
@@ -81,6 +82,7 @@ export function ClosingPlasmaBg() {
       <ClosingPlasma
         className="componentry-background-root"
         style={FULL_SIZE_STYLE}
+        interactive
       />
     </ActiveComponentryBackground>
   );
@@ -110,7 +112,7 @@ export function LiquidChromeBg() {
     <ActiveComponentryBackground>
       <LiquidChrome
         className="componentry-background-root"
-        interactive={false}
+        interactive
       />
     </ActiveComponentryBackground>
   );

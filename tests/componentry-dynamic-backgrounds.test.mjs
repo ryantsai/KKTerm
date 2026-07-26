@@ -21,6 +21,20 @@ const adapterSource = await readFile(
   new URL("../src/modules/dashboard/registry/componentryBackgrounds.tsx", import.meta.url),
   "utf8",
 );
+const [silkAuroraSource, closingPlasmaSource, liquidChromeSource] = await Promise.all([
+  readFile(
+    new URL("../src/modules/dashboard/registry/componentry/silk-aurora.tsx", import.meta.url),
+    "utf8",
+  ),
+  readFile(
+    new URL("../src/modules/dashboard/registry/componentry/closing-plasma.tsx", import.meta.url),
+    "utf8",
+  ),
+  readFile(
+    new URL("../src/modules/dashboard/registry/componentry/liquid-chrome.tsx", import.meta.url),
+    "utf8",
+  ),
+]);
 const previewSource = await readFile(
   new URL("../src/modules/dashboard/registry/dynamicBackgroundPreviewArt.tsx", import.meta.url),
   "utf8",
@@ -75,6 +89,32 @@ test("all Componentry hero backgrounds use the shared KKTerm background path", a
   assert.match(adapterSource, /useDashboardAnimationActive/);
   assert.match(adapterSource, /active \? children : null/);
   assert.match(tauriConfig, /componentry-mit\.txt/);
+});
+
+test("dynamic backgrounds ignore click and press input", () => {
+  assert.doesNotMatch(
+    registrySource,
+    /addEventListener\(\s*["'](?:click|mousedown|mouseup|pointerdown|pointerup)["']/,
+  );
+  assert.match(registrySource, /if \(event\.buttons !== 0\) return;/);
+  assert.match(
+    adapterSource,
+    /<SilkAurora[\s\S]*?interactive\s*\/>/,
+  );
+  assert.match(
+    adapterSource,
+    /<ClosingPlasma[\s\S]*?interactive\s*\/>/,
+  );
+  assert.match(
+    adapterSource,
+    /<LiquidChrome[\s\S]*?interactive\s*\/>/,
+  );
+  for (const source of [silkAuroraSource, closingPlasmaSource]) {
+    assert.match(source, /document\.addEventListener\("pointermove", handlePointerMove/);
+    assert.match(source, /event\.buttons !== 0/);
+  }
+  assert.match(liquidChromeSource, /window\.addEventListener\("mousemove", handleMouseMove\)/);
+  assert.match(liquidChromeSource, /e\.buttons !== 0/);
 });
 
 test("Componentry background names exist in every locale", async () => {
