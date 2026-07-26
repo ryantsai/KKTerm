@@ -30,6 +30,7 @@ import type {
   RackMountFace,
   ResolvedHost,
   ServerRoom,
+  NetworkMap,
 } from "../../types";
 import { ConnectionIcon } from "../workspace/connections/ConnectionIcon";
 import { ItIcon, IT_ACCENTS, type ItIconName } from "./icons";
@@ -38,7 +39,10 @@ import { BatchRunsTab } from "./BatchRunsTab";
 import { AutomationsTab } from "./AutomationsTab";
 import { HostsPanel } from "./HostsPanel";
 import { IpamPanel } from "./IpamPanel";
-import { NetworkMapDesigner } from "./NetworkMapDesigner";
+import {
+  NetworkMapDesigner,
+  NetworkMapPropertiesDialog,
+} from "./NetworkMapDesigner";
 import { TaskLibrary } from "./TaskLibrary";
 import { RackElevation } from "./RackElevation";
 import { RackDialog } from "./RackDialog";
@@ -147,7 +151,8 @@ type PendingDelete =
   | { kind: "site"; site: Site }
   | { kind: "serverRoom"; siteId: string; room: ServerRoom; racks: Rack[] }
   | { kind: "rack"; siteId: string; rack: Rack }
-  | { kind: "item"; siteId: string; rack: Rack; item: RackItem };
+  | { kind: "item"; siteId: string; rack: Rack; item: RackItem }
+  | { kind: "networkMap"; map: NetworkMap };
 
 type RoomCloneDraft =
   | { kind: "rack"; rack: Rack; name: string; facing: Facing }
@@ -231,12 +236,18 @@ export function SitesTab({
   const networkMaps = useItOpsStore((state) => state.networkMaps);
   const networkMapsLoaded = useItOpsStore((state) => state.networkMapsLoaded);
   const loadNetworkMaps = useItOpsStore((state) => state.loadNetworkMaps);
+  const removeNetworkMap = useItOpsStore((state) => state.removeNetworkMap);
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [drill, setDrill] = useState<DrillPath>(EMPTY_DRILL);
   const [selectedDestination, setSelectedDestination] = useState<SiteDestination>("site");
   const [rootSurface, setRootSurface] = useState<RootSurface>("site");
   const [selectedNetworkMapId, setSelectedNetworkMapId] = useState("");
+  const [networkMapDialog, setNetworkMapDialog] = useState<{
+    map: NetworkMap | null;
+    duplicateOf?: NetworkMap;
+    duplicateName?: string;
+  } | null>(null);
   const [members, setMembers] = useState<ResolvedHost[]>([]);
   const [dialog, setDialog] = useState<{ group: Site | null } | null>(null);
   const [rackDialog, setRackDialog] = useState<{
@@ -652,6 +663,46 @@ export function SitesTab({
     );
   }
 
+  function showNetworkMapMenu(
+    event: ReactMouseEvent<HTMLElement>,
+    map: NetworkMap,
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+    void showNativeContextMenu(
+      [
+        {
+          kind: "item",
+          label: t("itops.actions.duplicate"),
+          iconSvg: nativeMenuIcons.copy,
+          action: () =>
+            setNetworkMapDialog({
+              map: null,
+              duplicateOf: map,
+              duplicateName: nextTopologyDuplicateName(
+                map.name,
+                networkMaps.map((entry) => entry.name),
+              ),
+            }),
+        },
+        {
+          kind: "item",
+          label: t("itops.actions.delete"),
+          iconSvg: nativeMenuIcons.trash,
+          action: () => setPendingDelete({ kind: "networkMap", map }),
+        },
+        { kind: "separator" },
+        {
+          kind: "item",
+          label: t("common.properties"),
+          iconSvg: nativeMenuIcons.pencil,
+          action: () => setNetworkMapDialog({ map }),
+        },
+      ],
+      { x: event.clientX, y: event.clientY },
+    );
+  }
+
   function setServerRoomSortDirection(siteId: string, direction: ServerRoomSortDirection) {
     setServerRoomSort((current) => ({ ...current, [siteId]: direction }));
   }
@@ -805,6 +856,17 @@ export function SitesTab({
       if (pending.kind === "rack") {
         await deleteRack(pending.siteId, pending.rack.id);
         setDrill({ serverRoom: pending.rack.serverRoom, rackId: null });
+        return;
+      }
+      if (pending.kind === "networkMap") {
+        await removeNetworkMap(pending.map.id);
+        if (selectedNetworkMapId === pending.map.id) {
+          setSelectedNetworkMapId("");
+        }
+        showStatusBarNotice(
+          t("itops.networkMap.deletedNotice", { name: pending.map.name }),
+          { tone: "success" },
+        );
         return;
       }
       await removeRackItem(pending.siteId, pending.item.id);
@@ -1206,6 +1268,7 @@ export function SitesTab({
                           setRootSurface("networkMaps");
                           setSelectedNetworkMapId(map.id);
                         }}
+                        onContextMenu={(event) => showNetworkMapMenu(event, map)}
                       />
                     ))
                 : null}
@@ -1310,6 +1373,18 @@ export function SitesTab({
         </div>
       ) : null}
 
+      {networkMapDialog ? (
+        <NetworkMapPropertiesDialog
+          map={networkMapDialog.map}
+          duplicateOf={networkMapDialog.duplicateOf}
+          duplicateName={networkMapDialog.duplicateName}
+          onClose={() => setNetworkMapDialog(null)}
+          onSaved={(saved) => {
+            setRootSurface("networkMaps");
+            setSelectedNetworkMapId(saved.id);
+          }}
+        />
+      ) : null}
       {dialog ? (
         <SiteDialog
           group={dialog.group}
@@ -1387,7 +1462,9 @@ export function SitesTab({
               ? t("itops.racks.deleteServerRoomTitle")
               : pendingDelete.kind === "rack"
                 ? t("itops.racks.deleteTitle")
-                : t("itops.racks.deleteItemTitle")
+                : pendingDelete.kind === "networkMap"
+                  ? t("itops.networkMap.deleteTitle")
+                  : t("itops.racks.deleteItemTitle")
           }
           message={
             pendingDelete.kind === "site"
@@ -1399,9 +1476,13 @@ export function SitesTab({
                 })
               : pendingDelete.kind === "rack"
                 ? t("itops.racks.deleteBody", { name: pendingDelete.rack.name })
-                : t("itops.racks.deleteItemBody", {
-                    name: pendingDelete.item.label || t(`itops.racks.kind.${pendingDelete.item.kind}`),
-                  })
+                : pendingDelete.kind === "networkMap"
+                  ? t("itops.networkMap.deleteBody", { name: pendingDelete.map.name })
+                  : t("itops.racks.deleteItemBody", {
+                      name:
+                        pendingDelete.item.label ||
+                        t(`itops.racks.kind.${pendingDelete.item.kind}`),
+                    })
           }
           confirmLabel={t("itops.actions.delete")}
           confirmIcon="trash"

@@ -1380,12 +1380,16 @@ function LinkPropertiesDialog({
   );
 }
 
-function MapDialog({
+export function NetworkMapPropertiesDialog({
   map,
+  duplicateOf,
+  duplicateName,
   onSaved,
   onClose,
 }: {
   map: NetworkMap | null;
+  duplicateOf?: NetworkMap | null;
+  duplicateName?: string;
   onSaved: (saved: NetworkMap) => void;
   onClose: () => void;
 }) {
@@ -1394,18 +1398,27 @@ function MapDialog({
   const saveNetworkMap = useItOpsStore((state) => state.saveNetworkMap);
   const sites = useItOpsStore((state) => state.sites);
   const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
-  const [name, setName] = useState(map?.name ?? "");
-  const [description, setDescription] = useState(map?.description ?? "");
-  const [siteId, setSiteId] = useState(map?.siteId ?? "");
+  const sourceMap = map ?? duplicateOf;
+  const isProperties = !!sourceMap;
+  const [name, setName] = useState(duplicateName ?? sourceMap?.name ?? "");
+  const [description, setDescription] = useState(sourceMap?.description ?? "");
+  const [siteId, setSiteId] = useState(sourceMap?.siteId ?? "");
   const [busy, setBusy] = useState(false);
 
   async function save() {
     if (!name.trim() || busy) return;
     setBusy(true);
     try {
-      const saved = map
-        ? await saveNetworkMap(map.id, name.trim(), description, siteId || null, map.graph)
-        : await createNetworkMap(name.trim(), description, siteId || null);
+      const saved = duplicateOf
+        ? await createNetworkMap(
+            name.trim(),
+            description,
+            siteId || null,
+            duplicateOf.graph,
+          )
+        : map
+          ? await saveNetworkMap(map.id, name.trim(), description, siteId || null, map.graph)
+          : await createNetworkMap(name.trim(), description, siteId || null);
       onSaved(saved);
       onClose();
     } catch (error) {
@@ -1420,14 +1433,13 @@ function MapDialog({
     <DialogShell onBackdrop={onClose}>
       <Sheet
         width={480}
-        title={map ? t("itops.networkMap.editMapTitle") : t("itops.networkMap.newMapTitle")}
-        sub={t("itops.networkMap.mapDialogSub")}
+        title={isProperties ? t("common.properties") : t("itops.networkMap.newMapTitle")}
         footer={
           <Actions
             cancel={<Btn onClick={onClose}>{t("itops.actions.cancel")}</Btn>}
             primary={
               <Btn kind="primary" icon="check" onClick={() => void save()} disabled={!name.trim() || busy}>
-                {t("itops.actions.save")}
+                {t(isProperties ? "itops.actions.save" : "itops.actions.create")}
               </Btn>
             }
           />
@@ -1523,7 +1535,7 @@ function ImportDialog({
   );
 }
 
-type EditorMode = "design" | "impact";
+type EditorMode = "view" | "design" | "impact";
 type Selection = { kind: "node" | "link" | "note"; id: string } | null;
 type PlacementDraft =
   | { kind: "node"; node: NetworkNode; root: boolean }
@@ -1543,11 +1555,9 @@ type LinkDialogRequest = {
 
 function MapEditor({
   map,
-  onEditMap,
   onDeleteMap,
 }: {
   map: NetworkMap;
-  onEditMap: () => void;
   onDeleteMap: () => void;
 }) {
   const { t } = useTranslation();
@@ -1556,7 +1566,7 @@ function MapEditor({
 
   const [graph, setGraph] = useState<NetworkGraph>(map.graph);
   const [savedJson, setSavedJson] = useState(() => JSON.stringify(map.graph));
-  const [mode, setMode] = useState<EditorMode>("design");
+  const [mode, setMode] = useState<EditorMode>("view");
   const [selection, setSelection] = useState<Selection>(null);
   const [downNodes, setDownNodes] = useState<string[]>([]);
   const [downLinks, setDownLinks] = useState<string[]>([]);
@@ -1828,6 +1838,7 @@ function MapEditor({
   ]);
 
   const onNodesChange = useCallback((changes: NodeChange[]) => {
+    if (mode !== "design") return;
     // Positions and dimensions are the two canvas-owned properties.
     setGraph((current) => {
       let nextNodes = current.nodes;
@@ -1864,9 +1875,10 @@ function MapEditor({
         ? current
         : { ...current, nodes: nextNodes, notes: nextNotes };
     });
-  }, []);
+  }, [mode]);
 
   const onConnect = useCallback((connection: FlowConnection) => {
+    if (mode !== "design") return;
     if (!connection.source || !connection.target || connection.source === connection.target) return;
     setGraph((current) => {
       const exists = current.links.some(
@@ -1894,7 +1906,7 @@ function MapEditor({
       };
       return { ...current, links: [...current.links, link] };
     });
-  }, []);
+  }, [mode]);
 
   function configureNewNode(kind: NetworkNodeKind) {
     cancelPlacement();
@@ -2154,12 +2166,25 @@ function MapEditor({
         <div className="it-drill-actions" aria-label={t("itops.actions.viewActions")}>
           <button
             type="button"
-            className="it-drill-action"
-            title={t("itops.actions.edit")}
-            aria-label={t("itops.actions.edit")}
-            onClick={onEditMap}
+            className={`it-drill-action${mode === "design" ? " active" : ""}`}
+            title={
+              mode === "design"
+                ? t("itops.actions.editDone")
+                : t("itops.actions.edit")
+            }
+            aria-label={
+              mode === "design"
+                ? t("itops.actions.editDone")
+                : t("itops.actions.edit")
+            }
+            aria-pressed={mode === "design"}
+            onClick={() => {
+              setMode(mode === "design" ? "view" : "design");
+              setSelection(null);
+              cancelPlacement();
+            }}
           >
-            <ItIcon name="edit" size={15} />
+            <ItIcon name={mode === "design" ? "check" : "edit"} size={15} />
           </button>
           <button
             type="button"
@@ -2175,7 +2200,7 @@ function MapEditor({
             className="it-drill-action"
             title={t("itops.networkMap.importTitle")}
             aria-label={t("itops.networkMap.importTitle")}
-            disabled={mode === "impact"}
+            disabled={mode !== "design"}
             onClick={() => setImporting(true)}
           >
             <ItIcon name="download" size={15} />
@@ -2240,10 +2265,12 @@ function MapEditor({
               if (placementDraft) return;
               if (node.type === "networkNote") {
                 if (mode === "design") openNoteProperties(node.id);
+                else if (mode === "view") setSelection({ kind: "note", id: node.id });
                 return;
               }
               if (mode === "impact") toggleDown("node", node.id);
-              else openNodeProperties(node.id);
+              else if (mode === "design") openNodeProperties(node.id);
+              else setSelection({ kind: "node", id: node.id });
             }}
             onNodeDoubleClick={(_event, node) => {
               if (
@@ -2264,7 +2291,9 @@ function MapEditor({
                 ? undefined
                 : mode === "impact"
                   ? toggleDown("link", edge.id)
-                  : openLinkProperties(edge.id)
+                  : mode === "design"
+                    ? openLinkProperties(edge.id)
+                    : setSelection({ kind: "link", id: edge.id })
             }
             onPaneClick={() => {
               if (!placementDraft) setSelection(null);
@@ -2280,9 +2309,10 @@ function MapEditor({
           </ReactFlow>
         </div>
 
-        <aside className="au-side nm-side kk-surface">
-          <div className="au-side-in">
-            {mode === "impact" ? (
+        {mode !== "view" ? (
+          <aside className="au-side nm-side kk-surface">
+            <div className="au-side-in">
+              {mode === "impact" ? (
               <ImpactPanel
                 analysis={analysis}
                 weakPoints={weakPoints}
@@ -2294,8 +2324,8 @@ function MapEditor({
                   setDownLinks([]);
                 }}
               />
-            ) : (
-              <>
+              ) : (
+                <>
                 <div className="au-side-title">{t("itops.networkMap.paletteLabel")}</div>
                 <div className="nm-picker-groups">
                   {NODE_CATEGORIES.map((category) => (
@@ -2360,10 +2390,11 @@ function MapEditor({
                 {graph.roots.length === 0 && graph.nodes.length > 0 ? (
                   <p className="nm-notice">{t("itops.networkMap.noRootsHint")}</p>
                 ) : null}
-              </>
-            )}
-          </div>
-        </aside>
+                </>
+              )}
+            </div>
+          </aside>
+        ) : null}
       </div>
 
       {importing ? (
@@ -2705,7 +2736,6 @@ export function NetworkMapDesigner({
           <MapEditor
             key={selected.id}
             map={selected}
-            onEditMap={() => setDialog(selected)}
             onDeleteMap={() => setPendingDelete(selected)}
           />
         </div>
@@ -2749,7 +2779,7 @@ export function NetworkMapDesigner({
                 <button
                   type="button"
                   className="it-icon-btn"
-                  aria-label={t("itops.actions.edit")}
+                  aria-label={t("common.properties")}
                   onClick={() => setDialog(map)}
                 >
                   <ItIcon name="edit" size={13} />
@@ -2775,7 +2805,7 @@ export function NetworkMapDesigner({
       ) : null}
 
       {dialog !== undefined ? (
-        <MapDialog
+        <NetworkMapPropertiesDialog
           map={dialog}
           onSaved={(saved) => selectMap(saved.id)}
           onClose={() => setDialog(undefined)}

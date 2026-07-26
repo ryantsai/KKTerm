@@ -191,6 +191,49 @@ test("Network Maps configure palette items before ghost placement and expose nat
   );
 });
 
+test("Network Maps open view-only, toggle editing with the drill-view pen, and expose map tree commands", async () => {
+  const [designer, sites] = await Promise.all([
+    read("src/modules/itops/NetworkMapDesigner.tsx"),
+    read("src/modules/itops/SitesTab.tsx"),
+  ]);
+
+  assert.match(designer, /type EditorMode = "view" \| "design" \| "impact"/);
+  assert.match(designer, /useState<EditorMode>\("view"\)/);
+  assert.match(
+    designer,
+    /className=\{`it-drill-action\$\{mode === "design" \? " active" : ""\}`\}[\s\S]*itops\.actions\.editDone[\s\S]*itops\.actions\.edit[\s\S]*setMode\(mode === "design" \? "view" : "design"\)[\s\S]*<ItIcon name=\{mode === "design" \? "check" : "edit"\}/,
+  );
+  assert.match(designer, /if \(mode !== "design"\) return;[\s\S]*const onConnect/);
+  assert.match(designer, /nodesDraggable=\{mode === "design" && !placementDraft\}/);
+  assert.match(designer, /nodesConnectable=\{mode === "design" && !placementDraft\}/);
+  assert.match(designer, /disabled=\{mode !== "design"\}[\s\S]*setImporting\(true\)/);
+  assert.match(
+    designer,
+    /\{mode !== "view" \? \(\s*<aside className="au-side nm-side kk-surface">/,
+  );
+  assert.match(
+    designer,
+    /mode === "design"\) openNodeProperties\(node\.id\);[\s\S]*setSelection\(\{ kind: "node", id: node\.id \}\)/,
+  );
+
+  assert.match(
+    sites,
+    /function showNetworkMapMenu\([\s\S]*label: t\("itops\.actions\.duplicate"\)[\s\S]*label: t\("itops\.actions\.delete"\)[\s\S]*kind: "separator"[\s\S]*label: t\("common\.properties"\)/,
+  );
+  assert.match(sites, /onContextMenu=\{\(event\) => showNetworkMapMenu\(event, map\)\}/);
+  assert.match(sites, /duplicateName: nextTopologyDuplicateName\(/);
+  assert.match(sites, /setPendingDelete\(\{ kind: "networkMap", map \}\)/);
+
+  assert.match(designer, /export function NetworkMapPropertiesDialog/);
+  assert.match(designer, /title=\{isProperties \? t\("common\.properties"\)/);
+  assert.match(designer, /Field label=\{t\("itops\.networkMap\.nameLabel"\)\}/);
+  assert.match(designer, /Field label=\{t\("itops\.networkMap\.descriptionLabel"\)\}/);
+  assert.match(
+    designer,
+    /duplicateOf[\s\S]*createNetworkMap\([\s\S]*duplicateOf\.graph/,
+  );
+});
+
 test("VLANs are durable global records that Network Links reference and the overlay spotlights", async () => {
   const [designer, types, sites, styles] = await Promise.all([
     read("src/modules/itops/NetworkMapDesigner.tsx"),

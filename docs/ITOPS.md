@@ -506,7 +506,11 @@ the canvas toolbar; map selection and returning to the overview stay in the
 left navigator. Every saved map also
 appears as a depth-one child beneath the expandable Network Maps row in the IT
 Ops navigator; selecting a child opens that map directly, while selecting the
-parent opens the card list. It uses `@xyflow/react` the same way
+parent opens the card list. A map child row's native context menu contains
+Duplicate, Delete, then a separated final Properties item. Duplicate opens a
+prefilled Properties dialog and creates a complete copy of the stored map;
+Properties edits the map name, description, and optional Site tag. It uses
+`@xyflow/react` the same way
 `AutomationEditor.tsx` does — controlled `nodes`/`edges` via `useMemo`,
 position-and-dimension-only `onNodesChange` filtering, `deleteKeyCode={null}`,
 `proOptions={{ hideAttribution: true }}`. Because a Network Link is
@@ -515,25 +519,32 @@ source+target handles (`left`/`right`/`top`/`bottom`) and the edge picks its
 `sourceHandle`/`targetHandle` per render from the two node centres. The
 custom edge renderer draws an orthogonal route and expands a parallel-link
 count into up to four visible strands while keeping handle/anchor state out
-of the stored graph. The editor is keyed by map id so switching
-maps remounts rather than carrying unsaved edits across. In What-If mode the
-palette and the canvas's drag/connect affordances are disabled: that mode
-reads the map, it does not edit it. What-If is a contextual toolbar action,
-not a permanent Design / What-If segmented control; while active, the same
-action returns to Design.
+of the stored graph. The editor is keyed by map id so switching maps remounts
+rather than carrying unsaved edits across.
 
-In Design mode, palette cards use the same configure-then-place interaction as
-Server Room editing: click a card, complete its Properties dialog, then move the
-cursor-tracked ghost and click the canvas to place it. The configured draft
-does not enter the graph until that placement click; right-click or Escape
-cancels it. Ghost tracking and the primary placement action run from the map
-canvas's capture-phase pointer events so React Flow child layers cannot swallow
-either interaction. A Network Node's native right-click menu contains Duplicate,
-Delete, then a separated final Properties item. Duplicate opens the same
-prefilled Properties dialog and arms the resulting copy for placement.
-The Design-mode right pane remains the object picker and map summary at all
-times; it never becomes a property inspector. Clicking an existing Network
-Node, Network Link, or Note opens that element's Properties dialog; explicitly
+A map opens in view-only mode. Its icon-only pen action follows the Site /
+Server Room / Rack drill-down contract: pen enters edit mode, and the check
+icon returns to view-only mode. View-only mode permits canvas navigation and
+selection but disables node movement, resizing, linking, placement, import,
+and element Properties dialogs. The right-side Nodes pane is mounted only in
+edit mode, so the read-only canvas uses the full workspace width. In What-If
+mode the Nodes pane is replaced by the impact-analysis panel and the canvas's
+drag/connect affordances remain disabled. What-If is a contextual toolbar
+action, not a permanent mode segmented control; while active, the same action
+returns to edit mode.
+
+In edit mode, Nodes-pane cards use the same configure-then-place interaction
+as Server Room editing: click a card, complete its Properties dialog, then
+move the cursor-tracked ghost and click the canvas to place it. The configured
+draft does not enter the graph until that placement click; right-click or
+Escape cancels it. Ghost tracking and the primary placement action run from
+the map canvas's capture-phase pointer events so React Flow child layers cannot
+swallow either interaction. A Network Node's native right-click menu contains
+Duplicate, Delete, then a separated final Properties item. Duplicate opens the
+same prefilled Properties dialog and arms the resulting copy for placement.
+The edit-mode Nodes pane remains the object picker and map summary at all times;
+it never becomes a property inspector. Clicking an existing Network Node,
+Network Link, or Note opens that element's Properties dialog; explicitly
 double-clicking a Network Node opens the same dialog. Edits are applied to the
 in-memory graph only when that dialog's Save action is confirmed.
 Network Nodes persist their individual width/height, palette-backed icon
