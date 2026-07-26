@@ -33,7 +33,10 @@ test("assistant progress states use the accessible Componentry-derived kinetic t
   assert.match(workPanelSource, /repel=\{statusKind === "waiting"\}/);
   assert.match(workPanelSource, /<AssistantKineticText[\s\S]*tone="skill"/);
   assert.match(workPanelSource, /<AssistantKineticText[\s\S]*tone="tool"/);
-  assert.match(panelSource, /<AssistantKineticText repel text=\{t\("ai\.preparingResponse"\)\}/);
+  assert.match(panelSource, /<AssistantPendingStatus repel text=\{t\("ai\.preparingResponse"\)\}/);
+  assert.match(kineticSource, /function AssistantWaitingDots\(\)/);
+  assert.doesNotMatch(panelSource, /AssistantWaitingDots/);
+  assert.doesNotMatch(workPanelSource, /AssistantWaitingDots/);
   assert.match(componentryLicense, /Kinetic Text Reveal, and Text Repel/);
 });
 

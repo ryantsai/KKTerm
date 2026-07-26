@@ -16,7 +16,7 @@ import {
   assistantWorkPanelShouldShowThinkingStep,
   latestRunningAssistantToolCall,
 } from "./streamMessage";
-import { AssistantKineticText, AssistantWaitingDots } from "./AssistantKineticText";
+import { AssistantKineticText, AssistantPendingStatus } from "./AssistantKineticText";
 
 export function AssistantWorkPanel({ message }: { message: AssistantChatMessage }) {
   const { t } = useTranslation();
@@ -95,12 +95,15 @@ export function AssistantWorkPanel({ message }: { message: AssistantChatMessage 
         type="button"
       >
         <span className="assistant-work-status">
-          <AssistantKineticText
-            repel={statusKind === "waiting"}
-            text={label}
-            tone={statusKind === "tool" ? "tool" : statusKind === "skill" ? "skill" : "waiting"}
-          />
-          {message.isStreaming ? <AssistantWaitingDots /> : null}
+          {message.isStreaming ? (
+            <AssistantPendingStatus
+              repel={statusKind === "waiting"}
+              text={label}
+              tone={statusKind === "tool" ? "tool" : statusKind === "skill" ? "skill" : "waiting"}
+            />
+          ) : (
+            <AssistantKineticText text={label} />
+          )}
         </span>
         {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
       </button>

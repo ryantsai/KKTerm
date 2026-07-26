@@ -71,7 +71,7 @@ import { parseAssistantSecretRequests } from "./secretRequest";
 import { scrollAssistantChatToBottom, shouldFollowAssistantChat } from "./assistantScroll";
 import type { AiToolPermissionMode, AssistantContextSnippet } from "../types";
 import { AssistantMessageView, formatBytes } from "./AssistantMessageView";
-import { AssistantKineticText, AssistantWaitingDots } from "./AssistantKineticText";
+import { AssistantKineticText, AssistantPendingStatus } from "./AssistantKineticText";
 import { runAssistantLiveTool } from "./assistantLiveTools";
 import { AssistantToolApprovalCards } from "./AssistantToolApprovalCards";
 import {
@@ -2110,8 +2110,7 @@ export function AssistantPanel({
         ) : null}
         {shouldShowPreStreamWaiting ? (
           <article className="assistant-message assistant-waiting" aria-live="polite">
-            <AssistantKineticText repel text={t("ai.preparingResponse")} />
-            <AssistantWaitingDots />
+            <AssistantPendingStatus repel text={t("ai.preparingResponse")} />
           </article>
         ) : null}
       </div>

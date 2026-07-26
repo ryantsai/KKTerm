@@ -12,6 +12,7 @@ import {
   type MotionValue,
 } from "motion/react";
 import { useEffect, useMemo, useRef, type MouseEvent } from "react";
+import { withoutTrailingAssistantStatusEllipsis } from "./assistantStatusText";
 
 type AssistantKineticTextTone = "waiting" | "tool" | "skill";
 
@@ -204,7 +205,28 @@ function AssistantRepelLetter({
   );
 }
 
-export function AssistantWaitingDots() {
+export function AssistantPendingStatus({
+  repel = false,
+  text,
+  tone = "waiting",
+}: {
+  repel?: boolean;
+  text: string;
+  tone?: AssistantKineticTextTone;
+}) {
+  return (
+    <>
+      <AssistantKineticText
+        repel={repel}
+        text={withoutTrailingAssistantStatusEllipsis(text)}
+        tone={tone}
+      />
+      <AssistantWaitingDots />
+    </>
+  );
+}
+
+function AssistantWaitingDots() {
   return (
     <span className="assistant-waiting-dots" aria-hidden="true">
       <span />
