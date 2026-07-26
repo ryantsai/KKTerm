@@ -580,10 +580,14 @@ Network Nodes persist their individual width/height, palette-backed icon
 background, and an ordered list of documented IP addresses.
 A Network Link may bind each endpoint independently to one address exposed by
 that endpoint node; removing the address clears the corresponding binding.
-Resizable Network Map Notes store text and a palette-backed background. Notes,
-links, and Network Nodes use explicit ascending React Flow z-orders so every
-link and Network Node remains above a Note. Notes never enter the reachability
-graph.
+Resizable Network Map Notes store Markdown source in their existing text field
+and a palette-backed background. Their Properties dialog provides a compact
+formatting toolbar plus a sanitized live preview; the canvas renders the same
+sanitized Markdown with heading, emphasis, list, quote, link, and code styling.
+Notes use a neutral hairline border. Notes, links, and Network Nodes use
+explicit ascending React Flow z-orders, and selected-node elevation is disabled
+for the canvas so every link and Network Node remains above a selected Note.
+Notes never enter the reachability graph.
 
 ### IT Ops destination-page UI contract
 

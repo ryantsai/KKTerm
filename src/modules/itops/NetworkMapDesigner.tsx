@@ -22,6 +22,8 @@ import {
 } from "react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
+import DOMPurify from "dompurify";
+import { marked } from "marked";
 import {
   Background,
   BackgroundVariant,
@@ -89,6 +91,10 @@ import {
   NETWORK_NOTE_WIDTH as NOTE_WIDTH,
 } from "./networkMapCanvasChanges";
 import { matchesNetworkMapSearch } from "./networkMapSearch";
+import {
+  formatNetworkMapNoteMarkdown,
+  type NetworkMapNoteFormatAction,
+} from "./networkMapNoteMarkdown";
 import { nextTopologyDuplicateName } from "./topologyDuplicate";
 import {
   analyzeWhatIf,
@@ -468,7 +474,16 @@ interface MapNoteData extends Record<string, unknown> {
   ghost?: boolean;
 }
 
+function renderNetworkMapNoteMarkdown(markdown: string): string {
+  const html = marked.parse(markdown, { async: false, breaks: true }) as string;
+  return DOMPurify.sanitize(html);
+}
+
 function MapNote({ data }: NodeProps<Node<MapNoteData>>) {
+  const renderedMarkdown = useMemo(
+    () => renderNetworkMapNoteMarkdown(data.text),
+    [data.text],
+  );
   return (
     <div
       className={`nm-note${data.selected ? " sel" : ""}${data.ghost ? " ghost" : ""}`}
@@ -487,7 +502,10 @@ function MapNote({ data }: NodeProps<Node<MapNoteData>>) {
         lineClassName="nm-resize-line"
         handleClassName="nm-resize-handle"
       />
-      <span>{data.text}</span>
+      <div
+        className="nm-note-markdown"
+        dangerouslySetInnerHTML={{ __html: renderedMarkdown }}
+      />
     </div>
   );
 }
@@ -1058,10 +1076,87 @@ function NotePropertiesDialog({
 }) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState(note);
+  const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
+  const renderedMarkdown = useMemo(
+    () => renderNetworkMapNoteMarkdown(draft.text),
+    [draft.text],
+  );
+
+  function applyFormatting(action: NetworkMapNoteFormatAction) {
+    const textArea = textAreaRef.current;
+    if (!textArea) return;
+    const formatted = formatNetworkMapNoteMarkdown(
+      draft.text,
+      textArea.selectionStart,
+      textArea.selectionEnd,
+      action,
+    );
+    setDraft((current) => ({ ...current, text: formatted.text }));
+    requestAnimationFrame(() => {
+      textAreaRef.current?.focus();
+      textAreaRef.current?.setSelectionRange(
+        formatted.selectionStart,
+        formatted.selectionEnd,
+      );
+    });
+  }
+
+  const formatButtons: Array<{
+    action: NetworkMapNoteFormatAction;
+    label: string;
+    glyph: string;
+  }> = [
+    {
+      action: "heading1",
+      label: t("itops.networkMap.noteFormatHeading1"),
+      glyph: "H1",
+    },
+    {
+      action: "heading2",
+      label: t("itops.networkMap.noteFormatHeading2"),
+      glyph: "H2",
+    },
+    {
+      action: "bold",
+      label: t("screenshots.editor.bold"),
+      glyph: "B",
+    },
+    {
+      action: "italic",
+      label: t("screenshots.editor.italic"),
+      glyph: "I",
+    },
+    {
+      action: "bulletedList",
+      label: t("itops.networkMap.noteFormatBulletedList"),
+      glyph: "•",
+    },
+    {
+      action: "numberedList",
+      label: t("itops.networkMap.noteFormatNumberedList"),
+      glyph: "1.",
+    },
+    {
+      action: "quote",
+      label: t("itops.networkMap.noteFormatQuote"),
+      glyph: ">",
+    },
+    {
+      action: "inlineCode",
+      label: t("itops.networkMap.noteFormatInlineCode"),
+      glyph: "</>",
+    },
+    {
+      action: "link",
+      label: t("itops.networkMap.linkHeading"),
+      glyph: "[]",
+    },
+  ];
+
   return (
     <DialogShell onBackdrop={onClose} zClassName="itops-page">
       <Sheet
-        width={480}
+        width={680}
         title={t("itops.networkMap.noteElement")}
         footer={
           <Actions
@@ -1095,16 +1190,43 @@ function NotePropertiesDialog({
         }
       >
         <Field label={t("itops.networkMap.noteLabel")}>
-          <TextArea
-            rows={6}
-            value={draft.text}
-            placeholder={t("itops.networkMap.notePlaceholder")}
-            onChange={(event) => {
-              const text = event.currentTarget.value;
-              setDraft((current) => ({ ...current, text }));
-            }}
-            autoFocus
-          />
+          <div className="nm-note-editor">
+            <div
+              className="nm-note-format-toolbar"
+              role="toolbar"
+              aria-label={t("itops.networkMap.noteFormattingLabel")}
+            >
+              {formatButtons.map((button) => (
+                <button
+                  key={button.action}
+                  type="button"
+                  className={`nm-note-format-button ${button.action}`}
+                  aria-label={button.label}
+                  title={button.label}
+                  onClick={() => applyFormatting(button.action)}
+                >
+                  {button.glyph}
+                </button>
+              ))}
+            </div>
+            <TextArea
+              ref={textAreaRef}
+              rows={8}
+              value={draft.text}
+              placeholder={t("itops.networkMap.notePlaceholder")}
+              onChange={(event) => {
+                const text = event.currentTarget.value;
+                setDraft((current) => ({ ...current, text }));
+              }}
+              autoFocus
+              spellCheck
+            />
+            <div
+              className="nm-note-markdown nm-note-preview"
+              aria-label={t("workspace.fileViewer.view.preview")}
+              dangerouslySetInnerHTML={{ __html: renderedMarkdown }}
+            />
+          </div>
         </Field>
         <Field label={t("itops.networkMap.noteBackgroundLabel")}>
           <Swatches
@@ -2315,6 +2437,7 @@ function MapEditor({ map }: { map: NetworkMap }) {
             connectionMode={ConnectionMode.Loose}
             nodesDraggable={mode === "design" && !placementDraft}
             nodesConnectable={mode === "design" && !placementDraft}
+            elevateNodesOnSelect={false}
             deleteKeyCode={null}
             fitView
             proOptions={{ hideAttribution: true }}

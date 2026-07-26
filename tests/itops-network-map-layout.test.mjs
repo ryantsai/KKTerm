@@ -214,8 +214,20 @@ test("Network Maps configure palette items before ghost placement and expose nat
   assert.match(designer, /zIndex: 0/);
   assert.match(designer, /zIndex: 1/);
   assert.match(designer, /zIndex: 2/);
+  assert.match(designer, /elevateNodesOnSelect=\{false\}/);
+  assert.match(designer, /DOMPurify\.sanitize/);
+  assert.match(designer, /marked\.parse\(markdown, \{ async: false, breaks: true \}\)/);
+  assert.match(designer, /role="toolbar"[\s\S]*itops\.networkMap\.noteFormattingLabel/);
+  assert.match(designer, /formatNetworkMapNoteMarkdown/);
   assert.match(styles, /\.nm-note\s*\{/);
   assert.match(styles, /--nm-note-accent/);
+  assert.match(
+    styles,
+    /\.nm-note\s*\{[\s\S]*border:\s*1px solid color-mix\(in srgb, var\(--border-strong\)/,
+  );
+  assert.match(styles, /\.nm-note-markdown\s*\{/);
+  assert.match(styles, /\.nm-note-format-toolbar\s*\{/);
+  assert.match(styles, /\.nm-note-preview\s*\{/);
   assert.match(styles, /\.nm-placement-ghost-node\s*\{/);
   assert.match(styles, /\.nm-node\.ghost,/);
   assert.match(styles, /\.nm-side\s*\{[\s\S]*align-items: stretch;/);

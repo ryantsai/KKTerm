@@ -8,6 +8,7 @@ import {
   useState,
   type CSSProperties,
   type ReactNode,
+  type Ref,
 } from "react";
 import { createPortal } from "react-dom";
 import { technicalInputProps } from "../../../lib/inputBehavior";
@@ -185,7 +186,9 @@ export function TextInput({ mono, className = "", ...rest }: InputProps) {
   return <input className={`kk-inp${mono ? " mono" : ""} ${className}`.trim()} {...technicalInputProps} {...rest} />;
 }
 
-type AreaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement>;
+type AreaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement> & {
+  ref?: Ref<HTMLTextAreaElement>;
+};
 export function TextArea({ rows = 4, className = "", ...rest }: AreaProps) {
   return <textarea className={`kk-inp ${className}`.trim()} rows={rows} {...technicalInputProps} {...rest} />;
 }

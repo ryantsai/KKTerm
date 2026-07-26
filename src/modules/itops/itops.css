@@ -9167,35 +9167,160 @@
   background: var(--accent) !important;
 }
 
-/* Notes, links, and device nodes use explicit React Flow z-orders (0/1/2), so
-   links stay interactive above annotations without hiding Notes behind the pane. */
+/* Notes, links, and device nodes use explicit React Flow z-orders (0/1/2).
+   React Flow's selected-node elevation is disabled on this canvas so selecting
+   a Note never lifts its background over a link or device card. */
 .nm-note {
   display: flex;
   box-sizing: border-box;
   align-items: flex-start;
   padding: 15px 16px;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--nm-note-accent) 42%, var(--border));
+  border: 1px solid color-mix(in srgb, var(--border-strong) 58%, var(--border));
   border-radius: 7px;
   background: color-mix(in srgb, var(--nm-note-accent) 24%, var(--surface));
   box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 7%, transparent);
   color: var(--text);
   cursor: grab;
-  font-family: ui-serif, Georgia, serif;
+  font-family: var(--app-ui-font-family);
   font-size: 13px;
   line-height: 1.45;
-  white-space: pre-wrap;
 }
 .nm-note:active { cursor: grabbing; }
 .nm-note.sel {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
 }
-.nm-note > span {
-  display: -webkit-box;
+.nm-note > .nm-note-markdown {
+  max-height: 100%;
+  pointer-events: none;
+}
+.nm-note-markdown {
+  width: 100%;
   overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 12;
+  overflow-wrap: anywhere;
+}
+.nm-note-markdown > :first-child { margin-top: 0; }
+.nm-note-markdown > :last-child { margin-bottom: 0; }
+.nm-note-markdown p,
+.nm-note-markdown ul,
+.nm-note-markdown ol,
+.nm-note-markdown blockquote,
+.nm-note-markdown pre {
+  margin: 0 0 0.55em;
+}
+.nm-note-markdown h1,
+.nm-note-markdown h2,
+.nm-note-markdown h3,
+.nm-note-markdown h4,
+.nm-note-markdown h5,
+.nm-note-markdown h6 {
+  margin: 0.15em 0 0.4em;
+  font-weight: 720;
+  line-height: 1.2;
+}
+.nm-note-markdown h1 { font-size: 1.55em; }
+.nm-note-markdown h2 { font-size: 1.3em; }
+.nm-note-markdown h3 { font-size: 1.15em; }
+.nm-note-markdown h4,
+.nm-note-markdown h5,
+.nm-note-markdown h6 { font-size: 1em; }
+.nm-note-markdown ul,
+.nm-note-markdown ol {
+  padding-left: 1.4em;
+}
+.nm-note-markdown blockquote {
+  padding-left: 0.7em;
+  border-left: 2px solid var(--border-strong);
+  color: var(--text-muted);
+}
+.nm-note-markdown :not(pre) > code {
+  padding: 0.08em 0.3em;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  font-family: var(--app-mono-font-family, ui-monospace, monospace);
+  font-size: 0.92em;
+}
+.nm-note-markdown pre {
+  overflow: auto;
+  padding: 0.65em 0.75em;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+}
+.nm-note-markdown pre code {
+  font-family: var(--app-mono-font-family, ui-monospace, monospace);
+  font-size: 0.9em;
+}
+.nm-note-markdown a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.itops-page .nm-note-editor {
+  display: grid;
+  gap: 8px;
+}
+.itops-page .nm-note-format-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: max-content;
+  max-width: 100%;
+  padding: 3px;
+  overflow-x: auto;
+  border: 1px solid var(--hairline);
+  border-radius: 7px;
+  background: var(--surface-muted);
+}
+.itops-page .nm-note-format-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 26px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-muted);
+  font: 650 11px/1 var(--app-ui-font-family);
+  cursor: pointer;
+}
+.itops-page .nm-note-format-button:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.itops-page .nm-note-format-button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+.itops-page .nm-note-format-button.bold {
+  font-weight: 800;
+}
+.itops-page .nm-note-format-button.italic {
+  font-family: ui-serif, Georgia, serif;
+  font-size: 14px;
+  font-style: italic;
+}
+.itops-page .nm-note-format-button.inlineCode {
+  font-family: var(--app-mono-font-family, ui-monospace, monospace);
+  font-size: 10px;
+}
+.itops-page .nm-note-preview {
+  min-height: 72px;
+  max-height: 180px;
+  padding: 10px 11px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-muted);
+  color: var(--text);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.itops-page .nm-note-preview a {
+  pointer-events: none;
 }
 
 /* links: kind picks the dash pattern, What-If state picks the colour */
