@@ -4227,9 +4227,23 @@ button.dashboard-pill-dot:focus-visible {
 .dw-notes-markdown h5,
 .dw-notes-markdown h6 { font-size: 1.05em; }
 
+.dw-notes-markdown h1,
+.dw-notes-markdown h2 {
+  font-weight: 700;
+  line-height: 1.2;
+}
+
 .dw-notes-markdown ul,
 .dw-notes-markdown ol {
   padding-left: 1.25em;
+}
+
+.dw-notes-markdown ul {
+  list-style-type: disc;
+}
+
+.dw-notes-markdown ol {
+  list-style-type: decimal;
 }
 
 .dw-notes-markdown blockquote {

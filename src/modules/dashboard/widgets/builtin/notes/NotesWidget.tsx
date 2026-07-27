@@ -281,6 +281,21 @@ export function NotesBody({ instance }: BuiltInWidgetBodyProps) {
     applyMarkdownFormat("formatBlock", formatState.block === block ? "p" : block);
   }
 
+  function applyMarkdownList(command: "insertUnorderedList" | "insertOrderedList") {
+    restoreMarkdownSelection();
+    document.execCommand(command);
+    const editor = markdownEditorRef.current;
+    editor?.querySelectorAll("h1 > ul, h1 > ol, h2 > ul, h2 > ol, blockquote > ul, blockquote > ol, p > ul, p > ol")
+      .forEach((list) => {
+        const wrapper = list.parentElement;
+        if (wrapper?.childNodes.length === 1) {
+          wrapper.replaceWith(list);
+        }
+      });
+    syncMarkdownEditor();
+    captureMarkdownSelection();
+  }
+
   async function handleNotesContextMenu(event: ReactMouseEvent<HTMLElement>) {
     const textArea = event.currentTarget instanceof HTMLTextAreaElement ? event.currentTarget : null;
     const markdownEditor = event.currentTarget === markdownEditorRef.current ? markdownEditorRef.current : null;
@@ -445,7 +460,7 @@ export function NotesBody({ instance }: BuiltInWidgetBodyProps) {
                 aria-label={t("itops.networkMap.noteFormatBulletedList")}
                 title={t("itops.networkMap.noteFormatBulletedList")}
                 onMouseDown={(event) => event.preventDefault()}
-                onClick={() => applyMarkdownFormat("insertUnorderedList")}
+                onClick={() => applyMarkdownList("insertUnorderedList")}
               >
                 •
               </button>
@@ -456,7 +471,7 @@ export function NotesBody({ instance }: BuiltInWidgetBodyProps) {
                 aria-label={t("itops.networkMap.noteFormatNumberedList")}
                 title={t("itops.networkMap.noteFormatNumberedList")}
                 onMouseDown={(event) => event.preventDefault()}
-                onClick={() => applyMarkdownFormat("insertOrderedList")}
+                onClick={() => applyMarkdownList("insertOrderedList")}
               >
                 1.
               </button>

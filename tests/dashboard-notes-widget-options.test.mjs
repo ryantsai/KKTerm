@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 
 const notesSource = readFileSync("src/modules/dashboard/widgets/builtin/notes/NotesWidget.tsx", "utf8");
+const dashboardCss = readFileSync("src/modules/dashboard/dashboard.css", "utf8");
 const customizeSource = readFileSync("src/modules/dashboard/edit/CustomizePopover.tsx", "utf8");
 const catalogSource = readFileSync("src/modules/dashboard/edit/CatalogOverlay.tsx", "utf8");
 
@@ -36,6 +37,23 @@ for (const command of ["formatBlock", "bold", "italic", "insertUnorderedList", "
 
 if (!notesSource.includes("dw-notes-format-toolbar") || !notesSource.includes("captureMarkdownSelection")) {
   throw new Error("Notes WYSIWYG formatting should preserve the active editor selection.");
+}
+
+if (!notesSource.includes("wrapper.replaceWith(list)")) {
+  throw new Error("Notes WYSIWYG lists should not remain nested inside heading or paragraph wrappers.");
+}
+
+if (
+  !dashboardCss.includes(".dw-notes-markdown ul {") ||
+  !dashboardCss.includes("list-style-type: disc;") ||
+  !dashboardCss.includes(".dw-notes-markdown ol {") ||
+  !dashboardCss.includes("list-style-type: decimal;")
+) {
+  throw new Error("Notes WYSIWYG lists should restore visible markers after the global list-style reset.");
+}
+
+if (!dashboardCss.includes(".dw-notes-markdown h1,") || !dashboardCss.includes("font-weight: 700;")) {
+  throw new Error("Notes WYSIWYG headings should have a visibly distinct heading weight.");
 }
 
 if (notesSource.includes("isEditingMarkdown") || notesSource.includes("<textarea") && !notesSource.includes("settings.markdownEnabled ?")) {
