@@ -24,12 +24,12 @@ if (!notesSource.includes("markdownEnabled: true")) {
   throw new Error("Notes markdown rendering should default on.");
 }
 
-if (notesSource.includes("event.preventDefault();\n            setIsEditingMarkdown(true);")) {
-  throw new Error("Notes markdown preview should not prevent the default mouse action because that blocks text selection and the native Copy context menu.");
+if (!notesSource.includes("contentEditable") || !notesSource.includes("TurndownService")) {
+  throw new Error("Notes markdown mode should use a WYSIWYG editor that serializes edits back to Markdown.");
 }
 
-if (!notesSource.includes("event.button !== 0") || !notesSource.includes("window.getSelection()?.toString()")) {
-  throw new Error("Notes markdown preview should enter edit mode only for plain left clicks without an active text selection.");
+if (notesSource.includes("isEditingMarkdown") || notesSource.includes("<textarea") && !notesSource.includes("settings.markdownEnabled ?")) {
+  throw new Error("Notes markdown mode should not switch back to a raw-source textarea for editing.");
 }
 
 if (!notesSource.includes("showNativeContextMenu") || !notesSource.includes('label: t("common.copy")')) {

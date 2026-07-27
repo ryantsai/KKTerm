@@ -4095,6 +4095,13 @@ button.dashboard-pill-dot:focus-visible {
   overflow: auto;
   padding: 0 2px 0 0;
   cursor: text;
+  outline: none;
+}
+
+.dw-notes-markdown:empty::before {
+  content: attr(data-placeholder);
+  color: rgb(0 0 0 / 35%);
+  font-style: italic;
 }
 
 .dw-notes-markdown > :first-child {

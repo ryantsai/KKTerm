@@ -1,6 +1,7 @@
 import { Minus, Plus } from "../../../../../lib/reicon";
 import DOMPurify from "dompurify";
 import { marked } from "marked";
+import TurndownService from "turndown";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, MouseEvent as ReactMouseEvent } from "react";
 import { useTranslation } from "react-i18next";
@@ -123,6 +124,8 @@ function renderMarkdown(markdown: string) {
   return DOMPurify.sanitize(html);
 }
 
+const markdownSerializer = new TurndownService({ bulletListMarker: "-" });
+
 export function NotesBody({ instance }: BuiltInWidgetBodyProps) {
   const { t } = useTranslation();
   const [config, setConfig] = useDurableWidgetConfig(
@@ -135,24 +138,24 @@ export function NotesBody({ instance }: BuiltInWidgetBodyProps) {
     [instance.settingsValuesJson],
   );
   const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
+  const markdownEditorRef = useRef<HTMLDivElement | null>(null);
   const [activePageIndex, setActivePageIndex] = useState(0);
   const [tearingPageIndex, setTearingPageIndex] = useState<number | null>(null);
-  const [isEditingMarkdown, setIsEditingMarkdown] = useState(false);
   const activePage = config.pages[activePageIndex] ?? "";
   const renderedMarkdown = useMemo(() => renderMarkdown(activePage), [activePage]);
-  const showMarkdownPreview = settings.markdownEnabled && activePage.trim().length > 0 && !isEditingMarkdown;
+
+  useEffect(() => {
+    const editor = markdownEditorRef.current;
+    if (editor && document.activeElement !== editor && editor.innerHTML !== renderedMarkdown) {
+      editor.innerHTML = renderedMarkdown;
+    }
+  }, [activePageIndex, renderedMarkdown, settings.markdownEnabled]);
 
   useEffect(() => {
     if (activePageIndex >= config.pages.length) {
       setActivePageIndex(Math.max(0, config.pages.length - 1));
     }
   }, [activePageIndex, config.pages.length]);
-
-  useEffect(() => {
-    if (isEditingMarkdown) {
-      textAreaRef.current?.focus();
-    }
-  }, [isEditingMarkdown]);
 
   function updateActivePage(text: string) {
     const pages = [...config.pages];
@@ -206,15 +209,16 @@ export function NotesBody({ instance }: BuiltInWidgetBodyProps) {
     insertTextIntoNote(textArea, "");
   }
 
-  function handleMarkdownClick(event: ReactMouseEvent<HTMLDivElement>) {
-    if (event.button !== 0 || selectedTextFromNotesSurface().trim().length > 0) {
-      return;
+  function syncMarkdownEditor() {
+    const editor = markdownEditorRef.current;
+    if (editor) {
+      updateActivePage(markdownSerializer.turndown(editor.innerHTML));
     }
-    setIsEditingMarkdown(true);
   }
 
   async function handleNotesContextMenu(event: ReactMouseEvent<HTMLElement>) {
     const textArea = event.currentTarget instanceof HTMLTextAreaElement ? event.currentTarget : null;
+    const markdownEditor = event.currentTarget === markdownEditorRef.current ? markdownEditorRef.current : null;
     const selectedText = selectedTextFromNotesSurface();
     const hasSelection = selectedText.length > 0;
 
@@ -229,13 +233,18 @@ export function NotesBody({ instance }: BuiltInWidgetBodyProps) {
         {
           kind: "item",
           label: t("common.cut"),
-          disabled: !textArea || !hasSelection,
+          disabled: (!textArea && !markdownEditor) || !hasSelection,
           action: () => {
-            if (!textArea || !selectedText) {
+            if ((!textArea && !markdownEditor) || !selectedText) {
               return;
             }
             void writeToClipboard(selectedText);
-            deleteNoteSelection(textArea);
+            if (textArea) {
+              deleteNoteSelection(textArea);
+            } else {
+              document.execCommand("delete");
+              syncMarkdownEditor();
+            }
           },
         },
         {
@@ -251,16 +260,22 @@ export function NotesBody({ instance }: BuiltInWidgetBodyProps) {
         {
           kind: "item",
           label: t("common.paste"),
-          disabled: !textArea,
+          disabled: !textArea && !markdownEditor,
           action: () => {
-            if (!textArea) {
+            if (!textArea && !markdownEditor) {
               return;
             }
             void readFromClipboard().then((text) => {
-              if (text) {
+              if (textArea && text) {
                 insertTextIntoNote(textArea, text);
-              } else {
+              } else if (textArea) {
                 textArea.focus();
+              } else if (markdownEditor && text) {
+                markdownEditor.focus();
+                document.execCommand("insertText", false, text);
+                syncMarkdownEditor();
+              } else {
+                markdownEditor?.focus();
               }
             });
           },
@@ -306,12 +321,21 @@ export function NotesBody({ instance }: BuiltInWidgetBodyProps) {
           </button>
         ) : null}
       </div>
-      {showMarkdownPreview ? (
+      {settings.markdownEnabled ? (
         <div
+          key={activePageIndex}
+          ref={markdownEditorRef}
           className="dw-notes-markdown"
           aria-label={t("dashboard.notesAriaLabel")}
-          dangerouslySetInnerHTML={{ __html: renderedMarkdown }}
-          onClick={handleMarkdownClick}
+          data-placeholder={t("dashboard.notesPlaceholder")}
+          contentEditable
+          suppressContentEditableWarning
+          onInput={syncMarkdownEditor}
+          onClick={(event) => {
+            if ((event.target as HTMLElement).closest("a")) {
+              event.preventDefault();
+            }
+          }}
           onContextMenu={handleNotesContextMenu}
         />
       ) : (
@@ -320,8 +344,6 @@ export function NotesBody({ instance }: BuiltInWidgetBodyProps) {
           className="dw-notes-text"
           value={activePage}
           onChange={(e) => updateActivePage(e.target.value)}
-          onFocus={() => setIsEditingMarkdown(true)}
-          onBlur={() => setIsEditingMarkdown(false)}
           placeholder={t("dashboard.notesPlaceholder")}
           aria-label={t("dashboard.notesAriaLabel")}
           spellCheck={false}
