@@ -28,6 +28,16 @@ if (!notesSource.includes("contentEditable") || !notesSource.includes("TurndownS
   throw new Error("Notes markdown mode should use a WYSIWYG editor that serializes edits back to Markdown.");
 }
 
+for (const command of ["formatBlock", "bold", "italic", "insertUnorderedList", "insertOrderedList"]) {
+  if (!notesSource.includes(`"${command}"`)) {
+    throw new Error(`Notes WYSIWYG toolbar should expose the ${command} formatting command.`);
+  }
+}
+
+if (!notesSource.includes("dw-notes-format-toolbar") || !notesSource.includes("captureMarkdownSelection")) {
+  throw new Error("Notes WYSIWYG formatting should preserve the active editor selection.");
+}
+
 if (notesSource.includes("isEditingMarkdown") || notesSource.includes("<textarea") && !notesSource.includes("settings.markdownEnabled ?")) {
   throw new Error("Notes markdown mode should not switch back to a raw-source textarea for editing.");
 }

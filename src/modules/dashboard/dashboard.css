@@ -4052,6 +4052,99 @@ button.dashboard-pill-dot:focus-visible {
   transform: translateY(0);
 }
 
+.dw-notes-format-toolbar {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  height: 28px;
+  margin: -4px 0 6px;
+  padding-bottom: 5px;
+  border-bottom: 1px dashed rgb(0 0 0 / 12%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.dw-notes:hover .dw-notes-format-toolbar,
+.dw-notes:focus-within .dw-notes-format-toolbar {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.dw-notes-format-actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.dw-notes-format-actions::-webkit-scrollbar {
+  display: none;
+}
+
+.dw-notes-format-button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 4px;
+  color: rgb(0 0 0 / 62%);
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  font-family: var(--font, system-ui);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.dw-notes-format-button:hover,
+.dw-notes-format-button:focus-visible {
+  color: var(--note-ink);
+  background: rgb(255 255 255 / 38%);
+  outline: none;
+}
+
+.dw-notes-format-button.is-active {
+  color: var(--note-ink);
+  background: rgb(0 0 0 / 12%);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 10%);
+}
+
+.dw-notes-format-button.is-bold {
+  font-weight: 850;
+}
+
+.dw-notes-format-button.is-italic {
+  font-style: italic;
+}
+
+.dw-notes-format-divider {
+  flex: 0 0 auto;
+  width: 1px;
+  height: 14px;
+  margin: 0 2px;
+  background: rgb(0 0 0 / 14%);
+}
+
+.dw-notes-page-actions--inline {
+  position: static;
+  flex: 0 0 auto;
+  margin-left: 5px;
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+}
+
 .dw-notes-page-button {
   justify-content: center;
   width: 24px;

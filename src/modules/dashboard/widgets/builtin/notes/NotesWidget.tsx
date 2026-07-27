@@ -51,6 +51,13 @@ const DELETE_ANIMATION_MS = 220;
 const COLOR_VALUES: NotesColor[] = ["yellow", "pink", "blue", "green", "orange", "purple", "white"];
 const FONT_VALUES: NotesFont[] = ["handwriting", "marker", "system", "serif", "mono"];
 const FOLD_CORNER_VALUES: NotesFoldCorner[] = ["topRight", "topLeft", "bottomRight", "bottomLeft"];
+const DEFAULT_FORMAT_STATE = {
+  bold: false,
+  italic: false,
+  bulletedList: false,
+  numberedList: false,
+  block: "p",
+};
 
 function storageKey(instanceId: string) {
   return `kkterm.dashboard.notes.${instanceId}.v1`;
@@ -139,8 +146,10 @@ export function NotesBody({ instance }: BuiltInWidgetBodyProps) {
   );
   const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
   const markdownEditorRef = useRef<HTMLDivElement | null>(null);
+  const markdownSelectionRef = useRef<Range | null>(null);
   const [activePageIndex, setActivePageIndex] = useState(0);
   const [tearingPageIndex, setTearingPageIndex] = useState<number | null>(null);
+  const [formatState, setFormatState] = useState(DEFAULT_FORMAT_STATE);
   const activePage = config.pages[activePageIndex] ?? "";
   const renderedMarkdown = useMemo(() => renderMarkdown(activePage), [activePage]);
 
@@ -156,6 +165,11 @@ export function NotesBody({ instance }: BuiltInWidgetBodyProps) {
       setActivePageIndex(Math.max(0, config.pages.length - 1));
     }
   }, [activePageIndex, config.pages.length]);
+
+  useEffect(() => {
+    markdownSelectionRef.current = null;
+    setFormatState(DEFAULT_FORMAT_STATE);
+  }, [activePageIndex, settings.markdownEnabled]);
 
   function updateActivePage(text: string) {
     const pages = [...config.pages];
@@ -214,6 +228,57 @@ export function NotesBody({ instance }: BuiltInWidgetBodyProps) {
     if (editor) {
       updateActivePage(markdownSerializer.turndown(editor.innerHTML));
     }
+  }
+
+  function captureMarkdownSelection() {
+    const editor = markdownEditorRef.current;
+    const selection = window.getSelection();
+    if (!editor || !selection || selection.rangeCount === 0) {
+      return;
+    }
+    const range = selection.getRangeAt(0);
+    if (!editor.contains(range.commonAncestorContainer)) {
+      return;
+    }
+    markdownSelectionRef.current = range.cloneRange();
+    const block = String(document.queryCommandValue("formatBlock")).replace(/[<>]/g, "").toLowerCase();
+    setFormatState({
+      bold: document.queryCommandState("bold"),
+      italic: document.queryCommandState("italic"),
+      bulletedList: document.queryCommandState("insertUnorderedList"),
+      numberedList: document.queryCommandState("insertOrderedList"),
+      block: block || "p",
+    });
+  }
+
+  function restoreMarkdownSelection() {
+    const editor = markdownEditorRef.current;
+    if (!editor) {
+      return;
+    }
+    editor.focus();
+    const savedRange = markdownSelectionRef.current;
+    const range = savedRange && editor.contains(savedRange.commonAncestorContainer)
+      ? savedRange
+      : document.createRange();
+    if (!savedRange || range !== savedRange) {
+      range.selectNodeContents(editor);
+      range.collapse(false);
+    }
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+  }
+
+  function applyMarkdownFormat(command: string, value?: string) {
+    restoreMarkdownSelection();
+    document.execCommand(command, false, value);
+    syncMarkdownEditor();
+    captureMarkdownSelection();
+  }
+
+  function applyMarkdownBlock(block: "h1" | "h2" | "blockquote") {
+    applyMarkdownFormat("formatBlock", formatState.block === block ? "p" : block);
   }
 
   async function handleNotesContextMenu(event: ReactMouseEvent<HTMLElement>) {
@@ -299,45 +364,164 @@ export function NotesBody({ instance }: BuiltInWidgetBodyProps) {
         "--note-fold-shadow-blur": `${settings.foldDepth * 7}px`,
       } as CSSProperties}
     >
-      <div className="dw-notes-page-actions" role="toolbar" aria-label={t("dashboard.notesPagesToolbarLabel")}>
-        <button
-          type="button"
-          className="secondary-button dw-notes-page-button"
-          aria-label={t("dashboard.notesAddPage")}
-          title={t("dashboard.notesAddPage")}
-          onClick={addPage}
-        >
-          <Plus size={14} />
-        </button>
-        {config.pages.length > 1 ? (
+      {!settings.markdownEnabled ? (
+        <div className="dw-notes-page-actions" role="toolbar" aria-label={t("dashboard.notesPagesToolbarLabel")}>
           <button
             type="button"
             className="secondary-button dw-notes-page-button"
-            aria-label={t("dashboard.notesDeletePage")}
-            title={t("dashboard.notesDeletePage")}
-            onClick={deletePage}
+            aria-label={t("dashboard.notesAddPage")}
+            title={t("dashboard.notesAddPage")}
+            onClick={addPage}
           >
-            <Minus size={14} />
+            <Plus size={14} />
           </button>
-        ) : null}
-      </div>
+          {config.pages.length > 1 ? (
+            <button
+              type="button"
+              className="secondary-button dw-notes-page-button"
+              aria-label={t("dashboard.notesDeletePage")}
+              title={t("dashboard.notesDeletePage")}
+              onClick={deletePage}
+            >
+              <Minus size={14} />
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       {settings.markdownEnabled ? (
-        <div
-          key={activePageIndex}
-          ref={markdownEditorRef}
-          className="dw-notes-markdown"
-          aria-label={t("dashboard.notesAriaLabel")}
-          data-placeholder={t("dashboard.notesPlaceholder")}
-          contentEditable
-          suppressContentEditableWarning
-          onInput={syncMarkdownEditor}
-          onClick={(event) => {
-            if ((event.target as HTMLElement).closest("a")) {
-              event.preventDefault();
-            }
-          }}
-          onContextMenu={handleNotesContextMenu}
-        />
+        <>
+          <div className="dw-notes-format-toolbar" role="toolbar" aria-label={t("itops.networkMap.noteFormattingLabel")}>
+            <div className="dw-notes-format-actions">
+              <button
+                type="button"
+                className={`dw-notes-format-button${formatState.block === "h1" ? " is-active" : ""}`}
+                aria-pressed={formatState.block === "h1"}
+                aria-label={t("itops.networkMap.noteFormatHeading1")}
+                title={t("itops.networkMap.noteFormatHeading1")}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => applyMarkdownBlock("h1")}
+              >
+                H1
+              </button>
+              <button
+                type="button"
+                className={`dw-notes-format-button${formatState.block === "h2" ? " is-active" : ""}`}
+                aria-pressed={formatState.block === "h2"}
+                aria-label={t("itops.networkMap.noteFormatHeading2")}
+                title={t("itops.networkMap.noteFormatHeading2")}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => applyMarkdownBlock("h2")}
+              >
+                H2
+              </button>
+              <span className="dw-notes-format-divider" aria-hidden="true" />
+              <button
+                type="button"
+                className={`dw-notes-format-button is-bold${formatState.bold ? " is-active" : ""}`}
+                aria-pressed={formatState.bold}
+                aria-label={t("screenshots.editor.bold")}
+                title={t("screenshots.editor.bold")}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => applyMarkdownFormat("bold")}
+              >
+                B
+              </button>
+              <button
+                type="button"
+                className={`dw-notes-format-button is-italic${formatState.italic ? " is-active" : ""}`}
+                aria-pressed={formatState.italic}
+                aria-label={t("screenshots.editor.italic")}
+                title={t("screenshots.editor.italic")}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => applyMarkdownFormat("italic")}
+              >
+                I
+              </button>
+              <span className="dw-notes-format-divider" aria-hidden="true" />
+              <button
+                type="button"
+                className={`dw-notes-format-button${formatState.bulletedList ? " is-active" : ""}`}
+                aria-pressed={formatState.bulletedList}
+                aria-label={t("itops.networkMap.noteFormatBulletedList")}
+                title={t("itops.networkMap.noteFormatBulletedList")}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => applyMarkdownFormat("insertUnorderedList")}
+              >
+                •
+              </button>
+              <button
+                type="button"
+                className={`dw-notes-format-button${formatState.numberedList ? " is-active" : ""}`}
+                aria-pressed={formatState.numberedList}
+                aria-label={t("itops.networkMap.noteFormatNumberedList")}
+                title={t("itops.networkMap.noteFormatNumberedList")}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => applyMarkdownFormat("insertOrderedList")}
+              >
+                1.
+              </button>
+              <button
+                type="button"
+                className={`dw-notes-format-button${formatState.block === "blockquote" ? " is-active" : ""}`}
+                aria-pressed={formatState.block === "blockquote"}
+                aria-label={t("itops.networkMap.noteFormatQuote")}
+                title={t("itops.networkMap.noteFormatQuote")}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => applyMarkdownBlock("blockquote")}
+              >
+                “
+              </button>
+            </div>
+            <div
+              className="dw-notes-page-actions dw-notes-page-actions--inline"
+              role="group"
+              aria-label={t("dashboard.notesPagesToolbarLabel")}
+            >
+              <button
+                type="button"
+                className="secondary-button dw-notes-page-button"
+                aria-label={t("dashboard.notesAddPage")}
+                title={t("dashboard.notesAddPage")}
+                onClick={addPage}
+              >
+                <Plus size={14} />
+              </button>
+              {config.pages.length > 1 ? (
+                <button
+                  type="button"
+                  className="secondary-button dw-notes-page-button"
+                  aria-label={t("dashboard.notesDeletePage")}
+                  title={t("dashboard.notesDeletePage")}
+                  onClick={deletePage}
+                >
+                  <Minus size={14} />
+                </button>
+              ) : null}
+            </div>
+          </div>
+          <div
+            key={activePageIndex}
+            ref={markdownEditorRef}
+            className="dw-notes-markdown"
+            aria-label={t("dashboard.notesAriaLabel")}
+            data-placeholder={t("dashboard.notesPlaceholder")}
+            contentEditable
+            suppressContentEditableWarning
+            onInput={() => {
+              syncMarkdownEditor();
+              captureMarkdownSelection();
+            }}
+            onFocus={captureMarkdownSelection}
+            onKeyUp={captureMarkdownSelection}
+            onMouseUp={captureMarkdownSelection}
+            onClick={(event) => {
+              if ((event.target as HTMLElement).closest("a")) {
+                event.preventDefault();
+              }
+            }}
+            onContextMenu={handleNotesContextMenu}
+          />
+        </>
       ) : (
         <textarea
           ref={textAreaRef}
