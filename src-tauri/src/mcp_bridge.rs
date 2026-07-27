@@ -663,11 +663,6 @@ fn redact_tool_arguments(name: &str, arguments: &Value) -> Value {
         "kkterm.itops.runs.dangerous.start" => {
             redact_object_key(&mut redacted, "script");
         }
-        // runBatch actions embed full task bodies.
-        "kkterm.itops.automations.dangerous.create"
-        | "kkterm.itops.automations.dangerous.update" => {
-            redact_object_key(&mut redacted, "actions");
-        }
         _ => {}
     }
     redacted
@@ -682,11 +677,6 @@ fn redact_tool_result(name: &str, result: &Value) -> Value {
         | "kkterm.itops.tasks.get"
         | "kkterm.itops.tasks.dangerous.create"
         | "kkterm.itops.tasks.dangerous.update"
-        // Automation responses contain runBatch task bodies in their actions.
-        | "kkterm.itops.automations.list"
-        | "kkterm.itops.automations.dangerous.create"
-        | "kkterm.itops.automations.dangerous.update"
-        | "kkterm.itops.automations.dangerous.set_enabled"
         // Run reports replay captured remote command output.
         | "kkterm.itops.runs.get_report" => Value::String("[REDACTED]".to_string()),
         _ => redact_sensitive_debug_value(result),
@@ -1438,24 +1428,6 @@ async fn dispatch_tool(app: &AppHandle, name: &str, args: Value) -> Result<Value
         "kkterm.itops.tasks.remove" => {
             parse_tool_json(&crate::ai::itops_tool(app, "itops_remove_task", args).await)
         }
-        "kkterm.itops.automations.list" => {
-            parse_tool_json(&crate::ai::itops_tool(app, "itops_list_automations", json!({})).await)
-        }
-        "kkterm.itops.automations.dangerous.create" => {
-            parse_tool_json(&crate::ai::itops_tool(app, "itops_create_automation", args).await)
-        }
-        "kkterm.itops.automations.dangerous.update" => {
-            parse_tool_json(&crate::ai::itops_tool(app, "itops_update_automation", args).await)
-        }
-        "kkterm.itops.automations.dangerous.set_enabled" => {
-            parse_tool_json(&crate::ai::itops_tool(app, "itops_set_automation_enabled", args).await)
-        }
-        "kkterm.itops.automations.remove" => {
-            parse_tool_json(&crate::ai::itops_tool(app, "itops_remove_automation", args).await)
-        }
-        "kkterm.itops.automations.test" => {
-            parse_tool_json(&crate::ai::itops_tool(app, "itops_test_automation", args).await)
-        }
         "kkterm.itops.runs.dangerous.start" => {
             parse_tool_json(&crate::ai::itops_tool(app, "itops_start_batch_run", args).await)
         }
@@ -1850,13 +1822,6 @@ mod tests {
             ),
             json!("[REDACTED]")
         );
-        assert_eq!(
-            redact_tool_result(
-                "kkterm.itops.automations.list",
-                &json!([{"actions": [{"kind": "runBatch", "task": {"kind": "script", "body": "token=secret"}}]}])
-            ),
-            json!("[REDACTED]")
-        );
     }
 
     #[test]
@@ -2087,12 +2052,6 @@ mod tests {
         assert!(names.contains(&"kkterm.itops.tasks.dangerous.create".to_string()));
         assert!(names.contains(&"kkterm.itops.tasks.dangerous.update".to_string()));
         assert!(names.contains(&"kkterm.itops.tasks.remove".to_string()));
-        assert!(names.contains(&"kkterm.itops.automations.list".to_string()));
-        assert!(names.contains(&"kkterm.itops.automations.dangerous.create".to_string()));
-        assert!(names.contains(&"kkterm.itops.automations.dangerous.update".to_string()));
-        assert!(names.contains(&"kkterm.itops.automations.dangerous.set_enabled".to_string()));
-        assert!(names.contains(&"kkterm.itops.automations.remove".to_string()));
-        assert!(names.contains(&"kkterm.itops.automations.test".to_string()));
         assert!(names.contains(&"kkterm.itops.runs.dangerous.start".to_string()));
         assert!(names.contains(&"kkterm.itops.runs.cancel".to_string()));
         assert!(names.contains(&"kkterm.itops.runs.list".to_string()));

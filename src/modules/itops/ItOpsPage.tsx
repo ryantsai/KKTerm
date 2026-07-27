@@ -24,7 +24,6 @@ export function ItOpsPage({
   const { t } = useTranslation();
   const sites = useItOpsStore((state) => state.sites);
   const runHistory = useItOpsStore((state) => state.runHistory);
-  const automations = useItOpsStore((state) => state.automations);
   const activeRun = useItOpsStore((state) => state.activeRun);
   const racksBySite = useItOpsStore((state) => state.racksBySite);
   const tasks = useItOpsStore((state) => state.tasks);
@@ -81,11 +80,10 @@ export function ItOpsPage({
       text: [
         "Active Module: IT Ops.",
         `Current navigator selection: ${selectionSummary}.`,
-        "Tutorial targets: itops.sitesTree (left navigator), itops.siteView (Site topology drill-down), itops.hostsPanel, itops.hostsRunTask, itops.hostsImport, itops.hostsScan (Hosts page), itops.automationsPanel, itops.automationsNew (Monitors page), itops.runHistoryPanel (Run History page), itops.taskLibrary, itops.taskLibraryNew (Task Library), itops.ipam, itops.ipamNew (IPAM), itops.networkMaps, itops.networkMapNew (Network Maps).",
-        "Entity tutorial targets highlight one row: itops.site:<siteId>, itops.host:<hostId>, itops.automation:<automationId>, itops.task:<taskId>, itops.run:<runId> — use ids from the itops_* list tools and pass navigation.itopsSiteId/itopsDestination so the destination opens first.",
+        "Tutorial targets: itops.sitesTree (left navigator), itops.siteView (Site topology drill-down), itops.hostsPanel, itops.hostsRunTask, itops.hostsImport, itops.hostsScan (Hosts page), itops.runHistoryPanel (Run History page), itops.taskLibrary, itops.taskLibraryNew (Task Library), itops.ipam, itops.ipamNew (IPAM), itops.networkMaps, itops.networkMapNew (Network Maps).",
+        "Entity tutorial targets highlight one row: itops.site:<siteId>, itops.host:<hostId>, itops.task:<taskId>, itops.run:<runId> — use ids from the itops_* list tools and pass navigation.itopsSiteId/itopsDestination so the destination opens first.",
         `Sites (${sites.length}): ${sites.map((group) => `${group.name} [id ${group.id}, ${group.memberIds.length} saved members, ${group.transport}]`).join(", ") || "none"}.`,
         `Rack topology (loaded Sites only): ${rackSummary || "none loaded"}.`,
-        `Monitors (${automations.length}): ${automations.map((automation) => `${automation.name} [${automation.enabled ? "armed" : "disabled"}]`).join(", ") || "none"}.`,
         `Task Library: ${tasks.length} reusable Tasks (itops_list_tasks reads them).`,
         `IPAM: ${ipamLoaded && vlansLoaded ? `${vlans.length} VLANs, ${ipam.prefixes.length} top-level IP Prefixes, ${ipam.addresses.length} IP Address Records` : "not loaded yet"} (operator-authored records; nothing is read off a switch).`,
         `Network Maps: ${networkMapsLoaded ? `${networkMaps.length} maps` : "not loaded yet"} (hand-drawn; they carry no live device state).`,
@@ -98,7 +96,6 @@ export function ItOpsPage({
     });
   }, [
     activeRun,
-    automations,
     sites,
     ipam,
     ipamLoaded,

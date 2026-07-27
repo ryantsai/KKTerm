@@ -7,7 +7,6 @@ export type ItOpsNavigationDestination =
   | "site"
   | "serverRooms"
   | "hosts"
-  | "automations"
   | "runHistory"
   | "taskLibrary"
   | "vlans"
@@ -27,7 +26,6 @@ const ITOPS_NAVIGATION_DESTINATIONS = new Set<ItOpsNavigationDestination>([
   "site",
   "serverRooms",
   "hosts",
-  "automations",
   "runHistory",
   "taskLibrary",
   "vlans",
@@ -182,8 +180,6 @@ const ITOPS_DESTINATION_TUTORIAL_TARGETS: Record<string, ItOpsNavigationDestinat
   "itops.hostsRunTask": "hosts",
   "itops.hostsImport": "hosts",
   "itops.hostsScan": "hosts",
-  "itops.automationsPanel": "automations",
-  "itops.automationsNew": "automations",
   "itops.runHistoryPanel": "runHistory",
   "itops.taskLibrary": "taskLibrary",
   "itops.taskLibraryNew": "taskLibrary",
@@ -200,7 +196,6 @@ const ITOPS_DESTINATION_TUTORIAL_TARGETS: Record<string, ItOpsNavigationDestinat
 const ITOPS_ENTITY_TARGET_PREFIXES: Record<string, ItOpsNavigationDestination> = {
   "itops.site:": "site",
   "itops.host:": "hosts",
-  "itops.automation:": "automations",
   "itops.task:": "taskLibrary",
   "itops.run:": "runHistory",
 };

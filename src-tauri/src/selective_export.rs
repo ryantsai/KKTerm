@@ -158,10 +158,10 @@ fn segment_tables(segment: &str) -> Option<&'static [TableSpec]> {
         }]),
         // IT Ops Module data (docs/ITOPS.md). Sites soft-reference Connections
         // (member_ids_json), rack items and Hosts soft-reference connections.id,
-        // and Automations / run history soft-reference Sites and Tasks — all
+        // and obsolete Monitor rows / run history soft-reference Sites and Tasks — all
         // handled in `rewrite_soft_references` because none carries an FK
         // constraint. JSON-contained references in filters, rack metadata,
-        // Automation actions, and run reports are remapped there as well.
+        // Legacy Monitor payloads and run reports are remapped there as well.
         "itops" => Some(&[
             TableSpec {
                 name: "itops_sites",
@@ -810,6 +810,13 @@ fn import_selective_database_sync(
             applied.push((*segment).to_string());
         }
 
+        if applied.iter().any(|segment| segment == "itops") {
+            // Older bundles may contain executable Monitor definitions. Keep
+            // their payloads for recovery, but imported rows are obsolete and
+            // must never become enabled in a current database.
+            storage::mark_legacy_monitors_obsolete(&tx)?;
+        }
+
         tx.commit()
             .map_err(|error| format!("failed to commit import: {error}"))?;
         Ok::<(), String>(())
@@ -823,10 +830,6 @@ fn import_selective_database_sync(
             &status,
             encrypted_store_password.as_deref(),
         )?;
-    }
-
-    if applied.iter().any(|segment| segment == "itops") {
-        crate::itops::automation_commands::reconcile_automations(app);
     }
 
     // Write credentials into the reconciled backend, owner ids rewritten via
@@ -2314,7 +2317,7 @@ mod tests {
                 .get(&("itops_hosts".to_string(), "h1".to_string()))
                 .unwrap()
         );
-        // Automation + run history soft references follow their new owners.
+        // Obsolete Monitor + run history soft references follow their new owners.
         let automation_site: String = dst
             .query_row("SELECT site_id FROM itops_automations", [], |row| {
                 row.get(0)

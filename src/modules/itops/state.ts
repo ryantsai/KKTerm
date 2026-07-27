@@ -1,15 +1,12 @@
 // IT Ops Module frontend store. Phase 1 owns durable Sites: a thin cache
 // over the itops_* Tauri commands so the rail badge, the Sites tab, and
 // any dialog share one source of truth and update live after a mutation without
-// a full reload. Live Batch Run / Automation state arrives in later phases.
+// a full reload. Live Batch Run state arrives in later phases.
 
 import { create } from "zustand";
 import { invokeCommand, isTauriRuntime } from "../../lib/tauri";
 import type {
   AddressStatus,
-  Automation,
-  AutomationAction,
-  AutomationTestResult,
   BatchTask,
   IpamSnapshot,
   IpamImportBatch,
@@ -40,7 +37,6 @@ import type {
   RunScope,
 } from "../../types";
 import type { DashboardBackground } from "../dashboard/types";
-import type { WatchdogConfig } from "../../watchdog/types";
 import { sanitizeRoomObjects, type RoomObject } from "./roomObjects";
 
 /** Every place the IT Ops navigator can land. The last three are global
@@ -49,7 +45,6 @@ export type ItOpsDestination =
   | "site"
   | "serverRooms"
   | "hosts"
-  | "automations"
   | "runHistory"
   | "taskLibrary"
   | "vlans"
@@ -521,29 +516,6 @@ interface ItOpsState {
   ) => Promise<NetworkMap>;
   removeNetworkMap: (id: string) => Promise<void>;
 
-  // ── Automations (Phase 3) ──
-  automations: Automation[];
-  automationsLoaded: boolean;
-  newAutomationRequest: number;
-  requestNewAutomation: () => void;
-  loadAutomations: () => Promise<void>;
-  createAutomation: (
-    name: string,
-    config: WatchdogConfig,
-    actions: AutomationAction[],
-    enabled: boolean,
-    siteId: string | null,
-  ) => Promise<Automation>;
-  updateAutomation: (
-    id: string,
-    name: string,
-    config: WatchdogConfig,
-    actions: AutomationAction[],
-    siteId: string | null,
-  ) => Promise<Automation>;
-  setAutomationEnabled: (id: string, enabled: boolean) => Promise<void>;
-  removeAutomation: (id: string) => Promise<void>;
-  testAutomation: (config: WatchdogConfig) => Promise<AutomationTestResult>;
 }
 
 export const useItOpsStore = create<ItOpsState>((set, get) => ({
@@ -1099,67 +1071,4 @@ export const useItOpsStore = create<ItOpsState>((set, get) => ({
     set({ networkMaps: get().networkMaps.filter((entry) => entry.id !== id) });
   },
 
-  // ── Automations ──
-  automations: [],
-  automationsLoaded: false,
-  newAutomationRequest: 0,
-
-  requestNewAutomation() {
-    set({ newAutomationRequest: get().newAutomationRequest + 1 });
-  },
-
-  async loadAutomations() {
-    if (!isTauriRuntime()) {
-      set({ automationsLoaded: true });
-      return;
-    }
-    const automations = await invokeCommand("itops_list_automations");
-    set({ automations, automationsLoaded: true });
-  },
-
-  async createAutomation(name, config, actions, enabled, siteId) {
-    const created = await invokeCommand("itops_create_automation", {
-      name,
-      config,
-      actions,
-      enabled,
-      siteId,
-    });
-    set({ automations: [...get().automations, created] });
-    return created;
-  },
-
-  async updateAutomation(id, name, config, actions, siteId) {
-    const updated = await invokeCommand("itops_update_automation", {
-      id,
-      name,
-      config,
-      actions,
-      siteId,
-    });
-    set({
-      automations: get().automations.map((automation) =>
-        automation.id === id ? updated : automation,
-      ),
-    });
-    return updated;
-  },
-
-  async setAutomationEnabled(id, enabled) {
-    const updated = await invokeCommand("itops_set_automation_enabled", { id, enabled });
-    set({
-      automations: get().automations.map((automation) =>
-        automation.id === id ? updated : automation,
-      ),
-    });
-  },
-
-  async removeAutomation(id) {
-    await invokeCommand("itops_remove_automation", { id });
-    set({ automations: get().automations.filter((automation) => automation.id !== id) });
-  },
-
-  async testAutomation(config) {
-    return invokeCommand("itops_test_automation", { config });
-  },
 }));

@@ -1174,71 +1174,6 @@ pub fn tool_descriptors() -> Vec<Value> {
             "inputSchema": id_input_schema("id"),
         }),
         json!({
-            "name": "kkterm.itops.automations.list",
-            "description": "List durable IT Ops Automations: id, name, enabled, the trigger/condition config, the ordered action list, and the optional Site binding (siteId). Enabled rows are armed as live Watchdogs.",
-            "inputSchema": {"type": "object", "properties": {}, "additionalProperties": false},
-        }),
-        json!({
-            "name": "kkterm.itops.automations.dangerous.create",
-            "description": "DANGEROUS: create a durable IT Ops Automation — one trigger + condition (config, a WatchdogConfig whose action must be {kind:'notify'}) and an ordered action list run when it fires (notify, popup, email, webhook, runBatch). enabled defaults to true and arms the rule immediately; runBatch actions later execute scripts on site hosts. RunBatch tasks may not carry sudo steps or secret references. Requires built_in_mcp_allow_all_dangerous = true.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string", "minLength": 1},
-                    "config": {"type": "object"},
-                    "actions": {"type": "array", "items": {"type": "object"}},
-                    "enabled": {"type": "boolean"},
-                    "siteId": {"type": "string"},
-                },
-                "required": ["name", "config", "actions"],
-                "additionalProperties": false,
-            },
-        }),
-        json!({
-            "name": "kkterm.itops.automations.dangerous.update",
-            "description": "DANGEROUS: update one IT Ops Automation by id. Full-value semantics: read the rule via kkterm.itops.automations.list first and resend name, config, actions, and siteId. An enabled rule is re-armed with the new definition. Requires built_in_mcp_allow_all_dangerous = true.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "id": {"type": "string"},
-                    "name": {"type": "string", "minLength": 1},
-                    "config": {"type": "object"},
-                    "actions": {"type": "array", "items": {"type": "object"}},
-                    "siteId": {"type": "string"},
-                },
-                "required": ["id", "name", "config", "actions"],
-                "additionalProperties": false,
-            },
-        }),
-        json!({
-            "name": "kkterm.itops.automations.dangerous.set_enabled",
-            "description": "DANGEROUS: enable (arm) or disable (disarm) one IT Ops Automation by id. An armed rule polls its trigger and runs its actions unattended. Requires built_in_mcp_allow_all_dangerous = true.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "id": {"type": "string"},
-                    "enabled": {"type": "boolean"},
-                },
-                "required": ["id", "enabled"],
-                "additionalProperties": false,
-            },
-        }),
-        json!({
-            "name": "kkterm.itops.automations.remove",
-            "description": "Delete one IT Ops Automation by id, disarming its live Watchdog first. Run History produced by the rule is kept.",
-            "inputSchema": id_input_schema("id"),
-        }),
-        json!({
-            "name": "kkterm.itops.automations.test",
-            "description": "Dry-run an Automation trigger: sample the config's target once and report the sampled value plus whether the condition would fire right now. No actions are executed and nothing is stored.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {"config": {"type": "object"}},
-                "required": ["config"],
-                "additionalProperties": false,
-            },
-        }),
-        json!({
             "name": "kkterm.itops.runs.dangerous.start",
             "description": "DANGEROUS: start a Batch Run against an IT Ops Site — this executes a script or playbook on every resolved host over SSH. Pass exactly one of taskId (a Task Library definition) or script {body, shell?}. Optional scope narrows targets to one serverRoom, one rackId, or selected hostIds. Returns the runId immediately; read results later with kkterm.itops.runs.get_report. Requires built_in_mcp_allow_all_dangerous = true.",
             "inputSchema": {
@@ -1267,7 +1202,7 @@ pub fn tool_descriptors() -> Vec<Value> {
         }),
         json!({
             "name": "kkterm.itops.runs.list",
-            "description": "List completed Batch Run reports, newest first: id, source (manual or automation:<id>), siteId, taskId, redacted task summary, timestamps, and per-host outcome rows (ok, exitCode, durationMs, error) without output text.",
+            "description": "List completed Batch Run reports, newest first: id, source (manual or a retained legacy automation:<id> reference), siteId, taskId, redacted task summary, timestamps, and per-host outcome rows (ok, exitCode, durationMs, error) without output text.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -1448,7 +1383,7 @@ pub fn tool_descriptors() -> Vec<Value> {
         }),
         json!({
             "name": "kkterm.app.dangerous.tutorial_highlight",
-            "description": "DANGEROUS: navigate the KKTerm UI and show a one-step Tutorial overlay — highlight one app-owned target, dim the rest of the window, and place a short help balloon beside it. This moves the user's UI: navigation may switch the active Module (workspace, dashboard, itops, installer, screenshots, settings), a Settings section, or an IT Ops Site destination (navigation.itopsSiteId + navigation.itopsDestination: site|serverRooms|hosts|automations|runHistory|taskLibrary). targetId must be a registered tutorial target (see docs/manual chapters) or an IT Ops entity target such as itops.host:<hostId>. The overlay disappears when the user clicks or presses any key. Requires built_in_mcp_allow_all_dangerous = true.",
+            "description": "DANGEROUS: navigate the KKTerm UI and show a one-step Tutorial overlay — highlight one app-owned target, dim the rest of the window, and place a short help balloon beside it. This moves the user's UI: navigation may switch the active Module (workspace, dashboard, itops, installer, screenshots, settings), a Settings section, or an IT Ops Site destination (navigation.itopsSiteId + navigation.itopsDestination: site|serverRooms|hosts|runHistory|taskLibrary). targetId must be a registered tutorial target (see docs/manual chapters) or an IT Ops entity target such as itops.host:<hostId>. The overlay disappears when the user clicks or presses any key. Requires built_in_mcp_allow_all_dangerous = true.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -1461,7 +1396,7 @@ pub fn tool_descriptors() -> Vec<Value> {
                             "page": {"type": "string", "enum": ["workspace", "dashboard", "itops", "installer", "screenshots", "settings"]},
                             "settingsSectionId": {"type": "string"},
                             "itopsSiteId": {"type": "string"},
-                            "itopsDestination": {"type": "string", "enum": ["site", "serverRooms", "hosts", "automations", "runHistory", "taskLibrary", "ipam", "networkMaps"]},
+                            "itopsDestination": {"type": "string", "enum": ["site", "serverRooms", "hosts", "runHistory", "taskLibrary", "ipam", "networkMaps"]},
                         },
                         "additionalProperties": false,
                     },

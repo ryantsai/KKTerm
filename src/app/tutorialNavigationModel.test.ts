@@ -124,7 +124,6 @@ for (const targetId of itOpsTargets) {
 
 const itOpsDestinationTargets = [
   ["itops.hostsPanel", "hosts"],
-  ["itops.automationsNew", "automations"],
   ["itops.runHistoryPanel", "runHistory"],
   ["itops.taskLibraryNew", "taskLibrary"],
   ["itops.ipam", "ipam"],

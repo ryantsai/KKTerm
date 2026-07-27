@@ -75,7 +75,6 @@ const TUTORIAL_TOOL_KNOWN_TARGETS: &str = concat!(
     "app.activityRailWorkspace, app.activityRailNewWorkspace, app.activityRailDashboard, app.connectionRail, app.activityRailDontSleep, app.activityRailInstaller, app.activityRailSettings, app.connectionsResize, app.aiAssistantResize with navigation page=workspace; ",
     "app.activityRailItOps, itops.sitesTree, itops.siteView with navigation page=itops; ",
     "itops.hostsPanel, itops.hostsRunTask, itops.hostsImport, itops.hostsScan with navigation page=itops itopsDestination=hosts; ",
-    "itops.automationsPanel, itops.automationsNew with navigation page=itops itopsDestination=automations; ",
     "itops.runHistoryPanel with navigation page=itops itopsDestination=runHistory; ",
     "itops.taskLibrary, itops.taskLibraryNew with navigation page=itops itopsDestination=taskLibrary; ",
     "itops.ipam, itops.ipamNew with navigation page=itops itopsDestination=ipam; ",
@@ -3232,7 +3231,7 @@ fn ai_tool_definitions_with_skills(
         ));
         tools.push(tool_definition(
             "itops_create_task",
-            "Create a reusable IT Ops Task in the global Task Library. A Task owns what to execute (a script or an interactive playbook) but never targets; Hosts or a Monitor supply targets at launch. applicableOs defaults to [\"any\"]. Sudo steps and secret references must be configured in the Task Library editor, not here.",
+            "Create a reusable IT Ops Task in the global Task Library. A Task owns what to execute (a script or an interactive playbook) but never targets; Hosts supply targets at launch. applicableOs defaults to [\"any\"]. Sudo steps and secret references must be configured in the Task Library editor, not here.",
             json!({"type":"object","properties":{
                 "name":{"type":"string","minLength":1},
                 "description":{"type":"string"},
@@ -3255,53 +3254,6 @@ fn ai_tool_definitions_with_skills(
             "itops_remove_task",
             "Delete one user IT Ops Task by id (built-ins cannot be deleted). Completed Run History keeps its redacted task summary; any orphaned task credentials are removed from the vault.",
             json!({"type":"object","properties":{"id":{"type":"string"}},"required":["id"]}),
-        ));
-        tools.push(tool_definition(
-            "itops_list_automations",
-            "List durable IT Ops Monitors: id, name, enabled, the trigger/condition config, the ordered action list, and the optional Site binding (siteId). Enabled rows are armed as live Watchdogs.",
-            json!({"type":"object","properties":{}}),
-        ));
-        tools.push(tool_definition(
-            "itops_create_automation",
-            "Create a durable IT Ops Monitor: one trigger + condition (config, a WatchdogConfig whose action must be {\"kind\":\"notify\"}) and an ordered list of IT Ops actions run once per matching check (notify, popup, email, webhook, runBatch). enabled defaults to true and arms the Monitor immediately; siteId binds it to one Site's Monitors page. Use itops_test_automation first to dry-run the trigger. RunBatch tasks may not carry sudo steps or secret references.",
-            json!({"type":"object","properties":{
-                "name":{"type":"string","minLength":1},
-                "config": watchdog_config_schema(),
-                "actions": itops_automation_actions_schema(),
-                "enabled":{"type":"boolean"},
-                "siteId":{"type":"string"}
-            },"required":["name","config","actions"]}),
-        ));
-        tools.push(tool_definition(
-            "itops_update_automation",
-            "Update one IT Ops Monitor by id. Full-value semantics: read the rule via itops_list_automations first and resend name, config, actions, and siteId. An enabled Monitor is re-armed with the new definition.",
-            json!({"type":"object","properties":{
-                "id":{"type":"string"},
-                "name":{"type":"string","minLength":1},
-                "config": watchdog_config_schema(),
-                "actions": itops_automation_actions_schema(),
-                "siteId":{"type":"string"}
-            },"required":["id","name","config","actions"]}),
-        ));
-        tools.push(tool_definition(
-            "itops_set_automation_enabled",
-            "Enable (arm) or disable (disarm) one IT Ops Monitor by id. Disabled Monitors stay stored but never poll.",
-            json!({"type":"object","properties":{
-                "id":{"type":"string"},
-                "enabled":{"type":"boolean"}
-            },"required":["id","enabled"]}),
-        ));
-        tools.push(tool_definition(
-            "itops_remove_automation",
-            "Delete one IT Ops Monitor by id, disarming its live Watchdog first. Run History produced by the Monitor is kept.",
-            json!({"type":"object","properties":{"id":{"type":"string"}},"required":["id"]}),
-        ));
-        tools.push(tool_definition(
-            "itops_test_automation",
-            "Dry-run a Monitor trigger: sample the config's target once and report the sampled value plus whether the condition would fire right now. No actions are executed and nothing is stored.",
-            json!({"type":"object","properties":{
-                "config": watchdog_config_schema()
-            },"required":["config"]}),
         ));
         tools.push(tool_definition(
             "itops_start_batch_run",
@@ -3327,7 +3279,7 @@ fn ai_tool_definitions_with_skills(
         ));
         tools.push(tool_definition(
             "itops_list_run_history",
-            "List completed Batch Run reports, newest first: id, source (manual or automation:<id>), siteId, taskId, redacted task summary, timestamps, and per-host outcome rows (ok, exitCode, durationMs, error) without output text. Use itops_get_run_report for one run's output.",
+            "List completed Batch Run reports, newest first: id, source (manual or a retained legacy automation:<id> reference), siteId, taskId, redacted task summary, timestamps, and per-host outcome rows (ok, exitCode, durationMs, error) without output text. Use itops_get_run_report for one run's output.",
             json!({"type":"object","properties":{
                 "siteId":{"type":"string","description":"Only runs for this Site."},
                 "limit":{"type":"integer","minimum":1,"maximum":100}
@@ -3510,9 +3462,9 @@ fn ai_tool_definitions_with_skills(
         tools.push(tool_definition(
             "tutorial_highlight",
             format!(
-                "Show a one-step in-app Tutorial overlay by navigating to a known app surface when needed, highlighting an app-owned target, dimming the rest of the window, and placing a short help balloon beside it. Use this only after the user explicitly asks to be shown where something is, or after the user accepts your offer to navigate. Only pass targetId values explicitly listed in current page context or documented by this tool; do not invent CSS selectors. Known targets include {TUTORIAL_TOOL_KNOWN_TARGETS}. The current IT Ops page context may additionally list entity-scoped targets (itops.site:<siteId>, itops.host:<hostId>, itops.automation:<automationId>, itops.task:<taskId>, itops.run:<runId>) that highlight one specific row; pair them with navigation.itopsSiteId when the entity belongs to a Site that is not selected. navigation.itopsSiteId and navigation.itopsDestination open one IT Ops Site's navigator destination (hosts, automations, runHistory, serverRooms, site) or a global Library destination (taskLibrary, ipam, networkMaps) before highlighting. The overlay disappears when the user clicks or presses any key."
+                "Show a one-step in-app Tutorial overlay by navigating to a known app surface when needed, highlighting an app-owned target, dimming the rest of the window, and placing a short help balloon beside it. Use this only after the user explicitly asks to be shown where something is, or after the user accepts your offer to navigate. Only pass targetId values explicitly listed in current page context or documented by this tool; do not invent CSS selectors. Known targets include {TUTORIAL_TOOL_KNOWN_TARGETS}. The current IT Ops page context may additionally list entity-scoped targets (itops.site:<siteId>, itops.host:<hostId>, itops.task:<taskId>, itops.run:<runId>) that highlight one specific row; pair them with navigation.itopsSiteId when the entity belongs to a Site that is not selected. navigation.itopsSiteId and navigation.itopsDestination open one IT Ops Site's navigator destination (hosts, runHistory, serverRooms, site) or a global Library destination (taskLibrary, ipam, networkMaps) before highlighting. The overlay disappears when the user clicks or presses any key."
             ),
-            json!({"type":"object","properties":{"targetId":{"type":"string"},"title":{"type":"string","maxLength":80},"body":{"type":"string","maxLength":240},"navigation":{"type":"object","properties":{"page":{"type":"string","enum":["workspace","dashboard","itops","installer","screenshots","settings"]},"settingsSectionId":{"type":"string","enum":["general-settings","appearance-settings","dashboard-settings","workspace-settings","file-explorer-settings","dont-sleep-settings","installer-settings","credentials-settings","assistant-settings","ssh-settings","terminal-settings","url-settings","rdp-settings","vnc-settings","shortcuts-settings","proxy-settings","about-settings"]},"itopsSiteId":{"type":"string","description":"IT Ops only: the Site to select before highlighting."},"itopsDestination":{"type":"string","enum":["site","serverRooms","hosts","automations","runHistory","taskLibrary","ipam","networkMaps"],"description":"IT Ops only: which navigator destination to open."}},"additionalProperties":false},"page":{"type":"string","enum":["workspace","dashboard","itops","installer","screenshots","settings"]},"settingsSectionId":{"type":"string","enum":["general-settings","appearance-settings","dashboard-settings","workspace-settings","file-explorer-settings","dont-sleep-settings","installer-settings","credentials-settings","assistant-settings","ssh-settings","terminal-settings","url-settings","rdp-settings","vnc-settings","shortcuts-settings","proxy-settings","about-settings"]}},"required":["targetId","title","body"]}),
+            json!({"type":"object","properties":{"targetId":{"type":"string"},"title":{"type":"string","maxLength":80},"body":{"type":"string","maxLength":240},"navigation":{"type":"object","properties":{"page":{"type":"string","enum":["workspace","dashboard","itops","installer","screenshots","settings"]},"settingsSectionId":{"type":"string","enum":["general-settings","appearance-settings","dashboard-settings","workspace-settings","file-explorer-settings","dont-sleep-settings","installer-settings","credentials-settings","assistant-settings","ssh-settings","terminal-settings","url-settings","rdp-settings","vnc-settings","shortcuts-settings","proxy-settings","about-settings"]},"itopsSiteId":{"type":"string","description":"IT Ops only: the Site to select before highlighting."},"itopsDestination":{"type":"string","enum":["site","serverRooms","hosts","runHistory","taskLibrary","ipam","networkMaps"],"description":"IT Ops only: which navigator destination to open."}},"additionalProperties":false},"page":{"type":"string","enum":["workspace","dashboard","itops","installer","screenshots","settings"]},"settingsSectionId":{"type":"string","enum":["general-settings","appearance-settings","dashboard-settings","workspace-settings","file-explorer-settings","dont-sleep-settings","installer-settings","credentials-settings","assistant-settings","ssh-settings","terminal-settings","url-settings","rdp-settings","vnc-settings","shortcuts-settings","proxy-settings","about-settings"]}},"required":["targetId","title","body"]}),
         ));
     }
     if settings.network() {
@@ -3587,8 +3539,7 @@ fn watchdog_create_schema() -> Value {
     })
 }
 
-/// The WatchdogConfig object schema, shared by `watchdog_create` and the IT Ops
-/// Automation tools (an Automation's `config` is a WatchdogConfig).
+/// The WatchdogConfig object schema used by `watchdog_create`.
 fn watchdog_config_schema() -> Value {
     json!({
                 "type": "object",
@@ -3665,9 +3616,9 @@ fn watchdog_config_schema() -> Value {
     })
 }
 
-/// The Batch Task object schema shared by the IT Ops Task, Automation, and
-/// Batch Run tools. Assistant-authored tasks never carry sudo steps or secret
-/// references — those are configured in the Task Library editor.
+/// The Batch Task object schema shared by the IT Ops Task and Batch Run tools.
+/// Assistant-authored tasks never carry sudo steps or secret references —
+/// those are configured in the Task Library editor.
 fn itops_batch_task_schema() -> Value {
     json!({
         "oneOf": [
@@ -3705,63 +3656,6 @@ fn itops_batch_task_schema() -> Value {
                 "required": ["kind", "name", "steps"]
             }
         ]
-    })
-}
-
-/// The ordered IT Ops Automation action-list schema (the closed Phase 4 catalog).
-fn itops_automation_actions_schema() -> Value {
-    json!({
-        "type": "array",
-        "items": {
-            "oneOf": [
-                {
-                    "type": "object",
-                    "properties": {
-                        "kind": { "const": "notify" },
-                        "level": { "type": "string", "enum": ["inApp", "toast", "sound"] }
-                    },
-                    "required": ["kind"]
-                },
-                {
-                    "type": "object",
-                    "properties": {
-                        "kind": { "const": "popup" },
-                        "title": { "type": "string" },
-                        "body": { "type": "string" }
-                    },
-                    "required": ["kind", "title", "body"]
-                },
-                {
-                    "type": "object",
-                    "properties": {
-                        "kind": { "const": "email" },
-                        "to": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
-                        "subject": { "type": "string" },
-                        "body": { "type": "string" }
-                    },
-                    "required": ["kind", "to", "subject", "body"]
-                },
-                {
-                    "type": "object",
-                    "properties": {
-                        "kind": { "const": "webhook" },
-                        "url": { "type": "string" },
-                        "method": { "type": "string", "description": "HTTP method; defaults to POST." },
-                        "body": { "type": "string" }
-                    },
-                    "required": ["kind", "url"]
-                },
-                {
-                    "type": "object",
-                    "properties": {
-                        "kind": { "const": "runBatch" },
-                        "siteId": { "type": "string" },
-                        "task": itops_batch_task_schema()
-                    },
-                    "required": ["kind", "siteId", "task"]
-                }
-            ]
-        }
     })
 }
 
@@ -4454,8 +4348,7 @@ fn tool_requires_allow_all(tool_name: &str) -> bool {
             ))
         || (tool_name.starts_with("itops_")
             && !(tool_name.starts_with("itops_list")
-                || tool_name.starts_with("itops_get")
-                || tool_name == "itops_test_automation"))
+                || tool_name.starts_with("itops_get")))
         || matches!(
             tool_name,
             "installer_install" | "installer_uninstall" | "installer_launch"
@@ -4801,13 +4694,11 @@ fn optional_itops_mount_face(args: &Value) -> Result<Option<RackMountFace>, Stri
 
 /// IT Ops Module tools shared by the in-app assistant and the built-in MCP
 /// bridge (`kkterm.itops.*`): Site/Server Room/Rack topology, Rack Device
-/// placement, the Host inventory, the global Task Library, durable
-/// Automations, and Batch Runs. Mutations emit `itops-changed` so the IT Ops
+/// placement, the Host inventory, the global Task Library, and Batch Runs.
+/// Mutations emit `itops-changed` so the IT Ops
 /// Module reloads when a change arrives from outside its own UI.
 pub(crate) async fn itops_tool(app: &tauri::AppHandle, name: &str, args: Value) -> String {
     use crate::dashboard_storage::DashboardBackground;
-    use crate::itops::automation_commands as itops_auto_commands;
-    use crate::itops::automation_storage as itops_autos;
     use crate::itops::commands as itops_commands;
     use crate::itops::host_storage as itops_hosts;
     use crate::itops::ids::new_itops_id;
@@ -4817,12 +4708,10 @@ pub(crate) async fn itops_tool(app: &tauri::AppHandle, name: &str, args: Value) 
     use crate::itops::task_commands as itops_task_commands;
     use crate::itops::task_storage as itops_tasks;
     use crate::itops::types::{
-        AutomationAction, BatchTask, HostKind, ItopsTask, RackFacingEntry, RackItemKind,
-        RackItemMetadata, RackPlacementEntry, RoomIcon, RoomObject, RunHistoryEntry, RunScope,
-        SiteFilter, TaskOperatingSystem, Transport,
+        BatchTask, HostKind, ItopsTask, RackFacingEntry, RackItemKind, RackItemMetadata,
+        RackPlacementEntry, RoomIcon, RoomObject, RunHistoryEntry, RunScope, SiteFilter,
+        TaskOperatingSystem, Transport,
     };
-    use crate::watchdog::WatchdogRegistry;
-    use crate::watchdog::types::{WatchdogAction, WatchdogConfig};
 
     fn to_value<T: serde::Serialize>(value: T) -> Value {
         serde_json::to_value(value).unwrap_or(Value::Null)
@@ -4902,32 +4791,6 @@ pub(crate) async fn itops_tool(app: &tauri::AppHandle, name: &str, args: Value) 
         } else {
             Ok(parsed)
         }
-    }
-    fn parse_automation_config(args: &Value) -> Result<WatchdogConfig, String> {
-        let config: WatchdogConfig =
-            serde_json::from_value(args.get("config").cloned().unwrap_or(Value::Null))
-                .map_err(|error| format!("invalid config: {error}"))?;
-        Ok(config)
-    }
-    fn parse_notify_automation_config(args: &Value) -> Result<WatchdogConfig, String> {
-        let config = parse_automation_config(args)?;
-        if !matches!(config.action, WatchdogAction::Notify) {
-            return Err(
-                "config.action must be {\"kind\":\"notify\"} — the Monitor's ordered actions list carries the real work".to_string(),
-            );
-        }
-        Ok(config)
-    }
-    fn parse_automation_actions(args: &Value) -> Result<Vec<AutomationAction>, String> {
-        let actions: Vec<AutomationAction> =
-            serde_json::from_value(args.get("actions").cloned().unwrap_or_else(|| json!([])))
-                .map_err(|error| format!("invalid actions: {error}"))?;
-        for action in &actions {
-            if let AutomationAction::RunBatch { task, .. } = action {
-                validate_assistant_task(task, None)?;
-            }
-        }
-        Ok(actions)
     }
     /// Compact Task Library projection: metadata plus a redacted summary, never
     /// full script bodies (itops_get_task returns the full definition).
@@ -5137,15 +5000,6 @@ pub(crate) async fn itops_tool(app: &tauri::AppHandle, name: &str, args: Value) 
             }
             .await,
         ),
-        "itops_test_automation" => Some(
-            async {
-                let config = parse_automation_config(&args)?;
-                itops_auto_commands::itops_test_automation(app.clone(), config)
-                    .await
-                    .map(to_value)
-            }
-            .await,
-        ),
         "itops_update_task" => Some((|| {
             let id = required_string(&args, "id")?;
             let task_name = required_string(&args, "name")?;
@@ -5172,67 +5026,6 @@ pub(crate) async fn itops_tool(app: &tauri::AppHandle, name: &str, args: Value) 
         "itops_remove_task" => Some((|| {
             let id = required_string(&args, "id")?;
             itops_task_commands::itops_remove_task(app.clone(), id).map(|_| json!({"ok": true}))
-        })()),
-        "itops_create_automation" => Some((|| {
-            let rule_name = required_string(&args, "name")?;
-            let config = parse_notify_automation_config(&args)?;
-            let actions = parse_automation_actions(&args)?;
-            let enabled = args.get("enabled").and_then(Value::as_bool).unwrap_or(true);
-            let site_id = optional_string(&args, "siteId");
-            itops_auto_commands::itops_create_automation(
-                app.clone(),
-                app.state::<std::sync::Arc<WatchdogRegistry>>(),
-                app.state::<itops_auto_commands::ItopsAutomationRuntime>(),
-                rule_name,
-                config,
-                actions,
-                enabled,
-                site_id,
-            )
-            .map(to_value)
-        })()),
-        "itops_update_automation" => Some((|| {
-            let id = required_string(&args, "id")?;
-            let rule_name = required_string(&args, "name")?;
-            let config = parse_notify_automation_config(&args)?;
-            let actions = parse_automation_actions(&args)?;
-            let site_id = optional_string(&args, "siteId");
-            itops_auto_commands::itops_update_automation(
-                app.clone(),
-                app.state::<std::sync::Arc<WatchdogRegistry>>(),
-                app.state::<itops_auto_commands::ItopsAutomationRuntime>(),
-                id,
-                rule_name,
-                config,
-                actions,
-                site_id,
-            )
-            .map(to_value)
-        })()),
-        "itops_set_automation_enabled" => Some((|| {
-            let id = required_string(&args, "id")?;
-            let enabled = args
-                .get("enabled")
-                .and_then(Value::as_bool)
-                .ok_or_else(|| "enabled is required".to_string())?;
-            itops_auto_commands::itops_set_automation_enabled(
-                app.clone(),
-                app.state::<std::sync::Arc<WatchdogRegistry>>(),
-                app.state::<itops_auto_commands::ItopsAutomationRuntime>(),
-                id,
-                enabled,
-            )
-            .map(to_value)
-        })()),
-        "itops_remove_automation" => Some((|| {
-            let id = required_string(&args, "id")?;
-            itops_auto_commands::itops_remove_automation(
-                app.clone(),
-                app.state::<std::sync::Arc<WatchdogRegistry>>(),
-                app.state::<itops_auto_commands::ItopsAutomationRuntime>(),
-                id,
-            )
-            .map(|_| json!({"ok": true}))
         })()),
         "itops_start_batch_run" => Some((|| {
             let site_id = required_string(&args, "siteId")?;
@@ -5604,9 +5397,6 @@ pub(crate) async fn itops_tool(app: &tauri::AppHandle, name: &str, args: Value) 
                     .map(to_value)
                     .map_err(|e| e.to_string())
             }
-            "itops_list_automations" => itops_autos::list_automations(conn)
-                .map(to_value)
-                .map_err(|e| e.to_string()),
             "itops_list_run_history" => {
                 let limit = optional_u32(&args, "limit").unwrap_or(20).clamp(1, 100) as usize;
                 let site_filter = optional_string(&args, "siteId");
@@ -5659,8 +5449,7 @@ pub(crate) async fn itops_tool(app: &tauri::AppHandle, name: &str, args: Value) 
     match result {
         Ok(value) => {
             let read_only = name.starts_with("itops_list")
-                || name.starts_with("itops_get")
-                || name == "itops_test_automation";
+                || name.starts_with("itops_get");
             if !read_only {
                 let _ = app.emit("itops-changed", json!({ "source": "aiTool", "tool": name }));
             }

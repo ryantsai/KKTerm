@@ -1,5 +1,4 @@
 import type { AccentName, DashboardBackground, IconName, WidgetLayoutEnforcement } from "./modules/dashboard/types";
-import type { WatchdogConfig } from "./watchdog/types";
 
 export type ConnectionType =
   | "local"
@@ -515,29 +514,6 @@ export type RunEvent =
   | { kind: "finished"; runId: string; report: RunReport }
   | { kind: "canceled"; runId: string };
 
-// A durable Automation (docs/ITOPS.md Phase 3+): a Watchdog config plus an
-// ordered IT Ops action list run on each trigger fire (Phase 4).
-export type NotifyLevel = "inApp" | "toast" | "sound";
-
-export type AutomationAction =
-  | { kind: "notify"; level: NotifyLevel }
-  | { kind: "popup"; title: string; body: string }
-  | { kind: "email"; to: string[]; subject: string; body: string }
-  | { kind: "webhook"; url: string; method: string; body?: string | null }
-  | { kind: "runBatch"; siteId: string; task: BatchTask };
-
-export interface Automation {
-  id: string;
-  name: string;
-  sortOrder: number;
-  enabled: boolean;
-  config: WatchdogConfig;
-  actions: AutomationAction[];
-  // Durable Site binding (soft reference): which Site's Automations segment
-  // lists this rule. null/undefined = unbound (legacy rows).
-  siteId?: string | null;
-}
-
 // IPAM (docs/ITOPS.md IP Address Management). A global IT Ops destination, not
 // scoped to one Site. Only IpPrefix and IpAddressRecord are stored; hierarchy
 // and utilization are recomputed by the backend on every snapshot, so the tree
@@ -841,16 +817,6 @@ export interface NetworkMap {
   siteId?: string | null;
   sortOrder: number;
   graph: NetworkGraph;
-}
-
-// Result of a one-shot Automation test (docs/ITOPS.md): samples the trigger now
-// and reports whether the condition would fire. Actions are not executed.
-export interface AutomationTestResult {
-  value: unknown;
-  valueAvailable: boolean;
-  wouldFire: boolean;
-  // Note code the UI translates ("schedule" | "needsSession").
-  note?: string | null;
 }
 
 export interface CreateConnectionRequest {

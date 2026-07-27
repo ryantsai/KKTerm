@@ -4531,9 +4531,6 @@ pub fn run() {
             app.manage(itops::commands::ItopsRunRegistry::default());
             app.manage(std::sync::Arc::new(watchdog::WatchdogRegistry::new()));
             app.manage(std::sync::Arc::new(watchdog::SessionActivityTracker::new()));
-            app.manage(itops::automation_commands::ItopsAutomationRuntime::default());
-            itops::automation_commands::install_trigger_hook(app.handle());
-            itops::automation_commands::hydrate_automations(app.handle().clone());
             app.manage(installer::InstallerRuntime::new());
             mcp_bridge::start_if_enabled(
                 app.handle().clone(),
@@ -5083,12 +5080,6 @@ pub fn run() {
             itops::network_map_commands::itops_create_network_map,
             itops::network_map_commands::itops_update_network_map,
             itops::network_map_commands::itops_remove_network_map,
-            itops::automation_commands::itops_list_automations,
-            itops::automation_commands::itops_create_automation,
-            itops::automation_commands::itops_update_automation,
-            itops::automation_commands::itops_set_automation_enabled,
-            itops::automation_commands::itops_remove_automation,
-            itops::automation_commands::itops_test_automation,
             // ── Install Helper
             installer::commands::installer_load_catalog,
             installer::commands::installer_load_detection_cache,

@@ -13,7 +13,7 @@ use std::{
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use zip::{ZipArchive, ZipWriter, write::SimpleFileOptions};
 
-const SCHEMA_USER_VERSION: i32 = 54;
+const SCHEMA_USER_VERSION: i32 = 55;
 
 const DEFAULT_TERMINAL_OPACITY: u8 = 50;
 
@@ -339,10 +339,10 @@ CREATE INDEX IF NOT EXISTS idx_itops_server_rooms_site
 -- deleted. Live run progress is in-memory only and never lands here. v30.
 CREATE TABLE IF NOT EXISTS itops_run_history (
     id             TEXT PRIMARY KEY,
-    -- 'manual' or 'automation:<automation_id>'.
+    -- New runs use 'manual'; old rows may retain 'automation:<legacy_id>'.
     source         TEXT NOT NULL,
     site_id  TEXT,
-    -- Stable soft reference for reusable-Task statistics; null for ad-hoc and Automation runs.
+    -- Stable soft reference for reusable-Task statistics; null for ad-hoc and legacy runs.
     task_id        TEXT,
     -- Redacted one-line task label, never a secret-bearing script body.
     task_summary   TEXT NOT NULL,
@@ -439,7 +439,7 @@ CREATE TABLE IF NOT EXISTS itops_ip_address_records (
 
 -- A Network Map: the logical link diagram, distinct from the physical Site →
 -- Server Room → Rack topology. graph_json holds the whole document (nodes,
--- links, reachability roots) like itops_automations.actions_json — the canvas is
+-- links, reachability roots); the canvas is
 -- always saved as a unit, so per-node rows would buy no query the UI makes.
 -- site_id is an optional SOFT reference; NULL means the map spans Sites. v51.
 CREATE TABLE IF NOT EXISTS itops_network_maps (
@@ -453,21 +453,20 @@ CREATE TABLE IF NOT EXISTS itops_network_maps (
     updated_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- A durable Automation (docs/ITOPS.md Phase 3): the persistent definition of a
--- Watchdog. Enabled rows are re-armed into the live WatchdogRegistry on launch;
--- the running Watchdog state stays in-memory only. config_json holds a
--- serialized WatchdogConfig (the existing trigger/condition/action shape). v31.
+-- Obsolete IT Ops Monitor definitions retained for backup/export recovery.
+-- The feature no longer has a UI, commands, or runtime. v31; retired in v55.
 CREATE TABLE IF NOT EXISTS itops_automations (
     id           TEXT PRIMARY KEY,
     name         TEXT NOT NULL,
     sort_order   INTEGER NOT NULL,
-    enabled      INTEGER NOT NULL DEFAULT 1,
+    enabled      INTEGER NOT NULL DEFAULT 0,
     config_json  TEXT NOT NULL,
-    -- Ordered IT Ops action catalog run on each trigger fire (Phase 4). v32.
+    -- Retained serialized payloads; never executed. v32.
     actions_json TEXT NOT NULL DEFAULT '[]',
-    -- Optional durable Site binding (soft reference, like itops_run_history's
-    -- site_id): which Site's Automations segment lists this rule. v43.
+    -- Former optional Site binding, retained as a soft reference. v43.
     site_id      TEXT,
+    -- Set when the executable Monitor feature was retired. v55.
+    obsolete_at  TEXT,
     created_at   TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at   TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -2983,6 +2982,13 @@ impl Storage {
         if stored_version < 54 {
             ensure_column(&connection, "itops_ip_prefixes", "vlan_id", "TEXT")?;
         }
+        // v55: the IT Ops Monitor feature is retired. Preserve every serialized
+        // definition for backup/selective-export recovery, but permanently
+        // disable it and stamp it obsolete so no legacy row can re-arm.
+        if stored_version < 55 {
+            ensure_column(&connection, "itops_automations", "obsolete_at", "TEXT")?;
+            mark_legacy_monitors_obsolete(&connection)?;
+        }
         connection
             .execute_batch(&format!("PRAGMA user_version = {SCHEMA_USER_VERSION}"))
             .map_err(to_storage_error)?;
@@ -3160,6 +3166,18 @@ fn remove_wal_sidecars(db_path: &Path) -> Result<(), String> {
         sidecar.push(suffix);
         remove_file_if_exists(Path::new(&sidecar))?;
     }
+    Ok(())
+}
+
+pub(crate) fn mark_legacy_monitors_obsolete(connection: &SqliteConnection) -> Result<(), String> {
+    connection
+        .execute(
+            "UPDATE itops_automations
+             SET enabled = 0,
+                 obsolete_at = COALESCE(obsolete_at, CURRENT_TIMESTAMP)",
+            [],
+        )
+        .map_err(to_storage_error)?;
     Ok(())
 }
 

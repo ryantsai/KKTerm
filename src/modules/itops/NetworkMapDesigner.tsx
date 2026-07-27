@@ -8,7 +8,7 @@
 // takes that switched-off set as its only input, which is what makes it useful
 // before a change window rather than after an outage.
 //
-// Built on @xyflow/react like the Automation editor. Node positions live in the
+// Built on @xyflow/react. Node positions live in the
 // graph itself (they are part of the saved document), so a drag is an edit.
 
 import {

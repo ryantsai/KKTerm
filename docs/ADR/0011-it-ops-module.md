@@ -2,7 +2,12 @@
 
 ## Status
 
-Accepted
+Accepted, with the durable Monitor portion retired by schema version 55.
+
+The Site, Host, Task, Batch Run, and topology decisions remain active. The
+former Monitor UI/runtime/tooling is removed; legacy `itops_automations` rows
+are disabled, stamped obsolete, and retained only for backup/export recovery.
+See `docs/ITOPS.md` for the current Module contract.
 
 ## Context
 

@@ -4,7 +4,7 @@
 
 Quick snapshot as of July 21, 2026:
 
-All core connection types (SSH, Telnet, Serial, FTP/FTPS, RDP, VNC, URL/WebView2, local shells, and the local File/Document viewer), terminal features, SSH port forwarding, SFTP/FTP, RDP/VNC, AI Assistant tool calling with composer attachments, Dashboard Module redesign, Install Helper, the Site-first IT Ops Module (Sites, Server Room/Rack topology, Hosts inventory, Task Library, SSH Batch Runs, durable Automations, and playbooks), and UI customization are implemented and shipping. The app builds for Windows, macOS, and Linux. The app metadata is currently at v0.1.127 and releasing continuously.
+All core connection types (SSH, Telnet, Serial, FTP/FTPS, RDP, VNC, URL/WebView2, local shells, and the local File/Document viewer), terminal features, SSH port forwarding, SFTP/FTP, RDP/VNC, AI Assistant tool calling with composer attachments, Dashboard Module redesign, Install Helper, the Site-first IT Ops Module (Sites, Server Room/Rack topology, Hosts inventory, Task Library, SSH Batch Runs, and playbooks), and UI customization are implemented and shipping. The app builds for Windows, macOS, and Linux. The app metadata is currently at v0.1.127 and releasing continuously.
 
 Release validation gates are documented in `AGENTS.md` and `docs/RELEASE.md`; run the full suite before significant code changes or release publication. Previous packaging validation passed for `npm run package:installer` and `npm run smoke:installer`.
 
@@ -157,9 +157,9 @@ Design and deep dive: `docs/ADR/0011-it-ops-module.md`, `docs/ITOPS.md`, `docs/S
 - [x] Per-Site Hosts inventory: hostname import, child Hosts for VMs/containers, multi-Connection bindings, and bounded-concurrency TCP scans for SSH/WinRM/HTTPS endpoints.
 - [x] Task Library with a synced built-in per-OS diagnostic catalog (Linux, macOS, Windows, Cisco IOS/NX-OS, FortiOS, Junos, Arista EOS); reusable script and expect-style Playbook Tasks with Applicable OS metadata.
 - [x] SSH Batch Runs: fan-out task execution across selected Hosts with live per-host streamed output and a consolidated, saved Run History report.
-- [x] Durable Automations (the evolved Watchdog) in an n8n-style node editor: trigger → condition → action pipeline, re-armed on launch, with a dry-run Test action and the Status Bar indicator.
+- [x] Retired the former durable Monitor feature without deleting user data; legacy definitions are disabled, stamped obsolete, and retained in full backups and selective IT Ops exports.
 - [x] Action catalog: notify, popup, email (SMTP), webhook, runBatch, and approval-gated AI intervention.
-- [x] AI Assistant + built-in MCP integration for Site/Host/Task/Automation/Batch Run management under approval-gated `itops_*` / `kkterm.itops.*` tools.
+- [x] AI Assistant + built-in MCP integration for Site/Host/Task/Batch Run management under approval-gated `itops_*` / `kkterm.itops.*` tools.
 
 ### UI, Settings & i18n
 
@@ -262,12 +262,11 @@ Second-tier follow-ups to the shipped OSC 133 / Quick Select / inline images / n
 
 ### IT Ops Center
 
-Design accepted: see `docs/ADR/0011-it-ops-module.md`, `docs/ADR/0012-winrm-transport-library.md` (WinRM transport for Windows Update playbooks), `docs/ITOPS.md`, and `docs/manual/12-it-ops.md`. The Site-first module now ships Sites, Server Room/Rack topology, Hosts inventory, the global Task Library (script and Playbook Tasks), SSH Batch Runs with Run History, and durable Automations. Batch Runs currently reach hosts over SSH only; the items below extend transports, monitoring, and automation depth.
+Design accepted: see `docs/ADR/0011-it-ops-module.md`, `docs/ADR/0012-winrm-transport-library.md` (WinRM transport for Windows Update playbooks), `docs/ITOPS.md`, and `docs/manual/12-it-ops.md`. The Site-first module now ships Sites, Server Room/Rack topology, Hosts inventory, the global Task Library (script and Playbook Tasks), and SSH Batch Runs with Run History. Batch Runs currently reach hosts over SSH only; the items below extend transports and operational depth.
 
 - [ ] Windows remote management (WinRM/WS-Man) Batch Run transport per ADR-0012, so Batch Runs and playbooks reach Windows hosts without OpenSSH. The runner and UI already target a common `Transport` trait; today non-SSH hosts are skipped and the WinRM/PsExec adapters remain stubbed (Phase 6).
 - [ ] PsExec (SMB/named-pipe) Batch Run transport for Windows hosts, shipped as an Install Helper recipe behind the same `Transport` trait.
 - [ ] Network device SNMP status polling: promote the scaffolded SNMP path (`SnmpRefreshRequest`/`SnmpPortSample` model, port-speed parser, and Rack Device `snmp` metadata) from its current no-op transport to real SNMP GET/WALK polling, surfacing live port speed/state on Rack Devices and Hosts with scheduled refresh.
-- [ ] More IT Ops automation actions, conditions, and reusable workflow templates.
 - [ ] Automated server-update playbooks (apt, dnf, yum, Windows Update via WinRM) with dry-run preview and rollback-aware sequencing.
 - [ ] AI-enabled triggers watching terminal output, SFTP changes, or scheduled probes.
 - [ ] Richer cross-transport Batch Runs beyond the current implemented paths.

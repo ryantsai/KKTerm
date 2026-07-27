@@ -49,7 +49,6 @@ export type PredicateOp =
 export interface WatchdogTrigger {
   predicate: PredicateOp;
   sustainedForMs?: number;
-  repeatWhileTrue?: boolean;
 }
 
 export type WatchdogStop =

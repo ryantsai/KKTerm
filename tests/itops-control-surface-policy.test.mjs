@@ -5,14 +5,12 @@ import test from "node:test";
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
 test("custom IT Ops editors bridge shared dialog control tokens", async () => {
-  const [automation, tasks, networkMap, dialogStyles] = await Promise.all([
-    read("src/modules/itops/AutomationEditor.tsx"),
+  const [tasks, networkMap, dialogStyles] = await Promise.all([
     read("src/modules/itops/TaskLibrary.tsx"),
     read("src/modules/itops/NetworkMapDesigner.tsx"),
     read("src/app/ui/dialog/dialogs.css"),
   ]);
 
-  assert.match(automation, /className="au-editor kk-surface"/);
   assert.match(tasks, /className="au-editor pb-editor kk-surface"/);
   assert.match(networkMap, /className="au-side nm-side kk-surface"/);
   assert.match(dialogStyles, /\.kk-dlg,\s*\n\.kk-surface\s*\{/);

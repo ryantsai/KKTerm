@@ -178,8 +178,8 @@ pub async fn itops_start_batch_run(
     .map_err(|error| format!("batch run preparation task failed: {error}"))?
 }
 
-/// Start a Batch Run; reusable by the command above and the Automation
-/// `runBatch` action. Returns the run id immediately; progress streams on
+/// Start a Batch Run; reusable by the command above and internal callers.
+/// Returns the run id immediately; progress streams on
 /// `itops://run` and the report lands in itops_run_history on completion.
 /// A non-empty `scope` narrows the run to the placed hosts in matching racks.
 pub fn start_run(

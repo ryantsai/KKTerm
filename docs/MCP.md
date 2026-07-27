@@ -33,8 +33,7 @@ Namespaces in this build:
 - `kkterm.screenshots.*` — Screenshots Module: captures, library reads,
   transforms, file actions, and destructive library management.
 - `kkterm.itops.*` — IT Ops Module: Sites, Server Rooms, Racks, Rack
-  Devices, Room Objects, presentation metadata, Hosts, Tasks, Monitors,
-  and Batch Runs.
+  Devices, Room Objects, presentation metadata, Hosts, Tasks, and Batch Runs.
 - `kkterm.network.*` — Network capability: read-only diagnostics (ping,
   DNS, TCP check, port scan, interfaces, Wake-on-LAN, WHOIS).
 - `kkterm.watchdog.*` — Watchdog capability: background monitors that poll
@@ -317,20 +316,18 @@ destroy files. Those operations use the `dangerous` namespace and require
 ### IT Ops Module (`kkterm.itops.*`)
 
 The full IT Ops Module surface (docs/ITOPS.md): Site topology and Rack Device
-placement, the Host inventory, the global Task Library, durable Monitors,
-and Batch Runs. Backed by `crate::ai::itops_tool`, the same implementation the
+placement, the Host inventory, the global Task Library, and Batch Runs. Backed by `crate::ai::itops_tool`, the same implementation the
 in-app assistant's `itops_*` tools use, so MCP and the assistant share one
 storage path. Mutations emit `itops-changed` so the IT Ops UI reloads.
 
 Safe tools are durable data reads/writes with no executable code and no
 secrets; in the in-app assistant every mutating tool still goes through the
 per-call approval prompt unless the tool permission mode is Allow-all. Tools
-that author or execute runnable material — Task definitions, Monitors
-(their `runBatch` actions later execute scripts unattended), and starting a
+that author or execute runnable material — Task definitions and starting a
 Batch Run (remote code execution on every resolved host) — live in
 `kkterm.itops.*.dangerous.*` namespaces behind the
-`built_in_mcp_allow_all_dangerous` gate. Assistant-authored Tasks, Monitor
-`runBatch` payloads, and playbooks may never introduce sudo steps or
+`built_in_mcp_allow_all_dangerous` gate. Assistant-authored Tasks and
+playbooks may never introduce sudo steps or
 secret-vault references; those are configured only in the Task Library editor.
 The topology invariant is Site → Server Room → Rack → Rack Device: create the
 parent first.
@@ -377,9 +374,6 @@ parent first.
 | `kkterm.itops.tasks.list` | List the global Task Library: metadata plus a redacted one-line summary per Task, never full script bodies. |
 | `kkterm.itops.tasks.get` | Read one Task's full definition by id (script body or playbook steps). |
 | `kkterm.itops.tasks.remove` | Delete one user Task by id (built-ins are protected). Run History keeps its redacted summaries; orphaned task credentials are removed from the vault. |
-| `kkterm.itops.automations.list` | List durable Monitors: name, enabled, trigger/condition config, ordered actions, optional Site binding. |
-| `kkterm.itops.automations.remove` | Delete one Monitor by id, disarming its live Watchdog first. |
-| `kkterm.itops.automations.test` | Dry-run a Monitor trigger: sample the target once and report the value plus whether the condition would fire. No actions execute; nothing is stored. |
 | `kkterm.itops.runs.cancel` | Cancel a live Batch Run by `runId`; finished hosts keep their results and the partial report is persisted. |
 | `kkterm.itops.runs.list` | List completed Batch Run reports with per-host outcome rows (ok, exitCode, durationMs, error) but no output text. |
 | `kkterm.itops.runs.get_report` | Read one run's consolidated report by `runId` including per-host output, tail-capped by `maxOutputChars` (default 4000). The output may include sensitive remote command results. |
@@ -394,9 +388,6 @@ These tools author or execute runnable material, so they require
 |---|---|
 | `kkterm.itops.tasks.dangerous.create` | Create a reusable Task definition (script or interactive playbook). Saves only; nothing executes. Sudo steps and secret references are rejected — the Task Library editor owns those. |
 | `kkterm.itops.tasks.dangerous.update` | Update one user Task by id with full-value semantics. Built-ins are read-only; new sudo steps or secret references are rejected. |
-| `kkterm.itops.automations.dangerous.create` | Create a durable Monitor (trigger + condition config with a `notify` watchdog action, plus the ordered IT Ops action list). `enabled` defaults to true and arms the Monitor immediately; matching checks run its actions, and `runBatch` actions execute scripts on Site Hosts unattended. |
-| `kkterm.itops.automations.dangerous.update` | Update one Monitor by id with full-value semantics; an enabled Monitor is re-armed with the new definition. |
-| `kkterm.itops.automations.dangerous.set_enabled` | Arm or disarm one Monitor by id. An armed Monitor polls its trigger and runs its actions unattended on each matching check. |
 | `kkterm.itops.runs.dangerous.start` | Start a Batch Run against a Site — remote code execution on every resolved host over SSH. Pass exactly one of `taskId` or `script`; optional `scope` narrows to one `serverRoom`, `rackId`, or `hostIds`. Returns the `runId` immediately. |
 
 ### Network capability (`kkterm.network.*`)
@@ -561,8 +552,8 @@ when Settings → General → Debug → Advanced Debugging is enabled; enabling 
 setting writes an `advanced_debugging.enabled` marker so the release logging
 path is visible before the next MCP request. Built-in MCP debug records redact
 terminal and remote-desktop send-text input, terminal buffer reads, Dashboard
-widget source/body JSON, IT Ops task/script bodies and automation action
-payloads, Batch Run report output, and secret-looking argument fields before
+widget source/body JSON, IT Ops task/script bodies, Batch Run report output,
+and secret-looking argument fields before
 writing.
 
 ## Platform support

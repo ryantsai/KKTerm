@@ -2,6 +2,80 @@ use super::*;
 use rusqlite::params;
 
 #[test]
+fn monitor_removal_marks_legacy_rows_obsolete_without_losing_their_payload() {
+    let db_path = temp_db_path("obsolete-monitors");
+    let original_config = r#"{"target":{"kind":"ping","host":"10.0.0.1","port":80}}"#;
+    let original_actions = r#"[{"kind":"popup","title":"Legacy","body":"Keep me"}]"#;
+
+    {
+        let storage = Storage::open(db_path.clone()).expect("legacy storage opens");
+        storage
+            .with_connection(|connection| {
+                connection
+                    .execute(
+                        "INSERT INTO itops_automations
+                         (id, name, sort_order, enabled, config_json, actions_json, site_id)
+                         VALUES ('legacy-monitor', 'Legacy monitor', 0, 1, ?, ?, 'default-fleet')",
+                        params![original_config, original_actions],
+                    )
+                    .map_err(to_storage_error)?;
+                connection
+                    .pragma_update(None, "user_version", 54)
+                    .map_err(to_storage_error)?;
+                Ok(())
+            })
+            .expect("legacy Monitor row is stored");
+    }
+
+    let upgraded = Storage::open(db_path.clone()).expect("legacy storage upgrades");
+    let first_obsolete_at = upgraded
+        .with_connection(|connection| {
+            assert!(column_exists(
+                connection,
+                "itops_automations",
+                "obsolete_at",
+            )?);
+            let row: (i64, String, String, Option<String>) = connection
+                .query_row(
+                    "SELECT enabled, config_json, actions_json, obsolete_at
+                     FROM itops_automations WHERE id = 'legacy-monitor'",
+                    [],
+                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+                )
+                .map_err(to_storage_error)?;
+            assert_eq!(row.0, 0, "obsolete definitions must never remain enabled");
+            assert_eq!(row.1, original_config);
+            assert_eq!(row.2, original_actions);
+            assert!(row.3.is_some(), "legacy definition is stamped obsolete");
+            Ok(row.3.expect("obsolete timestamp"))
+        })
+        .expect("upgraded Monitor row is inspected");
+    drop(upgraded);
+
+    let reopened = Storage::open(db_path.clone()).expect("current storage reopens");
+    reopened
+        .with_connection(|connection| {
+            let obsolete_at: Option<String> = connection
+                .query_row(
+                    "SELECT obsolete_at FROM itops_automations
+                     WHERE id = 'legacy-monitor'",
+                    [],
+                    |row| row.get(0),
+                )
+                .map_err(to_storage_error)?;
+            assert_eq!(
+                obsolete_at.as_deref(),
+                Some(first_obsolete_at.as_str()),
+                "current-version startup must not rewrite the obsolete marker",
+            );
+            Ok(())
+        })
+        .expect("current-version reopen remains write-free");
+
+    let _ = fs::remove_file(db_path);
+}
+
+#[test]
 fn screenshot_settings_upgrade_legacy_jpeg_quality_and_default_to_both() {
     let settings: ScreenshotSettings = serde_json::from_str(
         r#"{

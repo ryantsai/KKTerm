@@ -36,7 +36,6 @@ import { ConnectionIcon } from "../workspace/connections/ConnectionIcon";
 import { ItIcon, IT_ACCENTS, type ItIconName } from "./icons";
 import { SiteDialog } from "./SiteDialog";
 import { BatchRunsTab } from "./BatchRunsTab";
-import { AutomationsTab } from "./AutomationsTab";
 import { HostsPanel } from "./HostsPanel";
 import { IpamPanel } from "./IpamPanel";
 import {
@@ -163,7 +162,7 @@ const FREE_CARD_HEIGHT = 74;
 const RACK_SEQUENCE_PENDING_ID = "__rack-sequence-pending__";
 const DEFAULT_SITE_ID = "default-fleet";
 
-type SiteDestination = "site" | "serverRooms" | "hosts" | "runHistory" | "automations";
+type SiteDestination = "site" | "serverRooms" | "hosts" | "runHistory";
 
 /** Which top-level surface the detail pane shows: one Site's drill-down, or a
  * global destination that stands outside the Site tree entirely. */
@@ -1227,7 +1226,6 @@ export function SitesTab({
                             );
                           }) : null}
                         <TreeRow depth={1} icon="server" label={t("itops.tabs.hosts")} hasChildren={false} open={false} selected={activeId === site.id && selectedDestination === "hosts" && rootSurface === "site"} onSelect={() => selectSiteDestination(site.id, "hosts")} />
-                        <TreeRow depth={1} icon="auto" label={t("itops.tabs.autos")} hasChildren={false} open={false} selected={activeId === site.id && selectedDestination === "automations" && rootSurface === "site"} onSelect={() => selectSiteDestination(site.id, "automations")} />
                         <TreeRow depth={1} icon="history" label={t("itops.navigation.runHistory")} hasChildren={false} open={false} selected={activeId === site.id && selectedDestination === "runHistory" && rootSurface === "site"} onSelect={() => selectSiteDestination(site.id, "runHistory")} />
                       </>
                     ) : null}
@@ -1301,10 +1299,6 @@ export function SitesTab({
       ) : activeGroup && selectedDestination === "hosts" ? (
         <div className="hg-detail it-destination-page">
           <HostsPanel siteId={activeGroup.id} />
-        </div>
-      ) : activeGroup && selectedDestination === "automations" ? (
-        <div className="hg-detail it-destination-page">
-          <AutomationsTab siteId={activeGroup.id} siteHosts={members.map((member) => member.host)} />
         </div>
       ) : activeGroup && selectedDestination === "runHistory" ? (
         <div className="hg-detail it-destination-page">

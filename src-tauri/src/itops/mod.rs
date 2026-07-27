@@ -1,14 +1,11 @@
 // IT Ops Module backend (docs/ITOPS.md). A built-in site-operations Module:
-// durable Sites, Batch Runs, and Automations. Sites are stored in the
+// durable Sites, Tasks, Batch Runs, and network planning. Sites are stored in the
 // `itops_sites` table (CRUD commands + run-time resolver); the Site topology
 // layer (Racks / Rack Devices, docs/SITE.md Phase B) lives in `site_storage`.
 // The cross-Site addressing and logical-link layers (VLANs, IPAM, Network Map)
 // live in `vlan_storage`, `ipam_storage`, and `network_map_storage`; all three
 // are global like `task_storage`.
 
-pub mod actions;
-pub mod automation_commands;
-pub mod automation_storage;
 pub mod commands;
 pub mod host_storage;
 pub(crate) mod ids;

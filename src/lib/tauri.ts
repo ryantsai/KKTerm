@@ -1,7 +1,6 @@
 import { invoke, Channel } from "@tauri-apps/api/core";
 import { getVersion as getTauriAppVersion } from "@tauri-apps/api/app";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import type { WatchdogConfig } from "../watchdog/types";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import {
   confirm as confirmDialog,
@@ -60,9 +59,6 @@ import type {
   BatchTask,
   ItopsTask,
   RunHistoryEntry,
-  Automation,
-  AutomationAction,
-  AutomationTestResult,
   HostUsageSnapshot,
   ImportedDatabaseSnapshot,
   SelectiveExportInfo,
@@ -1631,42 +1627,6 @@ type CommandMap = {
   itops_remove_network_map: {
     args: { id: string };
     result: void;
-  };
-  itops_list_automations: {
-    args: undefined;
-    result: Automation[];
-  };
-  itops_create_automation: {
-    args: {
-      name: string;
-      config: WatchdogConfig;
-      actions: AutomationAction[];
-      enabled: boolean;
-      siteId: string | null;
-    };
-    result: Automation;
-  };
-  itops_update_automation: {
-    args: {
-      id: string;
-      name: string;
-      config: WatchdogConfig;
-      actions: AutomationAction[];
-      siteId: string | null;
-    };
-    result: Automation;
-  };
-  itops_set_automation_enabled: {
-    args: { id: string; enabled: boolean };
-    result: Automation;
-  };
-  itops_remove_automation: {
-    args: { id: string };
-    result: void;
-  };
-  itops_test_automation: {
-    args: { config: WatchdogConfig };
-    result: AutomationTestResult;
   };
   list_workspaces: {
     args: undefined;

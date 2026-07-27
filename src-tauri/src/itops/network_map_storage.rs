@@ -1,5 +1,5 @@
 // Durable Network Map storage (docs/ITOPS.md). One row per map holds the whole
-// graph as JSON, following the Automation `actions_json` precedent: the canvas
+// graph as JSON: the canvas
 // saves as a whole document, so per-node rows would only add round trips
 // without buying a query the UI ever makes.
 

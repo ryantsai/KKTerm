@@ -3845,13 +3845,11 @@ fn prompt_permission_mode_blocks_mutating_tools() {
     assert!(!tool_requires_allow_all("assistant_use_skill"));
     assert!(tool_requires_allow_all("itops_create_site"));
     assert!(tool_requires_allow_all("itops_create_task"));
-    assert!(tool_requires_allow_all("itops_create_automation"));
     assert!(tool_requires_allow_all("itops_start_batch_run"));
     assert!(!tool_requires_allow_all("itops_list_sites"));
     assert!(!tool_requires_allow_all("itops_list_run_history"));
     assert!(!tool_requires_allow_all("itops_get_task"));
     assert!(!tool_requires_allow_all("itops_get_run_report"));
-    assert!(!tool_requires_allow_all("itops_test_automation"));
     assert!(tool_requires_allow_all("installer_install"));
     assert!(tool_requires_allow_all("installer_uninstall"));
     assert!(tool_requires_allow_all("installer_launch"));

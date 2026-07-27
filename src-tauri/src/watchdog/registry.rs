@@ -87,39 +87,14 @@ struct Entry {
     intervention_tx: Option<mpsc::Sender<InterventionSignal>>,
 }
 
-/// A hook the IT Ops layer installs to run an Automation's action list when its
-/// Watchdog fires. Type-erased so the watchdog module keeps no dependency on IT
-/// Ops (the dependency stays one-way: `itops` -> `watchdog`).
-pub type TriggerHook = Arc<dyn Fn(&str, &Value) + Send + Sync>;
-
 #[derive(Default)]
 pub struct WatchdogRegistry {
     inner: Mutex<HashMap<String, Entry>>,
-    trigger_hook: Mutex<Option<TriggerHook>>,
 }
 
 impl WatchdogRegistry {
     pub fn new() -> Self {
         Self::default()
-    }
-
-    /// Install the trigger hook. Called once at startup by the IT Ops layer.
-    pub fn set_trigger_hook(&self, hook: TriggerHook) {
-        *self
-            .trigger_hook
-            .lock()
-            .expect("WatchdogRegistry hook mutex poisoned") = Some(hook);
-    }
-
-    fn invoke_trigger_hook(&self, id: &str, value: &Value) {
-        let hook = self
-            .trigger_hook
-            .lock()
-            .expect("WatchdogRegistry hook mutex poisoned")
-            .clone();
-        if let Some(hook) = hook {
-            hook(id, value);
-        }
     }
 
     /// Create and start a watchdog. Takes `&Arc<Self>` rather than `&self`
@@ -468,7 +443,6 @@ async fn run_poll_loop(
                         &mut state,
                         predicate_met,
                         config.trigger.sustained_for_ms,
-                        config.trigger.repeat_while_true,
                     );
 
                 if trigger_fired {
@@ -479,11 +453,6 @@ async fn run_poll_loop(
                         "triggerCount": state.trigger_count,
                     }));
                     apply_triggered_state(&registry, &app, &id, &state);
-                    // Run any installed IT Ops action list for this Watchdog.
-                    // The hook spawns its own work and returns fast so the poll
-                    // loop is never blocked by action I/O.
-                    registry.invoke_trigger_hook(&id, &value);
-
                     if matches!(config.action, WatchdogAction::Notify) {
                         // Notify watchdogs have no intervention path to move
                         // them on; latch so the loop returns them to Running
@@ -660,14 +629,14 @@ async fn sample_target(
     }
 }
 
-/// Evaluates a predicate's sustained window. Edge-triggered Watchdogs return
-/// true only for the first matching tick in a streak; level-triggered IT Ops
-/// Monitors return true on every matching poll after the threshold is reached.
+/// Rising-edge detector for sustained windows. Returns true the first tick
+/// at which the predicate has been continuously true for `sustained_for_ms`.
+/// Subsequent ticks within the same true-streak return false; the streak
+/// resets when the predicate flips to false.
 fn update_sustained_window(
     state: &mut LoopState,
     predicate_met: bool,
     sustained_for_ms: Option<u64>,
-    repeat_while_true: bool,
 ) -> bool {
     let now = now_ms();
     if !predicate_met {
@@ -675,9 +644,6 @@ fn update_sustained_window(
         return false;
     }
     let Some(threshold) = sustained_for_ms else {
-        if repeat_while_true {
-            return true;
-        }
         if state.condition_true_since == Some(u64::MAX) {
             return false;
         }
@@ -690,9 +656,7 @@ fn update_sustained_window(
         return false;
     }
     if now.saturating_sub(since) >= threshold {
-        if !repeat_while_true {
-            state.condition_true_since = Some(u64::MAX);
-        }
+        state.condition_true_since = Some(u64::MAX);
         return true;
     }
     false
@@ -888,7 +852,6 @@ mod tests {
             trigger: WatchdogTrigger {
                 predicate: PredicateOp::Gt { value: 5.0 },
                 sustained_for_ms: None,
-                repeat_while_true: false,
             },
             poll_ms: 1000,
             stop: WatchdogStop::UntilCanceled,
@@ -991,20 +954,14 @@ mod tests {
             mock_counter: 0.0,
             last_log_size: None,
         };
-        assert!(!update_sustained_window(
-            &mut state,
-            true,
-            Some(1_000_000),
-            false
-        ));
+        assert!(!update_sustained_window(&mut state, true, Some(1_000_000)));
         assert!(!update_sustained_window(
             &mut state,
             false,
-            Some(1_000_000),
-            false
+            Some(1_000_000)
         ));
         assert_eq!(state.condition_true_since, None);
-        assert!(update_sustained_window(&mut state, true, None, false));
+        assert!(update_sustained_window(&mut state, true, None));
     }
 
     #[test]
@@ -1020,28 +977,11 @@ mod tests {
             last_log_size: None,
         };
         // Without sustained_for_ms, the first true tick is the rising edge.
-        assert!(update_sustained_window(&mut state, true, None, false));
-        assert!(!update_sustained_window(&mut state, true, None, false));
-        assert!(!update_sustained_window(&mut state, true, None, false));
-        assert!(!update_sustained_window(&mut state, false, None, false));
-        assert!(update_sustained_window(&mut state, true, None, false));
-    }
-
-    #[test]
-    fn repeat_while_true_fires_on_every_true_tick() {
-        let mut state = LoopState {
-            started_at: 0,
-            poll_count: 0,
-            trigger_count: 0,
-            condition_true_since: None,
-            suppression_until: None,
-            triggered_sticky: false,
-            mock_counter: 0.0,
-            last_log_size: None,
-        };
-        assert!(update_sustained_window(&mut state, true, None, true));
-        assert!(update_sustained_window(&mut state, true, None, true));
-        assert!(update_sustained_window(&mut state, true, None, true));
+        assert!(update_sustained_window(&mut state, true, None));
+        assert!(!update_sustained_window(&mut state, true, None));
+        assert!(!update_sustained_window(&mut state, true, None));
+        assert!(!update_sustained_window(&mut state, false, None));
+        assert!(update_sustained_window(&mut state, true, None));
     }
 
     #[test]

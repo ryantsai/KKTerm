@@ -12,27 +12,6 @@ pub(crate) struct EmailToolRequest {
     html: Option<String>,
 }
 
-/// Send a plain-text email over the configured SMTP relay. Reuse seam for the
-/// IT Ops Automation `email` action (docs/ITOPS.md Phase 4); returns the same
-/// JSON result string as the assistant email tool. Sync — call off the UI thread.
-pub(crate) fn send_plain_email(
-    settings: &AiProviderSettings,
-    to: &[String],
-    subject: &str,
-    body: &str,
-) -> String {
-    let request = EmailToolRequest {
-        to: to.to_vec(),
-        cc: Vec::new(),
-        bcc: Vec::new(),
-        reply_to: None,
-        subject: subject.to_string(),
-        text: Some(body.to_string()),
-        html: None,
-    };
-    send_email_smtp(settings, &request)
-}
-
 pub(crate) async fn send_email_tool(settings: &AiProviderSettings, args: Value) -> String {
     let request = match parse_email_tool_request(args) {
         Ok(request) => request,

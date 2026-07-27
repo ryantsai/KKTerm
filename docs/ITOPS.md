@@ -1,9 +1,8 @@
 # IT Ops Module Architecture
 
 The IT Ops Module is a built-in Activity Rail destination for site
-operations: running the same task across many hosts at once and watching
-signals to react automatically. It absorbs and evolves the in-memory
-Watchdog into durable, saveable Monitors.
+operations: organizing Sites and their topology, maintaining Host inventory,
+and running reusable Tasks across selected Hosts.
 
 This document describes the durable architecture. The decision record and
 its trade-offs live in `docs/ADR/0011-it-ops-module.md`. When this doc
@@ -20,19 +19,17 @@ The IT Ops Module owns:
   guests, imported from hostname lists and scanned for remote-access
   endpoints (see "Hosts" below).
 - **Tasks** — global reusable script or Playbook definitions. A Task owns what
-  to execute but never owns targets; a Site, Host selection, or Monitor
-  supplies targets when the Task launches.
+  to execute but never owns targets; a Site or Host selection supplies targets
+  when the Task launches.
 - **Batch Runs** — fan-out task execution across a Site with
   per-host live output and a consolidated, saved run report.
-- **Monitors** — durable trigger → condition → action rules (the
-  evolved Watchdog), including the live run loop and Status Bar surface.
 - **IPAM** — the global VLAN / IP Prefix / IP Address Record plan, with VLAN
   and IP Prefix rows in one typed grid plus derived Prefix containment nesting
   and utilization (see "IPAM" below).
 - **Network Maps** — global hand-drawn logical link diagrams plus the pure
   What-If reachability analysis over them (see "Network Map" below).
-- The Tauri commands the AI Assistant uses to draft and manage Sites and
-  Monitors.
+- The Tauri commands the AI Assistant uses to draft and manage Sites, Hosts,
+  Tasks, topology, and Batch Runs.
 - The IT Ops page-context projection supplied to the shared AI Assistant
   panel.
 
@@ -49,17 +46,10 @@ It does not own:
 
 ## Why this is one Module, not separate features
 
-Batch Runs and Monitors are the same primitive seen from two
-directions. A Batch Run is a task executed **now** against a Site.
-A Monitor is a saved rule that may **run a Batch Run later** when a
-trigger fires. They share the host-targeting model (Sites), the
-fan-out executor, the transport adapters, and the run-history store.
-Keeping them in one Module lets a Monitor's `runBatch` action reuse
-the exact executor a manual run uses.
-
-The UI makes the shared primitive explicit: **Task + targets → Batch Run**,
-while **trigger + Task + targets → Monitor**. Tasks are global to IT Ops so
-the same definition can run against several Sites without duplication.
+Sites, Host inventory, Tasks, Batch Runs, and Run History share one target
+model and one fan-out executor. The UI keeps the primitive explicit:
+**Task + targets → Batch Run**. Tasks are global to IT Ops so the same
+definition can run against several Sites without duplication.
 
 ## Domain Concepts
 
@@ -160,12 +150,11 @@ name, optional description, and one script or Playbook definition. It has no
 Site id, Host ids, plaintext credentials, or live state. A sudo node may keep
 an opaque secret-vault reference; the password itself never enters Task JSON.
 The operator chooses targets at
-launch time; a Monitor references the Task and target Site separately.
-Deleting or editing a Task never rewrites completed Run History, whose report
+launch time. Deleting or editing a Task never rewrites completed Run History, whose report
 keeps a redacted task-summary snapshot. The Task Library editor supports both
-script Tasks and reusable Playbooks. Playbooks use the same ordered node-canvas
-language as Monitors, but remain a linear chain rather than a free-form DAG.
-_Avoid_: Site task, saved Batch Run, Monitor workflow
+script Tasks and reusable Playbooks. Playbooks use an ordered node-canvas
+language and remain a linear chain rather than a free-form DAG.
+_Avoid_: Site task, saved Batch Run
 
 **Batch Run** — one execution of a Batch Task against a resolved Host
 Site. Live run state (per-host status, streamed stdout/stderr, exit
@@ -174,43 +163,6 @@ report is written to `itops_run_history`. Concurrency is bounded
 (mirroring the Connection Batch Importer's network-scan fan-out in
 `src-tauri/src/import.rs`); a single slow or black-holed host must not
 stall the others or the UI thread.
-
-**Monitor** — a durable rule stored in `itops_automations`: one
-**trigger**, an optional **condition**, and an ordered list of
-**actions**. It is the durable generalization of today's
-`WatchdogConfig`. Definitions persist and **re-arm on app launch**;
-their live poll/run state stays in-memory in the Monitor runtime. While a
-condition remains true, its ordered actions run once per configured check
-interval. Internal Rust/TypeScript names, command ids, event names, tutorial
-ids, and the SQLite table retain `automation` for compatibility; user-facing
-copy uses **Monitor**.
-
-**Trigger** — generalizes `WatchdogTarget`. Existing samplers
-(performance counter, ping, TCP reachability, SSH output silence) carry
-over unchanged; new samplers add scheduled probe (cron), output regex
-match, SFTP path change, inbound webhook, and a structured/unstructured
-datasource poller (HTTP-JSON, command output, log file).
-
-**Condition** — the existing `PredicateOp` set
-(`gt/lt/gte/lte/eq/ne/contains/silenceFor`), evaluated by the unchanged
-pure `evaluate_predicate`. Optional: a trigger like cron or webhook may
-fire unconditionally.
-
-**Action** — generalizes `WatchdogAction` into a finite typed catalog
-executed in order when the rule fires:
-
-| Action | Effect |
-| --- | --- |
-| `notify` | Status Bar / toast / sound, the current `Notify` behavior |
-| `popup` | App-owned desktop popup dialog |
-| `email` | SMTP send (credentials from keychain) |
-| `webhook` | Outbound HTTP request to a declared origin |
-| `runBatch` | Start a Batch Run on a named Site + Task |
-| `aiIntervene` | The existing approval-gated AI sub-turn |
-
-The catalog is closed and typed on purpose: it is the "light n8n" payoff
-without becoming an open agent. Actions do not pass arbitrary data
-between each other (no DAG); each reads the trigger snapshot.
 
 **IP Prefix** — a durable IPv4 CIDR block in `itops_ip_prefixes`, with a
 role, status (`container` / `active` / `reserved` / `deprecated`), optional
@@ -309,8 +261,8 @@ dims every link that does not carry the VLAN, reusing the dimming
 **Network Map** — a durable named canvas in `itops_network_maps`, global
 like IPAM with an optional soft Site reference that only tags it. The whole
 graph (nodes, links, and the `roots` entry-point id list) is persisted as
-one `graph_json` document, following the Room Objects and Automations
-`actions_json` precedent rather than a row per node.
+one `graph_json` document, following the Room Objects JSON precedent rather
+than a row per node.
 _Avoid_: topology, topology map, network topology — "topology" is already
 the physical Site → Server Room → Rack drill-down and must not be reused.
 
@@ -343,12 +295,11 @@ Three SQLite tables (new schema version):
   (physical/vm/container/other), soft `parent_host_id` self reference for
   child Hosts, ordered soft Connection references, and the last
   connectivity-scan snapshot. No secret, no live state.
-- `itops_automations` — id, name, enabled flag, trigger config, optional
-  condition, ordered actions, poll/stop/suppression settings (the durable
-  superset of `WatchdogConfig`), plus an optional Site binding (`site_id`,
-  a soft reference like `itops_run_history`'s) that scopes the rule to one
-  Site's Monitors page.
-- `itops_run_history` — id, source (manual run or automation id), task
+- `itops_automations` — retained legacy definitions only. Schema version 55
+  sets `enabled = 0` and stamps `obsolete_at` without rewriting the saved
+  trigger, condition, actions, or runtime JSON. The table remains in full
+  backups and selective IT Ops exports but has no product execution path.
+- `itops_run_history` — id, source (manual run or retained legacy source), task
   summary, started/finished, per-host outcome summary, consolidated
   report blob. Local-first; no telemetry.
 - `itops_tasks` — global reusable Task definitions: id, name, description,
@@ -380,14 +331,13 @@ Three SQLite tables (new schema version):
   `itops_vlans` and are remapped on selective import like any other soft id.
 
 Durable definitions only. **Live state never persists**: in-flight Batch
-Run progress, Automation poll ticks, tick ring buffers, and runtime state
-machines stay in memory in the runtime layer, consistent with the
-High-Risk Invariant against putting Session/runtime state in durable
-models. On launch, the Automation runtime hydrates enabled rows from
-`itops_automations` and arms them; disabled rows are loaded but not
-polled.
+Run progress stays in memory in the runtime layer, consistent with the
+High-Risk Invariant against putting Session/runtime state in durable models.
+Current-version startup does not reconcile legacy Monitor data because there
+is no runtime capable of loading it. Selective IT Ops import marks imported
+legacy rows obsolete inside the import transaction.
 
-Secrets (SMTP password, webhook bearer token, WinRM/PsExec credentials)
+Secrets (WinRM/PsExec credentials)
 live in the OS keychain under existing secret-owner ids; SQLite stores
 only non-secret metadata and credential references. IT Ops state is
 included in the selective export/import shape (ADR-0010) as non-secret
@@ -395,26 +345,13 @@ metadata.
 
 ## Runtime
 
-The existing Watchdog runtime (`src-tauri/src/watchdog/registry.rs`) is
-the Automation runtime, extended rather than rewritten:
-
-- The per-rule `tokio::time::interval` task, `CancellationToken`,
-  sustained-window tracking, stop-condition arbitration, and single
-  `watchdog://event` channel are preserved.
-- `evaluate_predicate` and the predicate/state enums are reused as-is.
-- The trigger sampler dispatcher (a free function today) gains the new
-  trigger kinds; the action executor gains the new action kinds. Both
-  extension points already exist for exactly this.
-- A startup hook reads `itops_automations` and creates one runtime entry
-  per enabled rule.
-
-The Batch Run executor is a sibling worker pool: resolve the Site,
+The Batch Run executor is a worker pool: resolve the Site,
 open one transport task per host under a concurrency cap, stream progress
 events on a channel, and assemble the report. SSH reuses the existing
 transport; WinRM and PsExec are new transport adapters behind a common
 `exec(host, task) -> stream` shape.
 
-All exec, WinRM/SMTP/webhook I/O, and probes run through
+All exec and WinRM/PsExec I/O run through
 `spawn_blocking`/worker tasks and report by event — never blocking the
 UI/native thread (`docs/ARCHITECTURE.md` command-runtime boundaries).
 
@@ -423,7 +360,7 @@ UI/native thread (`docs/ARCHITECTURE.md` command-runtime boundaries).
 `src/modules/itops/` owns the Module shell. The visible shell uses one
 resizable/collapsible operational navigator. Only the active Site needs to be
 expanded. Each Site exposes predefined virtual destinations — **Server Rooms**,
-**Hosts**, **Monitors**, and **Run History** — while its topology continues
+**Hosts**, and **Run History** — while its topology continues
 to drill down Server Room → Rack beneath Server Rooms. These destinations are
 navigation state, not durable database entities or copied containers.
 
@@ -443,7 +380,7 @@ The app syncs a stable built-in diagnostic catalog into `itops_tasks` on startup
 It covers system identity, uptime, resource usage, network interfaces, routing
 and DNS, and recent-log inspection for Linux, macOS, Windows, Cisco IOS,
 Cisco NX-OS, FortiOS, Juniper Junos, and Arista EOS. Built-ins use stable ids and
-catalog keys so Run History and Monitor references survive catalog upgrades.
+catalog keys so Run History references survive catalog upgrades.
 They are app-owned, read-only, non-deletable definitions; the UI duplicates a
 built-in into an ordinary user Task before customization. Catalog commands are
 inspection-only and must not install, reboot, reconfigure, or delete anything.
@@ -464,14 +401,14 @@ and `fail` stops that Host as failed. Any provider error, invalid JSON, or value
 outside this closed enum fails the Host. AI nodes never turn model text into a
 shell command or choose an arbitrary graph edge.
 
-Hosts, Monitors, Run History, and the global Batch Tasks and Networking
+Hosts, Run History, and the global Batch Tasks and Networking
 destinations (Task Library, IPAM, Network Maps) share one destination-page frame: the same content inset, compact title/description
 header, right-aligned primary actions, divider, and bordered-row rhythm. The
 Task Library keeps its spreadsheet-style Task table inside that frame rather
 than owning a separate full-height chrome layout. Each row shows Task kind, Applicable OS,
 execution count, failed-host count, and a link to the most recent Site Run
-History containing that Task. Statistics use the Task's stable id; ad-hoc,
-Monitor, and older unattributed history rows are never guessed by label.
+History containing that Task. Statistics use the Task's stable id; ad-hoc
+and older unattributed history rows are never guessed by label.
 
 IPAM (`src/modules/itops/IpamPanel.tsx`) reuses the Task Library's
 spreadsheet-style table inside the same frame. Its Add button opens a menu for
@@ -536,8 +473,7 @@ parent opens the card list. A map child row's native context menu contains
 Duplicate, Delete, then a separated final Properties item. Duplicate opens a
 prefilled Properties dialog and creates a complete copy of the stored map;
 Properties edits the map name, description, and optional Site tag. It uses
-`@xyflow/react` the same way
-`AutomationEditor.tsx` does — controlled `nodes`/`edges` via `useMemo`,
+`@xyflow/react` with controlled `nodes`/`edges` via `useMemo`,
 position-and-dimension-only `onNodesChange` filtering, `deleteKeyCode={null}`,
 `proOptions={{ hideAttribution: true }}`. Because a Network Link is
 undirected while xyflow edges are directed, every node renders one loose-mode
@@ -627,7 +563,7 @@ never enter the reachability graph.
 ### IT Ops destination-page UI contract
 
 This section is normative for future IT Ops frontend work. It applies to
-Hosts, Monitors, Run History, Task Library, IPAM, Network Maps, and any
+Hosts, Run History, Task Library, IPAM, Network Maps, and any
 later non-spatial destination opened from the IT Ops navigator. Do not give a new destination an
 independent page shell or visual language.
 
@@ -659,9 +595,6 @@ independent page shell or visual language.
 - Run reports and live-run progress may use status-specific summaries inside
   the shared frame. Navigating from history list to report detail must not move
   or restyle the destination header.
-- A Monitor's node editor is a full-canvas workflow entered from the
-  destination. Its specialized canvas does not license a different layout for
-  the Monitors list page.
 - Site View, Server Room View, and Rack View are spatial drill-down canvases,
   not destination pages. They keep their centered view controls and icon-only
   Edit/Export toolbar described below.
@@ -680,8 +613,7 @@ independent page shell or visual language.
 - A missing Site collection uses `itops.sites.emptyHint`; an empty Site uses
   `itops.sites.emptyServerRoomsHint`; an empty Server Room uses
   `itops.racks.emptyServerRoomHint`; an empty Rack uses
-  `itops.racks.emptyRackHint`; Hosts uses `itops.hosts.empty`; Monitors uses
-  `itops.automations.emptyHint`; and Run History uses
+  `itops.racks.emptyRackHint`; Hosts uses `itops.hosts.empty`; and Run History uses
   `itops.batchRuns.historyEmptyHint`. Keep actionable phrases inside their full
   translated sentences with `Trans` component markers. Do not concatenate text
   fragments or replace a hint with a lone button.
@@ -710,8 +642,8 @@ independent page shell or visual language.
   Dark before handing off an IT Ops UI change. Also check the affected topology
   empty state when changing Rack or Server Room flows.
 
-Site View is now overview-only and has no segmented content switcher. Hosts,
-Monitors, and Run History each own a separate Site-scoped page selected from
+Site View is now overview-only and has no segmented content switcher. Hosts
+and Run History each own a separate Site-scoped page selected from
 the navigator. The Hosts page owns Host selection and the manual **Run Task**
 action; its launcher accepts a reusable Task from the global Task Library or an
 ad-hoc Script Batch Task and fixes the target scope to the selected Host ids. A Host is
@@ -720,12 +652,7 @@ bound SSH Connection for each selected Host and deduplicates Connections.
 
 Run History is read-only navigation over the selected Site's live run and
 completed reports. It has no independent start or rerun action; “Batch Run” is
-the execution concept, not the name of a page or durable container. Monitors are
-filtered to rules bound to the selected Site by their durable `site_id` (set in
-the node editor's header Site select and defaulted from the destination that
-opened it; legacy rows without a binding fall back to inference — a runBatch
-action targeting the Site, or a host-addressed trigger watching one of its
-resolved member hosts). The
+the execution concept, not the name of a page or durable container. The
 drill-down views own an icon-only Edit / Export toolbar: edit mode gates free
 placement, Rack Device drag/drop, empty-slot add affordances, and destructive
 controls; normal mode remains an inspect/open surface. Site and Server Room
@@ -814,17 +741,6 @@ A finished run's per-host output is persisted in the report, so the recent-runs
 list opens a read-only **Run Report viewer** (`RunReportView`) that replays the
 per-host output later.
 
-Monitors are created and edited in an n8n-style **node editor**
-(`AutomationEditor.tsx`, built on `@xyflow/react`): the closed
-trigger → condition → action[] pipeline is drawn as draggable nodes wired
-left-to-right, with a side panel that edits the selected node. It stays a
-fixed pipeline, not a free-form DAG (see "Action" above) — the canvas is a
-visualization, not a new execution model. A **Test** button calls
-`itops_test_automation` to sample the trigger once and report whether the
-condition would fire, then renders a dry-run preview of the actions (no email,
-webhook, or Batch Run is actually sent). The Status Bar indicator continues to
-surface running Monitors app-wide via the existing `WatchdogStatusBar`.
-
 All user-visible strings use a new `itops` i18n namespace following the
 i18n rules in `AGENTS.md`. New dialogs/sheets follow
 `docs/DESIGN_LANGUAGE.md` and the dialog primitives in `src/app/ui/dialog`.
@@ -837,9 +753,7 @@ Module's backend operations end to end: Site/Server Room/Rack/Rack Device
 lifecycle, ordering and duplication, spatial Rack placement/facing and Room
 Objects, presentation backgrounds/icons, SNMP refresh, Host inventory
 (create/update/delete/import/scan), the global Task Library
-(list/get/create/update/remove, with built-ins read-only), durable
-Monitors (list/create/update/set-enabled/remove plus a one-shot
-`itops_test_automation` dry run), and Batch Runs
+(list/get/create/update/remove, with built-ins read-only), and Batch Runs
 (start/cancel/run-history/report). A successful mutating tool emits an
 `itops-changed` backend event that reloads the IT Ops store so the change
 appears without restart. The Rack Device placement schema includes
@@ -850,35 +764,31 @@ rack-top virtual position (`startU = rack.heightU + 1`) plus expiry/style
 metadata, so assistant and built-in MCP calls preserve the same placement
 invariant as the UI.
 
-Assistant-authored Batch Tasks (Task definitions, Monitor `runBatch`
-payloads, ad-hoc run scripts) may never introduce sudo steps or
+Assistant-authored Batch Tasks (Task definitions and ad-hoc run scripts) may never introduce sudo steps or
 secret-vault references — those are configured only in the Task Library
 editor, and a full-value Task update may only resend the sudo steps the
-stored Task already carries. An assistant-created Monitor's watchdog
-`config.action` must stay `notify`; the ordered IT Ops actions list
-carries the real work. Run-history reads return compact per-host outcome
+stored Task already carries. Run-history reads return compact per-host outcome
 rows; `itops_get_run_report` attaches per-host output tail-capped by
 `maxOutputChars`.
 
 The page-context projection includes the current navigator selection
-(Site, destination, drill-down), Site names/ids/counts, Monitor
-names/states, the Task Library count, recent run counts, IPAM and Network
+(Site, destination, drill-down), Site names/ids/counts, the Task Library
+count, recent run counts, IPAM and Network
 Map counts once those pages have been opened, and the registered tutorial
 targets — never full run output, streamed host buffers, secrets, or
 credential references. The `tutorial_highlight`
 tool's navigation payload accepts `itopsSiteId` and `itopsDestination`
-(`site | serverRooms | hosts | automations | runHistory | taskLibrary |
+(`site | serverRooms | hosts | runHistory | taskLibrary |
 ipam | networkMaps`)
 so the assistant can open a specific Site destination before
 highlighting; destination pages carry static targets
-(`itops.hostsPanel`, `itops.automationsNew`, `itops.taskLibrary`, …, see
+(`itops.hostsPanel`, `itops.taskLibrary`, …, see
 `src/app/tutorialNavigationModel.ts`) and rows carry entity-scoped
-targets (`itops.site:<id>`, `itops.host:<id>`, `itops.automation:<id>`,
-`itops.task:<id>`, `itops.run:<id>`). Mutating actions (starting a Batch
-Run, enabling a Monitor) go through the existing approval flow; the
+targets (`itops.site:<id>`, `itops.host:<id>`, `itops.task:<id>`,
+`itops.run:<id>`). Mutating actions (starting a Batch Run) go through the existing approval flow; the
 assistant cannot run a site task silently. Over the built-in MCP bridge
 the same tools are published under `kkterm.itops.*`, with
-task-authoring, automation-mutating, and run-starting tools in
+task-authoring and run-starting tools in
 `dangerous` sub-namespaces (see `docs/MCP.md`).
 
 VLANs, IPAM, and Network Maps ship without assistant or MCP tools. Their twelve
@@ -888,24 +798,16 @@ Exposing them later means adding approval-gated `itops_*` tools the same way
 the existing surfaces did — the storage layer already returns the derived
 snapshot a tool would need.
 
-## Migration from Watchdog
+## Retired Monitor data
 
-The Watchdog is not deleted — it is the seed of the Monitor runtime.
-Migration steps, at a design level:
-
-1. Add the three SQLite tables and the schema version bump.
-2. Add a durable `Automation` definition that is a superset of
-   `WatchdogConfig`; load enabled rows at startup into the existing
-   registry.
-3. Extend the trigger dispatcher and action executor with the new kinds.
-4. Build the Site resolver and the Batch Run executor (SSH first;
-   WinRM and PsExec adapters next).
-5. Add the `src/modules/itops/` Module shell and `itops` namespace;
-   re-home the existing `WatchdogDetail`/`WatchdogStatusBar` views under
-   the Monitor runtime while keeping the Status Bar indicator.
-
-`CONTEXT.md`'s Watchdog entry is updated to note Monitors are now
-durable IT Ops rules while live run state remains in-memory.
+Schema version 55 retires the former durable Monitor feature. The migration
+adds `obsolete_at`, sets every legacy `itops_automations.enabled` value to
+false, and stamps rows once while preserving their remaining payload exactly.
+The table stays in the IT Ops selective-export segment and full database
+backups. Selective import applies the same obsolescence update inside its
+transaction. No frontend destination, startup hydration, Tauri command,
+assistant tool, or built-in MCP tool reads these rows as runnable definitions.
+The standalone in-memory Watchdog remains independent.
 
 ## Concrete Data Model
 
@@ -944,13 +846,13 @@ CREATE TABLE IF NOT EXISTS itops_host_groups (
     updated_at      TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- A durable trigger -> condition -> actions rule (the evolved Watchdog).
+-- Retained obsolete Monitor definitions. No runtime reads this table.
 CREATE TABLE IF NOT EXISTS itops_automations (
     id            TEXT PRIMARY KEY,
     name          TEXT NOT NULL,
     sort_order    INTEGER NOT NULL,
-    enabled       INTEGER NOT NULL DEFAULT 1,
-    -- Tagged-enum JSON. Superset of WatchdogTarget (see Rust types below).
+    enabled       INTEGER NOT NULL DEFAULT 0,
+    -- Retained legacy JSON payloads.
     trigger_json  TEXT NOT NULL,
     -- Tagged-enum JSON of PredicateOp, or NULL for unconditional triggers.
     condition_json TEXT,
@@ -961,13 +863,14 @@ CREATE TABLE IF NOT EXISTS itops_automations (
     -- Loop settings (poll_ms, stop, sustained_for_ms, suppression_ms): JSON object.
     runtime_json  TEXT NOT NULL DEFAULT '{}',
     created_at    TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at    TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at    TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    obsolete_at   TEXT
 );
 
--- One completed Batch Run (manual or fired by an automation). Append-only.
+-- One completed Batch Run. Append-only.
 CREATE TABLE IF NOT EXISTS itops_run_history (
     id             TEXT PRIMARY KEY,
-    -- 'manual' or 'automation:<automation_id>'.
+    -- New runs use 'manual'; old rows may retain 'automation:<legacy_id>'.
     source         TEXT NOT NULL,
     host_group_id  TEXT,            -- soft reference; runs survive group deletion
     task_summary   TEXT NOT NULL,   -- redacted one-line task label, never the script body of secrets
@@ -1036,7 +939,7 @@ CREATE TABLE IF NOT EXISTS itops_ip_address_records (
 );
 
 -- A Network Map. graph_json holds the whole document (nodes, links,
--- reachability roots) like itops_automations.actions_json — the canvas is
+-- reachability roots); the canvas is
 -- always saved as a unit, so per-node rows would buy no query the UI makes.
 CREATE TABLE IF NOT EXISTS itops_network_maps (
     id          TEXT PRIMARY KEY,
@@ -1057,72 +960,7 @@ deliberate opposite choice for an audit log.
 
 ### Rust types (`src-tauri/src/itops/types.rs`)
 
-The durable `Automation` is a superset of `WatchdogConfig`. The existing
-`PerformanceMetric`, `PredicateOp`, `WatchdogStop`, and the runtime state
-machine are reused unchanged; only the target/action enums grow.
-
 ```rust
-/// Durable rule. Mirrors WatchdogConfig + persistence/identity fields.
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Automation {
-    pub id: String,
-    pub name: String,
-    pub enabled: bool,
-    pub trigger: AutomationTrigger,
-    #[serde(default)]
-    pub condition: Option<PredicateOp>, // reused from watchdog::types
-    pub actions: Vec<AutomationAction>,
-    pub runtime: AutomationRuntime,     // poll_ms, stop, sustained_for_ms, suppression_ms
-}
-
-/// Superset of WatchdogTarget. Existing variants carry over verbatim.
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(tag = "kind", rename_all = "camelCase")]
-pub enum AutomationTrigger {
-    // --- carried over from WatchdogTarget ---
-    PerformanceCounter { metric: PerformanceMetric },
-    SshSessionOutputSilence { session_id: String },
-    Ping { host: String, #[serde(default)] port: Option<u16> },
-    TcpReachable { host: String, port: u16 },
-    // --- new in IT Ops ---
-    /// Fires on a cron schedule; pairs with no condition or a probe condition.
-    Schedule { cron: String },
-    /// Regex match against streamed session/SSH output.
-    OutputMatch { session_id: String, pattern: String },
-    /// SFTP path mtime/size change under an SSH Connection.
-    SftpChange { connection_id: String, remote_path: String },
-    /// Inbound webhook hit (local listener path token); value = parsed body.
-    WebhookIn { token: String },
-    /// Polls a structured/unstructured datasource; value = extracted field.
-    Datasource(DatasourceProbe),
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(tag = "kind", rename_all = "camelCase")]
-pub enum DatasourceProbe {
-    HttpJson { url: String, json_pointer: String }, // RFC 6901 pointer into the body
-    CommandOutput { connection_id: String, command: String },
-    LogFile { path: String },
-}
-
-/// Superset of WatchdogAction. `Notify` and `AiIntervene` are verbatim.
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(tag = "kind", rename_all = "camelCase")]
-pub enum AutomationAction {
-    Notify { level: NotifyLevel },        // inApp | toast | sound
-    Popup { title: String, body: String },
-    Email { to: String, subject: String, body: String }, // SMTP creds via keychain
-    Webhook { url: String, method: String, body: Option<String> },
-    RunBatch { host_group_id: String, task: BatchTask },
-    AiIntervene {                          // unchanged from watchdog::types
-        goal: String,
-        allowed_tools: Vec<String>,
-        max_interventions: u32,
-        suppression_ms: u64,
-    },
-}
-
 /// What a Batch Run executes on each targeted host.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
@@ -1156,18 +994,9 @@ pub trait Transport {
 
 ### Secrets
 
-Reuse the existing keychain owner model (`src-tauri/src/secrets.rs`). The
-`SecretKind::EmailSmtpPassword` variant **already exists** — Email actions
-reuse it. Two additions are needed:
-
-- a `WebhookToken` secret kind for outbound webhook auth, and
-- a `WinrmPassword` (and later `WinrmKerberos`) secret kind for the WinRM
-  transport.
-
-Owner ids follow the established pattern, e.g.
-`itops-automation-secret:<automation_id>:<actionIndex>` for an action's
-secret and `itops-host-group-secret:<group_id>:winrm` for a Host Group's
-WinRM credential. SQLite stores only non-secret references.
+Reuse the existing keychain owner model (`src-tauri/src/secrets.rs`) for
+transport and Task credentials. SQLite stores only non-secret references;
+Playbook sudo secrets use Task-owned vault references.
 
 ## Implementation Phases
 
@@ -1196,23 +1025,9 @@ channel; write the consolidated report to `itops_run_history` on finish.
 `BatchTask::Script` only. This delivers the headline "send a script to all
 SSH hosts and get results back."
 
-**Phase 3 — Monitors: persist + re-arm the Watchdog.** Schema add
-`itops_automations`; the durable `Automation` superset type; a startup
-hook that hydrates enabled rows into the existing `WatchdogRegistry`;
-extend `watchdog/commands.rs` (or new `itops/automation_commands.rs`) with
-create/update/enable/disable/delete; re-home `WatchdogDetail` /
-`WatchdogStatusBar` under the Monitors tab while keeping the Status Bar
-indicator. Existing trigger/action kinds only — pure migration of
-behavior onto durable storage.
-
-**Phase 4 — Action catalog.** Add `Popup`, `Email` (reusing
-`EmailSmtpPassword`), `Webhook` (new `WebhookToken` secret), and
-`RunBatch` (calls the Phase 2 runner) to the action executor. Each action
-is independently testable against the pure rule evaluator.
-
-**Phase 5 — New triggers.** Add `Schedule` (cron), `OutputMatch`,
-`SftpChange`, `WebhookIn`, and `Datasource` samplers to the trigger
-dispatcher. These are additive to the existing sampler free function.
+**Retired phases 3–5.** The former Monitor persistence, action catalog, and
+trigger extensions were removed at schema version 55. Their stored definitions
+remain obsolete for recovery only, as described above.
 
 **Phase 6 — WinRM + PsExec transports.** The thin WinRM/WS-Man client per
 ADR 0012 (`reqwest` + `sspi` + `quick-xml`, new `WinrmPassword` secret);
@@ -1288,13 +1103,13 @@ structured data is how you get wrong documentation that looks authoritative.
 `linkLabelHint` therefore stopped advertising VLAN when the structured field
 landed, so the two are never double-entered.
 
-Phases 0–3 are the minimum that delivers durable monitoring + SSH batch.
-Phases 4–12 are independent and can be reordered by demand.
+The shipped phases are historical implementation notes; the retired Monitor
+phases are not part of the current product.
 
 ## Planned / Deferred Enhancements
 
-The plumbing above is complete (Sites, SSH Batch Runs, durable
-Monitors + action catalog, playbooks, AI integration), but from an
+The plumbing above is complete (Sites, SSH Batch Runs, playbooks, and AI
+integration), but from an
 operator's seat the Module today is mostly a transport: it returns N raw
 per-host output blobs and a flat list of names. The enhancements below turn it
 into something that produces _answers_ and a site you _see_. They are captured
@@ -1328,54 +1143,21 @@ The following are noted for later consideration (not yet planned in detail):
    status) so the tool is usable in the first 30 seconds. Matches the ROADMAP
    "reusable workflow templates" item.
 
-3. **Durable Monitor event log.** Monitor fires are transient today
-   (`itops://automation` emits a one-shot notice/popup, then it's gone). Batch
-   Runs get durable `itops_run_history`; Monitors get nothing. Add a durable
-   automation-event log (what fired, when, trigger snapshot, which actions ran,
-   outcome) with an acknowledge state, so "did it fire overnight?" is
-   answerable. Live runtime state still stays in-memory; only the fire record
-   is durable.
-
-4. **Scheduled inventory with trend.** The `Schedule` (cron) trigger only
-   drives fire-and-forget actions. Add a pattern that runs a query on a
-   schedule, stores each snapshot, and shows what changed since the last run —
-   reusing the run-history store plus the diff from (1). This is where ongoing
-   (vs. one-shot) value comes from, and feeds a future site-health overview.
-
 ## `CONTEXT.md` Vocabulary
 
-The modeling principle follows KKTerm's existing durable-vs-live split:
-**Monitor is to Watchdog as Connection is to Session** — the Monitor is the
-durable definition, while the Watchdog is the live runtime that executes it.
-Internal identifiers retain `automation` for compatibility.
-
-> **Monitor**:
-> A durable IT Ops rule stored in SQLite (`itops_automations`): one
-> trigger, an optional condition predicate, and an ordered list of typed
-> actions (notify, popup, email, webhook, run a Batch Run, or AI
-> intervention). Monitors persist across app restart and re-arm on
-> launch. A Monitor is the durable definition; the live **Watchdog**
-> runtime is what executes it, the same way a **Connection** is durable
-> and a **Session** is its live runtime. Created and managed in the **IT
-> Ops Module**. See `docs/ITOPS.md` and `src-tauri/src/itops/`.
-> _Avoid_: watchdog (for the durable rule), workflow, job, saved alert
->
 > **Watchdog**:
-> The live runtime that executes an armed **Monitor** (or an ad-hoc
-> live monitor): it samples a target (performance counter, SSH Session
-> output silence, ping, TCP reachability, schedule, output match, SFTP
-> change, inbound webhook, or datasource probe) against a predicate and,
-> on trigger, runs the Monitor's actions. The running Watchdog state —
+> An ad-hoc live check that samples a target (performance counter, SSH Session
+> output silence, ping, or TCP reachability) against a predicate. Its
+> running state —
 > ticks, trigger log, state machine, suppression window — is **in-memory
-> only and does not persist across app restart**; its durable definition
-> lives in the **Monitor**. Surfaced through the **Watchdog Status Bar**
+> only and does not persist across app restart**. Surfaced through the **Watchdog Status Bar**
 > indicator and a detail panel, not as a Connection or Session. See
 > `src-tauri/src/watchdog/` and `src/watchdog/`.
-> _Avoid_: monitor profile, durable watcher (the Monitor is the durable part)
+> _Avoid_: monitor profile, durable watcher, automation rule
 >
 > **IT Ops Module**:
 > A built-in Activity Rail Module for site operations: **Sites**,
-> **Batch Runs**, and **Monitors**. Its current primary UI is the Site
+> **Hosts**, **Tasks**, and **Batch Runs**. Its current primary UI is the Site
 > topology surface. Lives with Dashboard and Install Helper above Settings.
 > Not a Connection, Session, or Dashboard widget. See `docs/ITOPS.md` and
 > `docs/ADR/0011-it-ops-module.md`.
@@ -1383,8 +1165,8 @@ Internal identifiers retain `automation` for compatibility.
 >
 > **Site**:
 > A durable, named selection of existing Connections (plus an optional
-> dynamic filter by type/folder) used as the site target for Batch Runs
-> and Monitor `runBatch` actions. Stored in `itops_sites`; it
+> dynamic filter by type/folder) used as the site target for Batch Runs.
+> Stored in `itops_sites`; it
 > references Connection ids and owns no Session and no secret. It is not a
 > Connection type.
 > _Avoid_: host group, inventory, host list, connection group (as a Connection type)

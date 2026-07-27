@@ -46,8 +46,7 @@ builds on them.
 ## Why this stays inside IT Ops (not a new Module)
 
 A Site is the renamed Host Group plus a visual arrangement of the same
-Connections. Batch Runs and Automation `runBatch` target a Site
-by id; adding a topology layer keeps that wiring
+Connections. Batch Runs target a Site by id; adding a topology layer keeps that wiring
 intact. The rack view is a new *visualization and launch surface* over the
 existing site-targeting model — not a new execution model. No new rail Module.
 
@@ -60,8 +59,8 @@ Replaces the **Host Group** entry in `CONTEXT.md`; adds the rest. Follows the
   records. It is plural UI, not a separate durable entity. The visible Module
   currently opens directly into this Site topology surface.
 - **Site** — a durable, named selection of existing Connections (plus an
-  optional dynamic filter by type/folder) used as the target for Batch Runs and
-  Automation `runBatch` actions, and optionally arranged into a virtual
+  optional dynamic filter by type/folder) used as the target for Batch Runs
+  and optionally arranged into a virtual
   datacenter of Racks. Stored in `itops_sites`. References Connection ids;
   owns no Session and no secret. It is not a Connection type. _Avoid_: host
   group, inventory, host list, connection group (as a Connection type).
@@ -136,7 +135,7 @@ Replaces the **Host Group** entry in `CONTEXT.md`; adds the rest. Follows the
   load, icon, and placement. Never store credentials, secrets, or live Session
   state here. SNMP refresh is manual rather than a background polling service.
 
-`Watchdog`, `Automation`, `Batch Run`, `Playbook`, `Transport` are unchanged.
+`Watchdog`, `Batch Run`, `Playbook`, and `Transport` are unchanged.
 
 ## Data Model
 
@@ -281,9 +280,8 @@ pub struct RackItem {
 }
 ```
 
-`AutomationAction::RunBatch { host_group_id, task }` is renamed to
-`site_id` (the serde field rename is a coordinated frontend change — see
-Phase A). `Automation`, `BatchTask`, `PlaybookStep`, `Transport`,
+Batch targeting is renamed from `host_group_id` to `site_id` as a coordinated
+frontend/backend change. `BatchTask`, `PlaybookStep`, `Transport`, and
 `ResolvedHost` are otherwise unchanged.
 
 ### Site resolution semantics (batch targeting)
@@ -331,7 +329,7 @@ All DB work stays on `spawn_blocking`/the command runtime per
 
 `src/modules/itops/` (rename files: `HostGroupsTab.tsx → SitesTab.tsx`,
 `HostGroupDialog.tsx → SiteDialog.tsx`; update `state.ts`, `ItOpsModule.tsx`,
-`BatchRunsTab.tsx`, `AutomationEditor.tsx`, `BatchRunDialog.tsx`, `icons.tsx`,
+`BatchRunsTab.tsx`, `BatchRunDialog.tsx`, `icons.tsx`,
 `itops.css`). Wire-level renames in `src/types.ts`, `src/lib/tauri.ts`
 (`hostGroupId → siteId`).
 
@@ -399,8 +397,8 @@ The visible IT Ops Module opens directly into the Site topology surface:
   or navigation cancels it (discarding a configured but unplaced Rack); a
   blocked cell keeps it armed for another target.
 
-Batch Runs and Automations remain part of IT Ops, but their top-level
-management tab chrome is hidden while the Site-only UI is active.
+Batch Runs remain part of IT Ops, but their top-level management tab chrome
+is hidden while the Site-only UI is active.
 
 ### Rack elevation component (`RackElevation.tsx`)
 

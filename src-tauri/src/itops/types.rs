@@ -1,87 +1,10 @@
-// IT Ops durable types (docs/ITOPS.md). Phase 1 covers Sites, Phase 2 the
-// Batch Run report shapes, and Phase 3 the durable Automation.
+// IT Ops durable types (docs/ITOPS.md): Sites, topology, Tasks, and Batch Runs.
 
 use std::collections::HashMap;
 
 use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::dashboard_storage::DashboardBackground;
-use crate::watchdog::types::WatchdogConfig;
-
-/// A durable Automation (docs/ITOPS.md Phase 3+): the persistent definition of a
-/// Watchdog plus an ordered IT Ops action list. The live Watchdog runtime is the
-/// sampler/trigger engine (its `config`); when it fires, the IT Ops action
-/// executor runs `actions` in order (Phase 4). `enabled` rows re-arm on launch.
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Automation {
-    pub id: String,
-    pub name: String,
-    pub sort_order: i64,
-    pub enabled: bool,
-    /// Trigger/condition/poll/stop — the live Watchdog config. Its own
-    /// `action` stays `Notify` for IT Ops Automations; the real work is the
-    /// `actions` list below.
-    pub config: WatchdogConfig,
-    /// Ordered IT Ops actions run on each trigger fire by the action executor.
-    #[serde(default)]
-    pub actions: Vec<AutomationAction>,
-    /// Optional durable Site binding (soft reference): which Site's
-    /// Automations segment lists this rule. `None` = unbound (legacy rows).
-    #[serde(default)]
-    pub site_id: Option<String>,
-}
-
-/// How a `Notify` action surfaces.
-#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub enum NotifyLevel {
-    #[default]
-    InApp,
-    Toast,
-    Sound,
-}
-
-/// The Phase 4 action catalog — a closed, typed set executed in order when an
-/// Automation's trigger fires. Actions do not pass data between each other; each
-/// reads the trigger snapshot. (AI intervention remains a Watchdog-native action
-/// on `config`, not part of this list.)
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(tag = "kind", rename_all = "camelCase")]
-pub enum AutomationAction {
-    Notify {
-        #[serde(default)]
-        level: NotifyLevel,
-    },
-    Popup {
-        title: String,
-        body: String,
-    },
-    Email {
-        to: Vec<String>,
-        subject: String,
-        body: String,
-    },
-    Webhook {
-        url: String,
-        #[serde(default = "default_webhook_method")]
-        method: String,
-        #[serde(default)]
-        body: Option<String>,
-    },
-    RunBatch {
-        // `hostGroupId` alias keeps Automation actions persisted before the
-        // Site rename (docs/SITE.md Phase A) deserializable from actions_json.
-        #[serde(alias = "hostGroupId")]
-        site_id: String,
-        task: BatchTask,
-    },
-}
-
-fn default_webhook_method() -> String {
-    "POST".to_string()
-}
-
 /// How a Batch Run reaches one host. Stored per Site as the default;
 /// `Auto` means "derive from the Connection at run time" (resolved in Phase 2+).
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
@@ -807,7 +730,7 @@ fn default_task_operating_systems() -> Vec<TaskOperatingSystem> {
 }
 
 /// A reusable, global IT Ops task definition. Targets are deliberately absent:
-/// a Site, Host selection, or Automation supplies them when the Task launches.
+/// a Site or Host selection supplies them when the Task launches.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ItopsTask {
@@ -1323,7 +1246,7 @@ pub struct Vlan {
 // ── Network Map (docs/ITOPS.md Network Map) ───────────────────────────────────
 // The logical link diagram, distinct from the physical Site → Server Room →
 // Rack topology. One row per map holds the whole graph as JSON, following the
-// Room Objects / Automation `actions_json` precedent: the canvas always saves
+// Room Objects JSON precedent: the canvas always saves
 // as a whole document, so per-node CRUD would only add round trips.
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
