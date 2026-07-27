@@ -94,6 +94,7 @@
     "roughjs": "^4.6.6",
     "simple-statistics": "^7.9.3",
     "three": "^0.185.1",
+    "turndown": "^7.2.4",
     "uplot": "^1.6.32",
     "zustand": "^5.0.14"
   },
@@ -105,6 +106,7 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@types/three": "^0.185.1",
+    "@types/turndown": "^5.0.6",
     "@vitejs/plugin-react": "^6.0.3",
     "eslint": "^10.7.0",
     "eslint-plugin-react-hooks": "^7.1.1",
