@@ -32,7 +32,7 @@ import {
   PinOff as RePinOff, Play as RePlay, Plus as RePlus, Power as RePower,
   Printer as RePrinter, Radio as ReRadio, Refresh as ReRefresh, Rocket as ReRocket,
   RotateLeft2 as ReRotateLeft2, RotateRight2 as ReRotateRight2, Route as ReRoute, Save as ReSave22,
-  Scan as ReScan2, Scroll as ReScroll2, Search as ReSearch, SearchZoomIn2 as ReSearchZoomIn2,
+  Scan as ReScan2, Scissors as ReScissors, Scroll as ReScroll2, Search as ReSearch, SearchZoomIn2 as ReSearchZoomIn2,
   SearchZoomOut2 as ReSearchZoomOut2, Send as ReSend, Server as ReServer, ServerSquare as ReServerSquare,
   Settings as ReSettings,
   Settings2 as ReSettings2, Shield as ReShield, ShieldOff as ReShieldOff, SidebarBottom as ReSidebarBottom2,
@@ -96,7 +96,7 @@ const reiconIconComponents = {
   "Pin": RePin, "PinOff": RePinOff, "Play": RePlay, "Plus": RePlus,
   "Power": RePower, "Printer": RePrinter, "Radio": ReRadio, "RefreshCw": ReRefresh,
   "Rocket": ReRocket, "RotateCcw": ReRotateLeft2, "RotateCw": ReRotateRight2, "Route": ReRoute,
-  "Save": ReSave22, "Scan": ReScan2, "ScrollText": ReScroll2, "Search": ReSearch,
+  "Save": ReSave22, "Scan": ReScan2, "Scissors": ReScissors, "ScrollText": ReScroll2, "Search": ReSearch,
   "Send": ReSend, "SendHorizontal": ReSend, "Server": ReServer, "ServerSquare": ReServerSquare, "Settings": ReSettings,
   "Settings2": ReSettings2, "Shield": ReShield, "ShieldAlert": ReAlertTriangle, "ShieldOff": ReShieldOff,
   "ShoppingCart": ReCart, "SlidersHorizontal": ReSliders, "Sparkles": ReMagicStar2, "SquareCheck": ReCheckSquare,
@@ -289,6 +289,7 @@ export const RotateCw = ReRotateRight2;
 export const Route = ReRoute;
 export const Save = ReSave22;
 export const Scan = ReScan2;
+export const Scissors = ReScissors;
 export const ScrollText = ReScroll2;
 export const Search = ReSearch;
 export const Send = ReSend;

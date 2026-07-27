@@ -57,6 +57,9 @@ const DEFAULT_FORMAT_STATE = {
   bulletedList: false,
   numberedList: false,
   block: "p",
+  table: false,
+  canDeleteTableRow: false,
+  canDeleteTableColumn: false,
 };
 
 function storageKey(instanceId: string) {
@@ -132,6 +135,35 @@ function renderMarkdown(markdown: string) {
 }
 
 const markdownSerializer = new TurndownService({ bulletListMarker: "-" });
+markdownSerializer.addRule("gfmTable", {
+  filter: "table",
+  replacement: (_content, node) => {
+    const table = node as HTMLTableElement;
+    const rows = Array.from(table.rows);
+    if (rows.length === 0) {
+      return "";
+    }
+    const columnCount = Math.max(...rows.map((row) => row.cells.length), 1);
+    const serializeCell = (cell: HTMLTableCellElement | undefined) => {
+      if (!cell) {
+        return " ";
+      }
+      return markdownSerializer
+        .turndown(cell.innerHTML)
+        .replace(/\|/g, "\\|")
+        .replace(/\r?\n+/g, "<br>")
+        .trim() || " ";
+    };
+    const serializeRow = (row: HTMLTableRowElement | undefined) =>
+      `| ${Array.from({ length: columnCount }, (_, index) => serializeCell(row?.cells[index])).join(" | ")} |`;
+    const lines = [
+      serializeRow(rows[0]),
+      `| ${Array.from({ length: columnCount }, () => "---").join(" | ")} |`,
+      ...rows.slice(1).map(serializeRow),
+    ];
+    return `\n\n${lines.join("\n")}\n\n`;
+  },
+});
 
 export function NotesBody({ instance }: BuiltInWidgetBodyProps) {
   const { t } = useTranslation();
@@ -147,6 +179,7 @@ export function NotesBody({ instance }: BuiltInWidgetBodyProps) {
   const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
   const markdownEditorRef = useRef<HTMLDivElement | null>(null);
   const markdownSelectionRef = useRef<Range | null>(null);
+  const activeTableCellRef = useRef<HTMLTableCellElement | null>(null);
   const [activePageIndex, setActivePageIndex] = useState(0);
   const [tearingPageIndex, setTearingPageIndex] = useState<number | null>(null);
   const [formatState, setFormatState] = useState(DEFAULT_FORMAT_STATE);
@@ -168,6 +201,7 @@ export function NotesBody({ instance }: BuiltInWidgetBodyProps) {
 
   useEffect(() => {
     markdownSelectionRef.current = null;
+    activeTableCellRef.current = null;
     setFormatState(DEFAULT_FORMAT_STATE);
   }, [activePageIndex, settings.markdownEnabled]);
 
@@ -241,6 +275,12 @@ export function NotesBody({ instance }: BuiltInWidgetBodyProps) {
       return;
     }
     markdownSelectionRef.current = range.cloneRange();
+    const selectionElement = range.startContainer instanceof Element
+      ? range.startContainer
+      : range.startContainer.parentElement;
+    const tableCell = selectionElement?.closest<HTMLTableCellElement>("th, td") ?? null;
+    const table = tableCell?.closest("table") ?? null;
+    activeTableCellRef.current = tableCell && editor.contains(tableCell) ? tableCell : null;
     const block = String(document.queryCommandValue("formatBlock")).replace(/[<>]/g, "").toLowerCase();
     setFormatState({
       bold: document.queryCommandState("bold"),
@@ -248,6 +288,9 @@ export function NotesBody({ instance }: BuiltInWidgetBodyProps) {
       bulletedList: document.queryCommandState("insertUnorderedList"),
       numberedList: document.queryCommandState("insertOrderedList"),
       block: block || "p",
+      table: Boolean(tableCell),
+      canDeleteTableRow: tableCell?.tagName === "TD",
+      canDeleteTableColumn: (table?.rows[0]?.cells.length ?? 0) > 1,
     });
   }
 
@@ -294,6 +337,166 @@ export function NotesBody({ instance }: BuiltInWidgetBodyProps) {
       });
     syncMarkdownEditor();
     captureMarkdownSelection();
+  }
+
+  function focusMarkdownTableCell(cell: HTMLTableCellElement | null) {
+    const editor = markdownEditorRef.current;
+    if (!editor || !cell || !editor.contains(cell)) {
+      return;
+    }
+    editor.focus();
+    const range = document.createRange();
+    range.selectNodeContents(cell);
+    range.collapse(true);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    markdownSelectionRef.current = range.cloneRange();
+    activeTableCellRef.current = cell;
+    captureMarkdownSelection();
+  }
+
+  function finishMarkdownTableEdit(cell: HTMLTableCellElement | null) {
+    syncMarkdownEditor();
+    window.requestAnimationFrame(() => focusMarkdownTableCell(cell));
+  }
+
+  function insertMarkdownTable() {
+    const editor = markdownEditorRef.current;
+    if (!editor) {
+      return;
+    }
+    restoreMarkdownSelection();
+    const table = document.createElement("table");
+    const headerRow = table.createTHead().insertRow();
+    for (let index = 0; index < 2; index += 1) {
+      headerRow.appendChild(document.createElement("th")).appendChild(document.createElement("br"));
+    }
+    const body = table.createTBody();
+    for (let rowIndex = 0; rowIndex < 2; rowIndex += 1) {
+      const row = body.insertRow();
+      for (let columnIndex = 0; columnIndex < 2; columnIndex += 1) {
+        row.insertCell().appendChild(document.createElement("br"));
+      }
+    }
+    const trailingParagraph = document.createElement("p");
+    trailingParagraph.appendChild(document.createElement("br"));
+    const savedRange = markdownSelectionRef.current;
+    const selectionElement = savedRange?.startContainer instanceof Element
+      ? savedRange.startContainer
+      : savedRange?.startContainer.parentElement;
+    const containingBlock = selectionElement?.closest("p, h1, h2, blockquote, ul, ol, table");
+    if (containingBlock && containingBlock.parentElement === editor) {
+      containingBlock.after(table, trailingParagraph);
+    } else if (savedRange && editor.contains(savedRange.commonAncestorContainer)) {
+      savedRange.deleteContents();
+      savedRange.insertNode(table);
+      table.after(trailingParagraph);
+    } else {
+      editor.append(table, trailingParagraph);
+    }
+    finishMarkdownTableEdit(headerRow.cells[0]);
+  }
+
+  function addMarkdownTableRow() {
+    const cell = activeTableCellRef.current;
+    const table = cell?.closest("table");
+    if (!cell || !table) {
+      return;
+    }
+    const body = table.tBodies[0] ?? table.createTBody();
+    const activeRow = cell.parentElement as HTMLTableRowElement;
+    const row = body.insertRow(cell.tagName === "TD" ? activeRow.sectionRowIndex + 1 : 0);
+    const columnCount = table.rows[0]?.cells.length ?? 1;
+    for (let index = 0; index < columnCount; index += 1) {
+      row.insertCell().appendChild(document.createElement("br"));
+    }
+    finishMarkdownTableEdit(row.cells[Math.min(cell.cellIndex, columnCount - 1)]);
+  }
+
+  function deleteMarkdownTableRow() {
+    const cell = activeTableCellRef.current;
+    const row = cell?.parentElement as HTMLTableRowElement | null;
+    const table = cell?.closest("table");
+    if (!cell || !row || !table || cell.tagName !== "TD") {
+      return;
+    }
+    const nextRow = row.nextElementSibling as HTMLTableRowElement | null;
+    const previousRow = row.previousElementSibling as HTMLTableRowElement | null;
+    const targetRow = nextRow ?? previousRow ?? table.tHead?.rows[0] ?? null;
+    const targetIndex = Math.min(cell.cellIndex, Math.max((targetRow?.cells.length ?? 1) - 1, 0));
+    row.remove();
+    finishMarkdownTableEdit(targetRow?.cells[targetIndex] ?? null);
+  }
+
+  function addMarkdownTableColumn() {
+    const cell = activeTableCellRef.current;
+    const table = cell?.closest("table");
+    if (!cell || !table) {
+      return;
+    }
+    const insertAt = cell.cellIndex + 1;
+    let targetCell: HTMLTableCellElement | null = null;
+    for (const row of Array.from(table.rows)) {
+      const nextCell = row.insertCell(insertAt);
+      if (row.parentElement?.tagName === "THEAD") {
+        const headerCell = document.createElement("th");
+        headerCell.appendChild(document.createElement("br"));
+        nextCell.replaceWith(headerCell);
+        if (row === cell.parentElement) {
+          targetCell = headerCell;
+        }
+      } else {
+        nextCell.appendChild(document.createElement("br"));
+        if (row === cell.parentElement) {
+          targetCell = nextCell;
+        }
+      }
+    }
+    finishMarkdownTableEdit(targetCell);
+  }
+
+  function deleteMarkdownTableColumn() {
+    const cell = activeTableCellRef.current;
+    const table = cell?.closest("table");
+    if (!cell || !table || table.rows[0].cells.length <= 1) {
+      return;
+    }
+    const deleteAt = cell.cellIndex;
+    const activeRow = cell.parentElement;
+    let targetCell: HTMLTableCellElement | null = null;
+    for (const row of Array.from(table.rows)) {
+      row.deleteCell(deleteAt);
+      if (row === activeRow) {
+        targetCell = row.cells[Math.min(deleteAt, row.cells.length - 1)] ?? null;
+      }
+    }
+    finishMarkdownTableEdit(targetCell);
+  }
+
+  function deleteMarkdownTable() {
+    const editor = markdownEditorRef.current;
+    const table = activeTableCellRef.current?.closest("table");
+    if (!editor || !table) {
+      return;
+    }
+    const focusTarget = table.nextElementSibling ?? table.previousElementSibling;
+    table.remove();
+    if (!editor.textContent?.trim()) {
+      editor.replaceChildren();
+    }
+    activeTableCellRef.current = null;
+    syncMarkdownEditor();
+    window.requestAnimationFrame(() => {
+      editor.focus();
+      const range = document.createRange();
+      range.selectNodeContents(focusTarget ?? editor);
+      range.collapse(false);
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+      captureMarkdownSelection();
+    });
   }
 
   async function handleNotesContextMenu(event: ReactMouseEvent<HTMLElement>) {
@@ -486,6 +689,74 @@ export function NotesBody({ instance }: BuiltInWidgetBodyProps) {
               >
                 “
               </button>
+              <span className="dw-notes-format-divider" aria-hidden="true" />
+              <button
+                type="button"
+                className={`dw-notes-format-button${formatState.table ? " is-active" : ""}`}
+                aria-pressed={formatState.table}
+                aria-label={t("dashboard.notesInsertTable")}
+                title={t("dashboard.notesInsertTable")}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={insertMarkdownTable}
+              >
+                ▦
+              </button>
+              {formatState.table ? (
+                <>
+                  <button
+                    type="button"
+                    className="dw-notes-format-button dw-notes-format-button--table"
+                    aria-label={t("dashboard.notesAddTableRow")}
+                    title={t("dashboard.notesAddTableRow")}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={addMarkdownTableRow}
+                  >
+                    +R
+                  </button>
+                  <button
+                    type="button"
+                    className="dw-notes-format-button dw-notes-format-button--table"
+                    aria-label={t("dashboard.notesDeleteTableRow")}
+                    title={t("dashboard.notesDeleteTableRow")}
+                    disabled={!formatState.canDeleteTableRow}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={deleteMarkdownTableRow}
+                  >
+                    −R
+                  </button>
+                  <button
+                    type="button"
+                    className="dw-notes-format-button dw-notes-format-button--table"
+                    aria-label={t("dashboard.notesAddTableColumn")}
+                    title={t("dashboard.notesAddTableColumn")}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={addMarkdownTableColumn}
+                  >
+                    +C
+                  </button>
+                  <button
+                    type="button"
+                    className="dw-notes-format-button dw-notes-format-button--table"
+                    aria-label={t("dashboard.notesDeleteTableColumn")}
+                    title={t("dashboard.notesDeleteTableColumn")}
+                    disabled={!formatState.canDeleteTableColumn}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={deleteMarkdownTableColumn}
+                  >
+                    −C
+                  </button>
+                  <button
+                    type="button"
+                    className="dw-notes-format-button dw-notes-format-button--table is-danger"
+                    aria-label={t("dashboard.notesDeleteTable")}
+                    title={t("dashboard.notesDeleteTable")}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={deleteMarkdownTable}
+                  >
+                    ×T
+                  </button>
+                </>
+              ) : null}
             </div>
             <div
               className="dw-notes-page-actions dw-notes-page-actions--inline"

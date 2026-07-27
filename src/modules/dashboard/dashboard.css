@@ -4128,6 +4128,23 @@ button.dashboard-pill-dot:focus-visible {
   font-style: italic;
 }
 
+.dw-notes-format-button--table {
+  min-width: 25px;
+  font-size: 9px;
+  letter-spacing: -0.02em;
+}
+
+.dw-notes-format-button:disabled {
+  color: rgb(0 0 0 / 25%);
+  background: transparent;
+  box-shadow: none;
+  cursor: default;
+}
+
+.dw-notes-format-button.is-danger:not(:disabled) {
+  color: color-mix(in srgb, var(--note-ink) 45%, var(--red) 55%);
+}
+
 .dw-notes-format-divider {
   flex: 0 0 auto;
   width: 1px;
@@ -4266,6 +4283,8 @@ button.dashboard-pill-dot:focus-visible {
 
 .dw-notes-markdown th,
 .dw-notes-markdown td {
+  min-width: 2.5em;
+  height: 1.65em;
   padding: 0.25em 0.4em;
   border-right: 1px solid rgb(42 38 32 / 34%);
   border-bottom: 1px solid rgb(42 38 32 / 30%);

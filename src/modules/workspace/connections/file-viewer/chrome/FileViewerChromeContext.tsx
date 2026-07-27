@@ -15,12 +15,14 @@ import { createPortal } from "react-dom";
 export interface ChromeSlots {
   center: HTMLElement | null;
   right: HTMLElement | null;
+  subbar: HTMLElement | null;
   footer: HTMLElement | null;
 }
 
 const ChromeSlotsContext = createContext<ChromeSlots>({
   center: null,
   right: null,
+  subbar: null,
   footer: null,
 });
 
@@ -38,10 +40,12 @@ export function useChromeSlots(): ChromeSlots {
 export function ChromePortals({
   center,
   right,
+  subbar,
   footer,
 }: {
   center?: ReactNode;
   right?: ReactNode;
+  subbar?: ReactNode;
   footer?: ReactNode;
 }) {
   const slots = useChromeSlots();
@@ -49,6 +53,7 @@ export function ChromePortals({
     <>
       {center != null && slots.center ? createPortal(center, slots.center) : null}
       {right != null && slots.right ? createPortal(right, slots.right) : null}
+      {subbar != null && slots.subbar ? createPortal(subbar, slots.subbar) : null}
       {footer != null && slots.footer ? createPortal(footer, slots.footer) : null}
     </>
   );

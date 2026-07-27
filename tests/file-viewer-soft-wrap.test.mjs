@@ -39,7 +39,7 @@ test("Document toolbar keeps the action cluster stable with long file names", ()
   assert.match(css, /\.fv-toolbar\s*\{[\s\S]*?min-width:\s*0;/);
   assert.match(css, /\.fv-file\s*\{[\s\S]*?flex:\s*1 1 180px;[\s\S]*?max-width:\s*340px;/);
   assert.match(css, /\.fv-tb-spacer\s*\{[\s\S]*?flex:\s*999 1 16px;[\s\S]*?min-width:\s*0;/);
-  assert.match(css, /\.fv-tb-center\s*\{[\s\S]*?flex:\s*0 0 auto;/);
+  assert.match(css, /\.fv-tb-center\s*\{[\s\S]*?flex:\s*0 1 auto;[\s\S]*?overflow-x:\s*auto;/);
 });
 
 test("manual documents Document soft-wrap default and session scope", () => {

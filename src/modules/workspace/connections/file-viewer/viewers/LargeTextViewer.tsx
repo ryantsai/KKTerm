@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Hash, X } from "../../../../../lib/reicon";
 import { invokeCommand, type FileViewTextIndex } from "../../../../../lib/tauri";
 import { useWorkspaceStore } from "../../../../../store";
 import { ChromePortals } from "../chrome/FileViewerChromeContext";
-import { FootSeg } from "../chrome/controls";
+import { FootSeg, IconButton } from "../chrome/controls";
 import {
   LARGE_TEXT_LINE_HEIGHT,
   largeTextVirtualWindow,
@@ -41,6 +42,8 @@ export function LargeTextViewer({
   const [viewport, setViewport] = useState({ scrollTop: 0, height: 0 });
   const [index, setIndex] = useState<FileViewTextIndex | null>(null);
   const [pages, setPages] = useState<Map<number, LoadedPage>>(() => new Map());
+  const [goToOpen, setGoToOpen] = useState(false);
+  const [goToValue, setGoToValue] = useState("");
 
   const previewLines = useMemo(() => text.split(/\r\n|\n|\r/), [text]);
   // A truncated prefix may end halfway through its final line. Keep only lines
@@ -196,9 +199,69 @@ export function LargeTextViewer({
     [virtualWindow.end, virtualWindow.start],
   );
 
+  const goToLine = useCallback(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller || !index) {
+      return;
+    }
+    const requestedLine = Number.parseInt(goToValue, 10);
+    if (!Number.isFinite(requestedLine)) {
+      return;
+    }
+    const line = Math.max(1, Math.min(index.totalLines, requestedLine));
+    scroller.scrollTop = (line - 1) * LARGE_TEXT_LINE_HEIGHT;
+    updateViewport();
+  }, [goToValue, index, updateViewport]);
+
   return (
     <div className="fv-large-text-pane">
       <ChromePortals
+        center={
+          <IconButton
+            icon={Hash}
+            title={t("workspace.fileViewer.goToLine")}
+            disabled={!index}
+            on={goToOpen}
+            pressed={goToOpen}
+            onClick={() => setGoToOpen((open) => !open)}
+          />
+        }
+        subbar={
+          goToOpen ? (
+            <form
+              className="fv-findbar fv-goto-bar"
+              onSubmit={(event) => {
+                event.preventDefault();
+                goToLine();
+              }}
+            >
+              <Hash size={14} />
+              <label htmlFor="fv-large-text-line-input">
+                {t("workspace.fileViewer.goToLine")}
+              </label>
+              <input
+                id="fv-large-text-line-input"
+                className="fv-find-input"
+                inputMode="numeric"
+                min={1}
+                max={index?.totalLines}
+                type="number"
+                value={goToValue}
+                placeholder={t("workspace.fileViewer.lineNumberPlaceholder")}
+                onChange={(event) => setGoToValue(event.currentTarget.value)}
+              />
+              <button className="fv-find-action" type="submit" disabled={!index}>
+                {t("workspace.fileViewer.go")}
+              </button>
+              <div className="fv-tb-spacer" />
+              <IconButton
+                icon={X}
+                title={t("common.close")}
+                onClick={() => setGoToOpen(false)}
+              />
+            </form>
+          ) : null
+        }
         footer={
           <>
             <FootSeg>
@@ -207,7 +270,11 @@ export function LargeTextViewer({
                 total: totalLines,
               })}
             </FootSeg>
-            {!index ? <FootSeg>{t("workspace.fileViewer.loading")}</FootSeg> : null}
+            <FootSeg>
+              {index
+                ? t("workspace.fileViewer.largeFileIndexed")
+                : t("workspace.fileViewer.indexingLargeFile")}
+            </FootSeg>
           </>
         }
       />

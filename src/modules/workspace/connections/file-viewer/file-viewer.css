@@ -104,14 +104,27 @@
 .fv-tb-center {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex: 0 0 auto;
+  gap: 2px;
+  flex: 0 1 auto;
   min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.fv-tb-center::-webkit-scrollbar {
+  display: none;
 }
 .fv-tb-right {
   display: flex;
   align-items: center;
   gap: 4px;
+  flex: 0 0 auto;
+}
+.fv-tool-separator {
+  width: 1px;
+  height: 20px;
+  margin: 0 4px;
+  background: var(--hairline);
   flex: 0 0 auto;
 }
 
@@ -317,6 +330,116 @@
 }
 .fv-search input::placeholder {
   color: var(--text-3);
+}
+
+/* Search/replace and go-to-line strips only exist while their toolbar toggles
+   are active. The empty portal host intentionally occupies no space. */
+.fv-subbar-slot:empty {
+  display: none;
+}
+.fv-findbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 5px 10px 5px 14px;
+  color: var(--text-2);
+  background: var(--chrome);
+  border-bottom: 1px solid var(--hairline);
+  flex: 0 0 auto;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.fv-findbar::-webkit-scrollbar {
+  display: none;
+}
+.fv-find-input {
+  width: min(220px, 18vw);
+  height: 28px;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  outline: none;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+.fv-find-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.fv-find-input::placeholder {
+  color: var(--text-3);
+}
+.fv-find-count {
+  min-width: 70px;
+  color: var(--text-3);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  white-space: nowrap;
+}
+.fv-find-toggle,
+.fv-find-action {
+  height: 28px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+}
+.fv-find-toggle {
+  min-width: 28px;
+  padding: 0 6px;
+  font-family: var(--mono);
+}
+.fv-find-action {
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  white-space: nowrap;
+}
+.fv-find-toggle:hover,
+.fv-find-action:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.fv-find-toggle.on {
+  background: var(--accent);
+  color: #fff;
+}
+.fv-find-toggle[disabled],
+.fv-find-action[disabled] {
+  opacity: 0.45;
+  cursor: default;
+}
+.fv-goto-bar label {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.fv-goto-bar .fv-find-input {
+  width: 160px;
+}
+
+@media (max-width: 980px) {
+  .fv-file {
+    flex-basis: 120px;
+  }
+  .fv-file .glyph,
+  .fv-pill {
+    display: none;
+  }
+  .fv-toolbar {
+    gap: 5px;
+    padding-left: 8px;
+  }
+  .fv-tool-separator {
+    margin-inline: 2px;
+  }
 }
 
 /* small select chip */

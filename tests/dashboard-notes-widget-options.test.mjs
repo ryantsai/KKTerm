@@ -39,6 +39,26 @@ if (!notesSource.includes("dw-notes-format-toolbar") || !notesSource.includes("c
   throw new Error("Notes WYSIWYG formatting should preserve the active editor selection.");
 }
 
+for (const tableAction of [
+  "insertMarkdownTable",
+  "addMarkdownTableRow",
+  "deleteMarkdownTableRow",
+  "addMarkdownTableColumn",
+  "deleteMarkdownTableColumn",
+  "deleteMarkdownTable",
+]) {
+  if (!notesSource.includes(tableAction)) {
+    throw new Error(`Notes WYSIWYG toolbar should expose ${tableAction}.`);
+  }
+}
+
+if (
+  !notesSource.includes('markdownSerializer.addRule("gfmTable"') ||
+  !notesSource.includes('Array.from({ length: columnCount }, () => "---")')
+) {
+  throw new Error("Notes WYSIWYG tables should serialize back to GitHub-Flavored Markdown tables.");
+}
+
 if (!notesSource.includes("wrapper.replaceWith(list)")) {
   throw new Error("Notes WYSIWYG lists should not remain nested inside heading or paragraph wrappers.");
 }

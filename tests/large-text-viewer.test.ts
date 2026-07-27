@@ -40,5 +40,8 @@ test("large text viewer indexes the file and lazily reads bounded pages", async 
   assert.match(source, /invokeCommand\("index_file_view_text"/);
   assert.match(source, /invokeCommand\("read_file_view_text_page"/);
   assert.match(source, /const PAGE_CACHE_LIMIT = 12/);
+  assert.match(source, /indexingLargeFile/);
+  assert.match(source, /largeFileIndexed/);
+  assert.match(source, /scroller\.scrollTop = \(line - 1\) \* LARGE_TEXT_LINE_HEIGHT/);
   assert.doesNotMatch(source, /read_file_view_text"/);
 });

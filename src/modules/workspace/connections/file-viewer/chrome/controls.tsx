@@ -12,6 +12,7 @@ export function IconButton({
   disabled = false,
   onClick,
   size = 17,
+  pressed,
 }: {
   icon: ViewerIcon;
   title: string;
@@ -19,6 +20,7 @@ export function IconButton({
   disabled?: boolean;
   onClick?: () => void;
   size?: number;
+  pressed?: boolean;
 }) {
   return (
     <button
@@ -26,7 +28,7 @@ export function IconButton({
       className={on ? "fv-ibtn on" : "fv-ibtn"}
       title={title}
       aria-label={title}
-      aria-pressed={on}
+      aria-pressed={pressed ?? (on ? true : undefined)}
       disabled={disabled}
       onClick={onClick}
     >

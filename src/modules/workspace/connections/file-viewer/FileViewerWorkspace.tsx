@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { Check, Lock, Menu, RefreshCw, Save, X } from "../../../../lib/reicon";
+import { Check, Lock, Menu, RefreshCw, X } from "../../../../lib/reicon";
 import type { CSSProperties } from "react";
 import type { WorkspaceTab } from "../../../../types";
 import type { DashboardBackground } from "../../../dashboard/types";
@@ -10,6 +10,7 @@ import {
   invokeCommand,
   isTauriRuntime,
   openFilesystemPath,
+  selectFileViewPath,
   type FileViewProbe,
 } from "../../../../lib/tauri";
 import { useWorkspaceStore } from "../../../../store";
@@ -122,6 +123,8 @@ export function FileViewerWorkspace({
   const showStatusBarProgress = useWorkspaceStore((state) => state.showStatusBarProgress);
   const updateStatusBarProgress = useWorkspaceStore((state) => state.updateStatusBarProgress);
   const clearStatusBarNotice = useWorkspaceStore((state) => state.clearStatusBarNotice);
+  const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
+  const openCompareView = useWorkspaceStore((state) => state.openCompareView);
   const [probe, setProbe] = useState<FileViewProbe | null>(null);
   const [override, setOverride] = useState<ViewerKind | null>(null);
   const [content, setContent] = useState<LoadedContent | null>(null);
@@ -148,12 +151,12 @@ export function FileViewerWorkspace({
   // the editor on each keystroke.
   const [editedText, setEditedText] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState("");
 
   // Shell-owned slot elements the active viewer fills with portals (per-mode
   // toolbar controls + footer status). See FileViewerChromeContext.
   const [centerSlot, setCenterSlot] = useState<HTMLElement | null>(null);
   const [rightSlot, setRightSlot] = useState<HTMLElement | null>(null);
+  const [subbarSlot, setSubbarSlot] = useState<HTMLElement | null>(null);
   const [footerSlot, setFooterSlot] = useState<HTMLElement | null>(null);
 
   const load = useCallback(
@@ -164,7 +167,6 @@ export function FileViewerWorkspace({
       }
       setLoading(true);
       setError("");
-      setSaveError("");
       setEditedText(null);
       const progressId = showStatusBarProgress(t("workspace.fileViewer.loading"), { progress: 5 });
       try {
@@ -366,7 +368,6 @@ export function FileViewerWorkspace({
       return;
     }
     setSaving(true);
-    setSaveError("");
     try {
       await writeOnce(false);
     } catch (firstError) {
@@ -377,15 +378,40 @@ export function FileViewerWorkspace({
           try {
             await writeOnce(true);
           } catch (forcedError) {
-            setSaveError(forcedError instanceof Error ? forcedError.message : String(forcedError));
+            showStatusBarNotice(
+              forcedError instanceof Error ? forcedError.message : String(forcedError),
+              { tone: "error" },
+            );
           }
         }
       } else {
-        setSaveError(message);
+        showStatusBarNotice(message, { tone: "error" });
       }
     } finally {
       setSaving(false);
     }
+  }
+
+  async function compareWithFile() {
+    const selectedPath = await selectFileViewPath({
+      title: t("compare.title"),
+      defaultPath: filePath,
+    });
+    if (!selectedPath || selectedPath === filePath) {
+      return;
+    }
+    openCompareView(
+      {
+        localPath: filePath,
+        label: fileBaseName(filePath),
+        origin: filePath,
+      },
+      {
+        localPath: selectedPath,
+        label: fileBaseName(selectedPath),
+        origin: selectedPath,
+      },
+    );
   }
 
   function saveBackground(nextBackground: DashboardBackground | null) {
@@ -467,8 +493,8 @@ export function FileViewerWorkspace({
             {kindLabel}
           </span>
         ) : null}
-        <div className="fv-tb-spacer" />
         <div className="fv-tb-center" ref={setCenterSlot} />
+        <div className="fv-tb-spacer" />
         <div className="fv-tb-right" ref={setRightSlot} />
         {kinds.length > 1 ? (
           <Segmented
@@ -478,14 +504,6 @@ export function FileViewerWorkspace({
               label: t(`workspace.fileViewer.kind.${kind}`),
             }))}
             onChange={(kind) => void requestMode(kind)}
-          />
-        ) : null}
-        {editable ? (
-          <IconButton
-            icon={Save}
-            title={saving ? t("workspace.fileViewer.saving") : t("workspace.fileViewer.save")}
-            disabled={!dirty || saving}
-            onClick={() => void save()}
           />
         ) : null}
         <IconButton icon={RefreshCw} title={t("common.refresh")} onClick={() => void requestReload()} />
@@ -602,12 +620,17 @@ export function FileViewerWorkspace({
       {content?.truncated && content.kind !== "text" ? (
         <div className="file-viewer-notice">{t("workspace.fileViewer.truncated")}</div>
       ) : null}
-      {saveError ? (
-        <div className="file-viewer-notice file-viewer-notice-warn">{saveError}</div>
-      ) : null}
+      <div className="fv-subbar-slot" ref={setSubbarSlot} />
 
       <div className="fv-body">
-        <ChromeSlotsProvider value={{ center: centerSlot, right: rightSlot, footer: footerSlot }}>
+        <ChromeSlotsProvider
+          value={{
+            center: centerSlot,
+            right: rightSlot,
+            subbar: subbarSlot,
+            footer: footerSlot,
+          }}
+        >
           {loading ? (
             <div className="file-viewer-status">{t("workspace.fileViewer.loading")}</div>
           ) : error ? (
@@ -621,7 +644,10 @@ export function FileViewerWorkspace({
               background={viewerBackground}
               isActive={isActive}
               softWrap={softWrap}
+              dirty={dirty}
+              saving={saving}
               onEditChange={setEditedText}
+              onCompare={() => void compareWithFile()}
               onChooseKind={(kind) => void requestMode(kind)}
               onSave={() => void save()}
               onSoftWrapChange={(next) => {
@@ -678,7 +704,10 @@ function FileViewerContent({
   background,
   isActive,
   softWrap,
+  dirty,
+  saving,
   onEditChange,
+  onCompare,
   onChooseKind,
   onSave,
   onSoftWrapChange,
@@ -690,7 +719,10 @@ function FileViewerContent({
   background: DashboardBackground | null;
   isActive: boolean;
   softWrap: boolean;
+  dirty: boolean;
+  saving: boolean;
   onEditChange: (text: string) => void;
+  onCompare: () => void;
   onChooseKind: (kind: ViewerKind) => void;
   onSave: () => void;
   onSoftWrapChange: (softWrap: boolean) => void;
@@ -765,7 +797,10 @@ function FileViewerContent({
           key={editorKey}
           language={MARKDOWN_PATH.test(filePath) ? "markdown" : undefined}
           softWrap={softWrap}
+          dirty={dirty}
+          saving={saving}
           onChange={onEditChange}
+          onCompare={onCompare}
           onSave={onSave}
           onSoftWrapChange={onSoftWrapChange}
         />
