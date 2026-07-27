@@ -3,7 +3,7 @@
 The IT Ops Module is a built-in Activity Rail destination for site
 operations: running the same task across many hosts at once and watching
 signals to react automatically. It absorbs and evolves the in-memory
-Watchdog into durable, saveable Automations.
+Watchdog into durable, saveable Monitors.
 
 This document describes the durable architecture. The decision record and
 its trade-offs live in `docs/ADR/0011-it-ops-module.md`. When this doc
@@ -20,11 +20,11 @@ The IT Ops Module owns:
   guests, imported from hostname lists and scanned for remote-access
   endpoints (see "Hosts" below).
 - **Tasks** — global reusable script or Playbook definitions. A Task owns what
-  to execute but never owns targets; a Site, Host selection, or Automation
+  to execute but never owns targets; a Site, Host selection, or Monitor
   supplies targets when the Task launches.
 - **Batch Runs** — fan-out task execution across a Site with
   per-host live output and a consolidated, saved run report.
-- **Automations** — durable trigger → condition → action rules (the
+- **Monitors** — durable trigger → condition → action rules (the
   evolved Watchdog), including the live run loop and Status Bar surface.
 - **IPAM** — the global VLAN / IP Prefix / IP Address Record plan, with VLAN
   and IP Prefix rows in one typed grid plus derived Prefix containment nesting
@@ -32,7 +32,7 @@ The IT Ops Module owns:
 - **Network Maps** — global hand-drawn logical link diagrams plus the pure
   What-If reachability analysis over them (see "Network Map" below).
 - The Tauri commands the AI Assistant uses to draft and manage Sites and
-  Automations.
+  Monitors.
 - The IT Ops page-context projection supplied to the shared AI Assistant
   panel.
 
@@ -49,16 +49,16 @@ It does not own:
 
 ## Why this is one Module, not separate features
 
-Batch Runs and Automations are the same primitive seen from two
+Batch Runs and Monitors are the same primitive seen from two
 directions. A Batch Run is a task executed **now** against a Site.
-An Automation is a saved rule that may **run a Batch Run later** when a
+A Monitor is a saved rule that may **run a Batch Run later** when a
 trigger fires. They share the host-targeting model (Sites), the
 fan-out executor, the transport adapters, and the run-history store.
-Keeping them in one Module lets an Automation's `runBatch` action reuse
+Keeping them in one Module lets a Monitor's `runBatch` action reuse
 the exact executor a manual run uses.
 
 The UI makes the shared primitive explicit: **Task + targets → Batch Run**,
-while **trigger + Task + targets → Automation**. Tasks are global to IT Ops so
+while **trigger + Task + targets → Monitor**. Tasks are global to IT Ops so
 the same definition can run against several Sites without duplication.
 
 ## Domain Concepts
@@ -160,12 +160,12 @@ name, optional description, and one script or Playbook definition. It has no
 Site id, Host ids, plaintext credentials, or live state. A sudo node may keep
 an opaque secret-vault reference; the password itself never enters Task JSON.
 The operator chooses targets at
-launch time; an Automation references the Task and target Site separately.
+launch time; a Monitor references the Task and target Site separately.
 Deleting or editing a Task never rewrites completed Run History, whose report
 keeps a redacted task-summary snapshot. The Task Library editor supports both
 script Tasks and reusable Playbooks. Playbooks use the same ordered node-canvas
-language as Automations, but remain a linear chain rather than a free-form DAG.
-_Avoid_: Site task, saved Batch Run, Automation workflow
+language as Monitors, but remain a linear chain rather than a free-form DAG.
+_Avoid_: Site task, saved Batch Run, Monitor workflow
 
 **Batch Run** — one execution of a Batch Task against a resolved Host
 Site. Live run state (per-host status, streamed stdout/stderr, exit
@@ -175,11 +175,15 @@ report is written to `itops_run_history`. Concurrency is bounded
 `src-tauri/src/import.rs`); a single slow or black-holed host must not
 stall the others or the UI thread.
 
-**Automation** — a durable rule stored in `itops_automations`: one
+**Monitor** — a durable rule stored in `itops_automations`: one
 **trigger**, an optional **condition**, and an ordered list of
 **actions**. It is the durable generalization of today's
 `WatchdogConfig`. Definitions persist and **re-arm on app launch**;
-their live poll/run state stays in-memory in the Automation runtime.
+their live poll/run state stays in-memory in the Monitor runtime. While a
+condition remains true, its ordered actions run once per configured check
+interval. Internal Rust/TypeScript names, command ids, event names, tutorial
+ids, and the SQLite table retain `automation` for compatibility; user-facing
+copy uses **Monitor**.
 
 **Trigger** — generalizes `WatchdogTarget`. Existing samplers
 (performance counter, ping, TCP reachability, SSH output silence) carry
@@ -343,7 +347,7 @@ Three SQLite tables (new schema version):
   condition, ordered actions, poll/stop/suppression settings (the durable
   superset of `WatchdogConfig`), plus an optional Site binding (`site_id`,
   a soft reference like `itops_run_history`'s) that scopes the rule to one
-  Site's Automations page.
+  Site's Monitors page.
 - `itops_run_history` — id, source (manual run or automation id), task
   summary, started/finished, per-host outcome summary, consolidated
   report blob. Local-first; no telemetry.
@@ -419,7 +423,7 @@ UI/native thread (`docs/ARCHITECTURE.md` command-runtime boundaries).
 `src/modules/itops/` owns the Module shell. The visible shell uses one
 resizable/collapsible operational navigator. Only the active Site needs to be
 expanded. Each Site exposes predefined virtual destinations — **Server Rooms**,
-**Hosts**, **Automations**, and **Run History** — while its topology continues
+**Hosts**, **Monitors**, and **Run History** — while its topology continues
 to drill down Server Room → Rack beneath Server Rooms. These destinations are
 navigation state, not durable database entities or copied containers.
 
@@ -439,7 +443,7 @@ The app syncs a stable built-in diagnostic catalog into `itops_tasks` on startup
 It covers system identity, uptime, resource usage, network interfaces, routing
 and DNS, and recent-log inspection for Linux, macOS, Windows, Cisco IOS,
 Cisco NX-OS, FortiOS, Juniper Junos, and Arista EOS. Built-ins use stable ids and
-catalog keys so Run History and Automation references survive catalog upgrades.
+catalog keys so Run History and Monitor references survive catalog upgrades.
 They are app-owned, read-only, non-deletable definitions; the UI duplicates a
 built-in into an ordinary user Task before customization. Catalog commands are
 inspection-only and must not install, reboot, reconfigure, or delete anything.
@@ -460,14 +464,14 @@ and `fail` stops that Host as failed. Any provider error, invalid JSON, or value
 outside this closed enum fails the Host. AI nodes never turn model text into a
 shell command or choose an arbitrary graph edge.
 
-Hosts, Automations, Run History, and the global Batch Tasks and Networking
+Hosts, Monitors, Run History, and the global Batch Tasks and Networking
 destinations (Task Library, IPAM, Network Maps) share one destination-page frame: the same content inset, compact title/description
 header, right-aligned primary actions, divider, and bordered-row rhythm. The
 Task Library keeps its spreadsheet-style Task table inside that frame rather
 than owning a separate full-height chrome layout. Each row shows Task kind, Applicable OS,
 execution count, failed-host count, and a link to the most recent Site Run
 History containing that Task. Statistics use the Task's stable id; ad-hoc,
-Automation, and older unattributed history rows are never guessed by label.
+Monitor, and older unattributed history rows are never guessed by label.
 
 IPAM (`src/modules/itops/IpamPanel.tsx`) reuses the Task Library's
 spreadsheet-style table inside the same frame. Its Add button opens a menu for
@@ -623,7 +627,7 @@ never enter the reachability graph.
 ### IT Ops destination-page UI contract
 
 This section is normative for future IT Ops frontend work. It applies to
-Hosts, Automations, Run History, Task Library, IPAM, Network Maps, and any
+Hosts, Monitors, Run History, Task Library, IPAM, Network Maps, and any
 later non-spatial destination opened from the IT Ops navigator. Do not give a new destination an
 independent page shell or visual language.
 
@@ -655,9 +659,9 @@ independent page shell or visual language.
 - Run reports and live-run progress may use status-specific summaries inside
   the shared frame. Navigating from history list to report detail must not move
   or restyle the destination header.
-- Automation's node editor is a full-canvas workflow entered from the
+- A Monitor's node editor is a full-canvas workflow entered from the
   destination. Its specialized canvas does not license a different layout for
-  the Automations list page.
+  the Monitors list page.
 - Site View, Server Room View, and Rack View are spatial drill-down canvases,
   not destination pages. They keep their centered view controls and icon-only
   Edit/Export toolbar described below.
@@ -676,7 +680,7 @@ independent page shell or visual language.
 - A missing Site collection uses `itops.sites.emptyHint`; an empty Site uses
   `itops.sites.emptyServerRoomsHint`; an empty Server Room uses
   `itops.racks.emptyServerRoomHint`; an empty Rack uses
-  `itops.racks.emptyRackHint`; Hosts uses `itops.hosts.empty`; Automations uses
+  `itops.racks.emptyRackHint`; Hosts uses `itops.hosts.empty`; Monitors uses
   `itops.automations.emptyHint`; and Run History uses
   `itops.batchRuns.historyEmptyHint`. Keep actionable phrases inside their full
   translated sentences with `Trans` component markers. Do not concatenate text
@@ -707,7 +711,7 @@ independent page shell or visual language.
   empty state when changing Rack or Server Room flows.
 
 Site View is now overview-only and has no segmented content switcher. Hosts,
-Automations, and Run History each own a separate Site-scoped page selected from
+Monitors, and Run History each own a separate Site-scoped page selected from
 the navigator. The Hosts page owns Host selection and the manual **Run Task**
 action; its launcher accepts a reusable Task from the global Task Library or an
 ad-hoc Script Batch Task and fixes the target scope to the selected Host ids. A Host is
@@ -716,7 +720,7 @@ bound SSH Connection for each selected Host and deduplicates Connections.
 
 Run History is read-only navigation over the selected Site's live run and
 completed reports. It has no independent start or rerun action; “Batch Run” is
-the execution concept, not the name of a page or durable container. Automations are
+the execution concept, not the name of a page or durable container. Monitors are
 filtered to rules bound to the selected Site by their durable `site_id` (set in
 the node editor's header Site select and defaulted from the destination that
 opened it; legacy rows without a binding fall back to inference — a runBatch
@@ -810,7 +814,7 @@ A finished run's per-host output is persisted in the report, so the recent-runs
 list opens a read-only **Run Report viewer** (`RunReportView`) that replays the
 per-host output later.
 
-Automations are created and edited in an n8n-style **node editor**
+Monitors are created and edited in an n8n-style **node editor**
 (`AutomationEditor.tsx`, built on `@xyflow/react`): the closed
 trigger → condition → action[] pipeline is drawn as draggable nodes wired
 left-to-right, with a side panel that edits the selected node. It stays a
@@ -819,7 +823,7 @@ visualization, not a new execution model. A **Test** button calls
 `itops_test_automation` to sample the trigger once and report whether the
 condition would fire, then renders a dry-run preview of the actions (no email,
 webhook, or Batch Run is actually sent). The Status Bar indicator continues to
-surface running Automations app-wide via the existing `WatchdogStatusBar`.
+surface running Monitors app-wide via the existing `WatchdogStatusBar`.
 
 All user-visible strings use a new `itops` i18n namespace following the
 i18n rules in `AGENTS.md`. New dialogs/sheets follow
@@ -834,7 +838,7 @@ lifecycle, ordering and duplication, spatial Rack placement/facing and Room
 Objects, presentation backgrounds/icons, SNMP refresh, Host inventory
 (create/update/delete/import/scan), the global Task Library
 (list/get/create/update/remove, with built-ins read-only), durable
-Automations (list/create/update/set-enabled/remove plus a one-shot
+Monitors (list/create/update/set-enabled/remove plus a one-shot
 `itops_test_automation` dry run), and Batch Runs
 (start/cancel/run-history/report). A successful mutating tool emits an
 `itops-changed` backend event that reloads the IT Ops store so the change
@@ -846,18 +850,18 @@ rack-top virtual position (`startU = rack.heightU + 1`) plus expiry/style
 metadata, so assistant and built-in MCP calls preserve the same placement
 invariant as the UI.
 
-Assistant-authored Batch Tasks (Task definitions, Automation `runBatch`
+Assistant-authored Batch Tasks (Task definitions, Monitor `runBatch`
 payloads, ad-hoc run scripts) may never introduce sudo steps or
 secret-vault references — those are configured only in the Task Library
 editor, and a full-value Task update may only resend the sudo steps the
-stored Task already carries. An assistant-created Automation's watchdog
+stored Task already carries. An assistant-created Monitor's watchdog
 `config.action` must stay `notify`; the ordered IT Ops actions list
 carries the real work. Run-history reads return compact per-host outcome
 rows; `itops_get_run_report` attaches per-host output tail-capped by
 `maxOutputChars`.
 
 The page-context projection includes the current navigator selection
-(Site, destination, drill-down), Site names/ids/counts, Automation
+(Site, destination, drill-down), Site names/ids/counts, Monitor
 names/states, the Task Library count, recent run counts, IPAM and Network
 Map counts once those pages have been opened, and the registered tutorial
 targets — never full run output, streamed host buffers, secrets, or
@@ -871,7 +875,7 @@ highlighting; destination pages carry static targets
 `src/app/tutorialNavigationModel.ts`) and rows carry entity-scoped
 targets (`itops.site:<id>`, `itops.host:<id>`, `itops.automation:<id>`,
 `itops.task:<id>`, `itops.run:<id>`). Mutating actions (starting a Batch
-Run, enabling an Automation) go through the existing approval flow; the
+Run, enabling a Monitor) go through the existing approval flow; the
 assistant cannot run a site task silently. Over the built-in MCP bridge
 the same tools are published under `kkterm.itops.*`, with
 task-authoring, automation-mutating, and run-starting tools in
@@ -886,7 +890,7 @@ snapshot a tool would need.
 
 ## Migration from Watchdog
 
-The Watchdog is not deleted — it is the seed of the Automation runtime.
+The Watchdog is not deleted — it is the seed of the Monitor runtime.
 Migration steps, at a design level:
 
 1. Add the three SQLite tables and the schema version bump.
@@ -898,9 +902,9 @@ Migration steps, at a design level:
    WinRM and PsExec adapters next).
 5. Add the `src/modules/itops/` Module shell and `itops` namespace;
    re-home the existing `WatchdogDetail`/`WatchdogStatusBar` views under
-   the Automations runtime while keeping the Status Bar indicator.
+   the Monitor runtime while keeping the Status Bar indicator.
 
-`CONTEXT.md`'s Watchdog entry is updated to note Automations are now
+`CONTEXT.md`'s Watchdog entry is updated to note Monitors are now
 durable IT Ops rules while live run state remains in-memory.
 
 ## Concrete Data Model
@@ -1192,12 +1196,12 @@ channel; write the consolidated report to `itops_run_history` on finish.
 `BatchTask::Script` only. This delivers the headline "send a script to all
 SSH hosts and get results back."
 
-**Phase 3 — Automations: persist + re-arm the Watchdog.** Schema add
+**Phase 3 — Monitors: persist + re-arm the Watchdog.** Schema add
 `itops_automations`; the durable `Automation` superset type; a startup
 hook that hydrates enabled rows into the existing `WatchdogRegistry`;
 extend `watchdog/commands.rs` (or new `itops/automation_commands.rs`) with
 create/update/enable/disable/delete; re-home `WatchdogDetail` /
-`WatchdogStatusBar` under the Automations tab while keeping the Status Bar
+`WatchdogStatusBar` under the Monitors tab while keeping the Status Bar
 indicator. Existing trigger/action kinds only — pure migration of
 behavior onto durable storage.
 
@@ -1290,7 +1294,7 @@ Phases 4–12 are independent and can be reordered by demand.
 ## Planned / Deferred Enhancements
 
 The plumbing above is complete (Sites, SSH Batch Runs, durable
-Automations + action catalog, playbooks, AI integration), but from an
+Monitors + action catalog, playbooks, AI integration), but from an
 operator's seat the Module today is mostly a transport: it returns N raw
 per-host output blobs and a flat list of names. The enhancements below turn it
 into something that produces _answers_ and a site you _see_. They are captured
@@ -1324,9 +1328,9 @@ The following are noted for later consideration (not yet planned in detail):
    status) so the tool is usable in the first 30 seconds. Matches the ROADMAP
    "reusable workflow templates" item.
 
-3. **Durable Automation event log.** Automation fires are transient today
+3. **Durable Monitor event log.** Monitor fires are transient today
    (`itops://automation` emits a one-shot notice/popup, then it's gone). Batch
-   Runs get durable `itops_run_history`; Automations get nothing. Add a durable
+   Runs get durable `itops_run_history`; Monitors get nothing. Add a durable
    automation-event log (what fired, when, trigger snapshot, which actions ran,
    outcome) with an acknowledge state, so "did it fire overnight?" is
    answerable. Live runtime state still stays in-memory; only the fire record
@@ -1338,46 +1342,40 @@ The following are noted for later consideration (not yet planned in detail):
    reusing the run-history store plus the diff from (1). This is where ongoing
    (vs. one-shot) value comes from, and feeds a future site-health overview.
 
-## Target `CONTEXT.md` Vocabulary (lands with Phase 3)
+## `CONTEXT.md` Vocabulary
 
-These entries are **not** yet true of the shipping code — Watchdogs are
-in-memory-only today — so `CONTEXT.md` must not adopt them until the
-Phase 3 persistence work lands. They are captured here as the drafted
-target wording. The modeling principle is KKTerm's existing durable-vs-live
-split: **Automation is to Watchdog as Connection is to Session** — the
-Automation is the durable definition, the Watchdog is the live runtime
-that executes it.
+The modeling principle follows KKTerm's existing durable-vs-live split:
+**Monitor is to Watchdog as Connection is to Session** — the Monitor is the
+durable definition, while the Watchdog is the live runtime that executes it.
+Internal identifiers retain `automation` for compatibility.
 
-When Phase 3 lands, replace the current **Watchdog** entry in `CONTEXT.md`
-with the following two entries and add the three new IT Ops terms:
-
-> **Automation**:
+> **Monitor**:
 > A durable IT Ops rule stored in SQLite (`itops_automations`): one
 > trigger, an optional condition predicate, and an ordered list of typed
 > actions (notify, popup, email, webhook, run a Batch Run, or AI
-> intervention). Automations persist across app restart and re-arm on
-> launch. An Automation is the durable definition; the live **Watchdog**
+> intervention). Monitors persist across app restart and re-arm on
+> launch. A Monitor is the durable definition; the live **Watchdog**
 > runtime is what executes it, the same way a **Connection** is durable
 > and a **Session** is its live runtime. Created and managed in the **IT
 > Ops Module**. See `docs/ITOPS.md` and `src-tauri/src/itops/`.
 > _Avoid_: watchdog (for the durable rule), workflow, job, saved alert
 >
 > **Watchdog**:
-> The live runtime that executes an armed **Automation** (or an ad-hoc
+> The live runtime that executes an armed **Monitor** (or an ad-hoc
 > live monitor): it samples a target (performance counter, SSH Session
 > output silence, ping, TCP reachability, schedule, output match, SFTP
 > change, inbound webhook, or datasource probe) against a predicate and,
-> on trigger, runs the Automation's actions. The running Watchdog state —
+> on trigger, runs the Monitor's actions. The running Watchdog state —
 > ticks, trigger log, state machine, suppression window — is **in-memory
 > only and does not persist across app restart**; its durable definition
-> lives in the **Automation**. Surfaced through the **Watchdog Status Bar**
+> lives in the **Monitor**. Surfaced through the **Watchdog Status Bar**
 > indicator and a detail panel, not as a Connection or Session. See
 > `src-tauri/src/watchdog/` and `src/watchdog/`.
-> _Avoid_: monitor profile, durable watcher (the Automation is the durable part)
+> _Avoid_: monitor profile, durable watcher (the Monitor is the durable part)
 >
 > **IT Ops Module**:
 > A built-in Activity Rail Module for site operations: **Sites**,
-> **Batch Runs**, and **Automations**. Its current primary UI is the Site
+> **Batch Runs**, and **Monitors**. Its current primary UI is the Site
 > topology surface. Lives with Dashboard and Install Helper above Settings.
 > Not a Connection, Session, or Dashboard widget. See `docs/ITOPS.md` and
 > `docs/ADR/0011-it-ops-module.md`.
@@ -1386,7 +1384,7 @@ with the following two entries and add the three new IT Ops terms:
 > **Site**:
 > A durable, named selection of existing Connections (plus an optional
 > dynamic filter by type/folder) used as the site target for Batch Runs
-> and Automation `runBatch` actions. Stored in `itops_sites`; it
+> and Monitor `runBatch` actions. Stored in `itops_sites`; it
 > references Connection ids and owns no Session and no secret. It is not a
 > Connection type.
 > _Avoid_: host group, inventory, host list, connection group (as a Connection type)

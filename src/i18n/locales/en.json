@@ -1053,7 +1053,7 @@
       "sites": "Sites",
       "hosts": "Hosts",
       "runs": "Batch Runs",
-      "autos": "Automations"
+      "autos": "Monitors"
     },
     "navigation": {
       "serverRooms": "Server Rooms",
@@ -1065,7 +1065,7 @@
       "newSite": "New Site",
       "newBatchRun": "New Batch Run",
       "startBatchRun": "Start a Batch Run",
-      "newAutomation": "New Automation",
+      "newAutomation": "New Monitor",
       "runTask": "Run task",
       "cancel": "Cancel",
       "rerun": "Re-run",
@@ -1092,7 +1092,7 @@
     "sites": {
       "heading": "Sites",
       "emptyTitle": "No Sites yet",
-      "emptyBody": "A Site is a named selection of existing Connections used as the target for Batch Runs and Automations.",
+      "emptyBody": "A Site is a named selection of existing Connections used as the target for Batch Runs and Monitors.",
       "emptyHint": "No Sites yet. <newSite>Create a new Site</newSite> to organize infrastructure.",
       "createHelp": "A Site is the top-level container for Server Rooms, Racks, and Connections. Use one for a region, location, customer, project, or any other way you organize infrastructure.",
       "dynamicBadge": "DYN",
@@ -1222,7 +1222,7 @@
       "definitionHeading": "Definition",
       "noDescription": "No description",
       "emptyTitle": "No reusable Tasks yet",
-      "emptyBody": "Save a script as a Task, then run it against any Site or use it from an Automation.",
+      "emptyBody": "Save a script as a Task, then run it against any Site or use it from a Monitor.",
       "savedNotice": "Saved Task “{{name}}”.",
       "deletedNotice": "Deleted Task “{{name}}”.",
       "deleteTitle": "Delete Task?",
@@ -1582,8 +1582,8 @@
       "progressComplete": "{{done}} of {{total}} complete",
       "historyHeading": "Recent runs",
       "historyDescription": "Live progress and completed Task reports for this Site.",
-      "historyEmptyBody": "Runs started from the Hosts page or an Automation will appear here.",
-      "historyEmptyHint": "No Run History yet. Runs started from the Hosts page or an Automation will appear here.",
+      "historyEmptyBody": "Runs started from the Hosts page or a Monitor will appear here.",
+      "historyEmptyHint": "No Run History yet. Runs started from the Hosts page or a Monitor will appear here.",
       "historySummary": "{{ok}}/{{total}} ok",
       "waitingOutput": "Waiting for output…",
       "noOutput": "No output captured",
@@ -1607,14 +1607,14 @@
       "removeStep": "Remove"
     },
     "automations": {
-      "emptyTitle": "No Automations yet",
+      "emptyTitle": "No Monitors yet",
       "emptyBody": "A durable rule — one trigger, an optional condition, and ordered actions — that re-arms every time KKTerm launches. The evolved Watchdog.",
-      "emptyHint": "No Automations yet. <newAutomation>Create a new Automation</newAutomation> for this Site.",
+      "emptyHint": "No Monitors yet. <newAutomation>Create a new Monitor</newAutomation> for this Site.",
       "pageDescription": "Manage the durable rules bound to this Site.",
       "armed": "Armed",
       "disabled": "Disabled",
       "builder": {
-        "back": "Automations",
+        "back": "Monitors",
         "armedStatus": "Armed · re-arms on launch",
         "whenTrigger": "When — Trigger",
         "onlyIfCondition": "Only if — Condition",
@@ -1630,12 +1630,12 @@
       "thresholdLabel": "Threshold",
       "pollLabel": "Check every (seconds)",
       "notifyLabel": "Notification",
-      "savedNotice": "Saved Automation “{{name}}”.",
-      "deletedNotice": "Deleted Automation “{{name}}”.",
-      "deleteTitle": "Delete Automation?",
+      "savedNotice": "Saved Monitor “{{name}}”.",
+      "deletedNotice": "Deleted Monitor “{{name}}”.",
+      "deleteTitle": "Delete Monitor?",
       "deleteBody": "“{{name}}” will be removed and its Watchdog disarmed.",
       "actionsLabel": "Actions",
-      "noActionsHint": "No actions yet — the Automation just records the trigger.",
+      "noActionsHint": "No actions yet — the Monitor just records the trigger.",
       "actionNotify": "Notify",
       "actionPopup": "Popup",
       "actionEmail": "Email",
@@ -1651,7 +1651,7 @@
       "webhookUrl": "URL",
       "webhookMethod": "Method",
       "webhookBody": "Body (optional)",
-      "triggeredNotice": "Automation “{{name}}” triggered.",
+      "triggeredNotice": "Monitor “{{name}}” triggered.",
       "triggerTypeLabel": "Trigger",
       "triggerPerf": "Performance counter",
       "triggerSchedule": "Schedule",
@@ -2025,7 +2025,7 @@
     },
     "errorNotice": "IT Ops: {{message}}",
     "editor": {
-      "title": "Edit Automation",
+      "title": "Edit Monitor",
       "triggerNode": "Trigger",
       "conditionNode": "Condition",
       "actionNode": "Action",
@@ -2545,7 +2545,7 @@
     "segment_mcpServers": "MCP Servers",
     "segmentDesc_mcpServers": "Remote MCP server list and configuration, without secret header values.",
     "segment_itops": "IT Ops",
-    "segmentDesc_itops": "Sites, Server Rooms, Racks, Hosts, Tasks, Automations, and run history.",
+    "segmentDesc_itops": "Sites, Server Rooms, Racks, Hosts, Tasks, Monitors, and run history.",
     "segment_assistant": "AI Assistant",
     "segmentDesc_assistant": "AI Assistant chat history and memories.",
     "segment_workspacesConnections": "Workspaces and Connections",
@@ -2994,7 +2994,7 @@
       },
       "itops": {
         "label": "IT Ops",
-        "description": "Manage Sites, Hosts, Server Rooms, Racks, Tasks, Automations, and Batch Runs."
+        "description": "Manage Sites, Hosts, Server Rooms, Racks, Tasks, Monitors, and Batch Runs."
       },
       "installer": {
         "label": "Install Helper",

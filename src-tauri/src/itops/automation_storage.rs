@@ -245,6 +245,7 @@ mod tests {
             trigger: WatchdogTrigger {
                 predicate: PredicateOp::Gt { value: threshold },
                 sustained_for_ms: None,
+                repeat_while_true: false,
             },
             poll_ms: 60_000,
             stop: WatchdogStop::UntilCanceled,

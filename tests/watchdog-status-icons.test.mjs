@@ -27,3 +27,18 @@ test("Watchdog terminal states use a Completed action that dismisses the report"
   assert.match(detailSource, /t\("watchdog.completedAction"\)/);
   assert.equal(locale.watchdog.completedAction, "Completed");
 });
+
+test("Watchdog detail uses the shared dialog surface and platform action order", async () => {
+  const detailSource = await readFile(
+    new URL("../src/watchdog/WatchdogDetail.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(detailSource, /<DialogShell onBackdrop=\{onClose\}>/);
+  assert.match(detailSource, /<Sheet[\s\S]*className="watchdog-detail"/);
+  assert.match(detailSource, /footer=\{[\s\S]*<Actions/);
+  assert.match(detailSource, /extraLeft=\{[\s\S]*watchdog\.saveReport/);
+  assert.match(detailSource, /kind="danger"[\s\S]*watchdog\.cancel/);
+  assert.match(detailSource, /watchdog\.close/);
+  assert.doesNotMatch(detailSource, /watchdog-detail-(header|footer|close|button)/);
+});

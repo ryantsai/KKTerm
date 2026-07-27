@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { X } from "../lib/reicon";
+import { Actions, Btn, DialogShell, Sheet } from "../app/ui/dialog";
 import { useWatchdogStore } from "./store";
 import type { WatchdogInterventionEntry } from "./store";
 import { isTerminalState } from "./types";
@@ -18,8 +18,7 @@ import {
   formatLastValue,
 } from "./WatchdogStatusBar";
 
-/// Detail dialog. Rendered as a fixed-position panel anchored above the
-/// status bar. Listens to live tick events through the store, so the
+/// Detail dialog. Listens to live tick events through the store, so the
 /// sparkline animates while open.
 export function WatchdogDetail({ id, onClose }: { id: string; onClose: () => void }) {
   const { t } = useTranslation();
@@ -58,37 +57,92 @@ export function WatchdogDetail({ id, onClose }: { id: string; onClose: () => voi
   const terminal = isTerminalState(summary.state);
 
   return (
-    <div className="watchdog-detail" role="dialog" aria-label={summary.name}>
-      <header className="watchdog-detail-header">
-        <WatchdogStateIcon state={summary.state} />
-        <span className="watchdog-detail-name">{summary.name}</span>
-        <span className="watchdog-detail-state">
-          <WatchdogStateLabel state={summary.state} />
-        </span>
-        <button
-          type="button"
-          className="watchdog-detail-close"
-          onClick={onClose}
-          aria-label={t("watchdog.close")}
-        >
-          <X size={14} />
-        </button>
-      </header>
-      <section className="watchdog-detail-body">
-        <Sparkline ticks={ticks ?? []} />
+    <DialogShell onBackdrop={onClose}>
+      <Sheet
+        width={500}
+        className="watchdog-detail"
+        ariaLabel={summary.name}
+        rule
+        title={
+          <span className="watchdog-detail-title">
+            <span className="watchdog-detail-title-main">
+              <WatchdogStateIcon state={summary.state} />
+              <span className="watchdog-detail-name">{summary.name}</span>
+            </span>
+            <span className="watchdog-detail-state">
+              <WatchdogStateLabel state={summary.state} />
+            </span>
+          </span>
+        }
+        footer={
+          <Actions
+            extraLeft={
+              <Btn icon="download" onClick={() => void saveReport(id)}>
+                {t("watchdog.saveReport")}
+              </Btn>
+            }
+            primary={
+              terminal ? (
+                <Btn
+                  kind="primary"
+                  icon="check"
+                  onClick={() => {
+                    dismiss(id);
+                    onClose();
+                  }}
+                >
+                  {t("watchdog.completedAction")}
+                </Btn>
+              ) : (
+                <Btn kind="danger" onClick={() => void cancel(id)}>
+                  {t("watchdog.cancel")}
+                </Btn>
+              )
+            }
+            cancel={
+              terminal ? undefined : <Btn onClick={onClose}>{t("watchdog.close")}</Btn>
+            }
+          />
+        }
+      >
+        <section className="watchdog-detail-chart">
+          <h3>{t("watchdog.detail.sparkline")}</h3>
+          <Sparkline ticks={ticks ?? []} />
+        </section>
         <dl className="watchdog-detail-stats">
           <Stat label={t("watchdog.detail.elapsed")} value={formatElapsed(summary.createdAt)} />
-          <Stat label={t("watchdog.detail.nextCheck")} value={formatNextCheck(summary.state, summary.pollMs, ticks ?? [])} />
-          <Stat label={t("watchdog.detail.lastValue")} value={formatLastValue(summary.lastValue)} />
+          <Stat
+            label={t("watchdog.detail.nextCheck")}
+            value={formatNextCheck(summary.state, summary.pollMs, ticks ?? [])}
+          />
+          <Stat
+            label={t("watchdog.detail.lastValue")}
+            value={formatLastValue(summary.lastValue)}
+          />
           <Stat label={t("watchdog.detail.polls")} value={String(summary.pollCount)} />
           <Stat label={t("watchdog.detail.triggers")} value={String(summary.triggerCount)} />
-          <Stat label={t("watchdog.detail.interval")} value={`${(summary.pollMs / 1000).toFixed(1)}s`} />
+          <Stat
+            label={t("watchdog.detail.interval")}
+            value={`${(summary.pollMs / 1000).toFixed(1)}s`}
+          />
           {report ? (
             <>
-              <Stat label={t("watchdog.detail.watchSummary")} value={describeTarget(report.config.target, t)} />
-              <Stat label={t("watchdog.detail.exitCondition")} value={describeStop(report.config.stop, t)} />
-              <Stat label={t("watchdog.detail.notificationMethod")} value={describeNotification(report.config.notification, t)} />
-              <Stat label={t("watchdog.detail.actionMode")} value={describeAction(report.config.action, t)} />
+              <Stat
+                label={t("watchdog.detail.watchSummary")}
+                value={describeTarget(report.config.target, t)}
+              />
+              <Stat
+                label={t("watchdog.detail.exitCondition")}
+                value={describeStop(report.config.stop, t)}
+              />
+              <Stat
+                label={t("watchdog.detail.notificationMethod")}
+                value={describeNotification(report.config.notification, t)}
+              />
+              <Stat
+                label={t("watchdog.detail.actionMode")}
+                value={describeAction(report.config.action, t)}
+              />
             </>
           ) : null}
         </dl>
@@ -99,39 +153,8 @@ export function WatchdogDetail({ id, onClose }: { id: string; onClose: () => voi
           inFlight={summaryInFlight}
           onGenerate={() => void generateSummary(id)}
         />
-      </section>
-      <footer className="watchdog-detail-footer">
-        <button
-          type="button"
-          className="watchdog-detail-button"
-          onClick={() => void saveReport(id)}
-        >
-          {t("watchdog.saveReport")}
-        </button>
-        {terminal ? (
-          <button
-            type="button"
-            className="watchdog-detail-button"
-            onClick={() => {
-              dismiss(id);
-              onClose();
-            }}
-          >
-            {t("watchdog.completedAction")}
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="watchdog-detail-button is-danger"
-            onClick={() => {
-              void cancel(id);
-            }}
-          >
-            {t("watchdog.cancel")}
-          </button>
-        )}
-      </footer>
-    </div>
+      </Sheet>
+    </DialogShell>
   );
 }
 
@@ -228,8 +251,9 @@ function SummarySection({
     <div className="watchdog-detail-summary">
       <div className="watchdog-detail-summary-header">
         <h4>{t("watchdog.detail.aiSummary")}</h4>
-        <button
-          type="button"
+        <Btn
+          sm
+          icon={summary ? "refresh" : "wand"}
           className="watchdog-detail-summary-button"
           onClick={onGenerate}
           disabled={inFlight}
@@ -239,7 +263,7 @@ function SummarySection({
             : summary
               ? t("watchdog.detail.regenerate")
               : t("watchdog.detail.summarize")}
-        </button>
+        </Btn>
       </div>
       {summary ? (
         <p className="watchdog-detail-summary-text">{summary.text}</p>
@@ -277,20 +301,22 @@ function Sparkline({ ticks }: { ticks: WatchdogTick[] }) {
 
   const min = Math.min(...points);
   const max = Math.max(...points);
-  const span = max - min || 1;
+  const span = max - min;
   const width = 320;
   const height = 64;
   const step = width / (points.length - 1);
+  const yForValue = (value: number) =>
+    span === 0 ? height / 2 : height - ((value - min) / span) * height;
 
   const path = points
     .map((value, i) => {
       const x = i * step;
-      const y = height - ((value - min) / span) * height;
+      const y = yForValue(value);
       return `${i === 0 ? "M" : "L"}${x.toFixed(2)},${y.toFixed(2)}`;
     })
     .join(" ");
 
-  const lastY = height - ((points[points.length - 1] - min) / span) * height;
+  const lastY = yForValue(points[points.length - 1]);
 
   return (
     <svg

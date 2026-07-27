@@ -36,6 +36,10 @@ impl ItopsAutomationRuntime {
         self.disarm(registry, &automation.id);
         let mut config = automation.config.clone();
         config.name = automation.name.clone(); // keep the Watchdog label in sync
+        // Durable IT Ops Monitors are level-triggered: while their condition
+        // remains true, run the ordered action list once per configured poll.
+        // Standalone AI Watchdogs retain the safer rising-edge default.
+        config.trigger.repeat_while_true = true;
         let summary = WatchdogRegistry::create(registry, app, config)
             .map_err(|error| format!("{error:?}"))?;
         self.armed

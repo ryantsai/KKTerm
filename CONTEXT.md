@@ -121,24 +121,24 @@ A Pane's **kind** (terminal, sftp, ftp, localFiles, webview, remoteDesktop) is w
 
 Terminal Panes for tmux-enabled SSH Connections may carry a generated friendly tmux session id, such as `kkterm-cockpit001`, used to resume that Pane's remote tmux session when the Pane is recreated. Current Pane tmux ids use the `kkterm-<sci-fi-name><number>` shape and are remembered in frontend workspace storage. That id belongs to the frontend workspace/Pane layer, not the backend Connection model.
 
-**Automation**:
-A durable IT Ops rule stored in SQLite (`itops_automations`): one trigger, an optional condition predicate, and an ordered list of typed actions such as notify, popup, email, webhook, or launching a Task as a Batch Run. Automations persist across app restart and re-arm on launch. An Automation is the durable definition; the live **Watchdog** runtime evaluates it, the same way a **Connection** is durable and a **Session** is its live runtime. Created and managed in a Site's Automations destination. See `docs/ITOPS.md` and `src-tauri/src/itops/`.
-_Avoid_: watchdog (for the durable rule), workflow, job, saved alert
+**Monitor**:
+A durable IT Ops rule stored in SQLite (`itops_automations`): one trigger, an optional condition predicate, and an ordered list of typed actions such as notify, popup, email, webhook, or launching a Task as a Batch Run. Monitors persist across app restart and re-arm on launch. While a Monitor's condition remains true, its actions run once per configured check interval. A Monitor is the durable definition; the live **Watchdog** runtime evaluates it, the same way a **Connection** is durable and a **Session** is its live runtime. Created and managed in a Site's Monitors destination. Internal command, type, tutorial-target, and SQLite identifiers retain `automation` for compatibility. See `docs/ITOPS.md` and `src-tauri/src/itops/`.
+_Avoid_: automation (user-facing), watchdog (for the durable rule), workflow, job, saved alert
 
 **Watchdog**:
-The live runtime that executes an armed **Automation** (or an ad-hoc live monitor): it samples a target (performance counter, SSH Session output silence, ping, or TCP reachability) against a predicate and, on trigger, runs the Automation's actions. The running Watchdog state — ticks, trigger log, state machine, suppression window — is **in-memory only and does not persist across app restart**; its durable definition lives in the **Automation**. Surfaced through the **Watchdog Status Bar** indicator and a detail panel, not as a Connection or Session. See `src-tauri/src/watchdog/` and `src/watchdog/`.
-_Avoid_: monitor profile, durable watcher (the Automation is the durable part)
+The live runtime that executes an armed **Monitor** (or an ad-hoc live monitor): it samples a target (performance counter, SSH Session output silence, ping, or TCP reachability) against a predicate and, on trigger, runs the Monitor's actions. The running Watchdog state — ticks, trigger log, state machine, suppression window — is **in-memory only and does not persist across app restart**; its durable definition lives in the **Monitor**. Surfaced through the **Watchdog Status Bar** indicator and a detail dialog, not as a Connection or Session. See `src-tauri/src/watchdog/` and `src/watchdog/`.
+_Avoid_: monitor profile, durable watcher (the Monitor is the durable part)
 
 **Screenshots Module**:
 A built-in Activity Rail Module that captures screenshots into a user-configurable library folder and presents thumbnail or details views. Capture modes are interactive region, window, and full screen (all monitors); they are reachable from the single-row Module header toolbar, the tray icon menu, configurable global hotkeys, and the per-Pane Workspace screenshot menu. Module-header, tray, hotkey, and Pane captures share the persisted Settings → Screenshots delivery behavior: save to the library folder, copy to the clipboard, or both, with optional editor opening for saved captures. Module-header captures can use an Instant, 3, 5, 15, 30, or 60 second delay; tray, global-hotkey, and Pane captures stay immediate. Captures save as PNG by default (JPEG optional) on Windows, macOS, and Linux. xcap supplies the shared desktop/window image path; macOS uses its native interactive selector and Linux prefers the desktop screenshot portal, with installed desktop selectors as fallbacks for region capture. The library supports persisted sort/group controls, multi-selection, non-destructive batch resize/conversion, delete, and a unified Fit/zoom viewer/editor for cropping, freehand pencil strokes, arrows, rectangles, ellipses, formatted text, and mosaic regions. Unsaved editor layers persist as non-destructive drafts beside the library, carry a Draft badge, and reopen without modifying the original image until Save flattens them. Single items also support copy to clipboard, open in the default app, reveal in folder, and rename. Folder, format, and hotkeys live in Settings → Screenshots; tray capture commands display their current enabled hotkeys. Pane actions that attach a screenshot to the AI Assistant remain transient and do not enter the library.
 _Avoid_: screenshot gallery page, capture tool, snipping module
 
 **IT Ops Module**:
-A built-in Activity Rail Module for site operations: **Sites**, **Hosts**, global reusable **Tasks**, **Batch Runs**, **Automations**, **VLANs**, **IPAM**, and **Network Maps**. Its operational navigator exposes Site-owned Server Rooms, Hosts, Automations, and Run History as separate destinations, plus a global **Batch Tasks** section for the Task Library and a global **Networking** section for IPAM and Network Maps; VLAN records are managed inside IPAM. Topology drills through Site View, Server Room View, and Rack View. The Site destination is its overview-only Site View and has no Hosts, Batch Runs, or Automations segmented control. Lives with Dashboard and Install Helper above Settings. Not a Connection, Session, or Dashboard widget. See `docs/ITOPS.md` and `docs/ADR/0011-it-ops-module.md`.
+A built-in Activity Rail Module for site operations: **Sites**, **Hosts**, global reusable **Tasks**, **Batch Runs**, **Monitors**, **VLANs**, **IPAM**, and **Network Maps**. Its operational navigator exposes Site-owned Server Rooms, Hosts, Monitors, and Run History as separate destinations, plus a global **Batch Tasks** section for the Task Library and a global **Networking** section for IPAM and Network Maps; VLAN records are managed inside IPAM. Topology drills through Site View, Server Room View, and Rack View. The Site destination is its overview-only Site View and has no Hosts, Batch Runs, or Monitors segmented control. Lives with Dashboard and Install Helper above Settings. Not a Connection, Session, or Dashboard widget. See `docs/ITOPS.md` and `docs/ADR/0011-it-ops-module.md`.
 _Avoid_: operations center, site manager, orchestrator
 
 **Task**:
-A durable, reusable IT Ops definition of what to execute: a script or interactive Playbook stored in `itops_tasks`. Tasks are global to the IT Ops Module and own no Site, Host selection, Session, plaintext credential, or live run state. Applicable OS is multi-select Task metadata (`Any OS`, Linux, macOS, Windows, Cisco IOS, Cisco NX-OS, FortiOS, Juniper Junos, or Arista EOS); it documents compatibility and supports Task Library filtering but does not infer or enforce a Host operating system. App-owned built-in Tasks carry a stable catalog key, are refreshed on startup, and are read-only; duplicating one creates an ordinary customizable Task. A Playbook sudo node may persist an opaque reference to a value in the configured secret vault; the Task JSON never contains that value. A Playbook AI node passes the preceding node's output to the currently configured AI Assistant and accepts only a closed `continue` / `success` / `fail` routing decision; it cannot call tools or generate executable actions. A Site/Host selection supplies targets when launched; an Automation supplies a trigger plus Task and targets. A Task is not a saved Batch Run.
+A durable, reusable IT Ops definition of what to execute: a script or interactive Playbook stored in `itops_tasks`. Tasks are global to the IT Ops Module and own no Site, Host selection, Session, plaintext credential, or live run state. Applicable OS is multi-select Task metadata (`Any OS`, Linux, macOS, Windows, Cisco IOS, Cisco NX-OS, FortiOS, Juniper Junos, or Arista EOS); it documents compatibility and supports Task Library filtering but does not infer or enforce a Host operating system. App-owned built-in Tasks carry a stable catalog key, are refreshed on startup, and are read-only; duplicating one creates an ordinary customizable Task. A Playbook sudo node may persist an opaque reference to a value in the configured secret vault; the Task JSON never contains that value. A Playbook AI node passes the preceding node's output to the currently configured AI Assistant and accepts only a closed `continue` / `success` / `fail` routing decision; it cannot call tools or generate executable actions. A Site/Host selection supplies targets when launched; a Monitor supplies a trigger plus Task and targets. A Task is not a saved Batch Run.
 _Avoid_: Site task, saved run, workflow
 
 **Task Library**:
@@ -194,11 +194,11 @@ The Network Map mode where the operator switches **Network Nodes** and **Network
 _Avoid_: simulation (as in traffic simulation), monitoring, health check, outage detection
 
 **Sites**:
-The IT Ops collection of Site records in the operational navigator. Expanding a Site exposes predefined virtual destinations for Server Rooms, Hosts, Automations, and Run History; those rows are navigation state, not stored folders. A Site row selects a **Site**. The plural term names the collection, not a durable data type.
+The IT Ops collection of Site records in the operational navigator. Expanding a Site exposes predefined virtual destinations for Server Rooms, Hosts, Monitors, and Run History; those rows are navigation state, not stored folders. A Site row selects a **Site**. The plural term names the collection, not a durable data type.
 _Avoid_: fleets, host groups tab, inventory browser
 
 **Site**:
-A durable, named selection of existing Connections (plus an optional dynamic filter by type/folder) used as a target when launching a Task, starting an ad-hoc Batch Run, or executing an Automation action. Stored in `itops_sites`; it references Connection ids and owns no Session and no secret. It is not a Connection type. A Site may own Hosts and a topology of Server Rooms, Racks, and Rack Devices, but it does not own global Tasks.
+A durable, named selection of existing Connections (plus an optional dynamic filter by type/folder) used as a target when launching a Task, starting an ad-hoc Batch Run, or executing a Monitor action. Stored in `itops_sites`; it references Connection ids and owns no Session and no secret. It is not a Connection type. A Site may own Hosts and a topology of Server Rooms, Racks, and Rack Devices, but it does not own global Tasks.
 _Avoid_: fleet, host group, inventory, host list, connection group (as a Connection type)
 
 **Default Site**:
@@ -206,7 +206,7 @@ The undeletable fallback Site (stored id `default-fleet`, a legacy literal kept 
 Fleet→Site rename) that exists when IT Ops has no other Site rows. It is a safe top-level parent for Server Rooms, Racks, and Rack Devices, not a Connection or Session.
 
 **Site View**:
-The overview-only topology page opened by selecting a Site or its Server Rooms destination. It shows that Site's Server Rooms as cards and is the entry point into Server Room View and Rack View. Hosts, Automations, and Run History have their own pages and never appear as Site View segments. It is not the same thing as the plural **Sites** collection or the whole Site-owned navigation group.
+The overview-only topology page opened by selecting a Site or its Server Rooms destination. It shows that Site's Server Rooms as cards and is the entry point into Server Room View and Rack View. Hosts, Monitors, and Run History have their own pages and never appear as Site View segments. It is not the same thing as the plural **Sites** collection or the whole Site-owned navigation group.
 _Avoid_: dashboard, host group details, Site tab
 
 **Server Room**:
@@ -258,12 +258,12 @@ The Site-owned navigation destination that lists the active Batch Run and comple
 _Avoid_: Batch Runs tab, jobs, task history
 
 **Run Report**:
-The read-only view of one completed Batch Run. It presents the persisted consolidated result and capped per-Host output snapshot. A Run Report survives later Task edits or deletion and cannot be re-armed like an Automation.
+The read-only view of one completed Batch Run. It presents the persisted consolidated result and capped per-Host output snapshot. A Run Report survives later Task edits or deletion and cannot be re-armed like a Monitor.
 _Avoid_: Task, live run, Session log
 
 **Playbook**:
 A Batch Task kind that may be stored inside a reusable Task: a user-authored, ordered sequence of interactive steps run over a single PTY shell per Host. Each step **sends** a command or input and optionally **waits for** a literal output substring before the next step runs; a step that times out stops the Playbook on that Host while other Hosts continue. Distinct from a one-shot script because steps can answer prompts (`[sudo] password:`, `Continue? [Y/n]`) and build on earlier shell state. See `docs/ITOPS.md` and `src-tauri/src/ssh.rs` (`run_playbook_capture_streaming`).
-_Avoid_: workflow (that reads as Automation), recipe (an Install Helper term), curated update sequence
+_Avoid_: workflow (that reads as Monitor), recipe (an Install Helper term), curated update sequence
 
 ## UI Layout
 

@@ -113,6 +113,11 @@ pub struct WatchdogTrigger {
     /// before firing. Prevents false positives from momentary spikes.
     #[serde(default)]
     pub sustained_for_ms: Option<u64>,
+    /// When true, fire on every poll while the predicate remains true instead
+    /// of only on the rising edge. Durable IT Ops Monitors enable this at arm
+    /// time; standalone AI Watchdogs retain edge-triggered behavior.
+    #[serde(default)]
+    pub repeat_while_true: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

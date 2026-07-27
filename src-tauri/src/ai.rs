@@ -3232,7 +3232,7 @@ fn ai_tool_definitions_with_skills(
         ));
         tools.push(tool_definition(
             "itops_create_task",
-            "Create a reusable IT Ops Task in the global Task Library. A Task owns what to execute (a script or an interactive playbook) but never targets; Hosts or an Automation supply targets at launch. applicableOs defaults to [\"any\"]. Sudo steps and secret references must be configured in the Task Library editor, not here.",
+            "Create a reusable IT Ops Task in the global Task Library. A Task owns what to execute (a script or an interactive playbook) but never targets; Hosts or a Monitor supply targets at launch. applicableOs defaults to [\"any\"]. Sudo steps and secret references must be configured in the Task Library editor, not here.",
             json!({"type":"object","properties":{
                 "name":{"type":"string","minLength":1},
                 "description":{"type":"string"},
@@ -3258,12 +3258,12 @@ fn ai_tool_definitions_with_skills(
         ));
         tools.push(tool_definition(
             "itops_list_automations",
-            "List durable IT Ops Automations: id, name, enabled, the trigger/condition config, the ordered action list, and the optional Site binding (siteId). Enabled rows are armed as live Watchdogs.",
+            "List durable IT Ops Monitors: id, name, enabled, the trigger/condition config, the ordered action list, and the optional Site binding (siteId). Enabled rows are armed as live Watchdogs.",
             json!({"type":"object","properties":{}}),
         ));
         tools.push(tool_definition(
             "itops_create_automation",
-            "Create a durable IT Ops Automation: one trigger + condition (config, a WatchdogConfig whose action must be {\"kind\":\"notify\"}) and an ordered list of IT Ops actions run when it fires (notify, popup, email, webhook, runBatch). enabled defaults to true and arms the rule immediately; siteId binds it to one Site's Automations page. Use itops_test_automation first to dry-run the trigger. RunBatch tasks may not carry sudo steps or secret references.",
+            "Create a durable IT Ops Monitor: one trigger + condition (config, a WatchdogConfig whose action must be {\"kind\":\"notify\"}) and an ordered list of IT Ops actions run once per matching check (notify, popup, email, webhook, runBatch). enabled defaults to true and arms the Monitor immediately; siteId binds it to one Site's Monitors page. Use itops_test_automation first to dry-run the trigger. RunBatch tasks may not carry sudo steps or secret references.",
             json!({"type":"object","properties":{
                 "name":{"type":"string","minLength":1},
                 "config": watchdog_config_schema(),
@@ -3274,7 +3274,7 @@ fn ai_tool_definitions_with_skills(
         ));
         tools.push(tool_definition(
             "itops_update_automation",
-            "Update one IT Ops Automation by id. Full-value semantics: read the rule via itops_list_automations first and resend name, config, actions, and siteId. An enabled rule is re-armed with the new definition.",
+            "Update one IT Ops Monitor by id. Full-value semantics: read the rule via itops_list_automations first and resend name, config, actions, and siteId. An enabled Monitor is re-armed with the new definition.",
             json!({"type":"object","properties":{
                 "id":{"type":"string"},
                 "name":{"type":"string","minLength":1},
@@ -3285,7 +3285,7 @@ fn ai_tool_definitions_with_skills(
         ));
         tools.push(tool_definition(
             "itops_set_automation_enabled",
-            "Enable (arm) or disable (disarm) one IT Ops Automation by id. Disabled rules stay stored but never poll.",
+            "Enable (arm) or disable (disarm) one IT Ops Monitor by id. Disabled Monitors stay stored but never poll.",
             json!({"type":"object","properties":{
                 "id":{"type":"string"},
                 "enabled":{"type":"boolean"}
@@ -3293,12 +3293,12 @@ fn ai_tool_definitions_with_skills(
         ));
         tools.push(tool_definition(
             "itops_remove_automation",
-            "Delete one IT Ops Automation by id, disarming its live Watchdog first. Run History produced by the rule is kept.",
+            "Delete one IT Ops Monitor by id, disarming its live Watchdog first. Run History produced by the Monitor is kept.",
             json!({"type":"object","properties":{"id":{"type":"string"}},"required":["id"]}),
         ));
         tools.push(tool_definition(
             "itops_test_automation",
-            "Dry-run an Automation trigger: sample the config's target once and report the sampled value plus whether the condition would fire right now. No actions are executed and nothing is stored.",
+            "Dry-run a Monitor trigger: sample the config's target once and report the sampled value plus whether the condition would fire right now. No actions are executed and nothing is stored.",
             json!({"type":"object","properties":{
                 "config": watchdog_config_schema()
             },"required":["config"]}),
@@ -4913,7 +4913,7 @@ pub(crate) async fn itops_tool(app: &tauri::AppHandle, name: &str, args: Value) 
         let config = parse_automation_config(args)?;
         if !matches!(config.action, WatchdogAction::Notify) {
             return Err(
-                "config.action must be {\"kind\":\"notify\"} — the Automation's ordered actions list carries the real work".to_string(),
+                "config.action must be {\"kind\":\"notify\"} — the Monitor's ordered actions list carries the real work".to_string(),
             );
         }
         Ok(config)

@@ -468,6 +468,7 @@ async fn run_poll_loop(
                         &mut state,
                         predicate_met,
                         config.trigger.sustained_for_ms,
+                        config.trigger.repeat_while_true,
                     );
 
                 if trigger_fired {
@@ -659,14 +660,14 @@ async fn sample_target(
     }
 }
 
-/// Rising-edge detector for sustained windows. Returns true the first tick
-/// at which the predicate has been continuously true for `sustained_for_ms`.
-/// Subsequent ticks within the same true-streak return false; the streak
-/// resets when the predicate flips to false.
+/// Evaluates a predicate's sustained window. Edge-triggered Watchdogs return
+/// true only for the first matching tick in a streak; level-triggered IT Ops
+/// Monitors return true on every matching poll after the threshold is reached.
 fn update_sustained_window(
     state: &mut LoopState,
     predicate_met: bool,
     sustained_for_ms: Option<u64>,
+    repeat_while_true: bool,
 ) -> bool {
     let now = now_ms();
     if !predicate_met {
@@ -674,6 +675,9 @@ fn update_sustained_window(
         return false;
     }
     let Some(threshold) = sustained_for_ms else {
+        if repeat_while_true {
+            return true;
+        }
         if state.condition_true_since == Some(u64::MAX) {
             return false;
         }
@@ -686,7 +690,9 @@ fn update_sustained_window(
         return false;
     }
     if now.saturating_sub(since) >= threshold {
-        state.condition_true_since = Some(u64::MAX);
+        if !repeat_while_true {
+            state.condition_true_since = Some(u64::MAX);
+        }
         return true;
     }
     false
@@ -882,6 +888,7 @@ mod tests {
             trigger: WatchdogTrigger {
                 predicate: PredicateOp::Gt { value: 5.0 },
                 sustained_for_ms: None,
+                repeat_while_true: false,
             },
             poll_ms: 1000,
             stop: WatchdogStop::UntilCanceled,
@@ -984,10 +991,20 @@ mod tests {
             mock_counter: 0.0,
             last_log_size: None,
         };
-        assert!(!update_sustained_window(&mut state, true, Some(1_000_000)));
-        assert!(!update_sustained_window(&mut state, false, Some(1_000_000)));
+        assert!(!update_sustained_window(
+            &mut state,
+            true,
+            Some(1_000_000),
+            false
+        ));
+        assert!(!update_sustained_window(
+            &mut state,
+            false,
+            Some(1_000_000),
+            false
+        ));
         assert_eq!(state.condition_true_since, None);
-        assert!(update_sustained_window(&mut state, true, None));
+        assert!(update_sustained_window(&mut state, true, None, false));
     }
 
     #[test]
@@ -1003,11 +1020,28 @@ mod tests {
             last_log_size: None,
         };
         // Without sustained_for_ms, the first true tick is the rising edge.
-        assert!(update_sustained_window(&mut state, true, None));
-        assert!(!update_sustained_window(&mut state, true, None));
-        assert!(!update_sustained_window(&mut state, true, None));
-        assert!(!update_sustained_window(&mut state, false, None));
-        assert!(update_sustained_window(&mut state, true, None));
+        assert!(update_sustained_window(&mut state, true, None, false));
+        assert!(!update_sustained_window(&mut state, true, None, false));
+        assert!(!update_sustained_window(&mut state, true, None, false));
+        assert!(!update_sustained_window(&mut state, false, None, false));
+        assert!(update_sustained_window(&mut state, true, None, false));
+    }
+
+    #[test]
+    fn repeat_while_true_fires_on_every_true_tick() {
+        let mut state = LoopState {
+            started_at: 0,
+            poll_count: 0,
+            trigger_count: 0,
+            condition_true_since: None,
+            suppression_until: None,
+            triggered_sticky: false,
+            mock_counter: 0.0,
+            last_log_size: None,
+        };
+        assert!(update_sustained_window(&mut state, true, None, true));
+        assert!(update_sustained_window(&mut state, true, None, true));
+        assert!(update_sustained_window(&mut state, true, None, true));
     }
 
     #[test]
