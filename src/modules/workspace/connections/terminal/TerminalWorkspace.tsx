@@ -3319,32 +3319,18 @@ function TerminalPaneView({
                 ref={actionsMenuPortalRef}
                 role="menu"
               >
-                {isReconnectableTerminal && terminalConnectionState !== "connecting" ? (
+                {isReconnectableTerminal && terminalConnectionState === "disconnected" ? (
                   <button
                     className="terminal-menu-item"
                     onClick={() => {
                       setActionsMenuOpen(false);
-                      if (terminalConnectionState === "disconnected") {
-                        setReconnectGeneration((generation) => generation + 1);
-                      } else if (onClosePane) {
-                        onClosePane();
-                      } else {
-                        closePane(tabId, pane.id);
-                      }
+                      setReconnectGeneration((generation) => generation + 1);
                     }}
                     role="menuitem"
                     type="button"
                   >
-                    {terminalConnectionState === "disconnected" ? (
-                      <RefreshCw size={13} />
-                    ) : (
-                      <X size={13} />
-                    )}
-                    {t(
-                      terminalConnectionState === "disconnected"
-                        ? "connections.reconnect"
-                        : "connections.closeConnection",
-                    )}
+                    <RefreshCw size={13} />
+                    {t("connections.reconnect")}
                   </button>
                 ) : null}
                 {isSshPane && pane.connection ? (

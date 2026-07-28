@@ -2331,7 +2331,8 @@ export function ConnectionSidebar({
         iconSvg: nativeMenuIcons.x,
         action: () => handleTreeMenuCloseConnection(menu),
       });
-    } else if (hasOpenTerminalPane) {
+    }
+    if (hasOpenTerminalPane) {
       items.push({
         kind: "item",
         label: t("connections.reconnect"),

@@ -27,29 +27,29 @@ const [terminalSource, sidebarSource, sidebarStateSource, sessionsSource, sshSou
     readFile(new URL("../src-tauri/src/telnet.rs", import.meta.url), "utf8"),
   ]);
 
-test("SSH and Telnet hamburger menus lead with Close Connection or Reconnect", () => {
+test("SSH and Telnet hamburger menus only expose Reconnect after disconnection", () => {
   const actionsMenu = terminalSource.match(
     /className="terminal-menu terminal-actions-menu terminal-actions-menu-portal"[\s\S]*?document\.body,/,
   )?.[0] ?? "";
 
   assert.ok(actionsMenu, "terminal actions menu should be discoverable");
-  assert.match(actionsMenu, /isReconnectableTerminal && terminalConnectionState !== "connecting"/);
-  assert.match(actionsMenu, /terminalConnectionState === "disconnected"[\s\S]*?<RefreshCw size=\{13\}/);
-  assert.match(actionsMenu, /"connections\.reconnect"[\s\S]*?: "connections\.closeConnection"/);
+  assert.match(actionsMenu, /isReconnectableTerminal && terminalConnectionState === "disconnected"/);
+  assert.match(actionsMenu, /<RefreshCw size=\{13\} \/>[\s\S]*?"connections\.reconnect"/);
+  assert.doesNotMatch(actionsMenu, /"connections\.closeConnection"/);
   assert.ok(
     actionsMenu.indexOf("isReconnectableTerminal") < actionsMenu.indexOf("isSshPane"),
-    "the connection action must be the first hamburger menu item",
+    "Reconnect must be the first hamburger menu item when it is available",
   );
 });
 
-test("disconnected open SSH and Telnet Connections expose Reconnect in the native tree menu", () => {
+test("open SSH and Telnet Connections expose Reconnect in the native tree menu", () => {
   assert.match(
     sidebarSource,
     /const hasOpenTerminalPane =[\s\S]*?menu\.connection\.type === "ssh"[\s\S]*?menu\.connection\.type === "telnet"[\s\S]*?tab\.panes\.some/,
   );
   assert.match(
     sidebarSource,
-    /else if \(hasOpenTerminalPane\) \{[\s\S]*?label: t\("connections\.reconnect"\)[\s\S]*?handleTreeMenuReconnectConnection/,
+    /if \(isConnected\) \{[\s\S]*?label: t\("connections\.closeConnection"\)[\s\S]*?\}\s*if \(hasOpenTerminalPane\) \{[\s\S]*?label: t\("connections\.reconnect"\)[\s\S]*?handleTreeMenuReconnectConnection/,
   );
   assert.match(sidebarStateSource, /RECONNECT_TERMINAL_CONNECTION_EVENT/);
   assert.match(terminalSource, /setReconnectGeneration\(\(generation\) => generation \+ 1\)/);
