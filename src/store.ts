@@ -3252,31 +3252,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
   closeChildConnection: (childConnectionId) => {
     let removed = false;
-    const currentTabs = get().tabs;
-    const closesTerminalPane = currentTabs.some((tab) =>
+    const closesTerminalPane = get().tabs.some((tab) =>
       tab.panes.some(
         (pane) => pane.childConnectionId === childConnectionId && isTerminalPane(pane),
       ),
     );
-    const terminalPaneIdsToPreserve = currentTabs.flatMap((tab) => {
-      if (
-        tab.childConnectionId === childConnectionId ||
-        !tab.panes.some((pane) => pane.childConnectionId === childConnectionId)
-      ) {
-        return [];
-      }
-      const remainingPanes = tab.panes.filter(
-        (pane) => pane.childConnectionId !== childConnectionId,
-      );
-      const remainingPane = remainingPanes.length === 1 ? remainingPanes[0] : undefined;
-      return remainingPane && tab.panes.length > 1 && isTerminalPane(remainingPane)
-        ? [remainingPane.id]
-        : [];
-    });
-    // A two-Pane split collapses to a root leaf when one child closes. React
-    // reparents the surviving TerminalPaneView during that layout change, so
-    // carry its live runtime across the unmount/remount instead of reconnecting.
-    markPanesForRuntimeMove(terminalPaneIdsToPreserve);
     set((state) => {
       const closedUrlConnectionIds: string[] = [];
       const tabs = state.tabs.flatMap((tab) => {

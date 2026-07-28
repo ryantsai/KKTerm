@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { defaultLayoutFor, leafOrder, splitLayout } from "../src/modules/workspace/layout";
+import {
+  defaultLayoutFor,
+  ensureLayout,
+  leafOrder,
+  splitLayout,
+} from "../src/modules/workspace/layout";
 import type { LayoutNode, WorkspacePane } from "../src/types";
 
 function pane(id: string): WorkspacePane {
@@ -38,6 +43,16 @@ test("splitLayout honors 'left' by inserting the new pane before the target", ()
   const base = defaultLayoutFor([pane("a"), pane("b")]) as LayoutNode;
   const next = splitLayout(base, "a", "left", "c", ["a", "b"]);
   assert.deepEqual(leafOrder(next), ["c", "a", "b"]);
+});
+
+test("removing the second-last Pane preserves the surviving Pane's layout ancestry", () => {
+  const base = defaultLayoutFor([pane("a"), pane("b")]) as LayoutNode;
+
+  assert.deepEqual(ensureLayout(base, [pane("b")]), {
+    type: "split",
+    orientation: "horizontal",
+    children: [{ type: "leaf", paneId: "b" }],
+  });
 });
 
 test("addConnectionToTerminalPane accepts an explicit targetPaneId and falls back to the focused pane", async () => {

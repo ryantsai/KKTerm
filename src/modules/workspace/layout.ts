@@ -122,7 +122,11 @@ function pruneMissingLeaves(node: LayoutNode, paneIds: Set<string>): LayoutNode 
     return undefined;
   }
   if (children.length === 1) {
-    return children[0];
+    // Keep the surviving leaf under the same split ancestry. Terminal Panes
+    // own live xterm renderers, and collapsing this wrapper reparents the
+    // surviving React component, destroying screen modes and tmux state even
+    // when the underlying SSH Session is preserved.
+    return { ...node, children };
   }
   return { ...node, children };
 }
