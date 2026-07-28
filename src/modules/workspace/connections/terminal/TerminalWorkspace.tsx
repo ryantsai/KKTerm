@@ -872,10 +872,24 @@ function EmbeddedConnectionPane({
   // panes to avoid a second, misaligned X.
   const showOverlayClose = canClosePane && pane.kind !== "webview";
 
+  function handleEmbeddedPaneMouseDown(event: ReactMouseEvent<HTMLElement>) {
+    if (shouldDeferPaneFocusUntilClick(event.target)) {
+      return;
+    }
+    onFocus();
+  }
+
+  function handleEmbeddedPaneClick(event: ReactMouseEvent<HTMLElement>) {
+    if (shouldDeferPaneFocusUntilClick(event.target)) {
+      onFocus();
+    }
+  }
+
   return (
     <article
       className="embedded-workspace-pane"
-      onMouseDown={onFocus}
+      onClick={handleEmbeddedPaneClick}
+      onMouseDown={handleEmbeddedPaneMouseDown}
     >
       {showOverlayClose ? (
         <button
@@ -1711,6 +1725,20 @@ function TerminalPaneView({
       return;
     }
     focusTerminalRendererFromSurface();
+  }
+
+  function handlePaneMouseDown(event: ReactMouseEvent<HTMLElement>) {
+    if (shouldDeferPaneFocusUntilClick(event.target)) {
+      return;
+    }
+    onFocus();
+    focusTerminalRenderer();
+  }
+
+  function handlePaneClick(event: ReactMouseEvent<HTMLElement>) {
+    if (shouldDeferPaneFocusUntilClick(event.target)) {
+      onFocus();
+    }
   }
 
   const actionsMenuRef = useRef<HTMLDivElement | null>(null);
@@ -3122,10 +3150,8 @@ function TerminalPaneView({
         .filter(Boolean)
         .join(" ")}
       data-tutorial-id="terminal.pane"
-      onMouseDown={() => {
-        onFocus();
-        focusTerminalRenderer();
-      }}
+      onClick={handlePaneClick}
+      onMouseDown={handlePaneMouseDown}
       ref={paneRef}
       style={
         terminalToolbarBackground
@@ -4011,4 +4037,13 @@ function isFocusableElement(element: HTMLElement) {
 
   const tabIndex = element.getAttribute("tabindex");
   return tabIndex !== null && tabIndex !== "-1";
+}
+
+function shouldDeferPaneFocusUntilClick(target: EventTarget | null) {
+  const element = target instanceof Element ? target : null;
+  return Boolean(
+    element?.closest(
+      'button, input, textarea, select, a[href], summary, [role="button"], [role^="menuitem"]',
+    ),
+  );
 }
