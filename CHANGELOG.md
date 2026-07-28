@@ -3,6 +3,60 @@
 All notable changes to KKTerm are documented here.
 
 ## Direct Downloads
+* 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.134/kkterm-0.1.134-windows-x64-setup.exe)
+* 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.134/kkterm-0.1.134-windows-arm64-setup.exe)
+* 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.134/kkterm-0.1.134-windows-x64-portable.zip)
+* 📦 [Portable for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.134/kkterm-0.1.134-windows-arm64-portable.zip)
+
+## Highlights
+- Reconnect actions for **SSH** and **Telnet** now show at the right time (after a disconnection), so your **Connection** toolbar won’t pull a “reconnect wizard” trick early.
+
+## New
+- Added **SSH** and **Telnet** reconnect menu actions.  
+  - PR #694 by @ryantsai
+
+## Improved
+- **Connection** toolbar controls now respond correctly on first click.  
+  - PR #696 by @ryantsai
+
+## Fixed
+- Reconnect menu actions are shown as **Reconnect** only after the connection is disconnected (instead of before).  
+  - Commit: f9a47ba
+
+## Internal
+- Refactored child **Connection** handling to better manage layout while preserving **Pane** state (including related tests and docs).  
+  - Commit: 1ef86b9
+- Preserved terminal renderer/runtime and layout ancestry when closing child **Connections** (including Split layout and Strict Mode scenarios).  
+  - Commits: 7cbd1ee, bcad673, ca86263
+- Updated connection toolbar activation logic and tests for first-click behavior.  
+  - Commits: 1b2445a
+
+---
+
+## 精選重點
+- **SSH** / **Telnet** 的重新連線（Reconnect）動作現在會在**斷線之後**才顯示；你的 **Connection** 就不會在還沒「斷」之前就開始叫你重連——這次網路小精靈終於守規矩了。
+
+## 新增
+- 新增 **SSH** 與 **Telnet** 的重新連線（Reconnect）選單動作。  
+  - PR #694 由 @ryantsai 負責
+
+## 改善
+- **Connection** 工具列控制項：現在首次點擊也能正確啟用。  
+  - PR #696 由 @ryantsai 負責
+
+## 修正
+- 重新連線選單動作只會在**斷線後**才以 **Reconnect** 顯示（不再過早出現）。  
+  - Commit：f9a47ba
+
+## Internal
+- 重構子 **Connection** 處理方式：更好地管理版面（layout），並保留 **Pane** 狀態（含相關測試與文件）。  
+  - Commit：1ef86b9
+- 關閉子 **Connection** 時保留終端機渲染/執行與版面繼承關係（包含 Split 版面與 Strict Mode 情境）。  
+  - Commits：7cbd1ee、bcad673、ca86263
+- 修正並更新首次點擊工具列啟用行為相關程式與測試。  
+  - Commits：1b2445a
+
+## Direct Downloads
 * 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.133/kkterm-0.1.133-windows-x64-setup.exe)
 * 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.133/kkterm-0.1.133-windows-arm64-setup.exe)
 * 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.133/kkterm-0.1.133-windows-x64-portable.zip)
