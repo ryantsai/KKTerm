@@ -70,6 +70,8 @@ When returning to Workspace or selecting a different focused terminal Pane, KKTe
 
 `terminal.closePane` / `terminal.closePaneTitle` closes a single Pane. The Pane toolbar close button is shown only when the Tab has multiple Panes; closing the whole single-Pane Tab uses the Tab Strip `workspace.closeTab` action. Closing the last Tab returns to the Default Launch State.
 
+In a Child Connection Tab panorama, closing one child ends only that child's Session. If one sibling remains, its existing Session stays attached while the split layout collapses to the single Pane.
+
 ### Saved layouts
 
 `terminal.saveLayout` saves the current split Pane layout for the Connection. `terminal.resetLayout` removes the saved layout. Status Bar confirmations use `terminal.layoutSaved` and `terminal.layoutReset`.
