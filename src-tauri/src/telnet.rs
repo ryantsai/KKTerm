@@ -589,6 +589,7 @@ pub fn start_native_terminal(
                 }
             }
         }
+        crate::sessions::emit_terminal_session_ended(&app, &reader_session_id);
     });
 
     Ok(NativeTelnetTerminal {

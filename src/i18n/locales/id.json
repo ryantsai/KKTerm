@@ -3365,6 +3365,7 @@
       "importedDefault": "Diimpor"
     },
     "closeConnection": "Tutup koneksi",
+    "reconnect": "Hubungkan ulang",
     "localFiles": "Penjelajah File",
     "homeDirectory": "Direktori beranda",
     "localFilesSubtitle": "Browser file lokal",

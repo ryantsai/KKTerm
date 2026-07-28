@@ -16,9 +16,13 @@ import { useTranslation } from "react-i18next";
 import i18next from "../../../../i18n/config";
 import { ariaInvalid, dialogButtonAria, menuButtonAria } from "../../../../lib/aria";
 import { fileBrowserCommandsFor } from "../../../../lib/fileBrowserCommands";
-import { focusCurrentWebview, invokeCommand, isTauriRuntime, logUiDebug, openExternalUrl, saveTextFile, type TerminalOutput, type TerminalRecordingInfo, type TmuxSession } from "../../../../lib/tauri";
+import { focusCurrentWebview, invokeCommand, isTauriRuntime, logUiDebug, openExternalUrl, saveTextFile, type TerminalOutput, type TerminalRecordingInfo, type TerminalSessionEnded, type TmuxSession } from "../../../../lib/tauri";
 import { markOsIconAutoDetectDone, osIconIdForDetection, osIconRefForId, shouldAutoDetectOsIcon } from "../../../../lib/osIcons";
-import { notifyConnectionTreeInvalidated } from "../connectionSidebarState";
+import {
+  notifyConnectionTreeInvalidated,
+  RECONNECT_TERMINAL_CONNECTION_EVENT,
+  type ReconnectTerminalConnectionDetail,
+} from "../connectionSidebarState";
 import { defaultTerminalSettings } from "../../../../app-defaults";
 import { forgetTmuxSessionId, useWorkspaceStore } from "../../../../store";
 import { resolveVisibleTerminalBackground } from "../terminalAppearanceDefaults";
@@ -1665,6 +1669,10 @@ function TerminalPaneView({
     found: boolean;
   }>({ resultIndex: -1, resultCount: 0, found: true });
   const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
+  const [terminalConnectionState, setTerminalConnectionState] = useState<
+    "connecting" | "connected" | "disconnected"
+  >("connecting");
+  const [reconnectGeneration, setReconnectGeneration] = useState(0);
   const [backgroundPopoverOpen, setBackgroundPopoverOpen] = useState(false);
   const [hasTerminalSelection, setHasTerminalSelection] = useState(false);
   const [multilinePasteConfirmationOpen, setMultilinePasteConfirmationOpen] = useState(false);
@@ -1757,6 +1765,8 @@ function TerminalPaneView({
     : undefined;
   const gitRepo = useGitRepoDetection(gitDetectPath, isLocalTerminal);
   const { t } = useTranslation();
+  const isReconnectableTerminal =
+    pane.connection?.type === "ssh" || pane.connection?.type === "telnet";
   const terminalOpacity =
     pane.connection?.terminalOpacity ?? (100 - terminalSettings.defaultTransparency);
   const terminalTransparency = 100 - terminalOpacity;
@@ -1798,6 +1808,19 @@ function TerminalPaneView({
   useEffect(() => {
     setTmuxMouseEnabled(true);
   }, [pane.tmuxSessionId]);
+
+  useEffect(() => {
+    function handleReconnectRequest(event: Event) {
+      const detail = (event as CustomEvent<ReconnectTerminalConnectionDetail>).detail;
+      if (isReconnectableTerminal && detail?.connectionId === pane.connection?.id) {
+        setReconnectGeneration((generation) => generation + 1);
+      }
+    }
+
+    window.addEventListener(RECONNECT_TERMINAL_CONNECTION_EVENT, handleReconnectRequest);
+    return () =>
+      window.removeEventListener(RECONNECT_TERMINAL_CONNECTION_EVENT, handleReconnectRequest);
+  }, [isReconnectableTerminal, pane.connection?.id]);
 
   useEffect(() => {
     function handleTmuxMouseModeEvent(event: Event) {
@@ -2163,7 +2186,10 @@ function TerminalPaneView({
     let disposed = false;
     let preservingRuntime = false;
     let sessionStarted = preservedRuntime?.sessionStarted ?? false;
+    let sessionEnded = false;
     let removeOutputListener: (() => void) | undefined;
+    let removeEndedListener: (() => void) | undefined;
+    setTerminalConnectionState(sessionStarted ? "connected" : "connecting");
     const writeInputToSession = (data: string) => {
       const sessionId = sessionIdRef.current;
       if (!sessionId) {
@@ -2280,8 +2306,11 @@ function TerminalPaneView({
     });
 
     void (async () => {
-      const unlisten = await listen<TerminalOutput>("terminal-output", (event) => {
-        if (event.payload.sessionId === sessionIdRef.current) {
+      const [unlistenOutput, unlistenEnded] = await Promise.all([
+        listen<TerminalOutput>("terminal-output", (event) => {
+          if (event.payload.sessionId !== sessionIdRef.current) {
+            return;
+          }
           terminal.write(event.payload.data);
           if (pane.tmuxSessionId) {
             tmuxStartupOutputTailRef.current = (tmuxStartupOutputTailRef.current + event.payload.data).slice(
@@ -2312,13 +2341,26 @@ function TerminalPaneView({
               }
             }
           }
-        }
-      });
+        }),
+        listen<TerminalSessionEnded>("terminal-session-ended", (event) => {
+          if (event.payload.sessionId !== sessionIdRef.current) {
+            return;
+          }
+          sessionEnded = true;
+          setTerminalConnectionState("disconnected");
+          if (sessionStarted && trackConnectionSession) {
+            sessionStarted = false;
+            markConnectionSessionEnded(connection.id);
+          }
+        }),
+      ]);
       if (disposed) {
-        unlisten();
+        unlistenOutput();
+        unlistenEnded();
         return;
       }
-      removeOutputListener = unlisten;
+      removeOutputListener = unlistenOutput;
+      removeEndedListener = unlistenEnded;
 
       if (preservedRuntime) {
         scheduleFitAndResizeTerminal();
@@ -2426,6 +2468,14 @@ function TerminalPaneView({
           });
         }
         sessionIdRef.current = result.sessionId;
+        if (sessionEnded) {
+          return;
+        }
+        sessionStarted = true;
+        setTerminalConnectionState("connected");
+        if (trackConnectionSession) {
+          markConnectionSessionStarted(connection.id);
+        }
         if (terminalSettings.autoRecordSessions) {
           // Register recording before startup scripts can produce output.
           setRecordingBusy(true);
@@ -2485,7 +2535,6 @@ function TerminalPaneView({
             }
           });
         }
-        sessionStarted = true;
         if (localStartup.startupInput) {
           writeInputToSession(localStartup.startupInput);
         }
@@ -2495,11 +2544,9 @@ function TerminalPaneView({
           // (tmux replay is handled by the session-state marker in the output listener.)
           writeInputToSession(sshStartupInput);
         }
-        if (trackConnectionSession) {
-          markConnectionSessionStarted(connection.id);
-        }
         void maybeAutoDetectOsIcon(connection, result.sessionId);
       } catch (error) {
+        setTerminalConnectionState("disconnected");
         terminal.writeln("");
         terminal.writeln(t("terminal.failedToStartDetail", { message: String(error) }));
       }
@@ -2529,6 +2576,7 @@ function TerminalPaneView({
       cwdDisposable.dispose();
       notificationDisposable.dispose();
       removeOutputListener?.();
+      removeEndedListener?.();
       const sessionId = sessionIdRef.current;
       preservingRuntime = Boolean(sessionId && shouldPreservePaneRuntimeOnUnmount(pane.id));
       if (sessionId && preservingRuntime) {
@@ -2558,7 +2606,7 @@ function TerminalPaneView({
   // as Child Connection Tab rename/icon edits must not tear down and recreate
   // the live SSH/local process.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pane.id, tabId]);
+  }, [pane.id, reconnectGeneration, tabId]);
 
   useEffect(() => {
     terminalRendererRef.current?.setBackgroundOpacity(terminalOpacity);
@@ -3245,6 +3293,34 @@ function TerminalPaneView({
                 ref={actionsMenuPortalRef}
                 role="menu"
               >
+                {isReconnectableTerminal && terminalConnectionState !== "connecting" ? (
+                  <button
+                    className="terminal-menu-item"
+                    onClick={() => {
+                      setActionsMenuOpen(false);
+                      if (terminalConnectionState === "disconnected") {
+                        setReconnectGeneration((generation) => generation + 1);
+                      } else if (onClosePane) {
+                        onClosePane();
+                      } else {
+                        closePane(tabId, pane.id);
+                      }
+                    }}
+                    role="menuitem"
+                    type="button"
+                  >
+                    {terminalConnectionState === "disconnected" ? (
+                      <RefreshCw size={13} />
+                    ) : (
+                      <X size={13} />
+                    )}
+                    {t(
+                      terminalConnectionState === "disconnected"
+                        ? "connections.reconnect"
+                        : "connections.closeConnection",
+                    )}
+                  </button>
+                ) : null}
                 {isSshPane && pane.connection ? (
                   <button
                     className="terminal-menu-item"
