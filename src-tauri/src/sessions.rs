@@ -314,6 +314,12 @@ pub struct TerminalOutput {
     pub(crate) data: String,
 }
 
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalSessionEnded {
+    pub(crate) session_id: String,
+}
+
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StartTerminalRecordingRequest {
@@ -1294,6 +1300,15 @@ pub(crate) fn emit_terminal_output(app: &AppHandle, session_id: &str, data: Stri
         TerminalOutput {
             session_id: session_id.to_string(),
             data,
+        },
+    );
+}
+
+pub(crate) fn emit_terminal_session_ended(app: &AppHandle, session_id: &str) {
+    let _ = app.emit(
+        "terminal-session-ended",
+        TerminalSessionEnded {
+            session_id: session_id.to_string(),
         },
     );
 }

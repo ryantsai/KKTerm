@@ -104,6 +104,7 @@ Font family, default size, ligature settings, and cursor style are configured gl
 
 The Pane hamburger menu (`terminal.actions`) includes per-Connection appearance controls for local, SSH, WSL/PowerShell, Telnet, and other xterm-backed terminal Connections:
 
+- For SSH and Telnet, the first action is `connections.closeConnection` while the Session is connected. If startup fails or the live Session ends while its Pane remains open, that first action changes to `connections.reconnect` and starts a new Session in the same Pane.
 - `terminal.opacity` opens a Transparency slider labelled by `terminal.opacityValue`. New terminal Connections default to 50% transparency; Settings - SSH and Settings - Terminal expose `settings.defaultTransparency` to change the starting value for newly-created SSH or local/Telnet/Serial terminal surfaces.
 - `terminal.background` opens the same shared background picker used by Dashboard Views. It reuses the Dashboard background modes, shared background picker datasource, media picker (PNG/JPEG/WebP/GIF/BMP/SVG images and MP4/WebM/MOV/M4V/OGV videos), fit, dim labels, dynamic-background registry, and Dynamic-tab live preview dialog (`dashboard.backgroundLivePreview` / `dashboard.backgroundLivePreviewTitle`). Dynamic backgrounds do not react to pointer clicks or presses; Particle Cursor, Silk Aurora, Closing Plasma, and Liquid Chrome may follow unpressed pointer movement. `terminal.backgroundDefaultHint` describes returning to the default terminal background.
 

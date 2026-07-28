@@ -5,6 +5,7 @@ const COLLAPSED_FOLDER_IDS_KEY = "kkterm.collapsedFolderIds";
 export const NEW_CONNECTION_REQUEST_EVENT = "kkterm:new-connection-request";
 export const IMPORT_CONNECTIONS_REQUEST_EVENT = "kkterm:import-connections-request";
 export const NEW_CONNECTION_TAB_REQUEST_EVENT = "kkterm:new-connection-tab-request";
+export const RECONNECT_TERMINAL_CONNECTION_EVENT = "kkterm:reconnect-terminal-connection";
 
 export type NewConnectionRequestDetail = {
   connectionType: ConnectionType;
@@ -13,6 +14,10 @@ export type NewConnectionRequestDetail = {
 
 export type NewConnectionTabRequestDetail = {
   connection: Connection;
+};
+
+export type ReconnectTerminalConnectionDetail = {
+  connectionId: string;
 };
 
 export const RECENT_CONNECTION_LIMIT = 50;
@@ -94,6 +99,14 @@ export function requestConnectionNewTab(connection: Connection) {
   window.dispatchEvent(
     new CustomEvent<NewConnectionTabRequestDetail>(NEW_CONNECTION_TAB_REQUEST_EVENT, {
       detail: { connection },
+    }),
+  );
+}
+
+export function requestTerminalConnectionReconnect(connectionId: string) {
+  window.dispatchEvent(
+    new CustomEvent<ReconnectTerminalConnectionDetail>(RECONNECT_TERMINAL_CONNECTION_EVENT, {
+      detail: { connectionId },
     }),
   );
 }

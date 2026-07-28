@@ -3365,6 +3365,7 @@
       "importedDefault": "インポート済み"
     },
     "closeConnection": "接続を閉じる",
+    "reconnect": "再接続",
     "localFiles": "エクスプローラー",
     "homeDirectory": "ホームディレクトリ",
     "localFilesSubtitle": "ローカル ファイル ブラウザー",

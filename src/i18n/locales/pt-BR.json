@@ -3365,6 +3365,7 @@
       "importedDefault": "Importado"
     },
     "closeConnection": "Fechar conexão",
+    "reconnect": "Reconectar",
     "localFiles": "Explorador de Arquivos",
     "homeDirectory": "Diretório inicial",
     "localFilesSubtitle": "Navegador de arquivos local",

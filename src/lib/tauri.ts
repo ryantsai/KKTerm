@@ -199,6 +199,10 @@ export interface TerminalOutput {
   data: string;
 }
 
+export interface TerminalSessionEnded {
+  sessionId: string;
+}
+
 export interface TerminalRecordingInfo {
   sessionId: string;
   connectionId: string;

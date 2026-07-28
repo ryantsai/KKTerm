@@ -54,7 +54,7 @@ import {
   shouldDeleteSshSocksProxySecret,
 } from "./credentialUnlockPreflight";
 import { confirmTrustedSshHostKey, connectionPasswordOwnerId, connectionSshSocksProxyPasswordOwnerId, defaultPortForConnectionType, connectionTypeLabel, ftpPortForProtocolSelection, isRemoteDesktopConnectionType, localShellOptionsForPlatform, resolveSshCompression, resolveSshOldProtocols, resolveSshSocksProxyRequest, uniqueRuntimeId, type LocalShellOption } from "./utils";
-import { IMPORT_CONNECTIONS_REQUEST_EVENT, NEW_CONNECTION_REQUEST_EVENT, NEW_CONNECTION_TAB_REQUEST_EVENT, RECENT_CONNECTION_LIMIT, loadCollapsedFolderIds, loadRecentConnectionIds, notifyConnectionTreeInvalidated, saveCollapsedFolderIds, saveRecentConnectionIds, type NewConnectionRequestDetail, type NewConnectionTabRequestDetail } from "./connectionSidebarState";
+import { IMPORT_CONNECTIONS_REQUEST_EVENT, NEW_CONNECTION_REQUEST_EVENT, NEW_CONNECTION_TAB_REQUEST_EVENT, RECENT_CONNECTION_LIMIT, loadCollapsedFolderIds, loadRecentConnectionIds, notifyConnectionTreeInvalidated, requestTerminalConnectionReconnect, saveCollapsedFolderIds, saveRecentConnectionIds, type NewConnectionRequestDetail, type NewConnectionTabRequestDetail } from "./connectionSidebarState";
 import { collectConnectionFolderIds, countConnections, countFolders, filterConnectedConnections, filterConnectionTree, findConnectionInTree, flattenConnections, flattenFolders, visibleFlatConnections as flattenVisibleConnections, withLiveConnectionStatuses } from "./treeUtils";
 import { WorkspaceIcon } from "../workspaceIcons";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Check, ChevronDown, ChevronRight, CircleDot, Copy, Folder, FolderPlus, KeyRound, LayoutDashboard, List, Maximize2, Minimize2, PanelsTopLeft, PanelRight, Pencil, Pin, PinOff, Play, Plus, Radio, RotateCcw, Save, Search, Settings, SquarePlus, Trash2, X } from "../../../lib/reicon";
@@ -2308,6 +2308,11 @@ export function ConnectionSidebar({
 
     const isPinned = generalSettings.pinnedConnectionIds.includes(menu.connection.id);
     const isConnected = (activeSessionCounts[menu.connection.id] ?? 0) > 0;
+    const hasOpenTerminalPane =
+      (menu.connection.type === "ssh" || menu.connection.type === "telnet") &&
+      tabs.some((tab) =>
+        tab.panes.some((pane) => pane.connection?.id === menu.connection.id),
+      );
     const canAddToPane = supportsAddConnectionToTab(tabs.find((tab) => tab.id === activeTabId));
     items.push(
       { kind: "separator" },
@@ -2325,6 +2330,13 @@ export function ConnectionSidebar({
         label: t("connections.closeConnection"),
         iconSvg: nativeMenuIcons.x,
         action: () => handleTreeMenuCloseConnection(menu),
+      });
+    } else if (hasOpenTerminalPane) {
+      items.push({
+        kind: "item",
+        label: t("connections.reconnect"),
+        iconSvg: nativeMenuIcons.rotateCcw,
+        action: () => handleTreeMenuReconnectConnection(menu),
       });
     }
 
@@ -2555,6 +2567,17 @@ export function ConnectionSidebar({
       return;
     }
     closeOpenTabsForConnection(menu.connection.id);
+  }
+
+  function handleTreeMenuReconnectConnection(menu: TreeContextMenuState) {
+    setTreeContextMenu(null);
+    if (
+      menu.kind !== "connection" ||
+      (menu.connection.type !== "ssh" && menu.connection.type !== "telnet")
+    ) {
+      return;
+    }
+    requestTerminalConnectionReconnect(menu.connection.id);
   }
 
   function closeOpenTabsForConnection(connectionId: string) {

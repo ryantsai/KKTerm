@@ -642,6 +642,7 @@ pub fn start_native_terminal(
                 format!("\r\n[native SSH session error: {error}]\r\n"),
             );
         }
+        crate::sessions::emit_terminal_session_ended(&app, &request.session_id);
     });
 
     if returns_before_ready {

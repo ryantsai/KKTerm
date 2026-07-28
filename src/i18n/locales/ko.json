@@ -3365,6 +3365,7 @@
       "importedDefault": "가져옴"
     },
     "closeConnection": "연결 닫기",
+    "reconnect": "재연결",
     "localFiles": "파일 탐색기",
     "homeDirectory": "홈 디렉터리",
     "localFilesSubtitle": "로컬 파일 브라우저",
