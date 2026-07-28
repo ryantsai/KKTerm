@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { useWorkspaceStore } from "../src/store";
-import { shouldPreservePaneRuntimeOnUnmount } from "../src/modules/workspace/paneRegistry";
+import {
+  preserveTerminalPaneRuntime,
+  shouldPreservePaneRuntimeOnUnmount,
+  takePreservedTerminalPaneRuntime,
+} from "../src/modules/workspace/paneRegistry";
 import type { WorkspacePane, WorkspaceTab } from "../src/types";
 
 const terminalPane = (id: string, childConnectionId?: string): WorkspacePane => ({
@@ -106,7 +110,7 @@ test("closing a non-terminal Pane leaves synchronized input enabled", () => {
   useWorkspaceStore.setState({ tabs: [], activeTabId: "", syncInputEnabled: false });
 });
 
-test("closing the second-last Child Connection preserves the remaining terminal Session", () => {
+test("closing the second-last Child Connection preserves the remaining terminal Session through Strict Mode", async () => {
   const store = useWorkspaceStore;
   const remainingPane = terminalPane("pane-child-2", "child-2");
   store.setState({
@@ -138,10 +142,36 @@ test("closing the second-last Child Connection preserves the remaining terminal 
   const tab = store.getState().tabs[0];
   assert.deepEqual(tab?.panes.map((pane) => pane.id), ["pane-child-2"]);
   assert.equal(tab?.panes[0], remainingPane, "the surviving Pane must keep its identity");
+  const runtime = {
+    bufferText: "existing terminal buffer",
+    sessionId: "existing-session",
+    sessionStarted: true,
+  };
+  assert.equal(shouldPreservePaneRuntimeOnUnmount(remainingPane.id), true);
+  preserveTerminalPaneRuntime(remainingPane.id, runtime);
+
+  assert.deepEqual(
+    takePreservedTerminalPaneRuntime(remainingPane.id),
+    runtime,
+    "the reparented Pane's first mount must take the existing Session",
+  );
   assert.equal(
     shouldPreservePaneRuntimeOnUnmount(remainingPane.id),
     true,
-    "collapsing the split must preserve the surviving Pane runtime instead of reconnecting it",
+    "Strict Mode's probe cleanup must preserve the Session for the second setup",
+  );
+  preserveTerminalPaneRuntime(remainingPane.id, runtime);
+  assert.deepEqual(
+    takePreservedTerminalPaneRuntime(remainingPane.id),
+    runtime,
+    "Strict Mode's second setup must reuse the same Session",
+  );
+
+  await Promise.resolve();
+  assert.equal(
+    shouldPreservePaneRuntimeOnUnmount(remainingPane.id),
+    false,
+    "the Strict Mode handoff permit must expire before a later real close",
   );
   store.setState({ tabs: [], activeTabId: "", syncInputEnabled: false });
 });

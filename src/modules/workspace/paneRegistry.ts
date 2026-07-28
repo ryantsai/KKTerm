@@ -79,6 +79,12 @@ export function takePreservedTerminalPaneRuntime(paneId: string) {
   const runtime = preservedTerminalPaneRuntimes.get(paneId);
   if (runtime) {
     preservedTerminalPaneRuntimes.delete(paneId);
+    // In development, React Strict Mode immediately probes a newly mounted
+    // effect with cleanup + setup. Re-arm the move permit for that synchronous
+    // cleanup so the second setup can take the same live Session. Expire it in
+    // a microtask so a later real Pane close still tears the Session down.
+    movingTerminalPaneIds.add(paneId);
+    queueMicrotask(() => movingTerminalPaneIds.delete(paneId));
   }
   return runtime;
 }
