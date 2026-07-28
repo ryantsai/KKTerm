@@ -56,22 +56,6 @@ export function panoramaLayoutFor(panes: WorkspacePane[]): LayoutNode | undefine
   };
 }
 
-export function reconcilePanoramaLayout(
-  layout: LayoutNode | undefined,
-  panes: WorkspacePane[],
-): LayoutNode | undefined {
-  const next = ensureLayout(layout, panes);
-  if (
-    panes.length > 3 &&
-    next?.type === "split" &&
-    next.orientation === "horizontal" &&
-    next.children.every((child) => child.type === "leaf")
-  ) {
-    return panoramaLayoutFor(panes);
-  }
-  return next;
-}
-
 export function ensureLayout(layout: LayoutNode | undefined, panes: WorkspacePane[]): LayoutNode | undefined {
   if (!layout) {
     return defaultLayoutFor(panes);
@@ -136,7 +120,10 @@ function appendLeaf(node: LayoutNode | undefined, paneId: string): LayoutNode {
   if (!node) {
     return leaf;
   }
-  if (node.type === "split" && node.orientation === "horizontal") {
+  if (node.type === "split") {
+    // Reconciliation adds a missing Pane without wrapping the existing root.
+    // Wrapping would move every mounted descendant one level down the React
+    // tree and recreate live terminal renderers.
     return { ...node, children: [...node.children, leaf] };
   }
   return { type: "split", orientation: "horizontal", children: [node, leaf] };

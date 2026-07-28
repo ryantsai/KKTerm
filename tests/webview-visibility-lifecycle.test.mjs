@@ -271,7 +271,7 @@ test("frontend opens target blank URL navigations in new Workspace Tabs", async 
 
 test("store creates top-level WebView Tabs for URL new-tab launches", async () => {
   const source = await readFile(new URL("../src/store.ts", import.meta.url), "utf8");
-  const openUrlInNewTab = source.match(/openUrlInNewTab: \(connection, url, options\) => \{[\s\S]*?\r?\n  \},\r?\n  openChildConnectionInNewTab/)?.[0];
+  const openUrlInNewTab = source.match(/openUrlInNewTab: \(connection, url, options\) => \{[\s\S]*?\r?\n  \},\r?\n  openChildConnection/)?.[0];
   const openConnectionInNewTab = source.match(/openConnectionInNewTab: \(connection, options\) => \{[\s\S]*?\r?\n  \},\r?\n  openUrlInNewTab/)?.[0];
   const openUrlConnection = source.match(/openUrlConnection: \(connection\) => \{[\s\S]*?openSshPortForwardBrowser/)?.[0];
 

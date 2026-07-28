@@ -4,7 +4,6 @@ import test from "node:test";
 import {
   leafOrder,
   panoramaLayoutFor,
-  reconcilePanoramaLayout,
 } from "../src/modules/workspace/layout";
 import {
   terminalToolbarOpacity,
@@ -39,37 +38,6 @@ test("dense Panoramas use balanced multirow layouts", () => {
 
   assert.deepEqual(rowSizes(layout), [4, 3]);
   assert.deepEqual(leafOrder(layout), panes.map((entry) => entry.id));
-});
-
-test("legacy flat Panorama rows rebalance while deliberate mixed splits survive", () => {
-  const panes = Array.from({ length: 7 }, (_, index) => pane(String(index + 1)));
-  const flatLayout: LayoutNode = {
-    type: "split",
-    orientation: "horizontal",
-    children: panes.map((entry) => ({ type: "leaf", paneId: entry.id })),
-  };
-  assert.deepEqual(rowSizes(reconcilePanoramaLayout(flatLayout, panes)), [4, 3]);
-
-  const mixedLayout: LayoutNode = {
-    type: "split",
-    orientation: "vertical",
-    children: [
-      {
-        type: "split",
-        orientation: "horizontal",
-        children: [
-          { type: "leaf", paneId: "1" },
-          { type: "leaf", paneId: "2" },
-        ],
-      },
-      {
-        type: "split",
-        orientation: "horizontal",
-        children: panes.slice(2).map((entry) => ({ type: "leaf", paneId: entry.id })),
-      },
-    ],
-  };
-  assert.deepEqual(reconcilePanoramaLayout(mixedLayout, panes), mixedLayout);
 });
 
 test("terminal toolbar transparency stays 25 points below terminal transparency", () => {

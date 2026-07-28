@@ -305,7 +305,7 @@ export function ConnectionSidebar({
   const deferredQuery = useDeferredValue(query);
   const openConnection = useWorkspaceStore((state) => state.openConnection);
   const openConnectionInNewTab = useWorkspaceStore((state) => state.openConnectionInNewTab);
-  const openChildConnectionInNewTab = useWorkspaceStore((state) => state.openChildConnectionInNewTab);
+  const openChildConnection = useWorkspaceStore((state) => state.openChildConnection);
   const openChildConnectionLayout = useWorkspaceStore((state) => state.openChildConnectionLayout);
   const openConnectionsInPanorama = useWorkspaceStore((state) => state.openConnectionsInPanorama);
   const openTerminalRecordingsBrowser = useWorkspaceStore((state) => state.openTerminalRecordingsBrowser);
@@ -885,7 +885,7 @@ export function ConnectionSidebar({
     rememberConnection(connection);
     if (showChildTabsInTree) {
       const child = await createChildConnection(connection);
-      openChildConnectionInNewTab(connection, child);
+      openChildConnection(connection, child);
       return;
     }
     const tmuxSessionId = await preferredTmuxSessionIdForNewTab(connection);
@@ -918,7 +918,7 @@ export function ConnectionSidebar({
       return;
     }
     rememberConnection(connection);
-    openChildConnectionInNewTab(connection, child);
+    openChildConnection(connection, child);
   }
 
   function handleRenameChildConnection(child: WorkspaceChildConnection, name: string) {

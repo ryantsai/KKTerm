@@ -19,7 +19,6 @@ import {
   hydrateLayout,
   leafOrder,
   panoramaLayoutFor,
-  reconcilePanoramaLayout,
   serializeLayout,
   splitLayout,
 } from "./modules/workspace/layout";
@@ -31,6 +30,7 @@ import type {
   AssistantDirectSubmitRequest,
   AssistantContextSnippet,
   Connection,
+  LayoutNode,
   PerformanceMetrics,
   PerformanceSnapshot,
   HostUsageSnapshot,
@@ -1139,6 +1139,46 @@ function connectionForChild(connection: Connection, child: WorkspaceChildConnect
   };
 }
 
+function childConnectionFromOpenPane(
+  parentConnection: Connection,
+  pane: WorkspacePane,
+  workspaceId: string,
+): WorkspaceChildConnection | null {
+  if (!pane.childConnectionId) {
+    return null;
+  }
+  const terminalPane = isTerminalPane(pane) ? pane : undefined;
+  return {
+    id: pane.childConnectionId,
+    workspaceId,
+    parentConnectionId: parentConnection.id,
+    name: pane.toolbarTitle?.trim() || pane.title,
+    tmuxSessionId: terminalPane?.tmuxSessionId,
+    cwd: terminalPane?.cwd.trim() || undefined,
+    fontSize: terminalPane?.fontSize,
+    textEncoding: terminalPane?.textEncoding,
+    terminalOpacity: pane.connection?.terminalOpacity,
+    terminalBackground:
+      terminalPane?.terminalBackground !== undefined
+        ? terminalPane.terminalBackground
+        : pane.connection?.terminalBackground,
+    iconColor: pane.connection?.iconColor,
+    iconBackgroundColor: pane.connection?.iconBackgroundColor,
+    iconDataUrl: pane.connection?.iconDataUrl,
+  };
+}
+
+function childConnectionGroupLayout(panes: WorkspacePane[]): LayoutNode | undefined {
+  const layout = panoramaLayoutFor(panes);
+  return layout?.type === "leaf"
+    ? {
+        type: "split",
+        orientation: "horizontal",
+        children: [layout],
+      }
+    : layout;
+}
+
 function createPaneId(connectionId: string) {
   const suffix =
     typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -1492,7 +1532,7 @@ export interface WorkspaceState {
     url: string,
     options?: { title?: string; subtitle?: string },
   ) => void;
-  openChildConnectionInNewTab: (
+  openChildConnection: (
     connection: Connection,
     child: WorkspaceChildConnection,
   ) => void;
@@ -2154,7 +2194,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       ),
     }));
   },
-  openChildConnectionInNewTab: (connection, child) => {
+  openChildConnection: (connection, child) => {
     if (connection.type === "localFiles") {
       const activeWorkspaceId = get().activeWorkspaceId;
       const children = loadStoredChildConnections().filter(
@@ -2177,21 +2217,38 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       }
       return;
     }
-    const childConnection = connectionForChild(connection, child);
-    get().openConnectionInNewTab(childConnection, {
-      childConnectionId: child.id,
-      cwd: child.cwd,
-      iconColor: child.iconColor,
-      iconBackgroundColor: child.iconBackgroundColor,
-      iconDataUrl: child.iconDataUrl,
-      fontSize: child.fontSize,
-      textEncoding: child.textEncoding,
-      terminalOpacity: child.terminalOpacity,
-      terminalBackground: child.terminalBackground,
-      title: child.tmuxSessionId ?? child.name,
-      toolbarTitle: child.name,
-      tmuxSessionId: child.tmuxSessionId,
-    });
+    const activeWorkspaceId = get().activeWorkspaceId;
+    const existingGroupTab = get().tabs.find(
+      (tab) =>
+        tab.childConnectionGroupParentId === connection.id &&
+        (tab.workspaceId ?? DEFAULT_WORKSPACE_ID) === activeWorkspaceId,
+    );
+    const storedChildById = new Map(
+      loadStoredChildConnections().map((entry) => [entry.id, entry]),
+    );
+    const openChildren = existingGroupTab?.panes.flatMap((pane) => {
+      if (!pane.childConnectionId) {
+        return [];
+      }
+      const openChild =
+        storedChildById.get(pane.childConnectionId) ??
+        childConnectionFromOpenPane(connection, pane, activeWorkspaceId);
+      return openChild ? [openChild] : [];
+    }) ?? [];
+    const children = [...openChildren, child].filter(
+      (entry, index, all) =>
+        all.findIndex((candidate) => candidate.id === entry.id) === index,
+    );
+    get().openChildConnectionLayout(connection, children);
+    const groupTab = get().tabs.find(
+      (tab) =>
+        tab.childConnectionGroupParentId === connection.id &&
+        (tab.workspaceId ?? DEFAULT_WORKSPACE_ID) === activeWorkspaceId,
+    );
+    const pane = groupTab?.panes.find((entry) => entry.childConnectionId === child.id);
+    if (groupTab && pane) {
+      get().maximizeChildConnectionPane(groupTab.id, pane.id);
+    }
   },
   openChildConnectionLayout: (connection, children) => {
     const state = get();
@@ -2325,8 +2382,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       kind: "terminal",
       panes: childPanes,
       layout: existingGroupTab && convertedPlainPaneIds.size === 0
-        ? reconcilePanoramaLayout(existingGroupTab.layout, childPanes)
-        : panoramaLayoutFor(childPanes),
+        ? ensureLayout(existingGroupTab.layout, childPanes)
+        : childConnectionGroupLayout(childPanes),
       focusedPaneId: focusedPaneIdForChildLayout(existingGroupTab, childPanes),
       maximizedPaneId: undefined,
       quickCommandBarVisible:

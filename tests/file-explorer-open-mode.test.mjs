@@ -53,7 +53,7 @@ test("File Explorer can open local files in the inline Document", async () => {
   );
   assert.match(
     storeSource,
-    /openChildConnectionInNewTab: \(connection, child\) => \{[\s\S]*connection\.type === "localFiles"[\s\S]*openChildConnectionLayout\([\s\S]*maximizeChildConnectionPane/,
+    /openChildConnection: \(connection, child\) => \{[\s\S]*connection\.type === "localFiles"[\s\S]*openChildConnectionLayout\([\s\S]*maximizeChildConnectionPane/,
     "reopening a File Explorer child row should rebuild the parent child layout instead of spawning a standalone Document rail item",
   );
   assert.match(
