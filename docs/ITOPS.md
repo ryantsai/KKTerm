@@ -206,15 +206,16 @@ migration or repair pass is needed. Utilization counts documented addresses
 against usable addresses; nothing is scanned or probed automatically.
 
 **Network Node** — one box on a Network Map: id, label, kind, canvas
-position and size, interface inventory, optional note, documented status (`up` /
-`warning`), and ordered soft deep links. Kinds are grouped in the designer as
-General (`generic`), Core & Routing (`router`,
+position and size, Network Map palette or custom icon background, lock state,
+interface inventory, optional note, documented status (`up` / `warning`), and
+ordered soft deep links. Kinds are grouped in the designer as Core & Routing (`router`,
 `gateway`, `switch`, `switchL3`, `hub`), Security (`firewall`, `vpnGateway`,
 `idsIps`), Traffic Management (`loadBalancer`, `proxy`, `dns`), Compute &
 Storage (`server`, `database`, `storage`), Cloud & WAN (`cloud`, `isp`),
 Wireless (`accessPoint`, `wirelessController`), and Endpoints (`desktop`,
-`laptop`, `smartphone`, `iot`, `voip`, `printer`, `camera`), plus Maps
-(`geomap`). A Generic node remains behaviorally generic while its `icon_kind`
+`laptop`, `smartphone`, `iot`, `voip`, `printer`, `camera`). The bottom Others
+group contains Generic (`generic`), Geomap (`geomap`), and Note. A Generic node
+remains behaviorally generic while its `icon_kind`
 chooses any built-in device artwork. A Geomap is resizable cosmetic artwork backed by the built-in
 world-map SVG; its normalized zoom and pan viewport are saved with the node so
 the Properties dialog can select a crop from 100% through 10,000% before
@@ -548,7 +549,11 @@ draft does not enter the graph until that placement click; right-click or
 Escape cancels it. Ghost tracking and the primary placement action run from
 the map canvas's capture-phase pointer events so React Flow child layers cannot
 swallow either interaction. A Network Node or Note native right-click menu
-contains Duplicate, Delete, then a separated final Properties item. Duplicate opens the
+contains Lock/Unlock, Duplicate, Delete, then a separated final Properties item.
+A locked object cannot move, resize, or be deleted until unlocked. Ctrl-click,
+Command-click, and Shift-click toggle objects in a multi-selection; its
+right-click menu contains only Lock/Unlock and Delete, with Delete disabled
+while any selected object is locked. Duplicate opens the
 same prefilled Properties dialog and arms the resulting copy for placement.
 The Network Node kind chosen in the object browser stays fixed while adding or
 duplicating a node, so those Properties dialogs do not repeat the Type field;
@@ -567,22 +572,29 @@ animated Links visible and attached throughout the drag without remeasuring
 unrelated node handles, then recalculates the shortest handle sides when the
 drag ends.
 Network Node Properties puts the device artwork and palette-backed icon
-background choices in one compact identity header. Small status choices use
+background choices in one compact identity header. Network Maps use a separate
+soft hardware palette rather than the shared IT Ops content accents and include
+a custom-color picker. Black skeuomorphic hardware shells always render on a
+lightened tile. Small status choices use
 icon-backed radio cards; the 27-item node-kind list remains a select when
 editing an existing device node. Generic Properties additionally provides a
 visual picker for all 26 built-in icon artworks without changing the node kind.
-Node Properties owns the ordered deep-link list and a focused add-destination
-dialog. Geomap Properties is purpose-built instead:
+Node Properties shows only the Deep Link count. Activating it opens a compact
+collection editor that owns the ordered list, focused add-destination dialog,
+removal actions, and one direct Open action per available destination. Geomap
+Properties is purpose-built instead:
 it includes the artwork tint, uncapped pixel width and height fields, and a
 draggable world-map preview with scroll/slider zoom from 100% through 10,000%,
 omitting the device label, Type, status, interfaces, and note. The selected
 crop and size are visible in the placement ghost and saved Geomap. The canvas
 Geomap renders only the cropped artwork and has neither resize nor Network Link
 handles. Each device node
-persists its individual width/height and an ordered interface inventory. An
-interface has a stable id, name, and optional documented IP address, and is
-added or edited in a focused nested dialog instead of expanding the parent
-Properties dialog.
+persists its individual width/height and an ordered interface inventory. Node
+Properties shows only the interface count; activating it opens a compact,
+independently scrolling collection editor. An interface has a stable id, name,
+and optional documented IP address, and is added or edited in a focused nested
+dialog inside that collection editor instead of expanding the parent Properties
+dialog.
 A Network Link's small medium, status, and strand-display choices also use
 icon-backed radio cards. The base Properties sheet shows only the physical-link
 count; activating it opens a compact, independently scrolling member grid, so

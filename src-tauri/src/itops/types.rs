@@ -1374,6 +1374,9 @@ pub struct NetworkNode {
     /// Optional palette index overriding the node kind's icon background.
     #[serde(default)]
     pub icon_accent: Option<u8>,
+    /// Optional exact icon background from the Network Map custom-colour picker.
+    #[serde(default)]
+    pub icon_background_color: Option<String>,
     /// Generic nodes can borrow any built-in device artwork while remaining
     /// behaviorally generic.
     #[serde(default)]
@@ -1404,6 +1407,9 @@ pub struct NetworkNode {
     pub deep_links: Vec<NetworkNodeDeepLink>,
     #[serde(default)]
     pub note: String,
+    /// Locked canvas objects cannot be moved, resized, or deleted.
+    #[serde(default)]
+    pub locked: bool,
 }
 
 /// One of the parallel physical links a drawn Network Link stands for. Port
@@ -1492,6 +1498,12 @@ pub struct NetworkMapNote {
     pub height: f64,
     #[serde(default)]
     pub background_accent: u8,
+    /// Optional exact background from the Network Map custom-colour picker.
+    #[serde(default)]
+    pub background_color: Option<String>,
+    /// Locked canvas objects cannot be moved, resized, or deleted.
+    #[serde(default)]
+    pub locked: bool,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]

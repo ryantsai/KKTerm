@@ -42,6 +42,7 @@ export function applyNetworkMapCanvasNodeChanges(
       const nodeIndex = nodes.findIndex((node) => node.id === change.id);
       if (
         nodeIndex >= 0 &&
+        !nodes[nodeIndex].locked &&
         (nodes[nodeIndex].x !== x || nodes[nodeIndex].y !== y)
       ) {
         nodes = nodes.slice();
@@ -51,6 +52,7 @@ export function applyNetworkMapCanvasNodeChanges(
       const noteIndex = notes.findIndex((note) => note.id === change.id);
       if (
         noteIndex >= 0 &&
+        !notes[noteIndex].locked &&
         (notes[noteIndex].x !== x || notes[noteIndex].y !== y)
       ) {
         notes = notes.slice();
@@ -68,7 +70,7 @@ export function applyNetworkMapCanvasNodeChanges(
       change.resizing !== undefined
     ) {
       const nodeIndex = nodes.findIndex((node) => node.id === change.id);
-      if (nodeIndex >= 0) {
+      if (nodeIndex >= 0 && !nodes[nodeIndex].locked) {
         const node = nodes[nodeIndex];
         const maxWidth =
           node.kind === "geomap" ? Number.POSITIVE_INFINITY : NETWORK_NODE_MAX_WIDTH;
@@ -91,7 +93,7 @@ export function applyNetworkMapCanvasNodeChanges(
       }
 
       const noteIndex = notes.findIndex((note) => note.id === change.id);
-      if (noteIndex >= 0) {
+      if (noteIndex >= 0 && !notes[noteIndex].locked) {
         const width = boundedDimension(
           change.dimensions.width,
           NETWORK_NOTE_MIN_WIDTH,

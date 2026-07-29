@@ -1804,6 +1804,8 @@
       "saved": "已保存",
       "paletteLabel": "添加到拓扑图",
       "addNode": "添加节点",
+      "lockSelection": "锁定",
+      "unlockSelection": "解锁",
       "nodeCategory": {
         "general": "General",
         "core": "核心与路由",
@@ -1813,7 +1815,8 @@
         "cloud": "云与广域网",
         "wireless": "无线",
         "endpoints": "终端设备",
-        "maps": "地图"
+        "maps": "地图",
+        "others": "其他"
       },
       "nodeKind": {
         "generic": "Generic",
@@ -1846,6 +1849,10 @@
       },
       "genericIconLabel": "Built-in icon",
       "deepLinksLabel": "Deep links",
+      "deepLinkCount_one": "{{count}} 个深层链接",
+      "deepLinkCount_other": "{{count}} 个深层链接",
+      "deepLinkOpenAction": "打开{{name}}",
+      "collectionEditHint": "打开紧凑编辑器。",
       "deepLinkAdd": "Add deep link",
       "deepLinkTypeLabel": "Link to",
       "deepLinkTargetLabel": "Target",
@@ -1889,6 +1896,8 @@
       "addressItemLabel": "IP 地址 {{index}}",
       "addressRemove": "移除 IP 地址",
       "interfacesLabel": "网络接口",
+      "interfaceCount_one": "{{count}} 个网络接口",
+      "interfaceCount_other": "{{count}} 个网络接口",
       "interfaceAddTitle": "添加网络接口",
       "interfaceEditTitle": "编辑网络接口",
       "interfaceEmpty": "尚未记录网络接口。",

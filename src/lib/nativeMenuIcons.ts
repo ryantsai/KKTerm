@@ -18,6 +18,7 @@ export const nativeMenuIcons = {
   info: lucide(`<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>`),
   keyRound: lucide(`<path d="M2.59 13.41A2 2 0 0 0 2 14.83V17a2 2 0 0 0 2 2h2v-2h2v-2h2l1.59-1.59"/><circle cx="14.5" cy="9.5" r="5.5"/>`),
   layoutDashboard: lucide(`<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>`),
+  lock: lucide(`<rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>`),
   panelRight: lucide(`<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/>`),
   pencil: lucide(`<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>`),
   play: lucide(`<path d="m6 3 14 9-14 9z"/>`),
@@ -36,6 +37,7 @@ export const nativeMenuIcons = {
   terminal: lucide(`<path d="m4 17 6-6-6-6"/><path d="M12 19h8"/>`),
   trash: lucide(`<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>`),
   upload: lucide(`<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/>`),
+  unlock: lucide(`<rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 7.7-1.5"/>`),
   userRound: lucide(`<circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>`),
   x: lucide(`<path d="M18 6 6 18"/><path d="m6 6 12 12"/>`),
 } as const;

@@ -147,3 +147,40 @@ test("drag positions update without rewriting unchanged entities", () => {
   assert.equal(moved.nodes[0].y, 56);
   assert.equal(moved.notes, graph.notes);
 });
+
+test("locked nodes and notes ignore drag and resize changes", () => {
+  const graph = graphFixture();
+  graph.nodes[0] = { ...graph.nodes[0], locked: true };
+  graph.notes[0] = { ...graph.notes[0], locked: true };
+
+  const result = applyNetworkMapCanvasNodeChanges(graph, [
+    {
+      id: "node-a",
+      type: "position",
+      position: { x: 400, y: 500 },
+      dragging: true,
+    },
+    {
+      id: "node-a",
+      type: "dimensions",
+      resizing: true,
+      setAttributes: true,
+      dimensions: { width: 300, height: 200 },
+    },
+    {
+      id: "note-a",
+      type: "position",
+      position: { x: 600, y: 700 },
+      dragging: true,
+    },
+    {
+      id: "note-a",
+      type: "dimensions",
+      resizing: true,
+      setAttributes: true,
+      dimensions: { width: 500, height: 300 },
+    },
+  ] satisfies NodeChange[]);
+
+  assert.equal(result, graph);
+});

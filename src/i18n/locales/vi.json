@@ -1804,6 +1804,8 @@
       "saved": "Đã lưu",
       "paletteLabel": "Thêm vào sơ đồ",
       "addNode": "Thêm nút",
+      "lockSelection": "Khóa",
+      "unlockSelection": "Mở khóa",
       "nodeCategory": {
         "general": "General",
         "core": "Lõi & định tuyến",
@@ -1813,7 +1815,8 @@
         "cloud": "Đám mây & WAN",
         "wireless": "Không dây",
         "endpoints": "Thiết bị đầu cuối",
-        "maps": "Bản đồ"
+        "maps": "Bản đồ",
+        "others": "Khác"
       },
       "nodeKind": {
         "generic": "Generic",
@@ -1846,6 +1849,10 @@
       },
       "genericIconLabel": "Built-in icon",
       "deepLinksLabel": "Deep links",
+      "deepLinkCount_one": "{{count}} liên kết sâu",
+      "deepLinkCount_other": "{{count}} liên kết sâu",
+      "deepLinkOpenAction": "Mở {{name}}",
+      "collectionEditHint": "Mở trình chỉnh sửa thu gọn.",
       "deepLinkAdd": "Add deep link",
       "deepLinkTypeLabel": "Link to",
       "deepLinkTargetLabel": "Target",
@@ -1889,6 +1896,8 @@
       "addressItemLabel": "Địa chỉ IP {{index}}",
       "addressRemove": "Bỏ địa chỉ IP",
       "interfacesLabel": "Giao diện",
+      "interfaceCount_one": "{{count}} giao diện",
+      "interfaceCount_other": "{{count}} giao diện",
       "interfaceAddTitle": "Thêm giao diện",
       "interfaceEditTitle": "Sửa giao diện",
       "interfaceEmpty": "Chưa ghi nhận giao diện nào.",

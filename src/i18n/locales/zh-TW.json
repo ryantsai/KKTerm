@@ -1804,6 +1804,8 @@
       "saved": "已儲存",
       "paletteLabel": "加入拓撲圖",
       "addNode": "新增節點",
+      "lockSelection": "鎖定",
+      "unlockSelection": "解除鎖定",
       "nodeCategory": {
         "general": "一般",
         "core": "核心與路由",
@@ -1813,7 +1815,8 @@
         "cloud": "雲端與廣域網路",
         "wireless": "無線",
         "endpoints": "端點裝置",
-        "maps": "地圖"
+        "maps": "地圖",
+        "others": "其他"
       },
       "nodeKind": {
         "generic": "通用",
@@ -1846,6 +1849,10 @@
       },
       "genericIconLabel": "內建圖示",
       "deepLinksLabel": "深層連結",
+      "deepLinkCount_one": "{{count}} 個深層連結",
+      "deepLinkCount_other": "{{count}} 個深層連結",
+      "deepLinkOpenAction": "開啟{{name}}",
+      "collectionEditHint": "開啟精簡編輯器。",
       "deepLinkAdd": "新增深層連結",
       "deepLinkTypeLabel": "連結至",
       "deepLinkTargetLabel": "目標",
@@ -1889,6 +1896,8 @@
       "addressItemLabel": "IP 位址 {{index}}",
       "addressRemove": "移除 IP 位址",
       "interfacesLabel": "網路介面",
+      "interfaceCount_one": "{{count}} 個網路介面",
+      "interfaceCount_other": "{{count}} 個網路介面",
       "interfaceAddTitle": "新增網路介面",
       "interfaceEditTitle": "編輯網路介面",
       "interfaceEmpty": "尚未記錄網路介面。",

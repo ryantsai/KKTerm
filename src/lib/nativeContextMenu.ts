@@ -181,6 +181,7 @@ const macosTemplateNativeIconsBySvg = new Map<string, MenuIcon>([
   [nativeMenuIcons.info, "QuickLook"],
   [nativeMenuIcons.keyRound, "LockUnlocked"],
   [nativeMenuIcons.layoutDashboard, "IconView"],
+  [nativeMenuIcons.lock, "LockLocked"],
   [nativeMenuIcons.panelRight, "ColumnView"],
   [nativeMenuIcons.pencil, "Advanced"],
   [nativeMenuIcons.play, "GoRight"],
@@ -199,6 +200,7 @@ const macosTemplateNativeIconsBySvg = new Map<string, MenuIcon>([
   [nativeMenuIcons.terminal, "GoRight"],
   [nativeMenuIcons.trash, "Remove"],
   [nativeMenuIcons.upload, "Path"],
+  [nativeMenuIcons.unlock, "LockUnlocked"],
   [nativeMenuIcons.userRound, "SmartBadge"],
   [nativeMenuIcons.x, "Remove"],
 ]);

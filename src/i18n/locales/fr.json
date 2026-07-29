@@ -1804,6 +1804,8 @@
       "saved": "Enregistré",
       "paletteLabel": "Ajouter à la carte",
       "addNode": "Ajouter un nœud",
+      "lockSelection": "Verrouiller",
+      "unlockSelection": "Déverrouiller",
       "nodeCategory": {
         "general": "General",
         "core": "Cœur & routage",
@@ -1813,7 +1815,8 @@
         "cloud": "Cloud & WAN",
         "wireless": "Sans fil",
         "endpoints": "Terminaux",
-        "maps": "Cartes"
+        "maps": "Cartes",
+        "others": "Autres"
       },
       "nodeKind": {
         "generic": "Generic",
@@ -1846,6 +1849,10 @@
       },
       "genericIconLabel": "Built-in icon",
       "deepLinksLabel": "Deep links",
+      "deepLinkCount_one": "{{count}} lien profond",
+      "deepLinkCount_other": "{{count}} liens profonds",
+      "deepLinkOpenAction": "Ouvrir {{name}}",
+      "collectionEditHint": "Ouvrir l’éditeur compact.",
       "deepLinkAdd": "Add deep link",
       "deepLinkTypeLabel": "Link to",
       "deepLinkTargetLabel": "Target",
@@ -1889,6 +1896,8 @@
       "addressItemLabel": "Adresse IP {{index}}",
       "addressRemove": "Supprimer l’adresse IP",
       "interfacesLabel": "Interfaces",
+      "interfaceCount_one": "{{count}} interface",
+      "interfaceCount_other": "{{count}} interfaces",
       "interfaceAddTitle": "Ajouter une interface",
       "interfaceEditTitle": "Modifier l’interface",
       "interfaceEmpty": "Aucune interface documentée.",

@@ -1804,6 +1804,8 @@
       "saved": "Gespeichert",
       "paletteLabel": "Zur Karte hinzufügen",
       "addNode": "Knoten hinzufügen",
+      "lockSelection": "Sperren",
+      "unlockSelection": "Entsperren",
       "nodeCategory": {
         "general": "General",
         "core": "Kern & Routing",
@@ -1813,7 +1815,8 @@
         "cloud": "Cloud & WAN",
         "wireless": "WLAN",
         "endpoints": "Endgeräte",
-        "maps": "Karten"
+        "maps": "Karten",
+        "others": "Andere"
       },
       "nodeKind": {
         "generic": "Generic",
@@ -1846,6 +1849,10 @@
       },
       "genericIconLabel": "Built-in icon",
       "deepLinksLabel": "Deep links",
+      "deepLinkCount_one": "{{count}} Deep Link",
+      "deepLinkCount_other": "{{count}} Deep Links",
+      "deepLinkOpenAction": "{{name}} öffnen",
+      "collectionEditHint": "Kompakten Editor öffnen.",
       "deepLinkAdd": "Add deep link",
       "deepLinkTypeLabel": "Link to",
       "deepLinkTargetLabel": "Target",
@@ -1889,6 +1896,8 @@
       "addressItemLabel": "IP-Adresse {{index}}",
       "addressRemove": "IP-Adresse entfernen",
       "interfacesLabel": "Schnittstellen",
+      "interfaceCount_one": "{{count}} Schnittstelle",
+      "interfaceCount_other": "{{count}} Schnittstellen",
       "interfaceAddTitle": "Schnittstelle hinzufügen",
       "interfaceEditTitle": "Schnittstelle bearbeiten",
       "interfaceEmpty": "Keine Schnittstellen dokumentiert.",

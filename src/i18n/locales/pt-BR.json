@@ -1804,6 +1804,8 @@
       "saved": "Salvo",
       "paletteLabel": "Adicionar ao mapa",
       "addNode": "Adicionar nó",
+      "lockSelection": "Bloquear",
+      "unlockSelection": "Desbloquear",
       "nodeCategory": {
         "general": "General",
         "core": "Núcleo e roteamento",
@@ -1813,7 +1815,8 @@
         "cloud": "Nuvem e WAN",
         "wireless": "Sem fio",
         "endpoints": "Dispositivos finais",
-        "maps": "Mapas"
+        "maps": "Mapas",
+        "others": "Outros"
       },
       "nodeKind": {
         "generic": "Generic",
@@ -1846,6 +1849,10 @@
       },
       "genericIconLabel": "Built-in icon",
       "deepLinksLabel": "Deep links",
+      "deepLinkCount_one": "{{count}} link profundo",
+      "deepLinkCount_other": "{{count}} links profundos",
+      "deepLinkOpenAction": "Abrir {{name}}",
+      "collectionEditHint": "Abrir o editor compacto.",
       "deepLinkAdd": "Add deep link",
       "deepLinkTypeLabel": "Link to",
       "deepLinkTargetLabel": "Target",
@@ -1889,6 +1896,8 @@
       "addressItemLabel": "Endereço IP {{index}}",
       "addressRemove": "Remover endereço IP",
       "interfacesLabel": "Interfaces",
+      "interfaceCount_one": "{{count}} interface",
+      "interfaceCount_other": "{{count}} interfaces",
       "interfaceAddTitle": "Adicionar interface",
       "interfaceEditTitle": "Editar interface",
       "interfaceEmpty": "Nenhuma interface documentada.",

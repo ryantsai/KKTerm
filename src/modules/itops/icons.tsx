@@ -73,7 +73,8 @@ export type ItIconName =
   | "power"
   | "rows"
   | "grid"
-  | "cube";
+  | "cube"
+  | "lock";
 
 type GlyphProps = { size: number; sw: number };
 
@@ -117,6 +118,12 @@ const GLYPHS: Record<ItIconName, (p: GlyphProps) => ReactNode> = {
       <path d="M17 8.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" />
       <path d="M2.5 19v-1a3.5 3.5 0 0 1 3.5-3.5h2A3.5 3.5 0 0 1 11.5 18v1" />
       <path d="M12.5 19v-1A3.5 3.5 0 0 1 16 14.5h2a3.5 3.5 0 0 1 3.5 3.5v1" />
+    </Svg>
+  ),
+  lock: (p) => (
+    <Svg {...p}>
+      <rect x="5" y="10" width="14" height="11" rx="2" />
+      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
     </Svg>
   ),
   network: (p) => (

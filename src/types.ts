@@ -770,6 +770,9 @@ export interface NetworkNode {
   height: number;
   // Optional palette index overriding the node kind's icon background.
   iconAccent?: number | null;
+  // Optional exact icon background selected from the Network Map custom-color
+  // picker. This wins over the palette index when present.
+  iconBackgroundColor?: string | null;
   // Generic nodes can display any of the built-in Network Map device icons
   // without inheriting that icon kind's behavior.
   iconKind?: NetworkNodeIconKind | null;
@@ -788,6 +791,8 @@ export interface NetworkNode {
   // Missing destinations remain editable instead of preventing map loading.
   deepLinks: NetworkNodeDeepLink[];
   note: string;
+  // Locked canvas objects cannot be moved, resized, or deleted.
+  locked?: boolean;
 }
 
 // One of the parallel physical links a drawn Network Link stands for. Port
@@ -835,8 +840,13 @@ export interface NetworkMapNote {
   y: number;
   width: number;
   height: number;
-  // Index into the shared IT Ops content-accent palette.
+  // Index into the Network Map-only background palette.
   backgroundAccent: number;
+  // Optional exact note background selected from the Network Map custom-color
+  // picker. This wins over the palette index when present.
+  backgroundColor?: string | null;
+  // Locked canvas objects cannot be moved, resized, or deleted.
+  locked?: boolean;
 }
 
 export interface NetworkGraph {

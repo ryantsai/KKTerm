@@ -1804,6 +1804,8 @@
       "saved": "Tersimpan",
       "paletteLabel": "Tambahkan ke peta",
       "addNode": "Tambah simpul",
+      "lockSelection": "Kunci",
+      "unlockSelection": "Buka kunci",
       "nodeCategory": {
         "general": "General",
         "core": "Inti & Routing",
@@ -1813,7 +1815,8 @@
         "cloud": "Cloud & WAN",
         "wireless": "Nirkabel",
         "endpoints": "Perangkat Akhir",
-        "maps": "Peta"
+        "maps": "Peta",
+        "others": "Lainnya"
       },
       "nodeKind": {
         "generic": "Generic",
@@ -1846,6 +1849,10 @@
       },
       "genericIconLabel": "Built-in icon",
       "deepLinksLabel": "Deep links",
+      "deepLinkCount_one": "{{count}} tautan mendalam",
+      "deepLinkCount_other": "{{count}} tautan mendalam",
+      "deepLinkOpenAction": "Buka {{name}}",
+      "collectionEditHint": "Buka editor ringkas.",
       "deepLinkAdd": "Add deep link",
       "deepLinkTypeLabel": "Link to",
       "deepLinkTargetLabel": "Target",
@@ -1889,6 +1896,8 @@
       "addressItemLabel": "Alamat IP {{index}}",
       "addressRemove": "Hapus alamat IP",
       "interfacesLabel": "Antarmuka",
+      "interfaceCount_one": "{{count}} antarmuka",
+      "interfaceCount_other": "{{count}} antarmuka",
       "interfaceAddTitle": "Tambah antarmuka",
       "interfaceEditTitle": "Edit antarmuka",
       "interfaceEmpty": "Belum ada antarmuka yang didokumentasikan.",

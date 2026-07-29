@@ -1804,6 +1804,8 @@
       "saved": "저장됨",
       "paletteLabel": "맵에 추가",
       "addNode": "노드 추가",
+      "lockSelection": "잠금",
+      "unlockSelection": "잠금 해제",
       "nodeCategory": {
         "general": "General",
         "core": "코어 / 라우팅",
@@ -1813,7 +1815,8 @@
         "cloud": "클라우드 / WAN",
         "wireless": "무선",
         "endpoints": "엔드포인트",
-        "maps": "지도"
+        "maps": "지도",
+        "others": "기타"
       },
       "nodeKind": {
         "generic": "Generic",
@@ -1846,6 +1849,10 @@
       },
       "genericIconLabel": "Built-in icon",
       "deepLinksLabel": "Deep links",
+      "deepLinkCount_one": "딥 링크 {{count}}개",
+      "deepLinkCount_other": "딥 링크 {{count}}개",
+      "deepLinkOpenAction": "{{name}} 열기",
+      "collectionEditHint": "간단 편집기를 엽니다.",
       "deepLinkAdd": "Add deep link",
       "deepLinkTypeLabel": "Link to",
       "deepLinkTargetLabel": "Target",
@@ -1889,6 +1896,8 @@
       "addressItemLabel": "IP 주소 {{index}}",
       "addressRemove": "IP 주소 제거",
       "interfacesLabel": "인터페이스",
+      "interfaceCount_one": "인터페이스 {{count}}개",
+      "interfaceCount_other": "인터페이스 {{count}}개",
       "interfaceAddTitle": "인터페이스 추가",
       "interfaceEditTitle": "인터페이스 편집",
       "interfaceEmpty": "기록된 인터페이스가 없습니다.",

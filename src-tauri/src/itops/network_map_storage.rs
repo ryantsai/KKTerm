@@ -115,6 +115,10 @@ fn sanitize_graph(graph: &NetworkGraph) -> NetworkGraph {
 }
 
 fn sanitize_node(mut node: NetworkNode) -> NetworkNode {
+    node.icon_background_color = node
+        .icon_background_color
+        .take()
+        .and_then(sanitize_hex_color);
     if node.interfaces.is_empty() {
         if node.addresses.is_empty() {
             node.addresses
@@ -248,10 +252,23 @@ fn finite_or(value: f64, fallback: f64) -> f64 {
     value.is_finite().then_some(value).unwrap_or(fallback)
 }
 
+fn sanitize_hex_color(value: String) -> Option<String> {
+    let value = value.trim();
+    if value.len() == 7
+        && value.starts_with('#')
+        && value[1..].bytes().all(|byte| byte.is_ascii_hexdigit())
+    {
+        Some(value.to_ascii_lowercase())
+    } else {
+        None
+    }
+}
+
 fn sanitize_note(mut note: NetworkMapNote) -> NetworkMapNote {
     note.text = note.text.trim().to_string();
     note.width = note.width.clamp(180.0, 600.0);
     note.height = note.height.clamp(90.0, 400.0);
+    note.background_color = note.background_color.take().and_then(sanitize_hex_color);
     note
 }
 
@@ -653,6 +670,8 @@ mod tests {
                 text: " Maintenance boundary ".into(),
                 width: 100.0,
                 height: 800.0,
+                background_color: Some(" #DDEEFF ".into()),
+                locked: true,
                 ..NetworkMapNote::default()
             }],
             roots: vec!["core".into(), "ghost".into()],
@@ -678,6 +697,11 @@ mod tests {
         assert_eq!(listed[0].graph.notes[0].text, "Maintenance boundary");
         assert_eq!(listed[0].graph.notes[0].width, 180.0);
         assert_eq!(listed[0].graph.notes[0].height, 400.0);
+        assert_eq!(
+            listed[0].graph.notes[0].background_color.as_deref(),
+            Some("#ddeeff")
+        );
+        assert!(listed[0].graph.notes[0].locked);
         let stored = &listed[0].graph.links[0];
         assert_eq!(stored.id, "l1");
         assert_eq!(stored.strands.len(), 3);
@@ -747,6 +771,8 @@ mod tests {
         let mut generic = node("generic");
         generic.kind = NetworkNodeKind::Generic;
         generic.icon_kind = Some(NetworkNodeKind::Generic);
+        generic.icon_background_color = Some(" #AABBCC ".into());
+        generic.locked = true;
         generic.deep_links = vec![
             NetworkNodeDeepLink {
                 id: String::new(),
@@ -787,6 +813,7 @@ mod tests {
         ];
         let mut switch = node("switch");
         switch.icon_kind = Some(NetworkNodeKind::Router);
+        switch.icon_background_color = Some("not-a-color".into());
 
         let sanitized = sanitize_graph(&NetworkGraph {
             nodes: vec![generic, switch],
@@ -794,6 +821,8 @@ mod tests {
         });
         let generic = &sanitized.nodes[0];
         assert_eq!(generic.icon_kind, Some(NetworkNodeKind::Switch));
+        assert_eq!(generic.icon_background_color.as_deref(), Some("#aabbcc"));
+        assert!(generic.locked);
         assert_eq!(generic.deep_links.len(), 2);
         assert_eq!(generic.deep_links[0].id, "generic-deep-link-0");
         assert_eq!(
@@ -804,6 +833,7 @@ mod tests {
         assert_eq!(generic.deep_links[1].server_room.as_deref(), Some("Room A"));
         assert!(generic.deep_links[1].rack_id.is_none());
         assert!(sanitized.nodes[1].icon_kind.is_none());
+        assert!(sanitized.nodes[1].icon_background_color.is_none());
     }
 
     #[test]

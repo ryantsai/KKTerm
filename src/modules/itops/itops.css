@@ -8560,15 +8560,15 @@
   width: 38px;
   height: 38px;
   border-radius: 10px;
-  background: linear-gradient(
-    150deg,
-    color-mix(in srgb, var(--nm-node-accent) 88%, var(--surface)),
-    color-mix(in srgb, var(--nm-node-accent) 94%, var(--text))
-  );
+  background: var(--nm-node-accent);
   box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--text) 12%, transparent);
 }
+.itops-page .nm-picker-ic[data-shell="black"],
+.nm-node-ic[data-shell="black"] {
+  background: color-mix(in srgb, var(--nm-node-accent) 18%, white);
+}
 .itops-page .nm-picker-note {
-  width: calc(50% - 4px);
+  width: 100%;
 }
 .itops-page .nm-picker-note-preview {
   display: inline-flex;
@@ -8625,7 +8625,7 @@
 .nm-geomap-node {
   overflow: hidden;
   border-radius: inherit;
-  color: color-mix(in srgb, var(--green) 70%, var(--text-muted));
+  color: color-mix(in srgb, var(--nm-node-accent) 72%, var(--text-muted));
 }
 .nm-geomap-node-image {
   opacity: 0.86;
@@ -8648,6 +8648,10 @@
 .nm-node.sel {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.nm-node[data-locked="true"],
+.nm-note[data-locked="true"] {
+  cursor: default;
 }
 .nm-node[data-root="true"] { border-color: var(--accent); }
 .nm-node[data-state="down"] {
@@ -8673,12 +8677,25 @@
   flex: 0 0 auto;
   overflow: hidden;
   border-radius: 8px;
-  background: linear-gradient(
-    150deg,
-    color-mix(in srgb, var(--nm-node-accent) 88%, var(--surface)),
-    color-mix(in srgb, var(--nm-node-accent) 94%, var(--text))
-  );
+  background: var(--nm-node-accent);
   box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--text) 12%, transparent);
+}
+.nm-object-lock {
+  position: absolute;
+  right: -7px;
+  bottom: -7px;
+  z-index: 7;
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--text) 16%, transparent);
+  color: var(--text-muted);
+  pointer-events: none;
 }
 .nm-node-content {
   display: flex;
@@ -8920,7 +8937,7 @@
   overflow: visible;
   border: 1px solid color-mix(in srgb, var(--border-strong) 58%, var(--border));
   border-radius: 7px;
-  background: color-mix(in srgb, var(--nm-note-accent) 24%, var(--surface));
+  background: color-mix(in srgb, var(--nm-note-accent) 68%, var(--surface));
   box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 7%, transparent);
   color: var(--text);
   cursor: grab;
@@ -9187,10 +9204,38 @@
 }
 .itops-page .nm-node-identity-copy strong { font-size: 13px; font-weight: 680; }
 .itops-page .nm-node-identity-copy small { color: var(--text-muted); font-size: 11px; }
-.itops-page .nm-node-identity .kk-conn-swatches {
+.itops-page .nm-color-swatches {
+  display: flex;
   width: auto;
   flex: 0 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
+  gap: 6px;
+}
+.itops-page .nm-color-swatch {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--nm-swatch);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+  cursor: pointer;
+  transition: box-shadow 120ms ease, transform 120ms ease;
+}
+.itops-page .nm-color-swatch:hover {
+  transform: scale(1.1);
+}
+.itops-page .nm-color-swatch.selected {
+  box-shadow: 0 0 0 2px var(--surface-muted), 0 0 0 4px var(--accent);
+}
+.itops-page .nm-custom-color .color-palette-rainbow {
+  width: 22px;
+  height: 22px;
+}
+.itops-page .nm-custom-color .color-palette-popover {
+  right: 0;
 }
 .itops-page .nm-geomap-editor {
   display: grid;
@@ -9351,7 +9396,6 @@
   outline: 2px solid var(--ring);
   outline-offset: 1px;
 }
-.itops-page .nm-interfaces { display: flex; flex-direction: column; gap: 7px; }
 .itops-page .nm-interface-list {
   overflow: hidden;
   border-radius: 9px;
@@ -9402,12 +9446,6 @@
   font-size: 11px;
   text-align: center;
 }
-.itops-page .nm-strands-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
 .itops-page .nm-strand-add {
   display: inline-flex;
   align-items: center;
@@ -9422,11 +9460,6 @@
 }
 .itops-page .nm-strand-add:hover:not(:disabled) { background: var(--hover); color: var(--text); }
 .itops-page .nm-strand-add:disabled { opacity: 0.45; cursor: default; }
-.itops-page .nm-deep-link-editor {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
 .itops-page .nm-deep-link-list {
   overflow: hidden;
   border-radius: 9px;
@@ -9480,7 +9513,11 @@
   color: var(--text-muted);
   font-size: 10px;
 }
-.itops-page .nm-deep-link-remove {
+.itops-page .nm-collection-editor-list {
+  max-height: min(48vh, 420px);
+  overflow-y: auto;
+}
+.itops-page .nm-deep-link-action {
   display: inline-flex;
   width: 26px;
   height: 26px;
@@ -9493,9 +9530,21 @@
   color: var(--text-faint);
   cursor: pointer;
 }
-.itops-page .nm-deep-link-remove:hover {
+.itops-page .nm-deep-link-action:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--blue);
+}
+.itops-page .nm-deep-link-action.remove:hover:not(:disabled) {
   background: var(--hover);
   color: var(--red);
+}
+.itops-page .nm-deep-link-action:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.itops-page .nm-deep-link-action:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
 }
 .itops-page .nm-member-count {
   display: flex;

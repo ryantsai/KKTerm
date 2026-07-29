@@ -1804,6 +1804,8 @@
       "saved": "保存済み",
       "paletteLabel": "マップに追加",
       "addNode": "ノードを追加",
+      "lockSelection": "ロック",
+      "unlockSelection": "ロック解除",
       "nodeCategory": {
         "general": "General",
         "core": "コア / ルーティング",
@@ -1813,7 +1815,8 @@
         "cloud": "クラウド / WAN",
         "wireless": "無線",
         "endpoints": "エンドポイント",
-        "maps": "マップ"
+        "maps": "マップ",
+        "others": "その他"
       },
       "nodeKind": {
         "generic": "Generic",
@@ -1846,6 +1849,10 @@
       },
       "genericIconLabel": "Built-in icon",
       "deepLinksLabel": "Deep links",
+      "deepLinkCount_one": "ディープリンク {{count}} 件",
+      "deepLinkCount_other": "ディープリンク {{count}} 件",
+      "deepLinkOpenAction": "{{name}} を開く",
+      "collectionEditHint": "コンパクトエディターを開きます。",
       "deepLinkAdd": "Add deep link",
       "deepLinkTypeLabel": "Link to",
       "deepLinkTargetLabel": "Target",
@@ -1889,6 +1896,8 @@
       "addressItemLabel": "IP アドレス {{index}}",
       "addressRemove": "IP アドレスを削除",
       "interfacesLabel": "インターフェース",
+      "interfaceCount_one": "インターフェース {{count}} 件",
+      "interfaceCount_other": "インターフェース {{count}} 件",
       "interfaceAddTitle": "インターフェースを追加",
       "interfaceEditTitle": "インターフェースを編集",
       "interfaceEmpty": "インターフェースは記録されていません。",

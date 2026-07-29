@@ -1804,6 +1804,8 @@
       "saved": "Saved",
       "paletteLabel": "Add to map",
       "addNode": "Add Node",
+      "lockSelection": "Lock",
+      "unlockSelection": "Unlock",
       "nodeCategory": {
         "general": "General",
         "core": "Core & Routing",
@@ -1813,7 +1815,8 @@
         "cloud": "Cloud & WAN",
         "wireless": "Wireless",
         "endpoints": "Endpoints",
-        "maps": "Maps"
+        "maps": "Maps",
+        "others": "Others"
       },
       "nodeKind": {
         "generic": "Generic",
@@ -1846,6 +1849,10 @@
       },
       "genericIconLabel": "Built-in icon",
       "deepLinksLabel": "Deep links",
+      "deepLinkCount_one": "{{count}} deep link",
+      "deepLinkCount_other": "{{count}} deep links",
+      "deepLinkOpenAction": "Open {{name}}",
+      "collectionEditHint": "Open the compact editor.",
       "deepLinkAdd": "Add deep link",
       "deepLinkTypeLabel": "Link to",
       "deepLinkTargetLabel": "Target",
@@ -1889,6 +1896,8 @@
       "addressItemLabel": "IP address {{index}}",
       "addressRemove": "Remove IP address",
       "interfacesLabel": "Interfaces",
+      "interfaceCount_one": "{{count}} interface",
+      "interfaceCount_other": "{{count}} interfaces",
       "interfaceAddTitle": "Add interface",
       "interfaceEditTitle": "Edit interface",
       "interfaceEmpty": "No interfaces documented.",

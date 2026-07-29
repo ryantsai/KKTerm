@@ -90,6 +90,14 @@ test("IT Ops separates Batch Tasks from Networking in every locale", async () =>
       messages.itops.networkMap.deepLinksLabel,
       `${locale} should include Network Node deep links`,
     );
+    assert.ok(
+      messages.itops.networkMap.deepLinkCount_other,
+      `${locale} should include the compact Deep Link count`,
+    );
+    assert.ok(
+      messages.itops.networkMap.interfaceCount_other,
+      `${locale} should include the compact interface count`,
+    );
     assert.notEqual(
       messages.itops.navigation.batchTasks,
       messages.itops.tasks.heading,
@@ -116,8 +124,9 @@ test("Network Nodes use the expanded device catalog and links expose complete do
   assert.match(designer, /className="nm-device-art"/);
   assert.match(
     designer,
-    /data-shell=\{[\s\S]*\["switch", "switchL3", "server", "storage"\]\.includes\(kind\)/,
+    /function hasBlackDeviceShell[\s\S]*\["switch", "switchL3", "server", "storage"\]\.includes\(kind\)/,
   );
+  assert.match(designer, /data-shell=\{[\s\S]*hasBlackDeviceShell\(kind\)/);
   assert.match(artwork, /const NETWORK_NODE_ARTWORK: Record<NetworkNodeIconKind, string>/);
   assert.match(artwork, /router: `<ellipse/);
   assert.match(artwork, /geomap: `<path/);
@@ -137,7 +146,11 @@ test("Network Nodes use the expanded device catalog and links expose complete do
   assert.match(designer, /"wirelessController"/);
   assert.match(designer, /"camera"/);
   assert.match(designer, /"geomap"/);
-  assert.match(designer, /\{ id: "general", kinds: \["generic"\] \}/);
+  assert.match(designer, /\{ id: "others", kinds: \["generic", "geomap"\] \}/);
+  assert.match(
+    designer,
+    /category\.id === "others"[\s\S]*itops\.networkMap\.noteElement/,
+  );
   assert.match(designer, /function nodeArtworkKind/);
   assert.match(designer, /className="nm-icon-picker"/);
   assert.match(designer, /zoom: Math\.min\(100, Math\.max\(1, viewport\.zoom\)\)/);
@@ -148,6 +161,8 @@ test("Network Nodes use the expanded device catalog and links expose complete do
   assert.match(types, /\| "geomap"/);
   assert.match(types, /\| "generic"/);
   assert.match(types, /iconKind\?: NetworkNodeIconKind \| null;/);
+  assert.match(types, /iconBackgroundColor\?: string \| null;/);
+  assert.match(types, /locked\?: boolean;/);
   assert.match(types, /deepLinks: NetworkNodeDeepLink\[\];/);
   assert.match(types, /interface NetworkGeomapViewport/);
   assert.match(types, /geomapViewport\?: NetworkGeomapViewport \| null;/);
@@ -241,6 +256,8 @@ test("Network Maps configure palette items before ghost placement and expose nat
   assert.match(rustTypes, /pub interfaces: Vec<NetworkNodeInterface>/);
   assert.match(rustTypes, /pub deep_links: Vec<NetworkNodeDeepLink>/);
   assert.match(rustTypes, /pub icon_kind: Option<NetworkNodeKind>/);
+  assert.match(rustTypes, /pub icon_background_color: Option<String>/);
+  assert.match(rustTypes, /pub locked: bool/);
   assert.match(storage, /legacy_address/);
   assert.match(storage, /seen_deep_link_targets/);
   assert.match(storage, /from_interface_id[\s\S]*from_interfaces/);
@@ -331,7 +348,7 @@ test("Network Maps configure palette items before ghost placement and expose nat
   );
   assert.match(
     designer,
-    /onNodeClick=\{\(_event, node\) =>[\s\S]*setSelection\(\{ kind: "note", id: node\.id \}\)[\s\S]*setSelection\(\{ kind: "node", id: node\.id \}\)/,
+    /onNodeClick=\{\(event, node\) =>[\s\S]*event\.ctrlKey \|\| event\.metaKey \|\| event\.shiftKey[\s\S]*toggleNetworkMapCanvasSelection\(/,
   );
   assert.match(
     designer,
@@ -347,11 +364,11 @@ test("Network Maps configure palette items before ghost placement and expose nat
   assert.match(designer, /\{objectBrowserOpen \? \([\s\S]*itops\.networkMap\.paletteLabel/);
   assert.match(
     designer,
-    /label: t\("itops\.actions\.duplicate"\)[\s\S]*label: t\("itops\.actions\.delete"\)[\s\S]*kind: "separator"[\s\S]*label: t\("common\.properties"\)/,
+    /function showCanvasObjectContextMenu[\s\S]*const multiple = items\.length > 1[\s\S]*itops\.networkMap\.unlockSelection[\s\S]*itops\.networkMap\.lockSelection[\s\S]*label: t\("itops\.actions\.delete"\)/,
   );
   assert.match(
     designer,
-    /function showNoteContextMenu[\s\S]*label: t\("itops\.actions\.duplicate"\)[\s\S]*label: t\("itops\.actions\.delete"\)[\s\S]*label: t\("common\.properties"\)/,
+    /function showNoteContextMenu[\s\S]*showCanvasObjectContextMenu\([\s\S]*\{ kind: "note", id \}/,
   );
   assert.doesNotMatch(designer, /application\/x-kkterm-network-map/);
   assert.doesNotMatch(designer, /onDrop=\{dropPaletteItem\}/);
@@ -361,11 +378,37 @@ test("Network Maps configure palette items before ghost placement and expose nat
   assert.match(designer, /function NodeDeepLinksPopover/);
   assert.match(designer, /className="nm-deep-link-popover"/);
   assert.match(designer, /function NodeDeepLinkEditor/);
+  assert.match(designer, /function NodeDeepLinksEditor/);
+  assert.match(designer, /itops\.networkMap\.deepLinkCount/);
+  assert.match(designer, /itops\.networkMap\.deepLinkOpenAction/);
+  assert.match(
+    designer,
+    /className="nm-deep-link-action"[\s\S]*onNavigate\(link\)/,
+  );
+  assert.match(
+    designer,
+    /<NodeDeepLinksEditor[\s\S]*onNavigate=\{onNavigateDeepLink\}/,
+  );
+  assert.match(
+    designer,
+    /<NodePropertiesDialog[\s\S]*onNavigateDeepLink=\{onNavigateDeepLink\}/,
+  );
   assert.match(designer, /onShowWorkspace\(\)/);
   assert.match(sites, /function navigateNetworkMapDeepLink/);
   assert.match(styles, /\.nm-node-deep-links\s*\{/);
   assert.match(styles, /\.nm-deep-link-popover\s*\{/);
   assert.match(designer, /function NodeInterfaceEditor/);
+  assert.match(designer, /function NodeInterfacesEditor/);
+  assert.match(designer, /itops\.networkMap\.interfaceCount/);
+  assert.match(
+    designer,
+    /<Field label=\{t\("itops\.networkMap\.interfacesLabel"\)\}>[\s\S]*className="nm-member-count"[\s\S]*setInterfacesEditorOpen\(true\)/,
+  );
+  assert.match(
+    designer,
+    /<Field label=\{t\("itops\.networkMap\.deepLinksLabel"\)\}>[\s\S]*className="nm-member-count"[\s\S]*setDeepLinkEditorOpen\(true\)/,
+  );
+  assert.match(styles, /\.nm-collection-editor-list\s*\{[\s\S]*overflow-y: auto;/);
   assert.match(designer, /itops\.networkMap\.endpointInterfaceLabel/);
   assert.doesNotMatch(designer, /itops\.networkMap\.rootLabel/);
   assert.match(designer, /className="nm-choice-grid"/);
@@ -454,7 +497,10 @@ test("Network Maps use one interaction mode, a browser pen, reliable link handle
     styles,
     /\.nm-map-info\s*\{[\s\S]*position: absolute;[\s\S]*top: 12px;[\s\S]*left: 12px;[\s\S]*pointer-events: none;/,
   );
-  assert.match(designer, /setSelection\(\{ kind: "node", id: node\.id \}\)/);
+  assert.match(
+    designer,
+    /setSelection\(\{ kind: "canvas", items: \[\{ kind: "node", id: node\.id \}\] \}\)/,
+  );
   assert.doesNotMatch(designer, /itops\.networkMap\.modeImpact/);
   assert.match(
     designer,

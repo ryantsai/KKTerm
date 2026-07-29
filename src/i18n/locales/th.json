@@ -1804,6 +1804,8 @@
       "saved": "บันทึกแล้ว",
       "paletteLabel": "เพิ่มลงในแผนผัง",
       "addNode": "เพิ่มโหนด",
+      "lockSelection": "ล็อก",
+      "unlockSelection": "ปลดล็อก",
       "nodeCategory": {
         "general": "General",
         "core": "แกนกลางและการเราต์",
@@ -1813,7 +1815,8 @@
         "cloud": "คลาวด์และ WAN",
         "wireless": "ไร้สาย",
         "endpoints": "อุปกรณ์ปลายทาง",
-        "maps": "แผนที่"
+        "maps": "แผนที่",
+        "others": "อื่นๆ"
       },
       "nodeKind": {
         "generic": "Generic",
@@ -1846,6 +1849,10 @@
       },
       "genericIconLabel": "Built-in icon",
       "deepLinksLabel": "Deep links",
+      "deepLinkCount_one": "ดีปลิงก์ {{count}} รายการ",
+      "deepLinkCount_other": "ดีปลิงก์ {{count}} รายการ",
+      "deepLinkOpenAction": "เปิด {{name}}",
+      "collectionEditHint": "เปิดตัวแก้ไขแบบกระชับ",
       "deepLinkAdd": "Add deep link",
       "deepLinkTypeLabel": "Link to",
       "deepLinkTargetLabel": "Target",
@@ -1889,6 +1896,8 @@
       "addressItemLabel": "ที่อยู่ IP {{index}}",
       "addressRemove": "ลบที่อยู่ IP",
       "interfacesLabel": "อินเทอร์เฟซ",
+      "interfaceCount_one": "อินเทอร์เฟซ {{count}} รายการ",
+      "interfaceCount_other": "อินเทอร์เฟซ {{count}} รายการ",
       "interfaceAddTitle": "เพิ่มอินเทอร์เฟซ",
       "interfaceEditTitle": "แก้ไขอินเทอร์เฟซ",
       "interfaceEmpty": "ยังไม่มีอินเทอร์เฟซที่บันทึกไว้",

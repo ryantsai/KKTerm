@@ -31,6 +31,8 @@ export function matchesNetworkMapSearch(
       node.width,
       node.height,
       node.iconAccent,
+      node.iconBackgroundColor,
+      node.locked,
       ...node.interfaces.flatMap((entry) => [entry.id, entry.name, entry.address]),
       node.status,
       node.hostId,
@@ -63,6 +65,8 @@ export function matchesNetworkMapSearch(
       note.width,
       note.height,
       note.backgroundAccent,
+      note.backgroundColor,
+      note.locked,
     ]),
     ...displayTerms,
   ].join("\n"));
