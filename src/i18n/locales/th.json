@@ -1533,6 +1533,9 @@
     "export": {
       "pdf": "PDF",
       "excel": "Excel",
+      "csv": "CSV",
+      "tsv": "TSV",
+      "xlsx": "XLSX",
       "pdfFilter": "PDF",
       "excelFilter": "เวิร์กบุ๊ก Excel",
       "complete": "ส่งออก “{{name}}” แล้ว",

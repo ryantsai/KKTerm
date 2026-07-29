@@ -7707,9 +7707,13 @@
   font-weight: 600;
   cursor: pointer;
 }
-.itops-page .it-ipam-claim-btn:hover {
+.itops-page .it-ipam-claim-btn:hover:not(:disabled) {
   background: var(--hover);
   color: var(--text);
+}
+.itops-page .it-ipam-claim-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .itops-page .it-ipam-table {

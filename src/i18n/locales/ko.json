@@ -1533,6 +1533,9 @@
     "export": {
       "pdf": "PDF",
       "excel": "Excel",
+      "csv": "CSV",
+      "tsv": "TSV",
+      "xlsx": "XLSX",
       "pdfFilter": "PDF",
       "excelFilter": "Excel 통합 문서",
       "complete": "“{{name}}”을(를) 내보냈습니다.",

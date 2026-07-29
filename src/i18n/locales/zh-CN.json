@@ -1533,6 +1533,9 @@
     "export": {
       "pdf": "PDF",
       "excel": "Excel",
+      "csv": "CSV",
+      "tsv": "TSV",
+      "xlsx": "XLSX",
       "pdfFilter": "PDF",
       "excelFilter": "Excel 工作簿",
       "complete": "已导出“{{name}}”。",

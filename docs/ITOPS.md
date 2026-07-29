@@ -459,6 +459,14 @@ overwriting them. The backend revalidates and creates VLANs, then Prefixes, then
 Address Records in one SQLite transaction; any non-duplicate failure rolls the
 whole batch back. The dialog generates the canonical CSV sample locally.
 
+The IPAM toolbar's `itops.actions.export` menu saves every VLAN, IP Prefix, and
+Address Record as `itops.export.csv`, `itops.export.tsv`, or
+`itops.export.xlsx`. `ipamExportModel.ts` projects each format into the same
+canonical columns accepted by file import instead of creating a second report
+schema. CSV and TSV include a UTF-8 byte-order mark for desktop spreadsheet
+compatibility. XLSX is a real Office Open XML workbook with one `IPAM`
+worksheet, a frozen header row, and a column filter.
+
 The explicit IPAM scan sheet is a separate operator action. It scans only
 checked IP Prefixes and treats an address as used when ICMP ping, an SNMPv2c
 identity request, or one of the common TCP management/service ports answers.
