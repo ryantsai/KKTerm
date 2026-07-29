@@ -1807,7 +1807,7 @@
       "lockSelection": "Sperren",
       "unlockSelection": "Entsperren",
       "nodeCategory": {
-        "general": "General",
+        "general": "Allgemein",
         "core": "Kern & Routing",
         "security": "Sicherheit",
         "traffic": "Traffic-Management",
@@ -1819,7 +1819,7 @@
         "others": "Andere"
       },
       "nodeKind": {
-        "generic": "Generic",
+        "generic": "Generisch",
         "router": "Router",
         "gateway": "Gateway / Modem",
         "switch": "Switch (L2)",
@@ -1847,24 +1847,24 @@
         "camera": "Überwachungskamera",
         "geomap": "Geokarte"
       },
-      "genericIconLabel": "Built-in icon",
+      "genericIconLabel": "Integriertes Symbol",
       "deepLinksLabel": "Deep links",
       "deepLinkCount_one": "{{count}} Deep Link",
       "deepLinkCount_other": "{{count}} Deep Links",
       "deepLinkOpenAction": "{{name}} öffnen",
       "collectionEditHint": "Kompakten Editor öffnen.",
-      "deepLinkAdd": "Add deep link",
-      "deepLinkTypeLabel": "Link to",
-      "deepLinkTargetLabel": "Target",
-      "deepLinkNoTargets": "No destinations available",
-      "deepLinkUnavailable": "Unavailable destination",
-      "deepLinkEmpty": "No deep links.",
-      "deepLinksPopupLabel": "Deep links for {{name}}",
+      "deepLinkAdd": "Deep Link hinzufügen",
+      "deepLinkTypeLabel": "Verknüpfen mit",
+      "deepLinkTargetLabel": "Ziel",
+      "deepLinkNoTargets": "Keine Ziele verfügbar",
+      "deepLinkUnavailable": "Nicht verfügbares Ziel",
+      "deepLinkEmpty": "Keine Deep Links.",
+      "deepLinksPopupLabel": "Deep Links für {{name}}",
       "deepLinkType": {
-        "connection": "Connection",
+        "connection": "Verbindung",
         "site": "Site",
-        "serverRoom": "Server Room",
-        "rackItem": "Rack Device"
+        "serverRoom": "Serverraum",
+        "rackItem": "Rack-Gerät"
       },
       "linkKind": {
         "ethernet": "Kupfer / Ethernet",
@@ -3396,7 +3396,7 @@
       "importedDefault": "Importiert"
     },
     "closeConnection": "Verbindung schließen",
-    "reconnect": "Wieder verbinden",
+    "reconnect": "Erneut verbinden",
     "localFiles": "Datei-Explorer",
     "homeDirectory": "Home-Verzeichnis",
     "localFilesSubtitle": "Lokaler Dateibrowser",

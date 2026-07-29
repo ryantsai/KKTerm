@@ -1819,7 +1819,7 @@
         "others": "Khác"
       },
       "nodeKind": {
-        "generic": "Generic",
+        "generic": "Chung",
         "router": "Bộ định tuyến",
         "gateway": "Gateway / Modem",
         "switch": "Switch (L2)",
@@ -1847,24 +1847,24 @@
         "camera": "Camera an ninh",
         "geomap": "Bản đồ địa lý"
       },
-      "genericIconLabel": "Built-in icon",
-      "deepLinksLabel": "Deep links",
+      "genericIconLabel": "Biểu tượng tích hợp",
+      "deepLinksLabel": "Liên kết sâu",
       "deepLinkCount_one": "{{count}} liên kết sâu",
       "deepLinkCount_other": "{{count}} liên kết sâu",
       "deepLinkOpenAction": "Mở {{name}}",
       "collectionEditHint": "Mở trình chỉnh sửa thu gọn.",
-      "deepLinkAdd": "Add deep link",
-      "deepLinkTypeLabel": "Link to",
+      "deepLinkAdd": "Thêm liên kết sâu",
+      "deepLinkTypeLabel": "Liên kết đến",
       "deepLinkTargetLabel": "Target",
-      "deepLinkNoTargets": "No destinations available",
-      "deepLinkUnavailable": "Unavailable destination",
-      "deepLinkEmpty": "No deep links.",
-      "deepLinksPopupLabel": "Deep links for {{name}}",
+      "deepLinkNoTargets": "Không có điểm đến khả dụng",
+      "deepLinkUnavailable": "Điểm đến không khả dụng",
+      "deepLinkEmpty": "Không có liên kết sâu nào.",
+      "deepLinksPopupLabel": "Liên kết sâu của {{name}}",
       "deepLinkType": {
-        "connection": "Connection",
+        "connection": "Kết nối",
         "site": "Site",
-        "serverRoom": "Server Room",
-        "rackItem": "Rack Device"
+        "serverRoom": "Phòng máy chủ",
+        "rackItem": "Thiết bị rack"
       },
       "linkKind": {
         "ethernet": "Cáp đồng / Ethernet",
@@ -3396,7 +3396,7 @@
       "importedDefault": "Đã nhập"
     },
     "closeConnection": "Đóng kết nối",
-    "reconnect": "Reconnect",
+    "reconnect": "Kết nối lại",
     "localFiles": "Trình khám phá tệp",
     "homeDirectory": "Thư mục chính",
     "localFilesSubtitle": "Trình duyệt tệp cục bộ",

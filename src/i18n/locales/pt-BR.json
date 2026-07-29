@@ -1807,7 +1807,7 @@
       "lockSelection": "Bloquear",
       "unlockSelection": "Desbloquear",
       "nodeCategory": {
-        "general": "General",
+        "general": "Geral",
         "core": "Núcleo e roteamento",
         "security": "Segurança",
         "traffic": "Gerenciamento de tráfego",
@@ -1819,7 +1819,7 @@
         "others": "Outros"
       },
       "nodeKind": {
-        "generic": "Generic",
+        "generic": "Genérico",
         "router": "Roteador",
         "gateway": "Gateway / modem",
         "switch": "Switch (L2)",
@@ -1847,24 +1847,24 @@
         "camera": "Câmera de segurança",
         "geomap": "Geomapa"
       },
-      "genericIconLabel": "Built-in icon",
-      "deepLinksLabel": "Deep links",
+      "genericIconLabel": "Ícone integrado",
+      "deepLinksLabel": "Links profundos",
       "deepLinkCount_one": "{{count}} link profundo",
       "deepLinkCount_other": "{{count}} links profundos",
       "deepLinkOpenAction": "Abrir {{name}}",
       "collectionEditHint": "Abrir o editor compacto.",
-      "deepLinkAdd": "Add deep link",
-      "deepLinkTypeLabel": "Link to",
-      "deepLinkTargetLabel": "Target",
-      "deepLinkNoTargets": "No destinations available",
-      "deepLinkUnavailable": "Unavailable destination",
-      "deepLinkEmpty": "No deep links.",
-      "deepLinksPopupLabel": "Deep links for {{name}}",
+      "deepLinkAdd": "Adicionar link profundo",
+      "deepLinkTypeLabel": "Vincular a",
+      "deepLinkTargetLabel": "Alvo",
+      "deepLinkNoTargets": "Nenhum destino disponível",
+      "deepLinkUnavailable": "Destino indisponível",
+      "deepLinkEmpty": "Nenhum link profundo.",
+      "deepLinksPopupLabel": "Links profundos de {{name}}",
       "deepLinkType": {
-        "connection": "Connection",
+        "connection": "Conexão",
         "site": "Site",
-        "serverRoom": "Server Room",
-        "rackItem": "Rack Device"
+        "serverRoom": "Sala de servidores",
+        "rackItem": "Dispositivo de rack"
       },
       "linkKind": {
         "ethernet": "Cobre / Ethernet",

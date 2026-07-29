@@ -1807,7 +1807,7 @@
       "lockSelection": "Blocca",
       "unlockSelection": "Sblocca",
       "nodeCategory": {
-        "general": "General",
+        "general": "Generale",
         "core": "Core e routing",
         "security": "Sicurezza",
         "traffic": "Gestione del traffico",
@@ -1819,7 +1819,7 @@
         "others": "Altri"
       },
       "nodeKind": {
-        "generic": "Generic",
+        "generic": "Generico",
         "router": "Router",
         "gateway": "Gateway / modem",
         "switch": "Switch (L2)",
@@ -1847,24 +1847,24 @@
         "camera": "Telecamera di sicurezza",
         "geomap": "Geomappa"
       },
-      "genericIconLabel": "Built-in icon",
-      "deepLinksLabel": "Deep links",
+      "genericIconLabel": "Icona integrata",
+      "deepLinksLabel": "Collegamenti profondi",
       "deepLinkCount_one": "{{count}} collegamento profondo",
       "deepLinkCount_other": "{{count}} collegamenti profondi",
       "deepLinkOpenAction": "Apri {{name}}",
       "collectionEditHint": "Apri l’editor compatto.",
-      "deepLinkAdd": "Add deep link",
-      "deepLinkTypeLabel": "Link to",
-      "deepLinkTargetLabel": "Target",
-      "deepLinkNoTargets": "No destinations available",
-      "deepLinkUnavailable": "Unavailable destination",
-      "deepLinkEmpty": "No deep links.",
-      "deepLinksPopupLabel": "Deep links for {{name}}",
+      "deepLinkAdd": "Aggiungi collegamento profondo",
+      "deepLinkTypeLabel": "Collega a",
+      "deepLinkTargetLabel": "Destinazione",
+      "deepLinkNoTargets": "Nessuna destinazione disponibile",
+      "deepLinkUnavailable": "Destinazione non disponibile",
+      "deepLinkEmpty": "Nessun collegamento profondo.",
+      "deepLinksPopupLabel": "Collegamenti profondi per {{name}}",
       "deepLinkType": {
-        "connection": "Connection",
-        "site": "Site",
-        "serverRoom": "Server Room",
-        "rackItem": "Rack Device"
+        "connection": "Connessione",
+        "site": "Sito",
+        "serverRoom": "Sala server",
+        "rackItem": "Dispositivo rack"
       },
       "linkKind": {
         "ethernet": "Rame / Ethernet",

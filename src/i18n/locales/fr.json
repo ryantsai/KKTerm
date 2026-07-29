@@ -1807,7 +1807,7 @@
       "lockSelection": "Verrouiller",
       "unlockSelection": "Déverrouiller",
       "nodeCategory": {
-        "general": "General",
+        "general": "Général",
         "core": "Cœur & routage",
         "security": "Sécurité",
         "traffic": "Gestion du trafic",
@@ -1819,7 +1819,7 @@
         "others": "Autres"
       },
       "nodeKind": {
-        "generic": "Generic",
+        "generic": "Générique",
         "router": "Routeur",
         "gateway": "Passerelle / modem",
         "switch": "Commutateur (L2)",
@@ -1847,24 +1847,24 @@
         "camera": "Caméra de sécurité",
         "geomap": "Géocarte"
       },
-      "genericIconLabel": "Built-in icon",
-      "deepLinksLabel": "Deep links",
+      "genericIconLabel": "Icône intégrée",
+      "deepLinksLabel": "Liens profonds",
       "deepLinkCount_one": "{{count}} lien profond",
       "deepLinkCount_other": "{{count}} liens profonds",
       "deepLinkOpenAction": "Ouvrir {{name}}",
       "collectionEditHint": "Ouvrir l’éditeur compact.",
-      "deepLinkAdd": "Add deep link",
-      "deepLinkTypeLabel": "Link to",
-      "deepLinkTargetLabel": "Target",
-      "deepLinkNoTargets": "No destinations available",
-      "deepLinkUnavailable": "Unavailable destination",
-      "deepLinkEmpty": "No deep links.",
-      "deepLinksPopupLabel": "Deep links for {{name}}",
+      "deepLinkAdd": "Ajouter un lien profond",
+      "deepLinkTypeLabel": "Lier à",
+      "deepLinkTargetLabel": "Cible",
+      "deepLinkNoTargets": "Aucune destination disponible",
+      "deepLinkUnavailable": "Destination indisponible",
+      "deepLinkEmpty": "Aucun lien profond.",
+      "deepLinksPopupLabel": "Liens profonds pour {{name}}",
       "deepLinkType": {
-        "connection": "Connection",
+        "connection": "Connexion",
         "site": "Site",
-        "serverRoom": "Server Room",
-        "rackItem": "Rack Device"
+        "serverRoom": "Salle des serveurs",
+        "rackItem": "Appareil en rack"
       },
       "linkKind": {
         "ethernet": "Cuivre / Ethernet",

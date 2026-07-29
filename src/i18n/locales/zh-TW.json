@@ -1864,7 +1864,7 @@
         "connection": "連線",
         "site": "站台",
         "serverRoom": "伺服器機房",
-        "rackItem": "機架裝置"
+        "rackItem": "機櫃裝置"
       },
       "linkKind": {
         "ethernet": "銅纜 / 乙太網路",

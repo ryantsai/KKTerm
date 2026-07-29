@@ -1807,7 +1807,7 @@
       "lockSelection": "Kunci",
       "unlockSelection": "Buka kunci",
       "nodeCategory": {
-        "general": "General",
+        "general": "Umum",
         "core": "Inti & Routing",
         "security": "Keamanan",
         "traffic": "Manajemen Trafik",
@@ -1819,7 +1819,7 @@
         "others": "Lainnya"
       },
       "nodeKind": {
-        "generic": "Generic",
+        "generic": "Generik",
         "router": "Router",
         "gateway": "Gateway / Modem",
         "switch": "Switch (L2)",
@@ -1847,24 +1847,24 @@
         "camera": "Kamera Keamanan",
         "geomap": "Peta geografis"
       },
-      "genericIconLabel": "Built-in icon",
-      "deepLinksLabel": "Deep links",
+      "genericIconLabel": "Ikon bawaan",
+      "deepLinksLabel": "Tautan mendalam",
       "deepLinkCount_one": "{{count}} tautan mendalam",
       "deepLinkCount_other": "{{count}} tautan mendalam",
       "deepLinkOpenAction": "Buka {{name}}",
       "collectionEditHint": "Buka editor ringkas.",
-      "deepLinkAdd": "Add deep link",
-      "deepLinkTypeLabel": "Link to",
+      "deepLinkAdd": "Tambah tautan mendalam",
+      "deepLinkTypeLabel": "Tautkan ke",
       "deepLinkTargetLabel": "Target",
-      "deepLinkNoTargets": "No destinations available",
-      "deepLinkUnavailable": "Unavailable destination",
-      "deepLinkEmpty": "No deep links.",
-      "deepLinksPopupLabel": "Deep links for {{name}}",
+      "deepLinkNoTargets": "Tidak ada tujuan tersedia",
+      "deepLinkUnavailable": "Tujuan tidak tersedia",
+      "deepLinkEmpty": "Tidak ada tautan mendalam.",
+      "deepLinksPopupLabel": "Tautan mendalam untuk {{name}}",
       "deepLinkType": {
-        "connection": "Connection",
-        "site": "Site",
-        "serverRoom": "Server Room",
-        "rackItem": "Rack Device"
+        "connection": "Koneksi",
+        "site": "Situs",
+        "serverRoom": "Ruang server",
+        "rackItem": "Perangkat rak"
       },
       "linkKind": {
         "ethernet": "Tembaga / Ethernet",
