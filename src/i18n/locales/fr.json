@@ -1853,6 +1853,8 @@
       "labelLabel": "Libellé",
       "labelPlaceholder": "ex. Commutateur cœur",
       "kindLabel": "Type",
+      "geomapWidthLabel": "Largeur (px)",
+      "geomapHeightLabel": "Hauteur (px)",
       "geomapViewportLabel": "Vue de la carte",
       "geomapPreviewLabel": "Vue du monde sélectionnée",
       "geomapViewportHint": "Faites glisser la carte pour la déplacer. Faites défiler ou utilisez le curseur pour zoomer.",

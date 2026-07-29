@@ -1853,6 +1853,8 @@
       "labelLabel": "Nhãn",
       "labelPlaceholder": "vd. Switch lõi",
       "kindLabel": "Loại",
+      "geomapWidthLabel": "Chiều rộng (px)",
+      "geomapHeightLabel": "Chiều cao (px)",
       "geomapViewportLabel": "Khung bản đồ",
       "geomapPreviewLabel": "Khung bản đồ thế giới đã chọn",
       "geomapViewportHint": "Kéo bản đồ để di chuyển. Cuộn hoặc dùng thanh trượt để thu phóng.",

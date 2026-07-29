@@ -1853,6 +1853,8 @@
       "labelLabel": "標籤",
       "labelPlaceholder": "例如 核心交換器",
       "kindLabel": "類型",
+      "geomapWidthLabel": "寬度 (px)",
+      "geomapHeightLabel": "高度 (px)",
       "geomapViewportLabel": "地圖檢視",
       "geomapPreviewLabel": "選取的世界地圖檢視",
       "geomapViewportHint": "拖曳地圖即可平移。捲動或使用滑桿即可縮放。",

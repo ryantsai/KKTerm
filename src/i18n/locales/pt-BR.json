@@ -1853,6 +1853,8 @@
       "labelLabel": "Rótulo",
       "labelPlaceholder": "ex.: Switch de núcleo",
       "kindLabel": "Tipo",
+      "geomapWidthLabel": "Largura (px)",
+      "geomapHeightLabel": "Altura (px)",
       "geomapViewportLabel": "Visualização do mapa",
       "geomapPreviewLabel": "Visualização selecionada do mapa-múndi",
       "geomapViewportHint": "Arraste o mapa para mover. Role ou use o controle para ampliar.",

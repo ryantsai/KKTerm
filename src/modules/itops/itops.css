@@ -8994,6 +8994,11 @@
   display: grid;
   gap: 8px;
 }
+.itops-page .nm-geomap-size-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
 .itops-page .nm-geomap-editor-preview {
   position: relative;
   height: 220px;

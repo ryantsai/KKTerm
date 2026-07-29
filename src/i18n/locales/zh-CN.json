@@ -1853,6 +1853,8 @@
       "labelLabel": "标签",
       "labelPlaceholder": "例如 核心交换机",
       "kindLabel": "类型",
+      "geomapWidthLabel": "宽度（像素）",
+      "geomapHeightLabel": "高度（像素）",
       "geomapViewportLabel": "地图视图",
       "geomapPreviewLabel": "所选世界地图视图",
       "geomapViewportHint": "拖动地图以平移。滚动或使用滑块进行缩放。",

@@ -1853,6 +1853,8 @@
       "labelLabel": "Etiqueta",
       "labelPlaceholder": "p. ej. Switch troncal",
       "kindLabel": "Tipo",
+      "geomapWidthLabel": "Ancho (px)",
+      "geomapHeightLabel": "Altura (píxeles)",
       "geomapViewportLabel": "Vista del mapa",
       "geomapPreviewLabel": "Vista seleccionada del mapa mundial",
       "geomapViewportHint": "Arrastra el mapa para desplazarlo. Desplázate o usa el control para acercar.",

@@ -1853,6 +1853,8 @@
       "labelLabel": "Label",
       "labelPlaceholder": "mis. Switch inti",
       "kindLabel": "Jenis",
+      "geomapWidthLabel": "Lebar (px)",
+      "geomapHeightLabel": "Tinggi (px)",
       "geomapViewportLabel": "Tampilan peta",
       "geomapPreviewLabel": "Tampilan peta dunia yang dipilih",
       "geomapViewportHint": "Seret peta untuk menggeser. Gulir atau gunakan penggeser untuk memperbesar.",

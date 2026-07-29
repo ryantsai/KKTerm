@@ -216,8 +216,9 @@ Wireless (`accessPoint`, `wirelessController`), and Endpoints (`desktop`,
 (`geomap`). A Geomap is resizable cosmetic artwork backed by the built-in
 world-map SVG; its normalized zoom and pan viewport are saved with the node so
 the Properties dialog can select a crop from 100% through 10,000% before
-placement. It has no upper resize cap on the canvas, so it can span the full
-drawing as geographic background artwork. The canvas Geomap shows only that
+placement. Its Properties dialog accepts pixel width and height without an
+upper cap, so it can span the full drawing as geographic background artwork;
+Geomaps do not expose canvas resize handles. The canvas Geomap shows only that
 artwork, without label, caption, note, status, interface handles, or entry-point
 text. Its Properties dialog exposes only the artwork tint and map viewport; it
 does not expose device label, type, status, interface, or note fields. A Geomap
@@ -533,17 +534,19 @@ updates continuously while a handle is dragged; double-clicking opens its
 Properties dialog. Clicking a Network Link opens that link's
 Properties dialog. Edits are applied to the in-memory graph only when that
 dialog's Save action is confirmed. Moving a Network Node keeps its existing
-animated Links visible and attached throughout the drag, then recalculates the
-shortest handle sides when the drag ends.
+animated Links visible and attached throughout the drag without remeasuring
+unrelated node handles, then recalculates the shortest handle sides when the
+drag ends.
 Network Node Properties puts the device artwork and palette-backed icon
 background choices in one compact identity header. Small status choices use
 icon-backed radio cards; the 26-item node-kind list remains a select when
 editing an existing device node. Geomap Properties is purpose-built instead:
-it includes the artwork tint and a draggable world-map preview with
-scroll/slider zoom from 100% through 10,000%, omitting the device label, Type,
-status, interfaces, and note. The selected crop is visible in the placement
-ghost and saved Geomap. The canvas Geomap renders only the cropped artwork,
-has no upper resize cap, and has no Network Link handles. Each device node
+it includes the artwork tint, uncapped pixel width and height fields, and a
+draggable world-map preview with scroll/slider zoom from 100% through 10,000%,
+omitting the device label, Type, status, interfaces, and note. The selected
+crop and size are visible in the placement ghost and saved Geomap. The canvas
+Geomap renders only the cropped artwork and has neither resize nor Network Link
+handles. Each device node
 persists its individual width/height and an ordered interface inventory. An
 interface has a stable id, name, and optional documented IP address, and is
 added or edited in a focused nested dialog instead of expanding the parent

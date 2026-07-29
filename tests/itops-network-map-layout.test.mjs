@@ -103,12 +103,10 @@ test("Network Nodes use the expanded device catalog and links expose complete do
   assert.match(designer, /geomapViewport: isGeomap \? DEFAULT_GEOMAP_VIEWPORT : null/);
   assert.match(
     designer,
-    /maxWidth=\{data\.kind === "geomap" \? undefined : NODE_MAX_WIDTH\}/,
+    /data\.ghost \|\| data\.kind === "geomap" \? null : \(\s*<NodeResizer/,
   );
-  assert.match(
-    designer,
-    /maxHeight=\{data\.kind === "geomap" \? undefined : NODE_MAX_HEIGHT\}/,
-  );
+  assert.match(designer, /maxWidth=\{NODE_MAX_WIDTH\}/);
+  assert.match(designer, /maxHeight=\{NODE_MAX_HEIGHT\}/);
   assert.match(designer, /connectable: node\.kind !== "geomap"/);
   assert.match(designer, /data\.ghost \|\| data\.kind === "geomap"/);
   assert.match(
@@ -217,6 +215,9 @@ test("Network Maps configure palette items before ghost placement and expose nat
     designer,
     /if \(node\.kind === "geomap"\) \{[\s\S]*<GeomapViewportEditor[\s\S]*\n  \}\n\n  return \(/,
   );
+  assert.match(designer, /itops\.networkMap\.geomapWidthLabel/);
+  assert.match(designer, /itops\.networkMap\.geomapHeightLabel/);
+  assert.match(designer, /className="nm-geomap-size-fields"/);
   assert.match(
     designer,
     /NODE_KINDS\.filter\(\(kind\) => kind !== "geomap"\)\.map/,
@@ -254,6 +255,10 @@ test("Network Maps configure palette items before ghost placement and expose nat
   assert.match(
     designer,
     /onNodeDragStart=\{\(\) => setDragAnchorNodes\(graph\.nodes\)\}[\s\S]*onNodeDragStop=\{\(\) => setDragAnchorNodes\(null\)\}/,
+  );
+  assert.match(
+    designer,
+    /reconcileNetworkMapFlowNodes\(\s*renderedNodesRef\.current,[\s\S]*renderedNodesRef\.current = reconciled/,
   );
   assert.match(designer, /onPaneContextMenu=\{showCanvasContextMenu\}/);
   assert.match(

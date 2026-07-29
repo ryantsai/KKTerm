@@ -1853,6 +1853,8 @@
       "labelLabel": "Etichetta",
       "labelPlaceholder": "es. Switch di dorsale",
       "kindLabel": "Tipo",
+      "geomapWidthLabel": "Larghezza (px)",
+      "geomapHeightLabel": "Altezza (px)",
       "geomapViewportLabel": "Vista mappa",
       "geomapPreviewLabel": "Vista del mondo selezionata",
       "geomapViewportHint": "Trascina la mappa per spostarla. Scorri o usa il cursore per ingrandire.",

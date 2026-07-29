@@ -1853,6 +1853,8 @@
       "labelLabel": "레이블",
       "labelPlaceholder": "예: 코어 스위치",
       "kindLabel": "종류",
+      "geomapWidthLabel": "너비(픽셀)",
+      "geomapHeightLabel": "높이(px)",
       "geomapViewportLabel": "지도 보기",
       "geomapPreviewLabel": "선택한 세계 지도 보기",
       "geomapViewportHint": "지도를 끌어 이동합니다. 스크롤하거나 슬라이더를 사용해 확대/축소합니다.",

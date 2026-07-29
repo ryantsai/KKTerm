@@ -1853,6 +1853,8 @@
       "labelLabel": "ラベル",
       "labelPlaceholder": "例: コアスイッチ",
       "kindLabel": "種類",
+      "geomapWidthLabel": "幅 (ピクセル)",
+      "geomapHeightLabel": "高さ (ピクセル)",
       "geomapViewportLabel": "地図表示",
       "geomapPreviewLabel": "選択した世界地図の表示",
       "geomapViewportHint": "ドラッグして地図を移動します。スクロールまたはスライダーで拡大縮小します。",

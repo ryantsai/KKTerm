@@ -1853,6 +1853,8 @@
       "labelLabel": "Bezeichnung",
       "labelPlaceholder": "z. B. Core-Switch",
       "kindLabel": "Typ",
+      "geomapWidthLabel": "Breite (px)",
+      "geomapHeightLabel": "Höhe (px)",
       "geomapViewportLabel": "Kartenansicht",
       "geomapPreviewLabel": "Ausgewählter Weltkartenausschnitt",
       "geomapViewportHint": "Ziehen Sie die Karte zum Verschieben. Scrollen Sie oder verwenden Sie den Regler zum Zoomen.",

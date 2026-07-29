@@ -1853,6 +1853,8 @@
       "labelLabel": "Label",
       "labelPlaceholder": "e.g. Core switch",
       "kindLabel": "Type",
+      "geomapWidthLabel": "Width (px)",
+      "geomapHeightLabel": "Height (px)",
       "geomapViewportLabel": "Map view",
       "geomapPreviewLabel": "Selected world map view",
       "geomapViewportHint": "Drag the map to pan. Scroll or use the slider to zoom.",

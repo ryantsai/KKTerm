@@ -1853,6 +1853,8 @@
       "labelLabel": "ป้ายชื่อ",
       "labelPlaceholder": "เช่น สวิตช์แกนหลัก",
       "kindLabel": "ประเภท",
+      "geomapWidthLabel": "ความกว้าง (พิกเซล)",
+      "geomapHeightLabel": "ความสูง (พิกเซล)",
       "geomapViewportLabel": "มุมมองแผนที่",
       "geomapPreviewLabel": "มุมมองแผนที่โลกที่เลือก",
       "geomapViewportHint": "ลากแผนที่เพื่อเลื่อน ใช้ล้อเลื่อนหรือแถบเลื่อนเพื่อซูม",

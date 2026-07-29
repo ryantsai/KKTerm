@@ -94,6 +94,7 @@ import {
   NETWORK_NOTE_MIN_WIDTH as NOTE_MIN_WIDTH,
   NETWORK_NOTE_WIDTH as NOTE_WIDTH,
 } from "./networkMapCanvasChanges";
+import { reconcileNetworkMapFlowNodes } from "./networkMapFlowNodes";
 import { matchesNetworkMapSearch } from "./networkMapSearch";
 import {
   formatNetworkMapNoteMarkdown,
@@ -561,13 +562,13 @@ function MapNode({ data }: NodeProps<Node<MapNodeData>>) {
       data-placement-ghost={data.ghost ? "true" : undefined}
       style={{ width: "100%", height: "100%" }}
     >
-      {data.ghost ? null : (
+      {data.ghost || data.kind === "geomap" ? null : (
         <NodeResizer
           isVisible={data.selected && data.resizable}
           minWidth={NODE_MIN_WIDTH}
           minHeight={NODE_MIN_HEIGHT}
-          maxWidth={data.kind === "geomap" ? undefined : NODE_MAX_WIDTH}
-          maxHeight={data.kind === "geomap" ? undefined : NODE_MAX_HEIGHT}
+          maxWidth={NODE_MAX_WIDTH}
+          maxHeight={NODE_MAX_HEIGHT}
           lineClassName="nm-resize-line"
           handleClassName="nm-resize-handle"
         />
@@ -1243,6 +1244,36 @@ function NodePropertiesFields({
               })
             }
           />
+        </div>
+        <div className="nm-geomap-size-fields">
+          <Field label={t("itops.networkMap.geomapWidthLabel")}>
+            <TextInput
+              type="number"
+              min={NODE_MIN_WIDTH}
+              step={1}
+              value={Math.round(node.width)}
+              onChange={(event) => {
+                const width = event.currentTarget.valueAsNumber;
+                if (Number.isFinite(width)) {
+                  onChange({ width: Math.max(NODE_MIN_WIDTH, Math.round(width)) });
+                }
+              }}
+            />
+          </Field>
+          <Field label={t("itops.networkMap.geomapHeightLabel")}>
+            <TextInput
+              type="number"
+              min={NODE_MIN_HEIGHT}
+              step={1}
+              value={Math.round(node.height)}
+              onChange={(event) => {
+                const height = event.currentTarget.valueAsNumber;
+                if (Number.isFinite(height)) {
+                  onChange({ height: Math.max(NODE_MIN_HEIGHT, Math.round(height)) });
+                }
+              }}
+            />
+          </Field>
         </div>
         <Field label={t("itops.networkMap.geomapViewportLabel")}>
           <GeomapViewportEditor
@@ -2441,6 +2472,7 @@ function MapEditor({
   const [placementDraft, setPlacementDraft] = useState<PlacementDraft | null>(null);
   const [placementPoint, setPlacementPoint] = useState<{ x: number; y: number } | null>(null);
   const [dragAnchorNodes, setDragAnchorNodes] = useState<NetworkNode[] | null>(null);
+  const renderedNodesRef = useRef<Node<MapNodeData | MapNoteData>[]>([]);
   const suppressPlacementClickRef = useRef(false);
   // Which VLAN the overlay spotlights. Purely a view filter: it never edits the
   // graph and never feeds the reachability analysis, which stays VLAN-blind.
@@ -2699,7 +2731,12 @@ function MapEditor({
         });
       }
     }
-    return [...noteNodes, ...deviceNodes];
+    const reconciled = reconcileNetworkMapFlowNodes(
+      renderedNodesRef.current,
+      [...noteNodes, ...deviceNodes],
+    );
+    renderedNodesRef.current = reconciled;
+    return reconciled;
   }, [
     analysis.down,
     analysis.isolated,
