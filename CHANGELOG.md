@@ -3,6 +3,64 @@
 All notable changes to KKTerm are documented here.
 
 ## Direct Downloads
+* 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.135/kkterm-0.1.135-windows-x64-setup.exe)
+* 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.135/kkterm-0.1.135-windows-arm64-setup.exe)
+* 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.135/kkterm-0.1.135-windows-x64-portable.zip)
+* 📦 [Portable for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.135/kkterm-0.1.135-windows-arm64-portable.zip)
+
+## Highlights
+- **IPAM exports for CSV, TSV, and XLSX** are now available—because sometimes you need your topology in something other than pure text-as-configuration.  
+- **Network Map node locking** lets you lock Network Map nodes and notes so they don’t move or resize while you’re editing.
+
+## New
+- **IPAM CSV, TSV, and XLSX export options** (https://github.com/ryantsai/KKTerm/pull/697) — by @ryantsai.
+
+## Improved
+- **Network Map (IT Ops) updates** including additional statistics display and Geomap sizing fields with validation and localization support.
+- **Network Map designer** enhancements for Geomap handling with dynamic sizing and properties adjustments.
+- **Ephemeral screenshot editing + launch path handling**:
+  - Edit/save screenshots without persisting them in the library.
+  - Support opening files/folders passed via command line, with ephemeral Tabs so the view options don’t persist.
+
+## Fixed
+- **Locked state handling for Network Map search and selection context**:
+  - Locked nodes/notes are ignored for canvas changes and included in Network Map search criteria.
+  - Selection management supports context menu actions for locked items.
+- **Localization maintenance**:
+  - Removed obsolete localization files and updated translations across multiple languages for consistency/accuracy (including zh-TW).
+
+## Internal
+- **Localization + docs work** for IT Ops and Network Map UI strings and artwork.
+- **Tests added/updated** for network map locking behavior, Geomap layout/canvas changes, IPAM export, and launch path + ephemeral screenshot behavior.  
+
+---
+
+## 亮點
+- **IPAM 支援 CSV、TSV 與 XLSX 匯出**—有時候拓樸需要的不只是「純文字組態」而已。  
+- **網路地圖（Network Map）節點鎖定**：可鎖定節點與備註，編輯時它們不會再亂跑或被你手滑改變大小。
+
+## 新增
+- **IPAM CSV、TSV 與 XLSX 匯出選項**（https://github.com/ryantsai/KKTerm/pull/697）—由 @ryantsai 提供。
+
+## 改善
+- **IT Ops 的 Network Map 更新**：包含更多統計顯示，以及 Geomap 尺寸欄位（帶驗證）與在多語系下的支援。
+- **Network Map Designer**：強化 Geomap 的動態尺寸與屬性調整處理。
+- **短暫截圖編輯 + 啟動路徑處理**：
+  - 允許編輯/儲存不會持久化到截圖資料庫的短暫截圖。
+  - 支援用命令列傳入的檔案/資料夾開啟；並使用短暫的 Tab，避免視圖選項或子連線 Tab 被保留下來。
+
+## 修正
+- **Network Map 鎖定狀態的搜尋與選取行為**：
+  - 鎖定的節點/備註會被畫布變更忽略，且會被納入 Network Map 搜尋條件。
+  - 選取管理也支援鎖定項目的情境選單操作。
+- **本地化維護**：
+  - 移除過時的本地化檔案，並更新多語系翻譯以提升一致性/正確性（包含 zh-TW）。
+
+## Internal
+- **IT Ops 與 Network Map 的本地化/文件與素材**整理。
+- **新增/更新測試**：涵蓋網路地圖鎖定行為、Geomap 版面/畫布變更、IPAM 匯出，以及啟動路徑與短暫截圖的行為。
+
+## Direct Downloads
 * 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.134/kkterm-0.1.134-windows-x64-setup.exe)
 * 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.134/kkterm-0.1.134-windows-arm64-setup.exe)
 * 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.134/kkterm-0.1.134-windows-x64-portable.zip)
