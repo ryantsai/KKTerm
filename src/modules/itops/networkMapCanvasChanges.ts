@@ -60,19 +60,24 @@ export function applyNetworkMapCanvasNodeChanges(
     ) {
       const nodeIndex = nodes.findIndex((node) => node.id === change.id);
       if (nodeIndex >= 0) {
+        const node = nodes[nodeIndex];
+        const maxWidth =
+          node.kind === "geomap" ? Number.POSITIVE_INFINITY : NETWORK_NODE_MAX_WIDTH;
+        const maxHeight =
+          node.kind === "geomap" ? Number.POSITIVE_INFINITY : NETWORK_NODE_MAX_HEIGHT;
         const width = boundedDimension(
           change.dimensions.width,
           NETWORK_NODE_MIN_WIDTH,
-          NETWORK_NODE_MAX_WIDTH,
+          maxWidth,
         );
         const height = boundedDimension(
           change.dimensions.height,
           NETWORK_NODE_MIN_HEIGHT,
-          NETWORK_NODE_MAX_HEIGHT,
+          maxHeight,
         );
-        if (nodes[nodeIndex].width !== width || nodes[nodeIndex].height !== height) {
+        if (node.width !== width || node.height !== height) {
           nodes = nodes.slice();
-          nodes[nodeIndex] = { ...nodes[nodeIndex], width, height };
+          nodes[nodeIndex] = { ...node, width, height };
         }
       }
 

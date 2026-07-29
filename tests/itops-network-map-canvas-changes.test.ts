@@ -4,6 +4,8 @@ import type { NodeChange } from "@xyflow/react";
 
 import {
   applyNetworkMapCanvasNodeChanges,
+  NETWORK_NODE_MAX_HEIGHT,
+  NETWORK_NODE_MAX_WIDTH,
   NETWORK_NODE_MIN_HEIGHT,
   NETWORK_NODE_MIN_WIDTH,
 } from "../src/modules/itops/networkMapCanvasChanges.ts";
@@ -82,6 +84,41 @@ test("active resize changes update dimensions immediately and preserve safe boun
 
   assert.equal(bounded.nodes[0].width, NETWORK_NODE_MIN_WIDTH);
   assert.equal(bounded.nodes[0].height, NETWORK_NODE_MIN_HEIGHT);
+
+  const capped = applyNetworkMapCanvasNodeChanges(during, [
+    {
+      id: "node-a",
+      type: "dimensions",
+      resizing: false,
+      dimensions: { width: 2400, height: 1300 },
+    },
+  ] satisfies NodeChange[]);
+
+  assert.equal(capped.nodes[0].width, NETWORK_NODE_MAX_WIDTH);
+  assert.equal(capped.nodes[0].height, NETWORK_NODE_MAX_HEIGHT);
+});
+
+test("geomap resize has no upper size cap", () => {
+  const graph = graphFixture();
+  graph.nodes[0] = {
+    ...graph.nodes[0],
+    kind: "geomap",
+    width: 320,
+    height: 190,
+  };
+
+  const resized = applyNetworkMapCanvasNodeChanges(graph, [
+    {
+      id: "node-a",
+      type: "dimensions",
+      resizing: true,
+      setAttributes: true,
+      dimensions: { width: 2400.4, height: 1300.6 },
+    },
+  ] satisfies NodeChange[]);
+
+  assert.equal(resized.nodes[0].width, 2400);
+  assert.equal(resized.nodes[0].height, 1301);
 });
 
 test("drag positions update without rewriting unchanged entities", () => {

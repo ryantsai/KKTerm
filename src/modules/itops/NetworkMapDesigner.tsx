@@ -566,8 +566,8 @@ function MapNode({ data }: NodeProps<Node<MapNodeData>>) {
           isVisible={data.selected && data.resizable}
           minWidth={NODE_MIN_WIDTH}
           minHeight={NODE_MIN_HEIGHT}
-          maxWidth={NODE_MAX_WIDTH}
-          maxHeight={NODE_MAX_HEIGHT}
+          maxWidth={data.kind === "geomap" ? undefined : NODE_MAX_WIDTH}
+          maxHeight={data.kind === "geomap" ? undefined : NODE_MAX_HEIGHT}
           lineClassName="nm-resize-line"
           handleClassName="nm-resize-handle"
         />
@@ -575,7 +575,7 @@ function MapNode({ data }: NodeProps<Node<MapNodeData>>) {
       {/* Loose connection mode makes one handle usable from either end. Keeping
           a single hit target per side avoids overlapping source/target handles,
           where the top handle made the one below impossible to drop onto. */}
-      {data.ghost
+      {data.ghost || data.kind === "geomap"
         ? null
         : [Position.Left, Position.Right, Position.Top, Position.Bottom].map((position) => (
             <Handle
@@ -1221,6 +1221,39 @@ function NodePropertiesFields({
   );
   const unnamedInterface = t("itops.networkMap.interfaceUnbound");
 
+  if (node.kind === "geomap") {
+    return (
+      <>
+        <div className="nm-node-identity">
+          <span
+            className="nm-node-ic nm-node-identity-icon"
+            style={{ "--nm-node-accent": nodeAccent(node) } as CSSProperties}
+          >
+            <NetworkNodeArtwork kind="geomap" size={32} />
+          </span>
+          <span className="nm-node-identity-copy">
+            <strong>{t("itops.networkMap.nodeKind.geomap")}</strong>
+          </span>
+          <Swatches
+            accents={MAP_ACCENTS}
+            value={nodeAccent(node)}
+            onChange={(color) =>
+              onChange({
+                iconAccent: MAP_ACCENTS.findIndex((accent) => accent === color),
+              })
+            }
+          />
+        </div>
+        <Field label={t("itops.networkMap.geomapViewportLabel")}>
+          <GeomapViewportEditor
+            value={geomapViewport(node)}
+            onChange={(geomapViewport) => onChange({ geomapViewport })}
+          />
+        </Field>
+      </>
+    );
+  }
+
   return (
     <>
       <div className="nm-node-identity">
@@ -1269,18 +1302,10 @@ function NodePropertiesFields({
                   : {}),
               });
             }}
-            options={NODE_KINDS.map((kind) => ({
+            options={NODE_KINDS.filter((kind) => kind !== "geomap").map((kind) => ({
               value: kind,
               label: t(`itops.networkMap.nodeKind.${kind}`),
             }))}
-          />
-        </Field>
-      ) : null}
-      {node.kind === "geomap" ? (
-        <Field label={t("itops.networkMap.geomapViewportLabel")}>
-          <GeomapViewportEditor
-            value={geomapViewport(node)}
-            onChange={(geomapViewport) => onChange({ geomapViewport })}
           />
         </Field>
       ) : null}
@@ -1399,7 +1424,11 @@ function NodePropertiesDialog({
     <DialogShell onBackdrop={onClose} zClassName="itops-page">
       <Sheet
         width={620}
-        title={t("itops.networkMap.nodeHeading")}
+        title={t(
+          node.kind === "geomap"
+            ? "itops.networkMap.nodeKind.geomap"
+            : "itops.networkMap.nodeHeading",
+        )}
         footer={
           <Actions
             extraLeft={
@@ -2588,6 +2617,7 @@ function MapEditor({
       position: { x: node.x, y: node.y },
       width: node.width,
       height: node.height,
+      connectable: node.kind !== "geomap",
       selected: selection?.kind === "node" && selection.id === node.id,
       zIndex: node.kind === "geomap" ? 0 : 3,
       data: {
@@ -2758,7 +2788,14 @@ function MapEditor({
       if (exists) return current;
       const fromNode = current.nodes.find((node) => node.id === connection.source);
       const toNode = current.nodes.find((node) => node.id === connection.target);
-      if (!fromNode || !toNode) return current;
+      if (
+        !fromNode ||
+        !toNode ||
+        fromNode.kind === "geomap" ||
+        toNode.kind === "geomap"
+      ) {
+        return current;
+      }
       const id = newId("nml");
       const baseLink: NetworkLink = {
         id,

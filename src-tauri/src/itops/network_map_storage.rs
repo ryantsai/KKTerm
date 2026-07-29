@@ -154,8 +154,13 @@ fn sanitize_node(mut node: NetworkNode) -> NetworkNode {
         })
         .take(32)
         .collect();
-    node.width = node.width.clamp(120.0, 360.0);
-    node.height = node.height.clamp(44.0, 220.0);
+    if node.kind == NetworkNodeKind::Geomap {
+        node.width = node.width.max(120.0);
+        node.height = node.height.max(44.0);
+    } else {
+        node.width = node.width.clamp(120.0, 360.0);
+        node.height = node.height.clamp(44.0, 220.0);
+    }
     node.geomap_viewport = if node.kind == NetworkNodeKind::Geomap {
         let mut viewport = node
             .geomap_viewport
@@ -616,6 +621,8 @@ mod tests {
     fn clamps_geomap_viewports_and_clears_them_from_other_nodes() {
         let mut map = node("map");
         map.kind = NetworkNodeKind::Geomap;
+        map.width = 2400.0;
+        map.height = 1300.0;
         map.geomap_viewport = Some(NetworkGeomapViewport {
             zoom: 12.0,
             x: -20.0,
@@ -641,6 +648,8 @@ mod tests {
                 y: 100.0,
             })
         );
+        assert_eq!(sanitized.nodes[0].width, 2400.0);
+        assert_eq!(sanitized.nodes[0].height, 1300.0);
         assert!(sanitized.nodes[1].geomap_viewport.is_none());
     }
 

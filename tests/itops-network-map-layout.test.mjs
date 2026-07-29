@@ -101,6 +101,20 @@ test("Network Nodes use the expanded device catalog and links expose complete do
   assert.match(designer, /onPointerMove=.*geomap|onPointerMove=\{\(event\) =>/);
   assert.match(designer, /type="range"/);
   assert.match(designer, /geomapViewport: isGeomap \? DEFAULT_GEOMAP_VIEWPORT : null/);
+  assert.match(
+    designer,
+    /maxWidth=\{data\.kind === "geomap" \? undefined : NODE_MAX_WIDTH\}/,
+  );
+  assert.match(
+    designer,
+    /maxHeight=\{data\.kind === "geomap" \? undefined : NODE_MAX_HEIGHT\}/,
+  );
+  assert.match(designer, /connectable: node\.kind !== "geomap"/);
+  assert.match(designer, /data\.ghost \|\| data\.kind === "geomap"/);
+  assert.match(
+    designer,
+    /fromNode\.kind === "geomap" \|\|\s*toNode\.kind === "geomap"/,
+  );
   assert.match(styles, /\.nm-geomap-editor-preview\s*\{[\s\S]*touch-action: none;/);
   assert.match(worldMap, /<svg[\s\S]*id="land"/);
   assert.match(designer, /function NetworkLinkEdge/);
@@ -198,6 +212,14 @@ test("Network Maps configure palette items before ghost placement and expose nat
   assert.match(
     designer,
     /\{showKindPicker \? \(\s*<Field label=\{t\("itops\.networkMap\.kindLabel"\)\}>/,
+  );
+  assert.match(
+    designer,
+    /if \(node\.kind === "geomap"\) \{[\s\S]*<GeomapViewportEditor[\s\S]*\n  \}\n\n  return \(/,
+  );
+  assert.match(
+    designer,
+    /NODE_KINDS\.filter\(\(kind\) => kind !== "geomap"\)\.map/,
   );
   assert.match(designer, /function NotePropertiesDialog/);
   assert.match(designer, /function LinkPropertiesDialog/);
