@@ -1802,6 +1802,7 @@
       "paletteLabel": "Tambahkan ke peta",
       "addNode": "Tambah simpul",
       "nodeCategory": {
+        "general": "General",
         "core": "Inti & Routing",
         "security": "Keamanan",
         "traffic": "Manajemen Trafik",
@@ -1812,6 +1813,7 @@
         "maps": "Peta"
       },
       "nodeKind": {
+        "generic": "Generic",
         "router": "Router",
         "gateway": "Gateway / Modem",
         "switch": "Switch (L2)",
@@ -1838,6 +1840,21 @@
         "printer": "Printer",
         "camera": "Kamera Keamanan",
         "geomap": "Peta geografis"
+      },
+      "genericIconLabel": "Built-in icon",
+      "deepLinksLabel": "Deep links",
+      "deepLinkAdd": "Add deep link",
+      "deepLinkTypeLabel": "Link to",
+      "deepLinkTargetLabel": "Target",
+      "deepLinkNoTargets": "No destinations available",
+      "deepLinkUnavailable": "Unavailable destination",
+      "deepLinkEmpty": "No deep links.",
+      "deepLinksPopupLabel": "Deep links for {{name}}",
+      "deepLinkType": {
+        "connection": "Connection",
+        "site": "Site",
+        "serverRoom": "Server Room",
+        "rackItem": "Rack Device"
       },
       "linkKind": {
         "ethernet": "Tembaga / Ethernet",

@@ -9,7 +9,7 @@ use std::collections::HashSet;
 
 use super::types::{
     NetworkGeomapViewport, NetworkGraph, NetworkLink, NetworkLinkStrand, NetworkMap,
-    NetworkMapNote, NetworkNode, NetworkNodeInterface, NetworkNodeKind,
+    NetworkMapNote, NetworkNode, NetworkNodeDeepLinkKind, NetworkNodeInterface, NetworkNodeKind,
 };
 
 /// Ceiling on parallel physical links recorded for one drawn link. The canvas
@@ -151,6 +151,71 @@ fn sanitize_node(mut node: NetworkNode) -> NetworkNode {
             seen_values
                 .insert((interface.name.clone(), interface.address.clone()))
                 .then_some(interface)
+        })
+        .take(32)
+        .collect();
+    node.icon_kind = if node.kind == NetworkNodeKind::Generic {
+        match node.icon_kind {
+            Some(NetworkNodeKind::Generic) | None => Some(NetworkNodeKind::Switch),
+            selected => selected,
+        }
+    } else {
+        None
+    };
+    let mut seen_deep_link_ids = HashSet::new();
+    let mut seen_deep_link_targets = HashSet::new();
+    node.deep_links = node
+        .deep_links
+        .drain(..)
+        .enumerate()
+        .filter_map(|(index, mut link)| {
+            link.connection_id = link.connection_id.take().and_then(non_empty);
+            link.site_id = link.site_id.take().and_then(non_empty);
+            link.server_room = link.server_room.take().and_then(non_empty);
+            link.rack_id = link.rack_id.take().and_then(non_empty);
+            link.rack_item_id = link.rack_item_id.take().and_then(non_empty);
+            let target = match link.kind {
+                NetworkNodeDeepLinkKind::Connection => {
+                    link.site_id = None;
+                    link.server_room = None;
+                    link.rack_id = None;
+                    link.rack_item_id = None;
+                    format!("connection:{}", link.connection_id.as_ref()?)
+                }
+                NetworkNodeDeepLinkKind::Site => {
+                    link.connection_id = None;
+                    link.server_room = None;
+                    link.rack_id = None;
+                    link.rack_item_id = None;
+                    format!("site:{}", link.site_id.as_ref()?)
+                }
+                NetworkNodeDeepLinkKind::ServerRoom => {
+                    link.connection_id = None;
+                    link.rack_id = None;
+                    link.rack_item_id = None;
+                    format!(
+                        "serverRoom:{}:{}",
+                        link.site_id.as_ref()?,
+                        link.server_room.as_ref()?
+                    )
+                }
+                NetworkNodeDeepLinkKind::RackItem => {
+                    link.connection_id = None;
+                    link.server_room = None;
+                    format!(
+                        "rackItem:{}:{}:{}",
+                        link.site_id.as_ref()?,
+                        link.rack_id.as_ref()?,
+                        link.rack_item_id.as_ref()?
+                    )
+                }
+            };
+            if !seen_deep_link_targets.insert(target) {
+                return None;
+            }
+            link.id =
+                unique_deep_link_id(&mut seen_deep_link_ids, &node.id, index, non_empty(link.id));
+            Some(link)
         })
         .take(32)
         .collect();
@@ -342,6 +407,30 @@ fn unique_strand_id(
     unreachable!("the numeric suffix always yields another candidate")
 }
 
+fn unique_deep_link_id(
+    seen: &mut HashSet<String>,
+    node_id: &str,
+    index: usize,
+    preferred: Option<String>,
+) -> String {
+    if let Some(id) = preferred
+        && seen.insert(id.clone())
+    {
+        return id;
+    }
+    let base = format!("{node_id}-deep-link-{index}");
+    if seen.insert(base.clone()) {
+        return base;
+    }
+    for suffix in 2.. {
+        let candidate = format!("{base}-{suffix}");
+        if seen.insert(candidate.clone()) {
+            return candidate;
+        }
+    }
+    unreachable!("the numeric suffix always yields another candidate")
+}
+
 fn non_empty(value: String) -> Option<String> {
     let trimmed = value.trim();
     (!trimmed.is_empty()).then(|| trimmed.to_string())
@@ -461,7 +550,7 @@ mod tests {
     use super::*;
     use crate::itops::types::{
         NetworkGeomapViewport, NetworkLinkKind, NetworkLinkStatus, NetworkLinkStrandDisplay,
-        NetworkMapNote, NetworkNode, NetworkNodeKind,
+        NetworkMapNote, NetworkNode, NetworkNodeDeepLink, NetworkNodeDeepLinkKind, NetworkNodeKind,
     };
 
     fn open_test_db() -> SqliteConnection {
@@ -651,6 +740,70 @@ mod tests {
         assert_eq!(sanitized.nodes[0].width, 2400.0);
         assert_eq!(sanitized.nodes[0].height, 1300.0);
         assert!(sanitized.nodes[1].geomap_viewport.is_none());
+    }
+
+    #[test]
+    fn keeps_generic_artwork_and_sanitizes_soft_deep_links() {
+        let mut generic = node("generic");
+        generic.kind = NetworkNodeKind::Generic;
+        generic.icon_kind = Some(NetworkNodeKind::Generic);
+        generic.deep_links = vec![
+            NetworkNodeDeepLink {
+                id: String::new(),
+                kind: NetworkNodeDeepLinkKind::Connection,
+                connection_id: Some(" connection-1 ".into()),
+                site_id: Some("discarded".into()),
+                server_room: None,
+                rack_id: None,
+                rack_item_id: None,
+            },
+            NetworkNodeDeepLink {
+                id: "duplicate-target".into(),
+                kind: NetworkNodeDeepLinkKind::Connection,
+                connection_id: Some("connection-1".into()),
+                site_id: None,
+                server_room: None,
+                rack_id: None,
+                rack_item_id: None,
+            },
+            NetworkNodeDeepLink {
+                id: "room-link".into(),
+                kind: NetworkNodeDeepLinkKind::ServerRoom,
+                connection_id: None,
+                site_id: Some("site-1".into()),
+                server_room: Some(" Room A ".into()),
+                rack_id: Some("discarded".into()),
+                rack_item_id: None,
+            },
+            NetworkNodeDeepLink {
+                id: "invalid".into(),
+                kind: NetworkNodeDeepLinkKind::RackItem,
+                connection_id: None,
+                site_id: Some("site-1".into()),
+                server_room: None,
+                rack_id: Some("rack-1".into()),
+                rack_item_id: None,
+            },
+        ];
+        let mut switch = node("switch");
+        switch.icon_kind = Some(NetworkNodeKind::Router);
+
+        let sanitized = sanitize_graph(&NetworkGraph {
+            nodes: vec![generic, switch],
+            ..NetworkGraph::default()
+        });
+        let generic = &sanitized.nodes[0];
+        assert_eq!(generic.icon_kind, Some(NetworkNodeKind::Switch));
+        assert_eq!(generic.deep_links.len(), 2);
+        assert_eq!(generic.deep_links[0].id, "generic-deep-link-0");
+        assert_eq!(
+            generic.deep_links[0].connection_id.as_deref(),
+            Some("connection-1")
+        );
+        assert!(generic.deep_links[0].site_id.is_none());
+        assert_eq!(generic.deep_links[1].server_room.as_deref(), Some("Room A"));
+        assert!(generic.deep_links[1].rack_id.is_none());
+        assert!(sanitized.nodes[1].icon_kind.is_none());
     }
 
     #[test]

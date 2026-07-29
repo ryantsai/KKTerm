@@ -1252,6 +1252,7 @@ pub struct Vlan {
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum NetworkNodeKind {
+    Generic,
     Router,
     Gateway,
     #[default]
@@ -1326,6 +1327,32 @@ pub struct NetworkNodeInterface {
     pub address: String,
 }
 
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum NetworkNodeDeepLinkKind {
+    Connection,
+    Site,
+    ServerRoom,
+    RackItem,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkNodeDeepLink {
+    pub id: String,
+    pub kind: NetworkNodeDeepLinkKind,
+    #[serde(default)]
+    pub connection_id: Option<String>,
+    #[serde(default)]
+    pub site_id: Option<String>,
+    #[serde(default)]
+    pub server_room: Option<String>,
+    #[serde(default)]
+    pub rack_id: Option<String>,
+    #[serde(default)]
+    pub rack_item_id: Option<String>,
+}
+
 /// One device on a Network Map. The three id fields are optional soft
 /// references retained for imported Hosts.
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -1347,6 +1374,10 @@ pub struct NetworkNode {
     /// Optional palette index overriding the node kind's icon background.
     #[serde(default)]
     pub icon_accent: Option<u8>,
+    /// Generic nodes can borrow any built-in device artwork while remaining
+    /// behaviorally generic.
+    #[serde(default)]
+    pub icon_kind: Option<NetworkNodeKind>,
     /// Cosmetic crop of the built-in world map for Geomap nodes.
     #[serde(default)]
     pub geomap_viewport: Option<NetworkGeomapViewport>,
@@ -1367,6 +1398,10 @@ pub struct NetworkNode {
     pub connection_id: Option<String>,
     #[serde(default)]
     pub rack_item_id: Option<String>,
+    /// Ordered in-app Deep Links to other KKTerm app elements. Destinations
+    /// are intentionally not validated during map storage.
+    #[serde(default)]
+    pub deep_links: Vec<NetworkNodeDeepLink>,
     #[serde(default)]
     pub note: String,
 }

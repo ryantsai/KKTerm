@@ -31,6 +31,7 @@ import type {
   ResolvedHost,
   ServerRoom,
   NetworkMap,
+  NetworkNodeDeepLink,
 } from "../../types";
 import { ConnectionIcon } from "../workspace/connections/ConnectionIcon";
 import { ItIcon, IT_ACCENTS, type ItIconName } from "./icons";
@@ -573,6 +574,25 @@ export function SitesTab({
     setActiveId(siteId);
     setDrill(EMPTY_DRILL);
     setSelectedDestination(destination);
+  }
+
+  function navigateNetworkMapDeepLink(link: NetworkNodeDeepLink) {
+    if (link.kind === "connection") return;
+    if (link.kind === "site") {
+      selectSiteDestination(link.siteId, "site");
+      return;
+    }
+    if (link.kind === "serverRoom") {
+      selectNode(link.siteId, { serverRoom: link.serverRoom, rackId: null });
+      return;
+    }
+    const rack = (racksBySite[link.siteId] ?? []).find(
+      (entry) => entry.id === link.rackId,
+    );
+    const item = rack?.items.find((entry) => entry.id === link.rackItemId);
+    if (!rack || !item) return;
+    selectNode(link.siteId, { serverRoom: rack.serverRoom, rackId: rack.id });
+    setItemDialog({ rack, item });
   }
 
   function showTopologyMenu(
@@ -1294,6 +1314,8 @@ export function SitesTab({
             active={active}
             selectedMapId={selectedNetworkMapId}
             onSelectedMapIdChange={setSelectedNetworkMapId}
+            onShowWorkspace={onShowWorkspace}
+            onNavigateItOpsDeepLink={navigateNetworkMapDeepLink}
           />
         </div>
       ) : activeGroup && selectedDestination === "hosts" ? (

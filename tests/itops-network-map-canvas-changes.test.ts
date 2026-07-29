@@ -25,6 +25,7 @@ function graphFixture(): NetworkGraph {
         height: 52,
         interfaces: [],
         status: "up",
+        deepLinks: [],
         note: "",
       },
     ],

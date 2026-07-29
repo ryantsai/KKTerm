@@ -1802,6 +1802,7 @@
       "paletteLabel": "เพิ่มลงในแผนผัง",
       "addNode": "เพิ่มโหนด",
       "nodeCategory": {
+        "general": "General",
         "core": "แกนกลางและการเราต์",
         "security": "ความปลอดภัย",
         "traffic": "การจัดการทราฟฟิก",
@@ -1812,6 +1813,7 @@
         "maps": "แผนที่"
       },
       "nodeKind": {
+        "generic": "Generic",
         "router": "เราเตอร์",
         "gateway": "เกตเวย์ / โมเด็ม",
         "switch": "สวิตช์ (L2)",
@@ -1838,6 +1840,21 @@
         "printer": "เครื่องพิมพ์",
         "camera": "กล้องวงจรปิด",
         "geomap": "แผนที่ภูมิศาสตร์"
+      },
+      "genericIconLabel": "Built-in icon",
+      "deepLinksLabel": "Deep links",
+      "deepLinkAdd": "Add deep link",
+      "deepLinkTypeLabel": "Link to",
+      "deepLinkTargetLabel": "Target",
+      "deepLinkNoTargets": "No destinations available",
+      "deepLinkUnavailable": "Unavailable destination",
+      "deepLinkEmpty": "No deep links.",
+      "deepLinksPopupLabel": "Deep links for {{name}}",
+      "deepLinkType": {
+        "connection": "Connection",
+        "site": "Site",
+        "serverRoom": "Server Room",
+        "rackItem": "Rack Device"
       },
       "linkKind": {
         "ethernet": "สายทองแดง / อีเทอร์เน็ต",

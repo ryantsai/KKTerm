@@ -7037,6 +7037,66 @@
    Portaled to document.body (see DialogPortal) so it escapes the itops-page
    stacking context; selectors are intentionally NOT scoped to .itops-page.
    Sits at the dialog layer (kk-dlg-backdrop is z-index 130). */
+.nm-deep-link-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+}
+.nm-deep-link-popover {
+  position: fixed;
+  z-index: 131;
+  width: 278px;
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: 11px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.nm-deep-link-popover-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--hairline);
+  color: var(--text-muted);
+}
+.nm-deep-link-popover-head strong {
+  color: var(--text);
+  font-size: 11.5px;
+  font-weight: 680;
+}
+.nm-deep-link-popover-head span {
+  color: var(--blue);
+  font: 700 10px/1 var(--app-mono-font-family, ui-monospace, monospace);
+}
+.nm-deep-link-popover-rows {
+  display: flex;
+  max-height: 248px;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+  overflow-y: auto;
+}
+.nm-deep-link-popover-row {
+  width: 100%;
+  min-height: 42px;
+  padding: 6px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.nm-deep-link-popover-row:hover:not(:disabled) { background: var(--hover); }
+.nm-deep-link-popover-row:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.nm-deep-link-popover-row > svg { flex: 0 0 auto; }
+
 .rkc-backdrop {
   position: fixed;
   inset: 0;
@@ -8493,15 +8553,15 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 9px;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
   background: linear-gradient(
-    155deg,
-    color-mix(in srgb, var(--nm-node-accent) 76%, white),
-    color-mix(in srgb, var(--nm-node-accent) 78%, black)
+    150deg,
+    color-mix(in srgb, var(--nm-node-accent) 88%, var(--surface)),
+    color-mix(in srgb, var(--nm-node-accent) 94%, var(--text))
   );
-  color: #fff;
+  box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--text) 12%, transparent);
 }
 .itops-page .nm-picker-note {
   width: calc(50% - 4px);
@@ -8610,11 +8670,11 @@
   overflow: hidden;
   border-radius: 8px;
   background: linear-gradient(
-    155deg,
-    color-mix(in srgb, var(--nm-node-accent) 76%, white),
-    color-mix(in srgb, var(--nm-node-accent) 78%, black)
+    150deg,
+    color-mix(in srgb, var(--nm-node-accent) 88%, var(--surface)),
+    color-mix(in srgb, var(--nm-node-accent) 94%, var(--text))
   );
-  color: #fff;
+  box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--text) 12%, transparent);
 }
 .nm-node-content {
   display: flex;
@@ -8627,22 +8687,86 @@
 .nm-node[data-has-note="true"] .nm-node-content {
   height: calc(100% - 13px);
 }
-.nm-device-art { overflow: visible; }
-.nm-device-art-orbit {
-  opacity: 0.2;
-  stroke-dasharray: 3 5;
-  transform-origin: center;
-  animation: nmDeviceOrbit 8s linear infinite;
+.nm-node[data-has-deep-links="true"] .nm-node-content {
+  padding-right: 28px;
 }
-.nm-device-art-glyph {
-  transform-origin: center;
-  animation: nmDeviceBreathe 3.2s ease-in-out infinite;
+.nm-device-art {
+  --nm-hw-highlight: color-mix(in srgb, var(--surface) 98%, var(--text));
+  --nm-hw-top: color-mix(in srgb, var(--surface) 92%, var(--text));
+  --nm-hw-left: color-mix(in srgb, var(--surface-muted) 82%, var(--text));
+  --nm-hw-right: color-mix(in srgb, var(--surface-muted) 68%, var(--text));
+  --nm-hw-edge: color-mix(in srgb, var(--text-muted) 76%, var(--surface));
+  --nm-hw-detail: color-mix(in srgb, var(--text) 70%, var(--surface));
+  --nm-hw-screen: var(--terminal-2);
+  --nm-hw-shadow: color-mix(in srgb, var(--text) 72%, transparent);
+  overflow: visible;
 }
-.nm-device-art-ping {
-  fill: currentColor;
-  stroke: none;
-  transform-origin: 26px 6px;
-  animation: nmDevicePing 2.2s ease-out infinite;
+.nm-device-art[data-shell="black"] {
+  --nm-hw-highlight: color-mix(in srgb, var(--terminal) 74%, var(--terminal-fg));
+  --nm-hw-top: color-mix(in srgb, var(--terminal) 88%, var(--terminal-fg));
+  --nm-hw-left: color-mix(in srgb, var(--terminal-2) 92%, var(--terminal-fg));
+  --nm-hw-right: var(--terminal-2);
+  --nm-hw-edge: var(--terminal-border);
+  --nm-hw-detail: color-mix(in srgb, var(--terminal-fg) 62%, var(--terminal));
+}
+.nm-device-art-hardware {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: nmDeviceHardwareIdle 4.8s ease-in-out infinite;
+}
+.nm-device-shadow {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: nmDeviceShadow 4.8s ease-in-out infinite;
+}
+.nm-device-led {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: nmDeviceLed 1.65s steps(2, end) infinite;
+}
+.nm-device-led:nth-of-type(2n) { animation-delay: -0.7s; }
+.nm-device-led:nth-of-type(3n) { animation-delay: -1.15s; }
+.nm-device-screen {
+  animation: nmDeviceScreen 3.6s ease-in-out infinite;
+}
+.nm-device-art[data-kind="firewall"] path:nth-of-type(1),
+.nm-device-art[data-kind="firewall"] path:nth-of-type(2) {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: nmDeviceFlame 1.1s ease-in-out infinite alternate;
+}
+.nm-device-art[data-kind="loadBalancer"] path:first-of-type,
+.nm-device-art[data-kind="iot"] path:first-of-type {
+  stroke-dasharray: 4 3;
+  animation: nmDeviceDataPath 1.2s linear infinite;
+}
+.nm-device-art[data-kind="proxy"] path:nth-of-type(-n+4) {
+  animation: nmDeviceSignal 1.7s ease-in-out infinite;
+}
+.nm-device-art[data-kind="accessPoint"] path:nth-of-type(-n+2),
+.nm-device-art[data-kind="wirelessController"] path:nth-of-type(-n+2) {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: nmDeviceSignal 1.9s ease-out infinite;
+}
+.nm-device-art[data-kind="accessPoint"] path:nth-of-type(2),
+.nm-device-art[data-kind="wirelessController"] path:nth-of-type(2) {
+  animation-delay: -0.65s;
+}
+.nm-device-art[data-kind="idsIps"] ellipse,
+.nm-device-art[data-kind="camera"] circle:nth-of-type(1),
+.nm-device-art[data-kind="geomap"] path:nth-last-of-type(2) {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: nmDeviceScan 2.2s ease-in-out infinite;
+}
+.nm-device-art[data-kind="database"] path:nth-of-type(n+2),
+.nm-device-art[data-kind="dns"] path,
+.nm-device-art[data-kind="isp"] path {
+  animation: nmDeviceSignal 2.8s ease-in-out infinite;
+}
+.nm-device-art[data-kind="printer"] path:first-of-type {
+  animation: nmDevicePaper 2.6s ease-in-out infinite;
 }
 .nm-node-tx {
   flex: 1 1 auto;
@@ -8676,6 +8800,36 @@
   text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.nm-node[data-has-deep-links="true"] .nm-node-note {
+  right: 32px;
+}
+.nm-node-deep-links {
+  position: absolute;
+  top: 50%;
+  right: 5px;
+  display: inline-flex;
+  height: 22px;
+  align-items: center;
+  gap: 3px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-faint);
+  font: 700 10px/1 var(--app-mono-font-family, ui-monospace, monospace);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+.nm-node-deep-links span { color: var(--blue); }
+.nm-node-deep-links:hover {
+  background: var(--hover);
+  color: var(--blue);
+}
+.nm-node-deep-links:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
 }
 @container network-map-node (min-width: 240px) {
   .nm-node[data-has-note="true"] .nm-node-content {
@@ -9161,6 +9315,38 @@
   background: var(--accent);
   box-shadow: inset 0 0 0 3px var(--accent-soft);
 }
+.itops-page .nm-icon-picker {
+  display: grid;
+  max-height: 184px;
+  grid-template-columns: repeat(auto-fit, minmax(48px, 1fr));
+  gap: 5px;
+  padding: 7px;
+  overflow-y: auto;
+  border-radius: 10px;
+  background: var(--surface-muted);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+.itops-page .nm-icon-picker button {
+  display: inline-flex;
+  min-width: 0;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 3px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+.itops-page .nm-icon-picker button:hover { background: var(--hover); }
+.itops-page .nm-icon-picker button.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.itops-page .nm-icon-picker button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
 .itops-page .nm-interfaces { display: flex; flex-direction: column; gap: 7px; }
 .itops-page .nm-interface-list {
   overflow: hidden;
@@ -9232,6 +9418,81 @@
 }
 .itops-page .nm-strand-add:hover:not(:disabled) { background: var(--hover); color: var(--text); }
 .itops-page .nm-strand-add:disabled { opacity: 0.45; cursor: default; }
+.itops-page .nm-deep-link-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.itops-page .nm-deep-link-list {
+  overflow: hidden;
+  border-radius: 9px;
+  background: var(--surface-muted);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+.nm-deep-link-row,
+.nm-deep-link-popover-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+}
+.itops-page .nm-deep-link-row {
+  min-height: 44px;
+  padding: 7px 8px 7px 10px;
+}
+.itops-page .nm-deep-link-row + .nm-deep-link-row {
+  border-top: 1px solid var(--hairline);
+}
+.nm-deep-link-row.missing { opacity: 0.58; }
+.nm-deep-link-row-icon {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--blue);
+}
+.nm-deep-link-row-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+.nm-deep-link-row-copy strong,
+.nm-deep-link-row-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nm-deep-link-row-copy strong {
+  color: var(--text);
+  font-size: 11.5px;
+  font-weight: 620;
+}
+.nm-deep-link-row-copy small {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+.itops-page .nm-deep-link-remove {
+  display: inline-flex;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+.itops-page .nm-deep-link-remove:hover {
+  background: var(--hover);
+  color: var(--red);
+}
 .itops-page .nm-member-count {
   display: flex;
   width: 100%;
@@ -9554,17 +9815,40 @@
   0%, 100% { opacity: 0.08; transform: scale(0.72); }
   50% { opacity: 0.2; transform: scale(1.15); }
 }
-@keyframes nmDeviceOrbit {
-  to { transform: rotate(360deg); }
+@keyframes nmDeviceHardwareIdle {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-0.45px) scale(1.006); }
 }
-@keyframes nmDeviceBreathe {
-  0%, 100% { opacity: 0.88; transform: scale(0.96); }
-  50% { opacity: 1; transform: scale(1.04); }
+@keyframes nmDeviceShadow {
+  0%, 100% { opacity: 0.16; transform: scaleX(1); }
+  50% { opacity: 0.11; transform: scaleX(0.94); }
 }
-@keyframes nmDevicePing {
-  0%, 35% { opacity: 0; transform: scale(0.2); }
-  52% { opacity: 0.9; }
-  100% { opacity: 0; transform: scale(2.6); }
+@keyframes nmDeviceLed {
+  0%, 42%, 100% { opacity: 0.42; transform: scale(0.9); }
+  48%, 78% { opacity: 1; transform: scale(1.12); }
+}
+@keyframes nmDeviceScreen {
+  0%, 100% { opacity: 0.92; }
+  50% { opacity: 1; }
+}
+@keyframes nmDeviceFlame {
+  from { transform: skewX(-1deg) scaleY(0.94); }
+  to { transform: skewX(1.5deg) scaleY(1.04); }
+}
+@keyframes nmDeviceDataPath {
+  to { stroke-dashoffset: -14; }
+}
+@keyframes nmDeviceSignal {
+  0%, 100% { opacity: 0.46; }
+  50% { opacity: 1; }
+}
+@keyframes nmDeviceScan {
+  0%, 100% { opacity: 0.72; transform: scale(0.94); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+@keyframes nmDevicePaper {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(1.25px); }
 }
 @keyframes nmRootPulse {
   0%, 100% { box-shadow: 0 0 0 2px var(--surface), 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); }
@@ -9596,9 +9880,8 @@
   .itops-page .nm-map-preview-link,
   .itops-page .nm-map-preview-node,
   .itops-page .nm-map-preview-halo,
-  .nm-device-art-orbit,
-  .nm-device-art-glyph,
-  .nm-device-art-ping,
+  .nm-device-art-hardware,
+  .nm-device-art-hardware *,
   .itops-page .nm-picker-card,
   .nm-node,
   .nm-node[data-state="warning"],

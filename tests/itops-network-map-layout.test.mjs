@@ -4,6 +4,28 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
+test("Deep Link means navigation between two KKTerm app elements", async () => {
+  const [context, itops, settingsManual] = await Promise.all([
+    read("CONTEXT.md"),
+    read("docs/ITOPS.md"),
+    read("docs/manual/15-settings.md"),
+  ]);
+
+  assert.match(
+    context,
+    /\*\*Deep Link\*\*:[\s\S]*in-app navigation relationship from one KKTerm app element to another KKTerm app element/,
+  );
+  assert.match(
+    context,
+    /A Deep Link is not a web URL, an external URI or operating-system app link, a \*\*Network Link\*\*, or a Connection\/Rack binding/,
+  );
+  assert.match(
+    itops,
+    /\*\*Deep Link\*\* — an in-app navigation relationship from one KKTerm app element\s+to another/,
+  );
+  assert.doesNotMatch(settingsManual, /deep link to a macOS keychain permission pane/i);
+});
+
 test("Network Maps keep overview chrome out of the focused map workspace", async () => {
   const designer = await read("src/modules/itops/NetworkMapDesigner.tsx");
   const styles = await read("src/modules/itops/itops.css");
@@ -60,6 +82,14 @@ test("IT Ops separates Batch Tasks from Networking in every locale", async () =>
       messages.itops.networkMap.strandDisplayBundle,
       `${locale} should translate bundled line`,
     );
+    assert.ok(
+      messages.itops.networkMap.nodeKind.generic,
+      `${locale} should include the Generic node kind`,
+    );
+    assert.ok(
+      messages.itops.networkMap.deepLinksLabel,
+      `${locale} should include Network Node deep links`,
+    );
     assert.notEqual(
       messages.itops.navigation.batchTasks,
       messages.itops.tasks.heading,
@@ -74,8 +104,9 @@ test("IT Ops separates Batch Tasks from Networking in every locale", async () =>
 });
 
 test("Network Nodes use the expanded device catalog and links expose complete documented properties", async () => {
-  const [designer, types, styles, worldMap] = await Promise.all([
+  const [designer, artwork, types, styles, worldMap] = await Promise.all([
     read("src/modules/itops/NetworkMapDesigner.tsx"),
+    read("src/modules/itops/networkNodeArtwork.ts"),
     read("src/types.ts"),
     read("src/modules/itops/itops.css"),
     read("src/assets/network-map/world-map.svg"),
@@ -83,18 +114,41 @@ test("Network Nodes use the expanded device catalog and links expose complete do
 
   assert.match(designer, /function NetworkNodeArtwork/);
   assert.match(designer, /className="nm-device-art"/);
+  assert.match(
+    designer,
+    /data-shell=\{[\s\S]*\["switch", "switchL3", "server", "storage"\]\.includes\(kind\)/,
+  );
+  assert.match(artwork, /const NETWORK_NODE_ARTWORK: Record<NetworkNodeIconKind, string>/);
+  assert.match(artwork, /router: `<ellipse/);
+  assert.match(artwork, /geomap: `<path/);
+  assert.match(styles, /\.nm-device-art\[data-shell="black"\]/);
+  assert.match(styles, /@keyframes nmDeviceHardwareIdle/);
+  assert.match(styles, /@keyframes nmDeviceLed/);
+  assert.match(styles, /@keyframes nmDeviceSignal/);
+  assert.match(styles, /\.nm-device-art-hardware \*/);
+  assert.doesNotMatch(styles, /nmDeviceOrbit|nmDeviceBreathe|nmDevicePing/);
+  assert.doesNotMatch(
+    styles,
+    /color-mix\(in srgb, var\(--nm-node-accent\) 76%, white\)/,
+  );
   assert.match(designer, /"gateway"/);
   assert.match(designer, /"switchL3"/);
   assert.match(designer, /"vpnGateway"/);
   assert.match(designer, /"wirelessController"/);
   assert.match(designer, /"camera"/);
   assert.match(designer, /"geomap"/);
+  assert.match(designer, /\{ id: "general", kinds: \["generic"\] \}/);
+  assert.match(designer, /function nodeArtworkKind/);
+  assert.match(designer, /className="nm-icon-picker"/);
   assert.match(designer, /zoom: Math\.min\(100, Math\.max\(1, viewport\.zoom\)\)/);
   assert.match(designer, /max="100"/);
   assert.doesNotMatch(designer, /className="nm-geomap-node-caption"/);
   assert.match(designer, /data-state=\{data\.kind === "geomap" \? undefined : data\.state\}/);
   assert.match(designer, /NODE_CATEGORIES/);
   assert.match(types, /\| "geomap"/);
+  assert.match(types, /\| "generic"/);
+  assert.match(types, /iconKind\?: NetworkNodeIconKind \| null;/);
+  assert.match(types, /deepLinks: NetworkNodeDeepLink\[\];/);
   assert.match(types, /interface NetworkGeomapViewport/);
   assert.match(types, /geomapViewport\?: NetworkGeomapViewport \| null;/);
   assert.match(designer, /function GeomapViewportEditor/);
@@ -185,7 +239,10 @@ test("Network Maps configure palette items before ghost placement and expose nat
   assert.match(types, /toInterfaceId\?: string \| null;/);
   assert.match(types, /notes: NetworkMapNote\[\];/);
   assert.match(rustTypes, /pub interfaces: Vec<NetworkNodeInterface>/);
+  assert.match(rustTypes, /pub deep_links: Vec<NetworkNodeDeepLink>/);
+  assert.match(rustTypes, /pub icon_kind: Option<NetworkNodeKind>/);
   assert.match(storage, /legacy_address/);
+  assert.match(storage, /seen_deep_link_targets/);
   assert.match(storage, /from_interface_id[\s\S]*from_interfaces/);
   assert.match(storage, /to_interface_id[\s\S]*to_interfaces/);
 
@@ -300,6 +357,14 @@ test("Network Maps configure palette items before ghost placement and expose nat
   assert.doesNotMatch(designer, /onDrop=\{dropPaletteItem\}/);
   assert.doesNotMatch(designer, /\sdraggable(?:\s|=)/);
   assert.match(designer, /className="nm-node-identity"/);
+  assert.match(designer, /className="nm-node-deep-links nodrag nopan"/);
+  assert.match(designer, /function NodeDeepLinksPopover/);
+  assert.match(designer, /className="nm-deep-link-popover"/);
+  assert.match(designer, /function NodeDeepLinkEditor/);
+  assert.match(designer, /onShowWorkspace\(\)/);
+  assert.match(sites, /function navigateNetworkMapDeepLink/);
+  assert.match(styles, /\.nm-node-deep-links\s*\{/);
+  assert.match(styles, /\.nm-deep-link-popover\s*\{/);
   assert.match(designer, /function NodeInterfaceEditor/);
   assert.match(designer, /itops\.networkMap\.endpointInterfaceLabel/);
   assert.doesNotMatch(designer, /itops\.networkMap\.rootLabel/);

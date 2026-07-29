@@ -14,6 +14,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -45,6 +46,7 @@ import {
 import "@xyflow/react/dist/style.css";
 
 import worldMapUrl from "../../assets/network-map/world-map.svg";
+import { DialogPortal } from "../../app/DialogPortal";
 import {
   Actions,
   Btn,
@@ -59,8 +61,10 @@ import {
 } from "../../app/ui/dialog";
 import { showNativeContextMenu } from "../../lib/nativeContextMenu";
 import { nativeMenuIcons } from "../../lib/nativeMenuIcons";
+import { invokeCommand, isTauriRuntime } from "../../lib/tauri";
 import { useWorkspaceStore } from "../../store";
 import type {
+  Connection,
   NetworkGraph,
   NetworkGeomapViewport,
   NetworkLink,
@@ -72,8 +76,14 @@ import type {
   NetworkMapNote,
   NetworkMapStatus,
   NetworkNode,
+  NetworkNodeDeepLink,
+  NetworkNodeDeepLinkKind,
+  NetworkNodeIconKind,
   NetworkNodeInterface,
   NetworkNodeKind,
+  Rack,
+  ServerRoom,
+  Site,
   SiteHost,
   Vlan,
 } from "../../types";
@@ -96,6 +106,7 @@ import {
   parseNetworkMapDimensionDraft,
 } from "./networkMapCanvasChanges";
 import { reconcileNetworkMapFlowNodes } from "./networkMapFlowNodes";
+import { networkNodeArtworkMarkup } from "./networkNodeArtwork";
 import { matchesNetworkMapSearch } from "./networkMapSearch";
 import {
   formatNetworkMapNoteMarkdown,
@@ -108,6 +119,7 @@ import {
 } from "./reachability";
 import { useItOpsStore } from "./state";
 import { vlanAccent, vlanLabel, vlansById } from "./vlanModel";
+import { flattenConnections } from "../workspace/connections/treeUtils";
 
 const LINK_KINDS: NetworkLinkKind[] = ["ethernet", "fiber", "wan", "wireless"];
 
@@ -116,6 +128,7 @@ const LINK_KINDS: NetworkLinkKind[] = ["ethernet", "fiber", "wan", "wireless"];
  * two parallel lists would let a new kind appear in one surface and silently
  * vanish from the other. */
 const NODE_CATEGORIES = [
+  { id: "general", kinds: ["generic"] },
   { id: "core", kinds: ["router", "gateway", "switch", "switchL3", "hub"] },
   { id: "security", kinds: ["firewall", "vpnGateway", "idsIps"] },
   { id: "traffic", kinds: ["loadBalancer", "proxy", "dns"] },
@@ -134,6 +147,9 @@ const NODE_CATEGORIES = [
 
 const NODE_KINDS: readonly NetworkNodeKind[] = NODE_CATEGORIES.flatMap(
   (category) => category.kinds,
+);
+const BUILT_IN_ICON_KINDS = NODE_KINDS.filter(
+  (kind): kind is NetworkNodeIconKind => kind !== "generic",
 );
 
 /** Compile-time coverage guard. `Record<never, never>` is `{}` while every kind
@@ -168,6 +184,7 @@ const MAP_ACCENTS = Object.values(IT_ACCENTS);
 
 /** Glyph and accent per device kind, so a map reads at a glance while zoomed out. */
 const NODE_STYLE: Record<NetworkNodeKind, { accent: string }> = {
+  generic: { accent: IT_ACCENTS.graphite },
   router: { accent: IT_ACCENTS.indigo },
   gateway: { accent: IT_ACCENTS.indigo },
   switch: { accent: IT_ACCENTS.blue },
@@ -205,14 +222,154 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+interface NetworkMapDeepLinkCatalog {
+  connections: readonly Connection[];
+  sites: readonly Site[];
+  racksBySite: Readonly<Record<string, Rack[] | undefined>>;
+  serverRoomsBySite: Readonly<Record<string, ServerRoom[] | undefined>>;
+}
+
+interface NetworkMapDeepLinkTarget {
+  key: string;
+  link: NetworkNodeDeepLink;
+  label: string;
+  detail: string;
+  icon: ItIconName;
+  available: boolean;
+}
+
+function deepLinkKey(link: NetworkNodeDeepLink): string {
+  switch (link.kind) {
+    case "connection":
+      return JSON.stringify(["connection", link.connectionId]);
+    case "site":
+      return JSON.stringify(["site", link.siteId]);
+    case "serverRoom":
+      return JSON.stringify(["serverRoom", link.siteId, link.serverRoom]);
+    case "rackItem":
+      return JSON.stringify(["rackItem", link.siteId, link.rackId, link.rackItemId]);
+  }
+}
+
+function deepLinkTargets(
+  kind: NetworkNodeDeepLinkKind,
+  catalog: NetworkMapDeepLinkCatalog,
+  t: TFunction,
+): NetworkMapDeepLinkTarget[] {
+  if (kind === "connection") {
+    return catalog.connections.map((connection) => {
+      const link: NetworkNodeDeepLink = {
+        id: "",
+        kind,
+        connectionId: connection.id,
+      };
+      return {
+        key: deepLinkKey(link),
+        link,
+        label: connection.name,
+        detail: connection.host || t("itops.networkMap.deepLinkType.connection"),
+        icon: "network",
+        available: true,
+      };
+    });
+  }
+  if (kind === "site") {
+    return catalog.sites.map((site) => {
+      const link: NetworkNodeDeepLink = { id: "", kind, siteId: site.id };
+      return {
+        key: deepLinkKey(link),
+        link,
+        label: site.name,
+        detail: t("itops.networkMap.deepLinkType.site"),
+        icon: "site",
+        available: true,
+      };
+    });
+  }
+  if (kind === "serverRoom") {
+    return catalog.sites.flatMap((site) => {
+      const names = new Set(
+        (catalog.serverRoomsBySite[site.id] ?? []).map((room) => room.name.trim()),
+      );
+      for (const rack of catalog.racksBySite[site.id] ?? []) {
+        if (rack.serverRoom.trim()) names.add(rack.serverRoom.trim());
+      }
+      return [...names].map((serverRoom) => {
+        const link: NetworkNodeDeepLink = {
+          id: "",
+          kind,
+          siteId: site.id,
+          serverRoom,
+        };
+        return {
+          key: deepLinkKey(link),
+          link,
+          label: serverRoom,
+          detail: site.name,
+          icon: "room" as ItIconName,
+          available: true,
+        };
+      });
+    });
+  }
+  return catalog.sites.flatMap((site) =>
+    (catalog.racksBySite[site.id] ?? []).flatMap((rack) =>
+      rack.items.map((item) => {
+        const link: NetworkNodeDeepLink = {
+          id: "",
+          kind,
+          siteId: site.id,
+          rackId: rack.id,
+          rackItemId: item.id,
+        };
+        return {
+          key: deepLinkKey(link),
+          link,
+          label: item.label || t(`itops.racks.kind.${item.kind}`),
+          detail: [site.name, rack.serverRoom, rack.name].filter(Boolean).join(" · "),
+          icon: "rack" as ItIconName,
+          available: true,
+        };
+      }),
+    ),
+  );
+}
+
+function resolveDeepLink(
+  link: NetworkNodeDeepLink,
+  catalog: NetworkMapDeepLinkCatalog,
+  t: TFunction,
+): NetworkMapDeepLinkTarget {
+  const resolved = deepLinkTargets(link.kind, catalog, t).find(
+    (target) => target.key === deepLinkKey(link),
+  );
+  return resolved ?? {
+    key: deepLinkKey(link),
+    link,
+    label: t("itops.networkMap.deepLinkUnavailable"),
+    detail: t(`itops.networkMap.deepLinkType.${link.kind}`),
+    icon:
+      link.kind === "site"
+        ? "site"
+        : link.kind === "serverRoom"
+          ? "room"
+          : link.kind === "rackItem"
+            ? "rack"
+            : "network",
+    available: false,
+  };
+}
+
 /** Node state drives the card's themed treatment; never a hard-coded colour. */
 type NodeState = "up" | "warning" | "down" | "isolated";
 
 interface MapNodeData extends Record<string, unknown> {
+  id: string;
   label: string;
   sub: string;
   note: string;
   kind: NetworkNodeKind;
+  iconKind: NetworkNodeIconKind;
   state: NodeState;
   root: boolean;
   selected: boolean;
@@ -221,6 +378,9 @@ interface MapNodeData extends Record<string, unknown> {
   accent: string;
   resizable: boolean;
   geomapViewport: NetworkGeomapViewport;
+  deepLinks: NetworkNodeDeepLink[];
+  deepLinksPopupLabel: string;
+  onOpenDeepLinks?: (nodeId: string, anchor: DOMRect) => void;
   ghost?: boolean;
 }
 
@@ -232,6 +392,10 @@ const DEFAULT_GEOMAP_VIEWPORT: NetworkGeomapViewport = {
 
 function geomapViewport(node: NetworkNode): NetworkGeomapViewport {
   return node.geomapViewport ?? DEFAULT_GEOMAP_VIEWPORT;
+}
+
+function nodeArtworkKind(node: Pick<NetworkNode, "kind" | "iconKind">): NetworkNodeIconKind {
+  return node.kind === "generic" ? node.iconKind ?? "switch" : node.kind;
 }
 
 function GeomapArtwork({
@@ -411,197 +575,25 @@ function NetworkNodeArtwork({
   kind,
   size = 30,
 }: {
-  kind: NetworkNodeKind;
+  kind: NetworkNodeIconKind;
   size?: number;
 }) {
-  if (kind === "geomap") {
-    return (
-      <span className="nm-device-art nm-device-art-geomap" style={{ width: size, height: size }}>
-        <GeomapArtwork />
-      </span>
-    );
-  }
-  const artwork = {
-    router: (
-      <>
-        <circle cx="16" cy="16" r="9.5" />
-        <path d="M8.5 16h15M16 8.5v15M11.5 11.5 8.8 8.8M20.5 20.5l2.7 2.7M20.5 11.5l2.7-2.7M11.5 20.5l-2.7 2.7" />
-      </>
-    ),
-    gateway: (
-      <>
-        <rect x="7" y="13" width="18" height="9" rx="2.5" />
-        <path d="M12 13V9M20 13V9M10 17.5h12" />
-      </>
-    ),
-    switch: (
-      <>
-        <rect x="5.5" y="8" width="21" height="16" rx="4" />
-        <path d="M10 13h3M16 13h3M22 13h1M10 19h3M16 19h3M22 19h1" />
-      </>
-    ),
-    switchL3: (
-      <>
-        <rect x="5.5" y="11" width="21" height="13" rx="4" />
-        <path d="M10 16h3M16 16h3M22 16h1M10 20h3M16 20h3M22 20h1M7 7h7.5M14.5 7l-2.6-2.6M14.5 7l-2.6 2.6M25 8.6h-7.5M17.5 8.6l2.6-2.6M17.5 8.6l2.6 2.6" />
-      </>
-    ),
-    hub: (
-      <>
-        <circle cx="16" cy="16" r="3" />
-        <path d="M16 13V7M16 19v6M13 16H7M19 16h6" />
-        <circle cx="16" cy="5" r="1.6" />
-        <circle cx="16" cy="27" r="1.6" />
-        <circle cx="5" cy="16" r="1.6" />
-        <circle cx="27" cy="16" r="1.6" />
-      </>
-    ),
-    firewall: (
-      <>
-        <path d="M6.5 24V9.5L16 5l9.5 4.5V24L16 28Z" />
-        <path d="M7 14h18M7 20h18M12 8v6M19.5 7.5V14M12 14v6M20 14v6M12 20v5.5M20 20v5.5" />
-      </>
-    ),
-    vpnGateway: (
-      <>
-        <path d="M16 5l9 4v7c0 6-4 9.5-9 11-5-1.5-9-5-9-11V9Z" />
-        <circle cx="16" cy="16" r="2.2" />
-        <path d="M16 18.2V22" />
-      </>
-    ),
-    idsIps: (
-      <>
-        <path d="M16 5l9 4v7c0 6-4 9.5-9 11-5-1.5-9-5-9-11V9Z" />
-        <path d="M11.3 15.6c1.3-1.7 2.9-2.5 4.7-2.5s3.4.8 4.7 2.5c-1.3 1.7-2.9 2.5-4.7 2.5s-3.4-.8-4.7-2.5Z" />
-        <circle cx="16" cy="15.6" r="1.3" />
-      </>
-    ),
-    server: (
-      <>
-        <rect x="6" y="5.5" width="20" height="8" rx="2.5" />
-        <rect x="6" y="18.5" width="20" height="8" rx="2.5" />
-        <path d="M10 9.5h.1M10 22.5h.1M14 9.5h8M14 22.5h8" />
-      </>
-    ),
-    loadBalancer: (
-      <>
-        <circle cx="16" cy="7" r="3" />
-        <circle cx="8" cy="24" r="3" />
-        <circle cx="24" cy="24" r="3" />
-        <path d="M16 10v5M16 15H8v6M16 15h8v6" />
-      </>
-    ),
-    proxy: (
-      <path d="M6 12h14M20 12l-3.5-3.5M20 12l-3.5 3.5M26 20H12M12 20l3.5-3.5M12 20l3.5 3.5" />
-    ),
-    dns: (
-      <>
-        <circle cx="14" cy="14" r="8" />
-        <path d="M6 14h16M14 6c2.5 2.2 2.5 13.8 0 16M14 6c-2.5 2.2-2.5 13.8 0 16" />
-        <rect x="19" y="19" width="8" height="6" rx="1.5" />
-        <path d="M22 22h.1" />
-      </>
-    ),
-    cloud: (
-      <>
-        <path d="M9 24.5h14.5a5 5 0 0 0 .6-10A8.2 8.2 0 0 0 8.5 13 5.8 5.8 0 0 0 9 24.5Z" />
-        <path d="M12 19h8" />
-      </>
-    ),
-    database: (
-      <>
-        <path d="M8 9c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3Z" />
-        <path d="M8 9v14c0 1.7 3.6 3 8 3s8-1.3 8-3V9M8 16c0 1.7 3.6 3 8 3s8-1.3 8-3" />
-      </>
-    ),
-    storage: (
-      <>
-        <rect x="6" y="7" width="20" height="7" rx="2" />
-        <rect x="6" y="18" width="20" height="7" rx="2" />
-        <path d="M10 10.5h.1M10 21.5h.1" />
-        <circle cx="22" cy="10.5" r="1" />
-        <circle cx="22" cy="21.5" r="1" />
-      </>
-    ),
-    isp: (
-      <>
-        <circle cx="16" cy="17" r="8" />
-        <path d="M8 17h16M16 9c2.2 2 2.2 12 0 16M16 9c-2.2 2-2.2 12 0 16M11 6.5a13 13 0 0 1 10 0" />
-      </>
-    ),
-    accessPoint: (
-      <path d="M16 24h.1M11 19.5a7 7 0 0 1 10 0M7.5 15.5a12 12 0 0 1 17 0" />
-    ),
-    wirelessController: (
-      <>
-        <rect x="12" y="24" width="8" height="3" rx="1" />
-        <path d="M16 24V10M11.5 14a5 5 0 0 1 9 0M8.5 10.5a9.5 9.5 0 0 1 15 0" />
-      </>
-    ),
-    desktop: (
-      <>
-        <rect x="4" y="7" width="15" height="11" rx="2" />
-        <path d="M9 23h5M11.5 18v5" />
-        <rect x="21" y="7" width="6" height="16" rx="1.5" />
-        <path d="M24 10.5h.1M24 14h.1" />
-      </>
-    ),
-    laptop: (
-      <>
-        <rect x="7" y="6" width="18" height="12" rx="2" />
-        <path d="M4.5 24h23l-2.6-5H7.1ZM13.5 21.5h5" />
-      </>
-    ),
-    smartphone: (
-      <>
-        <rect x="11" y="3.5" width="10" height="25" rx="3" />
-        <path d="M14 7h4" />
-        <circle cx="16" cy="24.5" r="1.2" />
-      </>
-    ),
-    iot: (
-      <>
-        <rect x="10" y="10" width="12" height="12" rx="2" />
-        <path d="M13 10V6M19 10V6M13 26v-4M19 26v-4M10 13H6M10 19H6M26 13h-4M26 19h-4" />
-      </>
-    ),
-    voip: (
-      <path d="M9.3 8.3c.3-1.1 1.1-1.7 2.2-1.6l2.2.3c.9.1 1.4.9 1.3 1.8l-.4 2.3c-.1.7-.6 1.3-1.3 1.4-.6.1-1 .5-1 1.1-.2 1.4 2 3.7 3.4 3.5.6-.1 1-.5 1.1-1.1.1-.7.6-1.2 1.3-1.3l2.3-.4c.9-.1 1.6.4 1.7 1.3l.3 2.2c.1 1.1-.5 1.9-1.6 2.2-5.8 1.5-13.4-6.1-11.9-11.7Z" />
-    ),
-    printer: (
-      <>
-        <rect x="8" y="13" width="16" height="8" rx="2" />
-        <path d="M10 13V8h12v5" />
-        <rect x="11" y="21" width="10" height="5" rx="1" />
-        <path d="M11 16h.1" />
-      </>
-    ),
-    camera: (
-      <>
-        <rect x="5" y="11" width="16" height="11" rx="2.5" />
-        <path d="M17 14l6-3v10l-6-3Z" />
-        <circle cx="11" cy="16.5" r="3" />
-      </>
-    ),
-  }[kind];
-
   return (
     <svg
       className="nm-device-art"
       data-kind={kind}
+      data-shell={
+        ["switch", "switchL3", "server", "storage"].includes(kind) ? "black" : "light"
+      }
       width={size}
       height={size}
-      viewBox="0 0 32 32"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.65"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      viewBox="0 0 64 64"
       aria-hidden="true"
     >
-      <circle className="nm-device-art-orbit" cx="16" cy="16" r="14" />
-      <g className="nm-device-art-glyph">{artwork}</g>
-      <circle className="nm-device-art-ping" cx="26" cy="6" r="2" />
+      <g
+        className="nm-device-art-hardware"
+        dangerouslySetInnerHTML={{ __html: networkNodeArtworkMarkup(kind) }}
+      />
     </svg>
   );
 }
@@ -616,6 +608,7 @@ function MapNode({ data }: NodeProps<Node<MapNodeData>>) {
       data-kind={data.kind}
       data-root={data.kind !== "geomap" && data.root ? "true" : undefined}
       data-has-note={data.kind !== "geomap" && note ? "true" : undefined}
+      data-has-deep-links={data.deepLinks.length > 0 ? "true" : undefined}
       data-placement-ghost={data.ghost ? "true" : undefined}
       style={{ width: "100%", height: "100%" }}
     >
@@ -654,7 +647,7 @@ function MapNode({ data }: NodeProps<Node<MapNodeData>>) {
       ) : (
         <span className="nm-node-content">
           <span className="nm-node-ic" style={accentStyle}>
-            <NetworkNodeArtwork kind={data.kind} size={24} />
+            <NetworkNodeArtwork kind={data.iconKind} size={28} />
           </span>
           <span className="nm-node-tx">
             <span className="nm-node-lab">{data.label}</span>
@@ -663,6 +656,21 @@ function MapNode({ data }: NodeProps<Node<MapNodeData>>) {
         </span>
       )}
       {data.kind !== "geomap" && note ? <span className="nm-node-note">{note}</span> : null}
+      {data.kind !== "geomap" && data.deepLinks.length > 0 && data.onOpenDeepLinks ? (
+        <button
+          type="button"
+          className="nm-node-deep-links nodrag nopan"
+          aria-label={data.deepLinksPopupLabel}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            data.onOpenDeepLinks?.(data.id, event.currentTarget.getBoundingClientRect());
+          }}
+        >
+          <ItIcon name="link" size={11} />
+          <span>{data.deepLinks.length}</span>
+        </button>
+      ) : null}
       {data.kind !== "geomap" && data.root ? (
         <span className="nm-node-root" title={data.rootLabel}>
           <ItIcon name="pulse" size={11} />
@@ -1053,6 +1061,7 @@ function hostsAsNodes(hosts: readonly SiteHost[], offset: number): NetworkNode[]
     width: NODE_WIDTH,
     height: NODE_HEIGHT,
     iconAccent: null,
+    iconKind: null,
     interfaces: [
       {
         id: newId("nmi"),
@@ -1064,6 +1073,7 @@ function hostsAsNodes(hosts: readonly SiteHost[], offset: number): NetworkNode[]
     hostId: host.id,
     connectionId: host.connectionIds[0] ?? null,
     rackItemId: null,
+    deepLinks: [],
     note: "",
   }));
 }
@@ -1079,11 +1089,13 @@ function newNodeDraft(kind: NetworkNodeKind): NetworkNode {
     width: isGeomap ? 320 : NODE_WIDTH,
     height: isGeomap ? 190 : NODE_HEIGHT,
     iconAccent: null,
+    iconKind: kind === "generic" ? "switch" : null,
     interfaces: [],
     status: "up",
     hostId: null,
     connectionId: null,
     rackItemId: null,
+    deepLinks: [],
     note: "",
     geomapViewport: isGeomap ? DEFAULT_GEOMAP_VIEWPORT : null,
   };
@@ -1188,6 +1200,92 @@ function ChoiceGrid({
   );
 }
 
+function NodeDeepLinkEditor({
+  existing,
+  catalog,
+  onSave,
+  onClose,
+}: {
+  existing: readonly NetworkNodeDeepLink[];
+  catalog: NetworkMapDeepLinkCatalog;
+  onSave: (link: NetworkNodeDeepLink) => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const [kind, setKind] = useState<NetworkNodeDeepLinkKind>("connection");
+  const existingKeys = useMemo(() => new Set(existing.map(deepLinkKey)), [existing]);
+  const targets = useMemo(
+    () => deepLinkTargets(kind, catalog, t).filter((target) => !existingKeys.has(target.key)),
+    [catalog, existingKeys, kind, t],
+  );
+  const [targetKey, setTargetKey] = useState("");
+  const selected = targets.find((target) => target.key === targetKey) ?? targets[0];
+
+  useEffect(() => {
+    setTargetKey("");
+  }, [kind]);
+
+  return (
+    <DialogShell onBackdrop={onClose} zClassName="itops-page">
+      <Sheet
+        width={440}
+        title={t("itops.networkMap.deepLinkAdd")}
+        footer={
+          <Actions
+            cancel={<Btn onClick={onClose}>{t("common.cancel")}</Btn>}
+            primary={
+              <Btn
+                kind="primary"
+                icon="check"
+                disabled={!selected}
+                onClick={() => {
+                  if (!selected) return;
+                  onSave({ ...selected.link, id: newId("nmdl") });
+                  onClose();
+                }}
+              >
+                {t("common.add")}
+              </Btn>
+            }
+          />
+        }
+      >
+        <Field label={t("itops.networkMap.deepLinkTypeLabel")}>
+          <Select
+            value={kind}
+            onChange={(event) =>
+              setKind(event.currentTarget.value as NetworkNodeDeepLinkKind)
+            }
+            options={(
+              ["connection", "site", "serverRoom", "rackItem"] as const
+            ).map((value) => ({
+              value,
+              label: t(`itops.networkMap.deepLinkType.${value}`),
+            }))}
+          />
+        </Field>
+        <Field label={t("itops.networkMap.deepLinkTargetLabel")}>
+          <Select
+            value={selected?.key ?? ""}
+            disabled={targets.length === 0}
+            onChange={(event) => setTargetKey(event.currentTarget.value)}
+            options={
+              targets.length > 0
+                ? targets.map((target) => ({
+                    value: target.key,
+                    label: target.detail
+                      ? `${target.label} — ${target.detail}`
+                      : target.label,
+                  }))
+                : [{ value: "", label: t("itops.networkMap.deepLinkNoTargets") }]
+            }
+          />
+        </Field>
+      </Sheet>
+    </DialogShell>
+  );
+}
+
 function NodeInterfaceEditor({
   value,
   onSave,
@@ -1267,16 +1365,19 @@ function NodeInterfaceEditor({
 function NodePropertiesFields({
   node,
   showKindPicker,
+  deepLinkCatalog,
   onChange,
 }: {
   node: NetworkNode;
   showKindPicker: boolean;
+  deepLinkCatalog: NetworkMapDeepLinkCatalog;
   onChange: (patch: Partial<NetworkNode>) => void;
 }) {
   const { t } = useTranslation();
   const [interfaceEditor, setInterfaceEditor] = useState<NetworkNodeInterface | null | undefined>(
     undefined,
   );
+  const [deepLinkEditorOpen, setDeepLinkEditorOpen] = useState(false);
   const unnamedInterface = t("itops.networkMap.interfaceUnbound");
 
   if (node.kind === "geomap") {
@@ -1320,7 +1421,7 @@ function NodePropertiesFields({
           className="nm-node-ic nm-node-identity-icon"
           style={{ "--nm-node-accent": nodeAccent(node) } as CSSProperties}
         >
-          <NetworkNodeArtwork kind={node.kind} size={32} />
+          <NetworkNodeArtwork kind={nodeArtworkKind(node)} size={32} />
         </span>
         <span className="nm-node-identity-copy">
           <strong>{node.label.trim() || t("itops.networkMap.unnamedNode")}</strong>
@@ -1352,6 +1453,10 @@ function NodePropertiesFields({
               const kind = event.currentTarget.value as NetworkNodeKind;
               onChange({
                 kind,
+                iconKind:
+                  kind === "generic"
+                    ? node.iconKind ?? nodeArtworkKind(node)
+                    : null,
                 geomapViewport:
                   kind === "geomap"
                     ? node.geomapViewport ?? DEFAULT_GEOMAP_VIEWPORT
@@ -1366,6 +1471,25 @@ function NodePropertiesFields({
               label: t(`itops.networkMap.nodeKind.${kind}`),
             }))}
           />
+        </Field>
+      ) : null}
+      {node.kind === "generic" ? (
+        <Field label={t("itops.networkMap.genericIconLabel")}>
+          <div className="nm-icon-picker" role="radiogroup">
+            {BUILT_IN_ICON_KINDS.map((kind) => (
+              <button
+                key={kind}
+                type="button"
+                className={nodeArtworkKind(node) === kind ? "selected" : ""}
+                role="radio"
+                aria-checked={nodeArtworkKind(node) === kind}
+                title={t(`itops.networkMap.nodeKind.${kind}`)}
+                onClick={() => onChange({ iconKind: kind })}
+              >
+                <NetworkNodeArtwork kind={kind} size={28} />
+              </button>
+            ))}
+          </div>
         </Field>
       ) : null}
       <Field label={t("itops.networkMap.statusLabel")}>
@@ -1422,6 +1546,51 @@ function NodePropertiesFields({
           <p className="nm-interface-empty">{t("itops.networkMap.interfaceEmpty")}</p>
         )}
       </div>
+      <div className="nm-deep-link-editor">
+        <div className="nm-strands-head">
+          <span className="kk-lbl">{t("itops.networkMap.deepLinksLabel")}</span>
+          <button
+            type="button"
+            className="nm-strand-add"
+            onClick={() => setDeepLinkEditorOpen(true)}
+          >
+            <ItIcon name="plus" size={12} />
+            {t("common.add")}
+          </button>
+        </div>
+        {node.deepLinks.length > 0 ? (
+          <div className="nm-deep-link-list">
+            {node.deepLinks.map((link) => {
+              const target = resolveDeepLink(link, deepLinkCatalog, t);
+              return (
+                <div className={`nm-deep-link-row${target.available ? "" : " missing"}`} key={link.id}>
+                  <span className="nm-deep-link-row-icon">
+                    <ItIcon name={target.icon} size={14} />
+                  </span>
+                  <span className="nm-deep-link-row-copy">
+                    <strong>{target.label}</strong>
+                    <small>{target.detail}</small>
+                  </span>
+                  <button
+                    type="button"
+                    className="nm-deep-link-remove"
+                    title={t("common.remove")}
+                    onClick={() =>
+                      onChange({
+                        deepLinks: node.deepLinks.filter((entry) => entry.id !== link.id),
+                      })
+                    }
+                  >
+                    <ItIcon name="xmark" size={12} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="nm-interface-empty">{t("itops.networkMap.deepLinkEmpty")}</p>
+        )}
+      </div>
       <Field label={t("itops.networkMap.noteLabel")}>
         <TextArea
           rows={3}
@@ -1458,6 +1627,14 @@ function NodePropertiesFields({
           }}
         />
       ) : null}
+      {deepLinkEditorOpen ? (
+        <NodeDeepLinkEditor
+          existing={node.deepLinks}
+          catalog={deepLinkCatalog}
+          onClose={() => setDeepLinkEditorOpen(false)}
+          onSave={(link) => onChange({ deepLinks: [...node.deepLinks, link] })}
+        />
+      ) : null}
     </>
   );
 }
@@ -1466,6 +1643,7 @@ function NodePropertiesDialog({
   node,
   root,
   placement,
+  deepLinkCatalog,
   onSubmit,
   onDelete,
   onClose,
@@ -1473,6 +1651,7 @@ function NodePropertiesDialog({
   node: NetworkNode;
   root: boolean;
   placement: boolean;
+  deepLinkCatalog: NetworkMapDeepLinkCatalog;
   onSubmit: (node: NetworkNode, root: boolean) => void;
   onDelete?: () => void;
   onClose: () => void;
@@ -1522,6 +1701,7 @@ function NodePropertiesDialog({
         <NodePropertiesFields
           node={draft}
           showKindPicker={!placement}
+          deepLinkCatalog={deepLinkCatalog}
           onChange={(patch) => setDraft((current) => ({ ...current, ...patch }))}
         />
       </Sheet>
@@ -2459,6 +2639,105 @@ function ImportDialog({
   );
 }
 
+function NodeDeepLinksPopover({
+  node,
+  anchor,
+  catalog,
+  onNavigate,
+  onClose,
+}: {
+  node: NetworkNode;
+  anchor: DOMRect;
+  catalog: NetworkMapDeepLinkCatalog;
+  onNavigate: (link: NetworkNodeDeepLink) => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const popoverRef = useRef<HTMLDivElement | null>(null);
+  const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const popover = popoverRef.current;
+    if (!popover) return;
+    const bounds = popover.getBoundingClientRect();
+    const viewportPad = 8;
+    const gap = 8;
+    let left = anchor.right + gap;
+    if (left + bounds.width > window.innerWidth - viewportPad) {
+      left = anchor.left - bounds.width - gap;
+    }
+    setPosition({
+      left: Math.max(
+        viewportPad,
+        Math.min(left, window.innerWidth - bounds.width - viewportPad),
+      ),
+      top: Math.max(
+        viewportPad,
+        Math.min(anchor.top, window.innerHeight - bounds.height - viewportPad),
+      ),
+    });
+  }, [anchor, node.deepLinks]);
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  return (
+    <DialogPortal>
+      <div className="nm-deep-link-backdrop" onPointerDown={onClose} />
+      <div
+        ref={popoverRef}
+        className="nm-deep-link-popover"
+        role="dialog"
+        aria-label={t("itops.networkMap.deepLinksPopupLabel", {
+          name: nodeLabel(node, t("itops.networkMap.unnamedNode")),
+        })}
+        style={
+          position
+            ? { top: position.top, left: position.left }
+            : { top: anchor.top, left: anchor.right + 8, visibility: "hidden" }
+        }
+      >
+        <div className="nm-deep-link-popover-head">
+          <ItIcon name="link" size={13} />
+          <strong>{t("itops.networkMap.deepLinksLabel")}</strong>
+          <span>{node.deepLinks.length}</span>
+        </div>
+        <div className="nm-deep-link-popover-rows">
+          {node.deepLinks.map((link) => {
+            const target = resolveDeepLink(link, catalog, t);
+            return (
+              <button
+                type="button"
+                key={link.id}
+                className="nm-deep-link-popover-row"
+                disabled={!target.available}
+                onClick={() => {
+                  onClose();
+                  onNavigate(link);
+                }}
+              >
+                <span className="nm-deep-link-row-icon">
+                  <ItIcon name={target.icon} size={14} />
+                </span>
+                <span className="nm-deep-link-row-copy">
+                  <strong>{target.label}</strong>
+                  <small>{target.detail}</small>
+                </span>
+                {target.available ? <ItIcon name="chevR" size={12} /> : null}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </DialogPortal>
+  );
+}
+
 type Selection = { kind: "node" | "link" | "note"; id: string } | null;
 type PlacementDraft =
   | { kind: "node"; node: NetworkNode; root: boolean }
@@ -2479,9 +2758,13 @@ type LinkDialogRequest = {
 function MapEditor({
   map,
   onOpenProperties,
+  deepLinkCatalog,
+  onNavigateDeepLink,
 }: {
   map: NetworkMap;
   onOpenProperties: (map: NetworkMap) => void;
+  deepLinkCatalog: NetworkMapDeepLinkCatalog;
+  onNavigateDeepLink: (link: NetworkNodeDeepLink) => void;
 }) {
   const { t } = useTranslation();
   const saveNetworkMap = useItOpsStore((state) => state.saveNetworkMap);
@@ -2497,6 +2780,10 @@ function MapEditor({
   const [nodeDialog, setNodeDialog] = useState<NodeDialogRequest | null>(null);
   const [noteDialog, setNoteDialog] = useState<NoteDialogRequest | null>(null);
   const [linkDialog, setLinkDialog] = useState<LinkDialogRequest | null>(null);
+  const [deepLinkPopup, setDeepLinkPopup] = useState<{
+    nodeId: string;
+    anchor: DOMRect;
+  } | null>(null);
   const [placementDraft, setPlacementDraft] = useState<PlacementDraft | null>(null);
   const [placementPoint, setPlacementPoint] = useState<{ x: number; y: number } | null>(null);
   const [dragAnchorNodes, setDragAnchorNodes] = useState<NetworkNode[] | null>(null);
@@ -2651,6 +2938,9 @@ function MapEditor({
     () => new Set(severedLinkSignature ? severedLinkSignature.split("\u0000") : []),
     [severedLinkSignature],
   );
+  const openDeepLinks = useCallback((nodeId: string, anchor: DOMRect) => {
+    setDeepLinkPopup({ nodeId, anchor });
+  }, []);
 
   const unnamed = t("itops.networkMap.unnamedNode");
   const nodes = useMemo<Node<MapNodeData | MapNoteData>[]>(() => {
@@ -2681,12 +2971,14 @@ function MapEditor({
       selected: selection?.kind === "node" && selection.id === node.id,
       zIndex: node.kind === "geomap" ? 0 : 3,
       data: {
+        id: node.id,
         label: nodeLabel(node, unnamed),
         sub:
           node.interfaces.map((entry) => entry.address).filter(Boolean).join(" · ") ||
           t(`itops.networkMap.nodeKind.${node.kind}`),
         note: node.note,
         kind: node.kind,
+        iconKind: nodeArtworkKind(node),
         state: downSet.has(node.id)
           ? "down"
           : isolatedSet.has(node.id)
@@ -2701,6 +2993,11 @@ function MapEditor({
         accent: nodeAccent(node),
         resizable: true,
         geomapViewport: geomapViewport(node),
+        deepLinks: node.deepLinks,
+        deepLinksPopupLabel: t("itops.networkMap.deepLinksPopupLabel", {
+          name: nodeLabel(node, unnamed),
+        }),
+        onOpenDeepLinks: openDeepLinks,
       },
     }));
     if (placementDraft && placementPoint) {
@@ -2719,12 +3016,14 @@ function MapEditor({
           connectable: false,
           focusable: false,
           data: {
+            id: node.id,
             label: nodeLabel(node, unnamed),
             sub:
               node.interfaces.map((entry) => entry.address).filter(Boolean).join(" · ") ||
               t(`itops.networkMap.nodeKind.${node.kind}`),
             note: node.note,
             kind: node.kind,
+            iconKind: nodeArtworkKind(node),
             state: node.status === "warning" ? "warning" : "up",
             root: placementDraft.root,
             selected: false,
@@ -2733,6 +3032,10 @@ function MapEditor({
             accent: nodeAccent(node),
             resizable: false,
             geomapViewport: geomapViewport(node),
+            deepLinks: node.deepLinks,
+            deepLinksPopupLabel: t("itops.networkMap.deepLinksPopupLabel", {
+              name: nodeLabel(node, unnamed),
+            }),
             ghost: true,
           },
         });
@@ -2770,6 +3073,7 @@ function MapEditor({
     analysis.isolated,
     graph.nodes,
     graph.notes,
+    openDeepLinks,
     placementDraft,
     placementPoint,
     rootIds,
@@ -3356,7 +3660,10 @@ function MapEditor({
                               className="nm-picker-ic"
                               style={{ "--nm-node-accent": NODE_STYLE[kind].accent } as CSSProperties}
                             >
-                              <NetworkNodeArtwork kind={kind} size={30} />
+                              <NetworkNodeArtwork
+                                kind={kind === "generic" ? "switch" : kind}
+                                size={30}
+                              />
                             </span>
                             <span>{t(`itops.networkMap.nodeKind.${kind}`)}</span>
                           </button>
@@ -3408,6 +3715,7 @@ function MapEditor({
           node={nodeDialog.node}
           root={nodeDialog.root}
           placement={nodeDialog.placement}
+          deepLinkCatalog={deepLinkCatalog}
           onClose={() => setNodeDialog(null)}
           onDelete={
             nodeDialog.placement ? undefined : () => removeNode(nodeDialog.node.id)
@@ -3443,6 +3751,20 @@ function MapEditor({
           onDelete={() => removeLink(linkDialog.link.id)}
           onSubmit={updateLinkProperties}
         />
+      ) : null}
+      {deepLinkPopup ? (
+        (() => {
+          const node = graph.nodes.find((entry) => entry.id === deepLinkPopup.nodeId);
+          return node ? (
+            <NodeDeepLinksPopover
+              node={node}
+              anchor={deepLinkPopup.anchor}
+              catalog={deepLinkCatalog}
+              onClose={() => setDeepLinkPopup(null)}
+              onNavigate={onNavigateDeepLink}
+            />
+          ) : null;
+        })()
       ) : null}
     </div>
   );
@@ -3509,28 +3831,45 @@ export function NetworkMapDesigner({
   active,
   selectedMapId,
   onSelectedMapIdChange,
+  onShowWorkspace,
+  onNavigateItOpsDeepLink,
 }: {
   active: boolean;
   selectedMapId?: string;
   onSelectedMapIdChange?: (id: string) => void;
+  onShowWorkspace: () => void;
+  onNavigateItOpsDeepLink: (link: NetworkNodeDeepLink) => void;
 }) {
   const { t } = useTranslation();
   const maps = useItOpsStore((state) => state.networkMaps);
   const sites = useItOpsStore((state) => state.sites);
+  const racksBySite = useItOpsStore((state) => state.racksBySite);
+  const serverRoomsBySite = useItOpsStore((state) => state.serverRoomsBySite);
   const loaded = useItOpsStore((state) => state.networkMapsLoaded);
   const loadNetworkMaps = useItOpsStore((state) => state.loadNetworkMaps);
   const removeNetworkMap = useItOpsStore((state) => state.removeNetworkMap);
   const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
+  const tabs = useWorkspaceStore((state) => state.tabs);
+  const openConnection = useWorkspaceStore((state) => state.openConnection);
+  const activateTab = useWorkspaceStore((state) => state.activateTab);
 
   const [localSelectedId, setLocalSelectedId] = useState("");
   const selectedId = selectedMapId ?? localSelectedId;
   const [query, setQuery] = useState("");
   const [dialog, setDialog] = useState<NetworkMap | null | undefined>(undefined);
   const [pendingDelete, setPendingDelete] = useState<NetworkMap | null>(null);
+  const [connections, setConnections] = useState<Connection[]>([]);
 
   useEffect(() => {
     if (!loaded) void loadNetworkMaps().catch(() => undefined);
   }, [loaded, loadNetworkMaps]);
+
+  useEffect(() => {
+    if (!isTauriRuntime()) return;
+    void invokeCommand("list_connection_tree")
+      .then((tree) => setConnections(flattenConnections(tree)))
+      .catch(() => setConnections([]));
+  }, []);
 
   useEffect(() => {
     if (!active) {
@@ -3552,6 +3891,23 @@ export function NetworkMapDesigner({
     () => new Map(sites.map((site) => [site.id, site.name])),
     [sites],
   );
+  const deepLinkCatalog = useMemo<NetworkMapDeepLinkCatalog>(
+    () => ({ connections, sites, racksBySite, serverRoomsBySite }),
+    [connections, racksBySite, serverRoomsBySite, sites],
+  );
+
+  function navigateDeepLink(link: NetworkNodeDeepLink) {
+    if (link.kind !== "connection") {
+      onNavigateItOpsDeepLink(link);
+      return;
+    }
+    const connection = connections.find((entry) => entry.id === link.connectionId);
+    if (!connection) return;
+    const openTab = tabs.find((tab) => tab.connection?.id === connection.id);
+    if (openTab) activateTab(openTab.id);
+    else openConnection(connection);
+    onShowWorkspace();
+  }
   const visibleMaps = maps.filter((map) =>
     matchesNetworkMapSearch(map, query, [
       map.siteId
@@ -3658,6 +4014,8 @@ export function NetworkMapDesigner({
           <MapEditor
             key={selected.id}
             map={selected}
+            deepLinkCatalog={deepLinkCatalog}
+            onNavigateDeepLink={navigateDeepLink}
             onOpenProperties={(currentMap) => setDialog(currentMap)}
           />
         </div>

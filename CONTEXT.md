@@ -162,8 +162,12 @@ A durable, hand-drawn logical link diagram stored in `itops_network_maps`, globa
 _Avoid_: topology, topology map, network topology, discovery map, live map
 
 **Network Node**:
-One resizable box on a **Network Map**: a label, one of the designer's routing, security, traffic-management, compute/storage, cloud/WAN, wireless, or endpoint kinds, a canvas position and size, a selectable icon background, optional free-text IP addresses and note, and a documented operational/warning status. Its addresses are captions and link-binding choices, not references into **IPAM**. Status is operator-authored documentation, never live monitoring data. A Network Node is not a **Host**, a **Rack Device**, or a **Connection**, though a map can be seeded from a Site's Hosts.
+One resizable box on a **Network Map**: a label, one of the designer's generic, routing, security, traffic-management, compute/storage, cloud/WAN, wireless, or endpoint kinds, a canvas position and size, a selectable icon background, optional free-text IP addresses and note, a documented operational/warning status, and optional **Deep Links** to other app elements. Its addresses are captions and link-binding choices, not references into **IPAM**. Status is operator-authored documentation, never live monitoring data. A Network Node is not a **Host**, a **Rack Device**, or a **Connection**, though a map can be seeded from a Site's Hosts.
 _Avoid_: device, host (on a map), rack item
+
+**Deep Link**:
+An in-app navigation relationship from one KKTerm app element to another KKTerm app element. Both the source and destination belong to the app; activating the Deep Link navigates to or opens the destination without implying a physical network path, data relationship, or live Session. A Network Node may Deep Link to a Connection, Site, Server Room, or Rack Device. A Deep Link is not a web URL, an external URI or operating-system app link, a **Network Link**, or a Connection/Rack binding.
+_Avoid_: web link, URL, Network Link, binding, external app link
 
 **Network Link**:
 One undirected edge between two **Network Nodes**, with an optional binding from each endpoint to one of that node's documented IP addresses, an optional name/label for the whole link (a circuit id or an uplink name — not a port and not a VLAN, both of which are structured), a kind (ethernet, fiber, WAN, or wireless), a documented operational/warning status, an ordered list of **Network Link Strands**, and its VLAN membership. Undirected is deliberate: a link asserts that the two nodes can reach each other, not a traffic direction. Its status is operator-authored documentation and remains separate from the transient What-If down set.

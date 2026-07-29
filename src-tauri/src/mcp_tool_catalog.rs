@@ -762,6 +762,102 @@ pub fn tool_descriptors() -> Vec<Value> {
             "inputSchema": {"type": "object", "properties": {}, "additionalProperties": false},
         }),
         json!({
+            "name": "kkterm.itops.ipam.snapshot",
+            "description": "Read the complete IPAM state: derived Prefix hierarchy/utilization plus every Address Record. Use this before changing records so ids and existing values are preserved.",
+            "inputSchema": {"type": "object", "properties": {}, "additionalProperties": false},
+        }),
+        json!({
+            "name": "kkterm.itops.ipam.vlans.list",
+            "description": "List every global VLAN record. Prefixes refer to VLANs by durable id.",
+            "inputSchema": {"type": "object", "properties": {}, "additionalProperties": false},
+        }),
+        json!({
+            "name": "kkterm.itops.ipam.vlans.create",
+            "description": "Create one VLAN record. vid must be unique from 1 through 4094; accent is the saved palette index and defaults to 0.",
+            "inputSchema": itops_ipam_vlan_input_schema(false),
+        }),
+        json!({
+            "name": "kkterm.itops.ipam.vlans.update",
+            "description": "Update one VLAN by durable id with full-value semantics. Read the VLAN list first and resend every value that should be retained.",
+            "inputSchema": itops_ipam_vlan_input_schema(true),
+        }),
+        json!({
+            "name": "kkterm.itops.ipam.vlans.remove",
+            "description": "Delete one VLAN by durable id. Prefixes remain and their VLAN reference is cleared.",
+            "inputSchema": id_input_schema("id"),
+        }),
+        json!({
+            "name": "kkterm.itops.ipam.prefixes.create",
+            "description": "Create one IPv4 Prefix. CIDR is canonicalized; blank VRF means the default routing table. vlanId is a durable VLAN record id.",
+            "inputSchema": itops_ipam_prefix_input_schema(false),
+        }),
+        json!({
+            "name": "kkterm.itops.ipam.prefixes.update",
+            "description": "Update one IPv4 Prefix by durable id with full-value semantics. Read the IPAM snapshot first and resend every value that should be retained.",
+            "inputSchema": itops_ipam_prefix_input_schema(true),
+        }),
+        json!({
+            "name": "kkterm.itops.ipam.prefixes.remove",
+            "description": "Delete one IPv4 Prefix by durable id. Address Records remain and are re-parented by containment.",
+            "inputSchema": id_input_schema("id"),
+        }),
+        json!({
+            "name": "kkterm.itops.ipam.prefixes.suggest_free",
+            "description": "Return the lowest undocumented usable addresses in a CIDR and VRF. This reads IPAM only and does not probe the network.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "cidr": {"type": "string", "minLength": 1},
+                    "vrf": {"type": "string"},
+                    "limit": {"type": "integer", "minimum": 1, "maximum": 64}
+                },
+                "required": ["cidr"],
+                "additionalProperties": false
+            },
+        }),
+        json!({
+            "name": "kkterm.itops.ipam.addresses.create",
+            "description": "Create one IPv4 Address Record. Optional ids link it to an existing Site, Host, Connection, or Rack Device; no secrets or live Session state are stored.",
+            "inputSchema": itops_ipam_address_input_schema(false),
+        }),
+        json!({
+            "name": "kkterm.itops.ipam.addresses.update",
+            "description": "Update one IPv4 Address Record by durable id with full-value semantics. Read the IPAM snapshot first and resend every value and binding that should be retained.",
+            "inputSchema": itops_ipam_address_input_schema(true),
+        }),
+        json!({
+            "name": "kkterm.itops.ipam.addresses.remove",
+            "description": "Delete one IPv4 Address Record by durable id.",
+            "inputSchema": id_input_schema("id"),
+        }),
+        json!({
+            "name": "kkterm.itops.ipam.import",
+            "description": "Atomically create a structured batch of VLANs, Prefixes, and Address Records. Existing/repeated keys are skipped and every other error rolls back the whole batch. An AI client can parse pasted prose, tables, CSV, or notes into this schema; omit facts that are ambiguous instead of guessing.",
+            "inputSchema": itops_ipam_import_input_schema(),
+        }),
+        json!({
+            "name": "kkterm.itops.ipam.dangerous.read_xlsx",
+            "description": "DANGEROUS: read the first non-empty worksheet of a local .xlsx path into rows for later review/import. The workbook may contain sensitive local data. Requires built_in_mcp_allow_all_dangerous = true.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {"path": {"type": "string", "minLength": 1}},
+                "required": ["path"],
+                "additionalProperties": false
+            },
+        }),
+        json!({
+            "name": "kkterm.itops.ipam.dangerous.scan",
+            "description": "DANGEROUS: actively probe the selected Prefix ids with ICMP, SNMP, reverse DNS, and bounded TCP checks. Scanning writes nothing; import selected results separately. Use only on networks the operator is authorized to probe. Requires built_in_mcp_allow_all_dangerous = true.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "prefixIds": {"type": "array", "items": {"type": "string"}, "minItems": 1}
+                },
+                "required": ["prefixIds"],
+                "additionalProperties": false
+            },
+        }),
+        json!({
             "name": "kkterm.itops.sites.create",
             "description": "Create an IT Ops Site. Optional memberIds reference existing saved Connection ids (see kkterm.workspace.connections.list); transport picks the default Batch Run transport and defaults to auto.",
             "inputSchema": {
@@ -1610,6 +1706,170 @@ fn id_name_input_schema(id_name: &str) -> Value {
         },
         "required": [id_name, "name"],
         "additionalProperties": false,
+    })
+}
+
+pub(crate) fn itops_ipam_vlan_input_schema(require_id: bool) -> Value {
+    let mut properties = serde_json::Map::from_iter([
+        (
+            "vid".to_string(),
+            json!({"type": "integer", "minimum": 1, "maximum": 4094}),
+        ),
+        ("name".to_string(), json!({"type": "string"})),
+        ("description".to_string(), json!({"type": "string"})),
+        ("siteId".to_string(), json!({"type": ["string", "null"]})),
+        (
+            "accent".to_string(),
+            json!({"type": "integer", "minimum": 0, "maximum": 255}),
+        ),
+    ]);
+    let mut required = vec![json!("vid")];
+    if require_id {
+        properties.insert("id".to_string(), json!({"type": "string"}));
+        required.insert(0, json!("id"));
+    }
+    json!({
+        "type": "object",
+        "properties": properties,
+        "required": required,
+        "additionalProperties": false,
+    })
+}
+
+pub(crate) fn itops_ipam_prefix_input_schema(require_id: bool) -> Value {
+    let mut properties = serde_json::Map::from_iter([
+        (
+            "cidr".to_string(),
+            json!({"type": "string", "minLength": 1}),
+        ),
+        ("vrf".to_string(), json!({"type": "string"})),
+        ("role".to_string(), json!({"type": "string"})),
+        (
+            "status".to_string(),
+            json!({"type": "string", "enum": ["container", "active", "reserved", "deprecated"]}),
+        ),
+        ("description".to_string(), json!({"type": "string"})),
+        ("siteId".to_string(), json!({"type": ["string", "null"]})),
+        ("vlanId".to_string(), json!({"type": ["string", "null"]})),
+    ]);
+    let mut required = vec![json!("cidr")];
+    if require_id {
+        properties.insert("id".to_string(), json!({"type": "string"}));
+        required.insert(0, json!("id"));
+    }
+    json!({
+        "type": "object",
+        "properties": properties,
+        "required": required,
+        "additionalProperties": false,
+    })
+}
+
+pub(crate) fn itops_ipam_address_input_schema(require_id: bool) -> Value {
+    let mut properties = serde_json::Map::from_iter([
+        (
+            "address".to_string(),
+            json!({"type": "string", "minLength": 1}),
+        ),
+        ("vrf".to_string(), json!({"type": "string"})),
+        (
+            "status".to_string(),
+            json!({"type": "string", "enum": ["active", "reserved", "deprecated"]}),
+        ),
+        ("dnsName".to_string(), json!({"type": "string"})),
+        (
+            "deviceType".to_string(),
+            json!({"type": ["string", "null"], "enum": ["router", "switch", "firewall", "server", "storage", "accessPoint", "desktop", "printer", "camera", "voip", "iot", null]}),
+        ),
+        ("deviceModel".to_string(), json!({"type": "string"})),
+        ("description".to_string(), json!({"type": "string"})),
+        ("siteId".to_string(), json!({"type": ["string", "null"]})),
+        ("hostId".to_string(), json!({"type": ["string", "null"]})),
+        (
+            "connectionId".to_string(),
+            json!({"type": ["string", "null"]}),
+        ),
+        (
+            "rackItemId".to_string(),
+            json!({"type": ["string", "null"]}),
+        ),
+    ]);
+    let mut required = vec![json!("address")];
+    if require_id {
+        properties.insert("id".to_string(), json!({"type": "string"}));
+        required.insert(0, json!("id"));
+    }
+    json!({
+        "type": "object",
+        "properties": properties,
+        "required": required,
+        "additionalProperties": false,
+    })
+}
+
+pub(crate) fn itops_ipam_import_input_schema() -> Value {
+    json!({
+        "type": "object",
+        "properties": {
+            "batch": {
+                "type": "object",
+                "properties": {
+                    "vlans": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "vid": {"type": "integer", "minimum": 1, "maximum": 4094},
+                                "name": {"type": "string"},
+                                "description": {"type": "string"},
+                                "siteId": {"type": ["string", "null"]},
+                                "accent": {"type": "integer", "minimum": 0, "maximum": 255}
+                            },
+                            "required": ["vid"],
+                            "additionalProperties": false
+                        }
+                    },
+                    "prefixes": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "cidr": {"type": "string", "minLength": 1},
+                                "vrf": {"type": "string"},
+                                "role": {"type": "string"},
+                                "status": {"type": "string", "enum": ["container", "active", "reserved", "deprecated"]},
+                                "description": {"type": "string"},
+                                "siteId": {"type": ["string", "null"]},
+                                "vlanVid": {"type": ["integer", "null"], "minimum": 1, "maximum": 4094}
+                            },
+                            "required": ["cidr"],
+                            "additionalProperties": false
+                        }
+                    },
+                    "addresses": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "address": {"type": "string", "minLength": 1},
+                                "vrf": {"type": "string"},
+                                "status": {"type": "string", "enum": ["active", "reserved", "deprecated"]},
+                                "dnsName": {"type": "string"},
+                                "deviceType": {"type": ["string", "null"], "enum": ["router", "switch", "firewall", "server", "storage", "accessPoint", "desktop", "printer", "camera", "voip", "iot", null]},
+                                "deviceModel": {"type": "string"},
+                                "description": {"type": "string"},
+                                "siteId": {"type": ["string", "null"]}
+                            },
+                            "required": ["address"],
+                            "additionalProperties": false
+                        }
+                    }
+                },
+                "additionalProperties": false
+            }
+        },
+        "required": ["batch"],
+        "additionalProperties": false
     })
 }
 

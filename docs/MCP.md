@@ -323,8 +323,9 @@ storage path. Mutations emit `itops-changed` so the IT Ops UI reloads.
 Safe tools are durable data reads/writes with no executable code and no
 secrets; in the in-app assistant every mutating tool still goes through the
 per-call approval prompt unless the tool permission mode is Allow-all. Tools
-that author or execute runnable material — Task definitions and starting a
-Batch Run (remote code execution on every resolved host) — live in
+that author or execute runnable material, read a local workbook, or actively
+probe IP Prefixes — Task definitions, starting a Batch Run (remote code
+execution on every resolved host), IPAM workbook reads, and IPAM scans — live in
 `kkterm.itops.*.dangerous.*` namespaces behind the
 `built_in_mcp_allow_all_dangerous` gate. Assistant-authored Tasks and
 playbooks may never introduce sudo steps or
@@ -365,6 +366,19 @@ parent first.
 | `kkterm.itops.room_objects.list` | List all non-Rack Room Objects in one Server Room. |
 | `kkterm.itops.room_objects.set` | Replace one Server Room's complete Room Object set. |
 | `kkterm.itops.connections.get` | Read one saved Connection used by an IT Ops binding; secrets are omitted. |
+| `kkterm.itops.ipam.snapshot` | Read the complete derived IPAM Prefix hierarchy/utilization and every Address Record. Read this before updates to preserve durable ids and full-value fields. |
+| `kkterm.itops.ipam.vlans.list` | List all global VLAN records. |
+| `kkterm.itops.ipam.vlans.create` | Create a VLAN (`vid` 1–4094, optional name/description/Site/accent). |
+| `kkterm.itops.ipam.vlans.update` | Update one VLAN by durable id with full-value semantics. |
+| `kkterm.itops.ipam.vlans.remove` | Delete one VLAN; Prefixes survive with their VLAN reference cleared. |
+| `kkterm.itops.ipam.prefixes.create` | Create one IPv4 Prefix; CIDR is canonicalized and blank VRF means the default table. |
+| `kkterm.itops.ipam.prefixes.update` | Update one IPv4 Prefix by durable id with full-value semantics. |
+| `kkterm.itops.ipam.prefixes.remove` | Delete one Prefix; Address Records survive and are re-parented by containment. |
+| `kkterm.itops.ipam.prefixes.suggest_free` | Return the lowest undocumented usable addresses in a CIDR/VRF without probing the network. |
+| `kkterm.itops.ipam.addresses.create` | Create one IPv4 Address Record, optionally linked to a Site, Host, Connection, or Rack Device. |
+| `kkterm.itops.ipam.addresses.update` | Update one Address Record by durable id with full-value semantics. |
+| `kkterm.itops.ipam.addresses.remove` | Delete one Address Record. |
+| `kkterm.itops.ipam.import` | Atomically create a structured batch of VLANs, Prefixes, and Address Records. Existing/repeated keys are skipped; any other error rolls back the batch. AI clients can normalize pasted prose, tables, CSV, or notes into this schema and should omit ambiguous facts rather than guess. |
 | `kkterm.itops.hosts.list` | List one Site's Hosts by `siteId`: hostname, kind, parent Host, bound Connection ids, and last connectivity-scan snapshot. |
 | `kkterm.itops.hosts.create` | Create one Host in a Site's inventory. `parentHostId` nests it as a VM/container guest. |
 | `kkterm.itops.hosts.update` | Update one Host by id. Full-value semantics; `connectionIds` are ordered saved Connection references, and the first bound SSH Connection makes the Host runnable. |
@@ -380,7 +394,8 @@ parent first.
 
 ### IT Ops Module — dangerous (`kkterm.itops.*.dangerous.*`)
 
-These tools author or execute runnable material, so they require
+These tools author or execute runnable material, read an explicitly named local
+workbook, or actively probe a network, so they require
 `built_in_mcp_allow_all_dangerous = true` (the gate matches the literal
 `dangerous` segment anywhere in the dotted name).
 
@@ -389,6 +404,8 @@ These tools author or execute runnable material, so they require
 | `kkterm.itops.tasks.dangerous.create` | Create a reusable Task definition (script or interactive playbook). Saves only; nothing executes. Sudo steps and secret references are rejected — the Task Library editor owns those. |
 | `kkterm.itops.tasks.dangerous.update` | Update one user Task by id with full-value semantics. Built-ins are read-only; new sudo steps or secret references are rejected. |
 | `kkterm.itops.runs.dangerous.start` | Start a Batch Run against a Site — remote code execution on every resolved host over SSH. Pass exactly one of `taskId` or `script`; optional `scope` narrows to one `serverRoom`, `rackId`, or `hostIds`. Returns the `runId` immediately. |
+| `kkterm.itops.ipam.dangerous.read_xlsx` | Read the first non-empty worksheet from an explicitly named local `.xlsx` path. The path and workbook rows are redacted from MCP debug logs. |
+| `kkterm.itops.ipam.dangerous.scan` | Actively probe selected Prefix ids with ICMP, SNMP, reverse DNS, and bounded TCP checks. It writes nothing; import selected results separately and only scan authorized networks. |
 
 ### Network capability (`kkterm.network.*`)
 

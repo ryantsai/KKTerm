@@ -1853,9 +1853,7 @@ fn model_list_strategy_for_provider(
         "ollama" | "ollama-cloud" => Ok(AiProviderModelListStrategy::OllamaTags),
         "openai" | "openrouter" | "zai" | "moonshot" | "deepseek" | "gemini" | "grok"
         | "litellm" | "nvidia" | "opencode" | "openai-compatible" | "openai_compatible"
-        | "openai compatible" => {
-            Ok(AiProviderModelListStrategy::OpenAiCompatible)
-        }
+        | "openai compatible" => Ok(AiProviderModelListStrategy::OpenAiCompatible),
         "azure-openai" | "azure_openai" | "azure openai" => Err(
             "Azure OpenAI model refresh is deployment-based; enter the deployment name manually."
                 .to_string(),
@@ -2156,7 +2154,7 @@ fn build_copilot_prompt_with_usage(
 ) -> CopilotPrompt {
     let mut sections = Vec::new();
     sections.push(
-        "You are the KKTerm AI Assistant. Help with every shipped KKTerm area: Workspace, Connections and live Sessions, terminals, SSH/tmux, SFTP/FTP/File Explorer, Documents, URL WebView, RDP/VNC, Dashboard, App Launcher, IT Ops, Install Helper, Settings, screenshots, backup/secrets, localization, and AI Assistant workflows. For questions about app functionality or UI operation, call manual_search first and manual_read_chapter for the best match before answering. Use tutorial_highlight only for known targets and only after the user asks to be shown or accepts an offer to navigate. Do not execute commands; propose commands for user approval when needed."
+        "You are the KKTerm AI Assistant. Help with every shipped KKTerm area: Workspace, Connections and live Sessions, terminals, SSH/tmux, SFTP/FTP/File Explorer, Documents, URL WebView, RDP/VNC, Dashboard, App Launcher, IT Ops, Install Helper, Settings, screenshots, backup/secrets, localization, and AI Assistant workflows. For questions about app functionality or UI operation, call manual_search first and manual_read_chapter for the best match before answering. Use tutorial_highlight only for known targets and only after the user asks to be shown or accepts an offer to navigate. When the user pastes unstructured IPAM information, read the IPAM snapshot and VLANs, parse only explicit facts into the typed IPAM tools, use the atomic import tool for new records and individual update tools for existing records, and ask about material ambiguities instead of guessing. Do not execute commands; propose commands for user approval when needed."
             .to_string(),
     );
     if !recalled_memories.is_empty() {
@@ -2847,9 +2845,18 @@ fn ai_tool_definitions_with_skills(
             json!({"type":"object","properties":{"id":{"type":"string"}},"required":["id"]}),
         ));
         for (name, description) in [
-            ("screenshot_capture_region", "Interactively capture a screen region into the Screenshots Module library."),
-            ("screenshot_capture_window", "Capture the active operating-system window into the Screenshots Module library."),
-            ("screenshot_capture_fullscreen", "Capture the full screen into the Screenshots Module library."),
+            (
+                "screenshot_capture_region",
+                "Interactively capture a screen region into the Screenshots Module library.",
+            ),
+            (
+                "screenshot_capture_window",
+                "Capture the active operating-system window into the Screenshots Module library.",
+            ),
+            (
+                "screenshot_capture_fullscreen",
+                "Capture the full screen into the Screenshots Module library.",
+            ),
         ] {
             tools.push(tool_definition(
                 name,
@@ -3021,6 +3028,87 @@ fn ai_tool_definitions_with_skills(
             "itops_list_sites",
             "List IT Ops Sites (id, name, memberIds, filter, transport). A Site is a durable named selection of saved Connections and the top-level parent of Server Rooms, Racks, and Hosts; the topology is Site → Server Room → Rack → Rack Device. Presentation-heavy fields (backgrounds, icon images) are omitted.",
             json!({"type":"object","properties":{}}),
+        ));
+        tools.push(tool_definition(
+            "itops_get_ipam_snapshot",
+            "Read the complete IPAM state: derived Prefix hierarchy/utilization plus every Address Record. Always use this and itops_list_vlans before interpreting an IPAM change so existing ids and values are preserved.",
+            json!({"type":"object","properties":{}}),
+        ));
+        tools.push(tool_definition(
+            "itops_list_vlans",
+            "List every global VLAN record. Prefixes refer to VLANs by durable id.",
+            json!({"type":"object","properties":{}}),
+        ));
+        tools.push(tool_definition(
+            "itops_create_vlan",
+            "Create one VLAN record. vid must be unique from 1 through 4094; accent is the saved palette index and defaults to 0.",
+            crate::mcp_tool_catalog::itops_ipam_vlan_input_schema(false),
+        ));
+        tools.push(tool_definition(
+            "itops_update_vlan",
+            "Update one VLAN by durable id with full-value semantics. Read itops_list_vlans first and resend every value that should be retained.",
+            crate::mcp_tool_catalog::itops_ipam_vlan_input_schema(true),
+        ));
+        tools.push(tool_definition(
+            "itops_remove_vlan",
+            "Delete one VLAN by durable id. Prefixes remain and their VLAN reference is cleared.",
+            json!({"type":"object","properties":{"id":{"type":"string"}},"required":["id"]}),
+        ));
+        tools.push(tool_definition(
+            "itops_create_ip_prefix",
+            "Create one IPv4 Prefix. CIDR is canonicalized; blank VRF means the default routing table. vlanId is a durable VLAN record id.",
+            crate::mcp_tool_catalog::itops_ipam_prefix_input_schema(false),
+        ));
+        tools.push(tool_definition(
+            "itops_update_ip_prefix",
+            "Update one IPv4 Prefix by durable id with full-value semantics. Read itops_get_ipam_snapshot first and resend every value that should be retained.",
+            crate::mcp_tool_catalog::itops_ipam_prefix_input_schema(true),
+        ));
+        tools.push(tool_definition(
+            "itops_remove_ip_prefix",
+            "Delete one IPv4 Prefix by durable id. Address Records remain and are re-parented by containment.",
+            json!({"type":"object","properties":{"id":{"type":"string"}},"required":["id"]}),
+        ));
+        tools.push(tool_definition(
+            "itops_suggest_free_addresses",
+            "Return the lowest undocumented usable addresses in a CIDR and VRF. This reads IPAM only and does not probe the network.",
+            json!({"type":"object","properties":{
+                "cidr":{"type":"string","minLength":1},
+                "vrf":{"type":"string"},
+                "limit":{"type":"integer","minimum":1,"maximum":64}
+            },"required":["cidr"]}),
+        ));
+        tools.push(tool_definition(
+            "itops_create_ip_address",
+            "Create one IPv4 Address Record. Optional ids link it to an existing Site, Host, Connection, or Rack Device; no secrets or live Session state are stored.",
+            crate::mcp_tool_catalog::itops_ipam_address_input_schema(false),
+        ));
+        tools.push(tool_definition(
+            "itops_update_ip_address",
+            "Update one IPv4 Address Record by durable id with full-value semantics. Read itops_get_ipam_snapshot first and resend every value and binding that should be retained.",
+            crate::mcp_tool_catalog::itops_ipam_address_input_schema(true),
+        ));
+        tools.push(tool_definition(
+            "itops_remove_ip_address",
+            "Delete one IPv4 Address Record by durable id.",
+            json!({"type":"object","properties":{"id":{"type":"string"}},"required":["id"]}),
+        ));
+        tools.push(tool_definition(
+            "itops_import_ipam",
+            "Atomically create a structured batch of VLANs, Prefixes, and Address Records. Use this after parsing user-pasted prose, tables, CSV, or notes: preserve explicit facts, normalize field names, and omit ambiguous facts instead of guessing. Existing/repeated keys are skipped; every other validation error rolls back the whole batch. Read the snapshot and VLAN list first. Use individual update tools for records that already exist.",
+            crate::mcp_tool_catalog::itops_ipam_import_input_schema(),
+        ));
+        tools.push(tool_definition(
+            "itops_read_ipam_xlsx",
+            "Read the first non-empty worksheet of a local .xlsx path into rows. Review and normalize the rows, then call itops_import_ipam; this operation does not itself write IPAM.",
+            json!({"type":"object","properties":{"path":{"type":"string","minLength":1}},"required":["path"]}),
+        ));
+        tools.push(tool_definition(
+            "itops_scan_ip_prefixes",
+            "Actively probe the selected Prefix ids with ICMP, SNMP, reverse DNS, and bounded TCP checks. Scanning writes nothing; use itops_import_ipam or itops_create_ip_address for selected results. Run only on networks the user is authorized to probe.",
+            json!({"type":"object","properties":{
+                "prefixIds":{"type":"array","items":{"type":"string"},"minItems":1}
+            },"required":["prefixIds"]}),
         ));
         tools.push(tool_definition(
             "itops_create_site",
@@ -4348,7 +4436,8 @@ fn tool_requires_allow_all(tool_name: &str) -> bool {
             ))
         || (tool_name.starts_with("itops_")
             && !(tool_name.starts_with("itops_list")
-                || tool_name.starts_with("itops_get")))
+                || tool_name.starts_with("itops_get")
+                || tool_name == "itops_suggest_free_addresses"))
         || matches!(
             tool_name,
             "installer_install" | "installer_uninstall" | "installer_launch"
@@ -4702,16 +4791,19 @@ pub(crate) async fn itops_tool(app: &tauri::AppHandle, name: &str, args: Value) 
     use crate::itops::commands as itops_commands;
     use crate::itops::host_storage as itops_hosts;
     use crate::itops::ids::new_itops_id;
+    use crate::itops::ipam_commands;
     use crate::itops::run_storage as itops_runs;
     use crate::itops::site_storage as itops_topo;
     use crate::itops::storage as itops_sites;
     use crate::itops::task_commands as itops_task_commands;
     use crate::itops::task_storage as itops_tasks;
     use crate::itops::types::{
-        BatchTask, HostKind, ItopsTask, RackFacingEntry, RackItemKind, RackItemMetadata,
-        RackPlacementEntry, RoomIcon, RoomObject, RunHistoryEntry, RunScope, SiteFilter,
-        TaskOperatingSystem, Transport,
+        AddressStatus, BatchTask, HostKind, IpamDeviceType, IpamImportBatch, ItopsTask,
+        PrefixStatus, RackFacingEntry, RackItemKind, RackItemMetadata, RackPlacementEntry,
+        RoomIcon, RoomObject, RunHistoryEntry, RunScope, SiteFilter, TaskOperatingSystem,
+        Transport,
     };
+    use crate::itops::vlan_commands;
 
     fn to_value<T: serde::Serialize>(value: T) -> Value {
         serde_json::to_value(value).unwrap_or(Value::Null)
@@ -4859,6 +4951,192 @@ pub(crate) async fn itops_tool(app: &tauri::AppHandle, name: &str, args: Value) 
     // they must run outside the shared storage closure (the connection lock is
     // not reentrant) and may await.
     let delegated: Option<Result<Value, String>> = match name {
+        "itops_get_ipam_snapshot" => {
+            Some(ipam_commands::itops_ipam_snapshot(app.clone()).map(to_value))
+        }
+        "itops_list_vlans" => Some(vlan_commands::itops_list_vlans(app.clone()).map(to_value)),
+        "itops_create_vlan" => Some((|| {
+            let vid = u16::try_from(required_u32(&args, "vid")?)
+                .map_err(|_| "vid must be between 1 and 4094".to_string())?;
+            let accent = u8::try_from(optional_u32(&args, "accent").unwrap_or(0))
+                .map_err(|_| "accent must be between 0 and 255".to_string())?;
+            vlan_commands::itops_create_vlan(
+                app.clone(),
+                vid,
+                arg_string(&args, "name"),
+                arg_string(&args, "description"),
+                optional_string(&args, "siteId"),
+                accent,
+            )
+            .map(to_value)
+        })()),
+        "itops_update_vlan" => Some((|| {
+            let id = required_string(&args, "id")?;
+            let vid = u16::try_from(required_u32(&args, "vid")?)
+                .map_err(|_| "vid must be between 1 and 4094".to_string())?;
+            let accent = u8::try_from(optional_u32(&args, "accent").unwrap_or(0))
+                .map_err(|_| "accent must be between 0 and 255".to_string())?;
+            vlan_commands::itops_update_vlan(
+                app.clone(),
+                id,
+                vid,
+                arg_string(&args, "name"),
+                arg_string(&args, "description"),
+                optional_string(&args, "siteId"),
+                accent,
+            )
+            .map(to_value)
+        })()),
+        "itops_remove_vlan" => Some((|| {
+            vlan_commands::itops_remove_vlan(app.clone(), required_string(&args, "id")?)
+                .map(|_| json!({"ok": true}))
+        })()),
+        "itops_create_ip_prefix" | "itops_update_ip_prefix" => Some((|| {
+            let cidr = required_string(&args, "cidr")?;
+            let status: PrefixStatus = serde_json::from_value(
+                args.get("status")
+                    .cloned()
+                    .unwrap_or_else(|| json!("active")),
+            )
+            .map_err(|_| "status must be container, active, reserved, or deprecated".to_string())?;
+            let values = (
+                cidr,
+                arg_string(&args, "vrf"),
+                arg_string(&args, "role"),
+                status,
+                arg_string(&args, "description"),
+                optional_string(&args, "siteId"),
+                optional_string(&args, "vlanId"),
+            );
+            if name == "itops_create_ip_prefix" {
+                ipam_commands::itops_create_ip_prefix(
+                    app.clone(),
+                    values.0,
+                    values.1,
+                    values.2,
+                    values.3,
+                    values.4,
+                    values.5,
+                    values.6,
+                )
+                .map(to_value)
+            } else {
+                ipam_commands::itops_update_ip_prefix(
+                    app.clone(),
+                    required_string(&args, "id")?,
+                    values.0,
+                    values.1,
+                    values.2,
+                    values.3,
+                    values.4,
+                    values.5,
+                    values.6,
+                )
+                .map(to_value)
+            }
+        })()),
+        "itops_remove_ip_prefix" => Some((|| {
+            ipam_commands::itops_remove_ip_prefix(app.clone(), required_string(&args, "id")?)
+                .map(|_| json!({"ok": true}))
+        })()),
+        "itops_suggest_free_addresses" => Some((|| {
+            ipam_commands::itops_suggest_free_addresses(
+                app.clone(),
+                required_string(&args, "cidr")?,
+                arg_string(&args, "vrf"),
+                optional_u32(&args, "limit"),
+            )
+            .map(to_value)
+        })()),
+        "itops_create_ip_address" | "itops_update_ip_address" => Some((|| {
+            let address = required_string(&args, "address")?;
+            let status: AddressStatus = serde_json::from_value(
+                args.get("status")
+                    .cloned()
+                    .unwrap_or_else(|| json!("active")),
+            )
+            .map_err(|_| "status must be active, reserved, or deprecated".to_string())?;
+            let device_type: Option<IpamDeviceType> =
+                serde_json::from_value(args.get("deviceType").cloned().unwrap_or(Value::Null))
+                    .map_err(|_| "deviceType is not a supported IPAM device type".to_string())?;
+            let values = (
+                address,
+                arg_string(&args, "vrf"),
+                status,
+                arg_string(&args, "dnsName"),
+                device_type,
+                arg_string(&args, "deviceModel"),
+                arg_string(&args, "description"),
+                optional_string(&args, "siteId"),
+                optional_string(&args, "hostId"),
+                optional_string(&args, "connectionId"),
+                optional_string(&args, "rackItemId"),
+            );
+            if name == "itops_create_ip_address" {
+                ipam_commands::itops_create_ip_address(
+                    app.clone(),
+                    values.0,
+                    values.1,
+                    values.2,
+                    values.3,
+                    values.4,
+                    values.5,
+                    values.6,
+                    values.7,
+                    values.8,
+                    values.9,
+                    values.10,
+                )
+                .map(to_value)
+            } else {
+                ipam_commands::itops_update_ip_address(
+                    app.clone(),
+                    required_string(&args, "id")?,
+                    values.0,
+                    values.1,
+                    values.2,
+                    values.3,
+                    values.4,
+                    values.5,
+                    values.6,
+                    values.7,
+                    values.8,
+                    values.9,
+                    values.10,
+                )
+                .map(to_value)
+            }
+        })()),
+        "itops_remove_ip_address" => Some((|| {
+            ipam_commands::itops_remove_ip_address(app.clone(), required_string(&args, "id")?)
+                .map(|_| json!({"ok": true}))
+        })()),
+        "itops_import_ipam" => Some((|| {
+            let batch: IpamImportBatch =
+                serde_json::from_value(args.get("batch").cloned().unwrap_or(Value::Null))
+                    .map_err(|error| format!("invalid IPAM batch: {error}"))?;
+            ipam_commands::itops_import_ipam(app.clone(), batch).map(to_value)
+        })()),
+        "itops_read_ipam_xlsx" => Some(
+            async {
+                ipam_commands::itops_read_ipam_xlsx(required_string(&args, "path")?)
+                    .await
+                    .map(to_value)
+            }
+            .await,
+        ),
+        "itops_scan_ip_prefixes" => Some(
+            async {
+                let prefix_ids = string_array(&args, "prefixIds").unwrap_or_default();
+                if prefix_ids.is_empty() {
+                    return Err("prefixIds must contain at least one Prefix id".to_string());
+                }
+                ipam_commands::itops_scan_ip_prefixes(app.clone(), prefix_ids)
+                    .await
+                    .map(to_value)
+            }
+            .await,
+        ),
         "itops_reorder_sites" => Some((|| {
             let ordered_ids = string_array(&args, "orderedIds").unwrap_or_default();
             itops_commands::itops_reorder_sites(app.clone(), ordered_ids)
@@ -5449,7 +5727,13 @@ pub(crate) async fn itops_tool(app: &tauri::AppHandle, name: &str, args: Value) 
     match result {
         Ok(value) => {
             let read_only = name.starts_with("itops_list")
-                || name.starts_with("itops_get");
+                || name.starts_with("itops_get")
+                || matches!(
+                    name,
+                    "itops_suggest_free_addresses"
+                        | "itops_read_ipam_xlsx"
+                        | "itops_scan_ip_prefixes"
+                );
             if !read_only {
                 let _ = app.emit("itops-changed", json!({ "source": "aiTool", "tool": name }));
             }
@@ -5466,19 +5750,12 @@ pub(crate) async fn live_session_tool(app: &tauri::AppHandle, name: &str, args: 
     }
 }
 
-pub(crate) async fn installer_tool(
-    app: &tauri::AppHandle,
-    name: &str,
-    args: Value,
-) -> String {
+pub(crate) async fn installer_tool(app: &tauri::AppHandle, name: &str, args: Value) -> String {
     live_session_tool(app, name, args).await
 }
 
 fn strip_screenshot_thumbnails(value: &mut Value) {
-    let Some(screenshots) = value
-        .get_mut("screenshots")
-        .and_then(Value::as_array_mut)
-    else {
+    let Some(screenshots) = value.get_mut("screenshots").and_then(Value::as_array_mut) else {
         return;
     };
     for screenshot in screenshots {
@@ -5488,11 +5765,7 @@ fn strip_screenshot_thumbnails(value: &mut Value) {
     }
 }
 
-pub(crate) async fn screenshot_tool(
-    app: &tauri::AppHandle,
-    name: &str,
-    args: Value,
-) -> String {
+pub(crate) async fn screenshot_tool(app: &tauri::AppHandle, name: &str, args: Value) -> String {
     let required_string = |key: &str| {
         args.get(key)
             .and_then(Value::as_str)
@@ -5523,11 +5796,8 @@ pub(crate) async fn screenshot_tool(
                     .map_err(|error| error.to_string())
             }
             "screenshot_copy_to_clipboard" => {
-                crate::copy_stored_screenshot_to_clipboard(
-                    app.clone(),
-                    required_string("id")?,
-                )
-                .await?;
+                crate::copy_stored_screenshot_to_clipboard(app.clone(), required_string("id")?)
+                    .await?;
                 Ok(json!({"ok": true}))
             }
             "screenshot_resize" => {

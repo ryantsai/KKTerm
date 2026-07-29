@@ -1802,6 +1802,7 @@
       "paletteLabel": "Agregar al mapa",
       "addNode": "Agregar nodo",
       "nodeCategory": {
+        "general": "General",
         "core": "Núcleo y ruteo",
         "security": "Seguridad",
         "traffic": "Gestión de tráfico",
@@ -1812,6 +1813,7 @@
         "maps": "Mapas"
       },
       "nodeKind": {
+        "generic": "Generic",
         "router": "Router",
         "gateway": "Puerta de enlace / módem",
         "switch": "Switch (L2)",
@@ -1838,6 +1840,21 @@
         "printer": "Impresora",
         "camera": "Cámara de seguridad",
         "geomap": "Geomapa"
+      },
+      "genericIconLabel": "Built-in icon",
+      "deepLinksLabel": "Deep links",
+      "deepLinkAdd": "Add deep link",
+      "deepLinkTypeLabel": "Link to",
+      "deepLinkTargetLabel": "Target",
+      "deepLinkNoTargets": "No destinations available",
+      "deepLinkUnavailable": "Unavailable destination",
+      "deepLinkEmpty": "No deep links.",
+      "deepLinksPopupLabel": "Deep links for {{name}}",
+      "deepLinkType": {
+        "connection": "Connection",
+        "site": "Site",
+        "serverRoom": "Server Room",
+        "rackItem": "Rack Device"
       },
       "linkKind": {
         "ethernet": "Cobre / Ethernet",

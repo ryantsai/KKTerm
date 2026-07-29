@@ -1802,6 +1802,7 @@
       "paletteLabel": "Ajouter à la carte",
       "addNode": "Ajouter un nœud",
       "nodeCategory": {
+        "general": "General",
         "core": "Cœur & routage",
         "security": "Sécurité",
         "traffic": "Gestion du trafic",
@@ -1812,6 +1813,7 @@
         "maps": "Cartes"
       },
       "nodeKind": {
+        "generic": "Generic",
         "router": "Routeur",
         "gateway": "Passerelle / modem",
         "switch": "Commutateur (L2)",
@@ -1838,6 +1840,21 @@
         "printer": "Imprimante",
         "camera": "Caméra de sécurité",
         "geomap": "Géocarte"
+      },
+      "genericIconLabel": "Built-in icon",
+      "deepLinksLabel": "Deep links",
+      "deepLinkAdd": "Add deep link",
+      "deepLinkTypeLabel": "Link to",
+      "deepLinkTargetLabel": "Target",
+      "deepLinkNoTargets": "No destinations available",
+      "deepLinkUnavailable": "Unavailable destination",
+      "deepLinkEmpty": "No deep links.",
+      "deepLinksPopupLabel": "Deep links for {{name}}",
+      "deepLinkType": {
+        "connection": "Connection",
+        "site": "Site",
+        "serverRoom": "Server Room",
+        "rackItem": "Rack Device"
       },
       "linkKind": {
         "ethernet": "Cuivre / Ethernet",

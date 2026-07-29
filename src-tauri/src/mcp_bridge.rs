@@ -663,6 +663,9 @@ fn redact_tool_arguments(name: &str, arguments: &Value) -> Value {
         "kkterm.itops.runs.dangerous.start" => {
             redact_object_key(&mut redacted, "script");
         }
+        "kkterm.itops.ipam.dangerous.read_xlsx" => {
+            redact_object_key(&mut redacted, "path");
+        }
         _ => {}
     }
     redacted
@@ -678,7 +681,9 @@ fn redact_tool_result(name: &str, result: &Value) -> Value {
         | "kkterm.itops.tasks.dangerous.create"
         | "kkterm.itops.tasks.dangerous.update"
         // Run reports replay captured remote command output.
-        | "kkterm.itops.runs.get_report" => Value::String("[REDACTED]".to_string()),
+        | "kkterm.itops.runs.get_report"
+        // Workbook rows may contain unrelated sensitive local data.
+        | "kkterm.itops.ipam.dangerous.read_xlsx" => Value::String("[REDACTED]".to_string()),
         _ => redact_sensitive_debug_value(result),
     }
 }
@@ -1160,18 +1165,11 @@ async fn dispatch_tool(app: &AppHandle, name: &str, args: Value) -> Result<Value
             let raw = crate::ai::dashboard_tool(app, "dashboard_reset", json!({}));
             parse_dashboard_json(&raw)
         }
-        "kkterm.installer.tools.list" => {
-            parse_tool_json(&crate::ai::installer_tool(
-                app,
-                "installer_list_tools",
-                json!({}),
-            )
-            .await)
-        }
+        "kkterm.installer.tools.list" => parse_tool_json(
+            &crate::ai::installer_tool(app, "installer_list_tools", json!({})).await,
+        ),
         "kkterm.installer.updates.check" => {
-            parse_tool_json(
-                &crate::ai::installer_tool(app, "installer_check_updates", args).await,
-            )
+            parse_tool_json(&crate::ai::installer_tool(app, "installer_check_updates", args).await)
         }
         "kkterm.installer.dangerous.install" => {
             parse_tool_json(&crate::ai::installer_tool(app, "installer_install", args).await)
@@ -1304,6 +1302,51 @@ async fn dispatch_tool(app: &AppHandle, name: &str, args: Value) -> Result<Value
         // as {"ok": false, "error": …}, so forward arguments unchanged.
         "kkterm.itops.sites.list" => {
             parse_tool_json(&crate::ai::itops_tool(app, "itops_list_sites", json!({})).await)
+        }
+        "kkterm.itops.ipam.snapshot" => {
+            parse_tool_json(&crate::ai::itops_tool(app, "itops_get_ipam_snapshot", json!({})).await)
+        }
+        "kkterm.itops.ipam.vlans.list" => {
+            parse_tool_json(&crate::ai::itops_tool(app, "itops_list_vlans", json!({})).await)
+        }
+        "kkterm.itops.ipam.vlans.create" => {
+            parse_tool_json(&crate::ai::itops_tool(app, "itops_create_vlan", args).await)
+        }
+        "kkterm.itops.ipam.vlans.update" => {
+            parse_tool_json(&crate::ai::itops_tool(app, "itops_update_vlan", args).await)
+        }
+        "kkterm.itops.ipam.vlans.remove" => {
+            parse_tool_json(&crate::ai::itops_tool(app, "itops_remove_vlan", args).await)
+        }
+        "kkterm.itops.ipam.prefixes.create" => {
+            parse_tool_json(&crate::ai::itops_tool(app, "itops_create_ip_prefix", args).await)
+        }
+        "kkterm.itops.ipam.prefixes.update" => {
+            parse_tool_json(&crate::ai::itops_tool(app, "itops_update_ip_prefix", args).await)
+        }
+        "kkterm.itops.ipam.prefixes.remove" => {
+            parse_tool_json(&crate::ai::itops_tool(app, "itops_remove_ip_prefix", args).await)
+        }
+        "kkterm.itops.ipam.prefixes.suggest_free" => {
+            parse_tool_json(&crate::ai::itops_tool(app, "itops_suggest_free_addresses", args).await)
+        }
+        "kkterm.itops.ipam.addresses.create" => {
+            parse_tool_json(&crate::ai::itops_tool(app, "itops_create_ip_address", args).await)
+        }
+        "kkterm.itops.ipam.addresses.update" => {
+            parse_tool_json(&crate::ai::itops_tool(app, "itops_update_ip_address", args).await)
+        }
+        "kkterm.itops.ipam.addresses.remove" => {
+            parse_tool_json(&crate::ai::itops_tool(app, "itops_remove_ip_address", args).await)
+        }
+        "kkterm.itops.ipam.import" => {
+            parse_tool_json(&crate::ai::itops_tool(app, "itops_import_ipam", args).await)
+        }
+        "kkterm.itops.ipam.dangerous.read_xlsx" => {
+            parse_tool_json(&crate::ai::itops_tool(app, "itops_read_ipam_xlsx", args).await)
+        }
+        "kkterm.itops.ipam.dangerous.scan" => {
+            parse_tool_json(&crate::ai::itops_tool(app, "itops_scan_ip_prefixes", args).await)
         }
         "kkterm.itops.sites.create" => {
             parse_tool_json(&crate::ai::itops_tool(app, "itops_create_site", args).await)
@@ -1822,6 +1865,20 @@ mod tests {
             ),
             json!("[REDACTED]")
         );
+        assert_eq!(
+            redact_tool_arguments(
+                "kkterm.itops.ipam.dangerous.read_xlsx",
+                &json!({"path": "C:\\sensitive\\inventory.xlsx"})
+            )["path"],
+            "[REDACTED]"
+        );
+        assert_eq!(
+            redact_tool_result(
+                "kkterm.itops.ipam.dangerous.read_xlsx",
+                &json!({"name": "Inventory", "rows": [["secret"]]})
+            ),
+            json!("[REDACTED]")
+        );
     }
 
     #[test]
@@ -1918,6 +1975,9 @@ mod tests {
         assert!(dangerous_tool(
             "kkterm.screenshots.dangerous.capture_fullscreen"
         ));
+        assert!(dangerous_tool("kkterm.itops.ipam.dangerous.read_xlsx"));
+        assert!(dangerous_tool("kkterm.itops.ipam.dangerous.scan"));
+        assert!(!dangerous_tool("kkterm.itops.ipam.import"));
         assert!(!dangerous_tool("kkterm.screenshots.list"));
     }
 
@@ -2007,6 +2067,25 @@ mod tests {
         }
         // IT Ops surface
         assert!(names.contains(&"kkterm.itops.sites.list".to_string()));
+        for name in [
+            "kkterm.itops.ipam.snapshot",
+            "kkterm.itops.ipam.vlans.list",
+            "kkterm.itops.ipam.vlans.create",
+            "kkterm.itops.ipam.vlans.update",
+            "kkterm.itops.ipam.vlans.remove",
+            "kkterm.itops.ipam.prefixes.create",
+            "kkterm.itops.ipam.prefixes.update",
+            "kkterm.itops.ipam.prefixes.remove",
+            "kkterm.itops.ipam.prefixes.suggest_free",
+            "kkterm.itops.ipam.addresses.create",
+            "kkterm.itops.ipam.addresses.update",
+            "kkterm.itops.ipam.addresses.remove",
+            "kkterm.itops.ipam.import",
+            "kkterm.itops.ipam.dangerous.read_xlsx",
+            "kkterm.itops.ipam.dangerous.scan",
+        ] {
+            assert!(names.contains(&name.to_string()));
+        }
         assert!(names.contains(&"kkterm.itops.sites.create".to_string()));
         assert!(names.contains(&"kkterm.itops.server_rooms.list".to_string()));
         assert!(names.contains(&"kkterm.itops.server_rooms.create".to_string()));

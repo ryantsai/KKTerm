@@ -1802,6 +1802,7 @@
       "paletteLabel": "Thêm vào sơ đồ",
       "addNode": "Thêm nút",
       "nodeCategory": {
+        "general": "General",
         "core": "Lõi & định tuyến",
         "security": "Bảo mật",
         "traffic": "Quản lý lưu lượng",
@@ -1812,6 +1813,7 @@
         "maps": "Bản đồ"
       },
       "nodeKind": {
+        "generic": "Generic",
         "router": "Bộ định tuyến",
         "gateway": "Gateway / Modem",
         "switch": "Switch (L2)",
@@ -1838,6 +1840,21 @@
         "printer": "Máy in",
         "camera": "Camera an ninh",
         "geomap": "Bản đồ địa lý"
+      },
+      "genericIconLabel": "Built-in icon",
+      "deepLinksLabel": "Deep links",
+      "deepLinkAdd": "Add deep link",
+      "deepLinkTypeLabel": "Link to",
+      "deepLinkTargetLabel": "Target",
+      "deepLinkNoTargets": "No destinations available",
+      "deepLinkUnavailable": "Unavailable destination",
+      "deepLinkEmpty": "No deep links.",
+      "deepLinksPopupLabel": "Deep links for {{name}}",
+      "deepLinkType": {
+        "connection": "Connection",
+        "site": "Site",
+        "serverRoom": "Server Room",
+        "rackItem": "Rack Device"
       },
       "linkKind": {
         "ethernet": "Cáp đồng / Ethernet",

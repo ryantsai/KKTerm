@@ -206,14 +206,16 @@ migration or repair pass is needed. Utilization counts documented addresses
 against usable addresses; nothing is scanned or probed automatically.
 
 **Network Node** — one box on a Network Map: id, label, kind, canvas
-position, optional free-text address and note, and documented status (`up` /
-`warning`). Kinds are grouped in the designer as Core & Routing (`router`,
+position and size, interface inventory, optional note, documented status (`up` /
+`warning`), and ordered soft deep links. Kinds are grouped in the designer as
+General (`generic`), Core & Routing (`router`,
 `gateway`, `switch`, `switchL3`, `hub`), Security (`firewall`, `vpnGateway`,
 `idsIps`), Traffic Management (`loadBalancer`, `proxy`, `dns`), Compute &
 Storage (`server`, `database`, `storage`), Cloud & WAN (`cloud`, `isp`),
 Wireless (`accessPoint`, `wirelessController`), and Endpoints (`desktop`,
 `laptop`, `smartphone`, `iot`, `voip`, `printer`, `camera`), plus Maps
-(`geomap`). A Geomap is resizable cosmetic artwork backed by the built-in
+(`geomap`). A Generic node remains behaviorally generic while its `icon_kind`
+chooses any built-in device artwork. A Geomap is resizable cosmetic artwork backed by the built-in
 world-map SVG; its normalized zoom and pan viewport are saved with the node so
 the Properties dialog can select a crop from 100% through 10,000% before
 placement. Its Properties dialog accepts pixel width and height without an
@@ -225,6 +227,18 @@ does not expose device label, type, status, interface, or note fields. A Geomap
 cannot be an endpoint for a new Network Link. The address is a
 caption drawn under the label; it is not a foreign key into IPAM. Status is
 operator-authored documentation, not a polled device state.
+
+**Deep Link** — an in-app navigation relationship from one KKTerm app element
+to another. For Network Maps, the source app element is a Network Node and the
+destination app element is selected through one durable soft reference. The
+closed destination kinds are Connection
+(`connection_id`), Site (`site_id`), Server Room (`site_id` plus the durable
+room name), and Rack Device (`site_id`, `rack_id`, and `rack_item_id`). Deep
+Links are not web URLs, external app links, bindings, or Network Links, and
+never affect reachability. Storage trims and
+deduplicates them but deliberately does not validate the target: if a target is
+later deleted, the map still loads and shows an unavailable destination that
+can be removed from Node Properties.
 
 **Network Link** — one **undirected** edge between two Network Nodes, with
 an optional label naming the whole link (a circuit id, an uplink name — **not**
@@ -510,6 +524,10 @@ for that later work.
 
 Network Nodes use a compact, left-anchored card: a small icon tile, thin
 internal padding, and the remaining width reserved for the label and caption.
+Nodes with deep links show a subtle chain glyph and blue count at the right.
+Activating it opens a `DialogPortal` mini popup; choosing a row opens its
+Connection in Workspace or navigates the IT Ops drill-down to its Site, Server
+Room, or Rack Device. A Rack Device target opens its Rack and Properties.
 When a Network Node has notes, a wide card uses the right side for the note;
 narrow cards put an ellipsized note preview along the bottom. New and imported
 nodes start at the compact default size, while every saved node keeps its own
@@ -542,8 +560,11 @@ unrelated node handles, then recalculates the shortest handle sides when the
 drag ends.
 Network Node Properties puts the device artwork and palette-backed icon
 background choices in one compact identity header. Small status choices use
-icon-backed radio cards; the 26-item node-kind list remains a select when
-editing an existing device node. Geomap Properties is purpose-built instead:
+icon-backed radio cards; the 27-item node-kind list remains a select when
+editing an existing device node. Generic Properties additionally provides a
+visual picker for all 26 built-in icon artworks without changing the node kind.
+Node Properties owns the ordered deep-link list and a focused add-destination
+dialog. Geomap Properties is purpose-built instead:
 it includes the artwork tint, uncapped pixel width and height fields, and a
 draggable world-map preview with scroll/slider zoom from 100% through 10,000%,
 omitting the device label, Type, status, interfaces, and note. The selected
@@ -804,12 +825,23 @@ the same tools are published under `kkterm.itops.*`, with
 task-authoring and run-starting tools in
 `dangerous` sub-namespaces (see `docs/MCP.md`).
 
-VLANs, IPAM, and Network Maps ship without assistant or MCP tools. Their twelve
-Tauri commands are UI-only for now; the assistant sees the two destinations
-(so it can navigate and highlight them) and their counts, nothing more.
-Exposing them later means adding approval-gated `itops_*` tools the same way
-the existing surfaces did — the storage layer already returns the derived
-snapshot a tool would need.
+VLAN and IPAM operations use the same shared assistant/MCP path as the rest of
+IT Ops. The assistant can read the complete derived IPAM snapshot and VLAN
+list; create, update, and remove VLANs, Prefixes, and Address Records; suggest
+documented-free addresses; atomically import a create-only structured batch;
+read an explicitly named `.xlsx` workbook; and run the explicit Prefix scan.
+When the user pastes prose, a copied table, CSV, or rough notes, the model first
+reads the snapshot and VLANs, converts only explicit facts into the typed batch,
+and submits one `itops_import_ipam` call for new records. Existing records use
+their typed update tool so full-value fields and bindings can be preserved.
+Material ambiguities are presented to the user instead of invented. Every
+write remains approval-gated in the in-app assistant. Built-in MCP publishes
+the same operations under `kkterm.itops.ipam.*`; local workbook reads and
+active network scans are in the `dangerous` namespace.
+
+Network Maps remain UI-only. The assistant sees the destination and loaded
+counts so it can navigate and highlight it, but it does not read or rewrite
+saved graph documents.
 
 ## Retired Monitor data
 

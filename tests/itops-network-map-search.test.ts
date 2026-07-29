@@ -29,6 +29,7 @@ const map: NetworkMap = {
         hostId: "host-1",
         connectionId: "connection-1",
         rackItemId: "rack-item-1",
+        deepLinks: [],
         note: "Replace after maintenance",
       },
     ],

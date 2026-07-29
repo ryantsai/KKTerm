@@ -686,6 +686,7 @@ export interface Vlan {
 // from the physical Site → Server Room → Rack topology that "topology" names.
 // One row per map holds the whole graph, following the Room Objects precedent.
 export type NetworkNodeKind =
+  | "generic"
   | "router"
   | "gateway"
   | "switch"
@@ -712,6 +713,34 @@ export type NetworkNodeKind =
   | "printer"
   | "camera"
   | "geomap";
+
+export type NetworkNodeIconKind = Exclude<NetworkNodeKind, "generic">;
+export type NetworkNodeDeepLinkKind = "connection" | "site" | "serverRoom" | "rackItem";
+
+export type NetworkNodeDeepLink =
+  | {
+      id: string;
+      kind: "connection";
+      connectionId: string;
+    }
+  | {
+      id: string;
+      kind: "site";
+      siteId: string;
+    }
+  | {
+      id: string;
+      kind: "serverRoom";
+      siteId: string;
+      serverRoom: string;
+    }
+  | {
+      id: string;
+      kind: "rackItem";
+      siteId: string;
+      rackId: string;
+      rackItemId: string;
+    };
 
 export type NetworkLinkKind = "ethernet" | "fiber" | "wan" | "wireless";
 export type NetworkMapStatus = "up" | "warning";
@@ -741,6 +770,9 @@ export interface NetworkNode {
   height: number;
   // Optional palette index overriding the node kind's icon background.
   iconAccent?: number | null;
+  // Generic nodes can display any of the built-in Network Map device icons
+  // without inheriting that icon kind's behavior.
+  iconKind?: NetworkNodeIconKind | null;
   // Cosmetic crop of the shared world-map asset. Future region-specific map
   // kinds can reuse this normalized pan/zoom contract.
   geomapViewport?: NetworkGeomapViewport | null;
@@ -752,6 +784,9 @@ export interface NetworkNode {
   hostId?: string | null;
   connectionId?: string | null;
   rackItemId?: string | null;
+  // Ordered Deep Links from this app element to other KKTerm app elements.
+  // Missing destinations remain editable instead of preventing map loading.
+  deepLinks: NetworkNodeDeepLink[];
   note: string;
 }
 

@@ -2692,6 +2692,71 @@ fn itops_rack_item_tools_expose_mounting_face_and_rack_top_contracts() {
 }
 
 #[test]
+fn itops_ipam_tools_cover_crud_bulk_import_and_sensitive_inputs() {
+    let settings: AiAssistantToolSettings = serde_json::from_value(json!({
+        "itops": true
+    }))
+    .expect("tool settings deserialize");
+    let tools = ai_tool_definitions(&settings);
+    let names = tools
+        .iter()
+        .map(|tool| tool.function.name)
+        .collect::<Vec<_>>();
+
+    for name in [
+        "itops_get_ipam_snapshot",
+        "itops_list_vlans",
+        "itops_create_vlan",
+        "itops_update_vlan",
+        "itops_remove_vlan",
+        "itops_create_ip_prefix",
+        "itops_update_ip_prefix",
+        "itops_remove_ip_prefix",
+        "itops_suggest_free_addresses",
+        "itops_create_ip_address",
+        "itops_update_ip_address",
+        "itops_remove_ip_address",
+        "itops_import_ipam",
+        "itops_read_ipam_xlsx",
+        "itops_scan_ip_prefixes",
+    ] {
+        assert!(names.contains(&name), "missing assistant IPAM tool {name}");
+    }
+
+    let import = tools
+        .iter()
+        .find(|tool| tool.function.name == "itops_import_ipam")
+        .expect("IPAM import tool exists");
+    assert!(
+        import
+            .function
+            .description
+            .contains("user-pasted prose, tables, CSV, or notes")
+    );
+    assert!(
+        import
+            .function
+            .parameters
+            .pointer("/properties/batch/properties/vlans")
+            .is_some()
+    );
+    assert!(
+        import
+            .function
+            .parameters
+            .pointer("/properties/batch/properties/prefixes")
+            .is_some()
+    );
+    assert!(
+        import
+            .function
+            .parameters
+            .pointer("/properties/batch/properties/addresses")
+            .is_some()
+    );
+}
+
+#[test]
 fn itops_rack_item_mount_face_parser_accepts_rear_and_keeps_front_default_optional() {
     assert_eq!(
         optional_itops_mount_face(&json!({ "mountFace": "rear" })).unwrap(),
@@ -3850,6 +3915,13 @@ fn prompt_permission_mode_blocks_mutating_tools() {
     assert!(!tool_requires_allow_all("itops_list_run_history"));
     assert!(!tool_requires_allow_all("itops_get_task"));
     assert!(!tool_requires_allow_all("itops_get_run_report"));
+    assert!(!tool_requires_allow_all("itops_get_ipam_snapshot"));
+    assert!(!tool_requires_allow_all("itops_list_vlans"));
+    assert!(!tool_requires_allow_all("itops_suggest_free_addresses"));
+    assert!(tool_requires_allow_all("itops_import_ipam"));
+    assert!(tool_requires_allow_all("itops_update_ip_address"));
+    assert!(tool_requires_allow_all("itops_read_ipam_xlsx"));
+    assert!(tool_requires_allow_all("itops_scan_ip_prefixes"));
     assert!(tool_requires_allow_all("installer_install"));
     assert!(tool_requires_allow_all("installer_uninstall"));
     assert!(tool_requires_allow_all("installer_launch"));

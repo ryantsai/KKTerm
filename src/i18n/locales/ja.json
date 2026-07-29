@@ -1802,6 +1802,7 @@
       "paletteLabel": "マップに追加",
       "addNode": "ノードを追加",
       "nodeCategory": {
+        "general": "General",
         "core": "コア / ルーティング",
         "security": "セキュリティ",
         "traffic": "トラフィック管理",
@@ -1812,6 +1813,7 @@
         "maps": "マップ"
       },
       "nodeKind": {
+        "generic": "Generic",
         "router": "ルーター",
         "gateway": "ゲートウェイ / モデム",
         "switch": "スイッチ (L2)",
@@ -1838,6 +1840,21 @@
         "printer": "プリンター",
         "camera": "防犯カメラ",
         "geomap": "ジオマップ"
+      },
+      "genericIconLabel": "Built-in icon",
+      "deepLinksLabel": "Deep links",
+      "deepLinkAdd": "Add deep link",
+      "deepLinkTypeLabel": "Link to",
+      "deepLinkTargetLabel": "Target",
+      "deepLinkNoTargets": "No destinations available",
+      "deepLinkUnavailable": "Unavailable destination",
+      "deepLinkEmpty": "No deep links.",
+      "deepLinksPopupLabel": "Deep links for {{name}}",
+      "deepLinkType": {
+        "connection": "Connection",
+        "site": "Site",
+        "serverRoom": "Server Room",
+        "rackItem": "Rack Device"
       },
       "linkKind": {
         "ethernet": "銅線 / イーサネット",

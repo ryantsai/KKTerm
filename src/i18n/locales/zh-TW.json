@@ -1802,6 +1802,7 @@
       "paletteLabel": "加入拓撲圖",
       "addNode": "新增節點",
       "nodeCategory": {
+        "general": "一般",
         "core": "核心與路由",
         "security": "安全",
         "traffic": "流量管理",
@@ -1812,6 +1813,7 @@
         "maps": "地圖"
       },
       "nodeKind": {
+        "generic": "通用",
         "router": "路由器",
         "gateway": "閘道器 / 數據機",
         "switch": "交換器 (L2)",
@@ -1838,6 +1840,21 @@
         "printer": "印表機",
         "camera": "監視攝影機",
         "geomap": "地理地圖"
+      },
+      "genericIconLabel": "內建圖示",
+      "deepLinksLabel": "深層連結",
+      "deepLinkAdd": "新增深層連結",
+      "deepLinkTypeLabel": "連結至",
+      "deepLinkTargetLabel": "目標",
+      "deepLinkNoTargets": "沒有可用的目的地",
+      "deepLinkUnavailable": "無法使用的目的地",
+      "deepLinkEmpty": "沒有深層連結。",
+      "deepLinksPopupLabel": "{{name}} 的深層連結",
+      "deepLinkType": {
+        "connection": "連線",
+        "site": "站台",
+        "serverRoom": "伺服器機房",
+        "rackItem": "機架裝置"
       },
       "linkKind": {
         "ethernet": "銅纜 / 乙太網路",

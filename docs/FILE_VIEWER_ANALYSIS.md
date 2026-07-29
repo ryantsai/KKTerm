@@ -200,7 +200,7 @@ honest UAC handling.
 When a file's viewer declares `needsExternalTool`, the viewer:
 1. Checks the Install Helper detection cache for the tool.
 2. If missing, shows an **app-owned dialog** (built from `src/app/ui/dialog`
-   primitives) offering "Install via Install Helper," deep-linking to that
+   primitives) offering "Install via Install Helper," using a Deep Link to that
    tool's row — no silent bundling, honest about UAC.
 3. Once detected, a backend **conversion command** (background worker) runs the
    installed tool from its app-local/managed path, writes a viewable artifact to

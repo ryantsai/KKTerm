@@ -19,6 +19,7 @@ function node(id: string): NetworkNode {
     height: 80,
     interfaces: [],
     status: "up",
+    deepLinks: [],
     note: "",
   };
 }

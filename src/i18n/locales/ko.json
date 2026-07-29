@@ -1802,6 +1802,7 @@
       "paletteLabel": "맵에 추가",
       "addNode": "노드 추가",
       "nodeCategory": {
+        "general": "General",
         "core": "코어 / 라우팅",
         "security": "보안",
         "traffic": "트래픽 관리",
@@ -1812,6 +1813,7 @@
         "maps": "지도"
       },
       "nodeKind": {
+        "generic": "Generic",
         "router": "라우터",
         "gateway": "게이트웨이 / 모뎀",
         "switch": "스위치 (L2)",
@@ -1838,6 +1840,21 @@
         "printer": "프린터",
         "camera": "보안 카메라",
         "geomap": "지리 지도"
+      },
+      "genericIconLabel": "Built-in icon",
+      "deepLinksLabel": "Deep links",
+      "deepLinkAdd": "Add deep link",
+      "deepLinkTypeLabel": "Link to",
+      "deepLinkTargetLabel": "Target",
+      "deepLinkNoTargets": "No destinations available",
+      "deepLinkUnavailable": "Unavailable destination",
+      "deepLinkEmpty": "No deep links.",
+      "deepLinksPopupLabel": "Deep links for {{name}}",
+      "deepLinkType": {
+        "connection": "Connection",
+        "site": "Site",
+        "serverRoom": "Server Room",
+        "rackItem": "Rack Device"
       },
       "linkKind": {
         "ethernet": "구리선 / 이더넷",

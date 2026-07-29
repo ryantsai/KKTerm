@@ -1802,6 +1802,7 @@
       "paletteLabel": "添加到拓扑图",
       "addNode": "添加节点",
       "nodeCategory": {
+        "general": "General",
         "core": "核心与路由",
         "security": "安全",
         "traffic": "流量管理",
@@ -1812,6 +1813,7 @@
         "maps": "地图"
       },
       "nodeKind": {
+        "generic": "Generic",
         "router": "路由器",
         "gateway": "网关 / 调制解调器",
         "switch": "交换机 (L2)",
@@ -1838,6 +1840,21 @@
         "printer": "打印机",
         "camera": "监控摄像头",
         "geomap": "地理地图"
+      },
+      "genericIconLabel": "Built-in icon",
+      "deepLinksLabel": "Deep links",
+      "deepLinkAdd": "Add deep link",
+      "deepLinkTypeLabel": "Link to",
+      "deepLinkTargetLabel": "Target",
+      "deepLinkNoTargets": "No destinations available",
+      "deepLinkUnavailable": "Unavailable destination",
+      "deepLinkEmpty": "No deep links.",
+      "deepLinksPopupLabel": "Deep links for {{name}}",
+      "deepLinkType": {
+        "connection": "Connection",
+        "site": "Site",
+        "serverRoom": "Server Room",
+        "rackItem": "Rack Device"
       },
       "linkKind": {
         "ethernet": "铜缆 / 以太网",
