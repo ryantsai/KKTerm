@@ -31,6 +31,7 @@ import type {
   AssistantContextSnippet,
   Connection,
   LayoutNode,
+  LaunchPath,
   PerformanceMetrics,
   PerformanceSnapshot,
   HostUsageSnapshot,
@@ -1556,7 +1557,11 @@ export interface WorkspaceState {
   openFtpBrowser: (connection: Connection) => void;
   openLocalFilesBrowser: (connection: Connection) => void;
   openFileViewer: (connection: Connection) => void;
-  openFileViewerPath: (path: string, options?: { sourceConnection?: Connection }) => void;
+  openFileViewerPath: (
+    path: string,
+    options?: { sourceConnection?: Connection; ephemeral?: boolean },
+  ) => void;
+  openEphemeralPath: (path: LaunchPath) => void;
   openTerminalHere: (connection: Connection, remotePath: string) => void;
   openLocalTerminal: (options?: { name?: string; shell?: string }) => void;
   openLocalTerminalHere: (cwd: string, options?: { name?: string; shell?: string }) => void;
@@ -2778,6 +2783,48 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       activeTabId: tab.id,
     }));
   },
+  openEphemeralPath: (launchPath) => {
+    const path = launchPath.path.trim();
+    if (!path) {
+      return;
+    }
+    if (launchPath.kind === "file") {
+      get().openFileViewerPath(path, { ephemeral: true });
+      return;
+    }
+
+    const name = fileNameFromPath(path) || i18next.t("connections.localFiles");
+    const connection: Connection = {
+      id: `launch-folder-${stableIdFromPath(path)}`,
+      name,
+      host: "localhost",
+      user: "",
+      localStartupDirectory: path,
+      type: "localFiles",
+      status: "idle",
+    };
+    const tabId = `tab-${connection.id}-localFiles`;
+    const existingTab = get().tabs.find((tab) => tab.id === tabId);
+    if (existingTab) {
+      set({ activeTabId: existingTab.id });
+      return;
+    }
+    const tab: WorkspaceTab = {
+      id: tabId,
+      workspaceId: get().activeWorkspaceId,
+      title: name,
+      toolbarTitle: name,
+      subtitle: path,
+      kind: "localFiles",
+      panes: [],
+      connection,
+      ephemeral: true,
+    };
+    set((state) => ({
+      tabs: [...state.tabs, tab],
+      activeTabId: tab.id,
+    }));
+  },
   openFileViewer: (connection) => {
     if (connection.type !== "fileView") {
       return;
@@ -2829,7 +2876,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       status: "idle",
     };
 
-    if (sourceConnection?.type === "localFiles" && get().generalSettings.hideTopTabButtons) {
+    if (
+      sourceConnection?.type === "localFiles" &&
+      !options?.ephemeral &&
+      get().generalSettings.hideTopTabButtons
+    ) {
       const state = get();
       const activeWorkspaceId = state.activeWorkspaceId;
       const parentChild = upsertStoredChildConnections([
@@ -3020,6 +3071,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       kind: "fileViewer",
       panes: [],
       connection,
+      ephemeral: options?.ephemeral,
     };
     set((state) => ({
       tabs: [...state.tabs, tab],

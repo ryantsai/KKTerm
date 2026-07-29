@@ -22,6 +22,7 @@ mod github_copilot;
 mod import;
 mod installer;
 mod itops;
+mod launch_paths;
 mod linux_env;
 mod logging;
 mod manual;
@@ -2138,6 +2139,26 @@ async fn read_screenshot(
 }
 
 #[tauri::command]
+async fn read_ephemeral_screenshot(
+    path: String,
+) -> Result<screenshot::EphemeralScreenshot, String> {
+    run_blocking_screenshot_command("ephemeral image loading", move || {
+        screenshot::read_ephemeral_screenshot(path)
+    })
+    .await
+}
+
+#[tauri::command]
+async fn save_ephemeral_screenshot(
+    request: screenshot::SaveEphemeralScreenshotRequest,
+) -> Result<(), String> {
+    run_blocking_screenshot_command("ephemeral image save", move || {
+        screenshot::save_ephemeral_screenshot(request)
+    })
+    .await
+}
+
+#[tauri::command]
 async fn rename_screenshot(
     app: tauri::AppHandle,
     id: String,
@@ -4184,19 +4205,14 @@ fn get_rdp_client_session_status(
     rdp_sessions.session_status(request)
 }
 
-#[cfg(target_os = "windows")]
 fn configure_single_instance<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
-    builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+    builder.plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
+        app.state::<launch_paths::LaunchPathState>()
+            .enqueue_cli_invocation(app, &args, Path::new(&cwd));
         restore_main_window(app);
     }))
 }
 
-#[cfg(not(target_os = "windows"))]
-fn configure_single_instance<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
-    builder
-}
-
-#[cfg(target_os = "windows")]
 fn restore_main_window<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
     if let Some(main_webview) = app.get_webview_window(window_state::MAIN_WINDOW_LABEL) {
         let main_window = main_webview.as_ref().window();
@@ -4254,6 +4270,10 @@ fn configure_macos_updater<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tau
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let process_args = std::env::args().collect::<Vec<_>>();
+    let process_cwd = std::env::current_dir().unwrap_or_default();
+    let launch_path_state =
+        launch_paths::LaunchPathState::from_cli_invocation(&process_args, &process_cwd);
     let launch_context = match app_paths::LaunchContext::detect() {
         Ok(context) => context,
         Err(error) => {
@@ -4263,7 +4283,7 @@ pub fn run() {
     };
     #[cfg(target_os = "windows")]
     let portable_instance = if let Some(data_root) = launch_context.portable_data_dir() {
-        match portable_single_instance::claim(data_root) {
+        match portable_single_instance::claim(data_root, &process_args, &process_cwd) {
             Ok(portable_single_instance::Claim::Primary(guard)) => Some(guard),
             Ok(portable_single_instance::Claim::Secondary) => return,
             Err(error) => {
@@ -4301,7 +4321,8 @@ pub fn run() {
         tauri::Builder::default()
     } else {
         configure_single_instance(tauri::Builder::default())
-    };
+    }
+    .manage(launch_path_state);
 
     configure_macos_updater(builder)
         .plugin(tauri_plugin_dialog::init())
@@ -4446,8 +4467,14 @@ pub fn run() {
             }
             #[cfg(target_os = "windows")]
             if let Some(portable_instance) = portable_instance {
-                portable_instance
-                    .start_activation_listener(app.handle().clone(), restore_main_window);
+                portable_instance.start_activation_listener(
+                    app.handle().clone(),
+                    |app, args, cwd| {
+                        app.state::<launch_paths::LaunchPathState>()
+                            .enqueue_cli_invocation(app, &args, &cwd);
+                        restore_main_window(app);
+                    },
+                );
                 app.manage(portable_instance);
             }
             if let Err(error) = app_tray::install(app, "KKTerm") {
@@ -4612,6 +4639,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             // ── App lifecycle, window, diagnostics & updates
             app_bootstrap,
+            launch_paths::take_launch_paths,
             app_paths::get_app_mode,
             portable_creator::create_portable_copy,
             portable_creator::launch_portable_copy,
@@ -4782,6 +4810,8 @@ pub fn run() {
             capture_interactive_region_screenshot_to_library,
             list_screenshots,
             read_screenshot,
+            read_ephemeral_screenshot,
+            save_ephemeral_screenshot,
             rename_screenshot,
             copy_stored_screenshot_to_clipboard,
             delete_screenshot,

@@ -56,6 +56,10 @@ export interface CreatedPortableCopy {
   destination: string;
   executable: string;
 }
+export interface LaunchPath {
+  path: string;
+  kind: "file" | "folder";
+}
 export type SshAuthMethod = "keyFile" | "password" | "agent";
 
 /**
@@ -1608,6 +1612,8 @@ export interface WorkspaceTab {
   connection?: Connection;
   url?: string;
   dataPartition?: string;
+  /** Runtime-only Tab opened from a command-line or OS shell path request. */
+  ephemeral?: boolean;
   sshPortForwardSessionId?: string;
   sshPortForwardRemotePort?: number;
 }

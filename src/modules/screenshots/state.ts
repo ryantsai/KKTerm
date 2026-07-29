@@ -1,5 +1,9 @@
 import { create } from "zustand";
-import { invokeCommand, type StoredScreenshot } from "../../lib/tauri";
+import {
+  invokeCommand,
+  type EphemeralScreenshot,
+  type StoredScreenshot,
+} from "../../lib/tauri";
 
 const PAGE_SIZE = 60;
 let refreshGeneration = 0;
@@ -16,11 +20,14 @@ type ScreenshotsState = {
   error: string | null;
   captureInFlight: boolean;
   editorRequestId: string | null;
+  ephemeralEditorQueue: EphemeralScreenshot[];
   sortBy: ScreenshotSortBy;
   sortDirection: ScreenshotSortDirection;
   setCaptureInFlight: (value: boolean) => void;
   requestEditor: (id: string) => void;
   clearEditorRequest: () => void;
+  requestEphemeralEditor: (screenshot: EphemeralScreenshot) => void;
+  finishEphemeralEditor: (id: string) => void;
   setSort: (sortBy: ScreenshotSortBy, sortDirection: ScreenshotSortDirection) => Promise<void>;
   refresh: () => Promise<void>;
   loadMore: () => Promise<void>;
@@ -41,11 +48,26 @@ export const useScreenshotsStore = create<ScreenshotsState>((set, get) => ({
   error: null,
   captureInFlight: false,
   editorRequestId: null,
+  ephemeralEditorQueue: [],
   sortBy: "date",
   sortDirection: "desc",
   setCaptureInFlight: (value) => set({ captureInFlight: value }),
   requestEditor: (id) => set({ editorRequestId: id }),
   clearEditorRequest: () => set({ editorRequestId: null }),
+  requestEphemeralEditor: (screenshot) =>
+    set((state) => ({
+      ephemeralEditorQueue: state.ephemeralEditorQueue.some(
+        (queued) => queued.path === screenshot.path,
+      )
+        ? state.ephemeralEditorQueue
+        : [...state.ephemeralEditorQueue, screenshot],
+    })),
+  finishEphemeralEditor: (id) =>
+    set((state) => ({
+      ephemeralEditorQueue: state.ephemeralEditorQueue.filter(
+        (screenshot) => screenshot.id !== id,
+      ),
+    })),
   setSort: async (sortBy, sortDirection) => {
     if (get().sortBy === sortBy && get().sortDirection === sortDirection) {
       return;
@@ -165,5 +187,10 @@ export const useScreenshotsStore = create<ScreenshotsState>((set, get) => ({
       screenshots: state.screenshots.filter((existing) => existing.id !== id),
       total: Math.max(0, state.total - 1),
     })),
-  clear: () => set({ screenshots: [], total: 0, hasMore: false }),
+  clear: () => set({
+    screenshots: [],
+    total: 0,
+    hasMore: false,
+    ephemeralEditorQueue: [],
+  }),
 }));

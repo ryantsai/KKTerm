@@ -1315,7 +1315,10 @@ export function SftpWorkspace({
     const path = joinLocalPath(localPath, file.name);
     try {
       if (isLocalFilesBrowser && fileExplorerOpenMode === "inlineEditor") {
-        openFileViewerPath(path, { sourceConnection: tab.connection });
+        openFileViewerPath(path, {
+          sourceConnection: tab.connection,
+          ephemeral: tab.ephemeral,
+        });
         return;
       }
       await openFilesystemPath(path);
@@ -2185,7 +2188,10 @@ export function SftpWorkspace({
           onReorderFavorites={reorderFavorites}
           onOpenFavoriteFile={(path) => {
             if (isLocalFilesBrowser && fileExplorerOpenMode === "inlineEditor") {
-              openFileViewerPath(path, { sourceConnection: tab.connection });
+              openFileViewerPath(path, {
+                sourceConnection: tab.connection,
+                ephemeral: tab.ephemeral,
+              });
               return;
             }
             void openFilesystemPath(path);
@@ -2938,7 +2944,7 @@ function writeSidebarCollapsed(connectionKey: string, collapsed: boolean) {
 // Transient terminal-local Connections (e.g. `local-123…`) are not durable DB
 // rows, so view-option writes for them are skipped.
 function isTransientFileBrowserConnectionId(connectionId: string) {
-  return /^local-\d+$/u.test(connectionId);
+  return /^local-\d+$/u.test(connectionId) || connectionId.startsWith("launch-folder-");
 }
 
 function normalizeRecentPaths(paths: unknown) {

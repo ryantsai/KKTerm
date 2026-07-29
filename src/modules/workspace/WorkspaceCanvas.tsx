@@ -595,6 +595,7 @@ export function WorkspaceCanvas({
             <DockableWorkspaceTab isActive={tabIsActive} key={tab.id} tab={tab}>
               <SftpWorkspace
                 commands={localBrowserCommands()}
+                inline={tab.ephemeral}
                 isActive={tabIsActive}
                 onClose={hideTopTabButtons ? () => closeTab(tab.id) : undefined}
                 tab={tab}

@@ -3,8 +3,8 @@
 ## AI grep hints
 
 - Keys: `workspace.tabs`, `workspace.newTab`, `workspace.closeTab`, `workspace.noActiveSession`, `workspace.openFromTree`, `workspace.terminalPane`, `workspace.sftpBrowser`, `workspace.webview`, `settings.hideTopTabButtons`, `settings.hideTopTabButtonsDesc`, `connections.childConnectionProperties`, `terminal.splitLayout`, `terminal.splitRight`, `terminal.splitLeft`, `terminal.splitDown`, `terminal.splitUp`, `terminal.saveLayout`, `terminal.resetLayout`, `terminal.layoutSaved`, `terminal.layoutReset`, `terminal.closePane`, `terminal.closePaneTitle`, `terminal.focusPane`, `terminal.openLeft`, `terminal.openRight`, `terminal.openAbove`, `terminal.openBelow`
-- Topics: tab strip, Child Connection Tabs, connection tree tabs, new tab, close tab, drag tabs, split panes, drag-to-dock, docking overlay, focus pane, tutorial targets `workspace.tabStrip`, `workspace.canvas`, `workspace.emptyState`
-- Synonyms: "split view", "open side by side", "horizontal split", "new pane", "child tab", "saved tab", "sub tab", "tabs in connection tree", "drag connection to split", "dock pane", "snap pane", "drag and drop split", "Visual Studio docking"
+- Topics: tab strip, ephemeral file/folder Tabs, Child Connection Tabs, connection tree tabs, new tab, close tab, drag tabs, split panes, drag-to-dock, docking overlay, focus pane, tutorial targets `workspace.tabStrip`, `workspace.canvas`, `workspace.emptyState`
+- Synonyms: "temporary tab", "open with KKTerm", "split view", "open side by side", "horizontal split", "new pane", "child tab", "saved tab", "sub tab", "tabs in connection tree", "drag connection to split", "dock pane", "snap pane", "drag and drop split", "Visual Studio docking"
 
 ## Tab Strip
 
@@ -16,10 +16,13 @@ A new tab opens via:
 - The `workspace.newTab` button.
 - Quick Connect.
 - "Open in pane" from the rail (`app.openConnectedConnection`).
+- An operating-system or command-line file/folder launch (ephemeral Document or File Explorer Tab).
 
 Empty state (no Tabs open) shows `workspace.noActiveSession` over the Default Launch State. Below `workspace.openFromTree`, centered direct creation links open the existing add flow for every supported Connection type: Local Terminal, SSH, Telnet, Serial, URL, RDP, VNC, FTP/FTPS, File Explorer, and Document; `workspace.importConnections` opens the existing import flow. These empty-state actions reveal the active Workspace's Connection Tree when it is hidden. A Connection created from a direct creation link opens immediately after it is saved. Document uses its existing file picker before creating and opening the Connection.
 
 Tutorial targets: `workspace.tabStrip`, `workspace.canvas`, `workspace.emptyState`.
+
+File/folder launch Tabs are runtime-only. They belong to the active Workspace while open, but do not create a durable Connection, a Child Connection Tab, or a saved layout, and they are not restored on the next launch. Opening a file from an ephemeral File Explorer Tab remains ephemeral even when `settings.hideTopTabButtons` is enabled.
 
 ## Child Connection Tabs
 

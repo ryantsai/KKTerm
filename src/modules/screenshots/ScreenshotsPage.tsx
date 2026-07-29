@@ -131,6 +131,9 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
   const listError = useScreenshotsStore((state) => state.error);
   const captureInFlight = useScreenshotsStore((state) => state.captureInFlight);
   const editorRequestId = useScreenshotsStore((state) => state.editorRequestId);
+  const ephemeralEditorQueue = useScreenshotsStore(
+    (state) => state.ephemeralEditorQueue,
+  );
   const refresh = useScreenshotsStore((state) => state.refresh);
   const loadMore = useScreenshotsStore((state) => state.loadMore);
   const setSortInStore = useScreenshotsStore((state) => state.setSort);
@@ -186,6 +189,18 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
     useScreenshotsStore.getState().clearEditorRequest();
   }, [editorRequestId, screenshots, viewerId]);
 
+  useEffect(() => {
+    const next = ephemeralEditorQueue[0];
+    if (!next || viewerId === next.id) {
+      return;
+    }
+    if (viewerId) {
+      setPendingEditorRequestId(next.id);
+    } else {
+      setViewerId(next.id);
+    }
+  }, [ephemeralEditorQueue, viewerId]);
+
   const selectedScreenshots = useMemo(
     () => screenshots.filter((screenshot) => selectedIds.has(screenshot.id)),
     [screenshots, selectedIds],
@@ -193,7 +208,12 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
   const viewerIndex = viewerId
     ? screenshots.findIndex((screenshot) => screenshot.id === viewerId)
     : -1;
-  const viewerScreenshot = viewerIndex >= 0 ? screenshots[viewerIndex] : null;
+  const ephemeralViewer = viewerId
+    ? ephemeralEditorQueue.find((screenshot) => screenshot.id === viewerId) ?? null
+    : null;
+  const libraryViewer = viewerIndex >= 0 ? screenshots[viewerIndex] : null;
+  const viewerScreenshot = ephemeralViewer
+    ?? libraryViewer;
 
   const notifyError = useCallback((error: unknown) => {
     showStatusBarNotice(
@@ -637,8 +657,9 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
       {viewerScreenshot ? (
         <ScreenshotEditor
           screenshot={viewerScreenshot}
-          hasPrevious={viewerIndex > 0}
-          hasNext={viewerIndex < screenshots.length - 1}
+          ephemeralSource={ephemeralViewer ?? undefined}
+          hasPrevious={!ephemeralViewer && viewerIndex > 0}
+          hasNext={!ephemeralViewer && viewerIndex < screenshots.length - 1}
           onNavigate={(direction) => {
             const next = screenshots[viewerIndex + direction];
             if (next) {
@@ -646,12 +667,28 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
             }
           }}
           onCopyEdited={(dataUrl) => void copyEditedScreenshot(dataUrl)}
-          onOpenExternal={() => openExternal(viewerScreenshot)}
-          onReveal={() => revealScreenshot(viewerScreenshot)}
-          onDelete={() => setDeleteTargets([viewerScreenshot])}
+          onOpenExternal={libraryViewer
+            ? () => openExternal(libraryViewer)
+            : undefined}
+          onReveal={libraryViewer
+            ? () => revealScreenshot(libraryViewer)
+            : undefined}
+          onDelete={libraryViewer
+            ? () => setDeleteTargets([libraryViewer])
+            : undefined}
           onError={notifyError}
-          onClose={() => setViewerId(null)}
-          requestedScreenshotId={pendingEditorRequestId}
+          onClose={() => {
+            if (ephemeralViewer) {
+              useScreenshotsStore.getState().finishEphemeralEditor(ephemeralViewer.id);
+            }
+            if (pendingEditorRequestId) {
+              setViewerId(pendingEditorRequestId);
+              setPendingEditorRequestId(null);
+            } else {
+              setViewerId(null);
+            }
+          }}
+          requestedScreenshotId={ephemeralViewer ? null : pendingEditorRequestId}
           onRequestedScreenshotReady={(id) => {
             setPendingEditorRequestId(null);
             setSelectedIds(new Set([id]));
@@ -666,12 +703,19 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
               tone: "success",
             });
           }}
+          onEphemeralSaved={(fileName) => {
+            showStatusBarNotice(t("screenshots.captureSaved", { name: fileName }), {
+              tone: "success",
+            });
+          }}
           onSaved={(saved, navigateDirection) => {
             const navigationTarget = navigateDirection
               ? screenshots[viewerIndex + navigateDirection]
               : null;
             const store = useScreenshotsStore.getState();
-            store.replace(viewerScreenshot.id, saved);
+            if (libraryViewer) {
+              store.replace(libraryViewer.id, saved);
+            }
             setSelectedIds(new Set([navigationTarget?.id ?? saved.id]));
             setViewerId(navigationTarget?.id ?? saved.id);
             showStatusBarNotice(t("screenshots.captureSaved", { name: saved.fileName }), {

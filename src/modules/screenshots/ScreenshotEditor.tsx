@@ -47,6 +47,7 @@ import {
   invokeCommand,
   selectScreenshotSavePath,
   writeDataUrlFile,
+  type EphemeralScreenshot,
   type FullScreenshot,
   type StoredScreenshot,
 } from "../../lib/tauri";
@@ -648,28 +649,32 @@ export function ScreenshotEditor({
   onReveal,
   onDelete,
   onSaved,
+  onEphemeralSaved,
   requestedScreenshotId,
   onRequestedScreenshotReady,
   onDraftChanged,
   onExported,
   onError,
   onClose,
+  ephemeralSource,
 }: {
-  screenshot: StoredScreenshot;
+  screenshot: StoredScreenshot | EphemeralScreenshot;
   hasPrevious: boolean;
   hasNext: boolean;
   onNavigate: (direction: -1 | 1) => void;
   onCopyEdited: (dataUrl: string) => void;
-  onOpenExternal: () => void;
-  onReveal: () => void;
-  onDelete: () => void;
-  onSaved: (saved: StoredScreenshot, navigateDirection?: -1 | 1) => void;
+  onOpenExternal?: () => void;
+  onReveal?: () => void;
+  onDelete?: () => void;
+  onSaved?: (saved: StoredScreenshot, navigateDirection?: -1 | 1) => void;
+  onEphemeralSaved?: (fileName: string, navigateDirection?: -1 | 1) => void;
   requestedScreenshotId: string | null;
   onRequestedScreenshotReady: (id: string) => void;
   onDraftChanged: (id: string, hasDraft: boolean) => void;
   onExported: (fileName: string) => void;
   onError: (error: unknown) => void;
   onClose: () => void;
+  ephemeralSource?: EphemeralScreenshot;
 }) {
   const { t } = useTranslation();
   const shortcutOverrides = useWorkspaceStore((state) => state.generalSettings.workspaceShortcuts);
@@ -796,6 +801,9 @@ export function ScreenshotEditor({
 
   function deleteDraftNow() {
     clearDraftTimer();
+    if (ephemeralSource) {
+      return Promise.resolve();
+    }
     return queueDraftOperation(async () => {
       await invokeCommand("delete_screenshot_draft", { id: screenshot.id });
       onDraftChangedRef.current(screenshot.id, false);
@@ -805,6 +813,9 @@ export function ScreenshotEditor({
   function persistDraftNow() {
     clearDraftTimer();
     commitTextDraft();
+    if (ephemeralSource) {
+      return Promise.resolve();
+    }
     const draftJson = currentDraftJson();
     if (
       !draftJson
@@ -886,10 +897,13 @@ export function ScreenshotEditor({
     moveDragRef.current = null;
     handleDragRef.current = null;
     panRef.current = null;
-    Promise.all([
-      invokeCommand("read_screenshot", { id: screenshot.id }),
-      invokeCommand("read_screenshot_draft", { id: screenshot.id }),
-    ])
+    const source = ephemeralSource
+      ? Promise.resolve<[FullScreenshot, string | null]>([ephemeralSource, null])
+      : Promise.all([
+        invokeCommand("read_screenshot", { id: screenshot.id }),
+        invokeCommand("read_screenshot_draft", { id: screenshot.id }),
+      ]);
+    source
       .then(([full, draftJson]: [FullScreenshot, string | null]) => {
         const image = new Image();
         image.onload = () => {
@@ -937,10 +951,10 @@ export function ScreenshotEditor({
         draftAutosaveTimerRef.current = null;
       }
     };
-  }, [onError, screenshot.id, t]);
+  }, [ephemeralSource, onError, screenshot.id, t]);
 
   useEffect(() => {
-    if (!ready || !draftReady) {
+    if (ephemeralSource || !ready || !draftReady) {
       return;
     }
     clearDraftTimer();
@@ -953,7 +967,7 @@ export function ScreenshotEditor({
     return clearDraftTimer;
     // The refs provide the exact serialized values; state values trigger the debounce.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [annotations, cropRect, draftReady, ready, screenshot.id]);
+  }, [annotations, cropRect, draftReady, ephemeralSource, ready, screenshot.id]);
 
   useEffect(() => {
     if (!requestedScreenshotId || requestedScreenshotId === screenshot.id || saving) {
@@ -1719,15 +1733,25 @@ export function ScreenshotEditor({
     clearDraftTimer();
     setSaving(true);
     try {
-      await draftQueueRef.current.catch(() => undefined);
       const flattened = exportComposite();
-      const created = await invokeCommand("save_edited_screenshot", {
-        request: {
-          id: screenshot.id,
-          dataUrl: flattened.toDataURL("image/png"),
-          saveAsCopy: false,
-        },
-      });
+      let created: StoredScreenshot | undefined;
+      if (ephemeralSource) {
+        await invokeCommand("save_ephemeral_screenshot", {
+          request: {
+            path: screenshot.path,
+            dataUrl: flattened.toDataURL("image/png"),
+          },
+        });
+      } else {
+        await draftQueueRef.current.catch(() => undefined);
+        created = await invokeCommand("save_edited_screenshot", {
+          request: {
+            id: screenshot.id,
+            dataUrl: flattened.toDataURL("image/png"),
+            saveAsCopy: false,
+          },
+        });
+      }
       const savedBase = document.createElement("canvas");
       savedBase.width = flattened.width;
       savedBase.height = flattened.height;
@@ -1740,8 +1764,12 @@ export function ScreenshotEditor({
       setSelectedId(null);
       renderCanvas();
       setSaving(false);
-      onDraftChangedRef.current(screenshot.id, false);
-      onSaved(created, navigateDirection);
+      if (ephemeralSource) {
+        onEphemeralSaved?.(screenshot.fileName, navigateDirection);
+      } else if (created) {
+        onDraftChangedRef.current(screenshot.id, false);
+        onSaved?.(created, navigateDirection);
+      }
     } catch (error) {
       setSaving(false);
       onError(error);
@@ -2012,34 +2040,40 @@ export function ScreenshotEditor({
               >
                 <Copy size={15} aria-hidden="true" />
               </button>
-              <button
-                type="button"
-                title={t("screenshots.menu.openExternal")}
-                aria-label={t("screenshots.menu.openExternal")}
-                disabled={saving}
-                onClick={onOpenExternal}
-              >
-                <ExternalLink size={15} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                title={t("screenshots.menu.reveal")}
-                aria-label={t("screenshots.menu.reveal")}
-                disabled={saving}
-                onClick={onReveal}
-              >
-                <FolderOpen size={15} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                className="danger"
-                title={t("common.delete")}
-                aria-label={t("common.delete")}
-                disabled={saving}
-                onClick={onDelete}
-              >
-                <Trash2 size={15} aria-hidden="true" />
-              </button>
+              {onOpenExternal ? (
+                <button
+                  type="button"
+                  title={t("screenshots.menu.openExternal")}
+                  aria-label={t("screenshots.menu.openExternal")}
+                  disabled={saving}
+                  onClick={onOpenExternal}
+                >
+                  <ExternalLink size={15} aria-hidden="true" />
+                </button>
+              ) : null}
+              {onReveal ? (
+                <button
+                  type="button"
+                  title={t("screenshots.menu.reveal")}
+                  aria-label={t("screenshots.menu.reveal")}
+                  disabled={saving}
+                  onClick={onReveal}
+                >
+                  <FolderOpen size={15} aria-hidden="true" />
+                </button>
+              ) : null}
+              {onDelete ? (
+                <button
+                  type="button"
+                  className="danger"
+                  title={t("common.delete")}
+                  aria-label={t("common.delete")}
+                  disabled={saving}
+                  onClick={onDelete}
+                >
+                  <Trash2 size={15} aria-hidden="true" />
+                </button>
+              ) : null}
             </div>
             <span className="screenshots-editor__divider" aria-hidden="true" />
             {EDITOR_TOOLS.map((item) => {

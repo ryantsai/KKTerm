@@ -147,7 +147,10 @@ test("screenshot editor drafts persist layers and gate capture-driven switching"
   assert.match(editor, /persistDraftNow\(\)[\s\S]*?onRequestedScreenshotReady/);
   assert.match(page, /pendingEditorRequestId/);
   assert.match(page, /viewerId && viewerId !== editorRequestId/);
-  assert.match(page, /requestedScreenshotId=\{pendingEditorRequestId\}/);
+  assert.match(
+    page,
+    /requestedScreenshotId=\{ephemeralViewer \? null : pendingEditorRequestId\}/,
+  );
   assert.match(state, /setDraftState/);
   assert.match(library, /screenshot\.hasDraft[\s\S]*?screenshots\.draft/);
   assert.match(backend, /const DRAFTS_DIR_NAME: &str = "\.kkterm-drafts"/);

@@ -168,9 +168,8 @@ loads the React app under WebKitGTK, and the app shell renders.**
       Linux WM, including the documented native minimize-to-tray close handler
       (`docs/ARCHITECTURE.md`). Do NOT add frontend close hooks (High-Risk
       Invariant).
-- [ ] `tauri-plugin-single-instance` is Windows-only in `Cargo.toml`; decide if
-      Linux needs single-instance (it does for tray apps) and add it under the
-      Linux dep block if so.
+- [x] `tauri-plugin-single-instance` is shared across desktop targets so Linux
+      forwards later launch arguments to the running app and restores its window.
 
 ### Phase 2 — Core subsystems
 **Success: local terminal, SSH/SFTP, secrets, and Status Bar metrics work on

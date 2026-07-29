@@ -68,6 +68,18 @@ pub struct FullScreenshot {
     height: u32,
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EphemeralScreenshot {
+    id: String,
+    path: String,
+    file_name: String,
+    data_url: String,
+    width: u32,
+    height: u32,
+    file_size_bytes: u64,
+}
+
 /// How captures are written into the library folder. Built from the persisted
 /// `ScreenshotSettings` by the command layer.
 #[derive(Clone)]
@@ -176,6 +188,13 @@ pub struct SaveEditedScreenshotRequest {
     id: String,
     data_url: String,
     save_as_copy: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SaveEphemeralScreenshotRequest {
+    path: String,
+    data_url: String,
 }
 
 #[derive(Deserialize)]
@@ -1613,6 +1632,50 @@ pub fn read_library_screenshot(id: String, folder_path: String) -> Result<FullSc
     })
 }
 
+pub fn read_ephemeral_screenshot(path: String) -> Result<EphemeralScreenshot, String> {
+    let path = PathBuf::from(path)
+        .canonicalize()
+        .map_err(|error| format!("failed to resolve image path: {error}"))?;
+    let metadata =
+        fs::metadata(&path).map_err(|error| format!("failed to read image metadata: {error}"))?;
+    if !metadata.is_file() {
+        return Err("image path is not a file".to_string());
+    }
+    if !is_supported_image_path(&path) {
+        return Err("image format is not supported by the screenshot editor".to_string());
+    }
+    if metadata.len() > 100 * 1024 * 1024 {
+        return Err("image exceeds the 100 MB input limit".to_string());
+    }
+    let (width, height) =
+        image::image_dimensions(&path).map_err(|error| format!("failed to read image: {error}"))?;
+    let bytes = fs::read(&path).map_err(|error| format!("failed to load image: {error}"))?;
+    let file_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or_else(|| "image file name is not valid UTF-8".to_string())?
+        .to_string();
+    let mime_type = mime_type_for_path(&path);
+    let mut path = path.to_string_lossy().to_string();
+    #[cfg(target_os = "windows")]
+    if let Some(ordinary) = path.strip_prefix(r"\\?\") {
+        path = ordinary.to_string();
+    }
+
+    Ok(EphemeralScreenshot {
+        id: format!("ephemeral:{path}"),
+        path: path.clone(),
+        file_name,
+        data_url: format!(
+            "data:{mime_type};base64,{}",
+            STANDARD.encode(bytes),
+        ),
+        width,
+        height,
+        file_size_bytes: metadata.len(),
+    })
+}
+
 pub fn read_library_screenshot_draft(
     id: String,
     folder_path: String,
@@ -1858,6 +1921,31 @@ pub fn save_edited_library_screenshot(
         remove_draft_for(&folder, &request.id);
     }
     stored_screenshot_from_path(&folder, target)
+}
+
+pub fn save_ephemeral_screenshot(request: SaveEphemeralScreenshotRequest) -> Result<(), String> {
+    let path = PathBuf::from(request.path)
+        .canonicalize()
+        .map_err(|error| format!("failed to resolve image path: {error}"))?;
+    if !path.is_file() {
+        return Err("image path is not a file".to_string());
+    }
+    let format = image_format_for_path(&path)
+        .ok_or_else(|| "image format is not supported for save".to_string())?;
+    let (_, encoded) = request
+        .data_url
+        .split_once(',')
+        .filter(|(header, _)| header.starts_with("data:image/") && header.ends_with(";base64"))
+        .ok_or_else(|| "edited image is not a base64 image data URL".to_string())?;
+    if encoded.len() > 140_000_000 {
+        return Err("edited image exceeds the 100 MB input limit".to_string());
+    }
+    let bytes = STANDARD
+        .decode(encoded)
+        .map_err(|error| format!("failed to decode edited image: {error}"))?;
+    let image = image::load_from_memory(&bytes)
+        .map_err(|error| format!("failed to read edited image: {error}"))?;
+    write_dynamic_image(&image, &path, format, 90)
 }
 
 pub fn clear_library_screenshots(folder_path: String) -> Result<(), String> {
@@ -3562,6 +3650,51 @@ mod tests {
         }
         assert_eq!(gif_speed_for_quality(1), 30);
         assert_eq!(gif_speed_for_quality(100), 1);
+    }
+
+    #[test]
+    fn ephemeral_screenshot_read_and_save_stay_outside_library_state() {
+        let folder = tempfile::tempdir().expect("temp folder");
+        let source = folder.path().join("external.png");
+        write_dynamic_image(
+            &image::DynamicImage::new_rgba8(2, 2),
+            &source,
+            "png",
+            90,
+        )
+        .expect("write source");
+
+        let opened = read_ephemeral_screenshot(source.to_string_lossy().to_string())
+            .expect("read ephemeral screenshot");
+        assert!(opened.id.starts_with("ephemeral:"));
+        assert_eq!(opened.file_name, "external.png");
+        assert_eq!((opened.width, opened.height), (2, 2));
+        assert!(opened.data_url.starts_with("data:image/png;base64,"));
+
+        let replacement = folder.path().join("replacement.png");
+        write_dynamic_image(
+            &image::DynamicImage::new_rgba8(3, 4),
+            &replacement,
+            "png",
+            90,
+        )
+        .expect("write replacement");
+        let replacement_data = format!(
+            "data:image/png;base64,{}",
+            STANDARD.encode(fs::read(replacement).expect("read replacement"))
+        );
+        save_ephemeral_screenshot(SaveEphemeralScreenshotRequest {
+            path: opened.path,
+            data_url: replacement_data,
+        })
+        .expect("save ephemeral screenshot");
+
+        assert_eq!(
+            image::image_dimensions(source).expect("read saved dimensions"),
+            (3, 4)
+        );
+        assert!(!folder.path().join(DRAFTS_DIR_NAME).exists());
+        assert!(!folder.path().join(THUMBS_DIR_NAME).exists());
     }
 
     #[test]

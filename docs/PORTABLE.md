@@ -178,7 +178,10 @@ Specific integration points:
   Windows single-instance implementation for portable mode, scoped by a short
   hash of the canonical data root. Each portable root is single-instanced;
   installed and portable roots, and two distinct portable roots, may run
-  simultaneously.
+  simultaneously. Secondary portable launches publish their command-line
+  arguments through a generation-scoped request file in the user's temporary
+  directory before signalling the primary instance, so file/folder launch
+  requests reach the correct portable root without adding registry state.
 - **MCP bridge / CLI**: pipe names are already per-run random tokens, so no
   collision. The bridge info file moves into `AppPaths.data_dir`. When
   `kkterm-cli` is beside a portable marker, it may look up only its sibling
@@ -342,7 +345,7 @@ Guaranteed by construction, verified by tests:
 | Concern | Resolution |
 | --- | --- |
 | Data mixing | Impossible — disjoint roots (`%APPDATA%` vs `exe_dir/data`); no fallback path ever crosses over (see writability guard). |
-| Both running at once | Supported: the app-owned portable single-instance identity is scoped per data root. Two copies of the *same* portable folder remain single-instanced. |
+| Both running at once | Supported: the app-owned portable single-instance identity is scoped per data root. Two copies of the *same* portable folder remain single-instanced, and later path arguments are forwarded to that root's running instance. |
 | CLI targets the wrong app | A CLI beside the portable marker resolves only sibling `data/mcp-bridge.json`; it never falls back to the installed app. Pipe names remain per-run tokens. |
 | Updates cross-contaminate | Portable v1 uses manual ZIP updates, and mode-aware backend validation rejects installer assets from portable processes and ZIP assets from installed processes. |
 | Keychain overlap | Same service name is fine — owner IDs are per-DB UUIDs; portable default is the file store anyway. |

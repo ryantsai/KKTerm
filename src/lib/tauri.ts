@@ -61,6 +61,7 @@ import type {
   RunHistoryEntry,
   HostUsageSnapshot,
   ImportedDatabaseSnapshot,
+  LaunchPath,
   SelectiveExportInfo,
   SelectiveImportResult,
   SelectiveManifest,
@@ -808,6 +809,11 @@ export interface FullScreenshot {
   height: number;
 }
 
+export interface EphemeralScreenshot extends FullScreenshot {
+  path: string;
+  fileSizeBytes: number;
+}
+
 export interface ListScreenshotsResponse {
   screenshots: StoredScreenshot[];
   total: number;
@@ -1147,6 +1153,10 @@ type CommandMap = {
   app_bootstrap: {
     args: undefined;
     result: AppBootstrap;
+  };
+  take_launch_paths: {
+    args: undefined;
+    result: LaunchPath[];
   };
   is_debug_build: {
     args: undefined;
@@ -2284,6 +2294,14 @@ type CommandMap = {
   read_screenshot: {
     args: { id: string };
     result: FullScreenshot;
+  };
+  read_ephemeral_screenshot: {
+    args: { path: string };
+    result: EphemeralScreenshot;
+  };
+  save_ephemeral_screenshot: {
+    args: { request: { path: string; dataUrl: string } };
+    result: null;
   };
   rename_screenshot: {
     args: { id: string; newName: string };

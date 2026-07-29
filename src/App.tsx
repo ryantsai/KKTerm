@@ -14,6 +14,7 @@ import {
 } from "./app/appNavigationPersistence";
 import { AppUpdatePrompt } from "./app/AppUpdatePrompt";
 import { PortableOnboardingDialog } from "./app/PortableOnboardingDialog";
+import { useLaunchPathBridge } from "./app/launchPathBridge";
 import { TitleBar } from "./app/TitleBar";
 import {
   findTutorialTargetElement,
@@ -258,6 +259,10 @@ function App() {
   useDashboardBackendInvalidation();
   useItOpsBackendInvalidation();
   useScreenshotCaptureBridge();
+  useLaunchPathBridge({
+    openScreenshots: () => navigateToPage("screenshots"),
+    openWorkspace: () => navigateToPage("workspace"),
+  });
 
   useEffect(() => {
     if (!screenshotEditorRequestId) {

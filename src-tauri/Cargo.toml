@@ -89,6 +89,7 @@ oxc_parser = "0.141"
 oxc_span = "0.141"
 oxc_ast = "0.141"
 oxc_ast_visit = "0.141"
+tauri-plugin-single-instance = "2"
 
 # Network admin tools - AV-friendly choices.
 # MVP scope: DNS, ping, port scan/check, WoL, interfaces, WHOIS. SNMP + traceroute deferred.
@@ -104,7 +105,6 @@ windows-core = "=0.61.2"
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Globalization", "Win32_Graphics_Gdi", "Win32_NetworkManagement_IpHelper", "Win32_NetworkManagement_Ndis", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_DataExchange", "Win32_System_Environment", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Ole", "Win32_System_Power", "Win32_System_ProcessStatus", "Win32_System_Registry", "Win32_System_Shutdown", "Win32_System_SystemInformation", "Win32_System_Threading", "Win32_UI_Controls", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
 windows-native-keyring-store = "1.1.0"
 webview2-com = "=0.38.2"
-tauri-plugin-single-instance = "2"
 # Default screen-capture engine (Windows Graphics Capture via `wgc`), with the
 # native GDI path in screenshot.rs as fallback. Shares the existing windows 0.62
 # / image 0.25 tree, so this adds no new transitive crates on Windows.

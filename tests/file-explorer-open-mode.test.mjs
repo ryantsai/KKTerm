@@ -33,7 +33,7 @@ test("File Explorer can open local files in the inline Document", async () => {
   assert.match(defaultsSource, /fileExplorerTerminalElevated: false/);
   assert.match(
     storeSource,
-    /openFileViewerPath: \(path: string, options\?: \{ sourceConnection\?: Connection \}\) => void;/,
+    /openFileViewerPath: \([\s\S]*?path: string,[\s\S]*?sourceConnection\?: Connection; ephemeral\?: boolean[\s\S]*?\) => void;/,
     "the store should expose a runtime-only path opener for inline Document tabs",
   );
   assert.match(
@@ -48,7 +48,7 @@ test("File Explorer can open local files in the inline Document", async () => {
   );
   assert.match(
     storeSource,
-    /sourceConnection\?\.type === "localFiles" && get\(\)\.generalSettings\.hideTopTabButtons[\s\S]*fileViewPath: filePath[\s\S]*childConnectionGroupParentId: sourceConnection\.id[\s\S]*maximizedPaneId: filePane\.id/,
+    /sourceConnection\?\.type === "localFiles" &&[\s\S]*!options\?\.ephemeral &&[\s\S]*get\(\)\.generalSettings\.hideTopTabButtons[\s\S]*fileViewPath: filePath[\s\S]*childConnectionGroupParentId: sourceConnection\.id[\s\S]*maximizedPaneId: filePane\.id/,
     "when Child Connection Tabs are enabled, File Explorer inline Documents should be parented under the File Explorer child layout",
   );
   assert.match(
@@ -68,7 +68,7 @@ test("File Explorer can open local files in the inline Document", async () => {
   );
   assert.match(
     workspaceSource,
-    /if \(isLocalFilesBrowser && fileExplorerOpenMode === "inlineEditor"\) \{[\s\S]*openFileViewerPath\(path, \{ sourceConnection: tab\.connection \}\);[\s\S]*return;[\s\S]*\}[\s\S]*await openFilesystemPath\(path\);/,
+    /if \(isLocalFilesBrowser && fileExplorerOpenMode === "inlineEditor"\) \{[\s\S]*openFileViewerPath\(path, \{[\s\S]*sourceConnection: tab\.connection,[\s\S]*ephemeral: tab\.ephemeral,[\s\S]*\}\);[\s\S]*return;[\s\S]*\}[\s\S]*await openFilesystemPath\(path\);/,
     "local File Explorer files should route to Document only when inline mode is selected",
   );
   assert.match(

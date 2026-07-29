@@ -3,8 +3,8 @@
 ## AI grep hints
 
 - Keys: `app.connections`, `app.settings`, `app.aiAssistant`, `app.dontSleep`, `app.dontSleepEnabledTooltip`, `app.dontSleepDisabledTooltip`, `app.trayExit`, `settings.dontSleepForegroundOnly`, `settings.portableOnboardingTitle`, `settings.portableOnboardingImport`, `settings.portableOnboardingSetup`
-- Topics: first launch, what KKTerm is, system tray, "Don't Sleep" mode, primary navigation, restoring the last Module
-- Synonyms users may type: "open the app", "left bar icons", "tray icon", "keep awake", "prevent sleep", "why did it open dashboard", "last page", "remember module"
+- Topics: first launch, command-line path launch, what KKTerm is, system tray, "Don't Sleep" mode, primary navigation, restoring the last Module
+- Synonyms users may type: "open the app", "launch with file", "launch with folder", "left bar icons", "tray icon", "keep awake", "prevent sleep", "why did it open dashboard", "last page", "remember module"
 
 ## What KKTerm is
 
@@ -28,6 +28,12 @@ On first launch KKTerm seeds:
 - Locale defaulting to the user's OS language if a matching JSON exists under `src/i18n/locales/`, falling back to English.
 
 No Sessions are open. The Workspace Canvas shows the **Default Launch State** — recent Connections and a brief overview. It is not a Module; it appears inside the Workspace Module whenever all Tabs are closed.
+
+## Opening files and folders from the command line
+
+Pass one or more existing file or folder paths to the KKTerm executable. PNG, JPEG, GIF, and WebP images open as ephemeral sources in the Screenshots editor; other files open in the Document viewer selected by extension and content probe, and folders open in File Explorer. The installer does not register file or folder associations.
+
+If KKTerm is already running, the existing window is restored and receives the paths. Otherwise KKTerm starts normally and opens them after the app shell is ready. These are ephemeral Sessions/Tabs: they do not create saved Connections, Child Connection Tabs, Screenshots library items, or saved layouts. Image editor layers remain in memory; Save updates the launched image, Save As writes only to the chosen destination, and closing the editor discards unsaved edits. Closing any other ephemeral Tab removes it, and none of these Sessions/Tabs is restored after restarting KKTerm.
 
 ## App shell
 
