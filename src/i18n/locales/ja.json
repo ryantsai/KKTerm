@@ -1533,6 +1533,9 @@
     "export": {
       "pdf": "PDF",
       "excel": "Excel",
+      "csv": "CSV",
+      "tsv": "TSV",
+      "xlsx": "XLSX",
       "pdfFilter": "PDF",
       "excelFilter": "Excel ブック",
       "complete": "“{{name}}” をエクスポートしました。",

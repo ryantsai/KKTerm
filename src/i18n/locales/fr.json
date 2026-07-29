@@ -1533,6 +1533,9 @@
     "export": {
       "pdf": "PDF",
       "excel": "Excel",
+      "csv": "CSV",
+      "tsv": "TSV",
+      "xlsx": "XLSX",
       "pdfFilter": "PDF",
       "excelFilter": "Classeur Excel",
       "complete": "« {{name}} » exporté.",

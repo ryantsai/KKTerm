@@ -41,6 +41,13 @@ import {
   utilizationTone,
   type ClaimCandidate,
 } from "./ipamModel";
+import {
+  buildIpamExportRows,
+  ipamExportBytes,
+  ipamExportFilename,
+  type IpamExportFormat,
+} from "./ipamExportModel";
+import { saveExportBytes } from "./itopsExport";
 import { useItOpsStore, type AddressInput, type PrefixInput } from "./state";
 import { VlanDialog } from "./VlanDialog";
 import { vlanAccent, vlanLabel } from "./vlanModel";
@@ -890,6 +897,7 @@ export function IpamPanel() {
   const [prefixDialog, setPrefixDialog] = useState<IpamPrefixNode | null | undefined>(undefined);
   const [vlanDialog, setVlanDialog] = useState<Vlan | null | undefined>(undefined);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [addressDialog, setAddressDialog] = useState<
     { record: IpAddressRecord | null; prefix: IpamPrefixNode | null } | undefined
   >(undefined);
@@ -998,6 +1006,32 @@ export function IpamPanel() {
     }
   }
 
+  async function handleExport(format: IpamExportFormat) {
+    setExportMenuOpen(false);
+    try {
+      const rows = buildIpamExportRows({ ipam, sites, vlans });
+      const mime =
+        format === "csv"
+          ? "text/csv;charset=utf-8"
+          : format === "tsv"
+            ? "text/tab-separated-values;charset=utf-8"
+            : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+      const path = await saveExportBytes(
+        ipamExportFilename(format),
+        ipamExportBytes(format, rows),
+        [{ name: t(`itops.export.${format}`), extensions: [format] }],
+        mime,
+      );
+      if (path) {
+        showStatusBarNotice(t("itops.export.complete", { name: path }), { tone: "success" });
+      }
+    } catch (error) {
+      showStatusBarNotice(t("itops.errorNotice", { message: errorMessage(error) }), {
+        tone: "error",
+      });
+    }
+  }
+
   function toggleExpanded(id: string) {
     const next = new Set(expanded);
     if (!next.delete(id)) next.add(id);
@@ -1018,7 +1052,10 @@ export function IpamPanel() {
             data-tutorial-id="itops.ipamNew"
             aria-haspopup="menu"
             aria-expanded={addMenuOpen}
-            onClick={() => setAddMenuOpen((open) => !open)}
+            onClick={() => {
+              setExportMenuOpen(false);
+              setAddMenuOpen((open) => !open);
+            }}
           >
             <ItIcon name="plus" size={14} />
             {t("common.add")}
@@ -1074,6 +1111,41 @@ export function IpamPanel() {
             <ItIcon name="table" size={13} />
             {t("itops.ipam.fileImportAction")}
           </button>
+          <div className="ft-add-wrap">
+            <button
+              type="button"
+              className="it-ipam-claim-btn"
+              aria-haspopup="menu"
+              aria-expanded={exportMenuOpen}
+              disabled={!loaded || !vlansLoaded}
+              onClick={() => {
+                setAddMenuOpen(false);
+                setExportMenuOpen((open) => !open);
+              }}
+            >
+              <ItIcon name="share" size={13} />
+              {t("itops.actions.export")}
+              <ItIcon name="chevD" size={11} />
+            </button>
+            {exportMenuOpen ? (
+              <>
+                <div className="ft-add-backdrop" onClick={() => setExportMenuOpen(false)} />
+                <div className="ft-add-menu" role="menu">
+                  {(["csv", "tsv", "xlsx"] as const).map((format) => (
+                    <button
+                      key={format}
+                      type="button"
+                      role="menuitem"
+                      onClick={() => void handleExport(format)}
+                    >
+                      <ItIcon name="table" size={14} />
+                      {t(`itops.export.${format}`)}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : null}
+          </div>
           {candidates.length > 0 ? (
             <button type="button" className="it-ipam-claim-btn" onClick={() => setClaiming(true)}>
               <ItIcon name="download" size={13} />
