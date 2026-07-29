@@ -135,6 +135,13 @@ the file are previewed as skipped and are never overwritten. Valid rows are
 created together in VLAN → IP Prefix → Address order; if the backend rejects
 any non-duplicate row, none of that batch is saved.
 
+Use `itops.actions.export` in the IPAM toolbar to save every VLAN, IP Prefix,
+and Address Record. Choose `itops.export.csv`, `itops.export.tsv`, or
+`itops.export.xlsx`; all three use the canonical columns shown above and can be
+used as the source for a later file import. The delimited formats preserve
+Unicode text for spreadsheet apps, and XLSX opens as an `IPAM` worksheet with a
+frozen, filterable header row.
+
 `itops.ipam.scanAction` opens an explicit network scan. Select one or more IP Prefixes, up to 4,096 usable addresses in one request, then choose `itops.ipam.scanStartAction`. KKTerm combines one ICMP ping, one SNMP MIB-II identity query, and common TCP-port probes for each address. A response from any method marks the address as used. Responsive addresses also receive a bounded reverse-DNS lookup; a PTR result becomes the suggested hostname, with SNMP `sysName` as fallback. SNMP `sysDescr` supplies model details and supports a conservative broad device-type suggestion. When SNMP does not identify the device, only distinctive printing, RTSP-camera, or SIP ports produce a type suggestion; ordinary SSH, web, SMB, or management ports are not treated as proof. The result list shows the suggested identity and evidence, keeps addresses already in IPAM disabled, and preselects newly found addresses; `itops.ipam.scanImportAction_one` / `itops.ipam.scanImportAction_other` create only the checked Address Records with those suggestions. Scanning alone writes nothing. Run it only on IP Prefixes you are authorized to probe.
 
 Deleting an IP Prefix keeps the Address Records inside it; they simply re-parent to whatever still contains them, or sit at the top level.
