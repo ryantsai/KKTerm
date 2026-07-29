@@ -8386,6 +8386,50 @@
 }
 /* .au-canvas already supplies the surface-muted background for both modes. */
 .itops-page .nm-canvas { min-height: 360px; }
+.itops-page .nm-map-info {
+  position: absolute;
+  z-index: 4;
+  top: 12px;
+  left: 12px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(48px, auto));
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--border-strong) 62%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
+  box-shadow: 0 5px 16px color-mix(in srgb, var(--shadow) 55%, transparent);
+  pointer-events: none;
+  backdrop-filter: blur(12px);
+}
+.itops-page .nm-map-info > div {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+  padding: 7px 10px 8px;
+}
+.itops-page .nm-map-info > div + div {
+  border-left: 1px solid var(--hairline);
+}
+.itops-page .nm-map-info dt {
+  overflow: hidden;
+  color: var(--text-faint);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.045em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.itops-page .nm-map-info dd {
+  margin: 0;
+  color: var(--text-muted);
+  font-family: var(--app-mono-font-family, ui-monospace, monospace);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 680;
+  line-height: 1.15;
+}
 .itops-page .nm-side {
   flex: 0 0 300px;
   align-items: stretch;
@@ -9416,20 +9460,6 @@
   font-size: 9.5px;
   font-style: normal;
 }
-
-.itops-page .nm-stats {
-  display: flex;
-  gap: 16px;
-  margin: 0;
-}
-.itops-page .nm-stats dt {
-  color: var(--text-faint);
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-.itops-page .nm-stats dd { margin: 2px 0 0; font-size: 17px; font-variant-numeric: tabular-nums; }
 
 .itops-page .nm-notice {
   margin: 0;

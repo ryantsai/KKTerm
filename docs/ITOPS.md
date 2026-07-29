@@ -501,9 +501,12 @@ action only opens or closes the right-side object browser; it does not change
 canvas behavior. It is the only action in the active map's top-right toolbar;
 map deletion remains in the navigator and overview-card menus. The object
 browser owns placement and Import Hosts, while closing it gives the canvas the
-full workspace width. The What-If entry action is temporarily not exposed while
-that workflow is redesigned; the pure analysis code and graph model remain
-available for that later work.
+full workspace width. With the object browser closed, a subtle pointer-
+transparent summary floats at the canvas's top left with the current Network
+Node, Network Link, and effective entry-point counts; opening the browser hides
+that summary. The What-If entry action is temporarily not exposed while that
+workflow is redesigned; the pure analysis code and graph model remain available
+for that later work.
 
 Network Nodes use a compact, left-anchored card: a small icon tile, thin
 internal padding, and the remaining width reserved for the label and caption.
@@ -527,8 +530,8 @@ editing an existing device node still permits changing among device Types,
 while a Geomap remains a Geomap. Right-clicking empty
 canvas opens a native menu with Add Node, which opens the object browser, and
 Properties, which edits the current Network Map.
-The object browser remains the object picker and map summary at all times;
-it never becomes a property inspector. Single-clicking an existing Network
+The object browser remains the object picker at all times; it never becomes a
+property inspector or map summary. Single-clicking an existing Network
 Node or Note selects it and exposes its drag-resize handles. The element
 updates continuously while a handle is dragged; double-clicking opens its
 Properties dialog. Clicking a Network Link opens that link's

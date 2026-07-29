@@ -380,6 +380,15 @@ test("Network Maps use one interaction mode, a browser pen, reliable link handle
     designer,
     /\{objectBrowserOpen \? \(\s*<aside className="au-side nm-side kk-surface">/,
   );
+  assert.match(
+    designer,
+    /\{!objectBrowserOpen \? \(\s*<dl className="nm-map-info">[\s\S]*itops\.networkMap\.statNodes[\s\S]*itops\.networkMap\.statLinks[\s\S]*itops\.networkMap\.statRoots/,
+  );
+  assert.doesNotMatch(designer, /className="nm-stats"/);
+  assert.match(
+    styles,
+    /\.nm-map-info\s*\{[\s\S]*position: absolute;[\s\S]*top: 12px;[\s\S]*left: 12px;[\s\S]*pointer-events: none;/,
+  );
   assert.match(designer, /setSelection\(\{ kind: "node", id: node\.id \}\)/);
   assert.doesNotMatch(designer, /itops\.networkMap\.modeImpact/);
   assert.match(

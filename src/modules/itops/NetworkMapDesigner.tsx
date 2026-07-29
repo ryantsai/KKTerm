@@ -3302,6 +3302,22 @@ function MapEditor({
             <Background variant={BackgroundVariant.Dots} gap={18} size={1} />
             <Controls showInteractive={false} />
           </ReactFlow>
+          {!objectBrowserOpen ? (
+            <dl className="nm-map-info">
+              <div>
+                <dt>{t("itops.networkMap.statNodes")}</dt>
+                <dd>{graph.nodes.length}</dd>
+              </div>
+              <div>
+                <dt>{t("itops.networkMap.statLinks")}</dt>
+                <dd>{graph.links.length}</dd>
+              </div>
+              <div>
+                <dt>{t("itops.networkMap.statRoots")}</dt>
+                <dd>{rootIds.size}</dd>
+              </div>
+            </dl>
+          ) : null}
         </div>
 
         {objectBrowserOpen ? (
@@ -3366,20 +3382,6 @@ function MapEditor({
                   spotlightVlanId={spotlightVlanId}
                   onSpotlight={setSpotlightVlanId}
                 />
-                <dl className="nm-stats">
-                  <div>
-                    <dt>{t("itops.networkMap.statNodes")}</dt>
-                    <dd>{graph.nodes.length}</dd>
-                  </div>
-                  <div>
-                    <dt>{t("itops.networkMap.statLinks")}</dt>
-                    <dd>{graph.links.length}</dd>
-                  </div>
-                  <div>
-                    <dt>{t("itops.networkMap.statRoots")}</dt>
-                    <dd>{rootIds.size}</dd>
-                  </div>
-                </dl>
                 {graph.roots.length === 0 && graph.nodes.length > 0 ? (
                   <p className="nm-notice">{t("itops.networkMap.noRootsHint")}</p>
                 ) : null}
