@@ -93,6 +93,7 @@ import {
   NETWORK_NOTE_MIN_HEIGHT as NOTE_MIN_HEIGHT,
   NETWORK_NOTE_MIN_WIDTH as NOTE_MIN_WIDTH,
   NETWORK_NOTE_WIDTH as NOTE_WIDTH,
+  parseNetworkMapDimensionDraft,
 } from "./networkMapCanvasChanges";
 import { reconcileNetworkMapFlowNodes } from "./networkMapFlowNodes";
 import { matchesNetworkMapSearch } from "./networkMapSearch";
@@ -346,6 +347,62 @@ function GeomapViewportEditor({
         </button>
       </div>
       <span className="kk-hint">{t("itops.networkMap.geomapViewportHint")}</span>
+    </div>
+  );
+}
+
+function GeomapSizeFields({
+  node,
+  onChange,
+}: {
+  node: NetworkNode;
+  onChange: (patch: Partial<NetworkNode>) => void;
+}) {
+  const { t } = useTranslation();
+  const [widthDraft, setWidthDraft] = useState(() => String(Math.round(node.width)));
+  const [heightDraft, setHeightDraft] = useState(() => String(Math.round(node.height)));
+
+  const updateWidth = (value: string) => {
+    setWidthDraft(value);
+    const width = parseNetworkMapDimensionDraft(value, NODE_MIN_WIDTH);
+    if (width !== null) onChange({ width });
+  };
+  const updateHeight = (value: string) => {
+    setHeightDraft(value);
+    const height = parseNetworkMapDimensionDraft(value, NODE_MIN_HEIGHT);
+    if (height !== null) onChange({ height });
+  };
+
+  return (
+    <div className="nm-geomap-size-fields">
+      <Field label={t("itops.networkMap.geomapWidthLabel")}>
+        <TextInput
+          type="number"
+          min={NODE_MIN_WIDTH}
+          step={1}
+          value={widthDraft}
+          onChange={(event) => updateWidth(event.currentTarget.value)}
+          onBlur={() => {
+            if (parseNetworkMapDimensionDraft(widthDraft, NODE_MIN_WIDTH) === null) {
+              setWidthDraft(String(Math.round(node.width)));
+            }
+          }}
+        />
+      </Field>
+      <Field label={t("itops.networkMap.geomapHeightLabel")}>
+        <TextInput
+          type="number"
+          min={NODE_MIN_HEIGHT}
+          step={1}
+          value={heightDraft}
+          onChange={(event) => updateHeight(event.currentTarget.value)}
+          onBlur={() => {
+            if (parseNetworkMapDimensionDraft(heightDraft, NODE_MIN_HEIGHT) === null) {
+              setHeightDraft(String(Math.round(node.height)));
+            }
+          }}
+        />
+      </Field>
     </div>
   );
 }
@@ -1245,36 +1302,7 @@ function NodePropertiesFields({
             }
           />
         </div>
-        <div className="nm-geomap-size-fields">
-          <Field label={t("itops.networkMap.geomapWidthLabel")}>
-            <TextInput
-              type="number"
-              min={NODE_MIN_WIDTH}
-              step={1}
-              value={Math.round(node.width)}
-              onChange={(event) => {
-                const width = event.currentTarget.valueAsNumber;
-                if (Number.isFinite(width)) {
-                  onChange({ width: Math.max(NODE_MIN_WIDTH, Math.round(width)) });
-                }
-              }}
-            />
-          </Field>
-          <Field label={t("itops.networkMap.geomapHeightLabel")}>
-            <TextInput
-              type="number"
-              min={NODE_MIN_HEIGHT}
-              step={1}
-              value={Math.round(node.height)}
-              onChange={(event) => {
-                const height = event.currentTarget.valueAsNumber;
-                if (Number.isFinite(height)) {
-                  onChange({ height: Math.max(NODE_MIN_HEIGHT, Math.round(height)) });
-                }
-              }}
-            />
-          </Field>
-        </div>
+        <GeomapSizeFields node={node} onChange={onChange} />
         <Field label={t("itops.networkMap.geomapViewportLabel")}>
           <GeomapViewportEditor
             value={geomapViewport(node)}

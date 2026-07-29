@@ -8,6 +8,7 @@ import {
   NETWORK_NODE_MAX_WIDTH,
   NETWORK_NODE_MIN_HEIGHT,
   NETWORK_NODE_MIN_WIDTH,
+  parseNetworkMapDimensionDraft,
 } from "../src/modules/itops/networkMapCanvasChanges.ts";
 import type { NetworkGraph } from "../src/types.ts";
 
@@ -119,6 +120,14 @@ test("geomap resize has no upper size cap", () => {
 
   assert.equal(resized.nodes[0].width, 2400);
   assert.equal(resized.nodes[0].height, 1301);
+});
+
+test("geomap size fields preserve partial drafts and commit complete values", () => {
+  assert.equal(parseNetworkMapDimensionDraft("8", NETWORK_NODE_MIN_WIDTH), null);
+  assert.equal(parseNetworkMapDimensionDraft("80", NETWORK_NODE_MIN_WIDTH), null);
+  assert.equal(parseNetworkMapDimensionDraft("800", NETWORK_NODE_MIN_WIDTH), 800);
+  assert.equal(parseNetworkMapDimensionDraft("8000", NETWORK_NODE_MIN_WIDTH), 8000);
+  assert.equal(parseNetworkMapDimensionDraft("", NETWORK_NODE_MIN_WIDTH), null);
 });
 
 test("drag positions update without rewriting unchanged entities", () => {

@@ -218,6 +218,9 @@ test("Network Maps configure palette items before ghost placement and expose nat
   assert.match(designer, /itops\.networkMap\.geomapWidthLabel/);
   assert.match(designer, /itops\.networkMap\.geomapHeightLabel/);
   assert.match(designer, /className="nm-geomap-size-fields"/);
+  assert.match(designer, /function GeomapSizeFields/);
+  assert.match(designer, /value=\{widthDraft\}/);
+  assert.match(designer, /setWidthDraft\(value\)/);
   assert.match(
     designer,
     /NODE_KINDS\.filter\(\(kind\) => kind !== "geomap"\)\.map/,

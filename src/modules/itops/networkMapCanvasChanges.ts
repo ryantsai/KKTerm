@@ -19,6 +19,15 @@ function boundedDimension(value: number, min: number, max: number): number {
   return Math.min(Math.max(Math.round(value), min), max);
 }
 
+export function parseNetworkMapDimensionDraft(
+  draft: string,
+  min: number,
+): number | null {
+  if (!draft.trim()) return null;
+  const value = Number(draft);
+  return Number.isFinite(value) && value >= min ? Math.round(value) : null;
+}
+
 export function applyNetworkMapCanvasNodeChanges(
   graph: NetworkGraph,
   changes: NodeChange[],
