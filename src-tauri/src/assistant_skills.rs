@@ -239,15 +239,15 @@ fn copy_missing_skill_dirs(source_root: &Path, user_root: &Path) -> Result<(), S
             continue;
         };
         let destination_dir = user_root.join(name);
-        if destination_dir.exists() {
+        if destination_dir.join("SKILL.md").is_file() {
             continue;
         }
-        copy_skill_dir(&source_dir, &destination_dir)?;
+        copy_missing_skill_files(&source_dir, &destination_dir)?;
     }
     Ok(())
 }
 
-fn copy_skill_dir(source: &Path, destination: &Path) -> Result<(), String> {
+fn copy_missing_skill_files(source: &Path, destination: &Path) -> Result<(), String> {
     fs::create_dir_all(destination)
         .map_err(|error| format!("failed to create assistant skill folder: {error}"))?;
     for entry in fs::read_dir(source)
@@ -257,8 +257,8 @@ fn copy_skill_dir(source: &Path, destination: &Path) -> Result<(), String> {
         let source_path = entry.path();
         let destination_path = destination.join(entry.file_name());
         if source_path.is_dir() {
-            copy_skill_dir(&source_path, &destination_path)?;
-        } else if source_path.is_file() {
+            copy_missing_skill_files(&source_path, &destination_path)?;
+        } else if source_path.is_file() && !destination_path.exists() {
             fs::copy(&source_path, &destination_path).map_err(|error| {
                 format!(
                     "failed to copy {} to {}: {error}",
@@ -507,6 +507,33 @@ Custom
         assert_eq!(
             fs::read_to_string(user_dir.join("SKILL.md")).expect("read user skill"),
             "User copy"
+        );
+    }
+
+    #[test]
+    fn copy_missing_skill_dirs_repairs_incomplete_existing_skill() {
+        let source_root = temp_skill_root("incomplete-bundled-source");
+        let user_root = temp_skill_root("incomplete-bundled-user");
+        let source_dir = source_root.join("dashboard-data-visualization");
+        let user_dir = user_root.join("dashboard-data-visualization");
+        fs::create_dir_all(&source_dir).expect("create source skill");
+        fs::create_dir_all(&user_dir).expect("create incomplete user skill");
+        fs::write(
+            source_dir.join("SKILL.md"),
+            "---\nname: dashboard-data-visualization\ndescription: Visualize dashboard data.\n---\nBundled\n",
+        )
+        .expect("write bundled skill");
+        fs::write(user_dir.join("notes.txt"), "Keep me").expect("write user file");
+
+        copy_missing_skill_dirs(&source_root, &user_root).expect("repair bundled skills");
+
+        assert_eq!(
+            fs::read_to_string(user_dir.join("SKILL.md")).expect("read repaired skill"),
+            "---\nname: dashboard-data-visualization\ndescription: Visualize dashboard data.\n---\nBundled\n"
+        );
+        assert_eq!(
+            fs::read_to_string(user_dir.join("notes.txt")).expect("read preserved user file"),
+            "Keep me"
         );
     }
 }
