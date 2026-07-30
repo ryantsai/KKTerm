@@ -198,6 +198,13 @@ pub fn itops_import_ipam(
         .with_connection_infallible(|conn| ipam_import::import_batch(conn, batch, new_itops_id))
 }
 
+#[tauri::command]
+pub async fn itops_resolve_ipam_import_hostnames(
+    addresses: Vec<super::types::IpamImportAddressInput>,
+) -> Vec<super::types::IpamImportAddressInput> {
+    ipam_scan::resolve_import_hostnames(addresses).await
+}
+
 /// Workbook parsing is blocking file/ZIP/XML work, so it stays off the async
 /// runtime worker used by network commands and never holds the SQLite lock.
 #[tauri::command]

@@ -98,6 +98,10 @@ test("IT Ops separates Batch Tasks from Networking in every locale", async () =>
       messages.itops.networkMap.interfaceCount_other,
       `${locale} should include the compact interface count`,
     );
+    assert.ok(
+      messages.itops.networkMap.shape.hexagon,
+      `${locale} should include Network Node shapes`,
+    );
     assert.notEqual(
       messages.itops.navigation.batchTasks,
       messages.itops.tasks.heading,
@@ -162,6 +166,8 @@ test("Network Nodes use the expanded device catalog and links expose complete do
   assert.match(types, /\| "generic"/);
   assert.match(types, /iconKind\?: NetworkNodeIconKind \| null;/);
   assert.match(types, /iconBackgroundColor\?: string \| null;/);
+  assert.match(types, /export type NetworkNodeShape =[\s\S]*\| "hexagon";/);
+  assert.match(types, /shape\?: NetworkNodeShape;/);
   assert.match(types, /locked\?: boolean;/);
   assert.match(types, /deepLinks: NetworkNodeDeepLink\[\];/);
   assert.match(types, /interface NetworkGeomapViewport/);
@@ -176,6 +182,14 @@ test("Network Nodes use the expanded device catalog and links expose complete do
   );
   assert.match(designer, /maxWidth=\{NODE_MAX_WIDTH\}/);
   assert.match(designer, /maxHeight=\{NODE_MAX_HEIGHT\}/);
+  assert.match(designer, /keepAspectRatio=\{data\.shape !== "rectangle"\}/);
+  assert.match(designer, /className="nm-shape-picker"/);
+  assert.match(designer, /data-shape=\{data\.kind === "geomap" \? undefined : data\.shape\}/);
+  assert.match(designer, /function NetworkMapPreviewNodeShape/);
+  assert.match(styles, /\.nm-node\[data-shape="circle"\]::before/);
+  assert.match(styles, /\.nm-node\[data-shape="diamond"\]::before/);
+  assert.match(styles, /\.nm-node\[data-shape="triangle"\]::before/);
+  assert.match(styles, /\.nm-node\[data-shape="hexagon"\]::before/);
   assert.match(designer, /connectable: node\.kind !== "geomap"/);
   assert.match(designer, /data\.ghost \|\| data\.kind === "geomap"/);
   assert.match(

@@ -715,6 +715,12 @@ export type NetworkNodeKind =
   | "geomap";
 
 export type NetworkNodeIconKind = Exclude<NetworkNodeKind, "generic">;
+export type NetworkNodeShape =
+  | "rectangle"
+  | "circle"
+  | "diamond"
+  | "triangle"
+  | "hexagon";
 export type NetworkNodeDeepLinkKind = "connection" | "site" | "serverRoom" | "rackItem";
 
 export type NetworkNodeDeepLink =
@@ -768,6 +774,8 @@ export interface NetworkNode {
   // Canvas size in flow coordinates. Older maps are hydrated to the defaults.
   width: number;
   height: number;
+  // Older maps omit this and render as the original rectangular card.
+  shape?: NetworkNodeShape;
   // Optional palette index overriding the node kind's icon background.
   iconAccent?: number | null;
   // Optional exact icon background selected from the Network Map custom-color

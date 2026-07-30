@@ -1103,6 +1103,12 @@ export function IpamPanel() {
               onChange={(event) => setQuery(event.currentTarget.value)}
             />
           </label>
+          {ipam.prefixes.length > 0 ? (
+            <button type="button" className="it-ipam-claim-btn" onClick={() => setScanning(true)}>
+              <ItIcon name="pulse" size={13} />
+              {t("itops.ipam.scanAction")}
+            </button>
+          ) : null}
           <button
             type="button"
             className="it-ipam-claim-btn"
@@ -1150,12 +1156,6 @@ export function IpamPanel() {
             <button type="button" className="it-ipam-claim-btn" onClick={() => setClaiming(true)}>
               <ItIcon name="download" size={13} />
               {t("itops.ipam.claimPrompt", { count: candidates.length })}
-            </button>
-          ) : null}
-          {ipam.prefixes.length > 0 ? (
-            <button type="button" className="it-ipam-claim-btn" onClick={() => setScanning(true)}>
-              <ItIcon name="pulse" size={13} />
-              {t("itops.ipam.scanAction")}
             </button>
           ) : null}
         </div>

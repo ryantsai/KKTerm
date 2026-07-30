@@ -1732,7 +1732,9 @@
       "scanEvidencePing": "Ping",
       "scanEvidenceSnmp": "SNMP",
       "scanEvidencePorts": "พอร์ต TCP {{ports}}",
-      "fileImportAction": "นำเข้าไฟล์",
+      "fileImportAction": "นำเข้า",
+      "fileImportResolveHostnames": "แก้ชื่อโฮสต์",
+      "fileImportResolveHostnamesHint": "ดำเนินการแบบพยายามให้ดีที่สุด: เติมชื่อโฮสต์ที่ว่างจาก DNS ย้อนกลับแบบ PTR โดยจะคงชื่อโฮสต์ที่มีอยู่แล้วในไฟล์",
       "fileImportTitle": "นำเข้าระเบียน IPAM",
       "fileImportIntro": "เลือกไฟล์ CSV, TSV หรือ Excel (.xlsx) Excel จะนำเข้าเวิร์กชีตแรกที่ไม่ว่าง ดาวน์โหลดตัวอย่าง CSV เพื่อดูคอลัมน์มาตรฐานและค่าที่ยอมรับ",
       "fileImportFilter": "ไฟล์ตาราง IPAM",
@@ -1846,6 +1848,14 @@
         "printer": "เครื่องพิมพ์",
         "camera": "กล้องวงจรปิด",
         "geomap": "แผนที่ภูมิศาสตร์"
+      },
+      "shapeLabel": "รูปร่าง",
+      "shape": {
+        "rectangle": "สี่เหลี่ยมผืนผ้า",
+        "circle": "วงกลม",
+        "diamond": "สี่เหลี่ยมขนมเปียกปูน",
+        "triangle": "สามเหลี่ยม",
+        "hexagon": "หกเหลี่ยม"
       },
       "genericIconLabel": "ไอคอนในตัว",
       "deepLinksLabel": "ดีปลิงก์",

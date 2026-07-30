@@ -31,6 +31,30 @@ test("Excel import stays out of the web bundle and enforces import limits", asyn
   assert.match(backend, /const MAX_XLSX_BYTES: u64 = 50 \* 1024 \* 1024;/);
 });
 
+test("IPAM toolbar orders scan before import and file import can enrich blank hostnames", async () => {
+  const [panel, dialog, scan, commands, tauri, lib, messages] = await Promise.all([
+    readFile(new URL("../src/modules/itops/IpamPanel.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/modules/itops/IpamImportDialog.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src-tauri/src/itops/ipam_scan.rs", import.meta.url), "utf8"),
+    readFile(new URL("../src-tauri/src/itops/ipam_commands.rs", import.meta.url), "utf8"),
+    readFile(new URL("../src/lib/tauri.ts", import.meta.url), "utf8"),
+    readFile(new URL("../src-tauri/src/lib.rs", import.meta.url), "utf8"),
+    readFile(new URL("../src/i18n/locales/en.json", import.meta.url), "utf8"),
+  ]);
+
+  assert.ok(panel.indexOf("itops.ipam.scanAction") < panel.indexOf("itops.ipam.fileImportAction"));
+  assert.equal(JSON.parse(messages).itops.ipam.fileImportAction, "Import");
+  assert.match(dialog, /fileImportResolveHostnames/);
+  assert.match(dialog, /itops_resolve_ipam_import_hostnames/);
+  assert.match(dialog, /<Switch/);
+  assert.match(scan, /filter\(\|input\| input\.dns_name\.trim\(\)\.is_empty\(\)\)/);
+  assert.match(scan, /const IMPORT_DNS_BUDGET_SECS: u64 = 30;/);
+  assert.match(scan, /apply_resolved_hostnames/);
+  assert.match(commands, /pub async fn itops_resolve_ipam_import_hostnames/);
+  assert.match(tauri, /itops_resolve_ipam_import_hostnames/);
+  assert.match(lib, /itops::ipam_commands::itops_resolve_ipam_import_hostnames/);
+});
+
 test("the downloadable sample is directly importable and links its Prefix by VLAN id", () => {
   const matrix = IPAM_IMPORT_SAMPLE_CSV.split(/\r?\n/).map((line) => line.split(","));
   const parsed = parseIpamImportRows(matrix, EMPTY_CONTEXT);

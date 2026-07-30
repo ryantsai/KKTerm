@@ -1732,7 +1732,9 @@
       "scanEvidencePing": "Ping",
       "scanEvidenceSnmp": "SNMP",
       "scanEvidencePorts": "Cổng TCP {{ports}}",
-      "fileImportAction": "Nhập tệp",
+      "fileImportAction": "Nhập",
+      "fileImportResolveHostnames": "Phân giải tên máy chủ",
+      "fileImportResolveHostnamesHint": "Theo khả năng tốt nhất: điền tên máy chủ còn trống bằng DNS ngược PTR. Tên máy chủ đã có trong tệp được giữ nguyên.",
       "fileImportTitle": "Nhập bản ghi IPAM",
       "fileImportIntro": "Chọn tệp CSV, TSV hoặc Excel (.xlsx). Excel nhập trang tính không trống đầu tiên. Tải xuống mẫu CSV để biết các cột chuẩn và các giá trị được chấp nhận.",
       "fileImportFilter": "Tệp bảng IPAM",
@@ -1846,6 +1848,14 @@
         "printer": "Máy in",
         "camera": "Camera an ninh",
         "geomap": "Bản đồ địa lý"
+      },
+      "shapeLabel": "Hình dạng",
+      "shape": {
+        "rectangle": "Hình chữ nhật",
+        "circle": "Hình tròn",
+        "diamond": "Hình thoi",
+        "triangle": "Hình tam giác",
+        "hexagon": "Hình lục giác"
       },
       "genericIconLabel": "Biểu tượng tích hợp",
       "deepLinksLabel": "Liên kết sâu",

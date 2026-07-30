@@ -1732,7 +1732,9 @@
       "scanEvidencePing": "Ping",
       "scanEvidenceSnmp": "SNMP",
       "scanEvidencePorts": "TCP 端口 {{ports}}",
-      "fileImportAction": "导入文件",
+      "fileImportAction": "导入",
+      "fileImportResolveHostnames": "解析主机名",
+      "fileImportResolveHostnamesHint": "尽力而为：通过 PTR 反向 DNS 填充空白主机名。保留文件中已有的主机名。",
       "fileImportTitle": "导入 IPAM 记录",
       "fileImportIntro": "请选择 CSV、TSV 或 Excel (.xlsx) 文件。Excel 会导入第一个非空工作表。下载 CSV 示例以获取标准列名和可接受的取值。",
       "fileImportFilter": "IPAM 表格文件",
@@ -1846,6 +1848,14 @@
         "printer": "打印机",
         "camera": "监控摄像头",
         "geomap": "地理地图"
+      },
+      "shapeLabel": "形状",
+      "shape": {
+        "rectangle": "矩形",
+        "circle": "圆形",
+        "diamond": "菱形",
+        "triangle": "三角形",
+        "hexagon": "六边形"
       },
       "genericIconLabel": "内置图标",
       "deepLinksLabel": "深层链接",

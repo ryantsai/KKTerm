@@ -5,7 +5,11 @@
 //! community, or a TCP full-connect to a small common-management port set.
 //! Results are transient and are persisted only when the operator imports them.
 
-use std::{collections::HashSet, sync::Arc, time::Duration};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
 use futures::{StreamExt, stream};
 use hickory_resolver::{TokioResolver, proto::rr::RData};
@@ -16,12 +20,14 @@ use crate::net::{dns, ping, scan};
 
 use super::{
     ipv4::{self, Prefix},
-    types::{IpamDeviceType, IpamScanResult},
+    types::{IpamDeviceType, IpamImportAddressInput, IpamScanResult},
 };
 
 pub const MAX_SCAN_ADDRESSES: usize = 4096;
 const ADDRESS_CONCURRENCY: usize = 32;
 const PROBE_TIMEOUT_MS: u64 = 650;
+const IMPORT_DNS_CONCURRENCY: usize = 64;
+const IMPORT_DNS_BUDGET_SECS: u64 = 30;
 const COMMON_PORTS: [u16; 16] = [
     22, 23, 53, 80, 161, 443, 445, 515, 554, 631, 3389, 5060, 5061, 5985, 5986, 9100,
 ];
@@ -70,6 +76,63 @@ pub async fn scan_targets(targets: Vec<ScanTarget>) -> Vec<IpamScanResult> {
         )
     });
     results
+}
+
+/// Best-effort PTR enrichment for file import. Existing file hostnames always
+/// win, and the overall budget prevents a large import from waiting on every
+/// unresponsive DNS server.
+pub async fn resolve_import_hostnames(
+    mut addresses: Vec<IpamImportAddressInput>,
+) -> Vec<IpamImportAddressInput> {
+    let Some(resolver) = dns::build_resolver().ok().map(Arc::new) else {
+        return addresses;
+    };
+    let targets = addresses
+        .iter()
+        .filter(|input| input.dns_name.trim().is_empty())
+        .filter_map(|input| {
+            input
+                .address
+                .parse::<std::net::Ipv4Addr>()
+                .ok()
+                .map(|address| address.to_string())
+        })
+        .collect::<HashSet<_>>();
+    if targets.is_empty() {
+        return addresses;
+    }
+
+    let resolved = Arc::new(Mutex::new(HashMap::<String, String>::new()));
+    let lookups = stream::iter(targets).for_each_concurrent(IMPORT_DNS_CONCURRENCY, |address| {
+        let resolver = Arc::clone(&resolver);
+        let resolved = Arc::clone(&resolved);
+        async move {
+            if let Some(hostname) = probe_reverse_dns(&address, &resolver, PROBE_TIMEOUT_MS).await {
+                if let Ok(mut names) = resolved.lock() {
+                    names.insert(address, hostname);
+                }
+            }
+        }
+    });
+    let _ = tokio::time::timeout(Duration::from_secs(IMPORT_DNS_BUDGET_SECS), lookups).await;
+
+    if let Ok(names) = resolved.lock() {
+        apply_resolved_hostnames(&mut addresses, &names);
+    }
+    addresses
+}
+
+fn apply_resolved_hostnames(
+    addresses: &mut [IpamImportAddressInput],
+    names: &HashMap<String, String>,
+) {
+    for input in addresses {
+        if input.dns_name.trim().is_empty() {
+            if let Some(hostname) = names.get(input.address.trim()) {
+                input.dns_name = hostname.clone();
+            }
+        }
+    }
 }
 
 pub(crate) fn load_targets(
@@ -621,5 +684,37 @@ mod tests {
             Some("core-sw-01.example.com".to_string())
         );
         assert_eq!(normalize_hostname(" . "), None);
+    }
+
+    #[test]
+    fn import_resolution_fills_only_blank_hostnames() {
+        let input = |address: &str, dns_name: &str| IpamImportAddressInput {
+            address: address.to_string(),
+            vrf: String::new(),
+            status: Default::default(),
+            dns_name: dns_name.to_string(),
+            device_type: None,
+            device_model: String::new(),
+            description: String::new(),
+            site_id: None,
+        };
+        let mut addresses = vec![
+            input("192.0.2.10", ""),
+            input("192.0.2.11", "from-file.example.com"),
+            input("192.0.2.12", ""),
+        ];
+        let names = HashMap::from([
+            ("192.0.2.10".to_string(), "from-ptr.example.com".to_string()),
+            (
+                "192.0.2.11".to_string(),
+                "must-not-overwrite.example.com".to_string(),
+            ),
+        ]);
+
+        apply_resolved_hostnames(&mut addresses, &names);
+
+        assert_eq!(addresses[0].dns_name, "from-ptr.example.com");
+        assert_eq!(addresses[1].dns_name, "from-file.example.com");
+        assert!(addresses[2].dns_name.is_empty());
     }
 }

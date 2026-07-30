@@ -8362,7 +8362,7 @@
 .itops-page .nm-map-preview-node[data-kind="server"] { color: var(--text-muted); }
 .itops-page .nm-map-preview-node[data-kind="loadBalancer"] { color: var(--green); }
 .itops-page .nm-map-preview-node[data-kind="cloud"] { color: var(--accent); }
-.itops-page .nm-map-preview-node rect {
+.itops-page .nm-map-preview-shape {
   fill: var(--surface);
   stroke: currentColor;
   stroke-width: 1.5;
@@ -8597,6 +8597,7 @@
 
 /* node card */
 .nm-node {
+  --nm-node-outline: var(--border);
   position: relative;
   display: block;
   box-sizing: border-box;
@@ -8612,6 +8613,51 @@
   transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease,
     opacity 160ms ease;
 }
+.nm-node[data-shape]:not([data-shape="rectangle"]) {
+  isolation: isolate;
+  padding: 18%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.nm-node[data-shape]:not([data-shape="rectangle"])::before,
+.nm-node[data-shape]:not([data-shape="rectangle"])::after {
+  position: absolute;
+  content: "";
+  pointer-events: none;
+}
+.nm-node[data-shape]:not([data-shape="rectangle"])::before {
+  inset: 0;
+  z-index: -2;
+  background: var(--nm-node-outline);
+  filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--text) 10%, transparent));
+}
+.nm-node[data-shape]:not([data-shape="rectangle"])::after {
+  inset: 2px;
+  z-index: -1;
+  background: var(--surface);
+}
+.nm-node[data-shape="circle"]::before,
+.nm-node[data-shape="circle"]::after {
+  clip-path: circle(50%);
+}
+.nm-node[data-shape="diamond"]::before,
+.nm-node[data-shape="diamond"]::after {
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+}
+.nm-node[data-shape="triangle"]::before,
+.nm-node[data-shape="triangle"]::after {
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+.nm-node[data-shape="hexagon"]::before,
+.nm-node[data-shape="hexagon"]::after {
+  clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
+}
+.nm-node[data-shape="circle"] { padding: 16%; }
+.nm-node[data-shape="diamond"] { padding: 23%; }
+.nm-node[data-shape="triangle"] { padding: 32% 20% 13%; }
+.nm-node[data-shape="hexagon"] { padding: 14% 19%; }
 .nm-node:hover { transform: translateY(-2px); }
 .nm-node[data-kind="geomap"] {
   padding: 0;
@@ -8656,7 +8702,10 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
   transform: none;
 }
+.nm-node.ghost { --nm-node-outline: var(--accent); }
+.nm-node[data-shape]:not([data-shape="rectangle"]).ghost { box-shadow: none; }
 .nm-node.sel {
+  --nm-node-outline: var(--accent);
   border-color: var(--accent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
 }
@@ -8664,20 +8713,30 @@
 .nm-note[data-locked="true"] {
   cursor: default;
 }
-.nm-node[data-root="true"] { border-color: var(--accent); }
+.nm-node[data-root="true"] {
+  --nm-node-outline: var(--accent);
+  border-color: var(--accent);
+}
 .nm-node[data-state="down"] {
+  --nm-node-outline: var(--text-faint);
   border-style: dashed;
   border-color: var(--text-faint);
   opacity: 0.5;
 }
 .nm-node[data-state="isolated"] {
+  --nm-node-outline: var(--red);
   border-color: var(--red);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--red) 28%, transparent);
 }
 .nm-node[data-state="warning"] {
+  --nm-node-outline: color-mix(in srgb, var(--amber) 58%, var(--border));
   border-color: color-mix(in srgb, var(--amber) 58%, var(--border));
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber) 16%, transparent);
   animation: nmNodeWarning 2.2s ease-in-out infinite;
+}
+.nm-node[data-shape]:not([data-shape="rectangle"])[data-state="warning"] {
+  box-shadow: none;
+  animation: none;
 }
 .nm-node-ic {
   display: inline-flex;
@@ -8883,6 +8942,35 @@
     -webkit-line-clamp: 4;
   }
 }
+.nm-node[data-shape]:not([data-shape="rectangle"]) .nm-node-content,
+.nm-node[data-shape]:not([data-shape="rectangle"])[data-has-note="true"] .nm-node-content {
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 0;
+}
+.nm-node[data-shape]:not([data-shape="rectangle"]) .nm-node-tx {
+  width: 100%;
+  text-align: center;
+}
+.nm-node[data-shape]:not([data-shape="rectangle"]) .nm-node-note {
+  top: auto;
+  right: 22%;
+  bottom: 13%;
+  left: 22%;
+  display: block;
+  padding: 0;
+  border: 0;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nm-node[data-shape="triangle"] .nm-node-note { bottom: 8%; }
+.nm-node[data-shape]:not([data-shape="rectangle"]) .nm-node-deep-links { right: 17%; }
+.nm-node[data-shape="triangle"] .react-flow__handle-left { left: 25%; }
+.nm-node[data-shape="triangle"] .react-flow__handle-right { right: 25%; }
 .nm-node-root {
   position: absolute;
   top: -7px;
@@ -9441,6 +9529,66 @@
 .itops-page .nm-icon-picker button:focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 1px;
+}
+.itops-page .nm-shape-picker {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 5px;
+  padding: 7px;
+  border-radius: 10px;
+  background: var(--surface-muted);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+.itops-page .nm-shape-picker button {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 58px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 3px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 9.5px;
+  cursor: pointer;
+}
+.itops-page .nm-shape-picker button:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.itops-page .nm-shape-picker button.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.itops-page .nm-shape-picker button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+.itops-page .nm-shape-picker-preview {
+  display: block;
+  width: 25px;
+  height: 25px;
+  background: var(--accent);
+}
+.itops-page .nm-shape-picker-preview[data-shape="rectangle"] {
+  border-radius: 4px;
+}
+.itops-page .nm-shape-picker-preview[data-shape="circle"] {
+  clip-path: circle(50%);
+}
+.itops-page .nm-shape-picker-preview[data-shape="diamond"] {
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+}
+.itops-page .nm-shape-picker-preview[data-shape="triangle"] {
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+.itops-page .nm-shape-picker-preview[data-shape="hexagon"] {
+  clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
 }
 .itops-page .nm-interface-list {
   overflow: hidden;

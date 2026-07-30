@@ -162,7 +162,7 @@ A durable, hand-drawn logical link diagram stored in `itops_network_maps`, globa
 _Avoid_: topology, topology map, network topology, discovery map, live map
 
 **Network Node**:
-One resizable box on a **Network Map**: a label, one of the designer's generic, routing, security, traffic-management, compute/storage, cloud/WAN, wireless, or endpoint kinds, a canvas position and size, a selectable icon background, optional free-text IP addresses and note, a documented operational/warning status, and optional **Deep Links** to other app elements. Its addresses are captions and link-binding choices, not references into **IPAM**. Status is operator-authored documentation, never live monitoring data. A Network Node is not a **Host**, a **Rack Device**, or a **Connection**, though a map can be seeded from a Site's Hosts.
+One resizable shape on a **Network Map**: a label, one of the designer's generic, routing, security, traffic-management, compute/storage, cloud/WAN, wireless, or endpoint kinds, a rectangular, circular, diamond, triangular, or hexagonal silhouette, a canvas position and size, a selectable icon background, optional free-text IP addresses and note, a documented operational/warning status, and optional **Deep Links** to other app elements. Its addresses are captions and link-binding choices, not references into **IPAM**. Status is operator-authored documentation, never live monitoring data. A Network Node is not a **Host**, a **Rack Device**, or a **Connection**, though a map can be seeded from a Site's Hosts.
 _Avoid_: device, host (on a map), rack item
 
 **Deep Link**:

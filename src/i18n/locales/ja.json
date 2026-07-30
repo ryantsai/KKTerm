@@ -1732,7 +1732,9 @@
       "scanEvidencePing": "Ping",
       "scanEvidenceSnmp": "SNMP",
       "scanEvidencePorts": "TCP ポート {{ports}}",
-      "fileImportAction": "ファイルを取り込む",
+      "fileImportAction": "インポート",
+      "fileImportResolveHostnames": "ホスト名を解決",
+      "fileImportResolveHostnamesHint": "ベストエフォートで、空のホスト名をPTR逆引きDNSから補完します。ファイル内に既にあるホスト名は保持されます。",
       "fileImportTitle": "IPAM レコードを取り込む",
       "fileImportIntro": "CSV、TSV、または Excel (.xlsx) ファイルを選択してください。Excel は最初の空でないワークシートを取り込みます。標準の列名と許容される値は CSV サンプルをダウンロードして確認してください。",
       "fileImportFilter": "IPAM テーブルファイル",
@@ -1846,6 +1848,14 @@
         "printer": "プリンター",
         "camera": "防犯カメラ",
         "geomap": "ジオマップ"
+      },
+      "shapeLabel": "形状",
+      "shape": {
+        "rectangle": "長方形",
+        "circle": "円",
+        "diamond": "ひし形",
+        "triangle": "三角形",
+        "hexagon": "六角形"
       },
       "genericIconLabel": "ビルトインアイコン",
       "deepLinksLabel": "ディープリンク",

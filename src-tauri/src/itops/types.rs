@@ -1148,7 +1148,7 @@ pub struct IpamImportPrefixInput {
     pub vlan_vid: Option<u16>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IpamImportAddressInput {
     pub address: String,
@@ -1284,6 +1284,17 @@ pub enum NetworkNodeKind {
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub enum NetworkNodeShape {
+    #[default]
+    Rectangle,
+    Circle,
+    Diamond,
+    Triangle,
+    Hexagon,
+}
+
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub enum NetworkLinkKind {
     #[default]
     Ethernet,
@@ -1371,6 +1382,9 @@ pub struct NetworkNode {
     pub width: f64,
     #[serde(default)]
     pub height: f64,
+    /// Canvas silhouette. Older graph JSON defaults to the original rectangle.
+    #[serde(default)]
+    pub shape: NetworkNodeShape,
     /// Optional palette index overriding the node kind's icon background.
     #[serde(default)]
     pub icon_accent: Option<u8>,

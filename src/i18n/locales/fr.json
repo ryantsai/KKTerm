@@ -1732,7 +1732,9 @@
       "scanEvidencePing": "Ping",
       "scanEvidenceSnmp": "SNMP",
       "scanEvidencePorts": "Ports TCP {{ports}}",
-      "fileImportAction": "Importer un fichier",
+      "fileImportAction": "Importer",
+      "fileImportResolveHostnames": "Résoudre les noms d’hôte",
+      "fileImportResolveHostnamesHint": "Au mieux : complète les noms d’hôte vides par DNS inversé PTR. Les noms d’hôte déjà présents dans le fichier sont conservés.",
       "fileImportTitle": "Importer des enregistrements IPAM",
       "fileImportIntro": "Choisissez un fichier CSV, TSV ou Excel (.xlsx). Excel importe la première feuille non vide. Téléchargez l’exemple CSV pour connaître les colonnes canoniques et les valeurs acceptées.",
       "fileImportFilter": "Fichiers de table IPAM",
@@ -1846,6 +1848,14 @@
         "printer": "Imprimante",
         "camera": "Caméra de sécurité",
         "geomap": "Géocarte"
+      },
+      "shapeLabel": "Forme",
+      "shape": {
+        "rectangle": "Rectangle",
+        "circle": "Cercle",
+        "diamond": "Losange",
+        "triangle": "Triangle",
+        "hexagon": "Hexagone"
       },
       "genericIconLabel": "Icône intégrée",
       "deepLinksLabel": "Liens profonds",

@@ -30,6 +30,7 @@ export function matchesNetworkMapSearch(
       node.y,
       node.width,
       node.height,
+      node.shape,
       node.iconAccent,
       node.iconBackgroundColor,
       node.locked,

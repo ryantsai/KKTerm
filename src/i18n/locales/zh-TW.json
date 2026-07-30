@@ -1732,7 +1732,9 @@
       "scanEvidencePing": "Ping",
       "scanEvidenceSnmp": "SNMP",
       "scanEvidencePorts": "TCP 連接埠 {{ports}}",
-      "fileImportAction": "匯入檔案",
+      "fileImportAction": "匯入",
+      "fileImportResolveHostnames": "解析主機名稱",
+      "fileImportResolveHostnamesHint": "盡力而為：透過 PTR 反向 DNS 填入空白的主機名稱。保留檔案中已有的主機名稱。",
       "fileImportTitle": "匯入 IPAM 記錄",
       "fileImportIntro": "請選擇 CSV、TSV 或 Excel（.xlsx）檔案。Excel 僅匯入第一個非空白的工作表。可下載 CSV 範本以取得標準欄位與可用值。",
       "fileImportFilter": "IPAM 表格檔案",
@@ -1846,6 +1848,14 @@
         "printer": "印表機",
         "camera": "監視攝影機",
         "geomap": "地理地圖"
+      },
+      "shapeLabel": "形狀",
+      "shape": {
+        "rectangle": "矩形",
+        "circle": "圓形",
+        "diamond": "菱形",
+        "triangle": "三角形",
+        "hexagon": "六邊形"
       },
       "genericIconLabel": "內建圖示",
       "deepLinksLabel": "深層連結",

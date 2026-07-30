@@ -10,12 +10,15 @@ use std::collections::HashSet;
 use super::types::{
     NetworkGeomapViewport, NetworkGraph, NetworkLink, NetworkLinkStrand, NetworkMap,
     NetworkMapNote, NetworkNode, NetworkNodeDeepLinkKind, NetworkNodeInterface, NetworkNodeKind,
+    NetworkNodeShape,
 };
 
 /// Ceiling on parallel physical links recorded for one drawn link. The canvas
 /// draws every strand or one bundled line, while the Properties list remains
 /// the authoritative inventory.
 const MAX_STRANDS: usize = 64;
+/// Practical no-limit ceiling kept finite for durable JSON and canvas safety.
+const MAX_NODE_DIMENSION: f64 = 1_000_000.0;
 
 #[derive(Debug)]
 pub enum NetworkMapStorageError {
@@ -224,11 +227,17 @@ fn sanitize_node(mut node: NetworkNode) -> NetworkNode {
         .take(32)
         .collect();
     if node.kind == NetworkNodeKind::Geomap {
+        node.shape = NetworkNodeShape::Rectangle;
         node.width = node.width.max(120.0);
         node.height = node.height.max(44.0);
     } else {
-        node.width = node.width.clamp(120.0, 360.0);
-        node.height = node.height.clamp(44.0, 220.0);
+        node.width = node.width.clamp(120.0, MAX_NODE_DIMENSION);
+        node.height = node.height.clamp(44.0, MAX_NODE_DIMENSION);
+        if node.shape != NetworkNodeShape::Rectangle {
+            let size = node.width.max(node.height);
+            node.width = size;
+            node.height = size;
+        }
     }
     node.geomap_viewport = if node.kind == NetworkNodeKind::Geomap {
         let mut viewport = node
@@ -568,6 +577,7 @@ mod tests {
     use crate::itops::types::{
         NetworkGeomapViewport, NetworkLinkKind, NetworkLinkStatus, NetworkLinkStrandDisplay,
         NetworkMapNote, NetworkNode, NetworkNodeDeepLink, NetworkNodeDeepLinkKind, NetworkNodeKind,
+        NetworkNodeShape,
     };
 
     fn open_test_db() -> SqliteConnection {
@@ -638,6 +648,7 @@ mod tests {
         primary_link.status = NetworkLinkStatus::Warning;
         primary_link.strand_display = NetworkLinkStrandDisplay::Bundle;
         let mut core = node("core");
+        core.shape = NetworkNodeShape::Diamond;
         core.interfaces = vec![
             NetworkNodeInterface {
                 id: "core-uplink".into(),
@@ -692,8 +703,9 @@ mod tests {
         assert_eq!(core_interfaces[0].name, "Gi1/0/1");
         assert_eq!(core_interfaces[0].address, "10.20.0.1");
         assert_eq!(core_interfaces[1].id, "core-interface-1");
-        assert_eq!(listed[0].graph.nodes[0].width, 360.0);
-        assert_eq!(listed[0].graph.nodes[0].height, 44.0);
+        assert_eq!(listed[0].graph.nodes[0].width, 500.0);
+        assert_eq!(listed[0].graph.nodes[0].height, 500.0);
+        assert_eq!(listed[0].graph.nodes[0].shape, NetworkNodeShape::Diamond);
         assert_eq!(listed[0].graph.notes[0].text, "Maintenance boundary");
         assert_eq!(listed[0].graph.notes[0].width, 180.0);
         assert_eq!(listed[0].graph.notes[0].height, 400.0);
@@ -734,6 +746,7 @@ mod tests {
     fn clamps_geomap_viewports_and_clears_them_from_other_nodes() {
         let mut map = node("map");
         map.kind = NetworkNodeKind::Geomap;
+        map.shape = NetworkNodeShape::Circle;
         map.width = 2400.0;
         map.height = 1300.0;
         map.geomap_viewport = Some(NetworkGeomapViewport {
@@ -763,6 +776,7 @@ mod tests {
         );
         assert_eq!(sanitized.nodes[0].width, 2400.0);
         assert_eq!(sanitized.nodes[0].height, 1300.0);
+        assert_eq!(sanitized.nodes[0].shape, NetworkNodeShape::Rectangle);
         assert!(sanitized.nodes[1].geomap_viewport.is_none());
     }
 
@@ -963,5 +977,6 @@ mod tests {
         assert_eq!(loaded.graph.links[0].id, "valid");
         assert_eq!(loaded.graph.links[0].strands.len(), 1);
         assert_eq!(loaded.graph.roots, vec!["core".to_string()]);
+        assert_eq!(loaded.graph.nodes[0].shape, NetworkNodeShape::Rectangle);
     }
 }

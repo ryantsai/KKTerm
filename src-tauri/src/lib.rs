@@ -5104,6 +5104,7 @@ pub fn run() {
             itops::ipam_commands::itops_remove_ip_address,
             itops::ipam_commands::itops_suggest_free_addresses,
             itops::ipam_commands::itops_import_ipam,
+            itops::ipam_commands::itops_resolve_ipam_import_hostnames,
             itops::ipam_commands::itops_read_ipam_xlsx,
             itops::ipam_commands::itops_scan_ip_prefixes,
             itops::network_map_commands::itops_list_network_maps,

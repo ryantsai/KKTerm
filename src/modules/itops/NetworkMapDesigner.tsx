@@ -84,6 +84,7 @@ import type {
   NetworkNodeIconKind,
   NetworkNodeInterface,
   NetworkNodeKind,
+  NetworkNodeShape,
   Rack,
   ServerRoom,
   Site,
@@ -131,6 +132,13 @@ import { vlanAccent, vlanLabel, vlansById } from "./vlanModel";
 import { flattenConnections } from "../workspace/connections/treeUtils";
 
 const LINK_KINDS: NetworkLinkKind[] = ["ethernet", "fiber", "wan", "wireless"];
+const NODE_SHAPES: readonly NetworkNodeShape[] = [
+  "rectangle",
+  "circle",
+  "diamond",
+  "triangle",
+  "hexagon",
+];
 
 /** The palette groups, and the single source of the kind list. The inspector's
  * dropdown is derived from these below rather than hand-maintained beside them:
@@ -393,6 +401,7 @@ interface MapNodeData extends Record<string, unknown> {
   sub: string;
   note: string;
   kind: NetworkNodeKind;
+  shape: NetworkNodeShape;
   iconKind: NetworkNodeIconKind;
   state: NodeState;
   root: boolean;
@@ -421,6 +430,19 @@ function geomapViewport(node: NetworkNode): NetworkGeomapViewport {
 
 function nodeArtworkKind(node: Pick<NetworkNode, "kind" | "iconKind">): NetworkNodeIconKind {
   return node.kind === "generic" ? node.iconKind ?? "switch" : node.kind;
+}
+
+function nodeShape(node: Pick<NetworkNode, "kind" | "shape">): NetworkNodeShape {
+  return node.kind === "geomap" ? "rectangle" : node.shape ?? "rectangle";
+}
+
+function nodeShapePatch(
+  node: Pick<NetworkNode, "width" | "height">,
+  shape: NetworkNodeShape,
+): Partial<NetworkNode> {
+  if (shape === "rectangle") return { shape };
+  const size = Math.max(node.width, node.height, NODE_WIDTH);
+  return { shape, width: size, height: size };
 }
 
 function hasBlackDeviceShell(kind: NetworkNodeIconKind): boolean {
@@ -635,6 +657,7 @@ function MapNode({ data }: NodeProps<Node<MapNodeData>>) {
       className={`nm-node${data.selected ? " sel" : ""}${data.ghost ? " ghost" : ""}`}
       data-state={data.kind === "geomap" ? undefined : data.state}
       data-kind={data.kind}
+      data-shape={data.kind === "geomap" ? undefined : data.shape}
       data-root={data.kind !== "geomap" && data.root ? "true" : undefined}
       data-has-note={data.kind !== "geomap" && note ? "true" : undefined}
       data-has-deep-links={data.deepLinks.length > 0 ? "true" : undefined}
@@ -649,6 +672,7 @@ function MapNode({ data }: NodeProps<Node<MapNodeData>>) {
           minHeight={NODE_MIN_HEIGHT}
           maxWidth={NODE_MAX_WIDTH}
           maxHeight={NODE_MAX_HEIGHT}
+          keepAspectRatio={data.shape !== "rectangle"}
           lineClassName="nm-resize-line"
           handleClassName="nm-resize-handle"
         />
@@ -976,6 +1000,30 @@ function NetworkLinkEdge(props: EdgeProps<Edge<NetworkLinkEdgeData>>) {
 
 const edgeTypes = { networkLink: NetworkLinkEdge };
 
+function NetworkMapPreviewNodeShape({ shape }: { shape: NetworkNodeShape }) {
+  switch (shape) {
+    case "circle":
+      return <circle className="nm-map-preview-shape" r="5.5" />;
+    case "diamond":
+      return <path className="nm-map-preview-shape" d="M0-6 6 0 0 6-6 0Z" />;
+    case "triangle":
+      return <path className="nm-map-preview-shape" d="M0-6 6 5-6 5Z" />;
+    case "hexagon":
+      return <path className="nm-map-preview-shape" d="M-5-5 5-5 7 0 5 5-5 5-7 0Z" />;
+    default:
+      return (
+        <rect
+          className="nm-map-preview-shape"
+          x="-5"
+          y="-5"
+          width="10"
+          height="10"
+          rx="3"
+        />
+      );
+  }
+}
+
 function NetworkMapPreview({ map }: { map: NetworkMap }) {
   const nodesById = new Map(map.graph.nodes.map((node) => [node.id, node]));
   const xs = map.graph.nodes.map((node) => node.x);
@@ -1032,7 +1080,7 @@ function NetworkMapPreview({ map }: { map: NetworkMap }) {
             transform={`translate(${p.x} ${p.y})`}
           >
             <circle className="nm-map-preview-halo" r="9" />
-            <rect x="-5" y="-5" width="10" height="10" rx="3" />
+            <NetworkMapPreviewNodeShape shape={nodeShape(node)} />
             <circle className="nm-map-preview-led" cx="3" cy="-3" r="1.2" />
           </g>
         );
@@ -1133,6 +1181,7 @@ function hostsAsNodes(hosts: readonly SiteHost[], offset: number): NetworkNode[]
     y: 60 + Math.floor((index + offset) / 4) * (NODE_HEIGHT + 54),
     width: NODE_WIDTH,
     height: NODE_HEIGHT,
+    shape: "rectangle",
     iconAccent: null,
     iconBackgroundColor: null,
     iconKind: null,
@@ -1163,6 +1212,7 @@ function newNodeDraft(kind: NetworkNodeKind): NetworkNode {
     y: 0,
     width: isGeomap ? 320 : NODE_WIDTH,
     height: isGeomap ? 190 : NODE_HEIGHT,
+    shape: "rectangle",
     iconAccent: null,
     iconBackgroundColor: null,
     iconKind: kind === "generic" ? "switch" : null,
@@ -1833,6 +1883,26 @@ function NodePropertiesFields({
           />
         </Field>
       ) : null}
+      <Field label={t("itops.networkMap.shapeLabel")}>
+        <div className="nm-shape-picker" role="radiogroup">
+          {NODE_SHAPES.map((shape) => {
+            const selected = nodeShape(node) === shape;
+            return (
+              <button
+                key={shape}
+                type="button"
+                className={selected ? "selected" : ""}
+                role="radio"
+                aria-checked={selected}
+                onClick={() => onChange(nodeShapePatch(node, shape))}
+              >
+                <span className="nm-shape-picker-preview" data-shape={shape} aria-hidden="true" />
+                <span>{t(`itops.networkMap.shape.${shape}`)}</span>
+              </button>
+            );
+          })}
+        </div>
+      </Field>
       {node.kind === "generic" ? (
         <Field label={t("itops.networkMap.genericIconLabel")}>
           <div className="nm-icon-picker" role="radiogroup">
@@ -3298,6 +3368,7 @@ function MapEditor({
             t(`itops.networkMap.nodeKind.${node.kind}`),
           note: node.note,
           kind: node.kind,
+          shape: nodeShape(node),
           iconKind: nodeArtworkKind(node),
           state: downSet.has(node.id)
             ? "down"
@@ -3345,6 +3416,7 @@ function MapEditor({
               t(`itops.networkMap.nodeKind.${node.kind}`),
             note: node.note,
             kind: node.kind,
+            shape: nodeShape(node),
             iconKind: nodeArtworkKind(node),
             state: node.status === "warning" ? "warning" : "up",
             root: placementDraft.root,
@@ -4341,6 +4413,7 @@ export function NetworkMapDesigner({
       ...(map.graph.roots.length > 0 ? [t("itops.networkMap.rootBadge")] : []),
       ...map.graph.nodes.flatMap((node) => [
         t(`itops.networkMap.nodeKind.${node.kind}`),
+        t(`itops.networkMap.shape.${nodeShape(node)}`),
         t(`itops.networkMap.status.${node.status}`),
       ]),
       ...map.graph.links.flatMap((link) => [

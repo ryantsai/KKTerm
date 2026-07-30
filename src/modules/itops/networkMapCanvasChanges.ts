@@ -6,8 +6,10 @@ export const NETWORK_NODE_WIDTH = 156;
 export const NETWORK_NODE_HEIGHT = 52;
 export const NETWORK_NODE_MIN_WIDTH = 120;
 export const NETWORK_NODE_MIN_HEIGHT = 44;
-export const NETWORK_NODE_MAX_WIDTH = 360;
-export const NETWORK_NODE_MAX_HEIGHT = 220;
+// Keep a finite ceiling for React Flow and persisted JSON, but make it
+// unreachable in normal Network Map authoring.
+export const NETWORK_NODE_MAX_WIDTH = 1_000_000;
+export const NETWORK_NODE_MAX_HEIGHT = 1_000_000;
 export const NETWORK_NOTE_WIDTH = 240;
 export const NETWORK_NOTE_HEIGHT = 130;
 export const NETWORK_NOTE_MIN_WIDTH = 180;

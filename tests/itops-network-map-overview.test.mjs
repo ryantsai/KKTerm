@@ -20,5 +20,5 @@ test("Network Map overview expands progressively to at most four columns", () =>
     css,
     /@container network-map-page \(min-width: 1280px\)[\s\S]*?repeat\(4, minmax\(0, 1fr\)\)/,
   );
-  assert.doesNotMatch(css, /\.nm-gallery[\s\S]*?repeat\([5-9],/);
+  assert.doesNotMatch(css, /\.nm-gallery\s*\{[^}]*repeat\([5-9],/);
 });

@@ -1732,7 +1732,9 @@
       "scanEvidencePing": "Ping",
       "scanEvidenceSnmp": "SNMP",
       "scanEvidencePorts": "Port TCP {{ports}}",
-      "fileImportAction": "Impor berkas",
+      "fileImportAction": "Impor",
+      "fileImportResolveHostnames": "Uraikan nama host",
+      "fileImportResolveHostnamesHint": "Upaya terbaik: isi nama host kosong dari DNS balik PTR. Nama host yang sudah ada dalam berkas tetap dipertahankan.",
       "fileImportTitle": "Impor rekaman IPAM",
       "fileImportIntro": "Pilih berkas CSV, TSV, atau Excel (.xlsx). Excel mengimpor lembar kerja pertama yang tidak kosong. Unduh contoh CSV untuk kolom kanonik dan nilai yang diterima.",
       "fileImportFilter": "Berkas tabel IPAM",
@@ -1846,6 +1848,14 @@
         "printer": "Printer",
         "camera": "Kamera Keamanan",
         "geomap": "Peta geografis"
+      },
+      "shapeLabel": "Bentuk",
+      "shape": {
+        "rectangle": "Persegi panjang",
+        "circle": "Lingkaran",
+        "diamond": "Belah ketupat",
+        "triangle": "Segitiga",
+        "hexagon": "Segi enam"
       },
       "genericIconLabel": "Ikon bawaan",
       "deepLinksLabel": "Tautan mendalam",

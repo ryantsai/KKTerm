@@ -1,7 +1,15 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import Papa from "papaparse";
-import { Actions, Btn, DialogShell, Sheet } from "../../app/ui/dialog";
+import {
+  Actions,
+  Btn,
+  DialogShell,
+  GRow,
+  Group,
+  Sheet,
+  Switch,
+} from "../../app/ui/dialog";
 import {
   invokeCommand,
   localFileSize,
@@ -34,6 +42,7 @@ export function IpamImportDialog({ onClose }: { onClose: () => void }) {
   const [parsed, setParsed] = useState<ParsedIpamImport | null>(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [resolveHostnames, setResolveHostnames] = useState(false);
 
   const issueText = (issue: IpamImportIssue) =>
     t(`itops.ipam.fileImportIssue.${issue.code}`, issue.values);
@@ -105,7 +114,16 @@ export function IpamImportDialog({ onClose }: { onClose: () => void }) {
     if (!parsed || parsed.ready === 0) return;
     setBusy(true);
     try {
-      const result = await importIpam(parsed.batch);
+      const batch = resolveHostnames
+        ? {
+            ...parsed.batch,
+            addresses: await invokeCommand(
+              "itops_resolve_ipam_import_hostnames",
+              { addresses: parsed.batch.addresses },
+            ),
+          }
+        : parsed.batch;
+      const result = await importIpam(batch);
       const count = result.vlans + result.prefixes + result.addresses;
       showStatusBarNotice(
         t("itops.ipam.fileImportedNotice", {
@@ -139,7 +157,9 @@ export function IpamImportDialog({ onClose }: { onClose: () => void }) {
                 onClick={() => void submit()}
               >
                 <ItIcon name="download" size={14} />
-                {t("itops.ipam.fileImportSubmit", { count: parsed?.ready ?? 0 })}
+                {busy
+                  ? t("common.loading")
+                  : t("itops.ipam.fileImportSubmit", { count: parsed?.ready ?? 0 })}
               </Btn>
             }
           />
@@ -157,6 +177,21 @@ export function IpamImportDialog({ onClose }: { onClose: () => void }) {
           </Btn>
           {selectedName ? <span title={selectedName}>{selectedName}</span> : null}
         </div>
+        <Group>
+          <GRow
+            icon="network"
+            label={t("itops.ipam.fileImportResolveHostnames")}
+            desc={t("itops.ipam.fileImportResolveHostnamesHint")}
+            control={
+              <Switch
+                on={resolveHostnames}
+                onChange={setResolveHostnames}
+                ariaLabel={t("itops.ipam.fileImportResolveHostnames")}
+                disabled={busy}
+              />
+            }
+          />
+        </Group>
 
         {parsed ? (
           <>

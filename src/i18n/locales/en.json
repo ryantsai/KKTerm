@@ -1732,7 +1732,9 @@
       "scanEvidencePing": "Ping",
       "scanEvidenceSnmp": "SNMP",
       "scanEvidencePorts": "TCP ports {{ports}}",
-      "fileImportAction": "Import file",
+      "fileImportAction": "Import",
+      "fileImportResolveHostnames": "Resolve hostnames",
+      "fileImportResolveHostnamesHint": "Best effort: fill blank hostnames from PTR reverse DNS. Hostnames already in the file are kept.",
       "fileImportTitle": "Import IPAM records",
       "fileImportIntro": "Choose a CSV, TSV, or Excel (.xlsx) file. Excel imports the first non-empty worksheet. Download the CSV sample for the canonical columns and accepted values.",
       "fileImportFilter": "IPAM table files",
@@ -1846,6 +1848,14 @@
         "printer": "Printer",
         "camera": "Security Camera",
         "geomap": "Geomap"
+      },
+      "shapeLabel": "Shape",
+      "shape": {
+        "rectangle": "Rectangle",
+        "circle": "Circle",
+        "diamond": "Diamond",
+        "triangle": "Triangle",
+        "hexagon": "Hexagon"
       },
       "genericIconLabel": "Built-in icon",
       "deepLinksLabel": "Deep links",

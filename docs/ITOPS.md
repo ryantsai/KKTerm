@@ -205,8 +205,9 @@ a wider prefix silently re-parents everything it now contains, and no
 migration or repair pass is needed. Utilization counts documented addresses
 against usable addresses; nothing is scanned or probed automatically.
 
-**Network Node** — one box on a Network Map: id, label, kind, canvas
-position and size, Network Map palette or custom icon background, lock state,
+**Network Node** — one resizable shape on a Network Map: id, label, kind,
+rectangle/circle/diamond/triangle/hexagon silhouette, canvas position and size,
+Network Map palette or custom icon background, lock state,
 interface inventory, optional note, documented status (`up` / `warning`), and
 ordered soft deep links. Kinds are grouped in the designer as Core & Routing (`router`,
 `gateway`, `switch`, `switchL3`, `hub`), Security (`firewall`, `vpnGateway`,
@@ -458,7 +459,12 @@ case-insensitively only when the match is unique, resolves Prefix VLAN reference
 by 802.1Q id, and skips existing identities or later duplicates without
 overwriting them. The backend revalidates and creates VLANs, then Prefixes, then
 Address Records in one SQLite transaction; any non-duplicate failure rolls the
-whole batch back. The dialog generates the canonical CSV sample locally.
+whole batch back. An optional `itops.ipam.fileImportResolveHostnames` toggle
+best-effort fills only blank Address Record hostnames through bounded PTR
+reverse-DNS lookups before the transaction starts; existing file hostnames win,
+and lookup failure or the overall lookup timeout leaves a row unchanged. The
+dialog generates the canonical CSV sample locally. In the IPAM toolbar, Scan IP
+Prefixes sits immediately left of the shorter Import action.
 
 The IPAM toolbar's `itops.actions.export` menu saves every VLAN, IP Prefix, and
 Address Record as `itops.export.csv`, `itops.export.tsv`, or
@@ -542,7 +548,12 @@ Room, or Rack Device. A Rack Device target opens its Rack and Properties.
 When a Network Node has notes, a wide card uses the right side for the note;
 narrow cards put an ellipsized note preview along the bottom. New and imported
 nodes start at the compact default size, while every saved node keeps its own
-persisted dimensions.
+persisted dimensions. Rectangle is the compatibility default for graph JSON
+that predates node shapes. Choosing Circle, Diamond, Triangle, or Hexagon makes
+the node square once and preserves that aspect ratio during later resizing so
+the selected silhouette stays geometrically correct. Device-node resizing has
+a 1,000,000-pixel finite safety ceiling per dimension, which is intentionally a
+practical no-limit bound for canvas authoring.
 
 Object-browser cards use the same configure-then-place interaction
 as Server Room editing: click a card, complete its Properties dialog, then

@@ -1537,6 +1537,10 @@ type CommandMap = {
     args: { batch: import("../types").IpamImportBatch };
     result: import("../types").IpamImportResult;
   };
+  itops_resolve_ipam_import_hostnames: {
+    args: { addresses: import("../types").IpamImportAddressInput[] };
+    result: import("../types").IpamImportAddressInput[];
+  };
   itops_read_ipam_xlsx: {
     args: { path: string };
     result: import("../types").IpamWorkbookSheet;

@@ -1732,7 +1732,9 @@
       "scanEvidencePing": "Ping",
       "scanEvidenceSnmp": "SNMP",
       "scanEvidencePorts": "TCP 포트 {{ports}}",
-      "fileImportAction": "파일 가져오기",
+      "fileImportAction": "가져오기",
+      "fileImportResolveHostnames": "호스트 이름 확인",
+      "fileImportResolveHostnamesHint": "가능한 범위에서 PTR 역방향 DNS로 빈 호스트 이름을 채웁니다. 파일에 이미 있는 호스트 이름은 유지됩니다.",
       "fileImportTitle": "IPAM 레코드 가져오기",
       "fileImportIntro": "CSV, TSV 또는 Excel(.xlsx) 파일을 선택하세요. Excel은 비어 있지 않은 첫 워크시트를 가져옵니다. 표준 열과 허용 값을 보려면 CSV 샘플을 내려받으세요.",
       "fileImportFilter": "IPAM 테이블 파일",
@@ -1846,6 +1848,14 @@
         "printer": "프린터",
         "camera": "보안 카메라",
         "geomap": "지리 지도"
+      },
+      "shapeLabel": "모양",
+      "shape": {
+        "rectangle": "사각형",
+        "circle": "원",
+        "diamond": "마름모",
+        "triangle": "삼각형",
+        "hexagon": "육각형"
       },
       "genericIconLabel": "내장 아이콘",
       "deepLinksLabel": "딥 링크",

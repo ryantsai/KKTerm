@@ -87,7 +87,7 @@ test("active resize changes update dimensions immediately and preserve safe boun
   assert.equal(bounded.nodes[0].width, NETWORK_NODE_MIN_WIDTH);
   assert.equal(bounded.nodes[0].height, NETWORK_NODE_MIN_HEIGHT);
 
-  const capped = applyNetworkMapCanvasNodeChanges(during, [
+  const veryLarge = applyNetworkMapCanvasNodeChanges(during, [
     {
       id: "node-a",
       type: "dimensions",
@@ -96,8 +96,23 @@ test("active resize changes update dimensions immediately and preserve safe boun
     },
   ] satisfies NodeChange[]);
 
-  assert.equal(capped.nodes[0].width, NETWORK_NODE_MAX_WIDTH);
-  assert.equal(capped.nodes[0].height, NETWORK_NODE_MAX_HEIGHT);
+  assert.equal(veryLarge.nodes[0].width, 2400);
+  assert.equal(veryLarge.nodes[0].height, 1300);
+
+  const safetyCapped = applyNetworkMapCanvasNodeChanges(during, [
+    {
+      id: "node-a",
+      type: "dimensions",
+      resizing: false,
+      dimensions: {
+        width: NETWORK_NODE_MAX_WIDTH + 1,
+        height: NETWORK_NODE_MAX_HEIGHT + 1,
+      },
+    },
+  ] satisfies NodeChange[]);
+
+  assert.equal(safetyCapped.nodes[0].width, NETWORK_NODE_MAX_WIDTH);
+  assert.equal(safetyCapped.nodes[0].height, NETWORK_NODE_MAX_HEIGHT);
 });
 
 test("geomap resize has no upper size cap", () => {

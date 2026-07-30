@@ -20,6 +20,7 @@ const map: NetworkMap = {
         y: 20,
         width: 190,
         height: 80,
+        shape: "diamond",
         iconAccent: 2,
         interfaces: [
           { id: "if-wan", name: "TenGigabitEthernet1/1", address: "10.20.0.1" },
@@ -82,6 +83,7 @@ test("Network Map search covers map, node, and link metadata", () => {
   assert.equal(matchesNetworkMapSearch(map, "vlan-20 vlan-30"), true);
   assert.equal(matchesNetworkMapSearch(map, "rack-item-1"), true);
   assert.equal(matchesNetworkMapSearch(map, "2001:db8::1 maintenance boundary"), true);
+  assert.equal(matchesNetworkMapSearch(map, "diamond"), true);
   assert.equal(matchesNetworkMapSearch(map, "Singapore"), false);
 });
 
