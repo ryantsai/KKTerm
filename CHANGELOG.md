@@ -3,6 +3,50 @@
 All notable changes to KKTerm are documented here.
 
 ## Direct Downloads
+* 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.136/kkterm-0.1.136-windows-x64-setup.exe)
+* 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.136/kkterm-0.1.136-windows-arm64-setup.exe)
+* 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.136/kkterm-0.1.136-windows-x64-portable.zip)
+* 📦 [Portable for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.136/kkterm-0.1.136-windows-arm64-portable.zip)
+
+## Highlights
+- **Portable Assistant Skills**: Fix incomplete portable Assistant Skills so **portable mode** can read **skills** correctly (PR #701, by @ryantsai; issue reported by @jfphi in #700).  
+- **RDP Sessions**: Clarify and enhance **reconnect behavior** and **focus management** for **RDP** sessions, including related guidance in the docs (PRs #? not provided in context).
+
+## New
+- **IT Ops (ITOPS)**: Expanded **network maps** and **IPAM imports**.
+
+## Improved
+- **IT Ops (ITOPS)**: Enhanced network map edge readout display and **IPAM menu behavior**.
+- **RDP Sessions**: Improved **focus management** for **RDP** sessions and enhanced **reconnect behavior**.
+
+## Fixed
+- **Portable mode / Assistant Skills**: Fixed incomplete portable Assistant Skills (PR [#701](https://github.com/ryantsai/KKTerm/pull/701); reported by @jfphi in #700, fixed by @ryantsai).
+
+## Internal
+- Docs maintenance: removed obsolete localization todo files for IPAM and network map shapes.
+- IT Ops code cleanup: simplified network graph structure and removed obsolete root references.  
+
+---
+
+## 亮點（Highlights）
+- **可攜式助理技能（Portable Assistant Skills）**：修正「可攜式模式」下 **技能（skills）** 讀取不完整的問題（PR #701，作者 @ryantsai；#700 由 @jfphi 提出回報）。  
+- **RDP 連線（RDP Sessions）**：釐清並強化 **RDP** 連線的 **重新連線（reconnect）行為**與 **焦點管理（focus management）**，相關文件也一併更新（本版提供的上下文未包含 PR 編號）。
+
+## 新增（New）
+- **IT Ops（ITOPS）**：擴充 **網路地圖（network maps）** 與 **IPAM 匯入（IPAM imports）**。
+
+## 改進（Improved）
+- **IT Ops（ITOPS）**：強化網路地圖邊緣讀值顯示，以及 **IPAM 選單行為**。
+- **RDP 連線（RDP Sessions）**：改善 **RDP** 的 **焦點管理**，並增強 **重新連線（reconnect）行為**。
+
+## 修正（Fixed）
+- **可攜式模式 / 助理技能**：修正可攜式助理技能不完整問題（PR [#701](https://github.com/ryantsai/KKTerm/pull/701)；由 #700 @jfphi 回報、@ryantsai 修正）。
+
+## 內部（Internal）
+- 文件維護：移除 IPAM 與網路地圖形狀相關的舊版在地化待辦檔案。
+- IT Ops 程式清理：簡化網路圖結構並移除不再需要的根參考。
+
+## Direct Downloads
 * 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.135/kkterm-0.1.135-windows-x64-setup.exe)
 * 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.135/kkterm-0.1.135-windows-arm64-setup.exe)
 * 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.135/kkterm-0.1.135-windows-x64-portable.zip)
