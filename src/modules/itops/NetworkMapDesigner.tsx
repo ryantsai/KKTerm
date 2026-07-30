@@ -188,6 +188,7 @@ const COMMON_LINK_SPEEDS = [
 
 /** Matches the backend's strand ceiling in `network_map_storage`. */
 const MAX_STRANDS = 64;
+const EDGE_READOUT_ROWS_PER_COLUMN = 12;
 /** Matches the backend ceiling for node interfaces and Deep Links. */
 const MAX_NODE_COLLECTION_ITEMS = 32;
 /** A Network Map-only palette. These intentionally pale hardware-card colours
@@ -845,22 +846,34 @@ function NetworkLinkEdge(props: EdgeProps<Edge<NetworkLinkEdgeData>>) {
             groups.set(speed, (groups.get(speed) ?? 0) + 1);
             return groups;
           }, new Map<string, number>()),
-          ([speed, quantity]) => `${quantity}× ${speed}`,
+          ([speed, quantity]) => ({ badge: `${quantity}×`, value: speed }),
         )
       : (data?.strands ?? [])
           .flatMap((strand, index) =>
             strand.name.trim() || strand.speed.trim()
               ? [
-                  [
-                    `${index + 1}`,
-                    strand.name.trim(),
-                    strand.speed.trim() ? `· ${strand.speed.trim()}` : "· —",
-                  ]
-                    .filter(Boolean)
-                    .join(" "),
+                  {
+                    badge: `${index + 1}`,
+                    value: [
+                      strand.name.trim(),
+                      strand.speed.trim() || "—",
+                    ]
+                      .filter(Boolean)
+                      .join(" · "),
+                  },
                 ]
               : [],
           );
+  const readoutColumns = Array.from(
+    {
+      length: Math.ceil(readouts.length / EDGE_READOUT_ROWS_PER_COLUMN),
+    },
+    (_entry, columnIndex) =>
+      readouts.slice(
+        columnIndex * EDGE_READOUT_ROWS_PER_COLUMN,
+        (columnIndex + 1) * EDGE_READOUT_ROWS_PER_COLUMN,
+      ),
+  );
   // The mid jog runs across the route, so the ticks are drawn along the other
   // axis to stay perpendicular to the line they mark.
   const horizontal =
@@ -925,6 +938,7 @@ function NetworkLinkEdge(props: EdgeProps<Edge<NetworkLinkEdgeData>>) {
         <EdgeLabelRenderer>
           <div
             className="nm-edge-label"
+            data-state={data?.state}
             data-spotlit={data?.spotlightAccent ? "true" : undefined}
             style={{
               transform: `translate(-50%, -50%) translate(${centre.labelX}px, ${centre.labelY}px)`,
@@ -936,9 +950,19 @@ function NetworkLinkEdge(props: EdgeProps<Edge<NetworkLinkEdgeData>>) {
             {data?.label ? <span className="nm-edge-label-main">{data.label}</span> : null}
             {readouts.length > 0 ? (
               <span className="nm-edge-speed-list">
-                {readouts.map((readout, index) => (
-                  <span key={`${id}:speed:${index}`} className="nm-edge-speed">
-                    {readout}
+                {readoutColumns.map((column, columnIndex) => (
+                  <span key={`${id}:column:${columnIndex}`} className="nm-edge-speed-column">
+                    {column.map((readout, rowIndex) => (
+                      <span
+                        key={`${id}:speed:${
+                          columnIndex * EDGE_READOUT_ROWS_PER_COLUMN + rowIndex
+                        }`}
+                        className="nm-edge-speed"
+                      >
+                        <span className="nm-edge-speed-number">{readout.badge}</span>
+                        <span className="nm-edge-speed-value">{readout.value}</span>
+                      </span>
+                    ))}
                   </span>
                 ))}
               </span>

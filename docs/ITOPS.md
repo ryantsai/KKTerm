@@ -512,6 +512,8 @@ custom edge renderer draws an orthogonal route as either every parallel strand
 or one thickness-scaled bundle while keeping handle/anchor state out of the
 stored graph. Its opaque, bordered readout is rendered above the route and
 lists each strand speed in separate mode or speed-group counts in bundle mode.
+Readout entries use compact colored number badges and fill vertically in
+columns, starting a new column after every 12 entries.
 Every route carries a reduced-motion-aware animated trace, colored from its
 operator-authored healthy, degraded, or down status.
 The editor is keyed by map id so switching maps remounts rather than carrying

@@ -7692,6 +7692,17 @@
   flex-direction: column;
 }
 
+.itops-page .it-ipam-page > .it-destination-page-head > .ft-add-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.itops-page .it-ipam-page > .it-destination-page-head > .ft-add-wrap > .ft-add-menu {
+  position: static;
+  margin-top: 4px;
+}
+
 .itops-page .it-ipam-claim-btn {
   display: inline-flex;
   align-items: center;
@@ -9137,10 +9148,11 @@
   z-index: 2;
 }
 .nm-edge-label {
+  --nm-edge-label-accent: var(--green);
   position: absolute;
   z-index: 3;
   display: flex;
-  max-width: 360px;
+  max-width: 560px;
   flex-direction: column;
   gap: 3px;
   padding: 3px 5px;
@@ -9150,17 +9162,30 @@
   box-shadow: 0 2px 7px color-mix(in srgb, var(--text) 14%, transparent);
   color: var(--text-muted);
   font-family: var(--app-mono-font-family, ui-monospace, monospace);
-  font-size: 9.5px;
-  line-height: 1.35;
+  font-size: 8.5px;
+  line-height: 1.2;
   pointer-events: none;
+}
+.nm-edge-label[data-state="warning"] {
+  --nm-edge-label-accent: var(--amber);
+}
+.nm-edge-label[data-state="down"],
+.nm-edge-label[data-state="cut"],
+.nm-edge-label[data-state="severed"] {
+  --nm-edge-label-accent: var(--red);
 }
 .nm-edge-label-main {
   white-space: nowrap;
 }
 .nm-edge-speed-list {
   display: flex;
-  max-width: 350px;
-  flex-wrap: wrap;
+  max-width: 550px;
+  align-items: flex-start;
+  gap: 6px;
+}
+.nm-edge-speed-column {
+  display: flex;
+  flex-direction: column;
   gap: 2px;
 }
 .nm-edge-label-main + .nm-edge-speed-list {
@@ -9168,11 +9193,32 @@
   border-top: 1px solid var(--hairline);
 }
 .nm-edge-speed {
-  padding: 1px 4px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 13px;
+  padding-right: 3px;
   border-radius: 3px;
   background: var(--surface-muted);
   color: var(--text);
   white-space: nowrap;
+}
+.nm-edge-speed-number {
+  display: inline-flex;
+  min-width: 14px;
+  height: 13px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--nm-edge-label-accent) 18%, var(--surface));
+  color: var(--nm-edge-label-accent);
+  font-size: 8px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+.nm-edge-speed-value {
+  font-variant-numeric: tabular-nums;
 }
 .nm-edge-label[data-spotlit="true"] {
   border: 1px solid color-mix(in srgb, var(--nm-vlan-accent) 55%, transparent);

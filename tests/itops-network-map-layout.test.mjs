@@ -210,9 +210,24 @@ test("Network Nodes use the expanded device catalog and links expose complete do
   assert.match(designer, /strandDisplay === "separate" \? count : 1/);
   assert.doesNotMatch(designer, /Math\.min\(Math\.max\(data\?\.strandCount/);
   assert.match(designer, /className="nm-edge-speed-list"/);
+  assert.match(designer, /EDGE_READOUT_ROWS_PER_COLUMN = 12/);
+  assert.match(designer, /className="nm-edge-speed-column"/);
+  assert.match(designer, /className="nm-edge-speed-number"/);
+  assert.match(designer, /className="nm-edge-speed-value"/);
   assert.match(designer, /groups\.set\(speed, \(groups\.get\(speed\) \?\? 0\) \+ 1\)/);
   assert.match(styles, /\.nm-edge-label\s*\{[\s\S]*background: var\(--surface\);/);
-  assert.match(styles, /\.nm-edge-speed-list\s*\{[\s\S]*flex-wrap: wrap;/);
+  assert.match(
+    styles,
+    /\.nm-edge-speed-list\s*\{[^}]*display: flex;[^}]*align-items: flex-start;/,
+  );
+  assert.match(
+    styles,
+    /\.nm-edge-speed-column\s*\{[^}]*flex-direction: column;/,
+  );
+  assert.match(
+    styles,
+    /\.nm-edge-speed-number\s*\{[^}]*background: color-mix\([^;]+var\(--nm-edge-label-accent\)[^;]+;/,
+  );
   assert.match(
     styles,
     /\.react-flow__edgelabel-renderer\s*\{[\s\S]*z-index: 2;/,
