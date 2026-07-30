@@ -1,12 +1,8 @@
 // Network Map designer (docs/ITOPS.md Network Map) — a global, cross-Site canvas
-// for drawing how the network actually hangs together, plus the What-If pass that
-// answers "if I take this out, what stops being reachable?".
+// for documenting how the network hangs together.
 //
 // The map is documentation the operator draws, not a discovered graph: KKTerm has
-// no live device binding today, so nothing here polls, and "down" only ever means
-// "the operator switched it off on this canvas". The analysis in reachability.ts
-// takes that switched-off set as its only input, which is what makes it useful
-// before a change window rather than after an outage.
+// no live device binding today, so node and link status is always operator-authored.
 //
 // Built on @xyflow/react. Node positions live in the
 // graph itself (they are part of the saved document), so a drag is an edit.
@@ -123,10 +119,6 @@ import {
   type NetworkMapNoteFormatAction,
 } from "./networkMapNoteMarkdown";
 import { nextTopologyDuplicateName } from "./topologyDuplicate";
-import {
-  analyzeWhatIf,
-  effectiveRoots,
-} from "./reachability";
 import { useItOpsStore } from "./state";
 import { vlanAccent, vlanLabel, vlansById } from "./vlanModel";
 import { flattenConnections } from "../workspace/connections/treeUtils";
@@ -392,9 +384,6 @@ function resolveDeepLink(
   };
 }
 
-/** Node state drives the card's themed treatment; never a hard-coded colour. */
-type NodeState = "up" | "warning" | "down" | "isolated";
-
 interface MapNodeData extends Record<string, unknown> {
   id: string;
   label: string;
@@ -403,10 +392,8 @@ interface MapNodeData extends Record<string, unknown> {
   kind: NetworkNodeKind;
   shape: NetworkNodeShape;
   iconKind: NetworkNodeIconKind;
-  state: NodeState;
-  root: boolean;
+  state: NetworkMapStatus;
   selected: boolean;
-  rootLabel: string;
   warningLabel: string;
   accent: string;
   resizable: boolean;
@@ -415,6 +402,8 @@ interface MapNodeData extends Record<string, unknown> {
   deepLinks: NetworkNodeDeepLink[];
   deepLinksPopupLabel: string;
   onOpenDeepLinks?: (nodeId: string, anchor: DOMRect) => void;
+  onResizeStart?: () => void;
+  onResizeEnd?: () => void;
   ghost?: boolean;
 }
 
@@ -443,6 +432,33 @@ function nodeShapePatch(
   if (shape === "rectangle") return { shape };
   const size = Math.max(node.width, node.height, NODE_WIDTH);
   return { shape, width: size, height: size };
+}
+
+function NetworkNodeShapeGlyph({ shape }: { shape: NetworkNodeShape }) {
+  const shapeElement = (() => {
+    switch (shape) {
+      case "circle":
+        return <circle cx="16" cy="16" r="10.5" />;
+      case "diamond":
+        return <path d="M16 4.75 27.25 16 16 27.25 4.75 16Z" />;
+      case "triangle":
+        return <path d="M16 4.75 27.5 26.75H4.5Z" />;
+      case "hexagon":
+        return <path d="M9.25 5.5h13.5L29 16l-6.25 10.5H9.25L3 16Z" />;
+      default:
+        return <rect x="4.5" y="6" width="23" height="20" rx="3.5" />;
+    }
+  })();
+
+  return (
+    <svg
+      className="nm-shape-picker-glyph"
+      viewBox="0 0 32 32"
+      aria-hidden="true"
+    >
+      <g className="nm-shape-picker-glyph-shell">{shapeElement}</g>
+    </svg>
+  );
 }
 
 function hasBlackDeviceShell(kind: NetworkNodeIconKind): boolean {
@@ -658,7 +674,6 @@ function MapNode({ data }: NodeProps<Node<MapNodeData>>) {
       data-state={data.kind === "geomap" ? undefined : data.state}
       data-kind={data.kind}
       data-shape={data.kind === "geomap" ? undefined : data.shape}
-      data-root={data.kind !== "geomap" && data.root ? "true" : undefined}
       data-has-note={data.kind !== "geomap" && note ? "true" : undefined}
       data-has-deep-links={data.deepLinks.length > 0 ? "true" : undefined}
       data-locked={data.locked ? "true" : undefined}
@@ -675,6 +690,8 @@ function MapNode({ data }: NodeProps<Node<MapNodeData>>) {
           keepAspectRatio={data.shape !== "rectangle"}
           lineClassName="nm-resize-line"
           handleClassName="nm-resize-handle"
+          onResizeStart={data.onResizeStart}
+          onResizeEnd={data.onResizeEnd}
         />
       )}
       {/* Loose connection mode makes one handle usable from either end. Keeping
@@ -728,11 +745,6 @@ function MapNode({ data }: NodeProps<Node<MapNodeData>>) {
           <ItIcon name="link" size={11} />
           <span>{data.deepLinks.length}</span>
         </button>
-      ) : null}
-      {data.kind !== "geomap" && data.root ? (
-        <span className="nm-node-root" title={data.rootLabel}>
-          <ItIcon name="pulse" size={11} />
-        </span>
       ) : null}
       {data.kind !== "geomap" && data.state === "warning" ? (
         <span className="nm-node-warning" title={data.warningLabel}>
@@ -803,7 +815,7 @@ const nodeTypes = { networkNode: MapNode, networkNote: MapNote };
 
 interface NetworkLinkEdgeData extends Record<string, unknown> {
   kind: NetworkLinkKind;
-  state: "up" | "warning" | "down" | "cut" | "severed";
+  state: NetworkLinkStatus;
   strandCount: number;
   strands: NetworkLinkStrand[];
   strandDisplay: NetworkLinkStrandDisplay;
@@ -1896,7 +1908,7 @@ function NodePropertiesFields({
                 aria-checked={selected}
                 onClick={() => onChange(nodeShapePatch(node, shape))}
               >
-                <span className="nm-shape-picker-preview" data-shape={shape} aria-hidden="true" />
+                <NetworkNodeShapeGlyph shape={shape} />
                 <span>{t(`itops.networkMap.shape.${shape}`)}</span>
               </button>
             );
@@ -2010,7 +2022,6 @@ function NodePropertiesFields({
 
 function NodePropertiesDialog({
   node,
-  root,
   placement,
   deepLinkCatalog,
   onNavigateDeepLink,
@@ -2019,11 +2030,10 @@ function NodePropertiesDialog({
   onClose,
 }: {
   node: NetworkNode;
-  root: boolean;
   placement: boolean;
   deepLinkCatalog: NetworkMapDeepLinkCatalog;
   onNavigateDeepLink: (link: NetworkNodeDeepLink) => void;
-  onSubmit: (node: NetworkNode, root: boolean) => void;
+  onSubmit: (node: NetworkNode) => void;
   onDelete?: () => void;
   onClose: () => void;
 }) {
@@ -2059,7 +2069,7 @@ function NodePropertiesDialog({
               <Btn
                 kind="primary"
                 onClick={() => {
-                  onSubmit(draft, root);
+                  onSubmit(draft);
                   onClose();
                 }}
               >
@@ -3117,11 +3127,10 @@ type Selection =
   | { kind: "canvas"; items: NetworkMapCanvasSelectionItem[] }
   | null;
 type PlacementDraft =
-  | { kind: "node"; node: NetworkNode; root: boolean }
+  | { kind: "node"; node: NetworkNode }
   | { kind: "note"; note: NetworkMapNote };
 type NodeDialogRequest = {
   node: NetworkNode;
-  root: boolean;
   placement: boolean;
 };
 type NoteDialogRequest = {
@@ -3163,11 +3172,12 @@ function MapEditor({
   } | null>(null);
   const [placementDraft, setPlacementDraft] = useState<PlacementDraft | null>(null);
   const [placementPoint, setPlacementPoint] = useState<{ x: number; y: number } | null>(null);
-  const [dragAnchorNodes, setDragAnchorNodes] = useState<NetworkNode[] | null>(null);
+  const [interactionAnchorNodes, setInteractionAnchorNodes] = useState<NetworkNode[] | null>(null);
+  const resizeReleaseFrameRef = useRef<number | null>(null);
   const renderedNodesRef = useRef<Node<MapNodeData | MapNoteData>[]>([]);
   const suppressPlacementClickRef = useRef(false);
-  // Which VLAN the overlay spotlights. Purely a view filter: it never edits the
-  // graph and never feeds the reachability analysis, which stays VLAN-blind.
+  // Which VLAN the overlay spotlights. This is a view-only filter and never
+  // edits the graph or its operator-authored status fields.
   const [spotlightVlanId, setSpotlightVlanId] = useState<string | null>(null);
   const [flowInstance, setFlowInstance] = useState<ReactFlowInstance | null>(null);
 
@@ -3273,6 +3283,37 @@ function MapEditor({
     savedJsonRef.current = savedJson;
   }, [graph, savedJson]);
 
+  const holdEdgeAnchors = useCallback(() => {
+    if (resizeReleaseFrameRef.current !== null) {
+      window.cancelAnimationFrame(resizeReleaseFrameRef.current);
+      resizeReleaseFrameRef.current = null;
+    }
+    setInteractionAnchorNodes((current) => current ?? graphRef.current.nodes);
+  }, []);
+  const releaseEdgeAnchors = useCallback(() => {
+    setInteractionAnchorNodes(null);
+  }, []);
+  const releaseEdgeAnchorsAfterResize = useCallback(() => {
+    if (resizeReleaseFrameRef.current !== null) {
+      window.cancelAnimationFrame(resizeReleaseFrameRef.current);
+    }
+    // NodeResizer emits its final dimensions after onResizeEnd. Release on the
+    // next frame so React Flow commits and measures that final size before the
+    // edge sides are recalculated.
+    resizeReleaseFrameRef.current = window.requestAnimationFrame(() => {
+      resizeReleaseFrameRef.current = null;
+      releaseEdgeAnchors();
+    });
+  }, [releaseEdgeAnchors]);
+  useEffect(
+    () => () => {
+      if (resizeReleaseFrameRef.current !== null) {
+        window.cancelAnimationFrame(resizeReleaseFrameRef.current);
+      }
+    },
+    [],
+  );
+
   useEffect(
     () => () => {
       const latestGraph = graphRef.current;
@@ -3292,28 +3333,18 @@ function MapEditor({
     [map.description, map.id, map.name, map.siteId, saveNetworkMap, showStatusBarNotice, t],
   );
 
-  const analysis = useMemo(
-    () => analyzeWhatIf(graph, { nodes: [], links: [] }),
-    [graph],
-  );
-  const rootIds = useMemo(() => new Set(effectiveRoots(graph)), [graph]);
   const nodesById = useMemo(
     () => new Map(graph.nodes.map((node) => [node.id, node])),
     [graph.nodes],
   );
   // Keep each Link attached to the same pair of side handles while a node is
-  // moving. React Flow can then update the existing SVG path from its live node
-  // coordinates instead of receiving a rebuilt Edge on every drag frame,
-  // which preserves the link's CSS animation until the drag settles.
-  const edgeAnchorNodes = dragAnchorNodes ?? graph.nodes;
+  // moving or resizing. React Flow can then update the existing SVG path from
+  // its live node geometry instead of receiving a rebuilt Edge on every frame,
+  // which preserves the route and its CSS animation until the gesture settles.
+  const edgeAnchorNodes = interactionAnchorNodes ?? graph.nodes;
   const edgeNodesById = useMemo(
     () => new Map(edgeAnchorNodes.map((node) => [node.id, node])),
     [edgeAnchorNodes],
-  );
-  const severedLinkSignature = analysis.severedLinks.join("\u0000");
-  const severedLinkIds = useMemo(
-    () => new Set(severedLinkSignature ? severedLinkSignature.split("\u0000") : []),
-    [severedLinkSignature],
   );
   const openDeepLinks = useCallback((nodeId: string, anchor: DOMRect) => {
     setDeepLinkPopup({ nodeId, anchor });
@@ -3321,8 +3352,6 @@ function MapEditor({
 
   const unnamed = t("itops.networkMap.unnamedNode");
   const nodes = useMemo<Node<MapNodeData | MapNoteData>[]>(() => {
-    const downSet = new Set(analysis.down);
-    const isolatedSet = new Set(analysis.isolated);
     const selectedItems = selection?.kind === "canvas" ? selection.items : [];
     const noteNodes: Node<MapNoteData>[] = graph.notes.map((note) => {
       const selected = selectedItems.some((item) =>
@@ -3370,16 +3399,8 @@ function MapEditor({
           kind: node.kind,
           shape: nodeShape(node),
           iconKind: nodeArtworkKind(node),
-          state: downSet.has(node.id)
-            ? "down"
-            : isolatedSet.has(node.id)
-              ? "isolated"
-              : node.status === "warning"
-                ? "warning"
-                : "up",
-          root: rootIds.has(node.id),
+          state: node.status,
           selected,
-          rootLabel: t("itops.networkMap.rootBadge"),
           warningLabel: t("itops.networkMap.status.warning"),
           accent: nodeAccent(node),
           resizable: !node.locked,
@@ -3390,6 +3411,8 @@ function MapEditor({
             name: nodeLabel(node, unnamed),
           }),
           onOpenDeepLinks: openDeepLinks,
+          onResizeStart: holdEdgeAnchors,
+          onResizeEnd: releaseEdgeAnchorsAfterResize,
         },
       };
     });
@@ -3418,10 +3441,8 @@ function MapEditor({
             kind: node.kind,
             shape: nodeShape(node),
             iconKind: nodeArtworkKind(node),
-            state: node.status === "warning" ? "warning" : "up",
-            root: placementDraft.root,
+            state: node.status,
             selected: false,
-            rootLabel: t("itops.networkMap.rootBadge"),
             warningLabel: t("itops.networkMap.status.warning"),
             accent: nodeAccent(node),
             resizable: false,
@@ -3465,14 +3486,13 @@ function MapEditor({
     renderedNodesRef.current = reconciled;
     return reconciled;
   }, [
-    analysis.down,
-    analysis.isolated,
     graph.nodes,
     graph.notes,
+    holdEdgeAnchors,
     openDeepLinks,
     placementDraft,
     placementPoint,
-    rootIds,
+    releaseEdgeAnchorsAfterResize,
     selection,
     t,
     unnamed,
@@ -3484,13 +3504,7 @@ function MapEditor({
       const to = edgeNodesById.get(link.to);
       if (!from || !to) return [];
       const { source, target } = anchors(from, to);
-      const state = severedLinkIds.has(link.id)
-        ? "severed"
-        : link.status === "down"
-          ? "down"
-          : link.status === "warning"
-            ? "warning"
-            : "up";
+      const state = link.status;
       const strandCount = Math.max(link.strands.length, 1);
       const label = [
         link.label.trim(),
@@ -3532,7 +3546,6 @@ function MapEditor({
     edgeNodesById,
     graph.links,
     selection,
-    severedLinkIds,
     spotlightVlanId,
     t,
     vlanIndex,
@@ -3594,7 +3607,7 @@ function MapEditor({
   function configureNewNode(kind: NetworkNodeKind) {
     cancelPlacement();
     setSelection(null);
-    setNodeDialog({ node: newNodeDraft(kind), root: false, placement: true });
+    setNodeDialog({ node: newNodeDraft(kind), placement: true });
   }
 
   function configureNewNote() {
@@ -3603,9 +3616,9 @@ function MapEditor({
     setNoteDialog({ note: newNoteDraft(), placement: true });
   }
 
-  function armNodePlacement(node: NetworkNode, root: boolean) {
+  function armNodePlacement(node: NetworkNode) {
     setPlacementPoint(null);
-    setPlacementDraft({ kind: "node", node, root });
+    setPlacementDraft({ kind: "node", node });
     setSelection(null);
   }
 
@@ -3627,7 +3640,6 @@ function MapEditor({
       setGraph((current) => ({
         ...current,
         nodes: [...current.nodes, node],
-        roots: placementDraft.root ? [...current.roots, node.id] : current.roots,
       }));
       setSelection({ kind: "canvas", items: [{ kind: "node", id: node.id }] });
     } else {
@@ -3652,7 +3664,7 @@ function MapEditor({
     });
   }
 
-  function updateNodeProperties(node: NetworkNode, root: boolean) {
+  function updateNodeProperties(node: NetworkNode) {
     const retained = new Set(node.interfaces.map((entry) => entry.id));
     const nextGraph = {
       ...graph,
@@ -3675,11 +3687,6 @@ function MapEditor({
               : strand.toInterfaceId,
         })),
       })),
-      roots: root
-        ? graph.roots.includes(node.id)
-          ? graph.roots
-          : [...graph.roots, node.id]
-        : graph.roots.filter((id) => id !== node.id),
     };
     setGraph(nextGraph);
   }
@@ -3709,9 +3716,8 @@ function MapEditor({
     setGraph((current) => ({
       ...current,
       nodes: current.nodes.filter((node) => node.id !== id),
-      // A node's links go with it, and it stops being an entry point.
+      // A node's links go with it.
       links: current.links.filter((link) => link.from !== id && link.to !== id),
-      roots: current.roots.filter((root) => root !== id),
     }));
     setSelection(null);
   }
@@ -3733,7 +3739,6 @@ function MapEditor({
     setSelection({ kind: "canvas", items: [{ kind: "node", id }] });
     setNodeDialog({
       node,
-      root: graph.roots.includes(id),
       placement: false,
     });
   }
@@ -3794,7 +3799,6 @@ function MapEditor({
       links: current.links.filter(
         (link) => !nodeIds.has(link.from) && !nodeIds.has(link.to),
       ),
-      roots: current.roots.filter((root) => !nodeIds.has(root)),
     }));
     setSelection(null);
   }
@@ -3818,7 +3822,6 @@ function MapEditor({
         y: 0,
         locked: false,
       },
-      root: graph.roots.includes(id),
       placement: true,
     });
   }
@@ -4036,8 +4039,8 @@ function MapEditor({
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             onNodesChange={onNodesChange}
-            onNodeDragStart={() => setDragAnchorNodes(graph.nodes)}
-            onNodeDragStop={() => setDragAnchorNodes(null)}
+            onNodeDragStart={holdEdgeAnchors}
+            onNodeDragStop={releaseEdgeAnchors}
             onConnect={onConnect}
             onInit={setFlowInstance}
             onNodeClick={(event, node) => {
@@ -4098,10 +4101,6 @@ function MapEditor({
               <div>
                 <dt>{t("itops.networkMap.statLinks")}</dt>
                 <dd>{graph.links.length}</dd>
-              </div>
-              <div>
-                <dt>{t("itops.networkMap.statRoots")}</dt>
-                <dd>{rootIds.size}</dd>
               </div>
             </dl>
           ) : null}
@@ -4178,9 +4177,6 @@ function MapEditor({
                   spotlightVlanId={spotlightVlanId}
                   onSpotlight={setSpotlightVlanId}
                 />
-                {graph.roots.length === 0 && graph.nodes.length > 0 ? (
-                  <p className="nm-notice">{t("itops.networkMap.noRootsHint")}</p>
-                ) : null}
                 </>
             </div>
           </aside>
@@ -4202,7 +4198,6 @@ function MapEditor({
         <NodePropertiesDialog
           key={nodeDialog.node.id}
           node={nodeDialog.node}
-          root={nodeDialog.root}
           placement={nodeDialog.placement}
           deepLinkCatalog={deepLinkCatalog}
           onNavigateDeepLink={onNavigateDeepLink}
@@ -4212,9 +4207,9 @@ function MapEditor({
               ? undefined
               : () => removeNode(nodeDialog.node.id)
           }
-          onSubmit={(node, root) => {
-            if (nodeDialog.placement) armNodePlacement(node, root);
-            else updateNodeProperties(node, root);
+          onSubmit={(node) => {
+            if (nodeDialog.placement) armNodePlacement(node);
+            else updateNodeProperties(node);
           }}
         />
       ) : null}
@@ -4268,10 +4263,8 @@ function MapEditor({
  * VLAN spotlight legend. Selecting a VLAN dims every link that does not carry
  * it, which is the one-click answer to "where does VLAN 30 actually go?".
  *
- * This is a view filter and nothing more: it never edits the graph, and the
- * What-If analysis stays VLAN-blind — per-VLAN reachability would multiply
- * `effectiveRoots` / `findWeakPoints` / `findStrandedNodes` by the VLAN count
- * and is a separate piece of work.
+ * This is a view filter and nothing more: it never edits the graph or changes
+ * the operator-authored status of a Network Node or Network Link.
  */
 function VlanLegend({
   vlans,
@@ -4409,8 +4402,6 @@ export function NetworkMapDesigner({
         : t("itops.networkMap.siteUnscoped"),
       t("itops.networkMap.statNodes"),
       t("itops.networkMap.statLinks"),
-      t("itops.networkMap.statRoots"),
-      ...(map.graph.roots.length > 0 ? [t("itops.networkMap.rootBadge")] : []),
       ...map.graph.nodes.flatMap((node) => [
         t(`itops.networkMap.nodeKind.${node.kind}`),
         t(`itops.networkMap.shape.${nodeShape(node)}`),
@@ -4542,10 +4533,6 @@ export function NetworkMapDesigner({
                     <span>
                       <b>{map.graph.links.length}</b>
                       {t("itops.networkMap.statLinks")}
-                    </span>
-                    <span>
-                      <b>{effectiveRoots(map.graph).length}</b>
-                      {t("itops.networkMap.statRoots")}
                     </span>
                   </span>
                 </span>

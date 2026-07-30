@@ -10,7 +10,6 @@ const map: NetworkMap = {
   siteId: "site-1",
   sortOrder: 0,
   graph: {
-    roots: ["node-1"],
     nodes: [
       {
         id: "node-1",

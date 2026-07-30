@@ -41,7 +41,6 @@ function graphFixture(): NetworkGraph {
       },
     ],
     links: [],
-    roots: [],
   };
 }
 

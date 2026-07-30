@@ -85,9 +85,8 @@ fn validate_name(name: &str) -> Result<String> {
     Ok(name.to_string())
 }
 
-/// Drops links whose endpoints do not exist and links a node to itself, so a
-/// stale client payload can never persist a graph the reachability walk would
-/// have to defend against. Also normalizes each link's strands and VLAN
+/// Drops links whose endpoints do not exist or whose endpoints are the same,
+/// then normalizes each link's strands and VLAN
 /// membership; VLAN ids themselves are soft references into `itops_vlans` and
 /// are deliberately not validated here, so a map keeps documenting VLAN 30
 /// after the record is renamed or deleted.
@@ -103,17 +102,10 @@ fn sanitize_graph(graph: &NetworkGraph) -> NetworkGraph {
         .cloned()
         .map(|link| sanitize_link(link, &nodes))
         .collect();
-    let roots = graph
-        .roots
-        .iter()
-        .filter(|root| node_ids.contains(*root))
-        .cloned()
-        .collect();
     NetworkGraph {
         nodes,
         links,
         notes: graph.notes.iter().cloned().map(sanitize_note).collect(),
-        roots,
     }
 }
 
@@ -240,13 +232,11 @@ fn sanitize_node(mut node: NetworkNode) -> NetworkNode {
         }
     }
     node.geomap_viewport = if node.kind == NetworkNodeKind::Geomap {
-        let mut viewport = node
-            .geomap_viewport
-            .unwrap_or(NetworkGeomapViewport {
-                zoom: 1.0,
-                x: 50.0,
-                y: 50.0,
-            });
+        let mut viewport = node.geomap_viewport.unwrap_or(NetworkGeomapViewport {
+            zoom: 1.0,
+            x: 50.0,
+            y: 50.0,
+        });
         viewport.zoom = finite_or(viewport.zoom, 1.0).clamp(1.0, 4.0);
         viewport.x = finite_or(viewport.x, 50.0).clamp(0.0, 100.0);
         viewport.y = finite_or(viewport.y, 50.0).clamp(0.0, 100.0);
@@ -307,28 +297,28 @@ fn sanitize_link(mut link: NetworkLink, nodes: &[NetworkNode]) -> NetworkLink {
     }
     if let Some(first) = link.strands.first_mut() {
         if first.from_interface_id.is_none() {
-            first.from_interface_id = link
-                .from_address
-                .take()
-                .and_then(non_empty)
-                .and_then(|address| {
-                    from_interfaces
-                        .iter()
-                        .find(|interface| interface.address == address)
-                        .map(|interface| interface.id.clone())
-                });
+            first.from_interface_id =
+                link.from_address
+                    .take()
+                    .and_then(non_empty)
+                    .and_then(|address| {
+                        from_interfaces
+                            .iter()
+                            .find(|interface| interface.address == address)
+                            .map(|interface| interface.id.clone())
+                    });
         }
         if first.to_interface_id.is_none() {
-            first.to_interface_id = link
-                .to_address
-                .take()
-                .and_then(non_empty)
-                .and_then(|address| {
-                    to_interfaces
-                        .iter()
-                        .find(|interface| interface.address == address)
-                        .map(|interface| interface.id.clone())
-                });
+            first.to_interface_id =
+                link.to_address
+                    .take()
+                    .and_then(non_empty)
+                    .and_then(|address| {
+                        to_interfaces
+                            .iter()
+                            .find(|interface| interface.address == address)
+                            .map(|interface| interface.id.clone())
+                    });
         }
     }
     link.from_address = None;
@@ -685,14 +675,12 @@ mod tests {
                 locked: true,
                 ..NetworkMapNote::default()
             }],
-            roots: vec!["core".into(), "ghost".into()],
         };
         let created = create_map(&conn, "map-1", " Campus ", " main ", Some("  "), &graph).unwrap();
         assert_eq!(created.name, "Campus");
         assert_eq!(created.description, "main");
         assert!(created.site_id.is_none());
         assert_eq!(created.graph.links.len(), 1);
-        assert_eq!(created.graph.roots, vec!["core".to_string()]);
 
         let listed = list_maps(&conn).unwrap();
         assert_eq!(listed.len(), 1);
@@ -723,10 +711,7 @@ mod tests {
         // stay stable and one row can never patch or remove another.
         assert_eq!(stored.strands[1].id, "l1-strand-1");
         assert_eq!(stored.strands[2].id, "l1-strand-2");
-        assert_eq!(
-            stored.strand_display,
-            NetworkLinkStrandDisplay::Bundle
-        );
+        assert_eq!(stored.strand_display, NetworkLinkStrandDisplay::Bundle);
         assert_eq!(stored.native_vlan_id.as_deref(), Some("vlan-10"));
         // Blanks, duplicates, and the native VLAN drop out of the tagged set.
         assert_eq!(stored.tagged_vlan_ids, vec!["vlan-20".to_string()]);
@@ -885,10 +870,7 @@ mod tests {
         assert!(lag.strands.iter().all(|strand| strand.speed == "10 Gbps"));
         assert!(lag.strands.iter().all(|strand| strand.name.is_empty()));
         assert_eq!(lag.strands[2].id, "lag-strand-2");
-        assert_eq!(
-            lag.strand_display,
-            NetworkLinkStrandDisplay::Separate
-        );
+        assert_eq!(lag.strand_display, NetworkLinkStrandDisplay::Separate);
         // A link that never had a count still stands for one physical link.
         assert_eq!(loaded.graph.links[1].strands.len(), 1);
         assert_eq!(loaded.graph.nodes[0].width, 120.0);
@@ -920,14 +902,8 @@ mod tests {
         assert!(first.get("toAddress").is_none());
         assert!(first.get("connectionCount").is_none());
         assert!(first.get("speed").is_none());
-        assert_eq!(
-            first["strands"][0]["fromInterfaceId"],
-            "core-interface-0"
-        );
-        assert_eq!(
-            first["strands"][0]["toInterfaceId"],
-            "edge-interface-0"
-        );
+        assert_eq!(first["strands"][0]["fromInterfaceId"], "core-interface-0");
+        assert_eq!(first["strands"][0]["toInterfaceId"], "edge-interface-0");
         assert_eq!(first["strands"][0]["speed"], "10 Gbps");
         assert_eq!(first["strandDisplay"], "separate");
     }
@@ -976,7 +952,15 @@ mod tests {
         assert_eq!(loaded.graph.links.len(), 1);
         assert_eq!(loaded.graph.links[0].id, "valid");
         assert_eq!(loaded.graph.links[0].strands.len(), 1);
-        assert_eq!(loaded.graph.roots, vec!["core".to_string()]);
         assert_eq!(loaded.graph.nodes[0].shape, NetworkNodeShape::Rectangle);
+
+        update_map(&conn, "map-1", "Imported", "", None, &loaded.graph).unwrap();
+        let stored: String = conn
+            .query_row("SELECT graph_json FROM itops_network_maps", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        let value: serde_json::Value = serde_json::from_str(&stored).unwrap();
+        assert!(value.get("roots").is_none());
     }
 }

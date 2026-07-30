@@ -330,8 +330,8 @@ test("Network Maps configure palette items before ghost placement and expose nat
   );
   assert.match(designer, /function NotePropertiesDialog/);
   assert.match(designer, /function LinkPropertiesDialog/);
-  assert.match(designer, /setNodeDialog\(\{ node: newNodeDraft\(kind\), root: false, placement: true \}\)/);
-  assert.match(designer, /setPlacementDraft\(\{ kind: "node", node, root \}\)/);
+  assert.match(designer, /setNodeDialog\(\{ node: newNodeDraft\(kind\), placement: true \}\)/);
+  assert.match(designer, /setPlacementDraft\(\{ kind: "node", node \}\)/);
   assert.match(designer, /className: "nm-placement-ghost-node"/);
   assert.match(
     designer,
@@ -356,11 +356,19 @@ test("Network Maps configure palette items before ghost placement and expose nat
   assert.match(designer, /onNodeContextMenu=\{\(event, node\) =>/);
   assert.match(
     designer,
-    /const edgeAnchorNodes = dragAnchorNodes \?\? graph\.nodes;[\s\S]*new Map\(edgeAnchorNodes\.map/,
+    /const edgeAnchorNodes = interactionAnchorNodes \?\? graph\.nodes;[\s\S]*new Map\(edgeAnchorNodes\.map/,
   );
   assert.match(
     designer,
-    /onNodeDragStart=\{\(\) => setDragAnchorNodes\(graph\.nodes\)\}[\s\S]*onNodeDragStop=\{\(\) => setDragAnchorNodes\(null\)\}/,
+    /onNodeDragStart=\{holdEdgeAnchors\}[\s\S]*onNodeDragStop=\{releaseEdgeAnchors\}/,
+  );
+  assert.match(
+    designer,
+    /<NodeResizer[\s\S]*onResizeStart=\{data\.onResizeStart\}[\s\S]*onResizeEnd=\{data\.onResizeEnd\}/,
+  );
+  assert.match(
+    designer,
+    /onResizeStart: holdEdgeAnchors,[\s\S]*onResizeEnd: releaseEdgeAnchorsAfterResize/,
   );
   assert.match(
     designer,
@@ -475,6 +483,14 @@ test("Network Maps configure palette items before ghost placement and expose nat
     /\.nm-node-ic\s*\{[\s\S]*width: 32px;[\s\S]*height: 32px;[\s\S]*border-radius: 8px;/,
   );
   assert.match(styles, /\.nm-resize-handle\s*\{[\s\S]*width: 9px !important;[\s\S]*height: 9px !important;/);
+  assert.match(designer, /function NetworkNodeShapeGlyph/);
+  assert.match(designer, /className="nm-shape-picker-glyph"/);
+  assert.match(designer, /className="nm-shape-picker-glyph-shell"/);
+  assert.doesNotMatch(styles, /\.nm-shape-picker-preview/);
+  assert.match(
+    styles,
+    /\.nm-shape-picker-glyph-shell\s*\{[\s\S]*stroke:\s*currentColor;[\s\S]*stroke-linejoin:\s*round;/,
+  );
 
   assert.match(sites, /const networkMaps = useItOpsStore\(\(state\) => state\.networkMaps\)/);
   assert.match(
@@ -519,7 +535,15 @@ test("Network Maps use one interaction mode, a browser pen, reliable link handle
   );
   assert.match(
     designer,
-    /\{!objectBrowserOpen \? \(\s*<dl className="nm-map-info">[\s\S]*itops\.networkMap\.statNodes[\s\S]*itops\.networkMap\.statLinks[\s\S]*itops\.networkMap\.statRoots/,
+    /\{!objectBrowserOpen \? \(\s*<dl className="nm-map-info">[\s\S]*itops\.networkMap\.statNodes[\s\S]*itops\.networkMap\.statLinks/,
+  );
+  assert.doesNotMatch(designer, /itops\.networkMap\.statRoots|rootBadge|noRootsHint/);
+  assert.doesNotMatch(designer, /effectiveRoots|analyzeWhatIf|data-root|rootIds/);
+  assert.doesNotMatch(styles, /data-state="isolated"|data-root|\.nm-node-root/);
+  assert.match(designer, /state: node\.status/);
+  assert.match(
+    styles,
+    /--nm-node-outline:\s*color-mix\(in srgb, var\(--border-strong\) 72%, var\(--surface\)\)/,
   );
   assert.doesNotMatch(designer, /className="nm-stats"/);
   assert.match(
@@ -589,9 +613,8 @@ test("VLANs are durable global records that Network Links reference and the over
   assert.match(designer, /nm-edge-trunk-tick/);
   assert.match(styles, /\.react-flow__edge\.nm-edge\.dimmed \{ opacity: 0\.35; \}/);
 
-  // Reachability stays VLAN-blind in v1: the analysis takes only the What-If
-  // switched-off set, so no VLAN filter may reach it.
-  assert.doesNotMatch(designer, /analyzeWhatIf\([^)]*vlan/i);
+  // The spotlight remains visual-only and does not alter documented status.
+  assert.doesNotMatch(designer, /analyzeWhatIf|effectiveRoots/);
 
   // VLAN management is part of IPAM rather than a separate Library destination.
   assert.doesNotMatch(sites, /<VlanPanel \/>/);

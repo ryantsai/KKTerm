@@ -170,11 +170,11 @@ An in-app navigation relationship from one KKTerm app element to another KKTerm 
 _Avoid_: web link, URL, Network Link, binding, external app link
 
 **Network Link**:
-One undirected edge between two **Network Nodes**, with an optional binding from each endpoint to one of that node's documented IP addresses, an optional name/label for the whole link (a circuit id or an uplink name — not a port and not a VLAN, both of which are structured), a kind (ethernet, fiber, WAN, or wireless), a documented operational/warning status, an ordered list of **Network Link Strands**, and its VLAN membership. Undirected is deliberate: a link asserts that the two nodes can reach each other, not a traffic direction. Its status is operator-authored documentation and remains separate from the transient What-If down set.
+One undirected edge between two **Network Nodes**, with an optional binding from each endpoint to one of that node's documented IP addresses, an optional name/label for the whole link (a circuit id or an uplink name — not a port and not a VLAN, both of which are structured), a kind (ethernet, fiber, WAN, or wireless), a documented operational/warning/down status, an ordered list of **Network Link Strands**, and its VLAN membership. Undirected is deliberate: a link documents a relationship between its endpoints, not a traffic direction or verified connection. Its status is operator-authored documentation.
 _Avoid_: connection (that is the durable Connection model), edge, cable, circuit
 
 **Network Map Note**:
-A resizable text annotation with an operator-selected background color on a **Network Map**. It always renders behind every **Network Node** and **Network Link** and participates in no reachability or What-If analysis.
+A resizable text annotation with an operator-selected background color on a **Network Map**. It always renders behind every **Network Node** and **Network Link** and has no node, link, status, or verification semantics.
 _Avoid_: node, device, status notice
 
 **Network Link Strand**:
@@ -184,14 +184,6 @@ _Avoid_: link (the drawn edge is the Network Link), cable, member port (as the s
 **VLAN membership**:
 A **Network Link**'s documented native (untagged) VLAN and its tagged (802.1Q) VLANs, held as soft references to durable **VLAN** records. A non-empty tagged set makes the link a trunk. Membership belongs to links only: **Network Nodes** carry no VLAN field, a VLAN is never a node kind on the canvas, and VLAN membership is never mapped onto the parallel strands — a 2×10G LAG carrying six VLANs is two strands, not six.
 _Avoid_: VLAN (that is the durable record), trunk (as the stored entity), port mode
-
-**Entry point**:
-A **Network Node** marked as a root of its **Network Map**. Reachability is measured from the entry points; with none marked, the first node stands in so a half-drawn map still analyses.
-_Avoid_: root node, gateway, source
-
-**What-If**:
-The Network Map mode where the operator switches **Network Nodes** and **Network Links** off on the canvas and sees which nodes lose every path to an **entry point**, which single nodes or links would cut something off on their own, and which nodes have no link at all. It is pure graph maths over the map as drawn: the "down" set is only ever what the operator toggled, and nothing here reflects, polls, or reports live device state.
-_Avoid_: simulation (as in traffic simulation), monitoring, health check, outage detection
 
 **Sites**:
 The IT Ops collection of Site records in the operational navigator. Expanding a Site exposes predefined virtual destinations for Server Rooms, Hosts, and Run History; those rows are navigation state, not stored folders. A Site row selects a **Site**. The plural term names the collection, not a durable data type.

@@ -26,8 +26,8 @@ The IT Ops Module owns:
 - **IPAM** — the global VLAN / IP Prefix / IP Address Record plan, with VLAN
   and IP Prefix rows in one typed grid plus derived Prefix containment nesting
   and utilization (see "IPAM" below).
-- **Network Maps** — global hand-drawn logical link diagrams plus the pure
-  What-If reachability analysis over them (see "Network Map" below).
+- **Network Maps** — global hand-drawn logical link diagrams (see "Network
+  Map" below).
 - The Tauri commands the AI Assistant uses to draft and manage Sites, Hosts,
   Tasks, topology, and Batch Runs.
 - The IT Ops page-context projection supplied to the shared AI Assistant
@@ -223,8 +223,8 @@ the Properties dialog can select a crop from 100% through 10,000% before
 placement. Its Properties dialog accepts pixel width and height without an
 upper cap, so it can span the full drawing as geographic background artwork;
 Geomaps do not expose canvas resize handles. The canvas Geomap shows only that
-artwork, without label, caption, note, status, interface handles, or entry-point
-text. Its Properties dialog exposes only the artwork tint and map viewport; it
+artwork, without label, caption, note, status, interface handles, or extra
+status text. Its Properties dialog exposes only the artwork tint and map viewport; it
 does not expose device label, type, status, interface, or note fields. A Geomap
 cannot be an endpoint for a new Network Link. The address is a
 caption drawn under the label; it is not a foreign key into IPAM. Status is
@@ -237,7 +237,7 @@ closed destination kinds are Connection
 (`connection_id`), Site (`site_id`), Server Room (`site_id` plus the durable
 room name), and Rack Device (`site_id`, `rack_id`, and `rack_item_id`). Deep
 Links are not web URLs, external app links, bindings, or Network Links, and
-never affect reachability. Storage trims and
+never imply verified connectivity. Storage trims and
 deduplicates them but deliberately does not validate the target: if a target is
 later deleted, the map still loads and shows an unavailable destination that
 can be removed from Node Properties.
@@ -247,8 +247,8 @@ an optional label naming the whole link (a circuit id, an uplink name — **not*
 a port and **not** a VLAN, both of which are now structured), a kind
 (`ethernet` / `fiber` / `wan` / `wireless`), documented status (`up` /
 `warning` / `down`), an ordered list of **strands**, and its VLAN membership.
-Undirected is deliberate: a link asserts mutual reachability, not a traffic
-direction, and the reachability maths treats it symmetrically. The stored link
+Undirected is deliberate: a link documents the relationship between its
+endpoints, not a traffic direction or a verified connection. The stored link
 carries no handle/anchor fields — the canvas picks the two anchors
 geometrically at render time. The canvas draws an animated traffic trace over
 each route: green means healthy, amber means degraded, and red means down.
@@ -276,31 +276,19 @@ after the record is renamed or deleted. **Network Nodes carry no VLAN field** �
 Rendering rules: VLANs are never mapped onto the strands (a 2×10G LAG carrying
 six VLANs is two strands, not six), there is no VLAN node kind (a VLAN is not
 a box on the canvas), and the overlay is a side-panel legend whose selection
-dims every link that does not carry the VLAN, reusing the dimming
-`.nm-edge.severed` already establishes.
+dims every link that does not carry the VLAN through `.nm-edge.dimmed`.
 
 **Network Map** — a durable named canvas in `itops_network_maps`, global
 like IPAM with an optional soft Site reference that only tags it. The whole
-graph (nodes, links, and the `roots` entry-point id list) is persisted as
-one `graph_json` document, following the Room Objects JSON precedent rather
-than a row per node.
+graph (nodes, links, and notes) is persisted as one `graph_json` document,
+following the Room Objects JSON precedent rather than a row per node.
 _Avoid_: topology, topology map, network topology — "topology" is already
 the physical Site → Server Room → Rack drill-down and must not be reused.
 
-**Entry point** — a Network Node id listed in the map's `roots`.
-Reachability is measured from the entry points; with none marked, the first
-node stands in so a half-drawn map still analyses.
-
-**What-If** — the second mode of the Network Map designer. The operator
-switches nodes and links off on the canvas and the panel reports which nodes
-lose every path to an entry point, plus the **single points of failure**
-(each node and each link that, alone, would cut something off) and any
-stranded nodes with no link at all. This is pure graph maths over the drawn
-map, in `src/modules/itops/reachability.ts`. **KKTerm has no live device
-binding**: the existing `RackNetworkPort` / `RackSnmpHint` scaffolding and
-`net::snmp::refresh_ports` are future preparation and feed nothing here.
-The "down" set is only ever what the operator toggled, so a later SNMP or
-polling feed can supply the same pure input without changing the analysis.
+Network Maps currently have no entry-point registration, reachability
+analysis, connection verification, discovery, or polling. A later verification
+flow must define its own explicit semantics instead of inferring health from
+whether a hand-drawn node is connected to the first node in document order.
 
 ## Persistence
 
@@ -346,8 +334,8 @@ Three SQLite tables (new schema version):
   records without rewriting them. The soft references let an address stay
   documented after whatever it pointed at is deleted.
 - `itops_network_maps` — one row per Network Map: id, name, description,
-  optional soft `site_id`, `sort_order`, and the whole node/link/roots graph
-  as `graph_json`. Node and link ids are map-local; the one exception is each
+  optional soft `site_id`, `sort_order`, and the whole node/link/note graph as
+  `graph_json`. Node and link ids are map-local; the one exception is each
   link's `nativeVlanId` / `taggedVlanIds`, which are soft references into
   `itops_vlans` and are remapped on selective import like any other soft id.
 
@@ -534,10 +522,10 @@ map deletion remains in the navigator and overview-card menus. The object
 browser owns placement and Import Hosts, while closing it gives the canvas the
 full workspace width. With the object browser closed, a subtle pointer-
 transparent summary floats at the canvas's top left with the current Network
-Node, Network Link, and effective entry-point counts; opening the browser hides
-that summary. The What-If entry action is temporarily not exposed while that
-workflow is redesigned; the pure analysis code and graph model remain available
-for that later work.
+Node and Network Link counts; opening the browser hides that summary. The
+canvas does not infer connectivity or change a node's outline from graph
+position: a healthy node always keeps its subtle neutral border and shadow,
+while its documented warning status applies the warning treatment.
 
 Network Nodes use a compact, left-anchored card: a small icon tile, thin
 internal padding, and the remaining width reserved for the label and caption.
@@ -553,7 +541,9 @@ that predates node shapes. Choosing Circle, Diamond, Triangle, or Hexagon makes
 the node square once and preserves that aspect ratio during later resizing so
 the selected silhouette stays geometrically correct. Device-node resizing has
 a 1,000,000-pixel finite safety ceiling per dimension, which is intentionally a
-practical no-limit bound for canvas authoring.
+practical no-limit bound for canvas authoring. The Node Properties shape picker
+uses restrained stroked SVG previews and a soft selection surface rather than
+filled geometric blocks.
 
 Object-browser cards use the same configure-then-place interaction
 as Server Room editing: click a card, complete its Properties dialog, then
@@ -580,10 +570,10 @@ Node or Note selects it and exposes its drag-resize handles. The element
 updates continuously while a handle is dragged; double-clicking opens its
 Properties dialog. Clicking a Network Link opens that link's
 Properties dialog. Edits are applied to the in-memory graph only when that
-dialog's Save action is confirmed. Moving a Network Node keeps its existing
-animated Links visible and attached throughout the drag without remeasuring
-unrelated node handles, then recalculates the shortest handle sides when the
-drag ends.
+dialog's Save action is confirmed. Moving or resizing a Network Node keeps its
+existing animated Links visible and attached throughout the gesture without
+remeasuring unrelated node handles or switching link sides between frames,
+then recalculates the shortest handle sides when the gesture ends.
 Network Node Properties puts the device artwork and palette-backed icon
 background choices in one compact identity header. Network Maps use a separate
 soft hardware palette rather than the shared IT Ops content accents and include
@@ -625,7 +615,7 @@ Notes use a neutral hairline border. Geomaps, Notes, links, and regular Network
 Nodes use explicit ascending React Flow z-orders, and selected-node elevation is
 disabled for the canvas. A Geomap therefore remains the bottom-most node even
 while selected; Notes remain below every link and regular Network Node. Notes
-never enter the reachability graph.
+have no Network Node, Network Link, status, or verification semantics.
 
 ### IT Ops destination-page UI contract
 
@@ -1016,8 +1006,8 @@ CREATE TABLE IF NOT EXISTS itops_ip_address_records (
     UNIQUE(vrf, address)
 );
 
--- A Network Map. graph_json holds the whole document (nodes, links,
--- reachability roots); the canvas is
+-- A Network Map. graph_json holds the whole document (nodes, links, and
+-- notes); the canvas is
 -- always saved as a unit, so per-node rows would buy no query the UI makes.
 CREATE TABLE IF NOT EXISTS itops_network_maps (
     id          TEXT PRIMARY KEY,
@@ -1132,10 +1122,9 @@ pure IPv4 maths in `src-tauri/src/itops/ipv4.rs`; repository +
 snapshot-derives-everything reads in `ipam_storage.rs` and
 `network_map_storage.rs`; twelve Tauri commands; two global Networking
 destinations in the navigator (`IpamPanel.tsx`, `NetworkMapDesigner.tsx`);
-and pure What-If reachability in `src/modules/itops/reachability.ts`. No
-assistant or MCP tools yet, and **no dependency on live device state** — the
-SNMP scaffolding stays future preparation, and the What-If "down" set comes
-only from operator toggles.
+and the hand-drawn Network Map canvas. No assistant or MCP tools yet, and **no
+dependency on live device state** — the SNMP scaffolding stays future
+preparation.
 
 **IPAM Address Site binding.** `itops_ip_address_records.site_id` is an
 optional soft direct binding. Schema v52 repairs v51 databases whose already
@@ -1170,12 +1159,9 @@ a `strands` list plus `nativeVlanId` /
 `sanitize_graph` folds the pre-strand `connectionCount` / `speed` pair into
 `strands` on read. The designer gains the VLAN spotlight overlay.
 
-Two deliberate non-goals in this phase. **Reachability stays VLAN-blind**:
-per-VLAN What-If ("this trunk drops, VLAN 30 is severed but VLAN 10 survives")
-is the obvious follow-up and genuinely useful, but it multiplies the analysis
-surface — `effectiveRoots`, `findWeakPoints`, and `findStrandedNodes` all
-become per-VLAN — and `reachability.ts` states plainly that the switched-off
-set is the analysis's only input. **Nothing auto-parses "VLAN 30" out of
+Two deliberate non-goals in this phase. **Network Maps do not verify
+connectivity or infer reachability from VLAN membership**: the VLAN spotlight
+is a visual documentation filter only. **Nothing auto-parses "VLAN 30" out of
 existing free-text link labels**: silently reinterpreting operator prose as
 structured data is how you get wrong documentation that looks authoritative.
 `linkLabelHint` therefore stopped advertising VLAN when the structured field

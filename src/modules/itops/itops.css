@@ -8597,7 +8597,7 @@
 
 /* node card */
 .nm-node {
-  --nm-node-outline: var(--border);
+  --nm-node-outline: color-mix(in srgb, var(--border-strong) 72%, var(--surface));
   position: relative;
   display: block;
   box-sizing: border-box;
@@ -8631,10 +8631,10 @@
   inset: 0;
   z-index: -2;
   background: var(--nm-node-outline);
-  filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--text) 10%, transparent));
+  filter: drop-shadow(0 2px 4px color-mix(in srgb, var(--text) 9%, transparent));
 }
 .nm-node[data-shape]:not([data-shape="rectangle"])::after {
-  inset: 2px;
+  inset: 1px;
   z-index: -1;
   background: var(--surface);
 }
@@ -8712,21 +8712,6 @@
 .nm-node[data-locked="true"],
 .nm-note[data-locked="true"] {
   cursor: default;
-}
-.nm-node[data-root="true"] {
-  --nm-node-outline: var(--accent);
-  border-color: var(--accent);
-}
-.nm-node[data-state="down"] {
-  --nm-node-outline: var(--text-faint);
-  border-style: dashed;
-  border-color: var(--text-faint);
-  opacity: 0.5;
-}
-.nm-node[data-state="isolated"] {
-  --nm-node-outline: var(--red);
-  border-color: var(--red);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--red) 28%, transparent);
 }
 .nm-node[data-state="warning"] {
   --nm-node-outline: color-mix(in srgb, var(--amber) 58%, var(--border));
@@ -8971,21 +8956,6 @@
 .nm-node[data-shape]:not([data-shape="rectangle"]) .nm-node-deep-links { right: 17%; }
 .nm-node[data-shape="triangle"] .react-flow__handle-left { left: 25%; }
 .nm-node[data-shape="triangle"] .react-flow__handle-right { right: 25%; }
-.nm-node-root {
-  position: absolute;
-  top: -7px;
-  left: -7px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--accent);
-  color: #fff;
-  box-shadow: 0 0 0 2px var(--surface);
-  animation: nmRootPulse 2.4s ease-in-out infinite;
-}
 .nm-node-warning {
   position: absolute;
   top: -7px;
@@ -9204,10 +9174,6 @@
   stroke-width: 2.4;
   filter: drop-shadow(0 0 2px var(--accent));
 }
-.react-flow__edge.nm-edge.cut .react-flow__edge-path {
-  stroke: var(--red);
-  stroke-dasharray: 4 4;
-}
 .react-flow__edge.nm-edge .nm-edge-flow {
   stroke: var(--green);
   stroke-width: 2;
@@ -9221,10 +9187,7 @@
   stroke: var(--red);
   animation-duration: 2.4s;
 }
-.react-flow__edge.nm-edge.cut .nm-edge-flow { stroke: var(--red); }
-.react-flow__edge.nm-edge.severed .react-flow__edge-path { opacity: 0.35; }
-/* VLAN spotlight: reuse the dimming the severed state already establishes, so
-   "not carrying this VLAN" and "cut off" read as the same visual language. */
+/* VLAN spotlight is a view-only filter; dim links that do not carry it. */
 .react-flow__edge.nm-edge.dimmed { opacity: 0.35; }
 /* 802.1Q double-tick at the midpoint: a trunk reads without hovering. */
 .nm-edge-trunk-tick {
@@ -9257,9 +9220,7 @@
 .nm-edge-label[data-state="warning"] {
   --nm-edge-label-accent: var(--amber);
 }
-.nm-edge-label[data-state="down"],
-.nm-edge-label[data-state="cut"],
-.nm-edge-label[data-state="severed"] {
+.nm-edge-label[data-state="down"] {
   --nm-edge-label-accent: var(--red);
 }
 .nm-edge-label-main {
@@ -9533,62 +9494,62 @@
 .itops-page .nm-shape-picker {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 5px;
-  padding: 7px;
-  border-radius: 10px;
-  background: var(--surface-muted);
-  box-shadow: inset 0 0 0 1px var(--hairline);
+  gap: 3px;
+  padding: 4px;
+  border: 1px solid var(--hairline);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--surface-muted) 62%, var(--surface));
 }
 .itops-page .nm-shape-picker button {
   display: inline-flex;
   min-width: 0;
-  min-height: 58px;
+  min-height: 52px;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  padding: 6px 3px;
+  gap: 3px;
+  padding: 5px 2px 4px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 6px;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text-faint);
   font: inherit;
   font-size: 9.5px;
+  line-height: 1.15;
   cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
 }
 .itops-page .nm-shape-picker button:hover {
   background: var(--hover);
-  color: var(--text);
+  color: var(--text-muted);
 }
 .itops-page .nm-shape-picker button.selected {
-  border-color: var(--accent);
-  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--hairline));
+  background: var(--sel-soft);
   color: var(--text);
 }
 .itops-page .nm-shape-picker button:focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 1px;
 }
-.itops-page .nm-shape-picker-preview {
+.itops-page .nm-shape-picker-glyph {
   display: block;
-  width: 25px;
-  height: 25px;
-  background: var(--accent);
+  width: 28px;
+  height: 28px;
 }
-.itops-page .nm-shape-picker-preview[data-shape="rectangle"] {
-  border-radius: 4px;
+.itops-page .nm-shape-picker-glyph-shell {
+  fill: color-mix(in srgb, currentColor 5%, var(--surface));
+  stroke: currentColor;
+  stroke-width: 1.35;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
-.itops-page .nm-shape-picker-preview[data-shape="circle"] {
-  clip-path: circle(50%);
+.itops-page .nm-shape-picker-glyph-shell > * {
+  vector-effect: non-scaling-stroke;
 }
-.itops-page .nm-shape-picker-preview[data-shape="diamond"] {
-  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
-}
-.itops-page .nm-shape-picker-preview[data-shape="triangle"] {
-  clip-path: polygon(50% 0, 100% 100%, 0 100%);
-}
-.itops-page .nm-shape-picker-preview[data-shape="hexagon"] {
-  clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
+.itops-page .nm-shape-picker button.selected .nm-shape-picker-glyph-shell {
+  fill: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  stroke: color-mix(in srgb, var(--accent) 68%, var(--text-muted));
 }
 .itops-page .nm-interface-list {
   overflow: hidden;
@@ -10097,10 +10058,6 @@
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(1.25px); }
 }
-@keyframes nmRootPulse {
-  0%, 100% { box-shadow: 0 0 0 2px var(--surface), 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); }
-  50% { box-shadow: 0 0 0 2px var(--surface), 0 0 0 6px color-mix(in srgb, var(--accent) 0%, transparent); }
-}
 @keyframes nmNodeWarning {
   0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber) 16%, transparent); }
   50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--amber) 7%, transparent); }
@@ -10132,7 +10089,6 @@
   .itops-page .nm-picker-card,
   .nm-node,
   .nm-node[data-state="warning"],
-  .nm-node-root,
   .nm-node-warning,
   .react-flow__edge.nm-edge .nm-edge-flow {
     animation: none;

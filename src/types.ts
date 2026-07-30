@@ -837,7 +837,7 @@ export interface NetworkLink {
   nativeVlanId?: string | null;
   // Tagged (802.1Q) VLANs. Non-empty makes this link a trunk.
   taggedVlanIds: string[];
-  // Documented operator-authored state; What-If outages remain transient.
+  // Documented operator-authored state.
   status: NetworkLinkStatus;
 }
 
@@ -862,8 +862,6 @@ export interface NetworkGraph {
   links: NetworkLink[];
   // Free-form canvas annotations. Notes always render beneath links and nodes.
   notes: NetworkMapNote[];
-  // Entry points for the What-If reachability walk. Empty = use the first node.
-  roots: string[];
 }
 
 export interface NetworkMap {

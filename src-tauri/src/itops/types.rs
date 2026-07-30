@@ -1484,7 +1484,7 @@ pub struct NetworkLink {
     /// soft references, so deleting a VLAN leaves the drawing intact.
     #[serde(default)]
     pub tagged_vlan_ids: Vec<String>,
-    /// Operator-authored documentation; What-If outages remain transient.
+    /// Operator-authored documentation.
     #[serde(default)]
     pub status: NetworkLinkStatus,
     /// Pre-strand shape, read from saved graphs and folded into `strands` by
@@ -1529,10 +1529,6 @@ pub struct NetworkGraph {
     pub links: Vec<NetworkLink>,
     #[serde(default)]
     pub notes: Vec<NetworkMapNote>,
-    /// Node ids treated as the network's entry points for reachability. Empty
-    /// means "use the first node"; the What-If analysis walks outward from here.
-    #[serde(default)]
-    pub roots: Vec<String>,
 }
 
 /// A durable Network Map. `site_id` is an optional soft reference; `None` means

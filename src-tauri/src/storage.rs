@@ -439,7 +439,7 @@ CREATE TABLE IF NOT EXISTS itops_ip_address_records (
 
 -- A Network Map: the logical link diagram, distinct from the physical Site →
 -- Server Room → Rack topology. graph_json holds the whole document (nodes,
--- links, reachability roots); the canvas is
+-- links, and notes); the canvas is
 -- always saved as a unit, so per-node rows would buy no query the UI makes.
 -- site_id is an optional SOFT reference; NULL means the map spans Sites. v51.
 CREATE TABLE IF NOT EXISTS itops_network_maps (

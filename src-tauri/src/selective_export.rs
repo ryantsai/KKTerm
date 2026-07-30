@@ -2211,7 +2211,7 @@ mod tests {
                  ('ip2','10.20.0.6','s-foreign','h-foreign','c-foreign','it-foreign');
              INSERT INTO itops_network_maps (id, name, site_id, sort_order, graph_json) VALUES
                  ('nm1','Core','s1',0,
-                 '{\"nodes\":[{\"id\":\"n1\"},{\"id\":\"n2\"}],\"links\":[{\"id\":\"l1\",\"from\":\"n1\",\"to\":\"n2\",\"nativeVlanId\":\"v1\",\"taggedVlanIds\":[\"v1\",\"v-foreign\"]}],\"roots\":[\"n1\"]}');",
+                 '{\"nodes\":[{\"id\":\"n1\"},{\"id\":\"n2\"}],\"links\":[{\"id\":\"l1\",\"from\":\"n1\",\"to\":\"n2\",\"nativeVlanId\":\"v1\",\"taggedVlanIds\":[\"v1\",\"v-foreign\"]}]}');",
         )
         .unwrap();
 
@@ -2445,7 +2445,6 @@ mod tests {
         let graph: Value = serde_json::from_str(&graph).unwrap();
         assert_eq!(graph["nodes"][0]["id"], "n1");
         assert_eq!(graph["links"][0]["from"], "n1");
-        assert_eq!(graph["roots"][0], "n1");
         // A link's VLAN membership is the one part of the graph that is NOT
         // map-local: those are soft references into itops_vlans and follow the
         // same remap. An id with no imported target stays verbatim.
@@ -2872,7 +2871,7 @@ mod tests {
                  INSERT INTO itops_ip_address_records (id, address, site_id, host_id, rack_item_id)
                      VALUES ('ip1','10.20.0.5','s1','h1','it1');
                  INSERT INTO itops_network_maps (id, name, site_id, sort_order, graph_json)
-                     VALUES ('nm1','Core','s1',0,'{\"nodes\":[],\"links\":[],\"roots\":[]}');
+                     VALUES ('nm1','Core','s1',0,'{\"nodes\":[],\"links\":[]}');
                  INSERT INTO assistant_chat_threads (id, title, context_label, messages_json, created_at, updated_at)
                      VALUES ('th1','Session','global','[]','t','t');
                  INSERT INTO assistant_memories (id, scope, content, created_at, updated_at)

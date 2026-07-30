@@ -20,8 +20,6 @@ export function matchesNetworkMapSearch(
     map.sortOrder,
     map.graph.nodes.length,
     map.graph.links.length,
-    map.graph.roots.length,
-    ...map.graph.roots,
     ...map.graph.nodes.flatMap((node) => [
       node.id,
       node.label,
