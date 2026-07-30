@@ -814,7 +814,7 @@ export function RemoteDesktopWorkspace({
     setVncHasDisplay(false);
   };
 
-  const handleReconnect = () => {
+  const handleReconnect = async () => {
     if ((!canStartRdp && !canStartVnc && !useRdpCanvas) || !connection || !isTauriRuntime()) {
       return;
     }
@@ -835,9 +835,14 @@ export function RemoteDesktopWorkspace({
     setRdpError("");
     setRdpStatus(t("remoteDesktop.reconnecting"));
     if (ownedSession && sessionId) {
-      void invokeCommand(canStartVnc ? "close_vnc_session" : "close_rdp_session", {
-        request: { sessionId },
-      });
+      try {
+        await invokeCommand(canStartVnc ? "close_vnc_session" : "close_rdp_session", {
+          request: { sessionId },
+        });
+      } catch (error) {
+        reportRemoteDesktopError(error instanceof Error ? error.message : String(error));
+        return;
+      }
     }
     if (hadCountedSession) {
       markConnectionSessionEnded(connection.id);
@@ -1007,7 +1012,7 @@ export function RemoteDesktopWorkspace({
       tone: "success",
     });
     if (connection.type === "rdp" && !useRdpCanvas) {
-      handleReconnect();
+      void handleReconnect();
     }
   };
 
@@ -1661,7 +1666,7 @@ export function RemoteDesktopWorkspace({
               className="terminal-pane-action"
               data-tutorial-id="remoteDesktop.reconnect"
               disabled={!isTauriRuntime()}
-              onClick={handleReconnect}
+              onClick={() => void handleReconnect()}
               title={t("remoteDesktop.reconnect")}
               type="button"
             >

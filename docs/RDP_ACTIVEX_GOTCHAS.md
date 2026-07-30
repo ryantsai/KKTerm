@@ -242,6 +242,15 @@ hover-to-activate focus steal from the reverted `WM_MOUSEACTIVATE` subclass.
 SSH/TELNET do not need this because they render inside the activatable WebView2
 window and `TerminalWorkspace` already restores focus on activation.
 
+The hook's active overlay target is owned by a Session id. Tab visibility
+effects and explicit reconnect teardown are asynchronous, so a stale hide or
+close for Session A may arrive after Session B has already become visible.
+Such a stale request must not clear Session B's focus target. Reconnect also
+awaits teardown of the old ActiveX Session before starting its replacement.
+Do not "fix" this by blurring the Reconnect button, auto-focusing a newly
+connected control, or synthesizing a second click: those approaches hide the
+ownership bug and can steal focus when a background reconnect completes.
+
 ## Current Architectural Constraint
 
 KKTerm embeds Microsoft's RDP ActiveX control. That keeps Windows RDP auth,

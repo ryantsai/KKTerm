@@ -719,11 +719,6 @@ mod platform {
                             "parkedOtherSessions": parked_other_sessions,
                         }),
                     );
-                    set_rdp_overlay_focus_targets(
-                        Some(session.hwnd),
-                        Some(session.owner),
-                        hosted_rdp_object_window(&session.dispatch).or(Some(session.hwnd)),
-                    );
                     Ok(())
                 } else {
                     let session = sessions.get(&request.session_id).ok_or_else(|| {
@@ -762,7 +757,7 @@ mod platform {
                             },
                         }),
                     );
-                    set_rdp_overlay_focus_targets(None, None, None);
+                    clear_rdp_overlay_focus_target(&request.session_id);
                     Ok(())
                 }
             })
@@ -989,6 +984,7 @@ mod platform {
             run_on_main_thread("close_rdp_session", app, move |_app| {
                 let mut sessions = lock_sessions(&sessions)?;
                 if let Some(session) = sessions.remove(&request.session_id) {
+                    clear_rdp_overlay_focus_target(&request.session_id);
                     let _ = invoke_method(&session.dispatch, "Disconnect");
                     unsafe {
                         DestroyWindow(session.hwnd).map_err(|error| {
@@ -998,8 +994,6 @@ mod platform {
                 }
                 if sessions.is_empty() {
                     uninstall_rdp_overlay_focus_hook();
-                } else {
-                    set_rdp_overlay_focus_targets(None, None, None);
                 }
                 Ok(())
             })
@@ -1511,23 +1505,46 @@ mod platform {
     /// All hook state is created, installed, and uninstalled on Tauri's main
     /// thread (every entry point dispatches through `run_on_main_thread`), which
     /// is the only thread that ever owns an RDP overlay window. Only one overlay
-    /// is visible at a time, so a single hook guarded by the current targets is
-    /// sufficient and there is no per-HWND bookkeeping.
+    /// is visible at a time, but its target remains Session-owned: a delayed hide
+    /// or close for an older Session must not clear the newer visible target.
+    struct RdpOverlayFocusTarget {
+        session_id: String,
+        overlay: HWND,
+        owner: HWND,
+        focus: HWND,
+    }
+
     struct RdpOverlayFocusHook {
         hook: Option<HHOOK>,
-        overlay: Option<HWND>,
-        owner: Option<HWND>,
-        focus: Option<HWND>,
+        target: Option<RdpOverlayFocusTarget>,
     }
 
     impl RdpOverlayFocusHook {
         const fn new() -> Self {
             Self {
                 hook: None,
-                overlay: None,
-                owner: None,
-                focus: None,
+                target: None,
             }
+        }
+
+        fn set_target(&mut self, session_id: &str, overlay: HWND, owner: HWND, focus: HWND) {
+            self.target = Some(RdpOverlayFocusTarget {
+                session_id: session_id.to_string(),
+                overlay,
+                owner,
+                focus,
+            });
+        }
+
+        fn clear_target(&mut self, session_id: &str) -> bool {
+            let Some(target) = self.target.as_ref() else {
+                return false;
+            };
+            if target.session_id != session_id {
+                return false;
+            }
+            self.target = None;
+            true
         }
     }
 
@@ -1566,7 +1583,9 @@ mod platform {
                     let state = rdp_overlay_focus_hook()
                         .lock()
                         .expect("RDP overlay focus hook mutex poisoned");
-                    if let (Some(overlay), Some(owner)) = (state.overlay, state.owner) {
+                    if let Some(active_target) = state.target.as_ref() {
+                        let overlay = active_target.overlay;
+                        let owner = active_target.owner;
                         let target = if lparam.0 != 0 {
                             let info = unsafe { &*(lparam.0 as *const MSLLHOOKSTRUCT) };
                             let target = unsafe { WindowFromPoint(info.pt) };
@@ -1582,7 +1601,7 @@ mod platform {
                         if inside {
                             let focus = target
                                 .filter(|target| *target != overlay)
-                                .or(state.focus)
+                                .or(Some(active_target.focus))
                                 .unwrap_or(overlay);
                             grab = Some((owner, overlay, focus));
                         }
@@ -1596,21 +1615,15 @@ mod platform {
         unsafe { CallNextHookEx(None, code, wparam, lparam) }
     }
 
-    /// Record which overlay/owner should grab focus on click, installing the
-    /// low-level mouse hook lazily on first use. Must be called on the main
+    /// Record which Session owns the visible overlay focus target, installing
+    /// the low-level mouse hook lazily on first use. Must be called on the main
     /// thread, which owns the RDP overlay window and receives the hook callback.
-    fn set_rdp_overlay_focus_targets(
-        overlay: Option<HWND>,
-        owner: Option<HWND>,
-        focus: Option<HWND>,
-    ) {
+    fn set_rdp_overlay_focus_target(session_id: &str, overlay: HWND, owner: HWND, focus: HWND) {
         let mut state = rdp_overlay_focus_hook()
             .lock()
             .expect("RDP overlay focus hook mutex poisoned");
-        state.overlay = overlay;
-        state.owner = owner;
-        state.focus = focus;
-        if overlay.is_some() && state.hook.is_none() {
+        state.set_target(session_id, overlay, owner, focus);
+        if state.hook.is_none() {
             unsafe {
                 let module = GetModuleHandleW(PCWSTR::null())
                     .ok()
@@ -1628,6 +1641,39 @@ mod platform {
                 }
             }
         }
+        rdp_debug(
+            "focus_target.set",
+            &json!({
+                "sessionId": session_id,
+                "overlayHwnd": format_hwnd(overlay),
+                "ownerHwnd": format_hwnd(owner),
+                "focusHwnd": format_hwnd(focus),
+            }),
+        );
+    }
+
+    /// Clear a hidden or closed Session's focus target only when that Session
+    /// still owns it. Tab switches and reconnects deliberately allow stale
+    /// hide/close requests to arrive after a newer Session has become visible.
+    fn clear_rdp_overlay_focus_target(session_id: &str) {
+        let mut state = rdp_overlay_focus_hook()
+            .lock()
+            .expect("RDP overlay focus hook mutex poisoned");
+        let active_session_id = state
+            .target
+            .as_ref()
+            .map(|target| target.session_id.clone());
+        if state.clear_target(session_id) {
+            rdp_debug("focus_target.clear", &json!({ "sessionId": session_id }));
+        } else if let Some(active_session_id) = active_session_id {
+            rdp_debug(
+                "focus_target.clear_skipped",
+                &json!({
+                    "sessionId": session_id,
+                    "activeSessionId": active_session_id,
+                }),
+            );
+        }
     }
 
     /// Remove the focus hook entirely, e.g. when no RDP sessions remain.
@@ -1640,9 +1686,7 @@ mod platform {
                 let _ = UnhookWindowsHookEx(hook);
             }
         }
-        state.overlay = None;
-        state.owner = None;
-        state.focus = None;
+        state.target = None;
     }
 
     fn control_dispatch(hwnd: HWND) -> Result<IDispatch, String> {
@@ -2862,11 +2906,6 @@ mod platform {
         );
         apply_smart_sizing(&session.dispatch, smart_sizing);
         let object_hwnd = hosted_rdp_object_window(&session.dispatch);
-        set_rdp_overlay_focus_targets(
-            Some(session.hwnd),
-            Some(session.owner),
-            object_hwnd.or(Some(session.hwnd)),
-        );
         let rect = show_rdp(
             session.hwnd,
             session.owner,
@@ -2876,6 +2915,12 @@ mod platform {
             width,
             height,
         )?;
+        set_rdp_overlay_focus_target(
+            &session.session_id,
+            session.hwnd,
+            session.owner,
+            object_hwnd.unwrap_or(session.hwnd),
+        );
         ui_debug(
             "rdp.geometry.native",
             &json!({
@@ -3296,6 +3341,26 @@ mod platform {
     #[cfg(test)]
     mod tests {
         use super::*;
+
+        #[test]
+        fn stale_session_cannot_clear_newer_rdp_focus_target() {
+            let mut state = RdpOverlayFocusHook::new();
+            let hwnd = |value| HWND(value as *mut c_void);
+
+            state.set_target("rdp-old", hwnd(1), hwnd(2), hwnd(3));
+            state.set_target("rdp-new", hwnd(4), hwnd(5), hwnd(6));
+
+            assert!(!state.clear_target("rdp-old"));
+            assert_eq!(
+                state
+                    .target
+                    .as_ref()
+                    .map(|target| target.session_id.as_str()),
+                Some("rdp-new")
+            );
+            assert!(state.clear_target("rdp-new"));
+            assert!(state.target.is_none());
+        }
 
         #[test]
         fn splits_domain_qualified_windows_users() {

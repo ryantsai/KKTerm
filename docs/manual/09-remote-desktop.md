@@ -22,7 +22,7 @@ Tutorial target: `remoteDesktop.surface`.
 - `remoteDesktop.connecting` → `remoteDesktop.preparingDisplay` → `remoteDesktop.connected`.
 - For VNC: while the first framebuffer is awaited, `remoteDesktop.waitingFramebuffer`.
 - `remoteDesktop.disconnected` after the session ends.
-- `remoteDesktop.reconnect` / `remoteDesktop.reconnecting` reissue the connect with the same Connection settings.
+- `remoteDesktop.reconnect` / `remoteDesktop.reconnecting` close the current live Session before reissuing the connect with the same Connection settings. On Windows, the old ActiveX control finishes teardown before its replacement starts, and a delayed hide or close from another RDP Tab cannot take focus ownership from the visible Session.
 - RDP command and startup failures surface as Status Bar errors through `remoteDesktop.rdpErrorStatus` even when Advanced Debugging is off.
 - If Windows policy disables saved Remote Desktop passwords, the Microsoft RDP ActiveX control may show its own credential prompt. KKTerm lets that prompt complete and keeps reapplying the RDP display-size sync for a short post-connect window so the remote desktop size is corrected after login.
 

@@ -71,3 +71,40 @@ test("RDP overlay keyboard focus uses a low-level click hook, not WM_MOUSEACTIVA
     "RDP focus hook must be explicitly uninstallable for clean lifecycle",
   );
 });
+
+test("RDP overlay focus ownership survives stale Session hide and close ordering", async () => {
+  const rdpSource = await readFile(new URL("../src-tauri/src/rdp.rs", import.meta.url), "utf8");
+  const workspaceSource = await readFile(
+    new URL(
+      "../src/modules/workspace/connections/remote-desktop/RemoteDesktopWorkspace.tsx",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const focusShim =
+    rdpSource.match(/struct RdpOverlayFocusTarget[\s\S]*?fn uninstall_rdp_overlay_focus_hook/)?.[0]
+    ?? "";
+  const reconnectHandler =
+    workspaceSource.match(/const handleReconnect = async \(\) => \{[\s\S]*?\n  \};/)?.[0] ?? "";
+
+  assert.match(
+    focusShim,
+    /struct RdpOverlayFocusTarget[\s\S]*session_id:\s*String/,
+    "the active RDP focus target must record which Session owns it",
+  );
+  assert.match(
+    focusShim,
+    /fn clear_target\(&mut self,\s*session_id:\s*&str\)[\s\S]*target\.session_id\s*!=\s*session_id[\s\S]*return/,
+    "hiding or closing an old Session must not clear a newer Session's focus target",
+  );
+  assert.doesNotMatch(
+    rdpSource,
+    /set_rdp_overlay_focus_targets\(None,\s*None,\s*None\)/,
+    "RDP hide and close paths must not clear process-wide focus state unconditionally",
+  );
+  assert.match(
+    reconnectHandler,
+    /await invokeCommand\([^)]*"close_rdp_session"[\s\S]*setRdpStartKey/,
+    "RDP reconnect must finish closing the old ActiveX Session before starting its replacement",
+  );
+});
