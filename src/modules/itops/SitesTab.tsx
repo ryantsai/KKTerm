@@ -2139,6 +2139,12 @@ function RackDrill({
 
   function elevation(r: Rack) {
     const face = elevationFaceFor(r.id);
+    // Server Room placement targets the face that this particular cabinet is
+    // presenting. Racks can be flipped independently, so the reference Rack's
+    // dialog default must not prevent placement on a differently flipped Rack.
+    const roomPlacementDraft = roomPlaceRackId === r.id && placeDevice
+      ? { ...placeDevice, mountFace: face }
+      : null;
     return (
       <RackElevation
         key={r.id}
@@ -2153,10 +2159,10 @@ function RackDrill({
         hostFor={hostForItem}
         reserveTopU={KUAIGUAI_TOP_CLEARANCE_U}
         editMode={editMode}
-        placeSpec={roomPlaceRackId === r.id ? placeDevice : null}
+        placeSpec={roomPlacementDraft}
         onPlaceAt={(startU, slot) => {
-          if (!placeDevice) return;
-          onPlaceDevice(r, placeDevice, startU, slot);
+          if (!roomPlacementDraft) return;
+          onPlaceDevice(r, roomPlacementDraft, startU, slot);
           setPlaceDevice(null);
         }}
         onCancelPlacement={() => setPlaceDevice(null)}

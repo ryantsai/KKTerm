@@ -48,6 +48,17 @@ test("rack elevations reveal one reachable cabinet flip on hover and keep the to
   assert.doesNotMatch(bag, /kk-rear-mascot/);
 });
 
+test("room elevation placement follows an individually flipped Rack face", async () => {
+  const sites = await read("src/modules/itops/SitesTab.tsx");
+
+  assert.match(
+    sites,
+    /const roomPlacementDraft = [\s\S]*?mountFace: face/,
+  );
+  assert.match(sites, /placeSpec=\{roomPlacementDraft\}/);
+  assert.match(sites, /onPlaceDevice\(r, roomPlacementDraft, startU, slot\)/);
+});
+
 test("Rack View and 2.5D render independent front and rear faces", async () => {
   const [stage, iso] = await Promise.all([
     read("src/modules/itops/RackStage.tsx"),

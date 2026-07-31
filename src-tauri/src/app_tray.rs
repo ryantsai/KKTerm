@@ -291,7 +291,7 @@ fn handle_menu_event<R: tauri::Runtime>(app: &tauri::AppHandle<R>, id: &str) {
     if let Some(mode) = id.strip_prefix(CAPTURE_ITEM_PREFIX) {
         // The webview keeps running while hidden to the tray, so the frontend
         // capture bridge handles this event without restoring the window.
-        let _ = app.emit(crate::screenshot_shortcuts::CAPTURE_EVENT, mode.to_string());
+        crate::screenshot_shortcuts::emit_tray_capture(app, mode);
         return;
     }
 

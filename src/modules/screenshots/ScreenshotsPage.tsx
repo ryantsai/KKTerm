@@ -54,13 +54,16 @@ import {
   type ScreenshotSortBy,
   type ScreenshotSortDirection,
 } from "./state";
+import {
+  CAPTURE_DELAYS,
+  readCaptureDelay,
+  writeCaptureDelay,
+} from "./captureDelay";
 import "./screenshots.css";
 
 const VIEW_MODE_STORAGE_KEY = "kkterm.screenshotsViewMode.v2";
 const SORT_STORAGE_KEY = "kkterm.screenshotsSort.v1";
 const GROUP_STORAGE_KEY = "kkterm.screenshotsGroup.v1";
-const DELAY_STORAGE_KEY = "kkterm.screenshotsCaptureDelay.v1";
-const CAPTURE_DELAYS = [0, 3, 5, 15, 30, 60] as const;
 
 function readViewMode(): ScreenshotsViewMode {
   try {
@@ -100,15 +103,6 @@ function readGroupBy(): ScreenshotGroupBy {
       : "date";
   } catch {
     return "date";
-  }
-}
-
-function readCaptureDelay() {
-  try {
-    const parsed = Number(localStorage.getItem(DELAY_STORAGE_KEY));
-    return CAPTURE_DELAYS.includes(parsed as (typeof CAPTURE_DELAYS)[number]) ? parsed : 0;
-  } catch {
-    return 0;
   }
 }
 
@@ -245,7 +239,7 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
 
   function changeCaptureDelay(next: number) {
     setCaptureDelay(next);
-    persist(DELAY_STORAGE_KEY, String(next));
+    writeCaptureDelay(next);
   }
 
   async function copyScreenshot(screenshot: StoredScreenshot) {

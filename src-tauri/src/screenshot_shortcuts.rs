@@ -9,21 +9,40 @@ use std::{
     sync::{Mutex, OnceLock},
 };
 
-use tauri::Emitter;
+use serde::Serialize;
+use tauri::{Emitter, Runtime};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
 use crate::storage::ScreenshotSettings;
 
-/// Emitted with a `"region" | "window" | "fullscreen"` payload when a capture
-/// hotkey (or tray capture item) fires. The frontend invokes the matching
-/// library capture command; the webview stays alive while hidden to the tray,
-/// so this works without restoring the window.
+/// Emitted with a capture mode and a `"shortcut" | "tray"` source when a
+/// capture hotkey (or tray capture item) fires. The frontend invokes the
+/// matching library capture command; the webview stays alive while hidden to
+/// the tray, so this works without restoring the window.
 pub const CAPTURE_EVENT: &str = "kkterm://capture-screenshot";
+
+#[derive(Clone, Serialize)]
+struct CaptureRequest<'a> {
+    mode: &'a str,
+    source: &'static str,
+}
 
 static REGISTERED_SHORTCUTS: OnceLock<Mutex<Vec<Shortcut>>> = OnceLock::new();
 
 fn registered_shortcuts() -> &'static Mutex<Vec<Shortcut>> {
     REGISTERED_SHORTCUTS.get_or_init(|| Mutex::new(Vec::new()))
+}
+
+fn emit_capture_request<R: Runtime>(
+    app: &tauri::AppHandle<R>,
+    mode: &str,
+    source: &'static str,
+) {
+    let _ = app.emit(CAPTURE_EVENT, CaptureRequest { mode, source });
+}
+
+pub fn emit_tray_capture<R: Runtime>(app: &tauri::AppHandle<R>, mode: &str) {
+    emit_capture_request(app, mode, "tray");
 }
 
 fn parse(label: &str, accelerator: &str) -> Result<Shortcut, String> {
@@ -90,7 +109,7 @@ pub fn apply(app: &tauri::AppHandle, settings: &ScreenshotSettings) -> Result<()
         let shortcut = parse(label, accelerator)?;
         let register_result = manager.on_shortcut(shortcut, move |app, _shortcut, event| {
             if event.state() == ShortcutState::Pressed {
-                let _ = app.emit(CAPTURE_EVENT, mode);
+                emit_capture_request(app, mode, "shortcut");
             }
         });
         if let Err(error) = register_result {

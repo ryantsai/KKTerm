@@ -720,6 +720,11 @@ Excel-readable inventory table.
 An empty Server Room uses explanatory guidance with an inline New Rack action.
 An empty Rack uses an inline Edit mode action that reveals the Rack Device
 picker.
+In Server Room elevation edit mode, an armed Rack Device targets the currently
+displayed face of the Rack nearest the pointer. That per-Rack face remains
+authoritative when cabinets have been flipped individually; the room-wide flip
+control is not required for placement. Rack View continues to use the explicit
+Front/Rear mounting side selected in the Rack Device properties dialog.
 In the Server Room floor-plan and 2.5D object picker, Rack and fixture placement
 uses two clicks: the first locks the floor position, moving the pointer selects
 one of four facings with a high-contrast arrow on that side, and the second

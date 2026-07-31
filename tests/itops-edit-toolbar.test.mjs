@@ -38,7 +38,7 @@ test("Room elevation edit mode places devices through the shared picker column",
   // side-by-side cabinets cannot place the device into both.
   assert.match(sites, /className="rk-room-layout"/);
   assert.match(sites, /function useNearestPlacementRack/);
-  assert.match(sites, /roomPlaceRackId === r\.id \? placeDevice : null/);
+  assert.match(sites, /roomPlaceRackId === r\.id && placeDevice/);
   assert.match(sites, /racks=\{serverRoom\.racks\}/);
   assert.match(sites, /racks=\{\[rack\]\}/);
   assert.match(rackElevation, /data-rack-id=\{rack\.id\}/);

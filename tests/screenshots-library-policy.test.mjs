@@ -25,17 +25,24 @@ test("Screenshots Module exposes only thumbnail and details views", async () => 
 });
 
 test("capture delay and selection-based batch actions stay connected", async () => {
-  const [page, bridge, state, tauri] = await Promise.all([
+  const [page, delay, bridge, state, tauri, shortcuts, tray] = await Promise.all([
     read("src/modules/screenshots/ScreenshotsPage.tsx"),
+    read("src/modules/screenshots/captureDelay.ts"),
     read("src/modules/screenshots/captureBridge.ts"),
     read("src/modules/screenshots/state.ts"),
     read("src/lib/tauri.ts"),
+    read("src-tauri/src/screenshot_shortcuts.rs"),
+    read("src-tauri/src/app_tray.rs"),
   ]);
 
-  assert.match(page, /CAPTURE_DELAYS = \[0, 3, 5, 15, 30, 60\]/);
+  assert.match(delay, /CAPTURE_DELAYS = \[0, 3, 5, 15, 30, 60\]/);
   assert.match(page, /performScreenshotCapture\(mode, t, captureDelay, true\)/);
   assert.match(bridge, /minimizeWindow = false/);
-  assert.match(bridge, /performScreenshotCapture\(event\.payload, tRef\.current\)/);
+  assert.match(bridge, /listen<ScreenshotCaptureRequest>/);
+  assert.match(bridge, /event\.payload\.source === "shortcut"/);
+  assert.match(bridge, /readCaptureDelay\(\)/);
+  assert.match(shortcuts, /emit_capture_request\(app, mode, "shortcut"\)/);
+  assert.match(tray, /emit_tray_capture/);
   assert.match(tauri, /minimizeWindow: boolean/);
   assert.match(bridge, /delaySeconds \* 1000/);
   assert.match(state, /refreshGeneration/);

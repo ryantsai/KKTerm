@@ -13,15 +13,29 @@ import {
   type ScreenshotCaptureResult,
 } from "../../lib/tauri";
 import { useWorkspaceStore } from "../../store";
+import { readCaptureDelay } from "./captureDelay";
 import { useScreenshotsStore } from "./state";
 
 export type ScreenshotCaptureMode = "region" | "window" | "fullscreen";
+type ScreenshotCaptureRequest = {
+  mode: ScreenshotCaptureMode;
+  source: "shortcut" | "tray";
+};
 
 // Keep in sync with `screenshot_shortcuts::CAPTURE_EVENT` in the backend.
 const CAPTURE_EVENT = "kkterm://capture-screenshot";
 
 function isCaptureMode(value: unknown): value is ScreenshotCaptureMode {
   return value === "region" || value === "window" || value === "fullscreen";
+}
+
+function isCaptureRequest(value: unknown): value is ScreenshotCaptureRequest {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const candidate = value as Partial<ScreenshotCaptureRequest>;
+  return isCaptureMode(candidate.mode)
+    && (candidate.source === "shortcut" || candidate.source === "tray");
 }
 
 export function finishScreenshotCapture(result: ScreenshotCaptureResult, t: TFunction) {
@@ -97,9 +111,10 @@ export function useScreenshotCaptureBridge() {
     if (!isTauriRuntime()) {
       return;
     }
-    const unlisten = listen<string>(CAPTURE_EVENT, (event) => {
-      if (isCaptureMode(event.payload)) {
-        void performScreenshotCapture(event.payload, tRef.current);
+    const unlisten = listen<ScreenshotCaptureRequest>(CAPTURE_EVENT, (event) => {
+      if (isCaptureRequest(event.payload)) {
+        const delaySeconds = event.payload.source === "shortcut" ? readCaptureDelay() : 0;
+        void performScreenshotCapture(event.payload.mode, tRef.current, delaySeconds);
       }
     });
     return () => {
