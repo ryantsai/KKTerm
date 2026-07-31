@@ -4072,6 +4072,24 @@ fn refresh_vnc_session(
 }
 
 #[tauri::command]
+fn read_vnc_frame(
+    vnc_sessions: tauri::State<'_, vnc::VncSessionManager>,
+    request: vnc::VncFrameRequest,
+) -> Result<tauri::ipc::Response, String> {
+    vnc_sessions
+        .read_frame(request)
+        .map(tauri::ipc::Response::new)
+}
+
+#[tauri::command]
+fn acknowledge_vnc_frame(
+    vnc_sessions: tauri::State<'_, vnc::VncSessionManager>,
+    request: vnc::VncFrameRequest,
+) -> Result<(), String> {
+    vnc_sessions.acknowledge_frame(request)
+}
+
+#[tauri::command]
 async fn close_vnc_session(
     app: tauri::AppHandle,
     request: vnc::VncSimpleRequest,
@@ -5001,6 +5019,8 @@ pub fn run() {
             send_vnc_pointer_event,
             send_vnc_key_event,
             refresh_vnc_session,
+            read_vnc_frame,
+            acknowledge_vnc_frame,
             close_vnc_session,
             get_vnc_session_status,
             send_vnc_ctrl_alt_delete,

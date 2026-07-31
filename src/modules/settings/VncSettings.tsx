@@ -3,7 +3,12 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { invokeCommand, isTauriRuntime } from "../../lib/tauri";
 import { useWorkspaceStore } from "../../store";
-import type { RemoteDesktopViewMode, VncColorLevel, VncPreferredEncoding } from "../../types";
+import type {
+  RemoteDesktopViewMode,
+  VncColorLevel,
+  VncPerformancePreset,
+  VncPreferredEncoding,
+} from "../../types";
 import { SettingsSectionHeader, useSettingsSaveRegistration } from "./shared";
 import { ToggleSwitch } from "./ToggleSwitch";
 
@@ -45,6 +50,27 @@ export function VncSettings() {
         <legend>{t("settings.encoding")}</legend>
         <div className="form-grid two-columns">
           <label>
+            <span>{t("settings.vncPerformancePreset")}</span>
+            <select
+              value={draft.performancePreset}
+              onChange={(event) => {
+                const performancePreset = event.currentTarget.value as VncPerformancePreset;
+                setDraft((settings) => ({ ...settings, performancePreset }));
+              }}
+            >
+              <option value="auto">{t("settings.vncPresetAuto")}</option>
+              <option value="lan">{t("settings.vncPresetLan")}</option>
+              <option value="balanced">{t("settings.vncPresetBalanced")}</option>
+              <option value="lowBandwidth">{t("settings.vncPresetLowBandwidth")}</option>
+              <option value="lossless">{t("settings.vncPresetLossless")}</option>
+              <option value="custom">{t("settings.vncPresetCustom")}</option>
+            </select>
+            <small className="field-hint">{t("settings.vncPerformancePresetHint")}</small>
+          </label>
+        </div>
+        {draft.performancePreset === "custom" ? (
+        <div className="form-grid two-columns">
+          <label>
             <span>{t("settings.preferredEncoding")}</span>
             <select
               value={draft.preferredEncoding}
@@ -79,7 +105,51 @@ export function VncSettings() {
               <option value="8">{t("settings.vncColor8")}</option>
             </select>
           </label>
+          <label>
+            <span>{t("settings.vncCompressionLevel")}</span>
+            <input
+              type="number"
+              min="0"
+              max="9"
+              value={draft.compressionLevel}
+              onChange={(event) => {
+                const compressionLevel = Number(event.currentTarget.value);
+                setDraft((settings) => ({ ...settings, compressionLevel }));
+              }}
+            />
+            <small className="field-hint">{t("settings.vncCompressionLevelHint")}</small>
+          </label>
+          <label>
+            <span>{t("settings.vncJpegQuality")}</span>
+            <input
+              type="number"
+              min="0"
+              max="9"
+              value={draft.jpegQuality}
+              onChange={(event) => {
+                const jpegQuality = Number(event.currentTarget.value);
+                setDraft((settings) => ({ ...settings, jpegQuality }));
+              }}
+              disabled={!draft.jpegEnabled}
+            />
+            <small className="field-hint">{t("settings.vncJpegQualityHint")}</small>
+          </label>
         </div>
+        ) : null}
+        {draft.performancePreset === "custom" ? (
+          <div className="settings-toggle-list">
+            <label className="settings-toggle-row">
+              <ToggleSwitch
+                checked={draft.jpegEnabled}
+                onChange={(checked) => setDraft((settings) => ({ ...settings, jpegEnabled: checked }))}
+              />
+              <span>
+                <strong>{t("settings.vncJpegEnabled")}</strong>
+                <small>{t("settings.vncJpegEnabledHint")}</small>
+              </span>
+            </label>
+          </div>
+        ) : null}
       </fieldset>
       <fieldset className="settings-subsection settings-fieldset">
         <legend>{t("settings.display")}</legend>

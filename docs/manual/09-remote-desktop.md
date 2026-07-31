@@ -2,7 +2,7 @@
 
 ## AI grep hints
 
-- Keys: `remoteDesktop.*` (full namespace, including `remoteDesktop.fullscreen.*`), `connections.windowsRdp`, `connections.screenControl`, `settings.rdpRemoteResolution*`, `settings.remoteDesktopViewMode*`, `settings.rdpAdministrativeSession`, `settings.rdpShareLocalFolders`, `settings.rdpAddFolder`, `settings.rdpAllLocalDrives`, `settings.rdpChooseDrives`, `settings.submitAiAttachmentsDirectly`, `workspace.sendEntirePanelToAi`, `ai.directAttachmentPrompt`
+- Keys: `remoteDesktop.*` (full namespace, including `remoteDesktop.fullscreen.*`), `connections.windowsRdp`, `connections.screenControl`, `settings.rdpRemoteResolution*`, `settings.remoteDesktopViewMode*`, `settings.vncPerformancePreset`, `settings.vncCompressionLevel`, `settings.vncJpegQuality`, `settings.vncJpegEnabled`, `settings.rdpAdministrativeSession`, `settings.rdpShareLocalFolders`, `settings.rdpAddFolder`, `settings.rdpAllLocalDrives`, `settings.rdpChooseDrives`, `settings.submitAiAttachmentsDirectly`, `workspace.sendEntirePanelToAi`, `ai.directAttachmentPrompt`
 - Topics: RDP via mstscax ActiveX, RDP via IronRDP, Windows drive redirection, macOS/Linux shared local folder, VNC via vnc-rs, Ctrl+Alt+Del, Ctrl+Alt+End hotkey hint, remote resolution (Automatic / fixed `WxH`), view mode scaling, reconnect, framebuffer waiting, Windows ActiveX native full screen and connection bar, detached VNC/canvas full-screen window (span all monitors, monitor picker, platform full-screen shortcut, `open_remote_fullscreen_window`, `list_display_monitors`), tutorial targets `remoteDesktop.toolbar`, `remoteDesktop.viewMode`, `remoteDesktop.sendCtrlAltDel`, `remoteDesktop.reconnect`, `remoteDesktop.sendToAi`, `remoteDesktop.surface`, `settings.rdpRemoteResolution`
 - Synonyms: "remote desktop", "screen sharing", "mstsc", "IronRDP", "drive mapping", "redirect drives", "share local folder", "VNC viewer", "send three-finger salute", "high DPI scaling", "remote screen size", "full screen", "fullscreen", "second monitor", "multi-monitor", "span monitors", "connection bar"
 
@@ -93,6 +93,12 @@ Debug builds write RDP startup, ActiveX control creation, display-size sync, cli
 ## RDP / VNC settings
 
 Per-kind defaults (resolution, view mode, colour depth, etc.) live in Settings → RDP (`settings.sectionRdp`) and Settings → VNC (`settings.sectionVnc`). See [15-settings.md](15-settings.md).
+
+### VNC performance presets
+
+`settings.vncPerformancePreset` is available globally and per Connection. `settings.vncPresetAuto` is the default and lets the Tight-capable server choose its compression and JPEG trade-off. `settings.vncPresetLan`, `settings.vncPresetBalanced`, and `settings.vncPresetLowBandwidth` apply progressively stronger bandwidth reduction. `settings.vncPresetLossless` selects ZRLE and disables lossy JPEG rectangles. `settings.vncPresetCustom` exposes the preferred encoding, color level, `settings.vncCompressionLevel` (0 fastest, 9 smallest), `settings.vncJpegQuality` (0 smallest, 9 most detail), and `settings.vncJpegEnabled`.
+
+Framebuffer updates are requested one at a time and acknowledged only after the canvas paints them. One update crosses the app boundary as one bounded binary batch containing raw pixels, compressed JPEG rectangles, and CopyRect operations; pointer motion is coalesced to its latest position while clicks and wheel transitions stay ordered. With Advanced Debugging enabled, `vnc.frame` entries in `ui.debug.log` report non-secret frame size, encoding counts, wire bytes, backend decode/bridge timing, frontend binary fetch/JPEG decode/paint timing, and end-to-end notice-to-paint time.
 
 ### RDP administrative sessions and local resources
 

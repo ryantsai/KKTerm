@@ -4968,6 +4968,20 @@ function ConnectionDialog({
                   ? vncSettings.preferredEncoding
                   : form.get("vncPreferredEncoding") ?? vncSettings.preferredEncoding,
               ) as VncSettings["preferredEncoding"],
+              performancePreset: String(
+                inheritVncDefaults
+                  ? vncSettings.performancePreset
+                  : form.get("vncPerformancePreset") ?? vncSettings.performancePreset,
+              ) as VncSettings["performancePreset"],
+              compressionLevel: inheritVncDefaults
+                ? vncSettings.compressionLevel
+                : Number(form.get("vncCompressionLevel") ?? vncSettings.compressionLevel),
+              jpegQuality: inheritVncDefaults
+                ? vncSettings.jpegQuality
+                : Number(form.get("vncJpegQuality") ?? vncSettings.jpegQuality),
+              jpegEnabled: inheritVncDefaults
+                ? vncSettings.jpegEnabled
+                : form.get("vncJpegEnabled") === "on",
               viewMode: String(
                 inheritVncDefaults ? vncSettings.viewMode : form.get("vncViewMode") ?? vncSettings.viewMode,
               ) as VncSettings["viewMode"],

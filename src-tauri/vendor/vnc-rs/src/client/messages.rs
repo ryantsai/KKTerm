@@ -1,10 +1,10 @@
-use crate::{PixelFormat, Rect, VncEncoding, VncError};
+use crate::{PixelFormat, Rect, VncError};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 #[derive(Debug)]
 pub(super) enum ClientMsg {
     SetPixelFormat(PixelFormat),
-    SetEncodings(Vec<VncEncoding>),
+    SetEncodings(Vec<i32>),
     FramebufferUpdateRequest(Rect, u8),
     KeyEvent(u32, bool),
     PointerEvent(u16, u16, u8),
@@ -48,7 +48,7 @@ impl ClientMsg {
                 let mut payload = vec![2, 0];
                 payload.extend_from_slice(&(encodings.len() as u16).to_be_bytes());
                 for e in encodings {
-                    payload.write_u32(e.into()).await?;
+                    payload.extend_from_slice(&e.to_be_bytes());
                 }
                 writer.write_all(&payload).await?;
                 Ok(())

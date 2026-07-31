@@ -1018,6 +1018,7 @@ export interface VncPointerEventRequest {
   x: number;
   y: number;
   buttonMask: number;
+  coalescible?: boolean;
 }
 
 export interface VncKeyEventRequest {
@@ -1028,6 +1029,11 @@ export interface VncKeyEventRequest {
 
 export interface VncSimpleRequest {
   sessionId: string;
+}
+
+export interface VncFrameRequest {
+  sessionId: string;
+  frameId: number;
 }
 
 export interface StartRdpClientSessionRequest {
@@ -3382,6 +3388,14 @@ type CommandMap = {
   };
   refresh_vnc_session: {
     args: { request: VncSimpleRequest };
+    result: null;
+  };
+  read_vnc_frame: {
+    args: { request: VncFrameRequest };
+    result: ArrayBuffer;
+  };
+  acknowledge_vnc_frame: {
+    args: { request: VncFrameRequest };
     result: null;
   };
   close_vnc_session: {

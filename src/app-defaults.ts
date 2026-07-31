@@ -163,6 +163,10 @@ export const defaultVncSettings: VncSettings = {
   viewOnly: false,
   colorLevel: "full",
   preferredEncoding: "tight",
+  performancePreset: "auto",
+  compressionLevel: 2,
+  jpegQuality: 7,
+  jpegEnabled: true,
   viewMode: "fit",
 };
 

@@ -1,9 +1,16 @@
 use futures::TryStreamExt;
 use tokio_stream::wrappers::ReceiverStream;
 
-use std::{future::Future, sync::Arc, vec};
+use std::{
+    future::Future,
+    pin::Pin,
+    sync::Arc,
+    task::{Context, Poll},
+    time::Instant,
+    vec,
+};
 use tokio::{
-    io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
+    io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, ReadBuf},
     sync::{
         mpsc::{
             channel,
@@ -16,7 +23,10 @@ use tokio::{
 use tokio_util::compat::*;
 use tracing::*;
 
-use crate::{codec, PixelFormat, Rect, VncEncoding, VncError, VncEvent, X11Event};
+use crate::{
+    codec, FramebufferUpdateMetrics, PixelFormat, Rect, VncEncoding, VncError, VncEvent,
+    X11Event,
+};
 const CHANNEL_SIZE: usize = 4096;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -29,6 +39,35 @@ use super::messages::{ClientMsg, ServerMsg};
 struct ImageRect {
     rect: Rect,
     encoding: VncEncoding,
+}
+
+struct CountingReader<R> {
+    inner: R,
+    bytes_read: u64,
+}
+
+impl<R> CountingReader<R> {
+    fn new(inner: R) -> Self {
+        Self {
+            inner,
+            bytes_read: 0,
+        }
+    }
+}
+
+impl<R: AsyncRead + Unpin> AsyncRead for CountingReader<R> {
+    fn poll_read(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &mut ReadBuf<'_>,
+    ) -> Poll<std::io::Result<()>> {
+        let before = buf.filled().len();
+        let result = Pin::new(&mut self.inner).poll_read(cx, buf);
+        if matches!(result, Poll::Ready(Ok(()))) {
+            self.bytes_read += (buf.filled().len() - before) as u64;
+        }
+        result
+    }
 }
 
 impl From<[u8; 12]> for ImageRect {
@@ -77,7 +116,7 @@ impl VncInner {
         mut stream: S,
         shared: bool,
         mut pixel_format: Option<PixelFormat>,
-        encodings: Vec<VncEncoding>,
+        encodings: Vec<i32>,
     ) -> Result<Self, VncError>
     where
         S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
@@ -266,7 +305,7 @@ impl VncClient {
         stream: S,
         shared: bool,
         pixel_format: Option<PixelFormat>,
-        encodings: Vec<VncEncoding>,
+        encodings: Vec<i32>,
     ) -> Result<Self, VncError>
     where
         S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
@@ -374,7 +413,7 @@ where
 
 async fn send_client_encoding<S>(
     stream: &mut S,
-    encodings: Vec<VncEncoding>,
+    encodings: Vec<i32>,
 ) -> Result<(), VncError>
 where
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
@@ -394,6 +433,7 @@ where
     F: Fn(VncEvent) -> Fut,
     Fut: Future<Output = Result<(), VncError>>,
 {
+    let mut stream = CountingReader::new(stream);
     let mut raw_decoder = codec::RawDecoder::new();
     let mut zrle_decoder = codec::ZrleDecoder::new();
     let mut tight_decoder = codec::TightDecoder::new();
@@ -402,21 +442,29 @@ where
 
     // main decoding loop
     while let Err(oneshot::error::TryRecvError::Empty) = stop_ch.try_recv() {
-        let server_msg = ServerMsg::read(stream).await?;
+        let message_bytes_before = stream.bytes_read;
+        let server_msg = ServerMsg::read(&mut stream).await?;
         trace!("Server message got: {:?}", server_msg);
         match server_msg {
             ServerMsg::FramebufferUpdate(rect_num) => {
+                let started = Instant::now();
+                let mut metrics = FramebufferUpdateMetrics {
+                    rectangles: u32::from(rect_num),
+                    ..Default::default()
+                };
                 for _ in 0..rect_num {
-                    let rect = ImageRect::read(stream).await?;
+                    let rect = ImageRect::read(&mut stream).await?;
                     // trace!("Encoding: {:?}", rect.encoding);
 
                     match rect.encoding {
                         VncEncoding::Raw => {
+                            metrics.raw_rectangles += 1;
                             raw_decoder
-                                .decode(pf, &rect.rect, stream, output_func)
+                                .decode(pf, &rect.rect, &mut stream, output_func)
                                 .await?;
                         }
                         VncEncoding::CopyRect => {
+                            metrics.copy_rectangles += 1;
                             let source_x = stream.read_u16().await?;
                             let source_y = stream.read_u16().await?;
                             let mut src_rect = rect.rect;
@@ -425,24 +473,31 @@ where
                             output_func(VncEvent::Copy(rect.rect, src_rect)).await?;
                         }
                         VncEncoding::Tight => {
+                            metrics.tight_rectangles += 1;
                             tight_decoder
-                                .decode(pf, &rect.rect, stream, output_func)
+                                .decode(pf, &rect.rect, &mut stream, output_func)
                                 .await?;
                         }
                         VncEncoding::Trle => {
+                            metrics.trle_rectangles += 1;
                             trle_decoder
-                                .decode(pf, &rect.rect, stream, output_func)
+                                .decode(pf, &rect.rect, &mut stream, output_func)
                                 .await?;
                         }
                         VncEncoding::Zrle => {
+                            metrics.zrle_rectangles += 1;
                             zrle_decoder
-                                .decode(pf, &rect.rect, stream, output_func)
+                                .decode(pf, &rect.rect, &mut stream, output_func)
                                 .await?;
                         }
                         VncEncoding::CursorPseudo => {
-                            cursor.decode(pf, &rect.rect, stream, output_func).await?;
+                            metrics.cursor_rectangles += 1;
+                            cursor
+                                .decode(pf, &rect.rect, &mut stream, output_func)
+                                .await?;
                         }
                         VncEncoding::DesktopSizePseudo => {
+                            metrics.desktop_size_rectangles += 1;
                             output_func(VncEvent::SetResolution(
                                 (rect.rect.width, rect.rect.height).into(),
                             ))
@@ -453,6 +508,9 @@ where
                         }
                     }
                 }
+                metrics.wire_bytes = stream.bytes_read - message_bytes_before;
+                metrics.decode_micros = started.elapsed().as_micros() as u64;
+                output_func(VncEvent::FramebufferUpdateComplete(metrics)).await?;
             }
             // SetColorMapEntries,
             ServerMsg::Bell => {

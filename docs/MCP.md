@@ -161,7 +161,7 @@ Workspace id as `workspaceId` when creating a Connection or Connection folder.
 | Name | Description |
 |---|---|
 | `kkterm.workspace.connections.list` | List saved Connections (folders + connections) from KKTerm storage. |
-| `kkterm.workspace.connections.create` | Create a saved Connection in KKTerm storage, optionally in `workspaceId`. Supported kinds match the app: local terminal, SSH, Telnet, Serial, URL, RDP, VNC, FTP/FTPS/SFTP, File Explorer (`localFiles`), and Document (`fileView`). This is a safe tool: it does not accept passwords or other secrets, and saved credentials still go through KKTerm's normal keychain-backed secret flows. |
+| `kkterm.workspace.connections.create` | Create a saved Connection in KKTerm storage, optionally in `workspaceId`. Supported kinds match the app: local terminal, SSH, Telnet, Serial, URL, RDP, VNC, FTP/FTPS/SFTP, File Explorer (`localFiles`), and Document (`fileView`). VNC `vncOptions` may select `performancePreset` (`auto`, `lan`, `balanced`, `lowBandwidth`, `lossless`, or `custom`); custom tuning accepts `compressionLevel` and `jpegQuality` from 0–9 plus `jpegEnabled`. This is a safe tool: it does not accept passwords or other secrets, and saved credentials still go through KKTerm's normal keychain-backed secret flows. |
 | `kkterm.workspace.connections.update` | Update one saved Connection by `connectionId`. Submit the full updated Connection fields. This tool does not accept passwords or other secrets. |
 | `kkterm.workspace.connections.rename` | Rename one saved Connection by `connectionId`. |
 | `kkterm.workspace.connections.delete` | Delete one saved Connection by `connectionId`. |

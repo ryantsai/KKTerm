@@ -115,6 +115,22 @@ export function VncConnectionOptions({
           </label>
           <div className="connection-option-fields">
             <label>
+              <Binary className="option-glyph" size={17} aria-hidden />
+              <span>{t("settings.vncPerformancePreset")}</span>
+              <select
+                disabled={vncInheritsSettingsDefaults}
+                name="vncPerformancePreset"
+                defaultValue={initialConnection?.vncOptions?.performancePreset ?? vncSettings.performancePreset}
+              >
+                <option value="auto">{t("settings.vncPresetAuto")}</option>
+                <option value="lan">{t("settings.vncPresetLan")}</option>
+                <option value="balanced">{t("settings.vncPresetBalanced")}</option>
+                <option value="lowBandwidth">{t("settings.vncPresetLowBandwidth")}</option>
+                <option value="lossless">{t("settings.vncPresetLossless")}</option>
+                <option value="custom">{t("settings.vncPresetCustom")}</option>
+              </select>
+            </label>
+            <label>
               <Scaling className="option-glyph" size={17} aria-hidden />
               <span>{t("settings.remoteDesktopViewMode")}</span>
               <select
@@ -128,6 +144,30 @@ export function VncConnectionOptions({
                 <option value="fitWidth">{t("settings.remoteDesktopViewModeFitWidth")}</option>
                 <option value="fitHeight">{t("settings.remoteDesktopViewModeFitHeight")}</option>
               </select>
+            </label>
+            <label>
+              <Binary className="option-glyph" size={17} aria-hidden />
+              <span>{t("settings.vncCompressionLevel")}</span>
+              <input
+                disabled={vncInheritsSettingsDefaults}
+                name="vncCompressionLevel"
+                type="number"
+                min="0"
+                max="9"
+                defaultValue={initialConnection?.vncOptions?.compressionLevel ?? vncSettings.compressionLevel}
+              />
+            </label>
+            <label>
+              <Binary className="option-glyph" size={17} aria-hidden />
+              <span>{t("settings.vncJpegQuality")}</span>
+              <input
+                disabled={vncInheritsSettingsDefaults}
+                name="vncJpegQuality"
+                type="number"
+                min="0"
+                max="9"
+                defaultValue={initialConnection?.vncOptions?.jpegQuality ?? vncSettings.jpegQuality}
+              />
             </label>
             <label>
               <Binary className="option-glyph" size={17} aria-hidden />
@@ -158,6 +198,16 @@ export function VncConnectionOptions({
             </label>
           </div>
           <div className="connection-session-fields">
+            <label className="connection-session-toggle">
+              <Binary className="option-glyph" size={17} aria-hidden />
+              <span>{t("settings.vncJpegEnabled")}</span>
+              <input
+                disabled={vncInheritsSettingsDefaults}
+                name="vncJpegEnabled"
+                type="checkbox"
+                defaultChecked={initialConnection?.vncOptions?.jpegEnabled ?? vncSettings.jpegEnabled}
+              />
+            </label>
             <label className="connection-session-toggle">
               <Users className="option-glyph" size={17} aria-hidden />
               <span>{t("settings.vncSharedSession")}</span>

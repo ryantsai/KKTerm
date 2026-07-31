@@ -186,6 +186,12 @@ export const SETTINGS_SEARCH_KEYS: Record<SettingsSectionId, readonly string[]> 
     "settings.remoteDesktopViewModeStretch", "settings.vncColor256", "settings.vncColor64",
     "settings.vncColor8", "settings.vncColorFull", "settings.vncEncodingRaw",
     "settings.vncEncodingTight", "settings.vncEncodingZrle",
+    "settings.vncPerformancePreset", "settings.vncPerformancePresetHint",
+    "settings.vncPresetAuto", "settings.vncPresetLan", "settings.vncPresetBalanced",
+    "settings.vncPresetLowBandwidth", "settings.vncPresetLossless", "settings.vncPresetCustom",
+    "settings.vncCompressionLevel", "settings.vncCompressionLevelHint",
+    "settings.vncJpegQuality", "settings.vncJpegQualityHint",
+    "settings.vncJpegEnabled", "settings.vncJpegEnabledHint",
   ],
   "screenshots-settings": [
     "settings.screenshotsFolder", "settings.screenshotsCaptureMode",

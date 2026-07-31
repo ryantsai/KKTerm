@@ -177,7 +177,7 @@ where
     rfb_version: VncVersion,
     allow_shared: bool,
     pixel_format: Option<PixelFormat>,
-    encodings: Vec<VncEncoding>,
+    encodings: Vec<i32>,
 }
 
 impl<S, F> VncConnector<S, F>
@@ -323,6 +323,12 @@ where
     /// The order to add encodings is the order to inform the server
     ///
     pub fn add_encoding(mut self, encoding: VncEncoding) -> Self {
+        self.encodings.push(encoding as i32);
+        self
+    }
+
+    /// Add a protocol extension/pseudo-encoding by its signed RFB id.
+    pub fn add_encoding_id(mut self, encoding: i32) -> Self {
         self.encodings.push(encoding);
         self
     }

@@ -1525,6 +1525,10 @@ pub fn connection_input_schema(id_name: Option<&str>) -> Value {
         "viewOnly": {"type": ["boolean", "null"]},
         "colorLevel": {"type": ["string", "null"], "enum": ["full", "256", "64", "8", null]},
         "preferredEncoding": {"type": ["string", "null"], "enum": ["tight", "zrle", "raw", null]},
+        "performancePreset": {"type": ["string", "null"], "enum": ["auto", "lan", "balanced", "lowBandwidth", "lossless", "custom", null]},
+        "compressionLevel": {"type": ["integer", "null"], "minimum": 0, "maximum": 9},
+        "jpegQuality": {"type": ["integer", "null"], "minimum": 0, "maximum": 9},
+        "jpegEnabled": {"type": ["boolean", "null"]},
         "viewMode": {"type": ["string", "null"], "enum": ["fit", "stretch", "actualSize", "fitWidth", "fitHeight", null]}
     }});
     let ftp_options_schema = json!({"type": ["object", "null"], "properties": {

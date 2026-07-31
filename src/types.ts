@@ -1497,12 +1497,23 @@ export interface RdpConnectionOptions {
 
 export type VncColorLevel = "full" | "256" | "64" | "8";
 export type VncPreferredEncoding = "tight" | "zrle" | "raw";
+export type VncPerformancePreset =
+  | "auto"
+  | "lan"
+  | "balanced"
+  | "lowBandwidth"
+  | "lossless"
+  | "custom";
 
 export interface VncSettings {
   sharedSession: boolean;
   viewOnly: boolean;
   colorLevel: VncColorLevel;
   preferredEncoding: VncPreferredEncoding;
+  performancePreset: VncPerformancePreset;
+  compressionLevel: number;
+  jpegQuality: number;
+  jpegEnabled: boolean;
   viewMode: RemoteDesktopViewMode;
 }
 
@@ -1512,6 +1523,10 @@ export interface VncConnectionOptions {
   viewOnly?: boolean;
   colorLevel?: VncColorLevel;
   preferredEncoding?: VncPreferredEncoding;
+  performancePreset?: VncPerformancePreset;
+  compressionLevel?: number;
+  jpegQuality?: number;
+  jpegEnabled?: boolean;
   viewMode?: RemoteDesktopViewMode;
 }
 

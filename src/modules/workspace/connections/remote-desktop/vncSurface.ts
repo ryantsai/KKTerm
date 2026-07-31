@@ -13,30 +13,30 @@ import type {
   RefObject,
   WheelEvent as ReactWheelEvent,
 } from "react";
-import { invokeCommand, isTauriRuntime } from "../../../../lib/tauri";
+import { invokeCommand, isTauriRuntime, logUiDebug } from "../../../../lib/tauri";
 import type { RemoteDesktopViewMode } from "../../../../types";
+import { parseVncFrameBatch, type VncFrameOperation } from "./vncFrame";
 
 export type VncSessionEvent =
   | { kind: "connected"; sessionId: string; name: string }
   | { kind: "resolution"; sessionId: string; width: number; height: number }
   | {
-      kind: "rawImage";
+      kind: "frameAvailable";
       sessionId: string;
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-      rgba: string;
-    }
-  | {
-      kind: "copy";
-      sessionId: string;
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-      sourceX: number;
-      sourceY: number;
+      frameId: number;
+      payloadBytes: number;
+      operationCount: number;
+      wireBytes: number;
+      decodeMicros: number;
+      bridgeMicros: number;
+      rectangles: number;
+      rawRectangles: number;
+      copyRectangles: number;
+      tightRectangles: number;
+      zrleRectangles: number;
+      trleRectangles: number;
+      cursorRectangles: number;
+      desktopSizeRectangles: number;
     }
   | { kind: "bell"; sessionId: string }
   | {
@@ -140,41 +140,6 @@ export function resizeVncCanvas(canvas: HTMLCanvasElement, width: number, height
   }
 }
 
-export function paintVncRawImage(
-  canvas: HTMLCanvasElement,
-  event: Extract<VncSessionEvent, { kind: "rawImage" }>,
-) {
-  const context = canvas.getContext("2d");
-  if (!context) {
-    return;
-  }
-  if (canvas.width < event.x + event.width || canvas.height < event.y + event.height) {
-    resizeVncCanvas(
-      canvas,
-      Math.max(canvas.width, event.x + event.width),
-      Math.max(canvas.height, event.y + event.height),
-    );
-  }
-  const imageData = new ImageData(
-    new Uint8ClampedArray(decodeBase64Bytes(event.rgba)),
-    event.width,
-    event.height,
-  );
-  context.putImageData(imageData, event.x, event.y);
-}
-
-export function paintVncCopy(
-  canvas: HTMLCanvasElement,
-  event: Extract<VncSessionEvent, { kind: "copy" }>,
-) {
-  const context = canvas.getContext("2d");
-  if (!context || event.width <= 0 || event.height <= 0) {
-    return;
-  }
-  const imageData = context.getImageData(event.sourceX, event.sourceY, event.width, event.height);
-  context.putImageData(imageData, event.x, event.y);
-}
-
 export function paintVncCursor(
   canvas: HTMLCanvasElement,
   event: Extract<VncSessionEvent, { kind: "setCursor" }>,
@@ -194,6 +159,107 @@ export function paintVncCursor(
   ctx.putImageData(new ImageData(new Uint8ClampedArray(bytes), event.width, event.height), 0, 0);
   const dataUrl = offscreen.toDataURL("image/png");
   canvas.style.cursor = `url("${dataUrl}") ${event.hotX} ${event.hotY}, default`;
+}
+
+type PreparedVncOperation =
+  | Exclude<VncFrameOperation, { kind: "jpeg" }>
+  | (Extract<VncFrameOperation, { kind: "jpeg" }> & { bitmap: ImageBitmap });
+
+async function prepareVncOperation(operation: VncFrameOperation): Promise<PreparedVncOperation> {
+  if (operation.kind !== "jpeg") {
+    return operation;
+  }
+  const jpeg = new Uint8Array(operation.bytes).buffer;
+  const bitmap = await createImageBitmap(new Blob([jpeg], { type: "image/jpeg" }));
+  return { ...operation, bitmap };
+}
+
+function nextAnimationFrame() {
+  return new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+}
+
+export async function fetchAndPaintVncFrame(
+  canvas: HTMLCanvasElement,
+  event: Extract<VncSessionEvent, { kind: "frameAvailable" }>,
+) {
+  const noticedAt = performance.now();
+  let fetchedAt: number;
+  let preparedAt: number;
+  let paintedAt: number;
+  try {
+    const payload = await invokeCommand("read_vnc_frame", {
+      request: { sessionId: event.sessionId, frameId: event.frameId },
+    });
+    fetchedAt = performance.now();
+    const batch = parseVncFrameBatch(payload);
+    const operations = await Promise.all(batch.operations.map(prepareVncOperation));
+    preparedAt = performance.now();
+    await nextAnimationFrame();
+    const context = canvas.getContext("2d");
+    if (!context) {
+      throw new Error("VNC canvas is unavailable.");
+    }
+    for (const operation of operations) {
+      if (operation.kind === "raw") {
+        context.putImageData(
+          new ImageData(
+            new Uint8ClampedArray(operation.bytes),
+            operation.width,
+            operation.height,
+          ),
+          operation.x,
+          operation.y,
+        );
+      } else if (operation.kind === "jpeg") {
+        context.drawImage(
+          operation.bitmap,
+          operation.x,
+          operation.y,
+          operation.width,
+          operation.height,
+        );
+        operation.bitmap.close();
+      } else if (operation.width > 0 && operation.height > 0) {
+        const imageData = context.getImageData(
+          operation.sourceX,
+          operation.sourceY,
+          operation.width,
+          operation.height,
+        );
+        context.putImageData(imageData, operation.x, operation.y);
+      }
+    }
+    paintedAt = performance.now();
+    logUiDebug("vnc.frame", {
+      sessionId: event.sessionId,
+      frameId: event.frameId,
+      payloadBytes: event.payloadBytes,
+      wireBytes: event.wireBytes,
+      operationCount: event.operationCount,
+      rectangles: event.rectangles,
+      encodings: {
+        raw: event.rawRectangles,
+        copy: event.copyRectangles,
+        tight: event.tightRectangles,
+        zrle: event.zrleRectangles,
+        trle: event.trleRectangles,
+        cursor: event.cursorRectangles,
+        desktopSize: event.desktopSizeRectangles,
+      },
+      timingsMs: {
+        backendDecode: event.decodeMicros / 1000,
+        backendBridge: event.bridgeMicros / 1000,
+        binaryFetch: fetchedAt - noticedAt,
+        jpegDecode: preparedAt - fetchedAt,
+        paint: paintedAt - preparedAt,
+        noticeToPaint: paintedAt - noticedAt,
+      },
+    });
+  } finally {
+    await invokeCommand("acknowledge_vnc_frame", {
+      request: { sessionId: event.sessionId, frameId: event.frameId },
+    }).catch(() => undefined);
+  }
 }
 
 /** Map a pointer event to remote framebuffer pixel coordinates. */
@@ -241,6 +307,7 @@ export function useVncSurface(options: {
   const buttonMaskRef = useRef(0);
   const pendingPointerRef = useRef<{ x: number; y: number; buttonMask: number } | null>(null);
   const pointerRafRef = useRef<number | null>(null);
+  const frameChainRef = useRef(Promise.resolve());
   const viewModeRef = useRef(viewMode);
   viewModeRef.current = viewMode;
 
@@ -261,15 +328,20 @@ export function useVncSurface(options: {
           resizeVncCanvas(canvas, payload.width, payload.height);
         }
         setHasDisplay(true);
-      } else if (payload.kind === "rawImage") {
-        if (canvas) {
-          paintVncRawImage(canvas, payload);
-        }
-        setHasDisplay(true);
-      } else if (payload.kind === "copy") {
-        if (canvas) {
-          paintVncCopy(canvas, payload);
-        }
+      } else if (payload.kind === "frameAvailable") {
+        frameChainRef.current = frameChainRef.current
+          .then(async () => {
+            const target = canvasRef.current;
+            if (!disposed && target) {
+              await fetchAndPaintVncFrame(target, payload);
+              setHasDisplay(true);
+            } else {
+              await invokeCommand("acknowledge_vnc_frame", {
+                request: { sessionId: payload.sessionId, frameId: payload.frameId },
+              }).catch(() => undefined);
+            }
+          })
+          .catch((error) => onError?.(error instanceof Error ? error.message : String(error)));
       } else if (payload.kind === "setCursor") {
         if (canvas) {
           paintVncCursor(canvas, payload);
@@ -301,7 +373,9 @@ export function useVncSurface(options: {
       return;
     }
     pendingPointerRef.current = null;
-    void invokeCommand("send_vnc_pointer_event", { request: { sessionId, ...pending } }).catch(
+    void invokeCommand("send_vnc_pointer_event", {
+      request: { sessionId, ...pending, coalescible: true },
+    }).catch(
       (error) => onError?.(error instanceof Error ? error.message : String(error)),
     );
   };
@@ -322,7 +396,13 @@ export function useVncSurface(options: {
         window.cancelAnimationFrame(pointerRafRef.current);
         pointerRafRef.current = null;
       }
-      flushPointer();
+      const pending = pendingPointerRef.current;
+      if (pending) {
+        pendingPointerRef.current = null;
+        void invokeCommand("send_vnc_pointer_event", {
+          request: { sessionId, ...pending, coalescible: false },
+        }).catch((error) => onError?.(error instanceof Error ? error.message : String(error)));
+      }
       return;
     }
     if (pointerRafRef.current === null) {

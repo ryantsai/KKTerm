@@ -1016,6 +1016,14 @@ pub struct VncSettings {
     color_level: String,
     #[serde(default = "default_vnc_preferred_encoding")]
     preferred_encoding: String,
+    #[serde(default = "default_vnc_performance_preset")]
+    performance_preset: String,
+    #[serde(default = "default_vnc_compression_level")]
+    compression_level: u8,
+    #[serde(default = "default_vnc_jpeg_quality")]
+    jpeg_quality: u8,
+    #[serde(default = "default_remote_desktop_true")]
+    jpeg_enabled: bool,
     #[serde(default = "default_remote_desktop_view_mode")]
     view_mode: String,
 }
@@ -1792,6 +1800,14 @@ pub struct VncConnectionOptions {
     color_level: Option<String>,
     #[serde(default)]
     preferred_encoding: Option<String>,
+    #[serde(default)]
+    performance_preset: Option<String>,
+    #[serde(default)]
+    compression_level: Option<u8>,
+    #[serde(default)]
+    jpeg_quality: Option<u8>,
+    #[serde(default)]
+    jpeg_enabled: Option<bool>,
     #[serde(default)]
     view_mode: Option<String>,
 }
@@ -5248,6 +5264,10 @@ fn normalize_vnc_connection_options(
             view_only: None,
             color_level: None,
             preferred_encoding: None,
+            performance_preset: None,
+            compression_level: None,
+            jpeg_quality: None,
+            jpeg_enabled: None,
             view_mode: None,
         }));
     }
@@ -5256,6 +5276,15 @@ fn normalize_vnc_connection_options(
     }
     if let Some(encoding) = options.preferred_encoding {
         options.preferred_encoding = Some(validate_vnc_preferred_encoding(encoding)?);
+    }
+    if let Some(preset) = options.performance_preset {
+        options.performance_preset = Some(validate_vnc_performance_preset(preset)?);
+    }
+    if let Some(level) = options.compression_level {
+        options.compression_level = Some(validate_vnc_tuning_level("compression", level)?);
+    }
+    if let Some(quality) = options.jpeg_quality {
+        options.jpeg_quality = Some(validate_vnc_tuning_level("JPEG quality", quality)?);
     }
     if let Some(view_mode) = options.view_mode {
         options.view_mode = Some(validate_remote_desktop_view_mode(view_mode)?);
@@ -5834,6 +5863,10 @@ fn default_vnc_settings() -> VncSettings {
         view_only: false,
         color_level: default_vnc_color_level(),
         preferred_encoding: default_vnc_preferred_encoding(),
+        performance_preset: default_vnc_performance_preset(),
+        compression_level: default_vnc_compression_level(),
+        jpeg_quality: default_vnc_jpeg_quality(),
+        jpeg_enabled: true,
         view_mode: default_remote_desktop_view_mode(),
     }
 }
@@ -5844,6 +5877,18 @@ fn default_vnc_color_level() -> String {
 
 fn default_vnc_preferred_encoding() -> String {
     "tight".to_string()
+}
+
+fn default_vnc_performance_preset() -> String {
+    "auto".to_string()
+}
+
+fn default_vnc_compression_level() -> u8 {
+    2
+}
+
+fn default_vnc_jpeg_quality() -> u8 {
+    7
 }
 
 fn default_screenshot_settings() -> ScreenshotSettings {
@@ -6775,6 +6820,11 @@ fn validate_remote_desktop_view_mode(value: String) -> Result<String, String> {
 fn validate_vnc_settings(mut settings: VncSettings) -> Result<VncSettings, String> {
     settings.color_level = validate_vnc_color_level(settings.color_level)?;
     settings.preferred_encoding = validate_vnc_preferred_encoding(settings.preferred_encoding)?;
+    settings.performance_preset =
+        validate_vnc_performance_preset(settings.performance_preset)?;
+    settings.compression_level =
+        validate_vnc_tuning_level("compression", settings.compression_level)?;
+    settings.jpeg_quality = validate_vnc_tuning_level("JPEG quality", settings.jpeg_quality)?;
     settings.view_mode = validate_remote_desktop_view_mode(settings.view_mode)?;
     Ok(settings)
 }
@@ -6804,6 +6854,29 @@ fn validate_vnc_preferred_encoding(value: String) -> Result<String, String> {
     match value.trim().to_lowercase().as_str() {
         "tight" | "zrle" | "raw" => Ok(value.trim().to_lowercase()),
         _ => Err("VNC preferred encoding must be tight, zrle, or raw".to_string()),
+    }
+}
+
+fn validate_vnc_performance_preset(value: String) -> Result<String, String> {
+    match value.trim().to_lowercase().as_str() {
+        "auto" => Ok("auto".to_string()),
+        "lan" => Ok("lan".to_string()),
+        "balanced" => Ok("balanced".to_string()),
+        "lowbandwidth" => Ok("lowBandwidth".to_string()),
+        "lossless" => Ok("lossless".to_string()),
+        "custom" => Ok("custom".to_string()),
+        _ => Err(
+            "VNC performance preset must be auto, lan, balanced, lowBandwidth, lossless, or custom"
+                .to_string(),
+        ),
+    }
+}
+
+fn validate_vnc_tuning_level(label: &str, value: u8) -> Result<u8, String> {
+    if value <= 9 {
+        Ok(value)
+    } else {
+        Err(format!("VNC {label} level must be between 0 and 9"))
     }
 }
 

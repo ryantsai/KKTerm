@@ -47,7 +47,8 @@ import {
 import { RdpCanvasView } from "./RdpCanvasView";
 import { scancodeForCode } from "./rdpScancodes";
 import {
-  decodeBase64Bytes,
+  fetchAndPaintVncFrame,
+  paintVncCursor,
   pointerButtonMask,
   vncKeysymForEvent,
   vncRenderedContentRect,
@@ -111,6 +112,7 @@ export function RemoteDesktopWorkspace({
   const vncButtonMaskRef = useRef(0);
   const vncPendingPointerRef = useRef<{ x: number; y: number; buttonMask: number } | null>(null);
   const vncPointerRafRef = useRef<number | null>(null);
+  const vncFrameChainRef = useRef(Promise.resolve());
   const visibilityRef = useRef({ isActive, suppressed: false });
   const markConnectionSessionStarted = useWorkspaceStore(
     (state) => state.markConnectionSessionStarted,
@@ -1453,17 +1455,27 @@ export function RemoteDesktopWorkspace({
       setRdpStatus(t("remoteDesktop.connected"));
       return;
     }
-    if (event.kind === "rawImage") {
-      setVncHasDisplay(true);
-      drawVncImage(event);
-      return;
-    }
-    if (event.kind === "copy") {
-      copyVncImage(event);
+    if (event.kind === "frameAvailable") {
+      const canvas = canvasRef.current;
+      if (!canvas) {
+        void invokeCommand("acknowledge_vnc_frame", {
+          request: { sessionId: event.sessionId, frameId: event.frameId },
+        });
+        return;
+      }
+      vncFrameChainRef.current = vncFrameChainRef.current
+        .then(() => fetchAndPaintVncFrame(canvas, event))
+        .then(() => setVncHasDisplay(true))
+        .catch((error) => {
+          reportRemoteDesktopError(error instanceof Error ? error.message : String(error));
+        });
       return;
     }
     if (event.kind === "setCursor") {
-      applyVncCursor(event);
+      const canvas = canvasRef.current;
+      if (canvas) {
+        paintVncCursor(canvas, event);
+      }
       return;
     }
     if (event.kind === "error") {
@@ -1487,58 +1499,6 @@ export function RemoteDesktopWorkspace({
     }
   };
 
-  const drawVncImage = (event: Extract<VncSessionEvent, { kind: "rawImage" }>) => {
-    const canvas = canvasRef.current;
-    const context = canvas?.getContext("2d");
-    if (!canvas || !context) {
-      return;
-    }
-    if (canvas.width < event.x + event.width || canvas.height < event.y + event.height) {
-      resizeVncCanvas(
-        Math.max(canvas.width, event.x + event.width),
-        Math.max(canvas.height, event.y + event.height),
-      );
-    }
-    const imageData = new ImageData(
-      new Uint8ClampedArray(decodeBase64Bytes(event.rgba)),
-      event.width,
-      event.height,
-    );
-    context.putImageData(imageData, event.x, event.y);
-  };
-
-  const applyVncCursor = (event: Extract<VncSessionEvent, { kind: "setCursor" }>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) {
-      return;
-    }
-    if (event.width === 0 || event.height === 0) {
-      canvas.style.cursor = "none";
-      return;
-    }
-    const offscreen = document.createElement("canvas");
-    offscreen.width = event.width;
-    offscreen.height = event.height;
-    const ctx = offscreen.getContext("2d");
-    if (!ctx) {
-      return;
-    }
-    const bytes = decodeBase64Bytes(event.rgba);
-    ctx.putImageData(new ImageData(new Uint8ClampedArray(bytes), event.width, event.height), 0, 0);
-    const dataUrl = offscreen.toDataURL("image/png");
-    canvas.style.cursor = `url("${dataUrl}") ${event.hotX} ${event.hotY}, default`;
-  };
-
-  const copyVncImage = (event: Extract<VncSessionEvent, { kind: "copy" }>) => {
-    const canvas = canvasRef.current;
-    const context = canvas?.getContext("2d");
-    if (!canvas || !context || event.width <= 0 || event.height <= 0) {
-      return;
-    }
-    const imageData = context.getImageData(event.sourceX, event.sourceY, event.width, event.height);
-    context.putImageData(imageData, event.x, event.y);
-  };
-
   const vncPointForEvent = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) {
@@ -1560,7 +1520,7 @@ export function RemoteDesktopWorkspace({
     };
   };
 
-  const flushVncPointer = () => {
+  const flushVncPointer = (coalescible = true) => {
     vncPointerRafRef.current = null;
     const pending = vncPendingPointerRef.current;
     const sessionId = sessionIdRef.current;
@@ -1569,7 +1529,7 @@ export function RemoteDesktopWorkspace({
     }
     vncPendingPointerRef.current = null;
     void invokeCommand("send_vnc_pointer_event", {
-      request: { sessionId, ...pending },
+      request: { sessionId, ...pending, coalescible },
     }).catch((error) => {
       reportRemoteDesktopError(error instanceof Error ? error.message : String(error));
     });
@@ -1591,11 +1551,11 @@ export function RemoteDesktopWorkspace({
         window.cancelAnimationFrame(vncPointerRafRef.current);
         vncPointerRafRef.current = null;
       }
-      flushVncPointer();
+      flushVncPointer(false);
       return;
     }
     if (vncPointerRafRef.current === null) {
-      vncPointerRafRef.current = window.requestAnimationFrame(flushVncPointer);
+      vncPointerRafRef.current = window.requestAnimationFrame(() => flushVncPointer());
     }
   };
 
@@ -1963,6 +1923,10 @@ function resolveVncOptions(
     viewOnly: overrides.viewOnly ?? defaults.viewOnly,
     colorLevel: overrides.colorLevel ?? defaults.colorLevel,
     preferredEncoding: overrides.preferredEncoding ?? defaults.preferredEncoding,
+    performancePreset: overrides.performancePreset ?? defaults.performancePreset,
+    compressionLevel: overrides.compressionLevel ?? defaults.compressionLevel,
+    jpegQuality: overrides.jpegQuality ?? defaults.jpegQuality,
+    jpegEnabled: overrides.jpegEnabled ?? defaults.jpegEnabled,
     viewMode: overrides.viewMode ?? defaults.viewMode,
   };
 }

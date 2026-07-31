@@ -19,5 +19,11 @@ Vendored from crates.io 0.5.3. Divergence from upstream:
    them to a meaningless u8 id.
 8. `src/client/connector.rs` — the no-matching-security-type error now lists
    the types the server offered.
+9. `src/client/connector.rs` / `src/client/messages.rs` — SetEncodings stores
+   signed RFB encoding ids so Tight compression-level and JPEG-quality pseudo
+   encodings can be advertised.
+10. `src/client/connection.rs` / `src/event.rs` — framebuffer updates emit one
+    completion event with wire-byte, decode-time, and per-encoding counters;
+    the transport reader counts bytes without copying framebuffer payloads.
 
 To upgrade: re-apply these changes onto the new upstream version, or upstream type-30 support and drop the vendor copy.

@@ -3979,6 +3979,10 @@ fn rdp_and_vnc_settings_round_trip_through_settings_table() {
             view_only: true,
             color_level: "256".to_string(),
             preferred_encoding: "raw".to_string(),
+            performance_preset: "custom".to_string(),
+            compression_level: 5,
+            jpeg_quality: 4,
+            jpeg_enabled: false,
             view_mode: "fitWidth".to_string(),
         })
         .expect("VNC settings update");
@@ -3988,6 +3992,10 @@ fn rdp_and_vnc_settings_round_trip_through_settings_table() {
     assert!(vnc_reloaded.view_only);
     assert_eq!(vnc_reloaded.color_level, "256");
     assert_eq!(vnc_reloaded.preferred_encoding, "raw");
+    assert_eq!(vnc_reloaded.performance_preset, "custom");
+    assert_eq!(vnc_reloaded.compression_level, 5);
+    assert_eq!(vnc_reloaded.jpeg_quality, 4);
+    assert!(!vnc_reloaded.jpeg_enabled);
     assert_eq!(vnc_reloaded.view_mode, "fitWidth");
 }
 
@@ -4124,6 +4132,10 @@ fn remote_desktop_connection_options_are_optional_protocol_overrides() {
                 view_only: Some(true),
                 color_level: Some("256".to_string()),
                 preferred_encoding: Some("raw".to_string()),
+                performance_preset: Some("custom".to_string()),
+                compression_level: Some(5),
+                jpeg_quality: Some(4),
+                jpeg_enabled: Some(false),
                 view_mode: Some("fitWidth".to_string()),
             }),
             ftp_options: None,
@@ -4185,6 +4197,10 @@ fn remote_desktop_connection_options_are_optional_protocol_overrides() {
                 view_only: Some(true),
                 color_level: Some("256".to_string()),
                 preferred_encoding: Some("raw".to_string()),
+                performance_preset: Some("custom".to_string()),
+                compression_level: Some(5),
+                jpeg_quality: Some(4),
+                jpeg_enabled: Some(false),
                 view_mode: Some("fitWidth".to_string()),
             }),
             ftp_options: None,
@@ -4196,7 +4212,11 @@ fn remote_desktop_connection_options_are_optional_protocol_overrides() {
 
     assert_eq!(vnc.connection_type, "vnc");
     assert!(vnc.rdp_options.is_none());
-    assert!(vnc.vnc_options.is_some());
+    let vnc_options = vnc.vnc_options.expect("VNC options persist");
+    assert_eq!(vnc_options.performance_preset.as_deref(), Some("custom"));
+    assert_eq!(vnc_options.compression_level, Some(5));
+    assert_eq!(vnc_options.jpeg_quality, Some(4));
+    assert_eq!(vnc_options.jpeg_enabled, Some(false));
 
     let tree = storage.list_connection_tree().expect("tree reloads");
     let saved_rdp = tree
