@@ -184,12 +184,13 @@ export function VncConnectionOptions({
                 min="0"
                 max="9"
                 value={displayedTuning.compressionLevel}
-                onChange={(event) =>
+                onChange={(event) => {
+                  const compressionLevel = Number(event.currentTarget.value);
                   setCustomTuning((current) => ({
                     ...current,
-                    compressionLevel: Number(event.currentTarget.value),
-                  }))
-                }
+                    compressionLevel,
+                  }));
+                }}
               />
               {customTuningDisabled ? (
                 <input name="vncCompressionLevel" type="hidden" value={displayedTuning.compressionLevel} />
@@ -205,12 +206,13 @@ export function VncConnectionOptions({
                 min="0"
                 max="9"
                 value={displayedTuning.jpegQuality}
-                onChange={(event) =>
+                onChange={(event) => {
+                  const jpegQuality = Number(event.currentTarget.value);
                   setCustomTuning((current) => ({
                     ...current,
-                    jpegQuality: Number(event.currentTarget.value),
-                  }))
-                }
+                    jpegQuality,
+                  }));
+                }}
               />
               {customTuningDisabled || !displayedTuning.jpegEnabled ? (
                 <input name="vncJpegQuality" type="hidden" value={displayedTuning.jpegQuality} />
@@ -223,12 +225,13 @@ export function VncConnectionOptions({
                 disabled={customTuningDisabled}
                 name="vncPreferredEncoding"
                 value={displayedTuning.preferredEncoding}
-                onChange={(event) =>
+                onChange={(event) => {
+                  const preferredEncoding = event.currentTarget.value as VncPerformanceTuning["preferredEncoding"];
                   setCustomTuning((current) => ({
                     ...current,
-                    preferredEncoding: event.currentTarget.value as VncPerformanceTuning["preferredEncoding"],
-                  }))
-                }
+                    preferredEncoding,
+                  }));
+                }}
               >
                 <option value="tight">{t("settings.vncEncodingTight")}</option>
                 <option value="zrle">{t("settings.vncEncodingZrle")}</option>
@@ -245,12 +248,13 @@ export function VncConnectionOptions({
                 disabled={customTuningDisabled}
                 name="vncColorLevel"
                 value={displayedTuning.colorLevel}
-                onChange={(event) =>
+                onChange={(event) => {
+                  const colorLevel = event.currentTarget.value as VncPerformanceTuning["colorLevel"];
                   setCustomTuning((current) => ({
                     ...current,
-                    colorLevel: event.currentTarget.value as VncPerformanceTuning["colorLevel"],
-                  }))
-                }
+                    colorLevel,
+                  }));
+                }}
               >
                 <option value="full">{t("settings.vncColorFull")}</option>
                 <option value="256">{t("settings.vncColor256")}</option>
@@ -271,9 +275,10 @@ export function VncConnectionOptions({
                 name="vncJpegEnabled"
                 type="checkbox"
                 checked={displayedTuning.jpegEnabled}
-                onChange={(event) =>
-                  setCustomTuning((current) => ({ ...current, jpegEnabled: event.currentTarget.checked }))
-                }
+                onChange={(event) => {
+                  const jpegEnabled = event.currentTarget.checked;
+                  setCustomTuning((current) => ({ ...current, jpegEnabled }));
+                }}
               />
               {customTuningDisabled && displayedTuning.jpegEnabled ? (
                 <input name="vncJpegEnabled" type="hidden" value="on" />
