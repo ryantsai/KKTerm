@@ -15,7 +15,7 @@ import type {
 } from "react";
 import { invokeCommand, isTauriRuntime, logUiDebug } from "../../../../lib/tauri";
 import type { RemoteDesktopViewMode } from "../../../../types";
-import { parseVncFrameBatch, type VncFrameOperation } from "./vncFrame";
+import { isCurrentVncFrame, parseVncFrameBatch, type VncFrameOperation } from "./vncFrame";
 
 export type VncSessionEvent =
   | { kind: "connected"; sessionId: string; name: string }
@@ -181,6 +181,7 @@ function nextAnimationFrame() {
 export async function fetchAndPaintVncFrame(
   canvas: HTMLCanvasElement,
   event: Extract<VncSessionEvent, { kind: "frameAvailable" }>,
+  shouldPaint: () => boolean = () => true,
 ) {
   const noticedAt = performance.now();
   let fetchedAt: number;
@@ -195,6 +196,14 @@ export async function fetchAndPaintVncFrame(
     const operations = await Promise.all(batch.operations.map(prepareVncOperation));
     preparedAt = performance.now();
     await nextAnimationFrame();
+    if (!shouldPaint()) {
+      for (const operation of operations) {
+        if (operation.kind === "jpeg") {
+          operation.bitmap.close();
+        }
+      }
+      return false;
+    }
     const context = canvas.getContext("2d");
     if (!context) {
       throw new Error("VNC canvas is unavailable.");
@@ -255,6 +264,7 @@ export async function fetchAndPaintVncFrame(
         noticeToPaint: paintedAt - noticedAt,
       },
     });
+    return true;
   } finally {
     await invokeCommand("acknowledge_vnc_frame", {
       request: { sessionId: event.sessionId, frameId: event.frameId },
@@ -308,6 +318,7 @@ export function useVncSurface(options: {
   const pendingPointerRef = useRef<{ x: number; y: number; buttonMask: number } | null>(null);
   const pointerRafRef = useRef<number | null>(null);
   const frameChainRef = useRef(Promise.resolve());
+  const frameGenerationRef = useRef(0);
   const viewModeRef = useRef(viewMode);
   viewModeRef.current = viewMode;
 
@@ -317,6 +328,7 @@ export function useVncSurface(options: {
     }
     let disposed = false;
     let dispose: (() => void) | undefined;
+    const frameGeneration = ++frameGenerationRef.current;
     void listen<VncSessionEvent>("vnc-session-event", (event) => {
       if (disposed || event.payload.sessionId !== sessionId) {
         return;
@@ -333,8 +345,18 @@ export function useVncSurface(options: {
           .then(async () => {
             const target = canvasRef.current;
             if (!disposed && target) {
-              await fetchAndPaintVncFrame(target, payload);
-              setHasDisplay(true);
+              const painted = await fetchAndPaintVncFrame(target, payload, () =>
+                isCurrentVncFrame(
+                  !disposed,
+                  sessionId,
+                  payload.sessionId,
+                  frameGenerationRef.current,
+                  frameGeneration,
+                ),
+              );
+              if (painted) {
+                setHasDisplay(true);
+              }
             } else {
               await invokeCommand("acknowledge_vnc_frame", {
                 request: { sessionId: payload.sessionId, frameId: payload.frameId },
@@ -349,6 +371,11 @@ export function useVncSurface(options: {
       } else if (payload.kind === "error") {
         onError?.(payload.message);
       } else if (payload.kind === "disconnected") {
+        frameGenerationRef.current += 1;
+        if (canvas) {
+          canvas.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        setHasDisplay(false);
         onDisconnected?.();
       }
     }).then((unlisten) => {
@@ -362,6 +389,7 @@ export function useVncSurface(options: {
     });
     return () => {
       disposed = true;
+      frameGenerationRef.current += 1;
       dispose?.();
     };
   }, [enabled, sessionId, canvasRef, onError, onDisconnected]);

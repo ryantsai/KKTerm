@@ -96,9 +96,13 @@ Per-kind defaults (resolution, view mode, colour depth, etc.) live in Settings â
 
 ### VNC performance presets
 
-`settings.vncPerformancePreset` is available globally and per Connection. `settings.vncPresetAuto` is the default and lets the Tight-capable server choose its compression and JPEG trade-off. `settings.vncPresetLan`, `settings.vncPresetBalanced`, and `settings.vncPresetLowBandwidth` apply progressively stronger bandwidth reduction. `settings.vncPresetLossless` selects ZRLE and disables lossy JPEG rectangles. `settings.vncPresetCustom` exposes the preferred encoding, color level, `settings.vncCompressionLevel` (0 fastest, 9 smallest), `settings.vncJpegQuality` (0 smallest, 9 most detail), and `settings.vncJpegEnabled`.
+`settings.vncPerformancePreset` is available globally and per Connection. `settings.vncPresetAuto` is the default and lets the Tight-capable server choose its compression and JPEG trade-off. `settings.vncPresetLan`, `settings.vncPresetBalanced`, and `settings.vncPresetLowBandwidth` apply progressively stronger bandwidth reduction. `settings.vncPresetLossless` selects ZRLE and disables lossy JPEG rectangles. Both Settings and per-Connection options always show preferred encoding, color level, compression, JPEG quality, and JPEG enablement. A fixed preset updates those controls to its effective values and locks them; `settings.vncPresetCustom` unlocks them and restores the user's Custom values. Custom exposes `settings.vncCompressionLevel` (0 fastest, 9 smallest), `settings.vncJpegQuality` (0 smallest, 9 most detail), and `settings.vncJpegEnabled` alongside the encoding and color controls.
+
+Preset negotiation and framebuffer decoding use the same Rust VNC transport when KKTerm runs on Windows, macOS, or Linux, including macOS Screen Sharing Connections authenticated with an Apple account username. Apple's separate High Performance Screen Sharing mode is not standard RFB/VNC and is not enabled by JPEG or compression-level presets.
 
 Framebuffer updates are requested one at a time and acknowledged only after the canvas paints them. One update crosses the app boundary as one bounded binary batch containing raw pixels, compressed JPEG rectangles, and CopyRect operations; pointer motion is coalesced to its latest position while clicks and wheel transitions stay ordered. With Advanced Debugging enabled, `vnc.frame` entries in `ui.debug.log` report non-secret frame size, encoding counts, wire bytes, backend decode/bridge timing, frontend binary fetch/JPEG decode/paint timing, and end-to-end notice-to-paint time.
+
+When the VNC server disconnects, the Pane and detached full-screen surface immediately hide and clear the last framebuffer, discard any pending paint, and show the disconnected state. A stale shutdown or lock-screen frame is not retained as though the Session were still live.
 
 ### RDP administrative sessions and local resources
 

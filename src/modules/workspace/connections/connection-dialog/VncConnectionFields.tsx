@@ -1,7 +1,18 @@
 import { Binary, Eye, Palette, Scaling, Settings2, Users } from "../../../../lib/reicon";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { technicalInputProps } from "../../../../lib/inputBehavior";
-import type { Connection, SshSettings, StoredCredentialSummary, VncSettings } from "../../../../types";
+import {
+  resolveVncPerformanceTuning,
+  type VncPerformanceTuning,
+} from "../../../../lib/vncPerformance";
+import type {
+  Connection,
+  SshSettings,
+  StoredCredentialSummary,
+  VncPerformancePreset,
+  VncSettings,
+} from "../../../../types";
 import { defaultPortForConnectionType } from "../utils";
 import { PasswordCredentialModeFields } from "./ConnectionPasswordFields";
 
@@ -98,6 +109,23 @@ export function VncConnectionOptions({
   vncSettings: VncSettings;
 }) {
   const { t } = useTranslation();
+  const initialVncOptions = initialConnection?.vncOptions;
+  const [performancePreset, setPerformancePreset] = useState(
+    initialVncOptions?.performancePreset ?? vncSettings.performancePreset,
+  );
+  const [customTuning, setCustomTuning] = useState<VncPerformanceTuning>({
+    preferredEncoding: initialVncOptions?.preferredEncoding ?? vncSettings.preferredEncoding,
+    colorLevel: initialVncOptions?.colorLevel ?? vncSettings.colorLevel,
+    compressionLevel: initialVncOptions?.compressionLevel ?? vncSettings.compressionLevel,
+    jpegQuality: initialVncOptions?.jpegQuality ?? vncSettings.jpegQuality,
+    jpegEnabled: initialVncOptions?.jpegEnabled ?? vncSettings.jpegEnabled,
+  });
+  const selectedPreset = vncInheritsSettingsDefaults ? vncSettings.performancePreset : performancePreset;
+  const displayedTuning = resolveVncPerformanceTuning(
+    selectedPreset,
+    vncInheritsSettingsDefaults ? vncSettings : customTuning,
+  );
+  const customTuningDisabled = vncInheritsSettingsDefaults || selectedPreset !== "custom";
 
   return (
       <fieldset className="connection-session-fields connection-specific-options">
@@ -120,7 +148,8 @@ export function VncConnectionOptions({
               <select
                 disabled={vncInheritsSettingsDefaults}
                 name="vncPerformancePreset"
-                defaultValue={initialConnection?.vncOptions?.performancePreset ?? vncSettings.performancePreset}
+                value={selectedPreset}
+                onChange={(event) => setPerformancePreset(event.currentTarget.value as VncPerformancePreset)}
               >
                 <option value="auto">{t("settings.vncPresetAuto")}</option>
                 <option value="lan">{t("settings.vncPresetLan")}</option>
@@ -149,52 +178,88 @@ export function VncConnectionOptions({
               <Binary className="option-glyph" size={17} aria-hidden />
               <span>{t("settings.vncCompressionLevel")}</span>
               <input
-                disabled={vncInheritsSettingsDefaults}
+                disabled={customTuningDisabled}
                 name="vncCompressionLevel"
                 type="number"
                 min="0"
                 max="9"
-                defaultValue={initialConnection?.vncOptions?.compressionLevel ?? vncSettings.compressionLevel}
+                value={displayedTuning.compressionLevel}
+                onChange={(event) =>
+                  setCustomTuning((current) => ({
+                    ...current,
+                    compressionLevel: Number(event.currentTarget.value),
+                  }))
+                }
               />
+              {customTuningDisabled ? (
+                <input name="vncCompressionLevel" type="hidden" value={displayedTuning.compressionLevel} />
+              ) : null}
             </label>
             <label>
               <Binary className="option-glyph" size={17} aria-hidden />
               <span>{t("settings.vncJpegQuality")}</span>
               <input
-                disabled={vncInheritsSettingsDefaults}
+                disabled={customTuningDisabled || !displayedTuning.jpegEnabled}
                 name="vncJpegQuality"
                 type="number"
                 min="0"
                 max="9"
-                defaultValue={initialConnection?.vncOptions?.jpegQuality ?? vncSettings.jpegQuality}
+                value={displayedTuning.jpegQuality}
+                onChange={(event) =>
+                  setCustomTuning((current) => ({
+                    ...current,
+                    jpegQuality: Number(event.currentTarget.value),
+                  }))
+                }
               />
+              {customTuningDisabled || !displayedTuning.jpegEnabled ? (
+                <input name="vncJpegQuality" type="hidden" value={displayedTuning.jpegQuality} />
+              ) : null}
             </label>
             <label>
               <Binary className="option-glyph" size={17} aria-hidden />
               <span>{t("settings.preferredEncoding")}</span>
               <select
-                disabled={vncInheritsSettingsDefaults}
+                disabled={customTuningDisabled}
                 name="vncPreferredEncoding"
-                defaultValue={initialConnection?.vncOptions?.preferredEncoding ?? vncSettings.preferredEncoding}
+                value={displayedTuning.preferredEncoding}
+                onChange={(event) =>
+                  setCustomTuning((current) => ({
+                    ...current,
+                    preferredEncoding: event.currentTarget.value as VncPerformanceTuning["preferredEncoding"],
+                  }))
+                }
               >
                 <option value="tight">{t("settings.vncEncodingTight")}</option>
                 <option value="zrle">{t("settings.vncEncodingZrle")}</option>
                 <option value="raw">{t("settings.vncEncodingRaw")}</option>
               </select>
+              {customTuningDisabled ? (
+                <input name="vncPreferredEncoding" type="hidden" value={displayedTuning.preferredEncoding} />
+              ) : null}
             </label>
             <label>
               <Palette className="option-glyph" size={17} aria-hidden />
               <span>{t("settings.colorLevel")}</span>
               <select
-                disabled={vncInheritsSettingsDefaults}
+                disabled={customTuningDisabled}
                 name="vncColorLevel"
-                defaultValue={initialConnection?.vncOptions?.colorLevel ?? vncSettings.colorLevel}
+                value={displayedTuning.colorLevel}
+                onChange={(event) =>
+                  setCustomTuning((current) => ({
+                    ...current,
+                    colorLevel: event.currentTarget.value as VncPerformanceTuning["colorLevel"],
+                  }))
+                }
               >
                 <option value="full">{t("settings.vncColorFull")}</option>
                 <option value="256">{t("settings.vncColor256")}</option>
                 <option value="64">{t("settings.vncColor64")}</option>
                 <option value="8">{t("settings.vncColor8")}</option>
               </select>
+              {customTuningDisabled ? (
+                <input name="vncColorLevel" type="hidden" value={displayedTuning.colorLevel} />
+              ) : null}
             </label>
           </div>
           <div className="connection-session-fields">
@@ -202,11 +267,17 @@ export function VncConnectionOptions({
               <Binary className="option-glyph" size={17} aria-hidden />
               <span>{t("settings.vncJpegEnabled")}</span>
               <input
-                disabled={vncInheritsSettingsDefaults}
+                disabled={customTuningDisabled}
                 name="vncJpegEnabled"
                 type="checkbox"
-                defaultChecked={initialConnection?.vncOptions?.jpegEnabled ?? vncSettings.jpegEnabled}
+                checked={displayedTuning.jpegEnabled}
+                onChange={(event) =>
+                  setCustomTuning((current) => ({ ...current, jpegEnabled: event.currentTarget.checked }))
+                }
               />
+              {customTuningDisabled && displayedTuning.jpegEnabled ? (
+                <input name="vncJpegEnabled" type="hidden" value="on" />
+              ) : null}
             </label>
             <label className="connection-session-toggle">
               <Users className="option-glyph" size={17} aria-hidden />

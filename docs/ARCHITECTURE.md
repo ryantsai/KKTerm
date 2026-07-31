@@ -66,7 +66,7 @@ AI Assistant context is also a command-boundary concern. Any frontend page conte
 - `src/modules/settings/UrlSettings.tsx` — URL Connection security, global data shard and user-agent defaults, saved website password/input-data placement, and URL data shard management. The proxy default moved to Settings → Proxy; per-Connection URL proxy overrides still win over the global value.
 - `src/modules/settings/UrlCredentialManager.tsx` — shared saved website data rows, selector/value editor dialog, and delete confirmation used by both URL and Credentials Settings. The editor reads only the selected URL password through `read_url_credential_password`; non-password fields remain in SQLite, and their persisted `masked` flag is presentation metadata only. Keep both Settings surfaces on this shared component so their controls and secret/non-secret boundaries remain identical.
 - `src/modules/settings/RdpSettings.tsx` — Planned RDP quality defaults summary.
-- `src/modules/settings/VncSettings.tsx` — VNC performance presets, custom Tight compression/JPEG controls, color level, display, and input defaults.
+- `src/modules/settings/VncSettings.tsx` — VNC performance presets with always-visible effective encoding/compression/JPEG controls that unlock for Custom, plus color level, display, and input defaults.
 - `src/modules/settings/AboutSettings.tsx` — Product info, version, open-source component tables.
 - `src/modules/settings/shared.tsx` — Reusable `SettingsSummary` and `PlannedSettingsGrid` components.
 - `src/modules/settings/aboutData.ts` — Static product metadata and open-source component groups.

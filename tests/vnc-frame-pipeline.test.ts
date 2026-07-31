@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  isCurrentVncFrame,
   parseVncFrameBatch,
   VNC_FRAME_HEADER_BYTES,
   VNC_FRAME_RECT_HEADER_BYTES,
@@ -67,3 +68,9 @@ test("VNC binary frame batches reject truncated pixel data", () => {
   assert.throws(() => parseVncFrameBatch(Uint8Array.from(bytes)), /truncated/i);
 });
 
+test("VNC frames cannot repaint after their Session disconnects or is replaced", () => {
+  assert.equal(isCurrentVncFrame(true, "vnc-1", "vnc-1", 4, 4), true);
+  assert.equal(isCurrentVncFrame(false, "vnc-1", "vnc-1", 4, 4), false);
+  assert.equal(isCurrentVncFrame(true, "vnc-2", "vnc-1", 4, 4), false);
+  assert.equal(isCurrentVncFrame(true, "vnc-1", "vnc-1", 5, 4), false);
+});

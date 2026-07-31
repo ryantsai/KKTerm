@@ -32,6 +32,20 @@ export type VncFrameBatch = {
   operations: VncFrameOperation[];
 };
 
+export function isCurrentVncFrame(
+  sessionActive: boolean,
+  activeSessionId: string | null,
+  frameSessionId: string,
+  activeGeneration: number,
+  frameGeneration: number,
+) {
+  return (
+    sessionActive &&
+    activeSessionId === frameSessionId &&
+    activeGeneration === frameGeneration
+  );
+}
+
 function asBytes(value: ArrayBuffer | Uint8Array) {
   return value instanceof Uint8Array ? value : new Uint8Array(value);
 }

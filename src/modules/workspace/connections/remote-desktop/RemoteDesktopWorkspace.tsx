@@ -54,6 +54,7 @@ import {
   vncRenderedContentRect,
   type VncSessionEvent,
 } from "./vncSurface";
+import { isCurrentVncFrame } from "./vncFrame";
 
 const RDP_ESTABLISHING_STATE = 2;
 const RDP_PRE_CAPTURE_INTERVAL_MS = 800;
@@ -113,6 +114,7 @@ export function RemoteDesktopWorkspace({
   const vncPendingPointerRef = useRef<{ x: number; y: number; buttonMask: number } | null>(null);
   const vncPointerRafRef = useRef<number | null>(null);
   const vncFrameChainRef = useRef(Promise.resolve());
+  const vncFrameGenerationRef = useRef(0);
   const visibilityRef = useRef({ isActive, suppressed: false });
   const markConnectionSessionStarted = useWorkspaceStore(
     (state) => state.markConnectionSessionStarted,
@@ -799,6 +801,7 @@ export function RemoteDesktopWorkspace({
   };
 
   const resetVncSessionRefs = () => {
+    vncFrameGenerationRef.current += 1;
     sessionStartedRef.current = false;
     sessionStartingRef.current = false;
     sessionIdRef.current = null;
@@ -1429,6 +1432,11 @@ export function RemoteDesktopWorkspace({
       })
         .then((status) => {
           if (!status.connected && sessionIdRef.current === status.sessionId) {
+            const hadStartedSession = sessionStartedRef.current;
+            resetVncSessionRefs();
+            if (hadStartedSession && connection) {
+              markConnectionSessionEnded(connection.id);
+            }
             setRdpStatus(t("remoteDesktop.disconnected"));
           }
         })
@@ -1463,9 +1471,24 @@ export function RemoteDesktopWorkspace({
         });
         return;
       }
+      const frameGeneration = vncFrameGenerationRef.current;
       vncFrameChainRef.current = vncFrameChainRef.current
-        .then(() => fetchAndPaintVncFrame(canvas, event))
-        .then(() => setVncHasDisplay(true))
+        .then(() =>
+          fetchAndPaintVncFrame(canvas, event, () =>
+            isCurrentVncFrame(
+              sessionStartedRef.current,
+              sessionIdRef.current,
+              event.sessionId,
+              vncFrameGenerationRef.current,
+              frameGeneration,
+            ),
+          ),
+        )
+        .then((painted) => {
+          if (painted) {
+            setVncHasDisplay(true);
+          }
+        })
         .catch((error) => {
           reportRemoteDesktopError(error instanceof Error ? error.message : String(error));
         });
@@ -1484,6 +1507,14 @@ export function RemoteDesktopWorkspace({
       return;
     }
     if (event.kind === "disconnected") {
+      const hadStartedSession = sessionStartedRef.current;
+      resetVncSessionRefs();
+      void invokeCommand("close_vnc_session", {
+        request: { sessionId: event.sessionId },
+      }).catch(() => undefined);
+      if (hadStartedSession && connection) {
+        markConnectionSessionEnded(connection.id);
+      }
       setRdpStatus(t("remoteDesktop.disconnected"));
     }
   };

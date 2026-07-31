@@ -2,6 +2,7 @@ import { Network } from "../../lib/reicon";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { invokeCommand, isTauriRuntime } from "../../lib/tauri";
+import { resolveVncPerformanceTuning } from "../../lib/vncPerformance";
 import { useWorkspaceStore } from "../../store";
 import type {
   RemoteDesktopViewMode,
@@ -18,7 +19,10 @@ export function VncSettings() {
   const setVncSettings = useWorkspaceStore((state) => state.setVncSettings);
   const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
   const [draft, setDraft] = useState(vncSettings);
-  const hasChanges = JSON.stringify(draft) !== JSON.stringify(vncSettings);
+  const displayedTuning = resolveVncPerformanceTuning(draft.performancePreset, draft);
+  const effectiveDraft = { ...draft, ...displayedTuning };
+  const tuningDisabled = draft.performancePreset !== "custom";
+  const hasChanges = JSON.stringify(effectiveDraft) !== JSON.stringify(vncSettings);
 
   useEffect(() => {
     setDraft(vncSettings);
@@ -27,8 +31,8 @@ export function VncSettings() {
   async function handleSave() {
     try {
       const saved = isTauriRuntime()
-        ? await invokeCommand("update_vnc_settings", { request: draft })
-        : draft;
+        ? await invokeCommand("update_vnc_settings", { request: effectiveDraft })
+        : effectiveDraft;
       setVncSettings(saved);
       setDraft(saved);
       showStatusBarNotice(t("settings.vncSettingsSaved"), { tone: "success" });
@@ -68,50 +72,15 @@ export function VncSettings() {
             <small className="field-hint">{t("settings.vncPerformancePresetHint")}</small>
           </label>
         </div>
-        {draft.performancePreset === "custom" ? (
         <div className="form-grid two-columns">
-          <label>
-            <span>{t("settings.preferredEncoding")}</span>
-            <select
-              value={draft.preferredEncoding}
-              onChange={(event) => {
-                const preferredEncoding = event.currentTarget.value as VncPreferredEncoding;
-                setDraft((settings) => ({
-                  ...settings,
-                  preferredEncoding,
-                }));
-              }}
-            >
-              <option value="tight">{t("settings.vncEncodingTight")}</option>
-              <option value="zrle">{t("settings.vncEncodingZrle")}</option>
-              <option value="raw">{t("settings.vncEncodingRaw")}</option>
-            </select>
-          </label>
-          <label data-tutorial-id="settings.vncColorLevel">
-            <span>{t("settings.colorLevel")}</span>
-            <select
-              value={draft.colorLevel}
-              onChange={(event) => {
-                const colorLevel = event.currentTarget.value as VncColorLevel;
-                setDraft((settings) => ({
-                  ...settings,
-                  colorLevel,
-                }));
-              }}
-            >
-              <option value="full">{t("settings.vncColorFull")}</option>
-              <option value="256">{t("settings.vncColor256")}</option>
-              <option value="64">{t("settings.vncColor64")}</option>
-              <option value="8">{t("settings.vncColor8")}</option>
-            </select>
-          </label>
           <label>
             <span>{t("settings.vncCompressionLevel")}</span>
             <input
+              disabled={tuningDisabled}
               type="number"
               min="0"
               max="9"
-              value={draft.compressionLevel}
+              value={displayedTuning.compressionLevel}
               onChange={(event) => {
                 const compressionLevel = Number(event.currentTarget.value);
                 setDraft((settings) => ({ ...settings, compressionLevel }));
@@ -122,34 +91,63 @@ export function VncSettings() {
           <label>
             <span>{t("settings.vncJpegQuality")}</span>
             <input
+              disabled={tuningDisabled || !displayedTuning.jpegEnabled}
               type="number"
               min="0"
               max="9"
-              value={draft.jpegQuality}
+              value={displayedTuning.jpegQuality}
               onChange={(event) => {
                 const jpegQuality = Number(event.currentTarget.value);
                 setDraft((settings) => ({ ...settings, jpegQuality }));
               }}
-              disabled={!draft.jpegEnabled}
             />
             <small className="field-hint">{t("settings.vncJpegQualityHint")}</small>
           </label>
+          <label>
+            <span>{t("settings.preferredEncoding")}</span>
+            <select
+              disabled={tuningDisabled}
+              value={displayedTuning.preferredEncoding}
+              onChange={(event) => {
+                const preferredEncoding = event.currentTarget.value as VncPreferredEncoding;
+                setDraft((settings) => ({ ...settings, preferredEncoding }));
+              }}
+            >
+              <option value="tight">{t("settings.vncEncodingTight")}</option>
+              <option value="zrle">{t("settings.vncEncodingZrle")}</option>
+              <option value="raw">{t("settings.vncEncodingRaw")}</option>
+            </select>
+          </label>
+          <label data-tutorial-id="settings.vncColorLevel">
+            <span>{t("settings.colorLevel")}</span>
+            <select
+              disabled={tuningDisabled}
+              value={displayedTuning.colorLevel}
+              onChange={(event) => {
+                const colorLevel = event.currentTarget.value as VncColorLevel;
+                setDraft((settings) => ({ ...settings, colorLevel }));
+              }}
+            >
+              <option value="full">{t("settings.vncColorFull")}</option>
+              <option value="256">{t("settings.vncColor256")}</option>
+              <option value="64">{t("settings.vncColor64")}</option>
+              <option value="8">{t("settings.vncColor8")}</option>
+            </select>
+          </label>
         </div>
-        ) : null}
-        {draft.performancePreset === "custom" ? (
-          <div className="settings-toggle-list">
-            <label className="settings-toggle-row">
-              <ToggleSwitch
-                checked={draft.jpegEnabled}
-                onChange={(checked) => setDraft((settings) => ({ ...settings, jpegEnabled: checked }))}
-              />
-              <span>
-                <strong>{t("settings.vncJpegEnabled")}</strong>
-                <small>{t("settings.vncJpegEnabledHint")}</small>
-              </span>
-            </label>
-          </div>
-        ) : null}
+        <div className="settings-toggle-list">
+          <label className="settings-toggle-row">
+            <ToggleSwitch
+              checked={displayedTuning.jpegEnabled}
+              disabled={tuningDisabled}
+              onChange={(checked) => setDraft((settings) => ({ ...settings, jpegEnabled: checked }))}
+            />
+            <span>
+              <strong>{t("settings.vncJpegEnabled")}</strong>
+              <small>{t("settings.vncJpegEnabledHint")}</small>
+            </span>
+          </label>
+        </div>
       </fieldset>
       <fieldset className="settings-subsection settings-fieldset">
         <legend>{t("settings.display")}</legend>
