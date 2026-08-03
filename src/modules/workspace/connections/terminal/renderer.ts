@@ -149,7 +149,6 @@ export function scheduleTerminalFontAtlasRefresh(reason = "unspecified") {
 
   fontAtlasRefreshScheduled = true;
   queueMicrotask(() => {
-    fontAtlasRefreshScheduled = false;
     const reasons = [...pendingFontAtlasRefreshReasons];
     pendingFontAtlasRefreshReasons.clear();
     const renderers = [...liveTerminalRenderers];
@@ -158,7 +157,12 @@ export function scheduleTerminalFontAtlasRefresh(reason = "unspecified") {
       rendererCount: renderers.length,
       renderers: renderers.map((renderer) => renderer.fontAtlasDiagnostic()),
     });
-    refreshTerminalFontAtlases(renderers);
+    void refreshTerminalFontAtlases(liveTerminalRenderers).finally(() => {
+      fontAtlasRefreshScheduled = false;
+      if (pendingFontAtlasRefreshReasons.size > 0) {
+        scheduleTerminalFontAtlasRefresh();
+      }
+    });
   });
 }
 
@@ -195,6 +199,7 @@ class XtermTerminalRenderer implements TerminalRenderer, TerminalFontAtlasRefres
   private colorScheme: TerminalColorScheme;
   private webglAddon: WebglAddon | null = null;
   private webglContextLossDisposable: IDisposable | null = null;
+  private fontReadinessGeneration = 0;
   private wheelScrollbackHandler: ((lines: number) => void) | null = null;
   private wheelScrollbackOverride = false;
   // OSC 133 shell-integration zones: the last command's output span and exit
@@ -269,6 +274,7 @@ class XtermTerminalRenderer implements TerminalRenderer, TerminalFontAtlasRefres
 
   dispose() {
     liveTerminalRenderers.delete(this);
+    this.fontReadinessGeneration += 1;
     this.hostElement = null;
     this.imeCompositionCleanup?.();
     this.imeCompositionCleanup = null;
@@ -610,25 +616,33 @@ class XtermTerminalRenderer implements TerminalRenderer, TerminalFontAtlasRefres
         imeTextarea.removeEventListener("blur", handleBlur);
       };
     }
-    this.tryEnableWebglRenderer();
     liveTerminalRenderers.add(this);
-    this.refreshAtlasWhenFontsReady();
+    this.enableWebglWhenFontsReady();
   }
 
-  private refreshAtlasWhenFontsReady() {
-    // Custom fonts (e.g. Nerd Fonts dropped into the app fonts folder) register
-    // asynchronously through the FontFace API. If a terminal opens before its
-    // configured font finishes loading, the glyph atlas caches fallback boxes.
-    // Rebuild the atlas once fonts settle so powerline/Nerd glyphs render
-    // without a reload.
-    if (typeof document === "undefined" || !document.fonts?.ready) {
+  private enableWebglWhenFontsReady() {
+    const generation = ++this.fontReadinessGeneration;
+    void this.waitForConfiguredFont().then(() => {
+      if (generation !== this.fontReadinessGeneration || !liveTerminalRenderers.has(this)) {
+        return;
+      }
+      this.tryEnableWebglRenderer();
+      this.redraw();
+    });
+  }
+
+  async waitForConfiguredFont() {
+    if (typeof document === "undefined" || !document.fonts) {
       return;
     }
-    void document.fonts.ready.then(() => {
-      if (liveTerminalRenderers.has(this)) {
-        scheduleTerminalFontAtlasRefresh("document-fonts-ready");
-      }
-    });
+    const family = this.terminal.options.fontFamily ?? "monospace";
+    const size = this.terminal.options.fontSize ?? 14;
+    try {
+      await document.fonts.load(`${size}px ${family}`);
+      await document.fonts.ready;
+    } catch {
+      // A rejected font face still leaves xterm's CSS fallback available.
+    }
   }
 
   private applyHostBackground(opacity: number) {
@@ -724,14 +738,23 @@ class XtermTerminalRenderer implements TerminalRenderer, TerminalFontAtlasRefres
       return;
     }
     this.terminal.options.fontFamily = family;
+    if (!this.webglAddon) {
+      this.enableWebglWhenFontsReady();
+    }
     scheduleTerminalFontAtlasRefresh("font-family-change");
   }
 
-  clearFontAtlas() {
-    try {
-      this.terminal.clearTextureAtlas();
-    } catch {
-      // The renderer may have fallen back from WebGL or been disposed.
+  releaseFontAtlas() {
+    const wasWebglEnabled = this.webglAddon !== null;
+    if (wasWebglEnabled) {
+      this.disposeWebglAddon();
+    }
+    return wasWebglEnabled;
+  }
+
+  restoreFontAtlas(wasWebglEnabled: boolean) {
+    if (wasWebglEnabled && liveTerminalRenderers.has(this)) {
+      this.tryEnableWebglRenderer();
     }
   }
 
