@@ -24,6 +24,8 @@ export type VncSessionEvent =
       kind: "frameAvailable";
       sessionId: string;
       frameId: number;
+      width: number;
+      height: number;
       payloadBytes: number;
       operationCount: number;
       wireBytes: number;
@@ -204,6 +206,7 @@ export async function fetchAndPaintVncFrame(
       }
       return false;
     }
+    resizeVncCanvas(canvas, event.width, event.height);
     const context = canvas.getContext("2d");
     if (!context) {
       throw new Error("VNC canvas is unavailable.");
@@ -264,7 +267,7 @@ export async function fetchAndPaintVncFrame(
         noticeToPaint: paintedAt - noticedAt,
       },
     });
-    return true;
+    return operations.length > 0;
   } finally {
     await invokeCommand("acknowledge_vnc_frame", {
       request: { sessionId: event.sessionId, frameId: event.frameId },
@@ -361,7 +364,7 @@ export function useVncSurface(options: {
         if (canvas) {
           resizeVncCanvas(canvas, payload.width, payload.height);
         }
-        setHasDisplay(true);
+        setHasDisplay(false);
       } else if (payload.kind === "frameAvailable") {
         frameChainRef.current = frameChainRef.current
           .then(async () => {

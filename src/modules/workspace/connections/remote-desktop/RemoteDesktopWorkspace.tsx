@@ -1485,7 +1485,7 @@ export function RemoteDesktopWorkspace({
     }
     if (event.kind === "resolution") {
       resizeVncCanvas(event.width, event.height);
-      setVncHasDisplay(true);
+      setVncHasDisplay(false);
       setRdpStatus(t("remoteDesktop.connected"));
       return;
     }

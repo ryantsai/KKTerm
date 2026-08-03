@@ -144,6 +144,8 @@ enum VncSessionEvent {
     FrameAvailable {
         session_id: String,
         frame_id: u64,
+        width: u16,
+        height: u16,
         payload_bytes: usize,
         operation_count: usize,
         wire_bytes: u64,
@@ -186,6 +188,27 @@ enum VncSessionEvent {
 enum VncLoopInput {
     Protocol(X11Event),
     FramePainted(u64),
+}
+
+fn take_vnc_refresh_request(
+    input: X11Event,
+    request_in_flight: bool,
+    awaiting_frame_ack: &mut Option<u64>,
+) -> Option<X11Event> {
+    let force_full_refresh = matches!(input, X11Event::FullRefresh);
+    if force_full_refresh {
+        // A detached surface may take ownership while an incremental request
+        // is waiting indefinitely for damage, or after the previous surface
+        // missed the last frame event. RFB permits multiple outstanding
+        // requests, so the handoff refresh must bypass both waits.
+        *awaiting_frame_ack = None;
+        return Some(X11Event::FullRefresh);
+    }
+
+    if request_in_flight || awaiting_frame_ack.is_some() {
+        return None;
+    }
+    Some(X11Event::Refresh)
 }
 
 #[derive(Clone, Copy)]
@@ -750,9 +773,10 @@ fn spawn_vnc_event_loop(
         // setup. Do not send another request until that update is painted.
         let mut request_in_flight = true;
         let mut awaiting_frame_ack = None;
-        let mut full_refresh_pending = false;
         let mut batch = VncFrameBatch::default();
         let mut next_frame_id = 1_u64;
+        let mut framebuffer_width = 0_u16;
+        let mut framebuffer_height = 0_u16;
         loop {
             tokio::select! {
                 _ = &mut stop => {
@@ -763,14 +787,11 @@ fn spawn_vnc_event_loop(
                 input = input_rx.recv() => {
                     match input {
                         Some(VncLoopInput::Protocol(input @ (X11Event::Refresh | X11Event::FullRefresh))) => {
-                            full_refresh_pending |= matches!(input, X11Event::FullRefresh);
-                            if !request_in_flight && awaiting_frame_ack.is_none() {
-                                let request = if full_refresh_pending {
-                                    full_refresh_pending = false;
-                                    X11Event::FullRefresh
-                                } else {
-                                    X11Event::Refresh
-                                };
+                            if let Some(request) = take_vnc_refresh_request(
+                                input,
+                                request_in_flight,
+                                &mut awaiting_frame_ack,
+                            ) {
                                 if let Err(error) = client.input(request).await {
                                     emit_vnc_event(&app, VncSessionEvent::Error {
                                         session_id: session_id.clone(),
@@ -794,13 +815,7 @@ fn spawn_vnc_event_loop(
                         Some(VncLoopInput::FramePainted(frame_id)) => {
                             if awaiting_frame_ack == Some(frame_id) {
                                 awaiting_frame_ack = None;
-                                let request = if full_refresh_pending {
-                                    full_refresh_pending = false;
-                                    X11Event::FullRefresh
-                                } else {
-                                    X11Event::Refresh
-                                };
-                                if let Err(error) = client.input(request).await {
+                                if let Err(error) = client.input(X11Event::Refresh).await {
                                     emit_vnc_event(&app, VncSessionEvent::Error {
                                         session_id: session_id.clone(),
                                         message: to_vnc_error(error),
@@ -862,6 +877,8 @@ fn spawn_vnc_event_loop(
                             emit_vnc_event(&app, VncSessionEvent::FrameAvailable {
                                 session_id: session_id.clone(),
                                 frame_id,
+                                width: framebuffer_width,
+                                height: framebuffer_height,
                                 payload_bytes,
                                 operation_count,
                                 wire_bytes: metrics.wire_bytes,
@@ -876,6 +893,18 @@ fn spawn_vnc_event_loop(
                                 cursor_rectangles: metrics.cursor_rectangles,
                                 desktop_size_rectangles: metrics.desktop_size_rectangles,
                             });
+                        }
+                        Ok(VncEvent::SetResolution(screen)) => {
+                            framebuffer_width = screen.width;
+                            framebuffer_height = screen.height;
+                            emit_vnc_event(
+                                &app,
+                                VncSessionEvent::Resolution {
+                                    session_id: session_id.clone(),
+                                    width: screen.width,
+                                    height: screen.height,
+                                },
+                            );
                         }
                         Ok(event) => handle_vnc_event(
                             &app,
@@ -1102,6 +1131,41 @@ mod tests {
     }
 
     #[test]
+    fn full_refresh_recovers_from_a_stale_frame_ack() {
+        let mut awaiting_frame_ack = Some(42);
+
+        let incremental = take_vnc_refresh_request(
+            X11Event::Refresh,
+            false,
+            &mut awaiting_frame_ack,
+        );
+        assert!(incremental.is_none());
+        assert_eq!(awaiting_frame_ack, Some(42));
+
+        let request = take_vnc_refresh_request(
+            X11Event::FullRefresh,
+            false,
+            &mut awaiting_frame_ack,
+        );
+
+        assert!(matches!(request, Some(X11Event::FullRefresh)));
+        assert_eq!(awaiting_frame_ack, None);
+    }
+
+    #[test]
+    fn full_refresh_bypasses_an_outstanding_incremental_request() {
+        let mut awaiting_frame_ack = None;
+
+        let request = take_vnc_refresh_request(
+            X11Event::FullRefresh,
+            true,
+            &mut awaiting_frame_ack,
+        );
+
+        assert!(matches!(request, Some(X11Event::FullRefresh)));
+    }
+
+    #[test]
     fn vnc_connect_timeout_covers_unresponsive_server() {
         let runtime = Runtime::new().expect("runtime starts");
         runtime.block_on(async {
@@ -1149,6 +1213,33 @@ mod tests {
         assert_eq!(&bytes[..4], VNC_FRAME_MAGIC);
         assert_eq!(u16::from_le_bytes([bytes[6], bytes[7]]), 1);
         assert_eq!(&bytes[bytes.len() - 4..], &[255, 0, 0, 255]);
+    }
+
+    #[test]
+    fn frame_notifications_carry_the_retained_framebuffer_size() {
+        let event = VncSessionEvent::FrameAvailable {
+            session_id: "vnc-1".to_string(),
+            frame_id: 1,
+            width: 800,
+            height: 600,
+            payload_bytes: 4,
+            operation_count: 1,
+            wire_bytes: 4,
+            decode_micros: 0,
+            bridge_micros: 0,
+            rectangles: 1,
+            raw_rectangles: 1,
+            copy_rectangles: 0,
+            tight_rectangles: 0,
+            zrle_rectangles: 0,
+            trle_rectangles: 0,
+            cursor_rectangles: 0,
+            desktop_size_rectangles: 0,
+        };
+        let json = serde_json::to_value(event).expect("frame event serializes");
+
+        assert_eq!(json["width"], 800);
+        assert_eq!(json["height"], 600);
     }
 
     #[test]

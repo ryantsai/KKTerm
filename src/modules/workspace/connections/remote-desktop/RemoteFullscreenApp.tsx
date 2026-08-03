@@ -80,7 +80,10 @@ export function RemoteFullscreenApp({ route }: { route: RemoteFullscreenRoute })
   }, [route.kind, route.sessionId]);
 
   return (
-    <div className="remote-fullscreen-root">
+    <div
+      className="remote-fullscreen-root"
+      onContextMenu={(event) => event.preventDefault()}
+    >
       <RemoteFullscreenBar
         sessionId={route.sessionId}
         kind={route.kind}
