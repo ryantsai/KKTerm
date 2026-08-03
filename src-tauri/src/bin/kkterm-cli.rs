@@ -22,6 +22,10 @@ use tokio::time::{Duration, timeout};
 #[path = "../mcp_tool_catalog.rs"]
 mod mcp_tool_catalog;
 
+#[path = "../mcp_protocol.rs"]
+mod mcp_protocol;
+use mcp_protocol::negotiate_protocol_version;
+
 // Share the portable-mode marker filename with the in-app launcher so the CLI's
 // sibling-bridge lookup can never drift from `app_paths.rs`. Included by path
 // for the same thin-forwarder reason as the tool catalog above; the module has
@@ -39,7 +43,6 @@ mod bundle_identifier;
 use bundle_identifier::BUNDLE_IDENTIFIER;
 
 const BRIDGE_INFO_FILENAME: &str = "mcp-bridge.json";
-const PROTOCOL_VERSION: &str = "2025-03-26";
 const SERVER_NAME: &str = "kkterm-cli";
 const SERVER_VERSION: &str = env!("CARGO_PKG_VERSION");
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(3);
@@ -150,33 +153,40 @@ async fn handle_request(request: Value) -> Option<Value> {
     }
 
     match method.as_str() {
-        "initialize"
-            if request
+        "initialize" => {
+            let Some(requested_version) = request
                 .pointer("/params/protocolVersion")
                 .and_then(Value::as_str)
-                .is_some_and(|version| version != PROTOCOL_VERSION) =>
-        {
+            else {
+                return Some(json!({
+                    "jsonrpc": "2.0",
+                    "id": id,
+                    "error": {
+                        "code": -32602,
+                        "message": "initialize requires params.protocolVersion",
+                    }
+                }));
+            };
+            let protocol_version = negotiate_protocol_version(requested_version);
             Some(json!({
                 "jsonrpc": "2.0",
                 "id": id,
-                "error": {
-                    "code": -32602,
-                    "message": format!(
-                        "unsupported MCP protocol version; kkterm-cli supports {PROTOCOL_VERSION}"
-                    )
-                }
+                "result": {
+                    "protocolVersion": protocol_version,
+                    "serverInfo": {"name": SERVER_NAME, "version": SERVER_VERSION},
+                    "capabilities": {"tools": {}},
+                },
             }))
         }
-        "initialize" => Some(json!({
+        "notifications/initialized" => None,
+        // The 2026 protocol replaces legacy initialization with discovery.
+        // Returning Method not found locally tells modern clients to retry the
+        // legacy initialize flow even when the KKTerm app is not running.
+        "server/discover" => Some(json!({
             "jsonrpc": "2.0",
             "id": id,
-            "result": {
-                "protocolVersion": PROTOCOL_VERSION,
-                "serverInfo": {"name": SERVER_NAME, "version": SERVER_VERSION},
-                "capabilities": {"tools": {}},
-            },
+            "error": {"code": -32601, "message": "method not found: server/discover"},
         })),
-        "notifications/initialized" => None,
         "ping" => Some(json!({"jsonrpc": "2.0", "id": id, "result": {}})),
         // Static tools/list so MCP clients can discover the surface even
         // when KKTerm.exe isn't running. tools/call still requires a live
@@ -513,16 +523,86 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn initialize_rejects_unsupported_protocol_versions() {
+    async fn initialize_negotiates_supported_protocol_versions_without_downgrading() {
+        for version in [
+            "2024-10-07",
+            "2024-11-05",
+            "2025-03-26",
+            "2025-06-18",
+            "2025-11-25",
+        ] {
+            let response = handle_request(json!({
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": version,
+                    "capabilities": {},
+                    "clientInfo": {"name": "compat-test", "version": "1.0.0"}
+                }
+            }))
+            .await
+            .expect("initialize response");
+
+            assert_eq!(response["result"]["protocolVersion"], version);
+            assert!(response.get("error").is_none());
+        }
+    }
+
+    #[tokio::test]
+    async fn initialize_offers_latest_supported_version_for_unknown_client_version() {
         let response = handle_request(json!({
             "jsonrpc": "2.0",
             "id": 1,
             "method": "initialize",
-            "params": {"protocolVersion": "1900-01-01"}
+            "params": {
+                "protocolVersion": "2099-01-01",
+                "capabilities": {},
+                "clientInfo": {"name": "future-client", "version": "1.0.0"}
+            }
+        }))
+        .await
+        .expect("initialize response");
+
+        assert_eq!(
+            response["result"]["protocolVersion"],
+            mcp_protocol::LATEST_PROTOCOL_VERSION
+        );
+        assert!(response.get("error").is_none());
+    }
+
+    #[tokio::test]
+    async fn initialize_rejects_missing_protocol_version_as_invalid_params() {
+        let response = handle_request(json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {
+                "capabilities": {},
+                "clientInfo": {"name": "broken-client", "version": "1.0.0"}
+            }
         }))
         .await
         .expect("initialize response");
 
         assert_eq!(response["error"]["code"], -32602);
+    }
+
+    #[tokio::test]
+    async fn modern_discovery_falls_back_locally_to_legacy_initialization() {
+        let response = handle_request(json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "server/discover",
+            "params": {
+                "_meta": {
+                    "io.modelcontextprotocol/protocolVersion": "2026-07-28"
+                }
+            }
+        }))
+        .await
+        .expect("server/discover response");
+
+        assert_eq!(response["error"]["code"], -32601);
     }
 }

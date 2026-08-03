@@ -28,6 +28,7 @@ mod logging;
 mod manual;
 mod mcp;
 mod mcp_bridge;
+mod mcp_protocol;
 mod mcp_tool_catalog;
 mod media;
 mod native_tooltip;

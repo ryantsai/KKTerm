@@ -29,7 +29,6 @@ use tokio::net::UnixListener;
 #[cfg(target_os = "windows")]
 use tokio::net::windows::named_pipe::ServerOptions;
 
-const PROTOCOL_VERSION: &str = "2025-03-26";
 const SERVER_NAME: &str = "kkterm-cli";
 const BRIDGE_INFO_FILENAME: &str = "mcp-bridge.json";
 /// Unix domain socket filename, written next to the descriptor file. On macOS
@@ -485,18 +484,35 @@ async fn handle_request(ctx: &BridgeContext, request: Value) -> Option<Value> {
     let params = request.get("params").cloned().unwrap_or(Value::Null);
 
     match method.as_str() {
-        "initialize" => Some(json!({
-            "jsonrpc": "2.0",
-            "id": id,
-            "result": {
-                "protocolVersion": PROTOCOL_VERSION,
-                "serverInfo": {
-                    "name": SERVER_NAME,
-                    "version": env!("CARGO_PKG_VERSION"),
+        "initialize" => {
+            let Some(requested_version) = request
+                .pointer("/params/protocolVersion")
+                .and_then(Value::as_str)
+            else {
+                return Some(json!({
+                    "jsonrpc": "2.0",
+                    "id": id,
+                    "error": {
+                        "code": -32602,
+                        "message": "initialize requires params.protocolVersion",
+                    },
+                }));
+            };
+            let protocol_version =
+                crate::mcp_protocol::negotiate_protocol_version(requested_version);
+            Some(json!({
+                "jsonrpc": "2.0",
+                "id": id,
+                "result": {
+                    "protocolVersion": protocol_version,
+                    "serverInfo": {
+                        "name": SERVER_NAME,
+                        "version": env!("CARGO_PKG_VERSION"),
+                    },
+                    "capabilities": {"tools": {}},
                 },
-                "capabilities": {"tools": {}},
-            },
-        })),
+            }))
+        }
         "notifications/initialized" => None,
         "tools/list" => Some(json!({
             "jsonrpc": "2.0",
@@ -557,7 +573,7 @@ async fn handle_tool_call(ctx: &BridgeContext, id: Value, params: Value) -> Valu
                 "id": id,
                 "result": {
                     "content": [{"type": "text", "text": value_to_text(&value)}],
-                    "structuredContent": value,
+                    "structuredContent": structured_content_value(&value),
                     "isError": false,
                 },
             })
@@ -588,6 +604,13 @@ fn value_to_text(value: &Value) -> String {
     match value {
         Value::String(s) => s.clone(),
         other => other.to_string(),
+    }
+}
+
+fn structured_content_value(value: &Value) -> Value {
+    match value {
+        Value::Object(_) => value.clone(),
+        _ => json!({"value": value}),
     }
 }
 
@@ -1731,6 +1754,22 @@ fn terminal_send_input_live_tool_args(pane_id: &str, text: &str, submit: bool) -
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn structured_content_is_always_an_object() {
+        assert_eq!(
+            structured_content_value(&json!(["one", "two"])),
+            json!({"value": ["one", "two"]})
+        );
+        assert_eq!(
+            structured_content_value(&json!("plain text")),
+            json!({"value": "plain text"})
+        );
+        assert_eq!(
+            structured_content_value(&json!({"ok": true})),
+            json!({"ok": true})
+        );
+    }
 
     #[test]
     fn bridge_info_path_uses_filename() {

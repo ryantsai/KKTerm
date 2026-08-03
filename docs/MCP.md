@@ -592,6 +592,12 @@ server is disabled, `tools/call` returns `app_not_running` (`code: -32002`). The
 Settings → AI Assistant built-in MCP controls are shown on Windows, macOS, and
 Linux.
 
-`kkterm-cli` uses MCP protocol version `2025-03-26`. It rejects a different
-requested initialize version with `-32602` and never sends JSON-RPC responses
-for notifications.
+`kkterm-cli` supports the legacy initialize-based MCP protocol versions
+`2024-10-07`, `2024-11-05`, `2025-03-26`, `2025-06-18`, and `2025-11-25`,
+preferring `2025-11-25`. It echoes a requested supported version; when a
+client offers a different version, it responds with `2025-11-25` so the client
+can accept that version or disconnect according to MCP negotiation rules.
+The newer `2026-07-28` discovery-based protocol is not advertised;
+`server/discover` returns method-not-found so compatible clients fall back to
+legacy initialization. The CLI never sends JSON-RPC responses for
+notifications.
