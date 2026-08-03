@@ -2429,9 +2429,14 @@ function RackDrill({
               onMoveItem={editMode ? onMoveItem : undefined}
               onDeleteItem={editMode ? (item) => onDeleteItem(rack, item) : undefined}
               placeSpec={editMode ? placeDevice : null}
-              onPlaceAt={(startU, slot) => {
+              onPlaceAt={(startU, slot, face) => {
                 if (!placeDevice) return;
-                onPlaceDevice(rack, placeDevice, startU, slot);
+                onPlaceDevice(
+                  rack,
+                  { ...placeDevice, mountFace: face ?? placeDevice.mountFace },
+                  startU,
+                  slot,
+                );
                 setPlaceDevice(null);
               }}
               onCancelPlacement={() => setPlaceDevice(null)}

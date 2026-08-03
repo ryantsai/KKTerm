@@ -52,6 +52,13 @@ export type VncSessionEvent =
   | { kind: "error"; sessionId: string; message: string }
   | { kind: "disconnected"; sessionId: string };
 
+export const VNC_FULLSCREEN_SURFACE_EVENT = "kkterm://vnc-fullscreen-surface";
+
+export type VncFullscreenSurfaceEvent = {
+  sessionId: string;
+  active: boolean;
+};
+
 export function decodeBase64Bytes(value: string) {
   const binary = window.atob(value);
   const bytes = new Uint8Array(binary.length);
@@ -320,7 +327,11 @@ export function useVncSurface(options: {
   const frameChainRef = useRef(Promise.resolve());
   const frameGenerationRef = useRef(0);
   const viewModeRef = useRef(viewMode);
+  const onErrorRef = useRef(onError);
+  const onDisconnectedRef = useRef(onDisconnected);
   viewModeRef.current = viewMode;
+  onErrorRef.current = onError;
+  onDisconnectedRef.current = onDisconnected;
 
   useEffect(() => {
     if (!enabled || !isTauriRuntime()) {
@@ -363,20 +374,20 @@ export function useVncSurface(options: {
               }).catch(() => undefined);
             }
           })
-          .catch((error) => onError?.(error instanceof Error ? error.message : String(error)));
+          .catch((error) => onErrorRef.current?.(error instanceof Error ? error.message : String(error)));
       } else if (payload.kind === "setCursor") {
         if (canvas) {
           paintVncCursor(canvas, payload);
         }
       } else if (payload.kind === "error") {
-        onError?.(payload.message);
+        onErrorRef.current?.(payload.message);
       } else if (payload.kind === "disconnected") {
         frameGenerationRef.current += 1;
         if (canvas) {
           canvas.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
         }
         setHasDisplay(false);
-        onDisconnected?.();
+        onDisconnectedRef.current?.();
       }
     }).then((unlisten) => {
       if (disposed) {
@@ -392,7 +403,7 @@ export function useVncSurface(options: {
       frameGenerationRef.current += 1;
       dispose?.();
     };
-  }, [enabled, sessionId, canvasRef, onError, onDisconnected]);
+  }, [enabled, sessionId, canvasRef]);
 
   const flushPointer = () => {
     pointerRafRef.current = null;

@@ -53,6 +53,8 @@ import {
   vncKeysymForEvent,
   vncRenderedContentRect,
   type VncSessionEvent,
+  VNC_FULLSCREEN_SURFACE_EVENT,
+  type VncFullscreenSurfaceEvent,
 } from "./vncSurface";
 import { isCurrentVncFrame } from "./vncFrame";
 
@@ -115,6 +117,7 @@ export function RemoteDesktopWorkspace({
   const vncPointerRafRef = useRef<number | null>(null);
   const vncFrameChainRef = useRef(Promise.resolve());
   const vncFrameGenerationRef = useRef(0);
+  const vncFullscreenAttachedRef = useRef(false);
   const visibilityRef = useRef({ isActive, suppressed: false });
   const markConnectionSessionStarted = useWorkspaceStore(
     (state) => state.markConnectionSessionStarted,
@@ -1417,6 +1420,29 @@ export function RemoteDesktopWorkspace({
   }, [canStartVnc]);
 
   useEffect(() => {
+    if (!canStartVnc || !isTauriRuntime()) return;
+    let disposed = false;
+    let dispose: (() => void) | undefined;
+    void listen<VncFullscreenSurfaceEvent>(VNC_FULLSCREEN_SURFACE_EVENT, (event) => {
+      if (disposed || event.payload.sessionId !== sessionIdRef.current) return;
+      vncFullscreenAttachedRef.current = event.payload.active;
+      if (!event.payload.active && sessionStartedRef.current) {
+        void invokeCommand("refresh_vnc_session", {
+          request: { sessionId: event.payload.sessionId },
+        }).catch(() => undefined);
+      }
+    }).then((unlisten) => {
+      if (disposed) unlisten();
+      else dispose = unlisten;
+    });
+    return () => {
+      disposed = true;
+      dispose?.();
+      vncFullscreenAttachedRef.current = false;
+    };
+  }, [canStartVnc]);
+
+  useEffect(() => {
     if (!canStartVnc || !isTauriRuntime()) {
       return;
     }
@@ -1464,6 +1490,10 @@ export function RemoteDesktopWorkspace({
       return;
     }
     if (event.kind === "frameAvailable") {
+      // The backend advances its single bounded framebuffer stream after the
+      // first acknowledgement. While the detached surface owns presentation,
+      // it must therefore be the only canvas fetching and acknowledging frames.
+      if (vncFullscreenAttachedRef.current) return;
       const canvas = canvasRef.current;
       if (!canvas) {
         void invokeCommand("acknowledge_vnc_frame", {
