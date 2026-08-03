@@ -108,6 +108,8 @@ struct CustomFontEntry {
     style: String,
     #[serde(rename = "isMonospace")]
     is_monospaced: bool,
+    #[serde(rename = "supportsNerdFontHome")]
+    supports_nerd_font_home: Option<bool>,
 }
 
 #[derive(Serialize)]

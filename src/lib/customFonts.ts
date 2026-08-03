@@ -1,9 +1,11 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { defaultAppearanceSettings, defaultTerminalSettings } from "../app-defaults";
 import type { AppearanceSettings, CustomFont, TerminalSettings } from "../types";
-import { invokeCommand, isTauriRuntime } from "./tauri";
+import { invokeCommand, isTauriRuntime, logUiDebug } from "./tauri";
 
 const CUSTOM_FONT_FALLBACK = '"Segoe UI", ui-sans-serif, system-ui, sans-serif';
+const CUSTOM_FONT_DIAGNOSTIC_LABEL_LIMIT = 160;
+const NERD_FONT_HOME_PROBE = "\uf015";
 export const CUSTOM_FONTS_LOADED_EVENT = "kkterm:custom-fonts-loaded";
 
 const loadedFontFaces = new Set<string>();
@@ -15,6 +17,26 @@ export interface CustomFontOption {
   isMonospace: boolean;
   cssFamily: string;
   cssValue: string;
+}
+
+export function customFontDiagnostic(font: CustomFont) {
+  return {
+    fileName: sanitizeFontDiagnosticLabel(font.name),
+    family: sanitizeFontDiagnosticLabel(font.family),
+    extension: font.extension,
+    weight: font.weight,
+    style: font.style,
+    isMonospace: font.isMonospace,
+    supportsNerdFontHome: font.supportsNerdFontHome,
+  };
+}
+
+export function sanitizedFontLoadErrorName(error: unknown) {
+  if (!error || typeof error !== "object" || !("name" in error)) {
+    return "Error";
+  }
+  const name = String(error.name);
+  return /^[A-Za-z][A-Za-z0-9._-]{0,63}$/.test(name) ? name : "Error";
 }
 
 export function customFontCssFamily(family: string) {
@@ -82,6 +104,10 @@ export async function listCustomFontOptions() {
     return [];
   }
   const fonts = await invokeCommand("list_custom_fonts");
+  logUiDebug("custom_font.scan", {
+    faceCount: fonts.length,
+    faces: fonts.map(customFontDiagnostic),
+  });
   const options = toCustomFontOptions(fonts);
   void loadCustomFontOptions(options);
   return options;
@@ -106,18 +132,77 @@ export async function loadCustomFontOptions(fonts: CustomFontOption[]) {
       // header/cmap and early (Latin) glyphs survive while the bulk of the CJK
       // outlines are dropped, so only Latin text picks up the font. A plain
       // fetch sends no Range header, so the protocol returns the whole file.
-      const buffer = await (await fetch(convertFileSrc(font.path))).arrayBuffer();
-      const families = [option.cssFamily, option.name, font.name];
-      await Promise.allSettled(
-        families.map(async (family) => {
+      const diagnostic = customFontDiagnostic(font);
+      let response: Response | undefined;
+      let buffer: ArrayBuffer;
+      try {
+        response = await fetch(convertFileSrc(font.path));
+        buffer = await response.arrayBuffer();
+        logUiDebug("custom_font.fetch", {
+          ...diagnostic,
+          outcome: "completed",
+          httpStatus: response.status,
+          httpOk: response.ok,
+          byteCount: buffer.byteLength,
+        });
+      } catch (error) {
+        logUiDebug("custom_font.fetch", {
+          ...diagnostic,
+          outcome: "failed",
+          httpStatus: response?.status ?? null,
+          httpOk: response?.ok ?? false,
+          errorName: sanitizedFontLoadErrorName(error),
+        });
+        throw error;
+      }
+
+      const families = [
+        { family: option.cssFamily, aliasKind: "generated" },
+        { family: option.name, aliasKind: "internal-family" },
+        { family: font.name, aliasKind: "file-name" },
+      ];
+      const aliases = await Promise.all(
+        families.map(async ({ family, aliasKind }) => {
+          const registeredFamily = sanitizeFontDiagnosticLabel(family);
+          if (!family) {
+            return { registeredFamily, aliasKind, outcome: "empty" };
+          }
           const key = `${family.toLowerCase()}|${font.weight}|${font.style}`;
-          if (!family || loadedFontFaces.has(key)) return;
-          const face = new FontFace(family, buffer.slice(0), fontFaceDescriptors(font));
-          await face.load();
-          document.fonts.add(face);
-          loadedFontFaces.add(key);
+          if (loadedFontFaces.has(key)) {
+            return {
+              registeredFamily,
+              aliasKind,
+              outcome: "already-loaded",
+            };
+          }
+          let face: FontFace | undefined;
+          try {
+            face = new FontFace(family, buffer.slice(0), fontFaceDescriptors(font));
+            await face.load();
+            document.fonts.add(face);
+            loadedFontFaces.add(key);
+            return {
+              registeredFamily,
+              aliasKind,
+              outcome: "loaded",
+              faceStatus: face.status,
+              fontSetCheckForHomeProbe: checkFontSetForHomeProbe(document.fonts, family, font),
+            };
+          } catch (error) {
+            return {
+              registeredFamily,
+              aliasKind,
+              outcome: "failed",
+              faceStatus: face?.status ?? null,
+              errorName: sanitizedFontLoadErrorName(error),
+            };
+          }
         }),
       );
+      logUiDebug("custom_font.face_load", {
+        ...diagnostic,
+        aliases,
+      });
     })),
   );
   if (fonts.length > 0) {
@@ -154,6 +239,25 @@ function compareCustomFontFaces(a: CustomFont, b: CustomFont) {
   const aStyle = a.style === "normal" ? 0 : 1;
   const bStyle = b.style === "normal" ? 0 : 1;
   return aStyle - bStyle || Math.abs(a.weight - 400) - Math.abs(b.weight - 400) || a.name.localeCompare(b.name);
+}
+
+function sanitizeFontDiagnosticLabel(value: string) {
+  return [...value]
+    .map((character) => {
+      const code = character.charCodeAt(0);
+      return code <= 0x1f || code === 0x7f ? " " : character;
+    })
+    .join("")
+    .slice(0, CUSTOM_FONT_DIAGNOSTIC_LABEL_LIMIT);
+}
+
+function checkFontSetForHomeProbe(fontSet: FontFaceSet, family: string, font: CustomFont) {
+  const escapedFamily = family.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  try {
+    return fontSet.check(`${font.style} ${font.weight} 12px "${escapedFamily}"`, NERD_FONT_HOME_PROBE);
+  } catch {
+    return null;
+  }
 }
 
 function hashText(value: string) {

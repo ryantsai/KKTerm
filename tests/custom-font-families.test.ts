@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  customFontDiagnostic,
   fontFaceDescriptors,
   normalizeAvailableTerminal,
   notifyCustomFontsLoaded,
+  sanitizedFontLoadErrorName,
   terminalCustomFontOptions,
   toCustomFontOptions,
 } from "../src/lib/customFonts.ts";
@@ -20,9 +22,34 @@ function face(overrides: Partial<CustomFont>): CustomFont {
     weight: 400,
     style: "normal",
     isMonospace: true,
+    supportsNerdFontHome: true,
     ...overrides,
   };
 }
+
+test("custom font diagnostics omit paths and sanitize labels and errors", () => {
+  const diagnostic = customFontDiagnostic(face({
+    name: "Example\nRegular",
+    family: "Example\tMono",
+    path: "C:/Users/private-name/fonts/Example-Regular.ttf",
+  }));
+
+  assert.deepEqual(diagnostic, {
+    fileName: "Example Regular",
+    family: "Example Mono",
+    extension: "ttf",
+    weight: 400,
+    style: "normal",
+    isMonospace: true,
+    supportsNerdFontHome: true,
+  });
+  assert.equal("path" in diagnostic, false);
+
+  const error = new Error("C:/Users/private-name/fonts/Example-Regular.ttf failed");
+  error.name = "NetworkError";
+  assert.equal(sanitizedFontLoadErrorName(error), "NetworkError");
+  assert.equal(sanitizedFontLoadErrorName({ name: "bad name: private detail" }), "Error");
+});
 
 test("custom font files are grouped by internal family with partial faces allowed", () => {
   const options = toCustomFontOptions([

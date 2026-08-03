@@ -1377,6 +1377,7 @@ export interface CustomFont {
   weight: number;
   style: "normal" | "italic";
   isMonospace: boolean;
+  supportsNerdFontHome: boolean | null;
 }
 
 export interface SystemFont {

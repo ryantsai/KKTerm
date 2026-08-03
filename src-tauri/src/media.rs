@@ -148,10 +148,21 @@ pub(crate) fn custom_font_entry(path: PathBuf) -> Option<CustomFontEntry> {
         .and_then(|name| name.to_str())
         .or_else(|| path.file_name().and_then(|name| name.to_str()))?
         .to_string();
-    let (family, weight, style, is_monospaced) = fs::read(&path)
+    let (family, weight, style, is_monospaced, supports_nerd_font_home) = fs::read(&path)
         .ok()
-        .and_then(|data| custom_font_metadata(&data))
-        .unwrap_or_else(|| (name.clone(), 400, "normal".to_string(), false));
+        .and_then(|data| {
+            custom_font_metadata(&data)
+                .map(|(family, weight, style, is_monospaced, supports_home)| {
+                    (
+                        family,
+                        weight,
+                        style,
+                        is_monospaced,
+                        Some(supports_home),
+                    )
+                })
+        })
+        .unwrap_or_else(|| (name.clone(), 400, "normal".to_string(), false, None));
 
     Some(CustomFontEntry {
         name,
@@ -161,10 +172,11 @@ pub(crate) fn custom_font_entry(path: PathBuf) -> Option<CustomFontEntry> {
         weight,
         style,
         is_monospaced,
+        supports_nerd_font_home,
     })
 }
 
-fn custom_font_metadata(data: &[u8]) -> Option<(String, u16, String, bool)> {
+fn custom_font_metadata(data: &[u8]) -> Option<(String, u16, String, bool, bool)> {
     let face = ttf_parser::Face::parse(data, 0).ok()?;
     let family = preferred_face_family_name(&face)?;
     let style = if face.is_italic() { "italic" } else { "normal" };
@@ -173,6 +185,7 @@ fn custom_font_metadata(data: &[u8]) -> Option<(String, u16, String, bool)> {
         face.weight().to_number(),
         style.to_string(),
         face.is_monospaced(),
+        face.glyph_index('\u{f015}').is_some(),
     ))
 }
 
@@ -416,6 +429,7 @@ mod tests {
             weight: 400,
             style: "normal".to_string(),
             is_monospaced: true,
+            supports_nerd_font_home: Some(true),
         };
 
         let value = serde_json::to_value(entry).expect("custom font entry should serialize");
@@ -425,6 +439,10 @@ mod tests {
             Some(&serde_json::Value::Bool(true))
         );
         assert!(value.get("isMonospaced").is_none());
+        assert_eq!(
+            value.get("supportsNerdFontHome"),
+            Some(&serde_json::Value::Bool(true))
+        );
     }
 
     #[test]
