@@ -10,6 +10,7 @@
 // physical-hardware palette, like the terminal surfaces); status/accent colour
 // reads the shared theme tokens.
 
+import { memo } from "react";
 import type {
   RackItemKind,
   RackItemStatus,
@@ -101,7 +102,7 @@ const STATUS_GLOW: Record<RackItemStatus, string> = {
   offline: "rgba(255,69,58,.55)",
 };
 
-export function RackDevice({
+export const RackDevice = memo(function RackDevice({
   kind,
   label,
   subLabel,
@@ -525,4 +526,4 @@ export function RackDevice({
       </div>
     </div>
   );
-}
+});

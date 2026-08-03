@@ -6,6 +6,10 @@ import {
   VNC_FRAME_HEADER_BYTES,
   VNC_FRAME_RECT_HEADER_BYTES,
 } from "../src/modules/workspace/connections/remote-desktop/vncFrame";
+import {
+  vncPointForEvent,
+  vncRenderedContentRect,
+} from "../src/modules/workspace/connections/remote-desktop/vncSurface";
 
 function pushU16(bytes: number[], value: number) {
   bytes.push(value & 0xff, (value >>> 8) & 0xff);
@@ -73,4 +77,30 @@ test("VNC frames cannot repaint after their Session disconnects or is replaced",
   assert.equal(isCurrentVncFrame(false, "vnc-1", "vnc-1", 4, 4), false);
   assert.equal(isCurrentVncFrame(true, "vnc-2", "vnc-1", 4, 4), false);
   assert.equal(isCurrentVncFrame(true, "vnc-1", "vnc-1", 5, 4), false);
+});
+
+test("VNC fullscreen fit does not enlarge a framebuffer beyond its native size", () => {
+  const rect = {
+    left: 0,
+    top: 0,
+    width: 1920,
+    height: 1080,
+  } as DOMRect;
+
+  assert.deepEqual(vncRenderedContentRect(rect, 800, 600, "fit", false), {
+    left: 560,
+    top: 240,
+    width: 800,
+    height: 600,
+  });
+
+  const canvas = {
+    width: 800,
+    height: 600,
+    getBoundingClientRect: () => rect,
+  } as HTMLCanvasElement;
+  assert.deepEqual(vncPointForEvent(canvas, 960, 540, "fit", false), {
+    x: 400,
+    y: 300,
+  });
 });

@@ -111,29 +111,22 @@ export function vncRenderedContentRect(
   intrinsicWidth: number,
   intrinsicHeight: number,
   viewMode: RemoteDesktopViewMode,
+  allowUpscale = true,
 ) {
   if (viewMode !== "fit") {
     return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
   }
   const width = Math.max(1, intrinsicWidth);
   const height = Math.max(1, intrinsicHeight);
-  const boxAspect = rect.width / Math.max(1, rect.height);
-  const contentAspect = width / height;
-  if (contentAspect > boxAspect) {
-    const contentHeight = rect.width / contentAspect;
-    return {
-      left: rect.left,
-      top: rect.top + (rect.height - contentHeight) / 2,
-      width: rect.width,
-      height: contentHeight,
-    };
-  }
-  const contentWidth = rect.height * contentAspect;
+  const containScale = Math.min(rect.width / width, rect.height / height);
+  const scale = allowUpscale ? containScale : Math.min(1, containScale);
+  const contentWidth = width * scale;
+  const contentHeight = height * scale;
   return {
     left: rect.left + (rect.width - contentWidth) / 2,
-    top: rect.top,
+    top: rect.top + (rect.height - contentHeight) / 2,
     width: contentWidth,
-    height: rect.height,
+    height: contentHeight,
   };
 }
 
@@ -285,9 +278,16 @@ export function vncPointForEvent(
   clientX: number,
   clientY: number,
   viewMode: RemoteDesktopViewMode,
+  allowUpscale = true,
 ) {
   const rect = canvas.getBoundingClientRect();
-  const content = vncRenderedContentRect(rect, canvas.width, canvas.height, viewMode);
+  const content = vncRenderedContentRect(
+    rect,
+    canvas.width,
+    canvas.height,
+    viewMode,
+    allowUpscale,
+  );
   const scaleX = canvas.width / Math.max(1, content.width);
   const scaleY = canvas.height / Math.max(1, content.height);
   return {
@@ -315,11 +315,20 @@ export function useVncSurface(options: {
   canvasRef: RefObject<HTMLCanvasElement | null>;
   sessionId: string;
   viewMode: RemoteDesktopViewMode;
+  allowUpscale?: boolean;
   enabled: boolean;
   onError?: (message: string) => void;
   onDisconnected?: () => void;
 }): { hasDisplay: boolean; handlers: VncSurfaceHandlers } {
-  const { canvasRef, sessionId, viewMode, enabled, onError, onDisconnected } = options;
+  const {
+    canvasRef,
+    sessionId,
+    viewMode,
+    allowUpscale = true,
+    enabled,
+    onError,
+    onDisconnected,
+  } = options;
   const [hasDisplay, setHasDisplay] = useState(false);
   const buttonMaskRef = useRef(0);
   const pendingPointerRef = useRef<{ x: number; y: number; buttonMask: number } | null>(null);
@@ -327,9 +336,11 @@ export function useVncSurface(options: {
   const frameChainRef = useRef(Promise.resolve());
   const frameGenerationRef = useRef(0);
   const viewModeRef = useRef(viewMode);
+  const allowUpscaleRef = useRef(allowUpscale);
   const onErrorRef = useRef(onError);
   const onDisconnectedRef = useRef(onDisconnected);
   viewModeRef.current = viewMode;
+  allowUpscaleRef.current = allowUpscale;
   onErrorRef.current = onError;
   onDisconnectedRef.current = onDisconnected;
 
@@ -428,7 +439,13 @@ export function useVncSurface(options: {
     if (!canvas) {
       return;
     }
-    const point = vncPointForEvent(canvas, event.clientX, event.clientY, viewModeRef.current);
+    const point = vncPointForEvent(
+      canvas,
+      event.clientX,
+      event.clientY,
+      viewModeRef.current,
+      allowUpscaleRef.current,
+    );
     pendingPointerRef.current = { x: point.x, y: point.y, buttonMask };
     if (immediate) {
       if (pointerRafRef.current !== null) {

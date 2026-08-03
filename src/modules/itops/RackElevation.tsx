@@ -146,6 +146,26 @@ export function RackElevation({
     !!onPlaceAt &&
     (placeSpec.kind === "kuaiguai" || placeSpec.mountFace === displayFace);
   const rackRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const rackElement = rackRef.current;
+    if (!rackElement) return;
+    const handleContentVisibilityChange = (event: Event) => {
+      rackElement.dataset.contentSkipped = String(
+        (event as ContentVisibilityAutoStateChangeEvent).skipped,
+      );
+    };
+    rackElement.addEventListener(
+      "contentvisibilityautostatechange",
+      handleContentVisibilityChange,
+    );
+    return () => {
+      rackElement.removeEventListener(
+        "contentvisibilityautostatechange",
+        handleContentVisibilityChange,
+      );
+      delete rackElement.dataset.contentSkipped;
+    };
+  }, []);
   const pointerRef = useRef<{
     draft: RackItemDraft;
     x: number;

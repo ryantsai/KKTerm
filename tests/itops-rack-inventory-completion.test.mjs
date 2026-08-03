@@ -24,7 +24,8 @@ test("Rack Device property dialog omits removed relationship metadata", async ()
 
   assert.doesNotMatch(dialog, /auditRecordRows|addAuditRecord|relationshipLabel|ipamLabel/);
   assert.doesNotMatch(dialog, /connection-binding-list/);
-  assert.match(stage, /connectionIds/);
+  assert.match(stage, /collectBoundConnectionIds/);
+  assert.match(stage, /boundConnectionCount/);
 });
 
 test("Rack Device keeps the SNMP command boundary without exposing its no-op transport", async () => {

@@ -2136,6 +2136,12 @@
   align-items: flex-start;
   padding: 4px 18px 22px 4px;
 }
+/* Large Server Rooms can contain hundreds of detailed device faceplates.
+   Let WebView skip layout/paint for cabinets outside the scroll viewport. */
+.itops-page .rk-row > .rk {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 1180px;
+}
 /* ──────────────────────────────────────────────────────────────────────────
    Rack elevation — skeuomorphic frame + animated device faceplates, ported
    from the "IT Ops Racks" design comp. Hardware greys are a fixed physical
@@ -4494,7 +4500,7 @@
   padding-right: 8px;
 }
 .itops-page .rk-balloon-leader {
-  flex: 0 0 auto;
+  flex: 0 0 20px;
   width: 20px;
   height: 1px;
   background: var(--border-strong);
@@ -4503,7 +4509,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  max-width: 200px;
+  max-width: 280px;
   min-width: 0;
   padding: 5px 10px;
   border-radius: 10px;
@@ -4579,7 +4585,23 @@
   color: var(--text-faint);
   font-size: 10px;
   line-height: 1.25;
-  white-space: nowrap;
+  display: -webkit-box;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.itops-page .rk-balloon-connections {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+/* content-visibility skips off-screen rack layout and paint. Pause those
+   animation clocks too, then resume them automatically when the rack becomes
+   relevant again; every visible overview faceplate remains animated. */
+.itops-page .rk-elevations .rk[data-content-skipped="true"] .rkd *,
+.itops-page .rk-elevations .rk[data-content-skipped="true"] .rk-item.dev-in {
+  animation-play-state: paused;
 }
 
 /* Server-room rack groups: labeled sections in the room view. */
@@ -6936,49 +6958,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--text-muted);
-}
-
-.itops-page .rack-random-callouts {
-  position: absolute;
-  left: 16px;
-  right: 16px;
-  bottom: 10px;
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-  pointer-events: none;
-}
-
-.itops-page .rack-random-callouts button {
-  min-width: 0;
-  max-width: 210px;
-  display: grid;
-  gap: 1px;
-  padding: 6px 9px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: 0 10px 24px var(--shadow);
-  text-align: left;
-  pointer-events: auto;
-}
-
-.itops-page .rack-random-callouts span,
-.itops-page .rack-random-callouts small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.itops-page .rack-random-callouts span {
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.itops-page .rack-random-callouts small {
-  color: var(--text-muted);
-  font-size: 10px;
 }
 
 .itops-page .rk-detail-meta {

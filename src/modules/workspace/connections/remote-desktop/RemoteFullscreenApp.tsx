@@ -32,6 +32,7 @@ export function RemoteFullscreenApp({ route }: { route: RemoteFullscreenRoute })
     canvasRef,
     sessionId: route.sessionId,
     viewMode: "fit",
+    allowUpscale: false,
     enabled: route.kind === "vnc",
     onError: (message) => setStatus(message),
     onDisconnected: () => setStatus(t("remoteDesktop.disconnected")),

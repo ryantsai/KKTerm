@@ -67,7 +67,7 @@ When the Site has no Hosts, the shared compact empty hint (`itops.hosts.empty`) 
 
 **Connection bindings.** Each row's link chip opens `itops.hosts.bindingsTitle`, where one Host binds any number of existing Connections — for example its SSH terminal Connection plus an HTTPS URL Connection to its management interface (`itops.hosts.bindingsHint`). Bindings are ordered soft references; deleting a Connection never deletes the Host.
 
-**Rack View callouts.** The Rack Device editor's `itops.racks.boundHostCount` action opens a dedicated Host-binding editor for the Host the device *is*; that device's balloon callout in Rack View then lists the Host's hostname and its child Hosts (`itops.hosts.childOverflow` summarizes the rest), so a rack slot reads as "this machine, and the guests running on it".
+**Rack View callouts.** The Rack Device editor's `itops.racks.boundHostCount` action opens a dedicated Host-binding editor for the Host the device *is*; that device's balloon callout in Rack View contains its inventory notes, `itops.racks.boundConnectionCount`, the Host's hostname, and its child Hosts (`itops.hosts.childOverflow` summarizes the rest), so a rack slot reads as "this machine, and the guests running on it". Rack View keeps this information in the balloon connected to that device rather than showing detached cards at the bottom of the view.
 
 ## Batch Runs and Run History
 

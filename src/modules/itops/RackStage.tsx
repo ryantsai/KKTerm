@@ -14,7 +14,7 @@ import type {
   SiteHost,
 } from "../../types";
 import { childHostsOf, hostDisplayName } from "./hostTree";
-import { selectRandomRackCallouts, summarizeRackDeviceMetadata } from "./rackInventory";
+import { collectBoundConnectionIds, summarizeRackDeviceMetadata } from "./rackInventory";
 import { RackElevation, U_PX } from "./RackElevation";
 import { KUAIGUAI_TOP_CLEARANCE_U } from "./rackPlacement";
 import type { RackItemDraft } from "./RackItemDialog";
@@ -168,14 +168,6 @@ export function RackStage({
       ? ["rear"]
       : ["front"];
   const facesKey = faces.join(",");
-  // Kuai Kuai already owns one face-neutral elevation balloon. Excluding it
-  // here prevents its notes from creating a second, random bottom callout.
-  const randomCallouts = selectRandomRackCallouts(
-    rack.items.filter((item) => item.kind !== "kuaiguai"),
-    rack.id,
-    2,
-  );
-
   // Rack View is the only elevation that adapts its U height to the current
   // drill viewport. Other rack previews keep their normal fixed-size skin.
   useLayoutEffect(() => {
@@ -334,6 +326,7 @@ export function RackStage({
         const spec = specOf(b.item, t);
         const model = b.item.metadata?.vendor?.trim() || null;
         const notes = b.item.metadata?.notes?.trim() || null;
+        const boundConnectionCount = collectBoundConnectionIds(b.item).length;
         const sub = hostFor?.(b.item);
         const boundHost = b.item.metadata?.hostId
           ? hosts?.find((entry) => entry.id === b.item.metadata?.hostId)
@@ -364,6 +357,11 @@ export function RackStage({
               {notes ? (
                 <span className="rk-balloon-notes" title={notes}>
                   {notes}
+                </span>
+              ) : null}
+              {boundConnectionCount > 0 ? (
+                <span className="rk-balloon-connections">
+                  {t("itops.racks.boundConnectionCount", { count: boundConnectionCount })}
                 </span>
               ) : null}
               {boundHost ? (
@@ -398,26 +396,6 @@ export function RackStage({
           </div>
         );
       })}
-      {randomCallouts.length > 0 ? (
-        <div className="rack-random-callouts">
-          {randomCallouts.map((callout) => {
-            const item = rack.items.find((entry) => entry.id === callout.itemId);
-            return (
-              <button
-                key={callout.itemId}
-                type="button"
-                onClick={() => item && onEditItem?.(item)}
-              >
-                <span>{callout.label}</span>
-                {callout.text ? <small>{callout.text}</small> : null}
-                {callout.connectionIds.length > 0 ? (
-                  <small>{t("itops.racks.boundConnectionCount", { count: callout.connectionIds.length })}</small>
-                ) : null}
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
     </div>
   );
 }
