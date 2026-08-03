@@ -3,6 +3,50 @@
 All notable changes to KKTerm are documented here.
 
 ## Direct Downloads
+* 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.138/kkterm-0.1.138-windows-x64-setup.exe)
+* 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.138/kkterm-0.1.138-windows-arm64-setup.exe)
+* 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.138/kkterm-0.1.138-windows-x64-portable.zip)
+* 📦 [Portable for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.138/kkterm-0.1.138-windows-arm64-portable.zip)
+
+## Highlights
+- Fixed VNC fullscreen frame ownership and Rack placement (including rear face) for a smoother Remote Desktop experience—like the terminal gods intended. 🖥️🧩
+
+## New
+- Added support for **Nerd Font Home** in custom font diagnostics and metadata.
+
+## Improved
+- Improved VNC and RDP Session handling with enhanced refresh logic and canvas resizing.
+- Enhanced VNC and rack management for better content visibility and connection tracking across Tab/Pane experiences.
+
+## Fixed
+- Fixed **VNC fullscreen** frame ownership and **Rack View** placement (rear included) in https://github.com/ryantsai/KKTerm/pull/702 (by @ryantsai; merge/fix reference: fbc4c68).
+
+## Internal
+- Updated rack item filtering logic for front/rear faces in 2.5D rendering (tests/itops-rack-mount-face-ui.test.mjs; 672af22).
+- Enhanced font atlas management and terminal rendering readiness (d578dae).
+- Improved/added tests covering VNC fullscreen ownership and rack callouts/inventory completion (multiple; e.g., vnc-fullscreen-frame-owner.test.mjs, itops-rack-callout-performance.test.mjs).
+
+---
+
+## 亮點
+- 修正 **VNC 全螢幕**的畫面框架（frame）擁有權，以及 **機架（Rack）**的放置位置（包含背面），讓遠端桌面體驗更順——就像終端機之神的安排一樣。🖥️🧩
+
+## 新增
+- 在自訂字型的診斷與中繼資料中加入 **Nerd Font Home** 支援。
+
+## 改進
+- 強化 VNC 與 RDP 的 Session 處理：包含更好的重新整理邏輯與 canvas 調整大小。
+- 改善 VNC 與機架管理：提升內容可見性與連線追蹤，讓在 Tab/Pane 的互動更一致。
+
+## 修正
+- 修正 **VNC 全螢幕**畫面框架擁有權，以及 **Rack View** 位置（含背面），詳見 https://github.com/ryantsai/KKTerm/pull/702（作者 @ryantsai；修正/合併參考：fbc4c68）。
+
+## Internal
+- 更新 2.5D 渲染的機架項目前/背面篩選邏輯（tests/itops-rack-mount-face-ui.test.mjs；672af22）。
+- 強化字型 atlas 管理與終端機渲染就緒（d578dae）。
+- 補強/新增測試：包含 VNC 全螢幕擁有權與機架 callout/目錄補全等（多個；例如 vnc-fullscreen-frame-owner.test.mjs、itops-rack-callout-performance.test.mjs）。
+
+## Direct Downloads
 * 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.137/kkterm-0.1.137-windows-x64-setup.exe)
 * 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.137/kkterm-0.1.137-windows-arm64-setup.exe)
 * 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.137/kkterm-0.1.137-windows-x64-portable.zip)
