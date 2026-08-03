@@ -6,12 +6,15 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { listen } from "@tauri-apps/api/event";
+import { emit, listen } from "@tauri-apps/api/event";
 import { usesCanvasRdp } from "../../../../lib/platform";
 import { closeCurrentWindow, isTauriRuntime } from "../../../../lib/tauri";
 import { RdpCanvasView } from "./RdpCanvasView";
 import { RemoteFullscreenBar } from "./RemoteFullscreenBar";
-import { useVncSurface } from "./vncSurface";
+import {
+  VNC_FULLSCREEN_SURFACE_EVENT,
+  useVncSurface,
+} from "./vncSurface";
 import type { RemoteFullscreenRoute } from "./remoteFullscreenRoute";
 import "./remote-desktop.css";
 
@@ -61,6 +64,19 @@ export function RemoteFullscreenApp({ route }: { route: RemoteFullscreenRoute })
       dispose?.();
     };
   }, []);
+
+  useEffect(() => {
+    if (!isTauriRuntime() || route.kind !== "vnc") return;
+    const announce = (active: boolean) =>
+      emit(VNC_FULLSCREEN_SURFACE_EVENT, { sessionId: route.sessionId, active });
+    void announce(true);
+    const handleUnload = () => void announce(false);
+    window.addEventListener("beforeunload", handleUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleUnload);
+      void announce(false);
+    };
+  }, [route.kind, route.sessionId]);
 
   return (
     <div className="remote-fullscreen-root">

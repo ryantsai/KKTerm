@@ -79,7 +79,6 @@ interface RackGeometry {
   height: number;
   left: number;
   right: number;
-  stageHeight: number;
 }
 
 /** Keep one callout lane readable without letting its first/last balloon drift
@@ -147,7 +146,7 @@ export function RackStage({
   editMode?: boolean;
   /** Armed picker placement pass-through (see RackElevation). */
   placeSpec?: RackItemDraft | null;
-  onPlaceAt?: (startU: number, slot?: number) => void;
+  onPlaceAt?: (startU: number, slot?: number, face?: RackMountFace) => void;
   onCancelPlacement?: () => void;
 }) {
   const { t } = useTranslation();
@@ -228,7 +227,6 @@ export function RackStage({
           height: g.height,
           left: g.left - s.left,
           right: g.right - s.left,
-          stageHeight: s.height,
         };
       }
       setGeometry(next);
@@ -280,8 +278,8 @@ export function RackStage({
     for (const side of ["left", "right"] as const) {
       spreadBalloonLane(
         balloons.filter((balloon) => balloon.face === face && balloon.side === side),
-        22,
-        Math.max(22, geom.stageHeight - 22),
+        geom.top + 22,
+        Math.max(geom.top + 22, geom.top + geom.height - 22),
       );
     }
   }
@@ -315,11 +313,15 @@ export function RackStage({
                   ? faces.length === 1 || face === "front"
                     ? placeSpec
                     : null
-                  : placeSpec?.mountFace === face
-                    ? placeSpec
+                  : placeSpec
+                    ? { ...placeSpec, mountFace: face }
                     : null
               }
-              onPlaceAt={onPlaceAt}
+              onPlaceAt={
+                onPlaceAt
+                  ? (startU, slot) => onPlaceAt(startU, slot, face)
+                  : undefined
+              }
               onCancelPlacement={onCancelPlacement}
             />
           </div>
