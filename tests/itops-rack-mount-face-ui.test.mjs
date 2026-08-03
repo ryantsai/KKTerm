@@ -72,7 +72,14 @@ test("Rack View and 2.5D render independent front and rear faces", async () => {
   assert.match(stage, /spreadBalloonLane/);
   assert.match(stage, /showRackTop\s+reserveTopU/);
   assert.match(stage, /item\.kind === "kuaiguai"[\s\S]*faces\.length === 1 \|\| face === "front"/);
-  assert.match(stage, /rack\.items\.filter\(\(item\) => item\.kind !== "kuaiguai"\)/);
+  assert.match(
+    stage,
+    /const frontItems = rack\.items\.filter\([\s\S]*?item\.kind !== "kuaiguai" && \(item\.mountFace \?\? "front"\) === "front"/,
+  );
+  assert.match(
+    stage,
+    /const rearItems = rack\.items\.filter\([\s\S]*?item\.kind !== "kuaiguai" && item\.mountFace === "rear"/,
+  );
   assert.match(stage, /metadata\?\.vendor\?\.trim\(\)/);
   assert.match(stage, /metadata\?\.notes\?\.trim\(\)/);
   assert.match(stage, /className="rk-balloon-notes"/);
