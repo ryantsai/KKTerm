@@ -118,6 +118,11 @@ test("Windows exposes the ActiveX full-screen shortcut as fixed Ctrl+Alt+Break",
   assert.match(settings, /workspaceShortcutIsFixed\(action\)/);
   assert.match(settings, /disabled=\{fixed\}/);
   assert.match(settings, /!\s*fixed && binding/);
+  assert.match(shortcutBackend, /VK_CANCEL_CODE/);
+  assert.match(shortcutBackend, /WH_KEYBOARD_LL/);
+  assert.match(shortcutBackend, /CallNextHookEx/);
+  assert.match(shortcutBackend, /active_x_owns_shortcut/);
+  assert.match(shortcutBackend, /windows_break_hook::set_enabled\(app_is_focused\)/);
 });
 
 test("Windows ActiveX connection bar uses the durable Connection name", () => {
