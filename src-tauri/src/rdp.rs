@@ -4,7 +4,11 @@ mod platform {
         collections::{BTreeSet, HashMap},
         ffi::c_void,
         mem::ManuallyDrop,
-        sync::{Arc, Mutex, MutexGuard, OnceLock, mpsc},
+        sync::{
+            Arc, Mutex, MutexGuard, OnceLock, Weak,
+            atomic::{AtomicU32, Ordering},
+            mpsc,
+        },
         time::{Duration, Instant},
     };
 
@@ -16,14 +20,16 @@ mod platform {
     use windows::{
         Win32::{
             Foundation::{
-                HANDLE, HGLOBAL, HINSTANCE, HWND, LPARAM, POINT, RECT, VARIANT_BOOL, VARIANT_FALSE,
+                DISP_E_UNKNOWNNAME, E_NOINTERFACE, E_NOTIMPL, E_POINTER, HANDLE, HGLOBAL,
+                HINSTANCE, HWND, LPARAM, POINT, RECT, S_OK, VARIANT_BOOL, VARIANT_FALSE,
                 VARIANT_TRUE, WPARAM,
             },
             Graphics::Gdi::ClientToScreen,
             System::{
                 Com::{
-                    DISPATCH_METHOD, DISPATCH_PROPERTYGET, DISPATCH_PROPERTYPUT, DISPPARAMS,
-                    IDispatch,
+                    DISPATCH_FLAGS, DISPATCH_METHOD, DISPATCH_PROPERTYGET, DISPATCH_PROPERTYPUT,
+                    DISPPARAMS, EXCEPINFO, IConnectionPoint, IConnectionPointContainer, IDispatch,
+                    IDispatch_Vtbl,
                 },
                 DataExchange::{CloseClipboard, EmptyClipboard, OpenClipboard, SetClipboardData},
                 LibraryLoader::{GetModuleHandleW, GetProcAddress, LoadLibraryW},
@@ -99,6 +105,9 @@ mod platform {
     const RDP_SEND_KEYS_LIMIT: usize = 20;
     const RDP_MAIN_THREAD_WARN_AFTER: Duration = Duration::from_secs(2);
     const RDP_MAIN_THREAD_TIMEOUT: Duration = Duration::from_secs(15);
+    const DISPID_REQUEST_GO_FULLSCREEN: i32 = 8;
+    const DISPID_REQUEST_LEAVE_FULLSCREEN: i32 = 9;
+    const IMSTSCAX_EVENTS_IID: GUID = GUID::from_u128(0x336d5562_efa8_482e_8cb3_c5c0fc7a7db6);
     const RDP_PROGIDS: &[&str] = &[
         "MsTscAx.MsTscAx.13",
         "MsTscAx.MsTscAx.12",
@@ -264,6 +273,7 @@ mod platform {
     #[serde(rename_all = "camelCase")]
     pub struct StartRdpSessionRequest {
         session_id: String,
+        connection_name: String,
         host: String,
         user: String,
         port: Option<u16>,
@@ -565,6 +575,7 @@ mod platform {
 
     struct RdpSession {
         session_id: String,
+        connection_name: String,
         hwnd: HWND,
         owner: HWND,
         dispatch: IDispatch,
@@ -575,6 +586,36 @@ mod platform {
         dynamic_resize_failures: u32,
         resolution_mode: RemoteResolutionMode,
         fullscreen_restore_display: Option<RdpDisplaySettings>,
+        event_subscription: RdpEventSubscription,
+    }
+
+    struct RdpEventSubscription {
+        connection_point: IConnectionPoint,
+        cookie: u32,
+    }
+
+    impl Drop for RdpEventSubscription {
+        fn drop(&mut self) {
+            self.unsubscribe();
+        }
+    }
+
+    impl RdpEventSubscription {
+        fn unsubscribe(&mut self) {
+            if self.cookie != 0 {
+                let _ = unsafe { self.connection_point.Unadvise(self.cookie) };
+                self.cookie = 0;
+            }
+        }
+    }
+
+    #[repr(C)]
+    struct RdpEventSink {
+        vtable: *const IDispatch_Vtbl,
+        references: AtomicU32,
+        app: AppHandle,
+        sessions: Weak<Mutex<HashMap<String, RdpSession>>>,
+        session_id: String,
     }
 
     // These values are always created, used, and destroyed through closures
@@ -583,6 +624,145 @@ mod platform {
     unsafe impl Send for RdpSession {}
 
     struct VariantArg(VARIANT);
+
+    impl RdpEventSink {
+        fn new(
+            app: AppHandle,
+            sessions: Weak<Mutex<HashMap<String, RdpSession>>>,
+            session_id: String,
+        ) -> IUnknown {
+            let sink = Box::new(Self {
+                vtable: &RDP_EVENT_SINK_VTABLE,
+                references: AtomicU32::new(1),
+                app,
+                sessions,
+                session_id,
+            });
+            unsafe { IUnknown::from_raw(Box::into_raw(sink).cast()) }
+        }
+
+        fn handle_event(&self, dispidmember: i32) {
+            if matches!(
+                dispidmember,
+                DISPID_REQUEST_GO_FULLSCREEN | DISPID_REQUEST_LEAVE_FULLSCREEN
+            ) {
+                let result = self.sessions.upgrade().ok_or_else(|| {
+                    "RDP session manager closed before its full-screen request".to_string()
+                });
+                let result = result.and_then(|sessions| {
+                    handle_rdp_fullscreen_request(
+                        &self.app,
+                        &sessions,
+                        &self.session_id,
+                        dispidmember,
+                    )
+                });
+                if let Err(error) = result {
+                    rdp_debug(
+                        "fullscreen.request.error",
+                        &json!({
+                            "sessionId": &self.session_id,
+                            "dispid": dispidmember,
+                            "error": error,
+                        }),
+                    );
+                }
+            }
+        }
+    }
+
+    static RDP_EVENT_SINK_VTABLE: IDispatch_Vtbl = IDispatch_Vtbl {
+        base__: IUnknown_Vtbl {
+            QueryInterface: rdp_event_sink_query_interface,
+            AddRef: rdp_event_sink_add_ref,
+            Release: rdp_event_sink_release,
+        },
+        GetTypeInfoCount: rdp_event_sink_get_type_info_count,
+        GetTypeInfo: rdp_event_sink_get_type_info,
+        GetIDsOfNames: rdp_event_sink_get_ids_of_names,
+        Invoke: rdp_event_sink_invoke,
+    };
+
+    unsafe extern "system" fn rdp_event_sink_query_interface(
+        this: *mut c_void,
+        iid: *const GUID,
+        interface: *mut *mut c_void,
+    ) -> windows::core::HRESULT {
+        if iid.is_null() || interface.is_null() {
+            return E_POINTER;
+        }
+        unsafe {
+            *interface = std::ptr::null_mut();
+            if *iid == IUnknown::IID || *iid == IDispatch::IID || *iid == IMSTSCAX_EVENTS_IID {
+                *interface = this;
+                rdp_event_sink_add_ref(this);
+                return S_OK;
+            }
+        }
+        E_NOINTERFACE
+    }
+
+    unsafe extern "system" fn rdp_event_sink_add_ref(this: *mut c_void) -> u32 {
+        let sink = unsafe { &*this.cast::<RdpEventSink>() };
+        sink.references.fetch_add(1, Ordering::Relaxed) + 1
+    }
+
+    unsafe extern "system" fn rdp_event_sink_release(this: *mut c_void) -> u32 {
+        let sink = unsafe { &*this.cast::<RdpEventSink>() };
+        let remaining = sink.references.fetch_sub(1, Ordering::Release) - 1;
+        if remaining == 0 {
+            std::sync::atomic::fence(Ordering::Acquire);
+            unsafe { drop(Box::from_raw(this.cast::<RdpEventSink>())) };
+        }
+        remaining
+    }
+
+    unsafe extern "system" fn rdp_event_sink_get_type_info_count(
+        _this: *mut c_void,
+        count: *mut u32,
+    ) -> windows::core::HRESULT {
+        if count.is_null() {
+            return E_POINTER;
+        }
+        unsafe { *count = 0 };
+        S_OK
+    }
+
+    unsafe extern "system" fn rdp_event_sink_get_type_info(
+        _this: *mut c_void,
+        _type_info: u32,
+        _lcid: u32,
+        _result: *mut *mut c_void,
+    ) -> windows::core::HRESULT {
+        E_NOTIMPL
+    }
+
+    unsafe extern "system" fn rdp_event_sink_get_ids_of_names(
+        _this: *mut c_void,
+        _iid: *const GUID,
+        _names: *const PCWSTR,
+        _name_count: u32,
+        _lcid: u32,
+        _dispids: *mut i32,
+    ) -> windows::core::HRESULT {
+        DISP_E_UNKNOWNNAME
+    }
+
+    unsafe extern "system" fn rdp_event_sink_invoke(
+        this: *mut c_void,
+        dispidmember: i32,
+        _iid: *const GUID,
+        _lcid: u32,
+        _flags: DISPATCH_FLAGS,
+        _params: *const DISPPARAMS,
+        _result: *mut VARIANT,
+        _exception: *mut EXCEPINFO,
+        _argument_error: *mut u32,
+    ) -> windows::core::HRESULT {
+        let sink = unsafe { &*this.cast::<RdpEventSink>() };
+        sink.handle_event(dispidmember);
+        S_OK
+    }
 
     fn rdp_request_scale_factor(requested: Option<f64>, host_scale_factor: f64) -> f64 {
         requested
@@ -775,49 +955,12 @@ mod platform {
             let session_id = request.session_id;
             let connection_name = required_field("RDP connection name", request.connection_name)?;
             run_on_main_thread("enter_rdp_fullscreen", app, move |app| {
-                let host_window = app
-                    .get_webview_window(HOST_WINDOW_LABEL)
-                    .ok_or_else(|| format!("host window '{HOST_WINDOW_LABEL}' is not available"))?;
-                let monitor = host_window
-                    .current_monitor()
-                    .ok()
-                    .flatten()
-                    .or_else(|| host_window.primary_monitor().ok().flatten())
-                    .ok_or_else(|| "no monitor is available for RDP full screen".to_string())?;
-                let monitor_size = monitor.size();
-                let monitor_scale_factor = monitor.scale_factor();
                 let mut sessions = lock_sessions(&sessions)?;
                 let session = sessions
                     .get_mut(&session_id)
                     .ok_or_else(|| format!("RDP session '{session_id}' was not found"))?;
-                let display_settings = fullscreen_display_settings(
-                    session,
-                    monitor_size.width,
-                    monitor_size.height,
-                    monitor_scale_factor,
-                );
-                let restore_display = current_rdp_display_settings(session);
-                session
-                    .fullscreen_restore_display
-                    .get_or_insert(restore_display);
-                let display_sync_completed =
-                    sync_remote_desktop_size(session, display_settings, true);
-                // SmartSizing fills the native host even when the server no
-                // longer accepts dynamic display-control updates.
-                apply_smart_sizing(&session.dispatch, true);
-                configure_native_fullscreen(&session.dispatch, &connection_name)?;
-                set_property_bool(&session.dispatch, "FullScreen", true)?;
-                rdp_debug(
-                    "fullscreen.enter",
-                    &json!({
-                        "sessionId": &session.session_id,
-                        "monitorWidth": monitor_size.width,
-                        "monitorHeight": monitor_size.height,
-                        "monitorScaleFactor": monitor_scale_factor,
-                        "displaySyncCompleted": display_sync_completed,
-                    }),
-                );
-                Ok(())
+                session.connection_name = connection_name;
+                enter_native_fullscreen(&app, session)
             })
         }
 
@@ -983,8 +1126,9 @@ mod platform {
             let sessions = Arc::clone(&self.sessions);
             run_on_main_thread("close_rdp_session", app, move |_app| {
                 let mut sessions = lock_sessions(&sessions)?;
-                if let Some(session) = sessions.remove(&request.session_id) {
+                if let Some(mut session) = sessions.remove(&request.session_id) {
                     clear_rdp_overlay_focus_target(&request.session_id);
+                    session.event_subscription.unsubscribe();
                     let _ = invoke_method(&session.dispatch, "Disconnect");
                     unsafe {
                         DestroyWindow(session.hwnd).map_err(|error| {
@@ -1213,6 +1357,7 @@ mod platform {
         let password_supplied = request.password().is_some();
         let secret_owner_id_present = request.secret_owner_id().is_some();
         let session_id = required_id(request.session_id)?;
+        let connection_name = required_field("RDP connection name", request.connection_name)?;
         let host = required_field("RDP host", request.host)?;
         let user = request.user.trim().to_string();
         let port = request.port.unwrap_or(3389);
@@ -1237,6 +1382,7 @@ mod platform {
             "session.start.request",
             &json!({
                 "sessionId": &session_id,
+                "connectionName": &connection_name,
                 "host": &host,
                 "user": &user,
                 "port": port,
@@ -1332,6 +1478,8 @@ mod platform {
             smart_sizing,
             &options,
         )?;
+        let event_subscription =
+            subscribe_rdp_events(&dispatch, app, Arc::downgrade(&sessions), &session_id)?;
         rdp_debug(
             "session.start.configured",
             &json!({
@@ -1358,6 +1506,7 @@ mod platform {
             session_id.clone(),
             RdpSession {
                 session_id: session_id.clone(),
+                connection_name,
                 hwnd,
                 owner: parent_hwnd,
                 dispatch,
@@ -1373,6 +1522,7 @@ mod platform {
                 dynamic_resize_failures: 0,
                 resolution_mode,
                 fullscreen_restore_display: None,
+                event_subscription,
             },
         );
 
@@ -1731,54 +1881,58 @@ mod platform {
             set_clear_text_password(dispatch, password);
         }
 
-        if let Some(advanced) = get_advanced_settings(dispatch) {
-            let _ = set_property_bool(&advanced, "AllowPromptingForCredentials", true);
-            let _ = set_property_i32(&advanced, "RDPPort", i32::from(port));
-            // Connection-bar preferences are creation-time ActiveX settings.
-            // Some mstscax versions expose these through IDispatch after Connect
-            // but reject writes with DISP_E_EXCEPTION. Configure them here; the
-            // bar itself defaults to enabled if a version rejects an option.
-            let _ = set_property_bool(&advanced, "DisplayConnectionBar", true);
-            let _ = set_property_bool(&advanced, "PinConnectionBar", false);
-            let _ = set_property_bool(&advanced, "ConnectionBarShowRestoreButton", true);
-            let _ = set_property_bool(&advanced, "ConnectionBarShowMinimizeButton", false);
-            let _ = set_property_bool(
-                &advanced,
-                "ConnectToAdministerServer",
-                options.administrative_session,
-            );
-            let _ = set_property_bool(&advanced, "EnableCredSspSupport", true);
-            // The embedded MsRdpClient ActiveX has no UI to show the server-auth
-            // certificate-trust warning that mstsc.exe displays on first contact.
-            // With the default AuthenticationLevel of 2 ("Warn"), the control stalls
-            // silently at a blank pre-login screen until mstsc has been used once to
-            // persist the cert hash under HKCU\...\Terminal Server Client\Servers.
-            // 0 = connect even if server authentication fails, matching the posture
-            // used by embedded RDP hosts (RDWeb, FreeRDP).
-            let _ = set_property_i32(&advanced, "AuthenticationLevel", 0);
-            let _ = set_property_bool(&advanced, "NegotiateSecurityLayer", true);
-            // Match mstsc's Local Resources defaults closely enough for embedded sessions:
-            // Windows shortcut replacements (including Ctrl+Alt+End for SAS) must be routed to
-            // the remote host, while higher-risk device redirects stay disabled until KKTerm
-            // exposes durable Connection settings for them.
-            let _ = set_property_bool(&advanced, "RedirectClipboard", options.redirect_clipboard);
-            let redirect_all_drives = options.redirect_drives
-                && matches!(&options.drive_selection, RdpDriveSelection::All);
-            let _ = set_property_bool(&advanced, "RedirectDrives", redirect_all_drives);
-            let _ = set_property_bool(&advanced, "RedirectPorts", false);
-            let _ = set_property_bool(&advanced, "RedirectPrinters", false);
-            let _ = set_property_bool(&advanced, "RedirectSmartCards", false);
-            let _ = set_property_i32(&advanced, "SasSequence", RDP_STANDARD_SAS_SEQUENCE);
-            let _ = set_property_i32(&advanced, "HotKeyCtrlAltDel", VK_END_KEY as i32);
-            let _ = set_property_bool(&advanced, "SmartSizing", smart_sizing);
-            let _ = set_property_bool(&advanced, "BitmapPersistence", options.bitmap_cache);
-            let _ = set_property_bool(&advanced, "CachePersistenceActive", options.bitmap_cache);
-            let _ = set_property_i32(
-                &advanced,
-                "PerformanceFlags",
-                performance_flags_for(&options.performance_profile),
-            );
-        }
+        let advanced = get_advanced_settings(dispatch)
+            .ok_or_else(|| "RDP ActiveX does not expose advanced settings".to_string())?;
+        // Microsoft documents this as the supported way for an ActiveX container
+        // to own Ctrl+Alt+Break transitions. The control raises request events
+        // instead of opening its unprepared full-screen host itself.
+        set_property_bool(&advanced, "ContainerHandledFullScreen", true)?;
+        let _ = set_property_bool(&advanced, "AllowPromptingForCredentials", true);
+        let _ = set_property_i32(&advanced, "RDPPort", i32::from(port));
+        // Connection-bar preferences are creation-time ActiveX settings.
+        // Some mstscax versions expose these through IDispatch after Connect
+        // but reject writes with DISP_E_EXCEPTION. Configure them here; the
+        // bar itself defaults to enabled if a version rejects an option.
+        let _ = set_property_bool(&advanced, "DisplayConnectionBar", true);
+        let _ = set_property_bool(&advanced, "PinConnectionBar", false);
+        let _ = set_property_bool(&advanced, "ConnectionBarShowRestoreButton", true);
+        let _ = set_property_bool(&advanced, "ConnectionBarShowMinimizeButton", false);
+        let _ = set_property_bool(
+            &advanced,
+            "ConnectToAdministerServer",
+            options.administrative_session,
+        );
+        let _ = set_property_bool(&advanced, "EnableCredSspSupport", true);
+        // The embedded MsRdpClient ActiveX has no UI to show the server-auth
+        // certificate-trust warning that mstsc.exe displays on first contact.
+        // With the default AuthenticationLevel of 2 ("Warn"), the control stalls
+        // silently at a blank pre-login screen until mstsc has been used once to
+        // persist the cert hash under HKCU\...\Terminal Server Client\Servers.
+        // 0 = connect even if server authentication fails, matching the posture
+        // used by embedded RDP hosts (RDWeb, FreeRDP).
+        let _ = set_property_i32(&advanced, "AuthenticationLevel", 0);
+        let _ = set_property_bool(&advanced, "NegotiateSecurityLayer", true);
+        // Match mstsc's Local Resources defaults closely enough for embedded sessions:
+        // Windows shortcut replacements (including Ctrl+Alt+End for SAS) must be routed to
+        // the remote host, while higher-risk device redirects stay disabled until KKTerm
+        // exposes durable Connection settings for them.
+        let _ = set_property_bool(&advanced, "RedirectClipboard", options.redirect_clipboard);
+        let redirect_all_drives =
+            options.redirect_drives && matches!(&options.drive_selection, RdpDriveSelection::All);
+        let _ = set_property_bool(&advanced, "RedirectDrives", redirect_all_drives);
+        let _ = set_property_bool(&advanced, "RedirectPorts", false);
+        let _ = set_property_bool(&advanced, "RedirectPrinters", false);
+        let _ = set_property_bool(&advanced, "RedirectSmartCards", false);
+        let _ = set_property_i32(&advanced, "SasSequence", RDP_STANDARD_SAS_SEQUENCE);
+        let _ = set_property_i32(&advanced, "HotKeyCtrlAltDel", VK_END_KEY as i32);
+        let _ = set_property_bool(&advanced, "SmartSizing", smart_sizing);
+        let _ = set_property_bool(&advanced, "BitmapPersistence", options.bitmap_cache);
+        let _ = set_property_bool(&advanced, "CachePersistenceActive", options.bitmap_cache);
+        let _ = set_property_i32(
+            &advanced,
+            "PerformanceFlags",
+            performance_flags_for(&options.performance_profile),
+        );
         if options.redirect_drives {
             match configure_drive_collection(dispatch, &options.drive_selection) {
                 Ok(()) => {}
@@ -1949,6 +2103,86 @@ mod platform {
         connection_name: &str,
     ) -> Result<(), String> {
         set_connection_bar_text(dispatch, connection_name)
+    }
+
+    fn enter_native_fullscreen(app: &AppHandle, session: &mut RdpSession) -> Result<(), String> {
+        let host_window = app
+            .get_webview_window(HOST_WINDOW_LABEL)
+            .ok_or_else(|| format!("host window '{HOST_WINDOW_LABEL}' is not available"))?;
+        let monitor = host_window
+            .current_monitor()
+            .ok()
+            .flatten()
+            .or_else(|| host_window.primary_monitor().ok().flatten())
+            .ok_or_else(|| "no monitor is available for RDP full screen".to_string())?;
+        let monitor_size = monitor.size();
+        let monitor_scale_factor = monitor.scale_factor();
+        let display_settings = fullscreen_display_settings(
+            session,
+            monitor_size.width,
+            monitor_size.height,
+            monitor_scale_factor,
+        );
+        let restore_display = current_rdp_display_settings(session);
+        session
+            .fullscreen_restore_display
+            .get_or_insert(restore_display);
+        let display_sync_completed = sync_remote_desktop_size(session, display_settings, true);
+        // SmartSizing fills the native host even when the server no longer
+        // accepts dynamic display-control updates.
+        apply_smart_sizing(&session.dispatch, true);
+        configure_native_fullscreen(&session.dispatch, &session.connection_name)?;
+        set_property_bool(&session.dispatch, "FullScreen", true)?;
+        rdp_debug(
+            "fullscreen.enter",
+            &json!({
+                "sessionId": &session.session_id,
+                "monitorWidth": monitor_size.width,
+                "monitorHeight": monitor_size.height,
+                "monitorScaleFactor": monitor_scale_factor,
+                "displaySyncCompleted": display_sync_completed,
+            }),
+        );
+        Ok(())
+    }
+
+    fn handle_rdp_fullscreen_request(
+        app: &AppHandle,
+        sessions: &Arc<Mutex<HashMap<String, RdpSession>>>,
+        session_id: &str,
+        dispid: i32,
+    ) -> Result<(), String> {
+        let mut sessions = lock_sessions(sessions)?;
+        let session = sessions
+            .get_mut(session_id)
+            .ok_or_else(|| format!("RDP session '{session_id}' was not found"))?;
+        match dispid {
+            DISPID_REQUEST_GO_FULLSCREEN => enter_native_fullscreen(app, session),
+            DISPID_REQUEST_LEAVE_FULLSCREEN => leave_native_fullscreen(session),
+            _ => Ok(()),
+        }
+    }
+
+    fn subscribe_rdp_events(
+        dispatch: &IDispatch,
+        app: &AppHandle,
+        sessions: Weak<Mutex<HashMap<String, RdpSession>>>,
+        session_id: &str,
+    ) -> Result<RdpEventSubscription, String> {
+        let container = dispatch
+            .cast::<IConnectionPointContainer>()
+            .map_err(|error| {
+                format!("RDP ActiveX does not expose event connection points: {error}")
+            })?;
+        let connection_point = unsafe { container.FindConnectionPoint(&IMSTSCAX_EVENTS_IID) }
+            .map_err(|error| format!("RDP ActiveX does not expose IMsTscAxEvents: {error}"))?;
+        let sink = RdpEventSink::new(app.clone(), sessions, session_id.to_string());
+        let cookie = unsafe { connection_point.Advise(&sink) }
+            .map_err(|error| format!("failed to subscribe to RDP ActiveX events: {error}"))?;
+        Ok(RdpEventSubscription {
+            connection_point,
+            cookie,
+        })
     }
 
     fn current_rdp_display_settings(session: &RdpSession) -> RdpDisplaySettings {
@@ -3644,6 +3878,7 @@ mod platform {
     #[serde(rename_all = "camelCase")]
     pub struct StartRdpSessionRequest {
         pub session_id: String,
+        pub connection_name: String,
         pub host: String,
         pub user: String,
         pub port: Option<u16>,

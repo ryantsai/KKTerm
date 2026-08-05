@@ -62,8 +62,8 @@ test("Windows RDP uses the ActiveX control's own full-screen host", () => {
 
 test("Windows RDP resizes the live remote display for full screen and restores it on exit", () => {
   const enterFullscreen = fullscreenBackend.slice(
-    fullscreenBackend.indexOf("pub fn enter_fullscreen"),
-    fullscreenBackend.indexOf("pub fn exit_fullscreen"),
+    fullscreenBackend.indexOf("fn enter_native_fullscreen"),
+    fullscreenBackend.indexOf("fn handle_rdp_fullscreen_request"),
   );
   assert.match(fullscreenBackend, /fullscreen_restore_display: Option<RdpDisplaySettings>/);
   assert.match(enterFullscreen, /current_monitor\(\)/);
@@ -112,6 +112,38 @@ test("the native shortcut exits ActiveX full screen before WebView routing", () 
   assert.doesNotMatch(fullscreenApp, /keyboardGrab/);
 });
 
+test("Windows registers the Ctrl+Alt+Break virtual key for focused WebView sessions", () => {
+  assert.match(shortcutBackend, /RegisterHotKey/);
+  assert.match(shortcutBackend, /VK_CANCEL/);
+  assert.match(shortcutBackend, /MOD_CONTROL\s*\|\s*MOD_ALT/);
+  assert.match(shortcutBackend, /WM_HOTKEY/);
+  assert.match(shortcutBackend, /windows_shortcut_proc[\s\S]*handle_shortcut/);
+});
+
+test("ActiveX delegates Ctrl+Alt+Break to KKTerm's prepared full-screen path", () => {
+  const preConnectConfig = fullscreenBackend.slice(
+    fullscreenBackend.indexOf("fn configure_rdp_control"),
+    fullscreenBackend.indexOf("fn default_remote_resolution"),
+  );
+  const eventHandler = fullscreenBackend.slice(
+    fullscreenBackend.indexOf("fn handle_rdp_fullscreen_request"),
+    fullscreenBackend.indexOf("fn subscribe_rdp_events"),
+  );
+  assert.match(
+    preConnectConfig,
+    /set_property_bool\(&advanced, "ContainerHandledFullScreen", true\)/,
+  );
+  assert.match(fullscreenBackend, /IConnectionPointContainer/);
+  assert.match(fullscreenBackend, /FindConnectionPoint/);
+  assert.match(fullscreenBackend, /\.Advise\(/);
+  assert.match(fullscreenBackend, /rdp_event_sink_query_interface[\s\S]*IMSTSCAX_EVENTS_IID/);
+  assert.match(fullscreenBackend, /\.Unadvise\(/);
+  assert.match(fullscreenBackend, /const DISPID_REQUEST_GO_FULLSCREEN:\s*i32\s*=\s*8/);
+  assert.match(fullscreenBackend, /const DISPID_REQUEST_LEAVE_FULLSCREEN:\s*i32\s*=\s*9/);
+  assert.match(eventHandler, /enter_native_fullscreen/);
+  assert.match(eventHandler, /leave_native_fullscreen/);
+});
+
 test("Windows exposes the ActiveX full-screen shortcut as fixed Ctrl+Alt+Break", () => {
   assert.match(shortcutBackend, /cfg\(target_os = "windows"\)[\s\S]*fn binding\(settings: &GeneralSettings\)/);
   assert.match(shortcutBackend, /Some\(DEFAULT_BINDING\.to_string\(\)\)/);
@@ -125,7 +157,7 @@ test("Windows ActiveX connection bar uses the durable Connection name", () => {
   assert.match(fullscreenBackend, /struct EnterRdpFullscreenRequest[\s\S]*connection_name:\s*String/);
   assert.match(
     fullscreenBackend,
-    /configure_native_fullscreen\(&session\.dispatch,\s*&connection_name\)/,
+    /configure_native_fullscreen\(&session\.dispatch,\s*&session\.connection_name\)/,
   );
   assert.doesNotMatch(fullscreenBackend, /set_connection_bar_text\(dispatch,\s*"KKTerm"\)/);
 });

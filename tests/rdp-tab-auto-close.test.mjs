@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("RDP workspace does not install the removed ActiveX disconnect event sink", async () => {
+test("RDP ActiveX events do not restore the removed disconnect auto-close flow", async () => {
   const remoteDesktopSource = await readFile(
     new URL("../src/modules/workspace/connections/remote-desktop/RemoteDesktopWorkspace.tsx", import.meta.url),
     "utf8",
@@ -21,7 +21,9 @@ test("RDP workspace does not install the removed ActiveX disconnect event sink",
   );
   assert.doesNotMatch(
     rdpSource,
-    /RdpEventSink|advise_rdp_events|FindConnectionPoint|IID_IMS_TSC_AX_EVENTS|DISPID_DISCONNECTED|rdp-session-event/,
+    /DISPID_DISCONNECTED|rdp-session-event|RdpSessionEvent/,
     "RDP backend should not subscribe to or emit ActiveX disconnect events",
   );
+  assert.match(rdpSource, /DISPID_REQUEST_GO_FULLSCREEN:\s*i32\s*=\s*8/);
+  assert.match(rdpSource, /DISPID_REQUEST_LEAVE_FULLSCREEN:\s*i32\s*=\s*9/);
 });

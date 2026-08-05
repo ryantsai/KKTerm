@@ -887,6 +887,7 @@ export interface FillWebviewCredentialRequest {
 
 export interface StartRdpSessionRequest {
   sessionId: string;
+  connectionName: string;
   host: string;
   user: string;
   url?: string;

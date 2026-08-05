@@ -1120,6 +1120,7 @@ export function RemoteDesktopWorkspace({
       void invokeCommand("start_rdp_session", {
         request: {
           sessionId,
+          connectionName: connection.name,
           host: connection.host,
           user: connection.user,
           port: connection.port,
