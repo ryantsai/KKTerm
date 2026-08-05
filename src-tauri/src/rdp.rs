@@ -982,23 +982,27 @@ mod platform {
             })
         }
 
+        /// Called only from Tauri's native shortcut callback, which runs on the
+        /// UI thread that owns the ActiveX controls.
+        pub fn exit_active_fullscreen(&self) -> Result<bool, String> {
+            let mut sessions = lock_sessions(&self.sessions)?;
+            for session in sessions.values_mut() {
+                if is_native_fullscreen(session) {
+                    leave_native_fullscreen(session)?;
+                    rdp_debug(
+                        "fullscreen.shortcut.exit",
+                        &json!({ "sessionId": &session.session_id }),
+                    );
+                    return Ok(true);
+                }
+            }
+            Ok(false)
+        }
+
         /// Called by shortcut focus registration on Tauri's UI thread.
         pub fn has_active_fullscreen(&self) -> Result<bool, String> {
             let sessions = lock_sessions(&self.sessions)?;
             Ok(sessions.values().any(is_native_fullscreen))
-        }
-
-        /// Called from the Windows Ctrl+Alt+Break hook on the UI thread. A
-        /// focused windowed ActiveX child receives the chord through
-        /// IMsTscAxEvents; its native full-screen host owns the chord as well.
-        pub fn owns_fullscreen_shortcut(&self) -> Result<bool, String> {
-            let sessions = lock_sessions(&self.sessions)?;
-            let focused = unsafe { GetFocus() };
-            Ok(sessions.values().any(|session| {
-                is_native_fullscreen(session)
-                    || focused == session.hwnd
-                    || unsafe { IsChild(session.hwnd, focused).as_bool() }
-            }))
         }
 
         pub fn sync_display_size(

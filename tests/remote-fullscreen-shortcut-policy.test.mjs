@@ -96,10 +96,11 @@ test("the revealed full-screen toolbar keeps its natural control height", () => 
   assert.match(zoneRule, /align-items:\s*flex-start/);
 });
 
-test("the native shortcut routes through the owning remote desktop surface", () => {
+test("the native shortcut exits ActiveX full screen before WebView routing", () => {
   assert.match(shortcutBackend, /DEFAULT_BINDING: &str = "Ctrl\+Alt\+Pause"/);
   assert.match(shortcutBackend, /DEFAULT_BINDING: &str = "Ctrl\+Cmd\+F"/);
   assert.match(shortcutBackend, /DEFAULT_BINDING: &str = "F11"/);
+  assert.match(shortcutBackend, /exit_active_fullscreen/);
   assert.match(shortcutBackend, /has_active_fullscreen/);
   assert.match(shortcutBackend, /remote_fullscreen::emit_toggle_shortcut/);
   assert.match(shortcutBackend, /pub\(crate\) fn sync_focus/);
@@ -111,17 +112,12 @@ test("the native shortcut routes through the owning remote desktop surface", () 
   assert.doesNotMatch(fullscreenApp, /keyboardGrab/);
 });
 
-test("Windows observes Ctrl+Alt+Break without consuming ActiveX's chord", () => {
-  assert.match(shortcutBackend, /VK_CANCEL_CODE/);
-  assert.match(shortcutBackend, /WH_KEYBOARD_LL/);
-  assert.match(shortcutBackend, /GetAsyncKeyState\(VK_CONTROL/);
-  assert.match(shortcutBackend, /GetAsyncKeyState\(VK_MENU/);
-  assert.match(shortcutBackend, /CallNextHookEx/);
-  assert.match(shortcutBackend, /active_x_owns_shortcut/);
-  assert.match(shortcutBackend, /owns_fullscreen_shortcut/);
-  assert.match(fullscreenBackend, /owns_fullscreen_shortcut[\s\S]*IsChild\(session\.hwnd, focused\)/);
-  assert.match(shortcutBackend, /windows_break_hook::set_enabled\(app_is_focused\)/);
-  assert.doesNotMatch(shortcutBackend, /RegisterHotKey|WM_HOTKEY/);
+test("Windows registers the Ctrl+Alt+Break virtual key for focused WebView sessions", () => {
+  assert.match(shortcutBackend, /RegisterHotKey/);
+  assert.match(shortcutBackend, /VK_CANCEL/);
+  assert.match(shortcutBackend, /MOD_CONTROL\s*\|\s*MOD_ALT/);
+  assert.match(shortcutBackend, /WM_HOTKEY/);
+  assert.match(shortcutBackend, /windows_shortcut_proc[\s\S]*handle_shortcut/);
 });
 
 test("ActiveX delegates Ctrl+Alt+Break to KKTerm's prepared full-screen path", () => {
