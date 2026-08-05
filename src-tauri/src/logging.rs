@@ -535,6 +535,7 @@ mod tests {
     fn rdp_debug_payload_redacts_secret_like_keys_recursively() {
         let redacted = redact_rdp_debug_payload(&json!({
             "host": "rdp.example",
+            "dispatchSequence": 42,
             "password": "secret-password",
             "clearTextPassword": "clear-secret",
             "secretOwnerId": "connection-password-owner",
@@ -551,6 +552,7 @@ mod tests {
         }));
 
         assert_eq!(redacted["host"], "rdp.example");
+        assert_eq!(redacted["dispatchSequence"], 42);
         assert_eq!(redacted["password"], "[redacted]");
         assert_eq!(redacted["clearTextPassword"], "[redacted]");
         assert_eq!(redacted["secretOwnerId"], "[redacted]");

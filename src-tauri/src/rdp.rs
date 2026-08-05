@@ -5,10 +5,11 @@ mod platform {
         ffi::c_void,
         mem::ManuallyDrop,
         sync::{
-            Arc, Mutex, MutexGuard, OnceLock, Weak,
+            Arc, Mutex, MutexGuard, OnceLock, TryLockError, Weak,
             atomic::{AtomicU32, Ordering},
             mpsc,
         },
+        thread,
         time::{Duration, Instant},
     };
 
@@ -24,7 +25,10 @@ mod platform {
                 HINSTANCE, HWND, LPARAM, POINT, RECT, S_OK, VARIANT_BOOL, VARIANT_FALSE,
                 VARIANT_TRUE, WPARAM,
             },
-            Graphics::Gdi::ClientToScreen,
+            Graphics::Gdi::{
+                ClientToScreen, GetMonitorInfoW, MONITOR_DEFAULTTONEAREST, MONITORINFO,
+                MonitorFromWindow,
+            },
             System::{
                 Com::{
                     DISPATCH_FLAGS, DISPATCH_METHOD, DISPATCH_PROPERTYGET, DISPATCH_PROPERTYPUT,
@@ -49,8 +53,9 @@ mod platform {
                 WindowsAndMessaging::{
                     CallNextHookEx, CreateWindowExW, DestroyWindow, GetClientRect,
                     GetForegroundWindow, GetWindowRect, GetWindowThreadProcessId, HC_ACTION, HHOOK,
-                    HMENU, IsChild, MSLLHOOKSTRUCT, SW_SHOWNOACTIVATE, SWP_NOACTIVATE,
-                    SWP_NOZORDER, SendMessageW, SetForegroundWindow, SetWindowPos,
+                    HMENU, HWND_NOTOPMOST, HWND_TOPMOST, IsChild, MSLLHOOKSTRUCT,
+                    SW_SHOWNOACTIVATE, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER,
+                    SWP_SHOWWINDOW, SendMessageW, SetForegroundWindow, SetWindowPos,
                     SetWindowsHookExW, ShowWindow, UnhookWindowsHookEx, WH_MOUSE_LL,
                     WM_LBUTTONDOWN, WM_MBUTTONDOWN, WM_RBUTTONDOWN, WM_XBUTTONDOWN,
                     WS_CLIPCHILDREN, WS_CLIPSIBLINGS, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_POPUP,
@@ -105,6 +110,7 @@ mod platform {
     const RDP_SEND_KEYS_LIMIT: usize = 20;
     const RDP_MAIN_THREAD_WARN_AFTER: Duration = Duration::from_secs(2);
     const RDP_MAIN_THREAD_TIMEOUT: Duration = Duration::from_secs(15);
+    const RDP_FULLSCREEN_REQUEST_RETRY_INTERVAL: Duration = Duration::from_millis(25);
     const DISPID_REQUEST_GO_FULLSCREEN: i32 = 8;
     const DISPID_REQUEST_LEAVE_FULLSCREEN: i32 = 9;
     const IMSTSCAX_EVENTS_IID: GUID = GUID::from_u128(0x336d5562_efa8_482e_8cb3_c5c0fc7a7db6);
@@ -267,6 +273,13 @@ mod platform {
     #[derive(Clone)]
     pub struct RdpSessionManager {
         sessions: Arc<Mutex<HashMap<String, RdpSession>>>,
+    }
+
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub enum RdpFullscreenShortcutDispatch {
+        Handled,
+        NotApplicable,
+        Busy,
     }
 
     #[derive(Deserialize)]
@@ -585,8 +598,16 @@ mod platform {
         device_scale_factor: i32,
         dynamic_resize_failures: u32,
         resolution_mode: RemoteResolutionMode,
-        fullscreen_restore_display: Option<RdpDisplaySettings>,
+        fullscreen_restore: Option<RdpFullscreenRestore>,
+        suppressed_fullscreen_dispid: Arc<AtomicU32>,
         event_subscription: RdpEventSubscription,
+    }
+
+    #[derive(Clone, Copy)]
+    struct RdpFullscreenRestore {
+        host_rect: RECT,
+        display: RdpDisplaySettings,
+        visible: bool,
     }
 
     struct RdpEventSubscription {
@@ -613,9 +634,9 @@ mod platform {
     struct RdpEventSink {
         vtable: *const IDispatch_Vtbl,
         references: AtomicU32,
-        app: AppHandle,
-        sessions: Weak<Mutex<HashMap<String, RdpSession>>>,
         session_id: String,
+        fullscreen_requests: mpsc::Sender<(i32, usize)>,
+        suppressed_fullscreen_dispid: Arc<AtomicU32>,
     }
 
     // These values are always created, used, and destroyed through closures
@@ -625,50 +646,182 @@ mod platform {
 
     struct VariantArg(VARIANT);
 
+    struct RdpFullscreenEventSuppression<'a> {
+        state: &'a AtomicU32,
+        previous: u32,
+    }
+
+    impl<'a> RdpFullscreenEventSuppression<'a> {
+        fn new(state: &'a AtomicU32, dispid: i32) -> Self {
+            Self {
+                state,
+                previous: state.swap(dispid as u32, Ordering::AcqRel),
+            }
+        }
+    }
+
+    impl Drop for RdpFullscreenEventSuppression<'_> {
+        fn drop(&mut self) {
+            self.state.store(self.previous, Ordering::Release);
+        }
+    }
+
     impl RdpEventSink {
         fn new(
             app: AppHandle,
             sessions: Weak<Mutex<HashMap<String, RdpSession>>>,
             session_id: String,
-        ) -> IUnknown {
+            origin_hwnd: isize,
+            suppressed_fullscreen_dispid: Arc<AtomicU32>,
+        ) -> Result<IUnknown, String> {
+            let fullscreen_requests = start_rdp_fullscreen_request_worker(
+                app,
+                sessions,
+                session_id.clone(),
+                origin_hwnd,
+                Arc::clone(&suppressed_fullscreen_dispid),
+            )?;
             let sink = Box::new(Self {
                 vtable: &RDP_EVENT_SINK_VTABLE,
                 references: AtomicU32::new(1),
-                app,
-                sessions,
                 session_id,
+                fullscreen_requests,
+                suppressed_fullscreen_dispid,
             });
-            unsafe { IUnknown::from_raw(Box::into_raw(sink).cast()) }
+            Ok(unsafe { IUnknown::from_raw(Box::into_raw(sink).cast()) })
         }
 
         fn handle_event(&self, dispidmember: i32) {
-            if matches!(
+            if !matches!(
                 dispidmember,
                 DISPID_REQUEST_GO_FULLSCREEN | DISPID_REQUEST_LEAVE_FULLSCREEN
             ) {
-                let result = self.sessions.upgrade().ok_or_else(|| {
-                    "RDP session manager closed before its full-screen request".to_string()
-                });
-                let result = result.and_then(|sessions| {
-                    handle_rdp_fullscreen_request(
-                        &self.app,
-                        &sessions,
-                        &self.session_id,
-                        dispidmember,
-                    )
-                });
-                if let Err(error) = result {
-                    rdp_debug(
-                        "fullscreen.request.error",
-                        &json!({
-                            "sessionId": &self.session_id,
-                            "dispid": dispidmember,
-                            "error": error,
-                        }),
-                    );
-                }
+                return;
+            }
+            if self.suppressed_fullscreen_dispid.load(Ordering::Acquire) == dispidmember as u32 {
+                return;
+            }
+            let activation_generation =
+                crate::remote_fullscreen_shortcut::windows_activation_generation();
+            if self
+                .fullscreen_requests
+                .send((dispidmember, activation_generation))
+                .is_err()
+            {
+                rdp_debug(
+                    "fullscreen.request.queue_error",
+                    &json!({
+                        "sessionId": &self.session_id,
+                        "dispid": dispidmember,
+                    }),
+                );
             }
         }
+    }
+
+    fn start_rdp_fullscreen_request_worker(
+        app: AppHandle,
+        sessions: Weak<Mutex<HashMap<String, RdpSession>>>,
+        session_id: String,
+        origin_hwnd: isize,
+        origin_token: Arc<AtomicU32>,
+    ) -> Result<mpsc::Sender<(i32, usize)>, String> {
+        let (sender, receiver) = mpsc::channel();
+        let worker_session_id = session_id.clone();
+        thread::Builder::new()
+            .name("kkterm-rdp-fullscreen-request".to_string())
+            .spawn(move || {
+                'requests: while let Ok((dispid, activation_generation)) = receiver.recv() {
+                    loop {
+                        let request_app = app.clone();
+                        let request_sessions = sessions.clone();
+                        let request_session_id = worker_session_id.clone();
+                        let request_origin_token = Arc::clone(&origin_token);
+                        let (completion_sender, completion_receiver) = mpsc::sync_channel(1);
+                        if let Err(error) = app.run_on_main_thread(move || {
+                            let result = request_sessions.upgrade().ok_or_else(|| {
+                                "RDP session manager closed before its full-screen request"
+                                    .to_string()
+                            });
+                            let result = result.and_then(|sessions| {
+                                handle_rdp_fullscreen_request(
+                                    &request_app,
+                                    &sessions,
+                                    &request_session_id,
+                                    origin_hwnd,
+                                    &request_origin_token,
+                                    dispid,
+                                    activation_generation,
+                                )
+                            });
+                            let _ = completion_sender.send(result);
+                        }) {
+                            rdp_debug(
+                                "fullscreen.request.schedule_error",
+                                &json!({
+                                    "sessionId": &worker_session_id,
+                                    "dispid": dispid,
+                                    "activationGeneration": activation_generation,
+                                    "error": error.to_string(),
+                                }),
+                            );
+                            break 'requests;
+                        }
+                        let completion =
+                            match completion_receiver.recv_timeout(RDP_MAIN_THREAD_TIMEOUT) {
+                                Ok(completion) => completion,
+                                Err(error) => {
+                                    rdp_debug(
+                                        "fullscreen.request.completion_error",
+                                        &json!({
+                                            "sessionId": &worker_session_id,
+                                            "dispid": dispid,
+                                            "activationGeneration": activation_generation,
+                                            "error": error.to_string(),
+                                        }),
+                                    );
+                                    match completion_receiver.recv() {
+                                        Ok(completion) => completion,
+                                        Err(_) => break 'requests,
+                                    }
+                                }
+                            };
+                        match completion {
+                            Ok(true) => break,
+                            Ok(false) => {
+                                rdp_debug(
+                                    "fullscreen.request.retry",
+                                    &json!({
+                                        "sessionId": &worker_session_id,
+                                        "dispid": dispid,
+                                        "activationGeneration": activation_generation,
+                                        "reason": "sessionBusy",
+                                    }),
+                                );
+                                thread::sleep(RDP_FULLSCREEN_REQUEST_RETRY_INTERVAL);
+                            }
+                            Err(error) => {
+                                rdp_debug(
+                                    "fullscreen.request.error",
+                                    &json!({
+                                        "sessionId": &worker_session_id,
+                                        "dispid": dispid,
+                                        "activationGeneration": activation_generation,
+                                        "error": error,
+                                    }),
+                                );
+                                break;
+                            }
+                        }
+                    }
+                }
+            })
+            .map_err(|error| {
+                format!(
+                    "failed to start the RDP full-screen request worker for '{session_id}': {error}"
+                )
+            })?;
+        Ok(sender)
     }
 
     static RDP_EVENT_SINK_VTABLE: IDispatch_Vtbl = IDispatch_Vtbl {
@@ -807,14 +960,38 @@ mod platform {
                 let session = sessions
                     .get_mut(&request.session_id)
                     .ok_or_else(|| format!("RDP session '{}' was not found", request.session_id))?;
-                if is_native_fullscreen(session) {
-                    // ActiveX owns its native full-screen window; ignore Pane bounds.
+                let native_fullscreen = is_native_fullscreen(session);
+                if session.fullscreen_restore.is_some() {
+                    update_fullscreen_restore_bounds(
+                        session,
+                        scale_factor,
+                        request.x,
+                        request.y,
+                        request.width,
+                        request.height,
+                    )?;
+                    if native_fullscreen {
+                        // The retained ActiveX host currently fills its monitor;
+                        // retain the latest windowed Pane bounds until exit.
+                        return Ok(());
+                    }
+                    // The connection bar or ActiveX chord can clear FullScreen
+                    // before the leave-request event reaches this container.
+                    let restore = session
+                        .fullscreen_restore
+                        .expect("restore state checked above");
+                    let display_sync_completed = restore_windowed_host(session, restore)?;
+                    session.fullscreen_restore = None;
+                    if request.force && !display_sync_completed {
+                        return Err(
+                            "failed to restore the RDP remote display size after full screen"
+                                .to_string(),
+                        );
+                    }
                     return Ok(());
                 }
-                if session.fullscreen_restore_display.take().is_some() {
-                    // The user may have left ActiveX full screen through its
-                    // connection bar or built-in Ctrl+Alt+Break handling.
-                    apply_smart_sizing(&session.dispatch, session.resolution_mode.smart_sizing());
+                if native_fullscreen {
+                    return Ok(());
                 }
                 show_and_resize_rdp(
                     session,
@@ -834,7 +1011,8 @@ mod platform {
             request: SetRdpVisibilityRequest,
         ) -> Result<(), String> {
             let sessions = Arc::clone(&self.sessions);
-            run_on_main_thread("set_rdp_visibility", app, move |app| {
+            let focus_app = app.clone();
+            let result = run_on_main_thread("set_rdp_visibility", app, move |app| {
                 let host_window = app
                     .get_webview_window(HOST_WINDOW_LABEL)
                     .ok_or_else(|| format!("host window '{HOST_WINDOW_LABEL}' is not available"))?;
@@ -843,14 +1021,37 @@ mod platform {
                     .map_err(|error| format!("failed to read host window scale factor: {error}"))?;
                 let scale_factor =
                     rdp_request_scale_factor(request.scale_factor, host_scale_factor);
-                let sessions = lock_sessions(&sessions)?;
-                // A session in ActiveX full screen owns its native host; the Pane
-                // must not reposition or park its windowed host.
-                if sessions
-                    .get(&request.session_id)
-                    .is_some_and(is_native_fullscreen)
-                {
-                    return Ok(());
+                let mut sessions = lock_sessions(&sessions)?;
+                if let Some(session) = sessions.get_mut(&request.session_id) {
+                    let native_fullscreen = is_native_fullscreen(session);
+                    if session.fullscreen_restore.is_some() {
+                        update_fullscreen_restore_bounds(
+                            session,
+                            scale_factor,
+                            request.x,
+                            request.y,
+                            request.width,
+                            request.height,
+                        )?;
+                        if let Some(restore) = session.fullscreen_restore.as_mut() {
+                            restore.visible = request.visible;
+                        }
+                        if native_fullscreen {
+                            // Keep the monitor-sized host in place, but ensure
+                            // this latest request wins when full screen ends.
+                            return Ok(());
+                        }
+                        // ActiveX may clear FullScreen before its queued leave
+                        // event runs. Restore the latest state now so that event
+                        // cannot resurrect the entry-time visible Pane.
+                        let restore = session
+                            .fullscreen_restore
+                            .expect("restore state checked above");
+                        restore_windowed_host(session, restore)?;
+                        session.fullscreen_restore = None;
+                    } else if native_fullscreen {
+                        return Ok(());
+                    }
                 }
                 if request.visible {
                     let mut parked_other_sessions = 0;
@@ -940,12 +1141,15 @@ mod platform {
                     clear_rdp_overlay_focus_target(&request.session_id);
                     Ok(())
                 }
-            })
+            });
+            if result.is_ok() {
+                crate::remote_fullscreen_shortcut::schedule_focus_sync(&focus_app);
+            }
+            result
         }
 
-        /// Ask the Microsoft RDP ActiveX control to enter its own full-screen
-        /// mode. The control owns both the top-level host and connection bar,
-        /// matching mstsc/RDCMan and avoiding cross-window WebView2 airspace.
+        /// Prepare the remote display and expand the retained ActiveX host to
+        /// its monitor. The control still owns its native connection bar.
         pub fn enter_fullscreen(
             &self,
             app: AppHandle,
@@ -954,18 +1158,18 @@ mod platform {
             let sessions = Arc::clone(&self.sessions);
             let session_id = request.session_id;
             let connection_name = required_field("RDP connection name", request.connection_name)?;
-            run_on_main_thread("enter_rdp_fullscreen", app, move |app| {
+            run_on_main_thread("enter_rdp_fullscreen", app, move |_app| {
                 let mut sessions = lock_sessions(&sessions)?;
                 let session = sessions
                     .get_mut(&session_id)
                     .ok_or_else(|| format!("RDP session '{session_id}' was not found"))?;
                 session.connection_name = connection_name;
-                enter_native_fullscreen(&app, session)
+                enter_native_fullscreen(session)
             })
         }
 
-        /// Return the ActiveX control to its existing windowed host. The Pane's
-        /// HWND and bounds never moved, so no parking/reveal cycle is needed.
+        /// Return the retained ActiveX host and remote display to their saved
+        /// windowed Pane state; no parking/reveal cycle is needed.
         pub fn exit_fullscreen(
             &self,
             app: AppHandle,
@@ -982,27 +1186,120 @@ mod platform {
             })
         }
 
-        /// Called only from Tauri's native shortcut callback, which runs on the
-        /// UI thread that owns the ActiveX controls.
-        pub fn exit_active_fullscreen(&self) -> Result<bool, String> {
-            let mut sessions = lock_sessions(&self.sessions)?;
+        /// Toggle the ActiveX Session whose retained host owns the foreground
+        /// or contains keyboard focus. A posted shortcut message can be pumped
+        /// re-entrantly by COM, so it must never wait for a Session operation
+        /// that the same UI thread is already running.
+        pub fn try_toggle_foreground_fullscreen(
+            &self,
+            dispatch_is_current: impl Fn() -> bool,
+        ) -> Result<RdpFullscreenShortcutDispatch, String> {
+            if !dispatch_is_current() || !kkterm_process_owns_foreground() {
+                return Ok(RdpFullscreenShortcutDispatch::Handled);
+            }
+            let foreground = unsafe { GetForegroundWindow() };
+            let focused = unsafe { GetFocus() };
+            let mut sessions = match self.sessions.try_lock() {
+                Ok(sessions) => sessions,
+                Err(TryLockError::WouldBlock) => {
+                    return Ok(RdpFullscreenShortcutDispatch::Busy);
+                }
+                Err(TryLockError::Poisoned(_)) => {
+                    return Err("RDP session lock is poisoned".to_string());
+                }
+            };
             for session in sessions.values_mut() {
-                if is_native_fullscreen(session) {
-                    leave_native_fullscreen(session)?;
-                    rdp_debug(
-                        "fullscreen.shortcut.exit",
-                        &json!({ "sessionId": &session.session_id }),
-                    );
-                    return Ok(true);
+                let native_fullscreen = is_native_fullscreen(session);
+                // The property getter above can pump WM_ACTIVATEAPP. Do not
+                // follow a result obtained across deactivation with the unsafe
+                // FullScreen=false transition.
+                if !dispatch_is_current() || !kkterm_process_owns_foreground() {
+                    return Ok(RdpFullscreenShortcutDispatch::Handled);
+                }
+                if native_fullscreen {
+                    leave_native_fullscreen_if(session, &dispatch_is_current)?;
+                    if dispatch_is_current() && kkterm_process_owns_foreground() {
+                        rdp_debug(
+                            "fullscreen.shortcut.exit",
+                            &json!({ "sessionId": &session.session_id }),
+                        );
+                    }
+                    return Ok(RdpFullscreenShortcutDispatch::Handled);
                 }
             }
-            Ok(false)
+            let Some(session) = sessions.values_mut().find(|session| {
+                rdp_host_accepts_shortcut_input(session)
+                    && (foreground == session.hwnd
+                        || focused == session.hwnd
+                        || unsafe { IsChild(session.hwnd, focused).as_bool() })
+            }) else {
+                return Ok(RdpFullscreenShortcutDispatch::NotApplicable);
+            };
+            enter_native_fullscreen_if(session, &dispatch_is_current)?;
+            if dispatch_is_current() {
+                rdp_debug(
+                    "fullscreen.shortcut.enter",
+                    &json!({ "sessionId": &session.session_id }),
+                );
+            }
+            Ok(RdpFullscreenShortcutDispatch::Handled)
         }
 
-        /// Called by shortcut focus registration on Tauri's UI thread.
-        pub fn has_active_fullscreen(&self) -> Result<bool, String> {
-            let sessions = lock_sessions(&self.sessions)?;
-            Ok(sessions.values().any(is_native_fullscreen))
+        /// Return the two focus snapshots needed by the Windows shortcut hook,
+        /// or `None` when a re-entrant COM callback already owns Session state.
+        pub fn try_shortcut_focus_state(&self) -> Result<Option<(bool, bool)>, String> {
+            let foreground = unsafe { GetForegroundWindow() };
+            let focused = unsafe { GetFocus() };
+            let sessions = match self.sessions.try_lock() {
+                Ok(sessions) => sessions,
+                Err(TryLockError::WouldBlock) => return Ok(None),
+                Err(TryLockError::Poisoned(_)) => {
+                    return Err("RDP session lock is poisoned".to_string());
+                }
+            };
+            let owns_foreground = sessions
+                .values()
+                .any(|session| foreground == session.hwnd || foreground == session.owner);
+            let owns_shortcut = sessions.values().any(|session| {
+                rdp_host_accepts_shortcut_input(session)
+                    && (foreground == session.hwnd
+                        || focused == session.hwnd
+                        || unsafe { IsChild(session.hwnd, focused).as_bool() })
+            });
+            Ok(Some((owns_foreground, owns_shortcut)))
+        }
+
+        /// `WM_ACTIVATEAPP` can be dispatched re-entrantly by an ActiveX COM
+        /// call while the UI thread already owns the Session mutex. The window
+        /// callback must never wait for that same mutex. If it is busy, the
+        /// window callback's coalesced activation timer retries after the COM
+        /// call releases the mutex.
+        pub fn try_sync_fullscreen_z_order(&self, app_is_active: bool) -> Result<bool, String> {
+            let sessions = match self.sessions.try_lock() {
+                Ok(sessions) => sessions,
+                Err(TryLockError::WouldBlock) => return Ok(false),
+                Err(TryLockError::Poisoned(_)) => {
+                    return Err("RDP session lock is poisoned".to_string());
+                }
+            };
+            let insert_after = if app_is_active {
+                HWND_TOPMOST
+            } else {
+                HWND_NOTOPMOST
+            };
+            for session in sessions.values().filter(|session| {
+                if app_is_active {
+                    // Avoid a COM property read from the window callback. A
+                    // monitor-sized host plus a restore marker is sufficient;
+                    // an externally cleared property has a queued LEAVE event.
+                    session.fullscreen_restore.is_some() && fullscreen_host_matches_monitor(session)
+                } else {
+                    session.fullscreen_restore.is_some()
+                }
+            }) {
+                set_fullscreen_host_z_order(session, insert_after)?;
+            }
+            Ok(true)
         }
 
         pub fn sync_display_size(
@@ -1478,8 +1775,15 @@ mod platform {
             smart_sizing,
             &options,
         )?;
-        let event_subscription =
-            subscribe_rdp_events(&dispatch, app, Arc::downgrade(&sessions), &session_id)?;
+        let suppressed_fullscreen_dispid = Arc::new(AtomicU32::new(0));
+        let event_subscription = subscribe_rdp_events(
+            &dispatch,
+            app,
+            Arc::downgrade(&sessions),
+            &session_id,
+            hwnd.0 as isize,
+            Arc::clone(&suppressed_fullscreen_dispid),
+        )?;
         rdp_debug(
             "session.start.configured",
             &json!({
@@ -1521,7 +1825,8 @@ mod platform {
                 device_scale_factor: display_settings.device_scale_factor,
                 dynamic_resize_failures: 0,
                 resolution_mode,
-                fullscreen_restore_display: None,
+                fullscreen_restore: None,
+                suppressed_fullscreen_dispid,
                 event_subscription,
             },
         );
@@ -1883,10 +2188,10 @@ mod platform {
 
         let advanced = get_advanced_settings(dispatch)
             .ok_or_else(|| "RDP ActiveX does not expose advanced settings".to_string())?;
-        // Microsoft documents this as the supported way for an ActiveX container
-        // to own Ctrl+Alt+Break transitions. The control raises request events
-        // instead of opening its unprepared full-screen host itself.
-        set_property_bool(&advanced, "ContainerHandledFullScreen", true)?;
+        // Keep the full-screen host under KKTerm's control. mstscax raises
+        // request events for Ctrl+Alt+Break instead of creating a second host
+        // around the Pane-sized desktop.
+        set_property_i32(&advanced, "ContainerHandledFullScreen", 1)?;
         let _ = set_property_bool(&advanced, "AllowPromptingForCredentials", true);
         let _ = set_property_i32(&advanced, "RDPPort", i32::from(port));
         // Connection-bar preferences are creation-time ActiveX settings.
@@ -2105,86 +2410,6 @@ mod platform {
         set_connection_bar_text(dispatch, connection_name)
     }
 
-    fn enter_native_fullscreen(app: &AppHandle, session: &mut RdpSession) -> Result<(), String> {
-        let host_window = app
-            .get_webview_window(HOST_WINDOW_LABEL)
-            .ok_or_else(|| format!("host window '{HOST_WINDOW_LABEL}' is not available"))?;
-        let monitor = host_window
-            .current_monitor()
-            .ok()
-            .flatten()
-            .or_else(|| host_window.primary_monitor().ok().flatten())
-            .ok_or_else(|| "no monitor is available for RDP full screen".to_string())?;
-        let monitor_size = monitor.size();
-        let monitor_scale_factor = monitor.scale_factor();
-        let display_settings = fullscreen_display_settings(
-            session,
-            monitor_size.width,
-            monitor_size.height,
-            monitor_scale_factor,
-        );
-        let restore_display = current_rdp_display_settings(session);
-        session
-            .fullscreen_restore_display
-            .get_or_insert(restore_display);
-        let display_sync_completed = sync_remote_desktop_size(session, display_settings, true);
-        // SmartSizing fills the native host even when the server no longer
-        // accepts dynamic display-control updates.
-        apply_smart_sizing(&session.dispatch, true);
-        configure_native_fullscreen(&session.dispatch, &session.connection_name)?;
-        set_property_bool(&session.dispatch, "FullScreen", true)?;
-        rdp_debug(
-            "fullscreen.enter",
-            &json!({
-                "sessionId": &session.session_id,
-                "monitorWidth": monitor_size.width,
-                "monitorHeight": monitor_size.height,
-                "monitorScaleFactor": monitor_scale_factor,
-                "displaySyncCompleted": display_sync_completed,
-            }),
-        );
-        Ok(())
-    }
-
-    fn handle_rdp_fullscreen_request(
-        app: &AppHandle,
-        sessions: &Arc<Mutex<HashMap<String, RdpSession>>>,
-        session_id: &str,
-        dispid: i32,
-    ) -> Result<(), String> {
-        let mut sessions = lock_sessions(sessions)?;
-        let session = sessions
-            .get_mut(session_id)
-            .ok_or_else(|| format!("RDP session '{session_id}' was not found"))?;
-        match dispid {
-            DISPID_REQUEST_GO_FULLSCREEN => enter_native_fullscreen(app, session),
-            DISPID_REQUEST_LEAVE_FULLSCREEN => leave_native_fullscreen(session),
-            _ => Ok(()),
-        }
-    }
-
-    fn subscribe_rdp_events(
-        dispatch: &IDispatch,
-        app: &AppHandle,
-        sessions: Weak<Mutex<HashMap<String, RdpSession>>>,
-        session_id: &str,
-    ) -> Result<RdpEventSubscription, String> {
-        let container = dispatch
-            .cast::<IConnectionPointContainer>()
-            .map_err(|error| {
-                format!("RDP ActiveX does not expose event connection points: {error}")
-            })?;
-        let connection_point = unsafe { container.FindConnectionPoint(&IMSTSCAX_EVENTS_IID) }
-            .map_err(|error| format!("RDP ActiveX does not expose IMsTscAxEvents: {error}"))?;
-        let sink = RdpEventSink::new(app.clone(), sessions, session_id.to_string());
-        let cookie = unsafe { connection_point.Advise(&sink) }
-            .map_err(|error| format!("failed to subscribe to RDP ActiveX events: {error}"))?;
-        Ok(RdpEventSubscription {
-            connection_point,
-            cookie,
-        })
-    }
-
     fn current_rdp_display_settings(session: &RdpSession) -> RdpDisplaySettings {
         RdpDisplaySettings {
             desktop_width: session.desktop_width,
@@ -2196,36 +2421,545 @@ mod platform {
         }
     }
 
+    fn fullscreen_monitor_geometry(session: &RdpSession) -> Result<(RECT, f64), String> {
+        let monitor = unsafe { MonitorFromWindow(session.hwnd, MONITOR_DEFAULTTONEAREST) };
+        let mut info = MONITORINFO {
+            cbSize: std::mem::size_of::<MONITORINFO>() as u32,
+            ..Default::default()
+        };
+        if !unsafe { GetMonitorInfoW(monitor, &mut info) }.as_bool() {
+            return Err("failed to read the target monitor for RDP full screen".to_string());
+        }
+        let scale_factor = (f64::from(session.desktop_scale_factor) / 100.0).clamp(1.0, 5.0);
+        Ok((info.rcMonitor, scale_factor))
+    }
+
+    fn kkterm_process_owns_foreground() -> bool {
+        let foreground = unsafe { GetForegroundWindow() };
+        if foreground.0.is_null() {
+            return false;
+        }
+        let mut process_id = 0;
+        unsafe { GetWindowThreadProcessId(foreground, Some(&mut process_id)) };
+        process_id == std::process::id()
+    }
+
     fn fullscreen_display_settings(
         session: &RdpSession,
-        monitor_width: u32,
-        monitor_height: u32,
+        monitor_rect: &RECT,
         scale_factor: f64,
     ) -> RdpDisplaySettings {
-        let physical_width = i32::try_from(monitor_width).unwrap_or(i32::MAX);
-        let physical_height = i32::try_from(monitor_height).unwrap_or(i32::MAX);
+        let physical_width = (monitor_rect.right - monitor_rect.left).max(1);
+        let physical_height = (monitor_rect.bottom - monitor_rect.top).max(1);
         session.resolution_mode.display_settings(
-            f64::from(monitor_width) / scale_factor,
-            f64::from(monitor_height) / scale_factor,
+            f64::from(physical_width) / scale_factor,
+            f64::from(physical_height) / scale_factor,
             physical_width,
             physical_height,
             scale_factor,
         )
     }
 
-    fn leave_native_fullscreen(session: &mut RdpSession) -> Result<(), String> {
-        set_property_bool(&session.dispatch, "FullScreen", false)?;
-        if let Some(display_settings) = session.fullscreen_restore_display.take() {
-            let display_sync_completed = sync_remote_desktop_size(session, display_settings, true);
+    fn update_fullscreen_restore_bounds(
+        session: &mut RdpSession,
+        scale_factor: f64,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+    ) -> Result<(), String> {
+        let physical = scaled_rect(x, y, width, height, scale_factor);
+        let origin = client_to_screen_point(session.owner, physical.0, physical.1)?;
+        let display = session.resolution_mode.tracks_pane_size().then(|| {
+            session.resolution_mode.display_settings(
+                width,
+                height,
+                physical.2,
+                physical.3,
+                scale_factor,
+            )
+        });
+        let restore = session
+            .fullscreen_restore
+            .as_mut()
+            .ok_or_else(|| "RDP full-screen restore state is unavailable".to_string())?;
+        restore.host_rect = RECT {
+            left: origin.0,
+            top: origin.1,
+            right: origin.0.saturating_add(physical.2),
+            bottom: origin.1.saturating_add(physical.3),
+        };
+        if let Some(display) = display {
+            restore.display = display;
+        }
+        Ok(())
+    }
+
+    fn fullscreen_host_matches_monitor(session: &RdpSession) -> bool {
+        let Ok((monitor_rect, _)) = fullscreen_monitor_geometry(session) else {
+            return false;
+        };
+        let mut host_rect = RECT::default();
+        unsafe { GetWindowRect(session.hwnd, &mut host_rect) }.is_ok() && host_rect == monitor_rect
+    }
+
+    fn native_fullscreen_applied(session: &RdpSession) -> bool {
+        session.fullscreen_restore.is_some()
+            && is_native_fullscreen(session)
+            && fullscreen_host_matches_monitor(session)
+    }
+
+    fn set_fullscreen_host_z_order(session: &RdpSession, insert_after: HWND) -> Result<(), String> {
+        unsafe {
+            SetWindowPos(
+                session.hwnd,
+                Some(insert_after),
+                0,
+                0,
+                0,
+                0,
+                SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE,
+            )
+        }
+        .map_err(|error| format!("failed to update the RDP full-screen host z-order: {error}"))
+    }
+
+    fn enter_native_fullscreen(session: &mut RdpSession) -> Result<(), String> {
+        enter_native_fullscreen_if(session, &|| true)
+    }
+
+    fn enter_native_fullscreen_if(
+        session: &mut RdpSession,
+        dispatch_is_current: &impl Fn() -> bool,
+    ) -> Result<(), String> {
+        // mstscax can block indefinitely when FullScreen is set while its
+        // container is already in the background. A queued GO request can
+        // outlive the foreground state that produced it, so discard it before
+        // touching the remote display or making any full-screen COM call.
+        if !dispatch_is_current() || !kkterm_process_owns_foreground() {
             rdp_debug(
-                "fullscreen.exit",
+                "fullscreen.enter.skipped",
                 &json!({
                     "sessionId": &session.session_id,
-                    "displaySyncCompleted": display_sync_completed,
+                    "reason": if dispatch_is_current() {
+                        "kktermNotForeground"
+                    } else {
+                        "shortcutDispatchInvalidated"
+                    },
                 }),
             );
+            return Ok(());
         }
-        apply_smart_sizing(&session.dispatch, session.resolution_mode.smart_sizing());
+        let already_fullscreen = native_fullscreen_applied(session);
+        // The FullScreen property read above can pump WM_ACTIVATEAPP. Do not
+        // continue into configuration or display mutation if it crossed a
+        // deactivation boundary.
+        if !dispatch_is_current() || !kkterm_process_owns_foreground() {
+            rdp_debug(
+                "fullscreen.enter.skipped",
+                &json!({
+                    "sessionId": &session.session_id,
+                    "reason": if dispatch_is_current() {
+                        "kktermLostForegroundDuringStateCheck"
+                    } else {
+                        "shortcutInvalidatedDuringStateCheck"
+                    },
+                }),
+            );
+            return Ok(());
+        }
+        if already_fullscreen {
+            return Ok(());
+        }
+        let (monitor_rect, scale_factor) = fullscreen_monitor_geometry(session)?;
+        let had_restore = session.fullscreen_restore.is_some();
+        let restore = if let Some(restore) = session.fullscreen_restore {
+            restore
+        } else {
+            let mut host_rect = RECT::default();
+            unsafe { GetWindowRect(session.hwnd, &mut host_rect) }
+                .map_err(|error| format!("failed to save RDP Pane bounds: {error}"))?;
+            RdpFullscreenRestore {
+                host_rect,
+                display: current_rdp_display_settings(session),
+                visible: true,
+            }
+        };
+        if let Err(error) = configure_native_fullscreen(&session.dispatch, &session.connection_name)
+        {
+            return if had_restore {
+                Err(rollback_failed_fullscreen_entry(
+                    session,
+                    restore,
+                    error,
+                    dispatch_is_current,
+                ))
+            } else {
+                Err(error)
+            };
+        }
+        if !dispatch_is_current() || !kkterm_process_owns_foreground() {
+            rdp_debug(
+                "fullscreen.enter.skipped",
+                &json!({
+                    "sessionId": &session.session_id,
+                    "reason": if dispatch_is_current() {
+                        "kktermLostForegroundDuringConfiguration"
+                    } else {
+                        "shortcutInvalidatedDuringConfiguration"
+                    },
+                }),
+            );
+            return Ok(());
+        }
+        let display_settings = fullscreen_display_settings(session, &monitor_rect, scale_factor);
+        let display_sync_completed = sync_remote_desktop_size(session, display_settings, true);
+        // Fill the monitor even when the server rejects a late display-control
+        // update; fixed-resolution Connections already rely on SmartSizing.
+        apply_smart_sizing(&session.dispatch, true);
+        // UpdateSessionDisplaySettings is a COM call and may pump activation
+        // messages. Recheck at the unsafe FullScreen boundary; if focus was
+        // lost, reverse the preparatory display changes without writing either
+        // value of FullScreen while mstscax is in the background.
+        if !dispatch_is_current() || !kkterm_process_owns_foreground() {
+            let display_restore_completed =
+                sync_remote_desktop_size(session, restore.display, true);
+            apply_smart_sizing(
+                &session.dispatch,
+                !display_restore_completed || session.resolution_mode.smart_sizing(),
+            );
+            rdp_debug(
+                "fullscreen.enter.skipped",
+                &json!({
+                    "sessionId": &session.session_id,
+                    "reason": if dispatch_is_current() {
+                        "kktermLostForeground"
+                    } else {
+                        "shortcutInvalidatedBeforePropertyPut"
+                    },
+                    "displayRestoreCompleted": display_restore_completed,
+                }),
+            );
+            return Ok(());
+        }
+        let fullscreen_result = {
+            let _suppress_request = RdpFullscreenEventSuppression::new(
+                session.suppressed_fullscreen_dispid.as_ref(),
+                DISPID_REQUEST_GO_FULLSCREEN,
+            );
+            set_property_bool(&session.dispatch, "FullScreen", true)
+        };
+        if let Err(error) = fullscreen_result {
+            return Err(rollback_failed_fullscreen_entry(
+                session,
+                restore,
+                error,
+                dispatch_is_current,
+            ));
+        }
+        if !dispatch_is_current() {
+            return Err(rollback_failed_fullscreen_entry(
+                session,
+                restore,
+                "shortcut dispatch was invalidated during the FullScreen transition".to_string(),
+                dispatch_is_current,
+            ));
+        }
+        // A GO request can sit in the FIFO while the user Alt-Tabs away. Pick
+        // the z-order from the actual foreground owner at this transition so a
+        // stale queued request cannot promote KKTerm over another application.
+        let app_is_active = kkterm_process_owns_foreground();
+        let insert_after = if app_is_active {
+            HWND_TOPMOST
+        } else {
+            HWND_NOTOPMOST
+        };
+        let position_result = unsafe {
+            SetWindowPos(
+                session.hwnd,
+                Some(insert_after),
+                monitor_rect.left,
+                monitor_rect.top,
+                (monitor_rect.right - monitor_rect.left).max(1),
+                (monitor_rect.bottom - monitor_rect.top).max(1),
+                SWP_NOACTIVATE | SWP_SHOWWINDOW,
+            )
+        };
+        if let Err(error) = position_result {
+            return Err(rollback_failed_fullscreen_entry(
+                session,
+                restore,
+                format!("failed to expand the RDP host to its monitor: {error}"),
+                dispatch_is_current,
+            ));
+        }
+        session.fullscreen_restore = Some(restore);
+        rdp_debug(
+            "fullscreen.enter",
+            &json!({
+                "sessionId": &session.session_id,
+                "monitorWidth": monitor_rect.right - monitor_rect.left,
+                "monitorHeight": monitor_rect.bottom - monitor_rect.top,
+                "monitorScaleFactor": scale_factor,
+                "displaySyncCompleted": display_sync_completed,
+                "topmost": app_is_active,
+            }),
+        );
+        Ok(())
+    }
+
+    fn rollback_failed_fullscreen_entry(
+        session: &mut RdpSession,
+        restore: RdpFullscreenRestore,
+        transition_error: String,
+        dispatch_is_current: &impl Fn() -> bool,
+    ) -> String {
+        // Retain a recovery marker unless both rollback steps succeed. This
+        // lets a later bounds push or explicit exit retry a partial rollback.
+        session.fullscreen_restore = Some(restore);
+        let fullscreen_result = if dispatch_is_current() && kkterm_process_owns_foreground() {
+            let _suppress_request = RdpFullscreenEventSuppression::new(
+                session.suppressed_fullscreen_dispid.as_ref(),
+                DISPID_REQUEST_LEAVE_FULLSCREEN,
+            );
+            set_property_bool(&session.dispatch, "FullScreen", false)
+        } else {
+            rdp_debug(
+                "fullscreen.rollback.property.skipped",
+                &json!({
+                    "sessionId": &session.session_id,
+                    "reason": if dispatch_is_current() {
+                        "kktermNotForeground"
+                    } else {
+                        "shortcutDispatchInvalidated"
+                    },
+                }),
+            );
+            Err(
+                "FullScreen rollback was deferred because its shortcut dispatch is no longer current or KKTerm is not foreground"
+                    .to_string(),
+            )
+        };
+        let restore_result = restore_windowed_host(session, restore);
+        let display_restore_completed = matches!(restore_result.as_ref(), Ok(true));
+        if fullscreen_result.is_ok() && display_restore_completed {
+            session.fullscreen_restore = None;
+            return transition_error;
+        }
+        let fullscreen_error = fullscreen_result.err().map(|error| error.to_string());
+        let restore_status = match restore_result {
+            Ok(true) => "restored".to_string(),
+            Ok(false) => "remote display resize was rejected".to_string(),
+            Err(error) => error,
+        };
+        format!(
+            "{transition_error}; RDP full-screen rollback was incomplete (FullScreen: {}; host: {})",
+            fullscreen_error.as_deref().unwrap_or("restored"),
+            restore_status,
+        )
+    }
+
+    fn handle_rdp_fullscreen_request(
+        _app: &AppHandle,
+        sessions: &Arc<Mutex<HashMap<String, RdpSession>>>,
+        session_id: &str,
+        origin_hwnd: isize,
+        origin_token: &Arc<AtomicU32>,
+        dispid: i32,
+        activation_generation: usize,
+    ) -> Result<bool, String> {
+        let request_is_current = || {
+            crate::remote_fullscreen_shortcut::windows_activation_generation_is_current(
+                activation_generation,
+            )
+        };
+        if !request_is_current() {
+            return Ok(true);
+        }
+        let mut sessions = match sessions.try_lock() {
+            Ok(sessions) => sessions,
+            Err(TryLockError::WouldBlock) => return Ok(false),
+            Err(TryLockError::Poisoned(_)) => {
+                return Err("RDP session lock is poisoned".to_string());
+            }
+        };
+        if !request_is_current() {
+            return Ok(true);
+        }
+        let session = sessions
+            .get_mut(session_id)
+            .ok_or_else(|| format!("RDP session '{session_id}' was not found"))?;
+        if session.hwnd.0 as isize != origin_hwnd
+            || !Arc::ptr_eq(&session.suppressed_fullscreen_dispid, origin_token)
+        {
+            return Ok(true);
+        }
+        match dispid {
+            DISPID_REQUEST_GO_FULLSCREEN => {
+                enter_native_fullscreen_if(session, &request_is_current)
+            }
+            DISPID_REQUEST_LEAVE_FULLSCREEN => {
+                leave_native_fullscreen_if(session, &request_is_current)
+            }
+            _ => Ok(()),
+        }?;
+        Ok(true)
+    }
+
+    fn subscribe_rdp_events(
+        dispatch: &IDispatch,
+        app: &AppHandle,
+        sessions: Weak<Mutex<HashMap<String, RdpSession>>>,
+        session_id: &str,
+        origin_hwnd: isize,
+        suppressed_fullscreen_dispid: Arc<AtomicU32>,
+    ) -> Result<RdpEventSubscription, String> {
+        let container = dispatch
+            .cast::<IConnectionPointContainer>()
+            .map_err(|error| {
+                format!("RDP ActiveX does not expose event connection points: {error}")
+            })?;
+        let connection_point = unsafe { container.FindConnectionPoint(&IMSTSCAX_EVENTS_IID) }
+            .map_err(|error| format!("RDP ActiveX does not expose IMsTscAxEvents: {error}"))?;
+        let sink = RdpEventSink::new(
+            app.clone(),
+            sessions,
+            session_id.to_string(),
+            origin_hwnd,
+            suppressed_fullscreen_dispid,
+        )?;
+        let cookie = unsafe { connection_point.Advise(&sink) }
+            .map_err(|error| format!("failed to subscribe to RDP ActiveX events: {error}"))?;
+        Ok(RdpEventSubscription {
+            connection_point,
+            cookie,
+        })
+    }
+
+    fn restore_windowed_host(
+        session: &mut RdpSession,
+        restore: RdpFullscreenRestore,
+    ) -> Result<bool, String> {
+        let width = (restore.host_rect.right - restore.host_rect.left).max(1);
+        let height = (restore.host_rect.bottom - restore.host_rect.top).max(1);
+        let (left, top, flags) = if restore.visible {
+            (
+                restore.host_rect.left,
+                restore.host_rect.top,
+                SWP_NOACTIVATE | SWP_SHOWWINDOW,
+            )
+        } else {
+            let staged = staged_rect(width, height);
+            (staged.0, staged.1, SWP_NOACTIVATE)
+        };
+        unsafe {
+            SetWindowPos(
+                session.hwnd,
+                Some(HWND_NOTOPMOST),
+                left,
+                top,
+                width,
+                height,
+                flags,
+            )
+        }
+        .map_err(|error| format!("failed to restore the RDP Pane host: {error}"))?;
+        if restore.visible {
+            let focus = hosted_rdp_object_window(&session.dispatch).unwrap_or(session.hwnd);
+            set_rdp_overlay_focus_target(&session.session_id, session.hwnd, session.owner, focus);
+        } else {
+            clear_rdp_overlay_focus_target(&session.session_id);
+        }
+        let display_sync_completed = sync_remote_desktop_size(session, restore.display, true);
+        // If the server rejects the reverse display update, keep the restored
+        // Pane usable by scaling the still-fullscreen remote desktop locally.
+        apply_smart_sizing(
+            &session.dispatch,
+            !display_sync_completed || session.resolution_mode.smart_sizing(),
+        );
+        Ok(display_sync_completed)
+    }
+
+    fn leave_native_fullscreen(session: &mut RdpSession) -> Result<(), String> {
+        leave_native_fullscreen_if(session, &|| true)
+    }
+
+    fn leave_native_fullscreen_if(
+        session: &mut RdpSession,
+        dispatch_is_current: &impl Fn() -> bool,
+    ) -> Result<(), String> {
+        if !dispatch_is_current() {
+            rdp_debug(
+                "fullscreen.exit.skipped",
+                &json!({
+                    "sessionId": &session.session_id,
+                    "reason": "shortcutDispatchInvalidated",
+                }),
+            );
+            return Ok(());
+        }
+        let already_windowed = session.fullscreen_restore.is_none()
+            && get_property_i32(&session.dispatch, "FullScreen").is_ok_and(|value| value == 0);
+        // The FullScreen getter can itself pump activation messages. Check the
+        // real foreground owner after it returns and again at the property-put
+        // boundary so no queued leave writes into background mstscax.
+        if !dispatch_is_current() || !kkterm_process_owns_foreground() {
+            rdp_debug(
+                "fullscreen.exit.skipped",
+                &json!({
+                    "sessionId": &session.session_id,
+                    "reason": if dispatch_is_current() {
+                        "kktermNotForeground"
+                    } else {
+                        "shortcutInvalidatedDuringStateCheck"
+                    },
+                }),
+            );
+            return Ok(());
+        }
+        if already_windowed {
+            apply_smart_sizing(&session.dispatch, session.resolution_mode.smart_sizing());
+            return Ok(());
+        }
+        {
+            let _suppress_request = RdpFullscreenEventSuppression::new(
+                session.suppressed_fullscreen_dispid.as_ref(),
+                DISPID_REQUEST_LEAVE_FULLSCREEN,
+            );
+            if !dispatch_is_current() || !kkterm_process_owns_foreground() {
+                rdp_debug(
+                    "fullscreen.exit.skipped",
+                    &json!({
+                        "sessionId": &session.session_id,
+                        "reason": if dispatch_is_current() {
+                            "kktermLostForeground"
+                        } else {
+                            "shortcutInvalidatedBeforePropertyPut"
+                        },
+                    }),
+                );
+                return Ok(());
+            }
+            set_property_bool(&session.dispatch, "FullScreen", false)?;
+        }
+        let display_sync_completed = match session.fullscreen_restore {
+            Some(restore) => {
+                let display_sync_completed = restore_windowed_host(session, restore)?;
+                session.fullscreen_restore = None;
+                Some(display_sync_completed)
+            }
+            None => {
+                apply_smart_sizing(&session.dispatch, session.resolution_mode.smart_sizing());
+                None
+            }
+        };
+        rdp_debug(
+            "fullscreen.exit",
+            &json!({
+                "sessionId": &session.session_id,
+                "displaySyncCompleted": display_sync_completed,
+            }),
+        );
         Ok(())
     }
 
@@ -3278,6 +4012,15 @@ mod platform {
         )
     }
 
+    fn rdp_host_rect_is_staged(rect: &RECT) -> bool {
+        rect.left == HIDDEN_RDP_POSITION && rect.top == HIDDEN_RDP_POSITION
+    }
+
+    fn rdp_host_accepts_shortcut_input(session: &RdpSession) -> bool {
+        let mut rect = RECT::default();
+        unsafe { GetWindowRect(session.hwnd, &mut rect) }.is_ok() && !rdp_host_rect_is_staged(&rect)
+    }
+
     fn hosted_rdp_object_window(dispatch: &IDispatch) -> Option<HWND> {
         let in_place_object = dispatch.cast::<IOleInPlaceObject>().ok()?;
         unsafe { in_place_object.GetWindow().ok() }
@@ -3827,6 +4570,25 @@ mod platform {
         }
 
         #[test]
+        fn parked_rdp_host_cannot_own_the_remote_fullscreen_shortcut() {
+            let parked = RECT {
+                left: HIDDEN_RDP_POSITION,
+                top: HIDDEN_RDP_POSITION,
+                right: HIDDEN_RDP_POSITION + 1920,
+                bottom: HIDDEN_RDP_POSITION + 1080,
+            };
+            let visible = RECT {
+                left: 100,
+                top: 200,
+                right: 2020,
+                bottom: 1280,
+            };
+
+            assert!(rdp_host_rect_is_staged(&parked));
+            assert!(!rdp_host_rect_is_staged(&visible));
+        }
+
+        #[test]
         fn treats_only_connected_rdp_state_as_connected() {
             assert!(!is_rdp_connected_state(0));
             assert!(is_rdp_connected_state(1));
@@ -3873,6 +4635,13 @@ mod platform {
 
     #[derive(Clone)]
     pub struct RdpSessionManager;
+
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub enum RdpFullscreenShortcutDispatch {
+        Handled,
+        NotApplicable,
+        Busy,
+    }
 
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
@@ -4065,8 +4834,10 @@ mod platform {
             Ok(())
         }
 
-        pub fn exit_active_fullscreen(&self) -> Result<bool, String> {
-            Ok(false)
+        pub fn try_toggle_foreground_fullscreen(
+            &self,
+        ) -> Result<RdpFullscreenShortcutDispatch, String> {
+            Ok(RdpFullscreenShortcutDispatch::NotApplicable)
         }
 
         pub fn has_active_fullscreen(&self) -> Result<bool, String> {

@@ -4342,8 +4342,14 @@ pub fn run() {
         tauri::Builder::default()
     } else {
         configure_single_instance(tauri::Builder::default())
-    }
-    .manage(launch_path_state);
+    };
+    #[cfg(target_os = "windows")]
+    // Tao otherwise registers generic keyboard Raw Input. While KKTerm owns the
+    // foreground window, that suppresses this process's WH_KEYBOARD_LL callback.
+    // KKTerm does not consume device events; `Always` filters them all and Tao
+    // removes its Raw Input registration on Windows.
+    let builder = builder.device_event_filter(tauri::DeviceEventFilter::Always);
+    let builder = builder.manage(launch_path_state);
 
     configure_macos_updater(builder)
         .plugin(tauri_plugin_dialog::init())
@@ -4593,6 +4599,9 @@ pub fn run() {
             if matches!(event, tauri::WindowEvent::Focused(_)) {
                 if let Err(error) = remote_fullscreen_shortcut::sync_focus(window.app_handle()) {
                     eprintln!("failed to update remote desktop full-screen shortcut: {error}");
+                }
+                if matches!(event, tauri::WindowEvent::Focused(false)) {
+                    remote_fullscreen_shortcut::schedule_focus_recheck(window.app_handle());
                 }
             }
             if window.label() != window_state::MAIN_WINDOW_LABEL {

@@ -10,8 +10,8 @@
 //! already emit **app-wide**, and their input commands are keyed by
 //! `session_id`, so the full-screen window attaches to the running Session by
 //! id and renders it with the shared remote-desktop surface code. Windows RDP
-//! bypasses this module and uses mstscax's own `FullScreen` mode and native
-//! connection bar.
+//! bypasses this module and expands its retained mstscax host while keeping the
+//! control's native connection bar.
 //!
 //! NOTE: real VNC/canvas full-screen behavior must be validated in the Tauri
 //! desktop runtime; this file only carries the portable window lifecycle.
@@ -21,22 +21,32 @@ use tauri::{
     AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, Position, Size, WebviewUrl,
     WebviewWindowBuilder,
 };
+#[cfg(target_os = "windows")]
+use windows::Win32::{Foundation::HWND, UI::WindowsAndMessaging::GetForegroundWindow};
 
 use crate::window_state::MAIN_WINDOW_LABEL;
 
 const LABEL_PREFIX: &str = "remote-fullscreen-";
 const TOGGLE_SHORTCUT_EVENT: &str = "kkterm://toggle-remote-fullscreen";
 
+fn window_owns_focus(window: &tauri::WebviewWindow) -> bool {
+    #[cfg(target_os = "windows")]
+    {
+        let foreground = unsafe { GetForegroundWindow() };
+        return window.hwnd().is_ok_and(|hwnd| HWND(hwnd.0) == foreground);
+    }
+    #[cfg(not(target_os = "windows"))]
+    window.is_focused().unwrap_or(false)
+}
+
 pub(crate) fn emit_toggle_shortcut(app: &AppHandle) {
     let target = app
         .webview_windows()
         .into_values()
-        .find(|window| {
-            window.label().starts_with(LABEL_PREFIX) && window.is_focused().unwrap_or(false)
-        })
+        .find(|window| window.label().starts_with(LABEL_PREFIX) && window_owns_focus(window))
         .or_else(|| {
             app.get_webview_window(MAIN_WINDOW_LABEL)
-                .filter(|window| window.is_focused().unwrap_or(false))
+                .filter(window_owns_focus)
         });
     if let Some(window) = target {
         let _ = window.emit(TOGGLE_SHORTCUT_EVENT, ());
