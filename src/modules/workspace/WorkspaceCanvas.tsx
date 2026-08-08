@@ -133,6 +133,7 @@ export function TabStrip() {
   const activateTab = useWorkspaceStore((state) => state.activateTab);
   const renameTab = useWorkspaceStore((state) => state.renameTab);
   const closeTab = useWorkspaceStore((state) => state.closeTab);
+  const moveTab = useWorkspaceStore((state) => state.moveTab);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const renameInputRef = useRef<HTMLInputElement | null>(null);
   const renameCanceledRef = useRef(false);
@@ -140,6 +141,7 @@ export function TabStrip() {
   const [canScrollRight, setCanScrollRight] = useState(false);
   const [editingTabId, setEditingTabId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
+  const [draggedTabId, setDraggedTabId] = useState<string | null>(null);
   const visibleTabs = tabs.filter((tab) => tabWorkspaceId(tab) === activeWorkspaceId);
 
   const updateScroll = useCallback(() => {
@@ -282,10 +284,30 @@ export function TabStrip() {
           const isRenaming = editingTabId === tab.id;
           return (
             <div
-              className={tab.id === activeTabId ? "tab active" : "tab"}
+              className={`tab${tab.id === activeTabId ? " active" : ""}${draggedTabId === tab.id ? " dragging" : ""}`}
+              draggable={!isRenaming}
               key={tab.id}
               onAuxClick={(event) => handleTabAuxClick(tab.id, event)}
               onContextMenu={(event) => handleTabContextMenu(tab, event)}
+              onDragEnd={() => setDraggedTabId(null)}
+              onDragOver={(event) => {
+                if (draggedTabId && draggedTabId !== tab.id) {
+                  event.preventDefault();
+                  event.dataTransfer.dropEffect = "move";
+                }
+              }}
+              onDragStart={(event) => {
+                setDraggedTabId(tab.id);
+                event.dataTransfer.effectAllowed = "move";
+                event.dataTransfer.setData("text/plain", tab.id);
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                if (draggedTabId && draggedTabId !== tab.id) {
+                  moveTab(draggedTabId, tab.id);
+                }
+                setDraggedTabId(null);
+              }}
               onMouseDown={handleTabMouseDown}
             >
               {isRenaming ? (

@@ -64,6 +64,7 @@ import type { LocalShellOption } from "./modules/workspace/connections/utils";
 import type { GitBrowserTarget } from "./modules/git/gitTypes";
 import type { CompareEndpoint, CompareView } from "./modules/compare/compareTypes";
 import { markPanesForRuntimeMove } from "./modules/workspace/paneRegistry";
+import { reorderWorkspaceTabs } from "./modules/workspace/tabOrder";
 import {
   collectPreservedParentPanes,
   focusedPaneIdForChildLayout,
@@ -1510,6 +1511,7 @@ export interface WorkspaceState {
   activateTab: (tabId: string) => void;
   renameTab: (tabId: string, title: string) => Promise<void>;
   closeTab: (tabId: string) => void;
+  moveTab: (tabId: string, targetTabId: string) => void;
   openConnection: (connection: Connection) => void;
   openConnectionInNewTab: (
     connection: Connection,
@@ -2017,6 +2019,12 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         get().syncInputEnabled && closingTab?.panes.some(isTerminalPane)
           ? false
           : get().syncInputEnabled,
+    });
+  },
+  moveTab: (tabId, targetTabId) => {
+    set((state) => {
+      const nextTabs = reorderWorkspaceTabs(state.tabs, tabId, targetTabId);
+      return nextTabs === state.tabs ? {} : { tabs: nextTabs };
     });
   },
   openConnection: (connection) => {
