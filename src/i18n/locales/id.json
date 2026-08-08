@@ -952,7 +952,11 @@
       "updateTitle": "Perbarui {{name}}?",
       "updateAllTitle": "Perbarui semua alat terpasang?",
       "updateAllBody": "{{count}} pembaruan akan diinstal.",
-      "updateAllConfirm": "Perbarui semua"
+      "updateAllConfirm": "Perbarui semua",
+      "updateAllFailedTitle": "Lanjutkan dengan pembaruan yang tersisa?",
+      "updateAllFailedBody": "{{name}} tidak dapat diperbarui. {{count}} pembaruan tersisa.",
+      "updateAllContinue": "Lanjutkan",
+      "updateAllAbort": "Batalkan"
     },
     "wslReboot": "WSL diaktifkan dalam sesi ini. Mulai ulang Windows sebelum menginstal Docker Desktop.",
     "lastChecked": "Terakhir diperiksa: {{time}}",

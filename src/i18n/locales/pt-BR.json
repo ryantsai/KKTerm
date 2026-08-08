@@ -952,7 +952,11 @@
       "updateTitle": "Atualizar {{name}}?",
       "updateAllTitle": "Atualizar todas as ferramentas instaladas?",
       "updateAllBody": "{{count}} atualização(ões) serão instaladas.",
-      "updateAllConfirm": "Atualizar tudo"
+      "updateAllConfirm": "Atualizar tudo",
+      "updateAllFailedTitle": "Continuar com as atualizações restantes?",
+      "updateAllFailedBody": "Não foi possível atualizar {{name}}. Restam {{count}} atualização(ões).",
+      "updateAllContinue": "Continuar",
+      "updateAllAbort": "Cancelar"
     },
     "wslReboot": "O WSL foi habilitado nesta sessão. Reinicie o Windows antes de instalar o Docker Desktop.",
     "lastChecked": "Última verificação: {{time}}",

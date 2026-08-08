@@ -952,7 +952,11 @@
       "updateTitle": "Cập nhật {{name}}?",
       "updateAllTitle": "Cập nhật tất cả công cụ đã cài đặt?",
       "updateAllBody": "{{count}} bản cập nhật sẽ được cài đặt.",
-      "updateAllConfirm": "Cập nhật tất cả"
+      "updateAllConfirm": "Cập nhật tất cả",
+      "updateAllFailedTitle": "Tiếp tục với các bản cập nhật còn lại?",
+      "updateAllFailedBody": "Không thể cập nhật {{name}}. Còn {{count}} bản cập nhật.",
+      "updateAllContinue": "Tiếp tục",
+      "updateAllAbort": "Hủy bỏ"
     },
     "wslReboot": "WSL đã được bật trong phiên này. Khởi động lại Windows trước khi cài đặt Docker Desktop.",
     "lastChecked": "Kiểm tra lần cuối: {{time}}",

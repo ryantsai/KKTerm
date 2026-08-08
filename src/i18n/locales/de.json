@@ -952,7 +952,11 @@
       "updateTitle": "{{name}} aktualisieren?",
       "updateAllTitle": "Alle installierten Tools aktualisieren?",
       "updateAllBody": "{{count}} Update(s) werden installiert.",
-      "updateAllConfirm": "Alle aktualisieren"
+      "updateAllConfirm": "Alle aktualisieren",
+      "updateAllFailedTitle": "Mit den restlichen Updates fortfahren?",
+      "updateAllFailedBody": "{{name}} konnte nicht aktualisiert werden. {{count}} Update(s) verbleiben.",
+      "updateAllContinue": "Fortfahren",
+      "updateAllAbort": "Abbrechen"
     },
     "wslReboot": "WSL wurde in dieser Sitzung aktiviert. Starten Sie Windows neu, bevor Sie Docker Desktop installieren.",
     "lastChecked": "Zuletzt geprüft: {{time}}",

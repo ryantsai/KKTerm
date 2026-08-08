@@ -952,7 +952,11 @@
       "updateTitle": "要更新 {{name}} 嗎？",
       "updateAllTitle": "更新所有已安裝工具？",
       "updateAllBody": "將安裝 {{count}} 個更新。",
-      "updateAllConfirm": "全部更新"
+      "updateAllConfirm": "全部更新",
+      "updateAllFailedTitle": "要繼續處理其餘更新嗎？",
+      "updateAllFailedBody": "無法更新 {{name}}。尚有 {{count}} 個更新待處理。",
+      "updateAllContinue": "繼續",
+      "updateAllAbort": "中止"
     },
     "wslReboot": "本次工作階段已啟用 WSL。安裝 Docker Desktop 前請重新啟動 Windows。",
     "lastChecked": "上次檢查：{{time}}",

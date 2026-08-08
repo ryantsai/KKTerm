@@ -14,7 +14,9 @@ export interface InstallerConfirmDialogProps {
   footer?: string;
   confirmLabel: string;
   cancelLabel?: string;
-  tone?: "default" | "danger";
+  tone?: "default" | "danger" | "warn";
+  /** Stacked-dialog escape (e.g. "kk-qc-subdialog") when opened above another dialog. */
+  zClassName?: string;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -27,6 +29,7 @@ export function InstallerConfirmDialog({
   confirmLabel,
   cancelLabel,
   tone = "default",
+  zClassName,
   onConfirm,
   onCancel,
 }: InstallerConfirmDialogProps) {
@@ -48,14 +51,15 @@ export function InstallerConfirmDialog({
   return (
     <ConfirmSheet
       ariaLabel={title}
-      tone={tone === "danger" ? "danger" : "info"}
-      icon={tone === "danger" ? "trash" : "download"}
+      tone={tone === "danger" ? "danger" : tone === "warn" ? "warn" : "info"}
+      icon={tone === "danger" ? "trash" : tone === "warn" ? "alert" : "download"}
       title={title}
       message={message}
       confirmLabel={confirmLabel}
-      confirmIcon={tone === "danger" ? "trash" : "download"}
+      confirmIcon={tone === "danger" ? "trash" : tone === "default" ? "download" : undefined}
       cancelLabel={cancelLabel ?? t("common.cancel")}
       width={460}
+      zClassName={zClassName}
       onConfirm={onConfirm}
       onCancel={onCancel}
     />

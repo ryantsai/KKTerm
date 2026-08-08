@@ -128,6 +128,20 @@ export function InstallerPage({ active }: { active: boolean }) {
     items: string[];
     uacEstimate: number;
   }>(null);
+  const [updateAllFailure, setUpdateAllFailure] = useState<null | {
+    recipe: Recipe;
+    remainingCount: number;
+  }>(null);
+  const updateAllFailureResolve = useRef<((proceed: boolean) => void) | null>(
+    null,
+  );
+
+  useEffect(() => {
+    return () => {
+      updateAllFailureResolve.current?.(false);
+      updateAllFailureResolve.current = null;
+    };
+  }, []);
 
   // Subscribe to progress events once per app session.
   useEffect(() => {
@@ -476,6 +490,23 @@ export function InstallerPage({ active }: { active: boolean }) {
     setUpdateAllConfirm({ items, uacEstimate });
   }
 
+  function askContinueOrAbort(
+    recipe: Recipe,
+    remainingCount: number,
+  ): Promise<boolean> {
+    return new Promise((resolve) => {
+      updateAllFailureResolve.current = resolve;
+      setUpdateAllFailure({ recipe, remainingCount });
+    });
+  }
+
+  function resolveUpdateAllFailure(proceed: boolean) {
+    const resolve = updateAllFailureResolve.current;
+    updateAllFailureResolve.current = null;
+    setUpdateAllFailure(null);
+    resolve?.(proceed);
+  }
+
   async function confirmUpdateAll() {
     if (!isTauriRuntime()) {
       setUpdateAllConfirm(null);
@@ -483,20 +514,37 @@ export function InstallerPage({ active }: { active: boolean }) {
     }
     const queue = updateAllRecipes;
     setUpdateAllConfirm(null);
-    for (const recipe of queue) {
+    for (let index = 0; index < queue.length; index += 1) {
+      const recipe = queue[index];
       openStepperDialog(recipe.id);
       beginInFlight(recipe.id, "install");
       try {
         const terminalEvent = await installRecipeAndWait(recipe.id, {});
+        if (terminalEvent.kind === "cancelled") {
+          openStepperDialog(recipe.id);
+          return;
+        }
         if (terminalEvent.kind !== "completed") {
           openStepperDialog(recipe.id);
-          break;
+          const remainingCount = queue.length - index - 1;
+          if (
+            remainingCount > 0 &&
+            !(await askContinueOrAbort(recipe, remainingCount))
+          ) {
+            return;
+          }
         }
       } catch (error) {
         openStepperDialog(recipe.id);
         const message = error instanceof Error ? error.message : String(error);
         showStatusBarNotice(message, { tone: "error" });
-        break;
+        const remainingCount = queue.length - index - 1;
+        if (
+          remainingCount > 0 &&
+          !(await askContinueOrAbort(recipe, remainingCount))
+        ) {
+          return;
+        }
       }
     }
   }
@@ -634,6 +682,21 @@ export function InstallerPage({ active }: { active: boolean }) {
 
       <InstallerToolDialog />
       <WslDistroManager />
+      {updateAllFailure ? (
+        <InstallerConfirmDialog
+          title={t("installer.confirm.updateAllFailedTitle")}
+          body={t("installer.confirm.updateAllFailedBody", {
+            name: updateAllFailure.recipe.name,
+            count: updateAllFailure.remainingCount,
+          })}
+          confirmLabel={t("installer.confirm.updateAllContinue")}
+          cancelLabel={t("installer.confirm.updateAllAbort")}
+          tone="warn"
+          zClassName="kk-qc-subdialog"
+          onConfirm={() => resolveUpdateAllFailure(true)}
+          onCancel={() => resolveUpdateAllFailure(false)}
+        />
+      ) : null}
       {updateAllConfirm ? (
         <InstallerConfirmDialog
           title={t("installer.confirm.updateAllTitle")}

@@ -265,7 +265,7 @@ function InstalledInfoBody({ recipe }: { recipe: Recipe }) {
                 to: latest,
               })}
             </span>
-            <Btn sm kind="primary" icon="refresh" onClick={startUpdate}>
+            <Btn sm kind="primary" className="update" icon="refresh" onClick={startUpdate}>
               {t("installer.actions.update")}
             </Btn>
           </div>
@@ -353,7 +353,7 @@ function InstalledInfoBody({ recipe }: { recipe: Recipe }) {
         {hasUpdate ? (
           <button
             type="button"
-            className="secondary-button"
+            className="secondary-button update"
             onClick={startUpdate}
           >
             {t("installer.actions.update")}

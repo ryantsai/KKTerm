@@ -952,7 +952,11 @@
       "updateTitle": "{{name}} を更新しますか？",
       "updateAllTitle": "インストール済みツールをすべて更新しますか？",
       "updateAllBody": "{{count}} 件の更新がインストールされます。",
-      "updateAllConfirm": "すべて更新"
+      "updateAllConfirm": "すべて更新",
+      "updateAllFailedTitle": "残りの更新を続行しますか？",
+      "updateAllFailedBody": "{{name}} を更新できませんでした。残り {{count}} 件の更新があります。",
+      "updateAllContinue": "続行",
+      "updateAllAbort": "中止"
     },
     "wslReboot": "このセッションで WSL が有効になりました。Docker Desktop をインストールする前に Windows を再起動してください。",
     "lastChecked": "最終確認: {{time}}",

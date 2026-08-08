@@ -952,7 +952,11 @@
       "updateTitle": "อัปเดต {{name}} หรือไม่?",
       "updateAllTitle": "อัปเดตเครื่องมือที่ติดตั้งทั้งหมดหรือไม่?",
       "updateAllBody": "จะติดตั้งการอัปเดต {{count}} รายการ",
-      "updateAllConfirm": "อัปเดตทั้งหมด"
+      "updateAllConfirm": "อัปเดตทั้งหมด",
+      "updateAllFailedTitle": "ดำเนินการต่อกับการอัปเดตที่เหลือไหม",
+      "updateAllFailedBody": "ไม่สามารถอัปเดต {{name}} ได้ เหลือการอัปเดต {{count}} รายการ",
+      "updateAllContinue": "ดำเนินการต่อ",
+      "updateAllAbort": "ยกเลิก"
     },
     "wslReboot": "เปิดใช้ WSL ในเซสชันนี้แล้ว รีบูต Windows ก่อนติดตั้ง Docker Desktop",
     "lastChecked": "ตรวจสอบล่าสุด: {{time}}",

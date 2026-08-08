@@ -191,7 +191,9 @@ export function ToolRow({ recipe }: { recipe: Recipe }) {
               {!isInstalled || hasUpdate ? (
                 <button
                   type="button"
-                  className="installer-tile__action primary"
+                  className={`installer-tile__action primary${
+                    hasUpdate ? " update" : ""
+                  }`}
                   onClick={handleActionClick}
                   disabled={retrieving}
                 >

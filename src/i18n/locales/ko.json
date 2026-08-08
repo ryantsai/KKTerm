@@ -952,7 +952,11 @@
       "updateTitle": "{{name}}을(를) 업데이트할까요?",
       "updateAllTitle": "설치된 모든 도구를 업데이트할까요?",
       "updateAllBody": "{{count}}개의 업데이트가 설치됩니다.",
-      "updateAllConfirm": "모두 업데이트"
+      "updateAllConfirm": "모두 업데이트",
+      "updateAllFailedTitle": "남은 업데이트를 계속할까요?",
+      "updateAllFailedBody": "{{name}}을(를) 업데이트하지 못했습니다. 업데이트 {{count}}개가 남았습니다.",
+      "updateAllContinue": "계속",
+      "updateAllAbort": "중단"
     },
     "wslReboot": "이 세션에서 WSL이 활성화되었습니다. Docker Desktop을 설치하기 전에 Windows를 다시 시작하세요.",
     "lastChecked": "마지막 확인: {{time}}",

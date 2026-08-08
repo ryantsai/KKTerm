@@ -510,6 +510,17 @@
   border-color: var(--accent-press);
 }
 
+.installer-tile__action.primary.update {
+  border-color: var(--green);
+  background: var(--green);
+  color: white;
+}
+
+.installer-tile__action.primary.update:hover {
+  background: color-mix(in srgb, var(--green) 84%, #000);
+  border-color: color-mix(in srgb, var(--green) 84%, #000);
+}
+
 .installer-tile__action:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -1960,6 +1971,20 @@
   border-color: transparent;
   background: var(--red);
   color: white;
+}
+
+.installer-tool-dialog .secondary-button.update,
+.installer-tool-dialog .kk-btn.update {
+  --button-shadow-color: var(--green);
+  border-color: transparent;
+  background: var(--green);
+  color: #ffffff;
+  box-shadow: var(--button-shadow);
+}
+
+.installer-tool-dialog .secondary-button.update:hover,
+.installer-tool-dialog .kk-btn.update:hover {
+  background: color-mix(in srgb, var(--green) 84%, #000);
 }
 
 .installer-suite-launcher {

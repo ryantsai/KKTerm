@@ -69,8 +69,18 @@ if (
     "Update all must open the stepper for each package before starting it.",
   );
 }
+if (!updateAllBlock.includes('if (terminalEvent.kind === "cancelled")')) {
+  throw new Error(
+    "Update all must stop the queue on a user-initiated cancel.",
+  );
+}
 if (!updateAllBlock.includes('if (terminalEvent.kind !== "completed")')) {
   throw new Error(
-    "Update all must stop on failed or cancelled terminal events.",
+    "Update all must ask to continue or abort on failed terminal events.",
+  );
+}
+if (!updateAllBlock.includes("askContinueOrAbort")) {
+  throw new Error(
+    "Update all must offer Continue/Abort after a failed package with remaining updates.",
   );
 }
