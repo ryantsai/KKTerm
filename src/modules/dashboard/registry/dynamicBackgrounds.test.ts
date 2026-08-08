@@ -12,6 +12,7 @@ const expectedIds = [
   "clouds",
   "ocean",
   "mistySea",
+  "waters",
   "raindrops",
   "rainywindow",
   "frostedWindow",

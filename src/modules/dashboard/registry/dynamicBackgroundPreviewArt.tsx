@@ -136,6 +136,33 @@ BUILDERS.mistySea = (id) => {
   return svgWrap(id, inner, d);
 };
 
+/* Waters — tropical Gerstner ocean: blue sky, cumulus, sun glitter path, turquoise shallows, foam crests */
+BUILDERS.waters = (id) => {
+  const d = lg(id+'sky',[[0,'#1b4a94'],[.62,'#4d7fb6'],[1,'#9dbdd6']],0,0,0,1)
+    + lg(id+'sea',[[0,'#0d4f68'],[.42,'#0a3550'],[1,'#062a45']],0,0,0,1)
+    + rg(id+'glit',[[0,'#fff6d8',.75],[.35,'#ffe2a4',.3],[1,'#ffe2a4',0]],104,40,58)
+    + blurFilter(id+'cu',2.4);
+  const clouds = `<g filter="url(#${id}cu)"><ellipse cx="34" cy="14" rx="21" ry="6" fill="#f4f8fc" opacity=".85"/>
+    <ellipse cx="46" cy="17" rx="15" ry="5" fill="#dfe8f2" opacity=".7"/>
+    <ellipse cx="122" cy="10" rx="24" ry="6" fill="#f4f8fc" opacity=".8"/>
+    <ellipse cx="86" cy="22" rx="18" ry="4" fill="#e6eef6" opacity=".6"/></g>`;
+  let waves = '';
+  for(let i=0;i<9;i++){
+    const y=42+i*6.6, amp=1+i*.4, op=.14+i*.06;
+    waves += `<path class="anim" style="animation:driftX ${13-i*.8}s linear infinite" d="M-24,${y} q17,-${amp} 34,0 t34,0 t34,0 t34,0 t34,0" fill="none" stroke="rgba(226,244,248,${op})" stroke-width="${.6+i*.09}"/>`;
+  }
+  const inner = `<rect width="160" height="40" fill="url(#${id}sky)"/>
+    <g class="anim drift" style="--d:38s">${loopX(clouds)}</g>
+    <circle cx="104" cy="15" r="5" fill="#fffbe8" class="anim br" style="--d:6s; transform-box:fill-box; transform-origin:center"/>
+    <rect y="40" width="160" height="60" fill="url(#${id}sea)"/>
+    <path d="M40,40 L160,40 L160,100 L92,100 Z" fill="#2f9a9a" opacity=".16"/>
+    <rect y="40" width="160" height="60" fill="url(#${id}glit)"/>
+    ${waves}
+    <g fill="#f2fbff" opacity=".55" class="anim br" style="--d:4s">
+      <ellipse cx="52" cy="82" rx="11" ry="1.8"/><ellipse cx="118" cy="93" rx="14" ry="2.2"/></g>`;
+  return svgWrap(id, inner, d);
+};
+
 /* 5. 雨滴 — dark blue, slanted rain streaks, ripples bottom */
 BUILDERS.raindrops = (id) => {
   const d = lg(id+'bg',[[0,'#0e1a2a'],[.6,'#162638'],[1,'#0a1422']]);
