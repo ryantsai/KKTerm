@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { useTranslation } from "react-i18next";
 import { ArrowUp, Box, Brush, ChevronDown, ChevronRight, HardDrive, RefreshCw, Trash2 } from "../../lib/reicon";
 import { ModuleHeader, ModuleHeaderLead, ModuleHeaderSpacer, ModuleHeaderTitle, ModuleIconTile } from "../../app/ModuleHeader";
 import { SystemCleanerModuleIcon } from "../../app/moduleIdentityIcons";
 import { ConfirmSheet } from "../../app/ui/dialog";
-import { invokeCommand, isTauriRuntime } from "../../lib/tauri";
+import { invokeCommand, isTauriRuntime, openFilesystemPath } from "../../lib/tauri";
+import { showNativeContextMenu, type NativeContextMenuItem } from "../../lib/nativeContextMenu";
+import { nativeMenuIcons } from "../../lib/nativeMenuIcons";
 import { useWorkspaceStore } from "../../store";
 import { FileGlyph } from "../workspace/connections/sftp/finderGlyphs";
 import { SystemCleanerScanOrb } from "./SystemCleanerScanOrb";
@@ -13,6 +15,7 @@ import { useSystemCleanerScanStore } from "./scanState";
 import type {
   SystemCleanerDirectoryListing,
   SystemCleanerDiskEntry,
+  SystemCleanerDrive,
   SystemCleanerOverview,
   SystemCleanerScanProgress,
 } from "./types";
@@ -44,6 +47,9 @@ export function SystemCleanerPage({ active }: { active: boolean }) {
   const updateProgress = useSystemCleanerScanStore((state) => state.updateProgress);
   const finishScan = useSystemCleanerScanStore((state) => state.finishScan);
   const [section, setSection] = useState<Section>("storage");
+  const [drives, setDrives] = useState<SystemCleanerDrive[]>([]);
+  const [drivesLoaded, setDrivesLoaded] = useState(false);
+  const [selectedDrive, setSelectedDrive] = useState("");
   const [overview, setOverview] = useState<SystemCleanerOverview>();
   const [directory, setDirectory] = useState<SystemCleanerDirectoryListing>();
   const [directoryLoading, setDirectoryLoading] = useState(false);
@@ -53,14 +59,33 @@ export function SystemCleanerPage({ active }: { active: boolean }) {
   const [pendingApp, setPendingApp] = useState<SystemCleanerOverview["apps"][number]>();
   const busy = scanActive || mutationBusy;
 
+  useEffect(() => {
+    if (!active || drivesLoaded || !isTauriRuntime()) return;
+    let cancelled = false;
+    void invokeCommand("system_cleaner_list_drives")
+      .then((next) => {
+        if (cancelled) return;
+        setDrives(next);
+        setSelectedDrive((current) => current || next[0]?.path || "");
+      })
+      .catch((error) => {
+        if (!cancelled) notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" });
+      })
+      .finally(() => {
+        if (!cancelled) setDrivesLoaded(true);
+      });
+    return () => { cancelled = true; };
+  }, [active, drivesLoaded, notice, t]);
+
   const scan = useCallback(async () => {
-    if (!isTauriRuntime()) return;
+    if (!isTauriRuntime() || !selectedDrive) return;
     beginScan();
     let unlisten: (() => void) | undefined;
     try {
       unlisten = await listen<SystemCleanerScanProgress>("system-cleaner://scan-progress", ({ payload }) => updateProgress(payload));
-      const next = await invokeCommand("system_cleaner_scan");
+      const next = await invokeCommand("system_cleaner_scan", { root: selectedDrive });
       setOverview(next);
+      setSelectedDrive(next.scanRoot);
       setDirectory({ path: next.scanRoot, totalBytes: next.totalBytes, entries: next.largest });
       setSelected(next.cleanup.filter((item) => item.bytes > 0).map((item) => item.id));
     } catch (error) {
@@ -69,7 +94,7 @@ export function SystemCleanerPage({ active }: { active: boolean }) {
       unlisten?.();
       finishScan();
     }
-  }, [beginScan, finishScan, notice, t, updateProgress]);
+  }, [beginScan, finishScan, notice, selectedDrive, t, updateProgress]);
 
   const selectedBytes = useMemo(() => overview?.cleanup.filter((item) => selected.includes(item.id)).reduce((sum, item) => sum + item.bytes, 0) ?? 0, [overview, selected]);
 
@@ -120,26 +145,21 @@ export function SystemCleanerPage({ active }: { active: boolean }) {
     }
   }
 
-  const capacity = overview?.diskCapacityBytes ?? 0;
-  const used = capacity ? capacity - (overview?.diskFreeBytes ?? 0) : overview?.totalBytes ?? 0;
+  const selectedDriveInfo = drives.find((drive) => drive.path === selectedDrive);
+
+  function selectDrive(path: string) {
+    setSelectedDrive(path);
+    setOverview(undefined);
+    setDirectory(undefined);
+    setSelected([]);
+  }
 
   return <main className="system-cleaner-page" data-active={active}>
     <ModuleHeader>
       <ModuleHeaderLead><ModuleIconTile module="system-cleaner"><SystemCleanerModuleIcon size={16} aria-hidden="true" /></ModuleIconTile><ModuleHeaderTitle>{t("systemCleaner.title")}</ModuleHeaderTitle></ModuleHeaderLead>
       <ModuleHeaderSpacer />
-      <button type="button" className="toolbar-button" disabled={busy} onClick={() => void scan()}><RefreshCw size={15} className={scanActive ? "spin" : ""} />{t("systemCleaner.scan")}</button>
+      <button type="button" className="toolbar-button" disabled={busy || !selectedDrive} onClick={() => void scan()}><RefreshCw size={15} className={scanActive ? "spin" : ""} />{t("systemCleaner.scan")}</button>
     </ModuleHeader>
-    <div className="system-cleaner-scanbar">
-      <div className="system-cleaner-scan-status">
-        <span>{scanActive ? t("systemCleaner.scanProgress", { files: formatCount(progress?.files ?? 0), size: formatBytes(progress?.bytes ?? 0) }) : overview ? t("systemCleaner.scanComplete", { seconds: (overview.elapsedMs / 1000).toFixed(1) }) : t("systemCleaner.scanHint")}</span>
-        <div className={`system-cleaner-progress${scanActive ? " active" : overview ? " complete" : ""}`}><i /></div>
-      </div>
-      {overview ? <dl className="system-cleaner-summary">
-        <div><dt>{t("systemCleaner.totalSpace")}</dt><dd>{formatBytes(capacity)}</dd></div>
-        <div><dt>{t("systemCleaner.usedSpace")}</dt><dd>{formatBytes(used)}</dd></div>
-        <div><dt>{t("systemCleaner.freeSpace")}</dt><dd>{formatBytes(overview.diskFreeBytes)}</dd></div>
-      </dl> : null}
-    </div>
     <div className="system-cleaner-shell">
       <nav className="system-cleaner-nav" aria-label={t("systemCleaner.title")}>
         {(["storage", "cleanup", "apps"] as const).map((id) => {
@@ -149,9 +169,14 @@ export function SystemCleanerPage({ active }: { active: boolean }) {
         })}
       </nav>
       <section className="system-cleaner-content">
-        {scanActive && section === "storage" ? <ScanOverlay progress={progress} /> : null}
-        {!overview && !scanActive ? <div className="system-cleaner-empty"><span className="system-cleaner-empty-icon"><HardDrive size={24} /></span><p>{t("systemCleaner.scanHint")}</p><button type="button" className="toolbar-button" onClick={() => void scan()}><RefreshCw size={14} />{t("systemCleaner.scan")}</button></div> : null}
-        {overview && directory && section === "storage" ? <StorageBrowser directory={directory} loading={directoryLoading} onOpenDirectory={openDirectory} overview={overview} /> : null}
+        {section === "storage" ? <div className="system-cleaner-view system-cleaner-storage-view">
+          <StorageToolbar drives={drives} overview={overview} selectedDrive={selectedDrive} selectedDriveInfo={selectedDriveInfo} busy={busy} onSelectDrive={selectDrive} />
+          <div className="system-cleaner-storage-body">
+            {scanActive ? <ScanOverlay progress={progress} /> : null}
+            {!overview && !scanActive ? <div className="system-cleaner-empty"><span className="system-cleaner-empty-icon"><HardDrive size={24} /></span><p>{t("systemCleaner.scanHint")}</p><button type="button" className="toolbar-button" disabled={!selectedDrive} onClick={() => void scan()}><RefreshCw size={14} />{t("systemCleaner.scan")}</button></div> : null}
+            {overview && directory ? <StorageBrowser directory={directory} loading={directoryLoading} onOpenDirectory={openDirectory} overview={overview} /> : null}
+          </div>
+        </div> : null}
         {overview && section === "cleanup" ? <div className="system-cleaner-view system-cleaner-cleanup-view"><header className="system-cleaner-view-head"><div><h2>{t("systemCleaner.cleanup")}</h2><p>{t("systemCleaner.cleanupHeading")}</p></div><strong className="system-cleaner-total">{formatBytes(selectedBytes)}</strong></header><div className="system-cleaner-list system-cleaner-cleanup-list">{overview.cleanup.map((item) => { const checked = selected.includes(item.id); return <label className={`system-cleaner-row${checked ? " selected" : ""}`} key={item.id}><input type="checkbox" checked={checked} onChange={() => setSelected((current) => current.includes(item.id) ? current.filter((id) => id !== item.id) : [...current, item.id])} /><span><b>{t(`systemCleaner.category.${item.id}`)}</b><small title={item.path}>{item.path}</small></span><strong>{formatBytes(item.bytes)}</strong></label>; })}</div><footer className="system-cleaner-action-bar"><button type="button" className="primary-button" disabled={busy || selectedBytes === 0} onClick={() => setConfirmCleanup(true)}><Trash2 size={15} />{t("systemCleaner.clean", { size: formatBytes(selectedBytes) })}</button></footer></div> : null}
         {overview && section === "apps" ? <div className="system-cleaner-view"><header className="system-cleaner-view-head"><div><h2>{t("systemCleaner.apps")}</h2><p>{t("systemCleaner.appsHeading")}</p></div></header><div className="system-cleaner-list system-cleaner-app-list">{overview.apps.map((app, index) => <div className="system-cleaner-row" key={`${app.id}-${app.version}-${index}`}><span><b>{app.name}</b><small>{app.id} · {app.version}</small></span><button type="button" className="system-cleaner-uninstall" onClick={() => setPendingApp(app)}>{t("systemCleaner.uninstall")}</button></div>)}</div></div> : null}
       </section>
@@ -159,6 +184,51 @@ export function SystemCleanerPage({ active }: { active: boolean }) {
     {confirmCleanup ? <ConfirmSheet tone="danger" title={t("systemCleaner.cleanTitle")} message={t("systemCleaner.cleanMessage", { size: formatBytes(selectedBytes) })} confirmLabel={t("systemCleaner.clean", { size: formatBytes(selectedBytes) })} onConfirm={() => { setConfirmCleanup(false); void clean(); }} onCancel={() => setConfirmCleanup(false)} /> : null}
     {pendingApp ? <ConfirmSheet tone="danger" title={t("systemCleaner.uninstallTitle")} message={t("systemCleaner.uninstallMessage", { name: pendingApp.name })} confirmLabel={t("systemCleaner.uninstall")} onConfirm={() => void uninstall()} onCancel={() => setPendingApp(undefined)} /> : null}
   </main>;
+}
+
+function StorageToolbar({
+  busy,
+  drives,
+  onSelectDrive,
+  overview,
+  selectedDrive,
+  selectedDriveInfo,
+}: {
+  busy: boolean;
+  drives: SystemCleanerDrive[];
+  onSelectDrive: (path: string) => void;
+  overview?: SystemCleanerOverview;
+  selectedDrive: string;
+  selectedDriveInfo?: SystemCleanerDrive;
+}) {
+  const { t } = useTranslation();
+  const capacity = overview?.diskCapacityBytes ?? selectedDriveInfo?.capacityBytes ?? 0;
+  const free = overview?.diskFreeBytes ?? selectedDriveInfo?.freeBytes ?? 0;
+  const used = Math.max(0, capacity - free);
+  const unaccounted = overview ? Math.max(0, used - overview.totalBytes) : 0;
+  const detail = overview ? t("systemCleaner.diskUsageDetail", {
+    scanned: formatBytes(overview.totalBytes),
+    unaccounted: formatBytes(unaccounted),
+    used: formatBytes(used),
+  }) : undefined;
+
+  return <header className="system-cleaner-view-head system-cleaner-storage-toolbar">
+    <div className="system-cleaner-storage-title">
+      <h2>{t("systemCleaner.storage")}</h2>
+      <p title={selectedDrive}>{selectedDrive ? t("systemCleaner.storageHeading", { root: selectedDrive }) : t("systemCleaner.scanHint")}</p>
+    </div>
+    <label className="system-cleaner-drive-picker">
+      <span>{t("systemCleaner.select")}</span>
+      <select className="system-cleaner-drive-select" value={selectedDrive} disabled={busy || drives.length === 0} onChange={(event) => onSelectDrive(event.target.value)}>
+        {drives.map((drive) => <option value={drive.path} key={drive.path}>{drive.path} · {formatBytes(drive.capacityBytes)}</option>)}
+      </select>
+    </label>
+    {capacity > 0 ? <dl className="system-cleaner-storage-metrics" aria-label={detail} title={detail}>
+      <div><dt>{t("systemCleaner.totalSpace")}</dt><dd>{formatBytes(capacity)}</dd></div>
+      <div><dt>{t("systemCleaner.usedSpace")}</dt><dd>{formatBytes(used)}</dd></div>
+      <div><dt>{t("systemCleaner.freeSpace")}</dt><dd>{formatBytes(free)}</dd></div>
+    </dl> : null}
+  </header>;
 }
 
 function ScanOverlay({ progress }: { progress?: SystemCleanerScanProgress }) {
@@ -183,6 +253,7 @@ function StorageBrowser({
   overview: SystemCleanerOverview;
 }) {
   const { t } = useTranslation();
+  const notice = useWorkspaceStore((state) => state.showStatusBarNotice);
   const [selectedPath, setSelectedPath] = useState<string>();
   const [sort, setSort] = useState<StorageSort>({ key: "size", direction: "desc" });
   useEffect(() => setSelectedPath(undefined), [directory.path]);
@@ -202,9 +273,52 @@ function StorageBrowser({
       : { key, direction: key === "name" ? "asc" : "desc" });
   }
 
-  return <div className="system-cleaner-view system-cleaner-storage-view">
-    <header className="system-cleaner-view-head"><div><h2>{t("systemCleaner.storage")}</h2><p title={overview.scanRoot}>{t("systemCleaner.storageHeading", { root: overview.scanRoot })}</p></div><strong className="system-cleaner-total">{formatBytes(directory.totalBytes)}</strong></header>
-    <div className="system-cleaner-storage-grid">
+  function openEntry(entry: SystemCleanerDiskEntry) {
+    if (entry.isDirectory) {
+      onOpenDirectory(entry.path);
+      return;
+    }
+    void openFilesystemPath(entry.path).catch((error) => {
+      notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" });
+    });
+  }
+
+  function showEntryContextMenu(entry: SystemCleanerDiskEntry, event: ReactMouseEvent) {
+    event.preventDefault();
+    setSelectedPath(entry.path);
+    const items: NativeContextMenuItem[] = [
+      {
+        kind: "item",
+        label: t("common.open"),
+        iconSvg: nativeMenuIcons.folderOpen,
+        action: () => openEntry(entry),
+      },
+      { kind: "separator" },
+      {
+        kind: "item",
+        label: t("common.copy"),
+        iconSvg: nativeMenuIcons.copy,
+        action: () => {
+          void invokeCommand("set_local_file_clipboard", {
+            request: { operation: "copy", paths: [entry.path] },
+          }).catch((error) => {
+            notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" });
+          });
+        },
+      },
+      {
+        kind: "item",
+        label: t("sftp.copyPath"),
+        iconSvg: nativeMenuIcons.copy,
+        action: () => void navigator.clipboard?.writeText(entry.path).catch((error) => {
+          notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" });
+        }),
+      },
+    ];
+    void showNativeContextMenu(items, { x: event.clientX, y: event.clientY });
+  }
+
+  return <div className="system-cleaner-storage-grid">
       <section className="system-cleaner-browser" aria-busy={loading}>
         <div className="system-cleaner-browser-toolbar">
           <span className="system-cleaner-browser-label"><HardDrive size={13} />{t("systemCleaner.folders")}</span>
@@ -219,7 +333,7 @@ function StorageBrowser({
           <button type="button" onClick={() => toggleSort("size")}>{t("systemCleaner.size")}{sort.key === "size" ? <ChevronDown className={sort.direction === "asc" ? "ascending" : ""} size={12} /> : null}</button>
         </div>
         <div className="system-cleaner-browser-body">
-          {entries.map((entry) => <StorageEntryRow entry={entry} key={entry.path} selected={selectedPath === entry.path} totalBytes={directory.totalBytes} onOpenDirectory={onOpenDirectory} onSelect={setSelectedPath} />)}
+          {entries.map((entry) => <StorageEntryRow entry={entry} key={entry.path} selected={selectedPath === entry.path} totalBytes={directory.totalBytes} onOpen={openEntry} onContextMenu={showEntryContextMenu} onSelect={setSelectedPath} />)}
         </div>
         <footer className="system-cleaner-browser-footer"><span>{t("systemCleaner.items", { count: formatCount(entries.length) })}</span><span>{formatBytes(directory.totalBytes)}</span></footer>
       </section>
@@ -228,30 +342,32 @@ function StorageBrowser({
         <div className="system-cleaner-extension-columns"><span>{t("systemCleaner.extension")}</span><span>{t("systemCleaner.percent")}</span><span>{t("systemCleaner.files")}</span><span>{t("systemCleaner.size")}</span></div>
         <div className="system-cleaner-extension-body">{overview.extensions.map((entry) => { const percent = overview.totalBytes ? entry.bytes / overview.totalBytes * 100 : 0; return <div className="system-cleaner-extension-row" key={entry.extension}><span>{entry.extension}</span><span><i style={{ width: `${percent}%` }} />{percent.toFixed(1)}%</span><span>{formatCount(entry.files)}</span><strong>{formatBytes(entry.bytes)}</strong></div>; })}</div>
       </aside>
-    </div>
   </div>;
 }
 
 function StorageEntryRow({
   entry,
-  onOpenDirectory,
+  onOpen,
+  onContextMenu,
   onSelect,
   selected,
   totalBytes,
 }: {
   entry: SystemCleanerDiskEntry;
-  onOpenDirectory: (path: string) => void;
+  onOpen: (entry: SystemCleanerDiskEntry) => void;
+  onContextMenu: (entry: SystemCleanerDiskEntry, event: ReactMouseEvent) => void;
   onSelect: (path: string) => void;
   selected: boolean;
   totalBytes: number;
 }) {
   const percent = totalBytes ? entry.bytes / totalBytes * 100 : 0;
-  const open = () => { if (entry.isDirectory) onOpenDirectory(entry.path); };
+  const open = () => onOpen(entry);
   return <button
     type="button"
     className={`system-cleaner-browser-row${selected ? " selected" : ""}`}
     onClick={() => onSelect(entry.path)}
     onDoubleClick={open}
+    onContextMenu={(event) => onContextMenu(entry, event)}
     onKeyDown={(event) => { if (event.key === "Enter") open(); }}
     title={entry.path}
   >

@@ -1190,8 +1190,12 @@ export type NetError = {
 };
 
 type CommandMap = {
-  system_cleaner_scan: {
+  system_cleaner_list_drives: {
     args: undefined;
+    result: import("../modules/system-cleaner/types").SystemCleanerDrive[];
+  };
+  system_cleaner_scan: {
+    args: { root?: string };
     result: import("../modules/system-cleaner/types").SystemCleanerOverview;
   };
   system_cleaner_list_directory: {

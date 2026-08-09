@@ -8,15 +8,15 @@
 usage, large files, temporary files, cache, uninstall, Windows cleanup
 
 The **System Cleaner** Module is available only on Windows. Open it from the
-Activity Rail. The Module opens without scanning. Choose
+Activity Rail. The Module opens without scanning. Select a fixed or removable
+drive in the Storage toolbar, then choose
 **`systemCleaner.scan`** from the Module header or the empty state to read the
-Windows system drive, measure its
+selected drive, measure its
 top-level folder tree and file-type totals, check a conservative set of cache
 locations, and ask Windows Package Manager for the installed-app list. The
-scan toolbar continuously reports the files and bytes read through
-**`systemCleaner.scanProgress`**, then reports elapsed time through
-**`systemCleaner.scanComplete`**. While scanning, the Storage view and the
-Status Bar show the same Solving activity indicator. The current scan path is
+centered scan state continuously reports the files and bytes read through
+**`systemCleaner.scanProgress`**. While scanning, the Storage view and the
+Status Bar show the same Searching activity indicator. The current scan path is
 display-only and truncates when it is wider than the available space.
 
 ## Storage analysis
@@ -24,10 +24,20 @@ display-only and truncates when it is wider than the available space.
 Choose **`systemCleaner.storage`** to browse the scanned drive with the same
 breadcrumb, list-row, column, and selection conventions as File Explorer.
 Double-click a folder or focus it and press Enter to open it; use a breadcrumb
-or the up action to return to a parent. Folder sizes come from the completed
+or the up action to return to a parent. Right-click an item for the native
+File Browser actions that apply to this read-only analysis view: open, copy,
+and **`sftp.copyPath`**. Folder sizes come from the completed
 one-pass scan, so opening a folder reads only its immediate entries instead of
 walking that subtree again. The adjacent file-type table remains scoped to the
-whole drive. The drive scan runs on a background worker while cleanup locations
+whole drive. The Storage toolbar shows the selected drive's Windows-reported
+total, used, and free allocation. Folder and file-type totals are readable
+logical file sizes; they can be lower than Windows used space because volume
+allocation also includes protected or unreadable data, filesystem metadata,
+reserved storage, alternate data streams, and allocation overhead. Reparse
+points remain excluded to avoid duplicate traversal. For NTFS drives, KKTerm
+requests standard UAC approval and reads Master File Table metadata directly.
+If approval is declined or the raw scan is unavailable, it automatically uses
+the non-elevated directory walker instead. The drive scan runs on a background worker while cleanup locations
 and installed-app discovery run concurrently. Scans run only on explicit demand; use
 **`systemCleaner.scan`** to refresh the measurements after
 moving or deleting files. System Cleaner reports sizes but does not delete

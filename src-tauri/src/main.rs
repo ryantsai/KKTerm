@@ -2,6 +2,10 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
+    if let Some(exit_code) = kkterm_lib::run_system_cleaner_helper_if_requested() {
+        std::process::exit(exit_code);
+    }
+
     #[cfg(target_os = "linux")]
     apply_linux_gpu_workarounds();
 

@@ -97,6 +97,9 @@ if-addrs = "0.15"
 tokio-util = { version = "0.7", features = ["rt"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
+ntfs-reader = "0.4.5"
+ntfs = "0.4"
+bincode = { version = "2.0.1", features = ["serde"] }
 windows = { version = "0.62", features = ["ApplicationModel", "Management_Deployment", "Win32_Foundation", "Win32_Graphics", "Win32_Graphics_Direct3D", "Win32_Graphics_Direct3D11", "Win32_Graphics_Dwm", "Win32_Graphics_Dxgi", "Win32_Graphics_Dxgi_Common", "Win32_Graphics_Gdi", "Win32_System_Com", "Win32_System_DataExchange", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Ole", "Win32_System_Variant", "Win32_System_WinRT", "Win32_UI_Controls", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
 # Keep these on Wry's binding line so WebView2 COM interface values use the
 # same windows-core ABI. Revisit together when Tauri/Wry updates webview2-com.

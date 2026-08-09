@@ -4368,6 +4368,10 @@ fn configure_macos_updater<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tau
     builder
 }
 
+pub fn run_system_cleaner_helper_if_requested() -> Option<i32> {
+    system_cleaner::run_mft_helper_from_args()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let process_args = std::env::args().collect::<Vec<_>>();
@@ -4908,6 +4912,7 @@ pub fn run() {
             get_performance_snapshot,
             get_host_usage_snapshot,
             get_system_performance_counters,
+            system_cleaner::system_cleaner_list_drives,
             system_cleaner::system_cleaner_scan,
             system_cleaner::system_cleaner_list_directory,
             system_cleaner::system_cleaner_clean,

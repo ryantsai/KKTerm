@@ -33,5 +33,5 @@ export function SystemCleanerScanOrb({
     return () => observer.disconnect();
   }, []);
 
-  return <ThinkingOrb aria-label={label} className={className} size={size} state="solving" theme={theme} />;
+  return <ThinkingOrb aria-label={label} className={className} size={size} state="searching" theme={theme} />;
 }

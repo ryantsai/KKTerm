@@ -837,6 +837,7 @@
     "totalSpace": "Total space",
     "usedSpace": "Space used",
     "freeSpace": "Space free",
+    "diskUsageDetail": "Windows reports {{used}} used. The scan found {{scanned}} in readable logical file sizes; the remaining {{unaccounted}} includes protected data, filesystem metadata, reserved storage, and allocation overhead.",
     "folders": "Folder tree",
     "folder": "Folder",
     "parentFolder": "Open parent folder",

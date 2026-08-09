@@ -5,6 +5,12 @@ export type SystemCleanerDiskEntry = {
   isDirectory: boolean;
 };
 
+export type SystemCleanerDrive = {
+  path: string;
+  capacityBytes: number;
+  freeBytes: number;
+};
+
 export type SystemCleanerOverview = {
   scanRoot: string;
   totalBytes: number;

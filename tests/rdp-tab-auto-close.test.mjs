@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("RDP ActiveX events do not restore the removed disconnect auto-close flow", async () => {
+test("RDP disconnect handling does not restore the removed Tab auto-close flow", async () => {
   const remoteDesktopSource = await readFile(
     new URL("../src/modules/workspace/connections/remote-desktop/RemoteDesktopWorkspace.tsx", import.meta.url),
     "utf8",
@@ -21,8 +21,13 @@ test("RDP ActiveX events do not restore the removed disconnect auto-close flow",
   );
   assert.doesNotMatch(
     rdpSource,
-    /DISPID_DISCONNECTED|rdp-session-event|RdpSessionEvent/,
-    "RDP backend should not subscribe to or emit ActiveX disconnect events",
+    /rdp-session-event|RdpSessionEvent/,
+    "RDP backend should not emit the removed frontend disconnect event",
+  );
+  assert.match(
+    rdpSource,
+    /DISPID_DISCONNECTED\s*=>\s*restore_disconnected_fullscreen_host\(session\)/,
+    "ActiveX OnDisconnected should remain scoped to restoring the fullscreen host",
   );
   assert.match(rdpSource, /DISPID_REQUEST_GO_FULLSCREEN:\s*i32\s*=\s*8/);
   assert.match(rdpSource, /DISPID_REQUEST_LEAVE_FULLSCREEN:\s*i32\s*=\s*9/);
