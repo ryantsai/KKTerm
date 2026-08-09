@@ -2,10 +2,10 @@
 //! emits `rdp-canvas-event`s for the workspace canvas. Windows uses the native
 //! ActiveX path in `rdp.rs` instead; this module is compiled only off-Windows.
 //!
-//! # Pinned IronRDP connect sequence (verified against ironrdp 0.15 / ironrdp-tokio 0.9)
+//! # Pinned IronRDP connect sequence (verified against ironrdp 0.16 / ironrdp-tokio 0.9)
 //!
 //! ## Dependencies used
-//! - `ironrdp = "0.15"` with features `["connector", "session", "graphics", "pdu", "input"]`
+//! - `ironrdp = "0.16"` with features `["connector", "session", "graphics", "pdu", "input"]`
 //! - `ironrdp-tokio = "0.9"` (re-exports all of `ironrdp_async` via `pub use ironrdp_async::*`)
 //! - `tokio-rustls = "0.26"` (for TLS upgrade — we implement the upgrade directly, no ironrdp-tls)
 //! - `tokio-native-tls = "0.3"` (legacy TLS fallback for old Windows hosts; see `RdpTlsStream`)

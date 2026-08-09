@@ -49,14 +49,12 @@ webp = { version = "=0.3.1", default-features = false }
 ttf-parser = "0.25"
 portable-pty = "0.9.0"
 keyring-core = "1.0.0"
-# Keep pinned until russh and IronRDP both release stable dependency lines that
-# no longer need the local RustCrypto/Dalek compatibility patches below.
-# 0.62.4 moves most of the RustCrypto/Dalek line to stable (the vendored picky/
-# sspi pins were relaxed to match) and adds upstream panic/security fixes. It
-# does NOT fix the compression.rs compress_into truncation that corrupts the
+# 0.62.5 includes the stabilized RustCrypto/Dalek dependency line and upstream
+# panic/security fixes. It does NOT fix the compression.rs compress_into
+# truncation that corrupts the
 # stream when zlib output exceeds input+10 bytes (incompressible SFTP uploads).
-russh = { version = "=0.62.4", default-features = false, features = ["des", "flate2", "ring", "rsa"] }
-russh-sftp = "2.3.0"
+russh = { version = "=0.62.5", default-features = false, features = ["des", "flate2", "ring", "rsa"] }
+russh-sftp = "2.4.0"
 suppaftp = { version = "10.0.0", default-features = false, features = ["tokio", "tokio-async-native-tls", "deprecated"] }
 async-native-tls = { version = "0.6", default-features = false, features = ["runtime-tokio"] }
 serial2 = "0.2.37"
@@ -84,11 +82,11 @@ lettre = { version = "0.11", default-features = false, features = ["builder", "s
 # AST-based validation of AI-authored script widget source. oxc is ~3x faster
 # than swc on the parse-only path and ships a stable visitor API for
 # IdentifierReference walks. Used by validate_script_body_json_detailed.
-oxc_allocator = "0.141"
-oxc_parser = "0.141"
-oxc_span = "0.141"
-oxc_ast = "0.141"
-oxc_ast_visit = "0.141"
+oxc_allocator = "0.143"
+oxc_parser = "0.143"
+oxc_span = "0.143"
+oxc_ast = "0.143"
+oxc_ast_visit = "0.143"
 tauri-plugin-single-instance = "2"
 
 # Network admin tools - AV-friendly choices.
@@ -224,10 +222,11 @@ opt-level = "s"
 opt-level = 1
 
 [patch.crates-io]
-# Temporary downstream application of Devolutions/IronRDP#1363 so russh 0.62.4
-# and the macOS/Linux IronRDP client share one RustCrypto/Dalek line (now mostly
-# the stabilized releases; rsa/pkcs1/ssh-key/ff/group are still upstream rc pins).
-# Remove these patches when IronRDP/picky-rs/sspi-rs publish the aligned stack.
+# Temporary downstream application of Devolutions/IronRDP#1363 so russh 0.62.5
+# and the macOS/Linux IronRDP client share one RustCrypto/Dalek line. IronRDP
+# 0.17 still pins picky 7.0.0-rc.25, whose prerelease crypto dependencies
+# conflict with KKTerm's stable aes-gcm 0.11 dependency. Remove these patches
+# once IronRDP publishes its connector against the aligned picky/sspi releases.
 picky = { path = "vendor/picky-rs-russh-061/picky" }
 picky-asn1 = { path = "vendor/picky-rs-russh-061/picky-asn1" }
 picky-asn1-der = { path = "vendor/picky-rs-russh-061/picky-asn1-der" }

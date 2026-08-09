@@ -4423,7 +4423,6 @@ fn github_copilot_model_options_preserve_account_catalog_metadata() {
                 vision: Some(false),
             }),
         },
-        default_reasoning_effort: Some("medium".to_string()),
         id: "gpt-4.1".to_string(),
         model_picker_category: None,
         model_picker_price_category: None,
