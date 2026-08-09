@@ -176,6 +176,7 @@ This is the central manager for secrets stored in the selected credential backen
   - Errors: `settings.mcpErrorNotFound`, `…ErrorDuplicateName`, `…ErrorKeychain`.
   - Status badges: `settings.mcpStatusOk`, `…Unreachable`, `…AuthError`, `…ProtocolError`, `…Unknown`. Tools count `settings.mcpToolsCount` / `…_one`. Auth badge `…AuthBadge`.
   - Refresh tools: `settings.mcpRefreshTools`. Delete: `settings.mcpDeleteServer`, body `…DeleteConfirmBody`.
+  - Protocol behavior: refresh and Assistant tool calls negotiate a supported MCP protocol version, send that version on follow-up requests, and consume every paginated `tools/list` page before caching schemas. A failed initialization notification or unsupported negotiated version is reported as `settings.mcpStatusProtocolError` rather than continuing with a partial tool catalog.
   - Security policy: Remote MCP server URLs use HTTPS by default; `http://localhost`, `http://127.0.0.1`, and `http://[::1]` remain allowed. Toggle `settings.allowInsecureMcpHttp` (`settings.allowInsecureMcpHttpHint`) permits other local/network `http://` Remote MCP servers.
 
 ## AI Assistant

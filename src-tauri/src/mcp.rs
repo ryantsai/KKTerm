@@ -4,10 +4,10 @@
 // - HTTP JSON-RPC client (initialize, tools/list, tools/call)
 // - Short-lived sessions (reuse Mcp-Session-Id within one validation/tool call)
 // - Single auth header per server, stored in OS keychain
-// - SSE response detection -> protocol_error (deferred)
+// - JSON and SSE response parsing
 // - SQLite storage of server config + cached tool schemas
 //
-// Deferred (future phases): SSE streaming, OAuth, session reuse,
+// Deferred (future phases): OAuth, cross-call session reuse,
 // progress notifications, capability negotiation beyond minimum.
 
 use std::collections::HashMap;
@@ -21,8 +21,8 @@ use tauri::{AppHandle, Manager, State};
 use crate::dashboard_ids::new_dashboard_id;
 use crate::secrets;
 
-const PROTOCOL_VERSION: &str = "2024-11-05";
 const KKTERM_CLIENT_NAME: &str = "kkterm";
+const MAX_TOOL_LIST_PAGES: usize = 100;
 
 // -- Public types -----------------------------------------------------------
 
@@ -334,6 +334,7 @@ fn build_headers(
     server: &McpServer,
     secret_value: Option<&str>,
     session_id: Option<&str>,
+    protocol_version: Option<&str>,
 ) -> reqwest::header::HeaderMap {
     use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
     let mut headers = HeaderMap::new();
@@ -371,6 +372,11 @@ fn build_headers(
             headers.insert("mcp-session-id", value);
         }
     }
+    if let Some(protocol_version) = protocol_version {
+        if let Ok(value) = HeaderValue::from_str(protocol_version) {
+            headers.insert("mcp-protocol-version", value);
+        }
+    }
     headers
 }
 
@@ -384,6 +390,7 @@ async fn rpc_call(
     server: &McpServer,
     secret_value: Option<&str>,
     session_id: Option<&str>,
+    protocol_version: Option<&str>,
     method: &str,
     params: Value,
     rpc_id: u64,
@@ -407,7 +414,12 @@ async fn rpc_call(
     );
     let response = http
         .post(&server.url)
-        .headers(build_headers(server, secret_value, session_id))
+        .headers(build_headers(
+            server,
+            secret_value,
+            session_id,
+            protocol_version,
+        ))
         .json(&body)
         .send()
         .await
@@ -641,28 +653,67 @@ async fn initialize(
     http: &reqwest::Client,
     server: &McpServer,
     secret_value: Option<&str>,
-) -> Result<Option<String>, McpCommandError> {
+) -> Result<(Option<String>, String), McpCommandError> {
     let params = json!({
-        "protocolVersion": PROTOCOL_VERSION,
+        "protocolVersion": crate::mcp_protocol::LATEST_PROTOCOL_VERSION,
         "capabilities": {},
         "clientInfo": {
             "name": KKTERM_CLIENT_NAME,
             "version": env!("CARGO_PKG_VERSION"),
         }
     });
-    let response = rpc_call(http, server, secret_value, None, "initialize", params, 1).await?;
+    let response = rpc_call(
+        http,
+        server,
+        secret_value,
+        None,
+        None,
+        "initialize",
+        params,
+        1,
+    )
+    .await?;
+    let protocol_version = response
+        .result
+        .get("protocolVersion")
+        .and_then(Value::as_str)
+        .ok_or_else(|| McpCommandError::Protocol {
+            message: "initialize response is missing protocolVersion".to_string(),
+        })?
+        .to_string();
+    if !crate::mcp_protocol::SUPPORTED_PROTOCOL_VERSIONS.contains(&protocol_version.as_str()) {
+        return Err(McpCommandError::Protocol {
+            message: format!("server selected unsupported MCP protocol version {protocol_version}"),
+        });
+    }
     let session_id = response.session_id;
     // Send initialized notification (id-less per JSON-RPC notification)
-    let _ = http
+    let initialized_response = http
         .post(&server.url)
-        .headers(build_headers(server, secret_value, session_id.as_deref()))
+        .headers(build_headers(
+            server,
+            secret_value,
+            session_id.as_deref(),
+            Some(&protocol_version),
+        ))
         .json(&json!({
             "jsonrpc": "2.0",
             "method": "notifications/initialized",
         }))
         .send()
-        .await;
-    Ok(session_id)
+        .await
+        .map_err(|error| McpCommandError::Network {
+            message: error.to_string(),
+        })?;
+    if !initialized_response.status().is_success() {
+        return Err(McpCommandError::Protocol {
+            message: format!(
+                "initialized notification failed with HTTP {}",
+                initialized_response.status()
+            ),
+        });
+    }
+    Ok((session_id, protocol_version))
 }
 
 async fn fetch_tools(
@@ -670,18 +721,51 @@ async fn fetch_tools(
     server: &McpServer,
     secret_value: Option<&str>,
 ) -> Result<Value, McpCommandError> {
-    let session_id = initialize(http, server, secret_value).await?;
-    let result = rpc_call(
-        http,
-        server,
-        secret_value,
-        session_id.as_deref(),
-        "tools/list",
-        json!({}),
-        2,
-    )
-    .await?;
-    Ok(result.result)
+    let (session_id, protocol_version) = initialize(http, server, secret_value).await?;
+    let mut tools = Vec::new();
+    let mut cursor: Option<String> = None;
+    for page_index in 0..MAX_TOOL_LIST_PAGES {
+        let params = cursor
+            .as_ref()
+            .map_or_else(|| json!({}), |cursor| json!({ "cursor": cursor }));
+        let result = rpc_call(
+            http,
+            server,
+            secret_value,
+            session_id.as_deref(),
+            Some(&protocol_version),
+            "tools/list",
+            params,
+            2 + page_index as u64,
+        )
+        .await?
+        .result;
+        cursor = append_tool_list_page(&result, &mut tools)?;
+        if cursor.is_none() {
+            return Ok(json!({ "tools": tools }));
+        }
+    }
+    Err(McpCommandError::Protocol {
+        message: format!("tools/list exceeded {MAX_TOOL_LIST_PAGES} pages"),
+    })
+}
+
+fn append_tool_list_page(
+    result: &Value,
+    tools: &mut Vec<Value>,
+) -> Result<Option<String>, McpCommandError> {
+    let page_tools = result
+        .get("tools")
+        .and_then(Value::as_array)
+        .ok_or_else(|| McpCommandError::Protocol {
+            message: "tools/list result is missing tools array".to_string(),
+        })?;
+    tools.extend(page_tools.iter().cloned());
+    Ok(result
+        .get("nextCursor")
+        .and_then(Value::as_str)
+        .filter(|cursor| !cursor.is_empty())
+        .map(str::to_string))
 }
 
 async fn call_tool(
@@ -691,7 +775,7 @@ async fn call_tool(
     tool_name: &str,
     arguments: Value,
 ) -> Result<Value, McpCommandError> {
-    let session_id = initialize(http, server, secret_value).await?;
+    let (session_id, protocol_version) = initialize(http, server, secret_value).await?;
     let params = json!({
         "name": tool_name,
         "arguments": arguments,
@@ -701,6 +785,7 @@ async fn call_tool(
         server,
         secret_value,
         session_id.as_deref(),
+        Some(&protocol_version),
         "tools/call",
         params,
         3,
@@ -1125,7 +1210,12 @@ mod tests {
     fn session_id_is_sent_on_follow_up_requests() {
         let server = sample_server("mcp_test", "Example MCP");
 
-        let headers = build_headers(&server, Some("secret-token"), Some("session-abc123"));
+        let headers = build_headers(
+            &server,
+            Some("secret-token"),
+            Some("session-abc123"),
+            Some(crate::mcp_protocol::LATEST_PROTOCOL_VERSION),
+        );
 
         assert_eq!(
             headers
@@ -1138,6 +1228,42 @@ mod tests {
                 .get("authorization")
                 .and_then(|value| value.to_str().ok()),
             Some("Bearer secret-token")
+        );
+        assert_eq!(
+            headers
+                .get("mcp-protocol-version")
+                .and_then(|value| value.to_str().ok()),
+            Some(crate::mcp_protocol::LATEST_PROTOCOL_VERSION)
+        );
+    }
+
+    #[test]
+    fn paginated_tool_lists_are_combined_without_caching_cursors() {
+        let mut tools = Vec::new();
+
+        let cursor = append_tool_list_page(
+            &json!({ "tools": [{ "name": "first" }], "nextCursor": "page-2" }),
+            &mut tools,
+        )
+        .expect("first page parses");
+        assert_eq!(cursor.as_deref(), Some("page-2"));
+        let cursor = append_tool_list_page(&json!({ "tools": [{ "name": "second" }] }), &mut tools)
+            .expect("final page parses");
+
+        assert_eq!(cursor, None);
+        assert_eq!(
+            tools,
+            vec![json!({ "name": "first" }), json!({ "name": "second" })]
+        );
+    }
+
+    #[test]
+    fn tool_list_page_requires_a_tools_array() {
+        let error = append_tool_list_page(&json!({ "nextCursor": "page-2" }), &mut Vec::new())
+            .expect_err("malformed page is rejected");
+
+        assert!(
+            matches!(error, McpCommandError::Protocol { message } if message.contains("missing tools array"))
         );
     }
 
