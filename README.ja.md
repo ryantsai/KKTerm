@@ -36,6 +36,9 @@
   <a href="https://github.com/ryantsai/KKTerm/blob/main/LICENSE">
     <img src="https://img.shields.io/github/license/ryantsai/KKTerm?style=for-the-badge&color=blue" alt="MIT License" />
   </a>
+  <a href="https://github.com/sponsors/ryantsai">
+    <img src="https://img.shields.io/badge/Sponsor-%E2%9D%A4-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="GitHub で KKTerm を支援" />
+  </a>
   <br />
   <img src="https://img.shields.io/badge/cross%E2%80%91platform-desktop-0078D6?style=flat-square" alt="Cross-platform desktop" />
   <img src="https://img.shields.io/badge/local--first-no%20telemetry-success?style=flat-square" alt="Local-first" />
@@ -233,6 +236,14 @@ Dashboard View では、KKTerm 内蔵のアニメーション背景を45種類�
 - IT Ops 自動化機能の追加
 
 完全で頻繁に更新される版：[`docs/ROADMAP.md`](docs/ROADMAP.md)。
+
+---
+
+## スポンサー支援
+
+KKTerm は一人で開発・保守しています。役に立ったと感じていただけたら、どのような支援も歓迎です。今後の改善を続ける力になります。
+
+[![GitHub で KKTerm を支援](https://img.shields.io/badge/Sponsor%20on%20GitHub-%E2%9D%A4-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white)](https://github.com/sponsors/ryantsai)
 
 ---
 
