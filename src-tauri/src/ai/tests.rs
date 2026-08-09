@@ -2692,6 +2692,50 @@ fn itops_rack_item_tools_expose_mounting_face_and_rack_top_contracts() {
 }
 
 #[test]
+fn itops_rack_layout_and_ordering_tools_are_published_with_bounded_schemas() {
+    let settings: AiAssistantToolSettings = serde_json::from_value(json!({
+        "itops": true
+    }))
+    .expect("tool settings deserialize");
+    let tools = ai_tool_definitions(&settings);
+
+    for name in [
+        "itops_reorder_racks",
+        "itops_set_rack_placements",
+        "itops_set_rack_facings",
+    ] {
+        assert!(
+            tools.iter().any(|tool| tool.function.name == name),
+            "IT Ops tool {name} must be published"
+        );
+    }
+
+    let placements = tools
+        .iter()
+        .find(|tool| tool.function.name == "itops_set_rack_placements")
+        .expect("Rack placement tool exists");
+    assert_eq!(
+        placements
+            .function
+            .parameters
+            .pointer("/properties/kind/enum"),
+        Some(&json!(["floor", "grid"]))
+    );
+
+    let facings = tools
+        .iter()
+        .find(|tool| tool.function.name == "itops_set_rack_facings")
+        .expect("Rack facing tool exists");
+    assert_eq!(
+        facings
+            .function
+            .parameters
+            .pointer("/properties/entries/items/properties/facing/maximum"),
+        Some(&json!(3))
+    );
+}
+
+#[test]
 fn itops_ipam_tools_cover_crud_bulk_import_and_sensitive_inputs() {
     let settings: AiAssistantToolSettings = serde_json::from_value(json!({
         "itops": true

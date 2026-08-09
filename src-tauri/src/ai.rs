@@ -3257,6 +3257,36 @@ fn ai_tool_definitions_with_skills(
             },"required":["id","name","serverRoom","heightU","depthMm"]}),
         ));
         tools.push(tool_definition(
+            "itops_reorder_racks",
+            "Reorder all Racks in one Site. Read itops_list_racks first, then supply every Rack id exactly once in the desired sortOrder.",
+            json!({"type":"object","properties":{
+                "siteId":{"type":"string"},
+                "orderedIds":{"type":"array","items":{"type":"string"}}
+            },"required":["siteId","orderedIds"]}),
+        ));
+        tools.push(tool_definition(
+            "itops_set_rack_placements",
+            "Batch-set Rack positions in Server Room View. Use kind floor for top-down pixel coordinates or grid for 2.5D grid cells; each entry's x/y values update the corresponding floorX/floorY or gridX/gridY fields.",
+            json!({"type":"object","properties":{
+                "kind":{"type":"string","enum":["floor","grid"]},
+                "entries":{"type":"array","items":{"type":"object","properties":{
+                    "id":{"type":"string"},
+                    "x":{"type":"number"},
+                    "y":{"type":"number"}
+                },"required":["id","x","y"]}}
+            },"required":["kind","entries"]}),
+        ));
+        tools.push(tool_definition(
+            "itops_set_rack_facings",
+            "Batch-set Rack quarter-turn facings in Server Room View. facing is 0 through 3, where 0 faces toward positive y.",
+            json!({"type":"object","properties":{
+                "entries":{"type":"array","items":{"type":"object","properties":{
+                    "id":{"type":"string"},
+                    "facing":{"type":"integer","minimum":0,"maximum":3}
+                },"required":["id","facing"]}}
+            },"required":["entries"]}),
+        ));
+        tools.push(tool_definition(
             "itops_delete_rack",
             "Delete one Rack by id, including its Rack Device placements. Bound saved Connections are untouched.",
             json!({"type":"object","properties":{"id":{"type":"string"}},"required":["id"]}),

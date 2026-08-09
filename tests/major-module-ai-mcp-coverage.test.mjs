@@ -82,6 +82,21 @@ test("native assistant exposes every major Module and all persisted tool groups"
   }
 });
 
+test("native assistant publishes IT Ops Rack layout and ordering tools", async () => {
+  const ai = await read("src-tauri/src/ai.rs");
+
+  for (const tool of [
+    "itops_reorder_racks",
+    "itops_set_rack_placements",
+    "itops_set_rack_facings",
+  ]) {
+    assert.ok(
+      ai.includes(`tool_definition(\n            "${tool}"`),
+      `assistant must publish ${tool}, not only dispatch it`,
+    );
+  }
+});
+
 test("Tutorial navigation accepts the advertised Screenshots Module page", async () => {
   const ai = await read("src-tauri/src/ai.rs");
   assert.match(
