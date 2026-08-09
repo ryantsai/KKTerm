@@ -680,6 +680,7 @@ export interface AssistantSkillSummary {
 }
 
 export interface DownloadAndInstallAppUpdateRequest {
+  assetKind: "windowsInstaller" | "windowsPortable";
   version: string;
   assetName: string;
   downloadUrl: string;
@@ -1180,6 +1181,10 @@ type CommandMap = {
   cancel_app_update_download: {
     args: { jobId: string };
     result: void;
+  };
+  take_portable_update_error: {
+    args: undefined;
+    result: string | null;
   };
   install_downloaded_app_update: {
     args: { request: DownloadAndInstallAppUpdateRequest };

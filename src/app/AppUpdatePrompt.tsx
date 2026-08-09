@@ -8,13 +8,12 @@ import {
   isAppUpdateDownloadCancelled,
   isDebugBuild,
   openReleaseDownloadPage,
-  openPortableUpdateDownload,
   startAppUpdateDownload,
   type AppUpdate,
 } from "../lib/appUpdates";
 import { shouldRunStartupUpdateCheck } from "../lib/appUpdatesModel";
 import { readLastUpdateCheckAt, recordUpdateCheckedNow } from "../lib/lastUpdateCheck";
-import { isTauriRuntime, openExternalUrl } from "../lib/tauri";
+import { invokeCommand, isTauriRuntime, openExternalUrl } from "../lib/tauri";
 import { useWorkspaceStore } from "../store";
 import { LegacyDialogActions } from "./ui/dialog";
 
@@ -113,6 +112,21 @@ export function AppUpdatePrompt({
   }, [autoUpdateChecksEnabled, settingsReady]);
 
   useEffect(() => {
+    if (!settingsReady || !isTauriRuntime()) {
+      return;
+    }
+    void invokeCommand("take_portable_update_error")
+      .then((message) => {
+        if (message) {
+          showStatusBarNotice(t("settings.updateDownloadFailed", { message }), {
+            tone: "error",
+          });
+        }
+      })
+      .catch(() => undefined);
+  }, [settingsReady, showStatusBarNotice, t]);
+
+  useEffect(() => {
     const handleManualCheck = () => void runUpdateCheck("manual");
     window.addEventListener(CHECK_FOR_APP_UPDATES_EVENT, handleManualCheck);
     return () => {
@@ -134,7 +148,7 @@ export function AppUpdatePrompt({
 
   const canDownloadAndInstall =
     update?.installStrategy === "tauri-updater" || Boolean(update?.installer);
-  const portableUpdate = update?.installStrategy === "portable-manual";
+  const portableUpdate = update?.installStrategy === "portable-self-update";
 
   function handleUpdateNotesClick(event: MouseEvent<HTMLDivElement>) {
     const link = (event.target as Element | null)?.closest("a");
@@ -255,19 +269,7 @@ export function AppUpdatePrompt({
             <ExternalLink size={15} />
             {t("settings.updateOpenDownloadPage")}
           </button>}
-          primary={portableUpdate ? (
-            <button
-              className="approve-button"
-              onClick={() => {
-                void openPortableUpdateDownload(update);
-                setUpdate(null);
-              }}
-              type="button"
-            >
-              <Download size={15} />
-              {t("settings.portableUpdateDownload")}
-            </button>
-          ) : canDownloadAndInstall ? (
+          primary={canDownloadAndInstall ? (
             <button
               className="approve-button"
               disabled={installing}
@@ -277,7 +279,9 @@ export function AppUpdatePrompt({
               <Download size={15} />
               {installing
                 ? t("settings.updateDownloading")
-                : t("settings.updateDownloadAndInstall")}
+                : portableUpdate
+                  ? t("settings.portableUpdateDownload")
+                  : t("settings.updateDownloadAndInstall")}
             </button>
           ) : null}
           cancel={<button

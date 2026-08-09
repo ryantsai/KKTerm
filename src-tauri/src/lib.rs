@@ -4592,6 +4592,7 @@ pub fn run() {
                 ai_provider_settings.built_in_mcp_server_enabled(),
                 ai_provider_settings.built_in_mcp_allow_all_dangerous(),
             );
+            app_updates::mark_portable_update_ready(app.handle()).map_err(setup_error)?;
             app_paths::start_portable_smoke_test_if_requested(app.handle()).map_err(setup_error)?;
             Ok(())
         })
@@ -4677,6 +4678,7 @@ pub fn run() {
             app_updates::get_app_update_target_triple,
             app_updates::download_app_update,
             app_updates::cancel_app_update_download,
+            app_updates::take_portable_update_error,
             app_updates::install_downloaded_app_update,
             currency_rates::fetch_currency_rates,
             debug_frontend_heartbeat,

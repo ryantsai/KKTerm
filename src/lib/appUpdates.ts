@@ -39,7 +39,6 @@ export type AppUpdate = {
   htmlUrl: string;
   installer: AppUpdateInstallerAssets | null;
   installStrategy: AppUpdateInstallStrategy;
-  portableDownloadUrl: string | null;
 };
 
 export type AppUpdateDownloadTask = {
@@ -125,10 +124,8 @@ export async function checkForAppUpdate(): Promise<AppUpdate | null> {
       installer:
         strategy === "windows-installer"
           ? selectManifestWindowsInstaller(manifest, targetTriple)
-          : null,
-      portableDownloadUrl:
-        strategy === "portable-manual"
-          ? selectManifestWindowsPortableZip(manifest, targetTriple)?.downloadUrl ?? null
+          : strategy === "portable-self-update"
+            ? selectManifestWindowsPortableZip(manifest, targetTriple)
           : null,
       installStrategy: strategy,
     };
@@ -156,10 +153,8 @@ export async function checkForAppUpdate(): Promise<AppUpdate | null> {
     installer:
       strategy === "windows-installer"
         ? selectWindowsInstallerAssets(release.assets, targetTriple)
-        : null,
-    portableDownloadUrl:
-      strategy === "portable-manual"
-        ? selectWindowsPortableAssets(release.assets, targetTriple)?.downloadUrl ?? null
+        : strategy === "portable-self-update"
+          ? selectWindowsPortableAssets(release.assets, targetTriple)
         : null,
     installStrategy: strategy,
   };
@@ -167,10 +162,6 @@ export async function checkForAppUpdate(): Promise<AppUpdate | null> {
 
 export async function openReleaseDownloadPage(update: AppUpdate) {
   await openExternalUrl(update.htmlUrl);
-}
-
-export async function openPortableUpdateDownload(update: AppUpdate) {
-  await openExternalUrl(update.portableDownloadUrl ?? update.htmlUrl);
 }
 
 export async function startAppUpdateDownload(
@@ -181,9 +172,13 @@ export async function startAppUpdateDownload(
     return startTauriAppUpdateDownload(onProgress);
   }
   if (!update.installer) {
-    throw new Error("No installer asset is available for this device.");
+    throw new Error("No update asset is available for this device.");
   }
   const request = {
+    assetKind:
+      update.installStrategy === "portable-self-update"
+        ? ("windowsPortable" as const)
+        : ("windowsInstaller" as const),
     version: update.version,
     assetName: update.installer.assetName,
     downloadUrl: update.installer.downloadUrl,
@@ -224,7 +219,6 @@ async function checkForTauriAppUpdate(): Promise<AppUpdate | null> {
     body: (tauriUpdate.body ?? "").trim(),
     htmlUrl: RELEASES_PAGE_URL,
     installer: null,
-    portableDownloadUrl: null,
     installStrategy: "tauri-updater",
   };
 }

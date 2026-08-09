@@ -138,7 +138,7 @@ export function selectManifestWindowsPortableZip(
 
 export type AppUpdateInstallStrategy =
   | "windows-installer"
-  | "portable-manual"
+  | "portable-self-update"
   | "tauri-updater"
   | "download-page";
 
@@ -155,7 +155,7 @@ export function appUpdateInstallStrategy(
   portable = false,
 ): AppUpdateInstallStrategy {
   if (platform === "windows" && portable) {
-    return "portable-manual";
+    return "portable-self-update";
   }
   if (platform === "windows") {
     return "windows-installer";

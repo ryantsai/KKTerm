@@ -168,7 +168,7 @@ test("app update install strategy keeps Windows installer flow separate from mac
   );
 
   assert.equal(appUpdateInstallStrategy("windows"), "windows-installer");
-  assert.equal(appUpdateInstallStrategy("windows", true), "portable-manual");
+  assert.equal(appUpdateInstallStrategy("windows", true), "portable-self-update");
   assert.equal(appUpdateInstallStrategy("macos"), "tauri-updater");
   assert.equal(appUpdateInstallStrategy("linux"), "tauri-updater");
   assert.equal(appUpdateInstallStrategy("unknown"), "download-page");
@@ -232,6 +232,7 @@ test("app update install flow is exposed across the frontend and backend boundar
   assert.match(tauriSource, /download_app_update/);
   assert.match(libSource, /download_app_update/);
   assert.match(promptSource, /settings\.updateDownloadAndInstall/);
+  assert.match(promptSource, /settings\.portableUpdateDownload/);
   assert.equal(locale.settings.updateDownloadAndInstall, "Download and Install");
   assert.match(releaseDoc, /Download and Install/);
   assert.match(manualSource, /settings\.updateDownloadAndInstall/);
@@ -261,6 +262,7 @@ test("app update uses a cancellable download phase before delayed installation",
   for (const command of [
     "download_app_update",
     "cancel_app_update_download",
+    "take_portable_update_error",
     "install_downloaded_app_update",
   ]) {
     assert.match(tauriSource, new RegExp(command));

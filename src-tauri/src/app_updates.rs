@@ -13,6 +13,7 @@ use std::sync::{
 use std::time::Duration;
 use tauri::{Emitter, Manager};
 use url::Url;
+use zip::ZipArchive;
 
 const APP_UPDATE_PROGRESS_EVENT: &str = "app-update-download-progress";
 static DOWNLOAD_CANCELLATIONS: LazyLock<Mutex<HashMap<String, Arc<AtomicBool>>>> =
@@ -21,10 +22,18 @@ static DOWNLOAD_CANCELLATIONS: LazyLock<Mutex<HashMap<String, Arc<AtomicBool>>>>
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DownloadAndInstallAppUpdateRequest {
+    asset_kind: AppUpdateAssetKind,
     version: String,
     asset_name: String,
     download_url: String,
     checksum_url: String,
+}
+
+#[derive(Clone, Copy, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+enum AppUpdateAssetKind {
+    WindowsInstaller,
+    WindowsPortable,
 }
 
 #[derive(Clone, Serialize)]
@@ -47,7 +56,7 @@ pub async fn download_app_update(
     job_id: String,
     request: DownloadAndInstallAppUpdateRequest,
 ) -> Result<(), String> {
-    validate_installer_update_mode(&app)?;
+    validate_update_mode(&app, request.asset_kind)?;
     validate_job_id(&job_id)?;
     let cancellation = DOWNLOAD_CANCELLATIONS
         .lock()
@@ -86,9 +95,9 @@ pub fn install_downloaded_app_update(
     app: tauri::AppHandle,
     request: DownloadAndInstallAppUpdateRequest,
 ) -> Result<(), String> {
-    validate_installer_update_mode(&app)?;
+    validate_update_mode(&app, request.asset_kind)?;
     validate_update_request(&request)?;
-    let installer_path = update_installer_path(&app, &request.asset_name)?;
+    let downloaded_path = update_download_path(&app, &request.asset_name)?;
     let checksum_urls = update_asset_urls(
         &request.checksum_url,
         &request.version,
@@ -96,25 +105,40 @@ pub fn install_downloaded_app_update(
     )?;
     let checksum = download_text_from_any(&checksum_urls)?;
     let expected_sha256 = parse_sha256(&checksum)?;
-    let actual_sha256 = sha256_file(&installer_path)?;
+    let actual_sha256 = sha256_file(&downloaded_path)?;
     if !actual_sha256.eq_ignore_ascii_case(&expected_sha256) {
-        let _ = fs::remove_file(&installer_path);
-        return Err("downloaded installer checksum did not match release metadata".into());
+        let _ = fs::remove_file(&downloaded_path);
+        return Err("downloaded update checksum did not match release metadata".into());
     }
 
-    spawn_installer_after_exit(&installer_path, std::process::id())?;
+    match request.asset_kind {
+        AppUpdateAssetKind::WindowsInstaller => {
+            spawn_installer_after_exit(&downloaded_path, std::process::id())?;
+        }
+        AppUpdateAssetKind::WindowsPortable => {
+            let handoff = prepare_portable_update(&app, &request, &downloaded_path)?;
+            spawn_portable_update_after_exit(&handoff, std::process::id())?;
+        }
+    }
     app.exit(0);
     Ok(())
 }
 
-fn validate_installer_update_mode(app: &tauri::AppHandle) -> Result<(), String> {
-    if app.state::<crate::app_paths::AppPaths>().is_portable() {
-        return Err(
-            "installer updates are not supported in portable mode; download the portable ZIP instead"
-                .to_string(),
-        );
+fn validate_update_mode(
+    app: &tauri::AppHandle,
+    asset_kind: AppUpdateAssetKind,
+) -> Result<(), String> {
+    let is_portable = app.state::<crate::app_paths::AppPaths>().is_portable();
+    match (is_portable, asset_kind) {
+        (false, AppUpdateAssetKind::WindowsInstaller)
+        | (true, AppUpdateAssetKind::WindowsPortable) => Ok(()),
+        (true, AppUpdateAssetKind::WindowsInstaller) => {
+            Err("portable mode cannot install a Windows setup executable".into())
+        }
+        (false, AppUpdateAssetKind::WindowsPortable) => {
+            Err("installed mode cannot apply a portable ZIP update".into())
+        }
     }
-    Ok(())
 }
 
 fn download_app_update_sync(
@@ -124,7 +148,7 @@ fn download_app_update_sync(
     cancellation: &AtomicBool,
 ) -> Result<(), String> {
     validate_update_request(&request)?;
-    let installer_path = update_installer_path(app, &request.asset_name)?;
+    let download_path = update_download_path(app, &request.asset_name)?;
     let checksum_urls = update_asset_urls(
         &request.checksum_url,
         &request.version,
@@ -135,23 +159,23 @@ fn download_app_update_sync(
     let download_urls =
         update_asset_urls(&request.download_url, &request.version, &request.asset_name)?;
 
-    let result = download_file_from_any(app, job_id, &download_urls, &installer_path, cancellation)
+    let result = download_file_from_any(app, job_id, &download_urls, &download_path, cancellation)
         .and_then(|_| {
-            let actual_sha256 = sha256_file(&installer_path)?;
+            let actual_sha256 = sha256_file(&download_path)?;
             if actual_sha256.eq_ignore_ascii_case(&expected_sha256) {
                 Ok(())
             } else {
-                Err("downloaded installer checksum did not match release metadata".into())
+                Err("downloaded update checksum did not match release metadata".into())
             }
         });
 
     if result.is_err() {
-        let _ = fs::remove_file(&installer_path);
+        let _ = fs::remove_file(&download_path);
     }
     result
 }
 
-fn update_installer_path(app: &tauri::AppHandle, asset_name: &str) -> Result<PathBuf, String> {
+fn update_download_path(app: &tauri::AppHandle, asset_name: &str) -> Result<PathBuf, String> {
     let update_dir = crate::app_paths::cache_dir(app)?.join("updates");
     fs::create_dir_all(&update_dir).map_err(|error| {
         format!(
@@ -194,15 +218,20 @@ fn validate_update_request(request: &DownloadAndInstallAppUpdateRequest) -> Resu
         return Err("update version must contain only digits and dots".into());
     }
 
-    let expected_name = format!(
-        "kkterm-{}-{}-setup.exe",
-        request.version,
-        app_update_target_triple()
-    );
+    let expected_name = match request.asset_kind {
+        AppUpdateAssetKind::WindowsInstaller => format!(
+            "kkterm-{}-{}-setup.exe",
+            request.version,
+            app_update_target_triple()
+        ),
+        AppUpdateAssetKind::WindowsPortable => format!(
+            "kkterm-{}-{}-portable.zip",
+            request.version,
+            app_update_target_triple()
+        ),
+    };
     if request.asset_name != expected_name {
-        return Err(format!(
-            "update installer asset must be named {expected_name}"
-        ));
+        return Err(format!("update asset must be named {expected_name}"));
     }
 
     validate_update_asset_url(&request.download_url, &request.version, &request.asset_name)?;
@@ -408,6 +437,358 @@ fn sha256_file(path: &Path) -> Result<String, String> {
     Ok(checksum)
 }
 
+struct PortableUpdateHandoff {
+    portable_root: PathBuf,
+    work_dir: PathBuf,
+    staging_dir: PathBuf,
+    rollback_dir: PathBuf,
+    archive_path: PathBuf,
+    awaiting_ready_path: PathBuf,
+    ready_path: PathBuf,
+    error_result_path: PathBuf,
+}
+
+fn prepare_portable_update(
+    app: &tauri::AppHandle,
+    request: &DownloadAndInstallAppUpdateRequest,
+    archive_path: &Path,
+) -> Result<PortableUpdateHandoff, String> {
+    let paths = app.state::<crate::app_paths::AppPaths>();
+    if !paths.is_portable() {
+        return Err("portable update staging requires portable mode".into());
+    }
+    let portable_root = paths
+        .data_dir()
+        .parent()
+        .ok_or_else(|| "failed to resolve the portable program folder".to_string())?
+        .to_path_buf();
+    if portable_root.join("data") != paths.data_dir() {
+        return Err("portable data folder is not directly below the program folder".into());
+    }
+    if !portable_root.join("kkterm-portable.marker").is_file() {
+        return Err("portable update requires kkterm-portable.marker".into());
+    }
+
+    let work_dir = paths
+        .cache_dir()
+        .join("updates")
+        .join(format!("portable-{}", request.version));
+    let staging_dir = work_dir.join("staging");
+    let rollback_dir = work_dir.join("rollback");
+    remove_dir_if_present(&staging_dir)?;
+    remove_dir_if_present(&rollback_dir)?;
+    fs::create_dir_all(&staging_dir).map_err(|error| {
+        format!(
+            "failed to create portable update staging directory {}: {error}",
+            staging_dir.display()
+        )
+    })?;
+    if let Err(error) = extract_portable_update(archive_path, &staging_dir) {
+        let _ = fs::remove_dir_all(&staging_dir);
+        return Err(error);
+    }
+
+    let awaiting_ready_path = work_dir.join("awaiting-ready");
+    let ready_path = work_dir.join("ready");
+    let error_result_path = paths
+        .cache_dir()
+        .join("updates")
+        .join("portable-update-error.txt");
+    Ok(PortableUpdateHandoff {
+        portable_root,
+        work_dir,
+        staging_dir,
+        rollback_dir,
+        archive_path: archive_path.to_path_buf(),
+        awaiting_ready_path,
+        ready_path,
+        error_result_path,
+    })
+}
+
+#[tauri::command]
+pub fn take_portable_update_error(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let paths = app.state::<crate::app_paths::AppPaths>();
+    if !paths.is_portable() {
+        return Ok(None);
+    }
+    let error_path = paths
+        .cache_dir()
+        .join("updates")
+        .join("portable-update-error.txt");
+    if !error_path.is_file() {
+        return Ok(None);
+    }
+    let metadata = fs::metadata(&error_path).map_err(|error| {
+        format!(
+            "failed to inspect portable update result {}: {error}",
+            error_path.display()
+        )
+    })?;
+    if metadata.len() > 4096 {
+        let _ = fs::remove_file(&error_path);
+        return Err("portable update result was unexpectedly large".into());
+    }
+    let message = fs::read_to_string(&error_path).map_err(|error| {
+        format!(
+            "failed to read portable update result {}: {error}",
+            error_path.display()
+        )
+    })?;
+    fs::remove_file(&error_path).map_err(|error| {
+        format!(
+            "failed to clear portable update result {}: {error}",
+            error_path.display()
+        )
+    })?;
+    Ok(
+        Some(message.trim().trim_start_matches('\u{feff}').to_string())
+            .filter(|value| !value.is_empty()),
+    )
+}
+
+pub fn mark_portable_update_ready(app: &tauri::AppHandle) -> Result<(), String> {
+    let paths = app.state::<crate::app_paths::AppPaths>();
+    if !paths.is_portable() {
+        return Ok(());
+    }
+    let work_dir = paths
+        .cache_dir()
+        .join("updates")
+        .join(format!("portable-{}", env!("CARGO_PKG_VERSION")));
+    let awaiting_ready_path = work_dir.join("awaiting-ready");
+    if !awaiting_ready_path.is_file() {
+        return Ok(());
+    }
+    fs::write(work_dir.join("ready"), b"ready").map_err(|error| {
+        format!(
+            "failed to confirm portable update startup in {}: {error}",
+            work_dir.display()
+        )
+    })
+}
+
+fn remove_dir_if_present(path: &Path) -> Result<(), String> {
+    if path.exists() {
+        fs::remove_dir_all(path)
+            .map_err(|error| format!("failed to clear {}: {error}", path.display()))?;
+    }
+    Ok(())
+}
+
+fn extract_portable_update(archive_path: &Path, staging_dir: &Path) -> Result<(), String> {
+    const MAX_ARCHIVE_ENTRIES: usize = 10_000;
+    const MAX_UNCOMPRESSED_BYTES: u64 = 1024 * 1024 * 1024;
+    const ALLOWED_ROOTS: &[&str] = &[
+        "KKTerm.exe",
+        "kkterm-cli.exe",
+        "kkterm-portable.marker",
+        "manual",
+        "assistant-skills",
+    ];
+
+    let file = fs::File::open(archive_path).map_err(|error| {
+        format!(
+            "failed to open portable update archive {}: {error}",
+            archive_path.display()
+        )
+    })?;
+    let mut archive = ZipArchive::new(file)
+        .map_err(|error| format!("portable update archive is invalid: {error}"))?;
+    if archive.len() == 0 || archive.len() > MAX_ARCHIVE_ENTRIES {
+        return Err("portable update archive has an invalid number of entries".into());
+    }
+
+    let mut total_uncompressed = 0_u64;
+    for index in 0..archive.len() {
+        let mut entry = archive
+            .by_index(index)
+            .map_err(|error| format!("failed to read portable update entry: {error}"))?;
+        total_uncompressed = total_uncompressed
+            .checked_add(entry.size())
+            .ok_or_else(|| "portable update archive size overflowed".to_string())?;
+        if total_uncompressed > MAX_UNCOMPRESSED_BYTES {
+            return Err("portable update archive is too large".into());
+        }
+        if entry
+            .unix_mode()
+            .is_some_and(|mode| mode & 0o170000 == 0o120000)
+        {
+            return Err("portable update archive cannot contain symbolic links".into());
+        }
+        let relative_path = entry
+            .enclosed_name()
+            .ok_or_else(|| "portable update archive contains an unsafe path".to_string())?;
+        let root_name = relative_path
+            .components()
+            .next()
+            .and_then(|component| component.as_os_str().to_str())
+            .ok_or_else(|| "portable update archive contains an invalid path".to_string())?;
+        if !ALLOWED_ROOTS.contains(&root_name) {
+            return Err(format!(
+                "portable update archive contains unexpected root entry {root_name}"
+            ));
+        }
+
+        let destination = staging_dir.join(relative_path);
+        if entry.is_dir() {
+            fs::create_dir_all(&destination).map_err(|error| {
+                format!(
+                    "failed to create staged directory {}: {error}",
+                    destination.display()
+                )
+            })?;
+            continue;
+        }
+        if let Some(parent) = destination.parent() {
+            fs::create_dir_all(parent).map_err(|error| {
+                format!(
+                    "failed to create staged directory {}: {error}",
+                    parent.display()
+                )
+            })?;
+        }
+        let mut output = fs::File::create(&destination).map_err(|error| {
+            format!(
+                "failed to create staged file {}: {error}",
+                destination.display()
+            )
+        })?;
+        std::io::copy(&mut entry, &mut output).map_err(|error| {
+            format!(
+                "failed to extract staged file {}: {error}",
+                destination.display()
+            )
+        })?;
+        output.sync_all().map_err(|error| {
+            format!(
+                "failed to flush staged file {}: {error}",
+                destination.display()
+            )
+        })?;
+    }
+
+    for required in ALLOWED_ROOTS {
+        if !staging_dir.join(required).exists() {
+            return Err(format!(
+                "portable update archive is missing required entry {required}"
+            ));
+        }
+    }
+    if !staging_dir.join("KKTerm.exe").is_file()
+        || !staging_dir.join("kkterm-cli.exe").is_file()
+        || !staging_dir.join("kkterm-portable.marker").is_file()
+        || !staging_dir.join("manual").is_dir()
+        || !staging_dir.join("assistant-skills").is_dir()
+    {
+        return Err("portable update archive has an invalid program layout".into());
+    }
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn spawn_portable_update_after_exit(
+    handoff: &PortableUpdateHandoff,
+    parent_pid: u32,
+) -> Result<(), String> {
+    let command = portable_update_handoff_command(handoff, parent_pid);
+    let mut powershell = Command::new("powershell");
+    powershell.args([
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-WindowStyle",
+        "Hidden",
+        "-Command",
+        &command,
+    ]);
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    powershell.creation_flags(CREATE_NO_WINDOW);
+    powershell
+        .spawn()
+        .map_err(|error| format!("failed to start portable update handoff: {error}"))?;
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn portable_update_handoff_command(handoff: &PortableUpdateHandoff, parent_pid: u32) -> String {
+    let root = ps_single_quote(&handoff.portable_root.to_string_lossy());
+    let work = ps_single_quote(&handoff.work_dir.to_string_lossy());
+    let staging = ps_single_quote(&handoff.staging_dir.to_string_lossy());
+    let rollback = ps_single_quote(&handoff.rollback_dir.to_string_lossy());
+    let archive = ps_single_quote(&handoff.archive_path.to_string_lossy());
+    let awaiting_ready = ps_single_quote(&handoff.awaiting_ready_path.to_string_lossy());
+    let ready = ps_single_quote(&handoff.ready_path.to_string_lossy());
+    let error_result = ps_single_quote(&handoff.error_result_path.to_string_lossy());
+    format!(
+        "$ErrorActionPreference = 'Stop'; \
+         $root = {root}; $work = {work}; $stage = {staging}; $rollback = {rollback}; $archive = {archive}; \
+         $awaitingReady = {awaiting_ready}; $ready = {ready}; \
+         $errorResult = {error_result}; \
+         $names = @('KKTerm.exe', 'kkterm-cli.exe', 'manual', 'assistant-skills'); \
+         $deadline = (Get-Date).AddSeconds(30); \
+         while (Get-Process -Id {parent_pid} -ErrorAction SilentlyContinue) {{ \
+             if ((Get-Date) -ge $deadline) {{ exit 2 }}; Start-Sleep -Milliseconds 200 \
+         }}; \
+         New-Item -ItemType Directory -Path $rollback -Force | Out-Null; \
+         $movedOld = @(); $movedNew = @(); \
+         try {{ \
+             foreach ($name in $names) {{ \
+                 $target = Join-Path $root $name; \
+                 if (Test-Path -LiteralPath $target) {{ \
+                     Move-Item -LiteralPath $target -Destination (Join-Path $rollback $name); \
+                     $movedOld += $name \
+                 }} \
+             }}; \
+             foreach ($name in $names) {{ \
+                 $source = Join-Path $stage $name; \
+                 if (-not (Test-Path -LiteralPath $source)) {{ throw ('Missing staged entry: ' + $name) }}; \
+                 Move-Item -LiteralPath $source -Destination (Join-Path $root $name); \
+                 $movedNew += $name \
+             }}; \
+             New-Item -ItemType File -Path $awaitingReady -Force | Out-Null; \
+             Remove-Item -LiteralPath $ready -Force -ErrorAction SilentlyContinue; \
+             $newProcess = Start-Process -FilePath (Join-Path $root 'KKTerm.exe') -PassThru; \
+             $readyDeadline = (Get-Date).AddSeconds(30); \
+             while (-not (Test-Path -LiteralPath $ready)) {{ \
+                 if ($newProcess.HasExited) {{ throw 'Updated KKTerm exited before startup completed' }}; \
+                 if ((Get-Date) -ge $readyDeadline) {{ \
+                     Stop-Process -Id $newProcess.Id -Force -ErrorAction SilentlyContinue; \
+                     Wait-Process -Id $newProcess.Id -Timeout 5 -ErrorAction SilentlyContinue; \
+                     throw 'Updated KKTerm did not complete startup in time' \
+                 }}; \
+                 Start-Sleep -Milliseconds 200 \
+             }} \
+         }} catch {{ \
+             foreach ($name in $movedNew) {{ \
+                 $target = Join-Path $root $name; \
+                 if (Test-Path -LiteralPath $target) {{ Remove-Item -LiteralPath $target -Recurse -Force }} \
+             }}; \
+             foreach ($name in $movedOld) {{ \
+                 $backup = Join-Path $rollback $name; \
+                 if (Test-Path -LiteralPath $backup) {{ Move-Item -LiteralPath $backup -Destination (Join-Path $root $name) }} \
+             }}; \
+             $logDir = Join-Path $root 'data\\logs'; New-Item -ItemType Directory -Path $logDir -Force | Out-Null; \
+             Add-Content -LiteralPath (Join-Path $logDir 'portable-update.log') -Value ((Get-Date).ToString('o') + ' ' + $_.Exception.Message); \
+             Set-Content -LiteralPath $errorResult -Value $_.Exception.Message -Encoding UTF8; \
+             $oldExe = Join-Path $root 'KKTerm.exe'; \
+             if (Test-Path -LiteralPath $oldExe) {{ Start-Process -FilePath $oldExe | Out-Null }}; \
+             exit 1 \
+         }}; \
+         Remove-Item -LiteralPath $archive -Force -ErrorAction SilentlyContinue; \
+         Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue"
+    )
+}
+
+#[cfg(not(target_os = "windows"))]
+fn spawn_portable_update_after_exit(
+    _handoff: &PortableUpdateHandoff,
+    _parent_pid: u32,
+) -> Result<(), String> {
+    Err("portable self-update is only available on Windows".into())
+}
+
 #[cfg(target_os = "windows")]
 fn spawn_installer_after_exit(installer_path: &Path, parent_pid: u32) -> Result<(), String> {
     let command = installer_handoff_command(installer_path, parent_pid);
@@ -463,6 +844,28 @@ fn ps_single_quote(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::tempdir;
+    use zip::{ZipWriter, write::SimpleFileOptions};
+
+    fn write_portable_test_archive(path: &Path, extra_entries: &[(&str, &[u8])]) {
+        let file = fs::File::create(path).unwrap();
+        let mut archive = ZipWriter::new(file);
+        let options = SimpleFileOptions::default();
+        for (name, bytes) in [
+            ("KKTerm.exe", b"new-app".as_slice()),
+            ("kkterm-cli.exe", b"new-cli".as_slice()),
+            ("kkterm-portable.marker", b"".as_slice()),
+            ("manual/INDEX.md", b"manual".as_slice()),
+            ("assistant-skills/example/SKILL.md", b"skill".as_slice()),
+        ]
+        .into_iter()
+        .chain(extra_entries.iter().copied())
+        {
+            archive.start_file(name, options).unwrap();
+            archive.write_all(bytes).unwrap();
+        }
+        archive.finish().unwrap();
+    }
 
     #[test]
     fn parse_sha256_accepts_release_checksum_format() {
@@ -476,6 +879,7 @@ mod tests {
     #[test]
     fn validate_update_request_rejects_non_github_url() {
         let request = DownloadAndInstallAppUpdateRequest {
+            asset_kind: AppUpdateAssetKind::WindowsInstaller,
             version: "0.1.54".into(),
             asset_name: format!("kkterm-0.1.54-{}-setup.exe", app_update_target_triple()),
             download_url: "https://example.com/installer.exe".into(),
@@ -489,6 +893,7 @@ mod tests {
         let target = app_update_target_triple();
         let asset_name = format!("kkterm-0.1.94-{target}-setup.exe");
         let request = DownloadAndInstallAppUpdateRequest {
+            asset_kind: AppUpdateAssetKind::WindowsInstaller,
             version: "0.1.94".into(),
             asset_name: asset_name.clone(),
             download_url: format!("https://kkterm.ryantsai.com/releases/v0.1.94/{asset_name}"),
@@ -497,6 +902,74 @@ mod tests {
             ),
         };
         assert!(validate_update_request(&request).is_ok());
+    }
+
+    #[test]
+    fn validate_update_request_accepts_portable_release_asset() {
+        let target = app_update_target_triple();
+        let asset_name = format!("kkterm-0.1.140-{target}-portable.zip");
+        let request = DownloadAndInstallAppUpdateRequest {
+            asset_kind: AppUpdateAssetKind::WindowsPortable,
+            version: "0.1.140".into(),
+            asset_name: asset_name.clone(),
+            download_url: format!(
+                "https://github.com/ryantsai/KKTerm/releases/download/v0.1.140/{asset_name}"
+            ),
+            checksum_url: format!(
+                "https://github.com/ryantsai/KKTerm/releases/download/v0.1.140/{asset_name}.sha256"
+            ),
+        };
+        assert!(validate_update_request(&request).is_ok());
+    }
+
+    #[test]
+    fn portable_archive_extracts_only_the_program_payload() {
+        let temp = tempdir().unwrap();
+        let archive_path = temp.path().join("portable.zip");
+        let staging_dir = temp.path().join("staging");
+        write_portable_test_archive(&archive_path, &[]);
+        fs::create_dir(&staging_dir).unwrap();
+
+        extract_portable_update(&archive_path, &staging_dir).unwrap();
+
+        assert_eq!(
+            fs::read(staging_dir.join("KKTerm.exe")).unwrap(),
+            b"new-app"
+        );
+        assert!(staging_dir.join("manual/INDEX.md").is_file());
+        assert!(
+            staging_dir
+                .join("assistant-skills/example/SKILL.md")
+                .is_file()
+        );
+        assert!(!staging_dir.join("data").exists());
+    }
+
+    #[test]
+    fn portable_archive_rejects_data_and_unexpected_roots() {
+        for forbidden in ["data/kkterm.sqlite3", "unexpected.txt"] {
+            let temp = tempdir().unwrap();
+            let archive_path = temp.path().join("portable.zip");
+            let staging_dir = temp.path().join("staging");
+            write_portable_test_archive(&archive_path, &[(forbidden, b"forbidden")]);
+            fs::create_dir(&staging_dir).unwrap();
+
+            let error = extract_portable_update(&archive_path, &staging_dir).unwrap_err();
+            assert!(error.contains("unexpected root entry"), "{error}");
+        }
+    }
+
+    #[test]
+    fn portable_archive_rejects_parent_traversal() {
+        let temp = tempdir().unwrap();
+        let archive_path = temp.path().join("portable.zip");
+        let staging_dir = temp.path().join("staging");
+        write_portable_test_archive(&archive_path, &[("../data/kkterm.sqlite3", b"forbidden")]);
+        fs::create_dir(&staging_dir).unwrap();
+
+        let error = extract_portable_update(&archive_path, &staging_dir).unwrap_err();
+        assert!(error.contains("unsafe path"), "{error}");
+        assert!(!temp.path().join("data/kkterm.sqlite3").exists());
     }
 
     #[cfg(target_os = "windows")]
@@ -513,6 +986,67 @@ mod tests {
         assert!(command.contains("if ($installerProcess.ExitCode -eq 0)"));
         assert!(command.contains("Remove-Item -LiteralPath 'C:\\Users\\Tester''s PC\\updates\\kkterm-0.1.96-windows-x64-setup.exe' -Force"));
         assert!(command.contains("Remove-Item -LiteralPath 'C:\\Users\\Tester''s PC\\updates' -Force -ErrorAction SilentlyContinue"));
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn portable_handoff_waits_for_startup_and_has_rollback_paths() {
+        use std::io::Write as _;
+        use std::process::Stdio;
+
+        let handoff = PortableUpdateHandoff {
+            portable_root: PathBuf::from("C:\\KKTerm Portable"),
+            work_dir: PathBuf::from("C:\\KKTerm Portable\\data\\cache\\updates\\portable-0.1.140"),
+            staging_dir: PathBuf::from(
+                "C:\\KKTerm Portable\\data\\cache\\updates\\portable-0.1.140\\staging",
+            ),
+            rollback_dir: PathBuf::from(
+                "C:\\KKTerm Portable\\data\\cache\\updates\\portable-0.1.140\\rollback",
+            ),
+            archive_path: PathBuf::from(
+                "C:\\KKTerm Portable\\data\\cache\\updates\\kkterm-0.1.140-windows-x64-portable.zip",
+            ),
+            awaiting_ready_path: PathBuf::from(
+                "C:\\KKTerm Portable\\data\\cache\\updates\\portable-0.1.140\\awaiting-ready",
+            ),
+            ready_path: PathBuf::from(
+                "C:\\KKTerm Portable\\data\\cache\\updates\\portable-0.1.140\\ready",
+            ),
+            error_result_path: PathBuf::from(
+                "C:\\KKTerm Portable\\data\\cache\\updates\\portable-update-error.txt",
+            ),
+        };
+
+        let command = portable_update_handoff_command(&handoff, 42);
+
+        assert!(command.contains("Get-Process -Id 42"));
+        assert!(
+            command.contains(
+                "$names = @('KKTerm.exe', 'kkterm-cli.exe', 'manual', 'assistant-skills')"
+            )
+        );
+        assert!(command.contains("Updated KKTerm did not complete startup in time"));
+        assert!(command.contains("$movedOld"));
+        assert!(command.contains("portable-update.log"));
+        assert!(command.contains("portable-update-error.txt"));
+        assert!(!command.contains("Join-Path $root 'data'"));
+
+        let mut parser = Command::new("powershell")
+            .args([
+                "-NoProfile",
+                "-Command",
+                "[scriptblock]::Create([Console]::In.ReadToEnd()) | Out-Null",
+            ])
+            .stdin(Stdio::piped())
+            .spawn()
+            .unwrap();
+        parser
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(command.as_bytes())
+            .unwrap();
+        assert!(parser.wait().unwrap().success());
     }
 
     #[test]

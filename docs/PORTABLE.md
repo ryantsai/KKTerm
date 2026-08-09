@@ -228,30 +228,35 @@ In portable mode:
 
 ## 4. Updates in portable mode
 
-Portable v1 uses **manual ZIP updates**. It does not download, stage, swap, or
-roll back its own executable. This is intentional while Authenticode/Tauri
-updater signing is unfinished and avoids introducing a self-replacing binary
-flow with additional antivirus and recovery risk.
+Portable mode uses **verified ZIP self-updates**. It downloads and stages the
+same portable archive published for manual installation, then replaces the
+program payload only after the running process has exited. This preserves the
+portable storage boundary while avoiding a separate portable installer.
 
 1. Update checks continue to use the current trusted release metadata sources
    and cadence. The main WebView2 profile lives in `data/webview`, so the
    `lastUpdateCheck` localStorage value travels with the portable root.
 2. When an update is available, the portable prompt identifies it as a
-   Portable ZIP update and offers the matching download page/ZIP rather than
-   "Download and Install".
-3. The user quits KKTerm, extracts the new portable ZIP over the existing
-   program folder, and launches it again. Because release ZIPs never contain
-   `data/`, this replaces program files without overwriting portable state.
-4. Backend validation becomes mode-aware even though portable v1 does not
-   self-install: a portable process must reject `-setup.exe` update requests,
-   and an installed process must reject portable ZIP requests. A portable
-   instance must never launch NSIS and silently create an installed copy.
-5. Documentation must tell users to keep a copy of the old program folder if
-   they want manual rollback. KKTerm does not create or manage rollback files
-   in portable v1.
-
-Automated ZIP download/verification, staged replacement, relaunch, and managed
-rollback require a separate future design after release signing is restored.
+   Portable ZIP update and offers a download, update, and restart action plus
+   the release page as a manual fallback.
+3. Rust downloads the exact architecture-specific ZIP into
+   `data/cache/updates`, verifies the published SHA-256, and extracts it into a
+   same-volume staging directory. Extraction rejects traversal paths, symbolic
+   links, oversized archives, unexpected top-level entries, missing required
+   payload entries, and any attempt to include `data/`.
+4. Backend validation is mode-aware: a portable process rejects `-setup.exe`
+   requests, and an installed process rejects portable ZIP requests. A
+   portable instance never launches NSIS or creates an installed copy.
+5. After staging succeeds, KKTerm spawns a hidden detached handoff and exits
+   with `app.exit(0)`, preserving the normal portable SQLite WAL checkpoint.
+   The handoff waits for that process to finish, moves the current executable,
+   CLI, manual, and Assistant Skills into a rollback directory, moves the
+   staged payload into place, and relaunches `KKTerm.exe`. It retains the
+   existing marker and never moves, deletes, or replaces `data/`.
+6. A swap or relaunch-command failure restores the previous program payload,
+   writes `data/logs/portable-update.log`, and relaunches the old executable.
+   Successful replacement removes the downloaded archive, staging files, and
+   rollback directory.
 
 ---
 
@@ -347,7 +352,7 @@ Guaranteed by construction, verified by tests:
 | Data mixing | Impossible — disjoint roots (`%APPDATA%` vs `exe_dir/data`); no fallback path ever crosses over (see writability guard). |
 | Both running at once | Supported: the app-owned portable single-instance identity is scoped per data root. Two copies of the *same* portable folder remain single-instanced, and later path arguments are forwarded to that root's running instance. |
 | CLI targets the wrong app | A CLI beside the portable marker resolves only sibling `data/mcp-bridge.json`; it never falls back to the installed app. Pipe names remain per-run tokens. |
-| Updates cross-contaminate | Portable v1 uses manual ZIP updates, and mode-aware backend validation rejects installer assets from portable processes and ZIP assets from installed processes. |
+| Updates cross-contaminate | Portable mode uses verified ZIP self-updates, and mode-aware backend validation rejects installer assets from portable processes and ZIP assets from installed processes. The handoff replaces only the fixed program payload and never `data/`. |
 | Keychain overlap | Same service name is fine — owner IDs are per-DB UUIDs; portable default is the file store anyway. |
 | WebView2 profiles | Disjoint (`data/webview` vs `%LOCALAPPDATA%\com.kkterm.app\EBWebView`). |
 | Managed apps / Install Helper | Shared machine state by design; both instances see the same installed tools — that is the correct model. |
@@ -400,10 +405,10 @@ after phases 1–4 are complete.
    keys plus pending localization files, and operation-manual updates.
 4. **Packaging + release** — x64/ARM64 ZIP and checksum generation,
    release/mirror/notes integration, README/antivirus guidance, and the portable
-   smoke test. Portable v1 ships with manual ZIP updates.
-5. **Later / out of scope for v1** — portable self-update/staging/rollback,
-   macOS/Linux portable modes, network-share roots, cloud-synchronized roots,
-   full-database encryption, and a machine-local WebView2 profile redirect.
+   smoke test. Portable mode self-updates from the same verified release ZIPs.
+5. **Later / out of scope for v1** — macOS/Linux portable modes,
+   network-share roots, cloud-synchronized roots, full-database encryption,
+   and a machine-local WebView2 profile redirect.
 
 ### Implementation verification
 
@@ -414,7 +419,8 @@ Skills, and no pre-created `data` folder. The x64 packaged-runtime smoke covers
 portable data/WebView/log creation, resource resolution, same-root activation,
 installed-path and registry isolation, and clean SQLite WAL checkpointing.
 ARM64 cross-build and archive validation run on x64; execution still requires
-an ARM64 Windows runner or device.
+an ARM64 Windows runner or device. Portable releases self-update from these
+same verified archives through the staged post-exit handoff described above.
 
 Installed Windows builds also ship the Settings portable-copy creator. Rust
 coverage verifies selective database creation, credential/auto-start
@@ -436,10 +442,10 @@ and the no-credentials contract.
 - **Removable filesystems**: FAT32/exFAT and deeply nested extraction paths
   require real smoke/manual coverage. The app must surface initialization or
   SQLite failures instead of assuming all removable filesystems behave alike.
-- **Antivirus heuristics**: portable ZIPs are commonly scrutinized more than
-  installers. Portable v1 avoids self-replacement; publish SHA-256 checksums
-  and document false-positive reporting. Restored Authenticode signing remains
-  a release goal.
+- **Antivirus heuristics**: portable ZIPs and self-replacing application flows
+  are commonly scrutinized more than installers. Publish SHA-256 checksums,
+  keep the handoff narrow and user-mediated, and document false-positive
+  reporting. Restored Authenticode signing remains a release goal.
 - **Marker decision**: the explicit `kkterm-portable.marker` is the production
   mode switch. A portable-shaped database without the marker is treated as an
   ambiguous/error state, never as permission to silently use installed paths.
@@ -448,5 +454,6 @@ and the no-credentials contract.
   behavior.
 - **Credentials onboarding**: encrypted portable credentials are recommended,
   but setup is skippable and deferred until first secret use when skipped.
-- **Updates**: portable v1 updates are manual ZIP replacement. Self-update and
-  managed rollback remain out of scope until separately designed.
+- **Updates**: portable updates use verified ZIP staging, a post-exit program
+  payload swap, rollback on swap/relaunch-command failure, and automatic
+  relaunch. The existing `data/` directory is outside the replacement set.
