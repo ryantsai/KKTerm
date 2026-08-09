@@ -1036,6 +1036,8 @@ pub struct ScreenshotSettings {
     folder_path: String,
     #[serde(default = "default_screenshot_format")]
     format: String,
+    #[serde(default = "default_video_format")]
+    video_format: String,
     #[serde(default = "default_screenshot_quality", alias = "jpegQuality")]
     quality: u8,
     #[serde(default = "default_screenshot_capture_mode")]
@@ -1073,6 +1075,10 @@ impl ScreenshotSettings {
 
     pub(crate) fn format(&self) -> &str {
         &self.format
+    }
+
+    pub(crate) fn video_format(&self) -> &str {
+        &self.video_format
     }
 
     pub(crate) fn quality(&self) -> u8 {
@@ -5902,6 +5908,7 @@ fn default_screenshot_settings() -> ScreenshotSettings {
     ScreenshotSettings {
         folder_path: default_screenshot_folder_path(),
         format: default_screenshot_format(),
+        video_format: default_video_format(),
         quality: default_screenshot_quality(),
         capture_mode: default_screenshot_capture_mode(),
         open_in_editor_after_capture: false,
@@ -5921,6 +5928,10 @@ fn default_screenshot_settings() -> ScreenshotSettings {
 
 fn default_screenshot_format() -> String {
     "png".to_string()
+}
+
+fn default_video_format() -> String {
+    "mp4".to_string()
 }
 
 fn default_screenshot_quality() -> u8 {
@@ -6902,6 +6913,12 @@ fn validate_screenshot_settings(
         "" | "png" => "png".to_string(),
         "jpeg" | "jpg" => "jpeg".to_string(),
         _ => return Err("screenshot format must be png or jpeg".to_string()),
+    };
+    settings.video_format = match settings.video_format.trim().to_lowercase().as_str() {
+        "" | "mp4" => "mp4".to_string(),
+        "webm" => "webm".to_string(),
+        "gif" => "gif".to_string(),
+        _ => return Err("video format must be mp4, webm, or gif".to_string()),
     };
     settings.quality = settings.quality.clamp(1, 100);
     settings.capture_mode = match settings.capture_mode.trim().to_lowercase().as_str() {

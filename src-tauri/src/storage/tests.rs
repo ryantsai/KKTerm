@@ -102,6 +102,7 @@ fn screenshot_settings_upgrade_legacy_jpeg_quality_and_default_to_both() {
     assert!(!settings.include_cursor());
     let serialized = serde_json::to_value(settings).expect("serialize screenshot settings");
     assert_eq!(serialized["quality"], 74);
+    assert_eq!(serialized["videoFormat"], "mp4");
     assert_eq!(serialized["openInEditorAfterCapture"], false);
     assert!(serialized.get("jpegQuality").is_none());
 }

@@ -203,6 +203,130 @@
   max-width: 78px;
 }
 
+.screenshots-media-select select {
+  min-width: 52px;
+  max-width: 64px;
+  padding-left: 4px;
+}
+
+.screenshots-stop-button {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--border));
+}
+
+.video-dependency-copy {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.video-dependency-command {
+  display: grid;
+  gap: 8px;
+  margin-top: 18px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.video-dependency-command code {
+  padding: 10px 12px;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+.video-dependency-error {
+  margin: 14px 0 0;
+  color: var(--danger);
+  font-size: 12px;
+}
+
+.video-editor .kk-dlg-body {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.video-editor__preview {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--chrome-strong);
+}
+
+.video-editor__preview video,
+.video-editor__preview img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.video-editor__range {
+  display: grid;
+  grid-template-columns: 64px 1fr 64px;
+  gap: 12px;
+  align-items: center;
+  color: var(--text-muted);
+  font: 12px/1.2 var(--font-mono);
+}
+
+.video-editor__range strong {
+  overflow: hidden;
+  color: var(--text);
+  font-family: var(--font-ui);
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.video-editor__range span:last-child {
+  text-align: right;
+}
+
+.video-editor__timeline {
+  height: 82px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-muted);
+}
+
+.video-editor__timeline .timeline-editor {
+  height: 80px;
+  background: transparent;
+}
+
+.video-editor__timeline .timeline-editor-time-area,
+.video-editor__timeline .timeline-editor-edit-area {
+  background: transparent;
+}
+
+.video-editor__clip {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  padding: 0 10px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent) 72%, transparent);
+  color: white;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.video-editor__hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
 .screenshots-content {
   flex: 1;
   min-height: 0;

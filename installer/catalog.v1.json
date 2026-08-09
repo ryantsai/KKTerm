@@ -2403,9 +2403,9 @@
       "downloadProvider": {
         "kind": "githubRelease",
         "repo": "GyanD/codexffmpeg",
-        "assetPattern": "ffmpeg-*-full_build.zip",
+        "assetPattern": "ffmpeg-*-essentials_build.zip",
         "layout": "zip",
-        "pathSubdir": "ffmpeg-{tag}-full_build/bin"
+        "pathSubdir": "ffmpeg-{tag}-essentials_build/bin"
       },
       "chocolateyProvider": {
         "kind": "chocolatey",

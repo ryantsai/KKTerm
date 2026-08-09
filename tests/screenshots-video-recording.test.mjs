@@ -1,0 +1,35 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import test from "node:test";
+
+const page = fs.readFileSync("src/modules/screenshots/ScreenshotsPage.tsx", "utf8");
+const editor = fs.readFileSync("src/modules/screenshots/VideoEditor.tsx", "utf8");
+const backend = fs.readFileSync("src-tauri/src/video_recording.rs", "utf8");
+const commandRegistry = fs.readFileSync("src-tauri/src/lib.rs", "utf8");
+const storage = fs.readFileSync("src-tauri/src/storage.rs", "utf8");
+const catalog = fs.readFileSync("installer/catalog.v1.json", "utf8");
+const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
+
+test("Screenshots places Image/Video immediately after capture delay", () => {
+  const delay = page.indexOf('title={t("screenshots.delay.label")}');
+  const media = page.indexOf('title={t("screenshots.mediaType")}');
+  const windowButton = page.indexOf('data-tutorial-id="screenshots.captureWindow"');
+  assert.ok(delay >= 0 && media > delay && windowButton > media);
+});
+
+test("video editor uses the requested timeline package and non-destructive export", () => {
+  assert.equal(packageJson.dependencies["@xzdarcy/react-timeline-editor"], "^1.0.0");
+  assert.match(page, /lazy\(\(\) => import\("\.\/VideoEditor"\)/);
+  assert.match(editor, /import \{ Timeline \} from "@xzdarcy\/react-timeline-editor"/);
+  assert.match(editor, /trim_video_recording/);
+  assert.match(backend, /-trimmed-\{\}/);
+});
+
+test("video capture remains an on-demand FFmpeg dependency", () => {
+  assert.match(commandRegistry, /video_dependency_status/);
+  assert.match(commandRegistry, /start_video_recording/);
+  assert.match(commandRegistry, /stop_video_recording/);
+  assert.match(storage, /fn default_video_format\(\).*?"mp4"/s);
+  assert.match(catalog, /"assetPattern": "ffmpeg-\*-essentials_build\.zip"/);
+  assert.doesNotMatch(JSON.stringify(packageJson.dependencies), /ffmpeg/i);
+});

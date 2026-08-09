@@ -429,6 +429,54 @@ struct CaptureTarget {
     height: i32,
 }
 
+#[derive(Clone, Copy)]
+pub struct RecordingRect {
+    pub x: i32,
+    pub y: i32,
+    pub width: i32,
+    pub height: i32,
+}
+
+#[cfg(target_os = "windows")]
+pub fn select_recording_rect(
+    app: &tauri::AppHandle,
+    mode: &str,
+    use_directx: bool,
+    minimize_window: bool,
+) -> Result<RecordingRect, String> {
+    let _guard = MinimizedCaptureWindow::new(app, minimize_window)?;
+    let screen = platform::virtual_screen_rect();
+    let target = match mode {
+        "fullscreen" => screen,
+        "window" | "region" => {
+            let screen_dib = platform::capture_screen_rect_to_dib(
+                screen.x,
+                screen.y,
+                screen.width,
+                screen.height,
+                use_directx,
+            )?;
+            let selected = if mode == "window" {
+                platform::select_window_rect(
+                    &screen_dib,
+                    &screen,
+                    platform::enumerate_window_rects(&screen),
+                )?
+            } else {
+                platform::select_region_rect(&screen_dib, &screen)?
+            };
+            selected.ok_or_else(|| "video recording canceled".to_string())?
+        }
+        _ => return Err("video recording mode must be window, fullscreen, or region".to_string()),
+    };
+    Ok(RecordingRect {
+        x: target.x,
+        y: target.y,
+        width: target.width,
+        height: target.height,
+    })
+}
+
 struct MinimizedCaptureWindow {
     window: tauri::WebviewWindow,
     was_minimized: bool,

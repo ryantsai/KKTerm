@@ -821,6 +821,22 @@ export interface ListScreenshotsResponse {
   hasMore: boolean;
 }
 
+export interface VideoDependencyStatus {
+  available: boolean;
+  source: "installer" | "path" | null;
+  toolId: string;
+}
+
+export interface VideoRecordingSession {
+  path: string;
+  fileName: string;
+  startedAt: number;
+}
+
+export interface CompletedVideoRecording extends VideoRecordingSession {
+  durationMs: number;
+}
+
 export interface StartWebviewSessionRequest {
   sessionId: string;
   url: string;
@@ -2275,6 +2291,32 @@ type CommandMap = {
   update_screenshot_settings: {
     args: { request: ScreenshotSettings };
     result: ScreenshotSettings;
+  };
+  video_dependency_status: {
+    args: undefined;
+    result: VideoDependencyStatus;
+  };
+  start_video_recording: {
+    args: {
+      request: {
+        mode: "region" | "window" | "fullscreen";
+        useDirectx: boolean;
+        minimizeWindow: boolean;
+      };
+    };
+    result: VideoRecordingSession;
+  };
+  stop_video_recording: {
+    args: undefined;
+    result: CompletedVideoRecording;
+  };
+  allow_video_preview: {
+    args: { path: string };
+    result: string;
+  };
+  trim_video_recording: {
+    args: { request: { sourcePath: string; startSeconds: number; endSeconds: number } };
+    result: string;
   };
   capture_fullscreen_screenshot_for_assistant: {
     args: undefined;

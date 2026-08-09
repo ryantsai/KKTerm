@@ -19,6 +19,14 @@ source map lives in `docs/ARCHITECTURE.md` → "Frontend Source Map".
 - **Default save format is PNG** (lossless, ShareX-like); the format is a
   user-selectable default in Settings → Screenshots, with JPEG + quality as
   the alternative. Existing JPEG files in the library remain fully supported.
+- **Video capture is an on-demand FFmpeg feature.** KKTerm does not bundle an
+  encoder. Windows installs the smaller FFmpeg essentials build through Install
+  Helper when requested; macOS/Linux resolve `ffmpeg` from PATH and show native
+  package-manager hints when it is absent. H.264 MP4 (CRF 23, veryfast) is the
+  default, with WebM VP9 and animated GIF alternatives.
+- **Video editing stays deliberately narrow.** A native media preview and one
+  `@xzdarcy/react-timeline-editor` clip support trim-and-export after capture;
+  the source recording is retained and no general-purpose NLE is embedded.
 - **Global shortcut defaults**: `Ctrl+Alt+R` (region), `Ctrl+Alt+W` (window),
   `Ctrl+Alt+F` (fullscreen), each editable and individually toggleable.
 - Windows is the v1 capture platform. The existing native capture pipeline

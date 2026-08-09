@@ -104,6 +104,29 @@ export function ScreenshotsSettings() {
       </fieldset>
 
       <fieldset className="settings-subsection settings-fieldset">
+        <legend>{t("settings.screenshotsVideoFormat")}</legend>
+        <div>
+          <p className="field-hint">{t("settings.screenshotsVideoFormatHint")}</p>
+        </div>
+        <div className="form-grid one-column">
+          <label>
+            <span>{t("settings.screenshotsVideoFormat")}</span>
+            <select
+              value={draft?.videoFormat ?? "mp4"}
+              onChange={(event) => {
+                const value = event.currentTarget.value;
+                update({ videoFormat: value === "webm" || value === "gif" ? value : "mp4" });
+              }}
+            >
+              <option value="mp4">{t("settings.screenshotsVideoFormatMp4")}</option>
+              <option value="webm">{t("settings.screenshotsVideoFormatWebm")}</option>
+              <option value="gif">{t("settings.screenshotsVideoFormatGif")}</option>
+            </select>
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset className="settings-subsection settings-fieldset">
         <legend>{t("settings.screenshotsCaptureMode")}</legend>
         <div>
           <p className="field-hint">{t("settings.screenshotsCaptureModeHint")}</p>

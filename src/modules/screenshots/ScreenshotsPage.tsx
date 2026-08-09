@@ -1,7 +1,7 @@
 // Screenshots Module page. Library-first: thumbnail and details views share
 // sorting, grouping, multi-selection, native item menus, and non-destructive
 // batch operations. Capture entry points stay routed through captureBridge.
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   AppWindow,
@@ -14,6 +14,7 @@ import {
   RefreshCw,
   Rows3,
   Scan,
+  Square,
 } from "../../lib/reicon";
 import {
   ModuleHeader,
@@ -35,7 +36,13 @@ import {
 } from "../../app/ui/dialog";
 import { nativeMenuIcons } from "../../lib/nativeMenuIcons";
 import { showNativeContextMenu } from "../../lib/nativeContextMenu";
-import { invokeCommand, isTauriRuntime, type StoredScreenshot } from "../../lib/tauri";
+import {
+  invokeCommand,
+  isTauriRuntime,
+  type CompletedVideoRecording,
+  type StoredScreenshot,
+  type VideoRecordingSession,
+} from "../../lib/tauri";
 import { useWorkspaceStore } from "../../store";
 import { performScreenshotCapture, type ScreenshotCaptureMode } from "./captureBridge";
 import {
@@ -48,6 +55,7 @@ import {
   ResizeScreenshotsDialog,
 } from "./ScreenshotBatchDialogs";
 import { ScreenshotEditor } from "./ScreenshotEditor";
+import { VideoDependencyDialog } from "./VideoDependencyDialog";
 import type { ScreenshotGroupBy } from "./libraryModel";
 import {
   useScreenshotsStore,
@@ -64,6 +72,9 @@ import "./screenshots.css";
 const VIEW_MODE_STORAGE_KEY = "kkterm.screenshotsViewMode.v2";
 const SORT_STORAGE_KEY = "kkterm.screenshotsSort.v1";
 const GROUP_STORAGE_KEY = "kkterm.screenshotsGroup.v1";
+const VideoEditor = lazy(() => import("./VideoEditor").then((module) => ({
+  default: module.VideoEditor,
+})));
 
 function readViewMode(): ScreenshotsViewMode {
   try {
@@ -140,6 +151,11 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
   );
   const [groupBy, setGroupBy] = useState<ScreenshotGroupBy>(readGroupBy);
   const [captureDelay, setCaptureDelay] = useState(readCaptureDelay);
+  const [mediaKind, setMediaKind] = useState<"image" | "video">("image");
+  const [dependencyDialogOpen, setDependencyDialogOpen] = useState(false);
+  const [recording, setRecording] = useState<VideoRecordingSession | null>(null);
+  const [completedRecording, setCompletedRecording] = useState<CompletedVideoRecording | null>(null);
+  const [videoBusy, setVideoBusy] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const selectionAnchorRef = useRef<string | null>(null);
   const [viewerId, setViewerId] = useState<string | null>(null);
@@ -430,8 +446,62 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
     );
   }
 
-  function capture(mode: ScreenshotCaptureMode) {
-    void performScreenshotCapture(mode, t, captureDelay, true);
+  async function chooseMediaKind(next: "image" | "video") {
+    if (next === "image") {
+      setMediaKind("image");
+      return;
+    }
+    try {
+      const status = await invokeCommand("video_dependency_status", undefined);
+      if (status.available) {
+        setMediaKind("video");
+      } else {
+        setDependencyDialogOpen(true);
+      }
+    } catch (error) {
+      notifyError(error);
+    }
+  }
+
+  async function capture(mode: ScreenshotCaptureMode) {
+    if (mediaKind === "image") {
+      void performScreenshotCapture(mode, t, captureDelay, true);
+      return;
+    }
+    setVideoBusy(true);
+    try {
+      if (captureDelay > 0) {
+        await new Promise<void>((resolve) => window.setTimeout(resolve, captureDelay * 1000));
+      }
+      const session = await invokeCommand("start_video_recording", {
+        request: {
+          mode,
+          useDirectx: useWorkspaceStore.getState().generalSettings.useDirectxScreenCapture,
+          minimizeWindow: true,
+        },
+      });
+      setRecording(session);
+      showStatusBarNotice(t("screenshots.video.recordingStarted"), { tone: "success" });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!message.toLowerCase().includes("canceled")) notifyError(error);
+    } finally {
+      setVideoBusy(false);
+    }
+  }
+
+  async function stopRecording() {
+    setVideoBusy(true);
+    try {
+      const completed = await invokeCommand("stop_video_recording", undefined);
+      setRecording(null);
+      setCompletedRecording(completed);
+      showStatusBarNotice(t("screenshots.video.recordingSaved", { name: completed.fileName }), { tone: "success" });
+    } catch (error) {
+      notifyError(error);
+    } finally {
+      setVideoBusy(false);
+    }
   }
 
   function finishBatch(created: StoredScreenshot[]) {
@@ -571,12 +641,39 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
             ))}
           </select>
         </label>
+        <label
+          className="screenshots-delay-select screenshots-media-select"
+          title={t("screenshots.mediaType")}
+        >
+          <select
+            aria-label={t("screenshots.mediaType")}
+            value={mediaKind}
+            disabled={Boolean(recording) || videoBusy}
+            onChange={(event) => void chooseMediaKind(
+              event.currentTarget.value === "video" ? "video" : "image",
+            )}
+          >
+            <option value="image">{t("screenshots.mediaImage")}</option>
+            <option value="video">{t("screenshots.mediaVideo")}</option>
+          </select>
+        </label>
+        {recording ? (
+          <button
+            type="button"
+            className="screenshots-button screenshots-stop-button"
+            disabled={videoBusy}
+            onClick={() => void stopRecording()}
+          >
+            <Square size={12} fill="currentColor" aria-hidden="true" />
+            {t("screenshots.video.stop")}
+          </button>
+        ) : null}
         <button
           type="button"
           className="screenshots-button"
           data-tutorial-id="screenshots.captureWindow"
-          onClick={() => capture("window")}
-          disabled={captureInFlight || !runtimeAvailable}
+          onClick={() => void capture("window")}
+          disabled={captureInFlight || videoBusy || Boolean(recording) || !runtimeAvailable}
         >
           <AppWindow size={14} strokeWidth={1.9} aria-hidden="true" />
           <span className="screenshots-capture-label">{t("screenshots.captureWindow")}</span>
@@ -585,8 +682,8 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
           type="button"
           className="screenshots-button"
           data-tutorial-id="screenshots.captureFullscreen"
-          onClick={() => capture("fullscreen")}
-          disabled={captureInFlight || !runtimeAvailable}
+          onClick={() => void capture("fullscreen")}
+          disabled={captureInFlight || videoBusy || Boolean(recording) || !runtimeAvailable}
         >
           <Monitor size={14} strokeWidth={1.9} aria-hidden="true" />
           <span className="screenshots-capture-label">{t("screenshots.captureFullscreen")}</span>
@@ -595,8 +692,8 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
           type="button"
           className="screenshots-button primary"
           data-tutorial-id="screenshots.captureRegion"
-          onClick={() => capture("region")}
-          disabled={captureInFlight || !runtimeAvailable}
+          onClick={() => void capture("region")}
+          disabled={captureInFlight || videoBusy || Boolean(recording) || !runtimeAvailable}
         >
           <Scan size={14} strokeWidth={2} aria-hidden="true" />
           <span className="screenshots-capture-label">{t("screenshots.captureRegion")}</span>
@@ -648,6 +745,28 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
           </>
         )}
       </div>
+      {dependencyDialogOpen ? (
+        <VideoDependencyDialog
+          onClose={() => setDependencyDialogOpen(false)}
+          onReady={() => {
+            setDependencyDialogOpen(false);
+            setMediaKind("video");
+          }}
+        />
+      ) : null}
+      {completedRecording ? (
+        <Suspense fallback={null}>
+          <VideoEditor
+            recording={completedRecording}
+            onClose={() => setCompletedRecording(null)}
+            onSaved={(path) => {
+              setCompletedRecording(null);
+              showStatusBarNotice(t("screenshots.video.exportSaved", { path }), { tone: "success" });
+            }}
+            onError={notifyError}
+          />
+        </Suspense>
+      ) : null}
       {viewerScreenshot ? (
         <ScreenshotEditor
           screenshot={viewerScreenshot}

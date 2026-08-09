@@ -62,6 +62,7 @@ mod system_theme;
 mod telnet;
 mod vnc;
 mod vt_text;
+mod video_recording;
 mod watchdog;
 mod webview;
 mod window_effects;
@@ -1228,6 +1229,56 @@ fn update_screenshot_settings(
         }
     }
     Ok(saved)
+}
+
+#[tauri::command]
+fn video_dependency_status() -> video_recording::VideoDependencyStatus {
+    video_recording::dependency_status()
+}
+
+#[tauri::command]
+fn start_video_recording(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, video_recording::VideoRecordingState>,
+    storage: tauri::State<'_, storage::Storage>,
+    request: video_recording::StartVideoRecordingRequest,
+) -> Result<video_recording::VideoRecordingSession, String> {
+    let settings = storage.screenshot_settings()?;
+    video_recording::start(
+        &app,
+        &state,
+        request,
+        settings.folder_path(),
+        settings.video_format(),
+    )
+}
+
+#[tauri::command]
+fn stop_video_recording(
+    state: tauri::State<'_, video_recording::VideoRecordingState>,
+) -> Result<video_recording::CompletedVideoRecording, String> {
+    video_recording::stop(&state)
+}
+
+#[tauri::command]
+fn allow_video_preview(
+    app: tauri::AppHandle,
+    storage: tauri::State<'_, storage::Storage>,
+    path: String,
+) -> Result<String, String> {
+    let settings = storage.screenshot_settings()?;
+    video_recording::allow_preview(&app, path, settings.folder_path())
+}
+
+#[tauri::command]
+async fn trim_video_recording(
+    storage: tauri::State<'_, storage::Storage>,
+    request: video_recording::TrimVideoRequest,
+) -> Result<String, String> {
+    let folder_path = storage.screenshot_settings()?.folder_path().to_string();
+    tauri::async_runtime::spawn_blocking(move || video_recording::trim(request, &folder_path))
+        .await
+        .map_err(|error| format!("video trim task failed: {error}"))?
 }
 
 #[tauri::command]
@@ -4586,6 +4637,7 @@ pub fn run() {
             app.manage(std::sync::Arc::new(watchdog::WatchdogRegistry::new()));
             app.manage(std::sync::Arc::new(watchdog::SessionActivityTracker::new()));
             app.manage(installer::InstallerRuntime::new());
+            app.manage(video_recording::VideoRecordingState::default());
             mcp_bridge::start_if_enabled(
                 app.handle().clone(),
                 mcp_bridge_dir,
@@ -4772,6 +4824,11 @@ pub fn run() {
             update_vnc_settings,
             get_screenshot_settings,
             update_screenshot_settings,
+            video_dependency_status,
+            start_video_recording,
+            stop_video_recording,
+            allow_video_preview,
+            trim_video_recording,
             get_ai_provider_settings,
             update_ai_provider_settings,
             // ── Assistant skills, MCP config & chat threads

@@ -6,6 +6,7 @@ import type { ScreenshotSettings } from "../../types";
 const browserDefaults: ScreenshotSettings = {
   folderPath: "%USERPROFILE%\\Pictures\\Screenshots",
   format: "png",
+  videoFormat: "mp4",
   quality: 90,
   captureMode: "both",
   openInEditorAfterCapture: false,

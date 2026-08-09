@@ -1555,12 +1555,14 @@ export interface FtpConnectionOptions {
 }
 
 export type ScreenshotFormat = "png" | "jpeg";
+export type VideoFormat = "mp4" | "webm" | "gif";
 export type ScreenshotCaptureDelivery = "folder" | "clipboard" | "both";
 export type ScreenshotBorderStyle = "solid" | "dashed" | "dotted";
 
 export interface ScreenshotSettings {
   folderPath: string;
   format: ScreenshotFormat;
+  videoFormat: VideoFormat;
   quality: number;
   captureMode: ScreenshotCaptureDelivery;
   openInEditorAfterCapture: boolean;
