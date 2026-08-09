@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Rack, Site } from "../src/types";
-import { createItOpsPdfBytes, rackPdfDocument, type ItOpsExportLabels } from "../src/modules/itops/itopsExport";
+import {
+  createItOpsPdfBytes,
+  rackPdfDocument,
+  serverRoomPdfDocument,
+  type ItOpsExportLabels,
+} from "../src/modules/itops/itopsExport";
 
 const labels: ItOpsExportLabels = {
   devices: "Devices", noRacks: "No racks", noDevices: "No devices", inventory: "Inventory",
@@ -82,4 +87,25 @@ test("IT Ops PDF preserves non-ASCII labels as rendered text masks", () => {
       value: originalDocument,
     });
   }
+});
+
+test("Server Room PDF uses the same natural Rack order as elevation view", () => {
+  const roomRacks = [
+    { ...rack, id: "C2", name: "C2", rackGroup: "C", sortOrder: 0 },
+    { ...rack, id: "C1", name: "C1", rackGroup: "C", sortOrder: 1 },
+    { ...rack, id: "A10", name: "A10", rackGroup: "A", sortOrder: 2 },
+    { ...rack, id: "A2", name: "A2", rackGroup: "A", sortOrder: 3 },
+  ];
+
+  const document = serverRoomPdfDocument({
+    site,
+    roomName: "Room A",
+    racks: roomRacks,
+    unassignedLabel: "Unassigned",
+    labels,
+    kindLabel: (kind) => kind,
+  });
+
+  assert.deepEqual(document.racks.map((entry) => entry.name), ["A2", "A10", "C1", "C2"]);
+  assert.deepEqual(roomRacks.map((entry) => entry.name), ["C2", "C1", "A10", "A2"]);
 });

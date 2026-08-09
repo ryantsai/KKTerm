@@ -729,6 +729,11 @@ Excel-readable inventory table.
 An empty Server Room uses explanatory guidance with an inline New Rack action.
 An empty Rack uses an inline Edit mode action that reveals the Rack Device
 picker.
+The Server Room elevation layout naturally orders named Rack groups, naturally
+orders Rack names within each group, and places the ungrouped row last. Server
+Room PDF export uses that same presentation order. This ordering is derived at
+render/export time and does not rewrite durable Rack `sortOrder` or either
+spatial layout's coordinates.
 In Server Room elevation edit mode, an armed Rack Device targets the currently
 displayed face of the Rack nearest the pointer. That per-Rack face remains
 authoritative when cabinets have been flipped individually; the room-wide flip

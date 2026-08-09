@@ -1,6 +1,6 @@
 import { isTauriRuntime, pickAndSaveFile, type WidgetFilePickFilter } from "../../lib/tauri";
 import type { Rack, RackItem, RackMountFace, Site } from "../../types";
-import { groupRackTopology, topologyGroupKey } from "./rackTopology";
+import { groupRackTopology, sortRacksForElevation, topologyGroupKey } from "./rackTopology";
 import { normalizeRackItemMetadata, summarizeRackDeviceMetadata } from "./rackInventory";
 import { rackItemXSpan } from "./rackPlacement";
 
@@ -445,11 +445,12 @@ export function serverRoomPdfDocument({
   kindLabel: (kind: RackItem["kind"]) => string;
 }): ItOpsPdfDocument {
   const title = `${site.name} / ${roomName || unassignedLabel}`;
+  const orderedRacks = sortRacksForElevation(racks);
   return {
     title,
     scope: "serverRoom",
-    racks,
-    rooms: [{ name: roomName || unassignedLabel, racks }],
+    racks: orderedRacks,
+    rooms: [{ name: roomName || unassignedLabel, racks: orderedRacks }],
     labels,
     kindLabel,
   };

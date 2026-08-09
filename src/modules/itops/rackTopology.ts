@@ -56,6 +56,38 @@ export function groupRacksByGroup(racks: Rack[]): RackGroup[] {
   return groups;
 }
 
+function naturalCompare(left: string, right: string): number {
+  return left.localeCompare(right, undefined, {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
+/** Presentation order for Server Room rack elevations and their PDF export. */
+export function groupRacksForElevation(racks: Rack[]): RackGroup[] {
+  return groupRacksByGroup(racks)
+    .map((group) => ({
+      ...group,
+      racks: [...group.racks].sort(
+        (left, right) =>
+          naturalCompare(left.name, right.name) ||
+          left.sortOrder - right.sortOrder ||
+          left.id.localeCompare(right.id),
+      ),
+    }))
+    .sort((left, right) => {
+      const leftGroup = left.key.trim();
+      const rightGroup = right.key.trim();
+      if (!leftGroup && rightGroup) return 1;
+      if (leftGroup && !rightGroup) return -1;
+      return naturalCompare(leftGroup, rightGroup);
+    });
+}
+
+export function sortRacksForElevation(racks: Rack[]): Rack[] {
+  return groupRacksForElevation(racks).flatMap((group) => group.racks);
+}
+
 // A drill path into one Site's topology: a server room and, at the leaf, a
 // single rack.
 export interface DrillPath {

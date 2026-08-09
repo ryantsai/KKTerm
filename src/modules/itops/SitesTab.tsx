@@ -60,7 +60,7 @@ import { useItOpsStore, type ItOpsDestination, type RackPlacementKind } from "./
 import {
   EMPTY_DRILL,
   groupRackTopology,
-  groupRacksByGroup,
+  groupRacksForElevation,
   nodeId,
   topologyGroupKey,
   type DrillPath,
@@ -1789,6 +1789,10 @@ function RackDrill({
     drill.serverRoom != null
       ? topology.find((s) => topologyGroupKey(s.key) === topologyGroupKey(drill.serverRoom))
       : undefined;
+  const elevationRackGroups = useMemo(
+    () => groupRacksForElevation(serverRoom?.racks ?? []),
+    [serverRoom?.racks],
+  );
   const rack = drill.rackId != null ? racks.find((r) => r.id === drill.rackId) : undefined;
   const viewKey = rack
     ? `rack:${rack.id}`
@@ -2582,9 +2586,9 @@ function RackDrill({
                 className="rk-elevations"
                 ref={roomElevationsRef}
               >
-                {groupRacksByGroup(serverRoom.racks).map((g) => (
+                {elevationRackGroups.map((g) => (
                   <div className="rk-group" key={g.key}>
-                    {groupRacksByGroup(serverRoom.racks).length > 1 || g.key ? (
+                    {elevationRackGroups.length > 1 || g.key ? (
                       <div className="rk-group-h">{g.key || ungrouped}</div>
                     ) : null}
                     <div className="rk-row">{g.racks.map((r) => elevation(r))}</div>
