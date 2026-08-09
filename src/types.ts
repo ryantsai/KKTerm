@@ -1090,6 +1090,7 @@ export interface TerminalCustomShell {
 }
 
 export type InstallerDefaultProvider = "winget" | "chocolatey";
+export type NetworkMapAnimationMode = "onHover" | "always";
 
 export interface GeneralSettings {
   autoBackupEnabled: boolean;
@@ -1109,6 +1110,7 @@ export interface GeneralSettings {
   activityRailOrder: ActivityRailItemId[];
   installerCheckIntervalSeconds: number;
   installerDefaultProvider: InstallerDefaultProvider;
+  networkMapAnimations: NetworkMapAnimationMode;
   pinnedConnectionIds: string[];
   allowClipboardRead: boolean;
   autoStartWithWindows: boolean;

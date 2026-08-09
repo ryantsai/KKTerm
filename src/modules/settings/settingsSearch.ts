@@ -204,6 +204,10 @@ export const SETTINGS_SEARCH_KEYS: Record<SettingsSectionId, readonly string[]> 
     "settings.screenshotsBorderWidth", "settings.screenshotsBorderStyle",
     "settings.screenshotsBorderColor", "settings.screenshotsIncludeCursor",
   ],
+  "itops-settings": [
+    "settings.networkMapAnimations", "settings.networkMapAnimationsOnHover",
+    "settings.networkMapAnimationsAlways", "settings.networkMapAnimationsHint",
+  ],
   "dont-sleep-settings": ["settings.dontSleepForegroundOnly"],
   "shortcuts-settings": [
     "settings.workspaceTabs", "settings.sectionTerminal", "remoteDesktop.fullscreen.toggle", "settings.shortcutPressKeys",

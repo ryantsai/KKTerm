@@ -622,6 +622,8 @@ pub struct GeneralSettings {
     installer_check_interval_seconds: u32,
     #[serde(default = "default_installer_default_provider")]
     installer_default_provider: String,
+    #[serde(default = "default_network_map_animations")]
+    network_map_animations: String,
     #[serde(default)]
     pinned_connection_ids: Vec<String>,
     #[serde(default = "default_allow_clipboard_read")]
@@ -5495,6 +5497,7 @@ fn default_general_settings() -> GeneralSettings {
         activity_rail_order: default_activity_rail_order(),
         installer_check_interval_seconds: default_installer_check_interval_seconds(),
         installer_default_provider: default_installer_default_provider(),
+        network_map_animations: default_network_map_animations(),
         pinned_connection_ids: Vec::new(),
         allow_clipboard_read: default_allow_clipboard_read(),
         auto_start_with_windows: false,
@@ -5516,6 +5519,10 @@ fn default_general_settings() -> GeneralSettings {
 
 fn default_proxy_mode() -> String {
     "system".to_string()
+}
+
+fn default_network_map_animations() -> String {
+    "onHover".to_string()
 }
 
 pub(crate) fn default_secret_store() -> String {
@@ -6208,6 +6215,10 @@ fn validate_general_settings(mut settings: GeneralSettings) -> Result<GeneralSet
     {
         "chocolatey" => "chocolatey".to_string(),
         _ => default_installer_default_provider(),
+    };
+    settings.network_map_animations = match settings.network_map_animations.as_str() {
+        "always" => "always".to_string(),
+        _ => default_network_map_animations(),
     };
     settings.workspace_shortcuts = sanitize_workspace_shortcuts(settings.workspace_shortcuts);
     settings.proxy_mode = match settings.proxy_mode.trim().to_lowercase().as_str() {

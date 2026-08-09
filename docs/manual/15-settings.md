@@ -238,6 +238,13 @@ Section header `settings.sectionScreenshots` (title `settings.screenshotsDefault
 - `settings.useDirectxScreenCapture` (hint `settings.useDirectxScreenCaptureHint`) moved from General into Screenshots. When on, screenshot capture uses the Windows Graphics Capture engine (via the cross-platform xcap crate) first and falls back to GDI when accelerated capture is unavailable or fails for the requested region.
 - Save status: `settings.screenshotsSaved`. See [14-screenshots.md](14-screenshots.md) for the Module itself.
 
+## IT Ops
+
+Section header `settings.sectionItOps`, listed immediately below Screenshots and owned by `src/modules/settings/ItOpsSettings.tsx` (navigation `page=settings settingsSectionId=itops-settings`).
+
+- Subsection `itops.networkMap.heading`: `settings.networkMapAnimations` is the universal animation policy for Network Map node artwork, warning indicators, overview previews, and link traces. `settings.networkMapAnimationsOnHover` is the default; it pauses motion until the object/card is hovered, or selected for keyboard/touch access. `settings.networkMapAnimationsAlways` preserves the former continuous behavior. The operating system reduced-motion preference still disables motion in either mode. Hint: `settings.networkMapAnimationsHint`.
+- Save status: `settings.itOpsSaved`.
+
 ## Shortcuts
 
 Section header `settings.sectionShortcuts`. This is a top-level Settings section in the left sidebar, listed above Proxy, and is reached with `tutorial_highlight` target `settings.shortcuts` (navigation `page=settings settingsSectionId=shortcuts-settings`). The section customizes the Workspace Module keyboard shortcuts; the intro hint is `settings.shortcutsHint`.

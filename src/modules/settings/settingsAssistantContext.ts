@@ -14,6 +14,7 @@ export type SettingsSectionId =
   | "rdp-settings"
   | "vnc-settings"
   | "screenshots-settings"
+  | "itops-settings"
   | "shortcuts-settings"
   | "proxy-settings"
   | "about-settings";
@@ -424,6 +425,17 @@ const SETTINGS_SECTIONS: Record<SettingsSectionId, SettingsSectionSummary> = {
         description:
           "Global capture hotkeys for region, window, and full-screen captures. Clear a binding to disable it; the same draft also appears in Settings → Shortcuts.",
         tutorialTargetId: "settings.screenshotsShortcuts",
+      },
+    ],
+  },
+  "itops-settings": {
+    labelKey: "settings.sectionItOps",
+    fallbackLabel: "IT Ops",
+    controls: [
+      {
+        key: "settings.networkMapAnimations",
+        description:
+          "Universal Network Map animation policy for both node artwork and link traces.",
       },
     ],
   },

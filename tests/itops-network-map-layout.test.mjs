@@ -54,6 +54,62 @@ test("Network Maps keep overview chrome out of the focused map workspace", async
   assert.doesNotMatch(styles, /\.nm-palette-btn/);
 });
 
+test("Network Maps bound animation and rendering work for large canvases", async () => {
+  const [designer, styles] = await Promise.all([
+    read("src/modules/itops/NetworkMapDesigner.tsx"),
+    read("src/modules/itops/itops.css"),
+  ]);
+
+  assert.match(designer, /const MapNode = memo\(function MapNode/);
+  assert.match(designer, /const MapNote = memo\(function MapNote/);
+  assert.match(designer, /const NetworkLinkEdge = memo\(function NetworkLinkEdge/);
+  assert.match(designer, /onlyRenderVisibleElements/);
+  assert.match(designer, /data-animation-mode=\{networkMapAnimations\}/);
+  assert.match(
+    designer,
+    /committedNetworkMapCanvasNodeChanges\(changes\)/,
+  );
+  assert.match(
+    styles,
+    /\.nm-canvas\[data-animation-mode="onHover"\][\s\S]*animation-play-state: paused/,
+  );
+  assert.match(
+    styles,
+    /\.react-flow__node:is\(:hover, \.selected\)[\s\S]*animation-play-state: running/,
+  );
+  assert.match(
+    styles,
+    /\.react-flow__edge:is\(:hover, \.selected\)[\s\S]*\.nm-edge-flow[\s\S]*animation-play-state: running/,
+  );
+});
+
+test("IT Ops Settings follows Screenshots and controls the universal Network Map animation mode", async () => {
+  const [page, settings, types, defaults] = await Promise.all([
+    read("src/modules/settings/SettingsPage.tsx"),
+    read("src/modules/settings/ItOpsSettings.tsx"),
+    read("src/types.ts"),
+    read("src/app-defaults.ts"),
+  ]);
+
+  assert.match(
+    page,
+    /"screenshots-settings",\s*"itops-settings",\s*"dont-sleep-settings"/,
+  );
+  assert.match(
+    page,
+    /id: "screenshots-settings"[\s\S]*id: "itops-settings"[\s\S]*id: "dont-sleep-settings"/,
+  );
+  assert.match(
+    page,
+    /renderSettingsSection\("screenshots-settings"[\s\S]*renderSettingsSection\("itops-settings", <ItOpsSettings \/>\)[\s\S]*renderSettingsSection\("dont-sleep-settings"/,
+  );
+  assert.match(settings, /draft\.networkMapAnimations/);
+  assert.match(settings, /value="onHover"/);
+  assert.match(settings, /value="always"/);
+  assert.match(types, /networkMapAnimations: NetworkMapAnimationMode/);
+  assert.match(defaults, /networkMapAnimations: "onHover"/);
+});
+
 test("IT Ops separates Batch Tasks from Networking in every locale", async () => {
   const sites = await read("src/modules/itops/SitesTab.tsx");
   const locales = [
@@ -302,7 +358,7 @@ test("Network Maps configure palette items before ghost placement and expose nat
   assert.match(canvasChanges, /NETWORK_NODE_MIN_HEIGHT = 44;/);
   assert.match(
     designer,
-    /setGraph\(\(current\) => applyNetworkMapCanvasNodeChanges\(current, changes\)\)/,
+    /setGraph\(\(current\) => applyNetworkMapCanvasNodeChanges\(current, committedChanges\)\)/,
   );
   assert.match(designer, /screenToFlowPosition/);
   assert.match(designer, /function NodePropertiesDialog/);

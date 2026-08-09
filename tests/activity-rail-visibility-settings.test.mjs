@@ -47,7 +47,7 @@ test("General settings owns all built-in Activity Rail visibility controls", () 
 
   assert.doesNotMatch(workspaceSettings, /draft\.showWorkspaceOnRail/);
   assert.doesNotMatch(installerSettings, /draft\.showInstallerOnRail/);
-  assert.doesNotMatch(settingsPage, /ItOpsSettings/);
+  assert.match(settingsPage, /ItOpsSettings/);
 });
 
 test("General settings hides unsupported Install Helper Activity Rail control", () => {
