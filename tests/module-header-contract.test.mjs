@@ -52,6 +52,13 @@ test("Screenshots pane header uses the Activity Rail module icon", async () => {
   assert.match(screenshotsPage, /<ScreenshotsModuleIcon size=\{16\} aria-hidden="true" \/>/);
 });
 
+test("System Cleaner uses the Broom3 Module identity icon", async () => {
+  const identityIcons = await read("src/app/moduleIdentityIcons.tsx");
+
+  assert.match(identityIcons, /import \{ Broom3, Camera, Package \} from "\.\.\/lib\/reicon"/);
+  assert.match(identityIcons, /SystemCleanerModuleIcon = Broom3/);
+});
+
 test("Settings reuses Module identity tiles", async () => {
   const [general, page] = await Promise.all([
     read("src/modules/settings/GeneralSettings.tsx"),

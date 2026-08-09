@@ -8,14 +8,18 @@
 usage, large files, temporary files, cache, uninstall, Windows cleanup
 
 The **System Cleaner** Module is available only on Windows. Open it from the
-Activity Rail. Its first scan reads the current Windows user folder, measures
-the largest immediate files and folders, checks a conservative set of cache
-locations, and asks Windows Package Manager for the installed-app list.
+Activity Rail. The Module opens without scanning. Choose
+**`systemCleaner.scan`** to read the current Windows user folder, measure the
+largest immediate files and folders, check a conservative set of cache
+locations, and ask Windows Package Manager for the installed-app list.
 
 ## Storage analysis
 
 Choose **`systemCleaner.storage`** to see the largest items beneath the scanned
-user folder. Independent top-level folders, cleanup locations, and installed-app discovery are scanned concurrently on a background worker so the UI remains responsive. Use **`systemCleaner.scan`** to refresh the measurements after
+user folder. Independent top-level folders, cleanup locations, and
+installed-app discovery are scanned concurrently on a background worker so the
+UI remains responsive. Scans run only on explicit demand; use
+**`systemCleaner.scan`** to refresh the measurements after
 moving or deleting files. System Cleaner reports sizes but does not delete
 items from this view.
 

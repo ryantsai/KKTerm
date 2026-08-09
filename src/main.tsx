@@ -6,6 +6,7 @@ import { hydrateDurableUiState } from "./lib/durableUiState";
 import { ShutdownWarningApp } from "./app/ShutdownWarningApp";
 import { RemoteFullscreenApp } from "./modules/workspace/connections/remote-desktop/RemoteFullscreenApp";
 import { parseRemoteFullscreenRoute } from "./modules/workspace/connections/remote-desktop/remoteFullscreenRoute";
+import { VideoRecordingControlsWindow } from "./modules/screenshots/VideoRecordingControlsWindow";
 import "./App.css";
 
 // A detached RDP/VNC full-screen window loads the same bundle with a
@@ -13,6 +14,7 @@ import "./App.css";
 // renders only that surface — no Connection Tree, durable state, or app shell.
 const fullscreenRoute = parseRemoteFullscreenRoute(window.location.hash);
 const shutdownWarningRoute = window.location.hash === "#/shutdown-warning";
+const videoRecordingControlsRoute = window.location.hash === "#/video-recording-controls";
 
 // Reconcile durable UI state (Quick Commands, Child Connection Tabs, Notes,
 // favorites, …) between the SQLite source of truth and the synchronous cache
@@ -20,12 +22,16 @@ const shutdownWarningRoute = window.location.hash === "#/shutdown-warning";
 // full-screen host does not read durable UI state, so it skips hydration.
 Promise.all([
   ensureI18nReady(),
-  fullscreenRoute || shutdownWarningRoute ? Promise.resolve() : hydrateDurableUiState(),
+  fullscreenRoute || shutdownWarningRoute || videoRecordingControlsRoute
+    ? Promise.resolve()
+    : hydrateDurableUiState(),
 ]).then(() => {
   ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     <React.StrictMode>
       {shutdownWarningRoute ? (
         <ShutdownWarningApp />
+      ) : videoRecordingControlsRoute ? (
+        <VideoRecordingControlsWindow />
       ) : fullscreenRoute ? (
         <RemoteFullscreenApp route={fullscreenRoute} />
       ) : (

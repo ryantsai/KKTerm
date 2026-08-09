@@ -268,22 +268,68 @@
   max-height: 100%;
 }
 
-.video-editor__range {
+.video-editor__transport {
   display: grid;
-  grid-template-columns: 64px 1fr 64px;
+  grid-template-columns: 1fr minmax(0, 2fr) 1fr;
   gap: 12px;
   align-items: center;
-  color: var(--text-muted);
-  font: 12px/1.2 var(--font-mono);
+  min-height: 30px;
 }
 
-.video-editor__range strong {
+.video-editor__transport > strong {
   overflow: hidden;
   color: var(--text);
-  font-family: var(--font-ui);
+  font-size: 12px;
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.video-editor__transport-buttons {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.video-editor__transport-buttons button {
+  display: inline-flex;
+  min-width: 30px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--text);
+  font: 11px/1 var(--font-ui);
+  cursor: pointer;
+}
+
+.video-editor__transport-buttons button:hover {
+  background: var(--hover);
+}
+
+.video-editor__transport-buttons .video-editor__play {
+  min-width: 76px;
+  border-color: color-mix(in srgb, var(--accent) 65%, var(--border));
+  color: var(--accent);
+}
+
+.video-editor__time {
+  color: var(--text-muted);
+  font: 12px/1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.video-editor__range {
+  display: grid;
+  grid-template-columns: 64px 1fr 64px;
+  align-items: center;
+  color: var(--text-muted);
+  font: 12px/1.2 var(--font-mono);
 }
 
 .video-editor__range span:last-child {
@@ -291,7 +337,7 @@
 }
 
 .video-editor__timeline {
-  height: 82px;
+  height: 92px;
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -299,13 +345,29 @@
 }
 
 .video-editor__timeline .timeline-editor {
-  height: 80px;
+  width: 100%;
+  height: 90px;
   background: transparent;
 }
 
 .video-editor__timeline .timeline-editor-time-area,
 .video-editor__timeline .timeline-editor-edit-area {
   background: transparent;
+}
+
+.video-editor__timeline .timeline-editor-time-unit {
+  border-color: color-mix(in srgb, var(--text-muted) 35%, transparent);
+}
+
+.video-editor__timeline .timeline-editor-time-unit-scale {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.video-editor__timeline .timeline-editor-edit-row {
+  background-image:
+    linear-gradient(var(--surface-muted), var(--surface-muted)),
+    linear-gradient(90deg, color-mix(in srgb, var(--text-muted) 14%, transparent) 1px, transparent 0);
 }
 
 .video-editor__clip {
@@ -463,6 +525,31 @@
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
+}
+
+.screenshots-media-badge {
+  position: absolute;
+  left: 7px;
+  bottom: 7px;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 5px;
+  border: 1px solid color-mix(in srgb, var(--surface) 60%, transparent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--terminal) 78%, transparent);
+  color: var(--terminal-fg);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: .04em;
+}
+
+.screenshots-detail-thumb .screenshots-media-badge {
+  left: 3px;
+  bottom: 2px;
+  padding: 1px 3px;
+  border: 0;
+  font-size: 7px;
 }
 
 .screenshots-draft-badge {

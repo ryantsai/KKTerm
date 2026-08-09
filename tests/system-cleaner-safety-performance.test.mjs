@@ -11,6 +11,19 @@ test("System Cleaner scans independent roots concurrently off the UI thread", ()
   assert.match(backend, /into_par_iter/);
 });
 
+test("System Cleaner opens idle and scans only on explicit demand", () => {
+  assert.doesNotMatch(page, /useEffect/);
+  assert.match(page, /onClick=\{\(\) => void scan\(\)\}/);
+  assert.match(page, /systemCleaner\.scanHint/);
+});
+
+test("System Cleaner walks directories iteratively without following reparse points", () => {
+  assert.match(backend, /let mut pending = vec!\[path\.to_path_buf\(\)\]/);
+  assert.match(backend, /while let Some\(directory\) = pending\.pop\(\)/);
+  assert.match(backend, /FILE_ATTRIBUTE_REPARSE_POINT/);
+  assert.doesNotMatch(backend, /directory_size\(&entry\.path\(\)\)/);
+});
+
 test("System Cleaner requires approval and isolates elevated work", () => {
   assert.match(page, /setConfirmCleanup\(true\)/);
   assert.match(page, /<ConfirmSheet tone="danger" title=\{t\("systemCleaner\.cleanTitle"\)\}/);

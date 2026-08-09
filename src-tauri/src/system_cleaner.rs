@@ -1,12 +1,17 @@
 use rayon::prelude::*;
 use serde::Serialize;
 use serde_json::json;
+#[cfg(target_os = "windows")]
+use std::os::windows::fs::MetadataExt;
 use std::{
     env, fs,
     io::Write,
     path::{Path, PathBuf},
     process::Command,
 };
+
+#[cfg(target_os = "windows")]
+const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -42,23 +47,37 @@ struct InstalledApp {
 }
 
 fn directory_size(path: &Path) -> u64 {
-    let Ok(entries) = fs::read_dir(path) else {
-        return 0;
-    };
-    entries
-        .flatten()
-        .filter(|entry| !entry.file_type().is_ok_and(|kind| kind.is_symlink()))
-        .map(|entry| {
-            let Ok(metadata) = entry.metadata() else {
-                return 0;
+    let mut bytes = 0_u64;
+    let mut pending = vec![path.to_path_buf()];
+    while let Some(directory) = pending.pop() {
+        let Ok(entries) = fs::read_dir(directory) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let Ok(metadata) = fs::symlink_metadata(entry.path()) else {
+                continue;
             };
-            if metadata.is_dir() {
-                directory_size(&entry.path())
-            } else {
-                metadata.len()
+            if is_reparse_point(&metadata) {
+                continue;
             }
-        })
-        .sum()
+            if metadata.is_dir() {
+                pending.push(entry.path());
+            } else if metadata.is_file() {
+                bytes = bytes.saturating_add(metadata.len());
+            }
+        }
+    }
+    bytes
+}
+
+#[cfg(target_os = "windows")]
+fn is_reparse_point(metadata: &fs::Metadata) -> bool {
+    metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0
+}
+
+#[cfg(not(target_os = "windows"))]
+fn is_reparse_point(metadata: &fs::Metadata) -> bool {
+    metadata.file_type().is_symlink()
 }
 
 fn child_sizes(path: &Path) -> Vec<DiskEntry> {
@@ -67,13 +86,14 @@ fn child_sizes(path: &Path) -> Vec<DiskEntry> {
     };
     let mut result: Vec<_> = entries
         .flatten()
-        .filter(|entry| !entry.file_type().is_ok_and(|kind| kind.is_symlink()))
+        .filter(|entry| {
+            fs::symlink_metadata(entry.path()).is_ok_and(|metadata| !is_reparse_point(&metadata))
+        })
         .collect::<Vec<_>>()
         .into_par_iter()
         .map(|entry| {
             let path = entry.path();
-            let bytes = entry
-                .metadata()
+            let bytes = fs::symlink_metadata(&path)
                 .map(|m| {
                     if m.is_dir() {
                         directory_size(&path)
@@ -268,4 +288,34 @@ pub async fn system_cleaner_uninstall(app_id: String) -> Result<(), String> {
     })
     .await
     .map_err(|error| error.to_string())?
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn directory_size_counts_nested_files_without_recursion() {
+        let root = tempfile::tempdir().expect("temporary scan root");
+        let nested = root.path().join("one").join("two").join("three");
+        fs::create_dir_all(&nested).expect("nested scan fixture");
+        fs::write(root.path().join("root.bin"), [0_u8; 3]).expect("root fixture file");
+        fs::write(nested.join("nested.bin"), [0_u8; 5]).expect("nested fixture file");
+
+        assert_eq!(directory_size(root.path()), 8);
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn directory_size_does_not_follow_directory_reparse_points() {
+        let root = tempfile::tempdir().expect("temporary scan root");
+        let outside = tempfile::tempdir().expect("temporary external root");
+        fs::write(outside.path().join("outside.bin"), [0_u8; 11]).expect("external fixture file");
+        let junction = root.path().join("junction");
+        if std::os::windows::fs::symlink_dir(outside.path(), &junction).is_err() {
+            return;
+        }
+
+        assert_eq!(directory_size(root.path()), 0);
+    }
 }

@@ -2,6 +2,7 @@
 // sorting, grouping, multi-selection, native item menus, and non-destructive
 // batch operations. Capture entry points stay routed through captureBridge.
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 import { useTranslation } from "react-i18next";
 import {
   AppWindow,
@@ -156,6 +157,7 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
   const [recording, setRecording] = useState<VideoRecordingSession | null>(null);
   const [completedRecording, setCompletedRecording] = useState<CompletedVideoRecording | null>(null);
   const [videoBusy, setVideoBusy] = useState(false);
+  const lastCompletedPathRef = useRef<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const selectionAnchorRef = useRef<string | null>(null);
   const [viewerId, setViewerId] = useState<string | null>(null);
@@ -224,6 +226,14 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
   const libraryViewer = viewerIndex >= 0 ? screenshots[viewerIndex] : null;
   const viewerScreenshot = ephemeralViewer
     ?? libraryViewer;
+  const viewerVideo: CompletedVideoRecording | null = libraryViewer?.mediaType === "video"
+    ? {
+        path: libraryViewer.path,
+        fileName: libraryViewer.fileName,
+        startedAt: libraryViewer.takenAt ?? libraryViewer.capturedAt,
+        durationMs: libraryViewer.durationMs ?? 0,
+      }
+    : null;
 
   const notifyError = useCallback((error: unknown) => {
     showStatusBarNotice(
@@ -231,6 +241,27 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
       { tone: "error" },
     );
   }, [showStatusBarNotice]);
+
+  const handleRecordingCompleted = useCallback((completed: CompletedVideoRecording) => {
+    setRecording(null);
+    setCompletedRecording(completed);
+    void useScreenshotsStore.getState().refresh();
+    if (lastCompletedPathRef.current !== completed.path) {
+      lastCompletedPathRef.current = completed.path;
+      showStatusBarNotice(t("screenshots.video.recordingSaved", { name: completed.fileName }), {
+        tone: "success",
+      });
+    }
+  }, [showStatusBarNotice, t]);
+
+  useEffect(() => {
+    if (!isTauriRuntime()) return;
+    const unlisten = listen<CompletedVideoRecording>(
+      "kkterm://video-recording-completed",
+      (event) => handleRecordingCompleted(event.payload),
+    );
+    return () => { void unlisten.then((dispose) => dispose()); };
+  }, [handleRecordingCompleted]);
 
   function changeViewMode(next: ScreenshotsViewMode) {
     setViewMode(next);
@@ -387,6 +418,7 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
       selectionAnchorRef.current = screenshot.id;
     }
     const single = targets.length === 1 ? targets[0] : null;
+    const imageTargets = targets.every((target) => target.mediaType === "image");
     void showNativeContextMenu(
       [
         ...(single ? [
@@ -400,12 +432,12 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
             label: t("screenshots.menu.openExternal"),
             action: () => openExternal(single),
           },
-          {
+          ...(single.mediaType === "image" ? [{
             kind: "item" as const,
             label: t("screenshots.menu.copy"),
             iconSvg: nativeMenuIcons.copy,
             action: () => void copyScreenshot(single),
-          },
+          }] : []),
           {
             kind: "item" as const,
             label: t("screenshots.menu.reveal"),
@@ -420,19 +452,19 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
           },
           { kind: "separator" as const },
         ] : []),
-        {
+        ...(imageTargets ? [{
           kind: "item",
           label: t("screenshots.batch.resize", { count: targets.length }),
           iconSvg: nativeMenuIcons.columns,
           action: () => setResizeTargets(targets),
-        },
+        } as const,
         {
           kind: "item",
           label: t("screenshots.batch.convert", { count: targets.length }),
           iconSvg: nativeMenuIcons.saveAs,
           action: () => setConvertTargets(targets),
-        },
-        { kind: "separator" },
+        } as const,
+        { kind: "separator" as const }] : []),
         {
           kind: "item",
           label: targets.length === 1
@@ -494,9 +526,7 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
     setVideoBusy(true);
     try {
       const completed = await invokeCommand("stop_video_recording", undefined);
-      setRecording(null);
-      setCompletedRecording(completed);
-      showStatusBarNotice(t("screenshots.video.recordingSaved", { name: completed.fileName }), { tone: "success" });
+      handleRecordingCompleted(completed);
     } catch (error) {
       notifyError(error);
     } finally {
@@ -754,20 +784,25 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
           }}
         />
       ) : null}
-      {completedRecording ? (
+      {completedRecording || viewerVideo ? (
         <Suspense fallback={null}>
           <VideoEditor
-            recording={completedRecording}
-            onClose={() => setCompletedRecording(null)}
+            recording={completedRecording ?? viewerVideo!}
+            onClose={() => {
+              if (completedRecording) setCompletedRecording(null);
+              else setViewerId(null);
+            }}
             onSaved={(path) => {
               setCompletedRecording(null);
+              setViewerId(null);
+              void useScreenshotsStore.getState().refresh();
               showStatusBarNotice(t("screenshots.video.exportSaved", { path }), { tone: "success" });
             }}
             onError={notifyError}
           />
         </Suspense>
       ) : null}
-      {viewerScreenshot ? (
+      {viewerScreenshot && !viewerVideo ? (
         <ScreenshotEditor
           screenshot={viewerScreenshot}
           ephemeralSource={ephemeralViewer ?? undefined}

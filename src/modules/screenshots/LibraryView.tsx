@@ -36,6 +36,12 @@ function formatCapturedAt(capturedAt: number) {
   return Number.isNaN(date.getTime()) ? "" : date.toLocaleString();
 }
 
+function formatDuration(milliseconds: number | null) {
+  if (milliseconds === null) return "";
+  const seconds = Math.max(0, Math.round(milliseconds / 1000));
+  return `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, "0")}`;
+}
+
 function modifiers(event: ReactMouseEvent | ReactKeyboardEvent): ScreenshotSelectionModifiers {
   return {
     additive: event.ctrlKey || event.metaKey,
@@ -130,6 +136,9 @@ export function LibraryView({
                   <td className="screenshots-details__thumb-col">
                     <span className="screenshots-detail-thumb">
                       <img alt="" src={screenshot.thumbnailDataUrl} loading="lazy" />
+                      {screenshot.mediaType === "video" ? (
+                        <span className="screenshots-media-badge">{screenshot.format.toUpperCase()}</span>
+                      ) : null}
                       {selected ? <Check size={12} aria-hidden="true" /> : null}
                     </span>
                   </td>
@@ -141,7 +150,12 @@ export function LibraryView({
                   </td>
                   <td>{screenshotFileType(screenshot)}</td>
                   <td className="screenshots-details__mono">
-                    {screenshot.width}×{screenshot.height}
+                    {screenshot.width > 0 && screenshot.height > 0
+                      ? `${screenshot.width}×${screenshot.height}`
+                      : "—"}
+                    {screenshot.mediaType === "video" && screenshot.durationMs !== null
+                      ? ` · ${formatDuration(screenshot.durationMs)}`
+                      : ""}
                   </td>
                   <td className="screenshots-details__mono">
                     {formatScreenshotBytes(screenshot.fileSizeBytes)}
@@ -186,6 +200,9 @@ export function LibraryView({
                       src={screenshot.thumbnailDataUrl}
                       loading="lazy"
                     />
+                    {screenshot.mediaType === "video" ? (
+                      <span className="screenshots-media-badge">{screenshot.format.toUpperCase()}</span>
+                    ) : null}
                     <span className="screenshots-card__check" aria-hidden="true">
                       <Check size={13} />
                     </span>

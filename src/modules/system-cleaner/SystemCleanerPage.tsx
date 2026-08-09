@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Brush, Box, HardDrive, RefreshCw, Trash2 } from "../../lib/reicon";
 import { ModuleHeader, ModuleHeaderLead, ModuleHeaderSpacer, ModuleHeaderTitle, ModuleIconTile } from "../../app/ModuleHeader";
@@ -44,8 +44,6 @@ export function SystemCleanerPage({ active }: { active: boolean }) {
       notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" });
     } finally { setBusy(false); }
   }, [notice, t]);
-
-  useEffect(() => { if (active && !overview && !busy) void scan(); }, [active, overview, busy, scan]);
 
   const selectedBytes = useMemo(() => overview?.cleanup.filter((item) => selected.includes(item.id)).reduce((sum, item) => sum + item.bytes, 0) ?? 0, [overview, selected]);
 

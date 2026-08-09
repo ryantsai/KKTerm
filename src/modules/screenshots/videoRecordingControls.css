@@ -1,0 +1,124 @@
+html:has(.video-recording-controls),
+body:has(.video-recording-controls),
+#root:has(.video-recording-controls) {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+.video-recording-controls {
+  width: 100%;
+  height: 100%;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  user-select: none;
+}
+
+.video-recording-controls__drag {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 12px;
+  background: var(--surface-muted);
+  border-bottom: 1px solid var(--hairline);
+  font-size: 12px;
+  cursor: move;
+}
+
+.video-recording-controls__drag strong {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .04em;
+}
+
+.video-recording-controls__drag > * {
+  pointer-events: none;
+}
+
+.video-recording-controls__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--red);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--red) 18%, transparent);
+}
+
+.video-recording-controls__dot.paused {
+  background: var(--amber);
+  box-shadow: none;
+}
+
+.video-recording-controls__body {
+  height: 82px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 11px;
+}
+
+.video-recording-controls__target {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.video-recording-controls__target > img,
+.video-recording-controls__target > span {
+  width: 92px;
+  height: 52px;
+  object-fit: cover;
+  border: 1px solid var(--hairline);
+  border-radius: 5px;
+  background: var(--app-bg);
+}
+
+.video-recording-controls__target div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.video-recording-controls__target strong,
+.video-recording-controls__target small {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.video-recording-controls__target strong { font-size: 12px; }
+.video-recording-controls__target small { color: var(--text-muted); font-size: 10px; }
+
+.video-recording-controls__actions {
+  display: grid;
+  gap: 5px;
+}
+
+.video-recording-controls__actions button {
+  min-width: 82px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text);
+  background: var(--surface-muted);
+  font: inherit;
+  font-size: 11px;
+}
+
+.video-recording-controls__actions button.stop {
+  color: var(--red);
+}
+
+.video-recording-controls__actions button:disabled { opacity: .55; }

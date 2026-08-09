@@ -1255,10 +1255,37 @@ fn start_video_recording(
 }
 
 #[tauri::command]
+fn video_recording_status(
+    state: tauri::State<'_, video_recording::VideoRecordingState>,
+) -> Result<video_recording::VideoRecordingStatus, String> {
+    video_recording::status(&state)
+}
+
+#[tauri::command]
+fn pause_video_recording(
+    state: tauri::State<'_, video_recording::VideoRecordingState>,
+) -> Result<(), String> {
+    video_recording::set_paused(&state, true)
+}
+
+#[tauri::command]
+fn resume_video_recording(
+    state: tauri::State<'_, video_recording::VideoRecordingState>,
+) -> Result<(), String> {
+    video_recording::set_paused(&state, false)
+}
+
+#[tauri::command]
 fn stop_video_recording(
+    app: tauri::AppHandle,
     state: tauri::State<'_, video_recording::VideoRecordingState>,
 ) -> Result<video_recording::CompletedVideoRecording, String> {
-    video_recording::stop(&state)
+    let completed = video_recording::stop(&app, &state)?;
+    let _ = app.emit(
+        video_recording::RECORDING_COMPLETED_EVENT,
+        completed.clone(),
+    );
+    Ok(completed)
 }
 
 #[tauri::command]
@@ -4827,6 +4854,9 @@ pub fn run() {
             update_screenshot_settings,
             video_dependency_status,
             start_video_recording,
+            video_recording_status,
+            pause_video_recording,
+            resume_video_recording,
             stop_video_recording,
             allow_video_preview,
             trim_video_recording,

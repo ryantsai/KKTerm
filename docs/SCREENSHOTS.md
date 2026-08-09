@@ -27,6 +27,11 @@ source map lives in `docs/ARCHITECTURE.md` → "Frontend Source Map".
 - **Video editing stays deliberately narrow.** A native media preview and one
   `@xzdarcy/react-timeline-editor` clip support trim-and-export after capture;
   the source recording is retained and no general-purpose NLE is embedded.
+- **Recording controls reuse the app bundle.** A protected, always-on-top Tauri
+  utility window shows the target, elapsed time, pause/resume, and stop without
+  adding another frontend runtime or recording the controller on supported OSes.
+- **The library is mixed media.** Recorded MP4, WebM, and GIF files use cached
+  FFmpeg thumbnails and format badges; double-click returns to the trim editor.
 - **Global shortcut defaults**: `Ctrl+Alt+R` (region), `Ctrl+Alt+W` (window),
   `Ctrl+Alt+F` (fullscreen), each editable and individually toggleable.
 - Windows is the v1 capture platform. The existing native capture pipeline

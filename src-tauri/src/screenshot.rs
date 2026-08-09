@@ -48,6 +48,9 @@ pub struct StoredScreenshot {
     modified_at: u128,
     taken_at: Option<u128>,
     kind: String,
+    media_type: String,
+    format: String,
+    duration_ms: Option<u128>,
 }
 
 #[derive(Serialize)]
@@ -429,12 +432,13 @@ struct CaptureTarget {
     height: i32,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct RecordingRect {
     pub x: i32,
     pub y: i32,
     pub width: i32,
     pub height: i32,
+    pub preview_data_url: String,
 }
 
 #[cfg(target_os = "windows")]
@@ -469,11 +473,41 @@ pub fn select_recording_rect(
         }
         _ => return Err("video recording mode must be window, fullscreen, or region".to_string()),
     };
+    let preview_dib = platform::capture_screen_rect_to_dib(
+        target.x,
+        target.y,
+        target.width,
+        target.height,
+        use_directx,
+    )?;
+    let preview_png = platform::dib_to_png_bytes_with_quality(
+        &preview_dib,
+        target.width as u32,
+        target.height as u32,
+        82,
+    )?;
+    let preview = image::load_from_memory(&preview_png)
+        .map_err(|error| format!("failed to build recording target preview: {error}"))?
+        .thumbnail(168, 72)
+        .to_rgb8();
+    let mut preview_jpeg = Vec::new();
+    {
+        use image::{ColorType, ImageEncoder, codecs::jpeg::JpegEncoder};
+        JpegEncoder::new_with_quality(&mut preview_jpeg, 74)
+            .write_image(
+                preview.as_raw(),
+                preview.width(),
+                preview.height(),
+                ColorType::Rgb8.into(),
+            )
+            .map_err(|error| format!("failed to encode recording target preview: {error}"))?;
+    }
     Ok(RecordingRect {
         x: target.x,
         y: target.y,
         width: target.width,
         height: target.height,
+        preview_data_url: format!("data:image/jpeg;base64,{}", STANDARD.encode(preview_jpeg)),
     })
 }
 
@@ -1607,7 +1641,7 @@ pub fn list_library_screenshots(
         let entry =
             entry.map_err(|error| format!("failed to read screenshots folder entry: {error}"))?;
         let path = entry.path();
-        if !is_supported_image_path(&path) {
+        if !is_supported_library_path(&path) {
             continue;
         }
         let modified = entry
@@ -2004,7 +2038,7 @@ pub fn clear_library_screenshots(folder_path: String) -> Result<(), String> {
         let entry =
             entry.map_err(|error| format!("failed to read screenshots folder entry: {error}"))?;
         let path = entry.path();
-        if is_supported_image_path(&path) {
+        if is_supported_library_path(&path) {
             let _ = fs::remove_file(path);
         }
     }
@@ -2122,13 +2156,30 @@ fn stored_screenshot_from_path(
         return Err("screenshot path is not a file".to_string());
     }
 
-    let (width, height) = image::image_dimensions(&path)
-        .map_err(|error| format!("failed to read screenshot: {error}"))?;
     let file_name = path
         .file_name()
         .and_then(|name| name.to_str())
         .ok_or_else(|| "screenshot file name is not valid UTF-8".to_string())?
         .to_string();
+    let media_type = if is_video_recording_path(&path) {
+        "video"
+    } else {
+        "image"
+    };
+    let format = path
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    let (width, height, duration_ms) = if media_type == "video" {
+        crate::video_recording::probe_video(&path)
+            .map(|(width, height, duration)| (width, height, Some(duration)))
+            .unwrap_or((0, 0, None))
+    } else {
+        let (width, height) = image::image_dimensions(&path)
+            .map_err(|error| format!("failed to read screenshot: {error}"))?;
+        (width, height, None)
+    };
     let captured_at = metadata
         .modified()
         .ok()
@@ -2156,8 +2207,12 @@ fn stored_screenshot_from_path(
         .map_err(|_| "screenshot is outside the screenshots folder".to_string())?;
     let id = relative.to_string_lossy().replace('\\', "/");
     let kind = kind_from_file_name(&file_name);
-    let thumbnail_data_url = ensure_thumbnail_data_url(screenshots_folder, &path, &file_name)?;
-    let has_draft = screenshot_draft_path(screenshots_folder, &id).is_file();
+    let thumbnail_data_url = if media_type == "video" {
+        ensure_video_thumbnail_data_url(screenshots_folder, &path, &file_name)?
+    } else {
+        ensure_thumbnail_data_url(screenshots_folder, &path, &file_name)?
+    };
+    let has_draft = media_type == "image" && screenshot_draft_path(screenshots_folder, &id).is_file();
 
     Ok(StoredScreenshot {
         id,
@@ -2173,6 +2228,9 @@ fn stored_screenshot_from_path(
         modified_at,
         taken_at,
         kind,
+        media_type: media_type.to_string(),
+        format,
+        duration_ms,
     })
 }
 
@@ -2398,6 +2456,33 @@ fn ensure_thumbnail_data_url(
     Ok(format!("data:image/jpeg;base64,{}", STANDARD.encode(bytes)))
 }
 
+fn ensure_video_thumbnail_data_url(
+    folder: &Path,
+    path: &Path,
+    file_name: &str,
+) -> Result<String, String> {
+    let thumbs_dir = folder.join(THUMBS_DIR_NAME);
+    let thumb_path = thumbs_dir.join(format!("{file_name}.thumb.jpg"));
+    let source_modified = fs::metadata(path).ok().and_then(|meta| meta.modified().ok());
+    let thumb_fresh = match (fs::metadata(&thumb_path), source_modified) {
+        (Ok(thumb_meta), Some(source_modified)) => thumb_meta
+            .modified()
+            .map(|thumb_modified| thumb_modified >= source_modified)
+            .unwrap_or(false),
+        _ => false,
+    };
+    if !thumb_fresh {
+        fs::create_dir_all(&thumbs_dir)
+            .map_err(|error| format!("failed to create thumbnail folder: {error}"))?;
+        if crate::video_recording::write_video_thumbnail(path, &thumb_path).is_err() {
+            return Ok("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='180' viewBox='0 0 320 180'%3E%3Crect width='320' height='180' fill='%23242a33'/%3E%3Cpath d='M132 55l72 35-72 35z' fill='%23d7dde7'/%3E%3C/svg%3E".to_string());
+        }
+    }
+    let bytes = fs::read(&thumb_path)
+        .map_err(|error| format!("failed to load video thumbnail: {error}"))?;
+    Ok(format!("data:image/jpeg;base64,{}", STANDARD.encode(bytes)))
+}
+
 fn remove_thumbnail_for(folder: &Path, id: &str) {
     let _ = fs::remove_file(folder.join(THUMBS_DIR_NAME).join(format!("{id}.thumb.jpg")));
 }
@@ -2437,6 +2522,38 @@ fn is_supported_image_path(path: &Path) -> bool {
             )
         })
         .unwrap_or(false)
+}
+
+fn is_video_recording_path(path: &Path) -> bool {
+    let extension = path
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    if matches!(extension.as_str(), "mp4" | "webm") {
+        return true;
+    }
+    if extension != "gif" {
+        return false;
+    }
+    if path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .map(|name| name.starts_with("KKTerm-video-"))
+        .unwrap_or(false)
+    {
+        return true;
+    }
+    use image::AnimationDecoder as _;
+    fs::File::open(path)
+        .ok()
+        .and_then(|file| image::codecs::gif::GifDecoder::new(std::io::BufReader::new(file)).ok())
+        .map(|decoder| decoder.into_frames().take(2).count() > 1)
+        .unwrap_or(false)
+}
+
+fn is_supported_library_path(path: &Path) -> bool {
+    is_supported_image_path(path) || is_video_recording_path(path)
 }
 
 fn mime_type_for_path(path: &Path) -> &'static str {

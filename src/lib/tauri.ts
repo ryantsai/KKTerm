@@ -794,6 +794,9 @@ export interface StoredScreenshot {
   modifiedAt: number;
   takenAt: number | null;
   kind: "region" | "window" | "fullscreen" | "screenshot";
+  mediaType: "image" | "video";
+  format: string;
+  durationMs: number | null;
 }
 
 export interface ScreenshotCaptureResult {
@@ -831,6 +834,19 @@ export interface VideoRecordingSession {
   path: string;
   fileName: string;
   startedAt: number;
+}
+
+export interface VideoRecordingStatus {
+  active: boolean;
+  paused: boolean;
+  fileName: string | null;
+  startedAt: number | null;
+  elapsedMs: number;
+  mode: "window" | "fullscreen" | "region" | null;
+  format: "mp4" | "webm" | "gif" | null;
+  width: number | null;
+  height: number | null;
+  previewDataUrl: string | null;
 }
 
 export interface CompletedVideoRecording extends VideoRecordingSession {
@@ -2317,6 +2333,18 @@ type CommandMap = {
       };
     };
     result: VideoRecordingSession;
+  };
+  video_recording_status: {
+    args: undefined;
+    result: VideoRecordingStatus;
+  };
+  pause_video_recording: {
+    args: undefined;
+    result: null;
+  };
+  resume_video_recording: {
+    args: undefined;
+    result: null;
   };
   stop_video_recording: {
     args: undefined;

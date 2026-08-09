@@ -5,7 +5,7 @@ import {
   ArrowSwapHorizontal as ReArrowSwapHorizontal2, ArrowUp as ReArrowUp, Bed as ReBed, Bell as ReBell,
   Bolt as ReBolt, BookOpen as ReBookOpen, Bookmark as ReBookmark, Box as ReBox,
   Box3 as ReBox3, BoxTick as ReBoxTick2, BranchUp as ReBranchUp, Briefcase as ReBriefcase,
-  Bug as ReBug, Building as ReBuilding, Buildings2 as ReBuildings2, Cabinet as ReCabinet, Calendar as ReCalendar, Camera as ReCamera,
+  Broom3 as ReBroom3, Bug as ReBug, Building as ReBuilding, Buildings2 as ReBuildings2, Cabinet as ReCabinet, Calendar as ReCalendar, Camera as ReCamera,
   Cart as ReCart, ChartBar as ReChartBar, ChartLine as ReChartLine, Check as ReCheck,
   CheckCircle as ReCheckCircle, CheckSquare as ReCheckSquare, ChevronDown as ReChevronDown, ChevronExpandY as ReChevronExpandY,
   ChevronLeft as ReChevronLeft, ChevronRight as ReChevronRight, ChevronUp as ReChevronUp, CircleArrowUp as ReCircleArrowUp,
@@ -156,6 +156,7 @@ export const Bookmark = ReBookmark;
 export const Box = ReBox;
 export const Boxes = ReBox3;
 export const Briefcase = ReBriefcase;
+export const Broom3 = ReBroom3;
 export const Brush = RePaintbrush;
 export const Bug = ReBug;
 export const Building2 = ReBuilding;

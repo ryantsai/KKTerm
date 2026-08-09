@@ -73,7 +73,9 @@ function groupIdentity(screenshot: StoredScreenshot, groupBy: ScreenshotGroupBy)
       return { key: label, label };
     }
     case "dimensions": {
-      const label = `${screenshot.width} × ${screenshot.height}`;
+      const label = screenshot.width > 0 && screenshot.height > 0
+        ? `${screenshot.width} × ${screenshot.height}`
+        : "—";
       return { key: label, label };
     }
     default:
