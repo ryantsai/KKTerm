@@ -1353,6 +1353,33 @@ test("Windows ActiveX connection bar uses the durable Connection name", () => {
   assert.doesNotMatch(fullscreenBackend, /set_connection_bar_text\(dispatch,\s*"KKTerm"\)/);
 });
 
+test("disconnecting from the ActiveX full-screen connection bar restores the KKTerm Pane", () => {
+  const eventCallback = fullscreenBackend.slice(
+    fullscreenBackend.indexOf("fn handle_event"),
+    fullscreenBackend.indexOf("fn start_rdp_fullscreen_request_worker"),
+  );
+  const eventHandler = fullscreenBackend.slice(
+    fullscreenBackend.indexOf("fn handle_rdp_fullscreen_request"),
+    fullscreenBackend.indexOf("fn subscribe_rdp_events"),
+  );
+  const disconnectRecovery = fullscreenBackend.slice(
+    fullscreenBackend.indexOf("fn restore_disconnected_fullscreen_host"),
+    fullscreenBackend.indexOf("fn restore_windowed_host"),
+  );
+
+  assert.match(fullscreenBackend, /DISPID_DISCONNECTED:\s*i32\s*=\s*4/);
+  assert.match(eventCallback, /DISPID_DISCONNECTED/);
+  assert.match(
+    eventHandler,
+    /DISPID_DISCONNECTED => restore_disconnected_fullscreen_host\(session\)/,
+  );
+  assert.match(
+    disconnectRecovery,
+    /restore_windowed_host\(session, restore\)[\s\S]*session\.fullscreen_restore = None/,
+  );
+  assert.doesNotMatch(disconnectRecovery, /kkterm_process_owns_foreground/);
+});
+
 test("screenshot re-registration preserves other global shortcuts", () => {
   assert.doesNotMatch(screenshotShortcuts, /unregister_all/);
   assert.match(screenshotShortcuts, /unregister_multiple/);

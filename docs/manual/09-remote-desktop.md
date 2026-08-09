@@ -63,7 +63,7 @@ VNC and macOS/Linux RDP full-screen windows carry a **connection bar** (`remoteD
 - **Ctrl+Alt+Del** (`remoteDesktop.sendCtrlAltDel`) — routed per surface (`send_vnc_ctrl_alt_delete`, `send_rdp_client_ctrl_alt_delete`, or `send_rdp_ctrl_alt_delete`).
 - **Exit** (`remoteDesktop.fullscreen.exit`) — closes the window; the Session keeps running in its Pane.
 
-Windows ActiveX RDP uses the Microsoft control's native connection bar because WebView2 content cannot render above its HWND. KKTerm enables `DisplayConnectionBar`, leaves it unpinned for the standard top-edge auto-hide behavior, and enables the restore button. Use the restore button or `remoteDesktop.fullscreen.toggle` to return to the Pane; Ctrl+Alt+End remains the supported Windows RDP secure-attention shortcut.
+Windows ActiveX RDP uses the Microsoft control's native connection bar because WebView2 content cannot render above its HWND. KKTerm enables `DisplayConnectionBar`, leaves it unpinned for the standard top-edge auto-hide behavior, and enables the restore button. Use the restore button or `remoteDesktop.fullscreen.toggle` to return to the Pane; closing the Session from the connection bar disconnects it and returns the disconnected surface to its KKTerm Pane. Ctrl+Alt+End remains the supported Windows RDP secure-attention shortcut.
 
 Detached-surface backend: `list_display_monitors`, `open_remote_fullscreen_window`, and `close_remote_fullscreen_window` (`src-tauri/src/remote_fullscreen.rs`). The VNC/canvas window loads the app bundle at `#/remote-fullscreen/<kind>/<sessionId>/<connectionId>`; `main.tsx` mounts only `RemoteFullscreenApp` for that route.
 
