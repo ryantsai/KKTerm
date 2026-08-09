@@ -330,7 +330,547 @@ Three SQLite tables (new schema version):
   stored parent id. A valid Host binding makes its owning Site authoritative;
   `site_id` may also stand alone when no Host is selected. With neither
   binding, the snapshot derives the Site from the most-specific containing
-  p…8901 tokens truncated…umented-free addresses; atomically import a create-only structured batch;
+  prefix, so changing a prefix's Site immediately changes its otherwise-unbound
+  records without rewriting them. The soft references let an address stay
+  documented after whatever it pointed at is deleted.
+- `itops_network_maps` — one row per Network Map: id, name, description,
+  optional soft `site_id`, `sort_order`, and the whole node/link/note graph as
+  `graph_json`. Node and link ids are map-local; the one exception is each
+  link's `nativeVlanId` / `taggedVlanIds`, which are soft references into
+  `itops_vlans` and are remapped on selective import like any other soft id.
+
+Durable definitions only. **Live state never persists**: in-flight Batch
+Run progress stays in memory in the runtime layer, consistent with the
+High-Risk Invariant against putting Session/runtime state in durable models.
+Current-version startup does not reconcile legacy Monitor data because there
+is no runtime capable of loading it. Selective IT Ops import marks imported
+legacy rows obsolete inside the import transaction.
+
+Secrets (WinRM/PsExec credentials)
+live in the OS keychain under existing secret-owner ids; SQLite stores
+only non-secret metadata and credential references. IT Ops state is
+included in the selective export/import shape (ADR-0010) as non-secret
+metadata.
+
+## Runtime
+
+The Batch Run executor is a worker pool: resolve the Site,
+open one transport task per host under a concurrency cap, stream progress
+events on a channel, and assemble the report. SSH reuses the existing
+transport; WinRM and PsExec are new transport adapters behind a common
+`exec(host, task) -> stream` shape.
+
+All exec and WinRM/PsExec I/O run through
+`spawn_blocking`/worker tasks and report by event — never blocking the
+UI/native thread (`docs/ARCHITECTURE.md` command-runtime boundaries).
+
+## Frontend
+
+`src/modules/itops/` owns the Module shell. The visible shell uses one
+resizable/collapsible operational navigator. Only the active Site needs to be
+expanded. Each Site exposes predefined virtual destinations — **Server Rooms**,
+**Hosts**, and **Run History** — while its topology continues
+to drill down Server Room → Rack beneath Server Rooms. These destinations are
+navigation state, not durable database entities or copied containers.
+
+The global **Task Library** is a sibling of Sites rather than a child of every
+Site. Opening a Task shows and manages its definition. Manual execution starts
+only from selected Hosts; the Host-scoped launcher offers reusable definitions
+from the Task Library alongside an ad-hoc Script option. This prevents duplicated
+per-Site scripts and keeps target selection explicit.
+
+Every Task carries multi-select Applicable OS metadata: `any`, `linux`, `macos`,
+`windows`, `ciscoIos`, `ciscoNxos`, `fortiOs`, `junos`, or `aristaEos`. `any` is
+exclusive with the specific values. This metadata drives Task Library display,
+search, and filtering only; Hosts do not currently have a trusted OS identity,
+so launch-time target selection does not silently exclude Hosts.
+
+The app syncs a stable built-in diagnostic catalog into `itops_tasks` on startup.
+It covers system identity, uptime, resource usage, network interfaces, routing
+and DNS, and recent-log inspection for Linux, macOS, Windows, Cisco IOS,
+Cisco NX-OS, FortiOS, Juniper Junos, and Arista EOS. Built-ins use stable ids and
+catalog keys so Run History references survive catalog upgrades.
+They are app-owned, read-only, non-deletable definitions; the UI duplicates a
+built-in into an ordinary user Task before customization. Catalog commands are
+inspection-only and must not install, reboot, reconfigure, or delete anything.
+
+Creating or editing a Playbook opens a full ordered workflow editor. Command
+nodes send text through one shared interactive shell. A sudo node runs
+`sudo -S -v`, waits for a dedicated prompt, retrieves its password from the
+configured secret vault, and validates elevation before later nodes continue.
+Only the vault owner id is durable; plaintext is resolved in memory immediately
+before the Batch Run and is never copied into SQLite or Run History. Removing a
+sudo node or deleting its Task removes the associated vault entry.
+
+An AI node evaluates the immediately preceding node output with the currently
+configured AI Assistant provider. KKTerm sends that output as explicitly
+untrusted data with tools disabled and requires one parsed JSON decision:
+`continue` runs the next ordered node, `success` ends that Host successfully,
+and `fail` stops that Host as failed. Any provider error, invalid JSON, or value
+outside this closed enum fails the Host. AI nodes never turn model text into a
+shell command or choose an arbitrary graph edge.
+
+Hosts, Run History, and the global Batch Tasks and Networking
+destinations (Task Library, IPAM, Network Maps) share one destination-page frame: the same content inset, compact title/description
+header, right-aligned primary actions, divider, and bordered-row rhythm. The
+Task Library keeps its spreadsheet-style Task table inside that frame rather
+than owning a separate full-height chrome layout. Each row shows Task kind, Applicable OS,
+execution count, failed-host count, and a link to the most recent Site Run
+History containing that Task. Statistics use the Task's stable id; ad-hoc
+and older unattributed history rows are never guessed by label.
+
+IPAM (`src/modules/itops/IpamPanel.tsx`) reuses the Task Library's
+spreadsheet-style table inside the same frame. Its Add button opens a menu for
+creating either an IP Prefix or VLAN; both record types share the grid and have
+an explicit Type column. Rows are grouped by their
+optional Site tag, with Site-less or stale soft references collected under All
+Sites. Within each Site group, Prefix rows retain the snapshot's containment order and
+are indented by the server-derived `depth`, so indentation always matches real
+containment; a twisty expands an IP Prefix to reveal its IP Address Records. The CIDR field
+previews the network address, usable range, and usable count live while
+typing (`previewCidr` in `ipamModel.ts`), and the address dialog suggests
+free addresses from the same pure helpers. `collectClaimCandidates` derives
+importable addresses from existing Connections and Hosts. Before import,
+`suggestMissingPrefixes` groups selected uncovered addresses into editable `/24`
+CIDR suggestions; every address must be covered by a confirmed suggestion or an
+existing IP Prefix. The import creates those IP Prefixes before their Address Records
+and probes nothing. Records that have no containing Prefix remain visible in an
+Unassigned addresses group rather than disappearing from the IP Prefix-only tree.
+
+The separate file import in `IpamImportDialog.tsx` accepts the canonical
+create-only table format as CSV, TSV, or `.xlsx`. CSV/TSV parsing reuses the
+already-bundled Papa Parse dependency; `.xlsx` parsing runs off the UI thread in
+the Rust backend through Calamine with optional features disabled, reads the
+first non-empty worksheet, and does not require Excel or downloaded runtime
+code. `ipamImportModel.ts` validates and previews every row, resolves Site names
+case-insensitively only when the match is unique, resolves Prefix VLAN references
+by 802.1Q id, and skips existing identities or later duplicates without
+overwriting them. The backend revalidates and creates VLANs, then Prefixes, then
+Address Records in one SQLite transaction; any non-duplicate failure rolls the
+whole batch back. An optional `itops.ipam.fileImportResolveHostnames` toggle
+best-effort fills only blank Address Record hostnames through bounded PTR
+reverse-DNS lookups before the transaction starts; existing file hostnames win,
+and lookup failure or the overall lookup timeout leaves a row unchanged. The
+dialog generates the canonical CSV sample locally. In the IPAM toolbar, Scan IP
+Prefixes sits immediately left of the shorter Import action.
+
+The IPAM toolbar's `itops.actions.export` menu saves every VLAN, IP Prefix, and
+Address Record as `itops.export.csv`, `itops.export.tsv`, or
+`itops.export.xlsx`. `ipamExportModel.ts` projects each format into the same
+canonical columns accepted by file import instead of creating a second report
+schema. CSV and TSV include a UTF-8 byte-order mark for desktop spreadsheet
+compatibility. XLSX is a real Office Open XML workbook with one `IPAM`
+worksheet, a frozen header row, and a column filter.
+
+The explicit IPAM scan sheet is a separate operator action. It scans only
+checked IP Prefixes and treats an address as used when ICMP ping, an SNMPv2c
+identity request, or one of the common TCP management/service ports answers.
+For responsive addresses, a bounded reverse-DNS PTR lookup supplies the
+hostname, with SNMP `sysName` as fallback. SNMP `sysDescr` supplies model/product
+detail and takes precedence when inferring a broad device type; only distinctive
+service ports (printing, RTSP camera, or SIP) provide a port-only type fallback.
+Ambiguous evidence leaves device type and model blank rather than inventing a
+match.
+The backend deduplicates overlap per VRF, caps a request at 4,096 usable
+addresses, and limits address-level concurrency. Results are transient: the
+scan itself writes nothing, already documented addresses are read-only in the
+result list, and only checked new results become Address Records. A scanned
+record copies the selected Prefix's optional soft Site tag; a Prefix with no
+Site imports a record with `site_id = NULL`.
+
+Network Maps (`src/modules/itops/NetworkMapDesigner.tsx`) is the one IT Ops
+destination with a canvas. Its initial state is a card list of every map,
+with a compact animated SVG preview and graph counts. The card list responds
+to the destination's available width from one to four columns, and its search
+matches map metadata plus every saved Network Node and Network Link field.
+The overview alone owns its title, description, search, and New Map action.
+Opening a card enters one full map workspace with only the map name centered in
+the canvas toolbar; map selection and returning to the overview stay in the
+left navigator. Each overview card has one bottom-right menu button for
+Properties and Delete instead of exposing destructive icon actions on the
+card. Every saved map also
+appears as a depth-one child beneath the expandable Network Maps row in the IT
+Ops navigator; selecting a child opens that map directly, while selecting the
+parent opens the card list. A map child row's native context menu contains
+Duplicate, Delete, then a separated final Properties item. Duplicate opens a
+prefilled Properties dialog and creates a complete copy of the stored map;
+Properties edits the map name, description, and optional Site tag. It uses
+`@xyflow/react` with controlled `nodes`/`edges` via `useMemo`, memoized custom
+node and edge renderers, viewport culling via `onlyRenderVisibleElements`,
+final-position/final-dimension `onNodesChange` persistence, `deleteKeyCode={null}`,
+and `proOptions={{ hideAttribution: true }}`. React Flow owns live drag and
+resize coordinates during a gesture; the durable graph is rebuilt only for the
+final event (or a keyboard position change). Because a Network Link is
+undirected while xyflow edges are directed, every node renders one loose-mode
+handle on each side (`left`/`right`/`top`/`bottom`), usable as either endpoint,
+and the edge picks its
+`sourceHandle`/`targetHandle` per render from the two node centres. The
+custom edge renderer draws an orthogonal route as either every parallel strand
+or one thickness-scaled bundle while keeping handle/anchor state out of the
+stored graph. Its opaque, bordered readout is rendered above the route and
+lists each strand speed in separate mode or speed-group counts in bundle mode.
+Readout entries use compact colored number badges and fill vertically in
+columns, starting a new column after every 12 entries.
+Every route carries a reduced-motion-aware animated trace, colored from its
+operator-authored healthy, degraded, or down status. General Settings stores
+one universal `networkMapAnimations` policy for Network Map node artwork,
+warning indicators, overview previews, and link traces. `onHover` is the
+default and runs motion only for the hovered object/card or the selected object
+for keyboard/touch access; `always` preserves continuous motion. The operating
+system reduced-motion preference still disables these effects in either mode.
+The editor is keyed by map id so switching maps remounts rather than carrying
+unsaved edits across.
+
+A map uses one canvas interaction mode: Network Nodes and Notes can always be
+selected, moved, resized, linked, duplicated, deleted, or opened in Properties.
+Changes save automatically after the interaction settles. The icon-only pen
+action only opens or closes the right-side object browser; it does not change
+canvas behavior. It is the only action in the active map's top-right toolbar;
+map deletion remains in the navigator and overview-card menus. The object
+browser owns placement and Import Hosts, while closing it gives the canvas the
+full workspace width. With the object browser closed, a subtle pointer-
+transparent summary floats at the canvas's top left with the current Network
+Node and Network Link counts; opening the browser hides that summary. The
+canvas does not infer connectivity or change a node's outline from graph
+position: a healthy node always keeps its subtle neutral border and shadow,
+while its documented warning status applies the warning treatment.
+
+Network Nodes use a compact, left-anchored card: a small icon tile, thin
+internal padding, and the remaining width reserved for the label and caption.
+Nodes with deep links show a subtle chain glyph and blue count at the right.
+Activating it opens a `DialogPortal` mini popup; choosing a row opens its
+Connection in Workspace or navigates the IT Ops drill-down to its Site, Server
+Room, or Rack Device. A Rack Device target opens its Rack and Properties.
+When a Network Node has notes, a wide card uses the right side for the note;
+narrow cards put an ellipsized note preview along the bottom. New and imported
+nodes start at the compact default size, while every saved node keeps its own
+persisted dimensions. Rectangle is the compatibility default for graph JSON
+that predates node shapes. Choosing Circle, Diamond, Triangle, or Hexagon makes
+the node square once and preserves that aspect ratio during later resizing so
+the selected silhouette stays geometrically correct. Device-node resizing has
+a 1,000,000-pixel finite safety ceiling per dimension, which is intentionally a
+practical no-limit bound for canvas authoring. The Node Properties shape picker
+uses restrained stroked SVG previews and a soft selection surface rather than
+filled geometric blocks.
+
+Object-browser cards use the same configure-then-place interaction
+as Server Room editing: click a card, complete its Properties dialog, then
+move the cursor-tracked ghost and click the canvas to place it. The configured
+draft does not enter the graph until that placement click; right-click or
+Escape cancels it. Ghost tracking and the primary placement action run from
+the map canvas's capture-phase pointer events so React Flow child layers cannot
+swallow either interaction. A Network Node or Note native right-click menu
+contains Lock/Unlock, Duplicate, Delete, then a separated final Properties item.
+A locked object cannot move, resize, or be deleted until unlocked. Ctrl-click,
+Command-click, and Shift-click toggle objects in a multi-selection; its
+right-click menu contains only Lock/Unlock and Delete, with Delete disabled
+while any selected object is locked. Duplicate opens the
+same prefilled Properties dialog and arms the resulting copy for placement.
+The Network Node kind chosen in the object browser stays fixed while adding or
+duplicating a node, so those Properties dialogs do not repeat the Type field;
+editing an existing device node still permits changing among device Types,
+while a Geomap remains a Geomap. Right-clicking empty
+canvas opens a native menu with Add Node, which opens the object browser, and
+Properties, which edits the current Network Map.
+The object browser remains the object picker at all times; it never becomes a
+property inspector or map summary. Single-clicking an existing Network
+Node or Note selects it and exposes its drag-resize handles. React Flow updates
+the transient gesture continuously while a handle is dragged, but the
+controlled graph commits only the final position or dimensions; double-clicking
+opens its Properties dialog. Clicking a Network Link opens that link's
+Properties dialog. Edits are applied to the in-memory graph only when that
+dialog's Save action is confirmed. Moving or resizing a Network Node keeps its
+existing animated Links visible and attached throughout the gesture without
+remeasuring unrelated node handles or switching link sides between frames,
+then recalculates the shortest handle sides when the gesture ends.
+Network Node Properties puts the device artwork and palette-backed icon
+background choices in one compact identity header. Network Maps use a separate
+soft hardware palette rather than the shared IT Ops content accents and include
+a custom-color picker. Black skeuomorphic hardware shells always render on a
+lightened tile. Small status choices use
+icon-backed radio cards; the 27-item node-kind list remains a select when
+editing an existing device node. Generic Properties additionally provides a
+visual picker for all 26 built-in icon artworks without changing the node kind.
+Node Properties shows only the Deep Link count. Activating it opens a compact
+collection editor that owns the ordered list, focused add-destination dialog,
+removal actions, and one direct Open action per available destination. Geomap
+Properties is purpose-built instead:
+it includes the artwork tint, uncapped pixel width and height fields, and a
+draggable world-map preview with scroll/slider zoom from 100% through 10,000%,
+omitting the device label, Type, status, interfaces, and note. The selected
+crop and size are visible in the placement ghost and saved Geomap. The canvas
+Geomap renders only the cropped artwork and has neither resize nor Network Link
+handles. Each device node
+persists its individual width/height and an ordered interface inventory. Node
+Properties shows only the interface count; activating it opens a compact,
+independently scrolling collection editor. An interface has a stable id, name,
+and optional documented IP address, and is added or edited in a focused nested
+dialog inside that collection editor instead of expanding the parent Properties
+dialog.
+A Network Link's small medium, status, and strand-display choices also use
+icon-backed radio cards. The base Properties sheet shows only the physical-link
+count; activating it opens a compact, independently scrolling member grid, so
+large bundles do not make the base dialog taller. The user's canvas connection
+gesture always creates one physical member. Every new member automatically
+creates a uniquely named interface on both endpoint nodes and binds their stable
+ids, while the grid edits those interface names and the member speed. Legacy
+node address lists and link-wide endpoint address bindings are migrated into
+interfaces and the first strand when maps are read.
+Resizable Network Map Notes store Markdown source in their existing text field
+and a palette-backed background. Their Properties dialog provides a compact
+formatting toolbar plus a sanitized live preview; the canvas renders the same
+sanitized Markdown with heading, emphasis, list, quote, link, and code styling.
+Notes use a neutral hairline border. Geomaps, Notes, links, and regular Network
+Nodes use explicit ascending React Flow z-orders, and selected-node elevation is
+disabled for the canvas. A Geomap therefore remains the bottom-most node even
+while selected; Notes remain below every link and regular Network Node. Notes
+have no Network Node, Network Link, status, or verification semantics.
+
+### IT Ops destination-page UI contract
+
+This section is normative for future IT Ops frontend work. It applies to
+Hosts, Run History, Task Library, IPAM, Network Maps, and any
+later non-spatial destination opened from the IT Ops navigator. Do not give a new destination an
+independent page shell or visual language.
+
+#### Required page anatomy
+
+1. The navigator's detail host uses `it-destination-page`; the destination root
+   uses `it-destination-surface`. The root owns the shared `var(--pad)` inset.
+   Do not add a second page-level inset inside an individual destination.
+2. The first element is `it-destination-page-head`. It contains one compact
+   title and, when useful, one single-line description on the left. Page-level
+   metadata and actions stay on the right.
+3. Use at most one emphasized page-level primary action. Put it at the far
+   right and keep its placement stable across empty and populated states. A
+   read-only destination such as Run History may omit it; do not invent an
+   action merely to fill the space.
+4. An optional compact toolbar follows the header divider. Use it for filters,
+   selection controls, search, counts, and secondary actions. It must not
+   become a second competing page header.
+5. The content begins on the same left edge as the header and toolbar. Lists use
+   one bordered container with themed surface rows and hairline separators.
+   Avoid unrelated floating cards, per-row shadows, and different corner radii
+   for each destination.
+
+#### Master-detail and specialized content
+
+- Task Library may keep its master-detail body, but the split view is one
+  bordered content region below the shared page header. Its create action stays
+  in the page header; do not restore a separate mini-header in the list pane.
+- Run reports and live-run progress may use status-specific summaries inside
+  the shared frame. Navigating from history list to report detail must not move
+  or restyle the destination header.
+- Site View, Server Room View, and Rack View are spatial drill-down canvases,
+  not destination pages. They keep their centered view controls and icon-only
+  Edit/Export toolbar described below.
+
+#### Empty and setup states
+
+- Keep the page header and its action positions unchanged when data is empty.
+  Do not replace the entire destination with a one-off landing page.
+- Every destination and topology setup state renders through
+  `ItOpsEmptyHint`. It is one short neutral centered sentence, without a glyph,
+  secondary heading, promotional card, or large primary button.
+- When a meaningful setup action exists, keep it as an inline accent-colored
+  phrase inside the sentence. The action looks and behaves
+  like the Workspace empty-state links: transparent background, compact hover
+  treatment, visible focus ring, and no surrounding promotional card.
+- A missing Site collection uses `itops.sites.emptyHint`; an empty Site uses
+  `itops.sites.emptyServerRoomsHint`; an empty Server Room uses
+  `itops.racks.emptyServerRoomHint`; an empty Rack uses
+  `itops.racks.emptyRackHint`; Hosts uses `itops.hosts.empty`; and Run History uses
+  `itops.batchRuns.historyEmptyHint`. Keep actionable phrases inside their full
+  translated sentences with `Trans` component markers. Do not concatenate text
+  fragments or replace a hint with a lone button.
+
+#### Implementation and review gates
+
+- Reuse the existing `it-destination-*`, `it-task-library-*`, list-row, and
+  `it-empty-hint` rules in `src/modules/itops/itops.css`. Extend these
+  shared rules when the whole family needs to change; do not add page-specific
+  copies with slightly different spacing or colors.
+- Read colors, borders, hover states, radii, and typography from app tokens.
+  IT Ops hardware artwork may use its documented physical-equipment palette,
+  but destination chrome must not hard-code colors.
+- Build forms from the shared `src/app/ui/dialog` primitives. A normal `Sheet`
+  provides their design tokens automatically; any IT Ops canvas, inspector, or
+  custom editor that renders those primitives outside `Sheet` must mark its
+  nearest surface root with `kk-surface`. Never duplicate their field CSS or
+  accept browser-native square input/select fallbacks.
+- Route all text through `itops.*` i18n keys and follow the localization backlog
+  workflow. Inline action markers such as `<addRack>` and `<editMode>` are part
+  of the translation contract.
+- Update this section when intentionally changing the shared pattern. Add or
+  adjust a focused frontend regression test so Task Library and every Site
+  destination cannot silently drift back into separate page shells.
+- Review the four destinations together at the same window size in Default and
+  Dark before handing off an IT Ops UI change. Also check the affected topology
+  empty state when changing Rack or Server Room flows.
+
+Site View is now overview-only and has no segmented content switcher. Hosts
+and Run History each own a separate Site-scoped page selected from
+the navigator. The Hosts page owns Host selection and the manual **Run Task**
+action; its launcher accepts a reusable Task from the global Task Library or an
+ad-hoc Script Batch Task and fixes the target scope to the selected Host ids. A Host is
+runnable when it has a bound SSH Connection; target resolution uses the first
+bound SSH Connection for each selected Host and deduplicates Connections.
+
+Run History is read-only navigation over the selected Site's live run and
+completed reports. It has no independent start or rerun action; “Batch Run” is
+the execution concept, not the name of a page or durable container. The
+drill-down views own an icon-only Edit / Export toolbar: edit mode gates free
+placement, Rack Device drag/drop, empty-slot add affordances, and destructive
+controls; normal mode remains an inspect/open surface. Site and Server Room
+exports save a graphical PDF report with topology summaries, scaled rack elevations,
+Front and Rear Rack Device faceplates, paginated inventory data including mounting side, and platform-rendered Unicode
+text for localized names and labels. Rack View also saves an
+Excel-readable inventory table.
+An empty Server Room uses explanatory guidance with an inline New Rack action.
+An empty Rack uses an inline Edit mode action that reveals the Rack Device
+picker.
+The Server Room elevation layout naturally orders named Rack groups, naturally
+orders Rack names within each group, and places the ungrouped row last. Server
+Room PDF export uses that same presentation order. This ordering is derived at
+render/export time and does not rewrite durable Rack `sortOrder` or either
+spatial layout's coordinates.
+In Server Room elevation edit mode, an armed Rack Device targets the currently
+displayed face of the Rack nearest the pointer. That per-Rack face remains
+authoritative when cabinets have been flipped individually; the room-wide flip
+control is not required for placement. Rack View continues to use the explicit
+Front/Rear mounting side selected in the Rack Device properties dialog.
+In the Server Room floor-plan and 2.5D object picker, Rack and fixture placement
+uses two clicks: the first locks the floor position, moving the pointer selects
+one of four facings with a high-contrast arrow on that side, and the second
+commits both position and facing. The arrow follows the 2.5D view angle and
+turns red when the selected facing cannot fit. A successfully placed Wall
+remains armed for continuous placement. A Wall reserves its entire logical grid cell even
+though its construction is drawn as a thin segment: Rack and object placement
+or dragging cannot enter that cell, and a Wall cannot replace any occupant.
+The floor plan pans only when its current zoom or room bounds overflow the pane,
+so it cannot be dragged away to expose background gaps. The 2.5D view keeps
+scrollable camera margin around its projected room. In either spatial view,
+drag blank floor with the left mouse button, drag with the middle button, or
+focus the room and use the arrow keys to pan. The target button below the zoom
+levels, or a middle-button click without dragging, resets the camera to center.
+When a side panel changes the available room width, the camera preserves the
+operator's pan relative to that center while the fitted scene is recomputed, so
+Racks do not drift outside the 2.5D clip box.
+While the 2.5D room is hovered or focused, entering Up, Up, Down, Down, Left,
+Right, Left, Right, B, A within three seconds triggers the decorative Server
+Room blackout: a lightning strike cuts the room lights, rack-top and floor 乖乖
+packages remain visibly green, and the rack lights recover in shuffled order.
+The effect clears itself after about eleven seconds, changes no durable or live
+operational state, ignores editable controls, and removes rapid flashing and
+flicker when the operating system requests reduced motion.
+The room background remains editable from empty elevation and 2.5D space. In
+Floor Plan and 2.5D modes keep their spatial canvases edge-to-edge without the
+generic wallpaper content inset. In Floor Plan mode, the opaque blueprint grid
+means the saved room background is visible only behind the shared toolbar.
+The Rack hover detail card shared by both spatial views mounts outside their
+clipping canvases and flips or clamps within the visible room at every edge.
+The Rack configuration dialog exposes
+`itops.racks.sequenceAction`, which inserts `%02d`; a matching Rack name opts
+into continuous placement with the next number after the highest matching name
+in that Server Room while preserving the configured Rack settings. Right-click,
+Escape, selecting another app control, leaving edit mode, switching layouts, or
+navigating away cancels either continuous tool and deletes only an unplaced
+pending Rack.
+In the floor plan and 2.5D layouts, Shift-clicking an existing Rack or room
+object arms a temporary deep-copy draft instead. The cursor ghost preserves
+the source facing and configuration. One click on a blank floor cell commits
+the copy at that cell; cancellation creates nothing. Rack copies receive the
+next available `#N` name and clone their Rack Devices in the same atomic write
+as the new grid placement and facing.
+Site, Server Room, and Rack tree rows share one native context-menu contract:
+Properties is always the final item, separated from the commands above it.
+Delete sits above Properties and routes to the shared danger `ConfirmSheet`;
+the seeded Default Site shows Delete disabled. A Server Room also places
+`itops.racks.addRackAction` above Delete and opens the New Rack dialog already
+scoped to that Server Room. Server Room and Rack rows also expose
+`itops.actions.duplicate`: it opens the existing Properties dialog with the
+next available `#N` suffix beginning at `#2` and the source properties
+prefilled. Save performs the deep copy; Cancel creates nothing. A Rack copy
+includes its cabinet properties, background, and Rack Devices but starts
+without overlapping floor-plan or 2.5D coordinates. A Server Room copy
+includes its finish, icon, background, room objects, Racks, Rack Devices, and
+internal spatial layout.
+When the virtual Server Rooms row is selected, an `itops.racks.sortAction`
+icon button appears immediately left of the tree-wide collapse/expand controls.
+Its `itops.racks.sortAscending` and `itops.racks.sortDescending` native menu
+items naturally order only that Site's Server Room rows; the per-Site direction
+is a persisted tree-view preference and does not reorder the Site View canvas.
+Selecting an individual Server Room shows the same toolbar icon and naturally
+orders only that room's Rack children; its direction persists per Server Room
+and does not rearrange Rack placement in any spatial view. The virtual row's
+native context menu exposes
+`itops.racks.addServerRoomAction`, which opens the New Server Room dialog for
+that Site, followed by an `itops.racks.sortAction` submenu with the same two
+ordering choices. An individual Server Room's native menu likewise adds that
+submenu after `itops.racks.addRackAction` and before Delete/Properties.
+The live
+Batch Run view renders a per-host grid
+with status chips and **live streamed output** (each host auto-reveals its
+output as it arrives over the `itops://run` `HostOutput` frames; the SSH
+transport streams incrementally via `run_remote_command_capture_streaming`).
+A finished run's per-host output is persisted in the report, so the recent-runs
+list opens a read-only **Run Report viewer** (`RunReportView`) that replays the
+per-host output later.
+
+All user-visible strings use a new `itops` i18n namespace following the
+i18n rules in `AGENTS.md`. New dialogs/sheets follow
+`docs/DESIGN_LANGUAGE.md` and the dialog primitives in `src/app/ui/dialog`.
+
+## AI Assistant integration
+
+IT Ops commands are registered as approval-gated assistant tools, the
+same model Dashboard uses. The shared `itops_*` execution surface covers the
+Module's backend operations end to end: Site/Server Room/Rack/Rack Device
+lifecycle, ordering and duplication, spatial Rack placement/facing and Room
+Objects, presentation backgrounds/icons, SNMP refresh, Host inventory
+(create/update/delete/import/scan), the global Task Library
+(list/get/create/update/remove, with built-ins read-only), and Batch Runs
+(start/cancel/run-history/report). A successful mutating tool emits an
+`itops-changed` backend event that reloads the IT Ops store so the change
+appears without restart. The Rack Device placement schema includes
+`mountFace` (`front` or `rear`, default `front`) plus `kuaiguai`; assistant
+requests for the back, backside, or rear explicitly map to `mountFace: "rear"`
+instead of the Rack's unrelated floor-plan facing. The schema documents the
+rack-top virtual position (`startU = rack.heightU + 1`) plus expiry/style
+metadata, so assistant and built-in MCP calls preserve the same placement
+invariant as the UI.
+
+Assistant-authored Batch Tasks (Task definitions and ad-hoc run scripts) may never introduce sudo steps or
+secret-vault references — those are configured only in the Task Library
+editor, and a full-value Task update may only resend the sudo steps the
+stored Task already carries. Run-history reads return compact per-host outcome
+rows; `itops_get_run_report` attaches per-host output tail-capped by
+`maxOutputChars`.
+
+The page-context projection includes the current navigator selection
+(Site, destination, drill-down), Site names/ids/counts, the Task Library
+count, recent run counts, IPAM and Network
+Map counts once those pages have been opened, and the registered tutorial
+targets — never full run output, streamed host buffers, secrets, or
+credential references. The `tutorial_highlight`
+tool's navigation payload accepts `itopsSiteId` and `itopsDestination`
+(`site | serverRooms | hosts | runHistory | taskLibrary |
+ipam | networkMaps`)
+so the assistant can open a specific Site destination before
+highlighting; destination pages carry static targets
+(`itops.hostsPanel`, `itops.taskLibrary`, …, see
+`src/app/tutorialNavigationModel.ts`) and rows carry entity-scoped
+targets (`itops.site:<id>`, `itops.host:<id>`, `itops.task:<id>`,
+`itops.run:<id>`). Mutating actions (starting a Batch Run) go through the existing approval flow; the
+assistant cannot run a site task silently. Over the built-in MCP bridge
+the same tools are published under `kkterm.itops.*`, with
+task-authoring and run-starting tools in
+`dangerous` sub-namespaces (see `docs/MCP.md`).
+
+VLAN and IPAM operations use the same shared assistant/MCP path as the rest of
+IT Ops. The assistant can read the complete derived IPAM snapshot and VLAN
+list; create, update, and remove VLANs, Prefixes, and Address Records; suggest
+documented-free addresses; atomically import a create-only structured batch;
 read an explicitly named `.xlsx` workbook; and run the explicit Prefix scan.
 When the user pastes prose, a copied table, CSV, or rough notes, the model first
 reads the snapshot and VLANs, converts only explicit facts into the typed batch,
