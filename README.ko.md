@@ -36,6 +36,9 @@
   <a href="https://github.com/ryantsai/KKTerm/blob/main/LICENSE">
     <img src="https://img.shields.io/github/license/ryantsai/KKTerm?style=for-the-badge&color=blue" alt="MIT License" />
   </a>
+  <a href="https://github.com/sponsors/ryantsai">
+    <img src="https://img.shields.io/badge/Sponsor-%E2%9D%A4-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="GitHub에서 KKTerm 후원하기" />
+  </a>
   <br />
   <img src="https://img.shields.io/badge/cross%E2%80%91platform-desktop-0078D6?style=flat-square" alt="Cross-platform desktop" />
   <img src="https://img.shields.io/badge/local--first-no%20telemetry-success?style=flat-square" alt="Local-first" />
@@ -233,6 +236,14 @@ Dashboard View에서는 KKTerm에 내장된 애니메이션 배경 45종을 사�
 - 더 많은 IT Ops 자동화 기능
 
 전체이며 자주 갱신되는 버전: [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
+---
+
+## 후원
+
+KKTerm은 한 사람이 개발하고 유지 관리합니다. 유용하게 사용하고 계시다면 어떤 지원이든 환영하며, 계속 개선하는 데 큰 도움이 됩니다.
+
+[![GitHub에서 KKTerm 후원하기](https://img.shields.io/badge/Sponsor%20on%20GitHub-%E2%9D%A4-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white)](https://github.com/sponsors/ryantsai)
 
 ---
 

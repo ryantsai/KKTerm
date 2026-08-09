@@ -36,6 +36,9 @@
   <a href="https://github.com/ryantsai/KKTerm/blob/main/LICENSE">
     <img src="https://img.shields.io/github/license/ryantsai/KKTerm?style=for-the-badge&color=blue" alt="MIT License" />
   </a>
+  <a href="https://github.com/sponsors/ryantsai">
+    <img src="https://img.shields.io/badge/Sponsor-%E2%9D%A4-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="在 GitHub 上贊助 KKTerm" />
+  </a>
   <br />
   <img src="https://img.shields.io/badge/cross%E2%80%91platform-desktop-0078D6?style=flat-square" alt="Cross-platform desktop" />
   <img src="https://img.shields.io/badge/local--first-no%20telemetry-success?style=flat-square" alt="Local-first" />
@@ -233,6 +236,14 @@ homelab、正職工作、還有那個客戶的伺服器，本來就不該擠在�
 - 更多 IT Ops 自動化功能
 
 完整且時常更新的版本：[`docs/ROADMAP.md`](docs/ROADMAP.md)。
+
+---
+
+## 贊助
+
+KKTerm 由我獨自開發與維護。如果它對你有所幫助，歡迎任何形式的支持，這會協助我持續改進它。
+
+[![在 GitHub 上贊助 KKTerm](https://img.shields.io/badge/Sponsor%20on%20GitHub-%E2%9D%A4-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white)](https://github.com/sponsors/ryantsai)
 
 ---
 

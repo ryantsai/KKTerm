@@ -36,6 +36,9 @@
   <a href="https://github.com/ryantsai/KKTerm/blob/main/LICENSE">
     <img src="https://img.shields.io/github/license/ryantsai/KKTerm?style=for-the-badge&color=blue" alt="MIT License" />
   </a>
+  <a href="https://github.com/sponsors/ryantsai">
+    <img src="https://img.shields.io/badge/Sponsor-%E2%9D%A4-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="在 GitHub 上赞助 KKTerm" />
+  </a>
   <br />
   <img src="https://img.shields.io/badge/cross%E2%80%91platform-desktop-0078D6?style=flat-square" alt="Cross-platform desktop" />
   <img src="https://img.shields.io/badge/local--first-no%20telemetry-success?style=flat-square" alt="Local-first" />
@@ -233,6 +236,14 @@ homelab、正职工作、还有那个客户的服务器，本来就不该挤在�
 - 更多 IT Ops 自动化功能
 
 完整且经常更新的版本：[`docs/ROADMAP.md`](docs/ROADMAP.md)。
+
+---
+
+## 赞助
+
+KKTerm 由我独自开发和维护。如果它对你有所帮助，欢迎任何形式的支持，这将帮助我继续改进它。
+
+[![在 GitHub 上赞助 KKTerm](https://img.shields.io/badge/Sponsor%20on%20GitHub-%E2%9D%A4-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white)](https://github.com/sponsors/ryantsai)
 
 ---
 

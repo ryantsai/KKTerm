@@ -36,6 +36,9 @@
   <a href="https://github.com/ryantsai/KKTerm/blob/main/LICENSE">
     <img src="https://img.shields.io/github/license/ryantsai/KKTerm?style=for-the-badge&color=blue" alt="MIT License" />
   </a>
+  <a href="https://github.com/sponsors/ryantsai">
+    <img src="https://img.shields.io/badge/Sponsor-%E2%9D%A4-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="Sostieni KKTerm su GitHub" />
+  </a>
   <br />
   <img src="https://img.shields.io/badge/cross%E2%80%91platform-desktop-0078D6?style=flat-square" alt="Cross-platform desktop" />
   <img src="https://img.shields.io/badge/local--first-no%20telemetry-success?style=flat-square" alt="Local-first" />
@@ -233,6 +236,14 @@ Vuoi compilare dai sorgenti o contribuire? Tutto ciò che serve è in [`CONTRIBU
 - Più funzionalità di automazione IT Ops
 
 Versione completa e aggiornata di frequente: [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
+---
+
+## Sponsorizzazioni
+
+KKTerm è sviluppato e mantenuto da una sola persona. Se lo trovi utile, qualsiasi supporto è benvenuto e mi aiuta a continuare a migliorarlo.
+
+[![Sostieni KKTerm su GitHub](https://img.shields.io/badge/Sponsor%20on%20GitHub-%E2%9D%A4-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white)](https://github.com/sponsors/ryantsai)
 
 ---
 
