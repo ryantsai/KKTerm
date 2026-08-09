@@ -1,6 +1,7 @@
 use rayon::prelude::*;
 use serde::Serialize;
 use serde_json::json;
+use std::collections::HashMap;
 #[cfg(target_os = "windows")]
 use std::os::windows::fs::MetadataExt;
 use std::{
@@ -9,6 +10,7 @@ use std::{
     path::{Path, PathBuf},
     process::Command,
 };
+use tauri::{AppHandle, Emitter};
 
 #[cfg(target_os = "windows")]
 const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
@@ -21,6 +23,30 @@ pub struct CleanerOverview {
     largest: Vec<DiskEntry>,
     cleanup: Vec<CleanupEntry>,
     apps: Vec<InstalledApp>,
+    extensions: Vec<ExtensionEntry>,
+    file_count: u64,
+    folder_count: u64,
+    elapsed_ms: u64,
+    disk_capacity_bytes: u64,
+    disk_free_bytes: u64,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ExtensionEntry {
+    extension: String,
+    bytes: u64,
+    files: u64,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ScanProgress {
+    files: u64,
+    folders: u64,
+    bytes: u64,
+    current_path: String,
+    elapsed_ms: u64,
 }
 
 #[derive(Serialize)]
@@ -80,37 +106,109 @@ fn is_reparse_point(metadata: &fs::Metadata) -> bool {
     metadata.file_type().is_symlink()
 }
 
-fn child_sizes(path: &Path) -> Vec<DiskEntry> {
-    let Ok(entries) = fs::read_dir(path) else {
-        return Vec::new();
-    };
-    let mut result: Vec<_> = entries
-        .flatten()
-        .filter(|entry| {
-            fs::symlink_metadata(entry.path()).is_ok_and(|metadata| !is_reparse_point(&metadata))
-        })
-        .collect::<Vec<_>>()
-        .into_par_iter()
-        .map(|entry| {
+fn scan_drive(
+    app: &AppHandle,
+    root: &Path,
+) -> (Vec<DiskEntry>, Vec<ExtensionEntry>, u64, u64, u64) {
+    let started = std::time::Instant::now();
+    let mut pending = vec![root.to_path_buf()];
+    let mut child_bytes: HashMap<PathBuf, u64> = HashMap::new();
+    let mut extension_totals: HashMap<String, (u64, u64)> = HashMap::new();
+    let mut files = 0_u64;
+    let mut folders = 0_u64;
+    let mut bytes = 0_u64;
+    let mut since_progress = 0_u16;
+
+    while let Some(directory) = pending.pop() {
+        folders += 1;
+        let Ok(entries) = fs::read_dir(&directory) else {
+            continue;
+        };
+        for entry in entries.flatten() {
             let path = entry.path();
-            let bytes = fs::symlink_metadata(&path)
-                .map(|m| {
-                    if m.is_dir() {
-                        directory_size(&path)
-                    } else {
-                        m.len()
-                    }
-                })
-                .unwrap_or(0);
-            DiskEntry {
-                path: path.to_string_lossy().into_owned(),
-                bytes,
+            let Ok(metadata) = fs::symlink_metadata(&path) else {
+                continue;
+            };
+            if is_reparse_point(&metadata) {
+                continue;
             }
+            if metadata.is_dir() {
+                pending.push(path);
+            } else if metadata.is_file() {
+                let size = metadata.len();
+                files += 1;
+                bytes = bytes.saturating_add(size);
+                if let Ok(relative) = path.strip_prefix(root)
+                    && let Some(first) = relative.components().next()
+                {
+                    *child_bytes.entry(root.join(first)).or_default() += size;
+                }
+                let extension = path
+                    .extension()
+                    .and_then(|value| value.to_str())
+                    .filter(|value| !value.is_empty())
+                    .map(|value| format!(".{}", value.to_ascii_lowercase()))
+                    .unwrap_or_else(|| "(none)".into());
+                let total = extension_totals.entry(extension).or_default();
+                total.0 = total.0.saturating_add(size);
+                total.1 += 1;
+            }
+            since_progress = since_progress.saturating_add(1);
+            if since_progress >= 4_096 {
+                since_progress = 0;
+                let _ = app.emit(
+                    "system-cleaner://scan-progress",
+                    ScanProgress {
+                        files,
+                        folders,
+                        bytes,
+                        current_path: directory.to_string_lossy().into_owned(),
+                        elapsed_ms: started.elapsed().as_millis() as u64,
+                    },
+                );
+            }
+        }
+    }
+    let mut largest = child_bytes
+        .into_iter()
+        .map(|(path, bytes)| DiskEntry {
+            path: path.to_string_lossy().into_owned(),
+            bytes,
         })
-        .collect();
-    result.sort_by_key(|entry| std::cmp::Reverse(entry.bytes));
-    result.truncate(40);
-    result
+        .collect::<Vec<_>>();
+    largest.sort_by_key(|entry| std::cmp::Reverse(entry.bytes));
+    let mut extensions = extension_totals
+        .into_iter()
+        .map(|(extension, (bytes, files))| ExtensionEntry {
+            extension,
+            bytes,
+            files,
+        })
+        .collect::<Vec<_>>();
+    extensions.sort_by_key(|entry| std::cmp::Reverse(entry.bytes));
+    extensions.truncate(100);
+    (
+        largest,
+        extensions,
+        files,
+        folders,
+        started.elapsed().as_millis() as u64,
+    )
+}
+
+#[cfg(target_os = "windows")]
+fn disk_space(root: &Path) -> (u64, u64) {
+    use std::os::windows::ffi::OsStrExt;
+    use windows_sys::Win32::Storage::FileSystem::GetDiskFreeSpaceExW;
+    let wide = root
+        .as_os_str()
+        .encode_wide()
+        .chain(Some(0))
+        .collect::<Vec<_>>();
+    let (mut free, mut total) = (0_u64, 0_u64);
+    let ok =
+        unsafe { GetDiskFreeSpaceExW(wide.as_ptr(), &mut free, &mut total, std::ptr::null_mut()) };
+    if ok == 0 { (0, 0) } else { (total, free) }
 }
 
 fn audit(event: &str, details: serde_json::Value) {
@@ -181,40 +279,49 @@ fn installed_apps() -> Vec<InstalledApp> {
 }
 
 #[tauri::command]
-pub async fn system_cleaner_scan() -> Result<CleanerOverview, String> {
+pub async fn system_cleaner_scan(app: AppHandle) -> Result<CleanerOverview, String> {
     #[cfg(not(target_os = "windows"))]
     return Err("System Cleaner is available only on Windows.".into());
     #[cfg(target_os = "windows")]
     {
-        tauri::async_runtime::spawn_blocking(|| {
-            let root = env::var("USERPROFILE")
+        tauri::async_runtime::spawn_blocking(move || {
+            let root = env::var("SystemDrive")
                 .map(PathBuf::from)
-                .map_err(|_| "Windows user folder is unavailable.")?;
-            let (largest, (cleanup, apps)) = rayon::join(
-                || child_sizes(&root),
-                || {
-                    rayon::join(
-                        || {
-                            cleanup_locations()
-                                .into_par_iter()
-                                .map(|(id, path)| CleanupEntry {
-                                    id,
-                                    bytes: directory_size(&path),
-                                    path: path.to_string_lossy().into_owned(),
-                                })
-                                .collect()
-                        },
-                        installed_apps,
-                    )
-                },
-            );
+                .map(|drive| drive.join("\\"))
+                .map_err(|_| "Windows system drive is unavailable.")?;
+            let ((largest, extensions, file_count, folder_count, elapsed_ms), (cleanup, apps)) =
+                rayon::join(
+                    || scan_drive(&app, &root),
+                    || {
+                        rayon::join(
+                            || {
+                                cleanup_locations()
+                                    .into_par_iter()
+                                    .map(|(id, path)| CleanupEntry {
+                                        id,
+                                        bytes: directory_size(&path),
+                                        path: path.to_string_lossy().into_owned(),
+                                    })
+                                    .collect()
+                            },
+                            installed_apps,
+                        )
+                    },
+                );
             let total_bytes = largest.iter().map(|entry| entry.bytes).sum();
+            let (disk_capacity_bytes, disk_free_bytes) = disk_space(&root);
             Ok(CleanerOverview {
                 scan_root: root.to_string_lossy().into_owned(),
                 total_bytes,
                 largest,
                 cleanup,
                 apps,
+                extensions,
+                file_count,
+                folder_count,
+                elapsed_ms,
+                disk_capacity_bytes,
+                disk_free_bytes,
             })
         })
         .await

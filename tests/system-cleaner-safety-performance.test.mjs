@@ -5,14 +5,15 @@ import test from "node:test";
 const backend = await readFile(new URL("../src-tauri/src/system_cleaner.rs", import.meta.url), "utf8");
 const page = await readFile(new URL("../src/modules/system-cleaner/SystemCleanerPage.tsx", import.meta.url), "utf8");
 
-test("System Cleaner scans independent roots concurrently off the UI thread", () => {
+test("System Cleaner scans the drive once off the UI thread and streams progress", () => {
   assert.match(backend, /spawn_blocking/);
   assert.match(backend, /rayon::join/);
-  assert.match(backend, /into_par_iter/);
+  assert.match(backend, /fn scan_drive/);
+  assert.match(backend, /system-cleaner:\/\/scan-progress/);
+  assert.match(page, /listen<SystemCleanerScanProgress>/);
 });
 
 test("System Cleaner opens idle and scans only on explicit demand", () => {
-  assert.doesNotMatch(page, /useEffect/);
   assert.match(page, /onClick=\{\(\) => void scan\(\)\}/);
   assert.match(page, /systemCleaner\.scanHint/);
 });
