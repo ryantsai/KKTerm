@@ -2977,6 +2977,7 @@ fn general_settings_round_trip_through_settings_table() {
     assert!(defaults.show_installer_on_rail);
     assert!(defaults.show_it_ops);
     assert!(defaults.show_screenshots_on_rail);
+    assert!(defaults.show_system_cleaner_on_rail);
     assert!(defaults.show_dont_sleep_on_rail);
     assert_eq!(
         defaults.activity_rail_order,
@@ -2985,6 +2986,7 @@ fn general_settings_round_trip_through_settings_table() {
             "dashboard",
             "installer",
             "screenshots",
+            "systemCleaner",
             "itops",
             "dontSleep"
         ]
@@ -3020,6 +3022,7 @@ fn general_settings_round_trip_through_settings_table() {
             show_installer_on_rail: false,
             show_it_ops: false,
             show_screenshots_on_rail: false,
+            show_system_cleaner_on_rail: false,
             show_dont_sleep_on_rail: false,
             activity_rail_order: vec![
                 "dontSleep".to_string(),
@@ -3425,6 +3428,7 @@ fn database_backup_import_restores_settings_and_connections() {
             show_installer_on_rail: false,
             show_it_ops: false,
             show_screenshots_on_rail: false,
+            show_system_cleaner_on_rail: false,
             show_dont_sleep_on_rail: false,
             activity_rail_order: vec![
                 "dontSleep".to_string(),
@@ -3473,6 +3477,7 @@ fn database_backup_import_restores_settings_and_connections() {
             show_installer_on_rail: true,
             show_it_ops: false,
             show_screenshots_on_rail: true,
+            show_system_cleaner_on_rail: true,
             show_dont_sleep_on_rail: true,
             activity_rail_order: default_activity_rail_order(),
             installer_check_interval_seconds: 86_400,

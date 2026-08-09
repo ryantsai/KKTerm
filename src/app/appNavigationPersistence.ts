@@ -9,6 +9,7 @@ export function activePageFromStoredValue(value: unknown): BaseModulePage {
     value === "itops" ||
     value === "installer" ||
     value === "screenshots" ||
+    value === "systemCleaner" ||
     value === "workspace"
     ? value
     : "workspace";

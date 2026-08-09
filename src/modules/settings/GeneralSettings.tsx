@@ -16,7 +16,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { CHECK_FOR_APP_UPDATES_EVENT } from "../../app/AppUpdatePrompt";
 import { ModuleIconTile, type ModuleKind } from "../../app/ModuleHeader";
-import { InstallHelperModuleIcon, ScreenshotsModuleIcon } from "../../app/moduleIdentityIcons";
+import { InstallHelperModuleIcon, ScreenshotsModuleIcon, SystemCleanerModuleIcon } from "../../app/moduleIdentityIcons";
 import {
   activityRailModuleOrder,
   canHideActivityRailModule,
@@ -84,6 +84,7 @@ type ActivityRailVisibilitySetting =
   | "showDashboardOnRail"
   | "showInstallerOnRail"
   | "showScreenshotsOnRail"
+  | "showSystemCleanerOnRail"
   | "showItOps"
   | "showDontSleepOnRail";
 const ACTIVITY_RAIL_SETTINGS: Record<
@@ -94,6 +95,7 @@ const ACTIVITY_RAIL_SETTINGS: Record<
   dashboard: ["showDashboardOnRail", "settings.sectionDashboard"],
   installer: ["showInstallerOnRail", "settings.sectionInstaller"],
   screenshots: ["showScreenshotsOnRail", "settings.sectionScreenshots"],
+  systemCleaner: ["showSystemCleanerOnRail", "settings.sectionSystemCleaner"],
   itops: ["showItOps", "settings.sectionItOps"],
   dontSleep: ["showDontSleepOnRail", "settings.sectionDontSleep"],
 };
@@ -103,7 +105,8 @@ function ActivityRailModuleIcon({ id }: { id: ActivityRailItemId }) {
     return <BedSingle className="activity-rail-order-icon" size={17} />;
   }
 
-  const module = id as ModuleKind;
+  const module: ModuleKind =
+    id === "systemCleaner" ? "system-cleaner" : (id as ModuleKind);
   const icon =
     id === "workspace" ? (
       <LayoutDashboard aria-hidden="true" />
@@ -113,6 +116,8 @@ function ActivityRailModuleIcon({ id }: { id: ActivityRailItemId }) {
       <InstallHelperModuleIcon aria-hidden="true" />
     ) : id === "screenshots" ? (
       <ScreenshotsModuleIcon aria-hidden="true" />
+    ) : id === "systemCleaner" ? (
+      <SystemCleanerModuleIcon aria-hidden="true" />
     ) : (
       <ItIcon name="ops" size={17} sw={1.7} />
     );
@@ -388,7 +393,8 @@ export function GeneralSettings() {
     : t("settings.lastCheckedNever");
   const visibleActivityRailModuleOrder = activityRailModuleOrder(
     draft.activityRailOrder,
-  ).filter((id) => id !== "installer" || installerSupported);
+  ).filter((id) => id !== "installer" || installerSupported)
+    .filter((id) => id !== "systemCleaner" || windowsPlatform);
 
   useSettingsSaveRegistration({ hasChanges, onSave: handleSave });
 

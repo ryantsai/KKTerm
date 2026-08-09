@@ -73,6 +73,7 @@ zip = "8"
 # crate shares KKTerm's existing zip 8 / quick-xml 0.41 / encoding_rs tree.
 calamine = { version = "0.36", default-features = false }
 futures = "0.3"
+rayon = "1.11"
 filedescriptor = "0.8.3"
 lazy_static = "1.5.0"
 shared_library = "0.1.9"

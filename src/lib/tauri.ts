@@ -1174,6 +1174,18 @@ export type NetError = {
 };
 
 type CommandMap = {
+  system_cleaner_scan: {
+    args: undefined;
+    result: import("../modules/system-cleaner/types").SystemCleanerOverview;
+  };
+  system_cleaner_clean: {
+    args: { ids: string[] };
+    result: number;
+  };
+  system_cleaner_uninstall: {
+    args: { appId: string };
+    result: void;
+  };
   app_bootstrap: {
     args: undefined;
     result: AppBootstrap;

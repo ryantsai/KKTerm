@@ -49,8 +49,10 @@ that template instead of rebuilding the icon, title, divider, or spacer markup.
 - The header is 44px tall with 14px horizontal insets. Its title uses the
   shared 15px/680-weight/1.2-line-height treatment and stays vertically centered.
 - `ModuleIconTile` is the Module identity source: Workspace is green, Dashboard
-  uses the accent tint, Install Helper uses the accent/red tint, and IT Ops uses
-  the accent/green tint. Use the same glyph and tint in General → Activity Rail
+  uses the accent tint, Install Helper uses the accent/red tint, IT Ops uses
+  the accent/green tint, and System Cleaner uses the accent/green tint at a
+  lower accent share to stay distinct from IT Ops. Use the same glyph and tint
+  in General → Activity Rail
   and in a Module-specific Settings navigation entry.
 - Put the Module identity first, optional local navigation after
   `ModuleHeaderDivider`, and primary actions at the far right using

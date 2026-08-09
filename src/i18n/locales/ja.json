@@ -828,6 +828,32 @@
     "removedStatus": "アプリランチャーエントリを削除しました：{{name}}。",
     "launchStatus": "{{name}} を起動しています。"
   },
+  "systemCleaner": {
+    "title": "System Cleaner",
+    "scan": "Scan",
+    "scanning": "Scanning this PC…",
+    "scanHint": "Scan to analyze storage, cleanup candidates, and installed apps.",
+    "storage": "Storage",
+    "cleanup": "Cleanup",
+    "apps": "Uninstaller",
+    "storageHeading": "Largest items in {{root}}",
+    "cleanupHeading": "Safe cleanup candidates",
+    "appsHeading": "Installed applications",
+    "clean": "Clean {{size}}",
+    "cleaned": "Cleaned {{size}}.",
+    "uninstall": "Uninstall",
+    "uninstallTitle": "Uninstall application?",
+    "uninstallMessage": "Windows will ask for UAC approval, then uninstall {{name}} in a separate elevated helper. This operation is recorded in the local operations log.",
+    "uninstalled": "Uninstalled {{name}}.",
+    "error": "System Cleaner failed: {{message}}",
+    "category": {
+      "temp": "Temporary files",
+      "browser-cache": "Microsoft Edge cache",
+      "thumbnail-cache": "Windows thumbnail cache"
+    },
+    "cleanTitle": "Delete selected files?",
+    "cleanMessage": "Delete {{size}} from the selected cleanup categories? Locked files will be skipped. This operation is recorded in the local operations log."
+  },
   "installer": {
     "title": "インストールヘルパー",
     "portableMachineLocalNotice": "ポータブル モード: インストールされたツール、管理されたアプリ データ、および Windows サービスはこのコンピューター上に残り、ポータブル フォルダーが削除された後も残ります。",
@@ -3079,6 +3105,7 @@
     "saveAndQuit": "保存して閉じる",
     "quitWithoutSaving": "保存せずに閉じる",
     "sectionItOps": "IT Ops",
+    "sectionSystemCleaner": "System Cleaner",
     "itOpsSaved": "IT Ops 設定を保存しました。",
     "networkMapAnimations": "アニメーション",
     "networkMapAnimationsHint": "すべてのネットワークマップで、ノード画像とリンク軌跡のアニメーションを制御します。ホバー時は、キーボードやタッチ操作のために選択中のオブジェクトもアニメーションします。",
