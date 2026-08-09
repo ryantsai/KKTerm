@@ -828,6 +828,30 @@
     "removedStatus": "应用启动器条目已移除：{{name}}。",
     "launchStatus": "正在启动 {{name}}。"
   },
+  "systemCleaner": {
+    "title": "System Cleaner",
+    "scan": "Scan",
+    "scanning": "Scanning this PC…",
+    "scanHint": "Scan to analyze storage, cleanup candidates, and installed apps.",
+    "storage": "Storage",
+    "cleanup": "Cleanup",
+    "apps": "Uninstaller",
+    "storageHeading": "Largest items in {{root}}",
+    "cleanupHeading": "Safe cleanup candidates",
+    "appsHeading": "Installed applications",
+    "clean": "Clean {{size}}",
+    "cleaned": "Cleaned {{size}}.",
+    "uninstall": "Uninstall",
+    "uninstallTitle": "Uninstall application?",
+    "uninstallMessage": "Windows will uninstall {{name}} and remove files registered by its package.",
+    "uninstalled": "Uninstalled {{name}}.",
+    "error": "System Cleaner failed: {{message}}",
+    "category": {
+      "temp": "Temporary files",
+      "browser-cache": "Microsoft Edge cache",
+      "thumbnail-cache": "Windows thumbnail cache"
+    }
+  },
   "installer": {
     "title": "安装助手",
     "portableMachineLocalNotice": "便携式模式：已安装的工具、托管应用程序数据和 Windows 服务保留在此计算机上，并在删除便携式文件夹后保留。",

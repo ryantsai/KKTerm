@@ -828,6 +828,30 @@
     "removedStatus": "Entrada del lanzador eliminada: {{name}}.",
     "launchStatus": "Iniciando {{name}}."
   },
+  "systemCleaner": {
+    "title": "System Cleaner",
+    "scan": "Scan",
+    "scanning": "Scanning this PC…",
+    "scanHint": "Scan to analyze storage, cleanup candidates, and installed apps.",
+    "storage": "Storage",
+    "cleanup": "Cleanup",
+    "apps": "Uninstaller",
+    "storageHeading": "Largest items in {{root}}",
+    "cleanupHeading": "Safe cleanup candidates",
+    "appsHeading": "Installed applications",
+    "clean": "Clean {{size}}",
+    "cleaned": "Cleaned {{size}}.",
+    "uninstall": "Uninstall",
+    "uninstallTitle": "Uninstall application?",
+    "uninstallMessage": "Windows will uninstall {{name}} and remove files registered by its package.",
+    "uninstalled": "Uninstalled {{name}}.",
+    "error": "System Cleaner failed: {{message}}",
+    "category": {
+      "temp": "Temporary files",
+      "browser-cache": "Microsoft Edge cache",
+      "thumbnail-cache": "Windows thumbnail cache"
+    }
+  },
   "installer": {
     "title": "Asistente de instalación",
     "portableMachineLocalNotice": "Modo portátil: las herramientas instaladas, los datos de aplicaciones administradas y los servicios de Windows permanecen en esta computadora y permanecen después de que se elimina la carpeta portátil.",

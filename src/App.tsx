@@ -90,6 +90,11 @@ const ScreenshotsPage = lazy(() =>
     default: ScreenshotsPage,
   })),
 );
+const SystemCleanerPage = lazy(() =>
+  import("./modules/system-cleaner/SystemCleanerPage").then(({ SystemCleanerPage }) => ({
+    default: SystemCleanerPage,
+  })),
+);
 const SettingsPage = lazy(() =>
   import("./modules/settings/SettingsPage").then(({ SettingsPage }) => ({
     default: SettingsPage,
@@ -114,6 +119,9 @@ function App() {
   const [itopsMounted, setItopsMounted] = useState(() => activePage === "itops");
   const [screenshotsMounted, setScreenshotsMounted] = useState(
     () => activePage === "screenshots",
+  );
+  const [systemCleanerMounted, setSystemCleanerMounted] = useState(
+    () => activePage === "systemCleaner",
   );
   const [activeSettingsSectionId, setActiveSettingsSectionId] =
     useState<SettingsSectionId>("general-settings");
@@ -153,6 +161,9 @@ function App() {
     }
     if (page === "screenshots") {
       setScreenshotsMounted(true);
+    }
+    if (page === "systemCleaner") {
+      setSystemCleanerMounted(true);
     }
     if (isOverlayPage(page) && !isOverlayPage(activePage)) {
       previousBasePageRef.current = activePage;
@@ -593,6 +604,12 @@ function App() {
         <ScreenshotsPage
           key="screenshots-page"
           active={visibleBasePage === "screenshots"}
+        />
+      ) : null}
+      {systemCleanerMounted ? (
+        <SystemCleanerPage
+          key="system-cleaner-page"
+          active={visibleBasePage === "systemCleaner"}
         />
       ) : null}
       </Suspense>

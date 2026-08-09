@@ -59,6 +59,7 @@ mod ssh_config;
 mod ssh_keys;
 mod storage;
 mod system_theme;
+mod system_cleaner;
 mod telnet;
 mod vnc;
 mod vt_text;
@@ -4820,6 +4821,9 @@ pub fn run() {
             get_performance_snapshot,
             get_host_usage_snapshot,
             get_system_performance_counters,
+            system_cleaner::system_cleaner_scan,
+            system_cleaner::system_cleaner_clean,
+            system_cleaner::system_cleaner_uninstall,
             pc_info_get,
             pc_info_refresh,
             open_windows_task_manager,

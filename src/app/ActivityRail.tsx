@@ -18,7 +18,7 @@ import { flattenConnections } from "../modules/workspace/connections/treeUtils";
 import { ariaPressed } from "../lib/aria";
 import { nativeMenuIcons } from "../lib/nativeMenuIcons";
 import { showNativeContextMenu, type NativeContextMenuItem } from "../lib/nativeContextMenu";
-import { supportsInstallerHelper } from "../lib/platform";
+import { isWindowsPlatform, supportsInstallerHelper } from "../lib/platform";
 import { activityRailModuleOrder } from "./activityRailOrder";
 import { invokeCommand, isTauriRuntime } from "../lib/tauri";
 import { DEFAULT_WORKSPACE_ID, useWorkspaceStore } from "../store";
@@ -27,7 +27,7 @@ import { NewWorkspaceDialog } from "../modules/workspace/NewWorkspaceDialog";
 import { DeleteWorkspaceDialog } from "../modules/workspace/WorkspaceRailDialogs";
 import { WorkspaceIcon } from "../modules/workspace/workspaceIcons";
 import { ItOpsModuleIcon } from "../modules/itops/icons";
-import { InstallHelperModuleIcon, ScreenshotsModuleIcon } from "./moduleIdentityIcons";
+import { InstallHelperModuleIcon, ScreenshotsModuleIcon, SystemCleanerModuleIcon } from "./moduleIdentityIcons";
 import { RailTooltip } from "./RailTooltip";
 import { showShutdownTimerMenu } from "./shutdownTimerMenu";
 
@@ -37,6 +37,7 @@ export type ActivePage =
   | "itops"
   | "installer"
   | "screenshots"
+  | "systemCleaner"
   | "settings";
 
 type ConnectedRailItem = {
@@ -816,6 +817,17 @@ export function ActivityRail({
         >
           <ScreenshotsModuleIcon size={18} />
           <RailTooltip label={t("screenshots.railLabel")} />
+        </button>
+      ) : null}
+      {isWindowsPlatform() ? (
+        <button
+          className={`rail-button ${activePage === "systemCleaner" ? "active" : ""}`}
+          aria-label={t("systemCleaner.title")}
+          data-tutorial-id="app.activityRailSystemCleaner"
+          onClick={() => onNavigate("systemCleaner")}
+        >
+          <SystemCleanerModuleIcon size={18} />
+          <RailTooltip label={t("systemCleaner.title")} />
         </button>
       ) : null}
       {connectedRailItems.length > 0 ? (
