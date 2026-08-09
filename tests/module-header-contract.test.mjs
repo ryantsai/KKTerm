@@ -29,9 +29,10 @@ test("Install Helper pane header uses the Activity Rail module icon", async () =
 
   assert.match(
     activityRail,
-    /import \{ InstallHelperModuleIcon, ScreenshotsModuleIcon \} from "\.\/moduleIdentityIcons"/,
+    /import \{ InstallHelperModuleIcon, ScreenshotsModuleIcon, SystemCleanerModuleIcon \} from "\.\/moduleIdentityIcons"/,
   );
   assert.match(activityRail, /<InstallHelperModuleIcon size=\{18\} \/>/);
+  assert.match(activityRail, /<SystemCleanerModuleIcon size=\{18\} \/>/);
   assert.match(installerPage, /import \{ InstallHelperModuleIcon \} from "\.\.\/\.\.\/app\/moduleIdentityIcons"/);
   assert.match(installerPage, /<InstallHelperModuleIcon size=\{16\} aria-hidden="true" \/>/);
   assert.doesNotMatch(installerPage, /<Box size=\{16\}/);

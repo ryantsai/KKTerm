@@ -13,6 +13,7 @@ test("Activity Rail order defaults and repairs incomplete saved values", () => {
     "dashboard",
     "installer",
     "screenshots",
+    "systemCleaner",
     "itops",
     "dontSleep",
   ]);
@@ -22,6 +23,7 @@ test("Activity Rail order defaults and repairs incomplete saved values", () => {
     "dashboard",
     "installer",
     "screenshots",
+    "systemCleaner",
     "itops",
   ]);
 });
@@ -29,7 +31,7 @@ test("Activity Rail order defaults and repairs incomplete saved values", () => {
 test("Activity Rail items can be dragged into a new persisted order", () => {
   assert.deepEqual(
     reorderActivityRailItems(DEFAULT_ACTIVITY_RAIL_ORDER, "dontSleep", "dashboard"),
-    ["workspace", "dontSleep", "dashboard", "installer", "screenshots", "itops"],
+    ["workspace", "dontSleep", "dashboard", "installer", "screenshots", "systemCleaner", "itops"],
   );
 });
 
@@ -43,7 +45,7 @@ test("Activity Rail keeps connected Connections after ordered Modules", () => {
       "dashboard",
       "installer",
     ]),
-    ["itops", "workspace", "dashboard", "installer", "screenshots"],
+    ["itops", "workspace", "dashboard", "installer", "screenshots", "systemCleaner"],
   );
 });
 
@@ -56,6 +58,7 @@ test("Activity Rail requires at least one visible Module", () => {
         showDashboardOnRail: false,
         showInstallerOnRail: false,
         showScreenshotsOnRail: false,
+        showSystemCleanerOnRail: false,
         showItOps: false,
       },
       "workspace",
@@ -69,6 +72,7 @@ test("Activity Rail requires at least one visible Module", () => {
         showDashboardOnRail: true,
         showInstallerOnRail: false,
         showScreenshotsOnRail: false,
+        showSystemCleanerOnRail: false,
         showItOps: false,
       },
       "workspace",

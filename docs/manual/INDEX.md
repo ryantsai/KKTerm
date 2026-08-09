@@ -38,6 +38,7 @@ When a doc says "right-click on X", the implementation is a Tauri native context
 | 17 | [17-data-backup-secrets.md](17-data-backup-secrets.md) | SQLite store, OS keychain, settings Import/Export `.kkbackup`, startup backup ZIP snapshots, sharing connections without passwords | `settings`, `common` |
 | 18 | [18-installer.md](18-installer.md) | Install Helper Module — Windows dev-tool catalog, install/update/uninstall, bundled catalog, UAC and WSL behaviour | `installer` |
 | 19 | [19-git-browser.md](19-git-browser.md) | Git Browser overlay — commit graph, inspector, diff, staging/commit, branches/tags/stashes, fetch/pull/push | `git` |
+| 20 | [20-system-cleaner.md](20-system-cleaner.md) | Windows-only System Cleaner Module — storage analysis, safe cleanup candidates, and application uninstall | `systemCleaner` |
 
 ## How this manual is maintained
 

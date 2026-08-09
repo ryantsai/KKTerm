@@ -83,7 +83,7 @@ const tutorialToolBlock = aiTool.match(
 if (!tutorialToolBlock) {
   throw new Error("tutorial_highlight tool schema could not be found.");
 }
-for (const page of ["workspace", "dashboard", "itops", "installer", "settings"]) {
+for (const page of ["workspace", "dashboard", "itops", "installer", "systemCleaner", "settings"]) {
   if (!tutorialToolBlock.includes(`"${page}"`)) {
     throw new Error(`tutorial_highlight tool schema does not allow the ${page} page.`);
   }

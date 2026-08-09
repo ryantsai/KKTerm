@@ -37,6 +37,7 @@ export const defaultGeneralSettings: GeneralSettings = {
   showInstallerOnRail: true,
   showItOps: true,
   showScreenshotsOnRail: true,
+  showSystemCleanerOnRail: true,
   showDontSleepOnRail: true,
   activityRailOrder: [...DEFAULT_ACTIVITY_RAIL_ORDER],
   installerCheckIntervalSeconds: 86400,

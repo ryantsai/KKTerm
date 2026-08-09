@@ -61,6 +61,10 @@
   --module-tint: color-mix(in srgb, var(--accent) 66%, var(--green));
 }
 
+.module-header__tile--system-cleaner {
+  --module-tint: color-mix(in srgb, var(--accent) 58%, var(--green));
+}
+
 .module-header__tile--compact {
   width: 22px;
   height: 22px;
