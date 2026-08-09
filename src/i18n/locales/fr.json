@@ -3076,6 +3076,7 @@
     "saveAndQuit": "Enregistrer et fermer",
     "quitWithoutSaving": "Fermer sans enregistrer",
     "sectionItOps": "IT Ops",
+    "sectionSystemCleaner": "System Cleaner",
     "itOpsSaved": "Paramètres IT Ops enregistrés.",
     "networkMapAnimations": "Animations",
     "networkMapAnimationsHint": "Contrôle les animations des illustrations de nœuds et des tracés de liens dans toutes les cartes réseau. Au survol anime aussi les objets sélectionnés pour l’accès au clavier et tactile.",

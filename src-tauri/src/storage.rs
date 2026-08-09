@@ -614,6 +614,8 @@ pub struct GeneralSettings {
     show_it_ops: bool,
     #[serde(default = "default_show_screenshots_on_rail")]
     show_screenshots_on_rail: bool,
+    #[serde(default = "default_show_system_cleaner_on_rail")]
+    show_system_cleaner_on_rail: bool,
     #[serde(default = "default_show_dont_sleep_on_rail")]
     show_dont_sleep_on_rail: bool,
     #[serde(default = "default_activity_rail_order")]
@@ -5493,6 +5495,7 @@ fn default_general_settings() -> GeneralSettings {
         show_installer_on_rail: default_show_installer_on_rail(),
         show_it_ops: default_show_it_ops(),
         show_screenshots_on_rail: default_show_screenshots_on_rail(),
+        show_system_cleaner_on_rail: default_show_system_cleaner_on_rail(),
         show_dont_sleep_on_rail: default_show_dont_sleep_on_rail(),
         activity_rail_order: default_activity_rail_order(),
         installer_check_interval_seconds: default_installer_check_interval_seconds(),
@@ -5579,6 +5582,10 @@ fn default_show_screenshots_on_rail() -> bool {
     true
 }
 
+fn default_show_system_cleaner_on_rail() -> bool {
+    true
+}
+
 fn default_show_dont_sleep_on_rail() -> bool {
     true
 }
@@ -5589,6 +5596,7 @@ fn default_activity_rail_order() -> Vec<String> {
         "dashboard",
         "installer",
         "screenshots",
+        "systemCleaner",
         "itops",
         "dontSleep",
     ]

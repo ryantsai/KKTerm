@@ -1106,6 +1106,7 @@ export interface GeneralSettings {
   showInstallerOnRail: boolean;
   showItOps: boolean;
   showScreenshotsOnRail: boolean;
+  showSystemCleanerOnRail: boolean;
   showDontSleepOnRail: boolean;
   activityRailOrder: ActivityRailItemId[];
   installerCheckIntervalSeconds: number;
@@ -1138,6 +1139,7 @@ export type ActivityRailItemId =
   | "dashboard"
   | "installer"
   | "screenshots"
+  | "systemCleaner"
   | "itops"
   | "dontSleep";
 

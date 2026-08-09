@@ -3076,6 +3076,7 @@
     "saveAndQuit": "Salvar e fechar",
     "quitWithoutSaving": "Fechar sem salvar",
     "sectionItOps": "IT Ops",
+    "sectionSystemCleaner": "System Cleaner",
     "itOpsSaved": "Configurações de IT Ops salvas.",
     "networkMapAnimations": "Animações",
     "networkMapAnimationsHint": "Controla as animações da arte dos nós e dos traços dos links em todos os Mapas de Rede. Ao Passar o Cursor também anima objetos selecionados para acesso por teclado e toque.",

@@ -3076,6 +3076,7 @@
     "saveAndQuit": "저장하고 닫기",
     "quitWithoutSaving": "저장하지 않고 닫기",
     "sectionItOps": "IT Ops",
+    "sectionSystemCleaner": "System Cleaner",
     "itOpsSaved": "IT Ops 설정을 저장했습니다.",
     "networkMapAnimations": "애니메이션",
     "networkMapAnimationsHint": "모든 네트워크 맵에서 노드 그림과 링크 흐름 애니메이션을 제어합니다. 마우스를 올릴 때는 키보드 및 터치 접근성을 위해 선택한 개체도 애니메이션됩니다.",

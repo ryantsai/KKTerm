@@ -819,12 +819,13 @@ export function ActivityRail({
           <RailTooltip label={t("screenshots.railLabel")} />
         </button>
       ) : null}
-      {isWindowsPlatform() ? (
+      {generalSettings.showSystemCleanerOnRail && isWindowsPlatform() ? (
         <button
-          className={`rail-button ${activePage === "systemCleaner" ? "active" : ""}`}
+          className={`rail-button rail-button-system-cleaner ${activePage === "systemCleaner" ? "active" : ""}`}
           aria-label={t("systemCleaner.title")}
           data-tutorial-id="app.activityRailSystemCleaner"
           onClick={() => onNavigate("systemCleaner")}
+          style={activityRailItemStyle("systemCleaner")}
         >
           <SystemCleanerModuleIcon size={18} />
           <RailTooltip label={t("systemCleaner.title")} />

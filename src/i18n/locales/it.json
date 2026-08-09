@@ -3076,6 +3076,7 @@
     "saveAndQuit": "Salva e chiudi",
     "quitWithoutSaving": "Chiudi senza salvare",
     "sectionItOps": "IT Ops",
+    "sectionSystemCleaner": "System Cleaner",
     "itOpsSaved": "Impostazioni IT Ops salvate.",
     "networkMapAnimations": "Animazioni",
     "networkMapAnimationsHint": "Controlla le animazioni delle immagini dei nodi e delle tracce dei collegamenti in tutte le mappe di rete. Al passaggio del mouse anima anche gli oggetti selezionati per l’accesso da tastiera e touch.",

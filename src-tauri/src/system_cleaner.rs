@@ -44,6 +44,7 @@ fn directory_size(path: &Path) -> u64 {
     };
     entries
         .flatten()
+        .filter(|entry| !entry.file_type().is_ok_and(|kind| kind.is_symlink()))
         .map(|entry| {
             let Ok(metadata) = entry.metadata() else {
                 return 0;
@@ -63,6 +64,7 @@ fn child_sizes(path: &Path) -> Vec<DiskEntry> {
     };
     let mut result: Vec<_> = entries
         .flatten()
+        .filter(|entry| !entry.file_type().is_ok_and(|kind| kind.is_symlink()))
         .map(|entry| {
             let path = entry.path();
             let bytes = entry
@@ -204,7 +206,7 @@ pub async fn system_cleaner_uninstall(app_id: String) -> Result<(), String> {
     #[cfg(not(target_os = "windows"))]
     return Err("System Cleaner is available only on Windows.".into());
     #[cfg(target_os = "windows")]
-    {
+    tauri::async_runtime::spawn_blocking(move || {
         let status = Command::new("winget")
             .args([
                 "uninstall",
@@ -212,7 +214,6 @@ pub async fn system_cleaner_uninstall(app_id: String) -> Result<(), String> {
                 &app_id,
                 "--exact",
                 "--interactive",
-                "--disable-interactivity",
             ])
             .status()
             .map_err(|e| e.to_string())?;
@@ -221,5 +222,7 @@ pub async fn system_cleaner_uninstall(app_id: String) -> Result<(), String> {
         } else {
             Err(format!("winget exited with status {status}"))
         }
-    }
+    })
+    .await
+    .map_err(|error| error.to_string())?
 }

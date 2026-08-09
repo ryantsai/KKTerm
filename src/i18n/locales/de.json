@@ -3076,6 +3076,7 @@
     "saveAndQuit": "Speichern und schließen",
     "quitWithoutSaving": "Ohne Speichern schließen",
     "sectionItOps": "IT Ops",
+    "sectionSystemCleaner": "System Cleaner",
     "itOpsSaved": "IT-Ops-Einstellungen gespeichert.",
     "networkMapAnimations": "Animationen",
     "networkMapAnimationsHint": "Steuert die Animationen von Knotengrafiken und Verbindungsspuren in allen Netzwerkkarten. Bei Hover animiert für Tastatur- und Touchbedienung auch ausgewählte Objekte.",

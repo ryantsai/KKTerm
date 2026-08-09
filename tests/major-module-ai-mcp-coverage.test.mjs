@@ -82,10 +82,10 @@ test("native assistant exposes every major Module and all persisted tool groups"
   }
 });
 
-test("Tutorial navigation accepts the advertised Screenshots Module page", async () => {
+test("Tutorial navigation accepts the advertised Screenshots and System Cleaner Module pages", async () => {
   const ai = await read("src-tauri/src/ai.rs");
   assert.match(
     ai,
-    /"page":\{"type":"string","enum":\["workspace","dashboard","itops","installer","screenshots","settings"\]\}/,
+    /"page":\{"type":"string","enum":\["workspace","dashboard","itops","installer","screenshots","systemCleaner","settings"\]\}/,
   );
 });

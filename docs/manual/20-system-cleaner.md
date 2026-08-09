@@ -3,7 +3,8 @@
 ## AI grep hints
 
 `systemCleaner.title`, `systemCleaner.storage`, `systemCleaner.cleanup`,
-`systemCleaner.apps`, `src/modules/system-cleaner/SystemCleanerPage.tsx`, disk
+`systemCleaner.apps`, `app.activityRailSystemCleaner`,
+`src/modules/system-cleaner/SystemCleanerPage.tsx`, disk
 usage, large files, temporary files, cache, uninstall, Windows cleanup
 
 The **System Cleaner** Module is available only on Windows. Open it from the

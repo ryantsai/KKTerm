@@ -215,6 +215,10 @@ const SCREENSHOTS_TUTORIAL_TARGET_IDS = [
   "screenshots.library",
 ] as const;
 
+const SYSTEM_CLEANER_TUTORIAL_TARGET_IDS = [
+  "app.activityRailSystemCleaner",
+] as const;
+
 const TUTORIAL_TARGET_NAVIGATION: Record<string, TutorialNavigationTarget> = {
   ...Object.fromEntries(
     DASHBOARD_TUTORIAL_TARGET_IDS.map((targetId) => [
@@ -252,6 +256,12 @@ const TUTORIAL_TARGET_NAVIGATION: Record<string, TutorialNavigationTarget> = {
     SCREENSHOTS_TUTORIAL_TARGET_IDS.map((targetId) => [
       targetId,
       { page: "screenshots" },
+    ]),
+  ),
+  ...Object.fromEntries(
+    SYSTEM_CLEANER_TUTORIAL_TARGET_IDS.map((targetId) => [
+      targetId,
+      { page: "systemCleaner" },
     ]),
   ),
   ...Object.fromEntries(
@@ -373,6 +383,7 @@ function normalizeTutorialPage(value: unknown): ActivePage | undefined {
     value === "itops" ||
     value === "installer" ||
     value === "screenshots" ||
+    value === "systemCleaner" ||
     value === "settings"
   ) {
     return value;

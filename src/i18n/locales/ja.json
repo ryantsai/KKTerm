@@ -3076,6 +3076,7 @@
     "saveAndQuit": "保存して閉じる",
     "quitWithoutSaving": "保存せずに閉じる",
     "sectionItOps": "IT Ops",
+    "sectionSystemCleaner": "System Cleaner",
     "itOpsSaved": "IT Ops 設定を保存しました。",
     "networkMapAnimations": "アニメーション",
     "networkMapAnimationsHint": "すべてのネットワークマップで、ノード画像とリンク軌跡のアニメーションを制御します。ホバー時は、キーボードやタッチ操作のために選択中のオブジェクトもアニメーションします。",

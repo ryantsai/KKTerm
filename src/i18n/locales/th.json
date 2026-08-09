@@ -3076,6 +3076,7 @@
     "saveAndQuit": "บันทึกแล้วปิด",
     "quitWithoutSaving": "ปิดโดยไม่บันทึก",
     "sectionItOps": "IT Ops",
+    "sectionSystemCleaner": "System Cleaner",
     "itOpsSaved": "บันทึกการตั้งค่า IT Ops แล้ว",
     "networkMapAnimations": "ภาพเคลื่อนไหว",
     "networkMapAnimationsHint": "ควบคุมภาพเคลื่อนไหวของรูปโหนดและเส้นลิงก์ในแผนที่เครือข่ายทั้งหมด เมื่อชี้เมาส์จะทำให้วัตถุที่เลือกเคลื่อนไหวด้วยเพื่อรองรับแป้นพิมพ์และการสัมผัส",

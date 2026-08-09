@@ -3076,6 +3076,7 @@
     "saveAndQuit": "Save and quit",
     "quitWithoutSaving": "Quit without saving",
     "sectionItOps": "IT Ops",
+    "sectionSystemCleaner": "System Cleaner",
     "itOpsSaved": "IT Ops settings saved.",
     "networkMapAnimations": "Animations",
     "networkMapAnimationsHint": "Controls both node artwork and link trace animations across all Network Maps. On Hover also animates selected objects for keyboard and touch access.",

@@ -49,7 +49,7 @@ import {
   type TutorialSurfaceKind,
 } from "./app/tutorialNavigationModel";
 import { ariaHidden } from "./lib/aria";
-import { currentPlatform, supportsInstallerHelper } from "./lib/platform";
+import { currentPlatform, isWindowsPlatform, supportsInstallerHelper } from "./lib/platform";
 import { useBootstrapSettings } from "./lib/settings";
 import {
   CREDENTIAL_UNLOCK_REQUIRED_EVENT,
@@ -108,6 +108,12 @@ function App() {
     const storedPage = loadStoredActivePage();
     launchPageRef.current =
       storedPage === "installer" && !supportsInstallerHelper() ? "workspace" : storedPage;
+    if (
+      launchPageRef.current === "systemCleaner" &&
+      !isWindowsPlatform()
+    ) {
+      launchPageRef.current = "workspace";
+    }
   }
   const [activePage, setActivePage] = useState<ActivePage>(launchPageRef.current);
   const [dashboardMounted, setDashboardMounted] = useState(
@@ -141,6 +147,9 @@ function App() {
 
   const navigateToPage = useCallback((page: ActivePage) => {
     if (page === "installer" && !supportsInstallerHelper()) {
+      page = "workspace";
+    }
+    if (page === "systemCleaner" && !isWindowsPlatform()) {
       page = "workspace";
     }
     const currentBasePage: BaseModulePage = isOverlayPage(activePage)
@@ -242,6 +251,9 @@ function App() {
   const showItOps = useWorkspaceStore((state) => state.generalSettings.showItOps);
   const showScreenshotsOnRail = useWorkspaceStore(
     (state) => state.generalSettings.showScreenshotsOnRail,
+  );
+  const showSystemCleanerOnRail = useWorkspaceStore(
+    (state) => state.generalSettings.showSystemCleanerOnRail,
   );
   const screenshotEditorRequestId = useScreenshotsStore((state) => state.editorRequestId);
   const resetAllLayouts = useWorkspaceStore((state) => state.resetAllLayouts);
@@ -477,6 +489,21 @@ function App() {
       setActivePage("workspace");
     }
   }, [showScreenshotsOnRail, activePage]);
+
+  // Same stranding guard as Screenshots: hiding the System Cleaner Module
+  // while it is the active (or last-active) page falls back to the Workspace.
+  useEffect(() => {
+    if (showSystemCleanerOnRail) {
+      return;
+    }
+    if (previousBasePageRef.current === "systemCleaner") {
+      previousBasePageRef.current = "workspace";
+    }
+    if (activePage === "systemCleaner") {
+      persistActivePage("workspace");
+      setActivePage("workspace");
+    }
+  }, [showSystemCleanerOnRail, activePage]);
 
   useEffect(() => {
     saveSiteTreeCollapsed(itOpsSiteTreeCollapsed);

@@ -7,6 +7,7 @@ type ActivityRailModuleVisibility = {
   showDashboardOnRail: boolean;
   showInstallerOnRail: boolean;
   showScreenshotsOnRail: boolean;
+  showSystemCleanerOnRail: boolean;
   showItOps: boolean;
 };
 
@@ -15,6 +16,7 @@ export const DEFAULT_ACTIVITY_RAIL_ORDER: ActivityRailItemId[] = [
   "dashboard",
   "installer",
   "screenshots",
+  "systemCleaner",
   "itops",
   "dontSleep",
 ];
@@ -25,6 +27,7 @@ const ACTIVITY_RAIL_MODULE_IDS = new Set<ActivityRailItemId>([
   "dashboard",
   "installer",
   "screenshots",
+  "systemCleaner",
   "itops",
 ]);
 const ACTIVITY_RAIL_MODULE_VISIBILITY: Record<
@@ -35,6 +38,7 @@ const ACTIVITY_RAIL_MODULE_VISIBILITY: Record<
   dashboard: "showDashboardOnRail",
   installer: "showInstallerOnRail",
   screenshots: "showScreenshotsOnRail",
+  systemCleaner: "showSystemCleanerOnRail",
   itops: "showItOps",
 };
 

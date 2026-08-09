@@ -3076,6 +3076,7 @@
     "saveAndQuit": "儲存並關閉",
     "quitWithoutSaving": "不儲存並關閉",
     "sectionItOps": "IT Ops",
+    "sectionSystemCleaner": "系統清理工具",
     "itOpsSaved": "IT Ops 設定已儲存。",
     "networkMapAnimations": "動畫",
     "networkMapAnimationsHint": "控制所有網路地圖中的節點圖示與連結軌跡動畫。游標停留時也會讓已選取的物件播放動畫，以支援鍵盤與觸控操作。",

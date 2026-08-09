@@ -1,10 +1,10 @@
 .system-cleaner-page { position: relative; grid-column: 2 / 5; grid-row: 1; z-index: 75; display: flex; flex-direction: column; min-width: 0; height: 100%; color: var(--text); background: var(--app-bg); }
 .system-cleaner-page[data-active="false"] { visibility: hidden; pointer-events: none; }
-.system-cleaner-page .module-header > .toolbar-button { margin-left: auto; }
 .system-cleaner-shell { display: grid; grid-template-columns: 210px minmax(0, 1fr); flex: 1; min-height: 0; }
-.system-cleaner-nav { padding: 14px 10px; border-right: 1px solid var(--hairline); background: var(--sidebar-bg); }
-.system-cleaner-nav button { display: flex; align-items: center; width: 100%; gap: 9px; padding: 9px 10px; color: var(--text-2); background: transparent; border: 0; border-radius: 7px; text-align: left; }
-.system-cleaner-nav button.active { color: var(--text); background: var(--selection); }
+.system-cleaner-nav { padding: 14px 10px; border-right: 1px solid var(--hairline); background: var(--surface-muted); }
+.system-cleaner-nav button { display: flex; align-items: center; width: 100%; gap: 9px; padding: 9px 10px; color: var(--text-muted); background: transparent; border: 0; border-radius: 7px; text-align: left; }
+.system-cleaner-nav button:hover { background: var(--hover); }
+.system-cleaner-nav button.active { color: #fff; background: var(--accent); }
 .system-cleaner-content { min-width: 0; padding: 24px; overflow: auto; }
 .system-cleaner-content h2 { margin: 0 0 16px; font-size: 17px; }
 .system-cleaner-total { margin-bottom: 16px; color: var(--accent); font-size: 30px; font-weight: 700; }
@@ -12,8 +12,8 @@
 .system-cleaner-row { display: flex; align-items: center; min-height: 48px; gap: 12px; padding: 8px 12px; border-bottom: 1px solid var(--hairline); }
 .system-cleaner-row:last-child { border-bottom: 0; }
 .system-cleaner-row > span { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.system-cleaner-row small { display: block; overflow: hidden; color: var(--text-3); font-weight: 400; text-overflow: ellipsis; }
+.system-cleaner-row small { display: block; overflow: hidden; color: var(--text-faint); font-weight: 400; text-overflow: ellipsis; }
 .system-cleaner-row strong { flex: 0 0 auto; font-variant-numeric: tabular-nums; }
-.system-cleaner-empty { display: grid; height: 100%; place-items: center; color: var(--text-3); }
+.system-cleaner-empty { display: grid; height: 100%; place-items: center; color: var(--text-faint); }
 .system-cleaner-page .spin { animation: cleaner-spin 1s linear infinite; }
 @keyframes cleaner-spin { to { transform: rotate(360deg); } }
