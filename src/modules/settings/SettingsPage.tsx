@@ -44,6 +44,7 @@ import { CredentialsSettings } from "./CredentialsSettings";
 import { GeneralSettings } from "./GeneralSettings";
 import { FileExplorerSettings } from "./FileExplorerSettings";
 import { InstallerSettings } from "./InstallerSettings";
+import { ItOpsSettings } from "./ItOpsSettings";
 import { ProxySettings } from "./ProxySettings";
 import { RdpSettings } from "./RdpSettings";
 import { ScreenshotsSettings } from "./ScreenshotsSettings";
@@ -85,6 +86,7 @@ const SETTINGS_SECTION_IDS: readonly SettingsSectionId[] = [
   "rdp-settings",
   "vnc-settings",
   "screenshots-settings",
+  "itops-settings",
   "dont-sleep-settings",
   "shortcuts-settings",
   "proxy-settings",
@@ -124,6 +126,7 @@ const SETTINGS_NAV: readonly SettingsNavItem[] = [
   { id: "rdp-settings", Icon: Monitor, color: "#5856d6", labelKey: "settings.sectionRdp", requires: "rdp" },
   { id: "vnc-settings", Icon: Network, color: "#5ac8fa", labelKey: "settings.sectionVnc" },
   { id: "screenshots-settings", Icon: ScreenshotsModuleIcon, color: "#ff9500", labelKey: "settings.sectionScreenshots", module: "screenshots" },
+  { id: "itops-settings", Icon: Network, color: "var(--green)", labelKey: "settings.sectionItOps", module: "itops" },
   { id: "dont-sleep-settings", Icon: Coffee, color: "#ac8e68", labelKey: "settings.sectionDontSleep" },
   { id: "shortcuts-settings", Icon: Keyboard, color: "#ff6482", labelKey: "settings.sectionShortcuts" },
   { id: "proxy-settings", Icon: Waypoints, color: "#00c7be", labelKey: "settings.proxy" },
@@ -477,6 +480,7 @@ export function SettingsPage({
             {rdpSupported ? renderSettingsSection("rdp-settings", <RdpSettings />) : null}
             {renderSettingsSection("vnc-settings", <VncSettings />)}
             {renderSettingsSection("screenshots-settings", <ScreenshotsSettings />)}
+            {renderSettingsSection("itops-settings", <ItOpsSettings />)}
             {renderSettingsSection("dont-sleep-settings", <DontSleepSettings />)}
             {renderSettingsSection("shortcuts-settings", <ShortcutsSettings />)}
             {renderSettingsSection("proxy-settings", <ProxySettings />)}

@@ -2989,6 +2989,7 @@ fn general_settings_round_trip_through_settings_table() {
         ]
     );
     assert_eq!(defaults.installer_check_interval_seconds, 86_400);
+    assert_eq!(defaults.network_map_animations, "onHover");
     assert!(defaults.pinned_connection_ids.is_empty());
     assert!(defaults.allow_clipboard_read);
     assert!(!defaults.auto_start_with_windows);
@@ -3029,6 +3030,7 @@ fn general_settings_round_trip_through_settings_table() {
             ],
             installer_check_interval_seconds: 604_800,
             installer_default_provider: "chocolatey".to_string(),
+            network_map_animations: "always".to_string(),
             pinned_connection_ids: vec![
                 " connection-a ".to_string(),
                 "connection-a".to_string(),
@@ -3068,6 +3070,7 @@ fn general_settings_round_trip_through_settings_table() {
     assert_eq!(updated.activity_rail_order[0], "dontSleep");
     assert_eq!(updated.installer_check_interval_seconds, 604_800);
     assert_eq!(updated.installer_default_provider, "chocolatey");
+    assert_eq!(updated.network_map_animations, "always");
     assert_eq!(
         updated.pinned_connection_ids,
         vec!["connection-a".to_string(), "connection-b".to_string()]
@@ -3102,6 +3105,7 @@ fn general_settings_round_trip_through_settings_table() {
     assert!(!reloaded.status_bar_enabled);
     assert!(!reloaded.status_bar_monitor_enabled);
     assert_eq!(reloaded.status_bar_monitor_interval_seconds, 30);
+    assert_eq!(reloaded.network_map_animations, "always");
     assert!(reloaded.advanced_debugging_enabled);
     assert!(reloaded.rdp_webview_stability);
     assert!(reloaded.last_backup_at.is_none());
@@ -3431,6 +3435,7 @@ fn database_backup_import_restores_settings_and_connections() {
             ],
             installer_check_interval_seconds: 86_400,
             installer_default_provider: "chocolatey".to_string(),
+            network_map_animations: "always".to_string(),
             pinned_connection_ids: vec!["connection-pinned".to_string()],
             allow_clipboard_read: true,
             auto_start_with_windows: true,
@@ -3471,6 +3476,7 @@ fn database_backup_import_restores_settings_and_connections() {
             activity_rail_order: default_activity_rail_order(),
             installer_check_interval_seconds: 86_400,
             installer_default_provider: "winget".to_string(),
+            network_map_animations: "onHover".to_string(),
             pinned_connection_ids: Vec::new(),
             allow_clipboard_read: false,
             auto_start_with_windows: false,

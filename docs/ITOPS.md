@@ -495,9 +495,12 @@ parent opens the card list. A map child row's native context menu contains
 Duplicate, Delete, then a separated final Properties item. Duplicate opens a
 prefilled Properties dialog and creates a complete copy of the stored map;
 Properties edits the map name, description, and optional Site tag. It uses
-`@xyflow/react` with controlled `nodes`/`edges` via `useMemo`,
-position-and-dimension-only `onNodesChange` filtering, `deleteKeyCode={null}`,
-`proOptions={{ hideAttribution: true }}`. Because a Network Link is
+`@xyflow/react` with controlled `nodes`/`edges` via `useMemo`, memoized custom
+node and edge renderers, viewport culling via `onlyRenderVisibleElements`,
+final-position/final-dimension `onNodesChange` persistence, `deleteKeyCode={null}`,
+and `proOptions={{ hideAttribution: true }}`. React Flow owns live drag and
+resize coordinates during a gesture; the durable graph is rebuilt only for the
+final event (or a keyboard position change). Because a Network Link is
 undirected while xyflow edges are directed, every node renders one loose-mode
 handle on each side (`left`/`right`/`top`/`bottom`), usable as either endpoint,
 and the edge picks its
@@ -509,7 +512,12 @@ lists each strand speed in separate mode or speed-group counts in bundle mode.
 Readout entries use compact colored number badges and fill vertically in
 columns, starting a new column after every 12 entries.
 Every route carries a reduced-motion-aware animated trace, colored from its
-operator-authored healthy, degraded, or down status.
+operator-authored healthy, degraded, or down status. General Settings stores
+one universal `networkMapAnimations` policy for Network Map node artwork,
+warning indicators, overview previews, and link traces. `onHover` is the
+default and runs motion only for the hovered object/card or the selected object
+for keyboard/touch access; `always` preserves continuous motion. The operating
+system reduced-motion preference still disables these effects in either mode.
 The editor is keyed by map id so switching maps remounts rather than carrying
 unsaved edits across.
 
@@ -566,9 +574,10 @@ canvas opens a native menu with Add Node, which opens the object browser, and
 Properties, which edits the current Network Map.
 The object browser remains the object picker at all times; it never becomes a
 property inspector or map summary. Single-clicking an existing Network
-Node or Note selects it and exposes its drag-resize handles. The element
-updates continuously while a handle is dragged; double-clicking opens its
-Properties dialog. Clicking a Network Link opens that link's
+Node or Note selects it and exposes its drag-resize handles. React Flow updates
+the transient gesture continuously while a handle is dragged, but the
+controlled graph commits only the final position or dimensions; double-clicking
+opens its Properties dialog. Clicking a Network Link opens that link's
 Properties dialog. Edits are applied to the in-memory graph only when that
 dialog's Save action is confirmed. Moving or resizing a Network Node keeps its
 existing animated Links visible and attached throughout the gesture without

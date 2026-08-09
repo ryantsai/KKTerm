@@ -4,6 +4,7 @@ import type { NodeChange } from "@xyflow/react";
 
 import {
   applyNetworkMapCanvasNodeChanges,
+  committedNetworkMapCanvasNodeChanges,
   NETWORK_NODE_MAX_HEIGHT,
   NETWORK_NODE_MAX_WIDTH,
   NETWORK_NODE_MIN_HEIGHT,
@@ -160,6 +161,49 @@ test("drag positions update without rewriting unchanged entities", () => {
   assert.equal(moved.nodes[0].x, 44);
   assert.equal(moved.nodes[0].y, 56);
   assert.equal(moved.notes, graph.notes);
+});
+
+test("continuous drag and resize changes stay transient until the gesture commits", () => {
+  const changes = [
+    {
+      id: "node-a",
+      type: "position",
+      position: { x: 44, y: 56 },
+      dragging: true,
+    },
+    {
+      id: "note-a",
+      type: "dimensions",
+      dimensions: { width: 320, height: 180 },
+      resizing: true,
+      setAttributes: true,
+    },
+    {
+      id: "node-a",
+      type: "position",
+      position: { x: 45, y: 57 },
+      dragging: false,
+    },
+    {
+      id: "note-a",
+      type: "dimensions",
+      dimensions: { width: 321, height: 181 },
+      resizing: false,
+      setAttributes: true,
+    },
+    {
+      id: "node-a",
+      type: "position",
+      position: { x: 46, y: 58 },
+    },
+    {
+      id: "node-a",
+      type: "dimensions",
+      dimensions: { width: 200, height: 80 },
+    },
+  ] satisfies NodeChange[];
+
+  assert.deepEqual(committedNetworkMapCanvasNodeChanges(changes), changes.slice(2, 5));
 });
 
 test("locked nodes and notes ignore drag and resize changes", () => {

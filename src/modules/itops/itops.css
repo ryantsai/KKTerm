@@ -9166,6 +9166,33 @@
   stroke: var(--red);
   animation-duration: 2.4s;
 }
+
+/* The global Network Map motion policy covers node artwork, node warnings,
+ * and link traces. Selection keeps motion discoverable for keyboard and touch. */
+.nm-canvas[data-animation-mode="onHover"] .react-flow__node *,
+.nm-canvas[data-animation-mode="onHover"] .react-flow__edge .nm-edge-flow {
+  animation-play-state: paused;
+}
+.nm-canvas[data-animation-mode="onHover"] .react-flow__node:is(:hover, .selected) * {
+  animation-play-state: running;
+}
+.nm-canvas[data-animation-mode="onHover"] .react-flow__edge:is(:hover, .selected) .nm-edge-flow {
+  animation-play-state: running;
+}
+.nm-page[data-animation-mode="onHover"] .nm-gallery-card :is(
+  .nm-map-preview-link,
+  .nm-map-preview-node,
+  .nm-map-preview-halo
+) {
+  animation-play-state: paused;
+}
+.nm-page[data-animation-mode="onHover"] .nm-gallery-card:is(:hover, :focus-within) :is(
+  .nm-map-preview-link,
+  .nm-map-preview-node,
+  .nm-map-preview-halo
+) {
+  animation-play-state: running;
+}
 /* VLAN spotlight is a view-only filter; dim links that do not carry it. */
 .react-flow__edge.nm-edge.dimmed { opacity: 0.35; }
 /* 802.1Q double-tick at the midpoint: a trunk reads without hovering. */

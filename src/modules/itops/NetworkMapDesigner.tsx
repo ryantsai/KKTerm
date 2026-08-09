@@ -8,6 +8,7 @@
 // graph itself (they are part of the saved document), so a drag is an edit.
 
 import {
+  memo,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -91,6 +92,7 @@ import { ItIcon, type ItIconName } from "./icons";
 import { ItOpsEmptyHint } from "./ItOpsEmptyHint";
 import {
   applyNetworkMapCanvasNodeChanges,
+  committedNetworkMapCanvasNodeChanges,
   NETWORK_NODE_HEIGHT as NODE_HEIGHT,
   NETWORK_NODE_MAX_HEIGHT as NODE_MAX_HEIGHT,
   NETWORK_NODE_MAX_WIDTH as NODE_MAX_WIDTH,
@@ -665,7 +667,7 @@ function NetworkNodeArtwork({
   );
 }
 
-function MapNode({ data }: NodeProps<Node<MapNodeData>>) {
+const MapNode = memo(function MapNode({ data }: NodeProps<Node<MapNodeData>>) {
   const accentStyle = { "--nm-node-accent": data.accent } as CSSProperties;
   const note = data.note.trim();
   return (
@@ -758,7 +760,7 @@ function MapNode({ data }: NodeProps<Node<MapNodeData>>) {
       ) : null}
     </div>
   );
-}
+});
 
 interface MapNoteData extends Record<string, unknown> {
   text: string;
@@ -774,7 +776,7 @@ function renderNetworkMapNoteMarkdown(markdown: string): string {
   return DOMPurify.sanitize(html);
 }
 
-function MapNote({ data }: NodeProps<Node<MapNoteData>>) {
+const MapNote = memo(function MapNote({ data }: NodeProps<Node<MapNoteData>>) {
   const renderedMarkdown = useMemo(
     () => renderNetworkMapNoteMarkdown(data.text),
     [data.text],
@@ -809,7 +811,7 @@ function MapNote({ data }: NodeProps<Node<MapNoteData>>) {
       ) : null}
     </div>
   );
-}
+});
 
 const nodeTypes = { networkNode: MapNode, networkNote: MapNote };
 
@@ -863,7 +865,7 @@ function orthogonalLinkPath({
   };
 }
 
-function NetworkLinkEdge(props: EdgeProps<Edge<NetworkLinkEdgeData>>) {
+const NetworkLinkEdge = memo(function NetworkLinkEdge(props: EdgeProps<Edge<NetworkLinkEdgeData>>) {
   const { id, data, sourcePosition } = props;
   const count = Math.max(data?.strandCount ?? 1, 1);
   const strandDisplay = data?.strandDisplay ?? "separate";
@@ -1008,7 +1010,7 @@ function NetworkLinkEdge(props: EdgeProps<Edge<NetworkLinkEdgeData>>) {
       ) : null}
     </>
   );
-}
+});
 
 const edgeTypes = { networkLink: NetworkLinkEdge };
 
@@ -3155,6 +3157,9 @@ function MapEditor({
   const { t } = useTranslation();
   const saveNetworkMap = useItOpsStore((state) => state.saveNetworkMap);
   const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
+  const networkMapAnimations = useWorkspaceStore(
+    (state) => state.generalSettings.networkMapAnimations,
+  );
 
   const [graph, setGraph] = useState<NetworkGraph>(map.graph);
   const [savedJson, setSavedJson] = useState(() => JSON.stringify(map.graph));
@@ -3552,7 +3557,9 @@ function MapEditor({
   ]);
 
   const onNodesChange = useCallback((changes: NodeChange[]) => {
-    setGraph((current) => applyNetworkMapCanvasNodeChanges(current, changes));
+    const committedChanges = committedNetworkMapCanvasNodeChanges(changes);
+    if (committedChanges.length === 0) return;
+    setGraph((current) => applyNetworkMapCanvasNodeChanges(current, committedChanges));
   }, []);
 
   const onConnect = useCallback((connection: FlowConnection) => {
@@ -4001,6 +4008,7 @@ function MapEditor({
       <div className="nm-body">
         <div
           className="au-canvas nm-canvas"
+          data-animation-mode={networkMapAnimations}
           data-mode="design"
           data-placing={placementDraft ? "true" : undefined}
           onPointerMoveCapture={(event) =>
@@ -4086,6 +4094,7 @@ function MapEditor({
             nodesConnectable={!placementDraft}
             elevateNodesOnSelect={false}
             deleteKeyCode={null}
+            onlyRenderVisibleElements
             fitView
             proOptions={{ hideAttribution: true }}
           >
@@ -4336,6 +4345,9 @@ export function NetworkMapDesigner({
   const loadNetworkMaps = useItOpsStore((state) => state.loadNetworkMaps);
   const removeNetworkMap = useItOpsStore((state) => state.removeNetworkMap);
   const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
+  const networkMapAnimations = useWorkspaceStore(
+    (state) => state.generalSettings.networkMapAnimations,
+  );
   const tabs = useWorkspaceStore((state) => state.tabs);
   const openConnection = useWorkspaceStore((state) => state.openConnection);
   const activateTab = useWorkspaceStore((state) => state.activateTab);
@@ -4459,7 +4471,11 @@ export function NetworkMapDesigner({
   }
 
   return (
-    <div className="nm-page it-destination-surface" data-tutorial-id="itops.networkMaps">
+    <div
+      className="nm-page it-destination-surface"
+      data-animation-mode={networkMapAnimations}
+      data-tutorial-id="itops.networkMaps"
+    >
       {!selected ? (
         <div className="it-destination-page-head">
           <div>

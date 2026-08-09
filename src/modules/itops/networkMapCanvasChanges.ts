@@ -30,6 +30,21 @@ export function parseNetworkMapDimensionDraft(
   return Number.isFinite(value) && value >= min ? Math.round(value) : null;
 }
 
+/**
+ * React Flow owns live gesture coordinates internally. Persist only the final
+ * drag/resize event so a pointer move does not rebuild the full controlled graph.
+ * Position changes without a `dragging` marker are retained for keyboard moves.
+ */
+export function committedNetworkMapCanvasNodeChanges(
+  changes: NodeChange[],
+): NodeChange[] {
+  return changes.filter((change) => {
+    if (change.type === "position") return change.dragging !== true;
+    if (change.type === "dimensions") return change.resizing === false;
+    return false;
+  });
+}
+
 export function applyNetworkMapCanvasNodeChanges(
   graph: NetworkGraph,
   changes: NodeChange[],

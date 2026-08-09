@@ -49,6 +49,7 @@ const SETTINGS_SECTION_IDS = new Set<SettingsSectionId>([
   "rdp-settings",
   "vnc-settings",
   "screenshots-settings",
+  "itops-settings",
   "shortcuts-settings",
   "proxy-settings",
   "about-settings",
