@@ -418,6 +418,10 @@
   color: var(--green);
 }
 
+.status-bar-system-cleaner-scan canvas {
+  display: block;
+}
+
 .status-bar-shutdown-timer {
   gap: 4px;
   width: auto;

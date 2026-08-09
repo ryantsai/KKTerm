@@ -15,16 +15,20 @@ top-level folder tree and file-type totals, check a conservative set of cache
 locations, and ask Windows Package Manager for the installed-app list. The
 scan toolbar continuously reports the files and bytes read through
 **`systemCleaner.scanProgress`**, then reports elapsed time through
-**`systemCleaner.scanComplete`**.
+**`systemCleaner.scanComplete`**. While scanning, the Storage view and the
+Status Bar show the same Solving activity indicator. The current scan path is
+display-only and truncates when it is wider than the available space.
 
 ## Storage analysis
 
-Choose **`systemCleaner.storage`** to compare top-level folders and file types
-across the scanned system drive in adjacent, sortable-style tables patterned
-after familiar disk analyzers. The drive is walked once on a background worker
-while cleanup locations and installed-app discovery run concurrently, avoiding
-the former repeated per-folder walks while keeping the UI responsive. Scans
-run only on explicit demand; use
+Choose **`systemCleaner.storage`** to browse the scanned drive with the same
+breadcrumb, list-row, column, and selection conventions as File Explorer.
+Double-click a folder or focus it and press Enter to open it; use a breadcrumb
+or the up action to return to a parent. Folder sizes come from the completed
+one-pass scan, so opening a folder reads only its immediate entries instead of
+walking that subtree again. The adjacent file-type table remains scoped to the
+whole drive. The drive scan runs on a background worker while cleanup locations
+and installed-app discovery run concurrently. Scans run only on explicit demand; use
 **`systemCleaner.scan`** to refresh the measurements after
 moving or deleting files. System Cleaner reports sizes but does not delete
 items from this view.

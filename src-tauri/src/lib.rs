@@ -4909,6 +4909,7 @@ pub fn run() {
             get_host_usage_snapshot,
             get_system_performance_counters,
             system_cleaner::system_cleaner_scan,
+            system_cleaner::system_cleaner_list_directory,
             system_cleaner::system_cleaner_clean,
             system_cleaner::system_cleaner_uninstall,
             pc_info_get,

@@ -9,6 +9,7 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
     process::Command,
+    sync::{OnceLock, RwLock},
 };
 use tauri::{AppHandle, Emitter};
 
@@ -52,8 +53,19 @@ struct ScanProgress {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct DiskEntry {
+    name: String,
     path: String,
     bytes: u64,
+    is_directory: bool,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DirectoryListing {
+    path: String,
+    parent_path: Option<String>,
+    total_bytes: u64,
+    entries: Vec<DiskEntry>,
 }
 
 #[derive(Serialize)]
@@ -71,6 +83,34 @@ struct InstalledApp {
     id: String,
     version: String,
 }
+
+struct ScanCache {
+    root: PathBuf,
+    directory_bytes: HashMap<PathBuf, u64>,
+}
+
+struct DriveScan {
+    root_entries: Vec<DiskEntry>,
+    extensions: Vec<ExtensionEntry>,
+    files: u64,
+    folders: u64,
+    elapsed_ms: u64,
+    total_bytes: u64,
+    directory_bytes: HashMap<PathBuf, u64>,
+}
+
+enum ScanWork {
+    Enter {
+        path: PathBuf,
+        parent: Option<PathBuf>,
+    },
+    Exit {
+        path: PathBuf,
+        parent: Option<PathBuf>,
+    },
+}
+
+static SCAN_CACHE: OnceLock<RwLock<Option<ScanCache>>> = OnceLock::new();
 
 fn directory_size(path: &Path) -> u64 {
     let mut bytes = 0_u64;
@@ -106,77 +146,135 @@ fn is_reparse_point(metadata: &fs::Metadata) -> bool {
     metadata.file_type().is_symlink()
 }
 
-fn scan_drive(
-    app: &AppHandle,
+fn directory_entries(
     root: &Path,
-) -> (Vec<DiskEntry>, Vec<ExtensionEntry>, u64, u64, u64) {
+    path: &Path,
+    directory_bytes: &HashMap<PathBuf, u64>,
+) -> Result<DirectoryListing, String> {
+    let mut entries = fs::read_dir(path)
+        .map_err(|error| format!("Could not read {}: {error}", path.display()))?
+        .flatten()
+        .filter_map(|entry| {
+            let entry_path = entry.path();
+            let metadata = fs::symlink_metadata(&entry_path).ok()?;
+            if is_reparse_point(&metadata) || (!metadata.is_dir() && !metadata.is_file()) {
+                return None;
+            }
+            let is_directory = metadata.is_dir();
+            Some(DiskEntry {
+                name: entry.file_name().to_string_lossy().into_owned(),
+                path: entry_path.to_string_lossy().into_owned(),
+                bytes: if is_directory {
+                    directory_bytes
+                        .get(&entry_path)
+                        .copied()
+                        .unwrap_or_default()
+                } else {
+                    metadata.len()
+                },
+                is_directory,
+            })
+        })
+        .collect::<Vec<_>>();
+    entries.sort_by(|left, right| {
+        right
+            .is_directory
+            .cmp(&left.is_directory)
+            .then_with(|| right.bytes.cmp(&left.bytes))
+            .then_with(|| left.name.to_lowercase().cmp(&right.name.to_lowercase()))
+    });
+    let parent_path = path
+        .parent()
+        .filter(|parent| path != root && parent.starts_with(root))
+        .map(|parent| parent.to_string_lossy().into_owned());
+    Ok(DirectoryListing {
+        path: path.to_string_lossy().into_owned(),
+        parent_path,
+        total_bytes: directory_bytes.get(path).copied().unwrap_or_default(),
+        entries,
+    })
+}
+
+fn scan_tree<F>(root: &Path, mut emit_progress: F) -> Result<DriveScan, String>
+where
+    F: FnMut(ScanProgress),
+{
     let started = std::time::Instant::now();
-    let mut pending = vec![root.to_path_buf()];
-    let mut child_bytes: HashMap<PathBuf, u64> = HashMap::new();
+    let mut pending = vec![ScanWork::Enter {
+        path: root.to_path_buf(),
+        parent: None,
+    }];
+    let mut directory_bytes: HashMap<PathBuf, u64> = HashMap::new();
     let mut extension_totals: HashMap<String, (u64, u64)> = HashMap::new();
     let mut files = 0_u64;
     let mut folders = 0_u64;
     let mut bytes = 0_u64;
     let mut since_progress = 0_u16;
 
-    while let Some(directory) = pending.pop() {
-        folders += 1;
-        let Ok(entries) = fs::read_dir(&directory) else {
-            continue;
-        };
-        for entry in entries.flatten() {
-            let path = entry.path();
-            let Ok(metadata) = fs::symlink_metadata(&path) else {
-                continue;
-            };
-            if is_reparse_point(&metadata) {
-                continue;
-            }
-            if metadata.is_dir() {
-                pending.push(path);
-            } else if metadata.is_file() {
-                let size = metadata.len();
-                files += 1;
-                bytes = bytes.saturating_add(size);
-                if let Ok(relative) = path.strip_prefix(root)
-                    && let Some(first) = relative.components().next()
-                {
-                    *child_bytes.entry(root.join(first)).or_default() += size;
+    while let Some(work) = pending.pop() {
+        match work {
+            ScanWork::Enter { path, parent } => {
+                folders += 1;
+                directory_bytes.entry(path.clone()).or_default();
+                pending.push(ScanWork::Exit {
+                    path: path.clone(),
+                    parent,
+                });
+                let Ok(entries) = fs::read_dir(&path) else {
+                    continue;
+                };
+                for entry in entries.flatten() {
+                    let entry_path = entry.path();
+                    let Ok(metadata) = fs::symlink_metadata(&entry_path) else {
+                        continue;
+                    };
+                    if is_reparse_point(&metadata) {
+                        continue;
+                    }
+                    if metadata.is_dir() {
+                        pending.push(ScanWork::Enter {
+                            path: entry_path,
+                            parent: Some(path.clone()),
+                        });
+                    } else if metadata.is_file() {
+                        let size = metadata.len();
+                        files += 1;
+                        bytes = bytes.saturating_add(size);
+                        let directory_total = directory_bytes.entry(path.clone()).or_default();
+                        *directory_total = directory_total.saturating_add(size);
+                        let extension = entry_path
+                            .extension()
+                            .and_then(|value| value.to_str())
+                            .filter(|value| !value.is_empty())
+                            .map(|value| format!(".{}", value.to_ascii_lowercase()))
+                            .unwrap_or_else(|| "(none)".into());
+                        let total = extension_totals.entry(extension).or_default();
+                        total.0 = total.0.saturating_add(size);
+                        total.1 += 1;
+                    }
+                    since_progress = since_progress.saturating_add(1);
+                    if since_progress >= 4_096 {
+                        since_progress = 0;
+                        emit_progress(ScanProgress {
+                            files,
+                            folders,
+                            bytes,
+                            current_path: path.to_string_lossy().into_owned(),
+                            elapsed_ms: started.elapsed().as_millis() as u64,
+                        });
+                    }
                 }
-                let extension = path
-                    .extension()
-                    .and_then(|value| value.to_str())
-                    .filter(|value| !value.is_empty())
-                    .map(|value| format!(".{}", value.to_ascii_lowercase()))
-                    .unwrap_or_else(|| "(none)".into());
-                let total = extension_totals.entry(extension).or_default();
-                total.0 = total.0.saturating_add(size);
-                total.1 += 1;
             }
-            since_progress = since_progress.saturating_add(1);
-            if since_progress >= 4_096 {
-                since_progress = 0;
-                let _ = app.emit(
-                    "system-cleaner://scan-progress",
-                    ScanProgress {
-                        files,
-                        folders,
-                        bytes,
-                        current_path: directory.to_string_lossy().into_owned(),
-                        elapsed_ms: started.elapsed().as_millis() as u64,
-                    },
-                );
+            ScanWork::Exit { path, parent } => {
+                let total = directory_bytes.get(&path).copied().unwrap_or_default();
+                if let Some(parent) = parent {
+                    let parent_total = directory_bytes.entry(parent).or_default();
+                    *parent_total = parent_total.saturating_add(total);
+                }
             }
         }
     }
-    let mut largest = child_bytes
-        .into_iter()
-        .map(|(path, bytes)| DiskEntry {
-            path: path.to_string_lossy().into_owned(),
-            bytes,
-        })
-        .collect::<Vec<_>>();
-    largest.sort_by_key(|entry| std::cmp::Reverse(entry.bytes));
+    let root_listing = directory_entries(root, root, &directory_bytes)?;
     let mut extensions = extension_totals
         .into_iter()
         .map(|(extension, (bytes, files))| ExtensionEntry {
@@ -187,13 +285,21 @@ fn scan_drive(
         .collect::<Vec<_>>();
     extensions.sort_by_key(|entry| std::cmp::Reverse(entry.bytes));
     extensions.truncate(100);
-    (
-        largest,
+    Ok(DriveScan {
+        root_entries: root_listing.entries,
         extensions,
         files,
         folders,
-        started.elapsed().as_millis() as u64,
-    )
+        elapsed_ms: started.elapsed().as_millis() as u64,
+        total_bytes: directory_bytes.get(root).copied().unwrap_or_default(),
+        directory_bytes,
+    })
+}
+
+fn scan_drive(app: &AppHandle, root: &Path) -> Result<DriveScan, String> {
+    scan_tree(root, |progress| {
+        let _ = app.emit("system-cleaner://scan-progress", progress);
+    })
 }
 
 #[cfg(target_os = "windows")]
@@ -289,44 +395,83 @@ pub async fn system_cleaner_scan(app: AppHandle) -> Result<CleanerOverview, Stri
                 .map(PathBuf::from)
                 .map(|drive| drive.join("\\"))
                 .map_err(|_| "Windows system drive is unavailable.")?;
-            let ((largest, extensions, file_count, folder_count, elapsed_ms), (cleanup, apps)) =
-                rayon::join(
-                    || scan_drive(&app, &root),
-                    || {
-                        rayon::join(
-                            || {
-                                cleanup_locations()
-                                    .into_par_iter()
-                                    .map(|(id, path)| CleanupEntry {
-                                        id,
-                                        bytes: directory_size(&path),
-                                        path: path.to_string_lossy().into_owned(),
-                                    })
-                                    .collect()
-                            },
-                            installed_apps,
-                        )
-                    },
-                );
-            let total_bytes = largest.iter().map(|entry| entry.bytes).sum();
+            let (drive_scan, (cleanup, apps)) = rayon::join(
+                || scan_drive(&app, &root),
+                || {
+                    rayon::join(
+                        || {
+                            cleanup_locations()
+                                .into_par_iter()
+                                .map(|(id, path)| CleanupEntry {
+                                    id,
+                                    bytes: directory_size(&path),
+                                    path: path.to_string_lossy().into_owned(),
+                                })
+                                .collect()
+                        },
+                        installed_apps,
+                    )
+                },
+            );
+            let drive_scan = drive_scan?;
             let (disk_capacity_bytes, disk_free_bytes) = disk_space(&root);
-            Ok(CleanerOverview {
+            let overview = CleanerOverview {
                 scan_root: root.to_string_lossy().into_owned(),
-                total_bytes,
-                largest,
+                total_bytes: drive_scan.total_bytes,
+                largest: drive_scan.root_entries,
                 cleanup,
                 apps,
-                extensions,
-                file_count,
-                folder_count,
-                elapsed_ms,
+                extensions: drive_scan.extensions,
+                file_count: drive_scan.files,
+                folder_count: drive_scan.folders,
+                elapsed_ms: drive_scan.elapsed_ms,
                 disk_capacity_bytes,
                 disk_free_bytes,
-            })
+            };
+            *SCAN_CACHE
+                .get_or_init(|| RwLock::new(None))
+                .write()
+                .map_err(|_| "System Cleaner scan cache is unavailable.")? = Some(ScanCache {
+                root,
+                directory_bytes: drive_scan.directory_bytes,
+            });
+            Ok(overview)
         })
         .await
         .map_err(|error| error.to_string())?
     }
+}
+
+#[tauri::command]
+pub async fn system_cleaner_list_directory(path: String) -> Result<DirectoryListing, String> {
+    #[cfg(not(target_os = "windows"))]
+    return Err("System Cleaner is available only on Windows.".into());
+    #[cfg(target_os = "windows")]
+    tauri::async_runtime::spawn_blocking(move || {
+        let requested = PathBuf::from(path);
+        let cache_guard = SCAN_CACHE
+            .get_or_init(|| RwLock::new(None))
+            .read()
+            .map_err(|_| "System Cleaner scan cache is unavailable.")?;
+        let cache = cache_guard
+            .as_ref()
+            .ok_or_else(|| "Scan the system drive before opening folders.".to_string())?;
+        let canonical_root = fs::canonicalize(&cache.root).map_err(|error| error.to_string())?;
+        let canonical_requested =
+            fs::canonicalize(&requested).map_err(|error| error.to_string())?;
+        if !canonical_requested.starts_with(&canonical_root)
+            || !cache.directory_bytes.contains_key(&requested)
+        {
+            return Err("The requested folder is outside the completed scan.".into());
+        }
+        let metadata = fs::symlink_metadata(&requested).map_err(|error| error.to_string())?;
+        if !metadata.is_dir() || is_reparse_point(&metadata) {
+            return Err("The requested path is not a scanned folder.".into());
+        }
+        directory_entries(&cache.root, &requested, &cache.directory_bytes)
+    })
+    .await
+    .map_err(|error| error.to_string())?
 }
 
 #[tauri::command]
@@ -410,6 +555,31 @@ mod tests {
         fs::write(nested.join("nested.bin"), [0_u8; 5]).expect("nested fixture file");
 
         assert_eq!(directory_size(root.path()), 8);
+    }
+
+    #[test]
+    fn scan_tree_retains_nested_directory_totals_for_browsing() {
+        let root = tempfile::tempdir().expect("temporary scan root");
+        let first = root.path().join("first");
+        let nested = first.join("nested");
+        fs::create_dir_all(&nested).expect("nested scan fixture");
+        fs::write(first.join("first.bin"), [0_u8; 3]).expect("first fixture file");
+        fs::write(nested.join("nested.bin"), [0_u8; 5]).expect("nested fixture file");
+
+        let scan = scan_tree(root.path(), |_| {}).expect("tree scan");
+        assert_eq!(scan.total_bytes, 8);
+        assert_eq!(scan.directory_bytes.get(&first), Some(&8));
+        assert_eq!(scan.directory_bytes.get(&nested), Some(&5));
+
+        let listing = directory_entries(root.path(), &first, &scan.directory_bytes)
+            .expect("cached directory listing");
+        let nested_entry = listing
+            .entries
+            .iter()
+            .find(|entry| entry.name == "nested")
+            .expect("nested directory entry");
+        assert!(nested_entry.is_directory);
+        assert_eq!(nested_entry.bytes, 5);
     }
 
     #[cfg(target_os = "windows")]

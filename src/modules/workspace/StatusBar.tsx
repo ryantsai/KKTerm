@@ -35,6 +35,8 @@ import {
   formatShutdownTimerRemaining,
   type ShutdownTimerStatus,
 } from "../../app/shutdownTimerModel";
+import { SystemCleanerScanOrb } from "../system-cleaner/SystemCleanerScanOrb";
+import { useSystemCleanerScanStore } from "../system-cleaner/scanState";
 
 const NOTIFICATION_FADE_MS = 220;
 
@@ -170,12 +172,27 @@ export function StatusBar({
         <AssistantWorkingStatusButton onOpenAssistant={onOpenAssistant} />
         <CredentialStoreStatusButton />
         <XServerStatusIcon />
+        <SystemCleanerScanStatus />
         <DontSleepStatusIcon />
         {shutdownTimerStatus ? (
           <ShutdownTimerStatusButton status={shutdownTimerStatus} />
         ) : null}
       </div>
     </footer>
+  );
+}
+
+function SystemCleanerScanStatus() {
+  const { t } = useTranslation();
+  const active = useSystemCleanerScanStore((state) => state.active);
+
+  if (!active) return null;
+  const label = t("systemCleaner.scanning");
+  return (
+    <span className="status-bar-action status-bar-system-cleaner-scan" aria-label={label} role="status">
+      <SystemCleanerScanOrb size={20} label={label} />
+      <RailTooltip label={label} />
+    </span>
   );
 }
 

@@ -1,7 +1,14 @@
+export type SystemCleanerDiskEntry = {
+  name: string;
+  path: string;
+  bytes: number;
+  isDirectory: boolean;
+};
+
 export type SystemCleanerOverview = {
   scanRoot: string;
   totalBytes: number;
-  largest: Array<{ path: string; bytes: number }>;
+  largest: SystemCleanerDiskEntry[];
   cleanup: Array<{ id: string; path: string; bytes: number }>;
   apps: Array<{ name: string; id: string; version: string }>;
   extensions: Array<{ extension: string; bytes: number; files: number }>;
@@ -10,6 +17,13 @@ export type SystemCleanerOverview = {
   elapsedMs: number;
   diskCapacityBytes: number;
   diskFreeBytes: number;
+};
+
+export type SystemCleanerDirectoryListing = {
+  path: string;
+  parentPath?: string;
+  totalBytes: number;
+  entries: SystemCleanerDiskEntry[];
 };
 
 export type SystemCleanerScanProgress = {
