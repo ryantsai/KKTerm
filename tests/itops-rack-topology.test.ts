@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Rack, ServerRoom } from "../src/types";
-import { groupRackTopology, groupRacksByGroup } from "../src/modules/itops/rackTopology";
+import {
+  groupRackTopology,
+  groupRacksByGroup,
+  groupRacksForElevation,
+} from "../src/modules/itops/rackTopology";
 
 function rack(id: string, serverRoom: string, rackGroup: string): Rack {
   return {
@@ -53,4 +57,29 @@ test("IT Ops topology keeps durable Server Rooms visible when they have no Racks
 
   assert.deepEqual(topology.map((room) => room.key), ["Room A", "Room B"]);
   assert.equal(topology[1].racks.length, 0);
+});
+
+test("Server Room elevation naturally orders Rack groups and names without mutating storage order", () => {
+  const racks = [
+    rack("C2", "Room A", "C"),
+    rack("C3", "Room A", "C"),
+    rack("C8", "Room A", "C"),
+    rack("C1", "Room A", "c"),
+    rack("A10", "Room A", "A"),
+    rack("A2", "Room A", "A"),
+    rack("ungrouped", "Room A", ""),
+    rack("B1", "Room A", "B"),
+  ];
+  racks.forEach((entry, sortOrder) => {
+    entry.sortOrder = sortOrder;
+  });
+
+  const groups = groupRacksForElevation(racks);
+
+  assert.deepEqual(groups.map((group) => group.key), ["A", "B", "C", ""]);
+  assert.deepEqual(
+    groups.map((group) => group.racks.map((entry) => entry.name)),
+    [["A2", "A10"], ["B1"], ["C1", "C2", "C3", "C8"], ["ungrouped"]],
+  );
+  assert.deepEqual(racks.map((entry) => entry.name), ["C2", "C3", "C8", "C1", "A10", "A2", "ungrouped", "B1"]);
 });
