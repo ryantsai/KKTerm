@@ -4,6 +4,14 @@ import test from "node:test";
 
 const backend = await readFile(new URL("../src-tauri/src/system_cleaner.rs", import.meta.url), "utf8");
 const page = await readFile(new URL("../src/modules/system-cleaner/SystemCleanerPage.tsx", import.meta.url), "utf8");
+const styles = await readFile(new URL("../src/modules/system-cleaner/systemCleaner.css", import.meta.url), "utf8");
+const manual = await readFile(new URL("../docs/manual/20-system-cleaner.md", import.meta.url), "utf8");
+
+test("System Cleaner sources do not contain unresolved merge conflicts", () => {
+  for (const source of [page, styles, manual]) {
+    assert.doesNotMatch(source, /^(?:<<<<<<<|=======|>>>>>>>)/m);
+  }
+});
 
 test("System Cleaner scans the drive once off the UI thread and streams progress", () => {
   assert.match(backend, /spawn_blocking/);
