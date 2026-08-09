@@ -111,6 +111,7 @@ mod platform {
     const RDP_MAIN_THREAD_WARN_AFTER: Duration = Duration::from_secs(2);
     const RDP_MAIN_THREAD_TIMEOUT: Duration = Duration::from_secs(15);
     const RDP_FULLSCREEN_REQUEST_RETRY_INTERVAL: Duration = Duration::from_millis(25);
+    const DISPID_DISCONNECTED: i32 = 4;
     const DISPID_REQUEST_GO_FULLSCREEN: i32 = 8;
     const DISPID_REQUEST_LEAVE_FULLSCREEN: i32 = 9;
     const IMSTSCAX_EVENTS_IID: GUID = GUID::from_u128(0x336d5562_efa8_482e_8cb3_c5c0fc7a7db6);
@@ -694,7 +695,9 @@ mod platform {
         fn handle_event(&self, dispidmember: i32) {
             if !matches!(
                 dispidmember,
-                DISPID_REQUEST_GO_FULLSCREEN | DISPID_REQUEST_LEAVE_FULLSCREEN
+                DISPID_DISCONNECTED
+                    | DISPID_REQUEST_GO_FULLSCREEN
+                    | DISPID_REQUEST_LEAVE_FULLSCREEN
             ) {
                 return;
             }
@@ -2773,8 +2776,10 @@ mod platform {
                 activation_generation,
             )
         };
-        if !request_is_current() {
-            return Ok(true);
+        if dispid != DISPID_DISCONNECTED {
+            if !request_is_current() {
+                return Ok(true);
+            }
         }
         let mut sessions = match sessions.try_lock() {
             Ok(sessions) => sessions,
@@ -2783,8 +2788,10 @@ mod platform {
                 return Err("RDP session lock is poisoned".to_string());
             }
         };
-        if !request_is_current() {
-            return Ok(true);
+        if dispid != DISPID_DISCONNECTED {
+            if !request_is_current() {
+                return Ok(true);
+            }
         }
         let session = sessions
             .get_mut(session_id)
@@ -2795,6 +2802,7 @@ mod platform {
             return Ok(true);
         }
         match dispid {
+            DISPID_DISCONNECTED => restore_disconnected_fullscreen_host(session),
             DISPID_REQUEST_GO_FULLSCREEN => {
                 enter_native_fullscreen_if(session, &request_is_current)
             }
@@ -2834,6 +2842,30 @@ mod platform {
             connection_point,
             cookie,
         })
+    }
+
+    fn restore_disconnected_fullscreen_host(session: &mut RdpSession) -> Result<(), String> {
+        let Some(restore) = session.fullscreen_restore else {
+            return Ok(());
+        };
+        let fullscreen_result = {
+            let _suppress_request = RdpFullscreenEventSuppression::new(
+                session.suppressed_fullscreen_dispid.as_ref(),
+                DISPID_REQUEST_LEAVE_FULLSCREEN,
+            );
+            set_property_bool(&session.dispatch, "FullScreen", false)
+        };
+        let display_sync_completed = restore_windowed_host(session, restore)?;
+        session.fullscreen_restore = None;
+        rdp_debug(
+            "fullscreen.disconnect.restore",
+            &json!({
+                "sessionId": &session.session_id,
+                "fullscreenPropertyCleared": fullscreen_result.is_ok(),
+                "displaySyncCompleted": display_sync_completed,
+            }),
+        );
+        Ok(())
     }
 
     fn restore_windowed_host(
