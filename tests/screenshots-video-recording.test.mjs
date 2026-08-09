@@ -38,6 +38,10 @@ test("video editor exposes synchronized playback and a full-width fitted timelin
   assert.match(screenshotStyles, /\.video-editor__timeline \.timeline-editor \{[^}]*width: 100%/s);
 });
 
+test("video editor disables text selection so trim drags stay interactive", () => {
+  assert.match(screenshotStyles, /\.video-editor \{[^}]*user-select: none/s);
+});
+
 test("video capture remains an on-demand FFmpeg dependency", () => {
   assert.match(commandRegistry, /video_dependency_status/);
   assert.match(commandRegistry, /start_video_recording/);

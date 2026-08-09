@@ -243,6 +243,10 @@
   font-size: 12px;
 }
 
+.video-editor {
+  user-select: none;
+}
+
 .video-editor .kk-dlg-body {
   display: flex;
   min-height: 0;
