@@ -38,11 +38,13 @@ sizes through **`systemCleaner.size`** and physical allocation through
 **`systemCleaner.allocated`**; their
 percent bars and default descending order use allocated bytes. The folder
 footer summarizes both measurements through **`systemCleaner.storageTotals`**.
-Allocated totals include NTFS allocation-unit overhead, non-resident metadata,
-named streams, and resolvable NTFS system records, so the root total can be
-compared with Windows used space. **`systemCleaner.allocationDetail`** identifies
-any residual reserved or unattributed allocation. Reparse-point records count
-their own allocation but are never traversed, avoiding duplicate target data.
+Allocated totals come from the physical, non-sparse data runs of every NTFS data
+stream, including named streams. Split MFT records are reconnected, and
+hard-linked content contributes allocation only once. NTFS metadata that WizTree
+also leaves outside folder totals, such as directory indexes and security data,
+remains in the reserved or unattributed value identified by
+**`systemCleaner.allocationDetail`**. Reparse-point records count their own data
+allocation but are never traversed, avoiding duplicate target data.
 For NTFS drives, KKTerm requests standard UAC approval and reads Master File
 Table metadata directly. Scan helpers run without opening terminal windows; the
 standard UAC consent prompt remains visible when elevation is required. If

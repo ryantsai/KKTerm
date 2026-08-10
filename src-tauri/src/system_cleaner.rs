@@ -758,14 +758,27 @@ struct MftSizeTotals {
 }
 
 #[cfg(target_os = "windows")]
-fn resolve_mft_sizes(stream: MftSizeTotals, filename: MftSizeTotals) -> MftSizeTotals {
+#[derive(Default)]
+struct MftSizeAccumulator {
+    sizes: MftSizeTotals,
+    has_unnamed_data: bool,
+    has_any_data: bool,
+}
+
+#[cfg(target_os = "windows")]
+fn resolve_mft_sizes(
+    stream: MftSizeTotals,
+    filename: MftSizeTotals,
+    has_unnamed_data: bool,
+    has_any_data: bool,
+) -> MftSizeTotals {
     MftSizeTotals {
-        logical: if stream.logical > 0 {
+        logical: if has_unnamed_data {
             stream.logical
         } else {
             filename.logical
         },
-        allocated: if stream.allocated > 0 {
+        allocated: if has_any_data {
             stream.allocated
         } else {
             filename.allocated
@@ -774,13 +787,12 @@ fn resolve_mft_sizes(stream: MftSizeTotals, filename: MftSizeTotals) -> MftSizeT
 }
 
 #[cfg(target_os = "windows")]
-fn direct_mft_file_name(
+fn direct_mft_file_names(
     file: &ntfs_reader::file::NtfsFile<'_>,
-) -> Option<ntfs_reader::api::NtfsFileName> {
-    use ntfs_reader::api::{NtfsAttributeType, NtfsFileNamespace};
+) -> Vec<ntfs_reader::api::NtfsFileName> {
+    use ntfs_reader::api::NtfsAttributeType;
 
-    let mut fallback = None;
-    let mut preferred = None;
+    let mut names = Vec::new();
     file.attributes(|attribute| {
         if attribute.header.type_id != NtfsAttributeType::FileName as u32 {
             return;
@@ -788,46 +800,112 @@ fn direct_mft_file_name(
         let Some(name) = attribute.as_name() else {
             return;
         };
-        let namespace = name.header.namespace;
-        if namespace == NtfsFileNamespace::Win32 as u8
-            || namespace == NtfsFileNamespace::Win32AndDos as u8
-        {
-            preferred.get_or_insert(name);
-        } else {
-            fallback.get_or_insert(name);
-        }
+        names.push(name);
     });
-    preferred.or(fallback)
+    names
 }
 
 #[cfg(target_os = "windows")]
-fn best_mft_file_name(
-    file: &ntfs_reader::file::NtfsFile<'_>,
+fn best_mft_file_names(
+    base: &ntfs_reader::file::NtfsFile<'_>,
+    extensions: &[ntfs_reader::file::NtfsFile<'_>],
     mft: &ntfs_reader::mft::Mft,
-) -> Option<ntfs_reader::api::NtfsFileName> {
-    direct_mft_file_name(file).or_else(|| file.get_best_file_name(mft))
+) -> Vec<ntfs_reader::api::NtfsFileName> {
+    use ntfs_reader::api::NtfsFileNamespace;
+
+    let mut names = direct_mft_file_names(base);
+    for extension in extensions {
+        names.extend(direct_mft_file_names(extension));
+    }
+    if names
+        .iter()
+        .any(|name| name.header.namespace != NtfsFileNamespace::Dos as u8)
+    {
+        names.retain(|name| name.header.namespace != NtfsFileNamespace::Dos as u8);
+    }
+    if names.is_empty()
+        && let Some(name) = base.get_best_file_name(mft)
+    {
+        names.push(name);
+    }
+    let mut unique = Vec::with_capacity(names.len());
+    for name in names {
+        if !unique
+            .iter()
+            .any(|existing: &ntfs_reader::api::NtfsFileName| {
+                existing.parent() == name.parent() && existing.to_string() == name.to_string()
+            })
+        {
+            unique.push(name);
+        }
+    }
+    unique
 }
 
 #[cfg(target_os = "windows")]
-fn mft_record_sizes(
+fn physical_data_run_bytes(
+    attribute: &ntfs_reader::attribute::NtfsAttribute<'_>,
+    cluster_size: u64,
+) -> Option<u64> {
+    let header = attribute.nonresident_header()?;
+    let mut cursor = header.data_runs_offset as usize;
+    let data = attribute.data();
+    if cursor >= data.len() || cluster_size == 0 {
+        return None;
+    }
+
+    let mut allocated = 0_u64;
+    loop {
+        let descriptor = *data.get(cursor)?;
+        cursor = cursor.checked_add(1)?;
+        if descriptor == 0 {
+            return Some(allocated);
+        }
+        let length_bytes = usize::from(descriptor & 0x0f);
+        let offset_bytes = usize::from(descriptor >> 4);
+        if length_bytes == 0 || length_bytes > 8 || offset_bytes > 8 {
+            return None;
+        }
+        let length_end = cursor.checked_add(length_bytes)?;
+        let length_slice = data.get(cursor..length_end)?;
+        let mut length_buffer = [0_u8; 8];
+        length_buffer[..length_bytes].copy_from_slice(length_slice);
+        let clusters = u64::from_le_bytes(length_buffer);
+        if clusters == 0 {
+            return None;
+        }
+        cursor = length_end.checked_add(offset_bytes)?;
+        if cursor > data.len() {
+            return None;
+        }
+        if offset_bytes > 0 {
+            allocated = allocated.checked_add(clusters.checked_mul(cluster_size)?)?;
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn accumulate_mft_record_sizes(
     file: &ntfs_reader::file::NtfsFile<'_>,
-    filename: Option<&ntfs_reader::api::NtfsFileName>,
-    is_directory: bool,
-) -> MftSizeTotals {
+    cluster_size: u64,
+    accumulator: &mut MftSizeAccumulator,
+) {
     use ntfs_reader::api::NtfsAttributeType;
 
-    let mut unnamed_data = MftSizeTotals::default();
-    let mut other_allocated = 0_u64;
     file.attributes(|attribute| {
-        let type_id = attribute.header.type_id;
-        let name_length = attribute.header.name_length;
+        if attribute.header.type_id != NtfsAttributeType::Data as u32 {
+            return;
+        }
+        accumulator.has_any_data = true;
+        let unnamed = attribute.header.name_length == 0;
         if attribute.header.is_non_resident == 0 {
-            if type_id == NtfsAttributeType::Data as u32 && name_length == 0 {
+            if unnamed {
                 let logical = attribute
                     .resident_header()
                     .map(|header| u64::from(header.value_length))
                     .unwrap_or_default();
-                unnamed_data.logical = unnamed_data.logical.max(logical);
+                accumulator.has_unnamed_data = true;
+                accumulator.sizes.logical = accumulator.sizes.logical.max(logical);
             }
             return;
         }
@@ -835,19 +913,29 @@ fn mft_record_sizes(
         let Some(header) = attribute.nonresident_header() else {
             return;
         };
-        let lowest_vcn = header.lowest_vcn;
-        if lowest_vcn != 0 {
-            return;
+        if unnamed && header.lowest_vcn == 0 {
+            accumulator.has_unnamed_data = true;
+            accumulator.sizes.logical = accumulator.sizes.logical.max(header.data_size);
         }
-        let allocated = header.allocated_size;
-        let data_size = header.data_size;
-        if type_id == NtfsAttributeType::Data as u32 && name_length == 0 {
-            unnamed_data.logical = unnamed_data.logical.max(data_size);
-            unnamed_data.allocated = unnamed_data.allocated.max(allocated);
-        } else {
-            other_allocated = other_allocated.saturating_add(allocated);
+        if let Some(allocated) = physical_data_run_bytes(attribute, cluster_size) {
+            accumulator.sizes.allocated = accumulator.sizes.allocated.saturating_add(allocated);
         }
     });
+}
+
+#[cfg(target_os = "windows")]
+fn mft_record_sizes(
+    base: &ntfs_reader::file::NtfsFile<'_>,
+    extensions: &[ntfs_reader::file::NtfsFile<'_>],
+    filename: Option<&ntfs_reader::api::NtfsFileName>,
+    is_directory: bool,
+    cluster_size: u64,
+) -> MftSizeTotals {
+    let mut accumulator = MftSizeAccumulator::default();
+    accumulate_mft_record_sizes(base, cluster_size, &mut accumulator);
+    for extension in extensions {
+        accumulate_mft_record_sizes(extension, cluster_size, &mut accumulator);
+    }
 
     let filename_sizes = if is_directory {
         MftSizeTotals::default()
@@ -860,9 +948,12 @@ fn mft_record_sizes(
             })
             .unwrap_or_default()
     };
-    let mut sizes = resolve_mft_sizes(unnamed_data, filename_sizes);
-    sizes.allocated = sizes.allocated.saturating_add(other_allocated);
-    sizes
+    resolve_mft_sizes(
+        accumulator.sizes,
+        filename_sizes,
+        accumulator.has_unnamed_data,
+        accumulator.has_any_data,
+    )
 }
 
 #[cfg(target_os = "windows")]
@@ -895,6 +986,27 @@ where
     })?;
     mft.volume.path = root.to_path_buf();
 
+    let mut extension_records: HashMap<u64, Vec<u64>> = HashMap::new();
+    for record in 0..mft.max_record {
+        let Some(file) = mft.get_record(record).filter(|file| file.is_used()) else {
+            continue;
+        };
+        let base_reference = file.header.base_reference;
+        let base_record = base_reference & 0x0000_FFFF_FFFF_FFFF;
+        if base_record == 0 {
+            continue;
+        }
+        if mft
+            .get_record(base_record)
+            .is_some_and(|base| base.is_used() && base.reference_number() == base_reference)
+        {
+            extension_records
+                .entry(base_record)
+                .or_default()
+                .push(record);
+        }
+    }
+
     let mut extension_totals: HashMap<String, (u64, u64, u64)> = HashMap::new();
     let mut direct_directory_bytes: HashMap<u64, u64> = HashMap::new();
     let mut direct_directory_allocated_bytes: HashMap<u64, u64> = HashMap::new();
@@ -922,12 +1034,24 @@ where
         }
         processed = processed.saturating_add(1);
         let is_directory = file.is_directory();
-        let name_attribute = best_mft_file_name(&file, &mft);
-        let sizes = mft_record_sizes(&file, name_attribute.as_ref(), is_directory);
-        bytes = bytes.saturating_add(sizes.logical);
+        let extension_files = extension_records
+            .get(&record)
+            .into_iter()
+            .flatten()
+            .filter_map(|number| mft.get_record(*number))
+            .collect::<Vec<_>>();
+        let name_attributes = best_mft_file_names(&file, &extension_files, &mft);
+        let sizes = mft_record_sizes(
+            &file,
+            &extension_files,
+            name_attributes.first(),
+            is_directory,
+            mft.volume.cluster_size,
+        );
         allocated_bytes = allocated_bytes.saturating_add(sizes.allocated);
 
-        let Some(name_attribute) = name_attribute else {
+        let Some(name_attribute) = name_attributes.first() else {
+            bytes = bytes.saturating_add(sizes.logical);
             let logical_total = direct_directory_bytes.entry(5).or_default();
             *logical_total = logical_total.saturating_add(sizes.logical);
             let allocated_total = direct_directory_allocated_bytes.entry(5).or_default();
@@ -939,6 +1063,7 @@ where
         let current_path = root.join(&name).to_string_lossy().into_owned();
 
         if is_directory {
+            bytes = bytes.saturating_add(sizes.logical);
             let logical_total = direct_directory_bytes.entry(record).or_default();
             *logical_total = logical_total.saturating_add(sizes.logical);
             let allocated_total = direct_directory_allocated_bytes.entry(record).or_default();
@@ -948,30 +1073,36 @@ where
                 folders += 1;
             }
         } else {
-            files += 1;
-            let extension = Path::new(&name)
-                .extension()
-                .and_then(|value| value.to_str())
-                .filter(|value| !value.is_empty())
-                .map(|value| format!(".{}", value.to_ascii_lowercase()))
-                .unwrap_or_else(|| "(none)".into());
-            let extension_total = extension_totals.entry(extension).or_default();
-            extension_total.0 = extension_total.0.saturating_add(sizes.logical);
-            extension_total.1 = extension_total.1.saturating_add(sizes.allocated);
-            extension_total.2 += 1;
-            let logical_total = direct_directory_bytes.entry(parent).or_default();
-            *logical_total = logical_total.saturating_add(sizes.logical);
-            let allocated_total = direct_directory_allocated_bytes.entry(parent).or_default();
-            *allocated_total = allocated_total.saturating_add(sizes.allocated);
+            for (link_index, name_attribute) in name_attributes.iter().enumerate() {
+                let name = name_attribute.to_string();
+                let parent = name_attribute.parent();
+                let link_allocated = if link_index == 0 { sizes.allocated } else { 0 };
+                bytes = bytes.saturating_add(sizes.logical);
+                files = files.saturating_add(1);
+                let extension = Path::new(&name)
+                    .extension()
+                    .and_then(|value| value.to_str())
+                    .filter(|value| !value.is_empty())
+                    .map(|value| format!(".{}", value.to_ascii_lowercase()))
+                    .unwrap_or_else(|| "(none)".into());
+                let extension_total = extension_totals.entry(extension).or_default();
+                extension_total.0 = extension_total.0.saturating_add(sizes.logical);
+                extension_total.1 = extension_total.1.saturating_add(link_allocated);
+                extension_total.2 = extension_total.2.saturating_add(1);
+                let logical_total = direct_directory_bytes.entry(parent).or_default();
+                *logical_total = logical_total.saturating_add(sizes.logical);
+                let allocated_total = direct_directory_allocated_bytes.entry(parent).or_default();
+                *allocated_total = allocated_total.saturating_add(link_allocated);
 
-            if parent == 5 {
-                root_entries.push(DiskEntry {
-                    name: name.clone(),
-                    path: root.join(&name).to_string_lossy().into_owned(),
-                    bytes: sizes.logical,
-                    allocated_bytes: sizes.allocated,
-                    is_directory: false,
-                });
+                if parent == 5 {
+                    root_entries.push(DiskEntry {
+                        name: name.clone(),
+                        path: root.join(&name).to_string_lossy().into_owned(),
+                        bytes: sizes.logical,
+                        allocated_bytes: link_allocated,
+                        is_directory: false,
+                    });
+                }
             }
         }
         if processed % 2_048 == 0 {
@@ -1775,6 +1906,80 @@ pub async fn system_cleaner_uninstall(app_id: String) -> Result<(), String> {
 mod tests {
     use super::*;
 
+    fn synthetic_mft_file(number: u64, attribute: &[u8]) -> (u64, Vec<u8>) {
+        let attribute_offset = 48_usize;
+        let used_size = attribute_offset + attribute.len();
+        let mut record = vec![0_u8; 1024];
+        record[..4].copy_from_slice(b"FILE");
+        record[20..22].copy_from_slice(&(attribute_offset as u16).to_le_bytes());
+        record[22..24].copy_from_slice(&1_u16.to_le_bytes());
+        record[24..28].copy_from_slice(&(used_size as u32).to_le_bytes());
+        let record_length = record.len() as u32;
+        record[28..32].copy_from_slice(&record_length.to_le_bytes());
+        record[attribute_offset..used_size].copy_from_slice(attribute);
+        (number, record)
+    }
+
+    fn synthetic_sparse_data_attribute(cluster_size: u64, clusters: u16) -> Vec<u8> {
+        let data_runs_offset = 66_usize;
+        let mut attribute = vec![0_u8; data_runs_offset + 4];
+        let logical_size = cluster_size * u64::from(clusters);
+        attribute[..4]
+            .copy_from_slice(&(ntfs_reader::api::NtfsAttributeType::Data as u32).to_le_bytes());
+        let attribute_length = attribute.len() as u32;
+        attribute[4..8].copy_from_slice(&attribute_length.to_le_bytes());
+        attribute[8] = 1;
+        attribute[9] = 1;
+        attribute[10..12].copy_from_slice(&64_u16.to_le_bytes());
+        attribute[32..34].copy_from_slice(&(data_runs_offset as u16).to_le_bytes());
+        attribute[40..48].copy_from_slice(&logical_size.to_le_bytes());
+        attribute[48..56].copy_from_slice(&logical_size.to_le_bytes());
+        attribute[64..66].copy_from_slice(&[b'$', 0]);
+        attribute[data_runs_offset] = 0x02;
+        attribute[data_runs_offset + 1..data_runs_offset + 3]
+            .copy_from_slice(&clusters.to_le_bytes());
+        attribute
+    }
+
+    fn synthetic_resident_data_attribute(length: u32) -> Vec<u8> {
+        let value_offset = 24_usize;
+        let mut attribute = vec![0_u8; value_offset + length as usize];
+        attribute[..4]
+            .copy_from_slice(&(ntfs_reader::api::NtfsAttributeType::Data as u32).to_le_bytes());
+        let attribute_length = attribute.len() as u32;
+        attribute[4..8].copy_from_slice(&attribute_length.to_le_bytes());
+        attribute[16..20].copy_from_slice(&length.to_le_bytes());
+        attribute[20..22].copy_from_slice(&(value_offset as u16).to_le_bytes());
+        attribute
+    }
+
+    fn synthetic_allocated_data_extent(
+        cluster_size: u64,
+        extent_clusters: u8,
+        total_clusters: u64,
+        lowest_vcn: u64,
+    ) -> Vec<u8> {
+        let data_runs_offset = 64_usize;
+        let mut attribute = vec![0_u8; data_runs_offset + 4];
+        attribute[..4]
+            .copy_from_slice(&(ntfs_reader::api::NtfsAttributeType::Data as u32).to_le_bytes());
+        let attribute_length = attribute.len() as u32;
+        attribute[4..8].copy_from_slice(&attribute_length.to_le_bytes());
+        attribute[8] = 1;
+        attribute[16..24].copy_from_slice(&lowest_vcn.to_le_bytes());
+        attribute[32..34].copy_from_slice(&(data_runs_offset as u16).to_le_bytes());
+        let extent_size = cluster_size * u64::from(extent_clusters);
+        attribute[40..48].copy_from_slice(&extent_size.to_le_bytes());
+        attribute[48..56].copy_from_slice(&(cluster_size * total_clusters).to_le_bytes());
+        attribute[data_runs_offset..data_runs_offset + 4].copy_from_slice(&[
+            0x11,
+            extent_clusters,
+            1,
+            0,
+        ]);
+        attribute
+    }
+
     #[test]
     fn directory_size_counts_nested_files_without_recursion() {
         let root = tempfile::tempdir().expect("temporary scan root");
@@ -1840,6 +2045,8 @@ mod tests {
                 logical: 931,
                 allocated: 1_400,
             },
+            false,
+            false,
         );
 
         assert_eq!(sizes.logical, 931);
@@ -1857,10 +2064,52 @@ mod tests {
                 logical: 500,
                 allocated: 900,
             },
+            true,
+            true,
         );
 
         assert_eq!(sizes.logical, 536);
         assert_eq!(sizes.allocated, 911);
+    }
+
+    #[test]
+    fn sparse_data_runs_do_not_allocate_their_declared_volume_size() {
+        let cluster_size = 262_144;
+        let (number, record) =
+            synthetic_mft_file(8, &synthetic_sparse_data_attribute(cluster_size, 1024));
+        let file = ntfs_reader::file::NtfsFile::new(number, &record);
+
+        let sizes = mft_record_sizes(&file, &[], None, false, cluster_size);
+
+        assert_eq!(sizes.logical, 0);
+        assert_eq!(sizes.allocated, 0);
+    }
+
+    #[test]
+    fn resident_data_uses_mft_storage_without_file_cluster_allocation() {
+        let (number, record) = synthetic_mft_file(44, &synthetic_resident_data_attribute(28));
+        let file = ntfs_reader::file::NtfsFile::new(number, &record);
+
+        let sizes = mft_record_sizes(&file, &[], None, false, 262_144);
+
+        assert_eq!(sizes.logical, 28);
+        assert_eq!(sizes.allocated, 0);
+    }
+
+    #[test]
+    fn split_data_extents_contribute_all_physical_runs_once() {
+        let cluster_size = 262_144;
+        let (base_number, base_record) =
+            synthetic_mft_file(42, &synthetic_allocated_data_extent(cluster_size, 4, 10, 0));
+        let (extension_number, extension_record) =
+            synthetic_mft_file(43, &synthetic_allocated_data_extent(cluster_size, 6, 10, 4));
+        let base = ntfs_reader::file::NtfsFile::new(base_number, &base_record);
+        let extension = ntfs_reader::file::NtfsFile::new(extension_number, &extension_record);
+
+        let sizes = mft_record_sizes(&base, &[extension], None, false, cluster_size);
+
+        assert_eq!(sizes.logical, 10 * cluster_size);
+        assert_eq!(sizes.allocated, 10 * cluster_size);
     }
 
     #[test]

@@ -70,11 +70,15 @@ test("System Cleaner keeps drive selection and disk metrics in the Storage toolb
 
 test("System Cleaner reconciles logical and allocated NTFS sizes", () => {
   assert.match(backend, /total_allocated_bytes/);
-  assert.match(backend, /header\.allocated_size/);
+  assert.match(backend, /fn physical_data_run_bytes/);
+  assert.match(backend, /if offset_bytes > 0/);
+  assert.match(backend, /extension_records/);
+  assert.match(backend, /if link_index == 0/);
   assert.match(backend, /fn resolve_mft_sizes/);
   assert.match(page, /totalAllocatedBytes/);
   assert.match(page, /systemCleaner\.allocated/);
   assert.match(page, /systemCleaner\.storageTotals/);
+  assert.match(manual, /physical, non-sparse data runs/i);
 });
 
 test("System Cleaner retains one-pass directory totals for browsable results", () => {
