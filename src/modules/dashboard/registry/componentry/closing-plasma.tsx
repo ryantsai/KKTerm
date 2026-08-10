@@ -38,6 +38,12 @@ vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec3 permute(vec3 x) { return mod289(((x * 34.0) + 1.0) * x); }
 
+float hash(vec2 p) {
+  vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+  p3 += dot(p3, p3.yzx + 33.33);
+  return fract((p3.x + p3.y) * p3.z);
+}
+
 float snoise(vec2 v) {
   const vec4 C = vec4(0.211324865405187, 0.366025403784439,
                      -0.577350269189626, 0.024390243902439);
@@ -111,7 +117,7 @@ void main() {
   float vigLight = 1.0 - smoothstep(0.4, 1.45, length(p));
   col = mix(mix(vec3(1.0), col, vigLight), col, u_isDark);
 
-  float grain = (fract(sin(dot(gl_FragCoord.xy + t * 50.0, vec2(12.9898, 78.233))) * 43758.5453) - 0.5) * (0.06 * u_grain);
+  float grain = (hash(gl_FragCoord.xy + t * 50.0) - 0.5) * (0.06 * u_grain);
   col += grain;
 
   gl_FragColor = vec4(clamp(col, 0.0, 1.0), u_opacity);
