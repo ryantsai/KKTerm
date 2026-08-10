@@ -13,6 +13,7 @@ export async function pushTrayMenu(
   labels: {
     dontSleep: string;
     exit: string;
+    captureSection: string;
     captureRegion: string;
     captureWindow: string;
     captureFullscreen: string;
@@ -30,6 +31,7 @@ export async function pushTrayMenu(
           .map((connection) => ({ id: connection.id, label: connection.name })),
         dontSleepLabel: labels.dontSleep,
         exitLabel: labels.exit,
+        captureSectionLabel: labels.captureSection,
         captureRegionLabel: labels.captureRegion,
         captureWindowLabel: labels.captureWindow,
         captureFullscreenLabel: labels.captureFullscreen,

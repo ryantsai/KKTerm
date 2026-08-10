@@ -58,6 +58,10 @@ test("recording controls reuse a protected Tauri window and expose pause and sto
   assert.match(commandRegistry, /resume_video_recording/);
   assert.match(controls, /video_recording_status/);
   assert.match(controls, /stop_video_recording/);
+  assert.ok(
+    backend.indexOf("drop(active);") < backend.indexOf("show_controls_window(app)"),
+    "recording state must be unlocked before the controls WebView requests status",
+  );
 });
 
 test("recorded videos are discoverable library items with format badges", () => {

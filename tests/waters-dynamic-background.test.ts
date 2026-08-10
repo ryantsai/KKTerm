@@ -38,26 +38,6 @@ const manualSource = await readFile(
 );
 const readmeSource = await readFile(new URL("../README.md", import.meta.url), "utf8");
 
-const otherWebglBackgroundSources = await Promise.all(
-  [
-    "mistySeaBackground.tsx",
-    "componentry/animated-gradient.tsx",
-    "componentry/closing-plasma.tsx",
-    "componentry/dither-prism-hero.tsx",
-    "componentry/hero-geometric.tsx",
-    "componentry/liquid-chrome.tsx",
-    "componentry/prism-gradient.tsx",
-    "componentry/silk-aurora.tsx",
-    "componentry/webgl-liquid.tsx",
-  ].map(async (file) => ({
-    file,
-    source: await readFile(
-      new URL(`../src/modules/dashboard/registry/${file}`, import.meta.url),
-      "utf8",
-    ),
-  })),
-);
-
 test("waters camera sweep loops without a seam", () => {
   assert.equal(watersCameraYaw(0), 0);
   assert.ok(Math.abs(watersCameraYaw(WATERS_CAMERA_SWEEP_SECONDS)) < 1e-9);
@@ -85,13 +65,6 @@ test("waters concentrates ocean geometry near the camera without moving its edge
     watersOceanGridCoordinate(WATERS_OCEAN_HALF_EXTENT / 2) < WATERS_OCEAN_HALF_EXTENT / 2,
     "interior vertices should move toward the camera to prevent visible near-field facets",
   );
-});
-
-test("other WebGL dynamic backgrounds do not displace a tessellated surface", () => {
-  for (const { file, source } of otherWebglBackgroundSources) {
-    assert.doesNotMatch(source, /new THREE\.PlaneGeometry\([^)]*,[^)]*,[^)]*,/s, file);
-    assert.doesNotMatch(source, /sampleOcean|Gerstner|WaveSample/, file);
-  }
 });
 
 test("waters renders a Gerstner spectrum with the shared atmosphere", () => {

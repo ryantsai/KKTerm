@@ -467,9 +467,9 @@ export function WatersBg() {
         scene.add(sky);
 
         // A uniform 10 m grid undersamples the shortest Gerstner waves. Its
-        // triangles can become visible on some Intel GPU/driver combinations,
-        // where the resulting vertex aliasing is especially obvious. Keep the
-        // same vertex/GPU budget but redistribute the grid:
+        // triangles can become visible on Intel GPUs, whose interpolation and
+        // shader precision make the resulting vertex aliasing especially
+        // obvious. Keep the same vertex/GPU budget but redistribute the grid:
         // sub-metre cells near the camera grow smoothly toward the hazy edge.
         const oceanGeometry = new THREE.PlaneGeometry(
           WATERS_OCEAN_HALF_EXTENT * 2,

@@ -58,3 +58,20 @@ test("tray screenshot commands display their current enabled shortcuts", async (
   assert.match(appTray, /capture_items\.into_iter\(\)\.zip\(capture_shortcuts\)/);
   assert.match(commands, /app_tray::rebuild_menu\(&app, &tray_state\)/);
 });
+
+test("tray screenshot group has a localized heading and follows rail visibility", async () => {
+  const appTray = await readFile(
+    new URL("../src-tauri/src/app_tray.rs", import.meta.url),
+    "utf8",
+  );
+  const sidebar = await readFile(
+    new URL("../src/modules/workspace/connections/ConnectionSidebar.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(appTray, /capture_section_label/);
+  assert.match(appTray, /"kkterm-tray-capture-heading"/);
+  assert.match(appTray, /&snapshot\.capture_section_label,\s*false,/);
+  assert.match(sidebar, /captureSection: generalSettings\.showScreenshotsOnRail/);
+  assert.match(sidebar, /captureRegion: generalSettings\.showScreenshotsOnRail/);
+});

@@ -638,6 +638,7 @@ export interface TrayMenuSnapshot {
   recentConnections: TrayRecentConnection[];
   dontSleepLabel: string;
   exitLabel: string;
+  captureSectionLabel: string;
   captureRegionLabel: string;
   captureWindowLabel: string;
   captureFullscreenLabel: string;
