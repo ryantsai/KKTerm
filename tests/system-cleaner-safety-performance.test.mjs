@@ -89,6 +89,12 @@ test("System Cleaner prefers an elevated raw MFT scan and falls back to director
   assert.match(manual, /If approval is declined or the raw scan is unavailable/i);
 });
 
+test("System Cleaner scan helpers do not open terminal windows", () => {
+  assert.match(backend, /const CREATE_NO_WINDOW: u32 = 0x0800_0000/);
+  assert.match(backend, /Command::new\("powershell\.exe"\)[\s\S]*?\.creation_flags\(CREATE_NO_WINDOW\)[\s\S]*?let status = command\.status\(\)/);
+  assert.match(backend, /fn installed_apps\(\)[\s\S]*?Command::new\("winget"\)[\s\S]*?command\.creation_flags\(CREATE_NO_WINDOW\)[\s\S]*?command\.output\(\)/);
+});
+
 test("System Cleaner requires approval and isolates elevated work", () => {
   assert.match(page, /setConfirmCleanup\(true\)/);
   assert.match(page, /<ConfirmSheet tone="danger" title=\{t\("systemCleaner\.cleanTitle"\)\}/);

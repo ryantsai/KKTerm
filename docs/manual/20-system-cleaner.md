@@ -36,6 +36,8 @@ allocation also includes protected or unreadable data, filesystem metadata,
 reserved storage, alternate data streams, and allocation overhead. Reparse
 points remain excluded to avoid duplicate traversal. For NTFS drives, KKTerm
 requests standard UAC approval and reads Master File Table metadata directly.
+Scan helpers run without opening terminal windows; the standard UAC consent
+prompt remains visible when elevation is required.
 If approval is declined or the raw scan is unavailable, it automatically uses
 the non-elevated directory walker instead. The drive scan runs on a background worker while cleanup locations
 and installed-app discovery run concurrently. Scans run only on explicit demand; use

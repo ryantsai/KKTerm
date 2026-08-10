@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashMap;
 #[cfg(target_os = "windows")]
-use std::os::windows::{ffi::OsStrExt, fs::MetadataExt};
+use std::os::windows::{ffi::OsStrExt, fs::MetadataExt, process::CommandExt};
 use std::{
     env, fs,
     io::Write,
@@ -15,6 +15,8 @@ use tauri::{AppHandle, Emitter};
 
 #[cfg(target_os = "windows")]
 const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -728,9 +730,11 @@ fn elevated_mft_scan(root: &Path) -> Result<DriveScan, String> {
         powershell_literal(&root.to_string_lossy()),
         powershell_literal(&output_path.to_string_lossy()),
     );
-    let status = Command::new("powershell.exe")
+    let mut command = Command::new("powershell.exe");
+    command
         .args(["-NoProfile", "-NonInteractive", "-Command", &script])
-        .status();
+        .creation_flags(CREATE_NO_WINDOW);
+    let status = command.status();
     let result = match status {
         Ok(status) if status.success() => fs::File::open(&output_path)
             .map_err(|error| error.to_string())
@@ -939,14 +943,15 @@ fn cleanup_locations() -> Vec<(String, PathBuf)> {
 }
 
 fn installed_apps() -> Vec<InstalledApp> {
-    let Ok(output) = Command::new("winget")
-        .args([
-            "list",
-            "--accept-source-agreements",
-            "--disable-interactivity",
-        ])
-        .output()
-    else {
+    let mut command = Command::new("winget");
+    command.args([
+        "list",
+        "--accept-source-agreements",
+        "--disable-interactivity",
+    ]);
+    #[cfg(target_os = "windows")]
+    command.creation_flags(CREATE_NO_WINDOW);
+    let Ok(output) = command.output() else {
         return Vec::new();
     };
     let text = String::from_utf8_lossy(&output.stdout);
