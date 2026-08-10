@@ -363,15 +363,6 @@ pub fn start(
     let mut child = command
         .spawn()
         .map_err(|error| format!("failed to start FFmpeg: {error}"))?;
-    if let Err(error) = show_controls_window(app) {
-        if let Some(stdin) = child.stdin.as_mut() {
-            let _ = stdin.write_all(b"q\n");
-        }
-        let _ = child.kill();
-        let _ = child.wait();
-        let _ = fs::remove_file(&path);
-        return Err(error);
-    }
     *active = Some(ActiveRecording {
         child,
         path: path.clone(),
@@ -384,6 +375,23 @@ pub fn start(
         height,
         preview_data_url,
     });
+    // Creating the controls WebView loads frontend code that immediately asks
+    // for recording status. Release the state lock first so that request cannot
+    // deadlock WebView creation and leave FFmpeg running without controls.
+    drop(active);
+    if let Err(error) = show_controls_window(app) {
+        if let Ok(mut active) = state.active.lock()
+            && let Some(mut recording) = active.take()
+        {
+            if let Some(stdin) = recording.child.stdin.as_mut() {
+                let _ = stdin.write_all(b"q\n");
+            }
+            let _ = recording.child.kill();
+            let _ = recording.child.wait();
+        }
+        let _ = fs::remove_file(&path);
+        return Err(error);
+    }
     Ok(VideoRecordingSession {
         path: path.to_string_lossy().into_owned(),
         file_name,

@@ -32,6 +32,8 @@ pub struct TrayMenuSnapshot {
     // Localized capture item labels pushed by the frontend; empty strings (or
     // an older frontend omitting the fields) hide the capture section.
     #[serde(default)]
+    pub capture_section_label: String,
+    #[serde(default)]
     pub capture_region_label: String,
     #[serde(default)]
     pub capture_window_label: String,
@@ -237,7 +239,18 @@ fn build_menu<R: tauri::Runtime>(
                 .then_some(settings.fullscreen_shortcut())
         }),
     ];
-    if capture_items.iter().all(|(_, label)| !label.is_empty()) {
+    if !snapshot.capture_section_label.is_empty()
+        && capture_items.iter().all(|(_, label)| !label.is_empty())
+    {
+        let heading = MenuItem::with_id(
+            app,
+            "kkterm-tray-capture-heading",
+            &snapshot.capture_section_label,
+            false,
+            None::<&str>,
+        )
+        .map_err(|error| error.to_string())?;
+        menu.append(&heading).map_err(|error| error.to_string())?;
         for ((mode, label), shortcut) in capture_items.into_iter().zip(capture_shortcuts) {
             let item = MenuItem::with_id(
                 app,
