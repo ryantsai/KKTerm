@@ -64,6 +64,15 @@ test("recording controls reuse a protected Tauri window and expose pause and sto
   );
 });
 
+test("video recording starts outside the synchronous WebView IPC handler", () => {
+  const command = commandRegistry.match(
+    /#\[tauri::command\]\s+async fn start_video_recording\([\s\S]*?\n\}/,
+  )?.[0];
+  assert.ok(command, "start_video_recording must be an async Tauri command");
+  assert.match(command, /run_blocking_command/);
+  assert.match(command, /video_recording::start/);
+});
+
 test("recorded videos are discoverable library items with format badges", () => {
   assert.match(screenshotBackend, /"mp4" \| "webm"/);
   assert.match(screenshotBackend, /write_video_thumbnail/);

@@ -1238,20 +1238,23 @@ fn video_dependency_status() -> video_recording::VideoDependencyStatus {
 }
 
 #[tauri::command]
-fn start_video_recording(
+async fn start_video_recording(
     app: tauri::AppHandle,
-    state: tauri::State<'_, video_recording::VideoRecordingState>,
-    storage: tauri::State<'_, storage::Storage>,
     request: video_recording::StartVideoRecordingRequest,
 ) -> Result<video_recording::VideoRecordingSession, String> {
-    let settings = storage.screenshot_settings()?;
-    video_recording::start(
-        &app,
-        &state,
-        request,
-        settings.folder_path(),
-        settings.video_format(),
-    )
+    run_blocking_command("video recording startup", move || {
+        let storage = app.state::<storage::Storage>();
+        let state = app.state::<video_recording::VideoRecordingState>();
+        let settings = storage.screenshot_settings()?;
+        video_recording::start(
+            &app,
+            &state,
+            request,
+            settings.folder_path(),
+            settings.video_format(),
+        )
+    })
+    .await
 }
 
 #[tauri::command]
