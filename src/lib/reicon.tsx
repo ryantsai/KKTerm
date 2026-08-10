@@ -29,7 +29,7 @@ import {
   Mic as ReMic, Minimize as ReMinimize, Minus as ReMinus, Monitor as ReMonitor,
   Mouse as ReMouse, Music as ReMusic, Nodes as ReNodes, Package as RePackage,
   Paintbrush as RePaintbrush, Palette as RePalette, Phone as RePhone, Pin as RePin,
-  PinOff as RePinOff, Play as RePlay, Plus as RePlus, Power as RePower,
+  Pause as RePause, PinOff as RePinOff, Play as RePlay, Plus as RePlus, Power as RePower,
   Printer as RePrinter, Radio as ReRadio, Refresh as ReRefresh, Rocket as ReRocket,
   RotateLeft2 as ReRotateLeft2, RotateRight2 as ReRotateRight2, Route as ReRoute, Save as ReSave22,
   Scan as ReScan2, Scissors as ReScissors, Scroll as ReScroll2, Search as ReSearch, SearchZoomIn2 as ReSearchZoomIn2,
@@ -92,7 +92,7 @@ const reiconIconComponents = {
   "Mouse": ReMouse, "MousePointer2": ReCursorSquare, "Music": ReMusic, "Network": ReNodes,
   "Package": RePackage, "PackageCheck": ReBoxTick2, "PackageOpen": RePackage, "Palette": RePalette,
   "PanelBottom": ReSidebarBottom2, "PanelBottomDashed": ReSidebarBottom2, "PanelLeft": ReSidebarLeft2, "PanelRight": ReSidebarRight2,
-  "PanelTop": ReSidebarTop2, "PanelsTopLeft": ReSidebarTop2, "Pencil": ReEdit2, "Phone": RePhone,
+  "PanelTop": ReSidebarTop2, "PanelsTopLeft": ReSidebarTop2, "Pause": RePause, "Pencil": ReEdit2, "Phone": RePhone,
   "Pin": RePin, "PinOff": RePinOff, "Play": RePlay, "Plus": RePlus,
   "Power": RePower, "Printer": RePrinter, "Radio": ReRadio, "RefreshCw": ReRefresh,
   "Rocket": ReRocket, "RotateCcw": ReRotateLeft2, "RotateCw": ReRotateRight2, "Route": ReRoute,
@@ -274,6 +274,7 @@ export const PanelLeft = ReSidebarLeft2;
 export const PanelRight = ReSidebarRight2;
 export const PanelTop = ReSidebarTop2;
 export const PanelsTopLeft = ReSidebarTop2;
+export const Pause = RePause;
 export const Pencil = ReEdit2;
 export const Phone = RePhone;
 export const Pin = RePin;

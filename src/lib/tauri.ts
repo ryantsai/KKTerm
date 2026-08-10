@@ -847,7 +847,6 @@ export interface VideoRecordingStatus {
   format: "mp4" | "webm" | "gif" | null;
   width: number | null;
   height: number | null;
-  previewDataUrl: string | null;
 }
 
 export interface CompletedVideoRecording extends VideoRecordingSession {

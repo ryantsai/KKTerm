@@ -438,7 +438,6 @@ pub struct RecordingRect {
     pub y: i32,
     pub width: i32,
     pub height: i32,
-    pub preview_data_url: String,
 }
 
 #[cfg(target_os = "windows")]
@@ -473,41 +472,11 @@ pub fn select_recording_rect(
         }
         _ => return Err("video recording mode must be window, fullscreen, or region".to_string()),
     };
-    let preview_dib = platform::capture_screen_rect_to_dib(
-        target.x,
-        target.y,
-        target.width,
-        target.height,
-        use_directx,
-    )?;
-    let preview_png = platform::dib_to_png_bytes_with_quality(
-        &preview_dib,
-        target.width as u32,
-        target.height as u32,
-        82,
-    )?;
-    let preview = image::load_from_memory(&preview_png)
-        .map_err(|error| format!("failed to build recording target preview: {error}"))?
-        .thumbnail(168, 72)
-        .to_rgb8();
-    let mut preview_jpeg = Vec::new();
-    {
-        use image::{ColorType, ImageEncoder, codecs::jpeg::JpegEncoder};
-        JpegEncoder::new_with_quality(&mut preview_jpeg, 74)
-            .write_image(
-                preview.as_raw(),
-                preview.width(),
-                preview.height(),
-                ColorType::Rgb8.into(),
-            )
-            .map_err(|error| format!("failed to encode recording target preview: {error}"))?;
-    }
     Ok(RecordingRect {
         x: target.x,
         y: target.y,
         width: target.width,
         height: target.height,
-        preview_data_url: format!("data:image/jpeg;base64,{}", STANDARD.encode(preview_jpeg)),
     })
 }
 

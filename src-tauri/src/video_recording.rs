@@ -19,6 +19,9 @@ const TOOL_ID: &str = "ffmpeg";
 pub const RECORDING_COMPLETED_EVENT: &str = "kkterm://video-recording-completed";
 const CONTROLS_WINDOW_LABEL: &str = "video-recording-controls";
 const CONTROLS_WINDOW_ROUTE: &str = "index.html#/video-recording-controls";
+const CONTROLS_WIDTH: i32 = 124;
+const CONTROLS_HEIGHT: i32 = 42;
+const CONTROLS_TARGET_INSET: i32 = 10;
 
 #[derive(Default)]
 pub struct VideoRecordingState {
@@ -49,7 +52,13 @@ struct ActiveRecording {
     format: String,
     width: Option<u32>,
     height: Option<u32>,
-    preview_data_url: Option<String>,
+}
+
+#[derive(Clone, Copy)]
+struct RecordingTarget {
+    x: i32,
+    y: i32,
+    width: i32,
 }
 
 #[derive(Serialize)]
@@ -97,7 +106,6 @@ pub struct VideoRecordingStatus {
     format: Option<String>,
     width: Option<u32>,
     height: Option<u32>,
-    preview_data_url: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -288,9 +296,9 @@ pub fn start(
     command.args(["-hide_banner", "-loglevel", "error", "-y"]);
 
     #[cfg(target_os = "windows")]
-    let (width, height, preview_data_url);
+    let (width, height, recording_target);
     #[cfg(not(target_os = "windows"))]
-    let (width, height, preview_data_url) = (None, None, None);
+    let (width, height, recording_target) = (None, None, None);
     #[cfg(target_os = "windows")]
     {
         let rect = crate::screenshot::select_recording_rect(
@@ -299,10 +307,14 @@ pub fn start(
             request.use_directx,
             request.minimize_window,
         )?;
-        (width, height, preview_data_url) = (
+        (width, height, recording_target) = (
             Some(rect.width as u32),
             Some(rect.height as u32),
-            Some(rect.preview_data_url),
+            Some(RecordingTarget {
+                x: rect.x,
+                y: rect.y,
+                width: rect.width,
+            }),
         );
         command.args([
             "-f",
@@ -373,13 +385,12 @@ pub fn start(
         format: extension.to_string(),
         width,
         height,
-        preview_data_url,
     });
     // Creating the controls WebView loads frontend code that immediately asks
     // for recording status. Release the state lock first so that request cannot
     // deadlock WebView creation and leave FFmpeg running without controls.
     drop(active);
-    if let Err(error) = show_controls_window(app) {
+    if let Err(error) = show_controls_window(app, recording_target) {
         if let Ok(mut active) = state.active.lock()
             && let Some(mut recording) = active.take()
         {
@@ -399,8 +410,35 @@ pub fn start(
     })
 }
 
-fn show_controls_window(app: &tauri::AppHandle) -> Result<(), String> {
+fn controls_position(target: RecordingTarget) -> PhysicalPosition<i32> {
+    PhysicalPosition::new(
+        target.x + (target.width - CONTROLS_WIDTH) / 2,
+        target.y + CONTROLS_TARGET_INSET,
+    )
+}
+
+fn position_controls_window(window: &tauri::WebviewWindow, target: Option<RecordingTarget>) {
+    if let Some(target) = target {
+        let _ = window.set_position(Position::Physical(controls_position(target)));
+        return;
+    }
+    if let Ok(Some(monitor)) = window.primary_monitor() {
+        let monitor_position = monitor.position();
+        let monitor_size = monitor.size();
+        let position = PhysicalPosition::new(
+            monitor_position.x + (monitor_size.width as i32 - CONTROLS_WIDTH) / 2,
+            monitor_position.y + CONTROLS_TARGET_INSET,
+        );
+        let _ = window.set_position(Position::Physical(position));
+    }
+}
+
+fn show_controls_window(
+    app: &tauri::AppHandle,
+    target: Option<RecordingTarget>,
+) -> Result<(), String> {
     if let Some(existing) = app.get_webview_window(CONTROLS_WINDOW_LABEL) {
+        position_controls_window(&existing, target);
         existing.show().map_err(|error| error.to_string())?;
         return Ok(());
     }
@@ -410,9 +448,10 @@ fn show_controls_window(app: &tauri::AppHandle) -> Result<(), String> {
         WebviewUrl::App(CONTROLS_WINDOW_ROUTE.into()),
     )
     .title("KKTerm recording controls")
-    .inner_size(390.0, 116.0)
+    .inner_size(CONTROLS_WIDTH as f64, CONTROLS_HEIGHT as f64)
     .always_on_top(true)
     .decorations(false)
+    .transparent(true)
     .resizable(false)
     .maximizable(false)
     .minimizable(false)
@@ -423,13 +462,7 @@ fn show_controls_window(app: &tauri::AppHandle) -> Result<(), String> {
     .build()
     .map_err(|error| format!("failed to create recording controls: {error}"))?;
     let _ = window.set_content_protected(true);
-    if let Ok(Some(monitor)) = window.primary_monitor() {
-        let monitor_position = monitor.position();
-        let monitor_size = monitor.size();
-        let x = monitor_position.x + (monitor_size.width as i32 - 390) / 2;
-        let y = monitor_position.y + monitor_size.height as i32 - 156;
-        let _ = window.set_position(Position::Physical(PhysicalPosition::new(x, y)));
-    }
+    position_controls_window(&window, target);
     window
         .show()
         .map_err(|error| format!("failed to show recording controls: {error}"))?;
@@ -458,7 +491,6 @@ pub fn status(state: &VideoRecordingState) -> Result<VideoRecordingStatus, Strin
             format: None,
             width: None,
             height: None,
-            preview_data_url: None,
         });
     };
     let end = recording.paused_at.unwrap_or_else(now_millis);
@@ -478,7 +510,6 @@ pub fn status(state: &VideoRecordingState) -> Result<VideoRecordingStatus, Strin
         format: Some(recording.format.clone()),
         width: recording.width,
         height: recording.height,
-        preview_data_url: recording.preview_data_url.clone(),
     })
 }
 
@@ -736,4 +767,20 @@ pub fn trim(request: TrimVideoRequest, folder_path: &str) -> Result<String, Stri
         return Err(String::from_utf8_lossy(&result.stderr).trim().to_string());
     }
     Ok(output.to_string_lossy().into_owned())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn recording_controls_are_centered_near_the_target_top_edge() {
+        let position = controls_position(RecordingTarget {
+            x: 100,
+            y: 200,
+            width: 1000,
+        });
+
+        assert_eq!((position.x, position.y), (538, 210));
+    }
 }

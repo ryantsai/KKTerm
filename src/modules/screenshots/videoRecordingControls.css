@@ -9,33 +9,40 @@ body:has(.video-recording-controls),
 }
 
 .video-recording-controls {
+  box-sizing: border-box;
+  display: flex;
   width: 100%;
   height: 100%;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
   color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-strong) 76%, transparent);
   border-radius: 10px;
-  box-shadow: var(--shadow);
+  box-shadow:
+    0 8px 24px color-mix(in srgb, var(--text) 18%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--chrome-strong) 62%, transparent);
   overflow: hidden;
   user-select: none;
+  backdrop-filter: blur(16px) saturate(1.25);
+  -webkit-backdrop-filter: blur(16px) saturate(1.25);
 }
 
 .video-recording-controls__drag {
+  position: relative;
+  display: grid;
+  flex: 0 0 28px;
+  width: 28px;
   height: 32px;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 0 12px;
-  background: var(--surface-muted);
-  border-bottom: 1px solid var(--hairline);
-  font-size: 12px;
+  place-items: center;
+  border-radius: 7px;
+  color: var(--text-muted);
   cursor: move;
 }
 
-.video-recording-controls__drag strong {
-  margin-left: auto;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: .04em;
+.video-recording-controls__drag:hover {
+  background: var(--hover);
 }
 
 .video-recording-controls__drag > * {
@@ -43,11 +50,14 @@ body:has(.video-recording-controls),
 }
 
 .video-recording-controls__dot {
-  width: 8px;
-  height: 8px;
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--red);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--red) 18%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--red) 18%, transparent);
 }
 
 .video-recording-controls__dot.paused {
@@ -55,70 +65,56 @@ body:has(.video-recording-controls),
   box-shadow: none;
 }
 
-.video-recording-controls__body {
-  height: 82px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 9px 11px;
-}
-
-.video-recording-controls__target {
-  min-width: 0;
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-}
-
-.video-recording-controls__target > img,
-.video-recording-controls__target > span {
-  width: 92px;
-  height: 52px;
-  object-fit: cover;
-  border: 1px solid var(--hairline);
-  border-radius: 5px;
-  background: var(--app-bg);
-}
-
-.video-recording-controls__target div {
-  min-width: 0;
-  display: grid;
-  gap: 4px;
-}
-
-.video-recording-controls__target strong,
-.video-recording-controls__target small {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.video-recording-controls__target strong { font-size: 12px; }
-.video-recording-controls__target small { color: var(--text-muted); font-size: 10px; }
-
 .video-recording-controls__actions {
-  display: grid;
-  gap: 5px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .video-recording-controls__actions button {
-  min-width: 82px;
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  border: 1px solid var(--border);
-  border-radius: 5px;
+  display: grid;
+  width: 40px;
+  height: 32px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
   color: var(--text);
-  background: var(--surface-muted);
+  background: transparent;
   font: inherit;
-  font-size: 11px;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease, transform 90ms ease;
+}
+
+.video-recording-controls__actions button:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.video-recording-controls__actions button:active:not(:disabled) {
+  background: var(--press);
+  transform: scale(.94);
+}
+
+.video-recording-controls__actions button:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
 }
 
 .video-recording-controls__actions button.stop {
   color: var(--red);
 }
 
-.video-recording-controls__actions button:disabled { opacity: .55; }
+.video-recording-controls__actions button.stop:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--red) 12%, transparent);
+}
+
+.video-recording-controls__actions button:disabled {
+  opacity: .42;
+  cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .video-recording-controls__actions button {
+    transition: none;
+  }
+}

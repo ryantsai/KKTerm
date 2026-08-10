@@ -8,6 +8,7 @@ const screenshotStyles = fs.readFileSync("src/modules/screenshots/screenshots.cs
 const backend = fs.readFileSync("src-tauri/src/video_recording.rs", "utf8");
 const screenshotBackend = fs.readFileSync("src-tauri/src/screenshot.rs", "utf8");
 const controls = fs.readFileSync("src/modules/screenshots/VideoRecordingControlsWindow.tsx", "utf8");
+const controlsStyles = fs.readFileSync("src/modules/screenshots/videoRecordingControls.css", "utf8");
 const library = fs.readFileSync("src/modules/screenshots/LibraryView.tsx", "utf8");
 const commandRegistry = fs.readFileSync("src-tauri/src/lib.rs", "utf8");
 const storage = fs.readFileSync("src-tauri/src/storage.rs", "utf8");
@@ -38,6 +39,13 @@ test("video editor exposes synchronized playback and a full-width fitted timelin
   assert.match(screenshotStyles, /\.video-editor__timeline \.timeline-editor \{[^}]*width: 100%/s);
 });
 
+test("video editor contains the complete recording frame without clipping", () => {
+  assert.match(
+    screenshotStyles,
+    /\.video-editor__preview video,\s*\.video-editor__preview img\s*\{[^}]*\n\s*width:\s*100%;\s*\n\s*height:\s*100%;\s*\n\s*object-fit:\s*contain;/s,
+  );
+});
+
 test("video editor disables text selection so trim drags stay interactive", () => {
   assert.match(screenshotStyles, /\.video-editor \{[^}]*user-select: none/s);
 });
@@ -51,15 +59,23 @@ test("video capture remains an on-demand FFmpeg dependency", () => {
   assert.doesNotMatch(JSON.stringify(packageJson.dependencies), /ffmpeg/i);
 });
 
-test("recording controls reuse a protected Tauri window and expose pause and stop", () => {
+test("recording controls are a protected compact overlay anchored to the capture target", () => {
   assert.match(backend, /WebviewWindowBuilder::new/);
   assert.match(backend, /set_content_protected\(true\)/);
+  assert.match(backend, /\.inner_size\(CONTROLS_WIDTH as f64, CONTROLS_HEIGHT as f64\)/);
+  assert.match(backend, /\.transparent\(true\)/);
+  assert.match(backend, /fn controls_position\([\s\S]*?target\.x \+ \(target\.width - CONTROLS_WIDTH\) \/ 2[\s\S]*?target\.y \+ CONTROLS_TARGET_INSET/);
   assert.match(commandRegistry, /pause_video_recording/);
   assert.match(commandRegistry, /resume_video_recording/);
   assert.match(controls, /video_recording_status/);
   assert.match(controls, /stop_video_recording/);
+  assert.match(controls, /GripVertical/);
+  assert.match(controls, /Pause/);
+  assert.match(controlsStyles, /backdrop-filter:\s*blur\(16px\)/);
+  assert.doesNotMatch(controls, /<img|previewDataUrl|video-recording-controls__target/);
+  assert.doesNotMatch(backend, /preview_data_url/);
   assert.ok(
-    backend.indexOf("drop(active);") < backend.indexOf("show_controls_window(app)"),
+    backend.indexOf("drop(active);") < backend.indexOf("show_controls_window(app, recording_target)"),
     "recording state must be unlocked before the controls WebView requests status",
   );
 });
