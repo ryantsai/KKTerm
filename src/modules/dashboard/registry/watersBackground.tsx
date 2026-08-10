@@ -18,6 +18,13 @@ export const WATERS_WAVE_COUNT = 22;
 export const WATERS_CAMERA_SWEEP_SECONDS = 96;
 export const WATERS_CAMERA_YAW_RADIANS = 0.17;
 export const WATERS_SUN_DIRECTION: readonly [number, number, number] = [0.3, 0.42, -0.86];
+export const WATERS_OCEAN_HALF_EXTENT = 1500;
+
+/** Concentrate the fixed vertex budget around the camera, where facets occupy the most pixels. */
+export function watersOceanGridCoordinate(coordinate: number): number {
+  const normalized = coordinate / WATERS_OCEAN_HALF_EXTENT;
+  return Math.sign(normalized) * normalized * normalized * WATERS_OCEAN_HALF_EXTENT;
+}
 
 /** Camera yaw for the endless sweep, in radians. Pure so tests can sample it. */
 export function watersCameraYaw(elapsedSeconds: number): number {
@@ -459,9 +466,26 @@ export function WatersBg() {
         sky.renderOrder = -1000;
         scene.add(sky);
 
-        // ~10 m cells: fine enough that the near foreground under the camera is
-        // not a single facet, while the aerial haze hides the grid's far edge.
-        const oceanGeometry = new THREE.PlaneGeometry(3000, 3000, 300, 300);
+        // A uniform 10 m grid undersamples the shortest Gerstner waves. Its
+        // triangles can become visible on some Intel GPU/driver combinations,
+        // where the resulting vertex aliasing is especially obvious. Keep the
+        // same vertex/GPU budget but redistribute the grid:
+        // sub-metre cells near the camera grow smoothly toward the hazy edge.
+        const oceanGeometry = new THREE.PlaneGeometry(
+          WATERS_OCEAN_HALF_EXTENT * 2,
+          WATERS_OCEAN_HALF_EXTENT * 2,
+          300,
+          300,
+        );
+        const oceanPositions = oceanGeometry.getAttribute("position");
+        for (let index = 0; index < oceanPositions.count; index += 1) {
+          oceanPositions.setXY(
+            index,
+            watersOceanGridCoordinate(oceanPositions.getX(index)),
+            watersOceanGridCoordinate(oceanPositions.getY(index)),
+          );
+        }
+        oceanPositions.needsUpdate = true;
         oceanGeometry.rotateX(-Math.PI / 2);
         const oceanMaterial = new THREE.ShaderMaterial({
           side: THREE.DoubleSide,

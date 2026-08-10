@@ -4,10 +4,12 @@ import test from "node:test";
 import {
   WATERS_CAMERA_SWEEP_SECONDS,
   WATERS_CAMERA_YAW_RADIANS,
+  WATERS_OCEAN_HALF_EXTENT,
   WATERS_SUN_DIRECTION,
   WATERS_WAVE_COUNT,
   watersCameraHeight,
   watersCameraYaw,
+  watersOceanGridCoordinate,
 } from "../src/modules/dashboard/registry/watersBackground";
 
 const implementationSource = await readFile(
@@ -36,6 +38,26 @@ const manualSource = await readFile(
 );
 const readmeSource = await readFile(new URL("../README.md", import.meta.url), "utf8");
 
+const otherWebglBackgroundSources = await Promise.all(
+  [
+    "mistySeaBackground.tsx",
+    "componentry/animated-gradient.tsx",
+    "componentry/closing-plasma.tsx",
+    "componentry/dither-prism-hero.tsx",
+    "componentry/hero-geometric.tsx",
+    "componentry/liquid-chrome.tsx",
+    "componentry/prism-gradient.tsx",
+    "componentry/silk-aurora.tsx",
+    "componentry/webgl-liquid.tsx",
+  ].map(async (file) => ({
+    file,
+    source: await readFile(
+      new URL(`../src/modules/dashboard/registry/${file}`, import.meta.url),
+      "utf8",
+    ),
+  })),
+);
+
 test("waters camera sweep loops without a seam", () => {
   assert.equal(watersCameraYaw(0), 0);
   assert.ok(Math.abs(watersCameraYaw(WATERS_CAMERA_SWEEP_SECONDS)) < 1e-9);
@@ -55,6 +77,23 @@ test("waters keeps a lit sun above the horizon", () => {
   assert.ok(Math.hypot(x, y, z) > 0.5, "the sun direction must be non-degenerate");
 });
 
+test("waters concentrates ocean geometry near the camera without moving its edge", () => {
+  assert.equal(watersOceanGridCoordinate(0), 0);
+  assert.equal(watersOceanGridCoordinate(WATERS_OCEAN_HALF_EXTENT), WATERS_OCEAN_HALF_EXTENT);
+  assert.equal(watersOceanGridCoordinate(-WATERS_OCEAN_HALF_EXTENT), -WATERS_OCEAN_HALF_EXTENT);
+  assert.ok(
+    watersOceanGridCoordinate(WATERS_OCEAN_HALF_EXTENT / 2) < WATERS_OCEAN_HALF_EXTENT / 2,
+    "interior vertices should move toward the camera to prevent visible near-field facets",
+  );
+});
+
+test("other WebGL dynamic backgrounds do not displace a tessellated surface", () => {
+  for (const { file, source } of otherWebglBackgroundSources) {
+    assert.doesNotMatch(source, /new THREE\.PlaneGeometry\([^)]*,[^)]*,[^)]*,/s, file);
+    assert.doesNotMatch(source, /sampleOcean|Gerstner|WaveSample/, file);
+  }
+});
+
 test("waters renders a Gerstner spectrum with the shared atmosphere", () => {
   assert.ok(WATERS_WAVE_COUNT >= 8, "the spectrum needs enough waves to avoid visible tiling");
   assert.match(implementationSource, /WaveSample sampleOcean\(vec2 pos\)/);
@@ -63,6 +102,7 @@ test("waters renders a Gerstner spectrum with the shared atmosphere", () => {
   assert.match(implementationSource, /vec3 atmosphere\(vec3 dir\)/);
   assert.match(implementationSource, /exp\(-\(ABSORB \/ CLARITY\) \* thickness\)/);
   assert.match(implementationSource, /dynamicBackgroundDevicePixelRatio\(window\.devicePixelRatio\)/);
+  assert.match(implementationSource, /watersOceanGridCoordinate\(oceanPositions\.getX\(index\)\)/);
   assert.doesNotMatch(implementationSource, /const dpr = Math\.max\(1, window\.devicePixelRatio \|\| 1\)/);
 });
 

@@ -44,11 +44,15 @@ varying vec3 vPosition;
 // Hash functions for procedural noise
 // ─────────────────────────────────────────────────────────────────────────────
 float hash(vec2 p) {
-  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+  vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+  p3 += dot(p3, p3.yzx + 33.33);
+  return fract((p3.x + p3.y) * p3.z);
 }
 
 float hash3(vec3 p) {
-  return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453);
+  p = fract(p * 0.1031);
+  p += dot(p, p.yxz + 33.33);
+  return fract((p.x + p.y) * p.z);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -654,4 +658,3 @@ export default function DitherPrismHero({
 
 // Named export for easier imports
 export { DitherPrismHero };
-

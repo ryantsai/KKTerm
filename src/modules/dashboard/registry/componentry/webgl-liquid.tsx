@@ -29,7 +29,9 @@ uniform float u_opacity;
 uniform float u_reveal;
 
 float hash(vec2 p) {
-  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+  vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+  p3 += dot(p3, p3.yzx + 33.33);
+  return fract((p3.x + p3.y) * p3.z);
 }
 
 float noise(vec2 p) {
@@ -439,5 +441,4 @@ export function WebGLLiquid({
 }
 
 export default WebGLLiquid;
-
 

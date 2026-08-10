@@ -136,6 +136,20 @@ test("Animated Gradient keeps its default shader config stable across parent ren
   );
 });
 
+test("Componentry shaders avoid precision-sensitive sine hashes", async () => {
+  for (const background of backgrounds) {
+    const implementation = await readFile(
+      new URL(`../src/modules/dashboard/registry/componentry/${background.file}`, import.meta.url),
+      "utf8",
+    );
+    assert.doesNotMatch(
+      implementation,
+      /fract\s*\(\s*sin\s*\(/,
+      `${background.id} should not amplify GPU sine precision differences into straight noise boundaries`,
+    );
+  }
+});
+
 test("Componentry background names exist in every locale", async () => {
   const localeDirectory = new URL("../src/i18n/locales/", import.meta.url);
   const localeFiles = (await readdir(localeDirectory)).filter((file) => file.endsWith(".json"));
