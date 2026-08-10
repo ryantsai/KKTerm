@@ -16,6 +16,10 @@ use tauri::{AppHandle, Emitter};
 #[cfg(target_os = "windows")]
 const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
 #[cfg(target_os = "windows")]
+const FILE_ATTRIBUTE_SPARSE_FILE: u32 = 0x200;
+#[cfg(target_os = "windows")]
+const FILE_ATTRIBUTE_COMPRESSED: u32 = 0x800;
+#[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 #[derive(Serialize)]
@@ -23,6 +27,7 @@ const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 pub struct CleanerOverview {
     scan_root: String,
     total_bytes: u64,
+    total_allocated_bytes: u64,
     largest: Vec<DiskEntry>,
     cleanup: Vec<CleanupEntry>,
     apps: Vec<InstalledApp>,
@@ -47,6 +52,7 @@ pub struct DriveEntry {
 struct ExtensionEntry {
     extension: String,
     bytes: u64,
+    allocated_bytes: u64,
     files: u64,
 }
 
@@ -76,6 +82,7 @@ struct DiskEntry {
     name: String,
     path: String,
     bytes: u64,
+    allocated_bytes: u64,
     is_directory: bool,
 }
 
@@ -85,6 +92,7 @@ pub struct DirectoryListing {
     path: String,
     parent_path: Option<String>,
     total_bytes: u64,
+    total_allocated_bytes: u64,
     entries: Vec<DiskEntry>,
 }
 
@@ -118,6 +126,7 @@ struct InstalledApp {
 struct ScanCache {
     root: PathBuf,
     directory_bytes: HashMap<PathBuf, u64>,
+    directory_allocated_bytes: HashMap<PathBuf, u64>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -128,7 +137,9 @@ struct DriveScan {
     folders: u64,
     elapsed_ms: u64,
     total_bytes: u64,
+    total_allocated_bytes: u64,
     directory_bytes: HashMap<PathBuf, u64>,
+    directory_allocated_bytes: HashMap<PathBuf, u64>,
 }
 
 enum ScanWork {
@@ -146,13 +157,87 @@ struct ScannedEntry {
     name: String,
     path: PathBuf,
     bytes: u64,
+    allocated_bytes: u64,
     is_directory: bool,
 }
 
 static SCAN_CACHE: OnceLock<RwLock<Option<ScanCache>>> = OnceLock::new();
 
 #[cfg(target_os = "windows")]
-fn scan_directory_entries(path: &Path) -> Result<Vec<ScannedEntry>, String> {
+fn allocation_unit_size(root: &Path) -> u64 {
+    use windows_sys::Win32::Storage::FileSystem::GetDiskFreeSpaceW;
+
+    let wide = root
+        .as_os_str()
+        .encode_wide()
+        .chain(Some(0))
+        .collect::<Vec<_>>();
+    let (mut sectors_per_cluster, mut bytes_per_sector) = (0_u32, 0_u32);
+    let ok = unsafe {
+        GetDiskFreeSpaceW(
+            wide.as_ptr(),
+            &mut sectors_per_cluster,
+            &mut bytes_per_sector,
+            std::ptr::null_mut(),
+            std::ptr::null_mut(),
+        )
+    };
+    if ok == 0 {
+        1
+    } else {
+        u64::from(sectors_per_cluster).saturating_mul(u64::from(bytes_per_sector))
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn allocation_unit_size(_root: &Path) -> u64 {
+    1
+}
+
+fn round_to_allocation_unit(bytes: u64, allocation_unit: u64) -> u64 {
+    if bytes == 0 || allocation_unit <= 1 {
+        bytes
+    } else {
+        bytes
+            .saturating_sub(1)
+            .saturating_div(allocation_unit)
+            .saturating_add(1)
+            .saturating_mul(allocation_unit)
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn allocated_file_size(
+    path: &Path,
+    logical_bytes: u64,
+    attributes: u32,
+    allocation_unit: u64,
+) -> u64 {
+    use windows_sys::Win32::{
+        Foundation::{GetLastError, SetLastError},
+        Storage::FileSystem::GetCompressedFileSizeW,
+    };
+
+    if attributes & (FILE_ATTRIBUTE_COMPRESSED | FILE_ATTRIBUTE_SPARSE_FILE) == 0 {
+        return round_to_allocation_unit(logical_bytes, allocation_unit);
+    }
+    let mut wide = path.as_os_str().encode_wide().collect::<Vec<_>>();
+    if !wide.starts_with(&[b'\\' as u16, b'\\' as u16, b'?' as u16, b'\\' as u16]) {
+        wide.splice(0..0, "\\\\?\\".encode_utf16());
+    }
+    wide.push(0);
+    let mut high = 0_u32;
+    unsafe { SetLastError(0) };
+    let low = unsafe { GetCompressedFileSizeW(wide.as_ptr(), &mut high) };
+    if low == u32::MAX && unsafe { GetLastError() } != 0 {
+        round_to_allocation_unit(logical_bytes, allocation_unit)
+    } else {
+        round_to_allocation_unit((u64::from(high) << 32) | u64::from(low), allocation_unit)
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn scan_directory_entries(path: &Path, allocation_unit: u64) -> Result<Vec<ScannedEntry>, String> {
     use windows_sys::Win32::{
         Foundation::INVALID_HANDLE_VALUE,
         Storage::FileSystem::{
@@ -194,11 +279,19 @@ fn scan_directory_entries(path: &Path) -> Result<Vec<ScannedEntry>, String> {
         let name = String::from_utf16_lossy(&find_data.cFileName[..name_len]);
         let attributes = find_data.dwFileAttributes;
         if name != "." && name != ".." && attributes & FILE_ATTRIBUTE_REPARSE_POINT == 0 {
+            let entry_path = path.join(&name);
+            let bytes = ((find_data.nFileSizeHigh as u64) << 32) | find_data.nFileSizeLow as u64;
+            let is_directory = attributes & FILE_ATTRIBUTE_DIRECTORY != 0;
             entries.push(ScannedEntry {
-                path: path.join(&name),
+                path: entry_path.clone(),
                 name,
-                bytes: ((find_data.nFileSizeHigh as u64) << 32) | find_data.nFileSizeLow as u64,
-                is_directory: attributes & FILE_ATTRIBUTE_DIRECTORY != 0,
+                bytes,
+                allocated_bytes: if is_directory {
+                    0
+                } else {
+                    allocated_file_size(&entry_path, bytes, attributes, allocation_unit)
+                },
+                is_directory,
             });
         }
         if unsafe { FindNextFileW(handle, &mut find_data) } == 0 {
@@ -210,7 +303,7 @@ fn scan_directory_entries(path: &Path) -> Result<Vec<ScannedEntry>, String> {
 }
 
 #[cfg(not(target_os = "windows"))]
-fn scan_directory_entries(path: &Path) -> Result<Vec<ScannedEntry>, String> {
+fn scan_directory_entries(path: &Path, _allocation_unit: u64) -> Result<Vec<ScannedEntry>, String> {
     let entries = fs::read_dir(path)
         .map_err(|error| format!("Could not read {}: {error}", path.display()))?;
     Ok(entries
@@ -225,6 +318,7 @@ fn scan_directory_entries(path: &Path) -> Result<Vec<ScannedEntry>, String> {
                 name: entry.file_name().to_string_lossy().into_owned(),
                 path: entry_path,
                 bytes: metadata.len(),
+                allocated_bytes: metadata.len(),
                 is_directory: metadata.is_dir(),
             })
         })
@@ -235,7 +329,7 @@ fn directory_size(path: &Path) -> u64 {
     let mut bytes = 0_u64;
     let mut pending = vec![path.to_path_buf()];
     while let Some(directory) = pending.pop() {
-        let Ok(entries) = scan_directory_entries(&directory) else {
+        let Ok(entries) = scan_directory_entries(&directory, 1) else {
             continue;
         };
         for entry in entries {
@@ -263,8 +357,9 @@ fn directory_entries(
     root: &Path,
     path: &Path,
     directory_bytes: &HashMap<PathBuf, u64>,
+    directory_allocated_bytes: &HashMap<PathBuf, u64>,
 ) -> Result<DirectoryListing, String> {
-    let mut entries = scan_directory_entries(path)?
+    let mut entries = scan_directory_entries(path, allocation_unit_size(root))?
         .into_iter()
         .map(|entry| DiskEntry {
             name: entry.name,
@@ -276,6 +371,14 @@ fn directory_entries(
                     .unwrap_or_default()
             } else {
                 entry.bytes
+            },
+            allocated_bytes: if entry.is_directory {
+                directory_allocated_bytes
+                    .get(&entry.path)
+                    .copied()
+                    .unwrap_or_default()
+            } else {
+                entry.allocated_bytes
             },
             is_directory: entry.is_directory,
         })
@@ -295,6 +398,10 @@ fn directory_entries(
         path: path.to_string_lossy().into_owned(),
         parent_path,
         total_bytes: directory_bytes.get(path).copied().unwrap_or_default(),
+        total_allocated_bytes: directory_allocated_bytes
+            .get(path)
+            .copied()
+            .unwrap_or_default(),
         entries,
     })
 }
@@ -309,7 +416,9 @@ where
         parent: None,
     }];
     let mut directory_bytes: HashMap<PathBuf, u64> = HashMap::new();
-    let mut extension_totals: HashMap<String, (u64, u64)> = HashMap::new();
+    let mut directory_allocated_bytes: HashMap<PathBuf, u64> = HashMap::new();
+    let mut extension_totals: HashMap<String, (u64, u64, u64)> = HashMap::new();
+    let allocation_unit = allocation_unit_size(root);
     let mut files = 0_u64;
     let mut folders = 0_u64;
     let mut bytes = 0_u64;
@@ -321,11 +430,12 @@ where
             ScanWork::Enter { path, parent } => {
                 folders += 1;
                 directory_bytes.entry(path.clone()).or_default();
+                directory_allocated_bytes.entry(path.clone()).or_default();
                 pending.push(ScanWork::Exit {
                     path: path.clone(),
                     parent,
                 });
-                let Ok(entries) = scan_directory_entries(&path) else {
+                let Ok(entries) = scan_directory_entries(&path, allocation_unit) else {
                     continue;
                 };
                 for entry in entries {
@@ -342,6 +452,10 @@ where
                         bytes = bytes.saturating_add(size);
                         let directory_total = directory_bytes.entry(path.clone()).or_default();
                         *directory_total = directory_total.saturating_add(size);
+                        let directory_allocated_total =
+                            directory_allocated_bytes.entry(path.clone()).or_default();
+                        *directory_allocated_total =
+                            directory_allocated_total.saturating_add(entry.allocated_bytes);
                         let extension = entry_path
                             .extension()
                             .and_then(|value| value.to_str())
@@ -350,7 +464,8 @@ where
                             .unwrap_or_else(|| "(none)".into());
                         let total = extension_totals.entry(extension).or_default();
                         total.0 = total.0.saturating_add(size);
-                        total.1 += 1;
+                        total.1 = total.1.saturating_add(entry.allocated_bytes);
+                        total.2 += 1;
                     }
                     since_progress = since_progress.saturating_add(1);
                     if since_progress >= 4_096
@@ -374,8 +489,15 @@ where
             ScanWork::Exit { path, parent } => {
                 let total = directory_bytes.get(&path).copied().unwrap_or_default();
                 if let Some(parent) = parent {
-                    let parent_total = directory_bytes.entry(parent).or_default();
+                    let parent_total = directory_bytes.entry(parent.clone()).or_default();
                     *parent_total = parent_total.saturating_add(total);
+                    let allocated = directory_allocated_bytes
+                        .get(&path)
+                        .copied()
+                        .unwrap_or_default();
+                    let parent_allocated_total =
+                        directory_allocated_bytes.entry(parent).or_default();
+                    *parent_allocated_total = parent_allocated_total.saturating_add(allocated);
                 }
             }
         }
@@ -390,16 +512,19 @@ where
         phase_completed: files.saturating_add(folders),
         phase_total: files.saturating_add(folders),
     });
-    let root_listing = directory_entries(root, root, &directory_bytes)?;
+    let root_listing = directory_entries(root, root, &directory_bytes, &directory_allocated_bytes)?;
     let mut extensions = extension_totals
         .into_iter()
-        .map(|(extension, (bytes, files))| ExtensionEntry {
-            extension,
-            bytes,
-            files,
-        })
+        .map(
+            |(extension, (bytes, allocated_bytes, files))| ExtensionEntry {
+                extension,
+                bytes,
+                allocated_bytes,
+                files,
+            },
+        )
         .collect::<Vec<_>>();
-    extensions.sort_by_key(|entry| std::cmp::Reverse(entry.bytes));
+    extensions.sort_by_key(|entry| std::cmp::Reverse(entry.allocated_bytes));
     extensions.truncate(100);
     Ok(DriveScan {
         root_entries: root_listing.entries,
@@ -408,7 +533,12 @@ where
         folders,
         elapsed_ms: started.elapsed().as_millis() as u64,
         total_bytes: directory_bytes.get(root).copied().unwrap_or_default(),
+        total_allocated_bytes: directory_allocated_bytes
+            .get(root)
+            .copied()
+            .unwrap_or_default(),
         directory_bytes,
+        directory_allocated_bytes,
     })
 }
 
@@ -621,28 +751,118 @@ fn resolve_mft_directory_path(
 }
 
 #[cfg(target_os = "windows")]
-fn mft_logical_size(file: &ntfs_reader::file::NtfsFile<'_>) -> u64 {
-    use ntfs_reader::api::NtfsAttributeType;
+#[derive(Clone, Copy, Default)]
+struct MftSizeTotals {
+    logical: u64,
+    allocated: u64,
+}
 
-    let mut size = 0_u64;
+#[cfg(target_os = "windows")]
+fn resolve_mft_sizes(stream: MftSizeTotals, filename: MftSizeTotals) -> MftSizeTotals {
+    MftSizeTotals {
+        logical: if stream.logical > 0 {
+            stream.logical
+        } else {
+            filename.logical
+        },
+        allocated: if stream.allocated > 0 {
+            stream.allocated
+        } else {
+            filename.allocated
+        },
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn direct_mft_file_name(
+    file: &ntfs_reader::file::NtfsFile<'_>,
+) -> Option<ntfs_reader::api::NtfsFileName> {
+    use ntfs_reader::api::{NtfsAttributeType, NtfsFileNamespace};
+
+    let mut fallback = None;
+    let mut preferred = None;
     file.attributes(|attribute| {
-        if attribute.header.type_id != NtfsAttributeType::Data as u32
-            || attribute.header.name_length != 0
-        {
+        if attribute.header.type_id != NtfsAttributeType::FileName as u32 {
             return;
         }
-        let attribute_size = if attribute.header.is_non_resident == 0 {
-            attribute
-                .resident_header()
-                .map(|header| header.value_length as u64)
-        } else {
-            attribute
-                .nonresident_header()
-                .map(|header| header.data_size)
+        let Some(name) = attribute.as_name() else {
+            return;
         };
-        size = size.max(attribute_size.unwrap_or_default());
+        let namespace = name.header.namespace;
+        if namespace == NtfsFileNamespace::Win32 as u8
+            || namespace == NtfsFileNamespace::Win32AndDos as u8
+        {
+            preferred.get_or_insert(name);
+        } else {
+            fallback.get_or_insert(name);
+        }
     });
-    size
+    preferred.or(fallback)
+}
+
+#[cfg(target_os = "windows")]
+fn best_mft_file_name(
+    file: &ntfs_reader::file::NtfsFile<'_>,
+    mft: &ntfs_reader::mft::Mft,
+) -> Option<ntfs_reader::api::NtfsFileName> {
+    direct_mft_file_name(file).or_else(|| file.get_best_file_name(mft))
+}
+
+#[cfg(target_os = "windows")]
+fn mft_record_sizes(
+    file: &ntfs_reader::file::NtfsFile<'_>,
+    filename: Option<&ntfs_reader::api::NtfsFileName>,
+    is_directory: bool,
+) -> MftSizeTotals {
+    use ntfs_reader::api::NtfsAttributeType;
+
+    let mut unnamed_data = MftSizeTotals::default();
+    let mut other_allocated = 0_u64;
+    file.attributes(|attribute| {
+        let type_id = attribute.header.type_id;
+        let name_length = attribute.header.name_length;
+        if attribute.header.is_non_resident == 0 {
+            if type_id == NtfsAttributeType::Data as u32 && name_length == 0 {
+                let logical = attribute
+                    .resident_header()
+                    .map(|header| u64::from(header.value_length))
+                    .unwrap_or_default();
+                unnamed_data.logical = unnamed_data.logical.max(logical);
+            }
+            return;
+        }
+
+        let Some(header) = attribute.nonresident_header() else {
+            return;
+        };
+        let lowest_vcn = header.lowest_vcn;
+        if lowest_vcn != 0 {
+            return;
+        }
+        let allocated = header.allocated_size;
+        let data_size = header.data_size;
+        if type_id == NtfsAttributeType::Data as u32 && name_length == 0 {
+            unnamed_data.logical = unnamed_data.logical.max(data_size);
+            unnamed_data.allocated = unnamed_data.allocated.max(allocated);
+        } else {
+            other_allocated = other_allocated.saturating_add(allocated);
+        }
+    });
+
+    let filename_sizes = if is_directory {
+        MftSizeTotals::default()
+    } else {
+        filename
+            .map(|name| {
+                let logical = name.header.real_size;
+                let allocated = name.header.allocated_size;
+                MftSizeTotals { logical, allocated }
+            })
+            .unwrap_or_default()
+    };
+    let mut sizes = resolve_mft_sizes(unnamed_data, filename_sizes);
+    sizes.allocated = sizes.allocated.saturating_add(other_allocated);
+    sizes
 }
 
 #[cfg(target_os = "windows")]
@@ -675,31 +895,60 @@ where
     })?;
     mft.volume.path = root.to_path_buf();
 
-    let mut extension_totals: HashMap<String, (u64, u64)> = HashMap::new();
+    let mut extension_totals: HashMap<String, (u64, u64, u64)> = HashMap::new();
     let mut direct_directory_bytes: HashMap<u64, u64> = HashMap::new();
+    let mut direct_directory_allocated_bytes: HashMap<u64, u64> = HashMap::new();
     let mut directories = HashMap::new();
     let mut root_entries = Vec::new();
     let mut files = 0_u64;
     let mut folders = 1_u64;
     let mut bytes = 0_u64;
+    let mut allocated_bytes = 0_u64;
     let record_total = mft.max_record;
     let mut processed = 0_u64;
-    for file in mft.files() {
-        let Some(name_attribute) = file.get_best_file_name(&mft) else {
+    for record in 0..record_total {
+        if !mft.record_exists(record) {
+            continue;
+        }
+        let Some(file) = mft.get_record(record) else {
+            continue;
+        };
+        if !file.is_used() {
+            continue;
+        }
+        let base_reference = file.header.base_reference & 0x0000_FFFF_FFFF_FFFF;
+        if base_reference != 0 {
+            continue;
+        }
+        processed = processed.saturating_add(1);
+        let is_directory = file.is_directory();
+        let name_attribute = best_mft_file_name(&file, &mft);
+        let sizes = mft_record_sizes(&file, name_attribute.as_ref(), is_directory);
+        bytes = bytes.saturating_add(sizes.logical);
+        allocated_bytes = allocated_bytes.saturating_add(sizes.allocated);
+
+        let Some(name_attribute) = name_attribute else {
+            let logical_total = direct_directory_bytes.entry(5).or_default();
+            *logical_total = logical_total.saturating_add(sizes.logical);
+            let allocated_total = direct_directory_allocated_bytes.entry(5).or_default();
+            *allocated_total = allocated_total.saturating_add(sizes.allocated);
             continue;
         };
         let name = name_attribute.to_string();
         let parent = name_attribute.parent();
         let current_path = root.join(&name).to_string_lossy().into_owned();
-        processed = processed.saturating_add(1);
 
-        if file.is_directory() {
-            directories.insert(file.number(), (parent, name));
-            folders += 1;
+        if is_directory {
+            let logical_total = direct_directory_bytes.entry(record).or_default();
+            *logical_total = logical_total.saturating_add(sizes.logical);
+            let allocated_total = direct_directory_allocated_bytes.entry(record).or_default();
+            *allocated_total = allocated_total.saturating_add(sizes.allocated);
+            if record != 5 {
+                directories.insert(record, (parent, name));
+                folders += 1;
+            }
         } else {
-            let file_bytes = mft_logical_size(&file);
             files += 1;
-            bytes = bytes.saturating_add(file_bytes);
             let extension = Path::new(&name)
                 .extension()
                 .and_then(|value| value.to_str())
@@ -707,16 +956,20 @@ where
                 .map(|value| format!(".{}", value.to_ascii_lowercase()))
                 .unwrap_or_else(|| "(none)".into());
             let extension_total = extension_totals.entry(extension).or_default();
-            extension_total.0 = extension_total.0.saturating_add(file_bytes);
-            extension_total.1 += 1;
-            let total = direct_directory_bytes.entry(parent).or_default();
-            *total = total.saturating_add(file_bytes);
+            extension_total.0 = extension_total.0.saturating_add(sizes.logical);
+            extension_total.1 = extension_total.1.saturating_add(sizes.allocated);
+            extension_total.2 += 1;
+            let logical_total = direct_directory_bytes.entry(parent).or_default();
+            *logical_total = logical_total.saturating_add(sizes.logical);
+            let allocated_total = direct_directory_allocated_bytes.entry(parent).or_default();
+            *allocated_total = allocated_total.saturating_add(sizes.allocated);
 
             if parent == 5 {
                 root_entries.push(DiskEntry {
                     name: name.clone(),
                     path: root.join(&name).to_string_lossy().into_owned(),
-                    bytes: file_bytes,
+                    bytes: sizes.logical,
+                    allocated_bytes: sizes.allocated,
                     is_directory: false,
                 });
             }
@@ -754,13 +1007,18 @@ where
             .unwrap_or_default();
         let parent_total = direct_directory_bytes.entry(*parent).or_default();
         *parent_total = parent_total.saturating_add(bytes);
+        let allocated = direct_directory_allocated_bytes
+            .get(record)
+            .copied()
+            .unwrap_or_default();
+        let parent_allocated_total = direct_directory_allocated_bytes.entry(*parent).or_default();
+        *parent_allocated_total = parent_allocated_total.saturating_add(allocated);
     }
 
     let mut directory_bytes = HashMap::with_capacity(resolved_directories.len() + 1);
-    directory_bytes.insert(
-        root.to_path_buf(),
-        direct_directory_bytes.get(&5).copied().unwrap_or_default(),
-    );
+    let mut directory_allocated_bytes = HashMap::with_capacity(resolved_directories.len() + 1);
+    directory_bytes.insert(root.to_path_buf(), bytes);
+    directory_allocated_bytes.insert(root.to_path_buf(), allocated_bytes);
     for (record, parent, name, path) in resolved_directories {
         let bytes = direct_directory_bytes
             .get(&record)
@@ -771,24 +1029,39 @@ where
                 name,
                 path: path.to_string_lossy().into_owned(),
                 bytes,
+                allocated_bytes: direct_directory_allocated_bytes
+                    .get(&record)
+                    .copied()
+                    .unwrap_or_default(),
                 is_directory: true,
             });
         }
-        directory_bytes.insert(path, bytes);
+        directory_bytes.insert(path.clone(), bytes);
+        directory_allocated_bytes.insert(
+            path,
+            direct_directory_allocated_bytes
+                .get(&record)
+                .copied()
+                .unwrap_or_default(),
+        );
     }
 
-    root_entries.sort_by_key(|entry| std::cmp::Reverse(entry.bytes));
+    root_entries.sort_by_key(|entry| std::cmp::Reverse(entry.allocated_bytes));
     let mut extensions = extension_totals
         .into_iter()
-        .map(|(extension, (bytes, files))| ExtensionEntry {
-            extension,
-            bytes,
-            files,
-        })
+        .map(
+            |(extension, (bytes, allocated_bytes, files))| ExtensionEntry {
+                extension,
+                bytes,
+                allocated_bytes,
+                files,
+            },
+        )
         .collect::<Vec<_>>();
-    extensions.sort_by_key(|entry| std::cmp::Reverse(entry.bytes));
+    extensions.sort_by_key(|entry| std::cmp::Reverse(entry.allocated_bytes));
     extensions.truncate(100);
-    let total_bytes = directory_bytes.get(root).copied().unwrap_or_default();
+    let total_bytes = bytes;
+    let total_allocated_bytes = allocated_bytes;
 
     Ok(DriveScan {
         root_entries,
@@ -797,7 +1070,9 @@ where
         folders,
         elapsed_ms: started.elapsed().as_millis() as u64,
         total_bytes,
+        total_allocated_bytes,
         directory_bytes,
+        directory_allocated_bytes,
     })
 }
 
@@ -1373,6 +1648,7 @@ pub async fn system_cleaner_scan(
             let overview = CleanerOverview {
                 scan_root: root.to_string_lossy().into_owned(),
                 total_bytes: drive_scan.total_bytes,
+                total_allocated_bytes: drive_scan.total_allocated_bytes,
                 largest: drive_scan.root_entries,
                 cleanup,
                 apps,
@@ -1389,6 +1665,7 @@ pub async fn system_cleaner_scan(
                 .map_err(|_| "System Cleaner scan cache is unavailable.")? = Some(ScanCache {
                 root,
                 directory_bytes: drive_scan.directory_bytes,
+                directory_allocated_bytes: drive_scan.directory_allocated_bytes,
             });
             Ok(overview)
         })
@@ -1423,7 +1700,12 @@ pub async fn system_cleaner_list_directory(path: String) -> Result<DirectoryList
         if !metadata.is_dir() || is_reparse_point(&metadata) {
             return Err("The requested path is not a scanned folder.".into());
         }
-        directory_entries(&cache.root, &requested, &cache.directory_bytes)
+        directory_entries(
+            &cache.root,
+            &requested,
+            &cache.directory_bytes,
+            &cache.directory_allocated_bytes,
+        )
     })
     .await
     .map_err(|error| error.to_string())?
@@ -1518,8 +1800,13 @@ mod tests {
         assert_eq!(scan.directory_bytes.get(&first), Some(&8));
         assert_eq!(scan.directory_bytes.get(&nested), Some(&5));
 
-        let listing = directory_entries(root.path(), &first, &scan.directory_bytes)
-            .expect("cached directory listing");
+        let listing = directory_entries(
+            root.path(),
+            &first,
+            &scan.directory_bytes,
+            &scan.directory_allocated_bytes,
+        )
+        .expect("cached directory listing");
         let nested_entry = listing
             .entries
             .iter()
@@ -1543,6 +1830,45 @@ mod tests {
         assert_eq!(final_event.files, 1);
         assert_eq!(final_event.bytes, 7);
         assert!(!final_event.current_path.is_empty());
+    }
+
+    #[test]
+    fn mft_sizes_fall_back_to_filename_metadata_when_data_attributes_are_split() {
+        let sizes = resolve_mft_sizes(
+            MftSizeTotals::default(),
+            MftSizeTotals {
+                logical: 931,
+                allocated: 1_400,
+            },
+        );
+
+        assert_eq!(sizes.logical, 931);
+        assert_eq!(sizes.allocated, 1_400);
+    }
+
+    #[test]
+    fn mft_sizes_keep_authoritative_stream_values_when_present() {
+        let sizes = resolve_mft_sizes(
+            MftSizeTotals {
+                logical: 536,
+                allocated: 911,
+            },
+            MftSizeTotals {
+                logical: 500,
+                allocated: 900,
+            },
+        );
+
+        assert_eq!(sizes.logical, 536);
+        assert_eq!(sizes.allocated, 911);
+    }
+
+    #[test]
+    fn allocation_unit_rounding_matches_large_cluster_volumes() {
+        assert_eq!(round_to_allocation_unit(0, 262_144), 0);
+        assert_eq!(round_to_allocation_unit(1, 262_144), 262_144);
+        assert_eq!(round_to_allocation_unit(262_144, 262_144), 262_144);
+        assert_eq!(round_to_allocation_unit(262_145, 262_144), 524_288);
     }
 
     #[test]

@@ -40,7 +40,7 @@ import type {
 import "./systemCleaner.css";
 
 type Section = "storage" | "cleanup" | "apps";
-type StorageSort = { key: "name" | "size"; direction: "asc" | "desc" };
+type StorageSort = { key: "name" | "size" | "allocated"; direction: "asc" | "desc" };
 type MutationKind = "clean" | "uninstall";
 type CleanupTone = "accent" | "green" | "amber" | "red";
 
@@ -129,7 +129,12 @@ export function SystemCleanerPage({ active, onOpenAssistant }: { active: boolean
       const next = await invokeCommand("system_cleaner_scan", { root: selectedDrive });
       setOverview(next);
       setSelectedDrive(next.scanRoot);
-      setDirectory({ path: next.scanRoot, totalBytes: next.totalBytes, entries: next.largest });
+      setDirectory({
+        path: next.scanRoot,
+        totalBytes: next.totalBytes,
+        totalAllocatedBytes: next.totalAllocatedBytes,
+        entries: next.largest,
+      });
       setSelected(next.cleanup
         .filter((item) => item.bytes > 0 && DEFAULT_CLEANUP_IDS.has(item.id))
         .map((item) => item.id));
@@ -356,9 +361,10 @@ function StorageToolbar({
   const capacity = overview?.diskCapacityBytes ?? selectedDriveInfo?.capacityBytes ?? 0;
   const free = overview?.diskFreeBytes ?? selectedDriveInfo?.freeBytes ?? 0;
   const used = Math.max(0, capacity - free);
-  const unaccounted = overview ? Math.max(0, used - overview.totalBytes) : 0;
-  const detail = overview ? t("systemCleaner.diskUsageDetail", {
-    scanned: formatBytes(overview.totalBytes),
+  const unaccounted = overview ? Math.max(0, used - overview.totalAllocatedBytes) : 0;
+  const detail = overview ? t("systemCleaner.allocationDetail", {
+    allocated: formatBytes(overview.totalAllocatedBytes),
+    logical: formatBytes(overview.totalBytes),
     unaccounted: formatBytes(unaccounted),
     used: formatBytes(used),
   }) : undefined;
@@ -411,7 +417,7 @@ function StorageBrowser({
   const { t } = useTranslation();
   const notice = useWorkspaceStore((state) => state.showStatusBarNotice);
   const [selectedPath, setSelectedPath] = useState<string>();
-  const [sort, setSort] = useState<StorageSort>({ key: "size", direction: "desc" });
+  const [sort, setSort] = useState<StorageSort>({ key: "allocated", direction: "desc" });
   useEffect(() => setSelectedPath(undefined), [directory.path]);
 
   const entries = useMemo(() => [...directory.entries].sort((left, right) => {
@@ -419,6 +425,7 @@ function StorageBrowser({
     if (folderOrder !== 0) return folderOrder;
     const direction = sort.direction === "asc" ? 1 : -1;
     if (sort.key === "size") return (left.bytes - right.bytes) * direction;
+    if (sort.key === "allocated") return (left.allocatedBytes - right.allocatedBytes) * direction;
     return left.name.localeCompare(right.name, undefined, { numeric: true }) * direction;
   }), [directory.entries, sort]);
   const crumbs = useMemo(() => buildCrumbs(overview.scanRoot, directory.path), [directory.path, overview.scanRoot]);
@@ -487,16 +494,17 @@ function StorageBrowser({
           <button type="button" onClick={() => toggleSort("name")}>{t("systemCleaner.name")}{sort.key === "name" ? <ChevronDown className={sort.direction === "asc" ? "ascending" : ""} size={12} /> : null}</button>
           <span>{t("systemCleaner.percentOfFolder")}</span>
           <button type="button" onClick={() => toggleSort("size")}>{t("systemCleaner.size")}{sort.key === "size" ? <ChevronDown className={sort.direction === "asc" ? "ascending" : ""} size={12} /> : null}</button>
+          <button type="button" onClick={() => toggleSort("allocated")}>{t("systemCleaner.allocated")}{sort.key === "allocated" ? <ChevronDown className={sort.direction === "asc" ? "ascending" : ""} size={12} /> : null}</button>
         </div>
         <div className="system-cleaner-browser-body">
-          {entries.map((entry) => <StorageEntryRow entry={entry} key={entry.path} selected={selectedPath === entry.path} totalBytes={directory.totalBytes} onOpen={openEntry} onContextMenu={showEntryContextMenu} onSelect={setSelectedPath} />)}
+          {entries.map((entry) => <StorageEntryRow entry={entry} key={entry.path} selected={selectedPath === entry.path} totalAllocatedBytes={directory.totalAllocatedBytes} onOpen={openEntry} onContextMenu={showEntryContextMenu} onSelect={setSelectedPath} />)}
         </div>
-        <footer className="system-cleaner-browser-footer"><span>{t("systemCleaner.items", { count: formatCount(entries.length) })}</span><span>{formatBytes(directory.totalBytes)}</span></footer>
+        <footer className="system-cleaner-browser-footer"><span>{t("systemCleaner.items", { count: formatCount(entries.length) })}</span><span>{t("systemCleaner.storageTotals", { allocated: formatBytes(directory.totalAllocatedBytes), size: formatBytes(directory.totalBytes) })}</span></footer>
       </section>
       <aside className="system-cleaner-type-pane">
         <h3>{t("systemCleaner.extensions")}</h3>
-        <div className="system-cleaner-extension-columns"><span>{t("systemCleaner.extension")}</span><span>{t("systemCleaner.percent")}</span><span>{t("systemCleaner.files")}</span><span>{t("systemCleaner.size")}</span></div>
-        <div className="system-cleaner-extension-body">{overview.extensions.map((entry) => { const percent = overview.totalBytes ? entry.bytes / overview.totalBytes * 100 : 0; return <div className="system-cleaner-extension-row" key={entry.extension}><span>{entry.extension}</span><span><i style={{ width: `${percent}%` }} />{percent.toFixed(1)}%</span><span>{formatCount(entry.files)}</span><strong>{formatBytes(entry.bytes)}</strong></div>; })}</div>
+        <div className="system-cleaner-extension-columns"><span>{t("systemCleaner.extension")}</span><span>{t("systemCleaner.percent")}</span><span>{t("systemCleaner.files")}</span><span>{t("systemCleaner.size")}</span><span>{t("systemCleaner.allocated")}</span></div>
+        <div className="system-cleaner-extension-body">{overview.extensions.map((entry) => { const percent = overview.totalAllocatedBytes ? entry.allocatedBytes / overview.totalAllocatedBytes * 100 : 0; return <div className="system-cleaner-extension-row" key={entry.extension}><span>{entry.extension}</span><span><i style={{ width: `${percent}%` }} />{percent.toFixed(1)}%</span><span>{formatCount(entry.files)}</span><strong>{formatBytes(entry.bytes)}</strong><strong>{formatBytes(entry.allocatedBytes)}</strong></div>; })}</div>
       </aside>
   </div>;
 }
@@ -507,16 +515,16 @@ function StorageEntryRow({
   onContextMenu,
   onSelect,
   selected,
-  totalBytes,
+  totalAllocatedBytes,
 }: {
   entry: SystemCleanerDiskEntry;
   onOpen: (entry: SystemCleanerDiskEntry) => void;
   onContextMenu: (entry: SystemCleanerDiskEntry, event: ReactMouseEvent) => void;
   onSelect: (path: string) => void;
   selected: boolean;
-  totalBytes: number;
+  totalAllocatedBytes: number;
 }) {
-  const percent = totalBytes ? entry.bytes / totalBytes * 100 : 0;
+  const percent = totalAllocatedBytes ? entry.allocatedBytes / totalAllocatedBytes * 100 : 0;
   const open = () => onOpen(entry);
   return <button
     type="button"
@@ -530,6 +538,7 @@ function StorageEntryRow({
     <span className="system-cleaner-browser-name"><FileGlyph entry={{ name: entry.name, kind: entry.isDirectory ? "folder" : "file", size: formatBytes(entry.bytes), sizeBytes: entry.bytes, modified: "" }} size={20} /><span>{entry.name}</span>{entry.isDirectory ? <ChevronRight size={12} /> : null}</span>
     <span className="system-cleaner-browser-percent"><i style={{ width: `${percent}%` }} /><span>{percent.toFixed(1)}%</span></span>
     <strong>{formatBytes(entry.bytes)}</strong>
+    <strong>{formatBytes(entry.allocatedBytes)}</strong>
   </button>;
 }
 

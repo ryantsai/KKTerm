@@ -64,8 +64,17 @@ test("System Cleaner keeps drive selection and disk metrics in the Storage toolb
   assert.match(tauri, /system_cleaner_list_drives/);
   assert.match(page, /system-cleaner-drive-select/);
   assert.match(page, /system-cleaner-storage-metrics/);
-  assert.match(page, /systemCleaner\.diskUsageDetail/);
+  assert.match(page, /systemCleaner\.allocationDetail/);
   assert.match(manual, /logical file\s+sizes/i);
+});
+
+test("System Cleaner reconciles logical and allocated NTFS sizes", () => {
+  assert.match(backend, /total_allocated_bytes/);
+  assert.match(backend, /header\.allocated_size/);
+  assert.match(backend, /fn resolve_mft_sizes/);
+  assert.match(page, /totalAllocatedBytes/);
+  assert.match(page, /systemCleaner\.allocated/);
+  assert.match(page, /systemCleaner\.storageTotals/);
 });
 
 test("System Cleaner retains one-pass directory totals for browsable results", () => {
@@ -104,7 +113,7 @@ test("System Cleaner prefers an elevated raw MFT scan and falls back to director
   assert.match(backend, /if let Ok\(scan\) = elevated_mft_scan\(root,/);
   assert.match(backend, /scan_tree\(root,/);
   assert.match(backend, /Start-Process.*-Verb RunAs/);
-  assert.match(manual, /If approval is declined or the raw scan is unavailable/i);
+  assert.match(manual, /If\s+approval is declined or the raw scan is unavailable/i);
 });
 
 test("System Cleaner scan helpers do not open terminal windows", () => {

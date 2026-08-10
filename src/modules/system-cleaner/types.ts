@@ -2,6 +2,7 @@ export type SystemCleanerDiskEntry = {
   name: string;
   path: string;
   bytes: number;
+  allocatedBytes: number;
   isDirectory: boolean;
 };
 
@@ -14,10 +15,11 @@ export type SystemCleanerDrive = {
 export type SystemCleanerOverview = {
   scanRoot: string;
   totalBytes: number;
+  totalAllocatedBytes: number;
   largest: SystemCleanerDiskEntry[];
   cleanup: Array<{ id: string; path: string; bytes: number }>;
   apps: Array<{ name: string; id: string; version: string }>;
-  extensions: Array<{ extension: string; bytes: number; files: number }>;
+  extensions: Array<{ extension: string; bytes: number; allocatedBytes: number; files: number }>;
   fileCount: number;
   folderCount: number;
   elapsedMs: number;
@@ -29,6 +31,7 @@ export type SystemCleanerDirectoryListing = {
   path: string;
   parentPath?: string;
   totalBytes: number;
+  totalAllocatedBytes: number;
   entries: SystemCleanerDiskEntry[];
 };
 

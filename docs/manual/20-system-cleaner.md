@@ -5,7 +5,8 @@
 `systemCleaner.title`, `systemCleaner.storage`, `systemCleaner.cleanup`,
 `systemCleaner.apps`, `app.activityRailSystemCleaner`,
 `src/modules/system-cleaner/SystemCleanerPage.tsx`, disk
-usage, large files, temporary files, cache, uninstall, Windows cleanup
+usage, allocated size, logical size, large files, temporary files, cache,
+uninstall, Windows cleanup
 
 The **System Cleaner** Module is available only on Windows. Open it from the
 Activity Rail. The Module opens without scanning. Select a fixed or removable
@@ -32,17 +33,23 @@ Browser actions that apply to this read-only analysis view: open, copy, and
 opening a folder reads only its immediate entries instead of walking that
 subtree again. The adjacent file-type table remains scoped to the whole drive.
 The Storage toolbar shows the selected drive's Windows-reported total, used,
-and free allocation. Folder and file-type totals are readable logical file
-sizes; they can be lower than Windows used space because volume allocation also
-includes protected or unreadable data, filesystem metadata, reserved storage,
-alternate data streams, and allocation overhead. Reparse points remain excluded
-to avoid duplicate traversal. For NTFS drives, KKTerm requests standard UAC
-approval and reads Master File Table metadata directly. Scan helpers run without
-opening terminal windows; the standard UAC consent prompt remains visible when
-elevation is required. If approval is declined or the raw scan is unavailable,
-it automatically uses the non-elevated directory walker instead. The drive scan
-runs on a background worker while cleanup locations and installed-app discovery
-run concurrently. Scans run only on explicit demand; use
+and free allocation. Storage rows and file-type rows show both logical file
+sizes through **`systemCleaner.size`** and physical allocation through
+**`systemCleaner.allocated`**; their
+percent bars and default descending order use allocated bytes. The folder
+footer summarizes both measurements through **`systemCleaner.storageTotals`**.
+Allocated totals include NTFS allocation-unit overhead, non-resident metadata,
+named streams, and resolvable NTFS system records, so the root total can be
+compared with Windows used space. **`systemCleaner.allocationDetail`** identifies
+any residual reserved or unattributed allocation. Reparse-point records count
+their own allocation but are never traversed, avoiding duplicate target data.
+For NTFS drives, KKTerm requests standard UAC approval and reads Master File
+Table metadata directly. Scan helpers run without opening terminal windows; the
+standard UAC consent prompt remains visible when elevation is required. If
+approval is declined or the raw scan is unavailable, it automatically uses the
+non-elevated directory walker instead. The drive scan runs on a background
+worker while cleanup locations and installed-app discovery run concurrently.
+Scans run only on explicit demand; use
 **`systemCleaner.scan`** to refresh the measurements after moving or deleting
 files. System Cleaner reports sizes but does not delete items from this view.
 
