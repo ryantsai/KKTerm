@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ThinkingOrb, type OrbSize, type OrbTheme } from "thinking-orbs";
+import { ThinkingOrb, type OrbSize, type OrbState, type OrbTheme } from "thinking-orbs";
 
 function currentOrbTheme(): OrbTheme {
   if (typeof document === "undefined") return "light";
@@ -17,10 +17,12 @@ export function SystemCleanerScanOrb({
   className,
   label,
   size,
+  state = "searching",
 }: {
   className?: string;
   label: string;
   size: OrbSize;
+  state?: OrbState;
 }) {
   const [theme, setTheme] = useState<OrbTheme>(() => currentOrbTheme());
 
@@ -33,5 +35,5 @@ export function SystemCleanerScanOrb({
     return () => observer.disconnect();
   }, []);
 
-  return <ThinkingOrb aria-label={label} className={className} size={size} state="searching" theme={theme} />;
+  return <ThinkingOrb aria-label={label} className={className} size={size} state={state} theme={theme} />;
 }

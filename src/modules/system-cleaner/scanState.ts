@@ -10,11 +10,14 @@ type SystemCleanerScanState = {
 };
 
 const initialProgress: SystemCleanerScanProgress = {
+  phase: "metadata",
   files: 0,
   folders: 0,
   bytes: 0,
   currentPath: "",
   elapsedMs: 0,
+  phaseCompleted: 0,
+  phaseTotal: 0,
 };
 
 export const useSystemCleanerScanStore = create<SystemCleanerScanState>((set) => ({

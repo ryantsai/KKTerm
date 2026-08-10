@@ -20,7 +20,7 @@ import {
   FolderPlus as ReFolderPlus, Gauge as ReGauge3, Gear as ReGear, Globe as ReGlobe,
   Globe2 as ReGlobe2, Grid as ReGrid, Hand as ReHand, HardDrive as ReHardDrive,
   Hashtag as ReHashtag, HeartPulse as ReHeartPulse, HelpCircle as ReHelpCircle, Home as ReHome,
-  Image as ReImage, ImagePlus as ReImagePlus, ImageUp as ReImageUp, Inbox as ReInbox,
+  Image as ReImage, Images as ReImages, ImagePlus as ReImagePlus, ImageUp as ReImageUp, Inbox as ReInbox,
   InfoCircle as ReInfoCircle, Key as ReKey, Keyboard as ReKeyboard, Language as ReLanguage,
   Laptop as ReLaptop, Layers as ReLayers, Link as ReLink, LinkBroken as ReLinkBroken,
   List as ReList, ListCheck as ReListCheck, Loader as ReLoader, Lock as ReLock,
@@ -80,7 +80,7 @@ const reiconIconComponents = {
   "Floppy": ReFloppy, "Folder": ReFolder, "FolderOpen": ReFolderOpen, "FolderPlus": ReFolderPlus, "Gauge": ReGauge3,
   "GitBranch": ReBranchUp, "Globe": ReGlobe, "Globe2": ReGlobe2, "Grid": ReGrid,
   "Grid2x2": ReGrid, "Hammer": ReSledgehammer, "Hand": ReHand, "HardDrive": ReHardDrive,
-  "Hash": ReHashtag, "HeartPulse": ReHeartPulse, "Home": ReHome, "ImagePlus": ReImagePlus,
+  "Hash": ReHashtag, "HeartPulse": ReHeartPulse, "Home": ReHome, "Images": ReImages, "ImagePlus": ReImagePlus,
   "ImageUp": ReImageUp, "Inbox": ReInbox, "Info": ReInfoCircle, "Key": ReKey,
   "KeyRound": ReKey, "Keyboard": ReKeyboard, "Landmark": ReBuilding, "Languages": ReLanguage,
   "Laptop": ReLaptop, "Layers": ReLayers, "LayoutDashboard": ReGrid, "LayoutGrid": ReGrid,
@@ -227,6 +227,7 @@ export const HardDrive = ReHardDrive;
 export const Hash = ReHashtag;
 export const HeartPulse = ReHeartPulse;
 export const Home = ReHome;
+export const Images = ReImages;
 export const ImagePlus = ReImagePlus;
 export const ImageUp = ReImageUp;
 export const Inbox = ReInbox;

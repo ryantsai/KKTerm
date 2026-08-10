@@ -26,6 +26,15 @@ test("System Cleaner scans the drive once off the UI thread and streams progress
   assert.match(page, /listen<SystemCleanerScanProgress>/);
 });
 
+test("System Cleaner streams elevated MFT progress before the helper exits", () => {
+  assert.match(backend, /kkterm-system-cleaner-mft-progress-/);
+  assert.match(backend, /fn drain_mft_progress/);
+  assert.match(backend, /child\.try_wait\(\)/);
+  assert.match(backend, /scan_raw_mft\(&root,\s*\|progress\|/);
+  assert.match(backend, /ScanProgressPhase::Metadata/);
+  assert.match(backend, /ScanProgressPhase::Files/);
+});
+
 test("System Cleaner keeps scan paths from widening the page", () => {
   assert.match(page, /system-cleaner-scan-path/);
   assert.match(styles, /\.system-cleaner-scan-path\s*\{[^}]*min-width:\s*0[^}]*overflow:\s*hidden[^}]*text-overflow:\s*ellipsis[^}]*white-space:\s*nowrap/s);
@@ -34,9 +43,18 @@ test("System Cleaner keeps scan paths from widening the page", () => {
 test("System Cleaner uses the Searching orb in the scan page and Status Bar", () => {
   assert.match(page, /<SystemCleanerScanOrb size=\{64\}/);
   assert.match(statusBar, /<SystemCleanerScanOrb size=\{20\}/);
-  assert.match(scanOrb, /state="searching"/);
+  assert.match(scanOrb, /state = "searching"/);
+  assert.match(scanOrb, /state=\{state\}/);
   assert.match(statusBar, /useSystemCleanerScanStore/);
   assert.match(scanState, /active:\s*boolean/);
+});
+
+test("System Cleaner uses responsive cleanup and uninstall cards with a Working cleanup orb", () => {
+  assert.match(page, /system-cleaner-cleanup-grid/);
+  assert.match(page, /system-cleaner-app-grid/);
+  assert.match(page, /state="working"/);
+  assert.match(page, /submitAssistantContextSnippet/);
+  assert.match(styles, /grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(/);
 });
 
 test("System Cleaner keeps drive selection and disk metrics in the Storage toolbar", () => {
@@ -47,7 +65,7 @@ test("System Cleaner keeps drive selection and disk metrics in the Storage toolb
   assert.match(page, /system-cleaner-drive-select/);
   assert.match(page, /system-cleaner-storage-metrics/);
   assert.match(page, /systemCleaner\.diskUsageDetail/);
-  assert.match(manual, /logical file sizes/i);
+  assert.match(manual, /logical file\s+sizes/i);
 });
 
 test("System Cleaner retains one-pass directory totals for browsable results", () => {
@@ -81,9 +99,9 @@ test("System Cleaner walks directories iteratively without following reparse poi
 
 test("System Cleaner prefers an elevated raw MFT scan and falls back to directory enumeration", () => {
   assert.match(backend, /Volume::new\(&volume_path\)/);
-  assert.match(backend, /load_mft_tolerating_bad_records\(volume\)/);
+  assert.match(backend, /load_mft_tolerating_bad_records\(volume,/);
   assert.match(backend, /mft_attribute[\s\S]*\.value\(&mut reader\)/);
-  assert.match(backend, /if let Ok\(scan\) = elevated_mft_scan\(root\)/);
+  assert.match(backend, /if let Ok\(scan\) = elevated_mft_scan\(root,/);
   assert.match(backend, /scan_tree\(root,/);
   assert.match(backend, /Start-Process.*-Verb RunAs/);
   assert.match(manual, /If approval is declined or the raw scan is unavailable/i);
@@ -91,7 +109,7 @@ test("System Cleaner prefers an elevated raw MFT scan and falls back to director
 
 test("System Cleaner scan helpers do not open terminal windows", () => {
   assert.match(backend, /const CREATE_NO_WINDOW: u32 = 0x0800_0000/);
-  assert.match(backend, /Command::new\("powershell\.exe"\)[\s\S]*?\.creation_flags\(CREATE_NO_WINDOW\)[\s\S]*?let status = command\.status\(\)/);
+  assert.match(backend, /Command::new\("powershell\.exe"\)[\s\S]*?\.creation_flags\(CREATE_NO_WINDOW\)[\s\S]*?command\.spawn\(\)/);
   assert.match(backend, /fn installed_apps\(\)[\s\S]*?Command::new\("winget"\)[\s\S]*?command\.creation_flags\(CREATE_NO_WINDOW\)[\s\S]*?command\.output\(\)/);
 });
 

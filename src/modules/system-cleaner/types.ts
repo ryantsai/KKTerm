@@ -33,9 +33,12 @@ export type SystemCleanerDirectoryListing = {
 };
 
 export type SystemCleanerScanProgress = {
+  phase: "metadata" | "files";
   files: number;
   folders: number;
   bytes: number;
   currentPath: string;
   elapsedMs: number;
+  phaseCompleted: number;
+  phaseTotal: number;
 };

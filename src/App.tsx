@@ -637,6 +637,7 @@ function App() {
         <SystemCleanerPage
           key="system-cleaner-page"
           active={visibleBasePage === "systemCleaner"}
+          onOpenAssistant={openAssistantPanel}
         />
       ) : null}
       </Suspense>

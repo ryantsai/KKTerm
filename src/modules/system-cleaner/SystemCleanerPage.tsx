@@ -1,7 +1,25 @@
 import { useCallback, useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { useTranslation } from "react-i18next";
-import { ArrowUp, Box, Brush, ChevronDown, ChevronRight, HardDrive, RefreshCw, Trash2 } from "../../lib/reicon";
+import {
+  AppWindow,
+  ArrowUp,
+  Box,
+  Brush,
+  Bug,
+  ChevronDown,
+  ChevronRight,
+  Clock,
+  FileText,
+  Globe2,
+  HardDrive,
+  Images,
+  Package,
+  RefreshCw,
+  Sparkles,
+  Trash2,
+  type IconComponent,
+} from "../../lib/reicon";
 import { ModuleHeader, ModuleHeaderLead, ModuleHeaderSpacer, ModuleHeaderTitle, ModuleIconTile } from "../../app/ModuleHeader";
 import { SystemCleanerModuleIcon } from "../../app/moduleIdentityIcons";
 import { ConfirmSheet } from "../../app/ui/dialog";
@@ -23,6 +41,30 @@ import "./systemCleaner.css";
 
 type Section = "storage" | "cleanup" | "apps";
 type StorageSort = { key: "name" | "size"; direction: "asc" | "desc" };
+type MutationKind = "clean" | "uninstall";
+type CleanupTone = "accent" | "green" | "amber" | "red";
+
+const DEFAULT_CLEANUP_IDS = new Set([
+  "temp",
+  "windows-temp",
+  "browser-cache",
+  "chrome-cache",
+  "firefox-cache",
+  "shader-cache",
+  "thumbnail-cache",
+]);
+
+const CLEANUP_PRESENTATION: Record<string, { icon: IconComponent; tone: CleanupTone }> = {
+  "temp": { icon: Clock, tone: "accent" },
+  "windows-temp": { icon: AppWindow, tone: "amber" },
+  "browser-cache": { icon: Globe2, tone: "green" },
+  "chrome-cache": { icon: Globe2, tone: "accent" },
+  "firefox-cache": { icon: Globe2, tone: "amber" },
+  "shader-cache": { icon: Sparkles, tone: "green" },
+  "thumbnail-cache": { icon: Images, tone: "accent" },
+  "crash-dumps": { icon: Bug, tone: "red" },
+  "error-reports": { icon: FileText, tone: "amber" },
+};
 
 const formatBytes = (bytes: number) => {
   if (bytes < 1024) return `${bytes} B`;
@@ -38,9 +80,10 @@ const formatBytes = (bytes: number) => {
 
 const formatCount = (value: number) => new Intl.NumberFormat().format(value);
 
-export function SystemCleanerPage({ active }: { active: boolean }) {
+export function SystemCleanerPage({ active, onOpenAssistant }: { active: boolean; onOpenAssistant: () => void }) {
   const { t } = useTranslation();
   const notice = useWorkspaceStore((state) => state.showStatusBarNotice);
+  const submitAssistantContextSnippet = useWorkspaceStore((state) => state.submitAssistantContextSnippet);
   const scanActive = useSystemCleanerScanStore((state) => state.active);
   const progress = useSystemCleanerScanStore((state) => state.progress);
   const beginScan = useSystemCleanerScanStore((state) => state.beginScan);
@@ -53,11 +96,11 @@ export function SystemCleanerPage({ active }: { active: boolean }) {
   const [overview, setOverview] = useState<SystemCleanerOverview>();
   const [directory, setDirectory] = useState<SystemCleanerDirectoryListing>();
   const [directoryLoading, setDirectoryLoading] = useState(false);
-  const [mutationBusy, setMutationBusy] = useState(false);
+  const [mutationKind, setMutationKind] = useState<MutationKind>();
   const [selected, setSelected] = useState<string[]>([]);
   const [confirmCleanup, setConfirmCleanup] = useState(false);
   const [pendingApp, setPendingApp] = useState<SystemCleanerOverview["apps"][number]>();
-  const busy = scanActive || mutationBusy;
+  const busy = scanActive || mutationKind !== undefined;
 
   useEffect(() => {
     if (!active || drivesLoaded || !isTauriRuntime()) return;
@@ -87,7 +130,9 @@ export function SystemCleanerPage({ active }: { active: boolean }) {
       setOverview(next);
       setSelectedDrive(next.scanRoot);
       setDirectory({ path: next.scanRoot, totalBytes: next.totalBytes, entries: next.largest });
-      setSelected(next.cleanup.filter((item) => item.bytes > 0).map((item) => item.id));
+      setSelected(next.cleanup
+        .filter((item) => item.bytes > 0 && DEFAULT_CLEANUP_IDS.has(item.id))
+        .map((item) => item.id));
     } catch (error) {
       notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" });
     } finally {
@@ -117,7 +162,7 @@ export function SystemCleanerPage({ active }: { active: boolean }) {
   }, [directoryLoading, notice, scanActive, t]);
 
   async function clean() {
-    setMutationBusy(true);
+    setMutationKind("clean");
     try {
       const freed = await invokeCommand("system_cleaner_clean", { ids: selected });
       notice(t("systemCleaner.cleaned", { size: formatBytes(freed) }), { tone: "success" });
@@ -125,7 +170,7 @@ export function SystemCleanerPage({ active }: { active: boolean }) {
     } catch (error) {
       notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" });
     } finally {
-      setMutationBusy(false);
+      setMutationKind(undefined);
     }
   }
 
@@ -133,7 +178,7 @@ export function SystemCleanerPage({ active }: { active: boolean }) {
     if (!pendingApp) return;
     const app = pendingApp;
     setPendingApp(undefined);
-    setMutationBusy(true);
+    setMutationKind("uninstall");
     try {
       await invokeCommand("system_cleaner_uninstall", { appId: app.id });
       notice(t("systemCleaner.uninstalled", { name: app.name }), { tone: "success" });
@@ -141,8 +186,20 @@ export function SystemCleanerPage({ active }: { active: boolean }) {
     } catch (error) {
       notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" });
     } finally {
-      setMutationBusy(false);
+      setMutationKind(undefined);
     }
+  }
+
+  function explainApp(app: SystemCleanerOverview["apps"][number]) {
+    submitAssistantContextSnippet({
+      id: `system-cleaner-app-${Date.now()}`,
+      kind: "text",
+      sourceLabel: app.name,
+      text: JSON.stringify({ name: app.name, packageId: app.id, version: app.version }, null, 2),
+      capturedAt: new Date().toISOString(),
+    }, t("systemCleaner.aiExplainPrompt", { name: app.name }));
+    onOpenAssistant();
+    notice(t("workspace.sentToAi"), { tone: "success" });
   }
 
   const selectedDriveInfo = drives.find((drive) => drive.path === selectedDrive);
@@ -169,21 +226,115 @@ export function SystemCleanerPage({ active }: { active: boolean }) {
         })}
       </nav>
       <section className="system-cleaner-content">
+        {scanActive ? <ScanOverlay progress={progress} /> : null}
         {section === "storage" ? <div className="system-cleaner-view system-cleaner-storage-view">
           <StorageToolbar drives={drives} overview={overview} selectedDrive={selectedDrive} selectedDriveInfo={selectedDriveInfo} busy={busy} onSelectDrive={selectDrive} />
           <div className="system-cleaner-storage-body">
-            {scanActive ? <ScanOverlay progress={progress} /> : null}
             {!overview && !scanActive ? <div className="system-cleaner-empty"><span className="system-cleaner-empty-icon"><HardDrive size={24} /></span><p>{t("systemCleaner.scanHint")}</p><button type="button" className="toolbar-button" disabled={!selectedDrive} onClick={() => void scan()}><RefreshCw size={14} />{t("systemCleaner.scan")}</button></div> : null}
             {overview && directory ? <StorageBrowser directory={directory} loading={directoryLoading} onOpenDirectory={openDirectory} overview={overview} /> : null}
           </div>
         </div> : null}
-        {overview && section === "cleanup" ? <div className="system-cleaner-view system-cleaner-cleanup-view"><header className="system-cleaner-view-head"><div><h2>{t("systemCleaner.cleanup")}</h2><p>{t("systemCleaner.cleanupHeading")}</p></div><strong className="system-cleaner-total">{formatBytes(selectedBytes)}</strong></header><div className="system-cleaner-list system-cleaner-cleanup-list">{overview.cleanup.map((item) => { const checked = selected.includes(item.id); return <label className={`system-cleaner-row${checked ? " selected" : ""}`} key={item.id}><input type="checkbox" checked={checked} onChange={() => setSelected((current) => current.includes(item.id) ? current.filter((id) => id !== item.id) : [...current, item.id])} /><span><b>{t(`systemCleaner.category.${item.id}`)}</b><small title={item.path}>{item.path}</small></span><strong>{formatBytes(item.bytes)}</strong></label>; })}</div><footer className="system-cleaner-action-bar"><button type="button" className="primary-button" disabled={busy || selectedBytes === 0} onClick={() => setConfirmCleanup(true)}><Trash2 size={15} />{t("systemCleaner.clean", { size: formatBytes(selectedBytes) })}</button></footer></div> : null}
-        {overview && section === "apps" ? <div className="system-cleaner-view"><header className="system-cleaner-view-head"><div><h2>{t("systemCleaner.apps")}</h2><p>{t("systemCleaner.appsHeading")}</p></div></header><div className="system-cleaner-list system-cleaner-app-list">{overview.apps.map((app, index) => <div className="system-cleaner-row" key={`${app.id}-${app.version}-${index}`}><span><b>{app.name}</b><small>{app.id} · {app.version}</small></span><button type="button" className="system-cleaner-uninstall" onClick={() => setPendingApp(app)}>{t("systemCleaner.uninstall")}</button></div>)}</div></div> : null}
+        {overview && section === "cleanup" ? <CleanupView
+          busy={busy}
+          cleaning={mutationKind === "clean"}
+          items={overview.cleanup}
+          selected={selected}
+          selectedBytes={selectedBytes}
+          onClean={() => setConfirmCleanup(true)}
+          onToggle={(id) => setSelected((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])}
+        /> : null}
+        {overview && section === "apps" ? <AppsView
+          apps={overview.apps}
+          busy={busy}
+          onExplain={explainApp}
+          onUninstall={setPendingApp}
+        /> : null}
+        {!overview && section !== "storage" && !scanActive ? <div className="system-cleaner-empty"><span className="system-cleaner-empty-icon"><RefreshCw size={22} /></span><p>{t("systemCleaner.scanHint")}</p><button type="button" className="toolbar-button" disabled={!selectedDrive} onClick={() => void scan()}><RefreshCw size={14} />{t("systemCleaner.scan")}</button></div> : null}
       </section>
     </div>
     {confirmCleanup ? <ConfirmSheet tone="danger" title={t("systemCleaner.cleanTitle")} message={t("systemCleaner.cleanMessage", { size: formatBytes(selectedBytes) })} confirmLabel={t("systemCleaner.clean", { size: formatBytes(selectedBytes) })} onConfirm={() => { setConfirmCleanup(false); void clean(); }} onCancel={() => setConfirmCleanup(false)} /> : null}
     {pendingApp ? <ConfirmSheet tone="danger" title={t("systemCleaner.uninstallTitle")} message={t("systemCleaner.uninstallMessage", { name: pendingApp.name })} confirmLabel={t("systemCleaner.uninstall")} onConfirm={() => void uninstall()} onCancel={() => setPendingApp(undefined)} /> : null}
   </main>;
+}
+
+function CleanupView({
+  busy,
+  cleaning,
+  items,
+  onClean,
+  onToggle,
+  selected,
+  selectedBytes,
+}: {
+  busy: boolean;
+  cleaning: boolean;
+  items: SystemCleanerOverview["cleanup"];
+  onClean: () => void;
+  onToggle: (id: string) => void;
+  selected: string[];
+  selectedBytes: number;
+}) {
+  const { t } = useTranslation();
+  return <div className="system-cleaner-view system-cleaner-cleanup-view">
+    <header className="system-cleaner-view-head">
+      <div><h2>{t("systemCleaner.cleanup")}</h2><p>{t("systemCleaner.cleanupHeading")}</p></div>
+      <strong className="system-cleaner-total">{formatBytes(selectedBytes)}</strong>
+    </header>
+    <div className="system-cleaner-cleanup-grid">
+      {items.map((item) => {
+        const checked = selected.includes(item.id);
+        const presentation = CLEANUP_PRESENTATION[item.id] ?? { icon: FileText, tone: "accent" as const };
+        const Icon = presentation.icon;
+        return <article className={`system-cleaner-cleanup-card${checked ? " selected" : ""}`} data-tone={presentation.tone} key={item.id}>
+          <label className="system-cleaner-cleanup-card-select">
+            <input type="checkbox" checked={checked} disabled={busy || item.bytes === 0} onChange={() => onToggle(item.id)} />
+            <span className="system-cleaner-card-icon"><Icon size={20} /></span>
+            <span className="system-cleaner-cleanup-card-title">
+              <b>{t(`systemCleaner.category.${item.id}`)}</b>
+              <strong>{formatBytes(item.bytes)}</strong>
+            </span>
+          </label>
+          <p>{t(`systemCleaner.categoryDescription.${item.id}`)}</p>
+          <bdi dir="ltr" title={item.path}>{item.path}</bdi>
+        </article>;
+      })}
+    </div>
+    <footer className="system-cleaner-action-bar"><button type="button" className="primary-button" disabled={busy || selectedBytes === 0} onClick={onClean}><Trash2 size={15} />{t("systemCleaner.clean", { size: formatBytes(selectedBytes) })}</button></footer>
+    {cleaning ? <div className="system-cleaner-operation-overlay" role="status">
+      <SystemCleanerScanOrb size={64} state="working" label={t("systemCleaner.cleaningWorking")} />
+      <strong>{t("systemCleaner.cleaningWorking")}</strong>
+    </div> : null}
+  </div>;
+}
+
+function AppsView({
+  apps,
+  busy,
+  onExplain,
+  onUninstall,
+}: {
+  apps: SystemCleanerOverview["apps"];
+  busy: boolean;
+  onExplain: (app: SystemCleanerOverview["apps"][number]) => void;
+  onUninstall: (app: SystemCleanerOverview["apps"][number]) => void;
+}) {
+  const { t } = useTranslation();
+  return <div className="system-cleaner-view system-cleaner-apps-view">
+    <header className="system-cleaner-view-head"><div><h2>{t("systemCleaner.apps")}</h2><p>{t("systemCleaner.appsHeading")}</p></div></header>
+    <div className="system-cleaner-app-grid">
+      {apps.map((app, index) => <article className="system-cleaner-app-card" key={`${app.id}-${app.version}-${index}`}>
+        <header>
+          <span className="system-cleaner-app-icon"><Package size={20} /></span>
+          <div><h3>{app.name}</h3><p>{app.id}</p></div>
+        </header>
+        <dl><div><dt>{t("systemCleaner.version")}</dt><dd>{app.version}</dd></div></dl>
+        <footer>
+          <button type="button" className="system-cleaner-ai-explain" disabled={busy} onClick={() => onExplain(app)}><Sparkles size={14} />{t("systemCleaner.aiExplain")}</button>
+          <button type="button" className="system-cleaner-uninstall" disabled={busy} onClick={() => onUninstall(app)}><Trash2 size={14} />{t("systemCleaner.uninstall")}</button>
+        </footer>
+      </article>)}
+    </div>
+  </div>;
 }
 
 function StorageToolbar({
@@ -234,9 +385,14 @@ function StorageToolbar({
 function ScanOverlay({ progress }: { progress?: SystemCleanerScanProgress }) {
   const { t } = useTranslation();
   const label = t("systemCleaner.scanning");
+  const metadataPercent = progress?.phase === "metadata" && progress.phaseTotal > 0
+    ? Math.min(100, Math.round(progress.phaseCompleted / progress.phaseTotal * 100))
+    : 0;
   return <div className="system-cleaner-scan-overlay" role="status">
     <SystemCleanerScanOrb size={64} label={label} />
-    <strong>{t("systemCleaner.scanProgress", { files: formatCount(progress?.files ?? 0), size: formatBytes(progress?.bytes ?? 0) })}</strong>
+    <strong>{progress?.phase === "metadata"
+      ? t("systemCleaner.scanMetadataProgress", { percent: metadataPercent })
+      : t("systemCleaner.scanProgress", { files: formatCount(progress?.files ?? 0), size: formatBytes(progress?.bytes ?? 0) })}</strong>
     {progress?.currentPath ? <bdi className="system-cleaner-scan-path" dir="ltr" title={progress.currentPath}>{progress.currentPath}</bdi> : <span>{label}</span>}
   </div>;
 }

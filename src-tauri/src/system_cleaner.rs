@@ -50,14 +50,24 @@ struct ExtensionEntry {
     files: u64,
 }
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ScanProgress {
+    phase: ScanProgressPhase,
     files: u64,
     folders: u64,
     bytes: u64,
     current_path: String,
     elapsed_ms: u64,
+    phase_completed: u64,
+    phase_total: u64,
+}
+
+#[derive(Clone, Copy, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+enum ScanProgressPhase {
+    Metadata,
+    Files,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -84,6 +94,17 @@ struct CleanupEntry {
     id: String,
     path: String,
     bytes: u64,
+}
+
+enum CleanupTarget {
+    DirectoryContents(PathBuf),
+    FilesWithPrefix { directory: PathBuf, prefix: String },
+}
+
+struct CleanupLocation {
+    id: String,
+    display_path: String,
+    targets: Vec<CleanupTarget>,
 }
 
 #[derive(Serialize)]
@@ -293,6 +314,7 @@ where
     let mut folders = 0_u64;
     let mut bytes = 0_u64;
     let mut since_progress = 0_u16;
+    let mut last_progress = std::time::Instant::now();
 
     while let Some(work) = pending.pop() {
         match work {
@@ -308,6 +330,7 @@ where
                 };
                 for entry in entries {
                     let entry_path = entry.path;
+                    let current_path = entry_path.to_string_lossy().into_owned();
                     if entry.is_directory {
                         pending.push(ScanWork::Enter {
                             path: entry_path,
@@ -330,14 +353,20 @@ where
                         total.1 += 1;
                     }
                     since_progress = since_progress.saturating_add(1);
-                    if since_progress >= 4_096 {
+                    if since_progress >= 4_096
+                        || last_progress.elapsed() >= std::time::Duration::from_millis(150)
+                    {
                         since_progress = 0;
+                        last_progress = std::time::Instant::now();
                         emit_progress(ScanProgress {
+                            phase: ScanProgressPhase::Files,
                             files,
                             folders,
                             bytes,
-                            current_path: path.to_string_lossy().into_owned(),
+                            current_path,
                             elapsed_ms: started.elapsed().as_millis() as u64,
+                            phase_completed: files.saturating_add(folders),
+                            phase_total: 0,
                         });
                     }
                 }
@@ -351,6 +380,16 @@ where
             }
         }
     }
+    emit_progress(ScanProgress {
+        phase: ScanProgressPhase::Files,
+        files,
+        folders,
+        bytes,
+        current_path: root.to_string_lossy().into_owned(),
+        elapsed_ms: started.elapsed().as_millis() as u64,
+        phase_completed: files.saturating_add(folders),
+        phase_total: files.saturating_add(folders),
+    });
     let root_listing = directory_entries(root, root, &directory_bytes)?;
     let mut extensions = extension_totals
         .into_iter()
@@ -474,9 +513,13 @@ fn fixup_mft_record(data: &mut [u8]) -> bool {
 }
 
 #[cfg(target_os = "windows")]
-fn load_mft_tolerating_bad_records(
+fn load_mft_tolerating_bad_records<F>(
     volume: ntfs_reader::volume::Volume,
-) -> Result<ntfs_reader::mft::Mft, String> {
+    mut emit_progress: F,
+) -> Result<ntfs_reader::mft::Mft, String>
+where
+    F: FnMut(u64, u64),
+{
     use ntfs::Ntfs;
     use ntfs_reader::mft::Mft;
     use std::io::Read;
@@ -501,10 +544,26 @@ fn load_mft_tolerating_bad_records(
         .value(&mut reader)
         .map_err(|error| error.to_string())?
         .attach(&mut reader);
-    let mut data = Vec::with_capacity(mft_attribute.value_length() as usize);
-    mft_stream
-        .read_to_end(&mut data)
-        .map_err(|error| error.to_string())?;
+    let value_length = mft_attribute.value_length();
+    let progress_total = value_length.saturating_mul(2);
+    let mut data = Vec::with_capacity(value_length as usize);
+    let mut chunk = vec![0_u8; 1024 * 1024];
+    let mut last_reported = 0_u64;
+    loop {
+        let count = mft_stream
+            .read(&mut chunk)
+            .map_err(|error| error.to_string())?;
+        if count == 0 {
+            break;
+        }
+        data.extend_from_slice(&chunk[..count]);
+        let completed = data.len() as u64;
+        if completed.saturating_sub(last_reported) >= 2 * 1024 * 1024 {
+            last_reported = completed;
+            emit_progress(completed, progress_total);
+        }
+    }
+    emit_progress(value_length, progress_total);
     let max_record = data.len() as u64 / volume.file_record_size;
     let bitmap = vec![u8::MAX; max_record.div_ceil(8) as usize];
 
@@ -514,7 +573,14 @@ fn load_mft_tolerating_bad_records(
         if !fixup_mft_record(&mut data[start..end]) {
             data[start..start + 4].fill(0);
         }
+        if number % 4_096 == 0 {
+            emit_progress(
+                value_length.saturating_add(number.saturating_mul(volume.file_record_size)),
+                progress_total,
+            );
+        }
     }
+    emit_progress(progress_total, progress_total);
 
     Ok(Mft {
         volume,
@@ -580,7 +646,10 @@ fn mft_logical_size(file: &ntfs_reader::file::NtfsFile<'_>) -> u64 {
 }
 
 #[cfg(target_os = "windows")]
-fn scan_raw_mft(root: &Path) -> Result<DriveScan, String> {
+fn scan_raw_mft<F>(root: &Path, mut emit_progress: F) -> Result<DriveScan, String>
+where
+    F: FnMut(ScanProgress),
+{
     use ntfs_reader::volume::Volume;
 
     let started = std::time::Instant::now();
@@ -591,7 +660,19 @@ fn scan_raw_mft(root: &Path) -> Result<DriveScan, String> {
     let volume_path = format!(r"\\.\{drive}");
     let volume = Volume::new(&volume_path)
         .map_err(|error| format!("Could not open {volume_path}: {error}"))?;
-    let mut mft = load_mft_tolerating_bad_records(volume)?;
+    let metadata_path = root.join("$MFT").to_string_lossy().into_owned();
+    let mut mft = load_mft_tolerating_bad_records(volume, |completed, total| {
+        emit_progress(ScanProgress {
+            phase: ScanProgressPhase::Metadata,
+            files: 0,
+            folders: 0,
+            bytes: 0,
+            current_path: metadata_path.clone(),
+            elapsed_ms: started.elapsed().as_millis() as u64,
+            phase_completed: completed,
+            phase_total: total,
+        });
+    })?;
     mft.volume.path = root.to_path_buf();
 
     let mut extension_totals: HashMap<String, (u64, u64)> = HashMap::new();
@@ -600,19 +681,25 @@ fn scan_raw_mft(root: &Path) -> Result<DriveScan, String> {
     let mut root_entries = Vec::new();
     let mut files = 0_u64;
     let mut folders = 1_u64;
+    let mut bytes = 0_u64;
+    let record_total = mft.max_record;
+    let mut processed = 0_u64;
     for file in mft.files() {
         let Some(name_attribute) = file.get_best_file_name(&mft) else {
             continue;
         };
         let name = name_attribute.to_string();
         let parent = name_attribute.parent();
+        let current_path = root.join(&name).to_string_lossy().into_owned();
+        processed = processed.saturating_add(1);
 
         if file.is_directory() {
             directories.insert(file.number(), (parent, name));
             folders += 1;
         } else {
-            let bytes = mft_logical_size(&file);
+            let file_bytes = mft_logical_size(&file);
             files += 1;
+            bytes = bytes.saturating_add(file_bytes);
             let extension = Path::new(&name)
                 .extension()
                 .and_then(|value| value.to_str())
@@ -620,19 +707,31 @@ fn scan_raw_mft(root: &Path) -> Result<DriveScan, String> {
                 .map(|value| format!(".{}", value.to_ascii_lowercase()))
                 .unwrap_or_else(|| "(none)".into());
             let extension_total = extension_totals.entry(extension).or_default();
-            extension_total.0 = extension_total.0.saturating_add(bytes);
+            extension_total.0 = extension_total.0.saturating_add(file_bytes);
             extension_total.1 += 1;
             let total = direct_directory_bytes.entry(parent).or_default();
-            *total = total.saturating_add(bytes);
+            *total = total.saturating_add(file_bytes);
 
             if parent == 5 {
                 root_entries.push(DiskEntry {
                     name: name.clone(),
                     path: root.join(&name).to_string_lossy().into_owned(),
-                    bytes,
+                    bytes: file_bytes,
                     is_directory: false,
                 });
             }
+        }
+        if processed % 2_048 == 0 {
+            emit_progress(ScanProgress {
+                phase: ScanProgressPhase::Files,
+                files,
+                folders,
+                bytes,
+                current_path,
+                elapsed_ms: started.elapsed().as_millis() as u64,
+                phase_completed: processed,
+                phase_total: record_total,
+            });
         }
     }
 
@@ -708,7 +807,53 @@ fn powershell_literal(value: &str) -> String {
 }
 
 #[cfg(target_os = "windows")]
-fn elevated_mft_scan(root: &Path) -> Result<DriveScan, String> {
+fn valid_mft_helper_file(path: &Path, prefix: &str, suffix: &str) -> bool {
+    path.parent()
+        .and_then(|parent| fs::canonicalize(parent).ok())
+        .zip(fs::canonicalize(env::temp_dir()).ok())
+        .is_some_and(|(parent, temp)| parent == temp)
+        && path
+            .file_name()
+            .and_then(|value| value.to_str())
+            .is_some_and(|name| name.starts_with(prefix) && name.ends_with(suffix))
+        && path.is_file()
+}
+
+#[cfg(target_os = "windows")]
+fn write_mft_progress(path: &Path, progress: &ScanProgress) -> Result<(), String> {
+    let mut line = serde_json::to_vec(progress).map_err(|error| error.to_string())?;
+    line.push(b'\n');
+    fs::OpenOptions::new()
+        .append(true)
+        .open(path)
+        .and_then(|mut file| file.write_all(&line))
+        .map_err(|error| error.to_string())
+}
+
+#[cfg(target_os = "windows")]
+fn drain_mft_progress<F>(path: &Path, emitted_lines: &mut usize, emit_progress: &mut F)
+where
+    F: FnMut(ScanProgress),
+{
+    let Ok(content) = fs::read_to_string(path) else {
+        return;
+    };
+    for line in content.split_inclusive('\n').skip(*emitted_lines) {
+        if !line.ends_with('\n') {
+            break;
+        }
+        *emitted_lines = (*emitted_lines).saturating_add(1);
+        if let Ok(progress) = serde_json::from_str::<ScanProgress>(line.trim_end()) {
+            emit_progress(progress);
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn elevated_mft_scan<F>(root: &Path, mut emit_progress: F) -> Result<DriveScan, String>
+where
+    F: FnMut(ScanProgress),
+{
     let executable = env::current_exe().map_err(|error| error.to_string())?;
     let nonce = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -718,23 +863,48 @@ fn elevated_mft_scan(root: &Path) -> Result<DriveScan, String> {
         "kkterm-system-cleaner-mft-{}-{nonce}.bin",
         std::process::id()
     ));
+    let progress_path = env::temp_dir().join(format!(
+        "kkterm-system-cleaner-mft-progress-{}-{nonce}.jsonl",
+        std::process::id()
+    ));
     fs::OpenOptions::new()
         .write(true)
         .create_new(true)
         .open(&output_path)
         .map_err(|error| error.to_string())?;
+    if let Err(error) = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&progress_path)
+    {
+        let _ = fs::remove_file(&output_path);
+        return Err(error.to_string());
+    }
 
     let script = format!(
-        "$p=Start-Process -FilePath {} -ArgumentList @('--system-cleaner-mft-scan',{}, {}) -Verb RunAs -Wait -PassThru -WindowStyle Hidden; exit $p.ExitCode",
+        "$p=Start-Process -FilePath {} -ArgumentList @('--system-cleaner-mft-scan',{},{},{}) -Verb RunAs -Wait -PassThru -WindowStyle Hidden; exit $p.ExitCode",
         powershell_literal(&executable.to_string_lossy()),
         powershell_literal(&root.to_string_lossy()),
         powershell_literal(&output_path.to_string_lossy()),
+        powershell_literal(&progress_path.to_string_lossy()),
     );
     let mut command = Command::new("powershell.exe");
     command
         .args(["-NoProfile", "-NonInteractive", "-Command", &script])
         .creation_flags(CREATE_NO_WINDOW);
-    let status = command.status();
+    let mut emitted_lines = 0_usize;
+    let status = match command.spawn() {
+        Ok(mut child) => loop {
+            drain_mft_progress(&progress_path, &mut emitted_lines, &mut emit_progress);
+            match child.try_wait() {
+                Ok(Some(status)) => break Ok(status),
+                Ok(None) => std::thread::sleep(std::time::Duration::from_millis(100)),
+                Err(error) => break Err(error),
+            }
+        },
+        Err(error) => Err(error),
+    };
+    drain_mft_progress(&progress_path, &mut emitted_lines, &mut emit_progress);
     let result = match status {
         Ok(status) if status.success() => fs::File::open(&output_path)
             .map_err(|error| error.to_string())
@@ -746,6 +916,7 @@ fn elevated_mft_scan(root: &Path) -> Result<DriveScan, String> {
         Err(error) => Err(error.to_string()),
     };
     let _ = fs::remove_file(output_path);
+    let _ = fs::remove_file(progress_path);
     result
 }
 
@@ -761,43 +932,43 @@ pub fn run_mft_helper_from_args() -> Option<i32> {
     let Some(output_path) = args.get(3).map(PathBuf::from) else {
         return Some(2);
     };
-    let output_parent_is_temp = output_path
-        .parent()
-        .and_then(|path| fs::canonicalize(path).ok())
-        .zip(fs::canonicalize(env::temp_dir()).ok())
-        .is_some_and(|(parent, temp)| parent == temp);
-    let valid_output = output_parent_is_temp
-        && output_path
-            .file_name()
-            .and_then(|value| value.to_str())
-            .is_some_and(|name| {
-                name.starts_with("kkterm-system-cleaner-mft-") && name.ends_with(".bin")
-            })
-        && output_path.is_file();
-    if !valid_output {
+    let Some(progress_path) = args.get(4).map(PathBuf::from) else {
+        return Some(2);
+    };
+    if !valid_mft_helper_file(&output_path, "kkterm-system-cleaner-mft-", ".bin")
+        || !valid_mft_helper_file(
+            &progress_path,
+            "kkterm-system-cleaner-mft-progress-",
+            ".jsonl",
+        )
+    {
         return Some(2);
     }
-    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| scan_raw_mft(&root)))
-        .map_err(|payload| {
-            let detail = payload
-                .downcast_ref::<&str>()
-                .copied()
-                .or_else(|| payload.downcast_ref::<String>().map(String::as_str))
-                .unwrap_or("unknown panic");
-            format!("Raw MFT parser panicked: {detail}")
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        scan_raw_mft(&root, |progress| {
+            let _ = write_mft_progress(&progress_path, &progress);
         })
-        .and_then(|result| result)
-        .and_then(|scan| {
-            let file = fs::OpenOptions::new()
-                .write(true)
-                .truncate(true)
-                .open(&output_path)
-                .map_err(|error| error.to_string())?;
-            let mut writer = std::io::BufWriter::new(file);
-            bincode::serde::encode_into_std_write(&scan, &mut writer, bincode::config::standard())
-                .map_err(|error| error.to_string())?;
-            writer.flush().map_err(|error| error.to_string())
-        });
+    }))
+    .map_err(|payload| {
+        let detail = payload
+            .downcast_ref::<&str>()
+            .copied()
+            .or_else(|| payload.downcast_ref::<String>().map(String::as_str))
+            .unwrap_or("unknown panic");
+        format!("Raw MFT parser panicked: {detail}")
+    })
+    .and_then(|result| result)
+    .and_then(|scan| {
+        let file = fs::OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .open(&output_path)
+            .map_err(|error| error.to_string())?;
+        let mut writer = std::io::BufWriter::new(file);
+        bincode::serde::encode_into_std_write(&scan, &mut writer, bincode::config::standard())
+            .map_err(|error| error.to_string())?;
+        writer.flush().map_err(|error| error.to_string())
+    });
     if let Err(error) = &result {
         let _ = fs::write(&output_path, error);
     }
@@ -811,15 +982,20 @@ pub fn run_mft_helper_from_args() -> Option<i32> {
 
 fn scan_drive(app: &AppHandle, root: &Path) -> Result<DriveScan, String> {
     #[cfg(target_os = "windows")]
-    if let Ok(scan) = elevated_mft_scan(root) {
+    if let Ok(scan) = elevated_mft_scan(root, |progress| {
+        let _ = app.emit("system-cleaner://scan-progress", progress);
+    }) {
         let _ = app.emit(
             "system-cleaner://scan-progress",
             ScanProgress {
+                phase: ScanProgressPhase::Files,
                 files: scan.files,
                 folders: scan.folders,
                 bytes: scan.total_bytes,
                 current_path: root.to_string_lossy().into_owned(),
                 elapsed_ms: scan.elapsed_ms,
+                phase_completed: scan.files.saturating_add(scan.folders),
+                phase_total: scan.files.saturating_add(scan.folders),
             },
         );
         return Ok(scan);
@@ -923,21 +1099,201 @@ fn audit(event: &str, details: serde_json::Value) {
     }
 }
 
-fn cleanup_locations() -> Vec<(String, PathBuf)> {
+fn chromium_cache_targets(user_data: &Path) -> Vec<CleanupTarget> {
+    let Ok(entries) = fs::read_dir(user_data) else {
+        return Vec::new();
+    };
+    entries
+        .flatten()
+        .filter_map(|entry| {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            let is_profile =
+                name == "Default" || name == "Guest Profile" || name.starts_with("Profile ");
+            let path = entry.path();
+            let is_safe_directory = fs::symlink_metadata(&path)
+                .is_ok_and(|metadata| metadata.is_dir() && !is_reparse_point(&metadata));
+            (is_profile && is_safe_directory).then_some(path)
+        })
+        .flat_map(|profile| {
+            ["Cache", "Code Cache", "GPUCache"]
+                .into_iter()
+                .map(move |name| CleanupTarget::DirectoryContents(profile.join(name)))
+        })
+        .collect()
+}
+
+fn firefox_cache_targets(profiles: &Path) -> Vec<CleanupTarget> {
+    let Ok(entries) = fs::read_dir(profiles) else {
+        return Vec::new();
+    };
+    entries
+        .flatten()
+        .filter_map(|entry| {
+            let path = entry.path();
+            fs::symlink_metadata(&path)
+                .is_ok_and(|metadata| metadata.is_dir() && !is_reparse_point(&metadata))
+                .then_some(CleanupTarget::DirectoryContents(path.join("cache2")))
+        })
+        .collect()
+}
+
+fn is_safe_cleanup_directory(path: &Path) -> bool {
+    fs::symlink_metadata(path)
+        .is_ok_and(|metadata| metadata.is_dir() && !is_reparse_point(&metadata))
+}
+
+fn cleanup_target_size(target: &CleanupTarget) -> u64 {
+    match target {
+        CleanupTarget::DirectoryContents(path) => is_safe_cleanup_directory(path)
+            .then(|| directory_size(path))
+            .unwrap_or(0),
+        CleanupTarget::FilesWithPrefix { directory, prefix }
+            if is_safe_cleanup_directory(directory) =>
+        {
+            fs::read_dir(directory)
+                .into_iter()
+                .flatten()
+                .flatten()
+                .filter(|entry| {
+                    fs::symlink_metadata(entry.path())
+                        .is_ok_and(|metadata| metadata.is_file() && !is_reparse_point(&metadata))
+                        && entry
+                            .file_name()
+                            .to_string_lossy()
+                            .to_ascii_lowercase()
+                            .starts_with(prefix)
+                })
+                .filter_map(|entry| entry.metadata().ok().map(|metadata| metadata.len()))
+                .fold(0_u64, u64::saturating_add)
+        }
+        CleanupTarget::FilesWithPrefix { .. } => 0,
+    }
+}
+
+fn cleanup_location_size(location: &CleanupLocation) -> u64 {
+    location
+        .targets
+        .iter()
+        .map(cleanup_target_size)
+        .fold(0_u64, u64::saturating_add)
+}
+
+fn remove_cleanup_entry(path: &Path) {
+    let Ok(metadata) = fs::symlink_metadata(path) else {
+        return;
+    };
+    if metadata.is_dir() && !is_reparse_point(&metadata) {
+        let _ = fs::remove_dir_all(path);
+    } else if metadata.is_dir() {
+        let _ = fs::remove_dir(path);
+    } else {
+        let _ = fs::remove_file(path);
+    }
+}
+
+fn clean_target(target: &CleanupTarget) {
+    match target {
+        CleanupTarget::DirectoryContents(path) => {
+            if is_safe_cleanup_directory(path) {
+                let Ok(entries) = fs::read_dir(path) else {
+                    return;
+                };
+                for entry in entries.flatten() {
+                    remove_cleanup_entry(&entry.path());
+                }
+            }
+        }
+        CleanupTarget::FilesWithPrefix { directory, prefix } => {
+            if is_safe_cleanup_directory(directory) {
+                let Ok(entries) = fs::read_dir(directory) else {
+                    return;
+                };
+                for entry in entries.flatten().filter(|entry| {
+                    fs::symlink_metadata(entry.path())
+                        .is_ok_and(|metadata| metadata.is_file() && !is_reparse_point(&metadata))
+                        && entry
+                            .file_name()
+                            .to_string_lossy()
+                            .to_ascii_lowercase()
+                            .starts_with(prefix)
+                }) {
+                    remove_cleanup_entry(&entry.path());
+                }
+            }
+        }
+    }
+}
+
+fn cleanup_locations() -> Vec<CleanupLocation> {
     let mut locations = Vec::new();
     if let Ok(path) = env::var("TEMP") {
-        locations.push(("temp".into(), path.into()));
+        locations.push(CleanupLocation {
+            id: "temp".into(),
+            display_path: path.clone(),
+            targets: vec![CleanupTarget::DirectoryContents(path.into())],
+        });
+    }
+    if let Ok(path) = env::var("WINDIR") {
+        let path = PathBuf::from(path).join("Temp");
+        locations.push(CleanupLocation {
+            id: "windows-temp".into(),
+            display_path: path.to_string_lossy().into_owned(),
+            targets: vec![CleanupTarget::DirectoryContents(path)],
+        });
     }
     if let Ok(path) = env::var("LOCALAPPDATA") {
         let base = PathBuf::from(path);
-        locations.push((
-            "browser-cache".into(),
-            base.join("Microsoft/Edge/User Data/Default/Cache"),
-        ));
-        locations.push((
-            "thumbnail-cache".into(),
-            base.join("Microsoft/Windows/Explorer"),
-        ));
+        let edge_root = base.join("Microsoft/Edge/User Data");
+        locations.push(CleanupLocation {
+            id: "browser-cache".into(),
+            display_path: edge_root.join("*/Cache").to_string_lossy().into_owned(),
+            targets: chromium_cache_targets(&edge_root),
+        });
+        let chrome_root = base.join("Google/Chrome/User Data");
+        locations.push(CleanupLocation {
+            id: "chrome-cache".into(),
+            display_path: chrome_root.join("*/Cache").to_string_lossy().into_owned(),
+            targets: chromium_cache_targets(&chrome_root),
+        });
+        let firefox_root = base.join("Mozilla/Firefox/Profiles");
+        locations.push(CleanupLocation {
+            id: "firefox-cache".into(),
+            display_path: firefox_root.join("*/cache2").to_string_lossy().into_owned(),
+            targets: firefox_cache_targets(&firefox_root),
+        });
+        let shader_cache = base.join("D3DSCache");
+        locations.push(CleanupLocation {
+            id: "shader-cache".into(),
+            display_path: shader_cache.to_string_lossy().into_owned(),
+            targets: vec![CleanupTarget::DirectoryContents(shader_cache)],
+        });
+        let explorer_cache = base.join("Microsoft/Windows/Explorer");
+        locations.push(CleanupLocation {
+            id: "thumbnail-cache".into(),
+            display_path: explorer_cache
+                .join("thumbcache_*.db")
+                .to_string_lossy()
+                .into_owned(),
+            targets: vec![CleanupTarget::FilesWithPrefix {
+                directory: explorer_cache,
+                prefix: "thumbcache_".into(),
+            }],
+        });
+        let crash_dumps = base.join("CrashDumps");
+        locations.push(CleanupLocation {
+            id: "crash-dumps".into(),
+            display_path: crash_dumps.to_string_lossy().into_owned(),
+            targets: vec![CleanupTarget::DirectoryContents(crash_dumps)],
+        });
+        let error_reports = base.join("Microsoft/Windows/WER");
+        locations.push(CleanupLocation {
+            id: "error-reports".into(),
+            display_path: error_reports.join("Report*").to_string_lossy().into_owned(),
+            targets: vec![
+                CleanupTarget::DirectoryContents(error_reports.join("ReportArchive")),
+                CleanupTarget::DirectoryContents(error_reports.join("ReportQueue")),
+            ],
+        });
     }
     locations
 }
@@ -1001,10 +1357,10 @@ pub async fn system_cleaner_scan(
                         || {
                             cleanup_locations()
                                 .into_par_iter()
-                                .map(|(id, path)| CleanupEntry {
-                                    id,
-                                    bytes: directory_size(&path),
-                                    path: path.to_string_lossy().into_owned(),
+                                .map(|location| CleanupEntry {
+                                    bytes: cleanup_location_size(&location),
+                                    id: location.id,
+                                    path: location.display_path,
                                 })
                                 .collect()
                         },
@@ -1081,23 +1437,15 @@ pub async fn system_cleaner_clean(ids: Vec<String>) -> Result<u64, String> {
     tauri::async_runtime::spawn_blocking(move || {
         audit("cleanup.approved", json!({ "categories": &ids }));
         let mut freed = 0;
-        for (id, path) in cleanup_locations()
+        for location in cleanup_locations()
             .into_iter()
-            .filter(|(id, _)| ids.contains(id))
+            .filter(|location| ids.contains(&location.id))
         {
-            let _ = id;
-            let before = directory_size(&path);
-            if let Ok(entries) = fs::read_dir(&path) {
-                for entry in entries.flatten() {
-                    let target = entry.path();
-                    let _ = if target.is_dir() {
-                        fs::remove_dir_all(target)
-                    } else {
-                        fs::remove_file(target)
-                    };
-                }
+            let before = cleanup_location_size(&location);
+            for target in &location.targets {
+                clean_target(target);
             }
-            freed += before.saturating_sub(directory_size(&path));
+            freed += before.saturating_sub(cleanup_location_size(&location));
         }
         audit(
             "cleanup.completed",
@@ -1181,6 +1529,70 @@ mod tests {
         assert_eq!(nested_entry.bytes, 5);
     }
 
+    #[test]
+    fn scan_tree_emits_file_progress_with_a_current_path() {
+        let root = tempfile::tempdir().expect("temporary scan root");
+        let file = root.path().join("visible-progress.bin");
+        fs::write(&file, [0_u8; 7]).expect("progress fixture file");
+        let mut progress = Vec::new();
+
+        scan_tree(root.path(), |event| progress.push(event)).expect("tree scan");
+
+        let final_event = progress.last().expect("final scan progress");
+        assert!(matches!(final_event.phase, ScanProgressPhase::Files));
+        assert_eq!(final_event.files, 1);
+        assert_eq!(final_event.bytes, 7);
+        assert!(!final_event.current_path.is_empty());
+    }
+
+    #[test]
+    fn prefix_cleanup_removes_only_allowlisted_files() {
+        let root = tempfile::tempdir().expect("temporary cleanup root");
+        let thumbnail = root.path().join("thumbcache_96.db");
+        let icon = root.path().join("iconcache_96.db");
+        fs::write(&thumbnail, [0_u8; 5]).expect("thumbnail fixture");
+        fs::write(&icon, [0_u8; 7]).expect("icon fixture");
+        let target = CleanupTarget::FilesWithPrefix {
+            directory: root.path().to_path_buf(),
+            prefix: "thumbcache_".into(),
+        };
+
+        assert_eq!(cleanup_target_size(&target), 5);
+        clean_target(&target);
+
+        assert!(!thumbnail.exists());
+        assert!(icon.exists());
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn mft_progress_sidecar_drains_complete_json_lines() {
+        let root = tempfile::tempdir().expect("temporary progress root");
+        let path = root.path().join("progress.jsonl");
+        let progress = ScanProgress {
+            phase: ScanProgressPhase::Files,
+            files: 4,
+            folders: 2,
+            bytes: 9,
+            current_path: r"C:\fixture.bin".into(),
+            elapsed_ms: 10,
+            phase_completed: 6,
+            phase_total: 12,
+        };
+        let mut line = serde_json::to_vec(&progress).expect("serialize progress");
+        line.push(b'\n');
+        fs::write(&path, line).expect("progress fixture");
+        let mut emitted_lines = 0;
+        let mut events = Vec::new();
+
+        drain_mft_progress(&path, &mut emitted_lines, &mut |event| events.push(event));
+
+        assert_eq!(emitted_lines, 1);
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].files, 4);
+        assert_eq!(events[0].current_path, r"C:\fixture.bin");
+    }
+
     #[cfg(target_os = "windows")]
     #[test]
     fn directory_size_does_not_follow_directory_reparse_points() {
@@ -1193,5 +1605,9 @@ mod tests {
         }
 
         assert_eq!(directory_size(root.path()), 0);
+        let cleanup_target = CleanupTarget::DirectoryContents(junction);
+        assert_eq!(cleanup_target_size(&cleanup_target), 0);
+        clean_target(&cleanup_target);
+        assert!(outside.path().join("outside.bin").exists());
     }
 }
