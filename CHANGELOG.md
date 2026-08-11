@@ -3,6 +3,92 @@
 All notable changes to KKTerm are documented here.
 
 ## Direct Downloads
+* 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.142/kkterm-0.1.142-windows-x64-setup.exe)
+* 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.142/kkterm-0.1.142-windows-arm64-setup.exe)
+* 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.142/kkterm-0.1.142-windows-x64-portable.zip)
+* 📦 [Portable for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.142/kkterm-0.1.142-windows-arm64-portable.zip)
+
+## Highlights
+- Add **Exa** as a new Web Search provider (no API key required for searching via the web search tool).
+- Upgrade the **System Cleaner** with a new **file recommendations** + review/delete flow.
+- Improve **macOS file associations** and Windows installer **“Open With”** options so KKTerm can be selected per file type.
+
+## New
+- **System Cleaner: File recommendations for review & deletion** (Dashboard Widget Instance: System Cleaner view) — including localized UI and confirmation dialogs for deletion.  
+  - (PR: none) — see commits: `e262391`, `5871f3e`
+- **System Cleaner: Integrate WinDirStat** for disk allocation scanning (with install prompts, availability checks, and status handling).  
+  - (PR: none) — see commit: `8a899d7`
+- **Syntax highlighting profiles** with management, localization, and built-in profiles (Cisco IOS / Juniper Junos / Operational Logs).  
+  - (PR: none) — see commits: `df3fe75` (and related follow-ups)
+
+## Improved
+- **Syntax highlighting**: simplify profile management (removing font/style attribute handling) and **switch to case-insensitive matching** (removes UI “caseSensitive” option).  
+  - (PR: none) — see commits: `bcda939`, `7be7770`
+- **Syntax highlighting UI**: enhanced ColorPalettePicker swatch triggering + popover positioning.  
+  - (PR: none) — see commit: `5f7f33c`
+- **Exa Web Search provider**: settings UI now includes Exa as a selectable provider, with optional API key input and improved localization.  
+  - (PR: none) — see commit: `52cd7ca`
+- **macOS file handling & installer hooks**: file associations via `tauri.macos.conf.json`, Windows NSIS hook for “Open With”, and macOS opened-URL handling.  
+  - (PR: none) — see commit: `14ae993`
+
+## Fixed
+- **i18n clarity/accuracy** for storage scanning & cleaning messages (updated translations across multiple languages).  
+  - (PR: none) — see commit: `08714bc`
+
+## Internal
+- **System Cleaner: automated WinDirStat installation during first scan** (installer/setup flow without a confirmation prompt).  
+  - (PR: none) — see commit: `b2a5ff8`
+- **Tests & localization documentation** updates across System Cleaner and syntax highlighting.  
+  - (PR: none) — see commits: `defc040`, `5871f3e`, `d5956cb`, `c8e4287`, `0a438b0`, `ad04c7f`
+- **Add macOS private API support & update Tauri dependencies**.  
+  - (PR: none) — see commit: `fb17d9e`
+- **Remove deprecated Exa documentation** from localization todo.  
+  - (PR: none) — see commit: `0a438b0`
+- **Rework installer/test tooling for syntax highlighting** (add tool support, built-in profile integrity tests, etc.).  
+  - (PR: none) — see commit: `defc040`
+
+---
+
+## Highlights（繁體中文（台灣））
+- 新增 **Exa** 作為 Web Search 搜尋提供者（使用 Web 搜尋工具時可在不提供 API key 的情況下搜尋）。
+- 強化 **系統清理（System Cleaner）**：加入新的 **檔案建議（recommendations）**，並提供檢視/刪除流程。
+- 改善 **macOS 檔案關聯**與 Windows 安裝程式的 **「使用其他應用程式開啟（Open With）」**選項，讓 KKTerm 能在各檔案類型中被選擇。
+
+## New（新增）
+- **系統清理：檔案建議（recommendations）供審核與刪除**（Dashboard Widget Instance：System Cleaner 檢視畫面）—包含多語系介面與刪除確認對話框。  
+  -（PR：無）— 參考提交：`e262391`, `5871f3e`
+- **系統清理：整合 WinDirStat 做磁碟配置掃描**（含安裝提示、可用性檢查與狀態處理）。  
+  -（PR：無）— 參考提交：`8a899d7`
+- **語法高亮（syntax highlighting）設定檔（profiles）**：包含管理能力、多語系支援與內建範本（Cisco IOS / Juniper Junos / Operational Logs）。  
+  -（PR：無）— 參考提交：`df3fe75`（以及相關後續提交）
+
+## Improved（改進）
+- **語法高亮**：簡化設定檔管理（移除 font/style 屬性相關處理）並切換為**不分大小寫**比對（移除介面中的「caseSensitive」選項）。  
+  -（PR：無）— 參考提交：`bcda939`, `7be7770`
+- **語法高亮 UI**：強化 ColorPalettePicker（支援色塊觸發與彈出視窗定位）。  
+  -（PR：無）— 參考提交：`5f7f33c`
+- **Exa Web Search 提供者**：設定介面加入 Exa，可選擇提供者，並保留 API key 的選填輸入，且多語系呈現更完整。  
+  -（PR：無）— 參考提交：`52cd7ca`
+- **macOS 檔案處理與安裝掛勾**：透過 `tauri.macos.conf.json` 設定檔案關聯、Windows 端用 NSIS hook 提供「Open With」選項，並改善 macOS 開啟 URL 的處理。  
+  -（PR：無）— 參考提交：`14ae993`
+
+## Fixed（修正）
+- **i18n 翻譯清晰度/正確性**：更新儲存掃描與清理訊息的多語系翻譯。  
+  -（PR：無）— 參考提交：`0871f3c`
+
+## Internal（內部）
+- **系統清理：首次掃描時自動安裝 WinDirStat**（安裝/設定流程不再要求確認提示）。  
+  -（PR：無）— 參考提交：`b2a5ff8`
+- **測試與系統清理/語法高亮文件**：多項測試與在地化文件更新。  
+  -（PR：無）— 參考提交：`defc040`, `5871f3e`, `d5956cb`, `c8e4287`, `0a438b0`, `ad04c7f`
+- **新增 macOS private API 支援並更新 Tauri 相依套件**。  
+  -（PR：無）— 參考提交：`fb17d9e`
+- **移除已過時的 Exa 文件（localization todo）**。  
+  -（PR：無）— 參考提交：`0a438b0`
+- **語法高亮測試/安裝相關工具調整**（例如加入工具清單辨識、內建設定檔完整性測試等）。  
+  -（PR：無）— 參考提交：`defc040`
+
+## Direct Downloads
 * 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.141/kkterm-0.1.141-windows-x64-setup.exe)
 * 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.141/kkterm-0.1.141-windows-arm64-setup.exe)
 * 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.141/kkterm-0.1.141-windows-x64-portable.zip)

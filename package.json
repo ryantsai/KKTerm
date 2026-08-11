@@ -1,7 +1,7 @@
 {
   "name": "kkterm",
   "private": true,
-  "version": "0.1.141",
+  "version": "0.1.142",
   "license": "MIT",
   "type": "module",
   "scripts": {
