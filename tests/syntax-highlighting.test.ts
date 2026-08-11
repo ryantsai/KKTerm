@@ -9,7 +9,7 @@ import {
   validateSyntaxHighlightProfile,
 } from "../src/modules/workspace/connections/terminal/syntaxHighlighting.ts";
 
-test("renderer gives configured syntax colors unconditional precedence", () => {
+test("renderer gives configured keyword colors unconditional precedence", () => {
   const renderer = readFileSync(
     new URL("../src/modules/workspace/connections/terminal/renderer.ts", import.meta.url),
     "utf8",
@@ -19,7 +19,7 @@ test("renderer gives configured syntax colors unconditional precedence", () => {
   assert.doesNotMatch(renderer, /isFgDefault\(\)|isBgDefault\(\)/);
 });
 
-test("built-in syntax profiles are valid and define overriding colors", () => {
+test("built-in keyword profiles are valid and define overriding colors", () => {
   assert.deepEqual(
     BUILTIN_SYNTAX_HIGHLIGHT_PROFILES.map((profile) => profile.name),
     ["Cisco IOS", "Juniper Junos", "Operational Logs"],

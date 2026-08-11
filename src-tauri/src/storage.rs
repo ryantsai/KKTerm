@@ -2917,7 +2917,7 @@ impl Storage {
         // global Terminal Settings default. Ensured past every
         // connections-table rebuild, like ssh_compression above.
         ensure_column(&connection, "connections", "terminal_color_scheme", "TEXT")?;
-        // v56: opt-in syntax highlighting selection, stored per durable
+        // v56: opt-in keyword highlighting selection, stored per durable
         // Connection. Profiles themselves live in Terminal Settings JSON.
         ensure_column(
             &connection,
@@ -6557,30 +6557,30 @@ fn validate_terminal_syntax_highlight_profiles(
     let mut seen_ids = Vec::new();
 
     for profile in profiles {
-        let id = required_field("syntax highlighting profile id", profile.id)?;
-        let name = required_field("syntax highlighting profile name", profile.name)?;
+        let id = required_field("keyword highlighting profile id", profile.id)?;
+        let name = required_field("keyword highlighting profile name", profile.name)?;
         if seen_ids.contains(&id) {
             continue;
         }
         if name.chars().count() > 80 {
-            return Err("syntax highlighting profile names must be 80 characters or fewer".to_string());
+            return Err("keyword highlighting profile names must be 80 characters or fewer".to_string());
         }
         if profile.rules.len() > MAX_RULES_PER_PROFILE {
             return Err(format!(
-                "at most {MAX_RULES_PER_PROFILE} syntax highlighting rules are supported per profile"
+                "at most {MAX_RULES_PER_PROFILE} keyword highlighting rules are supported per profile"
             ));
         }
         let mut rules = Vec::new();
         let mut seen_rule_ids = Vec::new();
         for rule in profile.rules {
-            let rule_id = required_field("syntax highlighting rule id", rule.id)?;
-            let rule_name = required_field("syntax highlighting rule name", rule.name)?;
-            let pattern = required_field("syntax highlighting rule pattern", rule.pattern)?;
+            let rule_id = required_field("keyword highlighting rule id", rule.id)?;
+            let rule_name = required_field("keyword highlighting rule name", rule.name)?;
+            let pattern = required_field("keyword highlighting rule pattern", rule.pattern)?;
             if seen_rule_ids.contains(&rule_id) {
                 continue;
             }
             if rule_name.chars().count() > 80 || pattern.chars().count() > 2_000 {
-                return Err("syntax highlighting rule names or patterns are too long".to_string());
+                return Err("keyword highlighting rule names or patterns are too long".to_string());
             }
             let normalize_color = |value: Option<String>| -> Result<Option<String>, String> {
                 let Some(value) = value.map(|value| value.trim().to_string()).filter(|value| !value.is_empty()) else {
@@ -6590,7 +6590,7 @@ fn validate_terminal_syntax_highlight_profiles(
                     || !value.starts_with('#')
                     || !value[1..].chars().all(|character| character.is_ascii_hexdigit())
                 {
-                    return Err("syntax highlighting colors must use #RRGGBB".to_string());
+                    return Err("keyword highlighting colors must use #RRGGBB".to_string());
                 }
                 Ok(Some(value.to_ascii_uppercase()))
             };
@@ -6623,7 +6623,7 @@ fn validate_terminal_syntax_highlight_profiles(
     }
     if normalized.len() > MAX_PROFILES {
         return Err(format!(
-            "at most {MAX_PROFILES} syntax highlighting profiles are supported"
+            "at most {MAX_PROFILES} keyword highlighting profiles are supported"
         ));
     }
     Ok(normalized)

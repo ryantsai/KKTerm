@@ -123,7 +123,7 @@ export function SyntaxHighlightProfileManager({
       const response = await invokeCommand("run_ai_agent", {
         request: {
           prompt: [
-            "Create one terminal syntax-highlighting profile as strict JSON.",
+            "Create one terminal keyword-highlighting profile as strict JSON.",
             "Return only JSON with: name, caseSensitive, and rules.",
             "Each rule needs name, pattern (JavaScript regex source without slashes), enabled, and style.",
             "Style fields: fontFamily (string or null), foreground/background (#RRGGBB or null), bold, italic.",
@@ -133,7 +133,7 @@ export function SyntaxHighlightProfileManager({
             "",
             `User request: ${prompt}`,
           ].join("\n"),
-          contextLabel: "Terminal syntax highlighting profile",
+          contextLabel: "Terminal keyword highlighting profile",
           messages: [],
           outputLanguage: aiProviderSettings.outputLanguage,
           allowTools: false,

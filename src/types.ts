@@ -133,7 +133,7 @@ export interface Connection {
   /** Per-Connection terminal color scheme override; null inherits the global
    * Terminal Settings default. Set from the terminal Pane actions menu. */
   terminalColorScheme?: string | null;
-  /** Stable id of the syntax-highlighting profile enabled for this Connection.
+  /** Stable id of the keyword-highlighting profile enabled for this Connection.
    * Null disables local highlighting and leaves host ANSI styling untouched. */
   terminalSyntaxHighlightProfileId?: string | null;
   fileBrowserViewOptions?: FileBrowserViewOptions | null;

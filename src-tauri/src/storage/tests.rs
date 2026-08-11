@@ -189,7 +189,7 @@ fn v56_syntax_highlight_profile_migration_and_current_reopen_preserve_selection(
         let created = create_test_ssh_connection(&storage, "Router", "192.0.2.10", None);
         assert!(
             created.terminal_syntax_highlight_profile_id.is_none(),
-            "new Connections default to no syntax-highlighting profile",
+            "new Connections default to no keyword-highlighting profile",
         );
         created.id
     };
@@ -223,7 +223,7 @@ fn v56_syntax_highlight_profile_migration_and_current_reopen_preserve_selection(
             connection_id.clone(),
             Some("builtin:cisco-ios".to_string()),
         )
-        .expect("syntax profile selection is saved")
+        .expect("keyword profile selection is saved")
         .expect("connection changed");
     assert_eq!(
         updated.terminal_syntax_highlight_profile_id.as_deref(),

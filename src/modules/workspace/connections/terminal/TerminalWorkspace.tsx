@@ -2842,7 +2842,7 @@ function TerminalPaneView({
         profileId,
       });
     } catch (error) {
-      console.warn("terminal syntax highlighting update failed.", error);
+      console.warn("terminal keyword highlighting update failed.", error);
       showStatusBarNotice(
         t("terminal.syntaxHighlightSaveFailed", { message: String(error) }),
         { tone: "error" },
