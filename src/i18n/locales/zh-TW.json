@@ -829,6 +829,23 @@
     "launchStatus": "正在啟動 {{name}}。"
   },
   "systemCleaner": {
+    "overview": "概覽",
+    "safeCategories": "{{count}} 個安全類別",
+    "selectedCategories": "已選取 {{count}} / {{total}} 個類別",
+    "selectAllSafe": "選取所有安全項目",
+    "resetDefaults": "重設為預設值",
+    "safety": {
+      "safe": "安全",
+      "review": "需檢視",
+      "risky": "有風險"
+    },
+    "packageId": "套件 ID",
+    "selectedApps": "已選取 {{count}} 個應用程式",
+    "uninstallSelected": "解除安裝 {{count}} 個應用程式",
+    "uninstallUacNote": "Windows 會要求每次解除安裝都通過 UAC 核准。",
+    "uninstallSelectionTitle": "要解除安裝選取的應用程式嗎？",
+    "uninstallSelectionMessage": "Windows 會針對選取的 {{count}} 個應用程式逐一要求 UAC 核准。每次解除安裝都會在個別的提高權限輔助程式中執行，並記錄於本機操作記錄。",
+    "uninstalledCount": "已解除安裝 {{count}} 個應用程式。",
     "title": "系統清理工具",
     "scan": "掃描",
     "scannerInstallTitle": "安裝儲存空間掃描工具？",

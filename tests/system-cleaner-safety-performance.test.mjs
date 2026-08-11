@@ -55,23 +55,35 @@ test("System Cleaner uses the Searching orb in the scan page and Status Bar", ()
   assert.match(scanState, /active:\s*boolean/);
 });
 
-test("System Cleaner uses responsive cleanup and uninstall cards with a Working cleanup orb", () => {
-  assert.match(page, /system-cleaner-cleanup-grid/);
-  assert.match(page, /system-cleaner-app-grid/);
+test("System Cleaner uses the Direction A control panel and compact cleanup and uninstall rows", () => {
+  assert.match(page, /type Section = "overview" \| "storage" \| "cleanup" \| "apps"/);
+  assert.match(page, /system-cleaner-drive-card/);
+  assert.match(page, /system-cleaner-metric-grid/);
+  assert.match(page, /system-cleaner-cleanup-groups/);
+  assert.match(page, /system-cleaner-app-table/);
+  assert.match(page, /systemCleaner\.selectAllSafe/);
+  assert.match(page, /systemCleaner\.resetDefaults/);
   assert.match(page, /state="working"/);
   assert.match(page, /submitAssistantContextSnippet/);
-  assert.match(styles, /grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(/);
+  assert.match(styles, /\.system-cleaner-shell\s*\{[^}]*grid-template-columns:\s*240px minmax\(0, 1fr\)/s);
 });
 
-test("System Cleaner keeps drive selection and disk metrics in the Storage toolbar", () => {
+test("System Cleaner keeps drive selection in the Module header and disk metrics in the control panel", () => {
   assert.doesNotMatch(page, /system-cleaner-scanbar|system-cleaner-progress/);
   assert.match(backend, /system_cleaner_list_drives/);
   assert.match(backendCommands, /system_cleaner::system_cleaner_list_drives/);
   assert.match(tauri, /system_cleaner_list_drives/);
-  assert.match(page, /system-cleaner-drive-select/);
-  assert.match(page, /system-cleaner-storage-metrics/);
-  assert.match(page, /systemCleaner\.allocationDetail/);
+  assert.match(page, /system-cleaner-header-drive/);
+  assert.match(page, /system-cleaner-drive-card/);
+  assert.match(page, /system-cleaner-drive-meter/);
   assert.match(manual, /logical file\s+sizes/i);
+});
+
+test("System Cleaner multi-select uninstall preserves one elevated command per package", () => {
+  assert.match(page, /for \(const app of apps\)/);
+  assert.match(page, /system_cleaner_uninstall/);
+  assert.match(page, /systemCleaner\.uninstallSelectionMessage/);
+  assert.match(manual, /separate UAC approval and elevated helper for each package/i);
 });
 
 test("System Cleaner preserves WinDirStat logical and physical sizes", () => {

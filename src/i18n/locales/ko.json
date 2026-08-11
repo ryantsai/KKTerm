@@ -829,6 +829,23 @@
     "launchStatus": "{{name}} 실행 중."
   },
   "systemCleaner": {
+    "overview": "Overview",
+    "safeCategories": "{{count}} safe categories",
+    "selectedCategories": "{{count}} of {{total}} categories selected",
+    "selectAllSafe": "Select all safe",
+    "resetDefaults": "Reset to defaults",
+    "safety": {
+      "safe": "Safe",
+      "review": "Review",
+      "risky": "Risky"
+    },
+    "packageId": "Package ID",
+    "selectedApps": "{{count}} applications selected",
+    "uninstallSelected": "Uninstall {{count}} applications",
+    "uninstallUacNote": "Windows asks for UAC approval for each uninstall.",
+    "uninstallSelectionTitle": "Uninstall selected applications?",
+    "uninstallSelectionMessage": "Windows will ask for UAC approval for each of the {{count}} selected applications. Each uninstall runs in a separate elevated helper and is recorded in the local operations log.",
+    "uninstalledCount": "Uninstalled {{count}} applications.",
     "title": "시스템 클리너",
     "scan": "검사",
     "scannerInstallTitle": "저장 공간 스캐너를 설치할까요?",

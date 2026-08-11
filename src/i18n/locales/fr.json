@@ -829,6 +829,23 @@
     "launchStatus": "Lancement de {{name}}."
   },
   "systemCleaner": {
+    "overview": "Overview",
+    "safeCategories": "{{count}} safe categories",
+    "selectedCategories": "{{count}} of {{total}} categories selected",
+    "selectAllSafe": "Select all safe",
+    "resetDefaults": "Reset to defaults",
+    "safety": {
+      "safe": "Safe",
+      "review": "Review",
+      "risky": "Risky"
+    },
+    "packageId": "Package ID",
+    "selectedApps": "{{count}} applications selected",
+    "uninstallSelected": "Uninstall {{count}} applications",
+    "uninstallUacNote": "Windows asks for UAC approval for each uninstall.",
+    "uninstallSelectionTitle": "Uninstall selected applications?",
+    "uninstallSelectionMessage": "Windows will ask for UAC approval for each of the {{count}} selected applications. Each uninstall runs in a separate elevated helper and is recorded in the local operations log.",
+    "uninstalledCount": "Uninstalled {{count}} applications.",
     "title": "Nettoyage du système",
     "scan": "Scan",
     "scannerInstallTitle": "Installer l’analyseur de stockage ?",
