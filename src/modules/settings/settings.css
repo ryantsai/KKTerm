@@ -2728,7 +2728,7 @@ input.settings-credential-search {
   font-size: 11px;
 }
 
-.syntax-profile-editor-dialog .kk-sheet {
+.syntax-profile-editor-dialog .kk-dlg {
   max-height: min(88vh, 820px);
 }
 
@@ -2744,15 +2744,6 @@ input.settings-credential-search {
   align-items: end;
 }
 
-.syntax-profile-editor-meta > label:not(.syntax-profile-check),
-.syntax-profile-rule-fields label,
-.syntax-profile-ai-prompt {
-  display: grid;
-  gap: 5px;
-  color: var(--text-muted);
-  font-size: 11px;
-}
-
 .syntax-profile-check,
 .syntax-profile-enabled {
   display: inline-flex;
@@ -2760,11 +2751,6 @@ input.settings-credential-search {
   align-items: center;
   color: var(--text-muted);
   font-size: 11px;
-}
-
-.syntax-profile-check input,
-.syntax-profile-enabled input {
-  accent-color: var(--accent);
 }
 
 .syntax-profile-validation {
@@ -2853,18 +2839,6 @@ input.settings-credential-search {
   align-items: center;
   color: var(--text-faint);
   font-size: 10px;
-}
-
-.syntax-profile-color-field > i {
-  width: 18px;
-  height: 18px;
-  border: 1px solid var(--border-strong);
-  border-radius: 4px;
-}
-
-.syntax-profile-color-field .color-palette-rainbow {
-  width: 20px;
-  height: 20px;
 }
 
 .syntax-profile-live-preview {

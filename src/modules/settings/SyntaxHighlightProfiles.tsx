@@ -8,10 +8,19 @@ import {
   Plus,
   Trash2,
   WandSparkles,
-  X,
 } from "../../lib/reicon";
-import { Actions, Btn, ConfirmSheet, DialogShell, Sheet } from "../../app/ui/dialog";
-import { ColorPalettePicker, isHexColor } from "../../app/ui/ColorPalettePicker";
+import {
+  Actions,
+  Btn,
+  ConfirmSheet,
+  DialogShell,
+  Field,
+  Sheet,
+  Switch,
+  TextArea,
+  TextInput,
+} from "../../app/ui/dialog";
+import { ColorPalettePicker } from "../../app/ui/ColorPalettePicker";
 import {
   invokeCommand,
   isTauriRuntime,
@@ -277,20 +286,19 @@ export function SyntaxHighlightProfileManager({
             footer={
               <Actions
                 cancel={<Btn disabled={aiGenerating} onClick={() => setAiPromptOpen(false)}>{t("common.cancel")}</Btn>}
-                primary={<Btn kind="primary" disabled={!aiPrompt.trim() || aiGenerating} onClick={() => void generateWithAi()}>{aiGenerating ? t("settings.syntaxHighlightGenerating") : t("settings.syntaxHighlightGenerate")}</Btn>}
+                primary={<Btn kind="primary" icon="wand" disabled={!aiPrompt.trim() || aiGenerating} onClick={() => void generateWithAi()}>{aiGenerating ? t("settings.syntaxHighlightGenerating") : t("settings.syntaxHighlightGenerate")}</Btn>}
               />
             }
           >
-            <label className="syntax-profile-ai-prompt">
-              <span>{t("settings.syntaxHighlightAiPrompt")}</span>
-              <textarea
+            <Field className="syntax-profile-ai-prompt" label={t("settings.syntaxHighlightAiPrompt")}>
+              <TextArea
                 autoFocus
                 onChange={(event) => setAiPrompt(event.currentTarget.value)}
                 placeholder={t("settings.syntaxHighlightAiPlaceholder")}
                 rows={5}
                 value={aiPrompt}
               />
-            </label>
+            </Field>
           </Sheet>
         </DialogShell>
       ) : null}
@@ -358,14 +366,13 @@ function SyntaxProfileEditor({
       >
         <div className="syntax-profile-editor">
           <div className="syntax-profile-editor-meta">
-            <label>
-              <span>{t("settings.syntaxHighlightProfileName")}</span>
-              <input autoFocus onChange={(event) => setDraft({ ...draft, name: event.currentTarget.value })} value={draft.name} />
-            </label>
-            <label className="syntax-profile-check">
-              <input checked={draft.caseSensitive} onChange={(event) => setDraft({ ...draft, caseSensitive: event.currentTarget.checked })} type="checkbox" />
+            <Field label={t("settings.syntaxHighlightProfileName")}>
+              <TextInput autoFocus onChange={(event) => setDraft({ ...draft, name: event.currentTarget.value })} value={draft.name} />
+            </Field>
+            <div className="syntax-profile-check">
+              <Switch ariaLabel={t("settings.syntaxHighlightCaseSensitive")} on={draft.caseSensitive} onChange={(caseSensitive) => setDraft({ ...draft, caseSensitive })} />
               <span>{t("settings.syntaxHighlightCaseSensitive")}</span>
-            </label>
+            </div>
           </div>
           {invalid ? <p className="syntax-profile-validation">{t("settings.syntaxHighlightInvalidPattern", { pattern: invalid })}</p> : null}
           <div className="syntax-profile-rules-head">
@@ -381,34 +388,31 @@ function SyntaxProfileEditor({
             {draft.rules.map((entry, index) => (
               <div className="syntax-profile-rule-card" key={entry.id}>
                 <div className="syntax-profile-rule-topline">
-                  <label className="syntax-profile-enabled">
-                    <input checked={entry.enabled} onChange={(event) => updateRule(entry.id, (rule) => ({ ...rule, enabled: event.currentTarget.checked }))} type="checkbox" />
+                  <div className="syntax-profile-enabled">
+                    <Switch ariaLabel={t("settings.syntaxHighlightEnabled")} on={entry.enabled} onChange={(enabled) => updateRule(entry.id, (rule) => ({ ...rule, enabled }))} />
                     <span>{t("settings.syntaxHighlightEnabled")}</span>
-                  </label>
+                  </div>
                   <span className="syntax-profile-rule-number">{index + 1}</span>
                   <button aria-label={t("common.delete")} className="toolbar-button" onClick={() => setDraft({ ...draft, rules: draft.rules.filter((rule) => rule.id !== entry.id) })} title={t("common.delete")} type="button">
                     <Trash2 size={13} />
                   </button>
                 </div>
                 <div className="syntax-profile-rule-fields">
-                  <label>
-                    <span>{t("settings.syntaxHighlightRuleName")}</span>
-                    <input onChange={(event) => updateRule(entry.id, (rule) => ({ ...rule, name: event.currentTarget.value }))} value={entry.name} />
-                  </label>
-                  <label className="syntax-profile-pattern-field">
-                    <span>{t("settings.syntaxHighlightPattern")}</span>
-                    <input onChange={(event) => updateRule(entry.id, (rule) => ({ ...rule, pattern: event.currentTarget.value }))} spellCheck={false} value={entry.pattern} />
-                  </label>
-                  <label>
-                    <span>{t("settings.syntaxHighlightFont")}</span>
-                    <input list="syntax-highlight-fonts" onChange={(event) => updateRule(entry.id, (rule) => ({ ...rule, style: { ...rule.style, fontFamily: event.currentTarget.value || null } }))} placeholder={t("settings.syntaxHighlightInheritFont")} value={entry.style.fontFamily ?? ""} />
-                  </label>
+                  <Field label={t("settings.syntaxHighlightRuleName")}>
+                    <TextInput onChange={(event) => updateRule(entry.id, (rule) => ({ ...rule, name: event.currentTarget.value }))} value={entry.name} />
+                  </Field>
+                  <Field className="syntax-profile-pattern-field" label={t("settings.syntaxHighlightPattern")}>
+                    <TextInput mono onChange={(event) => updateRule(entry.id, (rule) => ({ ...rule, pattern: event.currentTarget.value }))} value={entry.pattern} />
+                  </Field>
+                  <Field label={t("settings.syntaxHighlightFont")}>
+                    <TextInput list="syntax-highlight-fonts" onChange={(event) => updateRule(entry.id, (rule) => ({ ...rule, style: { ...rule.style, fontFamily: event.currentTarget.value || null } }))} placeholder={t("settings.syntaxHighlightInheritFont")} value={entry.style.fontFamily ?? ""} />
+                  </Field>
                 </div>
                 <div className="syntax-profile-style-row">
                   <ColorField label={t("settings.syntaxHighlightForeground")} value={entry.style.foreground} onChange={(foreground) => updateRule(entry.id, (rule) => ({ ...rule, style: { ...rule.style, foreground } }))} />
                   <ColorField label={t("settings.syntaxHighlightBackground")} value={entry.style.background} onChange={(background) => updateRule(entry.id, (rule) => ({ ...rule, style: { ...rule.style, background } }))} />
-                  <label className="syntax-profile-check"><input checked={entry.style.bold} onChange={(event) => updateRule(entry.id, (rule) => ({ ...rule, style: { ...rule.style, bold: event.currentTarget.checked } }))} type="checkbox" /><span>{t("settings.syntaxHighlightBold")}</span></label>
-                  <label className="syntax-profile-check"><input checked={entry.style.italic} onChange={(event) => updateRule(entry.id, (rule) => ({ ...rule, style: { ...rule.style, italic: event.currentTarget.checked } }))} type="checkbox" /><span>{t("settings.syntaxHighlightItalic")}</span></label>
+                  <div className="syntax-profile-check"><Switch ariaLabel={t("settings.syntaxHighlightBold")} on={entry.style.bold} onChange={(bold) => updateRule(entry.id, (rule) => ({ ...rule, style: { ...rule.style, bold } }))} /><span>{t("settings.syntaxHighlightBold")}</span></div>
+                  <div className="syntax-profile-check"><Switch ariaLabel={t("settings.syntaxHighlightItalic")} on={entry.style.italic} onChange={(italic) => updateRule(entry.id, (rule) => ({ ...rule, style: { ...rule.style, italic } }))} /><span>{t("settings.syntaxHighlightItalic")}</span></div>
                   <span className="syntax-profile-live-preview" style={{ background: entry.style.background ?? undefined, color: entry.style.foreground ?? undefined, fontFamily: entry.style.fontFamily ?? undefined, fontStyle: entry.style.italic ? "italic" : undefined, fontWeight: entry.style.bold ? 700 : undefined }}>
                     {entry.name || "Aa"}
                   </span>
@@ -434,13 +438,7 @@ function ColorField({
   return (
     <div className="syntax-profile-color-field">
       <span>{label}</span>
-      <i style={{ background: isHexColor(value) ? value : "transparent" }} />
-      <ColorPalettePicker value={value} onChange={onChange} />
-      {value ? (
-        <button aria-label={label} className="toolbar-button" onClick={() => onChange(null)} type="button">
-          <X size={12} />
-        </button>
-      ) : null}
+      <ColorPalettePicker ariaLabel={label} onClear={() => onChange(null)} trigger="swatch" value={value} onChange={onChange} />
     </div>
   );
 }

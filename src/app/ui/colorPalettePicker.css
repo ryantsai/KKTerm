@@ -23,6 +23,39 @@
   box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
 }
 
+.color-palette-swatch {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--color-palette-swatch);
+  box-shadow: var(--control-shadow);
+  cursor: pointer;
+  transition: border-color 0.12s, box-shadow 0.12s, transform 0.12s;
+}
+
+.color-palette-swatch.empty {
+  background:
+    linear-gradient(45deg, var(--surface-muted) 25%, transparent 25%, transparent 75%, var(--surface-muted) 75%),
+    linear-gradient(45deg, var(--surface-muted) 25%, var(--surface) 25%, var(--surface) 75%, var(--surface-muted) 75%);
+  background-position: 0 0, 4px 4px;
+  background-size: 8px 8px;
+}
+
+.color-palette-swatch:hover {
+  border-color: var(--text-faint);
+  transform: scale(1.06);
+}
+
+.color-palette-rainbow:focus-visible,
+.color-palette-swatch:focus-visible,
+.color-palette-swatch[aria-expanded="true"] {
+  outline: 0;
+  border-color: var(--accent);
+  box-shadow: var(--ring), var(--control-shadow);
+}
+
 .connection-custom-color .color-palette-rainbow {
   width: 22px;
   height: 22px;
@@ -60,6 +93,13 @@
   border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: var(--shadow);
+}
+
+.color-palette-popover.portaled {
+  position: fixed;
+  top: auto;
+  right: auto;
+  z-index: 160;
 }
 
 .color-palette-popover .react-colorful {
@@ -124,4 +164,31 @@
   outline: 0;
   font: 12px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace;
   text-transform: uppercase;
+}
+
+.color-palette-clear {
+  --button-shadow-color: var(--border-strong);
+  width: 100%;
+  height: 30px;
+  margin-top: 10px;
+  padding: 0 10px;
+  color: var(--text-muted);
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  box-shadow: var(--button-shadow);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.color-palette-clear:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+
+.color-palette-clear:focus-visible {
+  outline: 0;
+  box-shadow: var(--ring), var(--button-shadow);
 }
