@@ -6,7 +6,7 @@ set -euo pipefail
 
 # Build the Linux AppImage bundle.
 #
-# Distribution on Linux is AppImage-only (see docs/LINUX_PORT.md). This script
+# Distribution on Linux is AppImage-only (see docs/RELEASE.md). This script
 # only builds; it does not bump the version, create a tag, or upload anything.
 # The shared src-tauri/tauri.conf.json bundle targets (nsis/app/dmg) are left
 # untouched: the AppImage target is selected here via the CLI so Windows/macOS
@@ -70,7 +70,7 @@ export APPIMAGE_EXTRACT_AND_RUN="${APPIMAGE_EXTRACT_AND_RUN:-1}"
 # stack, so a build-host copy causes `EGL_BAD_PARAMETER` on eglGetDisplay/
 # eglInitialize on a different host -- the app aborts before any window
 # renders. Confirmed by launching an Ubuntu-24.04-built AppImage on a Fedora
-# VM. See docs/LINUX_PORT.md Phase 5.
+# VM. See docs/RELEASE.md -> "AppImage-only distribution and its runtime workarounds".
 prepare_appimagetool() {
   local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tauri"
   local tool_path="$cache_dir/appimagetool-x86_64.AppImage"

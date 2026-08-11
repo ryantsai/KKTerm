@@ -1,6 +1,8 @@
-# Portable Mode Plan
+# Portable Mode
 
-Status: **Implemented and verified** (Windows portable v1, 2026-07-19).
+Status: **Shipped and verified** (Windows portable v1, 2026-07-19). This is the
+reference for how portable mode behaves, not a forward-looking plan; packaging
+and release commands live in `docs/RELEASE.md`.
 
 This document defines the portable distribution of KKTerm: a ZIP the user unpacks
 to a writable local folder or removable drive that runs without an installer,
@@ -380,35 +382,20 @@ Guaranteed by construction, verified by tests:
   resolve in the packaged runtime. The smoke test uses only an explicit
   temporary extraction directory and exact registry/path snapshots; it must
   not delete broad user-data roots.
-- **Docs**: README download table, `docs/SITE.md`/site release worker if it
-  lists assets, `docs/ANTIVIRUS.md` (portable ZIPs are more often flagged
-  than installers; publish checksums, restore Authenticode signing when
-  available, and document how to report false positives).
+- **Docs**: README download table, the site release worker if it lists assets,
+  and `docs/RELEASE.md` → "Antivirus and EDR Review" (portable ZIPs are more
+  often flagged than installers; publish checksums, restore Authenticode
+  signing when available, and document how to report false positives).
 
 ---
 
-## 9. Phasing
+## 9. Shipped scope and verification
 
-Each phase is independently testable. The public portable release ships only
-after phases 1–4 are complete.
-
-1. **Path core** — early mode detection, missing-marker and writability guards,
-   managed `AppPaths`, logging/WebView2 redirection, asset-scope extension, and
-   the audited durable-path sweep. Development/tests may force mode before any
-   portable package exists. Installed behavior must remain unchanged.
-2. **Host-state + coexistence** — portable Windows single-instance handling,
-   marker-aware CLI bridge discovery, auto-start gating, in-memory Install
-   Helper detection cache, mode-aware update validation, and clean SQLite exit
-   verification.
-3. **Secrets + UX** — portable default to the file store when unset,
-   skippable onboarding, Settings deltas, typed app-mode/data-path access, i18n
-   keys plus pending localization files, and operation-manual updates.
-4. **Packaging + release** — x64/ARM64 ZIP and checksum generation,
-   release/mirror/notes integration, README/antivirus guidance, and the portable
-   smoke test. Portable mode self-updates from the same verified release ZIPs.
-5. **Later / out of scope for v1** — macOS/Linux portable modes,
-   network-share roots, cloud-synchronized roots, full-database encryption,
-   and a machine-local WebView2 profile redirect.
+Phases 1-4 shipped together in Windows portable v1: the `AppPaths` path core,
+host-state/coexistence handling, secrets plus portable UX, and packaging with
+release integration. Still out of scope: macOS/Linux portable modes,
+network-share roots, cloud-synchronized roots, full-database encryption, and a
+machine-local WebView2 profile redirect.
 
 ### Implementation verification
 

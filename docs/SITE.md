@@ -1,12 +1,13 @@
-# Site Management — Design & Implementation Plan
+# Site Management — Design and Reference
 
-Status: **Phases A–D landed** (rename, rack data model, Site View / Server Room
-View / Rack View with the dialogs-first editor, click-to-connect with ghost
-handling, Server Room / Rack scoped Batch Runs, drag-to-place, plus rack
-page-context awareness and accent colour-coding). Remaining: the approval-gated "draft a rack layout" assistant
-tool (+ `itops-changed` live reload), selective export/import inclusion, and
-drag-resize polish — each best done with the desktop app running to verify.
-This document is the detailed plan and current product terminology for IT Ops
+Status: **Shipped** — rename, rack data model, Site View / Server Room View /
+Rack View with the dialogs-first editor, click-to-connect with ghost handling,
+Server Room / Rack scoped Batch Runs, drag-to-place, rack page-context
+awareness and accent colour-coding, the approval-gated rack-layout assistant
+tools with `itops-changed` live reload, and selective export/import inclusion
+of racks and rack items. Remaining polish (drag-resize refinement) is best
+verified with the desktop app running.
+This document is the design reference and current product terminology for IT Ops
 **Site** management with a visual virtual-datacenter (rack elevation) layer.
 It extends `docs/ITOPS.md`
 (which remains the source of truth for shipped IT Ops architecture) and follows
@@ -502,57 +503,18 @@ enters the export.
 - **`docs/ADR/0011-it-ops-module.md`** and `docs/ROADMAP.md` — note the Site
   rename and the topology layer (ROADMAP "IT Ops Center" section).
 
-## Phasing
+## Delivery history
 
-Each phase is one reviewable PR and leaves the app shippable.
-
-- **Phase A — Rename Host Group → Site (no behavior change). ✅ Landed.** Table rename
-  migration (33→34, table + `site_id` column), Rust type/function renames,
-  command renames, frontend file/identifier renames, i18n key renames + pending
-  localization files, doc/`CONTEXT.md` updates. Pure rename; tests green.
-- **Phase B — Rack topology data model. ✅ Landed.** Added `itops_site_racks` /
-  `itops_site_rack_items` (schema 35), `site_storage.rs` CRUD + the pure
-  overlap/fit validator + tests, and the rack/item commands
-  (`itops_list_racks`, `itops_create_rack`, `itops_update_rack`,
-  `itops_delete_rack`, `itops_reorder_racks`, `itops_place_rack_item`,
-  `itops_update_rack_item`, `itops_move_rack_item`, `itops_remove_rack_item`),
-  registered in `generate_handler!`. Frontend types + `tauri.ts` bindings added
-  (no UI yet). **Deferred from this phase:** the `itops-changed` live-reload
-  event (nothing emits or listens for it yet — wire it in Phase C with the store
-  listener), and selective export/import inclusion (Sites themselves are not in
-  the ADR-0010 export shape yet; add racks when Sites are added).
-- **Phase C — Site topology (read + place).** _Landed:_ `RackElevation.tsx`
-  (U-keyed CSS-grid front elevation), Site View → Server Room View → Rack View
-  drill-down, the `racksBySite` store loader + mutations, and the
-  **dialogs-first editor** — add/edit/delete racks (`RackDialog`) and
-  place/edit/move/remove devices (`RackItemDialog`): click an empty U to add,
-  click an item to edit, with backend overlap/fit validation surfaced as a
-  Status Bar error. _Drag-to-place landed:_ devices are draggable onto any U
-  slot (restack within a rack or move across racks), re-validated by the
-  backend; resize stays in the edit dialog (drag-resize is a later polish).
-  Ghost-item handling landed in Phase D. _Still to come:_ the `itops-changed`
-  reload listener (Phase E).
-- **Phase D — Click-to-connect + scoped Batch Runs.** _Click-to-connect
-  landed:_ a placed host opens its Session on click via a new
-  `itops_get_connection(id)` command (hydrates the full Connection across any
-  Workspace) handed to the existing `openConnection`; a pencil edits it. Items
-  whose Connection no longer resolves to a Site member render as dimmed
-  **ghosts** (not openable, still editable/removable). _Scoped Batch Runs
-  landed:_ a `RunScope { rackId?, serverRoom? }` + `resolve_site_scoped`
-  (storage) and an optional `scope` on `itops_start_batch_run`; per-rack and
-  per-Server Room affordances launch a run over only the placed hosts in the
-  matching racks, with the launcher showing a scope banner.
-- **Phase E — AI + polish.** _Landed:_ rack-topology metadata in the IT Ops
-  assistant page context (compact, loaded-Sites only), per-device **accent**
-  colour-coding (`RackItemMetadata.accent` via a Swatches picker, rendered as a
-  left accent bar), and the manual Rack View section. _Still to come (each best
-  done with the app running to verify):_ the approval-gated "draft a rack
-  layout" assistant tool plus its `itops-changed` live-reload listener, and
-  selective export/import inclusion (Sites are not yet in the ADR-0010 export
-  shape, so that lands Sites + racks together). Drag-resize is a remaining
-  visual polish on top of drag-to-place.
-
-Phases A–C deliver the visible feature; D–E are independent and demand-ordered.
+All phases shipped: the Host Group → Site rename (schema 33→34), the rack
+topology data model (`itops_site_racks` / `itops_site_rack_items`, schema 35,
+with the pure overlap/fit validator and rack/item commands), Site View → Server
+Room View → Rack View with the dialogs-first editor and drag-to-place,
+click-to-connect with ghost handling plus rack/Server Room scoped Batch Runs,
+and the AI pass — rack-topology page context, the approval-gated rack-layout
+assistant tools, the `itops-changed` live-reload listener, per-device accent
+colour-coding, and selective export/import inclusion of racks and rack items.
+Drag-resize inside the Rack View remains the one open visual polish item; every
+other behavior in this document reflects shipped code.
 
 ## Risks & open questions
 

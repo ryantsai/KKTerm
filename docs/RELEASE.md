@@ -55,6 +55,41 @@ The script runs the Tauri NSIS bundle target, copies the generated setup executa
 
 The installer uses a current-user install mode by default, creates KKTerm Start Menu entries, and downloads the WebView2 bootstrapper only if the target machine needs WebView2 during install.
 
+### Windows on Arm (ARM64)
+
+Native ARM64 (`aarch64-pc-windows-msvc`) builds ship alongside x64. No feature relies on x64-only APIs at runtime — every native surface uses OS APIs that ship as ARM64 on Windows 11 on Arm — so the work is in the build toolchain and a few arch-aware data paths.
+
+```powershell
+npm run package:installer:arm64                      # build (toolchain must be present)
+npm run package:installer:arm64 -- -InstallMissing   # also download/install the toolchain
+npm run package:installer:arm64 -- -ToolchainOnly    # just check/install toolchain
+```
+
+The output is `artifacts/kkterm-<version>-windows-arm64-setup.exe` plus a `.sha256` checksum, matching the x64 script's conventions. Both architectures are built and published together by the **Release** workflow (see "GitHub Release" below); locally, `pwsh scripts/release-github.ps1 -IncludeArm64` adds ARM64 to an x64 release run.
+
+`scripts/package-installer-arm64.ps1` detects each toolchain piece and, with `-InstallMissing`, downloads it via `winget`:
+
+| Piece | Why it's needed | winget id |
+| --- | --- | --- |
+| Rust target `aarch64-pc-windows-msvc` | compile the app + `kkterm-cli` sidecar for ARM64 | `rustup target add` |
+| MSVC **C++ ARM64 build tools** | linker/CRT for the ARM64 target | `Microsoft.VisualStudio.BuildTools` + component `…VC.Tools.ARM64` |
+| **C++ Clang Compiler for Windows** | compiles ARM64 assembly used by `ring` / `aws-lc-sys` | VS component `…VC.Llvm.Clang` |
+| **CMake** | builds `aws-lc-sys` (rustls' default crypto provider, via `reqwest`/`lettre`) for ARM64 | `Kitware.CMake` |
+| **NASM** | `aws-lc-sys` assembly build dependency | `NASM.NASM` |
+| Node.js + npm | frontend build (`beforeBuildCommand`) | `OpenJS.NodeJS.LTS` |
+
+The MSVC ARM64 component install is best-effort; if winget cannot add it non-interactively, run the Visual Studio Installer and add **"MSVC Build Tools for ARM64/ARM64EC (Latest)"** and **"C++ Clang Compiler for Windows"**. Cross-building from an x64 host is supported (the script passes `--target aarch64-pc-windows-msvc`); building on an ARM64 host works too.
+
+Runtime notes for the native surfaces: ConPTY, `russh`/`ring`, SChannel, `serial2`, `vnc-rs`, the RDP ActiveX control (`mstscax.dll` ships ARM64), GDI capture, Windows Credential Manager, IP Helper (ARM64 uses a direct `IcmpSendEcho` backend instead of `winping`), tray/single-instance/auto-start, and DWM all run natively. `rustls`/`aws-lc-rs` is native at runtime but needs CMake/NASM at build time. `webviewInstallMode.downloadBootstrapper` auto-selects the ARM64 Evergreen runtime. The NSIS installer executable itself is Tauri's 32-bit x86 stub; it runs under emulation and installs the native ARM64 payload — expected, not a defect.
+
+Feature code that must stay arch-aware:
+
+- **Install Helper `downloadInstaller` fallbacks.** The provider schema accepts optional `arm64Url` / `arm64FileName`. On a native ARM64 build (`cfg!(target_arch = "aarch64")`), `Provider::download_target` prefers the ARM64 asset and otherwise falls back to the x64 asset (which still runs under emulation). `installer/catalog.v1.json` populates native ARM64 downloads where the vendor URL scheme is deterministic (GitHub CLI, VS Code, rustup); `winget` providers already auto-select ARM64. Remaining x64-only entries keep working under emulation and can adopt the same two fields once a native URL is confirmed.
+- **AI coding-usage detection.** `src-tauri/src/ai_coding_usage.rs` probes the Codex VS Code extension's per-arch `bin/` folder, preferring `windows-arm64` on an ARM64 build.
+- **App-detection registry views.** `src-tauri/src/installer/detect.rs` enumerates the native 64-bit view via `KEY_WOW64_64KEY` (the ARM64 view on Windows on Arm) plus the 32-bit WOW view and matches on the bare uninstall subkey, so native ARM64 installs are detected. The synthetic `ARP\Machine\X64` / `ARP\User\X64` labels are cosmetic; x64 apps installed under emulation that register in a separate emulated view are the remaining edge case to verify on real hardware.
+
+`src-tauri/src/diagnostics.rs` records `target_arch` at runtime, so an ARM64 build self-identifies in diagnostics bundles.
+
 ## Windows Portable ZIP
 
 Build the Windows x64 portable package with `npm run package:portable`, or ARM64 with `npm run package:portable:arm64`. Each command writes an architecture-specific ZIP and checksum:
@@ -182,7 +217,41 @@ The script builds the x86_64 AppImage with `npm run package:linux`, copies the u
 
 It detects the version from the AppImage filename and uses the matching `v<version>` GitHub Release when `--tag` is not supplied. It uploads the Linux files with `gh release upload --clobber`, patches the release notes `Direct Downloads` section with the Linux AppImage link, and writes `latest.json` with a `linux-x86_64` updater entry, merging any existing platform entries so a later Linux or macOS upload does not erase the other platform's updater metadata. The `latest.json` `notes` field is copied from the current GitHub Release body so the Tauri updater dialog can show the real release notes. Use `--tag v<version>` to force a specific release, `--skip-build` to upload the latest already-built AppImage/signature pair, `--skip-notes-patch` to leave the release body unchanged, and `--dry-run` to print the resolved version, tag, repository, and artifact names without building or uploading.
 
+### AppImage-only distribution and its runtime workarounds
+
+Linux distribution is **AppImage-only** by deliberate decision: no `.deb`, `.rpm`, Flatpak, Snap, or distro packages, so the build avoids the libwebkit2gtk/glibc matrix. Ubuntu 24.04 is the build base for AppImage portability, and x86_64 is the only Linux architecture. Linux packaging registers no file associations.
+
+Three AppImage-specific bugs are already fixed in the tree; do not regress them:
+
+- **Bundled Wayland libraries.** linuxdeploy bundles the build host's `libwayland-client.so.0`, `libwayland-egl.so.1`, `libwayland-cursor.so.0`, and `libwayland-server.so.0`. Wayland protocol marshalling must match the *running* machine's Mesa/EGL stack, and the mismatch aborts startup with `Could not create default EGL display: EGL_BAD_PARAMETER`. `scripts/package-linux.sh` extracts the built AppImage, deletes those four `.so` files, repacks with `appimagetool`, and re-signs the updater signature (`tauri signer sign`).
+- **WebKitGTK DMA-BUF renderer.** Under some virtualized graphics stacks the DMA-BUF renderer fails silently — the process and `WebKitWebProcess` stay alive but the webview renders nothing. `src-tauri/src/main.rs` sets `WEBKIT_DISABLE_DMABUF_RENDERER=1` before Tauri/GTK init, gated to Linux and only when `systemd-detect-virt --vm` reports a hypervisor, so bare metal keeps the faster path.
+- **AppImage environment leakage.** AppRun exports `LD_LIBRARY_PATH` and GTK/GIO variables pointing into `$APPDIR`. Spawned host processes inherit them and load the bundled Ubuntu libraries on a different distro (the VM detector above failed this way with `libcrypto.so.3: version 'OPENSSL_3.4.0' not found`). `main.rs` scrubs `LD_LIBRARY_PATH` for the detector, and `sessions.rs` scrubs every AppImage-injected variable (`LD_LIBRARY_PATH`, `GTK_*`, `GDK_*`, `GIO_EXTRA_MODULES`, `GSETTINGS_SCHEMA_DIR`, `$APPDIR` entries in `XDG_DATA_DIRS`, `APPDIR`/`APPIMAGE`/`ARGV0`/`OWD`) from local-shell and `ssh` children. `app_launcher.rs` uses the same shared scrub in `linux_env.rs`: exec-bit files run directly, `.desktop` entries launch via `gio launch`, everything else via `xdg-open` with a `gio open` fallback.
+
+A clean-machine AppImage launch — a distro with no development libraries installed — is the real portability gate, since AppImage is the only distribution channel.
+
 The Linux build requires the Tauri updater private key through `TAURI_SIGNING_PRIVATE_KEY`; `npm run package:linux` reads `TAURI_SIGNING_PRIVATE_KEY_PATH` when the variable is unset, defaults that path to `$HOME/.tauri/kkterm-updater.key`, and base64-wraps a raw Minisign key box if given one. A blank-password updater key is supported through the same `TAURI_SIGNING_PRIVATE_KEY_PASSWORD=""` default described above. Keep the private key and password in the local shell environment or an uncommitted `.env.local`; never commit updater private keys. The public updater key is committed in `src-tauri/tauri.linux.conf.json`.
+
+## Antivirus and EDR Review
+
+KKTerm includes optional network administration tools (ping, TCP port check, port scan, DNS lookup, WHOIS, Wake-on-LAN) for the convenience of network administrators. This section describes what those features do at the OS level so corporate antivirus, EDR, or security teams can review and allowlist them.
+
+When enabled by the user (per-widget opt-in for widget tools), the app may perform:
+
+| Operation | Protocol | Network behavior |
+|---|---|---|
+| Ping | ICMP (Windows: `IcmpSendEcho2` from `iphlpapi.dll`, same API as `ping.exe`) | Send 1–256 echo requests to a user-specified host with the default TTL. Falls back to a TCP connect on port 80 if ICMP is denied. |
+| TCP port check / port scan | TCP | Full three-way handshake to user-specified host/port. Max 1024 ports per call, max 64 concurrent connections, 5 ms inter-connection delay. No SYN scans, no half-open scans, no fingerprinting. |
+| DNS lookup | UDP/TCP 53 | Standard DNS query via OS resolver (or Cloudflare/Google fallback if no system resolvers). |
+| WHOIS | TCP/43 | Query to `whois.iana.org` and the referred WHOIS server. |
+| Wake-on-LAN | UDP/9 broadcast | Send a single magic packet to the broadcast address. |
+
+What KKTerm does **not** do: no raw socket usage on Windows (`IcmpSendEcho2` instead), no SYN/half-open/stealth port scans, no service fingerprinting or OS detection, no automated network discovery on startup, no packet capture (libpcap), and no outbound traffic to attacker-controlled infrastructure.
+
+Two independent settings must both allow a widget network operation before it runs: the widget-level `permissions.networkTools: true` on a specific widget body, and the global "Allow network tools in widgets" toggle in dashboard settings. The widget-level permission is opt-in per widget, so no automated network activity occurs without explicit widget configuration.
+
+Portable ZIPs and self-replacing update flows are commonly scrutinized more than installers. If an AV/EDR flags KKTerm on heuristic port-scan detection during an authorized scan, allowlist the verified release hash: every installer and portable ZIP has its own published `.sha256`, so verify the exact downloaded artifact rather than allowlisting a folder. Restoring Authenticode signing remains a release goal (see "Known Limitations"). Report false positives through the project issue tracker.
+
+The portable ZIP is not a sandbox. KKTerm-owned state stays in its sibling `data` folder, while explicit actions such as Install Helper installs, managed web apps, OS-keychain use, or external MCP configuration can change the current machine. Extract the ZIP before scanning or launching it; do not remove `kkterm-portable.marker`, which is the mode boundary that prevents installed-path fallback.
 
 ## Known Limitations
 

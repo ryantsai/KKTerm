@@ -1141,9 +1141,10 @@ pure IPv4 maths in `src-tauri/src/itops/ipv4.rs`; repository +
 snapshot-derives-everything reads in `ipam_storage.rs` and
 `network_map_storage.rs`; twelve Tauri commands; two global Networking
 destinations in the navigator (`IpamPanel.tsx`, `NetworkMapDesigner.tsx`);
-and the hand-drawn Network Map canvas. No assistant or MCP tools yet, and **no
-dependency on live device state** — the SNMP scaffolding stays future
-preparation.
+and the hand-drawn Network Map canvas. Typed IPAM assistant tools
+(`itops_get_ipam_snapshot`, VLAN/Prefix/Address Record reads and writes, and the
+atomic import tool) landed after this phase; there is still **no dependency on
+live device state** — the SNMP scaffolding stays future preparation.
 
 **IPAM Address Site binding.** `itops_ip_address_records.site_id` is an
 optional soft direct binding. Schema v52 repairs v51 databases whose already

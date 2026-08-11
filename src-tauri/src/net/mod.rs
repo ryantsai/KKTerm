@@ -1,6 +1,7 @@
 //! Network admin tools — shared types and module entry point.
 //!
-//! See docs/superpowers/specs/2026-05-17-network-tools-lego-blocks-design.md.
+//! OS-level behavior of each tool is documented in docs/RELEASE.md ->
+//! "Antivirus and EDR Review".
 
 use serde::Serialize;
 
