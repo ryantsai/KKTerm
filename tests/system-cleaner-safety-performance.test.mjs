@@ -27,7 +27,7 @@ test("System Cleaner scans the drive once off the UI thread and streams progress
   assert.match(page, /listen<SystemCleanerScanProgress>/);
 });
 
-test("System Cleaner installs and imports the managed WinDirStat scanner", () => {
+test("System Cleaner automatically installs and imports the managed WinDirStat scanner", () => {
   assert.match(catalog, /"id": "windirstat"[\s\S]*?"repo": "windirstat\/windirstat"[\s\S]*?"assetPattern": "WinDirStat\.zip"/);
   assert.match(backend, /fn scan_with_windirstat/);
   assert.match(backend, /\/saveto/);
@@ -36,7 +36,8 @@ test("System Cleaner installs and imports the managed WinDirStat scanner", () =>
   assert.match(backend, /"Physical Size"/);
   assert.match(page, /system_cleaner_scanner_status/);
   assert.match(page, /installRecipeAndWait/);
-  assert.match(page, /confirmNativeDialog/);
+  assert.doesNotMatch(page, /confirmNativeDialog|scannerInstallTitle|scannerInstallPrompt/);
+  assert.match(page, /catch\s*\{[\s\S]*?iterative directory walker[\s\S]*?\}\s*finally\s*\{[\s\S]*?beginScan\(\)/);
   assert.match(backend, /ScanProgressPhase::Metadata/);
   assert.match(backend, /ScanProgressPhase::Files/);
 });
@@ -147,7 +148,7 @@ test("System Cleaner prefers elevated WinDirStat and falls back to directory enu
   assert.match(backend, /if let Ok\(scan\) = scan_with_windirstat\(root,/);
   assert.match(backend, /scan_tree\(root,/);
   assert.match(backend, /Start-Process.*-Verb RunAs/);
-  assert.match(manual, /If the\s+external scan cannot run/i);
+  assert.match(manual, /If WinDirStat installation fails[\s\S]*iterative directory walker instead of the legacy raw\s+MFT reader/i);
 });
 
 test("System Cleaner scan helpers do not open terminal windows", () => {

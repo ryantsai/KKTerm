@@ -53,14 +53,15 @@ totals remains in the reserved or unattributed value identified by
 traversed, avoiding duplicate target data.
 
 System Cleaner uses an Install Helper-managed portable WinDirStat release. On
-the first scan, **`systemCleaner.scannerInstallTitle`** and
-**`systemCleaner.scannerInstallPrompt`** ask permission to install that internal
-dependency. KKTerm then requests standard UAC approval for the headless scan so
-WinDirStat can use its direct NTFS engine. The helper runs without opening a
-terminal window; the standard UAC consent prompt remains visible. If the
-external scan cannot run, KKTerm falls back to its non-elevated, reparse-safe
-directory walker. The drive scan runs on a background worker while cleanup
-locations and installed-app discovery run concurrently.
+the first scan, KKTerm automatically attempts to install that internal
+dependency without showing a confirmation prompt. KKTerm then requests standard
+UAC approval for the headless scan so WinDirStat can use its direct NTFS engine.
+The helper runs without opening a terminal window; the standard UAC consent
+prompt remains visible. If WinDirStat installation fails, is cancelled, cannot
+be resolved, or the external scan cannot run, KKTerm continues with its
+non-elevated, reparse-safe iterative directory walker instead of the legacy raw
+MFT reader. The drive scan runs on a background worker while cleanup locations
+and installed-app discovery run concurrently.
 Scans run only on explicit demand; use
 **`systemCleaner.scan`** to refresh the measurements after moving or deleting
 files. System Cleaner reports sizes but does not delete items from this view.

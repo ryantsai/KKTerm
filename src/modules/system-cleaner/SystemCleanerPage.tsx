@@ -26,7 +26,7 @@ import {
 import { ModuleHeader, ModuleHeaderLead, ModuleHeaderSpacer, ModuleHeaderTitle, ModuleIconTile } from "../../app/ModuleHeader";
 import { SystemCleanerModuleIcon } from "../../app/moduleIdentityIcons";
 import { ConfirmSheet } from "../../app/ui/dialog";
-import { confirmNativeDialog, invokeCommand, isTauriRuntime, openFilesystemPath } from "../../lib/tauri";
+import { invokeCommand, isTauriRuntime, openFilesystemPath } from "../../lib/tauri";
 import { showNativeContextMenu, type NativeContextMenuItem } from "../../lib/nativeContextMenu";
 import { nativeMenuIcons } from "../../lib/nativeMenuIcons";
 import { useWorkspaceStore } from "../../store";
@@ -149,23 +149,15 @@ export function SystemCleanerPage({ active, onOpenAssistant }: { active: boolean
   const scan = useCallback(async () => {
     if (!isTauriRuntime() || !selectedDrive) return;
     try {
-      let scanner = await invokeCommand("system_cleaner_scanner_status", undefined);
+      const scanner = await invokeCommand("system_cleaner_scanner_status", undefined);
       if (!scanner.available) {
-        const shouldInstall = await confirmNativeDialog(t("systemCleaner.scannerInstallPrompt"), {
-          title: t("systemCleaner.scannerInstallTitle"),
-        });
-        if (shouldInstall !== true) return;
         setInstallingScanner(true);
         await invokeCommand("installer_load_catalog", {});
-        const installed = await installRecipeAndWait(scanner.toolId);
-        if (installed.kind === "cancelled") return;
-        if (installed.kind === "failed") throw new Error(installed.message);
-        scanner = await invokeCommand("system_cleaner_scanner_status", undefined);
-        if (!scanner.available) throw new Error(t("systemCleaner.scannerUnavailableAfterInstall"));
+        await installRecipeAndWait(scanner.toolId);
       }
-    } catch (error) {
-      notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" });
-      return;
+    } catch {
+      // WinDirStat is a best-effort optimization. The scan command falls back
+      // to the iterative directory walker when the managed scanner is absent.
     } finally {
       setInstallingScanner(false);
     }
