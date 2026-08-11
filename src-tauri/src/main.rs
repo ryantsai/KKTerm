@@ -17,7 +17,7 @@ fn main() {
 /// and WebKitWebProcess stay alive, nothing crashes, but nothing renders).
 /// Disabling it costs a rendering fast path, so it's only applied when a
 /// hypervisor is actually detected, not unconditionally. Must run before
-/// Tauri/GTK/WebKit touch the display (see docs/LINUX_PORT.md Phase 5/6).
+/// Tauri/GTK/WebKit touch the display (see docs/RELEASE.md, Linux AppImage notes).
 #[cfg(target_os = "linux")]
 fn apply_linux_gpu_workarounds() {
     // When running from an AppImage, AppRun points LD_LIBRARY_PATH at the

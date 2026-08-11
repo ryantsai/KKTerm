@@ -1,8 +1,8 @@
 //! Data model for the AI Watchdog feature.
 //!
-//! See docs/superpowers/specs (forthcoming): the watchdog is a sensor + actor
-//! loop. Rust owns polling, predicate evaluation, and lifecycle; JS owns the
-//! AI intervention sub-turn that runs at trigger points.
+//! The watchdog is a sensor + actor loop. Rust owns polling, predicate
+//! evaluation, and lifecycle; JS owns the AI intervention sub-turn that runs at
+//! trigger points.
 //!
 //! Step 1 scope: only the `Mock` target is implemented end-to-end. Real target
 //! kinds (performanceCounter, sshSessionOutputSilence, ...) are added in

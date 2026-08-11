@@ -2,9 +2,9 @@
 
 ## Current Status
 
-Quick snapshot as of July 21, 2026:
+Quick snapshot as of August 11, 2026:
 
-All core connection types (SSH, Telnet, Serial, FTP/FTPS, RDP, VNC, URL/WebView2, local shells, and the local File/Document viewer), terminal features, SSH port forwarding, SFTP/FTP, RDP/VNC, AI Assistant tool calling with composer attachments, Dashboard Module redesign, Install Helper, the Site-first IT Ops Module (Sites, Server Room/Rack topology, Hosts inventory, Task Library, SSH Batch Runs, and playbooks), and UI customization are implemented and shipping. The app builds for Windows, macOS, and Linux. The app metadata is currently at v0.1.127 and releasing continuously.
+All core connection types (SSH, Telnet, Serial, FTP/FTPS, RDP, VNC, URL/WebView2, local shells, and the local File/Document viewer), terminal features, SSH port forwarding, SFTP/FTP, RDP/VNC, AI Assistant tool calling with composer attachments, Dashboard Module redesign, Install Helper, the Site-first IT Ops Module (Sites, Server Room/Rack topology, Hosts inventory, Task Library, SSH Batch Runs, and playbooks), and UI customization are implemented and shipping. The app builds for Windows, macOS, and Linux. The app metadata is currently at v0.1.142 and releasing continuously.
 
 Release validation gates are documented in `AGENTS.md` and `docs/RELEASE.md`; run the full suite before significant code changes or release publication. Previous packaging validation passed for `npm run package:installer` and `npm run smoke:installer`.
 
@@ -104,7 +104,7 @@ Deep dive: `docs/manual/19-git-browser.md`.
 
 ### Screenshots
 
-Deep dive: `docs/SCREENSHOTS.md`, `docs/manual/14-screenshots.md`.
+Deep dive: `docs/manual/14-screenshots.md`; source map and capture/editor architecture in `docs/ARCHITECTURE.md`.
 
 - [x] Screenshots Module (Activity Rail destination) with a capture library, a screenshot editor, batch dialogs, and configurable editor keyboard shortcuts.
 - [x] Capture bridge shared with the AI Assistant (full surface, partial area, and region); optional DirectX capture path.
@@ -132,7 +132,7 @@ Deep dive: `docs/SCREENSHOTS.md`, `docs/manual/14-screenshots.md`.
 - [x] Command planning safety tests.
 - [x] Composer context attachments: file/photo, image, and text/terminal-buffer snippets captured into the run manifest from the composer.
 - [x] Context budgeting per provider with automatic compaction of conversation history.
-- [x] Local Assistant Skills: bundled `SKILL.md` workflow guides copied into app-data, listed and toggled in Settings → AI, and loaded on demand via model-driven `assistant_use_skill` invocation (see `docs/ASSISTANT_SKILLS.md`).
+- [x] Local Assistant Skills: bundled `SKILL.md` workflow guides copied into app-data, listed and toggled in Settings → AI, and loaded on demand via model-driven `assistant_use_skill` invocation (see `docs/AI_PROVIDERS.md` → "Assistant Skills").
 
 ### Dashboard & Widgets
 
@@ -188,9 +188,10 @@ Design and deep dive: `docs/ADR/0011-it-ops-module.md`, `docs/ITOPS.md`, `docs/S
 - [x] Installer smoke test (checksum verify, silent install/uninstall into temp directory).
 - [x] GitHub Release script: version bump across npm/Tauri/Cargo, build, smoke test, commit, tag, push, and create release.
 - [x] macOS DMG release helper: build on macOS, upload DMG/checksum to an existing GitHub Release, and patch release notes.
-- [x] Linux AppImage packaging and release helper (`scripts/package-linux.sh`, `scripts/release-github-linux.sh`; see `docs/LINUX_PORT.md`). deb/rpm remain out of scope for now.
+- [x] Linux AppImage packaging and release helper (`scripts/package-linux.sh`, `scripts/release-github-linux.sh`; see `docs/RELEASE.md` → "Linux GitHub Release Assets"). deb/rpm remain out of scope for now.
 - [x] Cloudflare release mirroring for download assets.
 - [x] In-app update flow with cancellable downloads, progress indication, update-asset URL handling, and checksum validation.
+- [x] Update checks enabled by default with local-first wording; download and install remain user-mediated.
 - [x] No-telemetry posture: no analytics, no crash upload, diagnostics are local files.
 
 ## Planned
@@ -221,8 +222,7 @@ Design and deep dive: `docs/ADR/0011-it-ops-module.md`, `docs/ITOPS.md`, `docs/S
 
 - [ ] Linux deb/rpm packaging (AppImage already ships).
 - [ ] Windows Authenticode signing for installer.
-- [ ] Tauri updater artifact signing and `latest.json` generation (currently stubbed with TODOs in `scripts/release-github.ps1`).
-- [ ] Update checks enabled by default with clear local-first wording; install remains user-mediated.
+- [ ] Windows Tauri updater artifact signing and `latest.json` generation (stubbed with TODOs in `scripts/release-github.ps1`; macOS and Linux already publish signed updater artifacts).
 - [ ] Optional crash reporting after explicit opt-in design.
 - [ ] WGPU terminal renderer replacement (deferred; xterm WebGL is current fast path).
 
@@ -252,7 +252,7 @@ Second-tier follow-ups to the shipped OSC 133 / Quick Select / inline images / n
 
 ### Recording
 
-- [ ] RDP/VNC screen recording using ffmpeg
+- [ ] RDP/VNC-aware screen recording: the Screenshots Module already records a selected screen rectangle through FFmpeg, so this item is now about Pane-targeted capture that follows an RDP/VNC surface.
 
 ### Additional Protocols
 

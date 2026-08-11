@@ -103,7 +103,7 @@ The full stack, frontend source map, storage/secrets boundaries, command-runtime
 - SQLite schema initialization gets integration tests.
 - Frontend component tests cover connection tree, search/filter, tabs, and split pane behavior where useful.
 - Playwright smoke tests cover core UI flows.
-- Manual terminal compatibility checklist (`docs/TERMINAL_COMPATIBILITY_CHECKLIST.md`) covers vim, tmux, htop/btop, git, npm, and cargo.
+- Manual terminal compatibility checklist (`docs/PERFORMANCE.md`) covers vim, tmux, htop/btop, git, npm, and cargo.
 - Windows installer gets a smoke test before v0.1 release.
 - Performance checks verify the budgets documented in `docs/PERFORMANCE.md`.
 
