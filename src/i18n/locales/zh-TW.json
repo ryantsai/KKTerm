@@ -3179,10 +3179,12 @@
       }
     },
     "searchProvider": "搜尋提供者",
+    "searchProviderExa": "Exa（不需 API 金鑰）",
     "searchProviderScraper": "內建 (DuckDuckGo)",
     "searchProviderBrave": "Brave Search",
     "searchProviderTavily": "Tavily",
     "searchProviderSearxng": "SearXNG",
+    "exaSearchApiKey": "Exa API 金鑰（選填，可提高使用額度）",
     "braveSearchApiKey": "Brave Search API 金鑰",
     "tavilySearchApiKey": "Tavily API 金鑰",
     "searxngUrl": "SearXNG 執行個體 URL",

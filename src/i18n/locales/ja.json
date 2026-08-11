@@ -3179,10 +3179,12 @@
       }
     },
     "searchProvider": "検索プロバイダー",
+    "searchProviderExa": "Exa（APIキー不要）",
     "searchProviderScraper": "内蔵 (DuckDuckGo)",
     "searchProviderBrave": "Brave Search",
     "searchProviderTavily": "Tavily",
     "searchProviderSearxng": "SearXNG",
+    "exaSearchApiKey": "Exa APIキー（任意、上限を拡張）",
     "braveSearchApiKey": "Brave Search APIキー",
     "tavilySearchApiKey": "Tavily APIキー",
     "searxngUrl": "SearXNGインスタンスURL",

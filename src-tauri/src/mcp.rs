@@ -803,6 +803,54 @@ fn http_client() -> Result<reqwest::Client, McpCommandError> {
         })
 }
 
+pub(crate) async fn call_ephemeral_http_tool(
+    url: &str,
+    server_name: &str,
+    secret_header_name: Option<&str>,
+    secret_value: Option<&str>,
+    tool_name: &str,
+    arguments: Value,
+    allow_insecure_tls: bool,
+) -> Result<McpCallResult, McpCommandError> {
+    let server = McpServer {
+        id: server_name.to_ascii_lowercase(),
+        name: server_name.to_string(),
+        url: url.to_string(),
+        headers: HashMap::new(),
+        secret_header_name: secret_header_name.map(str::to_string),
+        secret_value_template: secret_header_name.map(|_| "{SECRET}".to_string()),
+        has_secret: secret_value.is_some(),
+        tools: None,
+        tools_fetched_at: None,
+        last_status: String::new(),
+        last_error: None,
+        sort_order: 0,
+        created_at: String::new(),
+        updated_at: String::new(),
+    };
+    let http = crate::net::proxy::apply_async(reqwest::Client::builder())
+        .danger_accept_invalid_certs(allow_insecure_tls)
+        .timeout(std::time::Duration::from_secs(60))
+        .build()
+        .map_err(|error| McpCommandError::Internal {
+            message: error.to_string(),
+        })?;
+    let result = call_tool(
+        &http,
+        &server,
+        secret_value,
+        tool_name,
+        arguments,
+    )
+    .await?;
+    let is_error = result
+        .get("isError")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+    let content = result.get("content").cloned().unwrap_or(Value::Null);
+    Ok(McpCallResult { content, is_error })
+}
+
 // -- Tauri commands ---------------------------------------------------------
 
 fn storage(app: &AppHandle) -> State<'_, crate::storage::Storage> {

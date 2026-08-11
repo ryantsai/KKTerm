@@ -68,7 +68,7 @@ export function providerDefaultsFor(kind: AiProviderKind): AiProviderSettings {
     disabledSkillNames: [],
     customSkillsEnabled: true,
     tools: DEFAULT_AI_ASSISTANT_TOOLS,
-    searchProvider: "scraper",
+    searchProvider: "exa",
     searxngUrl: "",
     emailProvider: "resend",
     emailFrom: "",
@@ -158,6 +158,8 @@ function normalizeDisabledSkillNames(value: unknown): string[] {
 
 function normalizeSearchProvider(value: string | undefined): SearchProvider {
   switch (value) {
+    case "exa":
+      return "exa";
     case "brave":
       return "brave";
     case "tavily":
@@ -165,7 +167,7 @@ function normalizeSearchProvider(value: string | undefined): SearchProvider {
     case "searxng":
       return "searxng";
     default:
-      return "scraper";
+      return value === "scraper" ? "scraper" : "exa";
   }
 }
 

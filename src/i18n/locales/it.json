@@ -3179,10 +3179,12 @@
       }
     },
     "searchProvider": "Provider di ricerca",
+    "searchProviderExa": "Exa (nessuna chiave API richiesta)",
     "searchProviderScraper": "Integrato (DuckDuckGo)",
     "searchProviderBrave": "Brave Search",
     "searchProviderTavily": "Tavily",
     "searchProviderSearxng": "SearXNG",
+    "exaSearchApiKey": "Chiave API Exa (facoltativa, limiti più alti)",
     "braveSearchApiKey": "Chiave API Brave Search",
     "tavilySearchApiKey": "Chiave API Tavily",
     "searxngUrl": "URL istanza SearXNG",

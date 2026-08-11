@@ -646,7 +646,7 @@ Connections, Sessions, and transports:
 
 AI, Dashboard, Installer, and Network tools:
 
-- `ai.rs` — assistant runtime: tool registration and execution, approval gating, the live-tool bridge, and shared logging macros. See the AI Assistant area for the full contract. `ai/` holds the decomposition: provider adapters (`providers/`), prompt contracts (`prompt_contracts.rs`), the OpenAI-compatible chat/Responses implementation (`openai_provider.rs`), SSE streaming and the HTTP client (`streaming.rs`), ACP/CLI agent backends and discovery (`cli_backend.rs`), the email tool transports (`email.rs`), web search/scrape (`web_search.rs`), and the test suite (`tests.rs`).
+- `ai.rs` — assistant runtime: tool registration and execution, approval gating, the live-tool bridge, and shared logging macros. See the AI Assistant area for the full contract. `ai/` holds the decomposition: provider adapters (`providers/`), prompt contracts (`prompt_contracts.rs`), the OpenAI-compatible chat/Responses implementation (`openai_provider.rs`), SSE streaming and the HTTP client (`streaming.rs`), ACP/CLI agent backends and discovery (`cli_backend.rs`), the email tool transports (`email.rs`), web search/scrape (`web_search.rs`, with anonymous Exa hosted-MCP search as the default and an optional keychain-backed `x-api-key` for higher limits), and the test suite (`tests.rs`).
 - `ai_coding_usage.rs` — tracks and syncs coding-CLI usage/quota (Codex, Claude Code) and persists auth state.
 - `github_copilot.rs` — GitHub Copilot OAuth device-flow sign-in and token polling.
 - `mcp.rs` — remote MCP HTTP client: server CRUD, schema caching, tool calls, and credential-backend-stored auth headers.

@@ -5531,6 +5531,11 @@ fn portable_credential_default_applies_only_until_the_user_saves_a_choice() {
     }
 }
 
+#[test]
+fn ai_search_provider_defaults_to_exa() {
+    assert_eq!(default_search_provider(), "exa");
+}
+
 fn temp_db_path(name: &str) -> PathBuf {
     let unique = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

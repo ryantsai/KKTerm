@@ -220,7 +220,7 @@ export const defaultAiProviderSettings: AiProviderSettings = {
   disabledSkillNames: [],
   customSkillsEnabled: true,
   tools: defaultAiAssistantToolSettings,
-  searchProvider: "scraper",
+  searchProvider: "exa",
   searxngUrl: "",
   emailProvider: "resend",
   emailFrom: "",

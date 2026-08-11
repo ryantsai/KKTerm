@@ -19,6 +19,16 @@ const copilotSettings = providerDefaultsFor("github-copilot");
 
 assertToolsDefaultOnExceptEmail("Provider", providerDefaultsFor("openai").tools);
 assertToolsDefaultOnExceptEmail("App", defaultAiAssistantToolSettings);
+if (providerDefaultsFor("openai").searchProvider !== "exa") {
+  throw new Error("AI providers should default web search to Exa.");
+}
+const duckDuckGoSettings = validateAiProviderForChat(
+  { ...providerDefaultsFor("openai"), searchProvider: "scraper" },
+  true,
+);
+if (duckDuckGoSettings.searchProvider !== "scraper") {
+  throw new Error("An explicitly selected DuckDuckGo search provider should be preserved.");
+}
 
 try {
   validateAiProviderForChat(copilotSettings, false);

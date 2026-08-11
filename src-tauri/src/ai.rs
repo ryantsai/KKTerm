@@ -6882,7 +6882,15 @@ async fn web_search_tool(settings: &AiProviderSettings, args: Value) -> String {
     let allow_insecure = settings.allow_insecure_tls();
 
     match provider {
-        "scraper" | "" => web_search_scraper(&query, allow_insecure).await,
+        "exa" | "" => {
+            web_search_exa(
+                &query,
+                settings.search_provider_api_key(),
+                allow_insecure,
+            )
+            .await
+        }
+        "scraper" => web_search_scraper(&query, allow_insecure).await,
         "brave" => match settings.search_provider_api_key() {
             Some(key) => web_search_brave(&query, key, allow_insecure).await,
             None => "Brave Search API key is not configured.".to_string(),

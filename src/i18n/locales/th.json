@@ -3179,10 +3179,12 @@
       }
     },
     "searchProvider": "ผู้ให้บริการค้นหา",
+    "searchProviderExa": "Exa (ไม่ต้องใช้คีย์ API)",
     "searchProviderScraper": "ในตัว (DuckDuckGo)",
     "searchProviderBrave": "Brave Search",
     "searchProviderTavily": "Tavily",
     "searchProviderSearxng": "SearXNG",
+    "exaSearchApiKey": "คีย์ API ของ Exa (ไม่บังคับ, เพิ่มขีดจำกัด)",
     "braveSearchApiKey": "คีย์ API Brave Search",
     "tavilySearchApiKey": "คีย์ API Tavily",
     "searxngUrl": "URL อินสแตนซ์ SearXNG",

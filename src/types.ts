@@ -1656,7 +1656,7 @@ export type AiAssistantToolId =
 
 export type AiAssistantToolSettings = Record<AiAssistantToolId, boolean>;
 
-export type SearchProvider = "scraper" | "brave" | "tavily" | "searxng";
+export type SearchProvider = "exa" | "scraper" | "brave" | "tavily" | "searxng";
 export type EmailProvider = "resend" | "sendgrid" | "mailgun" | "postmark" | "smtp";
 export type SmtpSecurity = "starttls" | "none";
 
@@ -1842,6 +1842,7 @@ export type SecretKind =
   | "sshSocksProxyPassword"
   | "urlPassword"
   | "aiApiKey"
+  | "exaSearchApiKey"
   | "braveSearchApiKey"
   | "tavilySearchApiKey"
   | "emailApiKey"

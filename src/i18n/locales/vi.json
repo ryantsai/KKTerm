@@ -3179,10 +3179,12 @@
       }
     },
     "searchProvider": "Nhà cung cấp tìm kiếm",
+    "searchProviderExa": "Exa (không cần khóa API)",
     "searchProviderScraper": "Tích hợp sẵn (DuckDuckGo)",
     "searchProviderBrave": "Brave Search",
     "searchProviderTavily": "Tavily",
     "searchProviderSearxng": "SearXNG",
+    "exaSearchApiKey": "Khóa API Exa (tùy chọn, hạn mức cao hơn)",
     "braveSearchApiKey": "Khóa API Brave Search",
     "tavilySearchApiKey": "Khóa API Tavily",
     "searxngUrl": "URL phiên bản SearXNG",

@@ -192,6 +192,13 @@ impl SecretReferenceRequest {
         }
     }
 
+    pub(crate) fn exa_search_api_key(owner_id: String) -> Self {
+        Self {
+            kind: SecretKind::ExaSearchApiKey,
+            owner_id,
+        }
+    }
+
     pub(crate) fn tavily_search_api_key(owner_id: String) -> Self {
         Self {
             kind: SecretKind::TavilySearchApiKey,
@@ -234,6 +241,7 @@ enum SecretKind {
     SshSocksProxyPassword,
     UrlPassword,
     AiApiKey,
+    ExaSearchApiKey,
     BraveSearchApiKey,
     TavilySearchApiKey,
     EmailApiKey,
@@ -597,6 +605,13 @@ impl Secrets {
         self.read_secret(SecretReferenceRequest::brave_search_api_key(owner_id))
     }
 
+    pub(crate) fn read_exa_search_api_key(
+        &self,
+        owner_id: String,
+    ) -> Result<Option<String>, String> {
+        self.read_secret(SecretReferenceRequest::exa_search_api_key(owner_id))
+    }
+
     pub(crate) fn read_tavily_search_api_key(
         &self,
         owner_id: String,
@@ -728,6 +743,7 @@ impl SecretKind {
             Self::SshSocksProxyPassword => "ssh-socks-proxy-password",
             Self::UrlPassword => "url-password",
             Self::AiApiKey => "ai-api-key",
+            Self::ExaSearchApiKey => "exa-search-api-key",
             Self::BraveSearchApiKey => "brave-search-api-key",
             Self::TavilySearchApiKey => "tavily-search-api-key",
             Self::EmailApiKey => "email-api-key",

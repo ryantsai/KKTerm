@@ -6224,7 +6224,7 @@ fn default_ai_manual_tool_enabled() -> bool {
 }
 
 fn default_search_provider() -> String {
-    "scraper".to_string()
+    "exa".to_string()
 }
 
 fn default_email_provider() -> String {
@@ -7224,11 +7224,16 @@ fn validate_ai_provider_settings(
         .replace(['-', '_', ' '], "")
         .as_str()
     {
-        "" | "scraper" => "scraper".to_string(),
+        "" | "exa" => "exa".to_string(),
+        "scraper" => "scraper".to_string(),
         "brave" => "brave".to_string(),
         "tavily" => "tavily".to_string(),
         "searxng" => "searxng".to_string(),
-        _ => return Err("Search provider must be scraper, brave, tavily, or searxng".to_string()),
+        _ => {
+            return Err(
+                "Search provider must be exa, scraper, brave, tavily, or searxng".to_string(),
+            );
+        }
     };
 
     settings.searxng_url = settings.searxng_url.trim().to_string();

@@ -188,6 +188,14 @@ keychain under provider-specific AI API key owners. When adding settings:
    durable settings table unless the storage model is redesigned.
 4. Add or update storage tests that round-trip the new persisted setting.
 
+The Assistant's Web Search provider follows the same secret boundary. Exa is
+the default and calls `https://mcp.exa.ai/mcp?tools=web_search_exa` anonymously
+when no key is stored. An optional Exa API key is stored under the dedicated
+`exa-search-api-key:exa-search` secret reference and is sent only as the
+`x-api-key` header to use the user's higher Exa limits. The regular Exa REST
+Search API is not the anonymous path; keep the hosted MCP transport for keyless
+search.
+
 `useCodexCli`, `useClaudeCli`, and `useCursorCli` are non-secret booleans. They
 are only honored for `openai`, `anthropic`, and `cursor` respectively;
 validation clears them for other providers. CLI paths remain optional

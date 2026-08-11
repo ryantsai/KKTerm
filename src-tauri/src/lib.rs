@@ -1693,6 +1693,9 @@ fn inject_search_api_key(
     settings: &mut storage::AiProviderSettings,
 ) -> Result<(), String> {
     let key = match settings.search_provider() {
+        "exa" => secrets
+            .read_exa_search_api_key("exa-search".to_string())
+            .map_err(|e| format!("failed to read Exa Search API key: {e}"))?,
         "brave" => secrets
             .read_brave_search_api_key("brave-search".to_string())
             .map_err(|e| format!("failed to read Brave Search API key: {e}"))?,

@@ -12,8 +12,11 @@ import {
 } from "../../ai/providers";
 import { SUPPORTED_LANGUAGES } from "../../i18n/config";
 import {
+  BRAVE_SEARCH_SECRET_OWNER_ID,
   EMAIL_API_SECRET_OWNER_ID,
   EMAIL_SMTP_SECRET_OWNER_ID,
+  EXA_SEARCH_SECRET_OWNER_ID,
+  TAVILY_SEARCH_SECRET_OWNER_ID,
   aiProviderSecretOwnerId,
 } from "../../lib/settings";
 import {
@@ -982,14 +985,34 @@ const AI_ASSISTANT_TOOL_IDS: AiAssistantToolId[] = [
 ];
 
 const SEARCH_PROVIDER_OPTIONS: { value: SearchProvider; labelKey: string }[] = [
+  { value: "exa", labelKey: "settings.searchProviderExa" },
   { value: "scraper", labelKey: "settings.searchProviderScraper" },
   { value: "brave", labelKey: "settings.searchProviderBrave" },
   { value: "tavily", labelKey: "settings.searchProviderTavily" },
   { value: "searxng", labelKey: "settings.searchProviderSearxng" },
 ];
 
-const BRAVE_SEARCH_OWNER_ID = "brave-search";
-const TAVILY_SEARCH_OWNER_ID = "tavily-search";
+function searchProviderSecretReference(provider: SearchProvider) {
+  switch (provider) {
+    case "exa":
+      return {
+        kind: "exaSearchApiKey" as const,
+        ownerId: EXA_SEARCH_SECRET_OWNER_ID,
+      };
+    case "brave":
+      return {
+        kind: "braveSearchApiKey" as const,
+        ownerId: BRAVE_SEARCH_SECRET_OWNER_ID,
+      };
+    case "tavily":
+      return {
+        kind: "tavilySearchApiKey" as const,
+        ownerId: TAVILY_SEARCH_SECRET_OWNER_ID,
+      };
+    default:
+      return null;
+  }
+}
 const EMAIL_PROVIDER_OPTIONS: { value: EmailProvider; labelKey: string }[] = [
   { value: "resend", labelKey: "settings.emailProviderResend" },
   { value: "sendgrid", labelKey: "settings.emailProviderSendGrid" },
@@ -1042,7 +1065,20 @@ function SearchProviderControl({
           ))}
         </select>
       </label>
-      {draft.searchProvider === "brave" ? (
+      {draft.searchProvider === "exa" ? (
+        <label>
+          <span>{t("settings.exaSearchApiKey")}</span>
+          <input
+            autoComplete="off"
+            onBlur={() => setIsSearchApiKeyFocused(false)}
+            onChange={(event) => onSearchApiKeyDraftChange(event.currentTarget.value)}
+            onFocus={() => setIsSearchApiKeyFocused(true)}
+            placeholder={t("settings.exaSearchApiKey")}
+            type="password"
+            value={shouldShowStoredApiKeyMask ? searchApiKeyStoredMask : searchApiKeyDraft}
+          />
+        </label>
+      ) : draft.searchProvider === "brave" ? (
         <label>
           <span>{t("settings.braveSearchApiKey")}</span>
           <input
@@ -1355,24 +1391,13 @@ export function AiSettings() {
   useEffect(() => {
     if (!isTauriRuntime()) return;
     let disposed = false;
-    const ownerId =
-      draft.searchProvider === "brave"
-        ? BRAVE_SEARCH_OWNER_ID
-        : draft.searchProvider === "tavily"
-          ? TAVILY_SEARCH_OWNER_ID
-          : null;
-    if (!ownerId) {
+    const reference = searchProviderSecretReference(draft.searchProvider);
+    if (!reference) {
       setHasSearchApiKey(false);
       return;
     }
     void invokeCommand("secret_exists", {
-      request: {
-        kind:
-          draft.searchProvider === "brave"
-            ? ("braveSearchApiKey" as const)
-            : ("tavilySearchApiKey" as const),
-        ownerId,
-      },
+      request: reference,
     }).then((presence) => {
       if (!disposed) setHasSearchApiKey(presence.exists);
     });
@@ -1612,14 +1637,12 @@ export function AiSettings() {
       }
 
       if (searchApiKeyDraft.trim()) {
-        const isBrave = nextSettings.searchProvider === "brave";
-        const isTavily = nextSettings.searchProvider === "tavily";
-        if ((isBrave || isTavily) && isTauriRuntime()) {
+        const reference = searchProviderSecretReference(nextSettings.searchProvider);
+        if (reference && isTauriRuntime()) {
           await saveSecret(() =>
             invokeCommand("store_secret", {
               request: {
-                kind: isBrave ? ("braveSearchApiKey" as const) : ("tavilySearchApiKey" as const),
-                ownerId: isBrave ? BRAVE_SEARCH_OWNER_ID : TAVILY_SEARCH_OWNER_ID,
+                ...reference,
                 secret: searchApiKeyDraft.trim(),
               },
             }),
@@ -1689,15 +1712,11 @@ export function AiSettings() {
         );
       }
       if (searchApiKeyDraft.trim()) {
-        const isBrave = nextSettings.searchProvider === "brave";
-        const isTavily = nextSettings.searchProvider === "tavily";
-        if (isBrave || isTavily) {
+        const reference = searchProviderSecretReference(nextSettings.searchProvider);
+        if (reference) {
           deletions.push(
             invokeCommand("delete_secret", {
-              request: {
-                kind: isBrave ? ("braveSearchApiKey" as const) : ("tavilySearchApiKey" as const),
-                ownerId: isBrave ? BRAVE_SEARCH_OWNER_ID : TAVILY_SEARCH_OWNER_ID,
-              },
+              request: reference,
             }),
           );
         }

@@ -3179,10 +3179,12 @@
       }
     },
     "searchProvider": "검색 제공자",
+    "searchProviderExa": "Exa(API 키 불필요)",
     "searchProviderScraper": "내장 (DuckDuckGo)",
     "searchProviderBrave": "Brave Search",
     "searchProviderTavily": "Tavily",
     "searchProviderSearxng": "SearXNG",
+    "exaSearchApiKey": "Exa API 키(선택 사항, 더 높은 한도)",
     "braveSearchApiKey": "Brave Search API 키",
     "tavilySearchApiKey": "Tavily API 키",
     "searxngUrl": "SearXNG 인스턴스 URL",

@@ -3179,10 +3179,12 @@
       }
     },
     "searchProvider": "Penyedia pencarian",
+    "searchProviderExa": "Exa (tanpa kunci API)",
     "searchProviderScraper": "Bawaan (DuckDuckGo)",
     "searchProviderBrave": "Brave Search",
     "searchProviderTavily": "Tavily",
     "searchProviderSearxng": "SearXNG",
+    "exaSearchApiKey": "Kunci API Exa (opsional, batas lebih tinggi)",
     "braveSearchApiKey": "Kunci API Brave Search",
     "tavilySearchApiKey": "Kunci API Tavily",
     "searxngUrl": "URL instans SearXNG",

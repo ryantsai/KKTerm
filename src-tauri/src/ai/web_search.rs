@@ -93,6 +93,62 @@ pub(crate) fn build_web_client(allow_insecure_tls: bool) -> Result<reqwest::Clie
         .map_err(|e| format!("failed to create HTTP client: {e}"))
 }
 
+const EXA_MCP_URL: &str = "https://mcp.exa.ai/mcp?tools=web_search_exa";
+
+fn mcp_text_content(content: &Value) -> String {
+    content
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|item| {
+            (item.get("type").and_then(Value::as_str) == Some("text"))
+                .then(|| item.get("text").and_then(Value::as_str))
+                .flatten()
+        })
+        .map(str::trim)
+        .filter(|text| !text.is_empty())
+        .collect::<Vec<_>>()
+        .join("\n\n")
+}
+
+pub(crate) async fn web_search_exa(
+    query: &str,
+    api_key: Option<&str>,
+    allow_insecure_tls: bool,
+) -> String {
+    let result = crate::mcp::call_ephemeral_http_tool(
+        EXA_MCP_URL,
+        "Exa",
+        Some("x-api-key"),
+        api_key,
+        "web_search_exa",
+        json!({
+            "query": query,
+            "numResults": 5,
+        }),
+        allow_insecure_tls,
+    )
+    .await;
+
+    match result {
+        Ok(result) => {
+            let text = mcp_text_content(&result.content);
+            if result.is_error {
+                if text.is_empty() {
+                    "Exa Search returned an error.".to_string()
+                } else {
+                    format!("Exa Search returned an error: {text}")
+                }
+            } else if text.is_empty() {
+                "Exa Search returned no results.".to_string()
+            } else {
+                text.chars().take(6000).collect()
+            }
+        }
+        Err(error) => format!("Exa Search request failed: {error:?}"),
+    }
+}
+
 pub(crate) async fn web_search_scraper(query: &str, allow_insecure_tls: bool) -> String {
     let client = match build_web_client(allow_insecure_tls) {
         Ok(c) => c,
@@ -344,4 +400,21 @@ pub(crate) struct SearxngResult {
     title: String,
     url: String,
     content: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::mcp_text_content;
+    use serde_json::json;
+
+    #[test]
+    fn exa_mcp_text_content_joins_text_blocks_and_ignores_other_content() {
+        let content = json!([
+            {"type": "text", "text": "First result"},
+            {"type": "image", "data": "ignored"},
+            {"type": "text", "text": "  Second result  "}
+        ]);
+
+        assert_eq!(mcp_text_content(&content), "First result\n\nSecond result");
+    }
 }

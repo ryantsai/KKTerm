@@ -56,8 +56,11 @@ import {
 import { useWorkspaceStore } from "../../store";
 import {
   AI_PROVIDER_SECRET_OWNER_ID,
+  BRAVE_SEARCH_SECRET_OWNER_ID,
   EMAIL_API_SECRET_OWNER_ID,
   EMAIL_SMTP_SECRET_OWNER_ID,
+  EXA_SEARCH_SECRET_OWNER_ID,
+  TAVILY_SEARCH_SECRET_OWNER_ID,
   allAiProviderSecretOwnerIds,
 } from "../../lib/settings";
 import { useLastUpdateCheckAt } from "../../lib/lastUpdateCheck";
@@ -295,6 +298,24 @@ export function GeneralSettings() {
           ),
         );
         await Promise.all([
+          invokeCommand("delete_secret", {
+            request: {
+              kind: "exaSearchApiKey",
+              ownerId: EXA_SEARCH_SECRET_OWNER_ID,
+            },
+          }),
+          invokeCommand("delete_secret", {
+            request: {
+              kind: "braveSearchApiKey",
+              ownerId: BRAVE_SEARCH_SECRET_OWNER_ID,
+            },
+          }),
+          invokeCommand("delete_secret", {
+            request: {
+              kind: "tavilySearchApiKey",
+              ownerId: TAVILY_SEARCH_SECRET_OWNER_ID,
+            },
+          }),
           invokeCommand("delete_secret", {
             request: {
               kind: "emailApiKey",

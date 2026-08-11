@@ -13,6 +13,9 @@ import { invokeCommand, isTauriRuntime } from "./tauri";
 
 // Legacy shared keychain owner used before AI provider keys became per-provider.
 export const AI_PROVIDER_SECRET_OWNER_ID = "openai-compatible-provider";
+export const EXA_SEARCH_SECRET_OWNER_ID = "exa-search";
+export const BRAVE_SEARCH_SECRET_OWNER_ID = "brave-search";
+export const TAVILY_SEARCH_SECRET_OWNER_ID = "tavily-search";
 export const EMAIL_API_SECRET_OWNER_ID = "email-tool-api-key";
 export const EMAIL_SMTP_SECRET_OWNER_ID = "email-tool-smtp-password";
 
