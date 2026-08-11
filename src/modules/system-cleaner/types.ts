@@ -23,6 +23,11 @@ export type SystemCleanerOverview = {
   totalAllocatedBytes: number;
   largest: SystemCleanerDiskEntry[];
   cleanup: Array<{ id: string; path: string; bytes: number }>;
+  recommendations: Array<{
+    id: "large-old-files" | "old-downloads";
+    bytes: number;
+    files: SystemCleanerReviewFile[];
+  }>;
   apps: Array<{ name: string; id: string; version: string }>;
   extensions: Array<{ extension: string; bytes: number; allocatedBytes: number; files: number }>;
   fileCount: number;
@@ -30,6 +35,14 @@ export type SystemCleanerOverview = {
   elapsedMs: number;
   diskCapacityBytes: number;
   diskFreeBytes: number;
+};
+
+export type SystemCleanerReviewFile = {
+  name: string;
+  path: string;
+  bytes: number;
+  allocatedBytes: number;
+  modifiedUnixMs: number;
 };
 
 export type SystemCleanerDirectoryListing = {

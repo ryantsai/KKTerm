@@ -877,10 +877,21 @@
     "scanHint": "扫描以分析存储、清理候选者和已安装的应用程序。",
     "storage": "存储",
     "cleanup": "清理",
+    "recommendations": "清理建议",
     "apps": "卸载程序",
     "storageHeading": "{{root}} 中最大的物品",
     "cleanupHeading": "可安全清理的项目",
+    "recommendationsHeading": "待检查文件",
     "appsHeading": "已安装的应用程序",
+    "recommendationSummary": "发现 {{count}} 个待检查文件",
+    "selectedReviewFiles": "已选择 {{count}} 个文件 · {{size}}",
+    "deleteSelected": "删除 {{count}} 个文件",
+    "deleteReviewTitle": "永久删除所选文件？",
+    "deleteReviewMessage": "要永久删除所选的 {{count}} 个文件（{{size}}）吗？仅会删除扫描后未发生更改的文件。此操作无法撤销。",
+    "deletingReviewFiles": "正在删除所选文件…",
+    "reviewDeleted": "已删除 {{size}}。",
+    "lastChanged": "上次更改",
+    "noRecommendations": "此类别中没有达到检查阈值的文件。",
     "clean": "清理 {{size}}",
     "cleaningWorking": "正在清理选定的文件…",
     "cleaned": "已清理 {{size}}。",
@@ -913,6 +924,14 @@
       "thumbnail-cache": "文件资源管理器会存储小型图片和视频预览。Windows 会在文件夹重新打开时重新生成。",
       "crash-dumps": "应用程序在崩溃后会写入内存转储。清理不会删除应用数据，但会删除有助于调试的文件。",
       "error-reports": "Windows 会保留排队和存档的问题报告。清理会删除本地诊断信息，而不是应用数据。"
+    },
+    "recommendation": {
+      "large-old-files": "较大的旧文件",
+      "old-downloads": "较旧的下载文件"
+    },
+    "recommendationDescription": {
+      "large-old-files": "至少 100 MB 且 180 天内未发生更改的文件。请在删除前逐一检查。",
+      "old-downloads": "“下载”文件夹中 90 天内未发生更改的文件。不会自动选择任何文件。"
     },
     "cleanTitle": "删除选定的文件？",
     "cleanMessage": "从选定的清理类别中删除 {{size}} 吗？将跳过锁定的文件。该操作记录在本地操作日志中。"

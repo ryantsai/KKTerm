@@ -877,10 +877,21 @@
     "scanHint": "스캔하여 스토리지, 정리 후보 및 설치된 앱을 분석합니다.",
     "storage": "저장 공간",
     "cleanup": "대청소",
+    "recommendations": "권장 사항",
     "apps": "제거 프로그램",
     "storageHeading": "{{root}}의 가장 큰 항목",
     "cleanupHeading": "안전한 청소 후보",
+    "recommendationsHeading": "검토할 파일",
     "appsHeading": "설치된 애플리케이션",
+    "recommendationSummary": "검토할 파일 {{count}}개를 찾았습니다",
+    "selectedReviewFiles": "파일 {{count}}개 선택됨 · {{size}}",
+    "deleteSelected": "파일 {{count}}개 삭제",
+    "deleteReviewTitle": "선택한 파일을 영구 삭제하시겠습니까?",
+    "deleteReviewMessage": "선택한 파일 {{count}}개({{size}})를 영구 삭제하시겠습니까? 검사 후 변경되지 않은 파일만 제거됩니다. 이 작업은 취소할 수 없습니다.",
+    "deletingReviewFiles": "선택한 파일을 삭제하는 중…",
+    "reviewDeleted": "{{size}}를 삭제했습니다.",
+    "lastChanged": "마지막 변경",
+    "noRecommendations": "이 범주에서 검토 기준과 일치하는 파일이 없습니다.",
     "clean": "{{size}} 정리",
     "cleaningWorking": "선택한 파일을 정리하는 중…",
     "cleaned": "{{size}}를 청소했습니다.",
@@ -913,6 +924,14 @@
       "thumbnail-cache": "파일 탐색기는 작은 이미지와 동영상 미리 보기를 저장합니다. Windows는 폴더를 다시 열면 다시 생성합니다.",
       "crash-dumps": "앱은 크래시 후 메모리 덤프를 작성합니다. 정리하면 앱 데이터는 삭제되지 않지만 디버깅에 유용한 파일은 삭제됩니다.",
       "error-reports": "Windows는 대기 중이거나 보관된 문제 보고서를 유지합니다. 정리하면 로컬 진단 정보가 삭제되며 앱 데이터는 삭제되지 않습니다."
+    },
+    "recommendation": {
+      "large-old-files": "오래된 대용량 파일",
+      "old-downloads": "오래된 다운로드"
+    },
+    "recommendationDescription": {
+      "large-old-files": "100MB 이상이며 180일 동안 변경되지 않은 파일입니다. 삭제하기 전에 각 파일을 검토하세요.",
+      "old-downloads": "다운로드 폴더에서 90일 동안 변경되지 않은 파일입니다. 자동으로 선택되지 않습니다."
     },
     "cleanTitle": "선택한 파일을 삭제하시겠습니까?",
     "cleanMessage": "선택한 정리 카테고리에서 {{size}}을(를) 삭제하시겠습니까? 잠긴 파일은 건너뜁니다. 이 작업은 로컬 작업 로그에 기록됩니다."

@@ -877,10 +877,21 @@
     "scanHint": "Scansione per analizzare spazio di archiviazione, candidati alla pulizia e app installate.",
     "storage": "Archiviazione",
     "cleanup": "Pulizia",
+    "recommendations": "Consigli",
     "apps": "Programma di disinstallazione",
     "storageHeading": "Elementi più grandi in {{root}}",
     "cleanupHeading": "Elementi eliminabili in sicurezza",
+    "recommendationsHeading": "File da esaminare",
     "appsHeading": "Applicazioni installate",
+    "recommendationSummary": "Trovati {{count}} file da esaminare",
+    "selectedReviewFiles": "{{count}} file selezionati · {{size}}",
+    "deleteSelected": "Elimina {{count}} file",
+    "deleteReviewTitle": "Eliminare definitivamente i file selezionati?",
+    "deleteReviewMessage": "Eliminare definitivamente {{count}} file selezionati ({{size}})? Verranno rimossi solo i file invariati dalla scansione. L’operazione non può essere annullata.",
+    "deletingReviewFiles": "Eliminazione dei file selezionati…",
+    "reviewDeleted": "Eliminati {{size}}.",
+    "lastChanged": "Ultima modifica",
+    "noRecommendations": "Nessun file in questa categoria soddisfa la soglia di esame.",
     "clean": "Pulisci {{size}}",
     "cleaningWorking": "Pulizia dei file selezionati…",
     "cleaned": "{{size}} liberati.",
@@ -913,6 +924,14 @@
       "thumbnail-cache": "Esplora file archivia anteprime ridotte di immagini e video. Windows le ricrea quando le cartelle vengono riaperte.",
       "crash-dumps": "Le app scrivono dump della memoria dopo gli arresti anomali. La pulizia non rimuove i dati dell'app, ma rimuove i file utili per il debug.",
       "error-reports": "Windows conserva i rapporti sui problemi in coda e archiviati. La pulizia rimuove la diagnostica locale, ma non i dati delle app."
+    },
+    "recommendation": {
+      "large-old-files": "File grandi e vecchi",
+      "old-downloads": "Download vecchi"
+    },
+    "recommendationDescription": {
+      "large-old-files": "File di almeno 100 MB invariati da 180 giorni. Esamina ogni file prima di eliminarlo.",
+      "old-downloads": "File in Download invariati da 90 giorni. Nessun elemento viene selezionato automaticamente."
     },
     "cleanTitle": "Eliminare i file selezionati?",
     "cleanMessage": "Eliminare {{size}} dalle categorie di pulizia selezionate? I file bloccati verranno ignorati. Questa operazione viene registrata nel registro delle operazioni locali."

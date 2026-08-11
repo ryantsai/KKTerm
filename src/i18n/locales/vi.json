@@ -877,10 +877,21 @@
     "scanHint": "Quét để phân tích bộ nhớ, dọn dẹp ứng viên và ứng dụng đã cài đặt.",
     "storage": "Lưu trữ",
     "cleanup": "Dọn dẹp",
+    "recommendations": "Đề xuất",
     "apps": "Trình gỡ cài đặt",
     "storageHeading": "Các mục lớn nhất trong {{root}}",
     "cleanupHeading": "Ứng viên dọn dẹp an toàn",
+    "recommendationsHeading": "Tệp cần xem xét",
     "appsHeading": "Ứng dụng đã cài đặt",
+    "recommendationSummary": "Đã tìm thấy {{count}} tệp cần xem xét",
+    "selectedReviewFiles": "Đã chọn {{count}} tệp · {{size}}",
+    "deleteSelected": "Xóa {{count}} tệp",
+    "deleteReviewTitle": "Xóa vĩnh viễn các tệp đã chọn?",
+    "deleteReviewMessage": "Xóa vĩnh viễn {{count}} tệp đã chọn ({{size}})? Chỉ các tệp không thay đổi kể từ lần quét mới bị xóa. Không thể hoàn tác thao tác này.",
+    "deletingReviewFiles": "Đang xóa các tệp đã chọn…",
+    "reviewDeleted": "Đã xóa {{size}}.",
+    "lastChanged": "Thay đổi lần cuối",
+    "noRecommendations": "Không có tệp nào trong danh mục này đạt ngưỡng xem xét.",
     "clean": "Làm sạch {{size}}",
     "cleaningWorking": "Đang dọn dẹp các tệp đã chọn…",
     "cleaned": "Đã làm sạch {{size}}.",
@@ -913,6 +924,14 @@
       "thumbnail-cache": "File Explorer lưu trữ bản xem trước nhỏ của hình ảnh và video. Windows tạo lại chúng khi các thư mục được mở lại.",
       "crash-dumps": "Ứng dụng ghi kết xuất bộ nhớ sau sự cố. Việc dọn dẹp không xóa dữ liệu ứng dụng nhưng xóa các tệp hữu ích để gỡ lỗi.",
       "error-reports": "Windows giữ các báo cáo sự cố trong hàng đợi và đã lưu trữ. Việc dọn dẹp xóa thông tin chẩn đoán cục bộ, không phải dữ liệu ứng dụng."
+    },
+    "recommendation": {
+      "large-old-files": "Tệp lớn cũ",
+      "old-downloads": "Tệp tải xuống cũ"
+    },
+    "recommendationDescription": {
+      "large-old-files": "Tệp có kích thước ít nhất 100 MB và không thay đổi trong 180 ngày. Hãy xem xét từng tệp trước khi xóa.",
+      "old-downloads": "Tệp trong thư mục Tải xuống không thay đổi trong 90 ngày. Không có mục nào được chọn tự động."
     },
     "cleanTitle": "Xóa các tập tin đã chọn?",
     "cleanMessage": "Xóa {{size}} khỏi danh mục dọn dẹp đã chọn? Các tập tin bị khóa sẽ bị bỏ qua. Hoạt động này được ghi lại trong nhật ký hoạt động cục bộ."

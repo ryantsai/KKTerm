@@ -877,10 +877,21 @@
     "scanHint": "掃描以分析儲存空間、可清理項目及已安裝的應用程式。",
     "storage": "儲存空間",
     "cleanup": "清理",
+    "recommendations": "清理建議",
     "apps": "解除安裝程式",
     "storageHeading": "{{root}} 中最大的項目",
     "cleanupHeading": "可安全清理的項目",
+    "recommendationsHeading": "待檢查檔案",
     "appsHeading": "已安裝的應用程式",
+    "recommendationSummary": "找到 {{count}} 個待檢查檔案",
+    "selectedReviewFiles": "已選取 {{count}} 個檔案 · {{size}}",
+    "deleteSelected": "刪除 {{count}} 個檔案",
+    "deleteReviewTitle": "要永久刪除選取的檔案嗎？",
+    "deleteReviewMessage": "要永久刪除選取的 {{count}} 個檔案（{{size}}）嗎？只會移除掃描後未變更的檔案。此操作無法復原。",
+    "deletingReviewFiles": "正在刪除選取的檔案…",
+    "reviewDeleted": "已刪除 {{size}}。",
+    "lastChanged": "上次變更",
+    "noRecommendations": "此類別沒有符合檢查門檻的檔案。",
     "clean": "清理 {{size}}",
     "cleaningWorking": "正在清理選取的檔案…",
     "cleaned": "已清理 {{size}}。",
@@ -913,6 +924,14 @@
       "thumbnail-cache": "檔案總管會儲存小型圖片與影片預覽。Windows 會在資料夾重新開啟時重新建立。",
       "crash-dumps": "應用程式在當機後會寫入記憶體傾印。清理不會移除應用程式資料，但會移除有助於偵錯的檔案。",
       "error-reports": "Windows 會保留已排入佇列與封存的問題報告。清理會移除本機診斷資訊，而非應用程式資料。"
+    },
+    "recommendation": {
+      "large-old-files": "大型舊檔案",
+      "old-downloads": "較舊的下載檔案"
+    },
+    "recommendationDescription": {
+      "large-old-files": "至少 100 MB 且 180 天內未變更的檔案。請在刪除前逐一檢查。",
+      "old-downloads": "「下載」資料夾中 90 天內未變更的檔案。不會自動選取任何檔案。"
     },
     "cleanTitle": "刪除選取的檔案？",
     "cleanMessage": "要從選取的清理類別中刪除 {{size}} 嗎？已鎖定的檔案會略過。此操作會記錄在本機操作記錄中。"

@@ -877,10 +877,21 @@
     "scanHint": "スキャンしてストレージ、クリーンアップ候補、インストールされているアプリを分析します。",
     "storage": "ストレージ",
     "cleanup": "掃除",
+    "recommendations": "推奨事項",
     "apps": "アンインストーラー",
     "storageHeading": "{{root}} で最大のアイテム",
     "cleanupHeading": "安全にクリーンアップできる項目",
+    "recommendationsHeading": "確認するファイル",
     "appsHeading": "インストールされているアプリケーション",
+    "recommendationSummary": "確認対象のファイルが {{count}} 件見つかりました",
+    "selectedReviewFiles": "{{count}} 件のファイルを選択 · {{size}}",
+    "deleteSelected": "{{count}} 件のファイルを削除",
+    "deleteReviewTitle": "選択したファイルを完全に削除しますか?",
+    "deleteReviewMessage": "選択した {{count}} 件のファイル ({{size}}) を完全に削除しますか? スキャン後に変更されていないファイルのみ削除されます。この操作は元に戻せません。",
+    "deletingReviewFiles": "選択したファイルを削除しています…",
+    "reviewDeleted": "{{size}} を削除しました。",
+    "lastChanged": "最終変更",
+    "noRecommendations": "このカテゴリには確認基準に一致するファイルがありません。",
     "clean": "{{size}} をクリーンアップ",
     "cleaningWorking": "選択したファイルをクリーニングしています…",
     "cleaned": "{{size}}をクリーニングしました。",
@@ -913,6 +924,14 @@
       "thumbnail-cache": "エクスプローラーは小さな画像とビデオのプレビューを保存します。Windows はフォルダーを再度開くと再作成します。",
       "crash-dumps": "アプリはクラッシュ後にメモリ ダンプを書き込みます。クリーニングではアプリのデータは削除されませんが、デバッグに役立つファイルは削除されます。",
       "error-reports": "Windows はキューに入った問題レポートとアーカイブ済みの問題レポートを保持します。クリーニングではローカルの診断情報は削除され、アプリのデータは削除されません。"
+    },
+    "recommendation": {
+      "large-old-files": "古い大容量ファイル",
+      "old-downloads": "古いダウンロード"
+    },
+    "recommendationDescription": {
+      "large-old-files": "100 MB 以上で、180 日間変更されていないファイルです。削除前に各ファイルを確認してください。",
+      "old-downloads": "ダウンロード内で、90 日間変更されていないファイルです。自動的には選択されません。"
     },
     "cleanTitle": "選択したファイルを削除しますか?",
     "cleanMessage": "選択したクリーンアップ カテゴリから {{size}} を削除しますか?ロックされたファイルはスキップされます。この操作はローカル操作ログに記録されます。"

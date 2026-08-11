@@ -877,10 +877,21 @@
     "scanHint": "Escanee para analizar el almacenamiento, los candidatos a limpieza y las aplicaciones instaladas.",
     "storage": "Almacenamiento",
     "cleanup": "Limpieza",
+    "recommendations": "Recomendaciones",
     "apps": "Desinstalador",
     "storageHeading": "Artículos más grandes en {{root}}",
     "cleanupHeading": "Candidatos para limpieza segura",
+    "recommendationsHeading": "Archivos para revisar",
     "appsHeading": "Aplicaciones instaladas",
+    "recommendationSummary": "Se encontraron {{count}} archivos para revisar",
+    "selectedReviewFiles": "{{count}} archivos seleccionados · {{size}}",
+    "deleteSelected": "Eliminar {{count}} archivos",
+    "deleteReviewTitle": "¿Eliminar permanentemente los archivos seleccionados?",
+    "deleteReviewMessage": "¿Eliminar permanentemente {{count}} archivos seleccionados ({{size}})? Solo se quitarán los archivos que no hayan cambiado desde el análisis. Esta acción no se puede deshacer.",
+    "deletingReviewFiles": "Eliminando archivos seleccionados…",
+    "reviewDeleted": "Se eliminaron {{size}}.",
+    "lastChanged": "Último cambio",
+    "noRecommendations": "Ningún archivo de esta categoría alcanzó el límite de revisión.",
     "clean": "Limpiar {{size}}",
     "cleaningWorking": "Limpiando los archivos seleccionados…",
     "cleaned": "Limpiado {{size}}.",
@@ -913,6 +924,14 @@
       "thumbnail-cache": "El Explorador de archivos guarda vistas previas pequeñas de imágenes y videos. Windows las vuelve a crear al volver a abrir las carpetas.",
       "crash-dumps": "Las aplicaciones escriben volcados de memoria después de un bloqueo. La limpieza no elimina los datos de la aplicación, pero elimina los archivos útiles para depurar.",
       "error-reports": "Windows conserva los informes de problemas en cola y archivados. La limpieza elimina los diagnósticos locales, no los datos de la aplicación."
+    },
+    "recommendation": {
+      "large-old-files": "Archivos grandes antiguos",
+      "old-downloads": "Descargas antiguas"
+    },
+    "recommendationDescription": {
+      "large-old-files": "Archivos de al menos 100 MB que no han cambiado en 180 días. Revisa cada archivo antes de eliminarlo.",
+      "old-downloads": "Archivos en Descargas que no han cambiado en 90 días. Nada se selecciona automáticamente."
     },
     "cleanTitle": "¿Eliminar archivos seleccionados?",
     "cleanMessage": "¿Eliminar {{size}} de las categorías de limpieza seleccionadas? Se omitirán los archivos bloqueados. Esta operación se registra en el registro de operaciones local."

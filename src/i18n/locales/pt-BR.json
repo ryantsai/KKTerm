@@ -877,10 +877,21 @@
     "scanHint": "Digitalize para analisar armazenamento, candidatos a limpeza e aplicativos instalados.",
     "storage": "Armazenamento",
     "cleanup": "Limpar",
+    "recommendations": "Recomendações",
     "apps": "Desinstalador",
     "storageHeading": "Maiores itens em {{root}}",
     "cleanupHeading": "Candidatos a limpeza segura",
+    "recommendationsHeading": "Arquivos para revisar",
     "appsHeading": "Aplicativos instalados",
+    "recommendationSummary": "{{count}} arquivos encontrados para revisão",
+    "selectedReviewFiles": "{{count}} arquivos selecionados · {{size}}",
+    "deleteSelected": "Excluir {{count}} arquivos",
+    "deleteReviewTitle": "Excluir permanentemente os arquivos selecionados?",
+    "deleteReviewMessage": "Excluir permanentemente {{count}} arquivos selecionados ({{size}})? Somente arquivos inalterados desde a verificação serão removidos. Isso não pode ser desfeito.",
+    "deletingReviewFiles": "Excluindo arquivos selecionados…",
+    "reviewDeleted": "{{size}} excluídos.",
+    "lastChanged": "Última alteração",
+    "noRecommendations": "Nenhum arquivo nesta categoria atingiu o limite de revisão.",
     "clean": "Limpar {{size}}",
     "cleaningWorking": "Limpando os arquivos selecionados…",
     "cleaned": "{{size}} limpos.",
@@ -913,6 +924,14 @@
       "thumbnail-cache": "O Explorador de Arquivos armazena pré-visualizações pequenas de imagens e vídeos. O Windows as recria quando as pastas são reabertas.",
       "crash-dumps": "Os aplicativos gravam despejos de memória após falhas. A limpeza não remove os dados do aplicativo, mas remove os arquivos úteis para depuração.",
       "error-reports": "O Windows mantém relatórios de problemas na fila e arquivados. A limpeza remove diagnósticos locais, mas não os dados do aplicativo."
+    },
+    "recommendation": {
+      "large-old-files": "Arquivos grandes antigos",
+      "old-downloads": "Downloads antigos"
+    },
+    "recommendationDescription": {
+      "large-old-files": "Arquivos de pelo menos 100 MB que não mudaram em 180 dias. Revise cada arquivo antes de excluí-lo.",
+      "old-downloads": "Arquivos em Downloads que não mudaram em 90 dias. Nada é selecionado automaticamente."
     },
     "cleanTitle": "Excluir arquivos selecionados?",
     "cleanMessage": "Excluir {{size}} das categorias de limpeza selecionadas? Os arquivos bloqueados serão ignorados. Esta operação é registrada no log de operações locais."

@@ -1,7 +1,7 @@
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 #[cfg(target_os = "windows")]
 use std::os::windows::{ffi::OsStrExt, fs::MetadataExt, process::CommandExt};
 use std::{
@@ -12,6 +12,7 @@ use std::{
     sync::{OnceLock, RwLock},
 };
 use tauri::{AppHandle, Emitter};
+use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 
 use crate::installer::detect::github_release_install_dir;
 
@@ -24,6 +25,11 @@ const FILE_ATTRIBUTE_COMPRESSED: u32 = 0x800;
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
+const LARGE_OLD_FILE_MIN_BYTES: u64 = 100 * 1024 * 1024;
+const LARGE_OLD_FILE_AGE_DAYS: u64 = 180;
+const OLD_DOWNLOAD_AGE_DAYS: u64 = 90;
+const MAX_REVIEW_FILES_PER_CATEGORY: usize = 200;
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CleanerOverview {
@@ -32,6 +38,7 @@ pub struct CleanerOverview {
     total_allocated_bytes: u64,
     largest: Vec<DiskEntry>,
     cleanup: Vec<CleanupEntry>,
+    recommendations: Vec<ReviewCategory>,
     apps: Vec<InstalledApp>,
     extensions: Vec<ExtensionEntry>,
     file_count: u64,
@@ -113,6 +120,24 @@ struct CleanupEntry {
     bytes: u64,
 }
 
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ReviewFile {
+    name: String,
+    path: String,
+    bytes: u64,
+    allocated_bytes: u64,
+    modified_unix_ms: u64,
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ReviewCategory {
+    id: String,
+    bytes: u64,
+    files: Vec<ReviewFile>,
+}
+
 enum CleanupTarget {
     DirectoryContents(PathBuf),
     FilesWithPrefix { directory: PathBuf, prefix: String },
@@ -136,6 +161,7 @@ struct ScanCache {
     root: PathBuf,
     directory_bytes: HashMap<PathBuf, u64>,
     directory_allocated_bytes: HashMap<PathBuf, u64>,
+    review_files: HashMap<String, ReviewFile>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -149,6 +175,7 @@ struct DriveScan {
     total_allocated_bytes: u64,
     directory_bytes: HashMap<PathBuf, u64>,
     directory_allocated_bytes: HashMap<PathBuf, u64>,
+    recommendations: Vec<ReviewCategory>,
 }
 
 enum ScanWork {
@@ -168,6 +195,7 @@ struct ScannedEntry {
     bytes: u64,
     allocated_bytes: u64,
     is_directory: bool,
+    modified_unix_ms: u64,
 }
 
 static SCAN_CACHE: OnceLock<RwLock<Option<ScanCache>>> = OnceLock::new();
@@ -212,6 +240,121 @@ fn round_to_allocation_unit(bytes: u64, allocation_unit: u64) -> u64 {
             .saturating_div(allocation_unit)
             .saturating_add(1)
             .saturating_mul(allocation_unit)
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn filetime_unix_ms(filetime: windows_sys::Win32::Foundation::FILETIME) -> u64 {
+    let ticks = (u64::from(filetime.dwHighDateTime) << 32) | u64::from(filetime.dwLowDateTime);
+    filetime_ticks_unix_ms(ticks)
+}
+
+#[cfg(target_os = "windows")]
+fn filetime_ticks_unix_ms(ticks: u64) -> u64 {
+    const WINDOWS_TO_UNIX_EPOCH_TICKS: u64 = 116_444_736_000_000_000;
+    ticks.saturating_sub(WINDOWS_TO_UNIX_EPOCH_TICKS) / 10_000
+}
+
+#[cfg(not(target_os = "windows"))]
+fn metadata_modified_unix_ms(metadata: &fs::Metadata) -> u64 {
+    metadata
+        .modified()
+        .ok()
+        .and_then(|value| value.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|value| value.as_millis() as u64)
+        .unwrap_or_default()
+}
+
+fn parse_modified_unix_ms(value: &str) -> u64 {
+    OffsetDateTime::parse(value, &Rfc3339)
+        .ok()
+        .and_then(|value| u64::try_from(value.unix_timestamp_nanos() / 1_000_000).ok())
+        .unwrap_or_default()
+}
+
+fn downloads_root() -> Option<PathBuf> {
+    env::var("USERPROFILE")
+        .ok()
+        .map(PathBuf::from)
+        .map(|path| path.join("Downloads"))
+}
+
+fn is_path_within(path: &Path, parent: &Path) -> bool {
+    let path = normalized_windows_path(path);
+    let parent = normalized_windows_path(parent);
+    path == parent
+        || path
+            .strip_prefix(&parent)
+            .is_some_and(|rest| rest.starts_with('\\'))
+}
+
+fn is_older_than(modified_unix_ms: u64, age_days: u64, now_unix_ms: u64) -> bool {
+    modified_unix_ms > 0
+        && now_unix_ms.saturating_sub(modified_unix_ms)
+            >= age_days.saturating_mul(24 * 60 * 60 * 1_000)
+}
+
+fn keep_largest_review_files(files: &mut Vec<ReviewFile>) {
+    files.sort_by(|left, right| {
+        right
+            .allocated_bytes
+            .cmp(&left.allocated_bytes)
+            .then_with(|| left.modified_unix_ms.cmp(&right.modified_unix_ms))
+    });
+    files.truncate(MAX_REVIEW_FILES_PER_CATEGORY);
+}
+
+fn build_review_categories(
+    mut large_old_files: Vec<ReviewFile>,
+    mut old_downloads: Vec<ReviewFile>,
+) -> Vec<ReviewCategory> {
+    keep_largest_review_files(&mut large_old_files);
+    keep_largest_review_files(&mut old_downloads);
+    [
+        ("large-old-files", large_old_files),
+        ("old-downloads", old_downloads),
+    ]
+    .into_iter()
+    .map(|(id, files)| ReviewCategory {
+        id: id.into(),
+        bytes: files
+            .iter()
+            .map(|file| file.allocated_bytes)
+            .fold(0_u64, u64::saturating_add),
+        files,
+    })
+    .collect()
+}
+
+fn collect_review_file(
+    large_old_files: &mut Vec<ReviewFile>,
+    old_downloads: &mut Vec<ReviewFile>,
+    downloads: Option<&Path>,
+    path: &Path,
+    bytes: u64,
+    allocated_bytes: u64,
+    modified_unix_ms: u64,
+    now_unix_ms: u64,
+) {
+    let candidate = || ReviewFile {
+        name: path
+            .file_name()
+            .map(|value| value.to_string_lossy().into_owned())
+            .unwrap_or_default(),
+        path: path.to_string_lossy().into_owned(),
+        bytes,
+        allocated_bytes,
+        modified_unix_ms,
+    };
+    if bytes >= LARGE_OLD_FILE_MIN_BYTES
+        && is_older_than(modified_unix_ms, LARGE_OLD_FILE_AGE_DAYS, now_unix_ms)
+    {
+        large_old_files.push(candidate());
+    }
+    if downloads.is_some_and(|root| is_path_within(path, root))
+        && is_older_than(modified_unix_ms, OLD_DOWNLOAD_AGE_DAYS, now_unix_ms)
+    {
+        old_downloads.push(candidate());
     }
 }
 
@@ -304,6 +447,7 @@ fn scan_directory_entries(path: &Path, allocation_unit: u64) -> Result<Vec<Scann
                     allocated_file_size(&entry_path, bytes, attributes, allocation_unit)
                 },
                 is_directory,
+                modified_unix_ms: filetime_unix_ms(find_data.ftLastWriteTime),
             });
         }
         if unsafe { FindNextFileW(handle, &mut find_data) } == 0 {
@@ -332,6 +476,7 @@ fn scan_directory_entries(path: &Path, _allocation_unit: u64) -> Result<Vec<Scan
                 bytes: metadata.len(),
                 allocated_bytes: metadata.len(),
                 is_directory: metadata.is_dir(),
+                modified_unix_ms: metadata_modified_unix_ms(&metadata),
             })
         })
         .collect())
@@ -434,6 +579,11 @@ where
     let mut files = 0_u64;
     let mut folders = 0_u64;
     let mut bytes = 0_u64;
+    let mut large_old_files = Vec::new();
+    let mut old_downloads = Vec::new();
+    let downloads = downloads_root();
+    let now_unix_ms = u64::try_from(OffsetDateTime::now_utc().unix_timestamp_nanos() / 1_000_000)
+        .unwrap_or_default();
     let mut since_progress = 0_u16;
     let mut last_progress = std::time::Instant::now();
 
@@ -460,6 +610,16 @@ where
                         });
                     } else {
                         let size = entry.bytes;
+                        collect_review_file(
+                            &mut large_old_files,
+                            &mut old_downloads,
+                            downloads.as_deref(),
+                            &entry_path,
+                            size,
+                            entry.allocated_bytes,
+                            entry.modified_unix_ms,
+                            now_unix_ms,
+                        );
                         files += 1;
                         bytes = bytes.saturating_add(size);
                         let directory_total = directory_bytes.entry(path.clone()).or_default();
@@ -551,6 +711,7 @@ where
             .unwrap_or_default(),
         directory_bytes,
         directory_allocated_bytes,
+        recommendations: build_review_categories(large_old_files, old_downloads),
     })
 }
 
@@ -1216,6 +1377,7 @@ where
         total_allocated_bytes,
         directory_bytes,
         directory_allocated_bytes,
+        recommendations: Vec::new(),
     })
 }
 
@@ -1373,6 +1535,7 @@ where
     let folders_column = column("Folders")?;
     let logical_column = column("Logical Size")?;
     let physical_column = column("Physical Size")?;
+    let modified_column = column("Last Change")?;
     let type_column = column("WinDirStat Attributes")?;
     let required_column = *[
         name_column,
@@ -1380,6 +1543,7 @@ where
         folders_column,
         logical_column,
         physical_column,
+        modified_column,
         type_column,
     ]
     .iter()
@@ -1397,6 +1561,11 @@ where
     let mut folders = 0_u64;
     let mut processed_files = 0_u64;
     let mut processed_folders = 0_u64;
+    let mut large_old_files = Vec::new();
+    let mut old_downloads = Vec::new();
+    let downloads = downloads_root();
+    let now_unix_ms = u64::try_from(OffsetDateTime::now_utc().unix_timestamp_nanos() / 1_000_000)
+        .unwrap_or_default();
 
     loop {
         line.clear();
@@ -1418,6 +1587,7 @@ where
         let path_key = normalized_windows_path(&path);
         let logical = parse_u64_field(&fields[logical_column], "logical size")?;
         let physical = parse_u64_field(&fields[physical_column], "physical size")?;
+        let modified_unix_ms = parse_modified_unix_ms(&fields[modified_column]);
         let item_type = parse_hex_field(&fields[type_column], "item type")?;
         let is_directory = item_type & (ITEM_DIRECTORY | ITEM_DRIVE) != 0;
         let is_file = item_type & ITEM_FILE != 0;
@@ -1436,6 +1606,16 @@ where
             }
         } else if is_file {
             processed_files = processed_files.saturating_add(1);
+            collect_review_file(
+                &mut large_old_files,
+                &mut old_downloads,
+                downloads.as_deref(),
+                &path,
+                logical,
+                physical,
+                modified_unix_ms,
+                now_unix_ms,
+            );
             let extension = path
                 .extension()
                 .and_then(|value| value.to_str())
@@ -1481,7 +1661,10 @@ where
     }
 
     let total_bytes = total_bytes.ok_or_else(|| {
-        format!("WinDirStat report did not contain the scan root {}.", root.display())
+        format!(
+            "WinDirStat report did not contain the scan root {}.",
+            root.display()
+        )
     })?;
     let total_allocated_bytes = total_allocated_bytes.unwrap_or_default();
     directory_bytes
@@ -1515,6 +1698,7 @@ where
         total_allocated_bytes,
         directory_bytes,
         directory_allocated_bytes,
+        recommendations: build_review_categories(large_old_files, old_downloads),
     })
 }
 
@@ -1564,11 +1748,7 @@ where
         let _ = fs::remove_file(&report_path);
         return Err(format!("WinDirStat exited with {status}."));
     }
-    if !valid_mft_helper_file(
-        &report_path,
-        "kkterm-system-cleaner-windirstat-",
-        ".csv",
-    ) {
+    if !valid_mft_helper_file(&report_path, "kkterm-system-cleaner-windirstat-", ".csv") {
         return Err("WinDirStat did not create a valid scan report.".into());
     }
     let result = fs::File::open(&report_path)
@@ -2047,12 +2227,19 @@ pub async fn system_cleaner_scan(
             );
             let drive_scan = drive_scan?;
             let (disk_capacity_bytes, disk_free_bytes) = disk_space(&root);
+            let review_files = drive_scan
+                .recommendations
+                .iter()
+                .flat_map(|category| category.files.iter().cloned())
+                .map(|file| (normalized_windows_path(Path::new(&file.path)), file))
+                .collect();
             let overview = CleanerOverview {
                 scan_root: root.to_string_lossy().into_owned(),
                 total_bytes: drive_scan.total_bytes,
                 total_allocated_bytes: drive_scan.total_allocated_bytes,
                 largest: drive_scan.root_entries,
                 cleanup,
+                recommendations: drive_scan.recommendations,
                 apps,
                 extensions: drive_scan.extensions,
                 file_count: drive_scan.files,
@@ -2068,6 +2255,7 @@ pub async fn system_cleaner_scan(
                 root,
                 directory_bytes: drive_scan.directory_bytes,
                 directory_allocated_bytes: drive_scan.directory_allocated_bytes,
+                review_files,
             });
             Ok(overview)
         })
@@ -2134,6 +2322,81 @@ pub async fn system_cleaner_clean(ids: Vec<String>) -> Result<u64, String> {
         audit(
             "cleanup.completed",
             json!({ "categories": ids, "freedBytes": freed }),
+        );
+        Ok(freed)
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
+#[tauri::command]
+pub async fn system_cleaner_delete_review_files(paths: Vec<String>) -> Result<u64, String> {
+    #[cfg(not(target_os = "windows"))]
+    return Err("System Cleaner is available only on Windows.".into());
+    #[cfg(target_os = "windows")]
+    tauri::async_runtime::spawn_blocking(move || {
+        let requested = paths
+            .into_iter()
+            .map(PathBuf::from)
+            .collect::<Vec<_>>();
+        if requested.is_empty() {
+            return Ok(0);
+        }
+        let cache_guard = SCAN_CACHE
+            .get_or_init(|| RwLock::new(None))
+            .read()
+            .map_err(|_| "System Cleaner scan cache is unavailable.")?;
+        let cache = cache_guard
+            .as_ref()
+            .ok_or_else(|| "Scan the drive before deleting review files.".to_string())?;
+        let canonical_root = fs::canonicalize(&cache.root).map_err(|error| error.to_string())?;
+        let mut seen = HashSet::new();
+        let mut validated = Vec::new();
+        for path in requested {
+            let key = normalized_windows_path(&path);
+            if !seen.insert(key.clone()) {
+                continue;
+            }
+            let candidate = cache
+                .review_files
+                .get(&key)
+                .ok_or_else(|| format!("{} is not in the completed review scan.", path.display()))?;
+            let canonical_path = fs::canonicalize(&path).map_err(|error| error.to_string())?;
+            let metadata = fs::symlink_metadata(&path).map_err(|error| error.to_string())?;
+            if !canonical_path.starts_with(&canonical_root)
+                || !metadata.is_file()
+                || is_reparse_point(&metadata)
+                || metadata.len() != candidate.bytes
+                || filetime_ticks_unix_ms(metadata.last_write_time()) / 1_000
+                    != candidate.modified_unix_ms / 1_000
+            {
+                return Err(format!(
+                    "{} changed after the scan. Scan again before deleting it.",
+                    path.display()
+                ));
+            }
+            validated.push((path, candidate.allocated_bytes));
+        }
+        drop(cache_guard);
+
+        audit(
+            "review-files.approved",
+            json!({ "paths": validated.iter().map(|(path, _)| path).collect::<Vec<_>>() }),
+        );
+        let mut freed = 0_u64;
+        for (path, bytes) in &validated {
+            if let Err(error) = fs::remove_file(path) {
+                audit(
+                    "review-files.failed",
+                    json!({ "path": path, "freedBytes": freed, "error": error.to_string() }),
+                );
+                return Err(format!("Could not delete {}: {error}", path.display()));
+            }
+            freed = freed.saturating_add(*bytes);
+        }
+        audit(
+            "review-files.completed",
+            json!({ "paths": validated.iter().map(|(path, _)| path).collect::<Vec<_>>(), "freedBytes": freed }),
         );
         Ok(freed)
     })
@@ -2272,10 +2535,64 @@ mod tests {
         assert_eq!(scan.total_allocated_bytes, 786_432);
         assert_eq!(scan.files, 2);
         assert_eq!(scan.folders, 1);
-        assert_eq!(scan.directory_allocated_bytes.get(Path::new(r"C:\scan\nested")), Some(&524_288));
+        assert_eq!(
+            scan.directory_allocated_bytes
+                .get(Path::new(r"C:\scan\nested")),
+            Some(&524_288)
+        );
         assert_eq!(scan.root_entries.len(), 2);
-        assert_eq!(scan.extensions.iter().find(|entry| entry.extension == ".bin").map(|entry| entry.allocated_bytes), Some(524_288));
-        assert_eq!(scan.extensions.iter().find(|entry| entry.extension == ".txt").map(|entry| entry.allocated_bytes), Some(262_144));
+        assert_eq!(
+            scan.extensions
+                .iter()
+                .find(|entry| entry.extension == ".bin")
+                .map(|entry| entry.allocated_bytes),
+            Some(524_288)
+        );
+        assert_eq!(
+            scan.extensions
+                .iter()
+                .find(|entry| entry.extension == ".txt")
+                .map(|entry| entry.allocated_bytes),
+            Some(262_144)
+        );
+    }
+
+    #[test]
+    fn review_categories_keep_personal_files_opt_in_and_bounded() {
+        let now = 2_000_u64 * 24 * 60 * 60 * 1_000;
+        let old = now - 200 * 24 * 60 * 60 * 1_000;
+        let recent = now - 20 * 24 * 60 * 60 * 1_000;
+        let downloads = Path::new(r"C:\Users\tester\Downloads");
+        let mut large_old = Vec::new();
+        let mut old_downloads = Vec::new();
+
+        collect_review_file(
+            &mut large_old,
+            &mut old_downloads,
+            Some(downloads),
+            Path::new(r"C:\Users\tester\Downloads\archive.iso"),
+            LARGE_OLD_FILE_MIN_BYTES,
+            LARGE_OLD_FILE_MIN_BYTES,
+            old,
+            now,
+        );
+        collect_review_file(
+            &mut large_old,
+            &mut old_downloads,
+            Some(downloads),
+            Path::new(r"C:\Users\tester\Downloads\recent.iso"),
+            LARGE_OLD_FILE_MIN_BYTES,
+            LARGE_OLD_FILE_MIN_BYTES,
+            recent,
+            now,
+        );
+
+        let categories = build_review_categories(large_old, old_downloads);
+        assert_eq!(categories[0].id, "large-old-files");
+        assert_eq!(categories[0].files.len(), 1);
+        assert_eq!(categories[1].id, "old-downloads");
+        assert_eq!(categories[1].files.len(), 1);
+        assert_eq!(categories[0].files[0].path, categories[1].files[0].path);
     }
 
     #[test]

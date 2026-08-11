@@ -5,7 +5,7 @@
 `systemCleaner.title`, `systemCleaner.overview`, `systemCleaner.storage`, `systemCleaner.cleanup`,
 `systemCleaner.apps`, `app.activityRailSystemCleaner`,
 `src/modules/system-cleaner/SystemCleanerPage.tsx`, disk
-usage, allocated size, logical size, large files, temporary files, cache,
+usage, allocated size, logical size, large old files, old downloads, temporary files, cache,
 uninstall, Windows cleanup
 
 The **System Cleaner** Module is available only on Windows. Open it from the
@@ -24,8 +24,8 @@ bytes, and the current file name while KKTerm imports the scan report.
 
 After a scan, Overview summarizes used and free allocation, safely reclaimable
 space, installed-application count, the largest scanned items, cleanup
-categories, and installed applications. Its section links open the detailed
-Storage, Cleanup, and Uninstaller destinations. The header search filters the
+categories, review recommendations, and installed applications. Its section links open the detailed
+Storage, Cleanup, Recommendations, and Uninstaller destinations. The header search filters the
 visible rows in the current destination; it does not start another scan.
 
 ## Storage analysis
@@ -87,6 +87,31 @@ finish. Files currently locked by Windows or another application are left in
 place. The Module does not modify the registry. Approved cleanup and uninstall
 attempts and their outcomes are appended to `system-cleaner.operations.log` in
 KKTerm's local log directory.
+
+## Recommendations
+
+Choose **`systemCleaner.recommendations`** to review personal files that may be
+worth removing but are never safe to delete as a whole category. The scan lists
+up to 200 of the highest-allocation matches in each category:
+
+- **`systemCleaner.recommendation.large-old-files`** includes regular files of
+  at least 100 MB whose filesystem last-change time is at least 180 days old.
+- **`systemCleaner.recommendation.old-downloads`** includes regular files below
+  the current user's Downloads folder whose filesystem last-change time is at
+  least 90 days old.
+
+"Old" means unchanged, not unused or unopened; Windows access-time tracking is
+not used. A file can appear in both categories, and selecting it in either row
+selects the same path only once. No recommendation is selected automatically.
+Use **`common.open`** to inspect a candidate, select individual files, then use
+**`systemCleaner.deleteSelected`** and approve the destructive confirmation.
+Recommendation deletion is permanent and does not use the Recycle Bin. Before
+deleting anything, the backend verifies that every requested path is a regular,
+non-reparse file inside the scanned drive, was present in the completed scan's
+recommendation allowlist, and still has the same size and last-change time. If
+any file changed, deletion stops and the Module asks for a new scan. Approved
+attempts and outcomes are appended to `system-cleaner.operations.log` and the
+result is reported through the Status Bar.
 
 ## Uninstall applications
 

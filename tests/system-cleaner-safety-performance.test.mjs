@@ -56,7 +56,7 @@ test("System Cleaner uses the Searching orb in the scan page and Status Bar", ()
 });
 
 test("System Cleaner uses the Direction A control panel and compact cleanup and uninstall rows", () => {
-  assert.match(page, /type Section = "overview" \| "storage" \| "cleanup" \| "apps"/);
+  assert.match(page, /type Section = "overview" \| "storage" \| "cleanup" \| "recommendations" \| "apps"/);
   assert.match(page, /system-cleaner-drive-card/);
   assert.match(page, /system-cleaner-metric-grid/);
   assert.match(page, /system-cleaner-cleanup-groups/);
@@ -66,6 +66,23 @@ test("System Cleaner uses the Direction A control panel and compact cleanup and 
   assert.match(page, /state="working"/);
   assert.match(page, /submitAssistantContextSnippet/);
   assert.match(styles, /\.system-cleaner-shell\s*\{[^}]*grid-template-columns:\s*240px minmax\(0, 1fr\)/s);
+});
+
+test("System Cleaner keeps personal-file recommendations opt-in and scan-bound", () => {
+  assert.match(backend, /LARGE_OLD_FILE_MIN_BYTES: u64 = 100 \* 1024 \* 1024/);
+  assert.match(backend, /LARGE_OLD_FILE_AGE_DAYS: u64 = 180/);
+  assert.match(backend, /OLD_DOWNLOAD_AGE_DAYS: u64 = 90/);
+  assert.match(backend, /MAX_REVIEW_FILES_PER_CATEGORY: usize = 200/);
+  assert.match(backend, /column\("Last Change"\)/);
+  assert.match(backend, /review_files/);
+  assert.match(backend, /changed after the scan/);
+  assert.match(backendCommands, /system_cleaner::system_cleaner_delete_review_files/);
+  assert.match(tauri, /system_cleaner_delete_review_files/);
+  assert.match(page, /selectedReviewPaths/);
+  assert.match(page, /deleteReviewTitle/);
+  assert.match(page, /<ConfirmSheet tone="danger"/);
+  assert.match(manual, /No recommendation is selected automatically/i);
+  assert.match(manual, /does not use the Recycle Bin/i);
 });
 
 test("System Cleaner keeps drive selection in the Module header and disk metrics in the control panel", () => {

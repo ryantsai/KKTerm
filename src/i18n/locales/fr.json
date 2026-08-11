@@ -877,10 +877,21 @@
     "scanHint": "Analysez le stockage, les éléments pouvant être nettoyés et les applications installées.",
     "storage": "Stockage",
     "cleanup": "Nettoyage",
+    "recommendations": "Recommandations",
     "apps": "Désinstallation",
     "storageHeading": "Éléments les plus volumineux dans {{root}}",
     "cleanupHeading": "Éléments pouvant être nettoyés sans risque",
+    "recommendationsHeading": "Fichiers à examiner",
     "appsHeading": "Applications installées",
+    "recommendationSummary": "{{count}} fichiers trouvés à examiner",
+    "selectedReviewFiles": "{{count}} fichiers sélectionnés · {{size}}",
+    "deleteSelected": "Supprimer {{count}} fichiers",
+    "deleteReviewTitle": "Supprimer définitivement les fichiers sélectionnés ?",
+    "deleteReviewMessage": "Supprimer définitivement {{count}} fichiers sélectionnés ({{size}}) ? Seuls les fichiers inchangés depuis l’analyse seront supprimés. Cette action est irréversible.",
+    "deletingReviewFiles": "Suppression des fichiers sélectionnés…",
+    "reviewDeleted": "{{size}} supprimés.",
+    "lastChanged": "Dernière modification",
+    "noRecommendations": "Aucun fichier de cette catégorie n’atteint le seuil d’examen.",
     "clean": "Nettoyer {{size}}",
     "cleaningWorking": "Nettoyage des fichiers sélectionnés…",
     "cleaned": "{{size}} nettoyés.",
@@ -913,6 +924,14 @@
       "thumbnail-cache": "L'Explorateur de fichiers stocke des aperçus réduits d'images et de vidéos. Windows les recrée lorsque les dossiers sont rouverts.",
       "crash-dumps": "Les applications écrivent des vidages mémoire après les incidents. Le nettoyage ne supprime pas les données des applications, mais il supprime les fichiers utiles au débogage.",
       "error-reports": "Windows conserve les rapports de problèmes mis en file d'attente et archivés. Le nettoyage supprime les diagnostics locaux, mais pas les données des applications."
+    },
+    "recommendation": {
+      "large-old-files": "Fichiers anciens volumineux",
+      "old-downloads": "Anciens téléchargements"
+    },
+    "recommendationDescription": {
+      "large-old-files": "Fichiers d’au moins 100 Mo inchangés depuis 180 jours. Examinez chaque fichier avant de le supprimer.",
+      "old-downloads": "Fichiers du dossier Téléchargements inchangés depuis 90 jours. Rien n’est sélectionné automatiquement."
     },
     "cleanTitle": "Supprimer les fichiers sélectionnés ?",
     "cleanMessage": "Supprimer {{size}} des catégories de nettoyage sélectionnées ? Les fichiers verrouillés seront ignorés. Cette opération est consignée dans le journal local des opérations."

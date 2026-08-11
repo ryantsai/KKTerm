@@ -4930,6 +4930,7 @@ pub fn run() {
             system_cleaner::system_cleaner_scan,
             system_cleaner::system_cleaner_list_directory,
             system_cleaner::system_cleaner_clean,
+            system_cleaner::system_cleaner_delete_review_files,
             system_cleaner::system_cleaner_uninstall,
             pc_info_get,
             pc_info_refresh,

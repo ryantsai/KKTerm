@@ -877,10 +877,21 @@
     "scanHint": "Pindai untuk menganalisis penyimpanan, membersihkan kandidat, dan aplikasi yang diinstal.",
     "storage": "Penyimpanan",
     "cleanup": "Pembersihan",
+    "recommendations": "Rekomendasi",
     "apps": "Penghapus instalasi",
     "storageHeading": "Item terbesar di {{root}}",
     "cleanupHeading": "Kandidat pembersihan yang aman",
+    "recommendationsHeading": "File untuk ditinjau",
     "appsHeading": "Aplikasi yang diinstal",
+    "recommendationSummary": "{{count}} file ditemukan untuk ditinjau",
+    "selectedReviewFiles": "{{count}} file dipilih · {{size}}",
+    "deleteSelected": "Hapus {{count}} file",
+    "deleteReviewTitle": "Hapus file yang dipilih secara permanen?",
+    "deleteReviewMessage": "Hapus permanen {{count}} file yang dipilih ({{size}})? Hanya file yang tidak berubah sejak pemindaian yang akan dihapus. Tindakan ini tidak dapat dibatalkan.",
+    "deletingReviewFiles": "Menghapus file yang dipilih…",
+    "reviewDeleted": "{{size}} dihapus.",
+    "lastChanged": "Terakhir diubah",
+    "noRecommendations": "Tidak ada file dalam kategori ini yang memenuhi ambang tinjauan.",
     "clean": "Bersihkan {{size}}",
     "cleaningWorking": "Membersihkan file terpilih…",
     "cleaned": "{{size}} dibersihkan.",
@@ -913,6 +924,14 @@
       "thumbnail-cache": "Penjelajah File menyimpan pratinjau kecil gambar dan video. Windows membuatnya ulang saat folder dibuka kembali.",
       "crash-dumps": "Aplikasi menulis dump memori setelah kerusakan. Pembersihan tidak menghapus data aplikasi, tetapi menghapus file yang berguna untuk debugging.",
       "error-reports": "Windows menyimpan laporan masalah dalam antrean dan arsip. Pembersihan menghapus diagnostik lokal, bukan data aplikasi."
+    },
+    "recommendation": {
+      "large-old-files": "File lama berukuran besar",
+      "old-downloads": "Unduhan lama"
+    },
+    "recommendationDescription": {
+      "large-old-files": "File minimal 100 MB yang tidak berubah selama 180 hari. Tinjau setiap file sebelum menghapusnya.",
+      "old-downloads": "File di Unduhan yang tidak berubah selama 90 hari. Tidak ada yang dipilih secara otomatis."
     },
     "cleanTitle": "Hapus file yang dipilih?",
     "cleanMessage": "Hapus {{size}} dari kategori pembersihan yang dipilih? File yang terkunci akan dilewati. Operasi ini dicatat dalam log operasi lokal."

@@ -877,10 +877,21 @@
     "scanHint": "Scan to analyze storage, cleanup candidates, and installed apps.",
     "storage": "Storage",
     "cleanup": "Cleanup",
+    "recommendations": "Recommendations",
     "apps": "Uninstaller",
     "storageHeading": "Largest items in {{root}}",
     "cleanupHeading": "Safe cleanup candidates",
+    "recommendationsHeading": "Files to review",
     "appsHeading": "Installed applications",
+    "recommendationSummary": "{{count}} files found for review",
+    "selectedReviewFiles": "{{count}} files selected · {{size}}",
+    "deleteSelected": "Delete {{count}} files",
+    "deleteReviewTitle": "Permanently delete selected files?",
+    "deleteReviewMessage": "Permanently delete {{count}} selected files ({{size}})? Only files unchanged since the scan will be removed. This cannot be undone.",
+    "deletingReviewFiles": "Deleting selected files…",
+    "reviewDeleted": "Deleted {{size}}.",
+    "lastChanged": "Last changed",
+    "noRecommendations": "No files in this category matched the review threshold.",
     "clean": "Clean {{size}}",
     "cleaningWorking": "Cleaning selected files…",
     "cleaned": "Cleaned {{size}}.",
@@ -913,6 +924,14 @@
       "thumbnail-cache": "File Explorer stores small image and video previews. Windows rebuilds them as folders are reopened.",
       "crash-dumps": "Apps write memory dumps after crashes. Cleaning does not remove app data, but it removes files useful for debugging.",
       "error-reports": "Windows keeps queued and archived problem reports. Cleaning removes local diagnostics, not app data."
+    },
+    "recommendation": {
+      "large-old-files": "Large old files",
+      "old-downloads": "Old Downloads"
+    },
+    "recommendationDescription": {
+      "large-old-files": "Files at least 100 MB that have not changed in 180 days. Review each file before deleting it.",
+      "old-downloads": "Files in Downloads that have not changed in 90 days. Nothing is selected automatically."
     },
     "cleanTitle": "Delete selected files?",
     "cleanMessage": "Delete {{size}} from the selected cleanup categories? Locked files will be skipped. This operation is recorded in the local operations log."

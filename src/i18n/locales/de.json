@@ -877,10 +877,21 @@
     "scanHint": "Scannen Sie Speicher, Bereinigungskandidaten und installierte Apps.",
     "storage": "Speicher",
     "cleanup": "Bereinigung",
+    "recommendations": "Empfehlungen",
     "apps": "Deinstallation",
     "storageHeading": "Größte Elemente in {{root}}",
     "cleanupHeading": "Sicher bereinigbare Elemente",
+    "recommendationsHeading": "Zu prüfende Dateien",
     "appsHeading": "Installierte Anwendungen",
+    "recommendationSummary": "{{count}} Dateien zur Prüfung gefunden",
+    "selectedReviewFiles": "{{count}} Dateien ausgewählt · {{size}}",
+    "deleteSelected": "{{count}} Dateien löschen",
+    "deleteReviewTitle": "Ausgewählte Dateien dauerhaft löschen?",
+    "deleteReviewMessage": "{{count}} ausgewählte Dateien ({{size}}) dauerhaft löschen? Nur seit dem Scan unveränderte Dateien werden entfernt. Dies kann nicht rückgängig gemacht werden.",
+    "deletingReviewFiles": "Ausgewählte Dateien werden gelöscht…",
+    "reviewDeleted": "{{size}} gelöscht.",
+    "lastChanged": "Zuletzt geändert",
+    "noRecommendations": "Keine Dateien in dieser Kategorie entsprechen dem Prüfgrenzwert.",
     "clean": "{{size}} bereinigen",
     "cleaningWorking": "Ausgewählte Dateien werden bereinigt…",
     "cleaned": "{{size}} bereinigt.",
@@ -913,6 +924,14 @@
       "thumbnail-cache": "Der Datei-Explorer speichert kleine Bild- und Videovorschauen. Windows erstellt sie neu, wenn Ordner erneut geöffnet werden.",
       "crash-dumps": "Apps schreiben nach Abstürzen Speicherabbilder. Die Bereinigung entfernt keine App-Daten, aber Dateien, die für das Debuggen nützlich sind.",
       "error-reports": "Windows behält in der Warteschlange befindliche und archivierte Problemberichte. Die Bereinigung entfernt lokale Diagnosen, aber keine App-Daten."
+    },
+    "recommendation": {
+      "large-old-files": "Große alte Dateien",
+      "old-downloads": "Alte Downloads"
+    },
+    "recommendationDescription": {
+      "large-old-files": "Dateien ab 100 MB, die seit 180 Tagen unverändert sind. Prüfen Sie jede Datei vor dem Löschen.",
+      "old-downloads": "Dateien in Downloads, die seit 90 Tagen unverändert sind. Nichts wird automatisch ausgewählt."
     },
     "cleanTitle": "Ausgewählte Dateien löschen?",
     "cleanMessage": "{{size}} aus den ausgewählten Bereinigungskategorien löschen? Gesperrte Dateien werden übersprungen. Dieser Vorgang wird im lokalen Vorgangsprotokoll aufgezeichnet."

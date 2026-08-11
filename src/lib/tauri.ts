@@ -1210,6 +1210,10 @@ type CommandMap = {
     args: { ids: string[] };
     result: number;
   };
+  system_cleaner_delete_review_files: {
+    args: { paths: string[] };
+    result: number;
+  };
   system_cleaner_uninstall: {
     args: { appId: string };
     result: void;
