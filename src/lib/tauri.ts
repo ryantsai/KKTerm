@@ -644,6 +644,11 @@ export interface TrayMenuSnapshot {
   captureFullscreenLabel: string;
 }
 
+export interface SystemFileMenuLabels {
+  fileMenu: string;
+  open: string;
+}
+
 export interface ShutdownTimerStatus {
   phase: "scheduled" | "warning";
   scheduledForUnixMs: number;
@@ -1198,6 +1203,10 @@ type CommandMap = {
     args: undefined;
     result: import("../modules/system-cleaner/types").SystemCleanerScannerStatus;
   };
+  system_cleaner_catalog: {
+    args: undefined;
+    result: import("../modules/system-cleaner/types").SystemCleanerRecipeCatalogEntry[];
+  };
   system_cleaner_scan: {
     args: { root?: string };
     result: import("../modules/system-cleaner/types").SystemCleanerOverview;
@@ -1209,6 +1218,86 @@ type CommandMap = {
   system_cleaner_clean: {
     args: { ids: string[] };
     result: number;
+  };
+  system_cleaner_build_cleanup_plan: {
+    args: { ids: string[] };
+    result: import("../modules/system-cleaner/types").SystemCleanerCleanupPlan;
+  };
+  system_cleaner_execute_cleanup_plan: {
+    args: { token: string; retryPaths?: string[] };
+    result: import("../modules/system-cleaner/types").SystemCleanerCleanupResult;
+  };
+  system_cleaner_cancel_cleanup: {
+    args: undefined;
+    result: void;
+  };
+  system_cleaner_list_keep_paths: {
+    args: undefined;
+    result: string[];
+  };
+  system_cleaner_add_keep_path: {
+    args: { path: string };
+    result: string[];
+  };
+  system_cleaner_remove_keep_path: {
+    args: { path: string };
+    result: string[];
+  };
+  system_cleaner_history: {
+    args: { limit?: number };
+    result: import("../modules/system-cleaner/types").SystemCleanerHistoryRecord[];
+  };
+  system_cleaner_validate_recipe: {
+    args: { rawJson: string };
+    result: import("../modules/system-cleaner/types").SystemCleanerRecipeValidation;
+  };
+  system_cleaner_preview_signed_bundle: {
+    args: { rawJson: string };
+    result: import("../modules/system-cleaner/types").SystemCleanerRecipeBundlePreview;
+  };
+  system_cleaner_import_signed_bundle: {
+    args: { rawJson: string };
+    result: import("../modules/system-cleaner/types").SystemCleanerRecipeBundleInfo;
+  };
+  system_cleaner_list_recipe_bundles: {
+    args: undefined;
+    result: import("../modules/system-cleaner/types").SystemCleanerRecipeBundleInfo[];
+  };
+  system_cleaner_remove_recipe_bundle: {
+    args: { bundleId: string };
+    result: void;
+  };
+  system_cleaner_preview_winapp2: {
+    args: { text: string; source: string };
+    result: import("../modules/system-cleaner/types").SystemCleanerWinapp2Preview;
+  };
+  system_cleaner_import_winapp2: {
+    args: { text: string; source: string };
+    result: import("../modules/system-cleaner/types").SystemCleanerRecipeBundleInfo;
+  };
+  system_cleaner_list_appx_packages: {
+    args: undefined;
+    result: import("../modules/system-cleaner/types").SystemCleanerAppxPackage[];
+  };
+  system_cleaner_remove_appx_package: {
+    args: { packageFullName: string };
+    result: void;
+  };
+  system_cleaner_windows_maintenance_status: {
+    args: undefined;
+    result: import("../modules/system-cleaner/types").SystemCleanerWindowsMaintenanceStatus;
+  };
+  system_cleaner_empty_recycle_bin: {
+    args: undefined;
+    result: number;
+  };
+  system_cleaner_clear_delivery_optimization: {
+    args: undefined;
+    result: void;
+  };
+  system_cleaner_start_component_cleanup: {
+    args: undefined;
+    result: void;
   };
   system_cleaner_delete_review_files: {
     args: { paths: string[] };
@@ -2311,6 +2400,14 @@ type CommandMap = {
   };
   update_tray_menu: {
     args: { snapshot: TrayMenuSnapshot };
+    result: null;
+  };
+  update_system_file_menu: {
+    args: { labels: SystemFileMenuLabels };
+    result: null;
+  };
+  open_launch_file_picker: {
+    args: undefined;
     result: null;
   };
   capture_screenshot_to_clipboard: {

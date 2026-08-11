@@ -13,7 +13,7 @@ use std::{
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use zip::{ZipArchive, ZipWriter, write::SimpleFileOptions};
 
-const SCHEMA_USER_VERSION: i32 = 56;
+const SCHEMA_USER_VERSION: i32 = 57;
 
 const DEFAULT_TERMINAL_OPACITY: u8 = 50;
 
@@ -576,6 +576,40 @@ CREATE TABLE IF NOT EXISTS itops_hosts (
 
 CREATE INDEX IF NOT EXISTS idx_itops_hosts_site
     ON itops_hosts(site_id, sort_order);
+
+CREATE TABLE IF NOT EXISTS system_cleaner_keep_paths (
+    path TEXT PRIMARY KEY,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS system_cleaner_history (
+    id TEXT PRIMARY KEY,
+    started_at TEXT NOT NULL,
+    completed_at TEXT NOT NULL,
+    origin TEXT NOT NULL CHECK (origin IN ('manual', 'retry')),
+    status TEXT NOT NULL CHECK (status IN ('completed', 'partial', 'cancelled', 'failed')),
+    recipe_versions_json TEXT NOT NULL DEFAULT '{}',
+    planned_bytes INTEGER NOT NULL DEFAULT 0,
+    freed_bytes INTEGER NOT NULL DEFAULT 0,
+    deleted_items INTEGER NOT NULL DEFAULT 0,
+    skipped_items INTEGER NOT NULL DEFAULT 0,
+    details_json TEXT NOT NULL DEFAULT '{}'
+);
+
+CREATE INDEX IF NOT EXISTS idx_system_cleaner_history_completed
+    ON system_cleaner_history(completed_at DESC);
+
+CREATE TABLE IF NOT EXISTS system_cleaner_recipe_bundles (
+    bundle_id TEXT PRIMARY KEY,
+    version INTEGER NOT NULL,
+    source TEXT NOT NULL,
+    signer_fingerprint TEXT NOT NULL,
+    sha256 TEXT NOT NULL,
+    payload_json TEXT NOT NULL,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    imported_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 "#;
 
 pub struct Storage {
@@ -2060,6 +2094,32 @@ pub struct DurableUiStateRecord {
     pub value: String,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SystemCleanerHistoryRecord {
+    pub id: String,
+    pub started_at: String,
+    pub completed_at: String,
+    pub origin: String,
+    pub status: String,
+    pub recipe_versions_json: String,
+    pub planned_bytes: u64,
+    pub freed_bytes: u64,
+    pub deleted_items: u64,
+    pub skipped_items: u64,
+    pub details_json: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct SystemCleanerRecipeBundleRecord {
+    pub bundle_id: String,
+    pub version: u64,
+    pub source: String,
+    pub signer_fingerprint: String,
+    pub sha256: String,
+    pub payload_json: String,
+}
+
 mod settings;
 
 mod connections;
@@ -2089,6 +2149,173 @@ impl Storage {
 
     pub fn status(&self) -> String {
         format!("SQLite: {}", self.db_path.display())
+    }
+
+    pub(crate) fn system_cleaner_keep_paths(&self) -> Result<Vec<String>, String> {
+        let connection = self.lock()?;
+        let mut statement = connection
+            .prepare("SELECT path FROM system_cleaner_keep_paths ORDER BY path COLLATE NOCASE")
+            .map_err(to_storage_error)?;
+        let rows = statement
+            .query_map([], |row| row.get(0))
+            .map_err(to_storage_error)?;
+        rows.collect::<rusqlite::Result<Vec<_>>>()
+            .map_err(to_storage_error)
+    }
+
+    pub(crate) fn system_cleaner_add_keep_path(&self, path: &str) -> Result<(), String> {
+        let connection = self.lock()?;
+        connection
+            .execute(
+                "INSERT OR IGNORE INTO system_cleaner_keep_paths(path) VALUES (?1)",
+                [path],
+            )
+            .map_err(to_storage_error)?;
+        Ok(())
+    }
+
+    pub(crate) fn system_cleaner_remove_keep_path(&self, path: &str) -> Result<(), String> {
+        let connection = self.lock()?;
+        connection
+            .execute("DELETE FROM system_cleaner_keep_paths WHERE path = ?1", [path])
+            .map_err(to_storage_error)?;
+        Ok(())
+    }
+
+    pub(crate) fn system_cleaner_record_history(
+        &self,
+        record: &SystemCleanerHistoryRecord,
+    ) -> Result<(), String> {
+        let connection = self.lock()?;
+        connection
+            .execute(
+                "INSERT INTO system_cleaner_history (
+                    id, started_at, completed_at, origin, status,
+                    recipe_versions_json, planned_bytes, freed_bytes,
+                    deleted_items, skipped_items, details_json
+                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+                params![
+                    record.id,
+                    record.started_at,
+                    record.completed_at,
+                    record.origin,
+                    record.status,
+                    record.recipe_versions_json,
+                    i64::try_from(record.planned_bytes).unwrap_or(i64::MAX),
+                    i64::try_from(record.freed_bytes).unwrap_or(i64::MAX),
+                    i64::try_from(record.deleted_items).unwrap_or(i64::MAX),
+                    i64::try_from(record.skipped_items).unwrap_or(i64::MAX),
+                    record.details_json,
+                ],
+            )
+            .map_err(to_storage_error)?;
+        Ok(())
+    }
+
+    pub(crate) fn system_cleaner_history(
+        &self,
+        limit: usize,
+    ) -> Result<Vec<SystemCleanerHistoryRecord>, String> {
+        let connection = self.lock()?;
+        let mut statement = connection
+            .prepare(
+                "SELECT id, started_at, completed_at, origin, status,
+                        recipe_versions_json, planned_bytes, freed_bytes,
+                        deleted_items, skipped_items, details_json
+                 FROM system_cleaner_history
+                 ORDER BY completed_at DESC LIMIT ?1",
+            )
+            .map_err(to_storage_error)?;
+        let rows = statement
+            .query_map([i64::try_from(limit.min(200)).unwrap_or(200)], |row| {
+                Ok(SystemCleanerHistoryRecord {
+                    id: row.get(0)?,
+                    started_at: row.get(1)?,
+                    completed_at: row.get(2)?,
+                    origin: row.get(3)?,
+                    status: row.get(4)?,
+                    recipe_versions_json: row.get(5)?,
+                    planned_bytes: row.get::<_, i64>(6)?.max(0) as u64,
+                    freed_bytes: row.get::<_, i64>(7)?.max(0) as u64,
+                    deleted_items: row.get::<_, i64>(8)?.max(0) as u64,
+                    skipped_items: row.get::<_, i64>(9)?.max(0) as u64,
+                    details_json: row.get(10)?,
+                })
+            })
+            .map_err(to_storage_error)?;
+        rows.collect::<rusqlite::Result<Vec<_>>>()
+            .map_err(to_storage_error)
+    }
+
+    pub(crate) fn system_cleaner_recipe_bundles(
+        &self,
+    ) -> Result<Vec<SystemCleanerRecipeBundleRecord>, String> {
+        let connection = self.lock()?;
+        let mut statement = connection
+            .prepare(
+                "SELECT bundle_id, version, source, signer_fingerprint, sha256, payload_json
+                 FROM system_cleaner_recipe_bundles WHERE enabled = 1 ORDER BY bundle_id",
+            )
+            .map_err(to_storage_error)?;
+        let rows = statement
+            .query_map([], |row| {
+                Ok(SystemCleanerRecipeBundleRecord {
+                    bundle_id: row.get(0)?,
+                    version: row.get::<_, i64>(1)?.max(0) as u64,
+                    source: row.get(2)?,
+                    signer_fingerprint: row.get(3)?,
+                    sha256: row.get(4)?,
+                    payload_json: row.get(5)?,
+                })
+            })
+            .map_err(to_storage_error)?;
+        rows.collect::<rusqlite::Result<Vec<_>>>()
+            .map_err(to_storage_error)
+    }
+
+    pub(crate) fn system_cleaner_upsert_recipe_bundle(
+        &self,
+        record: &SystemCleanerRecipeBundleRecord,
+    ) -> Result<(), String> {
+        let connection = self.lock()?;
+        connection
+            .execute(
+                "INSERT INTO system_cleaner_recipe_bundles (
+                    bundle_id, version, source, signer_fingerprint, sha256, payload_json
+                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+                 ON CONFLICT(bundle_id) DO UPDATE SET
+                    version = excluded.version,
+                    source = excluded.source,
+                    signer_fingerprint = excluded.signer_fingerprint,
+                    sha256 = excluded.sha256,
+                    payload_json = excluded.payload_json,
+                    enabled = 1,
+                    updated_at = CURRENT_TIMESTAMP",
+                params![
+                    record.bundle_id,
+                    i64::try_from(record.version).unwrap_or(i64::MAX),
+                    record.source,
+                    record.signer_fingerprint,
+                    record.sha256,
+                    record.payload_json,
+                ],
+            )
+            .map_err(to_storage_error)?;
+        Ok(())
+    }
+
+    pub(crate) fn system_cleaner_remove_recipe_bundle(
+        &self,
+        bundle_id: &str,
+    ) -> Result<(), String> {
+        let connection = self.lock()?;
+        connection
+            .execute(
+                "DELETE FROM system_cleaner_recipe_bundles WHERE bundle_id = ?1",
+                [bundle_id],
+            )
+            .map_err(to_storage_error)?;
+        Ok(())
     }
 
     pub(crate) fn db_path(&self) -> PathBuf {
@@ -2449,6 +2676,48 @@ impl Storage {
         connection
             .execute_batch(CURRENT_SCHEMA)
             .map_err(to_storage_error)?;
+        // v57: System Cleaner keeps user-authored exclusions, structured run
+        // history, and verified recipe bundles in SQLite. These are ordinary
+        // durable records: there is no startup reconciliation, so the
+        // current-version fast path remains write-free for this feature.
+        if stored_version < 57 {
+            connection
+                .execute_batch(
+                    r#"
+                    CREATE TABLE IF NOT EXISTS system_cleaner_keep_paths (
+                        path TEXT PRIMARY KEY,
+                        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    );
+                    CREATE TABLE IF NOT EXISTS system_cleaner_history (
+                        id TEXT PRIMARY KEY,
+                        started_at TEXT NOT NULL,
+                        completed_at TEXT NOT NULL,
+                        origin TEXT NOT NULL CHECK (origin IN ('manual', 'retry')),
+                        status TEXT NOT NULL CHECK (status IN ('completed', 'partial', 'cancelled', 'failed')),
+                        recipe_versions_json TEXT NOT NULL DEFAULT '{}',
+                        planned_bytes INTEGER NOT NULL DEFAULT 0,
+                        freed_bytes INTEGER NOT NULL DEFAULT 0,
+                        deleted_items INTEGER NOT NULL DEFAULT 0,
+                        skipped_items INTEGER NOT NULL DEFAULT 0,
+                        details_json TEXT NOT NULL DEFAULT '{}'
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_system_cleaner_history_completed
+                        ON system_cleaner_history(completed_at DESC);
+                    CREATE TABLE IF NOT EXISTS system_cleaner_recipe_bundles (
+                        bundle_id TEXT PRIMARY KEY,
+                        version INTEGER NOT NULL,
+                        source TEXT NOT NULL,
+                        signer_fingerprint TEXT NOT NULL,
+                        sha256 TEXT NOT NULL,
+                        payload_json TEXT NOT NULL,
+                        enabled INTEGER NOT NULL DEFAULT 1,
+                        imported_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    );
+                    "#,
+                )
+                .map_err(to_storage_error)?;
+        }
         // Reusable Task execution statistics need a stable identity. Older
         // history rows remain unattributed instead of being guessed by label.
         ensure_column(&connection, "itops_run_history", "task_id", "TEXT")?;

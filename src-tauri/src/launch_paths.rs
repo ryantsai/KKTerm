@@ -41,6 +41,10 @@ impl LaunchPathState {
         self.enqueue(app, paths);
     }
 
+    pub fn enqueue_selected_path<R: Runtime>(&self, app: &AppHandle<R>, path: PathBuf) {
+        self.enqueue(app, resolve_requested_path(path).into_iter().collect());
+    }
+
     #[cfg(target_os = "macos")]
     pub fn enqueue_opened_urls<R: Runtime>(&self, app: &AppHandle<R>, urls: &[url::Url]) {
         self.enqueue(app, resolve_opened_urls(urls));
@@ -62,6 +66,29 @@ impl LaunchPathState {
             .map(|mut pending| std::mem::take(&mut *pending))
             .unwrap_or_default()
     }
+}
+
+pub fn open_file_picker(app: &AppHandle) {
+    use tauri::Manager;
+    use tauri_plugin_dialog::DialogExt;
+
+    let mut picker = app.dialog().file();
+    if let Some(main_webview) = app.get_webview_window(crate::window_state::MAIN_WINDOW_LABEL) {
+        picker = picker.set_parent(&main_webview.as_ref().window());
+    }
+
+    let app_handle = app.clone();
+    let handle_selection = move |selection: Option<tauri_plugin_dialog::FilePath>| {
+        let Some(path) = selection.and_then(|selection| selection.into_path().ok()) else {
+            return;
+        };
+        app_handle
+            .state::<LaunchPathState>()
+            .enqueue_selected_path(&app_handle, path);
+        crate::restore_main_window(&app_handle);
+    };
+
+    picker.pick_file(handle_selection);
 }
 
 #[cfg(any(target_os = "macos", test))]

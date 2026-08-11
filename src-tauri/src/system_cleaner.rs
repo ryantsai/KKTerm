@@ -1,4 +1,3 @@
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::{HashMap, HashSet};
@@ -11,10 +10,15 @@ use std::{
     process::Command,
     sync::{OnceLock, RwLock},
 };
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 
 use crate::installer::detect::github_release_install_dir;
+use crate::storage::{Storage, SystemCleanerHistoryRecord};
+use crate::system_cleaner_recipes::{
+    CleanupPlan, CleanupResult, RecipeBundleInfo, RecipeBundlePreview, RecipeCatalogEntry,
+    RecipeValidationResult, Winapp2ImportPreview,
+};
 
 #[cfg(target_os = "windows")]
 const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
@@ -37,7 +41,7 @@ pub struct CleanerOverview {
     total_bytes: u64,
     total_allocated_bytes: u64,
     largest: Vec<DiskEntry>,
-    cleanup: Vec<CleanupEntry>,
+    cleanup: Vec<RecipeCatalogEntry>,
     recommendations: Vec<ReviewCategory>,
     apps: Vec<InstalledApp>,
     extensions: Vec<ExtensionEntry>,
@@ -112,14 +116,6 @@ pub struct DirectoryListing {
     entries: Vec<DiskEntry>,
 }
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct CleanupEntry {
-    id: String,
-    path: String,
-    bytes: u64,
-}
-
 #[derive(Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ReviewFile {
@@ -138,23 +134,38 @@ struct ReviewCategory {
     files: Vec<ReviewFile>,
 }
 
-enum CleanupTarget {
-    DirectoryContents(PathBuf),
-    FilesWithPrefix { directory: PathBuf, prefix: String },
-}
-
-struct CleanupLocation {
-    id: String,
-    display_path: String,
-    targets: Vec<CleanupTarget>,
-}
-
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct InstalledApp {
     name: String,
     id: String,
     version: String,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppxPackage {
+    #[serde(alias = "Name")]
+    name: String,
+    #[serde(alias = "PackageFullName")]
+    package_full_name: String,
+    #[serde(alias = "Version")]
+    version: String,
+    #[serde(alias = "Publisher")]
+    publisher: String,
+    #[serde(default, alias = "IsFramework")]
+    is_framework: bool,
+    #[serde(default, alias = "NonRemovable")]
+    non_removable: bool,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WindowsMaintenanceStatus {
+    recycle_bin_bytes: u64,
+    recycle_bin_items: u64,
+    delivery_optimization_available: bool,
+    component_cleanup_available: bool,
 }
 
 struct ScanCache {
@@ -480,24 +491,6 @@ fn scan_directory_entries(path: &Path, _allocation_unit: u64) -> Result<Vec<Scan
             })
         })
         .collect())
-}
-
-fn directory_size(path: &Path) -> u64 {
-    let mut bytes = 0_u64;
-    let mut pending = vec![path.to_path_buf()];
-    while let Some(directory) = pending.pop() {
-        let Ok(entries) = scan_directory_entries(&directory, 1) else {
-            continue;
-        };
-        for entry in entries {
-            if entry.is_directory {
-                pending.push(entry.path);
-            } else {
-                bytes = bytes.saturating_add(entry.bytes);
-            }
-        }
-    }
-    bytes
 }
 
 #[cfg(target_os = "windows")]
@@ -1942,205 +1935,6 @@ fn audit(event: &str, details: serde_json::Value) {
     }
 }
 
-fn chromium_cache_targets(user_data: &Path) -> Vec<CleanupTarget> {
-    let Ok(entries) = fs::read_dir(user_data) else {
-        return Vec::new();
-    };
-    entries
-        .flatten()
-        .filter_map(|entry| {
-            let name = entry.file_name().to_string_lossy().into_owned();
-            let is_profile =
-                name == "Default" || name == "Guest Profile" || name.starts_with("Profile ");
-            let path = entry.path();
-            let is_safe_directory = fs::symlink_metadata(&path)
-                .is_ok_and(|metadata| metadata.is_dir() && !is_reparse_point(&metadata));
-            (is_profile && is_safe_directory).then_some(path)
-        })
-        .flat_map(|profile| {
-            ["Cache", "Code Cache", "GPUCache"]
-                .into_iter()
-                .map(move |name| CleanupTarget::DirectoryContents(profile.join(name)))
-        })
-        .collect()
-}
-
-fn firefox_cache_targets(profiles: &Path) -> Vec<CleanupTarget> {
-    let Ok(entries) = fs::read_dir(profiles) else {
-        return Vec::new();
-    };
-    entries
-        .flatten()
-        .filter_map(|entry| {
-            let path = entry.path();
-            fs::symlink_metadata(&path)
-                .is_ok_and(|metadata| metadata.is_dir() && !is_reparse_point(&metadata))
-                .then_some(CleanupTarget::DirectoryContents(path.join("cache2")))
-        })
-        .collect()
-}
-
-fn is_safe_cleanup_directory(path: &Path) -> bool {
-    fs::symlink_metadata(path)
-        .is_ok_and(|metadata| metadata.is_dir() && !is_reparse_point(&metadata))
-}
-
-fn cleanup_target_size(target: &CleanupTarget) -> u64 {
-    match target {
-        CleanupTarget::DirectoryContents(path) => is_safe_cleanup_directory(path)
-            .then(|| directory_size(path))
-            .unwrap_or(0),
-        CleanupTarget::FilesWithPrefix { directory, prefix }
-            if is_safe_cleanup_directory(directory) =>
-        {
-            fs::read_dir(directory)
-                .into_iter()
-                .flatten()
-                .flatten()
-                .filter(|entry| {
-                    fs::symlink_metadata(entry.path())
-                        .is_ok_and(|metadata| metadata.is_file() && !is_reparse_point(&metadata))
-                        && entry
-                            .file_name()
-                            .to_string_lossy()
-                            .to_ascii_lowercase()
-                            .starts_with(prefix)
-                })
-                .filter_map(|entry| entry.metadata().ok().map(|metadata| metadata.len()))
-                .fold(0_u64, u64::saturating_add)
-        }
-        CleanupTarget::FilesWithPrefix { .. } => 0,
-    }
-}
-
-fn cleanup_location_size(location: &CleanupLocation) -> u64 {
-    location
-        .targets
-        .iter()
-        .map(cleanup_target_size)
-        .fold(0_u64, u64::saturating_add)
-}
-
-fn remove_cleanup_entry(path: &Path) {
-    let Ok(metadata) = fs::symlink_metadata(path) else {
-        return;
-    };
-    if metadata.is_dir() && !is_reparse_point(&metadata) {
-        let _ = fs::remove_dir_all(path);
-    } else if metadata.is_dir() {
-        let _ = fs::remove_dir(path);
-    } else {
-        let _ = fs::remove_file(path);
-    }
-}
-
-fn clean_target(target: &CleanupTarget) {
-    match target {
-        CleanupTarget::DirectoryContents(path) => {
-            if is_safe_cleanup_directory(path) {
-                let Ok(entries) = fs::read_dir(path) else {
-                    return;
-                };
-                for entry in entries.flatten() {
-                    remove_cleanup_entry(&entry.path());
-                }
-            }
-        }
-        CleanupTarget::FilesWithPrefix { directory, prefix } => {
-            if is_safe_cleanup_directory(directory) {
-                let Ok(entries) = fs::read_dir(directory) else {
-                    return;
-                };
-                for entry in entries.flatten().filter(|entry| {
-                    fs::symlink_metadata(entry.path())
-                        .is_ok_and(|metadata| metadata.is_file() && !is_reparse_point(&metadata))
-                        && entry
-                            .file_name()
-                            .to_string_lossy()
-                            .to_ascii_lowercase()
-                            .starts_with(prefix)
-                }) {
-                    remove_cleanup_entry(&entry.path());
-                }
-            }
-        }
-    }
-}
-
-fn cleanup_locations() -> Vec<CleanupLocation> {
-    let mut locations = Vec::new();
-    if let Ok(path) = env::var("TEMP") {
-        locations.push(CleanupLocation {
-            id: "temp".into(),
-            display_path: path.clone(),
-            targets: vec![CleanupTarget::DirectoryContents(path.into())],
-        });
-    }
-    if let Ok(path) = env::var("WINDIR") {
-        let path = PathBuf::from(path).join("Temp");
-        locations.push(CleanupLocation {
-            id: "windows-temp".into(),
-            display_path: path.to_string_lossy().into_owned(),
-            targets: vec![CleanupTarget::DirectoryContents(path)],
-        });
-    }
-    if let Ok(path) = env::var("LOCALAPPDATA") {
-        let base = PathBuf::from(path);
-        let edge_root = base.join("Microsoft/Edge/User Data");
-        locations.push(CleanupLocation {
-            id: "browser-cache".into(),
-            display_path: edge_root.join("*/Cache").to_string_lossy().into_owned(),
-            targets: chromium_cache_targets(&edge_root),
-        });
-        let chrome_root = base.join("Google/Chrome/User Data");
-        locations.push(CleanupLocation {
-            id: "chrome-cache".into(),
-            display_path: chrome_root.join("*/Cache").to_string_lossy().into_owned(),
-            targets: chromium_cache_targets(&chrome_root),
-        });
-        let firefox_root = base.join("Mozilla/Firefox/Profiles");
-        locations.push(CleanupLocation {
-            id: "firefox-cache".into(),
-            display_path: firefox_root.join("*/cache2").to_string_lossy().into_owned(),
-            targets: firefox_cache_targets(&firefox_root),
-        });
-        let shader_cache = base.join("D3DSCache");
-        locations.push(CleanupLocation {
-            id: "shader-cache".into(),
-            display_path: shader_cache.to_string_lossy().into_owned(),
-            targets: vec![CleanupTarget::DirectoryContents(shader_cache)],
-        });
-        let explorer_cache = base.join("Microsoft/Windows/Explorer");
-        locations.push(CleanupLocation {
-            id: "thumbnail-cache".into(),
-            display_path: explorer_cache
-                .join("thumbcache_*.db")
-                .to_string_lossy()
-                .into_owned(),
-            targets: vec![CleanupTarget::FilesWithPrefix {
-                directory: explorer_cache,
-                prefix: "thumbcache_".into(),
-            }],
-        });
-        let crash_dumps = base.join("CrashDumps");
-        locations.push(CleanupLocation {
-            id: "crash-dumps".into(),
-            display_path: crash_dumps.to_string_lossy().into_owned(),
-            targets: vec![CleanupTarget::DirectoryContents(crash_dumps)],
-        });
-        let error_reports = base.join("Microsoft/Windows/WER");
-        locations.push(CleanupLocation {
-            id: "error-reports".into(),
-            display_path: error_reports.join("Report*").to_string_lossy().into_owned(),
-            targets: vec![
-                CleanupTarget::DirectoryContents(error_reports.join("ReportArchive")),
-                CleanupTarget::DirectoryContents(error_reports.join("ReportQueue")),
-            ],
-        });
-    }
-    locations
-}
-
 fn installed_apps() -> Vec<InstalledApp> {
     let mut command = Command::new("winget");
     command.args([
@@ -2172,6 +1966,284 @@ fn installed_apps() -> Vec<InstalledApp> {
         .collect()
 }
 
+#[cfg(target_os = "windows")]
+fn appx_packages() -> Result<Vec<AppxPackage>, String> {
+    let mut command = Command::new("powershell.exe");
+    command.args([
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "Get-AppxPackage | Select-Object Name,PackageFullName,Version,Publisher,IsFramework,NonRemovable | ConvertTo-Json -Compress",
+    ]);
+    command.creation_flags(CREATE_NO_WINDOW);
+    let output = command.output().map_err(|error| error.to_string())?;
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
+    }
+    let value: serde_json::Value = serde_json::from_slice(&output.stdout)
+        .map_err(|error| format!("Could not read Windows app packages: {error}"))?;
+    let values = match value {
+        serde_json::Value::Array(values) => values,
+        serde_json::Value::Null => Vec::new(),
+        value => vec![value],
+    };
+    let mut packages = values
+        .into_iter()
+        .filter_map(|value| serde_json::from_value::<AppxPackage>(value).ok())
+        .filter(|package| {
+            !package.is_framework
+                && !package.non_removable
+                && !matches!(
+                    package.name.as_str(),
+                    "Microsoft.AAD.BrokerPlugin"
+                        | "Microsoft.AccountsControl"
+                        | "Microsoft.LockApp"
+                        | "Microsoft.Windows.SecHealthUI"
+                        | "Microsoft.Windows.ShellExperienceHost"
+                        | "Microsoft.Windows.StartMenuExperienceHost"
+                )
+                && !package.name.starts_with("MicrosoftWindows.Client.")
+        })
+        .collect::<Vec<_>>();
+    packages.sort_by(|left, right| {
+        left.name
+            .to_ascii_lowercase()
+            .cmp(&right.name.to_ascii_lowercase())
+    });
+    Ok(packages)
+}
+
+#[tauri::command]
+pub async fn system_cleaner_list_appx_packages() -> Result<Vec<AppxPackage>, String> {
+    #[cfg(not(target_os = "windows"))]
+    return Err("Windows app packages are available only on Windows.".into());
+    #[cfg(target_os = "windows")]
+    tauri::async_runtime::spawn_blocking(appx_packages)
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+#[tauri::command]
+pub async fn system_cleaner_remove_appx_package(package_full_name: String) -> Result<(), String> {
+    #[cfg(not(target_os = "windows"))]
+    return Err("Windows app packages are available only on Windows.".into());
+    #[cfg(target_os = "windows")]
+    tauri::async_runtime::spawn_blocking(move || {
+        if package_full_name.is_empty()
+            || package_full_name.len() > 512
+            || !package_full_name
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || b"._-~=".contains(&byte))
+        {
+            return Err("Windows returned an invalid package identity.".into());
+        }
+        if !appx_packages()?.iter().any(|package| {
+            package
+                .package_full_name
+                .eq_ignore_ascii_case(&package_full_name)
+        }) {
+            return Err("The package is no longer in the current removable-app inventory.".into());
+        }
+        audit(
+            "appx-remove.approved",
+            json!({ "packageFullName": &package_full_name }),
+        );
+        let escaped = package_full_name.replace('\'', "''");
+        let script =
+            format!("Remove-AppxPackage -Package '{escaped}' -Confirm:$false -ErrorAction Stop");
+        let mut command = Command::new("powershell.exe");
+        command.args(["-NoProfile", "-NonInteractive", "-Command", &script]);
+        command.creation_flags(CREATE_NO_WINDOW);
+        let output = command.output().map_err(|error| error.to_string())?;
+        if output.status.success() {
+            audit(
+                "appx-remove.completed",
+                json!({ "packageFullName": package_full_name }),
+            );
+            Ok(())
+        } else {
+            let error = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            audit(
+                "appx-remove.failed",
+                json!({ "packageFullName": package_full_name, "error": &error }),
+            );
+            Err(if error.is_empty() {
+                "Windows could not remove the app package.".into()
+            } else {
+                error
+            })
+        }
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
+#[cfg(target_os = "windows")]
+fn recycle_bin_status() -> Result<(u64, u64), String> {
+    use windows_sys::Win32::UI::Shell::{SHQUERYRBINFO, SHQueryRecycleBinW};
+    let mut info = SHQUERYRBINFO {
+        cbSize: std::mem::size_of::<SHQUERYRBINFO>() as u32,
+        i64Size: 0,
+        i64NumItems: 0,
+    };
+    let result = unsafe { SHQueryRecycleBinW(std::ptr::null(), &mut info) };
+    if result < 0 {
+        Err(format!(
+            "Windows could not query the Recycle Bin (HRESULT {result:#x})."
+        ))
+    } else {
+        Ok((info.i64Size.max(0) as u64, info.i64NumItems.max(0) as u64))
+    }
+}
+
+#[tauri::command]
+pub async fn system_cleaner_windows_maintenance_status() -> Result<WindowsMaintenanceStatus, String>
+{
+    #[cfg(not(target_os = "windows"))]
+    return Err("Windows maintenance is available only on Windows.".into());
+    #[cfg(target_os = "windows")]
+    {
+        let (recycle_bin_bytes, recycle_bin_items) = recycle_bin_status().unwrap_or_default();
+        Ok(WindowsMaintenanceStatus {
+            recycle_bin_bytes,
+            recycle_bin_items,
+            delivery_optimization_available: true,
+            component_cleanup_available: dism_path().is_file(),
+        })
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn dism_path() -> PathBuf {
+    env::var_os("WINDIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(r"C:\Windows"))
+        .join("System32")
+        .join("Dism.exe")
+}
+
+#[tauri::command]
+pub async fn system_cleaner_empty_recycle_bin() -> Result<u64, String> {
+    #[cfg(not(target_os = "windows"))]
+    return Err("Recycle Bin cleanup is available only on Windows.".into());
+    #[cfg(target_os = "windows")]
+    tauri::async_runtime::spawn_blocking(move || {
+        use windows_sys::Win32::UI::Shell::{
+            SHERB_NOCONFIRMATION, SHERB_NOPROGRESSUI, SHERB_NOSOUND, SHEmptyRecycleBinW,
+        };
+        let (before, items) = recycle_bin_status()?;
+        audit(
+            "recycle-bin.approved",
+            json!({ "items": items, "bytes": before }),
+        );
+        let result = unsafe {
+            SHEmptyRecycleBinW(
+                std::ptr::null_mut(),
+                std::ptr::null(),
+                SHERB_NOCONFIRMATION | SHERB_NOPROGRESSUI | SHERB_NOSOUND,
+            )
+        };
+        if result < 0 {
+            audit("recycle-bin.failed", json!({ "hresult": result }));
+            Err(format!(
+                "Windows could not empty the Recycle Bin (HRESULT {result:#x})."
+            ))
+        } else {
+            audit(
+                "recycle-bin.completed",
+                json!({ "items": items, "freedBytes": before }),
+            );
+            Ok(before)
+        }
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
+#[cfg(target_os = "windows")]
+fn run_elevated_maintenance(file: &str, arguments: &[&str]) -> Result<(), String> {
+    let quoted = arguments
+        .iter()
+        .map(|value| format!("'{}'", value.replace('\'', "''")))
+        .collect::<Vec<_>>()
+        .join(",");
+    let file = file.replace('\'', "''");
+    let script = format!(
+        "$p=Start-Process -FilePath '{file}' -ArgumentList @({quoted}) -Verb RunAs -Wait -PassThru; exit $p.ExitCode"
+    );
+    let mut command = Command::new("powershell.exe");
+    command.creation_flags(CREATE_NO_WINDOW).args([
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        &script,
+    ]);
+    let status = command.status().map_err(|error| error.to_string())?;
+    status
+        .success()
+        .then_some(())
+        .ok_or_else(|| format!("Windows maintenance exited with status {status}."))
+}
+
+#[tauri::command]
+pub async fn system_cleaner_clear_delivery_optimization() -> Result<(), String> {
+    #[cfg(not(target_os = "windows"))]
+    return Err("Delivery Optimization cleanup is available only on Windows.".into());
+    #[cfg(target_os = "windows")]
+    tauri::async_runtime::spawn_blocking(move || {
+        audit("delivery-optimization.approved", json!({}));
+        let result = run_elevated_maintenance(
+            "powershell.exe",
+            &[
+                "-NoProfile",
+                "-NonInteractive",
+                "-Command",
+                "Delete-DeliveryOptimizationCache -Force -ErrorAction Stop",
+            ],
+        );
+        audit(
+            if result.is_ok() {
+                "delivery-optimization.completed"
+            } else {
+                "delivery-optimization.failed"
+            },
+            json!({ "error": result.as_ref().err() }),
+        );
+        result
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
+#[tauri::command]
+pub async fn system_cleaner_start_component_cleanup() -> Result<(), String> {
+    #[cfg(not(target_os = "windows"))]
+    return Err("Windows component cleanup is available only on Windows.".into());
+    #[cfg(target_os = "windows")]
+    tauri::async_runtime::spawn_blocking(move || {
+        audit("component-cleanup.approved", json!({}));
+        let dism = dism_path();
+        let dism = dism
+            .to_str()
+            .ok_or_else(|| "The Windows DISM path is not valid Unicode.".to_string())?;
+        let result = run_elevated_maintenance(
+            dism,
+            &["/Online", "/Cleanup-Image", "/StartComponentCleanup"],
+        );
+        audit(
+            if result.is_ok() {
+                "component-cleanup.completed"
+            } else {
+                "component-cleanup.failed"
+            },
+            json!({ "error": result.as_ref().err() }),
+        );
+        result
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
 #[tauri::command]
 pub async fn system_cleaner_list_drives() -> Result<Vec<DriveEntry>, String> {
     #[cfg(not(target_os = "windows"))]
@@ -2197,6 +2269,18 @@ pub async fn system_cleaner_scanner_status() -> Result<ScannerStatus, String> {
 }
 
 #[tauri::command]
+pub async fn system_cleaner_catalog(app: AppHandle) -> Result<Vec<RecipeCatalogEntry>, String> {
+    #[cfg(not(target_os = "windows"))]
+    return Err("System Cleaner is available only on Windows.".into());
+    #[cfg(target_os = "windows")]
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::system_cleaner_recipes::catalog(&app.state::<Storage>())
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
+#[tauri::command]
 pub async fn system_cleaner_scan(
     app: AppHandle,
     root: Option<String>,
@@ -2211,21 +2295,13 @@ pub async fn system_cleaner_scan(
                 || scan_drive(&app, &root),
                 || {
                     rayon::join(
-                        || {
-                            cleanup_locations()
-                                .into_par_iter()
-                                .map(|location| CleanupEntry {
-                                    bytes: cleanup_location_size(&location),
-                                    id: location.id,
-                                    path: location.display_path,
-                                })
-                                .collect()
-                        },
+                        || crate::system_cleaner_recipes::catalog(&app.state::<Storage>()),
                         installed_apps,
                     )
                 },
             );
             let drive_scan = drive_scan?;
+            let cleanup = cleanup?;
             let (disk_capacity_bytes, disk_free_bytes) = disk_space(&root);
             let review_files = drive_scan
                 .recommendations
@@ -2302,31 +2378,169 @@ pub async fn system_cleaner_list_directory(path: String) -> Result<DirectoryList
 }
 
 #[tauri::command]
-pub async fn system_cleaner_clean(ids: Vec<String>) -> Result<u64, String> {
+pub async fn system_cleaner_clean(app: AppHandle, ids: Vec<String>) -> Result<u64, String> {
     #[cfg(not(target_os = "windows"))]
     return Err("System Cleaner is available only on Windows.".into());
     #[cfg(target_os = "windows")]
     tauri::async_runtime::spawn_blocking(move || {
-        audit("cleanup.approved", json!({ "categories": &ids }));
-        let mut freed = 0;
-        for location in cleanup_locations()
-            .into_iter()
-            .filter(|location| ids.contains(&location.id))
-        {
-            let before = cleanup_location_size(&location);
-            for target in &location.targets {
-                clean_target(target);
-            }
-            freed += before.saturating_sub(cleanup_location_size(&location));
-        }
-        audit(
-            "cleanup.completed",
-            json!({ "categories": ids, "freedBytes": freed }),
-        );
-        Ok(freed)
+        let storage = app.state::<Storage>();
+        let plan = crate::system_cleaner_recipes::build_plan(&storage, ids)?;
+        let result = crate::system_cleaner_recipes::execute_plan(&storage, &plan.token, None)?;
+        Ok(result.freed_bytes)
     })
     .await
     .map_err(|error| error.to_string())?
+}
+
+#[tauri::command]
+pub async fn system_cleaner_build_cleanup_plan(
+    app: AppHandle,
+    ids: Vec<String>,
+) -> Result<CleanupPlan, String> {
+    #[cfg(not(target_os = "windows"))]
+    return Err("System Cleaner is available only on Windows.".into());
+    #[cfg(target_os = "windows")]
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::system_cleaner_recipes::build_plan(&app.state::<Storage>(), ids)
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
+#[tauri::command]
+pub async fn system_cleaner_execute_cleanup_plan(
+    app: AppHandle,
+    token: String,
+    retry_paths: Option<Vec<String>>,
+) -> Result<CleanupResult, String> {
+    #[cfg(not(target_os = "windows"))]
+    return Err("System Cleaner is available only on Windows.".into());
+    #[cfg(target_os = "windows")]
+    tauri::async_runtime::spawn_blocking(move || {
+        audit(
+            "cleanup-plan.approved",
+            json!({ "token": &token, "retryPaths": &retry_paths }),
+        );
+        let result = crate::system_cleaner_recipes::execute_plan(
+            &app.state::<Storage>(),
+            &token,
+            retry_paths,
+        )?;
+        audit(
+            "cleanup-plan.completed",
+            json!({
+                "token": token,
+                "runId": result.run_id,
+                "freedBytes": result.freed_bytes,
+                "deletedItems": result.deleted_items,
+                "skippedItems": result.skipped.len(),
+                "cancelled": result.cancelled,
+            }),
+        );
+        Ok(result)
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
+#[tauri::command]
+pub fn system_cleaner_cancel_cleanup() {
+    crate::system_cleaner_recipes::cancel_cleanup();
+}
+
+#[tauri::command]
+pub fn system_cleaner_list_keep_paths(
+    storage: tauri::State<'_, Storage>,
+) -> Result<Vec<String>, String> {
+    storage.system_cleaner_keep_paths()
+}
+
+#[tauri::command]
+pub fn system_cleaner_add_keep_path(
+    storage: tauri::State<'_, Storage>,
+    path: String,
+) -> Result<Vec<String>, String> {
+    let path = PathBuf::from(path);
+    let canonical = fs::canonicalize(&path).map_err(|error| error.to_string())?;
+    storage.system_cleaner_add_keep_path(&canonical.to_string_lossy())?;
+    storage.system_cleaner_keep_paths()
+}
+
+#[tauri::command]
+pub fn system_cleaner_remove_keep_path(
+    storage: tauri::State<'_, Storage>,
+    path: String,
+) -> Result<Vec<String>, String> {
+    storage.system_cleaner_remove_keep_path(&path)?;
+    storage.system_cleaner_keep_paths()
+}
+
+#[tauri::command]
+pub fn system_cleaner_history(
+    storage: tauri::State<'_, Storage>,
+    limit: Option<usize>,
+) -> Result<Vec<SystemCleanerHistoryRecord>, String> {
+    storage.system_cleaner_history(limit.unwrap_or(50))
+}
+
+#[tauri::command]
+pub async fn system_cleaner_validate_recipe(
+    app: AppHandle,
+    raw_json: String,
+) -> Result<RecipeValidationResult, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::system_cleaner_recipes::validate_rule(&app.state::<Storage>(), &raw_json)
+    })
+    .await
+    .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn system_cleaner_preview_signed_bundle(
+    storage: tauri::State<'_, Storage>,
+    raw_json: String,
+) -> Result<RecipeBundlePreview, String> {
+    crate::system_cleaner_recipes::preview_signed_bundle(&storage, &raw_json)
+}
+
+#[tauri::command]
+pub fn system_cleaner_import_signed_bundle(
+    storage: tauri::State<'_, Storage>,
+    raw_json: String,
+) -> Result<RecipeBundleInfo, String> {
+    crate::system_cleaner_recipes::import_signed_bundle(&storage, &raw_json)
+}
+
+#[tauri::command]
+pub fn system_cleaner_list_recipe_bundles(
+    storage: tauri::State<'_, Storage>,
+) -> Result<Vec<RecipeBundleInfo>, String> {
+    crate::system_cleaner_recipes::bundle_infos(&storage)
+}
+
+#[tauri::command]
+pub fn system_cleaner_remove_recipe_bundle(
+    storage: tauri::State<'_, Storage>,
+    bundle_id: String,
+) -> Result<(), String> {
+    storage.system_cleaner_remove_recipe_bundle(&bundle_id)
+}
+
+#[tauri::command]
+pub fn system_cleaner_preview_winapp2(
+    text: String,
+    source: String,
+) -> Result<Winapp2ImportPreview, String> {
+    crate::system_cleaner_recipes::preview_winapp2(&text, &source)
+}
+
+#[tauri::command]
+pub fn system_cleaner_import_winapp2(
+    storage: tauri::State<'_, Storage>,
+    text: String,
+    source: String,
+) -> Result<RecipeBundleInfo, String> {
+    crate::system_cleaner_recipes::import_winapp2(&storage, &text, &source)
 }
 
 #[tauri::command]
@@ -2596,17 +2810,6 @@ mod tests {
     }
 
     #[test]
-    fn directory_size_counts_nested_files_without_recursion() {
-        let root = tempfile::tempdir().expect("temporary scan root");
-        let nested = root.path().join("one").join("two").join("three");
-        fs::create_dir_all(&nested).expect("nested scan fixture");
-        fs::write(root.path().join("root.bin"), [0_u8; 3]).expect("root fixture file");
-        fs::write(nested.join("nested.bin"), [0_u8; 5]).expect("nested fixture file");
-
-        assert_eq!(directory_size(root.path()), 8);
-    }
-
-    #[test]
     fn scan_tree_retains_nested_directory_totals_for_browsing() {
         let root = tempfile::tempdir().expect("temporary scan root");
         let first = root.path().join("first");
@@ -2733,42 +2936,5 @@ mod tests {
         assert_eq!(round_to_allocation_unit(1, 262_144), 262_144);
         assert_eq!(round_to_allocation_unit(262_144, 262_144), 262_144);
         assert_eq!(round_to_allocation_unit(262_145, 262_144), 524_288);
-    }
-
-    #[test]
-    fn prefix_cleanup_removes_only_allowlisted_files() {
-        let root = tempfile::tempdir().expect("temporary cleanup root");
-        let thumbnail = root.path().join("thumbcache_96.db");
-        let icon = root.path().join("iconcache_96.db");
-        fs::write(&thumbnail, [0_u8; 5]).expect("thumbnail fixture");
-        fs::write(&icon, [0_u8; 7]).expect("icon fixture");
-        let target = CleanupTarget::FilesWithPrefix {
-            directory: root.path().to_path_buf(),
-            prefix: "thumbcache_".into(),
-        };
-
-        assert_eq!(cleanup_target_size(&target), 5);
-        clean_target(&target);
-
-        assert!(!thumbnail.exists());
-        assert!(icon.exists());
-    }
-
-    #[cfg(target_os = "windows")]
-    #[test]
-    fn directory_size_does_not_follow_directory_reparse_points() {
-        let root = tempfile::tempdir().expect("temporary scan root");
-        let outside = tempfile::tempdir().expect("temporary external root");
-        fs::write(outside.path().join("outside.bin"), [0_u8; 11]).expect("external fixture file");
-        let junction = root.path().join("junction");
-        if std::os::windows::fs::symlink_dir(outside.path(), &junction).is_err() {
-            return;
-        }
-
-        assert_eq!(directory_size(root.path()), 0);
-        let cleanup_target = CleanupTarget::DirectoryContents(junction);
-        assert_eq!(cleanup_target_size(&cleanup_target), 0);
-        clean_target(&cleanup_target);
-        assert!(outside.path().join("outside.bin").exists());
     }
 }

@@ -60,6 +60,8 @@ mod ssh_keys;
 mod storage;
 mod system_theme;
 mod system_cleaner;
+mod system_cleaner_recipes;
+mod system_menu;
 mod telnet;
 mod vnc;
 mod vt_text;
@@ -1965,6 +1967,19 @@ fn update_tray_menu(
 ) -> Result<(), String> {
     tray_state.set_snapshot(snapshot);
     app_tray::rebuild_menu(&app, &tray_state)
+}
+
+#[tauri::command]
+fn update_system_file_menu(
+    app: tauri::AppHandle,
+    labels: system_menu::SystemFileMenuLabels,
+) -> Result<(), String> {
+    system_menu::update(&app, labels)
+}
+
+#[tauri::command]
+fn open_launch_file_picker(app: tauri::AppHandle) {
+    launch_paths::open_file_picker(&app);
 }
 
 #[tauri::command]
@@ -4605,6 +4620,7 @@ pub fn run() {
             if let Err(error) = app_tray::install(app, "KKTerm") {
                 eprintln!("{error}");
             }
+            system_menu::install_handler(app);
             app.manage(app_tray::TrayState::new(
                 general_settings.minimize_to_tray(),
             ));
@@ -4930,9 +4946,30 @@ pub fn run() {
             get_system_performance_counters,
             system_cleaner::system_cleaner_list_drives,
             system_cleaner::system_cleaner_scanner_status,
+            system_cleaner::system_cleaner_catalog,
             system_cleaner::system_cleaner_scan,
             system_cleaner::system_cleaner_list_directory,
             system_cleaner::system_cleaner_clean,
+            system_cleaner::system_cleaner_build_cleanup_plan,
+            system_cleaner::system_cleaner_execute_cleanup_plan,
+            system_cleaner::system_cleaner_cancel_cleanup,
+            system_cleaner::system_cleaner_list_keep_paths,
+            system_cleaner::system_cleaner_add_keep_path,
+            system_cleaner::system_cleaner_remove_keep_path,
+            system_cleaner::system_cleaner_history,
+            system_cleaner::system_cleaner_validate_recipe,
+            system_cleaner::system_cleaner_preview_signed_bundle,
+            system_cleaner::system_cleaner_import_signed_bundle,
+            system_cleaner::system_cleaner_list_recipe_bundles,
+            system_cleaner::system_cleaner_remove_recipe_bundle,
+            system_cleaner::system_cleaner_preview_winapp2,
+            system_cleaner::system_cleaner_import_winapp2,
+            system_cleaner::system_cleaner_list_appx_packages,
+            system_cleaner::system_cleaner_remove_appx_package,
+            system_cleaner::system_cleaner_windows_maintenance_status,
+            system_cleaner::system_cleaner_empty_recycle_bin,
+            system_cleaner::system_cleaner_clear_delivery_optimization,
+            system_cleaner::system_cleaner_start_component_cleanup,
             system_cleaner::system_cleaner_delete_review_files,
             system_cleaner::system_cleaner_uninstall,
             pc_info_get,
@@ -4945,6 +4982,8 @@ pub fn run() {
             schedule_shutdown_timer,
             cancel_shutdown_timer,
             update_tray_menu,
+            update_system_file_menu,
+            open_launch_file_picker,
             // ── Screenshots
             capture_screenshot_to_clipboard,
             write_screenshot_data_url_to_clipboard,

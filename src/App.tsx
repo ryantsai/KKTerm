@@ -15,6 +15,7 @@ import {
 import { AppUpdatePrompt } from "./app/AppUpdatePrompt";
 import { PortableOnboardingDialog } from "./app/PortableOnboardingDialog";
 import { useLaunchPathBridge } from "./app/launchPathBridge";
+import { pushSystemFileMenu } from "./app/systemFileMenu";
 import { TitleBar } from "./app/TitleBar";
 import {
   findTutorialTargetElement,
@@ -288,6 +289,13 @@ function App() {
   });
 
   useEffect(() => {
+    void pushSystemFileMenu({
+      fileMenu: t("app.fileMenu"),
+      open: t("app.openFile"),
+    });
+  }, [t]);
+
+  useEffect(() => {
     if (!screenshotEditorRequestId) {
       return;
     }
@@ -525,6 +533,7 @@ function App() {
         aiPanelCollapsed={aiPanelLayout.collapsed}
         connectionPanelCollapsed={connectionPanelLayout.collapsed}
         itOpsSiteTreeCollapsed={itOpsSiteTreeCollapsed}
+        showWorkspaceOpenMenu={hideTopTabButtons}
         onToggleAiPanel={toggleAiPanel}
         onToggleConnectionPanel={toggleConnectionPanel}
         onToggleItOpsSiteTree={() =>

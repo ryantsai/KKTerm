@@ -76,6 +76,36 @@
   opacity: 0.82;
 }
 
+.app-titlebar-open-path-button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: -5px;
+  padding: 0;
+  color: var(--titlebar-text);
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  opacity: 0.42;
+  cursor: pointer;
+  app-region: no-drag;
+  -webkit-app-region: no-drag;
+}
+
+.app-titlebar-open-path-button:hover,
+.app-titlebar-open-path-button:focus-visible {
+  background: var(--titlebar-hover-bg);
+  opacity: 0.88;
+}
+
+.app-titlebar-open-path-button:focus-visible {
+  outline: 1px solid var(--ring);
+  outline-offset: 1px;
+}
+
 .app-titlebar-controls {
   position: absolute;
   top: 0;

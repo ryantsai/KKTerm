@@ -1,16 +1,17 @@
-import { Bot, PanelLeft } from "../lib/reicon";
+import { Bot, ChevronDown, PanelLeft } from "../lib/reicon";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ActivePage } from "./ActivityRail";
 import {
   closeMainWindow,
   getAppVersion,
+  invokeCommand,
   isMainWindowMaximized,
   listenMainWindowResized,
   minimizeMainWindow,
   toggleMaximizeMainWindow,
 } from "../lib/tauri";
-import { usesNativeWindowControls } from "../lib/platform";
+import { isWindowsPlatform, usesNativeWindowControls } from "../lib/platform";
 import appIconUrl from "../../src-tauri/icons/32x32.png";
 
 const ICON_SIZE = 10;
@@ -109,6 +110,7 @@ export function TitleBar({
   aiPanelCollapsed,
   connectionPanelCollapsed,
   itOpsSiteTreeCollapsed,
+  showWorkspaceOpenMenu,
   onToggleAiPanel,
   onToggleConnectionPanel,
   onToggleItOpsSiteTree,
@@ -117,6 +119,7 @@ export function TitleBar({
   aiPanelCollapsed: boolean;
   connectionPanelCollapsed: boolean;
   itOpsSiteTreeCollapsed: boolean;
+  showWorkspaceOpenMenu: boolean;
   onToggleAiPanel: () => void;
   onToggleConnectionPanel: () => void;
   onToggleItOpsSiteTree: () => void;
@@ -170,6 +173,17 @@ export function TitleBar({
         <span className="app-titlebar-title" data-tauri-drag-region>
           {titleText}
         </span>
+        {activePage === "workspace" && showWorkspaceOpenMenu && isWindowsPlatform() ? (
+          <button
+            aria-label={t("app.openFile")}
+            className="app-titlebar-open-path-button"
+            onClick={() => void invokeCommand("open_launch_file_picker", undefined)}
+            title={t("app.openFile")}
+            type="button"
+          >
+            <ChevronDown size={13} strokeWidth={1.8} />
+          </button>
+        ) : null}
       </div>
       <div className="app-titlebar-controls">
         {activePage === "workspace" ? (

@@ -3,6 +3,8 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const backend = await readFile(new URL("../src-tauri/src/system_cleaner.rs", import.meta.url), "utf8");
+const recipes = await readFile(new URL("../src-tauri/src/system_cleaner_recipes.rs", import.meta.url), "utf8");
+const storage = await readFile(new URL("../src-tauri/src/storage.rs", import.meta.url), "utf8");
 const backendCommands = await readFile(new URL("../src-tauri/src/lib.rs", import.meta.url), "utf8");
 const page = await readFile(new URL("../src/modules/system-cleaner/SystemCleanerPage.tsx", import.meta.url), "utf8");
 const scanState = await readFile(new URL("../src/modules/system-cleaner/scanState.ts", import.meta.url), "utf8").catch(() => "");
@@ -57,7 +59,7 @@ test("System Cleaner uses the Searching orb in the scan page and Status Bar", ()
 });
 
 test("System Cleaner uses the Direction A control panel and compact cleanup and uninstall rows", () => {
-  assert.match(page, /type Section = "overview" \| "storage" \| "cleanup" \| "recommendations" \| "apps"/);
+  assert.match(page, /type Section = "overview" \| "storage" \| "cleanup" \| "recommendations" \| "apps" \| "management"/);
   assert.match(page, /system-cleaner-drive-card/);
   assert.match(page, /system-cleaner-metric-grid/);
   assert.match(page, /system-cleaner-cleanup-groups/);
@@ -138,8 +140,8 @@ test("System Cleaner opens idle and scans only on explicit demand", () => {
 });
 
 test("System Cleaner walks directories iteratively without following reparse points", () => {
-  assert.match(backend, /let mut pending = vec!\[path\.to_path_buf\(\)\]/);
-  assert.match(backend, /while let Some\(directory\) = pending\.pop\(\)/);
+  assert.match(backend, /let mut pending = vec!\[ScanWork::Enter/);
+  assert.match(backend, /while let Some\(work\) = pending\.pop\(\)/);
   assert.match(backend, /FILE_ATTRIBUTE_REPARSE_POINT/);
   assert.doesNotMatch(backend, /directory_size\(&entry\.path\(\)\)/);
 });
@@ -163,4 +165,61 @@ test("System Cleaner requires approval and isolates elevated work", () => {
   assert.match(page, /systemCleaner\.uninstallTitle/);
   assert.match(backend, /Start-Process.*-Verb RunAs/);
   assert.match(backend, /system-cleaner\.operations\.log/);
+});
+
+test("System Cleaner cleanup is preview-first, immutable, revalidated, cancellable, and retryable", () => {
+  assert.match(page, /system_cleaner_build_cleanup_plan/);
+  assert.match(page, /system_cleaner_execute_cleanup_plan/);
+  assert.match(page, /system_cleaner_cancel_cleanup/);
+  assert.match(page, /cleanupResult\?\.skipped\.map/);
+  assert.match(page, /system-cleaner-plan-preview/);
+  assert.match(recipes, /struct CleanupPlan/);
+  assert.match(recipes, /file_id/);
+  assert.match(recipes, /metadata_modified_ms/);
+  assert.match(recipes, /path_within\(&canonical, &item\.target_root\)/);
+  assert.match(recipes, /fs::remove_file/);
+  assert.doesNotMatch(recipes, /remove_dir_all/);
+});
+
+test("System Cleaner recipes stay file-only and protect exclusions and sensitive paths", () => {
+  assert.match(recipes, /CleanerTarget/);
+  assert.match(recipes, /system_cleaner_keep_paths/);
+  assert.match(recipes, /PROTECTED_COMPONENTS/);
+  assert.match(recipes, /PROTECTED_FILES/);
+  assert.match(recipes, /Imported recipes cannot be selected by default/);
+  assert.match(recipes, /Registry keys, commands, and unsupported variables are ignored/);
+  assert.doesNotMatch(recipes, /RegDeleteKey|RegDeleteValue|CleanupTarget::Registry/);
+  assert.match(storage, /CREATE TABLE IF NOT EXISTS system_cleaner_keep_paths/);
+});
+
+test("System Cleaner offers broad built-in coverage plus constrained Winapp2 import", () => {
+  const builtInIds = [...recipes.matchAll(/builtin\(\s*"([a-z0-9-]+)"/g)].map((match) => match[1]);
+  assert.ok(new Set(builtInIds).size >= 30, `expected at least 30 built-in recipes, found ${new Set(builtInIds).size}`);
+  for (const id of ["brave-cache", "teams-cache", "vscode-cache", "npm-cache", "nuget-cache", "pip-cache", "cargo-cache", "gradle-cache", "nvidia-cache", "steam-web-cache"]) {
+    assert.ok(builtInIds.includes(id), `missing reviewed built-in ${id}`);
+  }
+  assert.match(recipes, /preview_winapp2/);
+  assert.match(recipes, /skipped_registry_keys/);
+  assert.match(recipes, /MAX_IMPORTED_RECIPES: usize = 8_000/);
+});
+
+test("System Cleaner bundles are versioned, signed, staged, and signer-pinned", () => {
+  assert.match(recipes, /ed25519_dalek/);
+  assert.match(recipes, /key\.verify/);
+  assert.match(recipes, /payload\.version <= existing\.version/);
+  assert.match(recipes, /signed by a different key/);
+  assert.match(recipes, /preview\.added/);
+  assert.match(recipes, /preview\.updated/);
+  assert.match(recipes, /preview\.removed/);
+  assert.match(storage, /CREATE TABLE IF NOT EXISTS system_cleaner_recipe_bundles/);
+});
+
+test("System Cleaner records structured history and separates Windows-owned maintenance and AppX removal", () => {
+  assert.match(storage, /CREATE TABLE IF NOT EXISTS system_cleaner_history/);
+  assert.match(page, /system_cleaner_history/);
+  assert.match(backend, /SHQueryRecycleBinW/);
+  assert.match(backend, /Delete-DeliveryOptimizationCache/);
+  assert.match(backend, /StartComponentCleanup/);
+  assert.match(backend, /Remove-AppxPackage -Package/);
+  assert.match(page, /appxRemoveTitle/);
 });

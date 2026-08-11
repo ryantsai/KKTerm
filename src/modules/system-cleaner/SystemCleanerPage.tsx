@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { listen } from "@tauri-apps/api/event";
+import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { useTranslation } from "react-i18next";
 import {
   AppWindow,
@@ -10,6 +11,10 @@ import {
   ChevronDown,
   ChevronRight,
   Clock,
+  Code2,
+  Database,
+  Download,
+  Eye,
   FileText,
   Gauge,
   Globe2,
@@ -19,6 +24,7 @@ import {
   RefreshCw,
   RotateCcw,
   Search,
+  Shield,
   Sparkles,
   Trash2,
   type IconComponent,
@@ -36,29 +42,29 @@ import { SystemCleanerScanOrb } from "./SystemCleanerScanOrb";
 import { useSystemCleanerScanStore } from "./scanState";
 import type {
   SystemCleanerDirectoryListing,
+  SystemCleanerAppxPackage,
+  SystemCleanerCleanupPlan,
+  SystemCleanerCleanupResult,
   SystemCleanerDiskEntry,
   SystemCleanerDrive,
+  SystemCleanerHistoryRecord,
   SystemCleanerOverview,
+  SystemCleanerRecipeBundleInfo,
+  SystemCleanerRecipeBundlePreview,
+  SystemCleanerRecipeCatalogEntry,
+  SystemCleanerRecipeValidation,
   SystemCleanerScanProgress,
+  SystemCleanerWinapp2Preview,
+  SystemCleanerWindowsMaintenanceStatus,
 } from "./types";
 import "./systemCleaner.css";
 
-type Section = "overview" | "storage" | "cleanup" | "recommendations" | "apps";
+type Section = "overview" | "storage" | "cleanup" | "recommendations" | "apps" | "management";
 type StorageSort = { key: "name" | "size" | "allocated"; direction: "asc" | "desc" };
-type MutationKind = "clean" | "delete-review" | "uninstall";
+type MutationKind = "plan" | "clean" | "delete-review" | "uninstall";
 type CleanupTone = "accent" | "green" | "amber" | "red";
 type CleanupSafety = "safe" | "review" | "risky";
 type CleanerApp = SystemCleanerOverview["apps"][number];
-
-const DEFAULT_CLEANUP_IDS = new Set([
-  "temp",
-  "windows-temp",
-  "browser-cache",
-  "chrome-cache",
-  "firefox-cache",
-  "shader-cache",
-  "thumbnail-cache",
-]);
 
 const CLEANUP_PRESENTATION: Record<string, { icon: IconComponent; tone: CleanupTone }> = {
   "temp": { icon: Clock, tone: "accent" },
@@ -86,14 +92,22 @@ const formatBytes = (bytes: number) => {
 
 const formatCount = (value: number) => new Intl.NumberFormat().format(value);
 
-function cleanupSafety(id: string): CleanupSafety {
-  if (id === "crash-dumps") return "risky";
-  if (id === "error-reports") return "review";
-  return "safe";
+function cleanupSafety(item: SystemCleanerRecipeCatalogEntry): CleanupSafety {
+  return item.safety;
 }
 
 function defaultCleanupSelection(items: SystemCleanerOverview["cleanup"]) {
-  return items.filter((item) => item.bytes > 0 && DEFAULT_CLEANUP_IDS.has(item.id)).map((item) => item.id);
+  return items.filter((item) => item.bytes > 0 && item.defaultSelected).map((item) => item.id);
+}
+
+function recipeTitle(t: ReturnType<typeof useTranslation>["t"], item: SystemCleanerRecipeCatalogEntry) {
+  return item.builtIn ? t(`systemCleaner.category.${item.id}`) : item.title;
+}
+
+function recipeDescription(t: ReturnType<typeof useTranslation>["t"], item: SystemCleanerRecipeCatalogEntry) {
+  if (item.builtIn) return t(`systemCleaner.categoryDescription.${item.id}`);
+  if (item.description === "__kkterm_winapp2__") return t("systemCleaner.importedWinapp2Description");
+  return item.description;
 }
 
 function matchesQuery(query: string, ...values: string[]) {
@@ -123,6 +137,8 @@ export function SystemCleanerPage({ active, onOpenAssistant }: { active: boolean
   const [selected, setSelected] = useState<string[]>([]);
   const [selectedReviewPaths, setSelectedReviewPaths] = useState<string[]>([]);
   const [selectedAppIds, setSelectedAppIds] = useState<string[]>([]);
+  const [cleanupPlan, setCleanupPlan] = useState<SystemCleanerCleanupPlan>();
+  const [cleanupResult, setCleanupResult] = useState<SystemCleanerCleanupResult>();
   const [confirmCleanup, setConfirmCleanup] = useState(false);
   const [confirmReviewDelete, setConfirmReviewDelete] = useState(false);
   const [pendingApps, setPendingApps] = useState<CleanerApp[]>([]);
@@ -185,8 +201,20 @@ export function SystemCleanerPage({ active, onOpenAssistant }: { active: boolean
     }
   }, [beginScan, finishScan, notice, selectedDrive, t, updateProgress]);
 
+  const refreshCleanupCatalog = useCallback(async () => {
+    try {
+      const cleanup = await invokeCommand("system_cleaner_catalog", undefined);
+      setOverview((current) => current ? { ...current, cleanup } : current);
+      setSelected((current) => current.filter((id) => cleanup.some((item) => item.id === id)));
+      setCleanupPlan(undefined);
+      setCleanupResult(undefined);
+    } catch (error) {
+      notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" });
+    }
+  }, [notice, t]);
+
   const selectedBytes = useMemo(() => overview?.cleanup.filter((item) => selected.includes(item.id)).reduce((sum, item) => sum + item.bytes, 0) ?? 0, [overview, selected]);
-  const reclaimableBytes = useMemo(() => overview?.cleanup.filter((item) => cleanupSafety(item.id) === "safe").reduce((sum, item) => sum + item.bytes, 0) ?? 0, [overview]);
+  const reclaimableBytes = useMemo(() => overview?.cleanup.filter((item) => cleanupSafety(item) === "safe").reduce((sum, item) => sum + item.bytes, 0) ?? 0, [overview]);
   const selectedApps = useMemo(() => overview?.apps.filter((app) => selectedAppIds.includes(app.id)) ?? [], [overview, selectedAppIds]);
   const selectedReviewFiles = useMemo(() => {
     const byPath = new Map(overview?.recommendations.flatMap((category) => category.files).map((file) => [file.path, file]) ?? []);
@@ -207,11 +235,38 @@ export function SystemCleanerPage({ active, onOpenAssistant }: { active: boolean
     }
   }, [directoryLoading, notice, scanActive, t]);
 
-  async function clean() {
+  async function prepareCleanup() {
+    setMutationKind("plan");
+    try {
+      const plan = await invokeCommand("system_cleaner_build_cleanup_plan", { ids: selected });
+      setCleanupPlan(plan);
+      setCleanupResult(undefined);
+      if (plan.items.length === 0) {
+        notice(t("systemCleaner.previewEmpty"), { tone: "info" });
+      } else {
+        setConfirmCleanup(true);
+      }
+    } catch (error) {
+      notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" });
+    } finally {
+      setMutationKind(undefined);
+    }
+  }
+
+  async function clean(retryPaths?: string[]) {
+    if (!cleanupPlan) return;
     setMutationKind("clean");
     try {
-      const freed = await invokeCommand("system_cleaner_clean", { ids: selected });
-      notice(t("systemCleaner.cleaned", { size: formatBytes(freed) }), { tone: "success" });
+      const result = await invokeCommand("system_cleaner_execute_cleanup_plan", {
+        token: cleanupPlan.token,
+        retryPaths,
+      });
+      setCleanupResult(result);
+      notice(t("systemCleaner.cleanedWithItems", {
+        count: result.deletedItems,
+        size: formatBytes(result.freedBytes),
+        skipped: result.skipped.length,
+      }), { tone: result.skipped.length > 0 ? "warning" : "success" });
       await scan();
     } catch (error) {
       notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" });
@@ -273,6 +328,8 @@ export function SystemCleanerPage({ active, onOpenAssistant }: { active: boolean
     setSelected([]);
     setSelectedReviewPaths([]);
     setSelectedAppIds([]);
+    setCleanupPlan(undefined);
+    setCleanupResult(undefined);
     setSection("overview");
   }
 
@@ -306,12 +363,12 @@ export function SystemCleanerPage({ active, onOpenAssistant }: { active: boolean
         selectedAppCount={selectedAppIds.length}
         selectedReviewCount={selectedReviewPaths.length}
         selectedReviewBytes={selectedReviewBytes}
-        onClean={() => setConfirmCleanup(true)}
+        onClean={() => void prepareCleanup()}
         onSection={setSection}
       />
       <section className="system-cleaner-content">
         {scanActive ? <ScanOverlay progress={progress} /> : null}
-        {!overview && !scanActive ? <div className="system-cleaner-empty"><span className="system-cleaner-empty-icon"><Gauge size={24} /></span><h2>{t("systemCleaner.overview")}</h2><p>{t("systemCleaner.scanHint")}</p><button type="button" className="toolbar-button" disabled={!selectedDrive} onClick={() => void scan()}><RefreshCw size={14} />{t("systemCleaner.scan")}</button></div> : null}
+        {!overview && !scanActive && section !== "management" ? <div className="system-cleaner-empty"><span className="system-cleaner-empty-icon"><Gauge size={24} /></span><h2>{t("systemCleaner.overview")}</h2><p>{t("systemCleaner.scanHint")}</p><button type="button" className="toolbar-button" disabled={!selectedDrive} onClick={() => void scan()}><RefreshCw size={14} />{t("systemCleaner.scan")}</button></div> : null}
         {overview && section === "overview" ? <OverviewView overview={overview} query={query} reclaimableBytes={reclaimableBytes} onOpenFolder={openOverviewFolder} onSection={setSection} /> : null}
         {overview && directory && section === "storage" ? <StorageView directory={directory} loading={directoryLoading} overview={overview} query={query} onOpenDirectory={openDirectory} /> : null}
         {overview && section === "cleanup" ? <CleanupView
@@ -321,11 +378,17 @@ export function SystemCleanerPage({ active, onOpenAssistant }: { active: boolean
           query={query}
           selected={selected}
           selectedBytes={selectedBytes}
-          onClean={() => setConfirmCleanup(true)}
-          onReset={() => setSelected(defaultCleanupSelection(overview.cleanup))}
-          onToggle={(id) => setSelected((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])}
+          cleanupPlan={cleanupPlan}
+          cleanupResult={cleanupResult}
+          onClean={() => void prepareCleanup()}
+          onCancel={() => void invokeCommand("system_cleaner_cancel_cleanup")}
+          onRetry={() => void clean(cleanupResult?.skipped.map((item) => item.path))}
+          onReset={() => { setCleanupPlan(undefined); setCleanupResult(undefined); setSelected(defaultCleanupSelection(overview.cleanup)); }}
+          onToggle={(id) => { setCleanupPlan(undefined); setCleanupResult(undefined); setSelected((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]); }}
           onToggleSafe={(checked) => setSelected((current) => {
-            const safeIds = overview.cleanup.filter((item) => item.bytes > 0 && cleanupSafety(item.id) === "safe").map((item) => item.id);
+            const safeIds = overview.cleanup.filter((item) => item.bytes > 0 && cleanupSafety(item) === "safe").map((item) => item.id);
+            setCleanupPlan(undefined);
+            setCleanupResult(undefined);
             return checked ? Array.from(new Set([...current, ...safeIds])) : current.filter((id) => !safeIds.includes(id));
           })}
         /> : null}
@@ -349,9 +412,12 @@ export function SystemCleanerPage({ active, onOpenAssistant }: { active: boolean
           onUninstall={(app) => setPendingApps([app])}
           onUninstallSelected={() => setPendingApps(selectedApps)}
         /> : null}
+        {section === "management" ? <CleanerManagementView onCatalogChanged={() => void refreshCleanupCatalog()} /> : null}
       </section>
     </div>
-    {confirmCleanup ? <ConfirmSheet tone="danger" title={t("systemCleaner.cleanTitle")} message={t("systemCleaner.cleanMessage", { size: formatBytes(selectedBytes) })} confirmLabel={t("systemCleaner.clean", { size: formatBytes(selectedBytes) })} onConfirm={() => { setConfirmCleanup(false); void clean(); }} onCancel={() => setConfirmCleanup(false)} /> : null}
+    {confirmCleanup && cleanupPlan ? <ConfirmSheet tone="danger" title={t("systemCleaner.cleanTitle")} message={cleanupPlan.blockedProcesses.length > 0
+      ? t("systemCleaner.cleanPlanBlockedMessage", { count: cleanupPlan.items.length, size: formatBytes(cleanupPlan.totalBytes), processes: cleanupPlan.blockedProcesses.join(", ") })
+      : t("systemCleaner.cleanPlanMessage", { count: cleanupPlan.items.length, size: formatBytes(cleanupPlan.totalBytes) })} confirmLabel={t("systemCleaner.clean", { size: formatBytes(cleanupPlan.totalBytes) })} onConfirm={() => { setConfirmCleanup(false); void clean(); }} onCancel={() => setConfirmCleanup(false)} /> : null}
     {confirmReviewDelete ? <ConfirmSheet tone="danger" title={t("systemCleaner.deleteReviewTitle")} message={t("systemCleaner.deleteReviewMessage", { count: selectedReviewFiles.length, size: formatBytes(selectedReviewBytes) })} confirmLabel={t("systemCleaner.deleteSelected", { count: selectedReviewFiles.length })} onConfirm={() => { setConfirmReviewDelete(false); void deleteReviewFiles(); }} onCancel={() => setConfirmReviewDelete(false)} /> : null}
     {pendingAppCount > 0 ? <ConfirmSheet
       tone="danger"
@@ -404,6 +470,7 @@ function CleanerSidebar({
     { id: "cleanup", icon: Brush, detail: overview ? formatBytes(selectedBytes) : undefined },
     { id: "recommendations", icon: Clock, detail: overview ? formatCount(overview.recommendations.reduce((sum, category) => sum + category.files.length, 0)) : undefined },
     { id: "apps", icon: Box, detail: overview ? formatCount(overview.apps.length) : undefined },
+    { id: "management", icon: Shield },
   ];
   return <aside className="system-cleaner-sidebar">
     <section className="system-cleaner-drive-card" aria-label={allocationDetail} title={allocationDetail}>
@@ -436,7 +503,7 @@ function OverviewView({ overview, query, reclaimableBytes, onOpenFolder, onSecti
   const { t } = useTranslation();
   const used = Math.max(0, overview.diskCapacityBytes - overview.diskFreeBytes);
   const folders = overview.largest.filter((entry) => entry.isDirectory && matchesQuery(query, entry.name, entry.path)).slice(0, 10);
-  const cleanup = overview.cleanup.filter((item) => matchesQuery(query, t(`systemCleaner.category.${item.id}`), item.path));
+  const cleanup = overview.cleanup.filter((item) => matchesQuery(query, recipeTitle(t, item), item.displayPath)).slice(0, 12);
   const apps = overview.apps.filter((app) => matchesQuery(query, app.name, app.id, app.version)).slice(0, 6);
   const elapsedSeconds = Math.max(.1, overview.elapsedMs / 1000).toFixed(1);
   return <div className="system-cleaner-view system-cleaner-overview-view">
@@ -444,7 +511,7 @@ function OverviewView({ overview, query, reclaimableBytes, onOpenFolder, onSecti
     <div className="system-cleaner-metric-grid">
       <Metric label={t("systemCleaner.usedSpace")} value={formatBytes(used)} detail={`${(used / Math.max(1, overview.diskCapacityBytes) * 100).toFixed(1)}%`} />
       <Metric label={t("systemCleaner.freeSpace")} value={formatBytes(overview.diskFreeBytes)} detail={`${(overview.diskFreeBytes / Math.max(1, overview.diskCapacityBytes) * 100).toFixed(1)}%`} />
-      <Metric label={t("systemCleaner.cleanupHeading")} value={formatBytes(reclaimableBytes)} detail={t("systemCleaner.safeCategories", { count: overview.cleanup.filter((item) => cleanupSafety(item.id) === "safe").length })} accent />
+      <Metric label={t("systemCleaner.cleanupHeading")} value={formatBytes(reclaimableBytes)} detail={t("systemCleaner.safeCategories", { count: overview.cleanup.filter((item) => cleanupSafety(item) === "safe").length })} accent />
       <Metric label={t("systemCleaner.appsHeading")} value={formatCount(overview.apps.length)} detail={t("systemCleaner.apps")} />
     </div>
     <div className="system-cleaner-overview-grid">
@@ -459,7 +526,7 @@ function OverviewView({ overview, query, reclaimableBytes, onOpenFolder, onSecti
       <div className="system-cleaner-overview-stack">
         <section className="system-cleaner-panel">
           <PanelHead title={t("systemCleaner.cleanupHeading")} detail={formatBytes(reclaimableBytes)} action={t("systemCleaner.cleanup")} onAction={() => onSection("cleanup")} />
-          <div className="system-cleaner-summary-list">{cleanup.map((item) => <div key={item.id}><span className={`system-cleaner-summary-dot ${cleanupSafety(item.id)}`} /><span>{t(`systemCleaner.category.${item.id}`)}</span><strong>{formatBytes(item.bytes)}</strong><SafetyBadge safety={cleanupSafety(item.id)} /></div>)}</div>
+          <div className="system-cleaner-summary-list">{cleanup.map((item) => <div key={item.id}><span className={`system-cleaner-summary-dot ${cleanupSafety(item)}`} /><span>{recipeTitle(t, item)}</span><strong>{formatBytes(item.bytes)}</strong><SafetyBadge safety={cleanupSafety(item)} /></div>)}</div>
         </section>
         <section className="system-cleaner-panel">
           <PanelHead title={t("systemCleaner.appsHeading")} action={t("systemCleaner.apps")} onAction={() => onSection("apps")} />
@@ -478,12 +545,16 @@ function PanelHead({ action, detail, onAction, title }: { action: string; detail
   return <header className="system-cleaner-panel-head"><strong>{title}</strong>{detail ? <span>{detail}</span> : null}<button type="button" onClick={onAction}>{action}</button></header>;
 }
 
-function CleanupView({ busy, cleaning, items, onClean, onReset, onToggle, onToggleSafe, query, selected, selectedBytes }: {
+function CleanupView({ busy, cleaning, cleanupPlan, cleanupResult, items, onCancel, onClean, onReset, onRetry, onToggle, onToggleSafe, query, selected, selectedBytes }: {
   busy: boolean;
   cleaning: boolean;
+  cleanupPlan?: SystemCleanerCleanupPlan;
+  cleanupResult?: SystemCleanerCleanupResult;
   items: SystemCleanerOverview["cleanup"];
+  onCancel: () => void;
   onClean: () => void;
   onReset: () => void;
+  onRetry: () => void;
   onToggle: (id: string) => void;
   onToggleSafe: (checked: boolean) => void;
   query: string;
@@ -491,36 +562,290 @@ function CleanupView({ busy, cleaning, items, onClean, onReset, onToggle, onTogg
   selectedBytes: number;
 }) {
   const { t } = useTranslation();
-  const visibleItems = items.filter((item) => matchesQuery(query, t(`systemCleaner.category.${item.id}`), t(`systemCleaner.categoryDescription.${item.id}`), item.path));
-  const safeItems = items.filter((item) => item.bytes > 0 && cleanupSafety(item.id) === "safe");
+  const visibleItems = items.filter((item) => matchesQuery(query, recipeTitle(t, item), recipeDescription(t, item), item.displayPath, item.source));
+  const safeItems = items.filter((item) => item.bytes > 0 && cleanupSafety(item) === "safe");
   const allSafeSelected = safeItems.length > 0 && safeItems.every((item) => selected.includes(item.id));
   return <div className="system-cleaner-view system-cleaner-cleanup-view">
     <header className="system-cleaner-section-head"><h2>{t("systemCleaner.cleanup")}</h2><p>{t("systemCleaner.selectedCategories", { count: selected.length, total: items.length })}</p><label className="system-cleaner-select-safe"><input type="checkbox" checked={allSafeSelected} disabled={busy} onChange={(event) => onToggleSafe(event.currentTarget.checked)} />{t("systemCleaner.selectAllSafe")}</label></header>
     <div className="system-cleaner-cleanup-groups">
       {(["safe", "review", "risky"] as const).map((safety) => {
-        const group = visibleItems.filter((item) => cleanupSafety(item.id) === safety);
+        const group = visibleItems.filter((item) => cleanupSafety(item) === safety);
         if (group.length === 0) return null;
         const bytes = group.reduce((sum, item) => sum + item.bytes, 0);
+        const renderedGroup = group.slice(0, 500);
         return <section className="system-cleaner-cleanup-group" key={safety}>
           <header><SafetyBadge safety={safety} /><strong>{t(`systemCleaner.safety.${safety}`)}</strong><span>{formatBytes(bytes)}</span></header>
-          <div>{group.map((item) => {
+          <div>{renderedGroup.map((item) => {
             const checked = selected.includes(item.id);
             const presentation = CLEANUP_PRESENTATION[item.id] ?? { icon: FileText, tone: "accent" as const };
             const Icon = presentation.icon;
             return <label className={`system-cleaner-cleanup-row${checked ? " selected" : ""}`} data-tone={presentation.tone} key={item.id}>
-              <input type="checkbox" checked={checked} disabled={busy || item.bytes === 0} onChange={() => onToggle(item.id)} />
+              <input type="checkbox" checked={checked} disabled={busy || (item.builtIn && item.bytes === 0)} onChange={() => onToggle(item.id)} />
               <span className="system-cleaner-row-icon"><Icon size={17} /></span>
-              <span className="system-cleaner-cleanup-name"><strong>{t(`systemCleaner.category.${item.id}`)}</strong><bdi dir="ltr" title={item.path}>{item.path}</bdi></span>
-              <span className="system-cleaner-cleanup-description">{t(`systemCleaner.categoryDescription.${item.id}`)}</span>
+              <span className="system-cleaner-cleanup-name"><strong>{recipeTitle(t, item)}</strong><bdi dir="ltr" title={item.displayPath}>{item.displayPath}</bdi></span>
+              <span className="system-cleaner-cleanup-description">{recipeDescription(t, item)}{item.runningProcesses.length > 0 ? ` · ${t("systemCleaner.processRunning", { processes: item.runningProcesses.join(", ") })}` : ""}</span>
               <strong className="system-cleaner-row-size">{formatBytes(item.bytes)}</strong>
             </label>;
-          })}</div>
+          })}{group.length > renderedGroup.length ? <p className="system-cleaner-recipe-truncated">{t("systemCleaner.recipeRowsTruncated", { count: group.length - renderedGroup.length })}</p> : null}</div>
         </section>;
       })}
     </div>
-    <footer className="system-cleaner-action-bar"><div><span>{t("systemCleaner.selectedCategories", { count: selected.length, total: items.length })}</span><strong>{formatBytes(selectedBytes)}</strong></div><button type="button" className="toolbar-button" disabled={busy} onClick={onReset}><RotateCcw size={14} />{t("systemCleaner.resetDefaults")}</button><button type="button" className="primary-button" disabled={busy || selectedBytes === 0} onClick={onClean}><Trash2 size={15} />{t("systemCleaner.clean", { size: formatBytes(selectedBytes) })}</button></footer>
-    {cleaning ? <div className="system-cleaner-operation-overlay" role="status"><SystemCleanerScanOrb size={64} state="working" label={t("systemCleaner.cleaningWorking")} /><strong>{t("systemCleaner.cleaningWorking")}</strong></div> : null}
+    {cleanupPlan ? <CleanupPlanPreview plan={cleanupPlan} result={cleanupResult} onRetry={onRetry} /> : null}
+    <footer className="system-cleaner-action-bar"><div><span>{t("systemCleaner.selectedCategories", { count: selected.length, total: items.length })}</span><strong>{formatBytes(selectedBytes)}</strong></div><button type="button" className="toolbar-button" disabled={busy} onClick={onReset}><RotateCcw size={14} />{t("systemCleaner.resetDefaults")}</button><button type="button" className="primary-button" disabled={busy || selected.length === 0} onClick={onClean}><Eye size={15} />{t("systemCleaner.previewCleanup")}</button></footer>
+    {cleaning ? <div className="system-cleaner-operation-overlay" role="status"><SystemCleanerScanOrb size={64} state="working" label={t("systemCleaner.cleaningWorking")} /><strong>{t("systemCleaner.cleaningWorking")}</strong><button type="button" className="toolbar-button" onClick={onCancel}>{t("common.cancel")}</button></div> : null}
   </div>;
+}
+
+function CleanupPlanPreview({ onRetry, plan, result }: { onRetry: () => void; plan: SystemCleanerCleanupPlan; result?: SystemCleanerCleanupResult }) {
+  const { t } = useTranslation();
+  const skippedPaths = new Set(result?.skipped.map((item) => item.path) ?? []);
+  return <section className="system-cleaner-plan-preview">
+    <header><div><strong>{t("systemCleaner.previewTitle")}</strong><span>{t("systemCleaner.previewSummary", { count: plan.items.length, size: formatBytes(plan.totalBytes), excluded: plan.excludedItems })}</span></div>{result && result.skipped.length > 0 ? <button type="button" className="toolbar-button" onClick={onRetry}><RotateCcw size={14} />{t("systemCleaner.retrySkipped", { count: result.skipped.length })}</button> : null}</header>
+    {plan.blockedProcesses.length > 0 ? <p className="system-cleaner-plan-warning">{t("systemCleaner.closeAppsWarning", { processes: plan.blockedProcesses.join(", ") })}</p> : null}
+    <div>{plan.items.slice(0, 500).map((item) => <div className={skippedPaths.has(item.path) ? "skipped" : ""} key={`${item.recipeId}-${item.path}`}><bdi dir="ltr" title={item.path}>{item.path}</bdi><strong>{formatBytes(item.bytes)}</strong></div>)}</div>
+    {plan.items.length > 500 ? <small>{t("systemCleaner.previewTruncated", { count: plan.items.length - 500 })}</small> : null}
+  </section>;
+}
+
+type ManagementTab = "safety" | "rules" | "history" | "windowsApps";
+type MaintenanceAction = "recycleBin" | "deliveryOptimization" | "componentCleanup";
+
+function CleanerManagementView({ onCatalogChanged }: { onCatalogChanged: () => void }) {
+  const { t } = useTranslation();
+  const notice = useWorkspaceStore((state) => state.showStatusBarNotice);
+  const [tab, setTab] = useState<ManagementTab>("safety");
+  const [keepPaths, setKeepPaths] = useState<string[]>([]);
+  const [history, setHistory] = useState<SystemCleanerHistoryRecord[]>([]);
+  const [bundles, setBundles] = useState<SystemCleanerRecipeBundleInfo[]>([]);
+  const [appx, setAppx] = useState<SystemCleanerAppxPackage[]>([]);
+  const [maintenance, setMaintenance] = useState<SystemCleanerWindowsMaintenanceStatus>();
+  const [loading, setLoading] = useState(false);
+  const [ruleJson, setRuleJson] = useState("");
+  const [ruleValidation, setRuleValidation] = useState<SystemCleanerRecipeValidation>();
+  const [bundleJson, setBundleJson] = useState("");
+  const [bundlePreview, setBundlePreview] = useState<SystemCleanerRecipeBundlePreview>();
+  const [winapp2Text, setWinapp2Text] = useState("");
+  const [winapp2Preview, setWinapp2Preview] = useState<SystemCleanerWinapp2Preview>();
+  const [pendingAppx, setPendingAppx] = useState<SystemCleanerAppxPackage>();
+  const [pendingBundle, setPendingBundle] = useState<SystemCleanerRecipeBundleInfo>();
+  const [pendingMaintenance, setPendingMaintenance] = useState<MaintenanceAction>();
+
+  const refresh = useCallback(async () => {
+    if (!isTauriRuntime()) return;
+    setLoading(true);
+    try {
+      const [paths, runs, installedBundles] = await Promise.all([
+        invokeCommand("system_cleaner_list_keep_paths", undefined),
+        invokeCommand("system_cleaner_history", { limit: 100 }),
+        invokeCommand("system_cleaner_list_recipe_bundles", undefined),
+      ]);
+      setKeepPaths(paths);
+      setHistory(runs);
+      setBundles(installedBundles);
+    } catch (error) {
+      notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" });
+    } finally {
+      setLoading(false);
+    }
+  }, [notice, t]);
+
+  useEffect(() => { void refresh(); }, [refresh]);
+
+  async function addKeepPath() {
+    const selection = await openDialog({ directory: true, multiple: false });
+    if (!selection || Array.isArray(selection)) return;
+    try {
+      setKeepPaths(await invokeCommand("system_cleaner_add_keep_path", { path: selection }));
+      notice(t("systemCleaner.keepPathAdded"), { tone: "success" });
+    } catch (error) {
+      notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" });
+    }
+  }
+
+  async function removeKeepPath(path: string) {
+    try {
+      setKeepPaths(await invokeCommand("system_cleaner_remove_keep_path", { path }));
+      notice(t("systemCleaner.keepPathRemoved"), { tone: "success" });
+    } catch (error) {
+      notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" });
+    }
+  }
+
+  async function validateRule() {
+    try {
+      setRuleValidation(await invokeCommand("system_cleaner_validate_recipe", { rawJson: ruleJson }));
+    } catch (error) {
+      notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" });
+    }
+  }
+
+  async function previewBundle() {
+    try {
+      setBundlePreview(await invokeCommand("system_cleaner_preview_signed_bundle", { rawJson: bundleJson }));
+    } catch (error) {
+      setBundlePreview(undefined);
+      notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" });
+    }
+  }
+
+  async function importBundle() {
+    try {
+      const imported = await invokeCommand("system_cleaner_import_signed_bundle", { rawJson: bundleJson });
+      notice(t("systemCleaner.bundleImported", { count: imported.recipeCount }), { tone: "success" });
+      setBundleJson("");
+      setBundlePreview(undefined);
+      await refresh();
+      onCatalogChanged();
+    } catch (error) {
+      notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" });
+    }
+  }
+
+  async function previewWinapp2() {
+    try {
+      setWinapp2Preview(await invokeCommand("system_cleaner_preview_winapp2", { text: winapp2Text, source: "Local Winapp2.ini" }));
+    } catch (error) {
+      setWinapp2Preview(undefined);
+      notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" });
+    }
+  }
+
+  async function importWinapp2() {
+    try {
+      const imported = await invokeCommand("system_cleaner_import_winapp2", { text: winapp2Text, source: "Local Winapp2.ini" });
+      notice(t("systemCleaner.winapp2Imported", { count: imported.recipeCount }), { tone: "success" });
+      setWinapp2Text("");
+      setWinapp2Preview(undefined);
+      await refresh();
+      onCatalogChanged();
+    } catch (error) {
+      notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" });
+    }
+  }
+
+  async function loadAppx() {
+    setLoading(true);
+    try {
+      const [packages, status] = await Promise.all([
+        invokeCommand("system_cleaner_list_appx_packages", undefined),
+        invokeCommand("system_cleaner_windows_maintenance_status", undefined),
+      ]);
+      setAppx(packages);
+      setMaintenance(status);
+    } catch (error) {
+      notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function runMaintenance() {
+    if (!pendingMaintenance) return;
+    const action = pendingMaintenance;
+    setPendingMaintenance(undefined);
+    setLoading(true);
+    try {
+      if (action === "recycleBin") {
+        const freed = await invokeCommand("system_cleaner_empty_recycle_bin", undefined);
+        notice(t("systemCleaner.recycleBinCleaned", { size: formatBytes(freed) }), { tone: "success" });
+      } else if (action === "deliveryOptimization") {
+        await invokeCommand("system_cleaner_clear_delivery_optimization", undefined);
+        notice(t("systemCleaner.deliveryOptimizationCleaned"), { tone: "success" });
+      } else {
+        await invokeCommand("system_cleaner_start_component_cleanup", undefined);
+        notice(t("systemCleaner.componentCleanupCompleted"), { tone: "success" });
+      }
+      await loadAppx();
+    } catch (error) {
+      notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function removeAppx() {
+    if (!pendingAppx) return;
+    const app = pendingAppx;
+    setPendingAppx(undefined);
+    setLoading(true);
+    try {
+      await invokeCommand("system_cleaner_remove_appx_package", { packageFullName: app.packageFullName });
+      notice(t("systemCleaner.appxRemoved", { name: app.name }), { tone: "success" });
+      await loadAppx();
+    } catch (error) {
+      notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function removeBundle() {
+    if (!pendingBundle) return;
+    const bundle = pendingBundle;
+    setPendingBundle(undefined);
+    try {
+      await invokeCommand("system_cleaner_remove_recipe_bundle", { bundleId: bundle.bundleId });
+      notice(t("systemCleaner.bundleRemoved", { name: bundle.bundleId }), { tone: "success" });
+      await refresh();
+      onCatalogChanged();
+    } catch (error) {
+      notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" });
+    }
+  }
+
+  const tabs: Array<{ id: ManagementTab; icon: IconComponent }> = [
+    { id: "safety", icon: Shield },
+    { id: "rules", icon: Code2 },
+    { id: "history", icon: Database },
+    { id: "windowsApps", icon: Download },
+  ];
+  return <div className="system-cleaner-view system-cleaner-management-view" aria-busy={loading}>
+    <header className="system-cleaner-section-head"><h2>{t("systemCleaner.management")}</h2><p>{t("systemCleaner.managementDescription")}</p></header>
+    <nav className="system-cleaner-management-tabs" aria-label={t("systemCleaner.management")}>{tabs.map(({ id, icon: Icon }) => <button type="button" key={id} className={tab === id ? "active" : ""} onClick={() => { setTab(id); if (id === "windowsApps" && appx.length === 0) void loadAppx(); }}><Icon size={15} />{t(`systemCleaner.managementTab.${id}`)}</button>)}</nav>
+    <div className="system-cleaner-management-body">
+      {tab === "safety" ? <section className="system-cleaner-management-panel"><header><div><h3>{t("systemCleaner.keepList")}</h3><p>{t("systemCleaner.keepListDescription")}</p></div><button type="button" className="toolbar-button" onClick={() => void addKeepPath()}>{t("systemCleaner.addKeepPath")}</button></header><div className="system-cleaner-path-list">{keepPaths.length > 0 ? keepPaths.map((path) => <div key={path}><bdi dir="ltr" title={path}>{path}</bdi><button type="button" className="system-cleaner-ai-explain" onClick={() => void removeKeepPath(path)}>{t("common.remove")}</button></div>) : <p>{t("systemCleaner.noKeepPaths")}</p>}</div><aside className="system-cleaner-protection-note"><Shield size={18} /><div><strong>{t("systemCleaner.protectedPaths")}</strong><p>{t("systemCleaner.protectedPathsDescription")}</p></div></aside></section> : null}
+      {tab === "rules" ? <div className="system-cleaner-rule-grid">
+        <section className="system-cleaner-management-panel"><header><div><h3>{t("systemCleaner.ruleLab")}</h3><p>{t("systemCleaner.ruleLabDescription")}</p></div></header><textarea value={ruleJson} onChange={(event) => { setRuleJson(event.currentTarget.value); setRuleValidation(undefined); }} rows={10} placeholder={t("systemCleaner.recipeJsonPlaceholder")} /><button type="button" className="toolbar-button" disabled={!ruleJson.trim()} onClick={() => void validateRule()}><Eye size={14} />{t("systemCleaner.validateAndPreview")}</button>{ruleValidation ? <RuleValidationResult result={ruleValidation} /> : null}</section>
+        <section className="system-cleaner-management-panel"><header><div><h3>{t("systemCleaner.signedBundles")}</h3><p>{t("systemCleaner.signedBundlesDescription")}</p></div></header><textarea value={bundleJson} onChange={(event) => { setBundleJson(event.currentTarget.value); setBundlePreview(undefined); }} rows={8} placeholder={t("systemCleaner.signedBundlePlaceholder")} /><div className="system-cleaner-inline-actions"><button type="button" className="toolbar-button" disabled={!bundleJson.trim()} onClick={() => void previewBundle()}>{t("systemCleaner.previewBundle")}</button><button type="button" className="primary-button" disabled={!bundlePreview} onClick={() => void importBundle()}>{t("systemCleaner.importBundle")}</button></div>{bundlePreview ? <p>{t("systemCleaner.bundlePreviewSummary", { added: bundlePreview.added.length, updated: bundlePreview.updated.length, removed: bundlePreview.removed.length, fingerprint: bundlePreview.signerFingerprint })}</p> : null}<BundleList bundles={bundles} onRemove={setPendingBundle} /></section>
+        <section className="system-cleaner-management-panel"><header><div><h3>{t("systemCleaner.winapp2Import")}</h3><p>{t("systemCleaner.winapp2Description")}</p></div></header><textarea value={winapp2Text} onChange={(event) => { setWinapp2Text(event.currentTarget.value); setWinapp2Preview(undefined); }} rows={8} placeholder={t("systemCleaner.winapp2Placeholder")} /><div className="system-cleaner-inline-actions"><button type="button" className="toolbar-button" disabled={!winapp2Text.trim()} onClick={() => void previewWinapp2()}>{t("systemCleaner.previewBundle")}</button><button type="button" className="primary-button" disabled={!winapp2Preview} onClick={() => void importWinapp2()}>{t("systemCleaner.importBundle")}</button></div>{winapp2Preview ? <p>{t("systemCleaner.winapp2PreviewSummary", { count: winapp2Preview.recipeCount, registry: winapp2Preview.skippedRegistryKeys, unsupported: winapp2Preview.skippedUnsupportedEntries })}</p> : null}</section>
+      </div> : null}
+      {tab === "history" ? <HistoryList history={history} /> : null}
+      {tab === "windowsApps" ? <div className="system-cleaner-windows-management"><WindowsMaintenance loading={loading} status={maintenance} onRun={setPendingMaintenance} /><AppxList apps={appx} loading={loading} onRefresh={() => void loadAppx()} onRemove={setPendingAppx} /></div> : null}
+    </div>
+    {pendingAppx ? <ConfirmSheet tone="danger" title={t("systemCleaner.appxRemoveTitle")} message={t("systemCleaner.appxRemoveMessage", { name: pendingAppx.name, packageId: pendingAppx.packageFullName })} confirmLabel={t("systemCleaner.appxRemove")} onConfirm={() => void removeAppx()} onCancel={() => setPendingAppx(undefined)} /> : null}
+    {pendingBundle ? <ConfirmSheet tone="danger" title={t("systemCleaner.removeBundleTitle")} message={t("systemCleaner.removeBundleMessage", { name: pendingBundle.bundleId, count: pendingBundle.recipeCount })} confirmLabel={t("common.remove")} onConfirm={() => void removeBundle()} onCancel={() => setPendingBundle(undefined)} /> : null}
+    {pendingMaintenance ? <ConfirmSheet tone={pendingMaintenance === "recycleBin" ? "danger" : "info"} title={t(`systemCleaner.maintenanceConfirm.${pendingMaintenance}.title`)} message={t(`systemCleaner.maintenanceConfirm.${pendingMaintenance}.message`, { count: maintenance?.recycleBinItems ?? 0, size: formatBytes(maintenance?.recycleBinBytes ?? 0) })} confirmLabel={t(`systemCleaner.maintenanceConfirm.${pendingMaintenance}.confirm`)} onConfirm={() => void runMaintenance()} onCancel={() => setPendingMaintenance(undefined)} /> : null}
+  </div>;
+}
+
+function RuleValidationResult({ result }: { result: SystemCleanerRecipeValidation }) {
+  const { t } = useTranslation();
+  return <div className={`system-cleaner-validation ${result.valid ? "valid" : "invalid"}`}>{result.valid && result.preview ? <><strong>{t("systemCleaner.recipeValid")}</strong><span>{t("systemCleaner.previewSummary", { count: result.preview.items.length, size: formatBytes(result.preview.totalBytes), excluded: result.preview.excludedItems })}</span></> : <><strong>{t("systemCleaner.recipeInvalid")}</strong>{result.errors.map((error) => <span key={error}>{error}</span>)}</>}</div>;
+}
+
+function BundleList({ bundles, onRemove }: { bundles: SystemCleanerRecipeBundleInfo[]; onRemove: (bundle: SystemCleanerRecipeBundleInfo) => void }) {
+  const { t } = useTranslation();
+  return <div className="system-cleaner-bundle-list">{bundles.map((bundle) => <div key={bundle.bundleId}><span><strong>{bundle.bundleId}</strong><small>{t("systemCleaner.bundleDetail", { count: bundle.recipeCount, version: bundle.version, fingerprint: bundle.signerFingerprint })}</small></span><button type="button" className="system-cleaner-ai-explain" onClick={() => onRemove(bundle)}>{t("common.remove")}</button></div>)}</div>;
+}
+
+function HistoryList({ history }: { history: SystemCleanerHistoryRecord[] }) {
+  const { t } = useTranslation();
+  return <section className="system-cleaner-management-panel"><header><div><h3>{t("systemCleaner.cleanupHistory")}</h3><p>{t("systemCleaner.cleanupHistoryDescription")}</p></div></header><div className="system-cleaner-history-list">{history.length > 0 ? history.map((run) => <article key={run.id}><span className={`system-cleaner-history-status ${run.status}`} /><div><strong>{t(`systemCleaner.historyStatus.${run.status}`)}</strong><time dateTime={run.completedAt}>{new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(run.completedAt))}</time></div><span>{t("systemCleaner.historyItems", { deleted: run.deletedItems, skipped: run.skippedItems })}</span><strong>{formatBytes(run.freedBytes)}</strong></article>) : <p>{t("systemCleaner.noCleanupHistory")}</p>}</div></section>;
+}
+
+function AppxList({ apps, loading, onRefresh, onRemove }: { apps: SystemCleanerAppxPackage[]; loading: boolean; onRefresh: () => void; onRemove: (app: SystemCleanerAppxPackage) => void }) {
+  const { t } = useTranslation();
+  return <section className="system-cleaner-management-panel"><header><div><h3>{t("systemCleaner.windowsApps")}</h3><p>{t("systemCleaner.windowsAppsDescription")}</p></div><button type="button" className="toolbar-button" disabled={loading} onClick={onRefresh}><RefreshCw size={14} className={loading ? "spin" : ""} />{t("common.refresh")}</button></header><div className="system-cleaner-appx-list">{apps.map((app) => <article key={app.packageFullName}><span><strong>{app.name}</strong><bdi dir="ltr" title={app.packageFullName}>{app.packageFullName}</bdi></span><small>{app.version}</small><button type="button" className="system-cleaner-uninstall" onClick={() => onRemove(app)}>{t("systemCleaner.appxRemove")}</button></article>)}</div></section>;
+}
+
+function WindowsMaintenance({ loading, onRun, status }: { loading: boolean; onRun: (action: MaintenanceAction) => void; status?: SystemCleanerWindowsMaintenanceStatus }) {
+  const { t } = useTranslation();
+  const actions: Array<{ id: MaintenanceAction; enabled: boolean; detail: string }> = [
+    { id: "recycleBin", enabled: (status?.recycleBinItems ?? 0) > 0, detail: t("systemCleaner.recycleBinDetail", { count: status?.recycleBinItems ?? 0, size: formatBytes(status?.recycleBinBytes ?? 0) }) },
+    { id: "deliveryOptimization", enabled: status?.deliveryOptimizationAvailable ?? false, detail: t("systemCleaner.deliveryOptimizationDescription") },
+    { id: "componentCleanup", enabled: status?.componentCleanupAvailable ?? false, detail: t("systemCleaner.componentCleanupDescription") },
+  ];
+  return <section className="system-cleaner-management-panel"><header><div><h3>{t("systemCleaner.windowsMaintenance")}</h3><p>{t("systemCleaner.windowsMaintenanceDescription")}</p></div></header><div className="system-cleaner-maintenance-list">{actions.map((action) => <article key={action.id}><span><strong>{t(`systemCleaner.maintenanceAction.${action.id}`)}</strong><small>{action.detail}</small></span><button type="button" className="toolbar-button" disabled={loading || !action.enabled} onClick={() => onRun(action.id)}>{t("systemCleaner.runMaintenance")}</button></article>)}</div></section>;
 }
 
 function RecommendationsView({ busy, categories, deleting, onDelete, onToggle, query, selectedBytes, selectedPaths }: {

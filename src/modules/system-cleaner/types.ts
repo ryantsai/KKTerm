@@ -22,7 +22,7 @@ export type SystemCleanerOverview = {
   totalBytes: number;
   totalAllocatedBytes: number;
   largest: SystemCleanerDiskEntry[];
-  cleanup: Array<{ id: string; path: string; bytes: number }>;
+  cleanup: SystemCleanerRecipeCatalogEntry[];
   recommendations: Array<{
     id: "large-old-files" | "old-downloads";
     bytes: number;
@@ -35,6 +35,113 @@ export type SystemCleanerOverview = {
   elapsedMs: number;
   diskCapacityBytes: number;
   diskFreeBytes: number;
+};
+
+export type SystemCleanerSafety = "safe" | "review" | "risky";
+
+export type SystemCleanerRecipeCatalogEntry = {
+  id: string;
+  version: number;
+  title: string;
+  description: string;
+  safety: SystemCleanerSafety;
+  defaultSelected: boolean;
+  displayPath: string;
+  bytes: number;
+  itemCount: number;
+  source: string;
+  builtIn: boolean;
+  warning?: string | null;
+  runningProcesses: string[];
+};
+
+export type SystemCleanerCleanupPlanItem = {
+  recipeId: string;
+  path: string;
+  bytes: number;
+  modifiedUnixMs: number;
+  fileId: number;
+};
+
+export type SystemCleanerCleanupPlan = {
+  token: string;
+  createdAt: string;
+  totalBytes: number;
+  excludedItems: number;
+  items: SystemCleanerCleanupPlanItem[];
+  recipeVersions: Record<string, number>;
+  blockedProcesses: string[];
+};
+
+export type SystemCleanerCleanupResult = {
+  runId: string;
+  freedBytes: number;
+  deletedItems: number;
+  skipped: Array<{ path: string; reason: string }>;
+  cancelled: boolean;
+};
+
+export type SystemCleanerHistoryRecord = {
+  id: string;
+  startedAt: string;
+  completedAt: string;
+  origin: "manual" | "retry";
+  status: "completed" | "partial" | "cancelled" | "failed";
+  recipeVersionsJson: string;
+  plannedBytes: number;
+  freedBytes: number;
+  deletedItems: number;
+  skippedItems: number;
+  detailsJson: string;
+};
+
+export type SystemCleanerRecipeValidation = {
+  valid: boolean;
+  errors: string[];
+  recipe?: SystemCleanerRecipeCatalogEntry | null;
+  preview?: SystemCleanerCleanupPlan | null;
+};
+
+export type SystemCleanerRecipeBundlePreview = {
+  bundleId: string;
+  version: number;
+  source: string;
+  signerFingerprint: string;
+  sha256: string;
+  recipeCount: number;
+  added: string[];
+  updated: string[];
+  removed: string[];
+};
+
+export type SystemCleanerRecipeBundleInfo = {
+  bundleId: string;
+  version: number;
+  source: string;
+  signerFingerprint: string;
+  sha256: string;
+  recipeCount: number;
+};
+
+export type SystemCleanerWinapp2Preview = {
+  recipeCount: number;
+  skippedRegistryKeys: number;
+  skippedUnsupportedEntries: number;
+  warnings: string[];
+};
+
+export type SystemCleanerAppxPackage = {
+  name: string;
+  packageFullName: string;
+  version: string;
+  publisher: string;
+};
+
+export type SystemCleanerWindowsMaintenanceStatus = {
+  recycleBinBytes: number;
+  recycleBinItems: number;
+  deliveryOptimizationAvailable: boolean;
+  componentCleanupAvailable: boolean;
 };
 
 export type SystemCleanerReviewFile = {

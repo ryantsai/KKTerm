@@ -2,6 +2,73 @@ use super::*;
 use rusqlite::params;
 
 #[test]
+fn v57_system_cleaner_tables_upgrade_and_current_reopen_preserve_records() {
+    let db_path = temp_db_path("system-cleaner-v57");
+    {
+        let storage = Storage::open(db_path.clone()).expect("fixture storage opens");
+        storage
+            .with_connection(|connection| {
+                connection
+                    .execute_batch(
+                        "DROP TABLE system_cleaner_recipe_bundles;
+                         DROP TABLE system_cleaner_history;
+                         DROP TABLE system_cleaner_keep_paths;
+                         PRAGMA user_version = 56;",
+                    )
+                    .map_err(to_storage_error)
+            })
+            .expect("v56 fixture shape is prepared");
+    }
+
+    let upgraded = Storage::open(db_path.clone()).expect("v56 storage upgrades");
+    upgraded
+        .system_cleaner_add_keep_path(r"C:\keep")
+        .expect("Keep List row is stored");
+    upgraded
+        .system_cleaner_record_history(&SystemCleanerHistoryRecord {
+            id: "run-1".into(),
+            started_at: "2026-08-11T00:00:00Z".into(),
+            completed_at: "2026-08-11T00:00:01Z".into(),
+            origin: "manual".into(),
+            status: "completed".into(),
+            recipe_versions_json: r#"{"temp":1}"#.into(),
+            planned_bytes: 10,
+            freed_bytes: 10,
+            deleted_items: 1,
+            skipped_items: 0,
+            details_json: "{}".into(),
+        })
+        .expect("history row is stored");
+    upgraded
+        .system_cleaner_upsert_recipe_bundle(&SystemCleanerRecipeBundleRecord {
+            bundle_id: "fixture".into(),
+            version: 1,
+            source: "test".into(),
+            signer_fingerprint: "abc".into(),
+            sha256: "def".into(),
+            payload_json: r#"{"schemaVersion":1,"bundleId":"fixture","version":1,"source":"test","recipes":[]}"#.into(),
+        })
+        .expect("bundle row is stored");
+    drop(upgraded);
+
+    let reopened = Storage::open(db_path.clone()).expect("current v57 storage reopens");
+    assert_eq!(reopened.system_cleaner_keep_paths().unwrap(), vec![r"C:\keep"]);
+    assert_eq!(reopened.system_cleaner_history(10).unwrap().len(), 1);
+    assert_eq!(reopened.system_cleaner_recipe_bundles().unwrap().len(), 1);
+    reopened
+        .with_connection(|connection| {
+            let version: i32 = connection
+                .pragma_query_value(None, "user_version", |row| row.get(0))
+                .map_err(to_storage_error)?;
+            assert_eq!(version, SCHEMA_USER_VERSION);
+            Ok(())
+        })
+        .expect("current-version reopen preserves records without reconciliation");
+    drop(reopened);
+    let _ = fs::remove_file(db_path);
+}
+
+#[test]
 fn monitor_removal_marks_legacy_rows_obsolete_without_losing_their_payload() {
     let db_path = temp_db_path("obsolete-monitors");
     let original_config = r#"{"target":{"kind":"ping","host":"10.0.0.1","port":80}}"#;

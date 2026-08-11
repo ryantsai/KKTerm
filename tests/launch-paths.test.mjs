@@ -4,7 +4,11 @@ import test from "node:test";
 
 const rustSource = fs.readFileSync("src-tauri/src/launch_paths.rs", "utf8");
 const libSource = fs.readFileSync("src-tauri/src/lib.rs", "utf8");
+const appSource = fs.readFileSync("src/App.tsx", "utf8");
 const bridgeSource = fs.readFileSync("src/app/launchPathBridge.ts", "utf8");
+const systemMenuSource = fs.readFileSync("src-tauri/src/system_menu.rs", "utf8");
+const systemMenuBridgeSource = fs.readFileSync("src/app/systemFileMenu.ts", "utf8");
+const titleBarSource = fs.readFileSync("src/app/TitleBar.tsx", "utf8");
 const fileViewerSource = fs.readFileSync(
   "src/modules/workspace/connections/file-viewer/fileViewerModel.ts",
   "utf8",
@@ -59,6 +63,36 @@ test("frontend listens before draining and opens every launch path ephemerally",
   assert.match(storeSource, /openFileViewerPath\(path, \{ ephemeral: true \}\)/);
   assert.match(storeSource, /id: `launch-folder-\$\{stableIdFromPath\(path\)\}`/);
   assert.match(storeSource, /ephemeral: true/);
+});
+
+test("macOS and Linux system File menus enqueue file selections through the ephemeral path flow", () => {
+  assert.match(systemMenuSource, /target_os = "macos"[\s\S]*?target_os = "linux"/);
+  assert.match(systemMenuSource, /OPEN_ITEM_ID => crate::launch_paths::open_file_picker\(app\)/);
+  assert.doesNotMatch(systemMenuSource, /OPEN_FOLDER|pick_folder/);
+  assert.match(rustSource, /pub fn open_file_picker[\s\S]*?picker\.pick_file/);
+  assert.doesNotMatch(rustSource, /pick_folder/);
+  assert.match(rustSource, /enqueue_selected_path\(&app_handle, path\)/);
+  assert.match(libSource, /system_menu::install_handler\(app\)/);
+  assert.match(libSource, /update_system_file_menu/);
+  assert.match(systemMenuBridgeSource, /platform !== "macos" && platform !== "linux"/);
+  assert.match(systemMenuBridgeSource, /invokeCommand\("update_system_file_menu"/);
+  assert.match(appSource, /pushSystemFileMenu\(\{[\s\S]*?open: t\("app\.openFile"\)/);
+});
+
+test("Windows uses one subtle direct file-picker entry point for each tab-navigation mode", () => {
+  assert.match(canvasSource, /isWindowsPlatform\(\)[\s\S]*?className="tab-open-path-button"/);
+  assert.match(canvasSource, /invokeCommand\("open_launch_file_picker", undefined\)/);
+  assert.match(canvasSource, /<Plus size=\{15\}/);
+  assert.match(
+    titleBarSource,
+    /activePage === "workspace" && showWorkspaceOpenMenu && isWindowsPlatform\(\)/,
+  );
+  assert.match(titleBarSource, /className="app-titlebar-open-path-button"/);
+  assert.match(titleBarSource, /invokeCommand\("open_launch_file_picker", undefined\)/);
+  assert.doesNotMatch(titleBarSource, /showNativeContextMenu|openFolder/);
+  assert.match(appSource, /showWorkspaceOpenMenu=\{hideTopTabButtons\}/);
+  assert.match(appSource, /hideTopTabButtons \? null : <TabStrip \/>/);
+  assert.match(libSource, /fn open_launch_file_picker[\s\S]*?launch_paths::open_file_picker/);
 });
 
 test("image launch paths use an ephemeral screenshot editor source", () => {

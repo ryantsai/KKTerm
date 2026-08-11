@@ -2,13 +2,15 @@
 
 ## AI grep hints
 
-- Keys: `workspace.tabs`, `workspace.newTab`, `workspace.closeTab`, `workspace.noActiveSession`, `workspace.openFromTree`, `workspace.terminalPane`, `workspace.sftpBrowser`, `workspace.webview`, `settings.hideTopTabButtons`, `settings.hideTopTabButtonsDesc`, `connections.childConnectionProperties`, `terminal.splitLayout`, `terminal.splitRight`, `terminal.splitLeft`, `terminal.splitDown`, `terminal.splitUp`, `terminal.saveLayout`, `terminal.resetLayout`, `terminal.layoutSaved`, `terminal.layoutReset`, `terminal.closePane`, `terminal.closePaneTitle`, `terminal.focusPane`, `terminal.openLeft`, `terminal.openRight`, `terminal.openAbove`, `terminal.openBelow`
+- Keys: `workspace.tabs`, `workspace.newTab`, `workspace.closeTab`, `workspace.noActiveSession`, `workspace.openFromTree`, `workspace.terminalPane`, `workspace.sftpBrowser`, `workspace.webview`, `app.openFile`, `settings.hideTopTabButtons`, `settings.hideTopTabButtonsDesc`, `connections.childConnectionProperties`, `terminal.splitLayout`, `terminal.splitRight`, `terminal.splitLeft`, `terminal.splitDown`, `terminal.splitUp`, `terminal.saveLayout`, `terminal.resetLayout`, `terminal.layoutSaved`, `terminal.layoutReset`, `terminal.closePane`, `terminal.closePaneTitle`, `terminal.focusPane`, `terminal.openLeft`, `terminal.openRight`, `terminal.openAbove`, `terminal.openBelow`
 - Topics: tab strip, ephemeral file/folder Tabs, Child Connection Tabs, connection tree tabs, new tab, close tab, drag tabs, split panes, drag-to-dock, docking overlay, focus pane, tutorial targets `workspace.tabStrip`, `workspace.canvas`, `workspace.emptyState`
 - Synonyms: "temporary tab", "open with KKTerm", "split view", "open side by side", "horizontal split", "new pane", "child tab", "saved tab", "sub tab", "tabs in connection tree", "drag connection to split", "dock pane", "snap pane", "drag and drop split", "Visual Studio docking"
 
 ## Tab Strip
 
 Horizontal row above the Workspace Canvas. Accessible label `workspace.tabs`. The Tab Strip is scoped to the active Workspace: switching Workspaces in the Activity Rail shows only open Tabs that belong to the destination Workspace, activates the first open Tab there, or shows the empty Workspace state when that Workspace has no open Tabs. Tabs from other Workspaces remain open in the background until explicitly closed. Scroll affordances: `workspace.scrollTabsLeft`, `workspace.scrollTabsRight`. Dragging a Tab left or right onto another Tab reorders it to that position; the reorder is runtime-only and is not restored after app restart. Double-clicking a Tab title starts inline rename with accessible label `workspace.renameTab`. Tab rename is runtime-only per Tab: it changes the open Tab's `displayTitle`, does not update Connection metadata, and is not restored after app restart. Middle-clicking a Tab closes it through the same close path as the close button. Per-tab close label uses `workspace.closeTab` with the tab title interpolated as `{{title}}`.
+
+On Windows, a muted plus at the trailing edge opens the native file picker directly. When `settings.hideTopTabButtons` replaces the strip with Child Connection Tabs, `app.openFile` moves to the compact title-bar chevron; the two entry points are never shown together.
 
 A new tab opens via:
 

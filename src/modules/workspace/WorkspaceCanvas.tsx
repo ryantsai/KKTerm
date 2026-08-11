@@ -14,7 +14,7 @@ import {
   requestImportConnections,
   requestNewConnection,
 } from "./connections/connectionSidebarState";
-import { ChevronLeft, ChevronRight, Download, Terminal, X } from "../../lib/reicon";
+import { ChevronLeft, ChevronRight, Download, Plus, Terminal, X } from "../../lib/reicon";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type {
@@ -24,6 +24,8 @@ import type {
   ReactNode,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { isWindowsPlatform } from "../../lib/platform";
+import { invokeCommand } from "../../lib/tauri";
 import { DEFAULT_WORKSPACE_ID, useWorkspaceStore } from "../../store";
 import { activeConnectionForNewTab, workspaceShortcutFromKeyboardEvent } from "./keymap";
 import type { WorkspaceTab } from "../../types";
@@ -257,6 +259,10 @@ export function TabStrip() {
     event.stopPropagation();
   }
 
+  function handleOpenFile() {
+    void invokeCommand("open_launch_file_picker", undefined);
+  }
+
   function handleTabAuxClick(tabId: string, event: ReactMouseEvent<HTMLElement>) {
     if (event.button !== 1) {
       return;
@@ -375,6 +381,17 @@ export function TabStrip() {
           type="button"
         >
           <ChevronRight size={16} />
+        </button>
+      ) : null}
+      {isWindowsPlatform() ? (
+        <button
+          aria-label={t("app.openFile")}
+          className="tab-open-path-button"
+          onClick={handleOpenFile}
+          title={t("app.openFile")}
+          type="button"
+        >
+          <Plus size={15} />
         </button>
       ) : null}
     </div>

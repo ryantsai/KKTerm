@@ -2819,11 +2819,17 @@ mod tests {
             .expect("list tables");
 
         // Machine-local state that must never travel in a selective bundle.
+        // Cleaner Keep paths are absolute paths tied to this PC, history is
+        // operational telemetry, and verified recipe bundles must be reviewed
+        // and imported explicitly on each machine so signer trust is local.
         const EXCLUDED: &[&str] = &[
             "encrypted_secret_store_entries",
             "ai_coding_usage_accounts",
             "ai_coding_usage_snapshots",
             "installer_tool_state",
+            "system_cleaner_keep_paths",
+            "system_cleaner_history",
+            "system_cleaner_recipe_bundles",
         ];
         let covered: Vec<&str> = SEGMENT_ORDER
             .iter()

@@ -90,6 +90,33 @@
   color: var(--text);
 }
 
+.tab-open-path-button {
+  display: inline-flex;
+  flex: 0 0 29px;
+  align-items: center;
+  justify-content: center;
+  width: 29px;
+  height: 37px;
+  padding: 0;
+  color: var(--text-faint);
+  background: transparent;
+  border: 0;
+  opacity: 0.58;
+  cursor: pointer;
+}
+
+.tab-open-path-button:hover,
+.tab-open-path-button:focus-visible {
+  color: var(--text);
+  background: var(--hover);
+  opacity: 1;
+}
+
+.tab-open-path-button:focus-visible {
+  outline: 1px solid var(--ring);
+  outline-offset: -2px;
+}
+
 .tab-scroll-left {
   border-right: 1px solid var(--border);
 }

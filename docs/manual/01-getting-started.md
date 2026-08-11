@@ -2,9 +2,9 @@
 
 ## AI grep hints
 
-- Keys: `app.connections`, `app.settings`, `app.aiAssistant`, `app.dontSleep`, `app.dontSleepEnabledTooltip`, `app.dontSleepDisabledTooltip`, `app.trayExit`, `settings.dontSleepForegroundOnly`, `settings.portableOnboardingTitle`, `settings.portableOnboardingImport`, `settings.portableOnboardingSetup`
-- Topics: first launch, command-line path launch, what KKTerm is, system tray, "Don't Sleep" mode, primary navigation, restoring the last Module
-- Synonyms users may type: "open the app", "launch with file", "launch with folder", "left bar icons", "tray icon", "keep awake", "prevent sleep", "why did it open dashboard", "last page", "remember module"
+- Keys: `app.connections`, `app.settings`, `app.aiAssistant`, `app.dontSleep`, `app.dontSleepEnabledTooltip`, `app.dontSleepDisabledTooltip`, `app.trayExit`, `app.fileMenu`, `app.openFile`, `settings.dontSleepForegroundOnly`, `settings.portableOnboardingTitle`, `settings.portableOnboardingImport`, `settings.portableOnboardingSetup`
+- Topics: first launch, command-line path launch, macOS/Linux File menu path launch, what KKTerm is, system tray, "Don't Sleep" mode, primary navigation, restoring the last Module
+- Synonyms users may type: "open the app", "launch with file", "launch with folder", "Open File", "Open Folder", "File menu", "left bar icons", "tray icon", "keep awake", "prevent sleep", "why did it open dashboard", "last page", "remember module"
 
 ## What KKTerm is
 
@@ -29,9 +29,13 @@ On first launch KKTerm seeds:
 
 No Sessions are open. The Workspace Canvas shows the **Default Launch State** — recent Connections and a brief overview. It is not a Module; it appears inside the Workspace Module whenever all Tabs are closed.
 
-## Opening files and folders from the command line
+## Opening files and folders ephemerally
 
 Pass one or more existing file or folder paths to the KKTerm executable. PNG, JPEG, GIF, and WebP images open as ephemeral sources in the Screenshots editor; other files open in the Document viewer selected by extension and content probe, and folders open in File Explorer.
+
+On macOS and Linux, the native **File** menu also provides `app.openFile`. It opens the operating system file picker and sends the selected file through the same ephemeral launch flow as a command-line argument.
+
+On Windows, the subtle plus at the end of the visible Workspace Tab Strip opens a native menu with those same actions. When `settings.hideTopTabButtons` enables Child Connection Tabs and hides that strip, a small chevron beside the KKTerm title provides the menu instead.
 
 On Windows, an installed copy registers KKTerm in **Open with** for the file extensions that have a dedicated viewer mapping, including Markdown, common text/code and log formats, JSON, CSV/TSV, supported images, and PDF. Installation does not make KKTerm the default for any extension and does not replace an existing default app. Use File Explorer's **Open with → KKTerm** to choose it for one file; Windows changes a default only if the user explicitly chooses an always-use option. Uninstall removes KKTerm from those choices.
 
