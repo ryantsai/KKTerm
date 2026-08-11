@@ -59,7 +59,7 @@ test("System Cleaner uses the Searching orb in the scan page and Status Bar", ()
 });
 
 test("System Cleaner uses the Direction A control panel and compact cleanup and uninstall rows", () => {
-  assert.match(page, /type Section = "overview" \| "storage" \| "cleanup" \| "recommendations" \| "apps" \| "management"/);
+  assert.match(page, /type Section = (?:SystemCleanerNavigationSection|"overview" \| "storage" \| "cleanup" \| "recommendations" \| "apps" \| "management")/);
   assert.match(page, /system-cleaner-drive-card/);
   assert.match(page, /system-cleaner-metric-grid/);
   assert.match(page, /system-cleaner-cleanup-groups/);

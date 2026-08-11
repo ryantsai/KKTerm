@@ -1141,8 +1141,8 @@ export type ActivityRailItemId =
   | "workspace"
   | "dashboard"
   | "installer"
-  | "screenshots"
   | "systemCleaner"
+  | "screenshots"
   | "itops"
   | "dontSleep";
 
@@ -1645,6 +1645,7 @@ export type AiAssistantToolId =
   | "dashboard"
   | "itops"
   | "installer"
+  | "systemCleaner"
   | "screenshots"
   | "connections"
   | "sessions"

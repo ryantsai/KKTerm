@@ -13,6 +13,14 @@ export type ItOpsNavigationDestination =
   | "ipam"
   | "networkMaps";
 
+export type SystemCleanerNavigationSection =
+  | "overview"
+  | "storage"
+  | "cleanup"
+  | "recommendations"
+  | "apps"
+  | "management";
+
 export type TutorialNavigationTarget = {
   page: ActivePage;
   settingsSectionId?: SettingsSectionId;
@@ -20,6 +28,8 @@ export type TutorialNavigationTarget = {
   itopsSiteId?: string;
   /** IT Ops only: which navigator destination to open for that Site. */
   itopsDestination?: ItOpsNavigationDestination;
+  /** System Cleaner only: which destination to open before highlighting. */
+  systemCleanerSection?: SystemCleanerNavigationSection;
 };
 
 const ITOPS_NAVIGATION_DESTINATIONS = new Set<ItOpsNavigationDestination>([
@@ -31,6 +41,10 @@ const ITOPS_NAVIGATION_DESTINATIONS = new Set<ItOpsNavigationDestination>([
   "vlans",
   "ipam",
   "networkMaps",
+]);
+
+const SYSTEM_CLEANER_NAVIGATION_SECTIONS = new Set<SystemCleanerNavigationSection>([
+  "overview", "storage", "cleanup", "recommendations", "apps", "management",
 ]);
 
 const SETTINGS_SECTION_IDS = new Set<SettingsSectionId>([
@@ -115,6 +129,17 @@ const WORKSPACE_TUTORIAL_TARGET_IDS = [
   "app.activityRailSettings",
   "app.connectionsResize",
   "app.aiAssistantResize",
+  "assistant.panel",
+  "assistant.toolbar",
+  "assistant.settings",
+  "assistant.newChat",
+  "assistant.context",
+  "assistant.chatLog",
+  "assistant.composer",
+  "assistant.addContext",
+  "assistant.permissionMode",
+  "assistant.model",
+  "assistant.send",
   "connections.panel",
   "connections.search",
   "connections.quickConnect",
@@ -217,7 +242,28 @@ const SCREENSHOTS_TUTORIAL_TARGET_IDS = [
 
 const SYSTEM_CLEANER_TUTORIAL_TARGET_IDS = [
   "app.activityRailSystemCleaner",
+  "systemCleaner.page",
+  "systemCleaner.drive",
+  "systemCleaner.search",
+  "systemCleaner.scan",
+  "systemCleaner.content",
+  "systemCleaner.navigation",
+  "systemCleaner.overview",
+  "systemCleaner.storage",
+  "systemCleaner.cleanup",
+  "systemCleaner.management",
+  "systemCleaner.recommendations",
+  "systemCleaner.apps",
 ] as const;
+
+const SYSTEM_CLEANER_SECTION_TARGETS: Partial<Record<(typeof SYSTEM_CLEANER_TUTORIAL_TARGET_IDS)[number], SystemCleanerNavigationSection>> = {
+  "systemCleaner.overview": "overview",
+  "systemCleaner.storage": "storage",
+  "systemCleaner.cleanup": "cleanup",
+  "systemCleaner.management": "management",
+  "systemCleaner.recommendations": "recommendations",
+  "systemCleaner.apps": "apps",
+};
 
 const TUTORIAL_TARGET_NAVIGATION: Record<string, TutorialNavigationTarget> = {
   ...Object.fromEntries(
@@ -261,7 +307,12 @@ const TUTORIAL_TARGET_NAVIGATION: Record<string, TutorialNavigationTarget> = {
   ...Object.fromEntries(
     SYSTEM_CLEANER_TUTORIAL_TARGET_IDS.map((targetId) => [
       targetId,
-      { page: "systemCleaner" },
+      {
+        page: "systemCleaner",
+        ...(SYSTEM_CLEANER_SECTION_TARGETS[targetId]
+          ? { systemCleanerSection: SYSTEM_CLEANER_SECTION_TARGETS[targetId] }
+          : {}),
+      },
     ]),
   ),
   ...Object.fromEntries(
@@ -330,6 +381,7 @@ export function normalizeTutorialNavigationTarget(
   const settingsSectionId = normalizeSettingsSectionId(candidate.settingsSectionId);
   const itopsSiteId = normalizeItopsSiteId(candidate.itopsSiteId);
   const itopsDestination = normalizeItopsDestination(candidate.itopsDestination);
+  const systemCleanerSection = normalizeSystemCleanerSection(candidate.systemCleanerSection);
 
   if (candidate.settingsSectionId !== undefined && !settingsSectionId) {
     return undefined;
@@ -338,6 +390,9 @@ export function normalizeTutorialNavigationTarget(
     return undefined;
   }
   if (candidate.itopsSiteId !== undefined && !itopsSiteId) {
+    return undefined;
+  }
+  if (candidate.systemCleanerSection !== undefined && !systemCleanerSection) {
     return undefined;
   }
 
@@ -350,6 +405,9 @@ export function normalizeTutorialNavigationTarget(
     if (page !== "itops" && hasItopsFields) {
       return undefined;
     }
+    if (page !== "systemCleaner" && systemCleanerSection) {
+      return undefined;
+    }
     if (settingsSectionId) {
       return { page, settingsSectionId };
     }
@@ -359,6 +417,9 @@ export function normalizeTutorialNavigationTarget(
         ...(itopsSiteId ? { itopsSiteId } : {}),
         ...(itopsDestination ? { itopsDestination } : {}),
       };
+    }
+    if (systemCleanerSection) {
+      return { page, systemCleanerSection };
     }
     return { page };
   }
@@ -372,6 +433,9 @@ export function normalizeTutorialNavigationTarget(
       ...(itopsSiteId ? { itopsSiteId } : {}),
       ...(itopsDestination ? { itopsDestination } : {}),
     };
+  }
+  if (systemCleanerSection) {
+    return { page: "systemCleaner", systemCleanerSection };
   }
   return undefined;
 }
@@ -413,4 +477,12 @@ function normalizeItopsDestination(value: unknown): ItOpsNavigationDestination |
   }
   const trimmed = value.trim() as ItOpsNavigationDestination;
   return ITOPS_NAVIGATION_DESTINATIONS.has(trimmed) ? trimmed : undefined;
+}
+
+function normalizeSystemCleanerSection(value: unknown): SystemCleanerNavigationSection | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const trimmed = value.trim() as SystemCleanerNavigationSection;
+  return SYSTEM_CLEANER_NAVIGATION_SECTIONS.has(trimmed) ? trimmed : undefined;
 }

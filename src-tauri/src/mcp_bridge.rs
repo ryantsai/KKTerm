@@ -1649,6 +1649,60 @@ async fn dispatch_tool(app: &AppHandle, name: &str, args: Value) -> Result<Value
         "kkterm.network.whois" => {
             parse_passthrough_json(&crate::ai::network_tool("network_whois", args).await)
         }
+        // -- System Cleaner Module ------------------------------------------
+        name if name.starts_with("kkterm.system_cleaner.") => {
+            let assistant_tool = match name {
+                "kkterm.system_cleaner.drives.list" => "system_cleaner_list_drives",
+                "kkterm.system_cleaner.scanner_status" => "system_cleaner_scanner_status",
+                "kkterm.system_cleaner.catalog" => "system_cleaner_catalog",
+                "kkterm.system_cleaner.dangerous.scan" => "system_cleaner_scan",
+                "kkterm.system_cleaner.directory.list" => "system_cleaner_list_directory",
+                "kkterm.system_cleaner.cleanup.preview" => "system_cleaner_build_cleanup_plan",
+                "kkterm.system_cleaner.cleanup.dangerous.execute" => {
+                    "system_cleaner_execute_cleanup_plan"
+                }
+                "kkterm.system_cleaner.cleanup.cancel" => "system_cleaner_cancel_cleanup",
+                "kkterm.system_cleaner.keep_paths.list" => "system_cleaner_list_keep_paths",
+                "kkterm.system_cleaner.keep_paths.dangerous.add" => "system_cleaner_add_keep_path",
+                "kkterm.system_cleaner.keep_paths.dangerous.remove" => {
+                    "system_cleaner_remove_keep_path"
+                }
+                "kkterm.system_cleaner.history" => "system_cleaner_history",
+                "kkterm.system_cleaner.recipes.validate" => "system_cleaner_validate_recipe",
+                "kkterm.system_cleaner.bundles.preview" => "system_cleaner_preview_signed_bundle",
+                "kkterm.system_cleaner.bundles.dangerous.import" => {
+                    "system_cleaner_import_signed_bundle"
+                }
+                "kkterm.system_cleaner.bundles.list" => "system_cleaner_list_recipe_bundles",
+                "kkterm.system_cleaner.bundles.dangerous.remove" => {
+                    "system_cleaner_remove_recipe_bundle"
+                }
+                "kkterm.system_cleaner.winapp2.preview" => "system_cleaner_preview_winapp2",
+                "kkterm.system_cleaner.winapp2.dangerous.import" => "system_cleaner_import_winapp2",
+                "kkterm.system_cleaner.appx.list" => "system_cleaner_list_appx_packages",
+                "kkterm.system_cleaner.appx.dangerous.remove" => {
+                    "system_cleaner_remove_appx_package"
+                }
+                "kkterm.system_cleaner.maintenance.status" => {
+                    "system_cleaner_windows_maintenance_status"
+                }
+                "kkterm.system_cleaner.maintenance.dangerous.empty_recycle_bin" => {
+                    "system_cleaner_empty_recycle_bin"
+                }
+                "kkterm.system_cleaner.maintenance.dangerous.clear_delivery_optimization" => {
+                    "system_cleaner_clear_delivery_optimization"
+                }
+                "kkterm.system_cleaner.maintenance.dangerous.component_cleanup" => {
+                    "system_cleaner_start_component_cleanup"
+                }
+                "kkterm.system_cleaner.recommendations.dangerous.delete" => {
+                    "system_cleaner_delete_review_files"
+                }
+                "kkterm.system_cleaner.apps.dangerous.uninstall" => "system_cleaner_uninstall",
+                _ => return Err(format!("unknown tool: {name}")),
+            };
+            parse_tool_json(&crate::ai::system_cleaner_tool(app, assistant_tool, args).await)
+        }
         // -- Watchdog: background monitors ---------------------------------
         "kkterm.watchdog.list" => {
             parse_tool_json(&crate::ai::watchdog_tool(app, "watchdog_list", json!({})).await)

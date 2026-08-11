@@ -3287,6 +3287,10 @@
         "label": "Pembantu Instalasi",
         "description": "Mendeteksi, memasang, memperbarui, mencopot, dan meluncurkan alat pengembang yang dikurasi."
       },
+      "systemCleaner": {
+        "label": "Pembersih Sistem",
+        "description": "Menganalisis penyimpanan, meninjau rencana pembersihan yang terlindungi, mengelola data keamanan pembersihan, dan menjalankan tindakan pembersihan Windows yang disetujui secara eksplisit."
+      },
       "screenshots": {
         "label": "Tangkapan Layar",
         "description": "Tangkap, periksa, atur, ubah, dan buka item pustaka modul Tangkapan Layar."

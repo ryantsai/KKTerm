@@ -3287,6 +3287,10 @@
         "label": "Assistant d'installation",
         "description": "Détecter, installer, mettre à jour, désinstaller et lancer des outils de développement sélectionnés."
       },
+      "systemCleaner": {
+        "label": "Nettoyage du système",
+        "description": "Analyse le stockage, prévisualise les plans de nettoyage protégés, gère les données de sécurité du nettoyage et exécute les actions de nettoyage Windows explicitement approuvées."
+      },
       "screenshots": {
         "label": "Captures d'écran",
         "description": "Capturer, inspecter, organiser, transformer et ouvrir les éléments de la bibliothèque du module Captures d'écran."

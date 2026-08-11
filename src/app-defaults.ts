@@ -185,6 +185,7 @@ export const defaultAiAssistantToolSettings = {
   dashboard: true,
   itops: true,
   installer: true,
+  systemCleaner: true,
   screenshots: true,
   connections: true,
   sessions: true,

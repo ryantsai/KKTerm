@@ -1236,6 +1236,8 @@ pub struct AiAssistantToolSettings {
     itops: bool,
     #[serde(default = "default_ai_installer_tool_enabled")]
     installer: bool,
+    #[serde(default = "default_ai_system_cleaner_tool_enabled")]
+    system_cleaner: bool,
     #[serde(default = "default_ai_screenshots_tool_enabled")]
     screenshots: bool,
     #[serde(default = "default_ai_connections_tool_enabled")]
@@ -1287,6 +1289,9 @@ impl AiAssistantToolSettings {
     pub(crate) fn installer(&self) -> bool {
         self.installer
     }
+    pub(crate) fn system_cleaner(&self) -> bool {
+        self.system_cleaner
+    }
     pub(crate) fn screenshots(&self) -> bool {
         self.screenshots
     }
@@ -1325,6 +1330,7 @@ impl AiAssistantToolSettings {
             || self.dashboard
             || self.itops
             || self.installer
+            || self.system_cleaner
             || self.screenshots
             || self.connections
             || self.sessions
@@ -6428,6 +6434,7 @@ fn default_ai_assistant_tool_settings() -> AiAssistantToolSettings {
         dashboard: default_ai_dashboard_tool_enabled(),
         itops: default_ai_itops_tool_enabled(),
         installer: default_ai_installer_tool_enabled(),
+        system_cleaner: default_ai_system_cleaner_tool_enabled(),
         screenshots: default_ai_screenshots_tool_enabled(),
         connections: default_ai_connections_tool_enabled(),
         sessions: default_ai_sessions_tool_enabled(),
@@ -6441,6 +6448,10 @@ fn default_ai_assistant_tool_settings() -> AiAssistantToolSettings {
 }
 
 fn default_ai_watchdog_tool_enabled() -> bool {
+    true
+}
+
+fn default_ai_system_cleaner_tool_enabled() -> bool {
     true
 }
 

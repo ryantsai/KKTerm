@@ -40,6 +40,7 @@ import { FileGlyph } from "../workspace/connections/sftp/finderGlyphs";
 import { installRecipeAndWait } from "../installer/progress";
 import { SystemCleanerScanOrb } from "./SystemCleanerScanOrb";
 import { useSystemCleanerScanStore } from "./scanState";
+import type { SystemCleanerNavigationSection } from "../../app/tutorialNavigationModel";
 import type {
   SystemCleanerDirectoryListing,
   SystemCleanerAppxPackage,
@@ -59,7 +60,7 @@ import type {
 } from "./types";
 import "./systemCleaner.css";
 
-type Section = "overview" | "storage" | "cleanup" | "recommendations" | "apps" | "management";
+type Section = SystemCleanerNavigationSection;
 type StorageSort = { key: "name" | "size" | "allocated"; direction: "asc" | "desc" };
 type MutationKind = "plan" | "clean" | "delete-review" | "uninstall";
 type CleanupTone = "accent" | "green" | "amber" | "red";
@@ -115,7 +116,11 @@ function matchesQuery(query: string, ...values: string[]) {
   return normalized.length === 0 || values.some((value) => value.toLocaleLowerCase().includes(normalized));
 }
 
-export function SystemCleanerPage({ active, onOpenAssistant }: { active: boolean; onOpenAssistant: () => void }) {
+export function SystemCleanerPage({ active, onOpenAssistant, tutorialNavigation }: {
+  active: boolean;
+  onOpenAssistant: () => void;
+  tutorialNavigation?: { section: SystemCleanerNavigationSection; requestId: number };
+}) {
   const { t } = useTranslation();
   const notice = useWorkspaceStore((state) => state.showStatusBarNotice);
   const submitAssistantContextSnippet = useWorkspaceStore((state) => state.submitAssistantContextSnippet);
@@ -143,6 +148,12 @@ export function SystemCleanerPage({ active, onOpenAssistant }: { active: boolean
   const [confirmReviewDelete, setConfirmReviewDelete] = useState(false);
   const [pendingApps, setPendingApps] = useState<CleanerApp[]>([]);
   const busy = scanActive || installingScanner || mutationKind !== undefined;
+
+  useEffect(() => {
+    if (tutorialNavigation) {
+      setSection(tutorialNavigation.section);
+    }
+  }, [tutorialNavigation]);
 
   useEffect(() => {
     if (!active || drivesLoaded || !isTauriRuntime()) return;
@@ -339,10 +350,10 @@ export function SystemCleanerPage({ active, onOpenAssistant }: { active: boolean
   }
 
   const pendingAppCount = pendingApps.length;
-  return <main className="system-cleaner-page" data-active={active}>
+  return <main className="system-cleaner-page" data-active={active} data-tutorial-id="systemCleaner.page">
     <ModuleHeader>
       <ModuleHeaderLead><ModuleIconTile module="system-cleaner"><SystemCleanerModuleIcon size={16} aria-hidden="true" /></ModuleIconTile><ModuleHeaderTitle>{t("systemCleaner.title")}</ModuleHeaderTitle></ModuleHeaderLead>
-      <label className="system-cleaner-header-drive">
+      <label className="system-cleaner-header-drive" data-tutorial-id="systemCleaner.drive">
         <HardDrive size={14} aria-hidden="true" />
         <select aria-label={t("systemCleaner.select")} value={selectedDrive} disabled={busy || drives.length === 0} onChange={(event) => selectDrive(event.currentTarget.value)}>
           {drives.map((drive) => <option value={drive.path} key={drive.path}>{drive.path}</option>)}
@@ -350,8 +361,8 @@ export function SystemCleanerPage({ active, onOpenAssistant }: { active: boolean
         <ChevronDown size={12} aria-hidden="true" />
       </label>
       <ModuleHeaderSpacer />
-      {overview ? <label className="system-cleaner-search"><Search size={14} aria-hidden="true" /><input value={query} placeholder={t("common.search")} aria-label={t("common.search")} onChange={(event) => setQuery(event.currentTarget.value)} /></label> : null}
-      <button type="button" className="toolbar-button" disabled={busy || !selectedDrive} onClick={() => void scan()}><RefreshCw size={15} className={scanActive ? "spin" : ""} />{t("systemCleaner.scan")}</button>
+      {overview ? <label className="system-cleaner-search" data-tutorial-id="systemCleaner.search"><Search size={14} aria-hidden="true" /><input value={query} placeholder={t("common.search")} aria-label={t("common.search")} onChange={(event) => setQuery(event.currentTarget.value)} /></label> : null}
+      <button type="button" className="toolbar-button" data-tutorial-id="systemCleaner.scan" disabled={busy || !selectedDrive} onClick={() => void scan()}><RefreshCw size={15} className={scanActive ? "spin" : ""} />{t("systemCleaner.scan")}</button>
     </ModuleHeader>
     <div className="system-cleaner-shell">
       <CleanerSidebar
@@ -366,7 +377,7 @@ export function SystemCleanerPage({ active, onOpenAssistant }: { active: boolean
         onClean={() => void prepareCleanup()}
         onSection={setSection}
       />
-      <section className="system-cleaner-content">
+      <section className="system-cleaner-content" data-tutorial-id="systemCleaner.content">
         {scanActive ? <ScanOverlay progress={progress} /> : null}
         {!overview && !scanActive && section !== "management" ? <div className="system-cleaner-empty"><span className="system-cleaner-empty-icon"><Gauge size={24} /></span><h2>{t("systemCleaner.overview")}</h2><p>{t("systemCleaner.scanHint")}</p><button type="button" className="toolbar-button" disabled={!selectedDrive} onClick={() => void scan()}><RefreshCw size={14} />{t("systemCleaner.scan")}</button></div> : null}
         {overview && section === "overview" ? <OverviewView overview={overview} query={query} reclaimableBytes={reclaimableBytes} onOpenFolder={openOverviewFolder} onSection={setSection} /> : null}
@@ -464,13 +475,13 @@ function CleanerSidebar({
     unaccounted: formatBytes(Math.max(0, used - overview.totalAllocatedBytes)),
     used: formatBytes(used),
   }) : undefined;
-  const items: Array<{ id: Section; icon: IconComponent; detail?: string }> = [
-    { id: "overview", icon: Gauge },
-    { id: "storage", icon: HardDrive, detail: overview ? formatBytes(overview.totalAllocatedBytes) : undefined },
-    { id: "cleanup", icon: Brush, detail: overview ? formatBytes(selectedBytes) : undefined },
-    { id: "recommendations", icon: Clock, detail: overview ? formatCount(overview.recommendations.reduce((sum, category) => sum + category.files.length, 0)) : undefined },
-    { id: "apps", icon: Box, detail: overview ? formatCount(overview.apps.length) : undefined },
-    { id: "management", icon: Shield },
+  const items: Array<{ id: Section; icon: IconComponent; tutorialId: string; detail?: string }> = [
+    { id: "overview", icon: Gauge, tutorialId: "systemCleaner.overview" },
+    { id: "storage", icon: HardDrive, tutorialId: "systemCleaner.storage", detail: overview ? formatBytes(overview.totalAllocatedBytes) : undefined },
+    { id: "cleanup", icon: Brush, tutorialId: "systemCleaner.cleanup", detail: overview ? formatBytes(selectedBytes) : undefined },
+    { id: "recommendations", icon: Clock, tutorialId: "systemCleaner.recommendations", detail: overview ? formatCount(overview.recommendations.reduce((sum, category) => sum + category.files.length, 0)) : undefined },
+    { id: "apps", icon: Box, tutorialId: "systemCleaner.apps", detail: overview ? formatCount(overview.apps.length) : undefined },
+    { id: "management", icon: Shield, tutorialId: "systemCleaner.management" },
   ];
   return <aside className="system-cleaner-sidebar">
     <section className="system-cleaner-drive-card" aria-label={allocationDetail} title={allocationDetail}>
@@ -483,8 +494,8 @@ function CleanerSidebar({
       </dl>
     </section>
     <span className="system-cleaner-sidebar-label">{t("systemCleaner.title")}</span>
-    <nav className="system-cleaner-nav" aria-label={t("systemCleaner.title")}>
-      {items.map(({ id, icon: Icon, detail }) => <button type="button" key={id} className={section === id ? "active" : ""} aria-current={section === id ? "page" : undefined} onClick={() => onSection(id)}><Icon size={16} /><span>{t(`systemCleaner.${id}`)}</span>{detail ? <small>{detail}</small> : null}</button>)}
+    <nav className="system-cleaner-nav" aria-label={t("systemCleaner.title")} data-tutorial-id="systemCleaner.navigation">
+      {items.map(({ id, icon: Icon, tutorialId, detail }) => <button type="button" key={id} className={section === id ? "active" : ""} aria-current={section === id ? "page" : undefined} data-tutorial-id={tutorialId} onClick={() => onSection(id)}><Icon size={16} /><span>{t(`systemCleaner.${id}`)}</span>{detail ? <small>{detail}</small> : null}</button>)}
     </nav>
     {overview && section === "storage" ? <FileTypeSummary overview={overview} /> : null}
     {overview && section === "recommendations" ? <section className="system-cleaner-sidebar-summary"><strong>{t("systemCleaner.recommendationsHeading")}</strong><span>{formatCount(overview.recommendations.reduce((sum, category) => sum + category.files.length, 0))}</span>{selectedReviewCount > 0 ? <small>{t("systemCleaner.selectedReviewFiles", { count: selectedReviewCount, size: formatBytes(selectedReviewBytes) })}</small> : null}</section> : null}

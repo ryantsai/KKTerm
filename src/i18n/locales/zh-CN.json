@@ -3287,6 +3287,10 @@
         "label": "安装助手",
         "description": "检测、安装、更新、卸载并启动精选的开发者工具。"
       },
+      "systemCleaner": {
+        "label": "系统清理器",
+        "description": "分析存储空间、预览受保护的清理计划、管理清理安全数据，并运行经明确批准的 Windows 清理操作。"
+      },
       "screenshots": {
         "label": "截图",
         "description": "捕获、检查、整理、转换并打开截图模块库中的项目。"

@@ -3287,6 +3287,10 @@
         "label": "Assistente installazione",
         "description": "Rileva, installa, aggiorna, disinstalla e avvia strumenti di sviluppo selezionati."
       },
+      "systemCleaner": {
+        "label": "Pulitore di sistema",
+        "description": "Analizza lo spazio di archiviazione, visualizza in anteprima i piani di pulizia protetti, gestisce i dati di sicurezza della pulizia ed esegue azioni di pulizia di Windows approvate esplicitamente."
+      },
       "screenshots": {
         "label": "Screenshot",
         "description": "Catturare, ispezionare, organizzare, trasformare e aprire gli elementi della libreria del modulo Screenshot."

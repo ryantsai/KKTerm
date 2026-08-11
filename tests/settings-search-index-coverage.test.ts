@@ -22,6 +22,7 @@ const SECTION_SOURCES: Record<SettingsSectionId, readonly string[]> = {
   "url-settings": ["UrlSettings.tsx"],
   "rdp-settings": ["RdpSettings.tsx"],
   "vnc-settings": ["VncSettings.tsx"],
+  "screenshots-settings": ["ScreenshotsSettings.tsx", "ScreenshotShortcutRows.tsx"],
   "itops-settings": ["ItOpsSettings.tsx"],
   "dont-sleep-settings": ["DontSleepSettings.tsx"],
   "shortcuts-settings": ["ShortcutsSettings.tsx"],
@@ -43,6 +44,7 @@ const SECTION_LABEL_KEYS: Record<SettingsSectionId, string> = {
   "url-settings": "settings.sectionUrl",
   "rdp-settings": "settings.sectionRdp",
   "vnc-settings": "settings.sectionVnc",
+  "screenshots-settings": "settings.sectionScreenshots",
   "itops-settings": "settings.sectionItOps",
   "dont-sleep-settings": "settings.sectionDontSleep",
   "shortcuts-settings": "settings.sectionShortcuts",
@@ -143,6 +145,11 @@ const NON_SEARCHABLE_KEYS: Record<SettingsSectionId, readonly string[]> = {
   ],
   "rdp-settings": ["settings.rdpSettingsSaved", "settings.rdpSharedFoldersRequired"],
   "vnc-settings": ["settings.vncSettingsSaved"],
+  "screenshots-settings": [
+    "settings.screenshotsFolderPlaceholder", "settings.screenshotsSaved",
+    "settings.shortcutConflict", "settings.shortcutNotSet", "settings.shortcutPressKeys",
+    "settings.shortcutClear",
+  ],
   "dont-sleep-settings": ["settings.dontSleepSettingsSaved"],
   "shortcuts-settings": [
     "settings.shortcutConflict", "settings.shortcutNotSet", "settings.shortcutsSaved",
@@ -188,5 +195,20 @@ test("every Settings page string is searchable or explicitly non-searchable", ()
       `${sectionId} has new Settings text that must be added to SETTINGS_SEARCH_KEYS ` +
         "or intentionally classified in NON_SEARCHABLE_KEYS",
     );
+  }
+});
+
+test("every dynamic AI Assistant tool row is searchable", () => {
+  const source = readFileSync(
+    new URL("../src/modules/settings/AiSettings.tsx", import.meta.url),
+    "utf8",
+  );
+  const ids = source.match(/const AI_ASSISTANT_TOOL_IDS:[\s\S]*?=\s*\[([\s\S]*?)\];/)?.[1]
+    .match(/"([A-Za-z0-9]+)"/g)
+    ?.map((value) => value.slice(1, -1)) ?? [];
+  const indexedKeys = new Set(SETTINGS_SEARCH_KEYS["assistant-settings"]);
+  for (const id of ids) {
+    assert.ok(indexedKeys.has(`settings.aiTools.${id}.label`), `${id} label must be searchable`);
+    assert.ok(indexedKeys.has(`settings.aiTools.${id}.description`), `${id} description must be searchable`);
   }
 });

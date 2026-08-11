@@ -22,7 +22,7 @@ use serde_json::{Value, json};
 /// here updates both the live bridge and the offline CLI introspection at
 /// once — see the feature-growth contract in `docs/MCP.md`.
 pub fn tool_descriptors() -> Vec<Value> {
-    vec![
+    let mut tools = vec![
         json!({
             "name": "kkterm.workspace.workspaces.list",
             "description": "List KKTerm Workspaces. A Workspace is a durable container for saved Connections; it is not a live Session or Tab.",
@@ -1479,7 +1479,7 @@ pub fn tool_descriptors() -> Vec<Value> {
         }),
         json!({
             "name": "kkterm.app.dangerous.tutorial_highlight",
-            "description": "DANGEROUS: navigate the KKTerm UI and show a one-step Tutorial overlay — highlight one app-owned target, dim the rest of the window, and place a short help balloon beside it. This moves the user's UI: navigation may switch the active Module (workspace, dashboard, itops, installer, screenshots, settings), a Settings section, or an IT Ops Site destination (navigation.itopsSiteId + navigation.itopsDestination: site|serverRooms|hosts|runHistory|taskLibrary). targetId must be a registered tutorial target (see docs/manual chapters) or an IT Ops entity target such as itops.host:<hostId>. The overlay disappears when the user clicks or presses any key. Requires built_in_mcp_allow_all_dangerous = true.",
+            "description": "DANGEROUS: navigate the KKTerm UI and show a one-step Tutorial overlay — highlight one app-owned target, dim the rest of the window, and place a short help balloon beside it. This moves the user's UI: navigation may switch the active Module (workspace, dashboard, itops, installer, screenshots, System Cleaner, settings), a Settings section, a System Cleaner section, or an IT Ops Site destination (navigation.itopsSiteId + navigation.itopsDestination: site|serverRooms|hosts|runHistory|taskLibrary). targetId must be a registered tutorial target (see docs/manual chapters) or an IT Ops entity target such as itops.host:<hostId>. The overlay disappears when the user clicks or presses any key. Requires built_in_mcp_allow_all_dangerous = true.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -1489,10 +1489,11 @@ pub fn tool_descriptors() -> Vec<Value> {
                     "navigation": {
                         "type": "object",
                         "properties": {
-                            "page": {"type": "string", "enum": ["workspace", "dashboard", "itops", "installer", "screenshots", "settings"]},
+                            "page": {"type": "string", "enum": ["workspace", "dashboard", "itops", "installer", "screenshots", "systemCleaner", "settings"]},
                             "settingsSectionId": {"type": "string"},
                             "itopsSiteId": {"type": "string"},
                             "itopsDestination": {"type": "string", "enum": ["site", "serverRooms", "hosts", "runHistory", "taskLibrary", "ipam", "networkMaps"]},
+                            "systemCleanerSection": {"type": "string", "enum": ["overview", "storage", "cleanup", "recommendations", "apps", "management"]},
                         },
                         "additionalProperties": false,
                     },
@@ -1501,6 +1502,156 @@ pub fn tool_descriptors() -> Vec<Value> {
                 "additionalProperties": false,
             },
         }),
+    ];
+    tools.extend(system_cleaner_tool_descriptors());
+    tools
+}
+
+fn system_cleaner_tool_descriptors() -> Vec<Value> {
+    let empty = || json!({"type":"object","properties":{},"additionalProperties":false});
+    let descriptor = |name: &str, description: &str, input_schema: Value| {
+        json!({
+            "name": name,
+            "description": description,
+            "inputSchema": input_schema,
+        })
+    };
+    vec![
+        descriptor(
+            "kkterm.system_cleaner.drives.list",
+            "List Windows drives available for System Cleaner analysis, including capacity and free bytes.",
+            empty(),
+        ),
+        descriptor(
+            "kkterm.system_cleaner.scanner_status",
+            "Report whether the optional WinDirStat scanner dependency is available.",
+            empty(),
+        ),
+        descriptor(
+            "kkterm.system_cleaner.catalog",
+            "List cleanup recipes with descriptions, safety levels, defaults, and estimated bytes.",
+            empty(),
+        ),
+        descriptor(
+            "kkterm.system_cleaner.dangerous.scan",
+            "DANGEROUS: explicitly scan one Windows drive. Uses the optional installed WinDirStat scanner when available and otherwise falls back to KKTerm's built-in scanner. Requires built_in_mcp_allow_all_dangerous = true.",
+            json!({"type":"object","properties":{"root":{"type":"string"}},"additionalProperties":false}),
+        ),
+        descriptor(
+            "kkterm.system_cleaner.directory.list",
+            "List one folder from the most recently completed System Cleaner scan.",
+            json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"],"additionalProperties":false}),
+        ),
+        descriptor(
+            "kkterm.system_cleaner.cleanup.preview",
+            "Build an immutable exact-file cleanup plan for selected recipe ids without deleting files.",
+            json!({"type":"object","properties":{"ids":{"type":"array","items":{"type":"string"},"minItems":1}},"required":["ids"],"additionalProperties":false}),
+        ),
+        descriptor(
+            "kkterm.system_cleaner.cleanup.dangerous.execute",
+            "DANGEROUS: execute a previously previewed cleanup plan token. Files are permanently deleted only after protected-path and identity revalidation. Requires built_in_mcp_allow_all_dangerous = true.",
+            json!({"type":"object","properties":{"token":{"type":"string"},"retryPaths":{"type":"array","items":{"type":"string"}}},"required":["token"],"additionalProperties":false}),
+        ),
+        descriptor(
+            "kkterm.system_cleaner.cleanup.cancel",
+            "Request cancellation of the active cleanup between files.",
+            empty(),
+        ),
+        descriptor(
+            "kkterm.system_cleaner.keep_paths.list",
+            "List user-owned paths excluded from cleanup plans.",
+            empty(),
+        ),
+        descriptor(
+            "kkterm.system_cleaner.keep_paths.dangerous.add",
+            "DANGEROUS: add an existing local path to the System Cleaner Keep List. Requires built_in_mcp_allow_all_dangerous = true.",
+            json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"],"additionalProperties":false}),
+        ),
+        descriptor(
+            "kkterm.system_cleaner.keep_paths.dangerous.remove",
+            "DANGEROUS: remove a path from the System Cleaner Keep List. Requires built_in_mcp_allow_all_dangerous = true.",
+            json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"],"additionalProperties":false}),
+        ),
+        descriptor(
+            "kkterm.system_cleaner.history",
+            "Read recent cleanup history.",
+            json!({"type":"object","properties":{"limit":{"type":"integer","minimum":1,"maximum":100}},"additionalProperties":false}),
+        ),
+        descriptor(
+            "kkterm.system_cleaner.recipes.validate",
+            "Validate and preview one restricted cleanup recipe JSON object without storing or executing it.",
+            json!({"type":"object","properties":{"rawJson":{"type":"string"}},"required":["rawJson"],"additionalProperties":false}),
+        ),
+        descriptor(
+            "kkterm.system_cleaner.bundles.preview",
+            "Verify and preview a signed recipe bundle without importing it.",
+            json!({"type":"object","properties":{"rawJson":{"type":"string"}},"required":["rawJson"],"additionalProperties":false}),
+        ),
+        descriptor(
+            "kkterm.system_cleaner.bundles.dangerous.import",
+            "DANGEROUS: import a verified signed recipe bundle into durable storage. Requires built_in_mcp_allow_all_dangerous = true.",
+            json!({"type":"object","properties":{"rawJson":{"type":"string"}},"required":["rawJson"],"additionalProperties":false}),
+        ),
+        descriptor(
+            "kkterm.system_cleaner.bundles.list",
+            "List imported recipe bundles.",
+            empty(),
+        ),
+        descriptor(
+            "kkterm.system_cleaner.bundles.dangerous.remove",
+            "DANGEROUS: remove one imported recipe bundle while retaining cleanup history. Requires built_in_mcp_allow_all_dangerous = true.",
+            json!({"type":"object","properties":{"bundleId":{"type":"string"}},"required":["bundleId"],"additionalProperties":false}),
+        ),
+        descriptor(
+            "kkterm.system_cleaner.winapp2.preview",
+            "Parse and preview supported file-only rules from user-supplied Winapp2.ini text without importing them.",
+            json!({"type":"object","properties":{"text":{"type":"string"},"source":{"type":"string"}},"required":["text","source"],"additionalProperties":false}),
+        ),
+        descriptor(
+            "kkterm.system_cleaner.winapp2.dangerous.import",
+            "DANGEROUS: import supported file-only Winapp2.ini rules as disabled Review recipes. Requires built_in_mcp_allow_all_dangerous = true.",
+            json!({"type":"object","properties":{"text":{"type":"string"},"source":{"type":"string"}},"required":["text","source"],"additionalProperties":false}),
+        ),
+        descriptor(
+            "kkterm.system_cleaner.appx.list",
+            "List removable current-user AppX/MSIX packages using exact Windows identities.",
+            empty(),
+        ),
+        descriptor(
+            "kkterm.system_cleaner.appx.dangerous.remove",
+            "DANGEROUS: remove one current-user AppX/MSIX package by exact identity. Requires built_in_mcp_allow_all_dangerous = true.",
+            json!({"type":"object","properties":{"packageFullName":{"type":"string"}},"required":["packageFullName"],"additionalProperties":false}),
+        ),
+        descriptor(
+            "kkterm.system_cleaner.maintenance.status",
+            "Read Recycle Bin totals and availability of supported Windows maintenance actions.",
+            empty(),
+        ),
+        descriptor(
+            "kkterm.system_cleaner.maintenance.dangerous.empty_recycle_bin",
+            "DANGEROUS: permanently empty the Windows Recycle Bin. Requires built_in_mcp_allow_all_dangerous = true.",
+            empty(),
+        ),
+        descriptor(
+            "kkterm.system_cleaner.maintenance.dangerous.clear_delivery_optimization",
+            "DANGEROUS: request elevation and clear the Delivery Optimization cache. Requires built_in_mcp_allow_all_dangerous = true.",
+            empty(),
+        ),
+        descriptor(
+            "kkterm.system_cleaner.maintenance.dangerous.component_cleanup",
+            "DANGEROUS: request elevation and run DISM StartComponentCleanup. Requires built_in_mcp_allow_all_dangerous = true.",
+            empty(),
+        ),
+        descriptor(
+            "kkterm.system_cleaner.recommendations.dangerous.delete",
+            "DANGEROUS: permanently delete explicitly selected recommendation files after completed-scan revalidation. Requires built_in_mcp_allow_all_dangerous = true.",
+            json!({"type":"object","properties":{"paths":{"type":"array","items":{"type":"string"},"minItems":1}},"required":["paths"],"additionalProperties":false}),
+        ),
+        descriptor(
+            "kkterm.system_cleaner.apps.dangerous.uninstall",
+            "DANGEROUS: launch the exact Windows Package Manager uninstall flow for one package id. May request elevation and open an interactive uninstaller. Requires built_in_mcp_allow_all_dangerous = true.",
+            json!({"type":"object","properties":{"appId":{"type":"string"}},"required":["appId"],"additionalProperties":false}),
+        ),
     ]
 }
 

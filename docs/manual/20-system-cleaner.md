@@ -3,7 +3,10 @@
 ## AI grep hints
 
 `systemCleaner.title`, `systemCleaner.overview`, `systemCleaner.storage`, `systemCleaner.cleanup`,
-`systemCleaner.apps`, `app.activityRailSystemCleaner`,
+`systemCleaner.apps`, `app.activityRailSystemCleaner`, `systemCleaner.page`,
+`systemCleaner.drive`, `systemCleaner.search`, `systemCleaner.scan`, `systemCleaner.content`,
+`systemCleaner.navigation`, `systemCleaner.overview`, `systemCleaner.storage`,
+`systemCleaner.cleanup`, `systemCleaner.management`, `systemCleaner.recommendations`,
 `src/modules/system-cleaner/SystemCleanerPage.tsx`, disk
 usage, allocated size, logical size, large old files, old downloads, temporary files, cache,
 exact cleanup preview, Keep List, protected paths, Rule Lab, Winapp2.ini, signed recipe bundle,

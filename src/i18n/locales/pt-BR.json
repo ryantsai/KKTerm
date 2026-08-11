@@ -3287,6 +3287,10 @@
         "label": "Assistente de instalação",
         "description": "Detectar, instalar, atualizar, desinstalar e executar ferramentas de desenvolvimento selecionadas."
       },
+      "systemCleaner": {
+        "label": "Limpeza do sistema",
+        "description": "Analisa o armazenamento, visualiza planos de limpeza protegidos, gerencia dados de segurança da limpeza e executa ações de limpeza do Windows aprovadas explicitamente."
+      },
       "screenshots": {
         "label": "Capturas de tela",
         "description": "Capturar, inspecionar, organizar, transformar e abrir itens da biblioteca do módulo Capturas de tela."

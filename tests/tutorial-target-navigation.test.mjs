@@ -23,6 +23,7 @@ const anchorIds = new Set(
     [
       ...source.matchAll(/data-tutorial-id=["']([^"']+)["']/g),
       ...source.matchAll(/dataTutorialId=["']([^"']+)["']/g),
+      ...source.matchAll(/tutorialId:\s*["']([^"']+)["']/g),
       ...Array.from(source.matchAll(/data-tutorial-id=\{([^}]+)\}/g)).flatMap((match) =>
         [...match[1].matchAll(/["']([a-z][a-zA-Z0-9]*\.[a-zA-Z0-9.-]+)["']/g)],
       ),
@@ -83,7 +84,7 @@ const tutorialToolBlock = aiTool.match(
 if (!tutorialToolBlock) {
   throw new Error("tutorial_highlight tool schema could not be found.");
 }
-for (const page of ["workspace", "dashboard", "itops", "installer", "systemCleaner", "settings"]) {
+for (const page of ["workspace", "dashboard", "itops", "installer", "screenshots", "systemCleaner", "settings"]) {
   if (!tutorialToolBlock.includes(`"${page}"`)) {
     throw new Error(`tutorial_highlight tool schema does not allow the ${page} page.`);
   }
@@ -103,6 +104,8 @@ for (const sectionId of [
   "url-settings",
   "rdp-settings",
   "vnc-settings",
+  "screenshots-settings",
+  "itops-settings",
   "shortcuts-settings",
   "about-settings",
 ]) {

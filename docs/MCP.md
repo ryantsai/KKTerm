@@ -313,6 +313,33 @@ destroy files. Those operations use the `dangerous` namespace and require
 | `kkterm.screenshots.dangerous.capture_window` | Interactively choose and capture a window. |
 | `kkterm.screenshots.dangerous.capture_fullscreen` | Capture the full virtual screen across all monitors. |
 
+### System Cleaner Module (`kkterm.system_cleaner.*`)
+
+System Cleaner is Windows-only. Read and preview tools are available normally. Operations that change durable safety data, import rules, request elevation, remove software, or delete files use a `dangerous` namespace and require `built_in_mcp_allow_all_dangerous = true`.
+
+| Name | Description |
+|---|---|
+| `kkterm.system_cleaner.drives.list` | List analyzable drives and capacity/free bytes. |
+| `kkterm.system_cleaner.scanner_status` | Report managed WinDirStat availability. |
+| `kkterm.system_cleaner.catalog` | List cleanup recipes and safety metadata. |
+| `kkterm.system_cleaner.dangerous.scan` | Explicitly scan a drive; may install the managed scanner and request elevation. |
+| `kkterm.system_cleaner.directory.list` | Inspect a folder from the completed scan. |
+| `kkterm.system_cleaner.cleanup.preview` | Build an immutable exact-file cleanup plan. |
+| `kkterm.system_cleaner.cleanup.dangerous.execute` / `kkterm.system_cleaner.cleanup.cancel` | Execute or cancel a previewed plan. |
+| `kkterm.system_cleaner.keep_paths.list` / `kkterm.system_cleaner.keep_paths.dangerous.add` / `kkterm.system_cleaner.keep_paths.dangerous.remove` | Inspect or manage the Keep List. |
+| `kkterm.system_cleaner.history` | Read recent cleanup history. |
+| `kkterm.system_cleaner.recipes.validate` | Validate and dry-run one restricted recipe. |
+| `kkterm.system_cleaner.bundles.preview` / `kkterm.system_cleaner.bundles.list` | Inspect signed recipe bundles. |
+| `kkterm.system_cleaner.bundles.dangerous.import` / `kkterm.system_cleaner.bundles.dangerous.remove` | Import or remove signed recipe bundles. |
+| `kkterm.system_cleaner.winapp2.preview` / `kkterm.system_cleaner.winapp2.dangerous.import` | Preview or import supported file-only Winapp2 rules. |
+| `kkterm.system_cleaner.appx.list` / `kkterm.system_cleaner.appx.dangerous.remove` | Inspect or remove exact current-user AppX/MSIX identities. |
+| `kkterm.system_cleaner.maintenance.status` | Inspect Recycle Bin totals and supported maintenance availability. |
+| `kkterm.system_cleaner.maintenance.dangerous.empty_recycle_bin` | Permanently empty the Recycle Bin. |
+| `kkterm.system_cleaner.maintenance.dangerous.clear_delivery_optimization` | Request elevation and clear Delivery Optimization cache. |
+| `kkterm.system_cleaner.maintenance.dangerous.component_cleanup` | Request elevation and run DISM component cleanup. |
+| `kkterm.system_cleaner.recommendations.dangerous.delete` | Permanently delete explicitly selected, revalidated recommendation files. |
+| `kkterm.system_cleaner.apps.dangerous.uninstall` | Launch the exact winget uninstall flow for one package id. |
+
 ### IT Ops Module (`kkterm.itops.*`)
 
 The full IT Ops Module surface (docs/ITOPS.md): Site topology and Rack Device

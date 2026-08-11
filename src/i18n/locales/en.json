@@ -3287,6 +3287,10 @@
         "label": "Install Helper",
         "description": "Detect, install, update, uninstall, and launch curated developer tools."
       },
+      "systemCleaner": {
+        "label": "System Cleaner",
+        "description": "Analyze storage, preview protected cleanup plans, manage cleanup safety data, and run explicitly approved Windows cleanup actions."
+      },
       "screenshots": {
         "label": "Screenshots",
         "description": "Capture, inspect, organize, transform, and open Screenshots Module library items."

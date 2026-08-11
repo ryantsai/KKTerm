@@ -47,6 +47,7 @@ import {
 } from "./modules/itops/siteTreeState";
 import {
   tutorialSurfaceKindForTarget,
+  type SystemCleanerNavigationSection,
   type TutorialSurfaceKind,
 } from "./app/tutorialNavigationModel";
 import { ariaHidden } from "./lib/aria";
@@ -212,6 +213,12 @@ function App() {
         destination: navigation.itopsDestination,
       });
     }
+    if (navigation.page === "systemCleaner" && navigation.systemCleanerSection) {
+      setSystemCleanerTutorialNavigation({
+        section: navigation.systemCleanerSection,
+        requestId: Date.now(),
+      });
+    }
     navigateToPage(navigation.page);
   }
 
@@ -245,6 +252,8 @@ function App() {
     useState<SettingsAssistantContext>();
   const [tutorialHighlightRequest, setTutorialHighlightRequest] =
     useState<TutorialHighlightRequest>();
+  const [systemCleanerTutorialNavigation, setSystemCleanerTutorialNavigation] =
+    useState<{ section: SystemCleanerNavigationSection; requestId: number }>();
   const appearanceSettings = useWorkspaceStore((state) => state.appearanceSettings);
   const appliedColorScheme = useAppliedColorScheme(appearanceSettings.colorScheme);
   const hideTopTabButtons = useWorkspaceStore((state) => state.generalSettings.hideTopTabButtons);
@@ -447,6 +456,10 @@ function App() {
     return targetId.trim() === "itops.sitesTree";
   }
 
+  function shouldRevealAiPanelForTutorial(targetId: string) {
+    return targetId.trim().startsWith("assistant.");
+  }
+
   async function handleTutorialRequest(request: TutorialHighlightRequest) {
     navigateForTutorial(request);
     if (shouldRevealConnectionPanelForTutorial(request.targetId)) {
@@ -454,6 +467,9 @@ function App() {
     }
     if (shouldRevealItOpsSiteTreeForTutorial(request.targetId)) {
       setItOpsSiteTreeCollapsed(false);
+    }
+    if (shouldRevealAiPanelForTutorial(request.targetId)) {
+      expandAiPanel();
     }
     const surfaceKind = tutorialSurfaceKindForTarget(request.targetId);
     if (surfaceKind && !activateWorkspaceTabForSurface(surfaceKind)) {
@@ -647,6 +663,7 @@ function App() {
           key="system-cleaner-page"
           active={visibleBasePage === "systemCleaner"}
           onOpenAssistant={openAssistantPanel}
+          tutorialNavigation={systemCleanerTutorialNavigation}
         />
       ) : null}
       </Suspense>

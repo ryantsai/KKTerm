@@ -3287,6 +3287,10 @@
         "label": "Installationshelfer",
         "description": "Ausgewählte Entwicklertools erkennen, installieren, aktualisieren, deinstallieren und starten."
       },
+      "systemCleaner": {
+        "label": "Systembereinigung",
+        "description": "Speicher analysieren, geschützte Bereinigungspläne in der Vorschau anzeigen, Sicherheitsdaten für die Bereinigung verwalten und ausdrücklich genehmigte Windows-Bereinigungsaktionen ausführen."
+      },
       "screenshots": {
         "label": "Screenshots",
         "description": "Elemente der Screenshots-Modul-Bibliothek erfassen, prüfen, organisieren, umwandeln und öffnen."

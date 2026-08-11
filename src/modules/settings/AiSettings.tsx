@@ -974,6 +974,7 @@ const AI_ASSISTANT_TOOL_IDS: AiAssistantToolId[] = [
   "dashboard",
   "itops",
   "installer",
+  "systemCleaner",
   "screenshots",
   "connections",
   "sessions",

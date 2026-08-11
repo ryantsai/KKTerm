@@ -43,6 +43,17 @@ const workspaceTargets = [
   "app.activityRailSettings",
   "app.connectionsResize",
   "app.aiAssistantResize",
+  "assistant.panel",
+  "assistant.toolbar",
+  "assistant.settings",
+  "assistant.newChat",
+  "assistant.context",
+  "assistant.chatLog",
+  "assistant.composer",
+  "assistant.addContext",
+  "assistant.permissionMode",
+  "assistant.model",
+  "assistant.send",
   "connections.panel",
   "connections.search",
   "connections.quickConnect",
@@ -156,6 +167,17 @@ if (
 
 if (normalizeTutorialNavigationTarget({ page: "itops", itopsSiteId: 42 })) {
   throw new Error("A non-string IT Ops Site id should be rejected.");
+}
+
+const inferredSystemCleanerNavigation = normalizeTutorialNavigationTarget({
+  systemCleanerSection: "cleanup",
+});
+
+if (
+  inferredSystemCleanerNavigation?.page !== "systemCleaner" ||
+  inferredSystemCleanerNavigation.systemCleanerSection !== "cleanup"
+) {
+  throw new Error("A System Cleaner section should infer System Cleaner navigation.");
 }
 
 const settingsTargets = [

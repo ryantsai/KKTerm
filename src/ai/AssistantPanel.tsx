@@ -1906,9 +1906,14 @@ export function AssistantPanel({
   return (
     <aside
       className="assistant-panel"
+      data-tutorial-id="assistant.panel"
       onContextMenu={(event) => void handleAssistantPanelContextMenu(event)}
     >
-      <div className="assistant-topbar" onDoubleClick={handleTopbarDoubleClick}>
+      <div
+        className="assistant-topbar"
+        data-tutorial-id="assistant.toolbar"
+        onDoubleClick={handleTopbarDoubleClick}
+      >
         <h2>{t("ai.title")}</h2>
         <button
           aria-label={t("ai.refresh")}
@@ -1921,6 +1926,7 @@ export function AssistantPanel({
         <button
           aria-label={t("ai.settings")}
           className="assistant-toolbar-button"
+          data-tutorial-id="assistant.settings"
           onClick={onOpenSettings}
           title={t("ai.settings")}
           type="button"
@@ -1930,6 +1936,7 @@ export function AssistantPanel({
         <button
           aria-label={t("ai.newAiChat")}
           className="assistant-toolbar-button"
+          data-tutorial-id="assistant.newChat"
           disabled={isSendingPrompt}
           onClick={handleNewChat}
           title={t("ai.newChat")}
@@ -1941,6 +1948,7 @@ export function AssistantPanel({
 
       <div
         className="assistant-context active-session-hint"
+        data-tutorial-id="assistant.context"
         data-context-kind={
           !pageContext && activeTab?.connection
             ? "connection"
@@ -2058,6 +2066,7 @@ export function AssistantPanel({
 
       <div
         className={`assistant-chat-log${showAllChats && shouldShowChatHistory ? " assistant-chat-log-condensed" : ""}`}
+        data-tutorial-id="assistant.chatLog"
         onScroll={handleAssistantChatScroll}
         ref={chatLogRef}
       >
@@ -2117,7 +2126,11 @@ export function AssistantPanel({
 
       {chatError ? <p className="form-error">{chatError}</p> : null}
 
-      <form className="assistant-chat-composer" onSubmit={handleChatSubmit}>
+      <form
+        className="assistant-chat-composer"
+        data-tutorial-id="assistant.composer"
+        onSubmit={handleChatSubmit}
+      >
         {assistantContextSnippet ? (
           <section
             className="assistant-selection-context"
@@ -2329,6 +2342,7 @@ export function AssistantPanel({
             <button
               {...menuButtonAria(addContextMenuOpen)}
               className="assistant-plus-button"
+              data-tutorial-id="assistant.addContext"
               disabled={isSendingPrompt}
               onClick={() => setAddContextMenuOpen((open) => !open)}
               onMouseEnter={() => {
@@ -2404,6 +2418,7 @@ export function AssistantPanel({
               {...menuButtonAria(permissionMenuOpen)}
               aria-label={t("ai.toolPermissionMode")}
               className="assistant-permission-button"
+              data-tutorial-id="assistant.permissionMode"
               data-mode={currentToolPermissionMode}
               disabled={isSendingPrompt}
               onClick={() => setPermissionMenuOpen((open) => !open)}
@@ -2517,6 +2532,7 @@ export function AssistantPanel({
           <select
             aria-label={t("settings.model")}
             className="assistant-model-select"
+            data-tutorial-id="assistant.model"
             disabled={isSendingPrompt}
             onChange={(event) => void handleModelChange(event.currentTarget.value)}
             ref={modelSelectRef}
@@ -2551,6 +2567,7 @@ export function AssistantPanel({
           <button
             aria-label={isSendingPrompt && !prompt.trim() ? t("ai.stopMessage") : t("ai.sendMessage")}
             className="assistant-send-button"
+            data-tutorial-id="assistant.send"
             data-state={isSendingPrompt && !prompt.trim() ? "stopping" : "sending"}
             disabled={!isSendingPrompt && !prompt.trim()}
             onClick={isSendingPrompt && !prompt.trim() ? handleStopAssistantPrompt : undefined}

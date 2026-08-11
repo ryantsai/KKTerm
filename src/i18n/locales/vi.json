@@ -3287,6 +3287,10 @@
         "label": "Trợ lý cài đặt",
         "description": "Phát hiện, cài đặt, cập nhật, gỡ cài đặt và khởi chạy công cụ nhà phát triển đã chọn."
       },
+      "systemCleaner": {
+        "label": "Trình dọn dẹp hệ thống",
+        "description": "Phân tích dung lượng lưu trữ, xem trước các kế hoạch dọn dẹp được bảo vệ, quản lý dữ liệu an toàn dọn dẹp và chạy các tác vụ dọn dẹp Windows đã được phê duyệt rõ ràng."
+      },
       "screenshots": {
         "label": "Ảnh chụp màn hình",
         "description": "Chụp, kiểm tra, sắp xếp, biến đổi và mở các mục thư viện của mô-đun Ảnh chụp màn hình."

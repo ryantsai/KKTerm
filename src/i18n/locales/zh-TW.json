@@ -3287,6 +3287,10 @@
         "label": "安裝小幫手",
         "description": "偵測、安裝、更新、解除安裝並啟動精選的開發者工具。"
       },
+      "systemCleaner": {
+        "label": "系統清理工具",
+        "description": "分析儲存空間、預覽受保護的清理計畫、管理清理安全資料，並執行經明確核准的 Windows 清理動作。"
+      },
       "screenshots": {
         "label": "螢幕截圖",
         "description": "擷取、檢查、整理、轉換並開啟螢幕截圖模組庫中的項目。"
