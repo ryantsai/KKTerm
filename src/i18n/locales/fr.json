@@ -831,6 +831,9 @@
   "systemCleaner": {
     "title": "Nettoyage du système",
     "scan": "Scan",
+    "scannerInstallTitle": "Installer l’analyseur de stockage ?",
+    "scannerInstallPrompt": "Le Nettoyage du système utilise WinDirStat pour analyser rapidement et précisément l’espace disque alloué. Installer maintenant l’analyseur géré avec l’Assistant d’installation ?",
+    "scannerUnavailableAfterInstall": "WinDirStat a été installé, mais reste introuvable.",
     "select": "Sélectionner :",
     "scanProgress": "Analyse… {{files}} fichiers, {{size}} lus",
     "scanMetadataProgress": "Lecture de l'index des fichiers NTFS… {{percent}}%",

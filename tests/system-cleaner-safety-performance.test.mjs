@@ -11,6 +11,7 @@ const styles = await readFile(new URL("../src/modules/system-cleaner/systemClean
 const statusBar = await readFile(new URL("../src/modules/workspace/StatusBar.tsx", import.meta.url), "utf8");
 const tauri = await readFile(new URL("../src/lib/tauri.ts", import.meta.url), "utf8");
 const manual = await readFile(new URL("../docs/manual/20-system-cleaner.md", import.meta.url), "utf8");
+const catalog = await readFile(new URL("../installer/catalog.v1.json", import.meta.url), "utf8");
 
 test("System Cleaner sources do not contain unresolved merge conflicts", () => {
   for (const source of [page, styles, manual]) {
@@ -26,11 +27,16 @@ test("System Cleaner scans the drive once off the UI thread and streams progress
   assert.match(page, /listen<SystemCleanerScanProgress>/);
 });
 
-test("System Cleaner streams elevated MFT progress before the helper exits", () => {
-  assert.match(backend, /kkterm-system-cleaner-mft-progress-/);
-  assert.match(backend, /fn drain_mft_progress/);
-  assert.match(backend, /child\.try_wait\(\)/);
-  assert.match(backend, /scan_raw_mft\(&root,\s*\|progress\|/);
+test("System Cleaner installs and imports the managed WinDirStat scanner", () => {
+  assert.match(catalog, /"id": "windirstat"[\s\S]*?"repo": "windirstat\/windirstat"[\s\S]*?"assetPattern": "WinDirStat\.zip"/);
+  assert.match(backend, /fn scan_with_windirstat/);
+  assert.match(backend, /\/saveto/);
+  assert.match(backend, /fn parse_windirstat_report/);
+  assert.match(backend, /"Logical Size"/);
+  assert.match(backend, /"Physical Size"/);
+  assert.match(page, /system_cleaner_scanner_status/);
+  assert.match(page, /installRecipeAndWait/);
+  assert.match(page, /confirmNativeDialog/);
   assert.match(backend, /ScanProgressPhase::Metadata/);
   assert.match(backend, /ScanProgressPhase::Files/);
 });
@@ -68,17 +74,15 @@ test("System Cleaner keeps drive selection and disk metrics in the Storage toolb
   assert.match(manual, /logical file\s+sizes/i);
 });
 
-test("System Cleaner reconciles logical and allocated NTFS sizes", () => {
+test("System Cleaner preserves WinDirStat logical and physical sizes", () => {
   assert.match(backend, /total_allocated_bytes/);
-  assert.match(backend, /fn physical_data_run_bytes/);
-  assert.match(backend, /if offset_bytes > 0/);
-  assert.match(backend, /extension_records/);
-  assert.match(backend, /if link_index == 0/);
-  assert.match(backend, /fn resolve_mft_sizes/);
+  assert.match(backend, /parse_u64_field\(&fields\[logical_column\]/);
+  assert.match(backend, /parse_u64_field\(&fields\[physical_column\]/);
+  assert.match(backend, /total\.1 = total\.1\.saturating_add\(physical\)/);
   assert.match(page, /totalAllocatedBytes/);
   assert.match(page, /systemCleaner\.allocated/);
   assert.match(page, /systemCleaner\.storageTotals/);
-  assert.match(manual, /physical, non-sparse data runs/i);
+  assert.match(manual, /WinDirStat's exported \*\*Physical Size\*\*/i);
 });
 
 test("System Cleaner retains one-pass directory totals for browsable results", () => {
@@ -110,19 +114,16 @@ test("System Cleaner walks directories iteratively without following reparse poi
   assert.doesNotMatch(backend, /directory_size\(&entry\.path\(\)\)/);
 });
 
-test("System Cleaner prefers an elevated raw MFT scan and falls back to directory enumeration", () => {
-  assert.match(backend, /Volume::new\(&volume_path\)/);
-  assert.match(backend, /load_mft_tolerating_bad_records\(volume,/);
-  assert.match(backend, /mft_attribute[\s\S]*\.value\(&mut reader\)/);
-  assert.match(backend, /if let Ok\(scan\) = elevated_mft_scan\(root,/);
+test("System Cleaner prefers elevated WinDirStat and falls back to directory enumeration", () => {
+  assert.match(backend, /if let Ok\(scan\) = scan_with_windirstat\(root,/);
   assert.match(backend, /scan_tree\(root,/);
   assert.match(backend, /Start-Process.*-Verb RunAs/);
-  assert.match(manual, /If\s+approval is declined or the raw scan is unavailable/i);
+  assert.match(manual, /If the\s+external scan cannot run/i);
 });
 
 test("System Cleaner scan helpers do not open terminal windows", () => {
   assert.match(backend, /const CREATE_NO_WINDOW: u32 = 0x0800_0000/);
-  assert.match(backend, /Command::new\("powershell\.exe"\)[\s\S]*?\.creation_flags\(CREATE_NO_WINDOW\)[\s\S]*?command\.spawn\(\)/);
+  assert.match(backend, /Command::new\("powershell\.exe"\)[\s\S]*?\.creation_flags\(CREATE_NO_WINDOW\)[\s\S]*?command\.status\(\)/);
   assert.match(backend, /fn installed_apps\(\)[\s\S]*?Command::new\("winget"\)[\s\S]*?command\.creation_flags\(CREATE_NO_WINDOW\)[\s\S]*?command\.output\(\)/);
 });
 

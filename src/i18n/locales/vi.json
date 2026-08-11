@@ -831,6 +831,9 @@
   "systemCleaner": {
     "title": "Trình dọn dẹp hệ thống",
     "scan": "Quét",
+    "scannerInstallTitle": "Cài đặt trình quét bộ nhớ?",
+    "scannerInstallPrompt": "Trình dọn dẹp hệ thống dùng WinDirStat để quét nhanh và chính xác dung lượng đĩa đã cấp phát. Cài đặt trình quét được quản lý bằng Trình hỗ trợ cài đặt ngay bây giờ?",
+    "scannerUnavailableAfterInstall": "WinDirStat đã được cài đặt nhưng không thể tìm thấy.",
     "select": "chọn:",
     "scanProgress": "Đang quét… tệp {{files}}, đọc {{size}}",
     "scanMetadataProgress": "Đang đọc chỉ mục tệp NTFS… {{percent}}%",

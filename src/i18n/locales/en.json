@@ -831,6 +831,9 @@
   "systemCleaner": {
     "title": "System Cleaner",
     "scan": "Scan",
+    "scannerInstallTitle": "Install storage scanner?",
+    "scannerInstallPrompt": "System Cleaner uses WinDirStat for fast, accurate disk allocation scans. Install the managed scanner with Install Helper now?",
+    "scannerUnavailableAfterInstall": "WinDirStat was installed but could not be resolved.",
     "select": "Select:",
     "scanProgress": "Scanning… {{files}} files, {{size}} read",
     "scanMetadataProgress": "Reading the NTFS file index… {{percent}}%",

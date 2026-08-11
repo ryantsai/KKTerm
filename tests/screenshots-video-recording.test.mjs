@@ -42,7 +42,11 @@ test("video editor exposes synchronized playback and a full-width fitted timelin
 test("video editor contains the complete recording frame without clipping", () => {
   assert.match(
     screenshotStyles,
-    /\.video-editor__preview video,\s*\.video-editor__preview img\s*\{[^}]*\n\s*width:\s*100%;\s*\n\s*height:\s*100%;\s*\n\s*object-fit:\s*contain;/s,
+    /\.video-editor__preview\s*\{[^}]*position:\s*relative;[^}]*min-width:\s*0;[^}]*min-height:\s*0;/s,
+  );
+  assert.match(
+    screenshotStyles,
+    /\.video-editor__preview video,\s*\.video-editor__preview img\s*\{[^}]*position:\s*absolute;\s*\n\s*inset:\s*0;[^}]*\n\s*width:\s*100%;\s*\n\s*height:\s*100%;\s*\n\s*object-fit:\s*contain;/s,
   );
 });
 

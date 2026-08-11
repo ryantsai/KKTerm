@@ -831,6 +831,9 @@
   "systemCleaner": {
     "title": "系統清理工具",
     "scan": "掃描",
+    "scannerInstallTitle": "安裝儲存空間掃描工具？",
+    "scannerInstallPrompt": "系統清理工具會使用 WinDirStat，快速且精確地掃描磁碟實際占用空間。現在要透過安裝輔助工具安裝受管理的掃描工具嗎？",
+    "scannerUnavailableAfterInstall": "WinDirStat 已安裝，但找不到其執行檔。",
     "select": "選擇：",
     "scanProgress": "正在掃描... {{files}} 個檔案，{{size}} 已讀取",
     "scanMetadataProgress": "正在讀取 NTFS 檔案索引… {{percent}}%",

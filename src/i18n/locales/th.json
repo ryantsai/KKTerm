@@ -831,6 +831,9 @@
   "systemCleaner": {
     "title": "ระบบทำความสะอาด",
     "scan": "สแกน",
+    "scannerInstallTitle": "ติดตั้งเครื่องมือสแกนพื้นที่จัดเก็บข้อมูลหรือไม่",
+    "scannerInstallPrompt": "ระบบทำความสะอาดใช้ WinDirStat เพื่อสแกนพื้นที่ดิสก์ที่จัดสรรไว้อย่างรวดเร็วและแม่นยำ ติดตั้งเครื่องมือสแกนที่จัดการผ่านตัวช่วยติดตั้งตอนนี้หรือไม่",
+    "scannerUnavailableAfterInstall": "ติดตั้ง WinDirStat แล้ว แต่ไม่พบไฟล์โปรแกรม",
     "select": "เลือก:",
     "scanProgress": "กำลังสแกน... {{files}} ไฟล์, {{size}} อ่าน",
     "scanMetadataProgress": "กำลังอ่านดัชนีไฟล์ NTFS… {{percent}}%",

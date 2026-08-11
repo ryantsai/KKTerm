@@ -831,6 +831,9 @@
   "systemCleaner": {
     "title": "Systembereinigung",
     "scan": "Scan",
+    "scannerInstallTitle": "Speicher-Scanner installieren?",
+    "scannerInstallPrompt": "Die Systembereinigung verwendet WinDirStat für schnelle und genaue Scans der Datenträgerbelegung. Soll der verwaltete Scanner jetzt mit dem Installationsassistenten installiert werden?",
+    "scannerUnavailableAfterInstall": "WinDirStat wurde installiert, konnte aber nicht gefunden werden.",
     "select": "Auswählen:",
     "scanProgress": "Scan läuft… {{files}} Dateien, {{size}} gelesen",
     "scanMetadataProgress": "NTFS-Dateiindex wird gelesen… {{percent}}%",

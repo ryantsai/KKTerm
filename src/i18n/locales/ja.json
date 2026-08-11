@@ -831,6 +831,9 @@
   "systemCleaner": {
     "title": "システムクリーナー",
     "scan": "スキャン",
+    "scannerInstallTitle": "ストレージ スキャナーをインストールしますか？",
+    "scannerInstallPrompt": "システムクリーナーは WinDirStat を使用して、ディスクの割り当て領域を高速かつ正確にスキャンします。管理対象のスキャナーをインストール ヘルパーで今すぐインストールしますか？",
+    "scannerUnavailableAfterInstall": "WinDirStat はインストールされましたが、見つけられませんでした。",
     "select": "選択してください:",
     "scanProgress": "スキャン中… {{files}} ファイル、{{size}} を読み取りました",
     "scanMetadataProgress": "NTFS ファイル インデックスを読み取っています… {{percent}}%",

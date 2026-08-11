@@ -6,12 +6,14 @@ use std::collections::HashMap;
 use std::os::windows::{ffi::OsStrExt, fs::MetadataExt, process::CommandExt};
 use std::{
     env, fs,
-    io::Write,
+    io::{BufRead, BufReader, Write},
     path::{Path, PathBuf},
     process::Command,
     sync::{OnceLock, RwLock},
 };
 use tauri::{AppHandle, Emitter};
+
+use crate::installer::detect::github_release_install_dir;
 
 #[cfg(target_os = "windows")]
 const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
@@ -45,6 +47,13 @@ pub struct DriveEntry {
     path: String,
     capacity_bytes: u64,
     free_bytes: u64,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScannerStatus {
+    available: bool,
+    tool_id: &'static str,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -278,10 +287,13 @@ fn scan_directory_entries(path: &Path, allocation_unit: u64) -> Result<Vec<Scann
             .unwrap_or(find_data.cFileName.len());
         let name = String::from_utf16_lossy(&find_data.cFileName[..name_len]);
         let attributes = find_data.dwFileAttributes;
-        if name != "." && name != ".." && attributes & FILE_ATTRIBUTE_REPARSE_POINT == 0 {
+        let is_directory = attributes & FILE_ATTRIBUTE_DIRECTORY != 0;
+        if name != "."
+            && name != ".."
+            && !(is_directory && attributes & FILE_ATTRIBUTE_REPARSE_POINT != 0)
+        {
             let entry_path = path.join(&name);
             let bytes = ((find_data.nFileSizeHigh as u64) << 32) | find_data.nFileSizeLow as u64;
-            let is_directory = attributes & FILE_ATTRIBUTE_DIRECTORY != 0;
             entries.push(ScannedEntry {
                 path: entry_path.clone(),
                 name,
@@ -1237,92 +1249,337 @@ fn write_mft_progress(path: &Path, progress: &ScanProgress) -> Result<(), String
 }
 
 #[cfg(target_os = "windows")]
-fn drain_mft_progress<F>(path: &Path, emitted_lines: &mut usize, emit_progress: &mut F)
-where
-    F: FnMut(ScanProgress),
-{
-    let Ok(content) = fs::read_to_string(path) else {
-        return;
+const STORAGE_SCANNER_TOOL_ID: &str = "windirstat";
+
+#[cfg(target_os = "windows")]
+fn find_windirstat_executable() -> Option<PathBuf> {
+    let install_dir = github_release_install_dir(STORAGE_SCANNER_TOOL_ID);
+    let architecture = if cfg!(target_arch = "aarch64") {
+        "arm64"
+    } else if cfg!(target_arch = "x86") {
+        "x86"
+    } else {
+        "x64"
     };
-    for line in content.split_inclusive('\n').skip(*emitted_lines) {
-        if !line.ends_with('\n') {
-            break;
-        }
-        *emitted_lines = (*emitted_lines).saturating_add(1);
-        if let Ok(progress) = serde_json::from_str::<ScanProgress>(line.trim_end()) {
-            emit_progress(progress);
-        }
-    }
+    [
+        install_dir.join(architecture).join("WinDirStat.exe"),
+        install_dir.join("WinDirStat.exe"),
+    ]
+    .into_iter()
+    .find(|path| path.is_file())
 }
 
 #[cfg(target_os = "windows")]
-fn elevated_mft_scan<F>(root: &Path, mut emit_progress: F) -> Result<DriveScan, String>
+fn write_windirstat_settings(executable: &Path) -> Result<(), String> {
+    let settings_path = executable
+        .parent()
+        .ok_or_else(|| "WinDirStat has no installation directory.".to_string())?
+        .join("WinDirStat.ini");
+    fs::write(
+        settings_path,
+        concat!(
+            "[Options]\r\n",
+            "LanguageId=9\r\n",
+            "UseFastScanEngine=1\r\n",
+            "UseBackupRestore=1\r\n",
+            "ShowElevationPrompt=0\r\n",
+            "AutoElevate=0\r\n",
+            "ShowFreeSpace=0\r\n",
+            "ShowUnknown=0\r\n",
+            "ProcessHardlinks=1\r\n",
+            "ExcludeJunctions=1\r\n",
+            "ExcludeSymbolicLinksDirectory=1\r\n",
+            "ExcludeSymbolicLinksFile=1\r\n",
+            "ExcludeVolumeMountPoints=1\r\n",
+            "FollowVolumeMountPoints=0\r\n",
+            "\r\n[DupeView]\r\n",
+            "ScanForDuplicates=0\r\n",
+        ),
+    )
+    .map_err(|error| format!("Could not configure WinDirStat: {error}"))
+}
+
+fn parse_csv_fields(line: &str) -> Result<Vec<String>, String> {
+    let mut fields = Vec::new();
+    let mut field = String::new();
+    let mut chars = line.trim_end_matches(['\r', '\n']).chars().peekable();
+    let mut quoted = false;
+    while let Some(character) = chars.next() {
+        match character {
+            '"' if quoted && chars.peek() == Some(&'"') => {
+                field.push('"');
+                chars.next();
+            }
+            '"' => quoted = !quoted,
+            ',' if !quoted => fields.push(std::mem::take(&mut field)),
+            _ => field.push(character),
+        }
+    }
+    if quoted {
+        return Err("WinDirStat returned an unterminated CSV field.".into());
+    }
+    fields.push(field);
+    Ok(fields)
+}
+
+fn normalized_windows_path(path: &Path) -> String {
+    let value = path.to_string_lossy().replace('/', "\\");
+    value.trim_end_matches('\\').to_ascii_lowercase()
+}
+
+fn parse_u64_field(value: &str, field: &str) -> Result<u64, String> {
+    value
+        .parse::<u64>()
+        .map_err(|error| format!("WinDirStat returned an invalid {field}: {error}"))
+}
+
+fn parse_hex_field(value: &str, field: &str) -> Result<u32, String> {
+    u32::from_str_radix(value.trim_start_matches("0x"), 16)
+        .map_err(|error| format!("WinDirStat returned an invalid {field}: {error}"))
+}
+
+#[cfg(target_os = "windows")]
+fn parse_windirstat_report<R, F>(
+    mut reader: R,
+    root: &Path,
+    mut emit_progress: F,
+) -> Result<DriveScan, String>
+where
+    R: BufRead,
+    F: FnMut(ScanProgress),
+{
+    const ITEM_DIRECTORY: u32 = 1 << 2;
+    const ITEM_FILE: u32 = 1 << 3;
+    const ITEM_DRIVE: u32 = 1 << 1;
+
+    let started = std::time::Instant::now();
+    let mut line = String::new();
+    if reader
+        .read_line(&mut line)
+        .map_err(|error| error.to_string())?
+        == 0
+    {
+        return Err("WinDirStat returned an empty report.".into());
+    }
+    let header = parse_csv_fields(line.trim_start_matches('\u{feff}'))?;
+    let column = |name: &str| {
+        header
+            .iter()
+            .position(|value| value == name)
+            .ok_or_else(|| format!("WinDirStat report is missing the {name} column."))
+    };
+    let name_column = column("Name")?;
+    let files_column = column("Files")?;
+    let folders_column = column("Folders")?;
+    let logical_column = column("Logical Size")?;
+    let physical_column = column("Physical Size")?;
+    let type_column = column("WinDirStat Attributes")?;
+    let required_column = *[
+        name_column,
+        files_column,
+        folders_column,
+        logical_column,
+        physical_column,
+        type_column,
+    ]
+    .iter()
+    .max()
+    .unwrap_or(&0);
+
+    let root_key = normalized_windows_path(root);
+    let mut root_entries = Vec::new();
+    let mut extensions: HashMap<String, (u64, u64, u64)> = HashMap::new();
+    let mut directory_bytes = HashMap::new();
+    let mut directory_allocated_bytes = HashMap::new();
+    let mut total_bytes = None;
+    let mut total_allocated_bytes = None;
+    let mut files = 0_u64;
+    let mut folders = 0_u64;
+    let mut processed_files = 0_u64;
+    let mut processed_folders = 0_u64;
+
+    loop {
+        line.clear();
+        if reader
+            .read_line(&mut line)
+            .map_err(|error| error.to_string())?
+            == 0
+        {
+            break;
+        }
+        if line.trim().is_empty() {
+            continue;
+        }
+        let fields = parse_csv_fields(&line)?;
+        if fields.len() <= required_column {
+            return Err("WinDirStat returned a truncated report row.".into());
+        }
+        let path = PathBuf::from(&fields[name_column]);
+        let path_key = normalized_windows_path(&path);
+        let logical = parse_u64_field(&fields[logical_column], "logical size")?;
+        let physical = parse_u64_field(&fields[physical_column], "physical size")?;
+        let item_type = parse_hex_field(&fields[type_column], "item type")?;
+        let is_directory = item_type & (ITEM_DIRECTORY | ITEM_DRIVE) != 0;
+        let is_file = item_type & ITEM_FILE != 0;
+
+        if path_key == root_key {
+            total_bytes = Some(logical);
+            total_allocated_bytes = Some(physical);
+            files = parse_u64_field(&fields[files_column], "file count")?;
+            folders = parse_u64_field(&fields[folders_column], "folder count")?;
+        }
+        if is_directory {
+            directory_bytes.insert(path.clone(), logical);
+            directory_allocated_bytes.insert(path.clone(), physical);
+            if path_key != root_key {
+                processed_folders = processed_folders.saturating_add(1);
+            }
+        } else if is_file {
+            processed_files = processed_files.saturating_add(1);
+            let extension = path
+                .extension()
+                .and_then(|value| value.to_str())
+                .filter(|value| !value.is_empty())
+                .map(|value| format!(".{}", value.to_ascii_lowercase()))
+                .unwrap_or_else(|| "(none)".into());
+            let total = extensions.entry(extension).or_default();
+            total.0 = total.0.saturating_add(logical);
+            total.1 = total.1.saturating_add(physical);
+            total.2 = total.2.saturating_add(1);
+        } else {
+            continue;
+        }
+
+        let is_direct_child = path
+            .parent()
+            .is_some_and(|parent| normalized_windows_path(parent) == root_key);
+        if path_key != root_key && is_direct_child {
+            root_entries.push(DiskEntry {
+                name: path
+                    .file_name()
+                    .map(|value| value.to_string_lossy().into_owned())
+                    .unwrap_or_else(|| fields[name_column].clone()),
+                path: fields[name_column].clone(),
+                bytes: logical,
+                allocated_bytes: physical,
+                is_directory,
+            });
+        }
+
+        if (processed_files.saturating_add(processed_folders)) % 4_096 == 0 {
+            emit_progress(ScanProgress {
+                phase: ScanProgressPhase::Files,
+                files: processed_files,
+                folders: processed_folders,
+                bytes: extensions.values().map(|value| value.0).sum(),
+                current_path: fields[name_column].clone(),
+                elapsed_ms: started.elapsed().as_millis() as u64,
+                phase_completed: processed_files.saturating_add(processed_folders),
+                phase_total: files.saturating_add(folders),
+            });
+        }
+    }
+
+    let total_bytes = total_bytes.ok_or_else(|| {
+        format!("WinDirStat report did not contain the scan root {}.", root.display())
+    })?;
+    let total_allocated_bytes = total_allocated_bytes.unwrap_or_default();
+    directory_bytes
+        .entry(root.to_path_buf())
+        .or_insert(total_bytes);
+    directory_allocated_bytes
+        .entry(root.to_path_buf())
+        .or_insert(total_allocated_bytes);
+    root_entries.sort_by_key(|entry| std::cmp::Reverse(entry.allocated_bytes));
+    let mut extensions = extensions
+        .into_iter()
+        .map(
+            |(extension, (bytes, allocated_bytes, files))| ExtensionEntry {
+                extension,
+                bytes,
+                allocated_bytes,
+                files,
+            },
+        )
+        .collect::<Vec<_>>();
+    extensions.sort_by_key(|entry| std::cmp::Reverse(entry.allocated_bytes));
+    extensions.truncate(100);
+
+    Ok(DriveScan {
+        root_entries,
+        extensions,
+        files,
+        folders,
+        elapsed_ms: started.elapsed().as_millis() as u64,
+        total_bytes,
+        total_allocated_bytes,
+        directory_bytes,
+        directory_allocated_bytes,
+    })
+}
+
+#[cfg(target_os = "windows")]
+fn scan_with_windirstat<F>(root: &Path, mut emit_progress: F) -> Result<DriveScan, String>
 where
     F: FnMut(ScanProgress),
 {
-    let executable = env::current_exe().map_err(|error| error.to_string())?;
+    let started = std::time::Instant::now();
+    let executable = find_windirstat_executable()
+        .ok_or_else(|| "The managed WinDirStat scanner is not installed.".to_string())?;
+    write_windirstat_settings(&executable)?;
     let nonce = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_err(|error| error.to_string())?
         .as_nanos();
-    let output_path = env::temp_dir().join(format!(
-        "kkterm-system-cleaner-mft-{}-{nonce}.bin",
+    let report_path = env::temp_dir().join(format!(
+        "kkterm-system-cleaner-windirstat-{}-{nonce}.csv",
         std::process::id()
     ));
-    let progress_path = env::temp_dir().join(format!(
-        "kkterm-system-cleaner-mft-progress-{}-{nonce}.jsonl",
-        std::process::id()
-    ));
-    fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&output_path)
-        .map_err(|error| error.to_string())?;
-    if let Err(error) = fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&progress_path)
-    {
-        let _ = fs::remove_file(&output_path);
-        return Err(error.to_string());
-    }
-
+    emit_progress(ScanProgress {
+        phase: ScanProgressPhase::Metadata,
+        files: 0,
+        folders: 0,
+        bytes: 0,
+        current_path: root.to_string_lossy().into_owned(),
+        elapsed_ms: 0,
+        phase_completed: 0,
+        phase_total: 0,
+    });
+    let argument_line = format!(
+        "/saveto \"{}\" \"{}\"",
+        report_path.to_string_lossy(),
+        root.to_string_lossy()
+    );
     let script = format!(
-        "$p=Start-Process -FilePath {} -ArgumentList @('--system-cleaner-mft-scan',{},{},{}) -Verb RunAs -Wait -PassThru -WindowStyle Hidden; exit $p.ExitCode",
+        "$p=Start-Process -FilePath {} -ArgumentList {} -Verb RunAs -Wait -PassThru -WindowStyle Hidden; exit $p.ExitCode",
         powershell_literal(&executable.to_string_lossy()),
-        powershell_literal(&root.to_string_lossy()),
-        powershell_literal(&output_path.to_string_lossy()),
-        powershell_literal(&progress_path.to_string_lossy()),
+        powershell_literal(&argument_line),
     );
     let mut command = Command::new("powershell.exe");
     command
         .args(["-NoProfile", "-NonInteractive", "-Command", &script])
         .creation_flags(CREATE_NO_WINDOW);
-    let mut emitted_lines = 0_usize;
-    let status = match command.spawn() {
-        Ok(mut child) => loop {
-            drain_mft_progress(&progress_path, &mut emitted_lines, &mut emit_progress);
-            match child.try_wait() {
-                Ok(Some(status)) => break Ok(status),
-                Ok(None) => std::thread::sleep(std::time::Duration::from_millis(100)),
-                Err(error) => break Err(error),
-            }
-        },
-        Err(error) => Err(error),
-    };
-    drain_mft_progress(&progress_path, &mut emitted_lines, &mut emit_progress);
-    let result = match status {
-        Ok(status) if status.success() => fs::File::open(&output_path)
-            .map_err(|error| error.to_string())
-            .and_then(|mut file| {
-                bincode::serde::decode_from_std_read(&mut file, bincode::config::standard())
-                    .map_err(|error| error.to_string())
-            }),
-        Ok(status) => Err(format!("Elevated MFT helper exited with {status}.")),
-        Err(error) => Err(error.to_string()),
-    };
-    let _ = fs::remove_file(output_path);
-    let _ = fs::remove_file(progress_path);
+    let status = command.status().map_err(|error| error.to_string())?;
+    if !status.success() {
+        let _ = fs::remove_file(&report_path);
+        return Err(format!("WinDirStat exited with {status}."));
+    }
+    if !valid_mft_helper_file(
+        &report_path,
+        "kkterm-system-cleaner-windirstat-",
+        ".csv",
+    ) {
+        return Err("WinDirStat did not create a valid scan report.".into());
+    }
+    let result = fs::File::open(&report_path)
+        .map(BufReader::new)
+        .map_err(|error| error.to_string())
+        .and_then(|reader| parse_windirstat_report(reader, root, &mut emit_progress))
+        .map(|mut scan| {
+            scan.elapsed_ms = started.elapsed().as_millis() as u64;
+            scan
+        });
+    let _ = fs::remove_file(report_path);
     result
 }
 
@@ -1388,7 +1645,7 @@ pub fn run_mft_helper_from_args() -> Option<i32> {
 
 fn scan_drive(app: &AppHandle, root: &Path) -> Result<DriveScan, String> {
     #[cfg(target_os = "windows")]
-    if let Ok(scan) = elevated_mft_scan(root, |progress| {
+    if let Ok(scan) = scan_with_windirstat(root, |progress| {
         let _ = app.emit("system-cleaner://scan-progress", progress);
     }) {
         let _ = app.emit(
@@ -1746,6 +2003,20 @@ pub async fn system_cleaner_list_drives() -> Result<Vec<DriveEntry>, String> {
 }
 
 #[tauri::command]
+pub async fn system_cleaner_scanner_status() -> Result<ScannerStatus, String> {
+    #[cfg(not(target_os = "windows"))]
+    return Ok(ScannerStatus {
+        available: false,
+        tool_id: "windirstat",
+    });
+    #[cfg(target_os = "windows")]
+    Ok(ScannerStatus {
+        available: find_windirstat_executable().is_some(),
+        tool_id: STORAGE_SCANNER_TOOL_ID,
+    })
+}
+
+#[tauri::command]
 pub async fn system_cleaner_scan(
     app: AppHandle,
     root: Option<String>,
@@ -1981,6 +2252,33 @@ mod tests {
     }
 
     #[test]
+    fn windirstat_report_preserves_physical_sizes_and_aggregates_extensions() {
+        let report = concat!(
+            "\"Name\",\"Files\",\"Folders\",\"Logical Size\",\"Physical Size\",\"Attributes\",\"Last Change\",\"WinDirStat Attributes\",\"Index\"\r\n",
+            "\"C:\\scan\",2,1,1000,786432,\"\",2026-08-11T00:00:00Z,0x30000004,0x0\r\n",
+            "\"C:\\scan\\nested\",1,0,800,524288,\"D\",2026-08-11T00:00:00Z,0x20000004,0x1\r\n",
+            "\"C:\\scan\\nested\\large.bin\",0,0,800,524288,\"A\",2026-08-11T00:00:00Z,0x20000008,0x2\r\n",
+            "\"C:\\scan\\root.txt\",0,0,200,262144,\"A\",2026-08-11T00:00:00Z,0x20000008,0x3\r\n",
+        );
+
+        let scan = parse_windirstat_report(
+            std::io::Cursor::new(report.as_bytes()),
+            Path::new(r"C:\scan"),
+            |_| {},
+        )
+        .expect("WinDirStat report");
+
+        assert_eq!(scan.total_bytes, 1000);
+        assert_eq!(scan.total_allocated_bytes, 786_432);
+        assert_eq!(scan.files, 2);
+        assert_eq!(scan.folders, 1);
+        assert_eq!(scan.directory_allocated_bytes.get(Path::new(r"C:\scan\nested")), Some(&524_288));
+        assert_eq!(scan.root_entries.len(), 2);
+        assert_eq!(scan.extensions.iter().find(|entry| entry.extension == ".bin").map(|entry| entry.allocated_bytes), Some(524_288));
+        assert_eq!(scan.extensions.iter().find(|entry| entry.extension == ".txt").map(|entry| entry.allocated_bytes), Some(262_144));
+    }
+
+    #[test]
     fn directory_size_counts_nested_files_without_recursion() {
         let root = tempfile::tempdir().expect("temporary scan root");
         let nested = root.path().join("one").join("two").join("three");
@@ -2137,35 +2435,6 @@ mod tests {
 
         assert!(!thumbnail.exists());
         assert!(icon.exists());
-    }
-
-    #[cfg(target_os = "windows")]
-    #[test]
-    fn mft_progress_sidecar_drains_complete_json_lines() {
-        let root = tempfile::tempdir().expect("temporary progress root");
-        let path = root.path().join("progress.jsonl");
-        let progress = ScanProgress {
-            phase: ScanProgressPhase::Files,
-            files: 4,
-            folders: 2,
-            bytes: 9,
-            current_path: r"C:\fixture.bin".into(),
-            elapsed_ms: 10,
-            phase_completed: 6,
-            phase_total: 12,
-        };
-        let mut line = serde_json::to_vec(&progress).expect("serialize progress");
-        line.push(b'\n');
-        fs::write(&path, line).expect("progress fixture");
-        let mut emitted_lines = 0;
-        let mut events = Vec::new();
-
-        drain_mft_progress(&path, &mut emitted_lines, &mut |event| events.push(event));
-
-        assert_eq!(emitted_lines, 1);
-        assert_eq!(events.len(), 1);
-        assert_eq!(events[0].files, 4);
-        assert_eq!(events[0].current_path, r"C:\fixture.bin");
     }
 
     #[cfg(target_os = "windows")]

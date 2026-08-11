@@ -23,11 +23,12 @@ import {
 import { ModuleHeader, ModuleHeaderLead, ModuleHeaderSpacer, ModuleHeaderTitle, ModuleIconTile } from "../../app/ModuleHeader";
 import { SystemCleanerModuleIcon } from "../../app/moduleIdentityIcons";
 import { ConfirmSheet } from "../../app/ui/dialog";
-import { invokeCommand, isTauriRuntime, openFilesystemPath } from "../../lib/tauri";
+import { confirmNativeDialog, invokeCommand, isTauriRuntime, openFilesystemPath } from "../../lib/tauri";
 import { showNativeContextMenu, type NativeContextMenuItem } from "../../lib/nativeContextMenu";
 import { nativeMenuIcons } from "../../lib/nativeMenuIcons";
 import { useWorkspaceStore } from "../../store";
 import { FileGlyph } from "../workspace/connections/sftp/finderGlyphs";
+import { installRecipeAndWait } from "../installer/progress";
 import { SystemCleanerScanOrb } from "./SystemCleanerScanOrb";
 import { useSystemCleanerScanStore } from "./scanState";
 import type {
@@ -97,10 +98,11 @@ export function SystemCleanerPage({ active, onOpenAssistant }: { active: boolean
   const [directory, setDirectory] = useState<SystemCleanerDirectoryListing>();
   const [directoryLoading, setDirectoryLoading] = useState(false);
   const [mutationKind, setMutationKind] = useState<MutationKind>();
+  const [installingScanner, setInstallingScanner] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [confirmCleanup, setConfirmCleanup] = useState(false);
   const [pendingApp, setPendingApp] = useState<SystemCleanerOverview["apps"][number]>();
-  const busy = scanActive || mutationKind !== undefined;
+  const busy = scanActive || installingScanner || mutationKind !== undefined;
 
   useEffect(() => {
     if (!active || drivesLoaded || !isTauriRuntime()) return;
@@ -122,6 +124,27 @@ export function SystemCleanerPage({ active, onOpenAssistant }: { active: boolean
 
   const scan = useCallback(async () => {
     if (!isTauriRuntime() || !selectedDrive) return;
+    try {
+      let scanner = await invokeCommand("system_cleaner_scanner_status", undefined);
+      if (!scanner.available) {
+        const shouldInstall = await confirmNativeDialog(t("systemCleaner.scannerInstallPrompt"), {
+          title: t("systemCleaner.scannerInstallTitle"),
+        });
+        if (shouldInstall !== true) return;
+        setInstallingScanner(true);
+        await invokeCommand("installer_load_catalog", {});
+        const installed = await installRecipeAndWait(scanner.toolId);
+        if (installed.kind === "cancelled") return;
+        if (installed.kind === "failed") throw new Error(installed.message);
+        scanner = await invokeCommand("system_cleaner_scanner_status", undefined);
+        if (!scanner.available) throw new Error(t("systemCleaner.scannerUnavailableAfterInstall"));
+      }
+    } catch (error) {
+      notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" });
+      return;
+    } finally {
+      setInstallingScanner(false);
+    }
     beginScan();
     let unlisten: (() => void) | undefined;
     try {

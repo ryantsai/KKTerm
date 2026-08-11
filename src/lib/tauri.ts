@@ -1194,6 +1194,10 @@ type CommandMap = {
     args: undefined;
     result: import("../modules/system-cleaner/types").SystemCleanerDrive[];
   };
+  system_cleaner_scanner_status: {
+    args: undefined;
+    result: import("../modules/system-cleaner/types").SystemCleanerScannerStatus;
+  };
   system_cleaner_scan: {
     args: { root?: string };
     result: import("../modules/system-cleaner/types").SystemCleanerOverview;

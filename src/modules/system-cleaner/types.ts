@@ -12,6 +12,11 @@ export type SystemCleanerDrive = {
   freeBytes: number;
 };
 
+export type SystemCleanerScannerStatus = {
+  available: boolean;
+  toolId: string;
+};
+
 export type SystemCleanerOverview = {
   scanRoot: string;
   totalBytes: number;

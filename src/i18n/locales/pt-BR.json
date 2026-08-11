@@ -831,6 +831,9 @@
   "systemCleaner": {
     "title": "Limpador de sistema",
     "scan": "Verificar",
+    "scannerInstallTitle": "Instalar o analisador de armazenamento?",
+    "scannerInstallPrompt": "O Limpador de sistema usa o WinDirStat para verificar com rapidez e precisão o espaço alocado no disco. Instalar agora o analisador gerenciado com o Assistente de Instalação?",
+    "scannerUnavailableAfterInstall": "O WinDirStat foi instalado, mas não pôde ser localizado.",
     "select": "Selecione:",
     "scanProgress": "Verificando… {{files}} arquivos, {{size}} lidos",
     "scanMetadataProgress": "Lendo o índice de arquivos NTFS… {{percent}}%",

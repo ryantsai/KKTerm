@@ -831,6 +831,9 @@
   "systemCleaner": {
     "title": "Pulitore del sistema",
     "scan": "Scansione",
+    "scannerInstallTitle": "Installare lo scanner di archiviazione?",
+    "scannerInstallPrompt": "Pulitore del sistema usa WinDirStat per scansioni rapide e accurate dello spazio allocato sul disco. Installare ora lo scanner gestito con Install Helper?",
+    "scannerUnavailableAfterInstall": "WinDirStat è stato installato ma non è stato possibile trovarlo.",
     "select": "Selezionare:",
     "scanProgress": "Scansione in corso… {{files}} file, {{size}} letti",
     "scanMetadataProgress": "Lettura dell'indice dei file NTFS… {{percent}}%",

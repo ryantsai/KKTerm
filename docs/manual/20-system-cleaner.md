@@ -18,9 +18,9 @@ installed-app list. The centered scan state continuously reports the files and
 bytes read through **`systemCleaner.scanProgress`**. While scanning, the Storage
 view and the Status Bar show the same Searching activity indicator. The current
 scan path is display-only and truncates when it is wider than the available
-space. The elevated NTFS path first reports file-index progress through
+space. The elevated scanner first reports file-index progress through
 **`systemCleaner.scanMetadataProgress`**, then streams file counts, logical
-bytes, and the current file name while it builds the folder tree.
+bytes, and the current file name while KKTerm imports the scan report.
 
 ## Storage analysis
 
@@ -38,19 +38,23 @@ sizes through **`systemCleaner.size`** and physical allocation through
 **`systemCleaner.allocated`**; their
 percent bars and default descending order use allocated bytes. The folder
 footer summarizes both measurements through **`systemCleaner.storageTotals`**.
-Allocated totals come from the physical, non-sparse data runs of every NTFS data
-stream, including named streams. Split MFT records are reconnected, and
-hard-linked content contributes allocation only once. NTFS metadata that WizTree
-also leaves outside folder totals, such as directory indexes and security data,
-remains in the reserved or unattributed value identified by
-**`systemCleaner.allocationDetail`**. Reparse-point records count their own data
-allocation but are never traversed, avoiding duplicate target data.
-For NTFS drives, KKTerm requests standard UAC approval and reads Master File
-Table metadata directly. Scan helpers run without opening terminal windows; the
-standard UAC consent prompt remains visible when elevation is required. If
-approval is declined or the raw scan is unavailable, it automatically uses the
-non-elevated directory walker instead. The drive scan runs on a background
-worker while cleanup locations and installed-app discovery run concurrently.
+Allocated totals come from WinDirStat's exported **Physical Size** values, while
+logical totals come from its **Logical Size** values. WinDirStat handles NTFS
+compression, sparse and WOF-backed files, hard links, and allocation-unit
+rounding before KKTerm imports the report. Filesystem metadata outside folder
+totals remains in the reserved or unattributed value identified by
+**`systemCleaner.allocationDetail`**. Directory reparse points are never
+traversed, avoiding duplicate target data.
+
+System Cleaner uses an Install Helper-managed portable WinDirStat release. On
+the first scan, **`systemCleaner.scannerInstallTitle`** and
+**`systemCleaner.scannerInstallPrompt`** ask permission to install that internal
+dependency. KKTerm then requests standard UAC approval for the headless scan so
+WinDirStat can use its direct NTFS engine. The helper runs without opening a
+terminal window; the standard UAC consent prompt remains visible. If the
+external scan cannot run, KKTerm falls back to its non-elevated, reparse-safe
+directory walker. The drive scan runs on a background worker while cleanup
+locations and installed-app discovery run concurrently.
 Scans run only on explicit demand; use
 **`systemCleaner.scan`** to refresh the measurements after moving or deleting
 files. System Cleaner reports sizes but does not delete items from this view.

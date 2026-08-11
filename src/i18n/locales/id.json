@@ -831,6 +831,9 @@
   "systemCleaner": {
     "title": "Pembersih Sistem",
     "scan": "Pindai",
+    "scannerInstallTitle": "Instal pemindai penyimpanan?",
+    "scannerInstallPrompt": "Pembersih Sistem menggunakan WinDirStat untuk memindai alokasi ruang disk dengan cepat dan akurat. Instal pemindai terkelola dengan Bantuan Instalasi sekarang?",
+    "scannerUnavailableAfterInstall": "WinDirStat telah diinstal tetapi tidak dapat ditemukan.",
     "select": "Pilih:",
     "scanProgress": "Memindai… file {{files}}, {{size}} dibaca",
     "scanMetadataProgress": "Membaca indeks file NTFS… {{percent}}%",

@@ -831,6 +831,9 @@
   "systemCleaner": {
     "title": "系统清理器",
     "scan": "扫描",
+    "scannerInstallTitle": "安装存储空间扫描工具？",
+    "scannerInstallPrompt": "系统清理器使用 WinDirStat 快速、准确地扫描磁盘分配空间。是否立即通过安装助手安装托管的扫描工具？",
+    "scannerUnavailableAfterInstall": "WinDirStat 已安装，但无法找到其可执行文件。",
     "select": "选择：",
     "scanProgress": "扫描…{{files}} 文件，{{size}} 读取",
     "scanMetadataProgress": "正在读取 NTFS 文件索引… {{percent}}%",
