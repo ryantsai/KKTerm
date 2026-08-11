@@ -36,13 +36,13 @@ export const BUILTIN_SYNTAX_HIGHLIGHT_PROFILES: readonly TerminalSyntaxHighlight
     name: "Cisco IOS",
     caseSensitive: false,
     rules: [
-      rule("cisco-prompt", "CLI prompt", "(?:^|\\s)[A-Za-z0-9._-]+(?:\\([^)]*\\))?[>#](?=\\s|$)", style("#F6C85F", { bold: true })),
-      rule("cisco-interface", "Interfaces", "\\b(?:Gi|GigabitEthernet|Fa|FastEthernet|Te|TenGigabitEthernet|Eth|Ethernet|Po|Port-channel|Vl|Vlan|Lo|Loopback|Tu|Tunnel|Se|Serial)\\d+(?:[/:.]\\d+)*\\b", style("#5CC8FF", { bold: true })),
+      rule("cisco-prompt", "CLI prompt", "(?:^|\\s)[A-Za-z0-9._-]+(?:\\([^)]*\\))?[>#](?=\\s|$)", style("#F6C85F")),
+      rule("cisco-interface", "Interfaces", "\\b(?:Gi|GigabitEthernet|Fa|FastEthernet|Te|TenGigabitEthernet|Eth|Ethernet|Po|Port-channel|Vl|Vlan|Lo|Loopback|Tu|Tunnel|Se|Serial)\\d+(?:[/:.]\\d+)*\\b", style("#5CC8FF")),
       rule("cisco-ipv4", "IPv4 and CIDR", "\\b(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)(?:\\.(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)){3}(?:/\\d{1,2}|:\\d{1,5})?\\b", style("#7BD88F")),
       rule("cisco-mac", "MAC addresses", "\\b(?:[0-9a-f]{4}\\.){2}[0-9a-f]{4}\\b|\\b(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}\\b", style("#A8E6CF")),
-      rule("cisco-good", "Healthy states", "\\b(?:up|connected|enabled|active|success|passed|complete|permit)\\b", style("#7BD88F", { bold: true })),
-      rule("cisco-warn", "Attention states", "\\b(?:warning|initializing|standby|degraded|flapping|trunk)\\b|\\[(?:confirm|yes/no)\\]", style("#F6C85F", { bold: true })),
-      rule("cisco-bad", "Failure states", "\\b(?:down|administratively down|err-disabled|disabled|failed?|invalid|den(?:y|ied)|timeout|unreachable)\\b|%[A-Z0-9_-]+-[0-2]-", style("#FF6B6B", { bold: true })),
+      rule("cisco-good", "Healthy states", "\\b(?:up|connected|enabled|active|success|passed|complete|permit)\\b", style("#7BD88F")),
+      rule("cisco-warn", "Attention states", "\\b(?:warning|initializing|standby|degraded|flapping|trunk)\\b|\\[(?:confirm|yes/no)\\]", style("#F6C85F")),
+      rule("cisco-bad", "Failure states", "\\b(?:down|administratively down|err-disabled|disabled|failed?|invalid|den(?:y|ied)|timeout|unreachable)\\b|%[A-Z0-9_-]+-[0-2]-", style("#FF6B6B")),
       rule("cisco-routing", "Routing protocols", "\\b(?:BGP|OSPFv3?|EIGRP|RIP|HSRP|VRRP|MPLS|LDP)\\b", style("#C792EA")),
     ],
   },
@@ -51,12 +51,12 @@ export const BUILTIN_SYNTAX_HIGHLIGHT_PROFILES: readonly TerminalSyntaxHighlight
     name: "Juniper Junos",
     caseSensitive: false,
     rules: [
-      rule("junos-prompt", "CLI prompt", "(?:^|\\s)[A-Za-z0-9._-]+@[A-Za-z0-9._-]+[>%#](?=\\s|$)", style("#F6C85F", { bold: true })),
-      rule("junos-interface", "Interfaces", "\\b(?:ae|at|em|et|fe|fxp|ge|gr|irb|lo0|lt|reth|st0|xe)-?\\d+(?:/\\d+){0,2}(?:\\.\\d+)?\\b", style("#5CC8FF", { bold: true })),
+      rule("junos-prompt", "CLI prompt", "(?:^|\\s)[A-Za-z0-9._-]+@[A-Za-z0-9._-]+[>%#](?=\\s|$)", style("#F6C85F")),
+      rule("junos-interface", "Interfaces", "\\b(?:ae|at|em|et|fe|fxp|ge|gr|irb|lo0|lt|reth|st0|xe)-?\\d+(?:/\\d+){0,2}(?:\\.\\d+)?\\b", style("#5CC8FF")),
       rule("junos-ipv4", "IPv4 and CIDR", "\\b(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)(?:\\.(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)){3}(?:/\\d{1,2})?\\b", style("#7BD88F")),
-      rule("junos-good", "Healthy states", "\\b(?:up|established|master|enabled|active|complete|success)\\b", style("#7BD88F", { bold: true })),
-      rule("junos-warn", "Attention states", "\\b(?:warning|backup|standby|probing|degraded|pending)\\b", style("#F6C85F", { bold: true })),
-      rule("junos-bad", "Failure states", "\\b(?:down|disabled|failed?|inactive|reject|timeout|unreachable|alarm)\\b", style("#FF6B6B", { bold: true })),
+      rule("junos-good", "Healthy states", "\\b(?:up|established|master|enabled|active|complete|success)\\b", style("#7BD88F")),
+      rule("junos-warn", "Attention states", "\\b(?:warning|backup|standby|probing|degraded|pending)\\b", style("#F6C85F")),
+      rule("junos-bad", "Failure states", "\\b(?:down|disabled|failed?|inactive|reject|timeout|unreachable|alarm)\\b", style("#FF6B6B")),
       rule("junos-routing", "Routing protocols", "\\b(?:BGP|OSPFv3?|IS-IS|LDP|MPLS|VRRP)\\b", style("#C792EA")),
     ],
   },
@@ -65,10 +65,10 @@ export const BUILTIN_SYNTAX_HIGHLIGHT_PROFILES: readonly TerminalSyntaxHighlight
     name: "Operational Logs",
     caseSensitive: false,
     rules: [
-      rule("logs-fatal", "Fatal and errors", "\\b(?:FATAL|ERROR|ERR|CRITICAL|PANIC|EXCEPTION|FAILED?)\\b", style("#FF6B6B", { bold: true })),
-      rule("logs-warning", "Warnings", "\\b(?:WARN|WARNING|DEPRECATED|RETRY|TIMEOUT)\\b", style("#F6C85F", { bold: true })),
-      rule("logs-success", "Success", "\\b(?:OK|PASS(?:ED)?|SUCCESS|HEALTHY|READY|STARTED)\\b", style("#7BD88F", { bold: true })),
-      rule("logs-debug", "Debug and trace", "\\b(?:DEBUG|TRACE|VERBOSE)\\b", style("#8796A5", { italic: true })),
+      rule("logs-fatal", "Fatal and errors", "\\b(?:FATAL|ERROR|ERR|CRITICAL|PANIC|EXCEPTION|FAILED?)\\b", style("#FF6B6B")),
+      rule("logs-warning", "Warnings", "\\b(?:WARN|WARNING|DEPRECATED|RETRY|TIMEOUT)\\b", style("#F6C85F")),
+      rule("logs-success", "Success", "\\b(?:OK|PASS(?:ED)?|SUCCESS|HEALTHY|READY|STARTED)\\b", style("#7BD88F")),
+      rule("logs-debug", "Debug and trace", "\\b(?:DEBUG|TRACE|VERBOSE)\\b", style("#8796A5")),
       rule("logs-timestamp", "Timestamps", "\\b\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:[.,]\\d+)?(?:Z|[+-]\\d{2}:?\\d{2})?\\b", style("#8EA1B5")),
       rule("logs-http-bad", "HTTP failures", "\\b(?:4\\d{2}|5\\d{2})\\b", style("#FF8F70")),
       rule("logs-ipv4", "IPv4 addresses", "\\b(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)(?:\\.(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)){3}\\b", style("#5CC8FF")),
@@ -171,7 +171,6 @@ export function parseSecureCrtKeywordIni(
     const color = secureCrtColorToHex(match[2]);
     const attributes = Number.parseInt(match[3], 16);
     const enabled = version === 2 ? attributes !== 0 : (attributes & 0x1) !== 0;
-    const bold = version === 3 && (attributes & 0x4) !== 0;
     const reverse = version === 3 && (attributes & 0x10) !== 0;
     if (!pattern || pattern.startsWith("[*]")) continue;
     entries.push({
@@ -181,7 +180,6 @@ export function parseSecureCrtKeywordIni(
       enabled,
       style: style(reverse ? null : color, {
         background: reverse ? color : null,
-        bold,
       }),
     });
   }
@@ -219,11 +217,11 @@ export function parseAiSyntaxHighlightProfile(source: string): TerminalSyntaxHig
         pattern: typeof raw.pattern === "string" ? raw.pattern.trim().slice(0, 2_000) : "",
         enabled: raw.enabled !== false,
         style: {
-          fontFamily: typeof rawStyle.fontFamily === "string" ? rawStyle.fontFamily.trim().slice(0, 120) || null : null,
+          fontFamily: null,
           foreground: color(rawStyle.foreground),
           background: color(rawStyle.background),
-          bold: rawStyle.bold === true,
-          italic: rawStyle.italic === true,
+          bold: false,
+          italic: false,
         },
       };
     }),

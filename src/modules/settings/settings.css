@@ -2762,7 +2762,6 @@ input.settings-credential-search {
   align-items: end;
 }
 
-.syntax-profile-check,
 .syntax-profile-enabled {
   display: inline-flex;
   gap: 6px;
@@ -2834,7 +2833,7 @@ input.settings-credential-search {
 
 .syntax-profile-rule-fields {
   display: grid;
-  grid-template-columns: minmax(130px, 0.75fr) minmax(240px, 1.5fr) minmax(130px, 0.75fr);
+  grid-template-columns: minmax(130px, 0.75fr) minmax(240px, 1.5fr);
   gap: 8px;
 }
 

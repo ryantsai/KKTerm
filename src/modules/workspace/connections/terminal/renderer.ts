@@ -10,7 +10,6 @@ import { WebLinksAddon } from "@xterm/addon-web-links";
 import { WebglAddon } from "@xterm/addon-webgl";
 import {
   Terminal as XtermTerminal,
-  type IBufferCell,
   type IBufferLine,
   type IDecoration,
   type IDisposable,
@@ -556,7 +555,6 @@ class XtermTerminalRenderer implements TerminalRenderer, TerminalFontAtlasRefres
           const width = Math.max(1, endColumn - startColumn);
           if (startColumn >= this.terminal.cols || width <= 0) continue;
           const clampedWidth = Math.min(width, this.terminal.cols - startColumn);
-          const matchedText = match[0];
           let overlaps = false;
           for (let column = startColumn; column < startColumn + clampedWidth; column += 1) {
             if (claimed[column]) {
@@ -569,7 +567,6 @@ class XtermTerminalRenderer implements TerminalRenderer, TerminalFontAtlasRefres
             claimed[column] = 1;
           }
 
-          const cells = terminalCellsForRange(line, startColumn, clampedWidth);
           const foreground = compiled.style.foreground ?? undefined;
           const background = compiled.style.background ?? undefined;
           const marker = this.terminal.registerMarker(bufferRow - cursorAbsoluteY);
@@ -587,24 +584,9 @@ class XtermTerminalRenderer implements TerminalRenderer, TerminalFontAtlasRefres
             continue;
           }
           this.syntaxHighlightDecorations.push(decoration);
-          const hasTextOverlayStyle =
-            compiled.style.fontFamily || compiled.style.bold || compiled.style.italic;
-          if (hasTextOverlayStyle) {
-            const effectiveForeground =
-              foreground ?? terminalCellForeground(cells[0], this.colorScheme);
-            decoration.onRender((element) => {
-              element.classList.add("terminal-syntax-highlight-decoration");
-              element.textContent = matchedText;
-              element.style.color = effectiveForeground;
-              element.style.fontFamily = compiled.style.fontFamily || (this.terminal.options.fontFamily ?? "monospace");
-              element.style.fontSize = `${this.terminal.options.fontSize ?? 12}px`;
-              element.style.fontWeight = compiled.style.bold ? "700" : "400";
-              element.style.fontStyle = compiled.style.italic ? "italic" : "normal";
-              element.style.whiteSpace = "pre";
-              element.style.overflow = "hidden";
-              element.style.pointerEvents = "none";
-            });
-          }
+          // Decorations can safely recolor xterm cells, but painting the match
+          // text into the decoration DOM duplicates xterm's canvas/WebGL glyphs
+          // and uses different font metrics. Keep xterm as the sole text painter.
           if (this.syntaxHighlightDecorations.length >= maximumDecorations) return;
         }
       }
@@ -1189,63 +1171,6 @@ function terminalLineTextAndColumns(line: IBufferLine, cols: number) {
       return cols;
     },
   };
-}
-
-function terminalCellsForRange(line: IBufferLine, start: number, width: number) {
-  const cells: IBufferCell[] = [];
-  for (let column = start; column < start + width; column += 1) {
-    const cell = line.getCell(column);
-    if (cell) cells.push(cell);
-  }
-  return cells;
-}
-
-function terminalCellForeground(cell: IBufferCell | undefined, scheme: TerminalColorScheme) {
-  if (!cell) return scheme.palette.foreground;
-  if (cell.isInverse()) return terminalCellBackground(cell, scheme);
-  if (cell.isFgRGB()) return `#${cell.getFgColor().toString(16).padStart(6, "0")}`;
-  if (cell.isFgPalette()) return terminalPaletteColor(cell.getFgColor(), scheme);
-  return scheme.palette.foreground;
-}
-
-function terminalCellBackground(cell: IBufferCell, scheme: TerminalColorScheme) {
-  if (cell.isBgRGB()) return `#${cell.getBgColor().toString(16).padStart(6, "0")}`;
-  if (cell.isBgPalette()) return terminalPaletteColor(cell.getBgColor(), scheme);
-  return scheme.palette.background;
-}
-
-function terminalPaletteColor(index: number, scheme: TerminalColorScheme) {
-  const palette = scheme.palette;
-  const base = [
-    palette.black,
-    palette.red,
-    palette.green,
-    palette.yellow,
-    palette.blue,
-    palette.magenta,
-    palette.cyan,
-    palette.white,
-    palette.brightBlack,
-    palette.brightRed,
-    palette.brightGreen,
-    palette.brightYellow,
-    palette.brightBlue,
-    palette.brightMagenta,
-    palette.brightCyan,
-    palette.brightWhite,
-  ];
-  if (index < base.length) return base[index];
-  if (index >= 232) {
-    const value = 8 + (index - 232) * 10;
-    const hex = value.toString(16).padStart(2, "0");
-    return `#${hex}${hex}${hex}`;
-  }
-  const cube = Math.max(0, index - 16);
-  const values = [0, 95, 135, 175, 215, 255];
-  const red = values[Math.floor(cube / 36) % 6];
-  const green = values[Math.floor(cube / 6) % 6];
-  const blue = values[cube % 6];
-  return `#${red.toString(16).padStart(2, "0")}${green.toString(16).padStart(2, "0")}${blue.toString(16).padStart(2, "0")}`;
 }
 
 interface CompiledHyperlinkRule {

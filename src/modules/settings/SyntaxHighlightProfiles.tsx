@@ -43,15 +43,6 @@ import {
   validateSyntaxHighlightProfile,
 } from "../workspace/connections/terminal/syntaxHighlighting";
 
-const FONT_SUGGESTIONS = [
-  "Cascadia Mono",
-  "JetBrains Mono",
-  "SF Mono",
-  "Consolas",
-  "Fira Code",
-  "IBM Plex Mono",
-];
-
 const EMPTY_STYLE: TerminalSyntaxHighlightStyle = {
   fontFamily: null,
   foreground: "#7BD88F",
@@ -135,10 +126,10 @@ export function SyntaxHighlightProfileManager({
             "Create one terminal keyword-highlighting profile as strict JSON.",
             "Return only JSON with: name and rules.",
             "Each rule needs name, pattern (JavaScript regex source without slashes), enabled, and style.",
-            "Style fields: fontFamily (string or null), foreground/background (#RRGGBB or null), bold, italic.",
+            "Style fields: foreground and background (#RRGGBB or null).",
             "Matching is always case-insensitive.",
             "Prefer concise, non-overlapping regexes and no nested quantifiers. Limit the result to 30 useful rules.",
-            "A rule's configured style takes precedence over terminal and ANSI styling for matching text.",
+            "A rule's configured colors take precedence over terminal and ANSI colors for matching text.",
             "Use a readable palette on dark terminal backgrounds.",
             "",
             `User request: ${prompt}`,
@@ -256,9 +247,6 @@ export function SyntaxHighlightProfileManager({
                     style={{
                       background: entry.style.background ?? undefined,
                       color: entry.style.foreground ?? undefined,
-                      fontFamily: entry.style.fontFamily ?? undefined,
-                      fontStyle: entry.style.italic ? "italic" : undefined,
-                      fontWeight: entry.style.bold ? 700 : undefined,
                     }}
                   >
                     {entry.name}
@@ -378,9 +366,6 @@ function SyntaxProfileEditor({
               <Plus size={14} /> {t("settings.syntaxHighlightAddRule")}
             </button>
           </div>
-          <datalist id="syntax-highlight-fonts">
-            {FONT_SUGGESTIONS.map((font) => <option key={font} value={font} />)}
-          </datalist>
           <div className="syntax-profile-rules">
             {draft.rules.map((entry, index) => (
               <div className="syntax-profile-rule-card" key={entry.id}>
@@ -401,16 +386,11 @@ function SyntaxProfileEditor({
                   <Field className="syntax-profile-pattern-field" label={t("settings.syntaxHighlightPattern")}>
                     <TextInput mono onChange={(event) => updateRule(entry.id, (rule) => ({ ...rule, pattern: event.currentTarget.value }))} value={entry.pattern} />
                   </Field>
-                  <Field label={t("settings.syntaxHighlightFont")}>
-                    <TextInput list="syntax-highlight-fonts" onChange={(event) => updateRule(entry.id, (rule) => ({ ...rule, style: { ...rule.style, fontFamily: event.currentTarget.value || null } }))} placeholder={t("settings.syntaxHighlightInheritFont")} value={entry.style.fontFamily ?? ""} />
-                  </Field>
                 </div>
                 <div className="syntax-profile-style-row">
                   <ColorField label={t("settings.syntaxHighlightForeground")} value={entry.style.foreground} onChange={(foreground) => updateRule(entry.id, (rule) => ({ ...rule, style: { ...rule.style, foreground } }))} />
                   <ColorField label={t("settings.syntaxHighlightBackground")} value={entry.style.background} onChange={(background) => updateRule(entry.id, (rule) => ({ ...rule, style: { ...rule.style, background } }))} />
-                  <div className="syntax-profile-check"><Switch ariaLabel={t("settings.syntaxHighlightBold")} on={entry.style.bold} onChange={(bold) => updateRule(entry.id, (rule) => ({ ...rule, style: { ...rule.style, bold } }))} /><span>{t("settings.syntaxHighlightBold")}</span></div>
-                  <div className="syntax-profile-check"><Switch ariaLabel={t("settings.syntaxHighlightItalic")} on={entry.style.italic} onChange={(italic) => updateRule(entry.id, (rule) => ({ ...rule, style: { ...rule.style, italic } }))} /><span>{t("settings.syntaxHighlightItalic")}</span></div>
-                  <span className="syntax-profile-live-preview" style={{ background: entry.style.background ?? undefined, color: entry.style.foreground ?? undefined, fontFamily: entry.style.fontFamily ?? undefined, fontStyle: entry.style.italic ? "italic" : undefined, fontWeight: entry.style.bold ? 700 : undefined }}>
+                  <span className="syntax-profile-live-preview" style={{ background: entry.style.background ?? undefined, color: entry.style.foreground ?? undefined }}>
                     {entry.name || "Aa"}
                   </span>
                 </div>

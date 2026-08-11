@@ -19,6 +19,15 @@ test("renderer gives configured keyword colors unconditional precedence", () => 
   assert.doesNotMatch(renderer, /isFgDefault\(\)|isBgDefault\(\)/);
 });
 
+test("renderer never paints duplicate glyph text for keyword matches", () => {
+  const renderer = readFileSync(
+    new URL("../src/modules/workspace/connections/terminal/renderer.ts", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(renderer, /decoration\.onRender\(/);
+  assert.doesNotMatch(renderer, /element\.textContent\s*=\s*matchedText/);
+});
+
 test("built-in keyword profiles are valid and define overriding colors", () => {
   assert.deepEqual(
     BUILTIN_SYNTAX_HIGHLIGHT_PROFILES.map((profile) => profile.name),
@@ -51,7 +60,7 @@ S:"List Name"=Router Checks
   assert.equal(profile.rules[1].enabled, false);
 });
 
-test("SecureCRT V3 maps bold and reverse-video attributes", () => {
+test("SecureCRT V3 maps reverse-video colors without changing terminal typography", () => {
   const profile = parseSecureCrtKeywordIni(`
 D:"Match Case"=00000000
 Z:"Keyword List V3"=00000002
@@ -59,7 +68,7 @@ Z:"Keyword List V3"=00000002
  "CONFIRM",0000ffff,00000015,0000001f
 `);
 
-  assert.equal(profile.rules[0].style.bold, true);
+  assert.equal(profile.rules[0].style.bold, false);
   assert.equal(profile.rules[0].style.foreground, "#FF0000");
   assert.equal(profile.rules[1].style.foreground, null);
   assert.equal(profile.rules[1].style.background, "#FFFF00");
@@ -71,8 +80,8 @@ test("copying a built-in produces independent user ids", () => {
   assert.notEqual(copied.id, source.id);
   assert.ok(!copied.id.startsWith("builtin:"));
   assert.notEqual(copied.rules[0].id, source.rules[0].id);
-  copied.rules[0].style.bold = false;
-  assert.equal(source.rules[0].style.bold, true);
+  copied.rules[0].style.foreground = "#000000";
+  assert.equal(source.rules[0].style.foreground, "#F6C85F");
 });
 
 test("AI profiles are normalized and invalid regexes are rejected", () => {
@@ -82,6 +91,7 @@ test("AI profiles are normalized and invalid regexes are rejected", () => {
   assert.equal(profile.name, "Docker");
   assert.equal(profile.caseSensitive, false);
   assert.equal(profile.rules[0].style.foreground, "#FF0000");
+  assert.equal(profile.rules[0].style.bold, false);
   assert.throws(() =>
     parseAiSyntaxHighlightProfile(
       '{"name":"Broken","rules":[{"name":"Bad","pattern":"(","style":{}}]}',

@@ -43,3 +43,11 @@ test("keyword-highlighting profile rows use the compact list scale", async () =>
   assert.match(settingsCss, /\.syntax-profile-row strong\s*\{[\s\S]*?font-size:\s*13px;/);
   assert.match(settingsCss, /\.syntax-profile-row > svg\s*\{[\s\S]*?width:\s*13px;[\s\S]*?height:\s*13px;/);
 });
+
+test("keyword-highlighting rules keep terminal typography unchanged", async () => {
+  const source = await read("src/modules/settings/SyntaxHighlightProfiles.tsx");
+
+  assert.doesNotMatch(source, /settings\.syntaxHighlightFont/);
+  assert.doesNotMatch(source, /settings\.syntaxHighlightBold/);
+  assert.doesNotMatch(source, /settings\.syntaxHighlightItalic/);
+});
