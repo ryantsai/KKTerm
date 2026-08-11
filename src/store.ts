@@ -1640,6 +1640,7 @@ export interface WorkspaceState {
   refreshOpenConnectionMetadata: (connection: Connection) => void;
   updateOpenConnectionTerminalAppearance: (connectionId: string, appearance: Pick<Connection, "terminalOpacity" | "terminalBackground">) => void;
   updateOpenConnectionTerminalColorScheme: (connectionId: string, terminalColorScheme: string | null) => void;
+  updateOpenConnectionTerminalSyntaxHighlightProfile: (connectionId: string, profileId: string | null) => void;
   updateOpenConnectionFileBrowserViewOptions: (connectionId: string, fileBrowserViewOptions: Connection["fileBrowserViewOptions"]) => void;
   updateOpenTerminalPaneAppearance: (tabId: string, paneId: string, appearance: Pick<Connection, "terminalOpacity" | "terminalBackground">) => void;
   updateOpenTerminalPaneFontSize: (tabId: string, paneId: string, fontSize: number) => void;
@@ -3856,6 +3857,15 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       ),
     }));
   },
+  updateOpenConnectionTerminalSyntaxHighlightProfile: (connectionId, profileId) => {
+    set((state) => ({
+      tabs: state.tabs.map((tab) =>
+        updateTabTerminalAppearance(tab, connectionId, {
+          terminalSyntaxHighlightProfileId: profileId,
+        }),
+      ),
+    }));
+  },
   updateOpenConnectionFileBrowserViewOptions: (connectionId, fileBrowserViewOptions) => {
     set((state) => ({
       tabs: state.tabs.map((tab) =>
@@ -4061,7 +4071,15 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 function updateTabTerminalAppearance(
   tab: WorkspaceTab,
   connectionId: string,
-  appearance: Partial<Pick<Connection, "terminalOpacity" | "terminalBackground" | "terminalColorScheme">>,
+  appearance: Partial<
+    Pick<
+      Connection,
+      | "terminalOpacity"
+      | "terminalBackground"
+      | "terminalColorScheme"
+      | "terminalSyntaxHighlightProfileId"
+    >
+  >,
 ): WorkspaceTab {
   const apply = (connection: Connection): Connection => ({ ...connection, ...appearance });
   const tabConnectionMatches = tab.connection?.id === connectionId;

@@ -200,6 +200,7 @@ impl Storage {
             terminal_opacity: Some(DEFAULT_TERMINAL_OPACITY),
             terminal_background: None,
             terminal_color_scheme: None,
+            terminal_syntax_highlight_profile_id: None,
             file_browser_view_options: None,
             ssh_port_forwardings,
             file_view_open_external,
@@ -649,6 +650,37 @@ impl Storage {
             .execute(
                 "UPDATE connections SET terminal_color_scheme = ?1 WHERE id = ?2",
                 params![terminal_color_scheme, &connection_id],
+            )
+            .map_err(to_storage_error)?;
+        get_connection_by_id(&connection, &connection_id).map(Some)
+    }
+
+    pub fn update_connection_terminal_syntax_highlight_profile(
+        &self,
+        connection_id: String,
+        profile_id: Option<String>,
+    ) -> Result<Option<SavedConnection>, String> {
+        let connection_id = required_field("connection id", connection_id)?;
+        let profile_id = profile_id
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty());
+        let connection = self.lock()?;
+        let current = connection
+            .query_row(
+                "SELECT terminal_syntax_highlight_profile_id FROM connections WHERE id = ?1",
+                params![&connection_id],
+                |row| row.get::<_, Option<String>>(0),
+            )
+            .optional()
+            .map_err(to_storage_error)?
+            .ok_or_else(|| "connection was not found".to_string())?;
+        if current == profile_id {
+            return Ok(None);
+        }
+        connection
+            .execute(
+                "UPDATE connections SET terminal_syntax_highlight_profile_id = ?1 WHERE id = ?2",
+                params![profile_id, &connection_id],
             )
             .map_err(to_storage_error)?;
         get_connection_by_id(&connection, &connection_id).map(Some)
@@ -1448,7 +1480,7 @@ impl Storage {
 
         let source = transaction
             .query_row(
-                "SELECT folder_id, name, tab_title, host, username, port, key_path, proxy_jump, ssh_socks_proxy, ssh_socks_proxy_username, ssh_socks_proxy_inherit_defaults, auth_method, local_shell, local_startup_directory, local_startup_script, url, data_partition, use_tmux_sessions, use_psmux_sessions, serial_line, serial_speed, connection_type, icon_color, icon_data_url, icon_background_color, terminal_opacity, terminal_background_json, workspace_id, file_browser_view_options_json, file_view_open_external, ssh_port_forwardings_json, ssh_compression, url_proxy, url_proxy_inherit_defaults, url_user_agent, terminal_color_scheme
+                "SELECT folder_id, name, tab_title, host, username, port, key_path, proxy_jump, ssh_socks_proxy, ssh_socks_proxy_username, ssh_socks_proxy_inherit_defaults, auth_method, local_shell, local_startup_directory, local_startup_script, url, data_partition, use_tmux_sessions, use_psmux_sessions, serial_line, serial_speed, connection_type, icon_color, icon_data_url, icon_background_color, terminal_opacity, terminal_background_json, workspace_id, file_browser_view_options_json, file_view_open_external, ssh_port_forwardings_json, ssh_compression, url_proxy, url_proxy_inherit_defaults, url_user_agent, terminal_color_scheme, terminal_syntax_highlight_profile_id
                  FROM connections
                  WHERE id = ?1",
                 params![source_id],
@@ -1490,6 +1522,7 @@ impl Storage {
                         row.get::<_, bool>(33)?,
                         row.get::<_, Option<String>>(34)?,
                         row.get::<_, Option<String>>(35)?,
+                        row.get::<_, Option<String>>(36)?,
                     ))
                 },
             )
@@ -1533,6 +1566,7 @@ impl Storage {
             url_proxy_inherit_defaults,
             url_user_agent,
             terminal_color_scheme,
+            terminal_syntax_highlight_profile_id,
         ) = source;
         let workspace_id = normalize_workspace_id(workspace_id.unwrap_or_default());
         let duplicate_name = request
@@ -1554,8 +1588,8 @@ impl Storage {
         transaction
             .execute(
                 "INSERT INTO connections (
-                    id, folder_id, name, tab_title, host, username, port, key_path, proxy_jump, ssh_socks_proxy, ssh_socks_proxy_username, ssh_socks_proxy_inherit_defaults, auth_method, local_shell, local_startup_directory, local_startup_script, url, data_partition, use_tmux_sessions, use_psmux_sessions, tmux_connection_id, serial_line, serial_speed, connection_type, icon_color, icon_data_url, icon_background_color, terminal_opacity, terminal_background_json, file_browser_view_options_json, file_view_open_external, ssh_port_forwardings_json, status, sort_order, workspace_id, ssh_compression, url_proxy, url_proxy_inherit_defaults, url_user_agent, terminal_color_scheme
-                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30, ?31, ?32, 'idle', ?33, ?34, ?35, ?36, ?37, ?38, ?39)",
+                    id, folder_id, name, tab_title, host, username, port, key_path, proxy_jump, ssh_socks_proxy, ssh_socks_proxy_username, ssh_socks_proxy_inherit_defaults, auth_method, local_shell, local_startup_directory, local_startup_script, url, data_partition, use_tmux_sessions, use_psmux_sessions, tmux_connection_id, serial_line, serial_speed, connection_type, icon_color, icon_data_url, icon_background_color, terminal_opacity, terminal_background_json, file_browser_view_options_json, file_view_open_external, ssh_port_forwardings_json, status, sort_order, workspace_id, ssh_compression, url_proxy, url_proxy_inherit_defaults, url_user_agent, terminal_color_scheme, terminal_syntax_highlight_profile_id
+                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30, ?31, ?32, 'idle', ?33, ?34, ?35, ?36, ?37, ?38, ?39, ?40)",
                 params![
                     duplicate_id,
                     folder_id,
@@ -1595,7 +1629,8 @@ impl Storage {
                     url_proxy,
                     url_proxy_inherit_defaults,
                     url_user_agent,
-                    terminal_color_scheme
+                    terminal_color_scheme,
+                    terminal_syntax_highlight_profile_id
                 ],
             )
             .map_err(to_storage_error)?;
@@ -1864,7 +1899,7 @@ impl Storage {
                             local_startup_script, url, data_partition, use_tmux_sessions, use_psmux_sessions,
                             tmux_connection_id, serial_line, serial_speed, rdp_options, vnc_options,
                             ftp_options, password_credential_id, icon_color, icon_data_url, icon_background_color,
-                            terminal_opacity, terminal_background_json, terminal_color_scheme, file_view_open_external,
+                            terminal_opacity, terminal_background_json, terminal_color_scheme, terminal_syntax_highlight_profile_id, file_view_open_external,
                             connection_type, status, sort_order
                         )
                         SELECT
@@ -1874,7 +1909,7 @@ impl Storage {
                             local_startup_script, url, data_partition, use_tmux_sessions, use_psmux_sessions,
                             ?3, serial_line, serial_speed, rdp_options, vnc_options,
                             ftp_options, password_credential_id, icon_color, icon_data_url, icon_background_color,
-                            terminal_opacity, terminal_background_json, terminal_color_scheme, file_view_open_external,
+                            terminal_opacity, terminal_background_json, terminal_color_scheme, terminal_syntax_highlight_profile_id, file_view_open_external,
                             connection_type, 'idle', ?4
                         FROM connections
                         WHERE id = ?5",

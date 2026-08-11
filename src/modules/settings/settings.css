@@ -2594,6 +2594,301 @@ input.settings-credential-search {
   padding: 4px 0 2px;
 }
 
+.syntax-profile-manager {
+  overflow: hidden;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.syntax-profile-toolbar {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.syntax-profile-toolbar .toolbar-button {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  width: auto;
+  padding: 0 9px;
+}
+
+.syntax-profile-toolbar .syntax-profile-ai-button {
+  width: 30px;
+  margin-left: auto;
+  padding: 0;
+}
+
+.syntax-profile-layout {
+  display: grid;
+  grid-template-columns: minmax(210px, 0.7fr) minmax(260px, 1.3fr);
+  min-height: 210px;
+}
+
+.syntax-profile-list {
+  overflow: auto;
+  max-height: 310px;
+  border-right: 1px solid var(--border);
+}
+
+.syntax-profile-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 8px 10px;
+  color: var(--text-muted);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+}
+
+.syntax-profile-row:hover,
+.syntax-profile-row.active {
+  color: var(--text);
+  background: var(--surface);
+}
+
+.syntax-profile-row.active {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.syntax-profile-row span,
+.syntax-profile-summary-head > div:first-child {
+  display: grid;
+  min-width: 0;
+}
+
+.syntax-profile-row strong,
+.syntax-profile-row small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.syntax-profile-row small,
+.syntax-profile-summary small {
+  color: var(--text-faint);
+  font-size: 10px;
+}
+
+.syntax-profile-row em {
+  padding: 2px 5px;
+  color: var(--text-faint);
+  font-size: 9px;
+  font-style: normal;
+  text-transform: uppercase;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.syntax-profile-summary {
+  min-width: 0;
+  padding: 12px;
+}
+
+.syntax-profile-summary-head {
+  display: flex;
+  gap: 12px;
+  align-items: start;
+  justify-content: space-between;
+}
+
+.syntax-profile-summary-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.syntax-profile-rule-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-content: start;
+  margin-top: 14px;
+}
+
+.syntax-profile-rule-preview span,
+.syntax-profile-live-preview {
+  overflow: hidden;
+  max-width: 100%;
+  padding: 4px 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.syntax-profile-editor-dialog .kk-sheet {
+  max-height: min(88vh, 820px);
+}
+
+.syntax-profile-editor {
+  display: grid;
+  gap: 14px;
+}
+
+.syntax-profile-editor-meta {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.syntax-profile-editor-meta > label:not(.syntax-profile-check),
+.syntax-profile-rule-fields label,
+.syntax-profile-ai-prompt {
+  display: grid;
+  gap: 5px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.syntax-profile-check,
+.syntax-profile-enabled {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.syntax-profile-check input,
+.syntax-profile-enabled input {
+  accent-color: var(--accent);
+}
+
+.syntax-profile-validation {
+  margin: 0;
+  color: var(--danger);
+  font-size: 11px;
+}
+
+.syntax-profile-rules-head,
+.syntax-profile-rule-topline,
+.syntax-profile-style-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.syntax-profile-rules-head {
+  justify-content: space-between;
+}
+
+.syntax-profile-rules-head .toolbar-button {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  width: auto;
+  padding: 0 8px;
+}
+
+.syntax-profile-rules {
+  display: grid;
+  gap: 8px;
+  overflow: auto;
+  max-height: 490px;
+  padding-right: 3px;
+}
+
+.syntax-profile-rule-card {
+  display: grid;
+  gap: 9px;
+  padding: 10px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+}
+
+.syntax-profile-rule-card:focus-within {
+  border-color: var(--border-strong);
+}
+
+.syntax-profile-rule-topline {
+  justify-content: flex-end;
+}
+
+.syntax-profile-enabled {
+  margin-right: auto;
+}
+
+.syntax-profile-rule-number {
+  color: var(--text-faint);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.syntax-profile-rule-fields {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.75fr) minmax(240px, 1.5fr) minmax(130px, 0.75fr);
+  gap: 8px;
+}
+
+.syntax-profile-rule-fields input {
+  min-width: 0;
+  font-size: 11px;
+}
+
+.syntax-profile-pattern-field input {
+  font-family: var(--font-mono);
+}
+
+.syntax-profile-style-row {
+  flex-wrap: wrap;
+}
+
+.syntax-profile-color-field {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  color: var(--text-faint);
+  font-size: 10px;
+}
+
+.syntax-profile-color-field > i {
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+}
+
+.syntax-profile-color-field .color-palette-rainbow {
+  width: 20px;
+  height: 20px;
+}
+
+.syntax-profile-live-preview {
+  margin-left: auto;
+}
+
+.syntax-profile-ai-prompt textarea {
+  resize: vertical;
+}
+
+@media (max-width: 860px) {
+  .syntax-profile-layout,
+  .syntax-profile-editor-meta,
+  .syntax-profile-rule-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .syntax-profile-list {
+    max-height: 220px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
 /*
  * Merge consecutive Settings row blocks inside one subsection so related
  * controls read as one grouped card divided by rules instead of separate cards.

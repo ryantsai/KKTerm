@@ -2493,3 +2493,8 @@
   opacity: 0.85;
   pointer-events: none;
 }
+.terminal-syntax-highlight-decoration {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}

@@ -34,6 +34,7 @@ import { localShellOptionsForPlatform, resolveAvailableLocalShell } from "../wor
 import { customShellPresetsForPlatform, findCustomShellPreset } from "./customShellPresets";
 import { SettingsSectionHeader, useSettingsSaveRegistration } from "./shared";
 import { ToggleSwitch } from "./ToggleSwitch";
+import { SyntaxHighlightProfileManager } from "./SyntaxHighlightProfiles";
 
 function IncludesSshBadge({ label }: { label: string }) {
   return <span className="terminal-ssh-scope-badge">{label}</span>;
@@ -117,6 +118,7 @@ function normalizeTerminalSettingsDraft(settings: TerminalSettingsType, t: TFunc
     customShells,
     colorScheme,
     hyperlinkRules,
+    syntaxHighlightProfiles: settings.syntaxHighlightProfiles ?? [],
   };
 }
 
@@ -784,6 +786,19 @@ export function TerminalSettings() {
             </span>
           </label>
         </div>
+      </fieldset>
+
+      <fieldset className="settings-subsection settings-fieldset">
+        <legend>{t("settings.syntaxHighlighting")}</legend>
+        <div>
+          <p className="field-hint">{t("settings.syntaxHighlightingHint")}</p>
+        </div>
+        <SyntaxHighlightProfileManager
+          profiles={draft.syntaxHighlightProfiles ?? []}
+          onChange={(syntaxHighlightProfiles) =>
+            setDraft((settings) => ({ ...settings, syntaxHighlightProfiles }))
+          }
+        />
       </fieldset>
 
       <fieldset className="settings-subsection settings-fieldset">

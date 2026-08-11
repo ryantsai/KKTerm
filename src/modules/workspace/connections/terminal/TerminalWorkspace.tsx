@@ -6,7 +6,7 @@ import { CUSTOM_FONTS_LOADED_EVENT } from "../../../../lib/customFonts";
 import { ScreenshotMenu } from "../../ScreenshotMenu";
 
 import { ConnectionGlyph } from "../ConnectionGlyph";
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bot, Check, FileText, Folder, FolderOpen, Mouse, ChevronRight, Circle, Copy, Menu, Monitor, Network, Palette, PanelBottom, Pencil, Radio, RefreshCw, Scan, Search, SplitSquareHorizontal, Square, Type, X } from "../../../../lib/reicon";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bot, Braces, Check, FileText, Folder, FolderOpen, Mouse, ChevronRight, Circle, Copy, Menu, Monitor, Network, Palette, PanelBottom, Pencil, Radio, RefreshCw, Scan, Search, SplitSquareHorizontal, Square, Type, X } from "../../../../lib/reicon";
 import { SaveAsIcon } from "../../../../app/ui/SaveAsIcon";
 import { listen } from "@tauri-apps/api/event";
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -57,6 +57,10 @@ import { classifyEnvironmentShell, prepareLocalStartup } from "../connection-dia
 import { readSshApplyStartupToExistingTmux } from "../connection-dialog/sshStartupScript";
 import { showNativeContextMenu } from "../../../../lib/nativeContextMenu";
 import { nativeMenuIcons } from "../../../../lib/nativeMenuIcons";
+import {
+  allSyntaxHighlightProfiles,
+  findSyntaxHighlightProfile,
+} from "./syntaxHighlighting";
 
 const SftpWorkspace = lazy(() =>
   import("../sftp/SftpWorkspace").then(({ SftpWorkspace }) => ({
@@ -1774,6 +1778,7 @@ function TerminalPaneView({
   const updatePaneCwd = useWorkspaceStore((state) => state.updatePaneCwd);
   const updateOpenConnectionTerminalAppearance = useWorkspaceStore((state) => state.updateOpenConnectionTerminalAppearance);
   const updateOpenConnectionTerminalColorScheme = useWorkspaceStore((state) => state.updateOpenConnectionTerminalColorScheme);
+  const updateOpenConnectionTerminalSyntaxHighlightProfile = useWorkspaceStore((state) => state.updateOpenConnectionTerminalSyntaxHighlightProfile);
   const updateOpenTerminalPaneAppearance = useWorkspaceStore((state) => state.updateOpenTerminalPaneAppearance);
   const updateOpenTerminalPaneBackground = useWorkspaceStore((state) => state.updateOpenTerminalPaneBackground);
   const updateOpenTerminalPaneTextEncoding = useWorkspaceStore((state) => state.updateOpenTerminalPaneTextEncoding);
@@ -1807,6 +1812,11 @@ function TerminalPaneView({
   // Per-Connection color scheme override wins over the global Terminal
   // Settings default; both live-apply to the open renderer below.
   const terminalColorScheme = pane.connection?.terminalColorScheme ?? terminalSettings.colorScheme;
+  const syntaxHighlightProfiles = allSyntaxHighlightProfiles(terminalSettings.syntaxHighlightProfiles);
+  const syntaxHighlightProfile = findSyntaxHighlightProfile(
+    pane.connection?.terminalSyntaxHighlightProfileId,
+    terminalSettings.syntaxHighlightProfiles,
+  );
   const globalTerminalColorScheme = resolveTerminalColorScheme(terminalSettings.colorScheme);
   const terminalToolbarBackground =
     terminalBackground
@@ -1821,6 +1831,10 @@ function TerminalPaneView({
     committedTerminalColorSchemeRef.current = terminalColorScheme;
     terminalRendererRef.current?.setColorScheme(terminalColorScheme);
   }, [terminalColorScheme]);
+
+  useEffect(() => {
+    terminalRendererRef.current?.setSyntaxHighlightProfile(syntaxHighlightProfile);
+  }, [syntaxHighlightProfile]);
 
   useEffect(() => {
     return () => {
@@ -2057,7 +2071,7 @@ function TerminalPaneView({
             colorScheme: connection.terminalColorScheme ?? terminalSettings.colorScheme,
           };
     const terminalHost = element;
-    const terminal = createTerminalRenderer(rendererSettings, terminalOpacity);
+    const terminal = createTerminalRenderer(rendererSettings, terminalOpacity, syntaxHighlightProfile);
     terminalRendererRef.current = terminal;
     const cwdDisposable = terminal.onCwdChange((cwd) => updatePaneCwd(tabId, pane.id, cwd));
     const notificationDisposable = terminal.onNotification((notification) => {
@@ -2815,6 +2829,27 @@ function TerminalPaneView({
     void saveTerminalColorScheme(nextScheme);
   }
 
+  async function commitSyntaxHighlightProfile(profileId: string | null) {
+    const connection = pane.connection;
+    if (!connection) return;
+    const profile = findSyntaxHighlightProfile(profileId, terminalSettings.syntaxHighlightProfiles);
+    terminalRendererRef.current?.setSyntaxHighlightProfile(profile);
+    updateOpenConnectionTerminalSyntaxHighlightProfile(connection.id, profileId);
+    if (isTransientLocalConnectionId(connection.id) || !isTauriRuntime()) return;
+    try {
+      await invokeCommand("update_connection_terminal_syntax_highlight_profile", {
+        connectionId: connection.id,
+        profileId,
+      });
+    } catch (error) {
+      console.warn("terminal syntax highlighting update failed.", error);
+      showStatusBarNotice(
+        t("terminal.syntaxHighlightSaveFailed", { message: String(error) }),
+        { tone: "error" },
+      );
+    }
+  }
+
   function startQuickSelect() {
     const renderer = terminalRendererRef.current;
     const host = terminalElementRef.current;
@@ -3534,6 +3569,53 @@ function TerminalPaneView({
                         ) : null}
                       </button>
                     ))}
+                  </div>
+                </div>
+                <div className="terminal-menu-submenu">
+                  <button
+                    className="terminal-menu-item"
+                    role="menuitem"
+                    type="button"
+                  >
+                    <Braces size={13} />
+                    {t("terminal.syntaxHighlight")}
+                    <ChevronRight size={13} className="terminal-menu-chevron" />
+                  </button>
+                  <div className="terminal-menu terminal-menu-submenu-panel" role="menu">
+                    <button
+                      aria-checked={!syntaxHighlightProfile}
+                      className="terminal-menu-item"
+                      onClick={() => {
+                        setActionsMenuOpen(false);
+                        void commitSyntaxHighlightProfile(null);
+                        focusTerminalRenderer();
+                      }}
+                      role="menuitemradio"
+                      type="button"
+                    >
+                      {t("terminal.syntaxHighlightNone")}
+                      {!syntaxHighlightProfile ? <Check size={13} className="terminal-color-scheme-check" /> : null}
+                    </button>
+                    {syntaxHighlightProfiles.map((profile) => {
+                      const selectedProfile = syntaxHighlightProfile?.id === profile.id;
+                      return (
+                        <button
+                          aria-checked={selectedProfile}
+                          className="terminal-menu-item"
+                          key={profile.id}
+                          onClick={() => {
+                            setActionsMenuOpen(false);
+                            void commitSyntaxHighlightProfile(profile.id);
+                            focusTerminalRenderer();
+                          }}
+                          role="menuitemradio"
+                          type="button"
+                        >
+                          {profile.name}
+                          {selectedProfile ? <Check size={13} className="terminal-color-scheme-check" /> : null}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
                 <div className="terminal-menu-submenu">

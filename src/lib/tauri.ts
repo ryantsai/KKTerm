@@ -1786,6 +1786,10 @@ type CommandMap = {
     args: { connectionId: string; terminalColorScheme?: string | null };
     result: Connection | null;
   };
+  update_connection_terminal_syntax_highlight_profile: {
+    args: { connectionId: string; profileId?: string | null };
+    result: Connection | null;
+  };
   update_connection_file_browser_view_options: {
     args: { connectionId: string; viewOptions?: FileBrowserViewOptions | null };
     result: Connection | null;
@@ -4183,6 +4187,25 @@ export async function selectIpamImportFile(options: {
 
 export async function readUtf8File(path: string): Promise<string> {
   return new TextDecoder().decode(await readFile(path));
+}
+
+export async function selectAndReadSyntaxHighlightIni(options: {
+  title: string;
+  filterName: string;
+}): Promise<{ path: string; name: string; text: string } | null> {
+  if (!isTauriRuntime()) return null;
+  const selectedPath = await openDialog({
+    directory: false,
+    multiple: false,
+    filters: [{ name: options.filterName, extensions: ["ini"] }],
+    title: options.title,
+  });
+  if (!selectedPath || Array.isArray(selectedPath)) return null;
+  return {
+    path: selectedPath,
+    name: selectedPath.split(/[/\\]/).pop() ?? selectedPath,
+    text: await readUtf8File(selectedPath),
+  };
 }
 
 export async function localFileSize(path: string): Promise<number> {

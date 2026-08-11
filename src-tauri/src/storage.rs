@@ -13,7 +13,7 @@ use std::{
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use zip::{ZipArchive, ZipWriter, write::SimpleFileOptions};
 
-const SCHEMA_USER_VERSION: i32 = 55;
+const SCHEMA_USER_VERSION: i32 = 56;
 
 const DEFAULT_TERMINAL_OPACITY: u8 = 50;
 
@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS connections (
     terminal_opacity INTEGER,
     terminal_background_json TEXT,
     terminal_color_scheme TEXT,
+    terminal_syntax_highlight_profile_id TEXT,
     file_browser_view_options_json TEXT,
     ssh_port_forwardings_json TEXT,
     file_view_open_external INTEGER NOT NULL DEFAULT 0,
@@ -799,6 +800,8 @@ pub struct TerminalSettings {
     allow_terminal_notifications: bool,
     #[serde(default)]
     hyperlink_rules: Vec<TerminalHyperlinkRule>,
+    #[serde(default)]
+    syntax_highlight_profiles: Vec<TerminalSyntaxHighlightProfile>,
 }
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -815,6 +818,42 @@ pub struct TerminalHyperlinkRule {
     id: String,
     pattern: String,
     url_template: String,
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalSyntaxHighlightProfile {
+    id: String,
+    name: String,
+    #[serde(default)]
+    case_sensitive: bool,
+    #[serde(default)]
+    rules: Vec<TerminalSyntaxHighlightRule>,
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalSyntaxHighlightRule {
+    id: String,
+    name: String,
+    pattern: String,
+    enabled: bool,
+    style: TerminalSyntaxHighlightStyle,
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalSyntaxHighlightStyle {
+    #[serde(default)]
+    font_family: Option<String>,
+    #[serde(default)]
+    foreground: Option<String>,
+    #[serde(default)]
+    background: Option<String>,
+    #[serde(default)]
+    bold: bool,
+    #[serde(default)]
+    italic: bool,
 }
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -1606,6 +1645,8 @@ pub struct SavedConnection {
     terminal_background: Option<crate::dashboard_storage::DashboardBackground>,
     #[serde(default)]
     terminal_color_scheme: Option<String>,
+    #[serde(default)]
+    terminal_syntax_highlight_profile_id: Option<String>,
     file_browser_view_options: Option<FileBrowserViewOptions>,
     ssh_port_forwardings: Option<Vec<SshPortForwarding>>,
     file_view_open_external: bool,
@@ -2876,6 +2917,14 @@ impl Storage {
         // global Terminal Settings default. Ensured past every
         // connections-table rebuild, like ssh_compression above.
         ensure_column(&connection, "connections", "terminal_color_scheme", "TEXT")?;
+        // v56: opt-in syntax highlighting selection, stored per durable
+        // Connection. Profiles themselves live in Terminal Settings JSON.
+        ensure_column(
+            &connection,
+            "connections",
+            "terminal_syntax_highlight_profile_id",
+            "TEXT",
+        )?;
         ensure_column(&connection, "connections", "url_user_agent", "TEXT")?;
         ensure_column(&connection, "connections", "url_proxy", "TEXT")?;
         ensure_column(
@@ -3913,7 +3962,7 @@ fn list_root_connections_for_workspace(
     let mut statement = connection
         .prepare(
             "SELECT connections.id, name, tab_title, host, connections.username, port, key_path, proxy_jump, ssh_socks_proxy, ssh_socks_proxy_username, ssh_socks_proxy_inherit_defaults, auth_method, local_shell, local_startup_directory, local_startup_script, url, data_partition, use_tmux_sessions, tmux_connection_id, connection_type, serial_line, serial_speed, rdp_options, vnc_options, ftp_options, icon_color, icon_data_url, icon_background_color, terminal_opacity, terminal_background_json, password_credential_id,
-                    (SELECT username FROM url_credentials WHERE url_credentials.connection_id = connections.id ORDER BY updated_at DESC LIMIT 1), file_browser_view_options_json, file_view_open_external, ssh_port_forwardings_json, use_psmux_sessions, ssh_compression, url_proxy, url_proxy_inherit_defaults, url_user_agent, terminal_color_scheme, ssh_old_protocols
+                    (SELECT username FROM url_credentials WHERE url_credentials.connection_id = connections.id ORDER BY updated_at DESC LIMIT 1), file_browser_view_options_json, file_view_open_external, ssh_port_forwardings_json, use_psmux_sessions, ssh_compression, url_proxy, url_proxy_inherit_defaults, url_user_agent, terminal_color_scheme, terminal_syntax_highlight_profile_id, ssh_old_protocols
              FROM connections
              WHERE folder_id IS NULL AND workspace_id = ?1
              ORDER BY sort_order, name",
@@ -3975,7 +4024,7 @@ fn list_connections_for_folder(
     let mut statement = connection
         .prepare(&format!(
             "SELECT connections.id, name, tab_title, host, connections.username, port, key_path, proxy_jump, ssh_socks_proxy, ssh_socks_proxy_username, ssh_socks_proxy_inherit_defaults, auth_method, local_shell, local_startup_directory, local_startup_script, url, data_partition, use_tmux_sessions, tmux_connection_id, connection_type, serial_line, serial_speed, rdp_options, vnc_options, ftp_options, icon_color, icon_data_url, icon_background_color, terminal_opacity, terminal_background_json, password_credential_id,
-                    (SELECT username FROM url_credentials WHERE url_credentials.connection_id = connections.id ORDER BY updated_at DESC LIMIT 1), file_browser_view_options_json, file_view_open_external, ssh_port_forwardings_json, use_psmux_sessions, ssh_compression, url_proxy, url_proxy_inherit_defaults, url_user_agent, terminal_color_scheme, ssh_old_protocols
+                    (SELECT username FROM url_credentials WHERE url_credentials.connection_id = connections.id ORDER BY updated_at DESC LIMIT 1), file_browser_view_options_json, file_view_open_external, ssh_port_forwardings_json, use_psmux_sessions, ssh_compression, url_proxy, url_proxy_inherit_defaults, url_user_agent, terminal_color_scheme, terminal_syntax_highlight_profile_id, ssh_old_protocols
              FROM connections
              WHERE {where_clause}
              ORDER BY sort_order, name",
@@ -4350,7 +4399,7 @@ fn get_connection_by_id(
     let saved_connection = connection
         .query_row(
             "SELECT connections.id, name, tab_title, host, connections.username, port, key_path, proxy_jump, ssh_socks_proxy, ssh_socks_proxy_username, ssh_socks_proxy_inherit_defaults, auth_method, local_shell, local_startup_directory, local_startup_script, url, data_partition, use_tmux_sessions, tmux_connection_id, connection_type, serial_line, serial_speed, rdp_options, vnc_options, ftp_options, icon_color, icon_data_url, icon_background_color, terminal_opacity, terminal_background_json, password_credential_id,
-                    (SELECT username FROM url_credentials WHERE url_credentials.connection_id = connections.id ORDER BY updated_at DESC LIMIT 1), file_browser_view_options_json, file_view_open_external, ssh_port_forwardings_json, use_psmux_sessions, ssh_compression, url_proxy, url_proxy_inherit_defaults, url_user_agent, terminal_color_scheme, ssh_old_protocols
+                    (SELECT username FROM url_credentials WHERE url_credentials.connection_id = connections.id ORDER BY updated_at DESC LIMIT 1), file_browser_view_options_json, file_view_open_external, ssh_port_forwardings_json, use_psmux_sessions, ssh_compression, url_proxy, url_proxy_inherit_defaults, url_user_agent, terminal_color_scheme, terminal_syntax_highlight_profile_id, ssh_old_protocols
              FROM connections
              WHERE connections.id = ?1",
             params![connection_id],
@@ -4370,7 +4419,7 @@ fn get_connection_by_id(
                     ssh_socks_proxy_username: row.get(9)?,
                     ssh_socks_proxy_inherit_defaults: row.get(10)?,
                     ssh_compression: row.get(36)?,
-                    ssh_old_protocols: row.get(41)?,
+                    ssh_old_protocols: row.get(42)?,
                     auth_method: row.get(11)?,
                     local_shell: row.get(12)?,
                     local_startup_directory: row.get(13)?,
@@ -4395,6 +4444,7 @@ fn get_connection_by_id(
                     terminal_opacity: normalize_loaded_terminal_opacity(row.get(28)?),
                     terminal_background: terminal_background_from_json(row.get(29)?),
                     terminal_color_scheme: row.get(40)?,
+                    terminal_syntax_highlight_profile_id: row.get(41)?,
                     file_browser_view_options: file_browser_view_options_from_json(row.get(32)?),
                     file_view_open_external: row.get(33)?,
                     ssh_port_forwardings: ssh_port_forwardings_from_json(row.get(34)?),
@@ -4432,7 +4482,7 @@ fn saved_connection_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<SavedC
         ssh_socks_proxy_username: row.get(9)?,
         ssh_socks_proxy_inherit_defaults: row.get(10)?,
         ssh_compression: row.get(36)?,
-        ssh_old_protocols: row.get(41)?,
+        ssh_old_protocols: row.get(42)?,
         auth_method: row.get(11)?,
         local_shell: row.get(12)?,
         local_startup_directory: row.get(13)?,
@@ -4458,6 +4508,7 @@ fn saved_connection_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<SavedC
         terminal_opacity: normalize_loaded_terminal_opacity(row.get(28)?),
         terminal_background: terminal_background_from_json(row.get(29)?),
         terminal_color_scheme: row.get(40)?,
+        terminal_syntax_highlight_profile_id: row.get(41)?,
         file_browser_view_options: file_browser_view_options_from_json(row.get(32)?),
         file_view_open_external: row.get(33)?,
         ssh_port_forwardings: ssh_port_forwardings_from_json(row.get(34)?),
@@ -5732,6 +5783,7 @@ fn default_terminal_settings() -> TerminalSettings {
         enable_inline_images: true,
         allow_terminal_notifications: true,
         hyperlink_rules: Vec::new(),
+        syntax_highlight_profiles: Vec::new(),
     }
 }
 
@@ -6490,8 +6542,91 @@ fn validate_terminal_settings(mut settings: TerminalSettings) -> Result<Terminal
         }
     };
     settings.hyperlink_rules = validate_terminal_hyperlink_rules(settings.hyperlink_rules)?;
+    settings.syntax_highlight_profiles =
+        validate_terminal_syntax_highlight_profiles(settings.syntax_highlight_profiles)?;
 
     Ok(settings)
+}
+
+fn validate_terminal_syntax_highlight_profiles(
+    profiles: Vec<TerminalSyntaxHighlightProfile>,
+) -> Result<Vec<TerminalSyntaxHighlightProfile>, String> {
+    const MAX_PROFILES: usize = 50;
+    const MAX_RULES_PER_PROFILE: usize = 200;
+    let mut normalized = Vec::new();
+    let mut seen_ids = Vec::new();
+
+    for profile in profiles {
+        let id = required_field("syntax highlighting profile id", profile.id)?;
+        let name = required_field("syntax highlighting profile name", profile.name)?;
+        if seen_ids.contains(&id) {
+            continue;
+        }
+        if name.chars().count() > 80 {
+            return Err("syntax highlighting profile names must be 80 characters or fewer".to_string());
+        }
+        if profile.rules.len() > MAX_RULES_PER_PROFILE {
+            return Err(format!(
+                "at most {MAX_RULES_PER_PROFILE} syntax highlighting rules are supported per profile"
+            ));
+        }
+        let mut rules = Vec::new();
+        let mut seen_rule_ids = Vec::new();
+        for rule in profile.rules {
+            let rule_id = required_field("syntax highlighting rule id", rule.id)?;
+            let rule_name = required_field("syntax highlighting rule name", rule.name)?;
+            let pattern = required_field("syntax highlighting rule pattern", rule.pattern)?;
+            if seen_rule_ids.contains(&rule_id) {
+                continue;
+            }
+            if rule_name.chars().count() > 80 || pattern.chars().count() > 2_000 {
+                return Err("syntax highlighting rule names or patterns are too long".to_string());
+            }
+            let normalize_color = |value: Option<String>| -> Result<Option<String>, String> {
+                let Some(value) = value.map(|value| value.trim().to_string()).filter(|value| !value.is_empty()) else {
+                    return Ok(None);
+                };
+                if value.len() != 7
+                    || !value.starts_with('#')
+                    || !value[1..].chars().all(|character| character.is_ascii_hexdigit())
+                {
+                    return Err("syntax highlighting colors must use #RRGGBB".to_string());
+                }
+                Ok(Some(value.to_ascii_uppercase()))
+            };
+            seen_rule_ids.push(rule_id.clone());
+            rules.push(TerminalSyntaxHighlightRule {
+                id: rule_id,
+                name: rule_name,
+                pattern,
+                enabled: rule.enabled,
+                style: TerminalSyntaxHighlightStyle {
+                    font_family: rule
+                        .style
+                        .font_family
+                        .map(|value| value.trim().to_string())
+                        .filter(|value| !value.is_empty()),
+                    foreground: normalize_color(rule.style.foreground)?,
+                    background: normalize_color(rule.style.background)?,
+                    bold: rule.style.bold,
+                    italic: rule.style.italic,
+                },
+            });
+        }
+        seen_ids.push(id.clone());
+        normalized.push(TerminalSyntaxHighlightProfile {
+            id,
+            name,
+            case_sensitive: profile.case_sensitive,
+            rules,
+        });
+    }
+    if normalized.len() > MAX_PROFILES {
+        return Err(format!(
+            "at most {MAX_PROFILES} syntax highlighting profiles are supported"
+        ));
+    }
+    Ok(normalized)
 }
 
 fn validate_terminal_hyperlink_rules(

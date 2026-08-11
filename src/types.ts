@@ -133,6 +133,9 @@ export interface Connection {
   /** Per-Connection terminal color scheme override; null inherits the global
    * Terminal Settings default. Set from the terminal Pane actions menu. */
   terminalColorScheme?: string | null;
+  /** Stable id of the syntax-highlighting profile enabled for this Connection.
+   * Null disables local highlighting and leaves host ANSI styling untouched. */
+  terminalSyntaxHighlightProfileId?: string | null;
   fileBrowserViewOptions?: FileBrowserViewOptions | null;
   sshPortForwardings?: SshPortForwarding[] | null;
   fileViewOpenExternal?: boolean;
@@ -1324,6 +1327,31 @@ export interface TerminalSettings {
   enableInlineImages: boolean;
   allowTerminalNotifications: boolean;
   hyperlinkRules: TerminalHyperlinkRule[];
+  /** User-owned profiles only. Immutable built-ins are supplied by the app. */
+  syntaxHighlightProfiles: TerminalSyntaxHighlightProfile[];
+}
+
+export interface TerminalSyntaxHighlightStyle {
+  fontFamily?: string | null;
+  foreground?: string | null;
+  background?: string | null;
+  bold: boolean;
+  italic: boolean;
+}
+
+export interface TerminalSyntaxHighlightRule {
+  id: string;
+  name: string;
+  pattern: string;
+  enabled: boolean;
+  style: TerminalSyntaxHighlightStyle;
+}
+
+export interface TerminalSyntaxHighlightProfile {
+  id: string;
+  name: string;
+  caseSensitive: boolean;
+  rules: TerminalSyntaxHighlightRule[];
 }
 
 /** User-defined regex → URL rule that turns matching terminal text into a

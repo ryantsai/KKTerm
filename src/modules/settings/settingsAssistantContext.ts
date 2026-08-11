@@ -331,6 +331,10 @@ const SETTINGS_SECTIONS: Record<SettingsSectionId, SettingsSectionSummary> = {
         key: "settings.quickCommandBundles",
         description: "App-global named Quick Command lists that any Connection can select from its Quick Command Bar.",
       },
+      {
+        key: "settings.syntaxHighlighting",
+        description: "Built-in and user-owned regex styling profiles that can be enabled per terminal Connection.",
+      },
     ],
   },
   "url-settings": {

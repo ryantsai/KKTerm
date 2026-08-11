@@ -181,6 +181,78 @@ fn create_test_ssh_connection(
         .expect("SSH connection is created")
 }
 
+#[test]
+fn v56_syntax_highlight_profile_migration_and_current_reopen_preserve_selection() {
+    let db_path = temp_db_path("syntax-highlight-v56");
+    let connection_id = {
+        let storage = Storage::open(db_path.clone()).expect("current storage opens");
+        let created = create_test_ssh_connection(&storage, "Router", "192.0.2.10", None);
+        assert!(
+            created.terminal_syntax_highlight_profile_id.is_none(),
+            "new Connections default to no syntax-highlighting profile",
+        );
+        created.id
+    };
+    {
+        let connection = rusqlite::Connection::open(&db_path).expect("raw database opens");
+        connection
+            .execute_batch(
+                "ALTER TABLE connections DROP COLUMN terminal_syntax_highlight_profile_id;
+                 PRAGMA user_version = 55;",
+            )
+            .expect("v55 connection shape is restored");
+    }
+
+    let upgraded = Storage::open(db_path.clone()).expect("v55 storage upgrades");
+    upgraded
+        .with_connection(|connection| {
+            assert!(column_exists(
+                connection,
+                "connections",
+                "terminal_syntax_highlight_profile_id",
+            )?);
+            let version: i32 = connection
+                .pragma_query_value(None, "user_version", |row| row.get(0))
+                .map_err(to_storage_error)?;
+            assert_eq!(version, SCHEMA_USER_VERSION);
+            Ok(())
+        })
+        .expect("v56 column is inspected");
+    let updated = upgraded
+        .update_connection_terminal_syntax_highlight_profile(
+            connection_id.clone(),
+            Some("builtin:cisco-ios".to_string()),
+        )
+        .expect("syntax profile selection is saved")
+        .expect("connection changed");
+    assert_eq!(
+        updated.terminal_syntax_highlight_profile_id.as_deref(),
+        Some("builtin:cisco-ios")
+    );
+    drop(upgraded);
+
+    let reopened = Storage::open(db_path.clone()).expect("current v56 storage reopens");
+    let saved = reopened
+        .get_connection(&connection_id)
+        .expect("connection reopens");
+    assert_eq!(
+        saved.terminal_syntax_highlight_profile_id.as_deref(),
+        Some("builtin:cisco-ios")
+    );
+    assert!(
+        reopened
+            .update_connection_terminal_syntax_highlight_profile(
+                connection_id,
+                Some("builtin:cisco-ios".to_string()),
+            )
+            .expect("unchanged selection is accepted")
+            .is_none(),
+        "current-version reopen must leave an unchanged selection write-free",
+    );
+    drop(reopened);
+    let _ = fs::remove_file(db_path);
+}
+
 fn create_test_ssh_connection_in_workspace(
     storage: &Storage,
     name: &str,
@@ -3644,6 +3716,24 @@ fn terminal_settings_round_trip_through_settings_table() {
                 pattern: r"[A-Z]+-\d+".to_string(),
                 url_template: "https://tracker.example.com/browse/$0".to_string(),
             }],
+            syntax_highlight_profiles: vec![TerminalSyntaxHighlightProfile {
+                id: "router-logs".to_string(),
+                name: " Router Logs ".to_string(),
+                case_sensitive: false,
+                rules: vec![TerminalSyntaxHighlightRule {
+                    id: "errors".to_string(),
+                    name: " Errors ".to_string(),
+                    pattern: "ERROR|FAIL".to_string(),
+                    enabled: true,
+                    style: TerminalSyntaxHighlightStyle {
+                        font_family: None,
+                        foreground: Some("#ff0000".to_string()),
+                        background: None,
+                        bold: true,
+                        italic: false,
+                    },
+                }],
+            }],
         })
         .expect("terminal settings update");
 
@@ -3655,6 +3745,14 @@ fn terminal_settings_round_trip_through_settings_table() {
     assert!(updated.auto_record_sessions);
     assert_eq!(updated.color_scheme, "dracula");
     assert_eq!(updated.hyperlink_rules.len(), 1);
+    assert_eq!(updated.syntax_highlight_profiles.len(), 1);
+    assert_eq!(
+        updated.syntax_highlight_profiles[0].rules[0]
+            .style
+            .foreground
+            .as_deref(),
+        Some("#FF0000")
+    );
     assert_eq!(
         updated.hyperlink_rules[0].url_template,
         "https://tracker.example.com/browse/$0"

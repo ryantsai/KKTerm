@@ -705,6 +705,15 @@ fn update_connection_terminal_color_scheme(
 }
 
 #[tauri::command]
+fn update_connection_terminal_syntax_highlight_profile(
+    storage: tauri::State<'_, storage::Storage>,
+    connection_id: String,
+    profile_id: Option<String>,
+) -> Result<Option<storage::SavedConnection>, String> {
+    storage.update_connection_terminal_syntax_highlight_profile(connection_id, profile_id)
+}
+
+#[tauri::command]
 fn update_connection_tab_title(
     storage: tauri::State<'_, storage::Storage>,
     connection_id: String,
@@ -4796,6 +4805,7 @@ pub fn run() {
             update_connection_icon_background_color,
             update_connection_terminal_appearance,
             update_connection_terminal_color_scheme,
+            update_connection_terminal_syntax_highlight_profile,
             update_connection_file_browser_view_options,
             update_connection_ssh_port_forwardings,
             update_connection_tab_title,

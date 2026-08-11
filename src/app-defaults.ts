@@ -104,6 +104,7 @@ export const defaultTerminalSettings: TerminalSettings = {
   enableInlineImages: true,
   allowTerminalNotifications: true,
   hyperlinkRules: [],
+  syntaxHighlightProfiles: [],
 };
 
 export const defaultAppearanceSettings: AppearanceSettings = {

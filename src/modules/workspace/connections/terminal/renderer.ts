@@ -10,6 +10,9 @@ import { WebLinksAddon } from "@xterm/addon-web-links";
 import { WebglAddon } from "@xterm/addon-webgl";
 import {
   Terminal as XtermTerminal,
+  type IBufferCell,
+  type IBufferLine,
+  type IDecoration,
   type IDisposable,
   type ILink,
   type IMarker,
@@ -19,7 +22,12 @@ import {
 import { writeToClipboard } from "../../../../lib/clipboard";
 import { isMacPlatform } from "../../../../lib/platform";
 import { logUiDebug, openExternalUrl } from "../../../../lib/tauri";
-import type { TerminalHyperlinkRule, TerminalSettings } from "../../../../types";
+import type {
+  TerminalHyperlinkRule,
+  TerminalSettings,
+  TerminalSyntaxHighlightProfile,
+  TerminalSyntaxHighlightStyle,
+} from "../../../../types";
 import {
   hexColorWithAlpha,
   resolveTerminalColorScheme,
@@ -91,6 +99,7 @@ export interface TerminalRenderer {
   getViewportLines: () => string[];
   getScreenGeometry: () => TerminalScreenGeometry | null;
   setColorScheme: (schemeId: string) => void;
+  setSyntaxHighlightProfile: (profile: TerminalSyntaxHighlightProfile | null) => void;
   onSearchResultsChange: (handler: (result: ISearchResultChangeEvent) => void) => IDisposable;
   onSelectionChange: (handler: () => void) => IDisposable;
   open: (element: HTMLElement) => void;
@@ -137,8 +146,12 @@ const SEARCH_OPTIONS: ISearchOptions = {
   },
 };
 
-export function createTerminalRenderer(settings: TerminalSettings, backgroundOpacity = 95): TerminalRenderer {
-  return new XtermTerminalRenderer(settings, backgroundOpacity);
+export function createTerminalRenderer(
+  settings: TerminalSettings,
+  backgroundOpacity = 95,
+  syntaxHighlightProfile: TerminalSyntaxHighlightProfile | null = null,
+): TerminalRenderer {
+  return new XtermTerminalRenderer(settings, backgroundOpacity, syntaxHighlightProfile);
 }
 
 export function scheduleTerminalFontAtlasRefresh(reason = "unspecified") {
@@ -202,6 +215,11 @@ class XtermTerminalRenderer implements TerminalRenderer, TerminalFontAtlasRefres
   private fontReadinessGeneration = 0;
   private wheelScrollbackHandler: ((lines: number) => void) | null = null;
   private wheelScrollbackOverride = false;
+  private syntaxHighlightProfile: TerminalSyntaxHighlightProfile | null;
+  private syntaxHighlightRules: CompiledSyntaxHighlightRule[] = [];
+  private syntaxHighlightDecorations: IDecoration[] = [];
+  private syntaxHighlightRefreshFrame: number | null = null;
+  private readonly syntaxHighlightDisposables: IDisposable[] = [];
   // OSC 133 shell-integration zones: the last command's output span and exit
   // status, kept for the failed-command gutter mark (and so the copy-last-
   // command-output surface can return once shell integration is injectable).
@@ -209,9 +227,15 @@ class XtermTerminalRenderer implements TerminalRenderer, TerminalFontAtlasRefres
   private lastOutputEndMarker: IMarker | null = null;
   private runningOutputStartMarker: IMarker | null = null;
 
-  constructor(settings: TerminalSettings, backgroundOpacity: number) {
+  constructor(
+    settings: TerminalSettings,
+    backgroundOpacity: number,
+    syntaxHighlightProfile: TerminalSyntaxHighlightProfile | null,
+  ) {
     this.backgroundOpacity = backgroundOpacity;
     this.colorScheme = resolveTerminalColorScheme(settings.colorScheme);
+    this.syntaxHighlightProfile = syntaxHighlightProfile;
+    this.syntaxHighlightRules = compileSyntaxHighlightRules(syntaxHighlightProfile);
     this.terminal = new XtermTerminal(terminalOptionsFor(settings, this.colorScheme));
     this.terminal.attachCustomWheelEventHandler((event) => this.handleWheelEvent(event));
     // xterm defaults to its built-in Unicode v6 width tables, where emoji are
@@ -230,6 +254,11 @@ class XtermTerminalRenderer implements TerminalRenderer, TerminalFontAtlasRefres
       this.terminal.loadAddon(new ImageAddon());
     }
     this.registerHyperlinkRuleProvider(settings.hyperlinkRules);
+    this.syntaxHighlightDisposables.push(
+      this.terminal.onWriteParsed(() => this.scheduleSyntaxHighlightRefresh()),
+      this.terminal.onScroll(() => this.scheduleSyntaxHighlightRefresh()),
+      this.terminal.onResize(() => this.scheduleSyntaxHighlightRefresh()),
+    );
     this.osc7Disposable = this.terminal.parser.registerOscHandler(7, (data) =>
       this.handleOsc7CwdSequence(data),
     );
@@ -292,6 +321,15 @@ class XtermTerminalRenderer implements TerminalRenderer, TerminalFontAtlasRefres
       disposable.dispose();
     }
     this.oscSequenceDisposables.length = 0;
+    for (const disposable of this.syntaxHighlightDisposables) {
+      disposable.dispose();
+    }
+    this.syntaxHighlightDisposables.length = 0;
+    if (this.syntaxHighlightRefreshFrame !== null) {
+      window.cancelAnimationFrame(this.syntaxHighlightRefreshFrame);
+      this.syntaxHighlightRefreshFrame = null;
+    }
+    this.clearSyntaxHighlightDecorations();
     this.notificationListeners.clear();
     this.disposeWebglAddon();
     this.terminal.dispose();
@@ -461,6 +499,116 @@ class XtermTerminalRenderer implements TerminalRenderer, TerminalFontAtlasRefres
     this.colorScheme = scheme;
     this.terminal.options.theme = themeForScheme(scheme);
     this.applyHostBackground(this.backgroundOpacity);
+    this.scheduleSyntaxHighlightRefresh();
+  }
+
+  setSyntaxHighlightProfile(profile: TerminalSyntaxHighlightProfile | null) {
+    this.syntaxHighlightProfile = profile;
+    this.syntaxHighlightRules = compileSyntaxHighlightRules(profile);
+    this.scheduleSyntaxHighlightRefresh();
+  }
+
+  private clearSyntaxHighlightDecorations() {
+    for (const decoration of this.syntaxHighlightDecorations) {
+      decoration.dispose();
+    }
+    this.syntaxHighlightDecorations.length = 0;
+  }
+
+  private scheduleSyntaxHighlightRefresh() {
+    if (this.syntaxHighlightRefreshFrame !== null || typeof window === "undefined") {
+      return;
+    }
+    this.syntaxHighlightRefreshFrame = window.requestAnimationFrame(() => {
+      this.syntaxHighlightRefreshFrame = null;
+      this.refreshSyntaxHighlighting();
+    });
+  }
+
+  private refreshSyntaxHighlighting() {
+    this.clearSyntaxHighlightDecorations();
+    const profile = this.syntaxHighlightProfile;
+    if (!profile || this.syntaxHighlightRules.length === 0 || !this.terminal.element) {
+      return;
+    }
+    const buffer = this.terminal.buffer.active;
+    const cursorAbsoluteY = buffer.baseY + buffer.cursorY;
+    const maximumDecorations = 400;
+
+    for (let viewportRow = 0; viewportRow < this.terminal.rows; viewportRow += 1) {
+      const bufferRow = buffer.viewportY + viewportRow;
+      const line = buffer.getLine(bufferRow);
+      if (!line) continue;
+      const lineMap = terminalLineTextAndColumns(line, this.terminal.cols);
+      if (!lineMap.text) continue;
+      const claimed = new Uint8Array(this.terminal.cols);
+
+      for (const compiled of this.syntaxHighlightRules) {
+        compiled.pattern.lastIndex = 0;
+        let match: RegExpExecArray | null;
+        while ((match = compiled.pattern.exec(lineMap.text)) !== null) {
+          if (!match[0]) {
+            compiled.pattern.lastIndex += 1;
+            continue;
+          }
+          const startColumn = lineMap.columnAt(match.index);
+          const endColumn = lineMap.columnAt(match.index + match[0].length, true);
+          const width = Math.max(1, endColumn - startColumn);
+          if (startColumn >= this.terminal.cols || width <= 0) continue;
+          const clampedWidth = Math.min(width, this.terminal.cols - startColumn);
+          const matchedText = match[0];
+          let overlaps = false;
+          for (let column = startColumn; column < startColumn + clampedWidth; column += 1) {
+            if (claimed[column]) {
+              overlaps = true;
+              break;
+            }
+          }
+          if (overlaps) continue;
+          for (let column = startColumn; column < startColumn + clampedWidth; column += 1) {
+            claimed[column] = 1;
+          }
+
+          const cells = terminalCellsForRange(line, startColumn, clampedWidth);
+          const foreground = compiled.style.foreground ?? undefined;
+          const background = compiled.style.background ?? undefined;
+          const marker = this.terminal.registerMarker(bufferRow - cursorAbsoluteY);
+          if (!marker) continue;
+          const decoration = this.terminal.registerDecoration({
+            marker,
+            x: startColumn,
+            width: clampedWidth,
+            foregroundColor: foreground,
+            backgroundColor: background,
+            layer: "bottom",
+          });
+          if (!decoration) {
+            marker.dispose();
+            continue;
+          }
+          this.syntaxHighlightDecorations.push(decoration);
+          const hasTextOverlayStyle =
+            compiled.style.fontFamily || compiled.style.bold || compiled.style.italic;
+          if (hasTextOverlayStyle) {
+            const effectiveForeground =
+              foreground ?? terminalCellForeground(cells[0], this.colorScheme);
+            decoration.onRender((element) => {
+              element.classList.add("terminal-syntax-highlight-decoration");
+              element.textContent = matchedText;
+              element.style.color = effectiveForeground;
+              element.style.fontFamily = compiled.style.fontFamily || (this.terminal.options.fontFamily ?? "monospace");
+              element.style.fontSize = `${this.terminal.options.fontSize ?? 12}px`;
+              element.style.fontWeight = compiled.style.bold ? "700" : "400";
+              element.style.fontStyle = compiled.style.italic ? "italic" : "normal";
+              element.style.whiteSpace = "pre";
+              element.style.overflow = "hidden";
+              element.style.pointerEvents = "none";
+            });
+          }
+          if (this.syntaxHighlightDecorations.length >= maximumDecorations) return;
+        }
+      }
+    }
   }
 
   private emitNotification(notification: TerminalNotification) {
@@ -618,6 +766,7 @@ class XtermTerminalRenderer implements TerminalRenderer, TerminalFontAtlasRefres
     }
     liveTerminalRenderers.add(this);
     this.enableWebglWhenFontsReady();
+    this.scheduleSyntaxHighlightRefresh();
   }
 
   private enableWebglWhenFontsReady() {
@@ -731,6 +880,7 @@ class XtermTerminalRenderer implements TerminalRenderer, TerminalFontAtlasRefres
     } catch {
       // Fit may throw if the host is detached; safe to ignore.
     }
+    this.scheduleSyntaxHighlightRefresh();
   }
 
   setFontFamily(family: string) {
@@ -742,6 +892,7 @@ class XtermTerminalRenderer implements TerminalRenderer, TerminalFontAtlasRefres
       this.enableWebglWhenFontsReady();
     }
     scheduleTerminalFontAtlasRefresh("font-family-change");
+    this.scheduleSyntaxHighlightRefresh();
   }
 
   releaseFontAtlas() {
@@ -984,6 +1135,117 @@ function terminalOptionsFor(settings: TerminalSettings, scheme: TerminalColorSch
     smoothScrollDuration: 0,
     theme: themeForScheme(scheme),
   };
+}
+
+interface CompiledSyntaxHighlightRule {
+  pattern: RegExp;
+  style: TerminalSyntaxHighlightStyle;
+}
+
+function compileSyntaxHighlightRules(
+  profile: TerminalSyntaxHighlightProfile | null,
+): CompiledSyntaxHighlightRule[] {
+  if (!profile) return [];
+  const flags = profile.caseSensitive ? "g" : "gi";
+  const compiled: CompiledSyntaxHighlightRule[] = [];
+  for (const rule of profile.rules) {
+    const pattern = rule.pattern.trim();
+    if (!rule.enabled || !pattern || looksLikeUnsafeRepeatedRegex(pattern)) continue;
+    try {
+      compiled.push({ pattern: new RegExp(pattern, flags), style: rule.style });
+    } catch {
+      // Settings validation normally catches this; skip malformed imported data.
+    }
+  }
+  return compiled;
+}
+
+function looksLikeUnsafeRepeatedRegex(pattern: string) {
+  return pattern.length > 2_000 || /\((?:[^()\\]|\\.)*[+*](?:[^()\\]|\\.)*\)[+*{]/.test(pattern);
+}
+
+function terminalLineTextAndColumns(line: IBufferLine, cols: number) {
+  const segments: Array<{ start: number; end: number; column: number; width: number }> = [];
+  let text = "";
+  for (let column = 0; column < cols; column += 1) {
+    const cell = line.getCell(column);
+    if (!cell || cell.getWidth() === 0) continue;
+    const chars = cell.getChars() || " ";
+    const start = text.length;
+    text += chars;
+    segments.push({ start, end: text.length, column, width: Math.max(1, cell.getWidth()) });
+  }
+  const trimmedLength = text.trimEnd().length;
+  text = text.slice(0, trimmedLength);
+  return {
+    text,
+    columnAt(index: number, end = false) {
+      for (const segment of segments) {
+        if (index <= segment.start) return segment.column;
+        if (index < segment.end || (end && index === segment.end)) {
+          return end ? segment.column + segment.width : segment.column;
+        }
+      }
+      return cols;
+    },
+  };
+}
+
+function terminalCellsForRange(line: IBufferLine, start: number, width: number) {
+  const cells: IBufferCell[] = [];
+  for (let column = start; column < start + width; column += 1) {
+    const cell = line.getCell(column);
+    if (cell) cells.push(cell);
+  }
+  return cells;
+}
+
+function terminalCellForeground(cell: IBufferCell | undefined, scheme: TerminalColorScheme) {
+  if (!cell) return scheme.palette.foreground;
+  if (cell.isInverse()) return terminalCellBackground(cell, scheme);
+  if (cell.isFgRGB()) return `#${cell.getFgColor().toString(16).padStart(6, "0")}`;
+  if (cell.isFgPalette()) return terminalPaletteColor(cell.getFgColor(), scheme);
+  return scheme.palette.foreground;
+}
+
+function terminalCellBackground(cell: IBufferCell, scheme: TerminalColorScheme) {
+  if (cell.isBgRGB()) return `#${cell.getBgColor().toString(16).padStart(6, "0")}`;
+  if (cell.isBgPalette()) return terminalPaletteColor(cell.getBgColor(), scheme);
+  return scheme.palette.background;
+}
+
+function terminalPaletteColor(index: number, scheme: TerminalColorScheme) {
+  const palette = scheme.palette;
+  const base = [
+    palette.black,
+    palette.red,
+    palette.green,
+    palette.yellow,
+    palette.blue,
+    palette.magenta,
+    palette.cyan,
+    palette.white,
+    palette.brightBlack,
+    palette.brightRed,
+    palette.brightGreen,
+    palette.brightYellow,
+    palette.brightBlue,
+    palette.brightMagenta,
+    palette.brightCyan,
+    palette.brightWhite,
+  ];
+  if (index < base.length) return base[index];
+  if (index >= 232) {
+    const value = 8 + (index - 232) * 10;
+    const hex = value.toString(16).padStart(2, "0");
+    return `#${hex}${hex}${hex}`;
+  }
+  const cube = Math.max(0, index - 16);
+  const values = [0, 95, 135, 175, 215, 255];
+  const red = values[Math.floor(cube / 36) % 6];
+  const green = values[Math.floor(cube / 6) % 6];
+  const blue = values[cube % 6];
+  return `#${red.toString(16).padStart(2, "0")}${green.toString(16).padStart(2, "0")}${blue.toString(16).padStart(2, "0")}`;
 }
 
 interface CompiledHyperlinkRule {
