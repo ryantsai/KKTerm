@@ -31,7 +31,11 @@ No Sessions are open. The Workspace Canvas shows the **Default Launch State** â€
 
 ## Opening files and folders from the command line
 
-Pass one or more existing file or folder paths to the KKTerm executable. PNG, JPEG, GIF, and WebP images open as ephemeral sources in the Screenshots editor; other files open in the Document viewer selected by extension and content probe, and folders open in File Explorer. The installer does not register file or folder associations.
+Pass one or more existing file or folder paths to the KKTerm executable. PNG, JPEG, GIF, and WebP images open as ephemeral sources in the Screenshots editor; other files open in the Document viewer selected by extension and content probe, and folders open in File Explorer.
+
+On Windows, an installed copy registers KKTerm in **Open with** for the file extensions that have a dedicated viewer mapping, including Markdown, common text/code and log formats, JSON, CSV/TSV, supported images, and PDF. Installation does not make KKTerm the default for any extension and does not replace an existing default app. Use File Explorer's **Open with â†’ KKTerm** to choose it for one file; Windows changes a default only if the user explicitly chooses an always-use option. Uninstall removes KKTerm from those choices.
+
+The macOS app bundle declares the same formats as secondary document handlers. Finder therefore offers KKTerm under **Open With** without replacing the current default application. Files opened from Finder, the Dock, or the `open -a KKTerm <path>` command enter the same ephemeral image/Document flow described above, including when KKTerm is already running. Linux packages do not register these associations. Portable Windows copies, unknown-extension fallback files, extension-less names such as `Dockerfile`, folders, and unsupported office containers are not registered.
 
 If KKTerm is already running, the existing window is restored and receives the paths. Otherwise KKTerm starts normally and opens them after the app shell is ready. These are ephemeral Sessions/Tabs: they do not create saved Connections, Child Connection Tabs, Screenshots library items, or saved layouts. Image editor layers remain in memory; Save updates the launched image, Save As writes only to the chosen destination, and closing the editor discards unsaved edits. Closing any other ephemeral Tab removes it, and none of these Sessions/Tabs is restored after restarting KKTerm.
 

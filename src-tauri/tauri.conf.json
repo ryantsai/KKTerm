@@ -107,6 +107,7 @@
                                                               ],
                                                 "installerIcon":  "icons/icon.ico",
                                                 "uninstallerIcon":  "icons/icon.ico",
+                                                "installerHooks":  "windows/nsis-hooks.nsh",
                                                 "startMenuFolder":  "KKTerm",
                                                 "compression":  "lzma"
                                             }

@@ -3,7 +3,94 @@
     "beforeBundleCommand": "zsh scripts/prepare-macos-sidecars.sh"
   },
   "bundle": {
-    "createUpdaterArtifacts": true
+    "createUpdaterArtifacts": true,
+    "fileAssociations": [
+      {
+        "name": "KKTerm Document",
+        "ext": [
+          "png",
+          "jpg",
+          "jpeg",
+          "gif",
+          "webp",
+          "bmp",
+          "ico",
+          "svg",
+          "pdf",
+          "txt",
+          "html",
+          "htm",
+          "json",
+          "xml"
+        ],
+        "role": "Editor",
+        "rank": "Alternate"
+      },
+      {
+        "name": "KKTerm Text and Data Document",
+        "ext": [
+          "avif",
+          "md",
+          "markdown",
+          "mdown",
+          "mkd",
+          "mdx",
+          "csv",
+          "tsv",
+          "json5",
+          "geojson",
+          "ipynb",
+          "webmanifest",
+          "log",
+          "ndjson",
+          "jsonl",
+          "text",
+          "yaml",
+          "yml",
+          "toml",
+          "ini",
+          "conf",
+          "cfg",
+          "env",
+          "properties",
+          "css",
+          "scss",
+          "less",
+          "js",
+          "mjs",
+          "cjs",
+          "jsx",
+          "ts",
+          "tsx",
+          "py",
+          "rb",
+          "rs",
+          "go",
+          "java",
+          "c",
+          "h",
+          "cpp",
+          "hpp",
+          "cs",
+          "php",
+          "sh",
+          "bash",
+          "zsh",
+          "ps1",
+          "bat",
+          "cmd",
+          "sql",
+          "diff",
+          "patch"
+        ],
+        "role": "Editor",
+        "rank": "Alternate",
+        "exportedType": {
+          "identifier": "com.kkterm.document",
+          "conformsTo": ["public.data"]
+        }
+      }
+    ]
   },
   "plugins": {
     "updater": {

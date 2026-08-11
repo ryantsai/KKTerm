@@ -34,6 +34,8 @@ $InstalledExe = Join-Path $ResolvedInstallDir "kkterm.exe"
 $InstalledCliExe = Join-Path $ResolvedInstallDir "kkterm-cli.exe"
 $Uninstaller = Join-Path $ResolvedInstallDir "uninstall.exe"
 $SmokeRegistryKey = "Registry::HKEY_CURRENT_USER\Software\Ryan Tsai\KKTerm"
+$OpenWithProgId = "KKTerm.Document"
+$AssociationSamples = @(".md", ".jpg")
 # Apps & Features registration written by the installer. This key is keyed by
 # product name, not install directory, so it identifies a real install
 # regardless of where the smoke build would be unpacked.
@@ -74,6 +76,60 @@ function Invoke-CheckedProcess {
 function Remove-SmokeRegistryKey {
     if (Test-Path $SmokeRegistryKey) {
         Remove-Item -LiteralPath $SmokeRegistryKey -Recurse -Force
+    }
+}
+
+function Get-DefaultAssociation {
+    param([string]$Extension)
+
+    $Key = "Registry::HKEY_CURRENT_USER\Software\Classes\$Extension"
+    if (-not (Test-Path $Key)) {
+        return $null
+    }
+    return (Get-Item -LiteralPath $Key).GetValue("", $null)
+}
+
+function Assert-DefaultAssociationUnchanged {
+    param([hashtable]$Before)
+
+    foreach ($Extension in $AssociationSamples) {
+        $After = Get-DefaultAssociation -Extension $Extension
+        if (-not [object]::Equals($Before[$Extension], $After)) {
+            throw "Installer changed the default association for $Extension from '$($Before[$Extension])' to '$After'."
+        }
+    }
+}
+
+function Assert-OpenWithRegistration {
+    param([bool]$ExpectedPresent)
+
+    foreach ($Extension in $AssociationSamples) {
+        $Key = "Registry::HKEY_CURRENT_USER\Software\Classes\$Extension\OpenWithProgids"
+        $Present = (Test-Path $Key) -and (
+            (Get-Item -LiteralPath $Key).GetValueNames() -contains $OpenWithProgId
+        )
+        if ($Present -ne $ExpectedPresent) {
+            throw "Expected the KKTerm Open with registration for $Extension to be present=$ExpectedPresent."
+        }
+    }
+
+    $ProgIdKey = "Registry::HKEY_CURRENT_USER\Software\Classes\$OpenWithProgId"
+    if ($ExpectedPresent) {
+        if (-not (Test-Path $ProgIdKey)) {
+            throw "Installer did not create the $OpenWithProgId ProgID."
+        }
+        if (-not ((Get-Item -LiteralPath $ProgIdKey).GetValueNames() -contains "AllowSilentDefaultTakeOver")) {
+            throw "Installer did not mark $OpenWithProgId as ineligible for silent default takeover."
+        }
+        $CommandKey = Join-Path $ProgIdKey "shell\open\command"
+        $ActualCommand = (Get-Item -LiteralPath $CommandKey).GetValue("")
+        $ExpectedCommand = "`"$InstalledExe`" `"%1`""
+        if ($ActualCommand -ne $ExpectedCommand) {
+            throw "Unexpected KKTerm Open with command. Expected '$ExpectedCommand' but found '$ActualCommand'."
+        }
+    }
+    elseif (Test-Path $ProgIdKey) {
+        throw "Uninstaller left the $OpenWithProgId ProgID behind."
     }
 }
 
@@ -166,6 +222,11 @@ if (Test-Path $ResolvedInstallDir) {
     Remove-Item -LiteralPath $ResolvedInstallDir -Recurse -Force
 }
 
+$DefaultAssociationsBefore = @{}
+foreach ($Extension in $AssociationSamples) {
+    $DefaultAssociationsBefore[$Extension] = Get-DefaultAssociation -Extension $Extension
+}
+
 $InstallSucceeded = $false
 try {
     Invoke-CheckedProcess `
@@ -191,6 +252,9 @@ try {
         throw "Installed kkterm-cli.exe is empty."
     }
 
+    Assert-OpenWithRegistration -ExpectedPresent $true
+    Assert-DefaultAssociationUnchanged -Before $DefaultAssociationsBefore
+
     $InstallSucceeded = $true
 }
 finally {
@@ -199,6 +263,9 @@ finally {
             -FilePath $Uninstaller `
             -ArgumentList @("/S") `
             -Action "Silent installer cleanup"
+
+        Assert-OpenWithRegistration -ExpectedPresent $false
+        Assert-DefaultAssociationUnchanged -Before $DefaultAssociationsBefore
     }
 
     if ($OwnsInstallDir -and -not $KeepInstall -and (Test-Path $ResolvedInstallDir)) {

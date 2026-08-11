@@ -5,6 +5,11 @@ import test from "node:test";
 const rustSource = fs.readFileSync("src-tauri/src/launch_paths.rs", "utf8");
 const libSource = fs.readFileSync("src-tauri/src/lib.rs", "utf8");
 const bridgeSource = fs.readFileSync("src/app/launchPathBridge.ts", "utf8");
+const fileViewerSource = fs.readFileSync(
+  "src/modules/workspace/connections/file-viewer/fileViewerModel.ts",
+  "utf8",
+);
+const nsisHooks = fs.readFileSync("src-tauri/windows/nsis-hooks.nsh", "utf8");
 const screenshotsState = fs.readFileSync("src/modules/screenshots/state.ts", "utf8");
 const screenshotsPage = fs.readFileSync(
   "src/modules/screenshots/ScreenshotsPage.tsx",
@@ -21,6 +26,9 @@ const sftpSource = fs.readFileSync(
   "utf8",
 );
 const tauriConfig = JSON.parse(fs.readFileSync("src-tauri/tauri.conf.json", "utf8"));
+const macosTauriConfig = JSON.parse(
+  fs.readFileSync("src-tauri/tauri.macos.conf.json", "utf8"),
+);
 const smokeInstaller = fs.readFileSync("scripts/smoke-installer.ps1", "utf8");
 
 test("native launch paths are validated, queued, and forwarded by the single-instance callback", () => {
@@ -34,6 +42,11 @@ test("native launch paths are validated, queued, and forwarded by the single-ins
     /tauri_plugin_single_instance::init\(\|app, args, cwd\|[\s\S]*?enqueue_cli_invocation/,
   );
   assert.match(libSource, /launch_paths::take_launch_paths/);
+  assert.match(
+    libSource,
+    /tauri::RunEvent::Opened \{ urls \}[\s\S]*?enqueue_opened_urls\(app, urls\)/,
+  );
+  assert.match(rustSource, /url\.scheme\(\) == "file"/);
 });
 
 test("frontend listens before draining and opens every launch path ephemerally", () => {
@@ -76,14 +89,52 @@ test("ephemeral folder browsing cannot persist view options or Child Connection 
   );
 });
 
-test("installers do not register file or folder associations", () => {
-  assert.doesNotMatch(
-    JSON.stringify(tauriConfig.bundle),
-    /fileAssociations|installerHooks/,
+test("platform bundles add every recognized extension to Open With without claiming defaults", () => {
+  const extractSet = (name) => {
+    const match = fileViewerSource.match(
+      new RegExp(`const ${name} = new Set\\(\\[([\\s\\S]*?)\\]\\);`),
+    );
+    assert.ok(match, `${name} must remain discoverable by the installer coverage test`);
+    return [...match[1].matchAll(/"([^"]+)"/g)].map((entry) => entry[1]);
+  };
+  const extensionlessNames = new Set(["gitignore", "dockerfile", "makefile"]);
+  const expected = new Set([
+    ...extractSet("IMAGE_EXTENSIONS"),
+    ...extractSet("MARKDOWN_EXTENSIONS"),
+    ...extractSet("CSV_EXTENSIONS"),
+    ...extractSet("JSON_EXTENSIONS"),
+    ...extractSet("LOG_EXTENSIONS"),
+    ...extractSet("TEXT_EXTENSIONS").filter((ext) => !extensionlessNames.has(ext)),
+    "pdf",
+  ]);
+  const registered = new Set(
+    [...nsisHooks.matchAll(/!insertmacro \$\{ACTION\} "([^"]+)"/g)].map(
+      (entry) => entry[1],
+    ),
   );
-  assert.equal(fs.existsSync("src-tauri/windows/nsis-hooks.nsh"), false);
-  assert.doesNotMatch(
-    smokeInstaller,
-    /FileAssociationKey|FolderAssociationKey|Assert-ShellAssociation/,
+
+  assert.deepEqual([...registered].sort(), [...expected].sort());
+  const macosAssociations = macosTauriConfig.bundle.fileAssociations;
+  const macosExtensions = new Set(
+    macosAssociations.flatMap((association) => association.ext),
   );
+  assert.deepEqual([...macosExtensions].sort(), [...expected].sort());
+  assert.ok(
+    macosAssociations.every(
+      (association) => association.rank === "Alternate" && association.role === "Editor",
+    ),
+  );
+  assert.equal(tauriConfig.bundle.fileAssociations, undefined);
+  assert.equal(
+    tauriConfig.bundle.windows.nsis.installerHooks,
+    "windows/nsis-hooks.nsh",
+  );
+  assert.match(nsisHooks, /Software\\Classes\\\.\$\{EXT\}\\OpenWithProgids/);
+  assert.match(nsisHooks, /AllowSilentDefaultTakeOver/);
+  assert.doesNotMatch(
+    nsisHooks,
+    /WriteRegStr SHCTX "Software\\Classes\\\.\$\{EXT\}" ""/,
+  );
+  assert.match(smokeInstaller, /Assert-OpenWithRegistration/);
+  assert.match(smokeInstaller, /Assert-DefaultAssociationUnchanged/);
 });

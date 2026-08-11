@@ -5313,6 +5313,13 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building KKTerm")
         .run(|app, event| {
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Opened { urls } = &event {
+                app.state::<launch_paths::LaunchPathState>()
+                    .enqueue_opened_urls(app, urls);
+                restore_main_window(app);
+            }
+
             if matches!(event, tauri::RunEvent::Exit) {
                 if app
                     .try_state::<app_paths::AppPaths>()

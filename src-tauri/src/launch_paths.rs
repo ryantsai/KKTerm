@@ -38,6 +38,15 @@ impl LaunchPathState {
         cwd: &Path,
     ) {
         let paths = resolve_cli_paths(args, cwd);
+        self.enqueue(app, paths);
+    }
+
+    #[cfg(target_os = "macos")]
+    pub fn enqueue_opened_urls<R: Runtime>(&self, app: &AppHandle<R>, urls: &[url::Url]) {
+        self.enqueue(app, resolve_opened_urls(urls));
+    }
+
+    fn enqueue<R: Runtime>(&self, app: &AppHandle<R>, paths: Vec<LaunchPath>) {
         if paths.is_empty() {
             return;
         }
@@ -53,6 +62,17 @@ impl LaunchPathState {
             .map(|mut pending| std::mem::take(&mut *pending))
             .unwrap_or_default()
     }
+}
+
+#[cfg(any(target_os = "macos", test))]
+fn resolve_opened_urls(urls: &[url::Url]) -> Vec<LaunchPath> {
+    let mut seen = HashSet::new();
+    urls.iter()
+        .filter(|url| url.scheme() == "file")
+        .filter_map(|url| url.to_file_path().ok())
+        .filter_map(|path| resolve_requested_path(path))
+        .filter(|launch_path| seen.insert(launch_path.path.clone()))
+        .collect()
 }
 
 #[tauri::command]
@@ -80,6 +100,10 @@ fn resolve_path_argument(argument: &str, cwd: &Path) -> Option<LaunchPath> {
     } else {
         cwd.join(requested)
     };
+    resolve_requested_path(requested)
+}
+
+fn resolve_requested_path(requested: PathBuf) -> Option<LaunchPath> {
     let canonical = requested.canonicalize().ok()?;
     let metadata = canonical.metadata().ok()?;
     let kind = if metadata.is_file() {
@@ -133,7 +157,10 @@ mod tests {
 
         assert_eq!(paths.len(), 2);
         assert_eq!(paths[0].kind, LaunchPathKind::File);
-        assert_eq!(paths[0].path, platform_display_path(&file.canonicalize().unwrap()));
+        assert_eq!(
+            paths[0].path,
+            platform_display_path(&file.canonicalize().unwrap())
+        );
         assert_eq!(paths[1].kind, LaunchPathKind::Folder);
         assert_eq!(
             paths[1].path,
@@ -158,5 +185,26 @@ mod tests {
 
         assert_eq!(paths.len(), 1);
         assert_eq!(paths[0].kind, LaunchPathKind::File);
+    }
+
+    #[test]
+    fn resolves_file_urls_but_ignores_other_schemes() {
+        let root = tempfile::tempdir().expect("temp root");
+        let file = root.path().join("notes.md");
+        std::fs::write(&file, "# notes").expect("test file");
+        let file_url = url::Url::from_file_path(&file).expect("file URL");
+
+        let paths = resolve_opened_urls(&[
+            file_url.clone(),
+            file_url,
+            url::Url::parse("https://example.com/notes.md").expect("web URL"),
+        ]);
+
+        assert_eq!(paths.len(), 1);
+        assert_eq!(paths[0].kind, LaunchPathKind::File);
+        assert_eq!(
+            paths[0].path,
+            platform_display_path(&file.canonicalize().unwrap())
+        );
     }
 }
