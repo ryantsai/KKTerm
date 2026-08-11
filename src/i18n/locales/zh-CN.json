@@ -2697,7 +2697,7 @@
     "syntaxHighlightCustom": "自定义",
     "syntaxHighlightRulesCount": "{{count}} 条规则",
     "syntaxHighlightNewProfile": "新建配置文件",
-    "syntaxHighlightImport": "导入 SecureCRT INI",
+    "syntaxHighlightImport": "导入",
     "syntaxHighlightImportTitle": "导入 SecureCRT 关键字配置文件",
     "syntaxHighlightIniFiles": "SecureCRT INI 文件",
     "syntaxHighlightImportFailed": "无法导入 SecureCRT 配置文件：{{message}}",

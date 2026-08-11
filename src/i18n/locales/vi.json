@@ -2697,7 +2697,7 @@
     "syntaxHighlightCustom": "Tùy chỉnh",
     "syntaxHighlightRulesCount": "{{count}} quy tắc",
     "syntaxHighlightNewProfile": "Hồ sơ mới",
-    "syntaxHighlightImport": "Nhập INI SecureCRT",
+    "syntaxHighlightImport": "Nhập",
     "syntaxHighlightImportTitle": "Nhập hồ sơ từ khóa SecureCRT",
     "syntaxHighlightIniFiles": "Tệp INI SecureCRT",
     "syntaxHighlightImportFailed": "Không thể nhập hồ sơ SecureCRT: {{message}}",

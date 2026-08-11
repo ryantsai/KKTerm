@@ -44,6 +44,30 @@ test("keyword-highlighting profile rows use the compact list scale", async () =>
   assert.match(settingsCss, /\.syntax-profile-row > svg\s*\{[\s\S]*?width:\s*13px;[\s\S]*?height:\s*13px;/);
 });
 
+test("profile creation actions are right-aligned beside the shorter name field", async () => {
+  const [source, settingsCss, en] = await Promise.all([
+    read("src/modules/settings/SyntaxHighlightProfiles.tsx"),
+    read("src/modules/settings/settings.css"),
+    read("src/i18n/locales/en.json"),
+  ]);
+  const managerToolbar = source.slice(
+    source.indexOf('<div className="syntax-profile-toolbar">'),
+    source.indexOf('<div className="syntax-profile-layout">'),
+  );
+  const editorMeta = source.slice(
+    source.indexOf("syntax-profile-editor-meta"),
+    source.indexOf('{invalid ?'),
+  );
+
+  assert.doesNotMatch(managerToolbar, /syntaxHighlightImport|syntaxHighlightGenerateWithAi/);
+  assert.match(editorMeta, /syntaxHighlightImport/);
+  assert.match(editorMeta, /syntaxHighlightGenerateWithAi/);
+  assert.match(source, /showCreationActions=\{editorIsCreating\}/);
+  assert.match(settingsCss, /\.syntax-profile-editor-meta\.has-actions\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\) auto;/);
+  assert.match(settingsCss, /\.syntax-profile-editor-meta-actions\s*\{[\s\S]*?justify-content:\s*flex-end;/);
+  assert.equal(JSON.parse(en).settings.syntaxHighlightImport, "Import");
+});
+
 test("keyword-highlighting rules keep terminal typography unchanged", async () => {
   const source = await read("src/modules/settings/SyntaxHighlightProfiles.tsx");
 

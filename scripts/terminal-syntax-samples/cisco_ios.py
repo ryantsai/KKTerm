@@ -125,12 +125,18 @@ def show_logging(count=12):
 
 def print_demo(hostname):
     print(f"{hostname}# show syntax-highlighting-demo")
-    print("GigabitEthernet1/0/1 10.10.10.1/24 0011.2233.4455 connected up")
-    print("Te1/1/1 203.0.113.10:443 aa:bb:cc:dd:ee:ff trunk standby warning")
-    print("Vlan99 administratively down; Port-channel2 is err-disabled and unreachable")
-    print("BGP OSPF OSPFv3 EIGRP RIP HSRP VRRP MPLS LDP")
-    print("permit active success passed complete enabled")
-    print("deny denied invalid timeout failed disabled degraded flapping")
+    print("shutdown disconnected disabled error failure denied administratively down")
+    print("fault refused warning alert critical inactive unassigned 87.5%")
+    print("green up forward full active connected permitted established enabled 19.2%")
+    print("BGP OSPFv3 RIPng EIGRP static ODR IS-IS PIM direct")
+    print("IPv6 TCP UDP ICMP IGMP GRE ESP AH ISAKMP ARP DHCP HTTPS DNS SSH NTP RADIUS")
+    print("standby VRRP GLBP MSTP RSTP spanning-tree dot1q 802.1q")
+    print("LDP TDP MPLS AAA accounting authentication authorization NAT BFD NQA SLA VRF")
+    print("passive-interface silent-interface inbound input outbound output")
+    print("router redistribute import-route export neighbor peer area ACL class-map policy-map")
+    print("access-list access-group ip-prefix prefix-list route-map traffic-policy 55.5%")
+    print("GigabitEthernet1/0/1.120 10.10.10.1/24 2001:db8::1/64 0011.2233.4455")
+    print("49.0001.1921.6800.1001.00 Loopback0 ATM0/0 Vlanif99 Port-channel2 EtherChannel4")
     print("%SYS-2-MALLOCFAIL: allocation failed for routing process")
 
 

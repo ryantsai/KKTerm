@@ -9,6 +9,19 @@ import {
   validateSyntaxHighlightProfile,
 } from "../src/modules/workspace/connections/terminal/syntaxHighlighting.ts";
 
+function builtInProfile(id: string) {
+  const profile = BUILTIN_SYNTAX_HIGHLIGHT_PROFILES.find((candidate) => candidate.id === id);
+  assert.ok(profile, `missing built-in profile ${id}`);
+  return profile;
+}
+
+function assertRuleMatch(profileId: string, ruleId: string, sample: string) {
+  const profile = builtInProfile(profileId);
+  const rule = profile.rules.find((candidate) => candidate.id === ruleId);
+  assert.ok(rule, `missing rule ${ruleId}`);
+  assert.match(sample, new RegExp(rule.pattern, "i"), `${ruleId} should match ${sample}`);
+}
+
 test("renderer gives configured keyword colors unconditional precedence", () => {
   const renderer = readFileSync(
     new URL("../src/modules/workspace/connections/terminal/renderer.ts", import.meta.url),
@@ -31,14 +44,101 @@ test("renderer never paints duplicate glyph text for keyword matches", () => {
 test("built-in keyword profiles are valid and define overriding colors", () => {
   assert.deepEqual(
     BUILTIN_SYNTAX_HIGHLIGHT_PROFILES.map((profile) => profile.name),
-    ["Cisco IOS", "Juniper Junos", "Operational Logs"],
+    ["Cisco IOS", "Juniper Junos", "FortiGate", "Operational Logs"],
   );
   for (const profile of BUILTIN_SYNTAX_HIGHLIGHT_PROFILES) {
     assert.equal(validateSyntaxHighlightProfile(profile), null);
+    assert.equal(new Set(profile.rules.map((rule) => rule.id)).size, profile.rules.length);
     assert.ok(
       profile.rules.every((rule) => rule.style.foreground || rule.style.background),
       `${profile.name} rules must define a foreground or background override`,
     );
+    assert.ok(
+      profile.rules.every((rule) =>
+        rule.pattern.length <= 2_000 && !/\((?:[^()\\]|\\.)*[+*](?:[^()\\]|\\.)*\)[+*{]/.test(rule.pattern)
+      ),
+      `${profile.name} rules must pass the renderer's repeated-regex guard`,
+    );
+  }
+});
+
+test("Cisco IOS covers every supplied SecureCRT category with safe JavaScript regexes", () => {
+  const profileId = "builtin:cisco-ios";
+  assert.equal(builtInProfile(profileId).rules.length, 23);
+  const samples: Record<string, string> = {
+    "cisco-prompt": "edge-ios-01#",
+    "cisco-negative-connectivity": "shutdown",
+    "cisco-failures": "disconnected",
+    "cisco-critical": "administratively",
+    "cisco-percent-high": "87.5%",
+    "cisco-positive": "forward",
+    "cisco-connectivity": "permit",
+    "cisco-percent-low": "19.2%",
+    "cisco-routing": "OSPF",
+    "cisco-network-services": "ISAKMP",
+    "cisco-layer2": "spanning-tree",
+    "cisco-control-services": "VPN",
+    "cisco-direction": "silent-interface",
+    "cisco-policy-core": "class-map",
+    "cisco-policy-objects": "prefix-list",
+    "cisco-percent-mid": "55.5%",
+    "cisco-ethernet-interfaces": "GigabitEthernet1/0/1.120",
+    "cisco-ipv4": "10.10.1.1/24",
+    "cisco-ipv6": "2001:db8::1/64",
+    "cisco-mac": "0011.2233.4455",
+    "cisco-clns": "49.0001.1921.6800.1001.00",
+    "cisco-interfaces": "Loopback0",
+    "cisco-bundles": "Ether-channel12",
+  };
+  for (const [ruleId, sample] of Object.entries(samples)) {
+    assertRuleMatch(profileId, ruleId, sample);
+  }
+});
+
+test("Junos built-in covers operational, policy, addressing, and configuration output", () => {
+  const profileId = "builtin:juniper-junos";
+  const samples: Record<string, string> = {
+    "junos-prompt": "netops@edge-mx01>",
+    "junos-failure": "offline",
+    "junos-alarm": "Major alarm",
+    "junos-healthy": "established",
+    "junos-attention": "probing",
+    "junos-interface": "vtep-0/0/1.200",
+    "junos-ipv4": "192.0.2.1/31",
+    "junos-ipv6": "2001:db8:10::1/64",
+    "junos-mac": "00:11:22:33:44:55",
+    "junos-routing": "OSPF",
+    "junos-policy": "policy-statement",
+    "junos-hierarchy": "routing-options",
+    "junos-family": "ethernet-switching",
+    "junos-actions": "rollback",
+  };
+  for (const [ruleId, sample] of Object.entries(samples)) {
+    assertRuleMatch(profileId, ruleId, sample);
+  }
+});
+
+test("FortiGate built-in covers CLI, health, routing, VPN, HA, and security output", () => {
+  const profileId = "builtin:fortigate";
+  const samples: Record<string, string> = {
+    "fortigate-prompt": "FGT-EDGE (root) #",
+    "fortigate-failure": "out-of-sync",
+    "fortigate-healthy": "synchronized",
+    "fortigate-attention": "conserve",
+    "fortigate-ipv4": "203.0.113.1/24",
+    "fortigate-ipv6": "2001:db8:20::1/64",
+    "fortigate-mac": "00:09:0f:aa:bb:cc",
+    "fortigate-interface": "ssl.root",
+    "fortigate-routing": "OSPF",
+    "fortigate-vpn": "phase2",
+    "fortigate-ha-sdwan": "SD-WAN",
+    "fortigate-security": "FortiGuard",
+    "fortigate-auth": "FortiToken",
+    "fortigate-resources": "offload",
+    "fortigate-actions": "diagnose",
+  };
+  for (const [ruleId, sample] of Object.entries(samples)) {
+    assertRuleMatch(profileId, ruleId, sample);
   }
 });
 

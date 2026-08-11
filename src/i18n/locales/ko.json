@@ -2697,7 +2697,7 @@
     "syntaxHighlightCustom": "사용자 지정",
     "syntaxHighlightRulesCount": "{{count}}개 규칙",
     "syntaxHighlightNewProfile": "새 프로필",
-    "syntaxHighlightImport": "SecureCRT INI 가져오기",
+    "syntaxHighlightImport": "가져오기",
     "syntaxHighlightImportTitle": "SecureCRT 키워드 프로필 가져오기",
     "syntaxHighlightIniFiles": "SecureCRT INI 파일",
     "syntaxHighlightImportFailed": "SecureCRT 프로필을 가져올 수 없습니다: {{message}}",

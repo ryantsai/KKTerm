@@ -6,6 +6,7 @@ These dependency-free Python scripts emulate the output targeted by each built-i
 | --- | --- |
 | Cisco IOS | `cisco_ios.py` |
 | Juniper Junos | `juniper_junos.py` |
+| FortiGate | `fortigate.py` |
 | Operational Logs | `operational_logs.py` |
 
 From the repository root, run one in a Local Connection:
@@ -13,6 +14,7 @@ From the repository root, run one in a Local Connection:
 ```text
 python scripts/terminal-syntax-samples/cisco_ios.py
 python scripts/terminal-syntax-samples/juniper_junos.py
+python scripts/terminal-syntax-samples/fortigate.py
 python scripts/terminal-syntax-samples/operational_logs.py
 ```
 

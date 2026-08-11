@@ -88,6 +88,7 @@ export function SyntaxHighlightProfileManager({
   const [aiGenerating, setAiGenerating] = useState(false);
   const selected = catalog.find((profile) => profile.id === selectedId) ?? catalog[0];
   const canGenerateWithAi = aiProviderHasApiKey && isTauriRuntime();
+  const editorIsCreating = editorDraft ? !profiles.some((profile) => profile.id === editorDraft.id) : false;
 
   function upsertProfile(profile: TerminalSyntaxHighlightProfile) {
     const index = profiles.findIndex((candidate) => candidate.id === profile.id);
@@ -160,20 +161,6 @@ export function SyntaxHighlightProfileManager({
           <button className="toolbar-button" onClick={() => setEditorDraft(emptySyntaxHighlightProfile())} type="button">
             <Plus size={14} /> {t("settings.syntaxHighlightNewProfile")}
           </button>
-          <button className="toolbar-button" onClick={() => void importSecureCrt()} type="button">
-            <FileUp size={14} /> {t("settings.syntaxHighlightImport")}
-          </button>
-          {canGenerateWithAi ? (
-            <button
-              aria-label={t("settings.syntaxHighlightGenerateWithAi")}
-              className="toolbar-button syntax-profile-ai-button"
-              onClick={() => setAiPromptOpen(true)}
-              title={t("settings.syntaxHighlightGenerateWithAi")}
-              type="button"
-            >
-              <WandSparkles size={14} />
-            </button>
-          ) : null}
         </div>
         <div className="syntax-profile-layout">
           <div className="syntax-profile-list" role="listbox" aria-label={t("settings.syntaxHighlighting") }>
@@ -261,8 +248,13 @@ export function SyntaxHighlightProfileManager({
       {editorDraft ? (
         <SyntaxProfileEditor
           draft={editorDraft}
+          canGenerateWithAi={canGenerateWithAi}
+          onChange={setEditorDraft}
           onClose={() => setEditorDraft(null)}
+          onGenerateWithAi={() => setAiPromptOpen(true)}
+          onImport={() => void importSecureCrt()}
           onSave={upsertProfile}
+          showCreationActions={editorIsCreating}
         />
       ) : null}
 
@@ -312,23 +304,32 @@ export function SyntaxHighlightProfileManager({
 }
 
 function SyntaxProfileEditor({
-  draft: initialDraft,
+  draft,
+  canGenerateWithAi,
+  onChange,
   onClose,
+  onGenerateWithAi,
+  onImport,
   onSave,
+  showCreationActions,
 }: {
   draft: TerminalSyntaxHighlightProfile;
+  canGenerateWithAi: boolean;
+  onChange: (profile: TerminalSyntaxHighlightProfile) => void;
   onClose: () => void;
+  onGenerateWithAi: () => void;
+  onImport: () => void;
   onSave: (profile: TerminalSyntaxHighlightProfile) => void;
+  showCreationActions: boolean;
 }) {
   const { t } = useTranslation();
-  const [draft, setDraft] = useState(() => cloneProfile(initialDraft));
   const [invalid, setInvalid] = useState<string | null>(null);
 
   function updateRule(ruleId: string, update: (rule: TerminalSyntaxHighlightRule) => TerminalSyntaxHighlightRule) {
-    setDraft((current) => ({
-      ...current,
-      rules: current.rules.map((entry) => (entry.id === ruleId ? update(entry) : entry)),
-    }));
+    onChange({
+      ...draft,
+      rules: draft.rules.map((entry) => (entry.id === ruleId ? update(entry) : entry)),
+    });
   }
 
   function save() {
@@ -354,15 +355,38 @@ function SyntaxProfileEditor({
         }
       >
         <div className="syntax-profile-editor">
-          <div className="syntax-profile-editor-meta">
+          <div className={`syntax-profile-editor-meta${showCreationActions ? " has-actions" : ""}`}>
             <Field label={t("settings.syntaxHighlightProfileName")}>
-              <TextInput autoFocus onChange={(event) => setDraft({ ...draft, name: event.currentTarget.value })} value={draft.name} />
+              <TextInput autoFocus onChange={(event) => onChange({ ...draft, name: event.currentTarget.value })} value={draft.name} />
             </Field>
+            {showCreationActions ? (
+              <div className="syntax-profile-editor-meta-actions">
+                <button
+                  className="toolbar-button"
+                  onClick={onImport}
+                  title={t("settings.syntaxHighlightImportTitle")}
+                  type="button"
+                >
+                  <FileUp size={14} /> {t("settings.syntaxHighlightImport")}
+                </button>
+                {canGenerateWithAi ? (
+                  <button
+                    aria-label={t("settings.syntaxHighlightGenerateWithAi")}
+                    className="toolbar-button syntax-profile-ai-button"
+                    onClick={onGenerateWithAi}
+                    title={t("settings.syntaxHighlightGenerateWithAi")}
+                    type="button"
+                  >
+                    <WandSparkles size={14} />
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
           </div>
           {invalid ? <p className="syntax-profile-validation">{t("settings.syntaxHighlightInvalidPattern", { pattern: invalid })}</p> : null}
           <div className="syntax-profile-rules-head">
             <strong>{t("settings.syntaxHighlightRules")}</strong>
-            <button className="toolbar-button" onClick={() => setDraft({ ...draft, rules: [...draft.rules, newRule()] })} type="button">
+            <button className="toolbar-button" onClick={() => onChange({ ...draft, rules: [...draft.rules, newRule()] })} type="button">
               <Plus size={14} /> {t("settings.syntaxHighlightAddRule")}
             </button>
           </div>
@@ -375,7 +399,7 @@ function SyntaxProfileEditor({
                     <span>{t("settings.syntaxHighlightEnabled")}</span>
                   </div>
                   <span className="syntax-profile-rule-number">{index + 1}</span>
-                  <button aria-label={t("common.delete")} className="toolbar-button" onClick={() => setDraft({ ...draft, rules: draft.rules.filter((rule) => rule.id !== entry.id) })} title={t("common.delete")} type="button">
+                  <button aria-label={t("common.delete")} className="toolbar-button" onClick={() => onChange({ ...draft, rules: draft.rules.filter((rule) => rule.id !== entry.id) })} title={t("common.delete")} type="button">
                     <Trash2 size={13} />
                   </button>
                 </div>

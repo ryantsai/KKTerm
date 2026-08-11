@@ -2617,12 +2617,6 @@ input.settings-credential-search {
   padding: 0 9px;
 }
 
-.syntax-profile-toolbar .syntax-profile-ai-button {
-  width: 30px;
-  margin-left: auto;
-  padding: 0;
-}
-
 .syntax-profile-layout {
   display: grid;
   grid-template-columns: minmax(210px, 0.7fr) minmax(260px, 1.3fr);
@@ -2762,6 +2756,31 @@ input.settings-credential-search {
   align-items: end;
 }
 
+.syntax-profile-editor-meta.has-actions {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.syntax-profile-editor-meta-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+
+.syntax-profile-editor-meta-actions .toolbar-button {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  width: auto;
+  padding: 0 9px;
+}
+
+.syntax-profile-editor-meta-actions .syntax-profile-ai-button {
+  width: 30px;
+  padding: 0;
+}
+
 .syntax-profile-enabled {
   display: inline-flex;
   gap: 6px;
@@ -2869,6 +2888,7 @@ input.settings-credential-search {
 @media (max-width: 860px) {
   .syntax-profile-layout,
   .syntax-profile-editor-meta,
+  .syntax-profile-editor-meta.has-actions,
   .syntax-profile-rule-fields {
     grid-template-columns: 1fr;
   }

@@ -2697,7 +2697,7 @@
     "syntaxHighlightCustom": "กำหนดเอง",
     "syntaxHighlightRulesCount": "{{count}} กฎ",
     "syntaxHighlightNewProfile": "โปรไฟล์ใหม่",
-    "syntaxHighlightImport": "นำเข้า INI ของ SecureCRT",
+    "syntaxHighlightImport": "นำเข้า",
     "syntaxHighlightImportTitle": "นำเข้าโปรไฟล์คำสำคัญของ SecureCRT",
     "syntaxHighlightIniFiles": "ไฟล์ INI ของ SecureCRT",
     "syntaxHighlightImportFailed": "ไม่สามารถนำเข้าโปรไฟล์ SecureCRT: {{message}}",

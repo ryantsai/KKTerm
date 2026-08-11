@@ -2697,7 +2697,7 @@
     "syntaxHighlightCustom": "カスタム",
     "syntaxHighlightRulesCount": "{{count}} 個のルール",
     "syntaxHighlightNewProfile": "新しいプロファイル",
-    "syntaxHighlightImport": "SecureCRT INI をインポート",
+    "syntaxHighlightImport": "インポート",
     "syntaxHighlightImportTitle": "SecureCRT キーワード プロファイルをインポート",
     "syntaxHighlightIniFiles": "SecureCRT INI ファイル",
     "syntaxHighlightImportFailed": "SecureCRT プロファイルをインポートできませんでした: {{message}}",

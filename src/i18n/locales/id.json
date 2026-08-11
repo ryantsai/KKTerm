@@ -2697,7 +2697,7 @@
     "syntaxHighlightCustom": "Khusus",
     "syntaxHighlightRulesCount": "{{count}} aturan",
     "syntaxHighlightNewProfile": "Profil baru",
-    "syntaxHighlightImport": "Impor INI SecureCRT",
+    "syntaxHighlightImport": "Impor",
     "syntaxHighlightImportTitle": "Impor profil kata kunci SecureCRT",
     "syntaxHighlightIniFiles": "Berkas INI SecureCRT",
     "syntaxHighlightImportFailed": "Tidak dapat mengimpor profil SecureCRT: {{message}}",

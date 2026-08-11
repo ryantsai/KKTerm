@@ -2697,7 +2697,7 @@
     "syntaxHighlightCustom": "Personalizado",
     "syntaxHighlightRulesCount": "{{count}} regras",
     "syntaxHighlightNewProfile": "Novo perfil",
-    "syntaxHighlightImport": "Importar INI do SecureCRT",
+    "syntaxHighlightImport": "Importar",
     "syntaxHighlightImportTitle": "Importar perfil de palavras-chave do SecureCRT",
     "syntaxHighlightIniFiles": "Arquivos INI do SecureCRT",
     "syntaxHighlightImportFailed": "Não foi possível importar o perfil do SecureCRT: {{message}}",

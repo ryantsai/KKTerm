@@ -89,10 +89,15 @@ def show_log_messages(count=12):
 def print_demo(hostname, user):
     print(f"{user}@{hostname}> show syntax-highlighting-demo")
     print("ge-0/0/0 xe-0/1/0.0 ae0 irb.10 lo0.0 reth0.0 st0.1")
-    print("10.10.10.1/24 192.0.2.2 active up established master enabled complete success")
-    print("warning backup standby probing degraded pending")
-    print("down disabled failed inactive reject timeout unreachable alarm")
-    print("BGP OSPF OSPFv3 IS-IS LDP MPLS VRRP")
+    print("10.10.10.1/24 2001:db8:10::1/64 00:11:22:33:44:55")
+    print("active up established master primary enabled complete success online ready")
+    print("warning backup secondary standby probing degraded pending hold unknown")
+    print("down disabled failed inactive reject timeout unreachable fault offline Major alarm")
+    print("BGP OSPFv3 IS-IS LDP MPLS RSVP BFD EVPN VRRP PIM static direct")
+    print("policy-statement prefix-list route-filter firewall term from then next-hop community")
+    print("interfaces protocols routing-options policy-options security class-of-service traceoptions")
+    print("family inet inet6 ethernet-switching bridge EVPN CCC MPLS ISO")
+    print("set delete deactivate activate commit confirmed rollback load save compare edit top")
 
 
 def print_help():
