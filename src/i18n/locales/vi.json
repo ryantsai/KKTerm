@@ -2715,7 +2715,6 @@
     "syntaxHighlightSaveProfile": "Lưu hồ sơ",
     "syntaxHighlightProfileName": "Tên hồ sơ",
     "syntaxHighlightOverridesStyles": "Ghi đè kiểu của terminal",
-    "syntaxHighlightCaseSensitive": "Khớp phân biệt chữ hoa chữ thường",
     "syntaxHighlightRules": "Quy tắc tô màu",
     "syntaxHighlightAddRule": "Thêm quy tắc",
     "syntaxHighlightRuleName": "Tên quy tắc",

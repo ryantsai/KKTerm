@@ -2715,7 +2715,6 @@
     "syntaxHighlightSaveProfile": "Salvar perfil",
     "syntaxHighlightProfileName": "Nome do perfil",
     "syntaxHighlightOverridesStyles": "Substitui o estilo do terminal",
-    "syntaxHighlightCaseSensitive": "Correspondência com diferenciação de maiúsculas e minúsculas",
     "syntaxHighlightRules": "Regras de realce",
     "syntaxHighlightAddRule": "Adicionar regra",
     "syntaxHighlightRuleName": "Nome da regra",

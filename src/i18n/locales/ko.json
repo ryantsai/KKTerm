@@ -2715,7 +2715,6 @@
     "syntaxHighlightSaveProfile": "프로필 저장",
     "syntaxHighlightProfileName": "프로필 이름",
     "syntaxHighlightOverridesStyles": "터미널 스타일 재정의",
-    "syntaxHighlightCaseSensitive": "대/소문자 구분",
     "syntaxHighlightRules": "강조 규칙",
     "syntaxHighlightAddRule": "규칙 추가",
     "syntaxHighlightRuleName": "규칙 이름",

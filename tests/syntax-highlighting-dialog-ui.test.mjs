@@ -15,6 +15,7 @@ test("keyword-highlighting dialogs use the shared dialog form language", async (
   assert.match(source, /<TextArea\b/);
   assert.match(source, /<Switch\b/);
   assert.doesNotMatch(source, /<(?:input|textarea)\b/);
+  assert.doesNotMatch(source, /syntaxHighlightCaseSensitive/);
   assert.match(source, /<Btn kind="primary" icon="wand"/);
   assert.match(settingsCss, /\.syntax-profile-editor-dialog \.kk-dlg\s*\{/);
   assert.doesNotMatch(settingsCss, /\.syntax-profile-editor-dialog \.kk-sheet\b/);
@@ -33,4 +34,12 @@ test("keyword-highlighting colors use one compact clickable swatch", async () =>
   assert.match(picker, /trigger\?: "rainbow" \| "swatch"/);
   assert.match(picker, /createPortal\(popover, document\.body\)/);
   assert.match(pickerCss, /\.color-palette-swatch\s*\{[\s\S]*?width:\s*20px;[\s\S]*?height:\s*20px;/);
+});
+
+test("keyword-highlighting profile rows use the compact list scale", async () => {
+  const settingsCss = await read("src/modules/settings/settings.css");
+
+  assert.match(settingsCss, /\.syntax-profile-row\s*\{[\s\S]*?min-height:\s*40px;[\s\S]*?padding:\s*6px 9px;/);
+  assert.match(settingsCss, /\.syntax-profile-row strong\s*\{[\s\S]*?font-size:\s*13px;/);
+  assert.match(settingsCss, /\.syntax-profile-row > svg\s*\{[\s\S]*?width:\s*13px;[\s\S]*?height:\s*13px;/);
 });

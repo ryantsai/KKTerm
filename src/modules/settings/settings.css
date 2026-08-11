@@ -2638,11 +2638,11 @@ input.settings-credential-search {
 .syntax-profile-row {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 9px;
+  gap: 7px;
   align-items: center;
   width: 100%;
-  min-height: 48px;
-  padding: 8px 10px;
+  min-height: 40px;
+  padding: 6px 9px;
   color: var(--text-muted);
   text-align: left;
   background: transparent;
@@ -2661,10 +2661,19 @@ input.settings-credential-search {
   box-shadow: inset 2px 0 0 var(--accent);
 }
 
+.syntax-profile-row > svg {
+  width: 13px;
+  height: 13px;
+}
+
 .syntax-profile-row span,
 .syntax-profile-summary-head > div:first-child {
   display: grid;
   min-width: 0;
+}
+
+.syntax-profile-row span {
+  gap: 1px;
 }
 
 .syntax-profile-row strong,
@@ -2674,14 +2683,23 @@ input.settings-credential-search {
   white-space: nowrap;
 }
 
+.syntax-profile-row strong {
+  font-size: 13px;
+  line-height: 1.2;
+}
+
 .syntax-profile-row small,
 .syntax-profile-summary small {
   color: var(--text-faint);
   font-size: 10px;
 }
 
+.syntax-profile-row small {
+  line-height: 1.2;
+}
+
 .syntax-profile-row em {
-  padding: 2px 5px;
+  padding: 1px 4px;
   color: var(--text-faint);
   font-size: 9px;
   font-style: normal;
@@ -2739,7 +2757,7 @@ input.settings-credential-search {
 
 .syntax-profile-editor-meta {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
   align-items: end;
 }

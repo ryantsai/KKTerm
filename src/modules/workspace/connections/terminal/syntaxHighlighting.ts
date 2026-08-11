@@ -112,6 +112,7 @@ export function copySyntaxHighlightProfile(
     ...profile,
     id: syntaxHighlightProfileId(),
     name,
+    caseSensitive: false,
     rules: profile.rules.map((entry) => ({
       ...entry,
       id: syntaxHighlightRuleId(),
@@ -134,7 +135,7 @@ export function validateSyntaxHighlightProfile(profile: TerminalSyntaxHighlightP
   for (const entry of profile.rules) {
     if (!entry.name.trim() || !entry.pattern.trim()) return "rule";
     try {
-      new RegExp(entry.pattern, profile.caseSensitive ? "g" : "gi");
+      new RegExp(entry.pattern, "gi");
     } catch {
       return entry.pattern;
     }
@@ -159,7 +160,6 @@ export function parseSecureCrtKeywordIni(
   fallbackName = "Imported SecureCRT Profile",
 ): TerminalSyntaxHighlightProfile {
   const nameMatch = source.match(/^S:"List Name"=(.+)$/m);
-  const matchCase = /^D:"Match Case"=00000001$/m.test(source);
   const version = /Z:"Keyword List V3"=/m.test(source) ? 3 : 2;
   const entries: TerminalSyntaxHighlightRule[] = [];
   const linePattern = /^\s*"((?:\\.|[^"])*)",([0-9a-f]{8}),([0-9a-f]{8})(?:,([0-9a-f]{8}))?\s*$/i;
@@ -193,7 +193,7 @@ export function parseSecureCrtKeywordIni(
   return {
     id: syntaxHighlightProfileId(),
     name: nameMatch?.[1]?.trim() || fallbackName.replace(/\.ini$/i, "") || fallbackName,
-    caseSensitive: matchCase,
+    caseSensitive: false,
     rules: entries,
   };
 }
@@ -207,7 +207,7 @@ export function parseAiSyntaxHighlightProfile(source: string): TerminalSyntaxHig
   const profile: TerminalSyntaxHighlightProfile = {
     id: syntaxHighlightProfileId(),
     name: parsed.name.trim().slice(0, 80) || "Generated Profile",
-    caseSensitive: parsed.caseSensitive === true,
+    caseSensitive: false,
     rules: parsed.rules.slice(0, 100).map((candidate, index) => {
       const raw = candidate as Partial<TerminalSyntaxHighlightRule>;
       const rawStyle = (raw.style ?? {}) as Partial<TerminalSyntaxHighlightStyle>;

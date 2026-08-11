@@ -2715,7 +2715,6 @@
     "syntaxHighlightSaveProfile": "儲存設定檔",
     "syntaxHighlightProfileName": "設定檔名稱",
     "syntaxHighlightOverridesStyles": "覆寫終端機樣式",
-    "syntaxHighlightCaseSensitive": "區分大小寫比對",
     "syntaxHighlightRules": "突顯規則",
     "syntaxHighlightAddRule": "新增規則",
     "syntaxHighlightRuleName": "規則名稱",

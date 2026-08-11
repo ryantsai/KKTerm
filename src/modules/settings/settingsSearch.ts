@@ -162,7 +162,6 @@ export const SETTINGS_SEARCH_KEYS: Record<SettingsSectionId, readonly string[]> 
     "settings.syntaxHighlightDelete", "settings.syntaxHighlightDeleteTitle",
     "settings.syntaxHighlightDeleteBody", "settings.syntaxHighlightSaveProfile",
     "settings.syntaxHighlightProfileName", "settings.syntaxHighlightOverridesStyles",
-    "settings.syntaxHighlightCaseSensitive",
     "settings.syntaxHighlightRules", "settings.syntaxHighlightAddRule",
     "settings.syntaxHighlightRuleName", "settings.syntaxHighlightPattern",
     "settings.syntaxHighlightFont", "settings.syntaxHighlightInheritFont",

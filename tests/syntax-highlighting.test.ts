@@ -33,7 +33,7 @@ test("built-in keyword profiles are valid and define overriding colors", () => {
   }
 });
 
-test("SecureCRT V2 imports BGR colors, case handling, and enabled rules", () => {
+test("SecureCRT V2 imports BGR colors and enabled rules with insensitive matching", () => {
   const profile = parseSecureCrtKeywordIni(`
 D:"Match Case"=00000001
 Z:"Keyword List V2"=00000003
@@ -44,7 +44,7 @@ S:"List Name"=Router Checks
 `);
 
   assert.equal(profile.name, "Router Checks");
-  assert.equal(profile.caseSensitive, true);
+  assert.equal(profile.caseSensitive, false);
   assert.equal(profile.rules.length, 2);
   assert.equal(profile.rules[0].style.foreground, "#FF0000");
   assert.equal(profile.rules[1].style.foreground, "#0000FF");
@@ -77,13 +77,23 @@ test("copying a built-in produces independent user ids", () => {
 
 test("AI profiles are normalized and invalid regexes are rejected", () => {
   const profile = parseAiSyntaxHighlightProfile(`\`\`\`json
-{"name":"Docker","rules":[{"name":"Error","pattern":"\\\\bERROR\\\\b","style":{"foreground":"#ff0000","bold":true}}]}
+{"name":"Docker","caseSensitive":true,"rules":[{"name":"Error","pattern":"\\\\bERROR\\\\b","style":{"foreground":"#ff0000","bold":true}}]}
 \`\`\``);
   assert.equal(profile.name, "Docker");
+  assert.equal(profile.caseSensitive, false);
   assert.equal(profile.rules[0].style.foreground, "#FF0000");
   assert.throws(() =>
     parseAiSyntaxHighlightProfile(
       '{"name":"Broken","rules":[{"name":"Bad","pattern":"(","style":{}}]}',
     ),
   );
+});
+
+test("renderer compiles every keyword rule case-insensitively", () => {
+  const renderer = readFileSync(
+    new URL("../src/modules/workspace/connections/terminal/renderer.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(renderer, /const flags = "gi";/);
+  assert.doesNotMatch(renderer, /profile\.caseSensitive/);
 });

@@ -2715,7 +2715,6 @@
     "syntaxHighlightSaveProfile": "保存配置文件",
     "syntaxHighlightProfileName": "配置文件名称",
     "syntaxHighlightOverridesStyles": "覆盖终端样式",
-    "syntaxHighlightCaseSensitive": "区分大小写匹配",
     "syntaxHighlightRules": "高亮规则",
     "syntaxHighlightAddRule": "添加规则",
     "syntaxHighlightRuleName": "规则名称",

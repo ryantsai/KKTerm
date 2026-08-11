@@ -1350,6 +1350,7 @@ export interface TerminalSyntaxHighlightRule {
 export interface TerminalSyntaxHighlightProfile {
   id: string;
   name: string;
+  /** Retained for saved-profile compatibility; matching is always case-insensitive. */
   caseSensitive: boolean;
   rules: TerminalSyntaxHighlightRule[];
 }

@@ -133,9 +133,10 @@ export function SyntaxHighlightProfileManager({
         request: {
           prompt: [
             "Create one terminal keyword-highlighting profile as strict JSON.",
-            "Return only JSON with: name, caseSensitive, and rules.",
+            "Return only JSON with: name and rules.",
             "Each rule needs name, pattern (JavaScript regex source without slashes), enabled, and style.",
             "Style fields: fontFamily (string or null), foreground/background (#RRGGBB or null), bold, italic.",
+            "Matching is always case-insensitive.",
             "Prefer concise, non-overlapping regexes and no nested quantifiers. Limit the result to 30 useful rules.",
             "A rule's configured style takes precedence over terminal and ANSI styling for matching text.",
             "Use a readable palette on dark terminal backgrounds.",
@@ -348,7 +349,7 @@ function SyntaxProfileEditor({
       setInvalid(validation);
       return;
     }
-    onSave({ ...draft, name: draft.name.trim() });
+    onSave({ ...draft, name: draft.name.trim(), caseSensitive: false });
   }
 
   return (
@@ -369,10 +370,6 @@ function SyntaxProfileEditor({
             <Field label={t("settings.syntaxHighlightProfileName")}>
               <TextInput autoFocus onChange={(event) => setDraft({ ...draft, name: event.currentTarget.value })} value={draft.name} />
             </Field>
-            <div className="syntax-profile-check">
-              <Switch ariaLabel={t("settings.syntaxHighlightCaseSensitive")} on={draft.caseSensitive} onChange={(caseSensitive) => setDraft({ ...draft, caseSensitive })} />
-              <span>{t("settings.syntaxHighlightCaseSensitive")}</span>
-            </div>
           </div>
           {invalid ? <p className="syntax-profile-validation">{t("settings.syntaxHighlightInvalidPattern", { pattern: invalid })}</p> : null}
           <div className="syntax-profile-rules-head">

@@ -2715,7 +2715,6 @@
     "syntaxHighlightSaveProfile": "Save profile",
     "syntaxHighlightProfileName": "Profile name",
     "syntaxHighlightOverridesStyles": "Overrides terminal styling",
-    "syntaxHighlightCaseSensitive": "Case-sensitive matching",
     "syntaxHighlightRules": "Highlight rules",
     "syntaxHighlightAddRule": "Add rule",
     "syntaxHighlightRuleName": "Rule name",

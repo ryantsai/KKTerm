@@ -2715,7 +2715,6 @@
     "syntaxHighlightSaveProfile": "บันทึกโปรไฟล์",
     "syntaxHighlightProfileName": "ชื่อโปรไฟล์",
     "syntaxHighlightOverridesStyles": "แทนที่สไตล์ของเทอร์มินัล",
-    "syntaxHighlightCaseSensitive": "การจับคู่ที่คำนึงถึงตัวพิมพ์ใหญ่เล็ก",
     "syntaxHighlightRules": "กฎการเน้น",
     "syntaxHighlightAddRule": "เพิ่มกฎ",
     "syntaxHighlightRuleName": "ชื่อกฎ",

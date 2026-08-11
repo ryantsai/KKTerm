@@ -2715,7 +2715,6 @@
     "syntaxHighlightSaveProfile": "Enregistrer le profil",
     "syntaxHighlightProfileName": "Nom du profil",
     "syntaxHighlightOverridesStyles": "Remplace le style du terminal",
-    "syntaxHighlightCaseSensitive": "Respect de la casse",
     "syntaxHighlightRules": "Règles de coloration",
     "syntaxHighlightAddRule": "Ajouter une règle",
     "syntaxHighlightRuleName": "Nom de la règle",

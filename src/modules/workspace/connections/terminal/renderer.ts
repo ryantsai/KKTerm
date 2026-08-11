@@ -1146,7 +1146,7 @@ function compileSyntaxHighlightRules(
   profile: TerminalSyntaxHighlightProfile | null,
 ): CompiledSyntaxHighlightRule[] {
   if (!profile) return [];
-  const flags = profile.caseSensitive ? "g" : "gi";
+  const flags = "gi";
   const compiled: CompiledSyntaxHighlightRule[] = [];
   for (const rule of profile.rules) {
     const pattern = rule.pattern.trim();

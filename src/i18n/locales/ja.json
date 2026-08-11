@@ -2715,7 +2715,6 @@
     "syntaxHighlightSaveProfile": "プロファイルを保存",
     "syntaxHighlightProfileName": "プロファイル名",
     "syntaxHighlightOverridesStyles": "ターミナルのスタイルを上書きします",
-    "syntaxHighlightCaseSensitive": "大文字と小文字を区別する",
     "syntaxHighlightRules": "ハイライト ルール",
     "syntaxHighlightAddRule": "ルールを追加",
     "syntaxHighlightRuleName": "ルール名",
