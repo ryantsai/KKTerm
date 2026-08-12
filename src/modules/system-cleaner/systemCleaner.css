@@ -1,7 +1,11 @@
 /*
  * System Cleaner
- * One scrollable Overview surface: summary card, then Storage / Cleanup /
- * Recommendations side by side, then the full-width Uninstaller.
+ * One Overview surface: summary card, then Storage / Cleanup / Uninstaller as
+ * three equal full-height panels.
+ *
+ * Each panel is a size container, so row density follows the panel's own width
+ * instead of the viewport. Base rules are the narrow form; @container rules add
+ * columns back when a panel is wide enough to carry them.
  *
  * Type scale (aligned with Dashboard and IT Ops, never smaller than 11px):
  *   --sc-fs-section 13px  section titles
@@ -15,7 +19,7 @@
   --sc-pad: 14px;
   --sc-gap: 12px;
   --sc-radius: 12px;
-  --sc-panel-h: clamp(400px, 46vh, 540px);
+  --sc-panel-min-h: 420px;
   --sc-fs-section: 13px;
   --sc-fs-body: 12px;
   --sc-fs-meta: 11px;
@@ -111,10 +115,12 @@
   background: var(--surface);
 }
 
+/* Summary card on top, then one full-height row of result panels. */
 .system-cleaner-overview-page {
   display: grid;
-  align-content: start;
+  grid-template-rows: auto minmax(var(--sc-panel-min-h), 1fr);
   width: 100%;
+  height: 100%;
   min-height: 100%;
   gap: var(--sc-gap);
   padding: 10px 12px 12px;
@@ -130,8 +136,11 @@
   box-shadow: var(--control-shadow);
 }
 
-.system-cleaner-workbench-section { display: flex; flex-direction: column; }
+.system-cleaner-workbench-section { display: flex; flex-direction: column; container-type: inline-size; }
 .system-cleaner-workbench-section > .system-cleaner-view { flex: 1; min-height: 0; }
+.system-cleaner-storage-section { container-name: system-cleaner-storage; }
+.system-cleaner-cleanup-section { container-name: system-cleaner-cleanup; }
+.system-cleaner-apps-section { container-name: system-cleaner-apps; }
 
 /* Summary card */
 
@@ -167,7 +176,8 @@
 
 .system-cleaner-metric-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: stretch;
   gap: 10px;
   padding: 12px var(--sc-pad) var(--sc-pad);
 }
@@ -233,6 +243,80 @@
 }
 
 .system-cleaner-metric.accent .system-cleaner-metric-meter i { background: var(--green); }
+
+/*
+ * Storage-by-category palette. Categorical hues in a fixed order — a category
+ * keeps its color no matter how the slices sort. Steps are validated for the
+ * light and dark chart surfaces (lightness band, chroma floor, colorblind
+ * separation, contrast); the legend labels every slice so identity never rests
+ * on color alone. "Other" is the de-emphasis gray, not a categorical hue.
+ */
+.system-cleaner-page {
+  --sc-cat-videos: #0072b2;
+  --sc-cat-images: #e69f00;
+  --sc-cat-audio: #009e73;
+  --sc-cat-documents: #cc79a7;
+  --sc-cat-programs: #d55e00;
+  --sc-cat-other: color-mix(in srgb, var(--text-faint) 55%, var(--surface));
+}
+
+[data-color-scheme="dark"] .system-cleaner-page,
+[data-color-scheme="purple"] .system-cleaner-page,
+[data-color-scheme="blue-see"] .system-cleaner-page,
+[data-color-scheme="les-bleus"] .system-cleaner-page,
+[data-color-scheme="os-navegadores"] .system-cleaner-page,
+[data-color-scheme="samurai-blue"] .system-cleaner-page {
+  --sc-cat-videos: #4691d6;
+  --sc-cat-images: #bd8300;
+  --sc-cat-audio: #0d9b74;
+  --sc-cat-documents: #e295c0;
+  --sc-cat-programs: #b03f1c;
+}
+
+.system-cleaner-category-metric { grid-column: span 2; }
+
+/* Stacked bar: segment widths are proportional, with a surface gap between
+   them so neighbouring categories never read as one block. */
+.system-cleaner-category-bar {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  height: 10px;
+  margin-top: auto;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--text) 9%, transparent);
+  border-radius: 5px;
+}
+
+.system-cleaner-category-bar i { min-width: 1px; border-radius: 3px; }
+
+.system-cleaner-category-legend {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  min-width: 0;
+  gap: 3px 14px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.system-cleaner-category-legend li {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  font-size: var(--sc-fs-meta);
+}
+
+.system-cleaner-category-legend i { width: 8px; height: 8px; border-radius: 2px; }
+.system-cleaner-category-legend span { overflow: hidden; color: var(--text-muted); text-overflow: ellipsis; white-space: nowrap; }
+.system-cleaner-category-legend strong {
+  color: var(--text);
+  font-family: var(--sc-mono);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
 
 /* Shared section chrome */
 
@@ -430,12 +514,23 @@
 .system-cleaner-icon-button:focus-visible { outline: none; box-shadow: var(--ring); }
 .system-cleaner-icon-button:disabled { opacity: .35; cursor: default; }
 
+/* Narrow panel: name, size, allocated. The proportion bar returns when wide. */
 .system-cleaner-browser-columns,
 .system-cleaner-browser-row {
   display: grid;
-  grid-template-columns: minmax(160px, 1fr) minmax(96px, 150px) 96px 104px;
+  grid-template-columns: minmax(0, 1fr) 78px 88px;
   align-items: center;
   gap: 10px;
+}
+
+.system-cleaner-browser-columns > :nth-child(2),
+.system-cleaner-browser-row > :nth-child(2) { display: none; }
+
+@container system-cleaner-storage (min-width: 520px) {
+  .system-cleaner-browser-columns,
+  .system-cleaner-browser-row { grid-template-columns: minmax(0, 1fr) minmax(80px, 132px) 84px 92px; }
+  .system-cleaner-browser-columns > :nth-child(2) { display: block; }
+  .system-cleaner-browser-row > :nth-child(2) { display: flex; }
 }
 
 .system-cleaner-browser-columns {
@@ -591,14 +686,20 @@
 .system-cleaner-cleanup-name { display: flex; min-width: 0; align-items: center; gap: 8px; }
 .system-cleaner-cleanup-name > strong { flex: 0 1 auto; overflow: hidden; font-size: var(--sc-fs-body); font-weight: 620; text-overflow: ellipsis; white-space: nowrap; }
 
-.system-cleaner-cleanup-name bdi {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--text-faint);
-  font-family: var(--sc-mono);
-  font-size: 10.5px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+/* The target path only earns a place on the name line in a wide panel. */
+.system-cleaner-cleanup-name bdi { display: none; }
+
+@container system-cleaner-cleanup (min-width: 560px) {
+  .system-cleaner-cleanup-name bdi {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--text-faint);
+    font-family: var(--sc-mono);
+    font-size: 10.5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 .system-cleaner-cleanup-description {
@@ -621,8 +722,7 @@
 }
 
 .system-cleaner-apps-view,
-.system-cleaner-cleanup-view,
-.system-cleaner-recommendations-view { position: relative; }
+.system-cleaner-cleanup-view { position: relative; }
 
 /* Exact cleanup preview */
 
@@ -677,102 +777,32 @@
   line-height: 1.4;
 }
 
-/* Recommendations */
-
-.system-cleaner-recommendation-groups { flex: 1; min-height: 0; padding: 10px var(--sc-pad) 12px; overflow: auto; }
-.system-cleaner-recommendation-groups:has(.system-cleaner-placeholder) { display: flex; padding: 0; }
-
-.system-cleaner-recommendation-group {
-  margin-bottom: 10px;
-  overflow: hidden;
-  background: var(--surface-muted);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-}
-
-.system-cleaner-recommendation-group:last-child { margin-bottom: 0; }
-
-.system-cleaner-recommendation-group > header {
-  display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) auto;
-  align-items: center;
-  min-height: 46px;
-  gap: 9px;
-  padding: 7px 11px;
-  border-bottom: 1px solid var(--hairline);
-}
-
-.system-cleaner-recommendation-group > header > div { min-width: 0; }
-.system-cleaner-recommendation-group > header strong { font-size: var(--sc-fs-body); font-weight: 650; }
-
-.system-cleaner-recommendation-group > header p {
-  margin: 2px 0 0;
-  overflow: hidden;
-  color: var(--text-faint);
-  font-size: var(--sc-fs-meta);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.system-cleaner-recommendation-group > header > span:last-child {
-  color: var(--text-muted);
-  font-family: var(--sc-mono);
-  font-size: var(--sc-fs-body);
-  font-weight: 620;
-  font-variant-numeric: tabular-nums;
-}
-
-.system-cleaner-review-columns,
-.system-cleaner-review-row {
-  display: grid;
-  grid-template-columns: 14px minmax(0, 1fr) 104px 84px 54px;
-  align-items: center;
-  gap: 10px;
-  padding: 0 11px;
-}
-
-.system-cleaner-review-columns {
-  min-height: 26px;
-  color: var(--text-faint);
-  background: var(--surface);
-  border-bottom: 1px solid var(--hairline);
-  font-size: var(--sc-fs-meta);
-  font-weight: 600;
-}
-
-.system-cleaner-review-columns span:nth-child(4) { text-align: right; }
-
-.system-cleaner-review-row {
-  min-height: 44px;
-  border-bottom: 1px solid color-mix(in srgb, var(--hairline) 68%, transparent);
-  cursor: pointer;
-}
-
-.system-cleaner-review-row:last-child { border-bottom: 0; }
-.system-cleaner-review-row:hover { background: var(--hover); }
-.system-cleaner-review-row:focus-within { outline: 2px solid var(--accent); outline-offset: -2px; }
-.system-cleaner-review-row.selected { background: var(--sel-soft); }
-.system-cleaner-review-name { display: flex; min-width: 0; align-items: center; gap: 8px; }
-.system-cleaner-review-name > svg { flex: 0 0 auto; color: var(--text-faint); }
-.system-cleaner-review-name > span { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
-.system-cleaner-review-name strong,
-.system-cleaner-review-name bdi { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.system-cleaner-review-name strong { font-size: var(--sc-fs-body); font-weight: 590; }
-.system-cleaner-review-name bdi { color: var(--text-faint); font-family: var(--sc-mono); font-size: 10.5px; }
-.system-cleaner-review-row time { color: var(--text-muted); font-size: var(--sc-fs-meta); white-space: nowrap; }
-.system-cleaner-no-recommendations { margin: 0; padding: 14px 11px; color: var(--text-faint); font-size: var(--sc-fs-meta); }
-
 /* Uninstaller */
 
 .system-cleaner-app-table { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 
+/* Narrow panel: select, name, size, actions. Package ID and version return when wide. */
+/* Every track is a fixed or fr size: the head and body are separate grids, so an
+   `auto` track would resolve differently in each and slide the columns apart. */
 .system-cleaner-app-columns,
 .system-cleaner-app-row {
   display: grid;
-  grid-template-columns: 14px minmax(200px, 1.4fr) minmax(180px, 1fr) 110px 84px 210px;
+  grid-template-columns: 14px minmax(0, 1fr) 78px 124px;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   padding: 0 var(--sc-pad);
+}
+
+.system-cleaner-app-columns > :nth-child(3),
+.system-cleaner-app-row > bdi { display: none; }
+.system-cleaner-ai-explain > span { display: none; }
+
+@container system-cleaner-apps (min-width: 780px) {
+  .system-cleaner-app-columns,
+  .system-cleaner-app-row { grid-template-columns: 14px minmax(200px, 1.4fr) minmax(180px, 1fr) 84px 210px; gap: 12px; }
+  .system-cleaner-app-columns > :nth-child(3) { display: block; }
+  .system-cleaner-app-row > bdi { display: block; }
+  .system-cleaner-ai-explain > span { display: inline; }
 }
 
 .system-cleaner-app-columns {
@@ -785,8 +815,7 @@
   font-weight: 600;
 }
 
-.system-cleaner-app-columns > span:nth-child(4),
-.system-cleaner-app-columns > span:nth-child(5) { text-align: right; }
+.system-cleaner-app-columns > span:nth-child(4) { text-align: right; }
 
 .system-cleaner-app-body { flex: 1; min-height: 0; overflow: auto; }
 
@@ -806,9 +835,8 @@
 .system-cleaner-app-name strong { font-weight: 590; }
 .system-cleaner-app-name small { color: var(--text-faint); font-size: var(--sc-fs-meta); }
 .system-cleaner-app-row > bdi { min-width: 0; overflow: hidden; color: var(--text-muted); font-family: var(--sc-mono); font-size: 10.5px; text-overflow: ellipsis; white-space: nowrap; }
-.system-cleaner-app-version { overflow: hidden; color: var(--text-muted); font-family: var(--sc-mono); font-size: 10.5px; font-variant-numeric: tabular-nums; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
 .system-cleaner-app-size { color: var(--text); font-family: var(--sc-mono); font-size: var(--sc-fs-meta); font-weight: 620; font-variant-numeric: tabular-nums; text-align: right; }
-.system-cleaner-app-actions { display: flex; justify-content: flex-end; gap: 4px; }
+.system-cleaner-app-actions { display: flex; justify-content: flex-end; min-width: 0; gap: 4px; }
 
 .system-cleaner-ai-explain,
 .system-cleaner-uninstall {
@@ -900,66 +928,33 @@
 .system-cleaner-overview-sections {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  grid-template-areas:
-    "storage cleanup recommendations"
-    "apps apps apps";
+  grid-template-areas: "storage cleanup apps";
   align-items: stretch;
+  min-height: 0;
   gap: var(--sc-gap);
 }
 
 .system-cleaner-storage-section { grid-area: storage; }
 .system-cleaner-cleanup-section { grid-area: cleanup; }
-.system-cleaner-recommendations-section { grid-area: recommendations; }
 .system-cleaner-apps-section { grid-area: apps; }
 
-/* The three result panels share one height so their card edges line up. */
-.system-cleaner-storage-section,
-.system-cleaner-cleanup-section,
-.system-cleaner-recommendations-section { height: var(--sc-panel-h); }
-
-.system-cleaner-apps-section .system-cleaner-app-body { height: clamp(260px, 34vh, 420px); }
-
-@media (max-width: 1500px) {
-  .system-cleaner-overview-sections {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-areas:
-      "storage cleanup"
-      "recommendations recommendations"
-      "apps apps";
-  }
-}
-
-@media (max-width: 1240px) {
-  .system-cleaner-app-columns,
-  .system-cleaner-app-row { grid-template-columns: 14px minmax(160px, 1.4fr) minmax(140px, 1fr) 96px 78px 190px; }
-  .system-cleaner-cleanup-name bdi { display: none; }
-}
+/* Every panel fills the row, so the three card edges line up top and bottom. */
+.system-cleaner-workbench-section { height: 100%; min-height: 0; }
 
 @media (max-width: 1160px) {
+  .system-cleaner-overview-page { grid-template-rows: auto; height: auto; }
   .system-cleaner-overview-sections {
     grid-template-columns: 1fr;
-    grid-template-areas: "storage" "cleanup" "recommendations" "apps";
+    grid-template-areas: "storage" "cleanup" "apps";
   }
+  .system-cleaner-workbench-section { height: var(--sc-panel-min-h); }
 }
 
 @media (max-width: 980px) {
   .system-cleaner-overview-page { padding: 8px; }
   .system-cleaner-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .system-cleaner-app-columns,
-  .system-cleaner-app-row { grid-template-columns: 14px minmax(150px, 1fr) 78px 190px; }
-  .system-cleaner-app-columns > :nth-child(3),
-  .system-cleaner-app-columns > :nth-child(4),
-  .system-cleaner-app-row > bdi,
-  .system-cleaner-app-version { display: none; }
-  .system-cleaner-app-columns > span:nth-child(5) { text-align: right; }
-  .system-cleaner-browser-columns,
-  .system-cleaner-browser-row { grid-template-columns: minmax(140px, 1fr) 110px 88px 92px; }
 }
 
 @media (max-width: 880px) {
   .system-cleaner-header-drive { display: none; }
-  .system-cleaner-review-columns,
-  .system-cleaner-review-row { grid-template-columns: 14px minmax(0, 1fr) 84px 54px; }
-  .system-cleaner-review-columns > span:nth-child(3),
-  .system-cleaner-review-row > time { display: none; }
 }

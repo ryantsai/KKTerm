@@ -243,7 +243,6 @@ const SYSTEM_CLEANER_TUTORIAL_TARGET_IDS = [
   "systemCleaner.overview",
   "systemCleaner.storage",
   "systemCleaner.cleanup",
-  "systemCleaner.recommendations",
   "systemCleaner.apps",
 ] as const;
 
@@ -251,7 +250,6 @@ const SYSTEM_CLEANER_SECTION_TARGETS: Partial<Record<(typeof SYSTEM_CLEANER_TUTO
   "systemCleaner.overview": "overview",
   "systemCleaner.storage": "overview",
   "systemCleaner.cleanup": "overview",
-  "systemCleaner.recommendations": "overview",
   "systemCleaner.apps": "overview",
 };
 

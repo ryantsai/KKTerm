@@ -718,6 +718,44 @@ pub fn built_in_recipes() -> Vec<CleanerRecipe> {
             ],
             &["cargo.exe", "rustc.exe"],
         ),
+        // Rebuildable Rust compile inputs: extracted crate sources, the rustup
+        // download staging areas, and the sccache compiler cache. Cargo re-extracts
+        // and rustup re-downloads on demand, so this costs build time, not data.
+        builtin(
+            "rust-build-cache",
+            Review,
+            false,
+            vec![
+                target("%USERPROFILE%/.cargo/registry/src"),
+                target("%USERPROFILE%/.rustup/downloads"),
+                target("%USERPROFILE%/.rustup/tmp"),
+                target("%LOCALAPPDATA%/Mozilla/sccache"),
+            ],
+            &["cargo.exe", "rustc.exe", "sccache.exe", "rustup.exe"],
+        ),
+        // Agent-managed Git worktree checkouts, both the user-level agent roots and
+        // the per-project `.claude/worktrees` folders. Unlike every other category
+        // these are working trees, not caches: they can hold uncommitted work, and
+        // the parent repository keeps a stale registration until `git worktree prune`
+        // runs. Risky and never default-selected, so removal is always a deliberate
+        // choice made against the exact file preview.
+        //
+        // The project patterns only reach repositories kept outside the protected
+        // personal folders. A checkout under Desktop, Documents, OneDrive, or Dropbox
+        // stays behind the protected-path firewall and yields no cleanable files.
+        builtin(
+            "git-worktrees",
+            Risky,
+            false,
+            vec![
+                target("%USERPROFILE%/.claude/worktrees"),
+                target("%USERPROFILE%/.codex/worktrees"),
+                target("%USERPROFILE%/*/.claude/worktrees"),
+                target("%USERPROFILE%/*/*/.claude/worktrees"),
+                target("%USERPROFILE%/source/repos/*/.claude/worktrees"),
+            ],
+            &["git.exe"],
+        ),
         builtin(
             "gradle-cache",
             Review,

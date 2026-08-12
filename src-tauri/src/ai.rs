@@ -89,7 +89,7 @@ const TUTORIAL_TOOL_KNOWN_TARGETS: &str = concat!(
     "remoteDesktop.toolbar, remoteDesktop.viewMode, remoteDesktop.sendCtrlAltDel, remoteDesktop.reconnect, remoteDesktop.sendToAi, remoteDesktop.surface with navigation page=workspace; ",
     "installer.updateAll, installer.toolOptions with navigation page=installer; ",
     "app.activityRailScreenshots, screenshots.captureRegion, screenshots.captureWindow, screenshots.captureFullscreen, screenshots.viewSwitch, screenshots.library with navigation page=screenshots; ",
-    "app.activityRailSystemCleaner, systemCleaner.page, systemCleaner.drive, systemCleaner.scan, systemCleaner.content, systemCleaner.overview, systemCleaner.storage, systemCleaner.cleanup, systemCleaner.recommendations, systemCleaner.apps with navigation page=systemCleaner systemCleanerSection=overview; ",
+    "app.activityRailSystemCleaner, systemCleaner.page, systemCleaner.drive, systemCleaner.scan, systemCleaner.content, systemCleaner.overview, systemCleaner.storage, systemCleaner.cleanup, systemCleaner.apps with navigation page=systemCleaner systemCleanerSection=overview; ",
     "settings.language, settings.activityRail, settings.workspaceAccess, settings.statusBar, settings.settingsData, settings.debug with navigation page=settings settingsSectionId=general-settings; ",
     "settings.appUiFontFamily, settings.appearance.colorScheme, settings.resetLayout with navigation page=settings settingsSectionId=appearance-settings; ",
     "settings.dashboardDefaultLanding, settings.dashboardUseRandomDynamicBackground, settings.dashboardMaxActiveScriptWidgets with navigation page=settings settingsSectionId=dashboard-settings; ",

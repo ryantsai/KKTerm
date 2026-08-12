@@ -860,6 +860,16 @@
     "totalSpace": "Total space",
     "usedSpace": "Space used",
     "freeSpace": "Space free",
+    "freeOfTotal": "{{free}} free of {{total}}",
+    "storageByCategory": "Storage by category",
+    "fileCategory": {
+      "videos": "Videos",
+      "images": "Images",
+      "audio": "Audio",
+      "documents": "Documents",
+      "programs": "Programs",
+      "other": "Other"
+    },
     "diskUsageDetail": "Windows reports {{used}} used. The scan found {{scanned}} in readable logical file sizes; the remaining {{unaccounted}} includes protected data, filesystem metadata, reserved storage, and allocation overhead.",
     "allocationDetail": "Windows reports {{used}} used. The scan attributed {{allocated}} of allocated data and {{logical}} of logical file size; {{unaccounted}} remains reserved or unattributed.",
     "folders": "Folder tree",
@@ -931,28 +941,30 @@
       "shader-cache": "DirectX shader cache",
       "thumbnail-cache": "Windows thumbnail cache",
       "crash-dumps": "Application crash dumps",
-      "error-reports": "Windows error reports"
-      ,"brave-cache": "Brave browser cache"
-      ,"vivaldi-cache": "Vivaldi browser cache"
-      ,"opera-cache": "Opera browser cache"
-      ,"teams-cache": "Microsoft Teams cache"
-      ,"discord-cache": "Discord cache"
-      ,"slack-cache": "Slack cache"
-      ,"vscode-cache": "Visual Studio Code cache"
-      ,"jetbrains-cache": "JetBrains caches and logs"
-      ,"npm-cache": "npm package cache"
-      ,"pnpm-cache": "pnpm package cache"
-      ,"yarn-cache": "Yarn package cache"
-      ,"nuget-cache": "NuGet package cache"
-      ,"pip-cache": "pip package cache"
-      ,"cargo-cache": "Cargo package and Git cache"
-      ,"gradle-cache": "Gradle caches and daemons"
-      ,"nvidia-cache": "NVIDIA shader caches"
-      ,"amd-cache": "AMD shader caches"
-      ,"steam-web-cache": "Steam web cache"
-      ,"zoom-cache": "Zoom cache and logs"
-      ,"office-cache": "Microsoft Office document cache"
-      ,"windows-logs": "Windows diagnostic logs"
+      "error-reports": "Windows error reports",
+      "brave-cache": "Brave browser cache",
+      "vivaldi-cache": "Vivaldi browser cache",
+      "opera-cache": "Opera browser cache",
+      "teams-cache": "Microsoft Teams cache",
+      "discord-cache": "Discord cache",
+      "slack-cache": "Slack cache",
+      "vscode-cache": "Visual Studio Code cache",
+      "jetbrains-cache": "JetBrains caches and logs",
+      "npm-cache": "npm package cache",
+      "pnpm-cache": "pnpm package cache",
+      "yarn-cache": "Yarn package cache",
+      "nuget-cache": "NuGet package cache",
+      "pip-cache": "pip package cache",
+      "cargo-cache": "Cargo package and Git cache",
+      "rust-build-cache": "Rust build and toolchain caches",
+      "git-worktrees": "Git worktrees (agent folders)",
+      "gradle-cache": "Gradle caches and daemons",
+      "nvidia-cache": "NVIDIA shader caches",
+      "amd-cache": "AMD shader caches",
+      "steam-web-cache": "Steam web cache",
+      "zoom-cache": "Zoom cache and logs",
+      "office-cache": "Microsoft Office document cache",
+      "windows-logs": "Windows diagnostic logs"
     },
     "categoryDescription": {
       "temp": "Apps use these short-lived files while working. Closed apps can recreate anything they still need.",
@@ -963,28 +975,30 @@
       "shader-cache": "Windows stores compiled DirectX shaders to reduce load time. Apps rebuild them when needed.",
       "thumbnail-cache": "File Explorer stores small image and video previews. Windows rebuilds them as folders are reopened.",
       "crash-dumps": "Apps write memory dumps after crashes. Cleaning does not remove app data, but it removes files useful for debugging.",
-      "error-reports": "Windows keeps queued and archived problem reports. Cleaning removes local diagnostics, not app data."
-      ,"brave-cache": "Brave rebuilds these downloaded web assets; browsing data and credentials are excluded."
-      ,"vivaldi-cache": "Vivaldi rebuilds these downloaded web assets; browsing data and credentials are excluded."
-      ,"opera-cache": "Opera rebuilds these downloaded web assets; browsing data and credentials are excluded."
-      ,"teams-cache": "Teams rebuilds web-view and application caches after it is closed."
-      ,"discord-cache": "Discord rebuilds its web assets after it is closed."
-      ,"slack-cache": "Slack rebuilds its web and service-worker assets after it is closed."
-      ,"vscode-cache": "VS Code rebuilds workbench, code, GPU, and service-worker caches after it is closed."
-      ,"jetbrains-cache": "JetBrains IDEs rebuild indexes and caches; diagnostic logs are also included."
-      ,"npm-cache": "npm verifies and redownloads package content when it is needed again."
-      ,"pnpm-cache": "pnpm redownloads package store content when it is needed again."
-      ,"yarn-cache": "Yarn redownloads package archives when they are needed again."
-      ,"nuget-cache": "NuGet redownloads HTTP and plug-in cache content when it is needed again."
-      ,"pip-cache": "pip redownloads cached wheels and HTTP responses when they are needed again."
-      ,"cargo-cache": "Cargo redownloads registry archives and Git databases, but the next build may take longer."
-      ,"gradle-cache": "Gradle rebuilds dependency and task caches; the next build may take longer."
-      ,"nvidia-cache": "NVIDIA drivers rebuild compiled DirectX, OpenGL, and compute shaders."
-      ,"amd-cache": "AMD drivers rebuild compiled DirectX and OpenGL shaders."
-      ,"steam-web-cache": "Steam rebuilds its embedded browser assets after it is closed."
-      ,"zoom-cache": "Zoom rebuilds embedded web content; local diagnostic logs are also included."
-      ,"office-cache": "Office may need to download cached document content again. Review before cleaning."
-      ,"windows-logs": "Windows diagnostic log, trace, and cabinet files may help troubleshoot system problems."
+      "error-reports": "Windows keeps queued and archived problem reports. Cleaning removes local diagnostics, not app data.",
+      "brave-cache": "Brave rebuilds these downloaded web assets; browsing data and credentials are excluded.",
+      "vivaldi-cache": "Vivaldi rebuilds these downloaded web assets; browsing data and credentials are excluded.",
+      "opera-cache": "Opera rebuilds these downloaded web assets; browsing data and credentials are excluded.",
+      "teams-cache": "Teams rebuilds web-view and application caches after it is closed.",
+      "discord-cache": "Discord rebuilds its web assets after it is closed.",
+      "slack-cache": "Slack rebuilds its web and service-worker assets after it is closed.",
+      "vscode-cache": "VS Code rebuilds workbench, code, GPU, and service-worker caches after it is closed.",
+      "jetbrains-cache": "JetBrains IDEs rebuild indexes and caches; diagnostic logs are also included.",
+      "npm-cache": "npm verifies and redownloads package content when it is needed again.",
+      "pnpm-cache": "pnpm redownloads package store content when it is needed again.",
+      "yarn-cache": "Yarn redownloads package archives when they are needed again.",
+      "nuget-cache": "NuGet redownloads HTTP and plug-in cache content when it is needed again.",
+      "pip-cache": "pip redownloads cached wheels and HTTP responses when they are needed again.",
+      "cargo-cache": "Cargo redownloads registry archives and Git databases, but the next build may take longer.",
+      "rust-build-cache": "Extracted crate sources, rustup downloads, and the sccache compiler cache. Cargo re-extracts and rustup re-downloads whatever your next build needs.",
+      "git-worktrees": "Working trees checked out by coding agents under your .claude and .codex worktree folders. These are not caches: they can hold uncommitted work, and each parent repository keeps a stale registration until you run git worktree prune.",
+      "gradle-cache": "Gradle rebuilds dependency and task caches; the next build may take longer.",
+      "nvidia-cache": "NVIDIA drivers rebuild compiled DirectX, OpenGL, and compute shaders.",
+      "amd-cache": "AMD drivers rebuild compiled DirectX and OpenGL shaders.",
+      "steam-web-cache": "Steam rebuilds its embedded browser assets after it is closed.",
+      "zoom-cache": "Zoom rebuilds embedded web content; local diagnostic logs are also included.",
+      "office-cache": "Office may need to download cached document content again. Review before cleaning.",
+      "windows-logs": "Windows diagnostic log, trace, and cabinet files may help troubleshoot system problems."
     },
     "recommendation": {
       "large-old-files": "Large old files",
@@ -998,6 +1012,8 @@
     "cleanMessage": "Delete {{size}} from the selected cleanup categories? Locked files will be skipped. This operation is recorded in the local operations log.",
     "cleanPlanMessage": "Delete the {{count}} exact files in this immutable cleanup plan ({{size}})? Every file will be revalidated before deletion.",
     "cleanPlanBlockedMessage": "This plan contains {{count}} files ({{size}}). Files used by {{processes}} will be skipped; every remaining file will be revalidated before deletion.",
+    "riskyCleanupTitle": "Confirm risky categories",
+    "riskyCleanupMessage": "{{categories}} can remove files that exist nowhere else, including work you have not committed or backed up. Deletion is permanent and does not use the Recycle Bin. Review the preview above before continuing.",
     "keepList": "Keep List",
     "keepListDescription": "Files inside these folders are excluded from previews and cleanup.",
     "addKeepPath": "Add folder",
@@ -1045,19 +1061,19 @@
     "appxRemove": "Remove app",
     "appxRemoveTitle": "Remove Windows app?",
     "appxRemoveMessage": "Remove {{name}} for the current user? Exact package: {{packageId}}. Reinstall it from Microsoft Store or the original source if needed.",
-    "appxRemoved": "Removed {{name}} for the current user."
-    ,"windowsMaintenance": "Windows cleanup actions"
-    ,"windowsMaintenanceDescription": "Use supported Windows mechanisms for system-owned cleanup that cannot be represented as file recipes."
-    ,"maintenanceAction": {
+    "appxRemoved": "Removed {{name}} for the current user.",
+    "windowsMaintenance": "Windows cleanup actions",
+    "windowsMaintenanceDescription": "Use supported Windows mechanisms for system-owned cleanup that cannot be represented as file recipes.",
+    "maintenanceAction": {
       "recycleBin": "Recycle Bin",
       "deliveryOptimization": "Delivery Optimization cache",
       "componentCleanup": "Windows component cleanup"
-    }
-    ,"recycleBinDetail": "{{count}} items · {{size}}"
-    ,"deliveryOptimizationDescription": "Ask Windows to remove cached update-delivery content. UAC approval is required."
-    ,"componentCleanupDescription": "Run DISM StartComponentCleanup to remove superseded Windows components. UAC approval is required."
-    ,"runMaintenance": "Run"
-    ,"maintenanceConfirm": {
+    },
+    "recycleBinDetail": "{{count}} items · {{size}}",
+    "deliveryOptimizationDescription": "Ask Windows to remove cached update-delivery content. UAC approval is required.",
+    "componentCleanupDescription": "Run DISM StartComponentCleanup to remove superseded Windows components. UAC approval is required.",
+    "runMaintenance": "Run",
+    "maintenanceConfirm": {
       "recycleBin": {
         "title": "Empty Recycle Bin?",
         "message": "Permanently delete {{count}} Recycle Bin items ({{size}})? This cannot be undone.",
@@ -1073,10 +1089,10 @@
         "message": "Windows will request UAC approval and run DISM StartComponentCleanup. The operation may take several minutes.",
         "confirm": "Run component cleanup"
       }
-    }
-    ,"recycleBinCleaned": "Emptied the Recycle Bin and reclaimed approximately {{size}}."
-    ,"deliveryOptimizationCleaned": "Windows cleared the Delivery Optimization cache."
-    ,"componentCleanupCompleted": "Windows component cleanup completed."
+    },
+    "recycleBinCleaned": "Emptied the Recycle Bin and reclaimed approximately {{size}}.",
+    "deliveryOptimizationCleaned": "Windows cleared the Delivery Optimization cache.",
+    "componentCleanupCompleted": "Windows component cleanup completed."
   },
   "installer": {
     "title": "Install Helper",

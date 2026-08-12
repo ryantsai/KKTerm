@@ -51,12 +51,11 @@ test("System Cleaner uses the Searching orb in the scan page and Status Bar", ()
   assert.match(scanState, /active:\s*boolean/);
 });
 
-test("System Cleaner keeps its core workflows on one three-column Overview surface", () => {
+test("System Cleaner keeps its core workflows on one three-panel Overview surface", () => {
   assert.match(page, /system-cleaner-overview-page/);
   assert.match(page, /system-cleaner-metric-grid/);
   assert.match(page, /<StorageView/);
   assert.match(page, /<CleanupView/);
-  assert.match(page, /<RecommendationsView/);
   assert.match(page, /<AppsView/);
   assert.match(page, /system-cleaner-cleanup-groups/);
   assert.match(page, /system-cleaner-app-table/);
@@ -69,7 +68,35 @@ test("System Cleaner keeps its core workflows on one three-column Overview surfa
   assert.doesNotMatch(page, /system_cleaner_(?:list|add|remove)_keep_path|system_cleaner_(?:preview|import).*bundle|system_cleaner_(?:preview|import)_winapp2/);
   assert.match(styles, /\.system-cleaner-content\s*\{[^}]*background:\s*var\(--surface\)/s);
   assert.match(styles, /\.system-cleaner-overview-page\s*\{[^}]*width:\s*100%[^}]*padding:\s*10px/s);
-  assert.match(styles, /\.system-cleaner-overview-sections\s*\{[^}]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)[^}]*grid-template-areas:[^}]*"storage cleanup recommendations"[^}]*"apps apps apps"/s);
+  assert.match(styles, /\.system-cleaner-overview-sections\s*\{[^}]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)[^}]*grid-template-areas:\s*"storage cleanup apps"/s);
+  // The three panels fill one row, so they share a top and bottom edge.
+  assert.match(styles, /\.system-cleaner-overview-page\s*\{[^}]*grid-template-rows:\s*auto minmax\(var\(--sc-panel-min-h\), 1fr\)/s);
+  assert.match(styles, /\.system-cleaner-workbench-section\s*\{\s*height:\s*100%/);
+  // Row density follows each panel's own width, not the viewport.
+  assert.match(styles, /@container system-cleaner-apps \(min-width/);
+});
+
+test("System Cleaner summary pairs used/free in one card and breaks storage down by file category", () => {
+  // Used and free are one card: the value carries used, the detail carries what is left.
+  assert.match(page, /systemCleaner\.freeOfTotal/);
+  assert.doesNotMatch(page, /label=\{t\("systemCleaner\.freeSpace"\)\}/);
+  assert.match(page, /<CategoryMetric/);
+  assert.match(page, /systemCleaner\.storageByCategory/);
+  for (const category of ["videos", "images", "audio", "documents", "programs"]) {
+    assert.ok(page.includes(`${category}:`), `missing file category bucket ${category}`);
+  }
+  // "other" is a computed remainder, so the slices always sum to the scanned total.
+  assert.match(page, /totals\.set\("other", Math\.max\(0, totalAllocatedBytes - categorized\)\)/);
+  // Identity never rests on color alone: every segment is named and sized in the legend.
+  assert.match(page, /system-cleaner-category-legend/);
+  assert.match(page, /system-cleaner-category-bar/);
+  assert.match(page, /role="img" aria-label=/);
+  // A stacked bar, not a pie: proportional segments with a surface gap between them.
+  assert.match(styles, /\.system-cleaner-category-bar\s*\{[^}]*display:\s*flex[^}]*gap:\s*2px/s);
+  assert.doesNotMatch(page, /system-cleaner-donut/);
+  assert.doesNotMatch(styles, /system-cleaner-donut/);
+  assert.match(styles, /--sc-cat-videos:/);
+  assert.match(styles, /\[data-color-scheme="dark"\] \.system-cleaner-page/);
 });
 
 test("System Cleaner mounts scan-independent sections and keeps Scan only in the Module header", () => {
@@ -87,7 +114,6 @@ test("System Cleaner mounts scan-independent sections and keeps Scan only in the
 test("System Cleaner defaults every size-bearing result list to descending size", () => {
   assert.match(backend, /right\s*\.size_bytes\s*\.cmp\(&left\.size_bytes\)/s);
   assert.match(page, /right\.bytes - left\.bytes \|\| recipeTitle/);
-  assert.match(page, /right\.allocatedBytes - left\.allocatedBytes \|\| left\.name\.localeCompare/);
   assert.match(page, /right\.sizeBytes - left\.sizeBytes \|\| left\.name\.localeCompare/);
   assert.match(page, /key: "allocated", direction: "desc"/);
   assert.doesNotMatch(page, /folderOrder/);
@@ -103,7 +129,7 @@ test("System Cleaner preserves WinGet display names and enriches apps with Windo
   assert.match(page, /<Sparkles size=\{14\}/);
 });
 
-test("System Cleaner keeps personal-file recommendations opt-in and scan-bound", () => {
+test("System Cleaner keeps personal-file recommendations out of the UI and scan-bound in the backend", () => {
   assert.match(backend, /LARGE_OLD_FILE_MIN_BYTES: u64 = 100 \* 1024 \* 1024/);
   assert.match(backend, /LARGE_OLD_FILE_AGE_DAYS: u64 = 180/);
   assert.match(backend, /OLD_DOWNLOAD_AGE_DAYS: u64 = 90/);
@@ -113,11 +139,12 @@ test("System Cleaner keeps personal-file recommendations opt-in and scan-bound",
   assert.match(backend, /changed after the scan/);
   assert.match(backendCommands, /system_cleaner::system_cleaner_delete_review_files/);
   assert.match(tauri, /system_cleaner_delete_review_files/);
-  assert.match(page, /selectedReviewPaths/);
-  assert.match(page, /deleteReviewTitle/);
+  // The Overview no longer renders a Recommendations panel; the scan data and the
+  // revalidated delete stay available to the AI/MCP command layer only.
+  assert.doesNotMatch(page, /RecommendationsView|selectedReviewPaths|deleteReviewTitle|system_cleaner_delete_review_files/);
+  assert.doesNotMatch(styles, /system-cleaner-recommendation|system-cleaner-review-row/);
+  assert.doesNotMatch(manual, /## Recommendations/);
   assert.match(page, /<ConfirmSheet tone="danger"/);
-  assert.match(manual, /never selected automatically/i);
-  assert.match(manual, /does not use the Recycle Bin/i);
 });
 
 test("System Cleaner drive selection uses only the compact native header target", () => {
@@ -224,10 +251,31 @@ test("System Cleaner built-in cleanup stays file-only and protects sensitive pat
   assert.doesNotMatch(backendCommands, /system_cleaner::system_cleaner_(?:list|add|remove)_keep_path/);
 });
 
+test("System Cleaner Git worktree removal stays Risky, opt-in, and bounded to the agent roots", () => {
+  const worktrees = recipes.match(/builtin\(\s*"git-worktrees",[\s\S]*?\n {8}\),/)?.[0];
+  assert.ok(worktrees, "missing git-worktrees built-in recipe");
+  // Working trees can hold uncommitted work: never Safe, never pre-selected.
+  assert.match(worktrees, /"git-worktrees",\s*Risky,\s*false,/);
+  // Only the fixed coding-agent worktree roots — never a project-local worktree.
+  assert.match(worktrees, /%USERPROFILE%\/\.claude\/worktrees/);
+  assert.match(worktrees, /%USERPROFILE%\/\.codex\/worktrees/);
+  // Project-local worktrees are reachable, but only under the user profile.
+  assert.match(worktrees, /%USERPROFILE%\/\*\/\*\/\.claude\/worktrees/);
+  assert.doesNotMatch(worktrees, /Desktop|Documents|OneDrive|Dropbox/);
+  assert.match(worktrees, /"git\.exe"/);
+  assert.match(manual, /git worktree prune/);
+  assert.match(manual, /protected-path firewall, so its worktrees are never matched/);
+  // A Risky category in the approved selection needs a second, named approval.
+  assert.match(page, /confirmRiskyCleanup/);
+  assert.match(page, /if \(riskySelected\.length > 0\) setConfirmRiskyCleanup\(true\); else void clean\(\)/);
+  assert.match(page, /systemCleaner\.riskyCleanupTitle/);
+  assert.match(page, /cleanupSafety\(item\) === "risky"/);
+});
+
 test("System Cleaner offers broad built-in coverage without recipe-import commands", () => {
   const builtInIds = [...recipes.matchAll(/builtin\(\s*"([a-z0-9-]+)"/g)].map((match) => match[1]);
   assert.ok(new Set(builtInIds).size >= 30, `expected at least 30 built-in recipes, found ${new Set(builtInIds).size}`);
-  for (const id of ["brave-cache", "teams-cache", "vscode-cache", "npm-cache", "nuget-cache", "pip-cache", "cargo-cache", "gradle-cache", "nvidia-cache", "steam-web-cache"]) {
+  for (const id of ["brave-cache", "teams-cache", "vscode-cache", "npm-cache", "nuget-cache", "pip-cache", "cargo-cache", "rust-build-cache", "gradle-cache", "nvidia-cache", "steam-web-cache"]) {
     assert.ok(builtInIds.includes(id), `missing reviewed built-in ${id}`);
   }
   assert.doesNotMatch(backendCommands, /system_cleaner::system_cleaner_(?:validate_recipe|preview_signed_bundle|import_signed_bundle|list_recipe_bundles|remove_recipe_bundle|preview_winapp2|import_winapp2)/);

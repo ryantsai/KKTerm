@@ -5,7 +5,6 @@ import {
   AppWindow,
   ArrowUp,
   Bug,
-  CheckCircle2,
   ChevronDown,
   ChevronRight,
   Clock,
@@ -47,7 +46,7 @@ import type {
 import "./systemCleaner.css";
 
 type StorageSort = { key: "name" | "size" | "allocated"; direction: "asc" | "desc" };
-type MutationKind = "plan" | "clean" | "delete-review" | "uninstall";
+type MutationKind = "plan" | "clean" | "uninstall";
 type CleanupTone = "accent" | "green" | "amber" | "red";
 type CleanupSafety = "safe" | "review" | "risky";
 type CleanerApp = SystemCleanerOverview["apps"][number];
@@ -77,6 +76,42 @@ const formatBytes = (bytes: number) => {
 };
 
 const formatCount = (value: number) => new Intl.NumberFormat().format(value);
+
+// Fixed categorical order: a category keeps its color however the slices sort.
+const FILE_CATEGORIES = ["videos", "images", "audio", "documents", "programs"] as const;
+type FileCategory = (typeof FILE_CATEGORIES)[number] | "other";
+
+const FILE_CATEGORY_EXTENSIONS: Record<(typeof FILE_CATEGORIES)[number], readonly string[]> = {
+  videos: [".mp4", ".mkv", ".avi", ".mov", ".wmv", ".webm", ".flv", ".m4v", ".mpg", ".mpeg", ".ts", ".vob", ".m2ts"],
+  images: [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tif", ".tiff", ".webp", ".heic", ".svg", ".ico", ".psd", ".raw", ".cr2", ".nef", ".dng"],
+  audio: [".mp3", ".wav", ".flac", ".aac", ".m4a", ".ogg", ".wma", ".aiff", ".opus", ".mid", ".midi"],
+  documents: [".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt", ".md", ".rtf", ".odt", ".ods", ".odp", ".csv", ".epub"],
+  programs: [".exe", ".dll", ".msi", ".sys", ".cab", ".msix", ".appx", ".ocx", ".drv", ".bin", ".so", ".dylib"],
+};
+
+const FILE_CATEGORY_LOOKUP = new Map<string, (typeof FILE_CATEGORIES)[number]>(
+  FILE_CATEGORIES.flatMap((category) => FILE_CATEGORY_EXTENSIONS[category].map((extension) => [extension, category] as const)),
+);
+
+/**
+ * Buckets the scan's per-extension totals into display categories. The backend
+ * keeps only the largest extensions, so "other" absorbs both uncategorized
+ * extensions and everything outside that list — the slices always sum to the
+ * scanned total rather than to a partial figure.
+ */
+function fileCategoryTotals(extensions: SystemCleanerOverview["extensions"], totalAllocatedBytes: number) {
+  const totals = new Map<FileCategory, number>();
+  let categorized = 0;
+  for (const entry of extensions) {
+    const category = FILE_CATEGORY_LOOKUP.get(entry.extension);
+    if (!category) continue;
+    totals.set(category, (totals.get(category) ?? 0) + entry.allocatedBytes);
+    categorized += entry.allocatedBytes;
+  }
+  totals.set("other", Math.max(0, totalAllocatedBytes - categorized));
+  const total = [...totals.values()].reduce((sum, value) => sum + value, 0);
+  return { slices: [...FILE_CATEGORIES, "other" as const].map((category) => ({ category, bytes: totals.get(category) ?? 0 })), total };
+}
 
 function cleanupSafety(item: SystemCleanerRecipeCatalogEntry): CleanupSafety {
   return item.safety;
@@ -118,12 +153,11 @@ export function SystemCleanerPage({ active, onOpenAssistant, tutorialNavigation 
   const [directoryLoading, setDirectoryLoading] = useState(false);
   const [mutationKind, setMutationKind] = useState<MutationKind>();
   const [selected, setSelected] = useState<string[]>([]);
-  const [selectedReviewPaths, setSelectedReviewPaths] = useState<string[]>([]);
   const [selectedAppIds, setSelectedAppIds] = useState<string[]>([]);
   const [cleanupPlan, setCleanupPlan] = useState<SystemCleanerCleanupPlan>();
   const [cleanupResult, setCleanupResult] = useState<SystemCleanerCleanupResult>();
   const [confirmCleanup, setConfirmCleanup] = useState(false);
-  const [confirmReviewDelete, setConfirmReviewDelete] = useState(false);
+  const [confirmRiskyCleanup, setConfirmRiskyCleanup] = useState(false);
   const [pendingApps, setPendingApps] = useState<CleanerApp[]>([]);
   const busy = scanActive || mutationKind !== undefined;
   void tutorialNavigation;
@@ -185,7 +219,6 @@ export function SystemCleanerPage({ active, onOpenAssistant, tutorialNavigation 
         entries: next.largest,
       });
       setSelected(defaultCleanupSelection(next.cleanup));
-      setSelectedReviewPaths([]);
       setSelectedAppIds([]);
     } catch (error) {
       notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" });
@@ -197,12 +230,11 @@ export function SystemCleanerPage({ active, onOpenAssistant, tutorialNavigation 
 
   const selectedBytes = useMemo(() => catalog.filter((item) => selected.includes(item.id)).reduce((sum, item) => sum + item.bytes, 0), [catalog, selected]);
   const reclaimableBytes = useMemo(() => catalog.filter((item) => cleanupSafety(item) === "safe").reduce((sum, item) => sum + item.bytes, 0), [catalog]);
+  const riskySelected = useMemo(
+    () => catalog.filter((item) => selected.includes(item.id) && cleanupSafety(item) === "risky"),
+    [catalog, selected],
+  );
   const selectedApps = useMemo(() => apps.filter((app) => selectedAppIds.includes(app.id)), [apps, selectedAppIds]);
-  const selectedReviewFiles = useMemo(() => {
-    const byPath = new Map(overview?.recommendations.flatMap((category) => category.files).map((file) => [file.path, file]) ?? []);
-    return selectedReviewPaths.flatMap((path) => byPath.get(path) ?? []);
-  }, [overview, selectedReviewPaths]);
-  const selectedReviewBytes = useMemo(() => selectedReviewFiles.reduce((sum, file) => sum + file.allocatedBytes, 0), [selectedReviewFiles]);
 
   const openDirectory = useCallback(async (path: string) => {
     if (directoryLoading || scanActive) return;
@@ -256,19 +288,6 @@ export function SystemCleanerPage({ active, onOpenAssistant, tutorialNavigation 
     }
   }
 
-  async function deleteReviewFiles() {
-    setMutationKind("delete-review");
-    try {
-      const freed = await invokeCommand("system_cleaner_delete_review_files", { paths: selectedReviewFiles.map((file) => file.path) });
-      notice(t("systemCleaner.reviewDeleted", { size: formatBytes(freed) }), { tone: "success" });
-      await scan();
-    } catch (error) {
-      notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" });
-    } finally {
-      setMutationKind(undefined);
-    }
-  }
-
   async function uninstallPending() {
     if (pendingApps.length === 0) return;
     const apps = pendingApps;
@@ -307,7 +326,6 @@ export function SystemCleanerPage({ active, onOpenAssistant, tutorialNavigation 
     setOverview(undefined);
     setDirectory(undefined);
     setSelected([]);
-    setSelectedReviewPaths([]);
     setSelectedAppIds([]);
     setCleanupPlan(undefined);
     setCleanupResult(undefined);
@@ -364,18 +382,6 @@ export function SystemCleanerPage({ active, onOpenAssistant, tutorialNavigation 
                 })}
               />
             </article>
-            <article className="system-cleaner-workbench-section system-cleaner-recommendations-section" data-tutorial-id="systemCleaner.recommendations">
-              <RecommendationsView
-                busy={busy}
-                deleting={mutationKind === "delete-review"}
-                categories={overview?.recommendations ?? []}
-                scanned={Boolean(overview)}
-                selectedPaths={selectedReviewPaths}
-                selectedBytes={selectedReviewBytes}
-                onDelete={() => setConfirmReviewDelete(true)}
-                onToggle={(path) => setSelectedReviewPaths((current) => current.includes(path) ? current.filter((item) => item !== path) : [...current, path])}
-              />
-            </article>
             <article className="system-cleaner-workbench-section system-cleaner-apps-section" data-tutorial-id="systemCleaner.apps">
               <AppsView
                 apps={apps}
@@ -392,8 +398,15 @@ export function SystemCleanerPage({ active, onOpenAssistant, tutorialNavigation 
     </section>
     {confirmCleanup && cleanupPlan ? <ConfirmSheet tone="danger" title={t("systemCleaner.cleanTitle")} message={cleanupPlan.blockedProcesses.length > 0
       ? t("systemCleaner.cleanPlanBlockedMessage", { count: cleanupPlan.items.length, size: formatBytes(cleanupPlan.totalBytes), processes: cleanupPlan.blockedProcesses.join(", ") })
-      : t("systemCleaner.cleanPlanMessage", { count: cleanupPlan.items.length, size: formatBytes(cleanupPlan.totalBytes) })} confirmLabel={t("systemCleaner.clean", { size: formatBytes(cleanupPlan.totalBytes) })} onConfirm={() => { setConfirmCleanup(false); void clean(); }} onCancel={() => setConfirmCleanup(false)} /> : null}
-    {confirmReviewDelete ? <ConfirmSheet tone="danger" title={t("systemCleaner.deleteReviewTitle")} message={t("systemCleaner.deleteReviewMessage", { count: selectedReviewFiles.length, size: formatBytes(selectedReviewBytes) })} confirmLabel={t("systemCleaner.deleteSelected", { count: selectedReviewFiles.length })} onConfirm={() => { setConfirmReviewDelete(false); void deleteReviewFiles(); }} onCancel={() => setConfirmReviewDelete(false)} /> : null}
+      : t("systemCleaner.cleanPlanMessage", { count: cleanupPlan.items.length, size: formatBytes(cleanupPlan.totalBytes) })} confirmLabel={t("systemCleaner.clean", { size: formatBytes(cleanupPlan.totalBytes) })} onConfirm={() => { setConfirmCleanup(false); if (riskySelected.length > 0) setConfirmRiskyCleanup(true); else void clean(); }} onCancel={() => setConfirmCleanup(false)} /> : null}
+    {confirmRiskyCleanup && cleanupPlan ? <ConfirmSheet
+      tone="danger"
+      title={t("systemCleaner.riskyCleanupTitle")}
+      message={t("systemCleaner.riskyCleanupMessage", { categories: riskySelected.map((item) => recipeTitle(t, item)).join(", ") })}
+      confirmLabel={t("systemCleaner.clean", { size: formatBytes(cleanupPlan.totalBytes) })}
+      onConfirm={() => { setConfirmRiskyCleanup(false); void clean(); }}
+      onCancel={() => setConfirmRiskyCleanup(false)}
+    /> : null}
     {pendingAppCount > 0 ? <ConfirmSheet
       tone="danger"
       title={pendingAppCount === 1 ? t("systemCleaner.uninstallTitle") : t("systemCleaner.uninstallSelectionTitle")}
@@ -423,8 +436,13 @@ function ScanSummary({ appCount, drives, overview, reclaimableBytes, selectedDri
       <div><h2>{t("systemCleaner.overview")}</h2><p>{overview ? <>{t("systemCleaner.scanComplete", { seconds: elapsedSeconds })} · {t("systemCleaner.items", { count: formatCount(overview.fileCount) })}</> : t("systemCleaner.scanHint")}</p></div>
     </header>
     <div className="system-cleaner-metric-grid">
-      <Metric label={t("systemCleaner.usedSpace")} value={capacity > 0 ? formatBytes(used) : "—"} detail={capacity > 0 ? `${(used / capacity * 100).toFixed(1)}%` : ""} ratio={capacity > 0 ? used / capacity : undefined} />
-      <Metric label={t("systemCleaner.freeSpace")} value={capacity > 0 ? formatBytes(free) : "—"} detail={capacity > 0 ? `${(free / capacity * 100).toFixed(1)}%` : ""} ratio={capacity > 0 ? free / capacity : undefined} />
+      <Metric
+        label={t("systemCleaner.usedSpace")}
+        value={capacity > 0 ? formatBytes(used) : "—"}
+        detail={capacity > 0 ? t("systemCleaner.freeOfTotal", { free: formatBytes(free), total: formatBytes(capacity) }) : ""}
+        ratio={capacity > 0 ? used / capacity : undefined}
+      />
+      <CategoryMetric extensions={overview?.extensions ?? []} totalAllocatedBytes={overview?.totalAllocatedBytes ?? 0} />
       <Metric label={t("systemCleaner.cleanupHeading")} value={overview ? formatBytes(reclaimableBytes) : "—"} detail={overview ? t("systemCleaner.safeCategories", { count: overview.cleanup.filter((item) => cleanupSafety(item) === "safe").length }) : ""} ratio={overview && used > 0 ? reclaimableBytes / used : undefined} accent />
       <Metric label={t("systemCleaner.appsHeading")} value={formatCount(appCount)} detail={t("systemCleaner.apps")} />
     </div>
@@ -438,6 +456,27 @@ function Metric({ accent, detail, label, ratio, value }: { accent?: boolean; det
     <strong>{value}</strong>
     {ratio === undefined ? null : <span className="system-cleaner-metric-meter"><i style={{ width: `${Math.min(100, Math.max(0, ratio * 100))}%` }} /></span>}
     <small>{detail}</small>
+  </article>;
+}
+
+function CategoryMetric({ extensions, totalAllocatedBytes }: { extensions: SystemCleanerOverview["extensions"]; totalAllocatedBytes: number }) {
+  const { t } = useTranslation();
+  const { slices, total } = useMemo(() => fileCategoryTotals(extensions, totalAllocatedBytes), [extensions, totalAllocatedBytes]);
+  const label = (category: FileCategory) => t(`systemCleaner.fileCategory.${category}`);
+  return <article className="system-cleaner-metric system-cleaner-category-metric">
+    <span>{t("systemCleaner.storageByCategory")}</span>
+    <div className="system-cleaner-category-bar" role="img" aria-label={slices.map((slice) => `${label(slice.category)} ${formatBytes(slice.bytes)}`).join(", ")}>
+      {total > 0 ? slices.filter((slice) => slice.bytes > 0).map((slice) => (
+        <i key={slice.category} style={{ flexGrow: slice.bytes, background: `var(--sc-cat-${slice.category})` }} />
+      )) : null}
+    </div>
+    <ul className="system-cleaner-category-legend">
+      {slices.map((slice) => <li key={slice.category}>
+        <i style={{ background: `var(--sc-cat-${slice.category})` }} />
+        <span>{label(slice.category)}</span>
+        <strong>{total > 0 ? formatBytes(slice.bytes) : "—"}</strong>
+      </li>)}
+    </ul>
   </article>;
 }
 
@@ -504,57 +543,6 @@ function CleanupPlanPreview({ onRetry, plan, result }: { onRetry: () => void; pl
   </section>;
 }
 
-function RecommendationsView({ busy, categories, deleting, onDelete, onToggle, scanned, selectedBytes, selectedPaths }: {
-  busy: boolean;
-  categories: SystemCleanerOverview["recommendations"];
-  deleting: boolean;
-  onDelete: () => void;
-  onToggle: (path: string) => void;
-  scanned: boolean;
-  selectedBytes: number;
-  selectedPaths: string[];
-}) {
-  const { t } = useTranslation();
-  const notice = useWorkspaceStore((state) => state.showStatusBarNotice);
-  const visibleCategories = categories
-    .map((category) => ({
-      ...category,
-      files: [...category.files]
-        .sort((left, right) => right.allocatedBytes - left.allocatedBytes || left.name.localeCompare(right.name)),
-    }))
-    .sort((left, right) => right.bytes - left.bytes);
-  const visibleCount = visibleCategories.reduce((sum, category) => sum + category.files.length, 0);
-
-  function openReviewFile(path: string) {
-    void openFilesystemPath(path).catch((error) => notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" }));
-  }
-
-  return <div className="system-cleaner-view system-cleaner-recommendations-view">
-    <header className="system-cleaner-section-head"><h2>{t("systemCleaner.recommendations")}</h2><p>{t("systemCleaner.recommendationSummary", { count: visibleCount })}</p></header>
-    <div className="system-cleaner-recommendation-groups">
-      {visibleCategories.length === 0 ? <SectionPlaceholder icon={scanned ? CheckCircle2 : Search} text={scanned ? t("systemCleaner.noRecommendations") : t("systemCleaner.scanHint")} /> : null}
-      {visibleCategories.map((category) => <section className="system-cleaner-recommendation-group" key={category.id}>
-        <header><span className="system-cleaner-row-icon"><Clock size={16} /></span><div><strong>{t(`systemCleaner.recommendation.${category.id}`)}</strong><p>{t(`systemCleaner.recommendationDescription.${category.id}`)}</p></div><span>{formatBytes(category.bytes)}</span></header>
-        {category.files.length > 0 ? <div className="system-cleaner-review-table">
-          <div className="system-cleaner-review-columns"><span /><span>{t("systemCleaner.name")}</span><span>{t("systemCleaner.lastChanged")}</span><span>{t("systemCleaner.size")}</span><span /></div>
-          {category.files.map((file) => {
-            const checked = selectedPaths.includes(file.path);
-            return <label className={`system-cleaner-review-row${checked ? " selected" : ""}`} key={`${category.id}-${file.path}`}>
-              <input type="checkbox" checked={checked} disabled={busy} onChange={() => onToggle(file.path)} />
-              <span className="system-cleaner-review-name"><FileText size={16} /><span><strong>{file.name}</strong><bdi dir="ltr" title={file.path}>{file.path}</bdi></span></span>
-              <time dateTime={new Date(file.modifiedUnixMs).toISOString()}>{new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(file.modifiedUnixMs)}</time>
-              <strong className="system-cleaner-row-size">{formatBytes(file.allocatedBytes)}</strong>
-              <button type="button" className="system-cleaner-ai-explain" disabled={busy} onClick={(event) => { event.preventDefault(); openReviewFile(file.path); }}>{t("common.open")}</button>
-            </label>;
-          })}
-        </div> : <p className="system-cleaner-no-recommendations">{t("systemCleaner.noRecommendations")}</p>}
-      </section>)}
-    </div>
-    <footer className="system-cleaner-action-bar"><div><span>{t("systemCleaner.selectedReviewFiles", { count: selectedPaths.length, size: formatBytes(selectedBytes) })}</span></div><button type="button" className="system-cleaner-uninstall primary" disabled={busy || selectedPaths.length === 0} onClick={onDelete}><Trash2 size={15} />{t("systemCleaner.deleteSelected", { count: selectedPaths.length })}</button></footer>
-    {deleting ? <div className="system-cleaner-operation-overlay" role="status"><SystemCleanerScanOrb size={64} state="working" label={t("systemCleaner.deletingReviewFiles")} /><strong>{t("systemCleaner.deletingReviewFiles")}</strong></div> : null}
-  </div>;
-}
-
 function AppsView({ apps, busy, onExplain, onToggle, onUninstall, onUninstallSelected, selectedIds }: {
   apps: CleanerApp[];
   busy: boolean;
@@ -570,12 +558,11 @@ function AppsView({ apps, busy, onExplain, onToggle, onUninstall, onUninstallSel
   return <div className="system-cleaner-view system-cleaner-apps-view">
     <header className="system-cleaner-section-head"><h2>{t("systemCleaner.apps")}</h2><p>{t("systemCleaner.items", { count: formatCount(filtered.length) })}</p></header>
     <section className="system-cleaner-app-table">
-      <div className="system-cleaner-app-columns"><span /><span>{t("systemCleaner.name")}</span><span>{t("systemCleaner.packageId")}</span><span>{t("systemCleaner.version")}</span><span>{t("systemCleaner.size")}</span><span /></div>
+      <div className="system-cleaner-app-columns"><span /><span>{t("systemCleaner.name")}</span><span>{t("systemCleaner.packageId")}</span><span>{t("systemCleaner.size")}</span><span /></div>
       <div className="system-cleaner-app-body">{filtered.map((app, index) => <div className={`system-cleaner-app-row${selectedIds.includes(app.id) ? " selected" : ""}`} key={`${app.id}-${app.version}-${index}`}>
         <input type="checkbox" checked={selectedIds.includes(app.id)} disabled={busy} aria-label={app.name} onChange={() => onToggle(app.id)} />
-        <span className="system-cleaner-app-name"><Package size={16} /><span><strong>{app.name}</strong><small>{app.publisher}</small></span></span>
+        <span className="system-cleaner-app-name"><Package size={16} /><span><strong>{app.name}</strong><small>{[app.publisher, app.version].filter(Boolean).join(" · ")}</small></span></span>
         <bdi dir="ltr" title={app.id}>{app.id}</bdi>
-        <span className="system-cleaner-app-version">{app.version}</span>
         <strong className="system-cleaner-app-size">{app.sizeBytes > 0 ? formatBytes(app.sizeBytes) : "—"}</strong>
         <span className="system-cleaner-app-actions"><button type="button" className="system-cleaner-ai-explain" aria-label={t("systemCleaner.aiExplain")} disabled={busy} onClick={() => onExplain(app)}><Sparkles size={14} /><span>{t("systemCleaner.aiExplain")}</span></button><button type="button" className="system-cleaner-uninstall" disabled={busy} onClick={() => onUninstall(app)}><Trash2 size={14} />{t("systemCleaner.uninstall")}</button></span>
       </div>)}</div>
