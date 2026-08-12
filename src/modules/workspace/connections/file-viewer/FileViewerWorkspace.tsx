@@ -120,9 +120,15 @@ export function FileViewerWorkspace({
   const updateOpenConnectionTerminalAppearance = useWorkspaceStore(
     (state) => state.updateOpenConnectionTerminalAppearance,
   );
-  const showStatusBarProgress = useWorkspaceStore((state) => state.showStatusBarProgress);
-  const updateStatusBarProgress = useWorkspaceStore((state) => state.updateStatusBarProgress);
-  const clearStatusBarNotice = useWorkspaceStore((state) => state.clearStatusBarNotice);
+  const showStatusBarInlineProgress = useWorkspaceStore(
+    (state) => state.showStatusBarInlineProgress,
+  );
+  const updateStatusBarInlineProgress = useWorkspaceStore(
+    (state) => state.updateStatusBarInlineProgress,
+  );
+  const clearStatusBarInlineProgress = useWorkspaceStore(
+    (state) => state.clearStatusBarInlineProgress,
+  );
   const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
   const openCompareView = useWorkspaceStore((state) => state.openCompareView);
   const [probe, setProbe] = useState<FileViewProbe | null>(null);
@@ -168,31 +174,33 @@ export function FileViewerWorkspace({
       setLoading(true);
       setError("");
       setEditedText(null);
-      const progressId = showStatusBarProgress(t("workspace.fileViewer.loading"), { progress: 5 });
+      const progressId = showStatusBarInlineProgress(t("workspace.fileViewer.loading"), {
+        progress: 5,
+      });
       try {
         const probed = await invokeCommand("probe_file_view", {
           request: { path: filePath },
         });
-        updateStatusBarProgress(progressId, 20);
+        updateStatusBarInlineProgress(progressId, 20);
         setProbe(probed);
         const kind =
           forcedKind ??
           detectViewerKind({ path: filePath, magic: probed.magic, isText: probed.isText });
         if (isUnsupportedViewerKind(kind)) {
           setContent({ kind, magic: probed.magic, truncated: false });
-          updateStatusBarProgress(progressId, 100);
+          updateStatusBarInlineProgress(progressId, 100);
           return;
         }
         if (viewerUsesExternalDependency(kind)) {
           // The dependency-backed viewer (PDF) loads its own content through the
           // external tool; no direct read here.
           setContent({ kind, magic: probed.magic, truncated: false });
-          updateStatusBarProgress(progressId, 100);
+          updateStatusBarInlineProgress(progressId, 100);
           return;
         }
         const maxBytes = maxBytesForKind(kind);
         if (viewerLoadsText(kind)) {
-          updateStatusBarProgress(progressId, 35);
+          updateStatusBarInlineProgress(progressId, 35);
           const result = await invokeCommand("read_file_view_text", {
             request: {
               path: filePath,
@@ -200,7 +208,7 @@ export function FileViewerWorkspace({
               encoding: encoding === AUTO_ENCODING ? undefined : encoding,
             },
           });
-          updateStatusBarProgress(progressId, 85);
+          updateStatusBarInlineProgress(progressId, 85);
           setContent({
             kind,
             text: result.text,
@@ -213,14 +221,14 @@ export function FileViewerWorkspace({
           if (kind === "image" && probed.totalSize > IMAGE_MAX_BYTES) {
             setContent(null);
             setError(t("workspace.fileViewer.imageTooLarge"));
-            updateStatusBarProgress(progressId, 100);
+            updateStatusBarInlineProgress(progressId, 100);
             return;
           }
-          updateStatusBarProgress(progressId, 35);
+          updateStatusBarInlineProgress(progressId, 35);
           const result = await invokeCommand("read_file_view_bytes", {
             request: { path: filePath, offset: 0, length: maxBytes },
           });
-          updateStatusBarProgress(progressId, 85);
+          updateStatusBarInlineProgress(progressId, 85);
           setContent({
             kind,
             base64: result.base64,
@@ -228,17 +236,24 @@ export function FileViewerWorkspace({
             truncated: !result.eof,
           });
         }
-        updateStatusBarProgress(progressId, 100);
+        updateStatusBarInlineProgress(progressId, 100);
       } catch (loadError) {
         setContent(null);
         setError(loadError instanceof Error ? loadError.message : String(loadError));
-        updateStatusBarProgress(progressId, 100);
+        updateStatusBarInlineProgress(progressId, 100);
       } finally {
-        window.setTimeout(() => clearStatusBarNotice(progressId), 700);
+        window.setTimeout(() => clearStatusBarInlineProgress(progressId), 700);
         setLoading(false);
       }
     },
-    [filePath, t, encoding, showStatusBarProgress, updateStatusBarProgress, clearStatusBarNotice],
+    [
+      filePath,
+      t,
+      encoding,
+      showStatusBarInlineProgress,
+      updateStatusBarInlineProgress,
+      clearStatusBarInlineProgress,
+    ],
   );
 
   useEffect(() => {

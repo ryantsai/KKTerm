@@ -1,0 +1,18 @@
+.kk-progress {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 6px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface-muted));
+  border-radius: 999px;
+}
+
+.kk-progress-indicator {
+  position: absolute;
+  inset: 0;
+  display: block;
+  background: var(--accent);
+  border-radius: inherit;
+  transform: scaleX(0);
+}

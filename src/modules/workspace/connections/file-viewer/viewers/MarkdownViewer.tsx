@@ -5,6 +5,7 @@ import DOMPurify from "dompurify";
 import { Code2, Columns2, Eye } from "../../../../../lib/reicon";
 import { ChromePortals } from "../chrome/FileViewerChromeContext";
 import { FootSeg, Segmented } from "../chrome/controls";
+import { isStandaloneMermaidDocument } from "../markdownMermaid";
 
 type MarkdownView = "preview" | "split" | "source";
 
@@ -21,18 +22,19 @@ function loadMermaid() {
   return mermaidImport;
 }
 
-function MarkdownPreview({ html }: { html: string }) {
+function MarkdownPreview({ html, text }: { html: string; text: string }) {
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const root = rootRef.current;
     const diagrams = root ? Array.from(root.querySelectorAll<HTMLElement>("pre > code.language-mermaid")) : [];
-    if (!root || diagrams.length === 0) return;
+    const standaloneSource = diagrams.length === 0 && isStandaloneMermaidDocument(text) ? text.trim() : null;
+    if (!root || (diagrams.length === 0 && !standaloneSource)) return;
 
     let cancelled = false;
     void loadMermaid().then(async (mermaid) => {
       for (const [index, code] of diagrams.entries()) {
-        if (cancelled || !code.isConnected) return;
+        if (cancelled || !root.isConnected || !code.isConnected) return;
         try {
           const { svg, bindFunctions } = await mermaid.render(
             `fv-mermaid-${++mermaidDiagramId}-${index}`,
@@ -48,12 +50,28 @@ function MarkdownPreview({ html }: { html: string }) {
           // Keep the original fenced source visible when a diagram is invalid.
         }
       }
+
+      if (!standaloneSource || cancelled || !root.isConnected) return;
+      try {
+        const { svg, bindFunctions } = await mermaid.render(
+          `fv-mermaid-${++mermaidDiagramId}-standalone`,
+          standaloneSource,
+        );
+        if (cancelled || !root.isConnected) return;
+        const container = document.createElement("div");
+        container.className = "fv-mermaid";
+        container.innerHTML = svg;
+        root.replaceChildren(container);
+        bindFunctions?.(container);
+      } catch {
+        // Keep the original Markdown output when standalone Mermaid is invalid.
+      }
     });
 
     return () => {
       cancelled = true;
     };
-  }, [html]);
+  }, [html, text]);
 
   return <div ref={rootRef} className="fv-md" dangerouslySetInnerHTML={{ __html: html }} />;
 }
@@ -94,7 +112,7 @@ export function MarkdownViewer({ text }: { text: string }) {
       />
       {view === "preview" ? (
         <div className="fv-scroll">
-          <MarkdownPreview html={html} />
+          <MarkdownPreview html={html} text={text} />
         </div>
       ) : null}
       {view === "source" ? <div className="fv-scroll">{source}</div> : null}
@@ -102,7 +120,7 @@ export function MarkdownViewer({ text }: { text: string }) {
         <div className="fv-split">
           <div className="fv-scroll">{source}</div>
           <div className="fv-scroll">
-            <MarkdownPreview html={html} />
+            <MarkdownPreview html={html} text={text} />
           </div>
         </div>
       ) : null}

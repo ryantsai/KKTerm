@@ -1837,6 +1837,12 @@ export interface StatusBarNotice {
   onCancel?: () => void;
 }
 
+export interface StatusBarInlineProgress {
+  id: number;
+  message: string;
+  progress: number;
+}
+
 export type SecretKind =
   | "connectionPassword"
   | "connectionPassphrase"

@@ -674,8 +674,15 @@ function ScanDialog({
   const { t } = useTranslation();
   const loadIpam = useItOpsStore((state) => state.loadIpam);
   const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
-  const showStatusBarProgress = useWorkspaceStore((state) => state.showStatusBarProgress);
-  const clearStatusBarNotice = useWorkspaceStore((state) => state.clearStatusBarNotice);
+  const showStatusBarInlineProgress = useWorkspaceStore(
+    (state) => state.showStatusBarInlineProgress,
+  );
+  const updateStatusBarInlineProgress = useWorkspaceStore(
+    (state) => state.updateStatusBarInlineProgress,
+  );
+  const clearStatusBarInlineProgress = useWorkspaceStore(
+    (state) => state.clearStatusBarInlineProgress,
+  );
   const [selectedPrefixes, setSelectedPrefixes] = useState<Set<string>>(new Set());
   const [results, setResults] = useState<IpamScanResult[] | null>(null);
   const [chosen, setChosen] = useState<Set<string>>(new Set());
@@ -688,7 +695,7 @@ function ScanDialog({
   async function scan() {
     if (busy || selectedPrefixes.size === 0 || selectionTooLarge) return;
     setBusy(true);
-    const progressId = showStatusBarProgress(
+    const progressId = showStatusBarInlineProgress(
       t("itops.ipam.scanningNotice", { count: selectedAddressCount }),
       { progress: 10 },
     );
@@ -704,12 +711,13 @@ function ScanDialog({
             .map((entry) => `${entry.vrf}\u0000${entry.address}`),
         ),
       );
+      updateStatusBarInlineProgress(progressId, 100);
     } catch (error) {
       showStatusBarNotice(t("itops.errorNotice", { message: errorMessage(error) }), {
         tone: "error",
       });
     } finally {
-      clearStatusBarNotice(progressId);
+      window.setTimeout(() => clearStatusBarInlineProgress(progressId), 500);
       setBusy(false);
     }
   }

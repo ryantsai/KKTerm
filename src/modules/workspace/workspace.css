@@ -384,6 +384,49 @@
   justify-content: flex-end;
 }
 
+.status-bar-inline-progress {
+  display: flex;
+  flex: 1 1 280px;
+  align-items: center;
+  gap: 7px;
+  width: min(300px, 100%);
+  min-width: 150px;
+  max-width: 300px;
+  height: 22px;
+  margin-right: 5px;
+  padding-right: 10px;
+  overflow: hidden;
+  color: var(--accent);
+  border-right: 1px solid var(--border);
+}
+
+.status-bar-inline-progress > svg {
+  flex: 0 0 auto;
+}
+
+.status-bar .status-bar-inline-progress-message {
+  flex: 0 1 112px;
+  max-width: 112px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.status-bar-inline-progress-track {
+  flex: 1 1 88px;
+  min-width: 52px;
+  height: 3px;
+}
+
+.status-bar .status-bar-inline-progress-label {
+  flex: 0 0 33px;
+  justify-content: flex-end;
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Install Helper roll-up, centre column, shown only while the Module is
    the visible page (gated in React). */
 .status-bar-installer {

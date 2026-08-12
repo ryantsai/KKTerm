@@ -51,6 +51,7 @@ import type {
   TerminalSettings,
   TerminalStartMetric,
   WorkspacePane,
+  StatusBarInlineProgress,
   StatusBarNotice,
   Workspace,
   WorkspaceChildConnection,
@@ -87,6 +88,7 @@ const QUICK_COMMAND_BUNDLE_SELECTION_PREFIX = "kkterm.quickCommandBundleSelectio
 const TMUX_SESSION_ID_PATTERN = /^[^\s:;]+$/u;
 export const CHILD_CONNECTION_CLOSED_EVENT = "kkterm:workspace-child-connection-closed";
 let statusBarNoticeSequence = 0;
+let statusBarInlineProgressSequence = 0;
 const DEFAULT_STATUS_BAR_NOTICE_DURATION_MS: Record<StatusBarNotice["tone"], number> = {
   success: 2_000,
   info: 5_000,
@@ -1441,6 +1443,7 @@ export interface WorkspaceState {
   rdpPreCaptureSignal: number;
   activeSessionCounts: Record<string, number>;
   performanceMetrics: PerformanceMetrics;
+  statusBarInlineProgress?: StatusBarInlineProgress;
   statusBarNotice?: StatusBarNotice;
   localTerminalPopup?: WorkspaceTab;
   /** App-global Terminal recordings browser. A Connection id is present only
@@ -1506,6 +1509,9 @@ export interface WorkspaceState {
     options?: { progress?: number; cancelLabel?: string; onCancel?: () => void },
   ) => number;
   updateStatusBarProgress: (id: number, progress: number) => void;
+  showStatusBarInlineProgress: (message: string, options?: { progress?: number }) => number;
+  updateStatusBarInlineProgress: (id: number, progress: number) => void;
+  clearStatusBarInlineProgress: (id: number) => void;
   clearStatusBarNotice: (id: number) => void;
   setDocumentStatusSlot: (slot: HTMLElement | null) => void;
   activateTab: (tabId: string) => void;
@@ -1691,6 +1697,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   rdpPreCaptureSignal: 0,
   activeSessionCounts: {},
   performanceMetrics: {},
+  statusBarInlineProgress: undefined,
   statusBarNotice: undefined,
   terminalRecordingsBrowser: undefined,
   documentStatusSlot: null,
@@ -1932,6 +1939,34 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
               },
             };
           })()
+        : {},
+    ),
+  showStatusBarInlineProgress: (message, options) => {
+    const id = (statusBarInlineProgressSequence += 1);
+    set({
+      statusBarInlineProgress: {
+        id,
+        message,
+        progress: Math.max(0, Math.min(100, options?.progress ?? 0)),
+      },
+    });
+    return id;
+  },
+  updateStatusBarInlineProgress: (id, progress) =>
+    set((state) =>
+      state.statusBarInlineProgress?.id === id
+        ? {
+            statusBarInlineProgress: {
+              ...state.statusBarInlineProgress,
+              progress: Math.max(0, Math.min(100, progress)),
+            },
+          }
+        : {},
+    ),
+  clearStatusBarInlineProgress: (id) =>
+    set((state) =>
+      state.statusBarInlineProgress?.id === id
+        ? { statusBarInlineProgress: undefined }
         : {},
     ),
   clearStatusBarNotice: (id) =>

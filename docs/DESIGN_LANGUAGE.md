@@ -121,13 +121,21 @@ an amber callout.
 
 ### Transient feedback
 
-The bottom Status Bar popup is the only transient notification surface. Route
-every informational outcome, success confirmation, warning, and error through
-`showStatusBarNotice` with the matching `tone`; use `showStatusBarProgress` for
-determinate work. Dialogs and pages must not render transient results inline or
-create local toast, banner, snackbar, or status-message systems. Static guidance
-and cautions that are part of the form before an action occurs are content, not
-transient notifications, and may remain beside the relevant controls.
+The Status Bar owns both transient notifications and app-global work progress.
+Route every informational outcome, success confirmation, warning, and error
+through `showStatusBarNotice` with the matching `tone`. Routine determinate work
+(file loading, scans, imports, and similar background operations) uses
+`showStatusBarInlineProgress`, `updateStatusBarInlineProgress`, and
+`clearStatusBarInlineProgress`. This compact shadcn-style bar renders inside the
+right side of the Status Bar and is the default progress pattern.
+
+Reserve the portaled `showStatusBarProgress` popup for high-salience or cancelable
+work that must remain visible above dialogs, such as downloading an app update.
+Do not use the prominent popup merely because an operation reports a percentage.
+Dialogs and pages must not render transient results inline or create local toast,
+banner, snackbar, or status-message systems. Static guidance and cautions that
+are part of the form before an action occurs are content, not transient
+notifications, and may remain beside the relevant controls.
 
 `TextInput` and `TextArea` default to the shared technical-input behaviour from
 `src/lib/inputBehavior.ts`, disabling autocorrect, autocapitalization, and
@@ -232,7 +240,8 @@ intersection registry.
    Footer from `Actions`/`LegacyDialogActions` with an icon'd primary — never
    `connection-dialog-footer`.
 4. Route transient information, success, warning, and error outcomes through
-   `showStatusBarNotice`; use `showStatusBarProgress` for determinate work.
+   `showStatusBarNotice`. Use `showStatusBarInlineProgress` for routine determinate
+   work; reserve `showStatusBarProgress` for high-salience or cancelable work.
 5. Route every string through `t()`; add `en.json` keys + a
    `docs/localization_todo/` pending file (see that README).
 6. Verify in Default and Dark plus one extra scheme in the real Tauri runtime.

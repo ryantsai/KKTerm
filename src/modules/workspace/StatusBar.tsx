@@ -37,6 +37,7 @@ import {
 } from "../../app/shutdownTimerModel";
 import { SystemCleanerScanOrb } from "../system-cleaner/SystemCleanerScanOrb";
 import { useSystemCleanerScanStore } from "../system-cleaner/scanState";
+import { Progress } from "../../app/ui/Progress";
 
 const NOTIFICATION_FADE_MS = 220;
 
@@ -51,6 +52,7 @@ export function StatusBar({
 }) {
   const { t, i18n } = useTranslation();
   const notice = useWorkspaceStore((state) => state.statusBarNotice);
+  const inlineProgress = useWorkspaceStore((state) => state.statusBarInlineProgress);
   const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
   const statusBarMonitorEnabled = useWorkspaceStore(
     (state) => state.generalSettings.statusBarMonitorEnabled,
@@ -168,6 +170,7 @@ export function StatusBar({
         </DialogPortal>
       ) : null}
       <div className="status-bar-actions">
+        {inlineProgress ? <StatusBarInlineProgress progress={inlineProgress} /> : null}
         <WatchdogStatusBar />
         <AssistantWorkingStatusButton onOpenAssistant={onOpenAssistant} />
         <CredentialStoreStatusButton />
@@ -179,6 +182,27 @@ export function StatusBar({
         ) : null}
       </div>
     </footer>
+  );
+}
+
+function StatusBarInlineProgress({
+  progress,
+}: {
+  progress: { message: string; progress: number };
+}) {
+  return (
+    <div className="status-bar-inline-progress" role="status">
+      <CircleGauge aria-hidden="true" size={13} strokeWidth={2.2} />
+      <span className="status-bar-inline-progress-message">{progress.message}</span>
+      <Progress
+        ariaLabel={progress.message}
+        className="status-bar-inline-progress-track"
+        value={progress.progress}
+      />
+      <span className="status-bar-inline-progress-label" aria-hidden="true">
+        {Math.round(progress.progress)}%
+      </span>
+    </div>
   );
 }
 

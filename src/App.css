@@ -2,6 +2,7 @@
 @import "./styles/colorSchemes.css";
 @import "./styles/base.css";
 @import "./app/ui/dialog/dialogs.css";
+@import "./app/ui/progress.css";
 @import "./app/app.css";
 @import "./app/shutdownWarning.css";
 @import "./app/moduleHeader.css";
