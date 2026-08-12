@@ -3288,7 +3288,7 @@
         "description": "Detectar, instalar, atualizar, desinstalar e executar ferramentas de desenvolvimento selecionadas."
       },
       "systemCleaner": {
-        "label": "Limpeza do sistema",
+        "label": "Limpador de sistema",
         "description": "Analisa o armazenamento, visualiza planos de limpeza protegidos, gerencia dados de segurança da limpeza e executa ações de limpeza do Windows aprovadas explicitamente."
       },
       "screenshots": {

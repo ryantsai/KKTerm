@@ -3289,7 +3289,7 @@
       },
       "systemCleaner": {
         "label": "Pembersih Sistem",
-        "description": "Menganalisis penyimpanan, meninjau rencana pembersihan yang terlindungi, mengelola data keamanan pembersihan, dan menjalankan tindakan pembersihan Windows yang disetujui secara eksplisit."
+        "description": "Menganalisis penyimpanan, melihat pratinjau rencana pembersihan yang terlindungi, mengelola data keamanan pembersihan, dan menjalankan tindakan pembersihan Windows yang disetujui secara eksplisit."
       },
       "screenshots": {
         "label": "Tangkapan Layar",
