@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
@@ -7,6 +7,56 @@ import { ChromePortals } from "../chrome/FileViewerChromeContext";
 import { FootSeg, Segmented } from "../chrome/controls";
 
 type MarkdownView = "preview" | "split" | "source";
+
+let mermaidImport: Promise<typeof import("mermaid").default> | null = null;
+let mermaidDiagramId = 0;
+
+function loadMermaid() {
+  if (!mermaidImport) {
+    mermaidImport = import("mermaid").then(({ default: mermaid }) => {
+      mermaid.initialize({ startOnLoad: false, securityLevel: "strict" });
+      return mermaid;
+    });
+  }
+  return mermaidImport;
+}
+
+function MarkdownPreview({ html }: { html: string }) {
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    const diagrams = root ? Array.from(root.querySelectorAll<HTMLElement>("pre > code.language-mermaid")) : [];
+    if (!root || diagrams.length === 0) return;
+
+    let cancelled = false;
+    void loadMermaid().then(async (mermaid) => {
+      for (const [index, code] of diagrams.entries()) {
+        if (cancelled || !code.isConnected) return;
+        try {
+          const { svg, bindFunctions } = await mermaid.render(
+            `fv-mermaid-${++mermaidDiagramId}-${index}`,
+            code.textContent ?? "",
+          );
+          if (cancelled || !code.isConnected) return;
+          const container = document.createElement("div");
+          container.className = "fv-mermaid";
+          container.innerHTML = svg;
+          code.parentElement?.replaceWith(container);
+          bindFunctions?.(container);
+        } catch {
+          // Keep the original fenced source visible when a diagram is invalid.
+        }
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [html]);
+
+  return <div ref={rootRef} className="fv-md" dangerouslySetInnerHTML={{ __html: html }} />;
+}
 
 /**
  * Renders Markdown to sanitized HTML (the same marked + DOMPurify pairing used by
@@ -24,7 +74,6 @@ export function MarkdownViewer({ text }: { text: string }) {
   }, [text]);
   const wordCount = useMemo(() => text.trim().match(/\S+/g)?.length ?? 0, [text]);
 
-  const preview = <div className="fv-md" dangerouslySetInnerHTML={{ __html: html }} />;
   const source = <div className="fv-md-source">{text}</div>;
 
   return (
@@ -43,12 +92,18 @@ export function MarkdownViewer({ text }: { text: string }) {
         }
         footer={<FootSeg>{t("workspace.fileViewer.wordCount", { count: wordCount })}</FootSeg>}
       />
-      {view === "preview" ? <div className="fv-scroll">{preview}</div> : null}
+      {view === "preview" ? (
+        <div className="fv-scroll">
+          <MarkdownPreview html={html} />
+        </div>
+      ) : null}
       {view === "source" ? <div className="fv-scroll">{source}</div> : null}
       {view === "split" ? (
         <div className="fv-split">
           <div className="fv-scroll">{source}</div>
-          <div className="fv-scroll">{preview}</div>
+          <div className="fv-scroll">
+            <MarkdownPreview html={html} />
+          </div>
         </div>
       ) : null}
     </>
