@@ -121,6 +121,11 @@ function Assert-OpenWithRegistration {
         if (-not ((Get-Item -LiteralPath $ProgIdKey).GetValueNames() -contains "AllowSilentDefaultTakeOver")) {
             throw "Installer did not mark $OpenWithProgId as ineligible for silent default takeover."
         }
+        $ApplicationKey = Join-Path $ProgIdKey "Application"
+        $ApplicationName = (Get-Item -LiteralPath $ApplicationKey).GetValue("ApplicationName")
+        if ($ApplicationName -ne "KKTerm") {
+            throw "Unexpected Open with application name. Expected 'KKTerm' but found '$ApplicationName'."
+        }
         $CommandKey = Join-Path $ProgIdKey "shell\open\command"
         $ActualCommand = (Get-Item -LiteralPath $CommandKey).GetValue("")
         $ExpectedCommand = "`"$InstalledExe`" `"%1`""

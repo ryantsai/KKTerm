@@ -165,6 +165,10 @@ test("platform bundles add every recognized extension to Open With without claim
   );
   assert.match(nsisHooks, /Software\\Classes\\\.\$\{EXT\}\\OpenWithProgids/);
   assert.match(nsisHooks, /AllowSilentDefaultTakeOver/);
+  assert.match(
+    nsisHooks,
+    /\\Application" "ApplicationName" "KKTerm"/,
+  );
   assert.doesNotMatch(
     nsisHooks,
     /WriteRegStr SHCTX "Software\\Classes\\\.\$\{EXT\}" ""/,
