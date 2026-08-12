@@ -80,6 +80,7 @@ test("System Cleaner mounts scan-independent sections and keeps Scan only in the
   assert.match(tauri, /system_cleaner_list_apps/);
   assert.doesNotMatch(page, /\{overview && directory \? <>/);
   assert.equal(page.match(/data-tutorial-id="systemCleaner\.scan"/g)?.length, 1);
+  assert.doesNotMatch(page, /system-cleaner-summary-scan/);
   assert.doesNotMatch(page, /function DriveOverview|system-cleaner-drive-choice/);
 });
 

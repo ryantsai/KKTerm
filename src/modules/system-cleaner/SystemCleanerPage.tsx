@@ -5,17 +5,20 @@ import {
   AppWindow,
   ArrowUp,
   Bug,
+  CheckCircle2,
   ChevronDown,
   ChevronRight,
   Clock,
   Eye,
   FileText,
+  FolderOpen,
   Globe2,
   HardDrive,
   Images,
   Package,
   RefreshCw,
   RotateCcw,
+  Search,
   Sparkles,
   Trash2,
   type IconComponent,
@@ -416,18 +419,30 @@ function ScanSummary({ appCount, drives, overview, reclaimableBytes, selectedDri
   const used = Math.max(0, capacity - free);
   const elapsedSeconds = overview ? Math.max(.1, overview.elapsedMs / 1000).toFixed(1) : undefined;
   return <section className="system-cleaner-scan-summary">
-    <header><h2>{t("systemCleaner.overview")}</h2><p>{overview ? <>{t("systemCleaner.scanComplete", { seconds: elapsedSeconds })} · {t("systemCleaner.items", { count: formatCount(overview.fileCount) })}</> : t("systemCleaner.scanHint")}</p></header>
+    <header>
+      <div><h2>{t("systemCleaner.overview")}</h2><p>{overview ? <>{t("systemCleaner.scanComplete", { seconds: elapsedSeconds })} · {t("systemCleaner.items", { count: formatCount(overview.fileCount) })}</> : t("systemCleaner.scanHint")}</p></div>
+    </header>
     <div className="system-cleaner-metric-grid">
-      <Metric label={t("systemCleaner.usedSpace")} value={capacity > 0 ? formatBytes(used) : "—"} detail={capacity > 0 ? `${(used / capacity * 100).toFixed(1)}%` : ""} />
-      <Metric label={t("systemCleaner.freeSpace")} value={capacity > 0 ? formatBytes(free) : "—"} detail={capacity > 0 ? `${(free / capacity * 100).toFixed(1)}%` : ""} />
-      <Metric label={t("systemCleaner.cleanupHeading")} value={overview ? formatBytes(reclaimableBytes) : "—"} detail={overview ? t("systemCleaner.safeCategories", { count: overview.cleanup.filter((item) => cleanupSafety(item) === "safe").length }) : ""} accent />
+      <Metric label={t("systemCleaner.usedSpace")} value={capacity > 0 ? formatBytes(used) : "—"} detail={capacity > 0 ? `${(used / capacity * 100).toFixed(1)}%` : ""} ratio={capacity > 0 ? used / capacity : undefined} />
+      <Metric label={t("systemCleaner.freeSpace")} value={capacity > 0 ? formatBytes(free) : "—"} detail={capacity > 0 ? `${(free / capacity * 100).toFixed(1)}%` : ""} ratio={capacity > 0 ? free / capacity : undefined} />
+      <Metric label={t("systemCleaner.cleanupHeading")} value={overview ? formatBytes(reclaimableBytes) : "—"} detail={overview ? t("systemCleaner.safeCategories", { count: overview.cleanup.filter((item) => cleanupSafety(item) === "safe").length }) : ""} ratio={overview && used > 0 ? reclaimableBytes / used : undefined} accent />
       <Metric label={t("systemCleaner.appsHeading")} value={formatCount(appCount)} detail={t("systemCleaner.apps")} />
     </div>
   </section>;
 }
 
-function Metric({ accent, detail, label, value }: { accent?: boolean; detail: string; label: string; value: string }) {
-  return <article className={`system-cleaner-metric${accent ? " accent" : ""}`}><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>;
+function Metric({ accent, detail, label, ratio, value }: { accent?: boolean; detail: string; label: string; ratio?: number; value: string }) {
+  const pending = value === "—";
+  return <article className={`system-cleaner-metric${accent ? " accent" : ""}${pending ? " pending" : ""}`}>
+    <span>{label}</span>
+    <strong>{value}</strong>
+    {ratio === undefined ? null : <span className="system-cleaner-metric-meter"><i style={{ width: `${Math.min(100, Math.max(0, ratio * 100))}%` }} /></span>}
+    <small>{detail}</small>
+  </article>;
+}
+
+function SectionPlaceholder({ icon: Icon, text }: { icon: IconComponent; text: string }) {
+  return <div className="system-cleaner-placeholder"><Icon size={24} aria-hidden="true" /><p>{text}</p></div>;
 }
 
 function CleanupView({ busy, cleaning, cleanupPlan, cleanupResult, items, onCancel, onClean, onReset, onRetry, onToggle, onToggleSafe, scanned, selected, selectedBytes }: {
@@ -459,18 +474,21 @@ function CleanupView({ busy, cleaning, cleanupPlan, cleanupResult, items, onCanc
             const checked = selected.includes(item.id);
             const presentation = CLEANUP_PRESENTATION[item.id] ?? { icon: FileText, tone: "accent" as const };
             const Icon = presentation.icon;
-            return <label className={`system-cleaner-cleanup-row${checked ? " selected" : ""}`} data-tone={presentation.tone} key={item.id}>
+            const description = `${recipeDescription(t, item)}${item.runningProcesses.length > 0 ? ` · ${t("systemCleaner.processRunning", { processes: item.runningProcesses.join(", ") })}` : ""}`;
+            return <label className={`system-cleaner-cleanup-row${checked ? " selected" : ""}`} data-tone={presentation.tone} title={item.displayPath} key={item.id}>
               <input type="checkbox" checked={checked} disabled={busy || (item.builtIn && item.bytes === 0)} onChange={() => onToggle(item.id)} />
-              <span className="system-cleaner-row-icon"><Icon size={17} /></span>
-              <span className="system-cleaner-cleanup-name"><strong>{recipeTitle(t, item)}</strong><SafetyBadge safety={cleanupSafety(item)} /><bdi dir="ltr" title={item.displayPath}>{item.displayPath}</bdi></span>
-              <span className="system-cleaner-cleanup-description">{recipeDescription(t, item)}{item.runningProcesses.length > 0 ? ` · ${t("systemCleaner.processRunning", { processes: item.runningProcesses.join(", ") })}` : ""}</span>
+              <span className="system-cleaner-row-icon"><Icon size={16} /></span>
+              <span className="system-cleaner-cleanup-text">
+                <span className="system-cleaner-cleanup-name"><strong>{recipeTitle(t, item)}</strong><SafetyBadge safety={cleanupSafety(item)} /><bdi dir="ltr">{item.displayPath}</bdi></span>
+                <span className="system-cleaner-cleanup-description">{description}</span>
+              </span>
               <strong className="system-cleaner-row-size">{scanned ? formatBytes(item.bytes) : "—"}</strong>
             </label>;
           })}{visibleItems.length > 500 ? <p className="system-cleaner-recipe-truncated">{t("systemCleaner.recipeRowsTruncated", { count: visibleItems.length - 500 })}</p> : null}</div>
       </section>
     </div>
     {cleanupPlan ? <CleanupPlanPreview plan={cleanupPlan} result={cleanupResult} onRetry={onRetry} /> : null}
-    <footer className="system-cleaner-action-bar"><div><span>{t("systemCleaner.selectedCategories", { count: selected.length, total: items.length })}</span><strong>{formatBytes(selectedBytes)}</strong></div><button type="button" className="toolbar-button" disabled={busy} onClick={onReset}><RotateCcw size={14} />{t("systemCleaner.resetDefaults")}</button><button type="button" className="primary-button" disabled={busy || selected.length === 0} onClick={onClean}><Eye size={15} />{t("systemCleaner.previewCleanup")}</button></footer>
+    <footer className="system-cleaner-action-bar"><div><strong>{formatBytes(selectedBytes)}</strong></div><button type="button" className="toolbar-button" disabled={busy} onClick={onReset}><RotateCcw size={14} />{t("systemCleaner.resetDefaults")}</button><button type="button" className="primary-button" disabled={busy || selected.length === 0} onClick={onClean}><Eye size={15} />{t("systemCleaner.previewCleanup")}</button></footer>
     {cleaning ? <div className="system-cleaner-operation-overlay" role="status"><SystemCleanerScanOrb size={64} state="working" label={t("systemCleaner.cleaningWorking")} /><strong>{t("systemCleaner.cleaningWorking")}</strong><button type="button" className="toolbar-button" onClick={onCancel}>{t("common.cancel")}</button></div> : null}
   </div>;
 }
@@ -514,9 +532,9 @@ function RecommendationsView({ busy, categories, deleting, onDelete, onToggle, s
   return <div className="system-cleaner-view system-cleaner-recommendations-view">
     <header className="system-cleaner-section-head"><h2>{t("systemCleaner.recommendations")}</h2><p>{t("systemCleaner.recommendationSummary", { count: visibleCount })}</p></header>
     <div className="system-cleaner-recommendation-groups">
-      {visibleCategories.length === 0 ? <p className="system-cleaner-no-recommendations">{scanned ? t("systemCleaner.noRecommendations") : t("systemCleaner.scanHint")}</p> : null}
+      {visibleCategories.length === 0 ? <SectionPlaceholder icon={scanned ? CheckCircle2 : Search} text={scanned ? t("systemCleaner.noRecommendations") : t("systemCleaner.scanHint")} /> : null}
       {visibleCategories.map((category) => <section className="system-cleaner-recommendation-group" key={category.id}>
-        <header><span className="system-cleaner-row-icon"><Clock size={17} /></span><div><strong>{t(`systemCleaner.recommendation.${category.id}`)}</strong><p>{t(`systemCleaner.recommendationDescription.${category.id}`)}</p></div><span>{formatBytes(category.bytes)}</span></header>
+        <header><span className="system-cleaner-row-icon"><Clock size={16} /></span><div><strong>{t(`systemCleaner.recommendation.${category.id}`)}</strong><p>{t(`systemCleaner.recommendationDescription.${category.id}`)}</p></div><span>{formatBytes(category.bytes)}</span></header>
         {category.files.length > 0 ? <div className="system-cleaner-review-table">
           <div className="system-cleaner-review-columns"><span /><span>{t("systemCleaner.name")}</span><span>{t("systemCleaner.lastChanged")}</span><span>{t("systemCleaner.size")}</span><span /></div>
           {category.files.map((file) => {
@@ -532,7 +550,7 @@ function RecommendationsView({ busy, categories, deleting, onDelete, onToggle, s
         </div> : <p className="system-cleaner-no-recommendations">{t("systemCleaner.noRecommendations")}</p>}
       </section>)}
     </div>
-    <footer className="system-cleaner-action-bar"><div><span>{t("systemCleaner.selectedReviewFiles", { count: selectedPaths.length, size: formatBytes(selectedBytes) })}</span><strong>{formatBytes(selectedBytes)}</strong></div><button type="button" className="system-cleaner-uninstall primary" disabled={busy || selectedPaths.length === 0} onClick={onDelete}><Trash2 size={15} />{t("systemCleaner.deleteSelected", { count: selectedPaths.length })}</button></footer>
+    <footer className="system-cleaner-action-bar"><div><span>{t("systemCleaner.selectedReviewFiles", { count: selectedPaths.length, size: formatBytes(selectedBytes) })}</span></div><button type="button" className="system-cleaner-uninstall primary" disabled={busy || selectedPaths.length === 0} onClick={onDelete}><Trash2 size={15} />{t("systemCleaner.deleteSelected", { count: selectedPaths.length })}</button></footer>
     {deleting ? <div className="system-cleaner-operation-overlay" role="status"><SystemCleanerScanOrb size={64} state="working" label={t("systemCleaner.deletingReviewFiles")} /><strong>{t("systemCleaner.deletingReviewFiles")}</strong></div> : null}
   </div>;
 }
@@ -555,7 +573,7 @@ function AppsView({ apps, busy, onExplain, onToggle, onUninstall, onUninstallSel
       <div className="system-cleaner-app-columns"><span /><span>{t("systemCleaner.name")}</span><span>{t("systemCleaner.packageId")}</span><span>{t("systemCleaner.version")}</span><span>{t("systemCleaner.size")}</span><span /></div>
       <div className="system-cleaner-app-body">{filtered.map((app, index) => <div className={`system-cleaner-app-row${selectedIds.includes(app.id) ? " selected" : ""}`} key={`${app.id}-${app.version}-${index}`}>
         <input type="checkbox" checked={selectedIds.includes(app.id)} disabled={busy} aria-label={app.name} onChange={() => onToggle(app.id)} />
-        <span className="system-cleaner-app-name"><Package size={17} /><span><strong>{app.name}</strong><small>{[app.publisher, app.version].filter(Boolean).join(" · ")}</small></span></span>
+        <span className="system-cleaner-app-name"><Package size={16} /><span><strong>{app.name}</strong><small>{app.publisher}</small></span></span>
         <bdi dir="ltr" title={app.id}>{app.id}</bdi>
         <span className="system-cleaner-app-version">{app.version}</span>
         <strong className="system-cleaner-app-size">{app.sizeBytes > 0 ? formatBytes(app.sizeBytes) : "—"}</strong>
@@ -632,7 +650,7 @@ function StorageBrowser({ directory, loading, onOpenDirectory, scanRoot, scanned
   return <section className="system-cleaner-browser" aria-busy={loading}>
     <div className="system-cleaner-browser-toolbar"><nav className="system-cleaner-crumbs" aria-label={directory.path}>{crumbs.map((crumb, index) => <span className="system-cleaner-crumb-segment" key={crumb.path}>{index > 0 ? <ChevronRight size={13} /> : null}<button type="button" className={index === crumbs.length - 1 ? "current" : ""} disabled={loading || index === crumbs.length - 1} onClick={() => onOpenDirectory(crumb.path)}>{crumb.label}</button></span>)}</nav><button type="button" className="system-cleaner-icon-button" aria-label={t("systemCleaner.parentFolder")} disabled={loading || !directory.parentPath} onClick={() => directory.parentPath && onOpenDirectory(directory.parentPath)}><ArrowUp size={15} /></button></div>
     <div className="system-cleaner-browser-columns"><button type="button" onClick={() => toggleSort("name")}>{t("systemCleaner.name")}{sort.key === "name" ? <ChevronDown className={sort.direction === "asc" ? "ascending" : ""} size={12} /> : null}</button><span>{t("systemCleaner.percentOfFolder")}</span><button type="button" onClick={() => toggleSort("size")}>{t("systemCleaner.size")}{sort.key === "size" ? <ChevronDown className={sort.direction === "asc" ? "ascending" : ""} size={12} /> : null}</button><button type="button" onClick={() => toggleSort("allocated")}>{t("systemCleaner.allocated")}{sort.key === "allocated" ? <ChevronDown className={sort.direction === "asc" ? "ascending" : ""} size={12} /> : null}</button></div>
-    <div className="system-cleaner-browser-body">{entries.length > 0 ? entries.map((entry) => <StorageEntryRow entry={entry} key={entry.path} selected={selectedPath === entry.path} totalAllocatedBytes={directory.totalAllocatedBytes} onOpen={openEntry} onContextMenu={showEntryContextMenu} onSelect={setSelectedPath} />) : <div className="system-cleaner-browser-empty">{scanned ? t("systemCleaner.items", { count: 0 }) : t("systemCleaner.scanHint")}</div>}</div>
+    <div className="system-cleaner-browser-body">{entries.length > 0 ? entries.map((entry) => <StorageEntryRow entry={entry} key={entry.path} selected={selectedPath === entry.path} totalAllocatedBytes={directory.totalAllocatedBytes} onOpen={openEntry} onContextMenu={showEntryContextMenu} onSelect={setSelectedPath} />) : <SectionPlaceholder icon={scanned ? FolderOpen : Search} text={scanned ? t("systemCleaner.items", { count: 0 }) : t("systemCleaner.scanHint")} />}</div>
     <footer className="system-cleaner-browser-footer"><span>{t("systemCleaner.items", { count: formatCount(entries.length) })}</span><span>{t("systemCleaner.storageTotals", { allocated: formatBytes(directory.totalAllocatedBytes), size: formatBytes(directory.totalBytes) })}</span></footer>
   </section>;
 }
@@ -654,7 +672,7 @@ function StorageEntryRow({ entry, onOpen, onContextMenu, onSelect, selected, tot
   const open = () => onOpen(entry);
   return <button type="button" className={`system-cleaner-browser-row${selected ? " selected" : ""}`} onClick={() => onSelect(entry.path)} onDoubleClick={open} onContextMenu={(event) => onContextMenu(entry, event)} onKeyDown={(event) => { if (event.key === "Enter") open(); }} title={entry.path}>
     <span className="system-cleaner-browser-name"><FileGlyph entry={{ name: entry.name, kind: entry.isDirectory ? "folder" : "file", size: formatBytes(entry.bytes), sizeBytes: entry.bytes, modified: "" }} size={20} /><span>{entry.name}</span>{entry.isDirectory ? <ChevronRight size={12} /> : null}</span>
-    <span className="system-cleaner-browser-percent"><i style={{ width: `${percent}%` }} /><span>{percent.toFixed(1)}%</span></span>
+    <span className="system-cleaner-browser-percent"><i><b style={{ width: `${percent}%` }} /></i><span>{percent.toFixed(1)}%</span></span>
     <strong>{formatBytes(entry.bytes)}</strong><strong>{formatBytes(entry.allocatedBytes)}</strong>
   </button>;
 }

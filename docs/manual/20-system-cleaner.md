@@ -39,7 +39,10 @@ Searching activity indicator. Directory reparse points are never followed.
 
 After scanning, the summary shows Windows used/free allocation, reclaimable
 built-in cleanup categories, installed-application count, elapsed time, and
-the scanned item count.
+the scanned item count. Used space, free space, and reclaimable space each
+carry a proportion bar so the share each one represents is readable without
+comparing numbers. Values that need a scan show a muted placeholder until
+results arrive.
 
 ## Storage analysis
 
@@ -77,7 +80,10 @@ Keep List are not part of System Cleaner.
 Cleanup categories remain visible before scanning and show placeholders instead
 of cleanup totals. Scan results fill their sizes and order all categories from
 largest to smallest; safety badges stay attached to each category rather than
-changing that size order.
+changing that size order. Each row pairs the category name and safety badge
+with a plain-language description of what the category removes, so the decision
+does not depend on reading a path. The row's full target path stays available as
+its tooltip.
 
 Browser cache cleanup removes cache assets only. It does not target history,
 cookies, passwords, bookmarks, extensions, IndexedDB, local storage, or
