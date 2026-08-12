@@ -88,6 +88,7 @@
   WriteRegStr SHCTX "Software\Classes\${KKTERM_DOCUMENT_PROGID}" "" "KKTerm Document"
   WriteRegStr SHCTX "Software\Classes\${KKTERM_DOCUMENT_PROGID}" "FriendlyTypeName" "KKTerm Document"
   WriteRegStr SHCTX "Software\Classes\${KKTERM_DOCUMENT_PROGID}" "AllowSilentDefaultTakeOver" ""
+  WriteRegStr SHCTX "Software\Classes\${KKTERM_DOCUMENT_PROGID}\Application" "ApplicationName" "KKTerm"
   WriteRegStr SHCTX "Software\Classes\${KKTERM_DOCUMENT_PROGID}\DefaultIcon" "" "$INSTDIR\${MAINBINARYNAME}.exe,0"
   WriteRegStr SHCTX "Software\Classes\${KKTERM_DOCUMENT_PROGID}\shell\open" "" "Open with KKTerm"
   WriteRegStr SHCTX "Software\Classes\${KKTERM_DOCUMENT_PROGID}\shell\open\command" "" '$"$INSTDIR\${MAINBINARYNAME}.exe$" $"%1$"'
