@@ -29,18 +29,11 @@ test("System Cleaner scans the drive once off the UI thread and streams progress
   assert.match(page, /listen<SystemCleanerScanProgress>/);
 });
 
-test("System Cleaner automatically installs and imports the managed WinDirStat scanner", () => {
-  assert.match(catalog, /"id": "windirstat"[\s\S]*?"repo": "windirstat\/windirstat"[\s\S]*?"assetPattern": "WinDirStat\.zip"/);
-  assert.match(backend, /fn scan_with_windirstat/);
-  assert.match(backend, /\/saveto/);
-  assert.match(backend, /fn parse_windirstat_report/);
-  assert.match(backend, /"Logical Size"/);
-  assert.match(backend, /"Physical Size"/);
-  assert.match(page, /system_cleaner_scanner_status/);
-  assert.match(page, /installRecipeAndWait/);
-  assert.doesNotMatch(page, /confirmNativeDialog|scannerInstallTitle|scannerInstallPrompt/);
-  assert.match(page, /catch\s*\{[\s\S]*?iterative directory walker[\s\S]*?\}\s*finally\s*\{[\s\S]*?beginScan\(\)/);
-  assert.match(backend, /ScanProgressPhase::Metadata/);
+test("System Cleaner uses KKTerm's Rust scanners without a managed scanner dependency", () => {
+  assert.doesNotMatch(catalog, /"id": "windirstat"/);
+  assert.match(backend, /fn scan_tree/);
+  assert.doesNotMatch(backend, /WinDirStat|scan_with_windirstat|system_cleaner_scanner_status|scan_raw_mft|elevated_mft_scan|--system-cleaner-mft-scan|ntfs_reader/);
+  assert.doesNotMatch(page, /system_cleaner_scanner_status|installRecipeAndWait/);
   assert.match(backend, /ScanProgressPhase::Files/);
 });
 
@@ -58,17 +51,24 @@ test("System Cleaner uses the Searching orb in the scan page and Status Bar", ()
   assert.match(scanState, /active:\s*boolean/);
 });
 
-test("System Cleaner uses the Direction A control panel and compact cleanup and uninstall rows", () => {
-  assert.match(page, /type Section = (?:SystemCleanerNavigationSection|"overview" \| "storage" \| "cleanup" \| "recommendations" \| "apps" \| "management")/);
-  assert.match(page, /system-cleaner-drive-card/);
+test("System Cleaner keeps every supported workflow on one Overview surface", () => {
+  assert.match(page, /system-cleaner-overview-page/);
+  assert.match(page, /system-cleaner-drive-overview/);
   assert.match(page, /system-cleaner-metric-grid/);
+  assert.match(page, /<StorageView/);
+  assert.match(page, /<CleanupView/);
+  assert.match(page, /<RecommendationsView/);
+  assert.match(page, /<AppsView/);
+  assert.match(page, /<SystemToolsView/);
   assert.match(page, /system-cleaner-cleanup-groups/);
   assert.match(page, /system-cleaner-app-table/);
   assert.match(page, /systemCleaner\.selectAllSafe/);
   assert.match(page, /systemCleaner\.resetDefaults/);
   assert.match(page, /state="working"/);
   assert.match(page, /submitAssistantContextSnippet/);
-  assert.match(styles, /\.system-cleaner-shell\s*\{[^}]*grid-template-columns:\s*240px minmax\(0, 1fr\)/s);
+  assert.doesNotMatch(page, /CleanerSidebar|CleanerManagementView|systemCleaner\.management/);
+  assert.doesNotMatch(page, /system_cleaner_(?:list|add|remove)_keep_path|system_cleaner_(?:preview|import).*bundle|system_cleaner_(?:preview|import)_winapp2/);
+  assert.match(styles, /\.system-cleaner-overview-page\s*\{[^}]*width:\s*min\(100%, 1440px\)/s);
 });
 
 test("System Cleaner keeps personal-file recommendations opt-in and scan-bound", () => {
@@ -76,7 +76,7 @@ test("System Cleaner keeps personal-file recommendations opt-in and scan-bound",
   assert.match(backend, /LARGE_OLD_FILE_AGE_DAYS: u64 = 180/);
   assert.match(backend, /OLD_DOWNLOAD_AGE_DAYS: u64 = 90/);
   assert.match(backend, /MAX_REVIEW_FILES_PER_CATEGORY: usize = 200/);
-  assert.match(backend, /column\("Last Change"\)/);
+  assert.match(backend, /modified_unix_ms/);
   assert.match(backend, /review_files/);
   assert.match(backend, /changed after the scan/);
   assert.match(backendCommands, /system_cleaner::system_cleaner_delete_review_files/);
@@ -84,18 +84,20 @@ test("System Cleaner keeps personal-file recommendations opt-in and scan-bound",
   assert.match(page, /selectedReviewPaths/);
   assert.match(page, /deleteReviewTitle/);
   assert.match(page, /<ConfirmSheet tone="danger"/);
-  assert.match(manual, /No recommendation is selected automatically/i);
+  assert.match(manual, /never selected automatically/i);
   assert.match(manual, /does not use the Recycle Bin/i);
 });
 
-test("System Cleaner keeps drive selection in the Module header and disk metrics in the control panel", () => {
+test("System Cleaner drive selection has a full native hit target and visible Overview cards", () => {
   assert.doesNotMatch(page, /system-cleaner-scanbar|system-cleaner-progress/);
   assert.match(backend, /system_cleaner_list_drives/);
   assert.match(backendCommands, /system_cleaner::system_cleaner_list_drives/);
   assert.match(tauri, /system_cleaner_list_drives/);
   assert.match(page, /system-cleaner-header-drive/);
-  assert.match(page, /system-cleaner-drive-card/);
+  assert.match(page, /system-cleaner-drive-choice/);
+  assert.match(page, /onClick=\{\(\) => onSelectDrive\(drive\.path\)\}/);
   assert.match(page, /system-cleaner-drive-meter/);
+  assert.match(styles, /\.system-cleaner-header-drive select\s*\{[^}]*position:\s*absolute[^}]*inset:\s*0[^}]*width:\s*100%/s);
   assert.match(manual, /logical file\s+sizes/i);
 });
 
@@ -103,18 +105,18 @@ test("System Cleaner multi-select uninstall preserves one elevated command per p
   assert.match(page, /for \(const app of apps\)/);
   assert.match(page, /system_cleaner_uninstall/);
   assert.match(page, /systemCleaner\.uninstallSelectionMessage/);
-  assert.match(manual, /separate UAC approval and elevated helper for each package/i);
+  assert.match(manual, /one UAC approval and\s+helper per package/i);
 });
 
-test("System Cleaner preserves WinDirStat logical and physical sizes", () => {
+test("System Cleaner preserves logical and estimated allocated sizes from its Rust walker", () => {
   assert.match(backend, /total_allocated_bytes/);
-  assert.match(backend, /parse_u64_field\(&fields\[logical_column\]/);
-  assert.match(backend, /parse_u64_field\(&fields\[physical_column\]/);
-  assert.match(backend, /total\.1 = total\.1\.saturating_add\(physical\)/);
+  assert.match(backend, /allocated_file_size/);
+  assert.match(backend, /allocation_unit_size/);
   assert.match(page, /totalAllocatedBytes/);
   assert.match(page, /systemCleaner\.allocated/);
   assert.match(page, /systemCleaner\.storageTotals/);
-  assert.match(manual, /WinDirStat's exported \*\*Physical Size\*\*/i);
+  assert.match(manual, /Rust walker reads logical file lengths/i);
+  assert.match(manual, /compressed-size reporting for compressed or sparse files/i);
 });
 
 test("System Cleaner retains one-pass directory totals for browsable results", () => {
@@ -146,11 +148,11 @@ test("System Cleaner walks directories iteratively without following reparse poi
   assert.doesNotMatch(backend, /directory_size\(&entry\.path\(\)\)/);
 });
 
-test("System Cleaner prefers elevated WinDirStat and falls back to directory enumeration", () => {
-  assert.match(backend, /if let Ok\(scan\) = scan_with_windirstat\(root,/);
-  assert.match(backend, /scan_tree\(root,/);
-  assert.match(backend, /Start-Process.*-Verb RunAs/);
-  assert.match(manual, /If WinDirStat installation fails[\s\S]*iterative directory walker instead of the legacy raw\s+MFT reader/i);
+test("System Cleaner uses only its iterative Rust directory walker", () => {
+  assert.match(backend, /fn scan_drive[\s\S]*scan_tree\(root,/);
+  assert.doesNotMatch(backend, /MFT|mft|ntfs_reader|run_mft_helper/);
+  assert.match(manual, /uses its reparse-safe iterative\s+Rust directory walker directly/i);
+  assert.match(manual, /does not launch an elevated helper or\s+read the NTFS master file table/i);
 });
 
 test("System Cleaner scan helpers do not open terminal windows", () => {
@@ -181,37 +183,24 @@ test("System Cleaner cleanup is preview-first, immutable, revalidated, cancellab
   assert.doesNotMatch(recipes, /remove_dir_all/);
 });
 
-test("System Cleaner recipes stay file-only and protect exclusions and sensitive paths", () => {
+test("System Cleaner built-in cleanup stays file-only and protects sensitive paths", () => {
   assert.match(recipes, /CleanerTarget/);
-  assert.match(recipes, /system_cleaner_keep_paths/);
   assert.match(recipes, /PROTECTED_COMPONENTS/);
   assert.match(recipes, /PROTECTED_FILES/);
-  assert.match(recipes, /Imported recipes cannot be selected by default/);
-  assert.match(recipes, /Registry keys, commands, and unsupported variables are ignored/);
+  assert.match(recipes, /let recipes = built_in_recipes\(\)/);
+  assert.match(recipes, /build_cached_plan\(&recipes, &selected, &\[\]\)/);
   assert.doesNotMatch(recipes, /RegDeleteKey|RegDeleteValue|CleanupTarget::Registry/);
-  assert.match(storage, /CREATE TABLE IF NOT EXISTS system_cleaner_keep_paths/);
+  assert.doesNotMatch(backendCommands, /system_cleaner::system_cleaner_(?:list|add|remove)_keep_path/);
 });
 
-test("System Cleaner offers broad built-in coverage plus constrained Winapp2 import", () => {
+test("System Cleaner offers broad built-in coverage without recipe-import commands", () => {
   const builtInIds = [...recipes.matchAll(/builtin\(\s*"([a-z0-9-]+)"/g)].map((match) => match[1]);
   assert.ok(new Set(builtInIds).size >= 30, `expected at least 30 built-in recipes, found ${new Set(builtInIds).size}`);
   for (const id of ["brave-cache", "teams-cache", "vscode-cache", "npm-cache", "nuget-cache", "pip-cache", "cargo-cache", "gradle-cache", "nvidia-cache", "steam-web-cache"]) {
     assert.ok(builtInIds.includes(id), `missing reviewed built-in ${id}`);
   }
-  assert.match(recipes, /preview_winapp2/);
-  assert.match(recipes, /skipped_registry_keys/);
-  assert.match(recipes, /MAX_IMPORTED_RECIPES: usize = 8_000/);
-});
-
-test("System Cleaner bundles are versioned, signed, staged, and signer-pinned", () => {
-  assert.match(recipes, /ed25519_dalek/);
-  assert.match(recipes, /key\.verify/);
-  assert.match(recipes, /payload\.version <= existing\.version/);
-  assert.match(recipes, /signed by a different key/);
-  assert.match(recipes, /preview\.added/);
-  assert.match(recipes, /preview\.updated/);
-  assert.match(recipes, /preview\.removed/);
-  assert.match(storage, /CREATE TABLE IF NOT EXISTS system_cleaner_recipe_bundles/);
+  assert.doesNotMatch(backendCommands, /system_cleaner::system_cleaner_(?:validate_recipe|preview_signed_bundle|import_signed_bundle|list_recipe_bundles|remove_recipe_bundle|preview_winapp2|import_winapp2)/);
+  assert.match(manual, /User-authored rules, signed bundles, Winapp2 imports, and the\s+Keep List are not part of System Cleaner/i);
 });
 
 test("System Cleaner records structured history and separates Windows-owned maintenance and AppX removal", () => {

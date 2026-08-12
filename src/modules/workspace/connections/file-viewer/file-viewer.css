@@ -1308,6 +1308,12 @@
   padding: 0 12px;
 }
 
+.fv-large-text-match {
+  color: inherit;
+  background: color-mix(in srgb, var(--accent) 34%, transparent);
+  outline: 1px solid color-mix(in srgb, var(--accent) 58%, transparent);
+}
+
 .fv-large-text-line.loading .fv-large-text-code {
   color: var(--text-faint);
 }

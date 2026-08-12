@@ -6,7 +6,6 @@
 //! cannot edit the registry, launch commands, mutate databases, or delete an
 //! unresolved directory tree.
 
-use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
@@ -21,7 +20,7 @@ use std::{
 };
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 
-use crate::storage::{Storage, SystemCleanerHistoryRecord, SystemCleanerRecipeBundleRecord};
+use crate::storage::{Storage, SystemCleanerHistoryRecord};
 
 #[cfg(target_os = "windows")]
 use std::os::windows::{fs::MetadataExt, process::CommandExt};
@@ -31,11 +30,7 @@ const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 #[cfg(target_os = "windows")]
 const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
 
-const RECIPE_SCHEMA_VERSION: u32 = 1;
-const MAX_RECIPE_TARGETS: usize = 64;
 const MAX_PLAN_ITEMS: usize = 250_000;
-const MAX_IMPORTED_RECIPES: usize = 8_000;
-const MAX_BUNDLE_BYTES: usize = 16 * 1024 * 1024;
 const PLAN_MAX_AGE_MINUTES: i64 = 30;
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -78,26 +73,6 @@ pub struct CleanerRecipe {
     pub source: String,
     #[serde(default)]
     pub built_in: bool,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct RecipeBundlePayload {
-    pub schema_version: u32,
-    pub bundle_id: String,
-    pub version: u64,
-    pub source: String,
-    #[serde(default)]
-    pub update_url: Option<String>,
-    pub recipes: Vec<CleanerRecipe>,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct SignedRecipeBundle {
-    payload: String,
-    public_key_hex: String,
-    signature_hex: String,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -170,53 +145,6 @@ pub struct CleanupResult {
     pub cancelled: bool,
 }
 
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RecipeValidationResult {
-    pub valid: bool,
-    pub errors: Vec<String>,
-    pub recipe: Option<CleanerRecipe>,
-    pub preview: Option<CleanupPlan>,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RecipeBundlePreview {
-    pub bundle_id: String,
-    pub version: u64,
-    pub source: String,
-    pub signer_fingerprint: String,
-    pub sha256: String,
-    pub recipe_count: usize,
-    pub added: Vec<String>,
-    pub updated: Vec<String>,
-    pub removed: Vec<String>,
-    #[serde(skip_serializing)]
-    payload_json: String,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RecipeBundleInfo {
-    pub bundle_id: String,
-    pub version: u64,
-    pub source: String,
-    pub signer_fingerprint: String,
-    pub sha256: String,
-    pub recipe_count: usize,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Winapp2ImportPreview {
-    pub recipe_count: usize,
-    pub skipped_registry_keys: usize,
-    pub skipped_unsupported_entries: usize,
-    pub warnings: Vec<String>,
-    #[serde(skip_serializing)]
-    payload_json: String,
-}
-
 static PLAN_CACHE: OnceLock<RwLock<HashMap<String, CachedPlan>>> = OnceLock::new();
 static CLEAN_CANCELLED: AtomicBool = AtomicBool::new(false);
 
@@ -235,18 +163,6 @@ fn sha256_hex(bytes: &[u8]) -> String {
         .iter()
         .map(|byte| format!("{byte:02x}"))
         .collect()
-}
-
-fn decode_hex<const N: usize>(value: &str) -> Result<[u8; N], String> {
-    if value.len() != N * 2 || !value.bytes().all(|byte| byte.is_ascii_hexdigit()) {
-        return Err(format!("Expected {} hexadecimal characters.", N * 2));
-    }
-    let mut output = [0_u8; N];
-    for (index, chunk) in value.as_bytes().chunks_exact(2).enumerate() {
-        let text = std::str::from_utf8(chunk).map_err(|error| error.to_string())?;
-        output[index] = u8::from_str_radix(text, 16).map_err(|error| error.to_string())?;
-    }
-    Ok(output)
 }
 
 fn normalize(path: &Path) -> String {
@@ -535,70 +451,6 @@ fn matches_exclusion(path: &Path, recipe: &CleanerRecipe, keep_paths: &[PathBuf]
                 &path.to_string_lossy().replace('/', "\\"),
             )
         })
-}
-
-fn validate_id(id: &str) -> bool {
-    !id.is_empty()
-        && id.len() <= 96
-        && id.bytes().all(|byte| {
-            byte.is_ascii_lowercase() || byte.is_ascii_digit() || b".-_".contains(&byte)
-        })
-}
-
-fn validate_recipe(recipe: &CleanerRecipe, imported: bool) -> Vec<String> {
-    let mut errors = Vec::new();
-    if !validate_id(&recipe.id) {
-        errors.push(
-            "Recipe id must contain only lowercase letters, digits, '.', '-', or '_'.".into(),
-        );
-    }
-    if recipe.version == 0 {
-        errors.push("Recipe version must be greater than zero.".into());
-    }
-    if recipe.title.trim().is_empty() || recipe.title.len() > 160 {
-        errors.push("Recipe title must contain 1–160 characters.".into());
-    }
-    if recipe.description.trim().is_empty() || recipe.description.len() > 1_000 {
-        errors.push("Recipe description must contain 1–1,000 characters.".into());
-    }
-    if recipe.targets.is_empty() || recipe.targets.len() > MAX_RECIPE_TARGETS {
-        errors.push(format!(
-            "Recipes must define 1–{MAX_RECIPE_TARGETS} file targets."
-        ));
-    }
-    if imported && recipe.default_selected {
-        errors.push("Imported recipes cannot be selected by default.".into());
-    }
-    for target in &recipe.targets {
-        match expand_template(&target.path) {
-            Ok(path) => {
-                if imported {
-                    let root = path.components().take(1).count();
-                    let depth = path.components().count();
-                    if depth <= root + 1 {
-                        errors.push(format!("Target '{}' is too broad.", target.path));
-                    }
-                }
-            }
-            Err(error) => errors.push(format!("Target '{}': {error}", target.path)),
-        }
-        if target.file_patterns.len() > 32
-            || target.file_patterns.iter().any(|pattern| {
-                pattern.contains(['/', '\\']) || pattern.contains("..") || pattern.len() > 160
-            })
-        {
-            errors.push(format!(
-                "Target '{}' has an invalid file pattern.",
-                target.path
-            ));
-        }
-    }
-    if imported && recipe.safety == RecipeSafety::Safe {
-        errors.push(
-            "Imported recipes must use Review or Risky safety until locally reviewed.".into(),
-        );
-    }
-    errors
 }
 
 fn target(path: &str) -> CleanerTarget {
@@ -937,40 +789,6 @@ pub fn built_in_recipes() -> Vec<CleanerRecipe> {
     ]
 }
 
-fn imported_recipes(storage: &Storage) -> Result<Vec<CleanerRecipe>, String> {
-    let mut output = Vec::new();
-    for record in storage.system_cleaner_recipe_bundles()? {
-        let payload: RecipeBundlePayload =
-            serde_json::from_str(&record.payload_json).map_err(|error| {
-                format!(
-                    "Stored recipe bundle {} is invalid: {error}",
-                    record.bundle_id
-                )
-            })?;
-        output.extend(payload.recipes.into_iter().map(|mut recipe| {
-            recipe.source = payload.source.clone();
-            recipe.built_in = false;
-            recipe.default_selected = false;
-            recipe
-        }));
-    }
-    Ok(output)
-}
-
-pub fn all_recipes(storage: &Storage) -> Result<Vec<CleanerRecipe>, String> {
-    let mut recipes = built_in_recipes();
-    let mut ids = recipes
-        .iter()
-        .map(|recipe| recipe.id.clone())
-        .collect::<HashSet<_>>();
-    for recipe in imported_recipes(storage)? {
-        if ids.insert(recipe.id.clone()) {
-            recipes.push(recipe);
-        }
-    }
-    Ok(recipes)
-}
-
 fn collect_target_files(
     recipe: &CleanerRecipe,
     target: &CleanerTarget,
@@ -1156,36 +974,26 @@ fn cache_plan(plan: CachedPlan) {
     cache.insert(plan.public.token.clone(), plan);
 }
 
-pub fn build_plan(storage: &Storage, ids: Vec<String>) -> Result<CleanupPlan, String> {
+pub fn build_plan(_storage: &Storage, ids: Vec<String>) -> Result<CleanupPlan, String> {
     let selected = ids.into_iter().collect::<HashSet<_>>();
     if selected.is_empty() {
         return Err("Select at least one cleanup recipe.".into());
     }
-    let recipes = all_recipes(storage)?;
+    let recipes = built_in_recipes();
     if selected
         .iter()
         .any(|id| !recipes.iter().any(|recipe| &recipe.id == id))
     {
         return Err("The cleanup selection contains an unknown recipe.".into());
     }
-    let keep_paths = storage
-        .system_cleaner_keep_paths()?
-        .into_iter()
-        .map(PathBuf::from)
-        .collect::<Vec<_>>();
-    let plan = build_cached_plan(&recipes, &selected, &keep_paths)?;
+    let plan = build_cached_plan(&recipes, &selected, &[])?;
     let public = plan.public.clone();
     cache_plan(plan);
     Ok(public)
 }
 
-pub fn catalog(storage: &Storage) -> Result<Vec<RecipeCatalogEntry>, String> {
-    let recipes = all_recipes(storage)?;
-    let keep_paths = storage
-        .system_cleaner_keep_paths()?
-        .into_iter()
-        .map(PathBuf::from)
-        .collect::<Vec<_>>();
+pub fn catalog(_storage: &Storage) -> Result<Vec<RecipeCatalogEntry>, String> {
+    let recipes = built_in_recipes();
     let running = running_process_names();
     recipes
         .into_iter()
@@ -1198,7 +1006,7 @@ pub fn catalog(storage: &Storage) -> Result<Vec<RecipeCatalogEntry>, String> {
             // rules are enumerated exactly only when the user selects Preview.
             if recipe.built_in {
                 for target in &recipe.targets {
-                    collect_target_files(&recipe, target, &keep_paths, &mut items, &mut excluded)?;
+                    collect_target_files(&recipe, target, &[], &mut items, &mut excluded)?;
                 }
             }
             let mut unique = HashSet::new();
@@ -1286,11 +1094,6 @@ pub fn execute_plan(
             .map(|path| normalize(Path::new(&path)))
             .collect::<HashSet<_>>()
     });
-    let keep_paths = storage
-        .system_cleaner_keep_paths()?
-        .into_iter()
-        .map(PathBuf::from)
-        .collect::<Vec<_>>();
     let running = running_process_names();
     let blocked_recipes = plan
         .recipe_processes
@@ -1333,7 +1136,7 @@ pub fn execute_plan(
             });
             continue;
         }
-        if let Err(reason) = validate_plan_item(item, &keep_paths) {
+        if let Err(reason) = validate_plan_item(item, &[]) {
             skipped.push(CleanupSkip {
                 path: item.public.path.clone(),
                 reason,
@@ -1393,429 +1196,6 @@ pub fn execute_plan(
     })
 }
 
-pub fn validate_rule(storage: &Storage, raw_json: &str) -> RecipeValidationResult {
-    let mut errors = Vec::new();
-    let recipe = match serde_json::from_str::<CleanerRecipe>(raw_json) {
-        Ok(mut recipe) => {
-            recipe.built_in = false;
-            recipe.default_selected = false;
-            if recipe.source.trim().is_empty() {
-                recipe.source = "Rule Lab".into();
-            }
-            errors.extend(validate_recipe(&recipe, true));
-            Some(recipe)
-        }
-        Err(error) => {
-            errors.push(format!("Invalid recipe JSON: {error}"));
-            None
-        }
-    };
-    let preview = if errors.is_empty() {
-        recipe.as_ref().and_then(|recipe| {
-            let keep = storage
-                .system_cleaner_keep_paths()
-                .ok()?
-                .into_iter()
-                .map(PathBuf::from)
-                .collect::<Vec<_>>();
-            let selected = HashSet::from([recipe.id.clone()]);
-            build_cached_plan(std::slice::from_ref(recipe), &selected, &keep)
-                .ok()
-                .map(|plan| plan.public)
-        })
-    } else {
-        None
-    };
-    RecipeValidationResult {
-        valid: errors.is_empty(),
-        errors,
-        recipe,
-        preview,
-    }
-}
-
-fn parse_signed_bundle(
-    raw_json: &str,
-) -> Result<(RecipeBundlePayload, RecipeBundlePreview), String> {
-    if raw_json.len() > MAX_BUNDLE_BYTES {
-        return Err("Recipe bundle exceeds the 16 MB limit.".into());
-    }
-    let signed: SignedRecipeBundle = serde_json::from_str(raw_json)
-        .map_err(|error| format!("Invalid signed bundle: {error}"))?;
-    let key_bytes = decode_hex::<32>(&signed.public_key_hex)?;
-    let signature_bytes = decode_hex::<64>(&signed.signature_hex)?;
-    let key = VerifyingKey::from_bytes(&key_bytes).map_err(|error| error.to_string())?;
-    let signature = Signature::from_bytes(&signature_bytes);
-    key.verify(signed.payload.as_bytes(), &signature)
-        .map_err(|_| "Recipe bundle signature verification failed.".to_string())?;
-    let payload: RecipeBundlePayload = serde_json::from_str(&signed.payload)
-        .map_err(|error| format!("Invalid recipe payload: {error}"))?;
-    validate_bundle(&payload)?;
-    let fingerprint = sha256_hex(&key_bytes)[..16].to_string();
-    let preview = RecipeBundlePreview {
-        bundle_id: payload.bundle_id.clone(),
-        version: payload.version,
-        source: payload.source.clone(),
-        signer_fingerprint: fingerprint,
-        sha256: sha256_hex(signed.payload.as_bytes()),
-        recipe_count: payload.recipes.len(),
-        added: Vec::new(),
-        updated: Vec::new(),
-        removed: Vec::new(),
-        payload_json: signed.payload,
-    };
-    Ok((payload, preview))
-}
-
-fn validate_bundle(payload: &RecipeBundlePayload) -> Result<(), String> {
-    if payload.schema_version != RECIPE_SCHEMA_VERSION {
-        return Err(format!(
-            "Unsupported recipe schema version {}.",
-            payload.schema_version
-        ));
-    }
-    if !validate_id(&payload.bundle_id) || payload.version == 0 {
-        return Err("Bundle id or version is invalid.".into());
-    }
-    if payload.recipes.is_empty() || payload.recipes.len() > MAX_IMPORTED_RECIPES {
-        return Err(format!(
-            "Bundles must contain 1–{MAX_IMPORTED_RECIPES} recipes."
-        ));
-    }
-    let builtins = built_in_recipes()
-        .into_iter()
-        .map(|recipe| recipe.id)
-        .collect::<HashSet<_>>();
-    let mut ids = HashSet::new();
-    for recipe in &payload.recipes {
-        let errors = validate_recipe(recipe, true);
-        if !errors.is_empty() {
-            return Err(format!("Recipe '{}': {}", recipe.id, errors.join(" ")));
-        }
-        if builtins.contains(&recipe.id) || !ids.insert(recipe.id.clone()) {
-            return Err(format!(
-                "Recipe id '{}' conflicts with another recipe.",
-                recipe.id
-            ));
-        }
-    }
-    if payload
-        .update_url
-        .as_ref()
-        .is_some_and(|url| !url.starts_with("https://"))
-    {
-        return Err("Recipe update URLs must use HTTPS.".into());
-    }
-    Ok(())
-}
-
-pub fn preview_signed_bundle(
-    storage: &Storage,
-    raw_json: &str,
-) -> Result<RecipeBundlePreview, String> {
-    let (payload, mut preview) = parse_signed_bundle(raw_json)?;
-    let installed = storage.system_cleaner_recipe_bundles()?;
-    let incoming_ids = payload
-        .recipes
-        .iter()
-        .map(|recipe| recipe.id.as_str())
-        .collect::<HashSet<_>>();
-    for record in installed
-        .iter()
-        .filter(|record| record.bundle_id != payload.bundle_id)
-    {
-        let other: RecipeBundlePayload =
-            serde_json::from_str(&record.payload_json).map_err(|error| {
-                format!(
-                    "Stored recipe bundle {} is invalid: {error}",
-                    record.bundle_id
-                )
-            })?;
-        if let Some(conflict) = other
-            .recipes
-            .iter()
-            .find(|recipe| incoming_ids.contains(recipe.id.as_str()))
-        {
-            return Err(format!(
-                "Recipe id '{}' is already owned by bundle '{}'.",
-                conflict.id, record.bundle_id
-            ));
-        }
-    }
-    let existing = installed
-        .into_iter()
-        .find(|record| record.bundle_id == payload.bundle_id);
-    if let Some(existing) = existing {
-        if payload.version <= existing.version {
-            return Err(format!(
-                "Bundle version {} is not newer than installed version {}.",
-                payload.version, existing.version
-            ));
-        }
-        if existing.signer_fingerprint != preview.signer_fingerprint {
-            return Err("The update was signed by a different key.".into());
-        }
-        let old: RecipeBundlePayload =
-            serde_json::from_str(&existing.payload_json).map_err(|error| error.to_string())?;
-        let old_versions = old
-            .recipes
-            .into_iter()
-            .map(|recipe| (recipe.id, recipe.version))
-            .collect::<HashMap<_, _>>();
-        let new_versions = payload
-            .recipes
-            .iter()
-            .map(|recipe| (recipe.id.clone(), recipe.version))
-            .collect::<HashMap<_, _>>();
-        if let Some((id, version, old_version)) = new_versions.iter().find_map(|(id, version)| {
-            old_versions
-                .get(id)
-                .filter(|old_version| version < *old_version)
-                .map(|old_version| (id, version, old_version))
-        }) {
-            return Err(format!(
-                "Recipe '{id}' version {version} cannot replace newer installed version {old_version}."
-            ));
-        }
-        preview.added = new_versions
-            .keys()
-            .filter(|id| !old_versions.contains_key(*id))
-            .cloned()
-            .collect();
-        preview.updated = new_versions
-            .iter()
-            .filter(|(id, version)| old_versions.get(*id).is_some_and(|old| old != *version))
-            .map(|(id, _)| id.clone())
-            .collect();
-        preview.removed = old_versions
-            .keys()
-            .filter(|id| !new_versions.contains_key(*id))
-            .cloned()
-            .collect();
-    } else {
-        preview.added = payload
-            .recipes
-            .iter()
-            .map(|recipe| recipe.id.clone())
-            .collect();
-    }
-    Ok(preview)
-}
-
-pub fn import_signed_bundle(storage: &Storage, raw_json: &str) -> Result<RecipeBundleInfo, String> {
-    let preview = preview_signed_bundle(storage, raw_json)?;
-    storage.system_cleaner_upsert_recipe_bundle(&SystemCleanerRecipeBundleRecord {
-        bundle_id: preview.bundle_id.clone(),
-        version: preview.version,
-        source: preview.source.clone(),
-        signer_fingerprint: preview.signer_fingerprint.clone(),
-        sha256: preview.sha256.clone(),
-        payload_json: preview.payload_json.clone(),
-    })?;
-    Ok(RecipeBundleInfo {
-        bundle_id: preview.bundle_id,
-        version: preview.version,
-        source: preview.source,
-        signer_fingerprint: preview.signer_fingerprint,
-        sha256: preview.sha256,
-        recipe_count: preview.recipe_count,
-    })
-}
-
-pub fn bundle_infos(storage: &Storage) -> Result<Vec<RecipeBundleInfo>, String> {
-    storage
-        .system_cleaner_recipe_bundles()?
-        .into_iter()
-        .map(|record| {
-            let payload: RecipeBundlePayload =
-                serde_json::from_str(&record.payload_json).map_err(|error| error.to_string())?;
-            Ok(RecipeBundleInfo {
-                bundle_id: record.bundle_id,
-                version: record.version,
-                source: record.source,
-                signer_fingerprint: record.signer_fingerprint,
-                sha256: record.sha256,
-                recipe_count: payload.recipes.len(),
-            })
-        })
-        .collect()
-}
-
-fn slug(value: &str) -> String {
-    let mut output = String::new();
-    let mut dash = false;
-    for character in value.chars() {
-        if character.is_ascii_alphanumeric() {
-            output.push(character.to_ascii_lowercase());
-            dash = false;
-        } else if !dash && !output.is_empty() {
-            output.push('-');
-            dash = true;
-        }
-    }
-    output.trim_matches('-').chars().take(72).collect()
-}
-
-fn normalize_winapp_variable(path: &str) -> String {
-    let replacements = [
-        ("%localappdata%", "%LOCALAPPDATA%"),
-        ("%appdata%", "%APPDATA%"),
-        ("%userprofile%", "%USERPROFILE%"),
-        ("%windir%", "%WINDIR%"),
-        ("%systemroot%", "%WINDIR%"),
-        ("%programdata%", "%PROGRAMDATA%"),
-        ("%temp%", "%TEMP%"),
-    ];
-    let lower = path.to_ascii_lowercase();
-    for (source, target) in replacements {
-        if lower.starts_with(source) {
-            return format!("{target}{}", &path[source.len()..]).replace('\\', "/");
-        }
-    }
-    path.replace('\\', "/")
-}
-
-pub fn preview_winapp2(text: &str, source: &str) -> Result<Winapp2ImportPreview, String> {
-    if text.len() > MAX_BUNDLE_BYTES {
-        return Err("Winapp2 data exceeds the 16 MB limit.".into());
-    }
-    let mut recipes = Vec::new();
-    let mut current_name = String::new();
-    let mut current_targets = Vec::new();
-    let mut registry = 0_usize;
-    let mut unsupported = 0_usize;
-    let bundle_hash = &sha256_hex(text.as_bytes())[..12];
-    let flush =
-        |recipes: &mut Vec<CleanerRecipe>, name: &mut String, targets: &mut Vec<CleanerTarget>| {
-            if name.is_empty() || targets.is_empty() || recipes.len() >= MAX_IMPORTED_RECIPES {
-                targets.clear();
-                return;
-            }
-            let id = format!("winapp2.{bundle_hash}.{}", slug(name));
-            if validate_id(&id) && !recipes.iter().any(|recipe: &CleanerRecipe| recipe.id == id) {
-                recipes.push(CleanerRecipe {
-                    id,
-                    version: 1,
-                    title: name.clone(),
-                    description: "__kkterm_winapp2__".into(),
-                    safety: RecipeSafety::Review,
-                    default_selected: false,
-                    targets: std::mem::take(targets),
-                    excludes: Vec::new(),
-                    running_processes: Vec::new(),
-                    warning: Some("__kkterm_winapp2_warning__".into()),
-                    source: source.into(),
-                    built_in: false,
-                });
-            } else {
-                targets.clear();
-            }
-        };
-    for raw_line in text.lines() {
-        let line = raw_line.trim();
-        if line.starts_with('[') && line.ends_with(']') {
-            flush(&mut recipes, &mut current_name, &mut current_targets);
-            current_name = line[1..line.len() - 1]
-                .trim_end_matches('*')
-                .trim()
-                .to_string();
-            continue;
-        }
-        let Some((key, value)) = line.split_once('=') else {
-            continue;
-        };
-        let key_lower = key.trim().to_ascii_lowercase();
-        if key_lower.starts_with("regkey") {
-            registry += 1;
-            continue;
-        }
-        if !key_lower.starts_with("filekey") {
-            continue;
-        }
-        let parts = value.split('|').map(str::trim).collect::<Vec<_>>();
-        if parts.len() < 2 {
-            unsupported += 1;
-            continue;
-        }
-        let path = normalize_winapp_variable(parts[0]);
-        if !path.starts_with('%') || expand_template(&path).is_err() {
-            unsupported += 1;
-            continue;
-        }
-        let recursive = parts
-            .iter()
-            .skip(2)
-            .any(|flag| flag.eq_ignore_ascii_case("RECURSE"));
-        let patterns = parts[1]
-            .split(';')
-            .map(str::trim)
-            .filter(|pattern| {
-                !pattern.is_empty() && !pattern.contains(['/', '\\']) && !pattern.contains("..")
-            })
-            .map(str::to_string)
-            .collect::<Vec<_>>();
-        if patterns.is_empty() {
-            unsupported += 1;
-            continue;
-        }
-        current_targets.push(CleanerTarget {
-            path,
-            file_patterns: patterns,
-            recursive,
-        });
-    }
-    flush(&mut recipes, &mut current_name, &mut current_targets);
-    if recipes.is_empty() {
-        return Err("No supported file-only Winapp2 rules were found.".into());
-    }
-    let payload = RecipeBundlePayload {
-        schema_version: RECIPE_SCHEMA_VERSION,
-        bundle_id: format!("winapp2-{bundle_hash}"),
-        version: 1,
-        source: source.into(),
-        update_url: None,
-        recipes,
-    };
-    let payload_json = serde_json::to_string(&payload).map_err(|error| error.to_string())?;
-    Ok(Winapp2ImportPreview {
-        recipe_count: payload.recipes.len(),
-        skipped_registry_keys: registry,
-        skipped_unsupported_entries: unsupported,
-        warnings: vec![
-            "Registry keys, commands, and unsupported variables are ignored.".into(),
-            "All imported rules are Review safety and remain off by default.".into(),
-        ],
-        payload_json,
-    })
-}
-
-pub fn import_winapp2(
-    storage: &Storage,
-    text: &str,
-    source: &str,
-) -> Result<RecipeBundleInfo, String> {
-    let preview = preview_winapp2(text, source)?;
-    let payload: RecipeBundlePayload =
-        serde_json::from_str(&preview.payload_json).map_err(|error| error.to_string())?;
-    let sha256 = sha256_hex(preview.payload_json.as_bytes());
-    storage.system_cleaner_upsert_recipe_bundle(&SystemCleanerRecipeBundleRecord {
-        bundle_id: payload.bundle_id.clone(),
-        version: payload.version,
-        source: payload.source.clone(),
-        signer_fingerprint: "local-unverified".into(),
-        sha256: sha256.clone(),
-        payload_json: preview.payload_json,
-    })?;
-    Ok(RecipeBundleInfo {
-        bundle_id: payload.bundle_id,
-        version: payload.version,
-        source: payload.source,
-        signer_fingerprint: "local-unverified".into(),
-        sha256,
-        recipe_count: payload.recipes.len(),
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1824,43 +1204,6 @@ mod tests {
     fn wildcard_match_is_case_insensitive_and_bounded() {
         assert!(wildcard_match("thumbcache_*.db", "ThumbCache_256.DB"));
         assert!(!wildcard_match("*.log", "notes.txt"));
-    }
-
-    #[test]
-    fn imported_rules_cannot_claim_safe_or_default_selection() {
-        let mut recipe = builtin(
-            "third-party",
-            RecipeSafety::Safe,
-            true,
-            vec![target("%TEMP%/vendor/cache")],
-            &[],
-        );
-        recipe.built_in = false;
-        recipe.title = "Third-party cache".into();
-        recipe.description = "Fixture imported cache rule.".into();
-        let errors = validate_recipe(&recipe, true);
-        assert!(
-            errors
-                .iter()
-                .any(|error| error.contains("cannot be selected by default"))
-        );
-        assert!(
-            errors
-                .iter()
-                .any(|error| error.contains("must use Review or Risky"))
-        );
-    }
-
-    #[test]
-    fn winapp2_import_ignores_registry_and_keeps_file_rules_review_only() {
-        let source = "[Example*]\nLangSecRef=3021\nFileKey1=%LocalAppData%\\Example\\Cache|*.tmp|RECURSE\nRegKey1=HKCU\\Software\\Example";
-        let preview = preview_winapp2(source, "fixture").expect("preview");
-        assert_eq!(preview.recipe_count, 1);
-        assert_eq!(preview.skipped_registry_keys, 1);
-        let payload: RecipeBundlePayload =
-            serde_json::from_str(&preview.payload_json).expect("payload");
-        assert_eq!(payload.recipes[0].safety, RecipeSafety::Review);
-        assert!(!payload.recipes[0].default_selected);
     }
 
     #[test]

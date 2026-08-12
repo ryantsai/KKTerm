@@ -700,7 +700,6 @@ mod tests {
                 "wsl-ubuntu",
                 "wsl-debian",
                 "poppler",
-                "windirstat",
             ])
         );
     }

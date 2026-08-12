@@ -10,7 +10,7 @@ type SystemCleanerScanState = {
 };
 
 const initialProgress: SystemCleanerScanProgress = {
-  phase: "metadata",
+  phase: "files",
   files: 0,
   folders: 0,
   bytes: 0,

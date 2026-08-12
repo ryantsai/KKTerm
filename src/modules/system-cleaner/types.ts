@@ -12,11 +12,6 @@ export type SystemCleanerDrive = {
   freeBytes: number;
 };
 
-export type SystemCleanerScannerStatus = {
-  available: boolean;
-  toolId: string;
-};
-
 export type SystemCleanerOverview = {
   scanRoot: string;
   totalBytes: number;
@@ -95,41 +90,6 @@ export type SystemCleanerHistoryRecord = {
   detailsJson: string;
 };
 
-export type SystemCleanerRecipeValidation = {
-  valid: boolean;
-  errors: string[];
-  recipe?: SystemCleanerRecipeCatalogEntry | null;
-  preview?: SystemCleanerCleanupPlan | null;
-};
-
-export type SystemCleanerRecipeBundlePreview = {
-  bundleId: string;
-  version: number;
-  source: string;
-  signerFingerprint: string;
-  sha256: string;
-  recipeCount: number;
-  added: string[];
-  updated: string[];
-  removed: string[];
-};
-
-export type SystemCleanerRecipeBundleInfo = {
-  bundleId: string;
-  version: number;
-  source: string;
-  signerFingerprint: string;
-  sha256: string;
-  recipeCount: number;
-};
-
-export type SystemCleanerWinapp2Preview = {
-  recipeCount: number;
-  skippedRegistryKeys: number;
-  skippedUnsupportedEntries: number;
-  warnings: string[];
-};
-
 export type SystemCleanerAppxPackage = {
   name: string;
   packageFullName: string;
@@ -161,7 +121,7 @@ export type SystemCleanerDirectoryListing = {
 };
 
 export type SystemCleanerScanProgress = {
-  phase: "metadata" | "files";
+  phase: "files";
   files: number;
   folders: number;
   bytes: number;

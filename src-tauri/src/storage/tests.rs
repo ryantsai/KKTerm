@@ -22,8 +22,31 @@ fn v57_system_cleaner_tables_upgrade_and_current_reopen_preserve_records() {
 
     let upgraded = Storage::open(db_path.clone()).expect("v56 storage upgrades");
     upgraded
-        .system_cleaner_add_keep_path(r"C:\keep")
-        .expect("Keep List row is stored");
+        .with_connection(|connection| {
+            connection
+                .execute(
+                    "INSERT INTO system_cleaner_keep_paths(path) VALUES (?1)",
+                    [r"C:\keep"],
+                )
+                .map_err(to_storage_error)?;
+            connection
+                .execute(
+                    "INSERT INTO system_cleaner_recipe_bundles (
+                        bundle_id, version, source, signer_fingerprint, sha256, payload_json
+                     ) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                    params![
+                        "fixture",
+                        1,
+                        "test",
+                        "abc",
+                        "def",
+                        r#"{"schemaVersion":1,"bundleId":"fixture","version":1,"source":"test","recipes":[]}"#,
+                    ],
+                )
+                .map_err(to_storage_error)?;
+            Ok(())
+        })
+        .expect("legacy System Cleaner rows are stored");
     upgraded
         .system_cleaner_record_history(&SystemCleanerHistoryRecord {
             id: "run-1".into(),
@@ -39,24 +62,20 @@ fn v57_system_cleaner_tables_upgrade_and_current_reopen_preserve_records() {
             details_json: "{}".into(),
         })
         .expect("history row is stored");
-    upgraded
-        .system_cleaner_upsert_recipe_bundle(&SystemCleanerRecipeBundleRecord {
-            bundle_id: "fixture".into(),
-            version: 1,
-            source: "test".into(),
-            signer_fingerprint: "abc".into(),
-            sha256: "def".into(),
-            payload_json: r#"{"schemaVersion":1,"bundleId":"fixture","version":1,"source":"test","recipes":[]}"#.into(),
-        })
-        .expect("bundle row is stored");
     drop(upgraded);
 
     let reopened = Storage::open(db_path.clone()).expect("current v57 storage reopens");
-    assert_eq!(reopened.system_cleaner_keep_paths().unwrap(), vec![r"C:\keep"]);
     assert_eq!(reopened.system_cleaner_history(10).unwrap().len(), 1);
-    assert_eq!(reopened.system_cleaner_recipe_bundles().unwrap().len(), 1);
     reopened
         .with_connection(|connection| {
+            let keep_rows: i64 = connection
+                .query_row("SELECT COUNT(*) FROM system_cleaner_keep_paths", [], |row| row.get(0))
+                .map_err(to_storage_error)?;
+            let bundle_rows: i64 = connection
+                .query_row("SELECT COUNT(*) FROM system_cleaner_recipe_bundles", [], |row| row.get(0))
+                .map_err(to_storage_error)?;
+            assert_eq!(keep_rows, 1);
+            assert_eq!(bundle_rows, 1);
             let version: i32 = connection
                 .pragma_query_value(None, "user_version", |row| row.get(0))
                 .map_err(to_storage_error)?;

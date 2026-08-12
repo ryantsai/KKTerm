@@ -1653,7 +1653,6 @@ async fn dispatch_tool(app: &AppHandle, name: &str, args: Value) -> Result<Value
         name if name.starts_with("kkterm.system_cleaner.") => {
             let assistant_tool = match name {
                 "kkterm.system_cleaner.drives.list" => "system_cleaner_list_drives",
-                "kkterm.system_cleaner.scanner_status" => "system_cleaner_scanner_status",
                 "kkterm.system_cleaner.catalog" => "system_cleaner_catalog",
                 "kkterm.system_cleaner.dangerous.scan" => "system_cleaner_scan",
                 "kkterm.system_cleaner.directory.list" => "system_cleaner_list_directory",
@@ -1662,23 +1661,7 @@ async fn dispatch_tool(app: &AppHandle, name: &str, args: Value) -> Result<Value
                     "system_cleaner_execute_cleanup_plan"
                 }
                 "kkterm.system_cleaner.cleanup.cancel" => "system_cleaner_cancel_cleanup",
-                "kkterm.system_cleaner.keep_paths.list" => "system_cleaner_list_keep_paths",
-                "kkterm.system_cleaner.keep_paths.dangerous.add" => "system_cleaner_add_keep_path",
-                "kkterm.system_cleaner.keep_paths.dangerous.remove" => {
-                    "system_cleaner_remove_keep_path"
-                }
                 "kkterm.system_cleaner.history" => "system_cleaner_history",
-                "kkterm.system_cleaner.recipes.validate" => "system_cleaner_validate_recipe",
-                "kkterm.system_cleaner.bundles.preview" => "system_cleaner_preview_signed_bundle",
-                "kkterm.system_cleaner.bundles.dangerous.import" => {
-                    "system_cleaner_import_signed_bundle"
-                }
-                "kkterm.system_cleaner.bundles.list" => "system_cleaner_list_recipe_bundles",
-                "kkterm.system_cleaner.bundles.dangerous.remove" => {
-                    "system_cleaner_remove_recipe_bundle"
-                }
-                "kkterm.system_cleaner.winapp2.preview" => "system_cleaner_preview_winapp2",
-                "kkterm.system_cleaner.winapp2.dangerous.import" => "system_cleaner_import_winapp2",
                 "kkterm.system_cleaner.appx.list" => "system_cleaner_list_appx_packages",
                 "kkterm.system_cleaner.appx.dangerous.remove" => {
                     "system_cleaner_remove_appx_package"

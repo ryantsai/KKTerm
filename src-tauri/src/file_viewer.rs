@@ -4,12 +4,13 @@
 //! (`run_blocking_command`/`spawn_blocking`) per the UI-liveness invariant —
 //! filesystem reads must never run on the foreground command runtime.
 //!
-//! The viewer reads local files in three shapes: a cheap metadata/type probe,
-//! a bounded UTF-8 text read (head or tail) for text/code/log/structured-data
-//! viewers, and a bounded base64 byte read for image/binary/hex viewers. All
-//! reads are explicitly capped so a multi-gigabyte file cannot exhaust memory.
+//! The viewer reads local files through a cheap metadata/type probe, bounded
+//! text or base64 chunks, and a sparse large-text line index. Large-text search
+//! follows that index one capped page at a time. All reads are explicitly
+//! bounded so a multi-gigabyte file cannot exhaust memory.
 
 use base64::Engine;
+use regex::{Regex, RegexBuilder};
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{BufRead, BufReader, Read, Seek, SeekFrom};
@@ -72,6 +73,29 @@ pub struct FileViewTextPageRequest {
     pub start_offset: u64,
     pub end_offset: u64,
     /// The encoding selected/detected by the initial bounded text read.
+    #[serde(default)]
+    pub encoding: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileViewTextSearchRequest {
+    pub path: String,
+    pub query: String,
+    /// Sparse offsets returned by `index_text`. Search consumes one bounded
+    /// page at a time and never copies the complete file into memory.
+    pub checkpoint_offsets: Vec<u64>,
+    pub total_size: u64,
+    pub total_lines: u64,
+    pub line_stride: u64,
+    pub expected_mtime_ms: i64,
+    /// Zero-based viewer cursor used as the next/previous search origin.
+    pub cursor_line: u64,
+    pub cursor_column: u64,
+    #[serde(default)]
+    pub backwards: bool,
+    #[serde(default)]
+    pub match_case: bool,
     #[serde(default)]
     pub encoding: Option<String>,
 }
@@ -158,6 +182,17 @@ pub struct FileViewTextPage {
     pub total_size: u64,
     pub mtime_ms: i64,
     pub detected_encoding: String,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct FileViewTextSearchMatch {
+    /// Zero-based line and UTF-16 columns, matching the frontend's string
+    /// indexing and virtual-row model.
+    pub line: u64,
+    pub start_column: u64,
+    pub end_column: u64,
+    pub wrapped: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -476,6 +511,276 @@ pub fn read_text_page(request: FileViewTextPageRequest) -> Result<FileViewTextPa
         mtime_ms: mtime_ms(&metadata),
         detected_encoding,
     })
+}
+
+#[derive(Clone, Copy)]
+enum SearchRegion {
+    BeforeCursor,
+    AtOrAfterCursor,
+}
+
+fn decoded_line_slices(text: &str, expected_line_count: usize) -> Vec<&str> {
+    let bytes = text.as_bytes();
+    let mut lines = Vec::with_capacity(expected_line_count.min(LARGE_TEXT_LINE_STRIDE as usize));
+    let mut start = 0usize;
+    let mut cursor = 0usize;
+    while cursor < bytes.len() && lines.len() < expected_line_count {
+        match bytes[cursor] {
+            b'\r' => {
+                lines.push(&text[start..cursor]);
+                cursor += 1;
+                if bytes.get(cursor) == Some(&b'\n') {
+                    cursor += 1;
+                }
+                start = cursor;
+            }
+            b'\n' => {
+                lines.push(&text[start..cursor]);
+                cursor += 1;
+                start = cursor;
+            }
+            _ => cursor += 1,
+        }
+    }
+    if lines.len() < expected_line_count {
+        lines.push(&text[start..]);
+    }
+    lines.truncate(expected_line_count);
+    lines
+}
+
+fn utf16_column(text: &str, byte_offset: usize) -> u64 {
+    text[..byte_offset].encode_utf16().count() as u64
+}
+
+fn match_is_in_region(
+    line: u64,
+    column: u64,
+    cursor_line: u64,
+    cursor_column: u64,
+    region: SearchRegion,
+) -> bool {
+    match region {
+        SearchRegion::BeforeCursor => {
+            line < cursor_line || (line == cursor_line && column < cursor_column)
+        }
+        SearchRegion::AtOrAfterCursor => {
+            line > cursor_line || (line == cursor_line && column >= cursor_column)
+        }
+    }
+}
+
+fn search_decoded_page(
+    regex: &Regex,
+    text: &str,
+    page_line: u64,
+    expected_line_count: usize,
+    cursor_line: u64,
+    cursor_column: u64,
+    region: SearchRegion,
+    backwards: bool,
+) -> Option<FileViewTextSearchMatch> {
+    let lines = decoded_line_slices(text, expected_line_count);
+    let make_result =
+        |local_line: usize, line: &str, found: regex::Match<'_>| FileViewTextSearchMatch {
+            line: page_line + local_line as u64,
+            start_column: utf16_column(line, found.start()),
+            end_column: utf16_column(line, found.end()),
+            wrapped: false,
+        };
+
+    if backwards {
+        for local_line in (0..lines.len()).rev() {
+            let line = lines[local_line];
+            let global_line = page_line + local_line as u64;
+            let mut last = None;
+            for found in regex.find_iter(line) {
+                let column = utf16_column(line, found.start());
+                if match_is_in_region(global_line, column, cursor_line, cursor_column, region) {
+                    last = Some(make_result(local_line, line, found));
+                }
+            }
+            if last.is_some() {
+                return last;
+            }
+        }
+        return None;
+    }
+
+    for (local_line, line) in lines.into_iter().enumerate() {
+        let global_line = page_line + local_line as u64;
+        for found in regex.find_iter(line) {
+            let column = utf16_column(line, found.start());
+            if match_is_in_region(global_line, column, cursor_line, cursor_column, region) {
+                return Some(make_result(local_line, line, found));
+            }
+        }
+    }
+    None
+}
+
+fn search_indexed_page(
+    file: &mut File,
+    request: &FileViewTextSearchRequest,
+    regex: &Regex,
+    encoding: &str,
+    page_index: usize,
+    cursor_line: u64,
+    cursor_column: u64,
+    region: SearchRegion,
+    backwards: bool,
+) -> Result<Option<FileViewTextSearchMatch>, String> {
+    let start_offset = request.checkpoint_offsets[page_index];
+    let end_offset = request
+        .checkpoint_offsets
+        .get(page_index + 1)
+        .copied()
+        .unwrap_or(request.total_size);
+    let length = end_offset.saturating_sub(start_offset);
+    if length > READ_HARD_CAP_BYTES {
+        return Err("large-text search page exceeds the maximum readable size".to_string());
+    }
+
+    file.seek(SeekFrom::Start(start_offset))
+        .map_err(|error| format!("cannot seek file: {error}"))?;
+    let mut buffer = vec![0u8; length as usize];
+    file.read_exact(&mut buffer)
+        .map_err(|error| format!("cannot read file: {error}"))?;
+    let (text, _) = decode_text(&buffer, Some(encoding));
+    let page_line = page_index as u64 * request.line_stride;
+    let expected_line_count = request
+        .line_stride
+        .min(request.total_lines.saturating_sub(page_line)) as usize;
+    Ok(search_decoded_page(
+        regex,
+        &text,
+        page_line,
+        expected_line_count,
+        cursor_line,
+        cursor_column,
+        region,
+        backwards,
+    ))
+}
+
+/// Find one literal match in the complete indexed file. The frontend supplies
+/// the already-built sparse index, and this helper reads one bounded page at a
+/// time in next/previous order. Results therefore cover the whole file without
+/// retaining either the document or a potentially huge result list in memory.
+pub fn search_text(
+    request: FileViewTextSearchRequest,
+) -> Result<Option<FileViewTextSearchMatch>, String> {
+    if request.query.is_empty() || request.total_lines == 0 {
+        return Ok(None);
+    }
+    if request.query.len() > 16 * 1024 {
+        return Err("large-text search query is too long".to_string());
+    }
+    if request.line_stride == 0 || request.checkpoint_offsets.first() != Some(&0) {
+        return Err("large-text search index is invalid".to_string());
+    }
+
+    let path = Path::new(&request.path);
+    let metadata = metadata_for(path)?;
+    if metadata.len() != request.total_size || mtime_ms(&metadata) != request.expected_mtime_ms {
+        return Err("large-text search index is stale".to_string());
+    }
+    let page_count = request.total_lines.div_ceil(request.line_stride) as usize;
+    if request.checkpoint_offsets.len() != page_count
+        || request
+            .checkpoint_offsets
+            .windows(2)
+            .any(|pair| pair[0] >= pair[1])
+        || request
+            .checkpoint_offsets
+            .last()
+            .is_some_and(|offset| *offset > request.total_size)
+    {
+        return Err("large-text search index is invalid".to_string());
+    }
+
+    let encoding = request
+        .encoding
+        .as_deref()
+        .filter(|label| !label.eq_ignore_ascii_case("auto"))
+        .and_then(|label| encoding_rs::Encoding::for_label(label.as_bytes()))
+        .map(|value| value.name().to_ascii_lowercase())
+        .unwrap_or_else(|| "utf-8".to_string());
+    let regex = RegexBuilder::new(&regex::escape(&request.query))
+        .case_insensitive(!request.match_case)
+        .build()
+        .map_err(|error| format!("cannot build large-text search: {error}"))?;
+    let cursor_line = request.cursor_line.min(request.total_lines - 1);
+    let cursor_page = (cursor_line / request.line_stride) as usize;
+    let mut file = File::open(path).map_err(|error| format!("cannot open file: {error}"))?;
+
+    if request.backwards {
+        for page_index in (0..=cursor_page).rev() {
+            if let Some(found) = search_indexed_page(
+                &mut file,
+                &request,
+                &regex,
+                &encoding,
+                page_index,
+                cursor_line,
+                request.cursor_column,
+                SearchRegion::BeforeCursor,
+                true,
+            )? {
+                return Ok(Some(found));
+            }
+        }
+        for page_index in (cursor_page..page_count).rev() {
+            if let Some(mut found) = search_indexed_page(
+                &mut file,
+                &request,
+                &regex,
+                &encoding,
+                page_index,
+                cursor_line,
+                request.cursor_column,
+                SearchRegion::AtOrAfterCursor,
+                true,
+            )? {
+                found.wrapped = true;
+                return Ok(Some(found));
+            }
+        }
+    } else {
+        for page_index in cursor_page..page_count {
+            if let Some(found) = search_indexed_page(
+                &mut file,
+                &request,
+                &regex,
+                &encoding,
+                page_index,
+                cursor_line,
+                request.cursor_column,
+                SearchRegion::AtOrAfterCursor,
+                false,
+            )? {
+                return Ok(Some(found));
+            }
+        }
+        for page_index in 0..=cursor_page {
+            if let Some(mut found) = search_indexed_page(
+                &mut file,
+                &request,
+                &regex,
+                &encoding,
+                page_index,
+                cursor_line,
+                request.cursor_column,
+                SearchRegion::BeforeCursor,
+                false,
+            )? {
+                found.wrapped = true;
+                return Ok(Some(found));
+            }
+        }
+    }
+
+    Ok(None)
 }
 
 /// Decode a byte buffer to text. With an explicit `encoding_rs` label (other than
@@ -925,6 +1230,128 @@ mod tests {
         })
         .unwrap();
         assert_eq!(page.text, "alpha\nbeta\ngamma");
+        std::fs::remove_file(path).ok();
+    }
+
+    fn large_text_search_request(
+        path: &Path,
+        index: &FileViewTextIndex,
+        query: &str,
+        cursor_line: u64,
+        cursor_column: u64,
+        backwards: bool,
+        match_case: bool,
+    ) -> FileViewTextSearchRequest {
+        FileViewTextSearchRequest {
+            path: path.to_string_lossy().into_owned(),
+            query: query.to_string(),
+            checkpoint_offsets: index.checkpoint_offsets.clone(),
+            total_size: index.total_size,
+            total_lines: index.total_lines,
+            line_stride: index.line_stride,
+            expected_mtime_ms: index.mtime_ms,
+            cursor_line,
+            cursor_column,
+            backwards,
+            match_case,
+            encoding: Some(index.detected_encoding.clone()),
+        }
+    }
+
+    #[test]
+    fn large_text_search_reaches_matches_outside_the_loaded_page_and_wraps() {
+        let source = (0..700)
+            .map(|line| match line {
+                300 => "Needle Alpha".to_string(),
+                600 => "needle Beta".to_string(),
+                _ => format!("ordinary line {line}"),
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        let (_dir, path) = temp_file("search-large.txt", source.as_bytes());
+        let index = index_text(FileViewTextIndexRequest {
+            path: path.to_string_lossy().into_owned(),
+            encoding: Some("utf-8".to_string()),
+        })
+        .unwrap();
+
+        let first = search_text(large_text_search_request(
+            &path, &index, "needle", 0, 0, false, false,
+        ))
+        .unwrap()
+        .unwrap();
+        assert_eq!(first.line, 300);
+        assert!(!first.wrapped);
+
+        let second = search_text(large_text_search_request(
+            &path,
+            &index,
+            "needle",
+            first.line,
+            first.end_column,
+            false,
+            false,
+        ))
+        .unwrap()
+        .unwrap();
+        assert_eq!(second.line, 600);
+
+        let previous = search_text(large_text_search_request(
+            &path,
+            &index,
+            "needle",
+            second.line,
+            second.start_column,
+            true,
+            false,
+        ))
+        .unwrap()
+        .unwrap();
+        assert_eq!(previous.line, 300);
+
+        let wrapped = search_text(large_text_search_request(
+            &path,
+            &index,
+            "needle",
+            second.line,
+            second.end_column,
+            false,
+            false,
+        ))
+        .unwrap()
+        .unwrap();
+        assert_eq!(wrapped.line, 300);
+        assert!(wrapped.wrapped);
+
+        let exact_case = search_text(large_text_search_request(
+            &path, &index, "Needle", 0, 0, false, true,
+        ))
+        .unwrap()
+        .unwrap();
+        assert_eq!(exact_case.line, 300);
+        std::fs::remove_file(path).ok();
+    }
+
+    #[test]
+    fn large_text_search_reports_utf16_columns_for_utf16_files() {
+        let mut bytes = vec![0xFF, 0xFE];
+        for unit in "alpha\n😀 beta\ngamma".encode_utf16() {
+            bytes.extend_from_slice(&unit.to_le_bytes());
+        }
+        let (_dir, path) = temp_file("search-utf16.txt", &bytes);
+        let index = index_text(FileViewTextIndexRequest {
+            path: path.to_string_lossy().into_owned(),
+            encoding: Some("utf-16le".to_string()),
+        })
+        .unwrap();
+        let found = search_text(large_text_search_request(
+            &path, &index, "beta", 0, 0, false, false,
+        ))
+        .unwrap()
+        .unwrap();
+        assert_eq!(found.line, 1);
+        assert_eq!(found.start_column, 3);
+        assert_eq!(found.end_column, 7);
         std::fs::remove_file(path).ok();
     }
 

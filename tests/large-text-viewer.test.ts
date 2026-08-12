@@ -59,3 +59,25 @@ test("large text viewer indexes the file and lazily reads bounded pages", async 
     "the large-text flex item must fill the viewer body instead of collapsing to zero width",
   );
 });
+
+test("large text viewer owns Mod+F and searches beyond the rendered virtual rows", async () => {
+  const [source, tauriTypes, rustCommands] = await Promise.all([
+    readFile(
+      new URL(
+        "../src/modules/workspace/connections/file-viewer/viewers/LargeTextViewer.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+    readFile(new URL("../src/lib/tauri.ts", import.meta.url), "utf8"),
+    readFile(new URL("../src-tauri/src/lib.rs", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(source, /document\.addEventListener\("keydown", handleFindShortcut, true\)/);
+  assert.match(source, /event\.preventDefault\(\)/);
+  assert.match(source, /invokeCommand\("search_file_view_text"/);
+  assert.match(source, /className="fv-large-text-match"/);
+  assert.match(tauriTypes, /search_file_view_text:/);
+  assert.match(rustCommands, /async fn search_file_view_text/);
+  assert.match(rustCommands, /search_file_view_text,/);
+});

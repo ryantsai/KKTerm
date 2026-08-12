@@ -2116,16 +2116,6 @@ pub struct SystemCleanerHistoryRecord {
     pub details_json: String,
 }
 
-#[derive(Clone, Debug)]
-pub struct SystemCleanerRecipeBundleRecord {
-    pub bundle_id: String,
-    pub version: u64,
-    pub source: String,
-    pub signer_fingerprint: String,
-    pub sha256: String,
-    pub payload_json: String,
-}
-
 mod settings;
 
 mod connections;
@@ -2155,37 +2145,6 @@ impl Storage {
 
     pub fn status(&self) -> String {
         format!("SQLite: {}", self.db_path.display())
-    }
-
-    pub(crate) fn system_cleaner_keep_paths(&self) -> Result<Vec<String>, String> {
-        let connection = self.lock()?;
-        let mut statement = connection
-            .prepare("SELECT path FROM system_cleaner_keep_paths ORDER BY path COLLATE NOCASE")
-            .map_err(to_storage_error)?;
-        let rows = statement
-            .query_map([], |row| row.get(0))
-            .map_err(to_storage_error)?;
-        rows.collect::<rusqlite::Result<Vec<_>>>()
-            .map_err(to_storage_error)
-    }
-
-    pub(crate) fn system_cleaner_add_keep_path(&self, path: &str) -> Result<(), String> {
-        let connection = self.lock()?;
-        connection
-            .execute(
-                "INSERT OR IGNORE INTO system_cleaner_keep_paths(path) VALUES (?1)",
-                [path],
-            )
-            .map_err(to_storage_error)?;
-        Ok(())
-    }
-
-    pub(crate) fn system_cleaner_remove_keep_path(&self, path: &str) -> Result<(), String> {
-        let connection = self.lock()?;
-        connection
-            .execute("DELETE FROM system_cleaner_keep_paths WHERE path = ?1", [path])
-            .map_err(to_storage_error)?;
-        Ok(())
     }
 
     pub(crate) fn system_cleaner_record_history(
@@ -2251,77 +2210,6 @@ impl Storage {
             .map_err(to_storage_error)?;
         rows.collect::<rusqlite::Result<Vec<_>>>()
             .map_err(to_storage_error)
-    }
-
-    pub(crate) fn system_cleaner_recipe_bundles(
-        &self,
-    ) -> Result<Vec<SystemCleanerRecipeBundleRecord>, String> {
-        let connection = self.lock()?;
-        let mut statement = connection
-            .prepare(
-                "SELECT bundle_id, version, source, signer_fingerprint, sha256, payload_json
-                 FROM system_cleaner_recipe_bundles WHERE enabled = 1 ORDER BY bundle_id",
-            )
-            .map_err(to_storage_error)?;
-        let rows = statement
-            .query_map([], |row| {
-                Ok(SystemCleanerRecipeBundleRecord {
-                    bundle_id: row.get(0)?,
-                    version: row.get::<_, i64>(1)?.max(0) as u64,
-                    source: row.get(2)?,
-                    signer_fingerprint: row.get(3)?,
-                    sha256: row.get(4)?,
-                    payload_json: row.get(5)?,
-                })
-            })
-            .map_err(to_storage_error)?;
-        rows.collect::<rusqlite::Result<Vec<_>>>()
-            .map_err(to_storage_error)
-    }
-
-    pub(crate) fn system_cleaner_upsert_recipe_bundle(
-        &self,
-        record: &SystemCleanerRecipeBundleRecord,
-    ) -> Result<(), String> {
-        let connection = self.lock()?;
-        connection
-            .execute(
-                "INSERT INTO system_cleaner_recipe_bundles (
-                    bundle_id, version, source, signer_fingerprint, sha256, payload_json
-                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6)
-                 ON CONFLICT(bundle_id) DO UPDATE SET
-                    version = excluded.version,
-                    source = excluded.source,
-                    signer_fingerprint = excluded.signer_fingerprint,
-                    sha256 = excluded.sha256,
-                    payload_json = excluded.payload_json,
-                    enabled = 1,
-                    updated_at = CURRENT_TIMESTAMP",
-                params![
-                    record.bundle_id,
-                    i64::try_from(record.version).unwrap_or(i64::MAX),
-                    record.source,
-                    record.signer_fingerprint,
-                    record.sha256,
-                    record.payload_json,
-                ],
-            )
-            .map_err(to_storage_error)?;
-        Ok(())
-    }
-
-    pub(crate) fn system_cleaner_remove_recipe_bundle(
-        &self,
-        bundle_id: &str,
-    ) -> Result<(), String> {
-        let connection = self.lock()?;
-        connection
-            .execute(
-                "DELETE FROM system_cleaner_recipe_bundles WHERE bundle_id = ?1",
-                [bundle_id],
-            )
-            .map_err(to_storage_error)?;
-        Ok(())
     }
 
     pub(crate) fn db_path(&self) -> PathBuf {

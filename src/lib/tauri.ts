@@ -418,6 +418,13 @@ export interface FileViewTextPage {
   detectedEncoding: string;
 }
 
+export interface FileViewTextSearchMatch {
+  line: number;
+  startColumn: number;
+  endColumn: number;
+  wrapped: boolean;
+}
+
 export interface FileViewBytes {
   base64: string;
   totalSize: number;
@@ -1199,10 +1206,6 @@ type CommandMap = {
     args: undefined;
     result: import("../modules/system-cleaner/types").SystemCleanerDrive[];
   };
-  system_cleaner_scanner_status: {
-    args: undefined;
-    result: import("../modules/system-cleaner/types").SystemCleanerScannerStatus;
-  };
   system_cleaner_catalog: {
     args: undefined;
     result: import("../modules/system-cleaner/types").SystemCleanerRecipeCatalogEntry[];
@@ -1231,49 +1234,9 @@ type CommandMap = {
     args: undefined;
     result: void;
   };
-  system_cleaner_list_keep_paths: {
-    args: undefined;
-    result: string[];
-  };
-  system_cleaner_add_keep_path: {
-    args: { path: string };
-    result: string[];
-  };
-  system_cleaner_remove_keep_path: {
-    args: { path: string };
-    result: string[];
-  };
   system_cleaner_history: {
     args: { limit?: number };
     result: import("../modules/system-cleaner/types").SystemCleanerHistoryRecord[];
-  };
-  system_cleaner_validate_recipe: {
-    args: { rawJson: string };
-    result: import("../modules/system-cleaner/types").SystemCleanerRecipeValidation;
-  };
-  system_cleaner_preview_signed_bundle: {
-    args: { rawJson: string };
-    result: import("../modules/system-cleaner/types").SystemCleanerRecipeBundlePreview;
-  };
-  system_cleaner_import_signed_bundle: {
-    args: { rawJson: string };
-    result: import("../modules/system-cleaner/types").SystemCleanerRecipeBundleInfo;
-  };
-  system_cleaner_list_recipe_bundles: {
-    args: undefined;
-    result: import("../modules/system-cleaner/types").SystemCleanerRecipeBundleInfo[];
-  };
-  system_cleaner_remove_recipe_bundle: {
-    args: { bundleId: string };
-    result: void;
-  };
-  system_cleaner_preview_winapp2: {
-    args: { text: string; source: string };
-    result: import("../modules/system-cleaner/types").SystemCleanerWinapp2Preview;
-  };
-  system_cleaner_import_winapp2: {
-    args: { text: string; source: string };
-    result: import("../modules/system-cleaner/types").SystemCleanerRecipeBundleInfo;
   };
   system_cleaner_list_appx_packages: {
     args: undefined;
@@ -3174,6 +3137,25 @@ type CommandMap = {
       request: { path: string; startOffset: number; endOffset: number; encoding?: string };
     };
     result: FileViewTextPage;
+  };
+  search_file_view_text: {
+    args: {
+      request: {
+        path: string;
+        query: string;
+        checkpointOffsets: number[];
+        totalSize: number;
+        totalLines: number;
+        lineStride: number;
+        expectedMtimeMs: number;
+        cursorLine: number;
+        cursorColumn: number;
+        backwards?: boolean;
+        matchCase?: boolean;
+        encoding?: string;
+      };
+    };
+    result: FileViewTextSearchMatch | null;
   };
   read_file_view_bytes: {
     args: { request: { path: string; offset: number; length: number } };

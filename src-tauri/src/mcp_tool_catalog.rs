@@ -1493,7 +1493,7 @@ pub fn tool_descriptors() -> Vec<Value> {
                             "settingsSectionId": {"type": "string"},
                             "itopsSiteId": {"type": "string"},
                             "itopsDestination": {"type": "string", "enum": ["site", "serverRooms", "hosts", "runHistory", "taskLibrary", "ipam", "networkMaps"]},
-                            "systemCleanerSection": {"type": "string", "enum": ["overview", "storage", "cleanup", "recommendations", "apps", "management"]},
+                            "systemCleanerSection": {"type": "string", "enum": ["overview"]},
                         },
                         "additionalProperties": false,
                     },
@@ -1523,18 +1523,13 @@ fn system_cleaner_tool_descriptors() -> Vec<Value> {
             empty(),
         ),
         descriptor(
-            "kkterm.system_cleaner.scanner_status",
-            "Report whether the optional WinDirStat scanner dependency is available.",
-            empty(),
-        ),
-        descriptor(
             "kkterm.system_cleaner.catalog",
             "List cleanup recipes with descriptions, safety levels, defaults, and estimated bytes.",
             empty(),
         ),
         descriptor(
             "kkterm.system_cleaner.dangerous.scan",
-            "DANGEROUS: explicitly scan one Windows drive. Uses the optional installed WinDirStat scanner when available and otherwise falls back to KKTerm's built-in scanner. Requires built_in_mcp_allow_all_dangerous = true.",
+            "DANGEROUS: explicitly scan one Windows drive with KKTerm's reparse-safe iterative Rust directory walker. Requires built_in_mcp_allow_all_dangerous = true.",
             json!({"type":"object","properties":{"root":{"type":"string"}},"additionalProperties":false}),
         ),
         descriptor(
@@ -1558,59 +1553,9 @@ fn system_cleaner_tool_descriptors() -> Vec<Value> {
             empty(),
         ),
         descriptor(
-            "kkterm.system_cleaner.keep_paths.list",
-            "List user-owned paths excluded from cleanup plans.",
-            empty(),
-        ),
-        descriptor(
-            "kkterm.system_cleaner.keep_paths.dangerous.add",
-            "DANGEROUS: add an existing local path to the System Cleaner Keep List. Requires built_in_mcp_allow_all_dangerous = true.",
-            json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"],"additionalProperties":false}),
-        ),
-        descriptor(
-            "kkterm.system_cleaner.keep_paths.dangerous.remove",
-            "DANGEROUS: remove a path from the System Cleaner Keep List. Requires built_in_mcp_allow_all_dangerous = true.",
-            json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"],"additionalProperties":false}),
-        ),
-        descriptor(
             "kkterm.system_cleaner.history",
             "Read recent cleanup history.",
             json!({"type":"object","properties":{"limit":{"type":"integer","minimum":1,"maximum":100}},"additionalProperties":false}),
-        ),
-        descriptor(
-            "kkterm.system_cleaner.recipes.validate",
-            "Validate and preview one restricted cleanup recipe JSON object without storing or executing it.",
-            json!({"type":"object","properties":{"rawJson":{"type":"string"}},"required":["rawJson"],"additionalProperties":false}),
-        ),
-        descriptor(
-            "kkterm.system_cleaner.bundles.preview",
-            "Verify and preview a signed recipe bundle without importing it.",
-            json!({"type":"object","properties":{"rawJson":{"type":"string"}},"required":["rawJson"],"additionalProperties":false}),
-        ),
-        descriptor(
-            "kkterm.system_cleaner.bundles.dangerous.import",
-            "DANGEROUS: import a verified signed recipe bundle into durable storage. Requires built_in_mcp_allow_all_dangerous = true.",
-            json!({"type":"object","properties":{"rawJson":{"type":"string"}},"required":["rawJson"],"additionalProperties":false}),
-        ),
-        descriptor(
-            "kkterm.system_cleaner.bundles.list",
-            "List imported recipe bundles.",
-            empty(),
-        ),
-        descriptor(
-            "kkterm.system_cleaner.bundles.dangerous.remove",
-            "DANGEROUS: remove one imported recipe bundle while retaining cleanup history. Requires built_in_mcp_allow_all_dangerous = true.",
-            json!({"type":"object","properties":{"bundleId":{"type":"string"}},"required":["bundleId"],"additionalProperties":false}),
-        ),
-        descriptor(
-            "kkterm.system_cleaner.winapp2.preview",
-            "Parse and preview supported file-only rules from user-supplied Winapp2.ini text without importing them.",
-            json!({"type":"object","properties":{"text":{"type":"string"},"source":{"type":"string"}},"required":["text","source"],"additionalProperties":false}),
-        ),
-        descriptor(
-            "kkterm.system_cleaner.winapp2.dangerous.import",
-            "DANGEROUS: import supported file-only Winapp2.ini rules as disabled Review recipes. Requires built_in_mcp_allow_all_dangerous = true.",
-            json!({"type":"object","properties":{"text":{"type":"string"},"source":{"type":"string"}},"required":["text","source"],"additionalProperties":false}),
         ),
         descriptor(
             "kkterm.system_cleaner.appx.list",

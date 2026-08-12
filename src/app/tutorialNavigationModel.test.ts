@@ -170,14 +170,18 @@ if (normalizeTutorialNavigationTarget({ page: "itops", itopsSiteId: 42 })) {
 }
 
 const inferredSystemCleanerNavigation = normalizeTutorialNavigationTarget({
-  systemCleanerSection: "cleanup",
+  systemCleanerSection: "overview",
 });
 
 if (
   inferredSystemCleanerNavigation?.page !== "systemCleaner" ||
-  inferredSystemCleanerNavigation.systemCleanerSection !== "cleanup"
+  inferredSystemCleanerNavigation.systemCleanerSection !== "overview"
 ) {
-  throw new Error("A System Cleaner section should infer System Cleaner navigation.");
+  throw new Error("The System Cleaner Overview should infer System Cleaner navigation.");
+}
+
+if (normalizeTutorialNavigationTarget({ systemCleanerSection: "cleanup" })) {
+  throw new Error("Removed System Cleaner sub-destinations should be rejected.");
 }
 
 const settingsTargets = [

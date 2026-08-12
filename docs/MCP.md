@@ -315,23 +315,17 @@ destroy files. Those operations use the `dangerous` namespace and require
 
 ### System Cleaner Module (`kkterm.system_cleaner.*`)
 
-System Cleaner is Windows-only. Read and preview tools are available normally. Operations that change durable safety data, import rules, request elevation, remove software, or delete files use a `dangerous` namespace and require `built_in_mcp_allow_all_dangerous = true`.
+System Cleaner is Windows-only. Read and preview tools are available normally. Mutations and the explicit whole-drive scan use a `dangerous` namespace and require `built_in_mcp_allow_all_dangerous = true`. The cleanup catalog is the app-owned built-in set; Keep List and recipe-import tools are not exposed.
 
 | Name | Description |
 |---|---|
 | `kkterm.system_cleaner.drives.list` | List analyzable drives and capacity/free bytes. |
-| `kkterm.system_cleaner.scanner_status` | Report managed WinDirStat availability. |
 | `kkterm.system_cleaner.catalog` | List cleanup recipes and safety metadata. |
-| `kkterm.system_cleaner.dangerous.scan` | Explicitly scan a drive; may install the managed scanner and request elevation. |
+| `kkterm.system_cleaner.dangerous.scan` | Explicitly scan a drive with KKTerm's reparse-safe iterative Rust directory walker. |
 | `kkterm.system_cleaner.directory.list` | Inspect a folder from the completed scan. |
 | `kkterm.system_cleaner.cleanup.preview` | Build an immutable exact-file cleanup plan. |
 | `kkterm.system_cleaner.cleanup.dangerous.execute` / `kkterm.system_cleaner.cleanup.cancel` | Execute or cancel a previewed plan. |
-| `kkterm.system_cleaner.keep_paths.list` / `kkterm.system_cleaner.keep_paths.dangerous.add` / `kkterm.system_cleaner.keep_paths.dangerous.remove` | Inspect or manage the Keep List. |
 | `kkterm.system_cleaner.history` | Read recent cleanup history. |
-| `kkterm.system_cleaner.recipes.validate` | Validate and dry-run one restricted recipe. |
-| `kkterm.system_cleaner.bundles.preview` / `kkterm.system_cleaner.bundles.list` | Inspect signed recipe bundles. |
-| `kkterm.system_cleaner.bundles.dangerous.import` / `kkterm.system_cleaner.bundles.dangerous.remove` | Import or remove signed recipe bundles. |
-| `kkterm.system_cleaner.winapp2.preview` / `kkterm.system_cleaner.winapp2.dangerous.import` | Preview or import supported file-only Winapp2 rules. |
 | `kkterm.system_cleaner.appx.list` / `kkterm.system_cleaner.appx.dangerous.remove` | Inspect or remove exact current-user AppX/MSIX identities. |
 | `kkterm.system_cleaner.maintenance.status` | Inspect Recycle Bin totals and supported maintenance availability. |
 | `kkterm.system_cleaner.maintenance.dangerous.empty_recycle_bin` | Permanently empty the Recycle Bin. |

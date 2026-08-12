@@ -13,13 +13,7 @@ export type ItOpsNavigationDestination =
   | "ipam"
   | "networkMaps";
 
-export type SystemCleanerNavigationSection =
-  | "overview"
-  | "storage"
-  | "cleanup"
-  | "recommendations"
-  | "apps"
-  | "management";
+export type SystemCleanerNavigationSection = "overview";
 
 export type TutorialNavigationTarget = {
   page: ActivePage;
@@ -28,7 +22,7 @@ export type TutorialNavigationTarget = {
   itopsSiteId?: string;
   /** IT Ops only: which navigator destination to open for that Site. */
   itopsDestination?: ItOpsNavigationDestination;
-  /** System Cleaner only: which destination to open before highlighting. */
+  /** System Cleaner only: opens the single Overview surface. */
   systemCleanerSection?: SystemCleanerNavigationSection;
 };
 
@@ -44,7 +38,7 @@ const ITOPS_NAVIGATION_DESTINATIONS = new Set<ItOpsNavigationDestination>([
 ]);
 
 const SYSTEM_CLEANER_NAVIGATION_SECTIONS = new Set<SystemCleanerNavigationSection>([
-  "overview", "storage", "cleanup", "recommendations", "apps", "management",
+  "overview",
 ]);
 
 const SETTINGS_SECTION_IDS = new Set<SettingsSectionId>([
@@ -247,22 +241,19 @@ const SYSTEM_CLEANER_TUTORIAL_TARGET_IDS = [
   "systemCleaner.search",
   "systemCleaner.scan",
   "systemCleaner.content",
-  "systemCleaner.navigation",
   "systemCleaner.overview",
   "systemCleaner.storage",
   "systemCleaner.cleanup",
-  "systemCleaner.management",
   "systemCleaner.recommendations",
   "systemCleaner.apps",
 ] as const;
 
 const SYSTEM_CLEANER_SECTION_TARGETS: Partial<Record<(typeof SYSTEM_CLEANER_TUTORIAL_TARGET_IDS)[number], SystemCleanerNavigationSection>> = {
   "systemCleaner.overview": "overview",
-  "systemCleaner.storage": "storage",
-  "systemCleaner.cleanup": "cleanup",
-  "systemCleaner.management": "management",
-  "systemCleaner.recommendations": "recommendations",
-  "systemCleaner.apps": "apps",
+  "systemCleaner.storage": "overview",
+  "systemCleaner.cleanup": "overview",
+  "systemCleaner.recommendations": "overview",
+  "systemCleaner.apps": "overview",
 };
 
 const TUTORIAL_TARGET_NAVIGATION: Record<string, TutorialNavigationTarget> = {

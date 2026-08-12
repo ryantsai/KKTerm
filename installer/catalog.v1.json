@@ -2377,41 +2377,6 @@
       }
     },
     {
-      "id": "windirstat",
-      "name": "WinDirStat",
-      "section": "internal",
-      "descriptionEn": "Open-source disk usage scanner used by System Cleaner for fast NTFS scans and physical allocation reporting.",
-      "category": "utilities",
-      "icon": "HardDrive",
-      "homepage": "https://windirstat.net/",
-      "releaseNotesUrl": "https://github.com/windirstat/windirstat/releases",
-      "provider": {
-        "kind": "githubRelease",
-        "repo": "windirstat/windirstat",
-        "assetPattern": "WinDirStat.zip",
-        "layout": "zip",
-        "pathSubdir": "x64"
-      },
-      "options": [
-        "version"
-      ],
-      "descriptionLocales": {
-        "de": "Open-Source-Datenträgerbelegungsscanner, den die Systembereinigung für schnelle NTFS-Scans und Berichte zur physischen Belegung verwendet.",
-        "es": "Analizador de uso de disco de código abierto que el Limpiador del sistema usa para análisis NTFS rápidos e informes de asignación física.",
-        "es-MX": "Analizador de uso de disco de código abierto que el Limpiador del sistema usa para análisis NTFS rápidos e informes de asignación física.",
-        "fr": "Analyseur open source de l’utilisation du disque employé par le Nettoyage du système pour des analyses NTFS rapides et des rapports d’allocation physique.",
-        "id": "Pemindai penggunaan disk sumber terbuka yang digunakan Pembersih Sistem untuk pemindaian NTFS cepat dan pelaporan alokasi fisik.",
-        "it": "Scanner open source dell'utilizzo del disco usato da Pulitore del sistema per scansioni NTFS rapide e rapporti sull'allocazione fisica.",
-        "ja": "システムクリーナーが高速な NTFS スキャンと物理割り当てのレポートに使用する、オープンソースのディスク使用量スキャナーです。",
-        "ko": "시스템 클리너가 빠른 NTFS 검사와 물리적 할당 보고에 사용하는 오픈 소스 디스크 사용량 스캐너입니다.",
-        "pt-BR": "Analisador de uso de disco de código aberto usado pelo Limpador de sistema para verificações NTFS rápidas e relatórios de alocação física.",
-        "th": "เครื่องมือสแกนการใช้งานดิสก์แบบโอเพนซอร์สที่ระบบทำความสะอาดใช้สำหรับการสแกน NTFS อย่างรวดเร็วและรายงานการจัดสรรพื้นที่จริง",
-        "vi": "Trình quét mức sử dụng đĩa nguồn mở được Trình dọn dẹp hệ thống dùng để quét NTFS nhanh và báo cáo dung lượng cấp phát vật lý.",
-        "zh-CN": "系统清理器用于快速 NTFS 扫描和物理分配空间报告的开源磁盘使用情况扫描工具。",
-        "zh-TW": "供系統清理工具用於快速 NTFS 掃描與實際占用空間報告的開放原始碼磁碟使用量掃描工具。"
-      }
-    },
-    {
       "id": "ffmpeg",
       "name": "FFmpeg",
       "section": "utilities",

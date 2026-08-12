@@ -171,7 +171,7 @@ When the user installs base WSL in the current app session, the Install Helper s
 
 ## Catalog source
 
-The catalog `installer/catalog.v1.json` is **embedded into the KKTerm binary at compile time** via `include_str!`. Updates to the catalog ship with the next KKTerm release — there is no network fetch, no on-disk cache, and no signature verification. The trust anchor is the app binary itself (eventually backed by Windows code-signing of the KKTerm installer). Internal dependency recipes include `poppler` for PDF previews and `windirstat` for System Cleaner storage scans; they are installed in context and do not appear as top-level gallery entries.
+The catalog `installer/catalog.v1.json` is **embedded into the KKTerm binary at compile time** via `include_str!`. Updates to the catalog ship with the next KKTerm release — there is no network fetch, no on-disk cache, and no signature verification. The trust anchor is the app binary itself (eventually backed by Windows code-signing of the KKTerm installer). Internal dependency recipes include `poppler` for PDF previews; they are installed in context and do not appear as top-level gallery entries. System Cleaner uses KKTerm's built-in Rust scanner and has no Install Helper dependency.
 
 Adding, editing, or removing a tool is a normal commit to `installer/catalog.v1.json` followed by a release. The `shipped_catalog_parses_and_validates` test embeds the same JSON via `include_str!` and runs `Catalog::validate()`, so malformed edits fail `cargo test` before they can ship.
 

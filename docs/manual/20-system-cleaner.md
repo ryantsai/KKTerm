@@ -2,200 +2,142 @@
 
 ## AI grep hints
 
-`systemCleaner.title`, `systemCleaner.overview`, `systemCleaner.storage`, `systemCleaner.cleanup`,
-`systemCleaner.apps`, `app.activityRailSystemCleaner`, `systemCleaner.page`,
-`systemCleaner.drive`, `systemCleaner.search`, `systemCleaner.scan`, `systemCleaner.content`,
-`systemCleaner.navigation`, `systemCleaner.overview`, `systemCleaner.storage`,
-`systemCleaner.cleanup`, `systemCleaner.management`, `systemCleaner.recommendations`,
-`src/modules/system-cleaner/SystemCleanerPage.tsx`, disk
-usage, allocated size, logical size, large old files, old downloads, temporary files, cache,
-exact cleanup preview, Keep List, protected paths, Rule Lab, Winapp2.ini, signed recipe bundle,
-cleanup history, AppX, MSIX, Recycle Bin, Delivery Optimization, DISM, uninstall, Windows cleanup
+`app.activityRailSystemCleaner`, `systemCleaner.title`, `systemCleaner.page`,
+`systemCleaner.drive`, `systemCleaner.search`,
+`systemCleaner.scan`, `systemCleaner.content`, `systemCleaner.overview`,
+`systemCleaner.storage`, `systemCleaner.cleanup`, `systemCleaner.recommendations`,
+`systemCleaner.apps`, `src/modules/system-cleaner/SystemCleanerPage.tsx`, disk usage,
+allocated size, logical size, large old files, old downloads, temporary files, cache,
+exact cleanup preview, cleanup history, AppX, MSIX, Recycle Bin, Delivery Optimization,
+DISM, uninstall, Windows cleanup
 
 The **System Cleaner** Module is available only on Windows. Open it from the
-Activity Rail. The Module opens on **`systemCleaner.overview`** without
-scanning. Select a fixed or removable drive in the compact Module header, then choose
-**`systemCleaner.scan`** from the Module header or the empty state to read the
-selected drive, measure its top-level folder tree and file-type totals, check a
-conservative set of cache locations, and ask Windows Package Manager for the
-installed-app list. The centered scan state continuously reports the files and
-bytes read through **`systemCleaner.scanProgress`**. While scanning, the Module
-and the Status Bar show the same Searching activity indicator. The current
-scan path is display-only and truncates when it is wider than the available
-space. The elevated scanner first reports file-index progress through
-**`systemCleaner.scanMetadataProgress`**, then streams file counts, logical
-bytes, and the current file name while KKTerm imports the scan report.
+Activity Rail. The Module has one scrollable **`systemCleaner.overview`**
+surface; Storage, Cleanup, Recommendations, uninstall, Windows maintenance,
+current-user Windows apps, and cleanup history are sections on that Overview,
+not separate destinations.
 
-After a scan, Overview summarizes used and free allocation, safely reclaimable
-space, installed-application count, the largest scanned items, cleanup
-categories, review recommendations, and installed applications. Its section links open the detailed
-Storage, Cleanup, Recommendations, and Uninstaller destinations. The header search filters the
-visible rows in the current destination; it does not start another scan.
+## Select and scan a drive
+
+The compact native selector in the Module header and the larger drive cards at
+the top of Overview both change the active fixed or removable drive. The drive
+cards show Windows-reported used and free space. Changing drives clears the
+previous drive's scan-bound results so Storage, Cleanup, Recommendations, and
+the WinGet application list cannot be mistaken for the newly selected drive.
+
+Choose **`systemCleaner.scan`** to start an explicit scan. System Cleaner never
+scans on mount, activation, or a schedule. KKTerm uses its reparse-safe iterative
+Rust directory walker directly; the scan does not launch an elevated helper or
+read the NTFS master file table. No external storage scanner is downloaded or
+installed.
+
+The centered scan state continuously reports file/byte progress through
+**`systemCleaner.scanProgress`**. The Module and Status Bar share the same
+Searching activity indicator. Directory reparse points are never followed.
+
+After scanning, the summary shows Windows used/free allocation, reclaimable
+built-in cleanup categories, installed-application count, elapsed time, and
+the scanned item count. Header search filters rows across the Overview; it does
+not start another scan.
 
 ## Storage analysis
 
-Choose **`systemCleaner.storage`** to browse the scanned drive with the same
-breadcrumb, list-row, column, and selection conventions as File Explorer.
+The **`systemCleaner.storage`** section browses the scanned drive with the same
+breadcrumb, row, column, and selection conventions as File Explorer.
 Double-click a folder or focus it and press Enter to open it; use a breadcrumb
 or the up action to return to a parent. Right-click an item for the native File
 Browser actions that apply to this read-only analysis view: open, copy, and
-**`sftp.copyPath`**. Folder sizes come from the completed one-pass scan, so
-opening a folder reads only its immediate entries instead of walking that
-subtree again. The file-type summary in the left control panel remains scoped
-to the whole drive. The drive card shows Windows-reported total, used, and free
-allocation. Storage rows show both logical file
-sizes through **`systemCleaner.size`** and physical allocation through
-**`systemCleaner.allocated`**; their
-percent bars and default descending order use allocated bytes. The folder
-footer summarizes both measurements through **`systemCleaner.storageTotals`**.
-Allocated totals come from WinDirStat's exported **Physical Size** values, while
-logical totals come from its **Logical Size** values. WinDirStat handles NTFS
-compression, sparse and WOF-backed files, hard links, and allocation-unit
-rounding before KKTerm imports the report. Filesystem metadata outside folder
-totals remains in the reserved or unattributed value identified by
-**`systemCleaner.allocationDetail`**. Directory reparse points are never
-traversed, avoiding duplicate target data.
+**`sftp.copyPath`**.
 
-System Cleaner uses an Install Helper-managed portable WinDirStat release. On
-the first scan, KKTerm automatically attempts to install that internal
-dependency without showing a confirmation prompt. KKTerm then requests standard
-UAC approval for the headless scan so WinDirStat can use its direct NTFS engine.
-The helper runs without opening a terminal window; the standard UAC consent
-prompt remains visible. If WinDirStat installation fails, is cancelled, cannot
-be resolved, or the external scan cannot run, KKTerm continues with its
-non-elevated, reparse-safe iterative directory walker instead of the legacy raw
-MFT reader. The drive scan runs on a background worker while cleanup locations
-and installed-app discovery run concurrently.
-Scans run only on explicit demand; use
-**`systemCleaner.scan`** to refresh the measurements after moving or deleting
-files. System Cleaner reports sizes but does not delete items from this view.
+Folder sizes come from the completed one-pass scan, so opening a folder reads
+only its immediate entries instead of walking that subtree again. Rows show
+logical file sizes through **`systemCleaner.size`** and physical allocation
+through **`systemCleaner.allocated`**. Percent bars and the default descending
+sort use allocated bytes. The footer summarizes both measurements through
+**`systemCleaner.storageTotals`**. The Rust walker reads logical file lengths,
+uses Windows compressed-size reporting for compressed or sparse files, and
+otherwise estimates physical allocation from the volume allocation unit.
+
+System Cleaner reports storage but does not delete items from this section.
+Choose **`systemCleaner.scan`** again after moving or deleting files.
 
 ## Cleanup
 
-Choose **`systemCleaner.cleanup`** to review compact rows generated by KKTerm's
-file-only cleanup recipes. The built-in catalog includes user and Windows temporary
-files; Edge, Chrome, Firefox, Brave, Vivaldi, and Opera caches; Teams, Discord,
-Slack, VS Code, JetBrains, Steam, Zoom, and Office caches; npm, pnpm, Yarn,
-NuGet, pip, Cargo, and Gradle caches; DirectX, NVIDIA, and AMD shader caches;
-thumbnail/icon caches; crash dumps; WER reports; and selected Windows logs.
-Application diagnostics and developer caches with a meaningful re-download or
-rebuild cost remain opt-in. Every row explains what the files are and why the
-category can be cleaned. Categories
-are grouped under **`systemCleaner.safety.safe`**,
-**`systemCleaner.safety.review`**, and **`systemCleaner.safety.risky`**.
-**`systemCleaner.selectAllSafe`** selects only reviewed rebuildable data, while
-**`systemCleaner.resetDefaults`** restores the conservative initial selection. Browser
-cache cleanup removes cache assets only; it does not target history, cookies,
-passwords, bookmarks, extensions, IndexedDB, local storage, or sessions.
+The **`systemCleaner.cleanup`** section contains only KKTerm's reviewed,
+built-in file cleanup categories: user and Windows temporary files; Edge,
+Chrome, Firefox, Brave, Vivaldi, and Opera caches; Teams, Discord, Slack,
+VS Code, JetBrains, Steam, Zoom, and Office caches; npm, pnpm, Yarn, NuGet,
+pip, Cargo, and Gradle caches; DirectX, NVIDIA, and AMD shader caches;
+thumbnail/icon caches; crash dumps; Windows Error Reporting; and selected
+Windows logs. User-authored rules, signed bundles, Winapp2 imports, and the
+Keep List are not part of System Cleaner.
 
-Select recipes, then choose **`systemCleaner.previewCleanup`**. The backend
-creates an immutable plan containing every exact regular file, its size,
-last-change time, Windows file identity, owning recipe/version, and canonical
-target root. The preview lists up to 500 exact paths in the Module while the
-plan retains the complete bounded set. It also reports protected/excluded files
-and names applications that should be closed. Approving
-**`systemCleaner.cleanTitle`** does not re-expand recipe paths: immediately
-before each deletion, the backend confirms the file is still a regular
-non-reparse file under the original target, has the same size/time/identity,
-is not newly excluded, and is not owned by a guarded running application.
-Changed, missing, locked, excluded, or application-owned files are skipped.
-The result can retry only skipped paths against the same plan. Cleanup can be
-cancelled; cancellation stops before the next file. The Cleanup view shows the Working orb and
-**`systemCleaner.cleaningWorking`** until cleanup and the follow-up measurement
-finish. The Module does not modify the registry and never runs a cleanup recipe
-as PowerShell, a shell command, a process action, or a database mutation.
-Approved attempts and outcomes are appended to `system-cleaner.operations.log`
-and structured cleanup results are retained in SQLite.
+Browser cache cleanup removes cache assets only. It does not target history,
+cookies, passwords, bookmarks, extensions, IndexedDB, local storage, or
+sessions. Personal folders, cloud-sync roots, credentials, source-control
+repositories, browser profile databases, extensions, local storage, and
+sessions remain behind a non-bypassable protected-path firewall.
 
-## Safety, recipes, and history
+Select categories and choose **`systemCleaner.previewCleanup`**. The backend
+creates an immutable plan containing every exact regular file, size,
+last-change time, Windows file identity, category version, and canonical target
+root. Approving **`systemCleaner.cleanTitle`** never re-expands paths. Before
+each deletion, the backend verifies that the file remains regular and
+non-reparse, is inside the original target, retains the same size/time/identity,
+is not protected, and is not owned by a guarded running application. Changed,
+missing, locked, protected, or application-owned files are skipped. Cleanup can
+be cancelled and skipped paths can be retried against the same plan.
 
-Choose **`systemCleaner.management`** for four explicitly managed surfaces:
-
-- **`systemCleaner.managementTab.safety`** owns the user Keep List. Any file
-  below a listed folder is excluded at preview and checked again at execution.
-  A non-overridable protected-path firewall separately covers personal folders,
-  cloud-sync roots, credentials, source-control repositories, browser profile
-  databases, extensions, local storage, and sessions.
-- **`systemCleaner.managementTab.rules`** contains Rule Lab. Paste one restricted
-  recipe JSON object and choose **`systemCleaner.validateAndPreview`** to validate
-  its schema and perform an exact dry run. Rule Lab never stores or executes the
-  draft. Signed recipe bundles use Ed25519 signatures, monotonic bundle versions,
-  signer-key pinning, SHA-256 fingerprints, and an added/updated/removed preview
-  before import. Imported rules remain Review and off by default.
-- The same rules surface accepts user-supplied Winapp2.ini content. KKTerm parses
-  only supported `FileKey` targets; it ignores `RegKey`, commands, unsupported
-  variables, and unsafe patterns. This provides broad community application
-  coverage without bundling Winapp2 data. Imported Winapp2 rules are Review and
-  off by default and still pass the exact-plan and protected-path checks.
-- **`systemCleaner.managementTab.history`** lists the latest 100 manual and retry
-  runs with timestamps, plan size, freed bytes, deleted count, skipped count,
-  recipe versions, and completion state. System Cleaner has no scheduled or
-  automatic cleanup mode.
-
-Verified bundle payloads, Keep List rows, and history are durable SQLite data.
-They participate in normal database backup/export behavior. Removing a bundle
-removes its available recipes but preserves prior history.
+Approved attempts and outcomes are appended to
+`system-cleaner.operations.log`; structured results appear in the Cleanup
+history section. System Cleaner does not modify the registry and never runs a
+cleanup category as PowerShell, a shell command, a process action, or a
+database mutation.
 
 ## Recommendations
 
-Choose **`systemCleaner.recommendations`** to review personal files that may be
-worth removing but are never safe to delete as a whole category. The scan lists
-up to 200 of the highest-allocation matches in each category:
+The **`systemCleaner.recommendations`** section lists personal files that may
+be worth removing but are never selected automatically. Each category contains
+up to 200 of its highest-allocation matches:
 
-- **`systemCleaner.recommendation.large-old-files`** includes regular files of
-  at least 100 MB whose filesystem last-change time is at least 180 days old.
-- **`systemCleaner.recommendation.old-downloads`** includes regular files below
-  the current user's Downloads folder whose filesystem last-change time is at
-  least 90 days old.
+- **`systemCleaner.recommendation.large-old-files`**: regular files of at least
+  100 MB whose last-change time is at least 180 days old.
+- **`systemCleaner.recommendation.old-downloads`**: regular files under the
+  current user's Downloads folder whose last-change time is at least 90 days
+  old.
 
 "Old" means unchanged, not unused or unopened; Windows access-time tracking is
 not used. A file can appear in both categories, and selecting it in either row
-selects the same path only once. No recommendation is selected automatically.
-Use **`common.open`** to inspect a candidate, select individual files, then use
-**`systemCleaner.deleteSelected`** and approve the destructive confirmation.
-Recommendation deletion is permanent and does not use the Recycle Bin. Before
-deleting anything, the backend verifies that every requested path is a regular,
-non-reparse file inside the scanned drive, was present in the completed scan's
-recommendation allowlist, and still has the same size and last-change time. If
-any file changed, deletion stops and the Module asks for a new scan. Approved
-attempts and outcomes are appended to `system-cleaner.operations.log` and the
-result is reported through the Status Bar.
+selects the same path once. Use **`common.open`** to inspect a candidate, then
+choose **`systemCleaner.deleteSelected`** and approve the destructive
+confirmation. Deletion is permanent and does not use the Recycle Bin. The
+backend accepts only files from the latest completed scan's recommendation
+allowlist and rejects anything whose size or last-change time changed.
 
-## Uninstall applications
+## Applications and Windows-owned cleanup
 
-Choose **`systemCleaner.apps`** to view packages detected by Windows Package
-Manager in a searchable compact table. The table uses the truthful package ID
-and version returned by Windows Package Manager; it does not infer publisher,
-installed size, or removal safety. **`systemCleaner.aiExplain`**
-sends only the selected package's displayed name, package id, and version to the
-current AI Assistant model, opens the shared Assistant Panel, and asks what the
-application does and what uninstalling it may affect.
-**`systemCleaner.uninstall`** opens a destructive confirmation sheet; after
-confirmation, KKTerm launches a separate elevated helper. Windows displays the
-standard UAC approval prompt before that helper starts the package's interactive
-uninstaller. Users may select multiple rows and choose
-**`systemCleaner.uninstallSelected`**; KKTerm processes those packages in order,
-with a separate UAC approval and elevated helper for each package. The package
-owns removal of its registered files and settings.
-System Cleaner does not perform speculative registry sweeping.
+The **`systemCleaner.apps`** section lists packages detected by Windows Package
+Manager. It shows the package name, truthful package id, and version returned by
+WinGet; it does not infer publisher, installed size, or removal safety.
+**`systemCleaner.aiExplain`** sends only those displayed package fields to the
+current AI Assistant model. **`systemCleaner.uninstall`** opens a destructive
+confirmation, then launches a separate elevated helper for the package's
+interactive uninstaller. Multi-select uninstall keeps one UAC approval and
+helper per package.
 
-## Windows-owned cleanup and current-user apps
+The bottom Overview area contains supported Windows-owned actions and exact
+current-user AppX/MSIX removal:
 
-Choose **`systemCleaner.managementTab.windowsApps`** for actions that are kept
-outside file recipes:
-
-- **`systemCleaner.maintenanceAction.recycleBin`** queries size/item totals with
-  the Windows Shell Recycle Bin API and empties it through the same API after a
-  permanent-deletion confirmation.
+- **`systemCleaner.maintenanceAction.recycleBin`** reads totals and empties the
+  Recycle Bin through the Windows Shell API after confirmation.
 - **`systemCleaner.maintenanceAction.deliveryOptimization`** requests UAC and
-  runs the supported `Delete-DeliveryOptimizationCache` cmdlet.
+  runs `Delete-DeliveryOptimizationCache`.
 - **`systemCleaner.maintenanceAction.componentCleanup`** requests UAC and runs
-  `DISM /Online /Cleanup-Image /StartComponentCleanup` to remove superseded
-  Windows components. It does not use direct Windows Update folder deletion.
-- The current-user AppX/MSIX table shows exact package full names. Removing one
-  uses `Remove-AppxPackage -Package <exact identity>` after `ConfirmSheet` and
-  records the operation. This is intentionally not a mass-debloat action;
-  reinstall through Microsoft Store or the package's original source.
+  `DISM /Online /Cleanup-Image /StartComponentCleanup`.
+- Current-user Windows apps are removed with
+  `Remove-AppxPackage -Package <exact identity>` after confirmation.
 
-These operations use app-owned confirmations and supported Windows mechanisms,
-not cleanup recipes. None can be scheduled from KKTerm.
+These actions remain separate from file cleanup categories. None can be
+scheduled. Every approved mutation is recorded in
+`system-cleaner.operations.log`, and transient outcomes appear in the Status
+Bar.

@@ -3289,7 +3289,7 @@
       },
       "systemCleaner": {
         "label": "System Cleaner",
-        "description": "Analyze storage, preview protected cleanup plans, manage cleanup safety data, and run explicitly approved Windows cleanup actions."
+        "description": "Analyze storage, preview protected cleanup plans, and run explicitly approved Windows cleanup actions."
       },
       "screenshots": {
         "label": "Screenshots",

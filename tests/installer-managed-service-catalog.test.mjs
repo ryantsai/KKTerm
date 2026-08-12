@@ -33,7 +33,6 @@ test("catalog-owned sections replace the frontend recipe-id allow-list", async (
     "nvm-windows",
     "poppler",
     "uv",
-    "windirstat",
     "wsl-debian",
     "wsl-ubuntu",
   ]);

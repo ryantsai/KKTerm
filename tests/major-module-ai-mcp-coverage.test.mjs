@@ -103,7 +103,7 @@ test("System Cleaner Assistant and MCP surfaces stay complete and dispatchable",
   ]);
   const mcpNames = [...catalog.matchAll(/"(kkterm\.system_cleaner\.[a-z0-9_.]+)"/g)]
     .map((match) => match[1]);
-  assert.equal(new Set(mcpNames).size, 27, "every supported System Cleaner flow must be published");
+  assert.equal(new Set(mcpNames).size, 16, "every supported System Cleaner Overview flow must be published");
   for (const name of new Set(mcpNames)) {
     assert.ok(bridge.includes(`"${name}"`), `${name} must dispatch through the bridge`);
   }
@@ -111,7 +111,7 @@ test("System Cleaner Assistant and MCP surfaces stay complete and dispatchable",
   const definitionBlock = ai.match(/fn system_cleaner_tool_definitions[\s\S]*?fn watchdog_create_schema/)?.[0] ?? "";
   const assistantNames = [...definitionBlock.matchAll(/"(system_cleaner_[a-z0-9_]+)"/g)]
     .map((match) => match[1]);
-  assert.equal(new Set(assistantNames).size, 27, "every supported System Cleaner flow must be available to the Assistant");
+  assert.equal(new Set(assistantNames).size, 16, "every supported System Cleaner Overview flow must be available to the Assistant");
   for (const name of new Set(assistantNames)) {
     assert.ok(bridge.includes(`"${name}"`), `${name} must have an MCP-to-Assistant mapping`);
   }

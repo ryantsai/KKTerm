@@ -800,6 +800,7 @@ function FileViewerContent({
           <LargeTextViewer
             encoding={content.encoding}
             filePath={filePath}
+            isActive={isActive}
             text={content.text ?? ""}
           />
         );

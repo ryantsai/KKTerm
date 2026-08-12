@@ -3438,6 +3438,16 @@ async fn read_file_view_text_page(
 }
 
 #[tauri::command]
+async fn search_file_view_text(
+    request: file_viewer::FileViewTextSearchRequest,
+) -> Result<Option<file_viewer::FileViewTextSearchMatch>, String> {
+    run_blocking_command("search file view text", move || {
+        file_viewer::search_text(request)
+    })
+    .await
+}
+
+#[tauri::command]
 async fn read_file_view_bytes(
     request: file_viewer::FileViewBytesRequest,
 ) -> Result<file_viewer::FileViewBytes, String> {
@@ -4398,10 +4408,6 @@ fn configure_macos_updater<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tau
     builder
 }
 
-pub fn run_system_cleaner_helper_if_requested() -> Option<i32> {
-    system_cleaner::run_mft_helper_from_args()
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let process_args = std::env::args().collect::<Vec<_>>();
@@ -4945,7 +4951,6 @@ pub fn run() {
             get_host_usage_snapshot,
             get_system_performance_counters,
             system_cleaner::system_cleaner_list_drives,
-            system_cleaner::system_cleaner_scanner_status,
             system_cleaner::system_cleaner_catalog,
             system_cleaner::system_cleaner_scan,
             system_cleaner::system_cleaner_list_directory,
@@ -4953,17 +4958,7 @@ pub fn run() {
             system_cleaner::system_cleaner_build_cleanup_plan,
             system_cleaner::system_cleaner_execute_cleanup_plan,
             system_cleaner::system_cleaner_cancel_cleanup,
-            system_cleaner::system_cleaner_list_keep_paths,
-            system_cleaner::system_cleaner_add_keep_path,
-            system_cleaner::system_cleaner_remove_keep_path,
             system_cleaner::system_cleaner_history,
-            system_cleaner::system_cleaner_validate_recipe,
-            system_cleaner::system_cleaner_preview_signed_bundle,
-            system_cleaner::system_cleaner_import_signed_bundle,
-            system_cleaner::system_cleaner_list_recipe_bundles,
-            system_cleaner::system_cleaner_remove_recipe_bundle,
-            system_cleaner::system_cleaner_preview_winapp2,
-            system_cleaner::system_cleaner_import_winapp2,
             system_cleaner::system_cleaner_list_appx_packages,
             system_cleaner::system_cleaner_remove_appx_package,
             system_cleaner::system_cleaner_windows_maintenance_status,
@@ -5090,6 +5085,7 @@ pub fn run() {
             read_file_view_text,
             index_file_view_text,
             read_file_view_text_page,
+            search_file_view_text,
             read_file_view_bytes,
             file_view_pdf_status,
             write_file_view,

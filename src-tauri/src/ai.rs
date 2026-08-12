@@ -89,7 +89,7 @@ const TUTORIAL_TOOL_KNOWN_TARGETS: &str = concat!(
     "remoteDesktop.toolbar, remoteDesktop.viewMode, remoteDesktop.sendCtrlAltDel, remoteDesktop.reconnect, remoteDesktop.sendToAi, remoteDesktop.surface with navigation page=workspace; ",
     "installer.updateAll, installer.toolOptions with navigation page=installer; ",
     "app.activityRailScreenshots, screenshots.captureRegion, screenshots.captureWindow, screenshots.captureFullscreen, screenshots.viewSwitch, screenshots.library with navigation page=screenshots; ",
-    "app.activityRailSystemCleaner, systemCleaner.page, systemCleaner.drive, systemCleaner.search, systemCleaner.scan, systemCleaner.content, systemCleaner.navigation, systemCleaner.overview, systemCleaner.storage, systemCleaner.cleanup, systemCleaner.management, systemCleaner.recommendations, systemCleaner.apps with navigation page=systemCleaner; ",
+    "app.activityRailSystemCleaner, systemCleaner.page, systemCleaner.drive, systemCleaner.search, systemCleaner.scan, systemCleaner.content, systemCleaner.overview, systemCleaner.storage, systemCleaner.cleanup, systemCleaner.recommendations, systemCleaner.apps with navigation page=systemCleaner systemCleanerSection=overview; ",
     "settings.language, settings.activityRail, settings.workspaceAccess, settings.statusBar, settings.settingsData, settings.debug with navigation page=settings settingsSectionId=general-settings; ",
     "settings.appUiFontFamily, settings.appearance.colorScheme, settings.resetLayout with navigation page=settings settingsSectionId=appearance-settings; ",
     "settings.dashboardDefaultLanding, settings.dashboardUseRandomDynamicBackground, settings.dashboardMaxActiveScriptWidgets with navigation page=settings settingsSectionId=dashboard-settings; ",
@@ -3647,7 +3647,7 @@ fn ai_tool_definitions_with_skills(
             format!(
                 "Show a one-step in-app Tutorial overlay by navigating to a known app surface when needed, highlighting an app-owned target, dimming the rest of the window, and placing a short help balloon beside it. Use this only after the user explicitly asks to be shown where something is, or after the user accepts your offer to navigate. Only pass targetId values explicitly listed in current page context or documented by this tool; do not invent CSS selectors. Known targets include {TUTORIAL_TOOL_KNOWN_TARGETS}. The current IT Ops page context may additionally list entity-scoped targets (itops.site:<siteId>, itops.host:<hostId>, itops.task:<taskId>, itops.run:<runId>) that highlight one specific row; pair them with navigation.itopsSiteId when the entity belongs to a Site that is not selected. navigation.itopsSiteId and navigation.itopsDestination open one IT Ops Site's navigator destination (hosts, runHistory, serverRooms, site) or a global Library destination (taskLibrary, ipam, networkMaps) before highlighting. The overlay disappears when the user clicks or presses any key."
             ),
-            json!({"type":"object","properties":{"targetId":{"type":"string"},"title":{"type":"string","maxLength":80},"body":{"type":"string","maxLength":240},"navigation":{"type":"object","properties":{"page":{"type":"string","enum":["workspace","dashboard","itops","installer","screenshots","systemCleaner","settings"]},"settingsSectionId":{"type":"string","enum":["general-settings","appearance-settings","dashboard-settings","workspace-settings","file-explorer-settings","dont-sleep-settings","installer-settings","credentials-settings","assistant-settings","ssh-settings","terminal-settings","url-settings","rdp-settings","vnc-settings","screenshots-settings","itops-settings","shortcuts-settings","proxy-settings","about-settings"]},"itopsSiteId":{"type":"string","description":"IT Ops only: the Site to select before highlighting."},"itopsDestination":{"type":"string","enum":["site","serverRooms","hosts","runHistory","taskLibrary","ipam","networkMaps"],"description":"IT Ops only: which navigator destination to open."},"systemCleanerSection":{"type":"string","enum":["overview","storage","cleanup","recommendations","apps","management"],"description":"System Cleaner only: which destination to open before highlighting."}},"additionalProperties":false},"page":{"type":"string","enum":["workspace","dashboard","itops","installer","screenshots","systemCleaner","settings"]},"settingsSectionId":{"type":"string","enum":["general-settings","appearance-settings","dashboard-settings","workspace-settings","file-explorer-settings","dont-sleep-settings","installer-settings","credentials-settings","assistant-settings","ssh-settings","terminal-settings","url-settings","rdp-settings","vnc-settings","screenshots-settings","itops-settings","shortcuts-settings","proxy-settings","about-settings"]},"systemCleanerSection":{"type":"string","enum":["overview","storage","cleanup","recommendations","apps","management"]}},"required":["targetId","title","body"]}),
+            json!({"type":"object","properties":{"targetId":{"type":"string"},"title":{"type":"string","maxLength":80},"body":{"type":"string","maxLength":240},"navigation":{"type":"object","properties":{"page":{"type":"string","enum":["workspace","dashboard","itops","installer","screenshots","systemCleaner","settings"]},"settingsSectionId":{"type":"string","enum":["general-settings","appearance-settings","dashboard-settings","workspace-settings","file-explorer-settings","dont-sleep-settings","installer-settings","credentials-settings","assistant-settings","ssh-settings","terminal-settings","url-settings","rdp-settings","vnc-settings","screenshots-settings","itops-settings","shortcuts-settings","proxy-settings","about-settings"]},"itopsSiteId":{"type":"string","description":"IT Ops only: the Site to select before highlighting."},"itopsDestination":{"type":"string","enum":["site","serverRooms","hosts","runHistory","taskLibrary","ipam","networkMaps"],"description":"IT Ops only: which navigator destination to open."},"systemCleanerSection":{"type":"string","enum":["overview"],"description":"System Cleaner only: open the single Overview surface before highlighting."}},"additionalProperties":false},"page":{"type":"string","enum":["workspace","dashboard","itops","installer","screenshots","systemCleaner","settings"]},"settingsSectionId":{"type":"string","enum":["general-settings","appearance-settings","dashboard-settings","workspace-settings","file-explorer-settings","dont-sleep-settings","installer-settings","credentials-settings","assistant-settings","ssh-settings","terminal-settings","url-settings","rdp-settings","vnc-settings","screenshots-settings","itops-settings","shortcuts-settings","proxy-settings","about-settings"]},"systemCleanerSection":{"type":"string","enum":["overview"]}},"required":["targetId","title","body"]}),
         ));
     }
     if settings.network() {
@@ -3721,18 +3721,13 @@ fn system_cleaner_tool_definitions() -> Vec<OpenAiToolDefinition> {
             empty(),
         ),
         tool_definition(
-            "system_cleaner_scanner_status",
-            "Report whether the optional WinDirStat scanner dependency is available.",
-            empty(),
-        ),
-        tool_definition(
             "system_cleaner_catalog",
             "List cleanup recipes with descriptions, safety levels, defaults, and estimated bytes.",
             empty(),
         ),
         tool_definition(
             "system_cleaner_scan",
-            "Explicitly scan one Windows drive and return storage, cleanup, recommendation, and installed-application analysis. Uses the optional installed WinDirStat scanner when available and otherwise falls back to KKTerm's built-in scanner.",
+            "Explicitly scan one Windows drive and return storage, cleanup, recommendation, and installed-application analysis using KKTerm's built-in Rust scanner.",
             json!({"type":"object","properties":{"root":{"type":"string"}},"additionalProperties":false}),
         ),
         tool_definition(
@@ -3756,59 +3751,9 @@ fn system_cleaner_tool_definitions() -> Vec<OpenAiToolDefinition> {
             empty(),
         ),
         tool_definition(
-            "system_cleaner_list_keep_paths",
-            "List user-owned paths excluded from System Cleaner cleanup plans.",
-            empty(),
-        ),
-        tool_definition(
-            "system_cleaner_add_keep_path",
-            "Add an existing local path to the System Cleaner Keep List.",
-            json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"],"additionalProperties":false}),
-        ),
-        tool_definition(
-            "system_cleaner_remove_keep_path",
-            "Remove a path from the System Cleaner Keep List.",
-            json!({"type":"object","properties":{"path":{"type":"string"}},"required":["path"],"additionalProperties":false}),
-        ),
-        tool_definition(
             "system_cleaner_history",
             "Read recent System Cleaner cleanup history.",
             json!({"type":"object","properties":{"limit":{"type":"integer","minimum":1,"maximum":100}},"additionalProperties":false}),
-        ),
-        tool_definition(
-            "system_cleaner_validate_recipe",
-            "Validate and preview one restricted cleanup recipe JSON object without storing or executing it.",
-            json!({"type":"object","properties":{"rawJson":{"type":"string"}},"required":["rawJson"],"additionalProperties":false}),
-        ),
-        tool_definition(
-            "system_cleaner_preview_signed_bundle",
-            "Verify and preview a signed System Cleaner recipe bundle without importing it.",
-            json!({"type":"object","properties":{"rawJson":{"type":"string"}},"required":["rawJson"],"additionalProperties":false}),
-        ),
-        tool_definition(
-            "system_cleaner_import_signed_bundle",
-            "Import a verified signed System Cleaner recipe bundle into durable storage.",
-            json!({"type":"object","properties":{"rawJson":{"type":"string"}},"required":["rawJson"],"additionalProperties":false}),
-        ),
-        tool_definition(
-            "system_cleaner_list_recipe_bundles",
-            "List imported System Cleaner recipe bundles.",
-            empty(),
-        ),
-        tool_definition(
-            "system_cleaner_remove_recipe_bundle",
-            "Remove one imported System Cleaner recipe bundle. Existing cleanup history is retained.",
-            json!({"type":"object","properties":{"bundleId":{"type":"string"}},"required":["bundleId"],"additionalProperties":false}),
-        ),
-        tool_definition(
-            "system_cleaner_preview_winapp2",
-            "Parse and preview supported file-only rules from user-supplied Winapp2.ini text without importing them.",
-            json!({"type":"object","properties":{"text":{"type":"string"},"source":{"type":"string"}},"required":["text","source"],"additionalProperties":false}),
-        ),
-        tool_definition(
-            "system_cleaner_import_winapp2",
-            "Import supported file-only rules from reviewed Winapp2.ini text as disabled Review recipes.",
-            json!({"type":"object","properties":{"text":{"type":"string"},"source":{"type":"string"}},"required":["text","source"],"additionalProperties":false}),
         ),
         tool_definition(
             "system_cleaner_list_appx_packages",
@@ -4685,16 +4630,10 @@ fn tool_requires_allow_all(tool_name: &str) -> bool {
             && !matches!(
                 tool_name,
                 "system_cleaner_list_drives"
-                    | "system_cleaner_scanner_status"
                     | "system_cleaner_catalog"
                     | "system_cleaner_list_directory"
                     | "system_cleaner_build_cleanup_plan"
-                    | "system_cleaner_list_keep_paths"
                     | "system_cleaner_history"
-                    | "system_cleaner_validate_recipe"
-                    | "system_cleaner_preview_signed_bundle"
-                    | "system_cleaner_list_recipe_bundles"
-                    | "system_cleaner_preview_winapp2"
                     | "system_cleaner_list_appx_packages"
                     | "system_cleaner_windows_maintenance_status"
                     | "system_cleaner_cancel_cleanup"
@@ -6031,10 +5970,6 @@ pub(crate) async fn system_cleaner_tool(app: &tauri::AppHandle, name: &str, args
                 serde_json::to_value(crate::system_cleaner::system_cleaner_list_drives().await?)
                     .map_err(|error| error.to_string())
             }
-            "system_cleaner_scanner_status" => {
-                serde_json::to_value(crate::system_cleaner::system_cleaner_scanner_status().await?)
-                    .map_err(|error| error.to_string())
-            }
             "system_cleaner_catalog" => serde_json::to_value(
                 crate::system_cleaner::system_cleaner_catalog(app.clone()).await?,
             )
@@ -6077,78 +6012,12 @@ pub(crate) async fn system_cleaner_tool(app: &tauri::AppHandle, name: &str, args
                 crate::system_cleaner::system_cleaner_cancel_cleanup();
                 Ok(json!({"cancelled": true}))
             }
-            "system_cleaner_list_keep_paths" => serde_json::to_value(
-                crate::system_cleaner::system_cleaner_list_keep_paths(app.state())?,
-            )
-            .map_err(|error| error.to_string()),
-            "system_cleaner_add_keep_path" => {
-                serde_json::to_value(crate::system_cleaner::system_cleaner_add_keep_path(
-                    app.state(),
-                    required_string("path")?,
-                )?)
-                .map_err(|error| error.to_string())
-            }
-            "system_cleaner_remove_keep_path" => {
-                serde_json::to_value(crate::system_cleaner::system_cleaner_remove_keep_path(
-                    app.state(),
-                    required_string("path")?,
-                )?)
-                .map_err(|error| error.to_string())
-            }
             "system_cleaner_history" => {
                 serde_json::to_value(crate::system_cleaner::system_cleaner_history(
                     app.state(),
                     args.get("limit")
                         .and_then(Value::as_u64)
                         .map(|value| value as usize),
-                )?)
-                .map_err(|error| error.to_string())
-            }
-            "system_cleaner_validate_recipe" => serde_json::to_value(
-                crate::system_cleaner::system_cleaner_validate_recipe(
-                    app.clone(),
-                    required_string("rawJson")?,
-                )
-                .await?,
-            )
-            .map_err(|error| error.to_string()),
-            "system_cleaner_preview_signed_bundle" => {
-                serde_json::to_value(crate::system_cleaner::system_cleaner_preview_signed_bundle(
-                    app.state(),
-                    required_string("rawJson")?,
-                )?)
-                .map_err(|error| error.to_string())
-            }
-            "system_cleaner_import_signed_bundle" => {
-                serde_json::to_value(crate::system_cleaner::system_cleaner_import_signed_bundle(
-                    app.state(),
-                    required_string("rawJson")?,
-                )?)
-                .map_err(|error| error.to_string())
-            }
-            "system_cleaner_list_recipe_bundles" => serde_json::to_value(
-                crate::system_cleaner::system_cleaner_list_recipe_bundles(app.state())?,
-            )
-            .map_err(|error| error.to_string()),
-            "system_cleaner_remove_recipe_bundle" => {
-                crate::system_cleaner::system_cleaner_remove_recipe_bundle(
-                    app.state(),
-                    required_string("bundleId")?,
-                )?;
-                Ok(json!({"removed": true}))
-            }
-            "system_cleaner_preview_winapp2" => {
-                serde_json::to_value(crate::system_cleaner::system_cleaner_preview_winapp2(
-                    required_string("text")?,
-                    required_string("source")?,
-                )?)
-                .map_err(|error| error.to_string())
-            }
-            "system_cleaner_import_winapp2" => {
-                serde_json::to_value(crate::system_cleaner::system_cleaner_import_winapp2(
-                    app.state(),
-                    required_string("text")?,
-                    required_string("source")?,
                 )?)
                 .map_err(|error| error.to_string())
             }
