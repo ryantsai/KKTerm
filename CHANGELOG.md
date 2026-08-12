@@ -3,6 +3,38 @@
 All notable changes to KKTerm are documented here.
 
 ## Direct Downloads
+* 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.144/kkterm-0.1.144-windows-x64-setup.exe)
+* 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.144/kkterm-0.1.144-windows-arm64-setup.exe)
+* 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.144/kkterm-0.1.144-windows-x64-portable.zip)
+* 📦 [Portable for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.144/kkterm-0.1.144-windows-arm64-portable.zip)
+
+## Highlights
+- Improved Markdown Viewer rendering by adding Mermaid diagrams support (with lazy-loading in strict mode), so your network graphs don’t have to be hand-drawn like it’s 1999.
+
+## New
+- Added Mermaid diagrams to the Markdown viewer (lazy-load, strict mode).  
+  *PR* #725 by @ryantsai (short SHA: `5e43f33`)
+
+## Improved
+- Updated System Cleaner localization keys and UI columns for extra headers, along with added/updated tests for correctness across locales.  
+  (short SHA: `994b083`)
+- Refined System Cleaner layout and related styles/types to improve the overview organization and clarity.  
+  (short SHA: `e4e5013`, `8ee40fe`)
+- Refactored System Cleaner scan phase and related types, plus updated tests and localization docs for the System Cleaner assistant tool description.  
+  (short SHA: `0cfd8c2`)
+- Added inline progress notifications in the Status Bar to better communicate routine operations within a Session workflow—while reserving prominent progress for higher-salience tasks.  
+  *PR* (from changelog) by @ryantsai (short SHA: `d1b3010`)
+
+## Fixed
+- Fixed Windows “Open With” labeling so KKTerm is correctly identified.  
+  Issue reporter(s): *none listed*  
+  *PR* #724 by @ryantsai (short SHA: `aca3212`)
+
+## Internal
+- Updated localization documentation and tests related to System Cleaner (including safety/performance coverage and rendered-page assertions).  
+  (short SHAs: `7c95259`, `d988631`)
+
+## Direct Downloads
 * 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.143/kkterm-0.1.143-windows-x64-setup.exe)
 * 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.143/kkterm-0.1.143-windows-arm64-setup.exe)
 * 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.143/kkterm-0.1.143-windows-x64-portable.zip)
