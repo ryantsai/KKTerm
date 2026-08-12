@@ -706,6 +706,15 @@
 .fv-md img {
   max-width: 100%;
 }
+.fv-mermaid {
+  margin: 0 0 16px;
+  overflow-x: auto;
+  text-align: center;
+}
+.fv-mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
 .fv-md-source {
   font-family: var(--fv-font-family, var(--mono));
   font-size: var(--fv-font-size, var(--mono-size));
