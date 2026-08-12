@@ -2813,6 +2813,8 @@
     "model": "Model",
     "customModelId": "Custom model ID",
     "extraHeaders": "Extra headers",
+    "extraHeaderName": "Header name",
+    "extraHeaderValue": "Header value",
     "extraHeadersPlaceholder": "sid=1, \"env\"=\"3\"",
     "hideSensitiveHeaderValues": "Hide sensitive values",
     "reasoningEffort": "Reasoning effort",

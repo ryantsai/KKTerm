@@ -2813,6 +2813,8 @@
     "model": "Modell",
     "customModelId": "Benutzerdefinierte Modell-ID",
     "extraHeaders": "Zusätzliche Header",
+    "extraHeaderName": "Headername",
+    "extraHeaderValue": "Headerwert",
     "extraHeadersPlaceholder": "sid=1, \"env\"=\"3\"",
     "hideSensitiveHeaderValues": "Sensible Werte ausblenden",
     "reasoningEffort": "Denkaufwand",
@@ -3305,7 +3307,7 @@
       },
       "systemCleaner": {
         "label": "Systembereinigung",
-        "description": "Speicher analysieren, geschützte Bereinigungspläne in der Vorschau anzeigen, Sicherheitsdaten für die Bereinigung verwalten und ausdrücklich genehmigte Windows-Bereinigungsaktionen ausführen."
+        "description": "Speicher analysieren, geschützte Bereinigungspläne in der Vorschau anzeigen und ausdrücklich genehmigte Windows-Bereinigungsaktionen ausführen."
       },
       "screenshots": {
         "label": "Screenshots",

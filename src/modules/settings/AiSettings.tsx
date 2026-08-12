@@ -541,8 +541,8 @@ function ExtraHeadersEditor({
       {rows.length > 0 ? (
         <>
           <div aria-hidden="true" className="settings-extra-header-columns">
-            <span>{t("settings.environmentVariableName")}</span>
-            <span>{t("settings.environmentVariableValue")}</span>
+            <span>{t("settings.extraHeaderName")}</span>
+            <span>{t("settings.extraHeaderValue")}</span>
           </div>
           <div className="settings-extra-header-rows">
             {rows.map((row, index) => {
@@ -552,21 +552,21 @@ function ExtraHeadersEditor({
               return (
                 <div className="settings-extra-header-row" key={index}>
                   <input
-                    aria-label={t("settings.environmentVariableName")}
+                    aria-label={t("settings.extraHeaderName")}
                     autoComplete="off"
                     onChange={(event) => {
                       setRevealedRows(new Set());
                       updateRow(index, { name: event.currentTarget.value });
                     }}
-                    placeholder={t("settings.environmentVariableName")}
+                    placeholder={t("settings.extraHeaderName")}
                     value={row.name}
                   />
                   <div className="settings-extra-header-value">
                     <input
-                      aria-label={t("settings.environmentVariableValue")}
+                      aria-label={t("settings.extraHeaderValue")}
                       autoComplete="off"
                       onChange={(event) => updateRow(index, { value: event.currentTarget.value })}
-                      placeholder={t("settings.environmentVariableValue")}
+                      placeholder={t("settings.extraHeaderValue")}
                       type={isMasked ? "password" : "text"}
                       value={row.value}
                     />

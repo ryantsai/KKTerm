@@ -2813,6 +2813,8 @@
     "model": "모델",
     "customModelId": "사용자 정의 모델 ID",
     "extraHeaders": "추가 헤더",
+    "extraHeaderName": "헤더 이름",
+    "extraHeaderValue": "헤더 값",
     "extraHeadersPlaceholder": "sid=1, \"env\"=\"3\"",
     "hideSensitiveHeaderValues": "민감한 값 숨기기",
     "reasoningEffort": "추론 노력",
@@ -3305,7 +3307,7 @@
       },
       "systemCleaner": {
         "label": "시스템 클리너",
-        "description": "저장 공간을 분석하고, 보호된 정리 계획을 미리 보고, 정리 안전 데이터를 관리하며, 명시적으로 승인된 Windows 정리 작업을 실행합니다."
+        "description": "저장 공간을 분석하고, 보호된 정리 계획을 미리 본 뒤 명시적으로 승인된 Windows 정리 작업을 실행합니다."
       },
       "screenshots": {
         "label": "스크린샷",

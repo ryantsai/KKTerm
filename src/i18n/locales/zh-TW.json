@@ -1012,7 +1012,7 @@
     "cleanMessage": "要從選取的清理類別中刪除 {{size}} 嗎？已鎖定的檔案會略過。此操作會記錄在本機操作記錄中。",
     "cleanPlanMessage": "要刪除此不可變清理計畫中的確切 {{count}} 個檔案（{{size}}）嗎？每個檔案在刪除前都會重新驗證。",
     "cleanPlanBlockedMessage": "此計畫包含 {{count}} 個檔案（{{size}}）。{{processes}} 使用中的檔案會被略過；其餘每個檔案在刪除前都會重新驗證。",
-    "riskyCleanupTitle": "確認高風險類別",
+    "riskyCleanupTitle": "確認有風險的類別",
     "riskyCleanupMessage": "{{categories}} 可能會刪除別處不存在的檔案，包括你尚未提交或備份的工作。刪除無法復原，也不會經過資源回收筒。請先檢視上方的預覽再繼續。",
     "keepList": "保留清單",
     "keepListDescription": "這些資料夾內的檔案不會出現在預覽與清理中。",
@@ -2813,6 +2813,8 @@
     "model": "模型",
     "customModelId": "自訂模型 ID",
     "extraHeaders": "額外標頭",
+    "extraHeaderName": "標頭名稱",
+    "extraHeaderValue": "標頭值",
     "extraHeadersPlaceholder": "sid=1, \"env\"=\"3\"",
     "hideSensitiveHeaderValues": "隱藏敏感值",
     "reasoningEffort": "推理強度",
@@ -3305,7 +3307,7 @@
       },
       "systemCleaner": {
         "label": "系統清理工具",
-        "description": "分析儲存空間、預覽受保護的清理計畫、管理清理安全資料，並執行經明確核准的 Windows 清理動作。"
+        "description": "分析儲存空間、預覽受保護的清理計畫，並執行經明確核准的 Windows 清理動作。"
       },
       "screenshots": {
         "label": "螢幕截圖",

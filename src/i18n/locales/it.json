@@ -2813,6 +2813,8 @@
     "model": "Modello",
     "customModelId": "ID modello personalizzato",
     "extraHeaders": "Intestazioni aggiuntive",
+    "extraHeaderName": "Nome dell'intestazione",
+    "extraHeaderValue": "Valore dell'intestazione",
     "extraHeadersPlaceholder": "sid=1, \"env\"=\"3\"",
     "hideSensitiveHeaderValues": "Nascondi valori sensibili",
     "reasoningEffort": "Livello di ragionamento",
@@ -3305,7 +3307,7 @@
       },
       "systemCleaner": {
         "label": "Pulitore del sistema",
-        "description": "Analizza lo spazio di archiviazione, visualizza in anteprima i piani di pulizia protetti, gestisce i dati di sicurezza della pulizia ed esegue azioni di pulizia di Windows approvate esplicitamente."
+        "description": "Analizza lo spazio di archiviazione, visualizza in anteprima i piani di pulizia protetti ed esegue azioni di pulizia di Windows approvate esplicitamente."
       },
       "screenshots": {
         "label": "Screenshot",

@@ -1013,7 +1013,7 @@
     "cleanPlanMessage": "¿Eliminar los {{count}} archivos exactos de este plan de limpieza inmutable ({{size}})? Cada archivo se volverá a validar antes de la eliminación.",
     "cleanPlanBlockedMessage": "Este plan contiene {{count}} archivos ({{size}}). Los archivos usados por {{processes}} se omitirán; cada archivo restante se volverá a validar antes de la eliminación.",
     "riskyCleanupTitle": "Confirmar categorías arriesgadas",
-    "riskyCleanupMessage": "{{categories}} puede eliminar archivos que no existen en ningún otro sitio, incluido trabajo que no has confirmado ni respaldado. La eliminación es permanente y no usa la Papelera de reciclaje. Revisa la vista previa anterior antes de continuar.",
+    "riskyCleanupMessage": "{{categories}} puede eliminar archivos que no existen en ningún otro sitio, incluido trabajo que no has confirmado ni guardado en una copia de seguridad. La eliminación es permanente y no usa la Papelera de reciclaje. Revisa la vista previa anterior antes de continuar.",
     "keepList": "Lista de conservación",
     "keepListDescription": "Los archivos dentro de estas carpetas se excluyen de las previsualizaciones y de la limpieza.",
     "addKeepPath": "Añadir carpeta",
@@ -2813,6 +2813,8 @@
     "model": "Modelo",
     "customModelId": "ID de modelo personalizado",
     "extraHeaders": "Cabeceras adicionales",
+    "extraHeaderName": "Nombre de la cabecera",
+    "extraHeaderValue": "Valor de la cabecera",
     "extraHeadersPlaceholder": "sid=1, \"env\"=\"3\"",
     "hideSensitiveHeaderValues": "Ocultar valores confidenciales",
     "reasoningEffort": "Esfuerzo de razonamiento",
@@ -3305,7 +3307,7 @@
       },
       "systemCleaner": {
         "label": "Limpiador del sistema",
-        "description": "Analiza el almacenamiento, previsualiza planes de limpieza protegidos, administra los datos de seguridad de limpieza y ejecuta acciones de limpieza de Windows aprobadas explícitamente."
+        "description": "Analiza el almacenamiento, previsualiza planes de limpieza protegidos y ejecuta acciones de limpieza de Windows aprobadas expresamente."
       },
       "screenshots": {
         "label": "Capturas de pantalla",

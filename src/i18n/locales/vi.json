@@ -2812,7 +2812,9 @@
     "apiModeResponses": "Responses",
     "model": "Model",
     "customModelId": "Custom model ID",
-    "extraHeaders": "Tiêu đề bổ sung",
+    "extraHeaders": "Header bổ sung",
+    "extraHeaderName": "Tên header",
+    "extraHeaderValue": "Giá trị header",
     "extraHeadersPlaceholder": "sid=1, \"env\"=\"3\"",
     "hideSensitiveHeaderValues": "Ẩn giá trị nhạy cảm",
     "reasoningEffort": "Reasoning effort",
@@ -3305,7 +3307,7 @@
       },
       "systemCleaner": {
         "label": "Trình dọn dẹp hệ thống",
-        "description": "Phân tích dung lượng lưu trữ, xem trước các kế hoạch dọn dẹp được bảo vệ, quản lý dữ liệu an toàn dọn dẹp và chạy các tác vụ dọn dẹp Windows đã được phê duyệt rõ ràng."
+        "description": "Phân tích dung lượng lưu trữ, xem trước các kế hoạch dọn dẹp được bảo vệ và chạy các tác vụ dọn dẹp Windows đã được phê duyệt rõ ràng."
       },
       "screenshots": {
         "label": "Ảnh chụp màn hình",

@@ -860,7 +860,7 @@
     "totalSpace": "Jumlah ruang",
     "usedSpace": "Ruang yang digunakan",
     "freeSpace": "Ruang bebas",
-    "freeOfTotal": "{{free}} kosong dari {{total}}",
+    "freeOfTotal": "{{free}} tersedia dari {{total}}",
     "storageByCategory": "Penyimpanan menurut kategori",
     "fileCategory": {
       "videos": "Video",
@@ -2813,6 +2813,8 @@
     "model": "Model",
     "customModelId": "ID model kustom",
     "extraHeaders": "Header tambahan",
+    "extraHeaderName": "Nama header",
+    "extraHeaderValue": "Nilai header",
     "extraHeadersPlaceholder": "sid=1, \"env\"=\"3\"",
     "hideSensitiveHeaderValues": "Sembunyikan nilai sensitif",
     "reasoningEffort": "Upaya penalaran",
@@ -3305,7 +3307,7 @@
       },
       "systemCleaner": {
         "label": "Pembersih Sistem",
-        "description": "Menganalisis penyimpanan, melihat pratinjau rencana pembersihan yang terlindungi, mengelola data keamanan pembersihan, dan menjalankan tindakan pembersihan Windows yang disetujui secara eksplisit."
+        "description": "Menganalisis penyimpanan, melihat pratinjau rencana pembersihan yang terlindungi, dan menjalankan tindakan pembersihan Windows yang disetujui secara eksplisit."
       },
       "screenshots": {
         "label": "Tangkapan Layar",

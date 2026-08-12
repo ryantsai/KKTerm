@@ -1012,7 +1012,7 @@
     "cleanMessage": "从选定的清理类别中删除 {{size}} 吗？将跳过锁定的文件。该操作记录在本地操作日志中。",
     "cleanPlanMessage": "要删除此不可变清理计划中的确切 {{count}} 个文件（{{size}}）吗？每个文件在删除前都会重新验证。",
     "cleanPlanBlockedMessage": "此计划包含 {{count}} 个文件（{{size}}）。{{processes}} 正在使用的文件将被跳过；其余每个文件在删除前都会重新验证。",
-    "riskyCleanupTitle": "确认高风险类别",
+    "riskyCleanupTitle": "确认有风险的类别",
     "riskyCleanupMessage": "{{categories}} 可能会删除别处不存在的文件，包括你尚未提交或备份的工作。删除不可撤销，也不会经过回收站。请先查看上方的预览再继续。",
     "keepList": "保留列表",
     "keepListDescription": "这些文件夹内的文件不会出现在预览和清理中。",
@@ -2813,6 +2813,8 @@
     "model": "模型",
     "customModelId": "自定义模型 ID",
     "extraHeaders": "额外请求头",
+    "extraHeaderName": "请求头名称",
+    "extraHeaderValue": "请求头值",
     "extraHeadersPlaceholder": "sid=1, \"env\"=\"3\"",
     "hideSensitiveHeaderValues": "隐藏敏感值",
     "reasoningEffort": "推理力度",
@@ -3305,7 +3307,7 @@
       },
       "systemCleaner": {
         "label": "系统清理器",
-        "description": "分析存储空间、预览受保护的清理计划、管理清理安全数据，并运行经明确批准的 Windows 清理操作。"
+        "description": "分析存储空间、预览受保护的清理计划，并运行经明确批准的 Windows 清理操作。"
       },
       "screenshots": {
         "label": "截图",

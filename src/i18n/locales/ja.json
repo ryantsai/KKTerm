@@ -1012,7 +1012,7 @@
     "cleanMessage": "選択したクリーンアップ カテゴリから {{size}} を削除しますか?ロックされたファイルはスキップされます。この操作はローカル操作ログに記録されます。",
     "cleanPlanMessage": "この不変のクリーンアップ プランの正確な {{count}} 件のファイル ({{size}}) を削除しますか? 削除前にすべてのファイルが再検証されます。",
     "cleanPlanBlockedMessage": "このプランには {{count}} 件のファイル ({{size}}) が含まれます。{{processes}} が使用中のファイルはスキップされ、残りのファイルは削除前にすべて再検証されます。",
-    "riskyCleanupTitle": "リスクの高いカテゴリを確認",
+    "riskyCleanupTitle": "「リスクあり」のカテゴリを確認",
     "riskyCleanupMessage": "{{categories}} は他のどこにも存在しないファイルを削除する可能性があります。コミットもバックアップもしていない作業が含まれる場合があります。削除は取り消せず、ごみ箱も使いません。続ける前に上のプレビューを確認してください。",
     "keepList": "保持リスト",
     "keepListDescription": "これらのフォルダー内のファイルはプレビューとクリーンアップから除外されます。",
@@ -2813,6 +2813,8 @@
     "model": "モデル",
     "customModelId": "カスタムモデルID",
     "extraHeaders": "追加ヘッダー",
+    "extraHeaderName": "ヘッダー名",
+    "extraHeaderValue": "ヘッダー値",
     "extraHeadersPlaceholder": "sid=1, \"env\"=\"3\"",
     "hideSensitiveHeaderValues": "機密値を非表示",
     "reasoningEffort": "推論の強度",
@@ -3305,7 +3307,7 @@
       },
       "systemCleaner": {
         "label": "システムクリーナー",
-        "description": "ストレージを分析し、保護されたクリーンアップ計画をプレビューし、クリーンアップの安全データを管理して、明示的に承認された Windows クリーンアップ操作を実行します。"
+        "description": "ストレージを分析し、保護されたクリーンアップ計画をプレビューして、明示的に承認された Windows クリーンアップ操作を実行します。"
       },
       "screenshots": {
         "label": "スクリーンショット",

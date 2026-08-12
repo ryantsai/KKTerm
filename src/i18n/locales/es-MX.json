@@ -2813,6 +2813,8 @@
     "model": "Modelo",
     "customModelId": "ID de modelo personalizado",
     "extraHeaders": "Encabezados adicionales",
+    "extraHeaderName": "Nombre del encabezado",
+    "extraHeaderValue": "Valor del encabezado",
     "extraHeadersPlaceholder": "sid=1, \"env\"=\"3\"",
     "hideSensitiveHeaderValues": "Ocultar valores confidenciales",
     "reasoningEffort": "Esfuerzo de razonamiento",
@@ -3305,7 +3307,7 @@
       },
       "systemCleaner": {
         "label": "Limpiador del sistema",
-        "description": "Analiza el almacenamiento, previsualiza planes de limpieza protegidos, administra los datos de seguridad de limpieza y ejecuta acciones de limpieza de Windows aprobadas explícitamente."
+        "description": "Analiza el almacenamiento, obtén una vista previa de los planes de limpieza protegidos y ejecuta acciones de limpieza de Windows aprobadas explícitamente."
       },
       "screenshots": {
         "label": "Capturas de pantalla",
