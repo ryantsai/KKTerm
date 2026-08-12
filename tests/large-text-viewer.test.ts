@@ -29,13 +29,22 @@ test("large text page splitting preserves a trailing empty final line when expec
 });
 
 test("large text viewer indexes the file and lazily reads bounded pages", async () => {
-  const source = await readFile(
-    new URL(
-      "../src/modules/workspace/connections/file-viewer/viewers/LargeTextViewer.tsx",
-      import.meta.url,
+  const [source, styles] = await Promise.all([
+    readFile(
+      new URL(
+        "../src/modules/workspace/connections/file-viewer/viewers/LargeTextViewer.tsx",
+        import.meta.url,
+      ),
+      "utf8",
     ),
-    "utf8",
-  );
+    readFile(
+      new URL(
+        "../src/modules/workspace/connections/file-viewer/file-viewer.css",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  ]);
 
   assert.match(source, /invokeCommand\("index_file_view_text"/);
   assert.match(source, /invokeCommand\("read_file_view_text_page"/);
@@ -44,4 +53,9 @@ test("large text viewer indexes the file and lazily reads bounded pages", async 
   assert.match(source, /largeFileIndexed/);
   assert.match(source, /scroller\.scrollTop = \(line - 1\) \* LARGE_TEXT_LINE_HEIGHT/);
   assert.doesNotMatch(source, /read_file_view_text"/);
+  assert.match(
+    styles,
+    /\.fv-large-text-pane\s*\{[^}]*flex:\s*1 1 0;[^}]*min-width:\s*0;/s,
+    "the large-text flex item must fill the viewer body instead of collapsing to zero width",
+  );
 });
