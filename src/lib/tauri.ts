@@ -1210,6 +1210,10 @@ type CommandMap = {
     args: undefined;
     result: import("../modules/system-cleaner/types").SystemCleanerRecipeCatalogEntry[];
   };
+  system_cleaner_list_apps: {
+    args: undefined;
+    result: import("../modules/system-cleaner/types").SystemCleanerInstalledApp[];
+  };
   system_cleaner_scan: {
     args: { root?: string };
     result: import("../modules/system-cleaner/types").SystemCleanerOverview;

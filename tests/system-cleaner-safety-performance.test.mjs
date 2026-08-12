@@ -51,15 +51,13 @@ test("System Cleaner uses the Searching orb in the scan page and Status Bar", ()
   assert.match(scanState, /active:\s*boolean/);
 });
 
-test("System Cleaner keeps every supported workflow on one Overview surface", () => {
+test("System Cleaner keeps its core workflows on one three-column Overview surface", () => {
   assert.match(page, /system-cleaner-overview-page/);
-  assert.match(page, /system-cleaner-drive-overview/);
   assert.match(page, /system-cleaner-metric-grid/);
   assert.match(page, /<StorageView/);
   assert.match(page, /<CleanupView/);
   assert.match(page, /<RecommendationsView/);
   assert.match(page, /<AppsView/);
-  assert.match(page, /<SystemToolsView/);
   assert.match(page, /system-cleaner-cleanup-groups/);
   assert.match(page, /system-cleaner-app-table/);
   assert.match(page, /systemCleaner\.selectAllSafe/);
@@ -67,8 +65,41 @@ test("System Cleaner keeps every supported workflow on one Overview surface", ()
   assert.match(page, /state="working"/);
   assert.match(page, /submitAssistantContextSnippet/);
   assert.doesNotMatch(page, /CleanerSidebar|CleanerManagementView|systemCleaner\.management/);
+  assert.doesNotMatch(page, /system-cleaner-drive-overview|system-cleaner-search|<SystemToolsView/);
   assert.doesNotMatch(page, /system_cleaner_(?:list|add|remove)_keep_path|system_cleaner_(?:preview|import).*bundle|system_cleaner_(?:preview|import)_winapp2/);
-  assert.match(styles, /\.system-cleaner-overview-page\s*\{[^}]*width:\s*min\(100%, 1440px\)/s);
+  assert.match(styles, /\.system-cleaner-content\s*\{[^}]*background:\s*var\(--surface\)/s);
+  assert.match(styles, /\.system-cleaner-overview-page\s*\{[^}]*width:\s*100%[^}]*padding:\s*10px/s);
+  assert.match(styles, /\.system-cleaner-overview-sections\s*\{[^}]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)[^}]*grid-template-areas:[^}]*"storage cleanup recommendations"[^}]*"apps apps apps"/s);
+});
+
+test("System Cleaner mounts scan-independent sections and keeps Scan only in the Module header", () => {
+  assert.match(page, /system_cleaner_catalog/);
+  assert.match(page, /system_cleaner_list_apps/);
+  assert.match(backend, /pub async fn system_cleaner_list_apps/);
+  assert.match(backendCommands, /system_cleaner::system_cleaner_list_apps/);
+  assert.match(tauri, /system_cleaner_list_apps/);
+  assert.doesNotMatch(page, /\{overview && directory \? <>/);
+  assert.equal(page.match(/data-tutorial-id="systemCleaner\.scan"/g)?.length, 1);
+  assert.doesNotMatch(page, /function DriveOverview|system-cleaner-drive-choice/);
+});
+
+test("System Cleaner defaults every size-bearing result list to descending size", () => {
+  assert.match(backend, /right\s*\.size_bytes\s*\.cmp\(&left\.size_bytes\)/s);
+  assert.match(page, /right\.bytes - left\.bytes \|\| recipeTitle/);
+  assert.match(page, /right\.allocatedBytes - left\.allocatedBytes \|\| left\.name\.localeCompare/);
+  assert.match(page, /right\.sizeBytes - left\.sizeBytes \|\| left\.name\.localeCompare/);
+  assert.match(page, /key: "allocated", direction: "desc"/);
+  assert.doesNotMatch(page, /folderOrder/);
+});
+
+test("System Cleaner preserves WinGet display names and enriches apps with Windows estimated sizes", () => {
+  assert.match(backend, /fn parse_winget_apps/);
+  assert.match(backend, /EstimatedSizeBytes/);
+  assert.match(backend, /winget_column\(line, 0, Some\(id_start\)\)/);
+  assert.doesNotMatch(backend, /split_whitespace\(\)[\s\S]*InstalledApp/);
+  assert.match(page, /system-cleaner-app-size/);
+  assert.match(page, /installedSize/);
+  assert.match(page, /<Sparkles size=\{14\}/);
 });
 
 test("System Cleaner keeps personal-file recommendations opt-in and scan-bound", () => {
@@ -88,15 +119,14 @@ test("System Cleaner keeps personal-file recommendations opt-in and scan-bound",
   assert.match(manual, /does not use the Recycle Bin/i);
 });
 
-test("System Cleaner drive selection has a full native hit target and visible Overview cards", () => {
+test("System Cleaner drive selection uses only the compact native header target", () => {
   assert.doesNotMatch(page, /system-cleaner-scanbar|system-cleaner-progress/);
   assert.match(backend, /system_cleaner_list_drives/);
   assert.match(backendCommands, /system_cleaner::system_cleaner_list_drives/);
   assert.match(tauri, /system_cleaner_list_drives/);
   assert.match(page, /system-cleaner-header-drive/);
-  assert.match(page, /system-cleaner-drive-choice/);
-  assert.match(page, /onClick=\{\(\) => onSelectDrive\(drive\.path\)\}/);
-  assert.match(page, /system-cleaner-drive-meter/);
+  assert.match(page, /data-tutorial-id="systemCleaner\.drive"/);
+  assert.doesNotMatch(page, /system-cleaner-drive-choice|system-cleaner-drive-overview/);
   assert.match(styles, /\.system-cleaner-header-drive select\s*\{[^}]*position:\s*absolute[^}]*inset:\s*0[^}]*width:\s*100%/s);
   assert.match(manual, /logical file\s+sizes/i);
 });
@@ -203,12 +233,11 @@ test("System Cleaner offers broad built-in coverage without recipe-import comman
   assert.match(manual, /User-authored rules, signed bundles, Winapp2 imports, and the\s+Keep List are not part of System Cleaner/i);
 });
 
-test("System Cleaner records structured history and separates Windows-owned maintenance and AppX removal", () => {
+test("System Cleaner retains shared Windows maintenance commands without rendering their retired page section", () => {
   assert.match(storage, /CREATE TABLE IF NOT EXISTS system_cleaner_history/);
-  assert.match(page, /system_cleaner_history/);
   assert.match(backend, /SHQueryRecycleBinW/);
   assert.match(backend, /Delete-DeliveryOptimizationCache/);
   assert.match(backend, /StartComponentCleanup/);
   assert.match(backend, /Remove-AppxPackage -Package/);
-  assert.match(page, /appxRemoveTitle/);
+  assert.doesNotMatch(page, /system_cleaner_history|system_cleaner_list_appx_packages|system_cleaner_windows_maintenance_status|appxRemoveTitle|SystemToolsView/);
 });

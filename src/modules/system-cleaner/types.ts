@@ -12,6 +12,14 @@ export type SystemCleanerDrive = {
   freeBytes: number;
 };
 
+export type SystemCleanerInstalledApp = {
+  name: string;
+  id: string;
+  version: string;
+  publisher: string;
+  sizeBytes: number;
+};
+
 export type SystemCleanerOverview = {
   scanRoot: string;
   totalBytes: number;
@@ -23,7 +31,7 @@ export type SystemCleanerOverview = {
     bytes: number;
     files: SystemCleanerReviewFile[];
   }>;
-  apps: Array<{ name: string; id: string; version: string }>;
+  apps: SystemCleanerInstalledApp[];
   extensions: Array<{ extension: string; bytes: number; allocatedBytes: number; files: number }>;
   fileCount: number;
   folderCount: number;

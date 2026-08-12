@@ -10,14 +10,12 @@ import {
   Clock,
   Eye,
   FileText,
-  Gauge,
   Globe2,
   HardDrive,
   Images,
   Package,
   RefreshCw,
   RotateCcw,
-  Search,
   Sparkles,
   Trash2,
   type IconComponent,
@@ -35,16 +33,13 @@ import { useSystemCleanerScanStore } from "./scanState";
 import type { SystemCleanerNavigationSection } from "../../app/tutorialNavigationModel";
 import type {
   SystemCleanerDirectoryListing,
-  SystemCleanerAppxPackage,
   SystemCleanerCleanupPlan,
   SystemCleanerCleanupResult,
   SystemCleanerDiskEntry,
   SystemCleanerDrive,
-  SystemCleanerHistoryRecord,
   SystemCleanerOverview,
   SystemCleanerRecipeCatalogEntry,
   SystemCleanerScanProgress,
-  SystemCleanerWindowsMaintenanceStatus,
 } from "./types";
 import "./systemCleaner.css";
 
@@ -96,11 +91,6 @@ function recipeDescription(t: ReturnType<typeof useTranslation>["t"], item: Syst
   return t(`systemCleaner.categoryDescription.${item.id}`);
 }
 
-function matchesQuery(query: string, ...values: string[]) {
-  const normalized = query.trim().toLocaleLowerCase();
-  return normalized.length === 0 || values.some((value) => value.toLocaleLowerCase().includes(normalized));
-}
-
 export function SystemCleanerPage({ active, onOpenAssistant, tutorialNavigation }: {
   active: boolean;
   onOpenAssistant: () => void;
@@ -114,11 +104,13 @@ export function SystemCleanerPage({ active, onOpenAssistant, tutorialNavigation 
   const beginScan = useSystemCleanerScanStore((state) => state.beginScan);
   const updateProgress = useSystemCleanerScanStore((state) => state.updateProgress);
   const finishScan = useSystemCleanerScanStore((state) => state.finishScan);
-  const [query, setQuery] = useState("");
   const [drives, setDrives] = useState<SystemCleanerDrive[]>([]);
   const [drivesLoaded, setDrivesLoaded] = useState(false);
   const [selectedDrive, setSelectedDrive] = useState("");
   const [overview, setOverview] = useState<SystemCleanerOverview>();
+  const [catalog, setCatalog] = useState<SystemCleanerOverview["cleanup"]>([]);
+  const [apps, setApps] = useState<CleanerApp[]>([]);
+  const [baselineLoaded, setBaselineLoaded] = useState(false);
   const [directory, setDirectory] = useState<SystemCleanerDirectoryListing>();
   const [directoryLoading, setDirectoryLoading] = useState(false);
   const [mutationKind, setMutationKind] = useState<MutationKind>();
@@ -151,6 +143,27 @@ export function SystemCleanerPage({ active, onOpenAssistant, tutorialNavigation 
     return () => { cancelled = true; };
   }, [active, drivesLoaded, notice, t]);
 
+  useEffect(() => {
+    if (!active || baselineLoaded || !isTauriRuntime()) return;
+    let cancelled = false;
+    void Promise.all([
+      invokeCommand("system_cleaner_catalog", undefined),
+      invokeCommand("system_cleaner_list_apps", undefined),
+    ])
+      .then(([nextCatalog, nextApps]) => {
+        if (cancelled) return;
+        setCatalog(nextCatalog);
+        setApps(nextApps);
+      })
+      .catch((error) => {
+        if (!cancelled) notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" });
+      })
+      .finally(() => {
+        if (!cancelled) setBaselineLoaded(true);
+      });
+    return () => { cancelled = true; };
+  }, [active, baselineLoaded, notice, t]);
+
   const scan = useCallback(async () => {
     if (!isTauriRuntime() || !selectedDrive) return;
     beginScan();
@@ -159,6 +172,8 @@ export function SystemCleanerPage({ active, onOpenAssistant, tutorialNavigation 
       unlisten = await listen<SystemCleanerScanProgress>("system-cleaner://scan-progress", ({ payload }) => updateProgress(payload));
       const next = await invokeCommand("system_cleaner_scan", { root: selectedDrive });
       setOverview(next);
+      setCatalog(next.cleanup);
+      setApps(next.apps);
       setSelectedDrive(next.scanRoot);
       setDirectory({
         path: next.scanRoot,
@@ -177,9 +192,9 @@ export function SystemCleanerPage({ active, onOpenAssistant, tutorialNavigation 
     }
   }, [beginScan, finishScan, notice, selectedDrive, t, updateProgress]);
 
-  const selectedBytes = useMemo(() => overview?.cleanup.filter((item) => selected.includes(item.id)).reduce((sum, item) => sum + item.bytes, 0) ?? 0, [overview, selected]);
-  const reclaimableBytes = useMemo(() => overview?.cleanup.filter((item) => cleanupSafety(item) === "safe").reduce((sum, item) => sum + item.bytes, 0) ?? 0, [overview]);
-  const selectedApps = useMemo(() => overview?.apps.filter((app) => selectedAppIds.includes(app.id)) ?? [], [overview, selectedAppIds]);
+  const selectedBytes = useMemo(() => catalog.filter((item) => selected.includes(item.id)).reduce((sum, item) => sum + item.bytes, 0), [catalog, selected]);
+  const reclaimableBytes = useMemo(() => catalog.filter((item) => cleanupSafety(item) === "safe").reduce((sum, item) => sum + item.bytes, 0), [catalog]);
+  const selectedApps = useMemo(() => apps.filter((app) => selectedAppIds.includes(app.id)), [apps, selectedAppIds]);
   const selectedReviewFiles = useMemo(() => {
     const byPath = new Map(overview?.recommendations.flatMap((category) => category.files).map((file) => [file.path, file]) ?? []);
     return selectedReviewPaths.flatMap((path) => byPath.get(path) ?? []);
@@ -264,7 +279,7 @@ export function SystemCleanerPage({ active, onOpenAssistant, tutorialNavigation 
         ? t("systemCleaner.uninstalled", { name: apps[0].name })
         : t("systemCleaner.uninstalledCount", { count: apps.length }), { tone: "success" });
       setSelectedAppIds([]);
-      await scan();
+      setApps(await invokeCommand("system_cleaner_list_apps", undefined));
     } catch (error) {
       notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" });
     } finally {
@@ -277,7 +292,7 @@ export function SystemCleanerPage({ active, onOpenAssistant, tutorialNavigation 
       id: `system-cleaner-app-${Date.now()}`,
       kind: "text",
       sourceLabel: app.name,
-      text: JSON.stringify({ name: app.name, packageId: app.id, version: app.version }, null, 2),
+      text: JSON.stringify({ name: app.name, packageId: app.id, version: app.version, publisher: app.publisher, installedSize: app.sizeBytes > 0 ? formatBytes(app.sizeBytes) : undefined }, null, 2),
       capturedAt: new Date().toISOString(),
     }, t("systemCleaner.aiExplainPrompt", { name: app.name }));
     onOpenAssistant();
@@ -299,7 +314,7 @@ export function SystemCleanerPage({ active, onOpenAssistant, tutorialNavigation 
   return <main className="system-cleaner-page" data-active={active} data-tutorial-id="systemCleaner.page">
     <ModuleHeader>
       <ModuleHeaderLead><ModuleIconTile module="system-cleaner"><SystemCleanerModuleIcon size={16} aria-hidden="true" /></ModuleIconTile><ModuleHeaderTitle>{t("systemCleaner.title")}</ModuleHeaderTitle></ModuleHeaderLead>
-      <label className="system-cleaner-header-drive">
+      <label className="system-cleaner-header-drive" data-tutorial-id="systemCleaner.drive">
         <HardDrive size={14} aria-hidden="true" />
         <select aria-label={t("systemCleaner.select")} value={selectedDrive} disabled={busy || drives.length === 0} onChange={(event) => selectDrive(event.currentTarget.value)}>
           {drives.map((drive) => <option value={drive.path} key={drive.path}>{drive.path}</option>)}
@@ -307,37 +322,28 @@ export function SystemCleanerPage({ active, onOpenAssistant, tutorialNavigation 
         <ChevronDown size={12} aria-hidden="true" />
       </label>
       <ModuleHeaderSpacer />
-      {overview ? <label className="system-cleaner-search" data-tutorial-id="systemCleaner.search"><Search size={14} aria-hidden="true" /><input value={query} placeholder={t("common.search")} aria-label={t("common.search")} onChange={(event) => setQuery(event.currentTarget.value)} /></label> : null}
       <button type="button" className="toolbar-button" data-tutorial-id="systemCleaner.scan" disabled={busy || !selectedDrive} onClick={() => void scan()}><RefreshCw size={15} className={scanActive ? "spin" : ""} />{t("systemCleaner.scan")}</button>
     </ModuleHeader>
     <section className="system-cleaner-content" data-tutorial-id="systemCleaner.content">
       {scanActive ? <ScanOverlay progress={progress} /> : null}
       <div className="system-cleaner-overview-page" data-tutorial-id="systemCleaner.overview">
-        <DriveOverview
-          busy={busy}
-          drives={drives}
-          overview={overview}
-          selectedDrive={selectedDrive}
-          onScan={() => void scan()}
-          onSelectDrive={selectDrive}
-        />
-        {!overview && !scanActive ? <section className="system-cleaner-empty-state">
-          <span className="system-cleaner-empty-icon"><Gauge size={24} /></span>
-          <div><h2>{t("systemCleaner.overview")}</h2><p>{t("systemCleaner.scanHint")}</p></div>
-          <button type="button" className="primary-button" disabled={!selectedDrive} onClick={() => void scan()}><RefreshCw size={14} />{t("systemCleaner.scan")}</button>
-        </section> : null}
-        {overview && directory ? <>
-          <ScanSummary overview={overview} reclaimableBytes={reclaimableBytes} />
-          <div className="system-cleaner-overview-sections">
+        <ScanSummary overview={overview} drives={drives} selectedDrive={selectedDrive} reclaimableBytes={reclaimableBytes} appCount={apps.length} />
+        <div className="system-cleaner-overview-sections">
             <article className="system-cleaner-workbench-section system-cleaner-storage-section" data-tutorial-id="systemCleaner.storage">
-              <StorageView directory={directory} loading={directoryLoading} overview={overview} query={query} onOpenDirectory={openDirectory} />
+              <StorageView
+                directory={directory ?? { path: selectedDrive, totalBytes: 0, totalAllocatedBytes: 0, entries: [] }}
+                loading={directoryLoading}
+                scanRoot={overview?.scanRoot ?? selectedDrive}
+                scanned={Boolean(overview)}
+                onOpenDirectory={openDirectory}
+              />
             </article>
-            <article className="system-cleaner-workbench-section" data-tutorial-id="systemCleaner.cleanup">
+            <article className="system-cleaner-workbench-section system-cleaner-cleanup-section" data-tutorial-id="systemCleaner.cleanup">
               <CleanupView
-                busy={busy}
+                busy={busy || !overview}
                 cleaning={mutationKind === "clean"}
-                items={overview.cleanup}
-                query={query}
+                items={catalog}
+                scanned={Boolean(overview)}
                 selected={selected}
                 selectedBytes={selectedBytes}
                 cleanupPlan={cleanupPlan}
@@ -345,33 +351,32 @@ export function SystemCleanerPage({ active, onOpenAssistant, tutorialNavigation 
                 onClean={() => void prepareCleanup()}
                 onCancel={() => void invokeCommand("system_cleaner_cancel_cleanup")}
                 onRetry={() => void clean(cleanupResult?.skipped.map((item) => item.path))}
-                onReset={() => { setCleanupPlan(undefined); setCleanupResult(undefined); setSelected(defaultCleanupSelection(overview.cleanup)); }}
+                onReset={() => { setCleanupPlan(undefined); setCleanupResult(undefined); setSelected(defaultCleanupSelection(catalog)); }}
                 onToggle={(id) => { setCleanupPlan(undefined); setCleanupResult(undefined); setSelected((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]); }}
                 onToggleSafe={(checked) => setSelected((current) => {
-                  const safeIds = overview.cleanup.filter((item) => item.bytes > 0 && cleanupSafety(item) === "safe").map((item) => item.id);
+                  const safeIds = catalog.filter((item) => item.bytes > 0 && cleanupSafety(item) === "safe").map((item) => item.id);
                   setCleanupPlan(undefined);
                   setCleanupResult(undefined);
                   return checked ? Array.from(new Set([...current, ...safeIds])) : current.filter((id) => !safeIds.includes(id));
                 })}
               />
             </article>
-            <article className="system-cleaner-workbench-section" data-tutorial-id="systemCleaner.recommendations">
+            <article className="system-cleaner-workbench-section system-cleaner-recommendations-section" data-tutorial-id="systemCleaner.recommendations">
               <RecommendationsView
                 busy={busy}
                 deleting={mutationKind === "delete-review"}
-                categories={overview.recommendations}
-                query={query}
+                categories={overview?.recommendations ?? []}
+                scanned={Boolean(overview)}
                 selectedPaths={selectedReviewPaths}
                 selectedBytes={selectedReviewBytes}
                 onDelete={() => setConfirmReviewDelete(true)}
                 onToggle={(path) => setSelectedReviewPaths((current) => current.includes(path) ? current.filter((item) => item !== path) : [...current, path])}
               />
             </article>
-            <article className="system-cleaner-workbench-section" data-tutorial-id="systemCleaner.apps">
+            <article className="system-cleaner-workbench-section system-cleaner-apps-section" data-tutorial-id="systemCleaner.apps">
               <AppsView
-                apps={overview.apps}
+                apps={apps}
                 busy={busy}
-                query={query}
                 selectedIds={selectedAppIds}
                 onExplain={explainApp}
                 onToggle={(id) => setSelectedAppIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])}
@@ -380,8 +385,6 @@ export function SystemCleanerPage({ active, onOpenAssistant, tutorialNavigation 
               />
             </article>
           </div>
-        </> : null}
-        <SystemToolsView />
       </div>
     </section>
     {confirmCleanup && cleanupPlan ? <ConfirmSheet tone="danger" title={t("systemCleaner.cleanTitle")} message={cleanupPlan.blockedProcesses.length > 0
@@ -399,49 +402,26 @@ export function SystemCleanerPage({ active, onOpenAssistant, tutorialNavigation 
   </main>;
 }
 
-function DriveOverview({ busy, drives, onScan, onSelectDrive, overview, selectedDrive }: {
-  busy: boolean;
+function ScanSummary({ appCount, drives, overview, reclaimableBytes, selectedDrive }: {
+  appCount: number;
   drives: SystemCleanerDrive[];
-  onScan: () => void;
-  onSelectDrive: (path: string) => void;
   overview?: SystemCleanerOverview;
+  reclaimableBytes: number;
   selectedDrive: string;
 }) {
   const { t } = useTranslation();
-  return <section className="system-cleaner-drive-overview" data-tutorial-id="systemCleaner.drive">
-    <header><div><span>{t("systemCleaner.storage")}</span><h2>{selectedDrive || "—"}</h2></div><button type="button" className="toolbar-button" disabled={busy || !selectedDrive} onClick={onScan}><RefreshCw size={14} />{t("systemCleaner.scan")}</button></header>
-    <div className="system-cleaner-drive-grid">{drives.map((drive) => {
-      const selected = drive.path === selectedDrive;
-      const capacity = selected && overview ? overview.diskCapacityBytes : drive.capacityBytes;
-      const free = selected && overview ? overview.diskFreeBytes : drive.freeBytes;
-      const used = Math.max(0, capacity - free);
-      const usedPercent = capacity > 0 ? Math.min(100, used / capacity * 100) : 0;
-      return <button type="button" className={`system-cleaner-drive-choice${selected ? " selected" : ""}`} aria-pressed={selected} disabled={busy} key={drive.path} onClick={() => onSelectDrive(drive.path)}>
-        <span className="system-cleaner-drive-choice-head"><HardDrive size={17} /><strong>{drive.path}</strong>{selected ? <i /> : null}</span>
-        <span className="system-cleaner-drive-meter"><i style={{ width: `${usedPercent}%` }} /></span>
-        <span className="system-cleaner-drive-choice-detail"><b>{formatBytes(used)}</b><small>{t("systemCleaner.freeSpace")} {formatBytes(free)}</small></span>
-      </button>;
-    })}</div>
-  </section>;
-}
-
-function ScanSummary({ overview, reclaimableBytes }: {
-  overview?: SystemCleanerOverview;
-  reclaimableBytes: number;
-}) {
-  const { t } = useTranslation();
-  if (!overview) return null;
-  const capacity = overview.diskCapacityBytes;
-  const free = overview.diskFreeBytes;
+  const drive = drives.find((item) => item.path === selectedDrive);
+  const capacity = overview?.diskCapacityBytes ?? drive?.capacityBytes ?? 0;
+  const free = overview?.diskFreeBytes ?? drive?.freeBytes ?? 0;
   const used = Math.max(0, capacity - free);
-  const elapsedSeconds = Math.max(.1, overview.elapsedMs / 1000).toFixed(1);
+  const elapsedSeconds = overview ? Math.max(.1, overview.elapsedMs / 1000).toFixed(1) : undefined;
   return <section className="system-cleaner-scan-summary">
-    <header><h2>{t("systemCleaner.overview")}</h2><p>{t("systemCleaner.scanComplete", { seconds: elapsedSeconds })} · {t("systemCleaner.items", { count: formatCount(overview.fileCount) })}</p></header>
+    <header><h2>{t("systemCleaner.overview")}</h2><p>{overview ? <>{t("systemCleaner.scanComplete", { seconds: elapsedSeconds })} · {t("systemCleaner.items", { count: formatCount(overview.fileCount) })}</> : t("systemCleaner.scanHint")}</p></header>
     <div className="system-cleaner-metric-grid">
-      <Metric label={t("systemCleaner.usedSpace")} value={formatBytes(used)} detail={`${(used / Math.max(1, overview.diskCapacityBytes) * 100).toFixed(1)}%`} />
-      <Metric label={t("systemCleaner.freeSpace")} value={formatBytes(overview.diskFreeBytes)} detail={`${(overview.diskFreeBytes / Math.max(1, overview.diskCapacityBytes) * 100).toFixed(1)}%`} />
-      <Metric label={t("systemCleaner.cleanupHeading")} value={formatBytes(reclaimableBytes)} detail={t("systemCleaner.safeCategories", { count: overview.cleanup.filter((item) => cleanupSafety(item) === "safe").length })} accent />
-      <Metric label={t("systemCleaner.appsHeading")} value={formatCount(overview.apps.length)} detail={t("systemCleaner.apps")} />
+      <Metric label={t("systemCleaner.usedSpace")} value={capacity > 0 ? formatBytes(used) : "—"} detail={capacity > 0 ? `${(used / capacity * 100).toFixed(1)}%` : ""} />
+      <Metric label={t("systemCleaner.freeSpace")} value={capacity > 0 ? formatBytes(free) : "—"} detail={capacity > 0 ? `${(free / capacity * 100).toFixed(1)}%` : ""} />
+      <Metric label={t("systemCleaner.cleanupHeading")} value={overview ? formatBytes(reclaimableBytes) : "—"} detail={overview ? t("systemCleaner.safeCategories", { count: overview.cleanup.filter((item) => cleanupSafety(item) === "safe").length }) : ""} accent />
+      <Metric label={t("systemCleaner.appsHeading")} value={formatCount(appCount)} detail={t("systemCleaner.apps")} />
     </div>
   </section>;
 }
@@ -450,7 +430,7 @@ function Metric({ accent, detail, label, value }: { accent?: boolean; detail: st
   return <article className={`system-cleaner-metric${accent ? " accent" : ""}`}><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>;
 }
 
-function CleanupView({ busy, cleaning, cleanupPlan, cleanupResult, items, onCancel, onClean, onReset, onRetry, onToggle, onToggleSafe, query, selected, selectedBytes }: {
+function CleanupView({ busy, cleaning, cleanupPlan, cleanupResult, items, onCancel, onClean, onReset, onRetry, onToggle, onToggleSafe, scanned, selected, selectedBytes }: {
   busy: boolean;
   cleaning: boolean;
   cleanupPlan?: SystemCleanerCleanupPlan;
@@ -462,38 +442,32 @@ function CleanupView({ busy, cleaning, cleanupPlan, cleanupResult, items, onCanc
   onRetry: () => void;
   onToggle: (id: string) => void;
   onToggleSafe: (checked: boolean) => void;
-  query: string;
+  scanned: boolean;
   selected: string[];
   selectedBytes: number;
 }) {
   const { t } = useTranslation();
-  const visibleItems = items.filter((item) => matchesQuery(query, recipeTitle(t, item), recipeDescription(t, item), item.displayPath, item.source));
+  const visibleItems = [...items]
+    .sort((left, right) => right.bytes - left.bytes || recipeTitle(t, left).localeCompare(recipeTitle(t, right)));
   const safeItems = items.filter((item) => item.bytes > 0 && cleanupSafety(item) === "safe");
   const allSafeSelected = safeItems.length > 0 && safeItems.every((item) => selected.includes(item.id));
   return <div className="system-cleaner-view system-cleaner-cleanup-view">
     <header className="system-cleaner-section-head"><h2>{t("systemCleaner.cleanup")}</h2><p>{t("systemCleaner.selectedCategories", { count: selected.length, total: items.length })}</p><label className="system-cleaner-select-safe"><input type="checkbox" checked={allSafeSelected} disabled={busy} onChange={(event) => onToggleSafe(event.currentTarget.checked)} />{t("systemCleaner.selectAllSafe")}</label></header>
-    <div className="system-cleaner-cleanup-groups">
-      {(["safe", "review", "risky"] as const).map((safety) => {
-        const group = visibleItems.filter((item) => cleanupSafety(item) === safety);
-        if (group.length === 0) return null;
-        const bytes = group.reduce((sum, item) => sum + item.bytes, 0);
-        const renderedGroup = group.slice(0, 500);
-        return <section className="system-cleaner-cleanup-group" key={safety}>
-          <header><SafetyBadge safety={safety} /><strong>{t(`systemCleaner.safety.${safety}`)}</strong><span>{formatBytes(bytes)}</span></header>
-          <div>{renderedGroup.map((item) => {
+    <div className="system-cleaner-cleanup-groups" data-scanned={scanned}>
+      <section className="system-cleaner-cleanup-group">
+        <div>{visibleItems.slice(0, 500).map((item) => {
             const checked = selected.includes(item.id);
             const presentation = CLEANUP_PRESENTATION[item.id] ?? { icon: FileText, tone: "accent" as const };
             const Icon = presentation.icon;
             return <label className={`system-cleaner-cleanup-row${checked ? " selected" : ""}`} data-tone={presentation.tone} key={item.id}>
               <input type="checkbox" checked={checked} disabled={busy || (item.builtIn && item.bytes === 0)} onChange={() => onToggle(item.id)} />
               <span className="system-cleaner-row-icon"><Icon size={17} /></span>
-              <span className="system-cleaner-cleanup-name"><strong>{recipeTitle(t, item)}</strong><bdi dir="ltr" title={item.displayPath}>{item.displayPath}</bdi></span>
+              <span className="system-cleaner-cleanup-name"><strong>{recipeTitle(t, item)}</strong><SafetyBadge safety={cleanupSafety(item)} /><bdi dir="ltr" title={item.displayPath}>{item.displayPath}</bdi></span>
               <span className="system-cleaner-cleanup-description">{recipeDescription(t, item)}{item.runningProcesses.length > 0 ? ` · ${t("systemCleaner.processRunning", { processes: item.runningProcesses.join(", ") })}` : ""}</span>
-              <strong className="system-cleaner-row-size">{formatBytes(item.bytes)}</strong>
+              <strong className="system-cleaner-row-size">{scanned ? formatBytes(item.bytes) : "—"}</strong>
             </label>;
-          })}{group.length > renderedGroup.length ? <p className="system-cleaner-recipe-truncated">{t("systemCleaner.recipeRowsTruncated", { count: group.length - renderedGroup.length })}</p> : null}</div>
-        </section>;
-      })}
+          })}{visibleItems.length > 500 ? <p className="system-cleaner-recipe-truncated">{t("systemCleaner.recipeRowsTruncated", { count: visibleItems.length - 500 })}</p> : null}</div>
+      </section>
     </div>
     {cleanupPlan ? <CleanupPlanPreview plan={cleanupPlan} result={cleanupResult} onRetry={onRetry} /> : null}
     <footer className="system-cleaner-action-bar"><div><span>{t("systemCleaner.selectedCategories", { count: selected.length, total: items.length })}</span><strong>{formatBytes(selectedBytes)}</strong></div><button type="button" className="toolbar-button" disabled={busy} onClick={onReset}><RotateCcw size={14} />{t("systemCleaner.resetDefaults")}</button><button type="button" className="primary-button" disabled={busy || selected.length === 0} onClick={onClean}><Eye size={15} />{t("systemCleaner.previewCleanup")}</button></footer>
@@ -512,143 +486,25 @@ function CleanupPlanPreview({ onRetry, plan, result }: { onRetry: () => void; pl
   </section>;
 }
 
-type MaintenanceAction = "recycleBin" | "deliveryOptimization" | "componentCleanup";
-
-function SystemToolsView() {
-  const { t } = useTranslation();
-  const notice = useWorkspaceStore((state) => state.showStatusBarNotice);
-  const [history, setHistory] = useState<SystemCleanerHistoryRecord[]>([]);
-  const [appx, setAppx] = useState<SystemCleanerAppxPackage[]>([]);
-  const [maintenance, setMaintenance] = useState<SystemCleanerWindowsMaintenanceStatus>();
-  const [loading, setLoading] = useState(false);
-  const [pendingAppx, setPendingAppx] = useState<SystemCleanerAppxPackage>();
-  const [pendingMaintenance, setPendingMaintenance] = useState<MaintenanceAction>();
-
-  const refresh = useCallback(async () => {
-    if (!isTauriRuntime()) return;
-    setLoading(true);
-    try {
-      const [runs, packages, status] = await Promise.all([
-        invokeCommand("system_cleaner_history", { limit: 100 }),
-        invokeCommand("system_cleaner_list_appx_packages", undefined),
-        invokeCommand("system_cleaner_windows_maintenance_status", undefined),
-      ]);
-      setHistory(runs);
-      setAppx(packages);
-      setMaintenance(status);
-    } catch (error) {
-      notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" });
-    } finally {
-      setLoading(false);
-    }
-  }, [notice, t]);
-
-  useEffect(() => { void refresh(); }, [refresh]);
-
-  async function loadAppx() {
-    setLoading(true);
-    try {
-      const [packages, status] = await Promise.all([
-        invokeCommand("system_cleaner_list_appx_packages", undefined),
-        invokeCommand("system_cleaner_windows_maintenance_status", undefined),
-      ]);
-      setAppx(packages);
-      setMaintenance(status);
-    } catch (error) {
-      notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" });
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function runMaintenance() {
-    if (!pendingMaintenance) return;
-    const action = pendingMaintenance;
-    setPendingMaintenance(undefined);
-    setLoading(true);
-    try {
-      if (action === "recycleBin") {
-        const freed = await invokeCommand("system_cleaner_empty_recycle_bin", undefined);
-        notice(t("systemCleaner.recycleBinCleaned", { size: formatBytes(freed) }), { tone: "success" });
-      } else if (action === "deliveryOptimization") {
-        await invokeCommand("system_cleaner_clear_delivery_optimization", undefined);
-        notice(t("systemCleaner.deliveryOptimizationCleaned"), { tone: "success" });
-      } else {
-        await invokeCommand("system_cleaner_start_component_cleanup", undefined);
-        notice(t("systemCleaner.componentCleanupCompleted"), { tone: "success" });
-      }
-      await loadAppx();
-    } catch (error) {
-      notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" });
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function removeAppx() {
-    if (!pendingAppx) return;
-    const app = pendingAppx;
-    setPendingAppx(undefined);
-    setLoading(true);
-    try {
-      await invokeCommand("system_cleaner_remove_appx_package", { packageFullName: app.packageFullName });
-      notice(t("systemCleaner.appxRemoved", { name: app.name }), { tone: "success" });
-      await loadAppx();
-    } catch (error) {
-      notice(t("systemCleaner.error", { message: String(error) }), { tone: "error" });
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return <article className="system-cleaner-system-tools" aria-busy={loading}>
-    <header className="system-cleaner-section-head"><h2>{t("systemCleaner.windowsMaintenance")}</h2><p>{t("systemCleaner.windowsMaintenanceDescription")}</p></header>
-    <div className="system-cleaner-system-tools-grid">
-      <WindowsMaintenance loading={loading} status={maintenance} onRun={setPendingMaintenance} />
-      <AppxList apps={appx} loading={loading} onRefresh={() => void loadAppx()} onRemove={setPendingAppx} />
-      <HistoryList history={history} />
-    </div>
-    {pendingAppx ? <ConfirmSheet tone="danger" title={t("systemCleaner.appxRemoveTitle")} message={t("systemCleaner.appxRemoveMessage", { name: pendingAppx.name, packageId: pendingAppx.packageFullName })} confirmLabel={t("systemCleaner.appxRemove")} onConfirm={() => void removeAppx()} onCancel={() => setPendingAppx(undefined)} /> : null}
-    {pendingMaintenance ? <ConfirmSheet tone={pendingMaintenance === "recycleBin" ? "danger" : "info"} title={t(`systemCleaner.maintenanceConfirm.${pendingMaintenance}.title`)} message={t(`systemCleaner.maintenanceConfirm.${pendingMaintenance}.message`, { count: maintenance?.recycleBinItems ?? 0, size: formatBytes(maintenance?.recycleBinBytes ?? 0) })} confirmLabel={t(`systemCleaner.maintenanceConfirm.${pendingMaintenance}.confirm`)} onConfirm={() => void runMaintenance()} onCancel={() => setPendingMaintenance(undefined)} /> : null}
-  </article>;
-}
-
-function HistoryList({ history }: { history: SystemCleanerHistoryRecord[] }) {
-  const { t } = useTranslation();
-  return <section className="system-cleaner-management-panel"><header><div><h3>{t("systemCleaner.cleanupHistory")}</h3><p>{t("systemCleaner.cleanupHistoryDescription")}</p></div></header><div className="system-cleaner-history-list">{history.length > 0 ? history.map((run) => <article key={run.id}><span className={`system-cleaner-history-status ${run.status}`} /><div><strong>{t(`systemCleaner.historyStatus.${run.status}`)}</strong><time dateTime={run.completedAt}>{new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(run.completedAt))}</time></div><span>{t("systemCleaner.historyItems", { deleted: run.deletedItems, skipped: run.skippedItems })}</span><strong>{formatBytes(run.freedBytes)}</strong></article>) : <p>{t("systemCleaner.noCleanupHistory")}</p>}</div></section>;
-}
-
-function AppxList({ apps, loading, onRefresh, onRemove }: { apps: SystemCleanerAppxPackage[]; loading: boolean; onRefresh: () => void; onRemove: (app: SystemCleanerAppxPackage) => void }) {
-  const { t } = useTranslation();
-  return <section className="system-cleaner-management-panel"><header><div><h3>{t("systemCleaner.windowsApps")}</h3><p>{t("systemCleaner.windowsAppsDescription")}</p></div><button type="button" className="toolbar-button" disabled={loading} onClick={onRefresh}><RefreshCw size={14} className={loading ? "spin" : ""} />{t("common.refresh")}</button></header><div className="system-cleaner-appx-list">{apps.map((app) => <article key={app.packageFullName}><span><strong>{app.name}</strong><bdi dir="ltr" title={app.packageFullName}>{app.packageFullName}</bdi></span><small>{app.version}</small><button type="button" className="system-cleaner-uninstall" onClick={() => onRemove(app)}>{t("systemCleaner.appxRemove")}</button></article>)}</div></section>;
-}
-
-function WindowsMaintenance({ loading, onRun, status }: { loading: boolean; onRun: (action: MaintenanceAction) => void; status?: SystemCleanerWindowsMaintenanceStatus }) {
-  const { t } = useTranslation();
-  const actions: Array<{ id: MaintenanceAction; enabled: boolean; detail: string }> = [
-    { id: "recycleBin", enabled: (status?.recycleBinItems ?? 0) > 0, detail: t("systemCleaner.recycleBinDetail", { count: status?.recycleBinItems ?? 0, size: formatBytes(status?.recycleBinBytes ?? 0) }) },
-    { id: "deliveryOptimization", enabled: status?.deliveryOptimizationAvailable ?? false, detail: t("systemCleaner.deliveryOptimizationDescription") },
-    { id: "componentCleanup", enabled: status?.componentCleanupAvailable ?? false, detail: t("systemCleaner.componentCleanupDescription") },
-  ];
-  return <section className="system-cleaner-management-panel"><header><div><h3>{t("systemCleaner.windowsMaintenance")}</h3><p>{t("systemCleaner.windowsMaintenanceDescription")}</p></div></header><div className="system-cleaner-maintenance-list">{actions.map((action) => <article key={action.id}><span><strong>{t(`systemCleaner.maintenanceAction.${action.id}`)}</strong><small>{action.detail}</small></span><button type="button" className="toolbar-button" disabled={loading || !action.enabled} onClick={() => onRun(action.id)}>{t("systemCleaner.runMaintenance")}</button></article>)}</div></section>;
-}
-
-function RecommendationsView({ busy, categories, deleting, onDelete, onToggle, query, selectedBytes, selectedPaths }: {
+function RecommendationsView({ busy, categories, deleting, onDelete, onToggle, scanned, selectedBytes, selectedPaths }: {
   busy: boolean;
   categories: SystemCleanerOverview["recommendations"];
   deleting: boolean;
   onDelete: () => void;
   onToggle: (path: string) => void;
-  query: string;
+  scanned: boolean;
   selectedBytes: number;
   selectedPaths: string[];
 }) {
   const { t } = useTranslation();
   const notice = useWorkspaceStore((state) => state.showStatusBarNotice);
-  const visibleCategories = categories.map((category) => ({
-    ...category,
-    files: category.files.filter((file) => matchesQuery(query, file.name, file.path, t(`systemCleaner.recommendation.${category.id}`))),
-  }));
+  const visibleCategories = categories
+    .map((category) => ({
+      ...category,
+      files: [...category.files]
+        .sort((left, right) => right.allocatedBytes - left.allocatedBytes || left.name.localeCompare(right.name)),
+    }))
+    .sort((left, right) => right.bytes - left.bytes);
   const visibleCount = visibleCategories.reduce((sum, category) => sum + category.files.length, 0);
 
   function openReviewFile(path: string) {
@@ -658,6 +514,7 @@ function RecommendationsView({ busy, categories, deleting, onDelete, onToggle, q
   return <div className="system-cleaner-view system-cleaner-recommendations-view">
     <header className="system-cleaner-section-head"><h2>{t("systemCleaner.recommendations")}</h2><p>{t("systemCleaner.recommendationSummary", { count: visibleCount })}</p></header>
     <div className="system-cleaner-recommendation-groups">
+      {visibleCategories.length === 0 ? <p className="system-cleaner-no-recommendations">{scanned ? t("systemCleaner.noRecommendations") : t("systemCleaner.scanHint")}</p> : null}
       {visibleCategories.map((category) => <section className="system-cleaner-recommendation-group" key={category.id}>
         <header><span className="system-cleaner-row-icon"><Clock size={17} /></span><div><strong>{t(`systemCleaner.recommendation.${category.id}`)}</strong><p>{t(`systemCleaner.recommendationDescription.${category.id}`)}</p></div><span>{formatBytes(category.bytes)}</span></header>
         {category.files.length > 0 ? <div className="system-cleaner-review-table">
@@ -680,28 +537,29 @@ function RecommendationsView({ busy, categories, deleting, onDelete, onToggle, q
   </div>;
 }
 
-function AppsView({ apps, busy, onExplain, onToggle, onUninstall, onUninstallSelected, query, selectedIds }: {
+function AppsView({ apps, busy, onExplain, onToggle, onUninstall, onUninstallSelected, selectedIds }: {
   apps: CleanerApp[];
   busy: boolean;
   onExplain: (app: CleanerApp) => void;
   onToggle: (id: string) => void;
   onUninstall: (app: CleanerApp) => void;
   onUninstallSelected: () => void;
-  query: string;
   selectedIds: string[];
 }) {
   const { t } = useTranslation();
-  const filtered = apps.filter((app) => matchesQuery(query, app.name, app.id, app.version));
+  const filtered = [...apps]
+    .sort((left, right) => right.sizeBytes - left.sizeBytes || left.name.localeCompare(right.name));
   return <div className="system-cleaner-view system-cleaner-apps-view">
     <header className="system-cleaner-section-head"><h2>{t("systemCleaner.apps")}</h2><p>{t("systemCleaner.items", { count: formatCount(filtered.length) })}</p></header>
     <section className="system-cleaner-app-table">
-      <div className="system-cleaner-app-columns"><span /><span>{t("systemCleaner.name")}</span><span>{t("systemCleaner.packageId")}</span><span>{t("systemCleaner.version")}</span><span /></div>
+      <div className="system-cleaner-app-columns"><span /><span>{t("systemCleaner.name")}</span><span>{t("systemCleaner.packageId")}</span><span>{t("systemCleaner.version")}</span><span>{t("systemCleaner.size")}</span><span /></div>
       <div className="system-cleaner-app-body">{filtered.map((app, index) => <div className={`system-cleaner-app-row${selectedIds.includes(app.id) ? " selected" : ""}`} key={`${app.id}-${app.version}-${index}`}>
         <input type="checkbox" checked={selectedIds.includes(app.id)} disabled={busy} aria-label={app.name} onChange={() => onToggle(app.id)} />
-        <span className="system-cleaner-app-name"><Package size={17} /><strong>{app.name}</strong></span>
+        <span className="system-cleaner-app-name"><Package size={17} /><span><strong>{app.name}</strong><small>{[app.publisher, app.version].filter(Boolean).join(" · ")}</small></span></span>
         <bdi dir="ltr" title={app.id}>{app.id}</bdi>
         <span className="system-cleaner-app-version">{app.version}</span>
-        <span className="system-cleaner-app-actions"><button type="button" className="system-cleaner-ai-explain" disabled={busy} onClick={() => onExplain(app)}><Sparkles size={14} />{t("systemCleaner.aiExplain")}</button><button type="button" className="system-cleaner-uninstall" disabled={busy} onClick={() => onUninstall(app)}><Trash2 size={14} />{t("systemCleaner.uninstall")}</button></span>
+        <strong className="system-cleaner-app-size">{app.sizeBytes > 0 ? formatBytes(app.sizeBytes) : "—"}</strong>
+        <span className="system-cleaner-app-actions"><button type="button" className="system-cleaner-ai-explain" aria-label={t("systemCleaner.aiExplain")} disabled={busy} onClick={() => onExplain(app)}><Sparkles size={14} /><span>{t("systemCleaner.aiExplain")}</span></button><button type="button" className="system-cleaner-uninstall" disabled={busy} onClick={() => onUninstall(app)}><Trash2 size={14} />{t("systemCleaner.uninstall")}</button></span>
       </div>)}</div>
       <footer><span>{t("systemCleaner.items", { count: formatCount(filtered.length) })}</span><span>{t("systemCleaner.uninstallUacNote")}</span></footer>
     </section>
@@ -709,15 +567,15 @@ function AppsView({ apps, busy, onExplain, onToggle, onUninstall, onUninstallSel
   </div>;
 }
 
-function StorageView({ directory, loading, onOpenDirectory, overview, query }: {
+function StorageView({ directory, loading, onOpenDirectory, scanRoot, scanned }: {
   directory: SystemCleanerDirectoryListing;
   loading: boolean;
   onOpenDirectory: (path: string) => void;
-  overview: SystemCleanerOverview;
-  query: string;
+  scanRoot: string;
+  scanned: boolean;
 }) {
   const { t } = useTranslation();
-  return <div className="system-cleaner-view system-cleaner-storage-view"><header className="system-cleaner-section-head"><h2>{t("systemCleaner.storage")}</h2><p>{t("systemCleaner.storageHeading", { root: directory.path })}</p></header><StorageBrowser directory={directory} loading={loading} onOpenDirectory={onOpenDirectory} overview={overview} query={query} /></div>;
+  return <div className="system-cleaner-view system-cleaner-storage-view"><header className="system-cleaner-section-head"><h2>{t("systemCleaner.storage")}</h2><p>{t("systemCleaner.storageHeading", { root: directory.path || scanRoot || "—" })}</p></header><StorageBrowser directory={directory} loading={loading} onOpenDirectory={onOpenDirectory} scanRoot={scanRoot} scanned={scanned} /></div>;
 }
 
 function ScanOverlay({ progress }: { progress?: SystemCleanerScanProgress }) {
@@ -726,12 +584,12 @@ function ScanOverlay({ progress }: { progress?: SystemCleanerScanProgress }) {
   return <div className="system-cleaner-scan-overlay" role="status"><SystemCleanerScanOrb size={64} label={label} /><strong>{t("systemCleaner.scanProgress", { files: formatCount(progress?.files ?? 0), size: formatBytes(progress?.bytes ?? 0) })}</strong>{progress?.currentPath ? <bdi className="system-cleaner-scan-path" dir="ltr" title={progress.currentPath}>{progress.currentPath}</bdi> : <span>{label}</span>}</div>;
 }
 
-function StorageBrowser({ directory, loading, onOpenDirectory, overview, query }: {
+function StorageBrowser({ directory, loading, onOpenDirectory, scanRoot, scanned }: {
   directory: SystemCleanerDirectoryListing;
   loading: boolean;
   onOpenDirectory: (path: string) => void;
-  overview: SystemCleanerOverview;
-  query: string;
+  scanRoot: string;
+  scanned: boolean;
 }) {
   const { t } = useTranslation();
   const notice = useWorkspaceStore((state) => state.showStatusBarNotice);
@@ -739,15 +597,13 @@ function StorageBrowser({ directory, loading, onOpenDirectory, overview, query }
   const [sort, setSort] = useState<StorageSort>({ key: "allocated", direction: "desc" });
   useEffect(() => setSelectedPath(undefined), [directory.path]);
 
-  const entries = useMemo(() => directory.entries.filter((entry) => matchesQuery(query, entry.name, entry.path)).sort((left, right) => {
-    const folderOrder = Number(right.isDirectory) - Number(left.isDirectory);
-    if (folderOrder !== 0) return folderOrder;
+  const entries = useMemo(() => [...directory.entries].sort((left, right) => {
     const direction = sort.direction === "asc" ? 1 : -1;
     if (sort.key === "size") return (left.bytes - right.bytes) * direction;
     if (sort.key === "allocated") return (left.allocatedBytes - right.allocatedBytes) * direction;
     return left.name.localeCompare(right.name, undefined, { numeric: true }) * direction;
-  }), [directory.entries, query, sort]);
-  const crumbs = useMemo(() => buildCrumbs(overview.scanRoot, directory.path), [directory.path, overview.scanRoot]);
+  }), [directory.entries, sort]);
+  const crumbs = useMemo(() => buildCrumbs(scanRoot, directory.path), [directory.path, scanRoot]);
 
   function toggleSort(key: StorageSort["key"]) {
     setSort((current) => current.key === key ? { key, direction: current.direction === "asc" ? "desc" : "asc" } : { key, direction: key === "name" ? "asc" : "desc" });
@@ -776,7 +632,7 @@ function StorageBrowser({ directory, loading, onOpenDirectory, overview, query }
   return <section className="system-cleaner-browser" aria-busy={loading}>
     <div className="system-cleaner-browser-toolbar"><nav className="system-cleaner-crumbs" aria-label={directory.path}>{crumbs.map((crumb, index) => <span className="system-cleaner-crumb-segment" key={crumb.path}>{index > 0 ? <ChevronRight size={13} /> : null}<button type="button" className={index === crumbs.length - 1 ? "current" : ""} disabled={loading || index === crumbs.length - 1} onClick={() => onOpenDirectory(crumb.path)}>{crumb.label}</button></span>)}</nav><button type="button" className="system-cleaner-icon-button" aria-label={t("systemCleaner.parentFolder")} disabled={loading || !directory.parentPath} onClick={() => directory.parentPath && onOpenDirectory(directory.parentPath)}><ArrowUp size={15} /></button></div>
     <div className="system-cleaner-browser-columns"><button type="button" onClick={() => toggleSort("name")}>{t("systemCleaner.name")}{sort.key === "name" ? <ChevronDown className={sort.direction === "asc" ? "ascending" : ""} size={12} /> : null}</button><span>{t("systemCleaner.percentOfFolder")}</span><button type="button" onClick={() => toggleSort("size")}>{t("systemCleaner.size")}{sort.key === "size" ? <ChevronDown className={sort.direction === "asc" ? "ascending" : ""} size={12} /> : null}</button><button type="button" onClick={() => toggleSort("allocated")}>{t("systemCleaner.allocated")}{sort.key === "allocated" ? <ChevronDown className={sort.direction === "asc" ? "ascending" : ""} size={12} /> : null}</button></div>
-    <div className="system-cleaner-browser-body">{entries.map((entry) => <StorageEntryRow entry={entry} key={entry.path} selected={selectedPath === entry.path} totalAllocatedBytes={directory.totalAllocatedBytes} onOpen={openEntry} onContextMenu={showEntryContextMenu} onSelect={setSelectedPath} />)}</div>
+    <div className="system-cleaner-browser-body">{entries.length > 0 ? entries.map((entry) => <StorageEntryRow entry={entry} key={entry.path} selected={selectedPath === entry.path} totalAllocatedBytes={directory.totalAllocatedBytes} onOpen={openEntry} onContextMenu={showEntryContextMenu} onSelect={setSelectedPath} />) : <div className="system-cleaner-browser-empty">{scanned ? t("systemCleaner.items", { count: 0 }) : t("systemCleaner.scanHint")}</div>}</div>
     <footer className="system-cleaner-browser-footer"><span>{t("systemCleaner.items", { count: formatCount(entries.length) })}</span><span>{t("systemCleaner.storageTotals", { allocated: formatBytes(directory.totalAllocatedBytes), size: formatBytes(directory.totalBytes) })}</span></footer>
   </section>;
 }
@@ -804,6 +660,7 @@ function StorageEntryRow({ entry, onOpen, onContextMenu, onSelect, selected, tot
 }
 
 function buildCrumbs(root: string, path: string) {
+  if (!root) return [];
   const separator = root.includes("\\") ? "\\" : "/";
   const relative = path.slice(root.length).replace(/^[\\/]+/, "");
   const parts = relative ? relative.split(/[\\/]+/) : [];

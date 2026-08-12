@@ -122,12 +122,24 @@ struct ReviewCategory {
     files: Vec<ReviewFile>,
 }
 
-#[derive(Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct InstalledApp {
+pub struct InstalledApp {
     name: String,
     id: String,
     version: String,
+    publisher: String,
+    size_bytes: u64,
+}
+
+#[derive(Deserialize)]
+struct InstalledAppMetadata {
+    #[serde(alias = "DisplayName")]
+    display_name: String,
+    #[serde(alias = "Publisher", default)]
+    publisher: String,
+    #[serde(alias = "EstimatedSizeBytes", default)]
+    estimated_size_bytes: u64,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -793,7 +805,123 @@ fn audit(event: &str, details: serde_json::Value) {
     }
 }
 
+fn installed_app_metadata() -> HashMap<String, InstalledAppMetadata> {
+    let mut command = Command::new("powershell.exe");
+    command.args([
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "$paths=@('HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*','HKLM:\\Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*','HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*'); Get-ItemProperty $paths -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName } | Select-Object DisplayName,Publisher,@{Name='EstimatedSizeBytes';Expression={[int64]$_.EstimatedSize * 1KB}} | ConvertTo-Json -Compress",
+    ]);
+    #[cfg(target_os = "windows")]
+    command.creation_flags(CREATE_NO_WINDOW);
+    let Ok(output) = command.output() else {
+        return HashMap::new();
+    };
+    if !output.status.success() || output.stdout.iter().all(u8::is_ascii_whitespace) {
+        return HashMap::new();
+    }
+    let Ok(value) = serde_json::from_slice::<serde_json::Value>(&output.stdout) else {
+        return HashMap::new();
+    };
+    let values = match value {
+        serde_json::Value::Array(values) => values,
+        serde_json::Value::Null => Vec::new(),
+        value => vec![value],
+    };
+    let mut metadata = HashMap::new();
+    for value in values {
+        let Ok(entry) = serde_json::from_value::<InstalledAppMetadata>(value) else {
+            continue;
+        };
+        let key = entry.display_name.trim().to_lowercase();
+        if key.is_empty() {
+            continue;
+        }
+        match metadata.entry(key) {
+            std::collections::hash_map::Entry::Vacant(slot) => {
+                slot.insert(entry);
+            }
+            std::collections::hash_map::Entry::Occupied(mut slot) => {
+                if entry.estimated_size_bytes > slot.get().estimated_size_bytes {
+                    slot.insert(entry);
+                }
+            }
+        }
+    }
+    metadata
+}
+
+fn winget_column(line: &str, start: usize, end: Option<usize>) -> String {
+    line.chars()
+        .skip(start)
+        .take(end.map_or(usize::MAX, |end| end.saturating_sub(start)))
+        .collect::<String>()
+        .trim()
+        .to_string()
+}
+
+fn parse_winget_apps(
+    text: &str,
+    mut metadata: HashMap<String, InstalledAppMetadata>,
+) -> Vec<InstalledApp> {
+    let lines: Vec<_> = text.lines().collect();
+    let Some(separator_index) = lines.iter().position(|line| {
+        let trimmed = line.trim();
+        trimmed.len() >= 8 && trimmed.chars().all(|character| character == '-')
+    }) else {
+        return Vec::new();
+    };
+    let Some(header) = separator_index
+        .checked_sub(1)
+        .and_then(|index| lines.get(index))
+    else {
+        return Vec::new();
+    };
+    let Some(id_start) = header.find("Id") else {
+        return Vec::new();
+    };
+    let Some(version_start) = header.find("Version") else {
+        return Vec::new();
+    };
+    let version_end = header.find("Available").or_else(|| header.find("Source"));
+
+    let mut apps = lines
+        .iter()
+        .skip(separator_index + 1)
+        .filter_map(|line| {
+            let name = winget_column(line, 0, Some(id_start));
+            let id = winget_column(line, id_start, Some(version_start));
+            let version = winget_column(line, version_start, version_end);
+            if name.is_empty() || id.is_empty() {
+                return None;
+            }
+            let app_metadata = metadata.remove(&name.to_lowercase());
+            Some(InstalledApp {
+                name,
+                id,
+                version,
+                publisher: app_metadata
+                    .as_ref()
+                    .map(|entry| entry.publisher.clone())
+                    .unwrap_or_default(),
+                size_bytes: app_metadata
+                    .map(|entry| entry.estimated_size_bytes)
+                    .unwrap_or_default(),
+            })
+        })
+        .collect::<Vec<_>>();
+    apps.sort_by(|left, right| {
+        right
+            .size_bytes
+            .cmp(&left.size_bytes)
+            .then_with(|| left.name.to_lowercase().cmp(&right.name.to_lowercase()))
+    });
+    apps
+}
+
 fn installed_apps() -> Vec<InstalledApp> {
+    let metadata = installed_app_metadata();
     let mut command = Command::new("winget");
     command.args([
         "list",
@@ -806,22 +934,7 @@ fn installed_apps() -> Vec<InstalledApp> {
         return Vec::new();
     };
     let text = String::from_utf8_lossy(&output.stdout);
-    text.lines()
-        .skip_while(|line| !line.starts_with("---"))
-        .skip(1)
-        .filter_map(|line| {
-            let columns: Vec<_> = line.split_whitespace().collect();
-            if columns.len() < 3 {
-                return None;
-            }
-            Some(InstalledApp {
-                name: columns[..columns.len() - 2].join(" "),
-                id: columns[columns.len() - 2].into(),
-                version: columns[columns.len() - 1].into(),
-            })
-        })
-        .take(250)
-        .collect()
+    parse_winget_apps(&text, metadata)
 }
 
 #[cfg(target_os = "windows")]
@@ -1125,6 +1238,16 @@ pub async fn system_cleaner_catalog(app: AppHandle) -> Result<Vec<RecipeCatalogE
 }
 
 #[tauri::command]
+pub async fn system_cleaner_list_apps() -> Result<Vec<InstalledApp>, String> {
+    #[cfg(not(target_os = "windows"))]
+    return Err("System Cleaner is available only on Windows.".into());
+    #[cfg(target_os = "windows")]
+    tauri::async_runtime::spawn_blocking(installed_apps)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 pub async fn system_cleaner_scan(
     app: AppHandle,
     root: Option<String>,
@@ -1410,6 +1533,41 @@ pub async fn system_cleaner_uninstall(app_id: String) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn winget_table_parser_preserves_names_and_sorts_estimated_sizes_descending() {
+        let output = "Name                       Id                         Version   Available Source\n\
+------------------------------------------------------------------------------------------------\n\
+Small Utility              Vendor.Small               1.2.3               winget\n\
+Microsoft Visual Studio    Microsoft.VisualStudio     17.9.0    17.10.0   winget\n";
+        let metadata = HashMap::from([
+            (
+                "small utility".into(),
+                InstalledAppMetadata {
+                    display_name: "Small Utility".into(),
+                    publisher: "Small Vendor".into(),
+                    estimated_size_bytes: 1_024,
+                },
+            ),
+            (
+                "microsoft visual studio".into(),
+                InstalledAppMetadata {
+                    display_name: "Microsoft Visual Studio".into(),
+                    publisher: "Microsoft Corporation".into(),
+                    estimated_size_bytes: 9_000_000,
+                },
+            ),
+        ]);
+
+        let apps = parse_winget_apps(output, metadata);
+
+        assert_eq!(apps.len(), 2);
+        assert_eq!(apps[0].name, "Microsoft Visual Studio");
+        assert_eq!(apps[0].id, "Microsoft.VisualStudio");
+        assert_eq!(apps[0].version, "17.9.0");
+        assert_eq!(apps[0].publisher, "Microsoft Corporation");
+        assert_eq!(apps[1].name, "Small Utility");
+    }
 
     #[test]
     fn review_categories_keep_personal_files_opt_in_and_bounded() {

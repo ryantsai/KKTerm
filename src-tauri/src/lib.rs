@@ -4952,6 +4952,7 @@ pub fn run() {
             get_system_performance_counters,
             system_cleaner::system_cleaner_list_drives,
             system_cleaner::system_cleaner_catalog,
+            system_cleaner::system_cleaner_list_apps,
             system_cleaner::system_cleaner_scan,
             system_cleaner::system_cleaner_list_directory,
             system_cleaner::system_cleaner_clean,

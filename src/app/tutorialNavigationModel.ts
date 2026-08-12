@@ -238,7 +238,6 @@ const SYSTEM_CLEANER_TUTORIAL_TARGET_IDS = [
   "app.activityRailSystemCleaner",
   "systemCleaner.page",
   "systemCleaner.drive",
-  "systemCleaner.search",
   "systemCleaner.scan",
   "systemCleaner.content",
   "systemCleaner.overview",
