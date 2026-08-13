@@ -365,6 +365,7 @@ commands.allow = [
   "inspect_custom_module_package",
   "install_custom_module_from_file",
   "list_custom_module_catalog",
+  "refresh_custom_module_catalog",
   "install_custom_module_from_catalog",
   "cancel_custom_module_download",
   "set_custom_module_enabled",

@@ -47,23 +47,32 @@ and external-link bridge. Build its installable archive with:
 npm run package:custom-module-fixture
 ```
 
-## First-party publishing
+## KKTerm-curated publishing
 
-First-party catalog packages use the same manifest, WebView, permissions, and
-storage as local packages. Release automation must:
+Curated catalog packages use the same manifest, WebView, permissions, and
+storage as local packages. They are not bundled into KKTerm releases. Manual
+publication uses `scripts/publish-custom-module.ps1` after the KKMod development
+skill has built, audited, and validated the archive. The publication workflow:
 
 1. Build and audit the static package.
 2. Compute its SHA-256.
 3. Sign the lowercase hexadecimal SHA-256 text with the Ed25519 catalog key.
-4. Publish the `.kkmod` over HTTPS.
+4. Upload the immutable archive to a content-addressed Cloudflare R2 key and
+   verify it through the production HTTPS custom domain.
 5. Add id, name, version, publisher, summary, host API version, URL, hash,
-   Base64 signature, declared license, requested permissions, and download size to
-   `custom-modules/catalog.v1.json`.
-6. Provide the matching public key as
+   Base64 signature, declared license, requested permissions, and download size
+   to a signed online catalog payload. Upload this catalog last.
+6. Optionally snapshot the current online entries into the bundled
+   `custom-modules/catalog.v1.json` baseline before a KKTerm release.
+7. Provide the matching public key as
    `KKTERM_CUSTOM_MODULE_CATALOG_PUBLIC_KEY` while building KKTerm. A build
    without that release key deliberately cannot verify catalog packages.
+8. Provide the signed catalog URL as `KKTERM_CUSTOM_MODULE_CATALOG_URL` while
+   building KKTerm. An unset URL deliberately leaves the build baseline-only.
 
 The signing private key must never enter this repository or a module package.
+See `docs/CUSTOM_MODULE_CATALOG.md` for R2 setup, exact commands, catalog
+renewal, cache behavior, and recovery.
 
 ## Excalidraw reference package
 

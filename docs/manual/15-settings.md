@@ -167,9 +167,18 @@ toggle list while their persisted backend settings remain enabled.
   package health, enablement, and `settings.customModulesShowRail`. An enabled,
   visible contribution becomes a permanent Activity Rail Module and runs in an
   isolated native WebView without Node.js or an HTTP service.
-- First-party catalog packages use the same runtime and permissions, but their
+- The Available group loads immediately from the embedded baseline or last
+  unexpired verified cache, then refreshes signed metadata from the configured
+  KKTerm catalog. `settings.customModulesRefreshCatalog` performs the same
+  refresh on demand and reports success through
+  `settings.customModulesCatalogRefreshedNotice`. A failed refresh does not
+  remove locally available baseline entries or installed Modules.
+- KKTerm-curated catalog packages use the same runtime and permissions, but their
   identity, version, publisher, license, requested permissions, download size,
-  checksum, and Ed25519 signature must match catalog metadata before install.
+  checksum, and Ed25519 signature must match signed catalog metadata before
+  install. Only a strictly newer semantic version is presented as
+  `settings.customModulesUpdate`; the confirmation names both versions and any
+  changed permissions before activation.
   Downloads use `settings.customModulesDownloading` in the shared progress
   popup and can be stopped with `settings.customModulesDownloadCancel` without
   changing the installed version. They display
