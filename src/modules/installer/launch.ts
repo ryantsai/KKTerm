@@ -26,6 +26,8 @@ const CODING_AGENT_CLI_RECIPES = new Set<string>([
   "kimi-code-cli",
   "grok-build",
   "opencode",
+  "pi",
+  "oh-my-pi",
 ]);
 
 /// Durable store for remembered launch folders: one JSON object mapping
@@ -90,6 +92,8 @@ const CODING_AGENT_LAUNCH_OPTIONS: Record<string, CodingAgentLaunchOption[]> = {
     { value: "--continue" },
     { value: "--pure" },
   ],
+  pi: [],
+  "oh-my-pi": [],
 };
 
 const CODING_AGENT_COMMAND_REFERENCE_URLS: Record<string, string> = {
@@ -101,6 +105,8 @@ const CODING_AGENT_COMMAND_REFERENCE_URLS: Record<string, string> = {
     "https://www.kimi.com/code/docs/en/kimi-code-cli/reference/kimi-command.html",
   "grok-build": "https://docs.x.ai/build/cli/reference",
   opencode: "https://opencode.ai/docs/cli/",
+  pi: "https://pi.dev/docs/latest/usage",
+  "oh-my-pi": "https://omp.sh/docs",
 };
 
 export function cliLauncherUsesProjectFolders(recipeId: string): boolean {
@@ -318,6 +324,8 @@ const CLI_LAUNCH_COMMANDS: Record<string, string> = {
   "kimi-code-cli": "kimi",
   "grok-build": "grok",
   opencode: "opencode",
+  pi: "pi",
+  "oh-my-pi": "omp",
   rustup: "rustup",
   bun: "bun",
   ripgrep: "rg",

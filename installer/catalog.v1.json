@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-07-16",
+  "generatedAt": "2026-08-13",
   "recipes": [
     {
       "id": "git",
@@ -29,8 +29,8 @@
       },
       "downloadProvider": {
         "kind": "downloadInstaller",
-        "url": "https://github.com/git-for-windows/git/releases/download/v2.54.0.windows.1/Git-2.54.0-64-bit.exe",
-        "fileName": "Git-2.54.0-64-bit.exe"
+        "url": "https://github.com/git-for-windows/git/releases/download/v2.55.0.windows.4/Git-2.55.0.4-64-bit.exe",
+        "fileName": "Git-2.55.0.4-64-bit.exe"
       },
       "chocolateyProvider": {
         "kind": "chocolatey",
@@ -78,10 +78,10 @@
       },
       "downloadProvider": {
         "kind": "downloadInstaller",
-        "url": "https://github.com/cli/cli/releases/download/v2.93.0/gh_2.93.0_windows_amd64.msi",
-        "fileName": "gh_2.93.0_windows_amd64.msi",
-        "arm64Url": "https://github.com/cli/cli/releases/download/v2.93.0/gh_2.93.0_windows_arm64.msi",
-        "arm64FileName": "gh_2.93.0_windows_arm64.msi"
+        "url": "https://github.com/cli/cli/releases/download/v2.97.0/gh_2.97.0_windows_amd64.msi",
+        "fileName": "gh_2.97.0_windows_amd64.msi",
+        "arm64Url": "https://github.com/cli/cli/releases/download/v2.97.0/gh_2.97.0_windows_arm64.msi",
+        "arm64FileName": "gh_2.97.0_windows_arm64.msi"
       },
       "chocolateyProvider": {
         "kind": "chocolatey",
@@ -268,8 +268,8 @@
       },
       "downloadProvider": {
         "kind": "downloadInstaller",
-        "url": "https://downloads.cursor.com/production/e7a7e93f4d75f8272503ecf33cedbaae10114a15/win32/x64/user-setup/CursorUserSetup-x64-3.6.21.exe",
-        "fileName": "CursorUserSetup-x64-3.6.21.exe"
+        "url": "https://api2.cursor.sh/updates/download/golden/win32-x64-user/cursor/latest",
+        "fileName": "CursorUserSetup-x64.exe"
       },
       "options": [
         "provider",
@@ -314,8 +314,8 @@
       },
       "downloadProvider": {
         "kind": "downloadInstaller",
-        "url": "https://github.com/notepad-plus-plus/notepad-plus-plus/releases/download/v8.9.6.2/npp.8.9.6.2.Installer.x64.exe",
-        "fileName": "npp.8.9.6.2.Installer.x64.exe"
+        "url": "https://github.com/notepad-plus-plus/notepad-plus-plus/releases/download/v8.9.7/npp.8.9.7.Installer.x64.exe",
+        "fileName": "npp.8.9.7.Installer.x64.exe"
       },
       "chocolateyProvider": {
         "kind": "chocolatey",
@@ -1280,8 +1280,8 @@
       },
       "downloadProvider": {
         "kind": "downloadInstaller",
-        "url": "https://github.com/usebruno/bruno/releases/download/v3.4.2/bruno_3.4.2_x64_win.exe",
-        "fileName": "bruno_3.4.2_x64_win.exe"
+        "url": "https://github.com/usebruno/bruno/releases/download/v4.0.0/bruno_4.0.0_x64_win.exe",
+        "fileName": "bruno_4.0.0_x64_win.exe"
       },
       "chocolateyProvider": {
         "kind": "chocolatey",
@@ -1462,14 +1462,10 @@
       },
       "downloadProvider": {
         "kind": "downloadInstaller",
-        "url": "https://github.com/microsoft/coreutils/releases/download/v2026.5.29/coreutils-2026.5.29-x64.exe",
-        "fileName": "coreutils-2026.5.29-x64.exe",
-        "arm64Url": "https://github.com/microsoft/coreutils/releases/download/v2026.5.29/coreutils-2026.5.29-arm64.exe",
-        "arm64FileName": "coreutils-2026.5.29-arm64.exe"
-      },
-      "chocolateyProvider": {
-        "kind": "chocolatey",
-        "id": "coreutils"
+        "url": "https://github.com/microsoft/coreutils/releases/download/v2026.6.16/coreutils-2026.6.16-x64.exe",
+        "fileName": "coreutils-2026.6.16-x64.exe",
+        "arm64Url": "https://github.com/microsoft/coreutils/releases/download/v2026.6.16/coreutils-2026.6.16-arm64.exe",
+        "arm64FileName": "coreutils-2026.6.16-arm64.exe"
       },
       "options": [
         "provider",
@@ -1720,10 +1716,6 @@
         "url": "https://claude.ai/api/desktop/win32/x64/msix/latest/redirect",
         "fileName": "Claude.msix"
       },
-      "chocolateyProvider": {
-        "kind": "chocolatey",
-        "id": "claude-desktop"
-      },
       "options": [
         "provider"
       ],
@@ -1747,35 +1739,31 @@
       "id": "hermes-agent",
       "name": "Hermes AI Agent",
       "section": "aiAgents",
-      "descriptionEn": "Self-learning AI agent framework from Nous Research, installed with uv/pip.",
+      "descriptionEn": "Nous Research's Hermes AI agent, installed with the official Windows PowerShell bootstrapper.",
       "category": "ai-agent",
       "icon": "BrainCircuit",
-      "needs": [
-        "uv"
-      ],
       "homepage": "https://github.com/NousResearch/hermes-agent",
       "releaseNotesUrl": "https://github.com/NousResearch/hermes-agent/releases",
       "provider": {
-        "kind": "uvPip",
-        "package": "hermes-agent"
+        "kind": "downloadInstaller",
+        "url": "https://hermes-agent.nousresearch.com/install.ps1",
+        "fileName": "hermes-agent-install.ps1"
       },
-      "options": [
-        "version"
-      ],
+      "options": [],
       "descriptionLocales": {
-        "fr": "Framework d'agent IA d'auto-apprentissage de Nous Research, installé avec uv/pip.",
-        "zh-CN": "来自 Nous Research 的自学习 AI 代理框架，与 uv/pip 一起安装。",
-        "de": "Selbstlernendes KI-Agent-Framework von Nous Research, installiert mit uv/pip.",
-        "it": "Framework agente AI ad autoapprendimento di Nous Research, installato con uv/pip.",
-        "zh-TW": "Nous Research 的自學習 AI 代理框架，透過 uv/pip 安裝。",
-        "ko": "uv/pip와 함께 설치되는 Nous Research의 자가 학습 AI 에이전트 프레임워크입니다.",
-        "vi": "Khung tác nhân AI tự học của Nous Research, được cài đặt với uv/pip.",
-        "id": "Kerangka kerja agen AI belajar mandiri dari Nous Research, diinstal dengan uv/pip.",
-        "pt-BR": "Estrutura de agente de IA de autoaprendizagem da Nous Research, instalada com uv/pip.",
-        "es": "Marco de agente de IA de autoaprendizaje de Nous Research, instalado con uv/pip.",
-        "ja": "Nous Research の自己学習型 AI エージェント フレームワーク。uv/pip とともにインストールされます。",
-        "es-MX": "Marco de agente de IA de autoaprendizaje de Nous Research, instalado con uv/pip.",
-        "th": "เฟรมเวิร์กเอเจนต์ AI การเรียนรู้ด้วยตนเองจาก Nous Research ติดตั้งด้วย uv/pip"
+        "fr": "Agent IA Hermes de Nous Research, installé avec le programme d'amorçage PowerShell officiel pour Windows.",
+        "zh-CN": "Nous Research 的 Hermes AI 代理，使用官方 Windows PowerShell 引导安装程序安装。",
+        "de": "Hermes-KI-Agent von Nous Research, installiert mit dem offiziellen Windows-PowerShell-Bootstrapper.",
+        "it": "Agente AI Hermes di Nous Research, installato con il bootstrapper PowerShell ufficiale per Windows.",
+        "zh-TW": "Nous Research 的 Hermes AI 代理，透過官方 Windows PowerShell 啟動安裝程式安裝。",
+        "ko": "공식 Windows PowerShell 부트스트래퍼로 설치되는 Nous Research의 Hermes AI 에이전트입니다.",
+        "vi": "Tác nhân AI Hermes của Nous Research, được cài đặt bằng trình bootstrap PowerShell chính thức cho Windows.",
+        "id": "Agen AI Hermes dari Nous Research, diinstal dengan bootstrapper PowerShell Windows resmi.",
+        "pt-BR": "Agente de IA Hermes da Nous Research, instalado com o bootstrapper oficial do PowerShell para Windows.",
+        "es": "Agente de IA Hermes de Nous Research, instalado con el bootstrapper oficial de PowerShell para Windows.",
+        "ja": "Nous Research の Hermes AI エージェント。公式の Windows PowerShell ブートストラッパーでインストールします。",
+        "es-MX": "Agente de IA Hermes de Nous Research, instalado con el bootstrapper oficial de PowerShell para Windows.",
+        "th": "เอเจนต์ AI Hermes จาก Nous Research ติดตั้งด้วย bootstrapper PowerShell อย่างเป็นทางการสำหรับ Windows"
       }
     },
     {
@@ -1838,8 +1826,8 @@
       },
       "downloadProvider": {
         "kind": "downloadInstaller",
-        "url": "https://github.com/microsoft/PowerToys/releases/download/v0.99.1/PowerToysUserSetup-0.99.1-x64.exe",
-        "fileName": "PowerToysUserSetup-0.99.1-x64.exe"
+        "url": "https://github.com/microsoft/PowerToys/releases/download/v0.100.2/PowerToysUserSetup-0.100.2-x64.exe",
+        "fileName": "PowerToysUserSetup-0.100.2-x64.exe"
       },
       "chocolateyProvider": {
         "kind": "chocolatey",
@@ -1894,10 +1882,10 @@
       },
       "downloadProvider": {
         "kind": "downloadInstaller",
-        "url": "https://github.com/PowerShell/PowerShell/releases/download/v7.6.2/PowerShell-7.6.2-win-x64.msi",
-        "fileName": "PowerShell-7.6.2-win-x64.msi",
-        "arm64Url": "https://github.com/PowerShell/PowerShell/releases/download/v7.6.2/PowerShell-7.6.2-win-arm64.msi",
-        "arm64FileName": "PowerShell-7.6.2-win-arm64.msi"
+        "url": "https://github.com/PowerShell/PowerShell/releases/download/v7.6.4/PowerShell-7.6.4-win-x64.msi",
+        "fileName": "PowerShell-7.6.4-win-x64.msi",
+        "arm64Url": "https://github.com/PowerShell/PowerShell/releases/download/v7.6.4/PowerShell-7.6.4-win-arm64.msi",
+        "arm64FileName": "PowerShell-7.6.4-win-arm64.msi"
       },
       "chocolateyProvider": {
         "kind": "chocolatey",
@@ -2348,8 +2336,8 @@
       },
       "downloadProvider": {
         "kind": "downloadInstaller",
-        "url": "https://github.com/ShareX/ShareX/releases/download/v20.2.0/ShareX-20.2.0-setup-x64.exe",
-        "fileName": "ShareX-20.2.0-setup-x64.exe"
+        "url": "https://github.com/ShareX/ShareX/releases/download/v21.0.0/ShareX-21.0.0-setup-x64.exe",
+        "fileName": "ShareX-21.0.0-setup-x64.exe"
       },
       "chocolateyProvider": {
         "kind": "chocolatey",
@@ -2803,8 +2791,8 @@
       },
       "downloadProvider": {
         "kind": "downloadInstaller",
-        "url": "https://github.com/jgraph/drawio-desktop/releases/latest/download/draw.io-windows-installer.exe",
-        "fileName": "draw.io-windows-installer.exe"
+        "url": "https://github.com/jgraph/drawio-desktop/releases/download/v31.1.8/draw.io-31.1.8-windows-installer.exe",
+        "fileName": "draw.io-31.1.8-windows-installer.exe"
       },
       "chocolateyProvider": {
         "kind": "chocolatey",
@@ -3255,6 +3243,72 @@
         "vi": "Tác nhân mã hóa AI mã nguồn mở CLI.",
         "id": "CLI agen pengkodean AI sumber terbuka.",
         "ko": "오픈소스 AI 코딩 에이전트 CLI."
+      }
+    },
+    {
+      "id": "pi",
+      "name": "Pi",
+      "section": "aiAgents",
+      "descriptionEn": "Minimal terminal coding harness from the Pi project.",
+      "category": "ai-agent",
+      "icon": "Bot",
+      "needs": [
+        "node-bundle"
+      ],
+      "homepage": "https://pi.dev/",
+      "releaseNotesUrl": "https://github.com/earendil-works/pi/releases",
+      "provider": {
+        "kind": "npm",
+        "pkg": "@earendil-works/pi-coding-agent"
+      },
+      "options": [
+        "version"
+      ],
+      "descriptionLocales": {
+        "fr": "Environnement minimal de codage dans le terminal du projet Pi.",
+        "zh-CN": "Pi 项目提供的简约终端编码工具。",
+        "de": "Minimale Terminal-Umgebung zum Programmieren aus dem Pi-Projekt.",
+        "it": "Ambiente minimale di programmazione da terminale del progetto Pi.",
+        "zh-TW": "Pi 專案提供的精簡終端機程式開發工具。",
+        "ko": "Pi 프로젝트의 미니멀 터미널 코딩 하니스입니다.",
+        "vi": "Bộ công cụ lập trình terminal tối giản của dự án Pi.",
+        "id": "Harness pengodean terminal minimal dari proyek Pi.",
+        "pt-BR": "Ambiente mínimo de programação no terminal do projeto Pi.",
+        "es": "Entorno mínimo de programación en terminal del proyecto Pi.",
+        "ja": "Pi プロジェクトの最小構成ターミナル コーディング ハーネス。",
+        "es-MX": "Entorno mínimo de programación en terminal del proyecto Pi.",
+        "th": "เครื่องมือเขียนโค้ดบนเทอร์มินัลแบบมินิมอลจากโครงการ Pi"
+      }
+    },
+    {
+      "id": "oh-my-pi",
+      "name": "Oh My Pi",
+      "section": "aiAgents",
+      "descriptionEn": "Pi-based terminal coding agent fork with built-in tools, LSP, subagents, and multi-provider support.",
+      "category": "ai-agent",
+      "icon": "Bot",
+      "homepage": "https://omp.sh/",
+      "releaseNotesUrl": "https://github.com/can1357/oh-my-pi/releases",
+      "provider": {
+        "kind": "downloadInstaller",
+        "url": "https://omp.sh/install.ps1",
+        "fileName": "oh-my-pi-install.ps1"
+      },
+      "options": [],
+      "descriptionLocales": {
+        "fr": "Fork de l'agent de codage terminal Pi avec outils intégrés, LSP, sous-agents et prise en charge de plusieurs fournisseurs.",
+        "zh-CN": "基于 Pi 的终端编码代理分支，内置工具、LSP、子代理和多提供商支持。",
+        "de": "Pi-basierter Terminal-Coding-Agent-Fork mit integrierten Tools, LSP, Subagenten und Unterstützung mehrerer Anbieter.",
+        "it": "Fork dell'agente di programmazione da terminale basato su Pi, con strumenti integrati, LSP, sub-agenti e supporto per più provider.",
+        "zh-TW": "以 Pi 為基礎的終端機程式開發代理分支，內建工具、LSP、子代理與多提供者支援。",
+        "ko": "기본 제공 도구, LSP, 서브에이전트 및 다중 제공업체를 지원하는 Pi 기반 터미널 코딩 에이전트 포크입니다.",
+        "vi": "Bản fork tác nhân lập trình terminal dựa trên Pi với công cụ tích hợp, LSP, tác nhân con và hỗ trợ nhiều nhà cung cấp.",
+        "id": "Fork agen pengodean terminal berbasis Pi dengan alat bawaan, LSP, sub-agen, dan dukungan multi-penyedia.",
+        "pt-BR": "Fork do agente de programação de terminal baseado no Pi, com ferramentas integradas, LSP, subagentes e suporte a vários provedores.",
+        "es": "Fork del agente de programación en terminal basado en Pi, con herramientas integradas, LSP, subagentes y compatibilidad con varios proveedores.",
+        "ja": "組み込みツール、LSP、サブエージェント、複数プロバイダーに対応した Pi ベースのターミナルコーディングエージェントのフォーク。",
+        "es-MX": "Fork del agente de programación en terminal basado en Pi, con herramientas integradas, LSP, subagentes y compatibilidad con varios proveedores.",
+        "th": "เอเจนต์เขียนโค้ดบนเทอร์มินัลที่แยกสาขาจาก Pi พร้อมเครื่องมือในตัว, LSP, เอเจนต์ย่อย และการรองรับผู้ให้บริการหลายราย"
       }
     }
   ]

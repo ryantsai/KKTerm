@@ -99,7 +99,7 @@ pub fn install_recipe(
         } else {
             install_recipe_by_provider(recipe, options, cancel, emit)
         }
-    } else if recipe.id == "open-webui" || recipe.id == "langflow" || recipe.id == "hermes-agent" {
+    } else if recipe.id == "open-webui" || recipe.id == "langflow" {
         if let Provider::UvPip { package } = &recipe.provider {
             install_managed_uv_pip_app(&recipe.id, package, options, cancel, emit)
         } else {

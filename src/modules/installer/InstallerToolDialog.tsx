@@ -1808,7 +1808,7 @@ function workspaceConnectionSpecForRecipe(
           type: "local",
           localShell: "powershell.exe",
           localStartupScript: [
-            '& "$env:LOCALAPPDATA\\KKTerm\\installer\\apps\\hermes-agent\\.venv\\Scripts\\Activate.ps1"',
+            '$hermesBin = Join-Path $env:LOCALAPPDATA "hermes\\hermes-agent\\bin"; if (Test-Path -LiteralPath (Join-Path $hermesBin "hermes.exe")) { $env:PATH = "$hermesBin;$env:PATH" }',
             "Write-Host ''",
             "Write-Host '  hermes setup  —  configure providers and accounts' -ForegroundColor Cyan",
             "Write-Host '  hermes postinstall  —  optional dependencies' -ForegroundColor Cyan",

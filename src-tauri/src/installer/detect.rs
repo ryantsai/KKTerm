@@ -197,7 +197,9 @@ pub fn detect_one(recipe: &Recipe) -> DetectedState {
         "detect.one.start",
         &json!({ "toolId": recipe.id, "provider": provider_kind(&recipe.provider) }),
     );
-    let state = if is_managed_app(&recipe.id) {
+    let state = if recipe.id == "hermes-agent" {
+        detect_hermes_agent()
+    } else if is_managed_app(&recipe.id) {
         detect_managed_app_marker(&recipe.id)
     } else {
         if let Some(Provider::Chocolatey { id }) = &recipe.chocolatey_provider {
@@ -257,6 +259,9 @@ pub fn detect_one(recipe: &Recipe) -> DetectedState {
             }
             Provider::DownloadInstaller { .. } if recipe.id == "cursor-cli" => {
                 detect_cursor_cli().with_install_provider(Some("downloadInstaller"))
+            }
+            Provider::DownloadInstaller { .. } if recipe.id == "oh-my-pi" => {
+                detect_oh_my_pi().with_install_provider(Some("downloadInstaller"))
             }
             Provider::DownloadInstaller { .. } => detect_installed_software_aliases(recipe)
                 .with_install_provider(Some("downloadInstaller")),
@@ -441,6 +446,45 @@ fn detect_antigravity_cli() -> DetectedState {
             .to_string_lossy()
             .into_owned(),
     ))
+}
+
+fn detect_hermes_agent() -> DetectedState {
+    let Some(local_app_data) = std::env::var_os("LOCALAPPDATA").map(PathBuf::from) else {
+        return detect_managed_app_marker("hermes-agent")
+            .with_install_provider(Some("uvPip"));
+    };
+    let install_dir = local_app_data.join("hermes").join("hermes-agent");
+    let executable = install_dir.join("bin").join("hermes.exe");
+    if executable.is_file() {
+        let program = executable.to_string_lossy().into_owned();
+        return DetectedState::installed(command_version(&program, &["--version"]))
+            .with_install_location(Some(install_dir.to_string_lossy().into_owned()))
+            .with_install_provider(Some("downloadInstaller"));
+    }
+    if let Some(version) = command_version("hermes", &["--version"]) {
+        return DetectedState::installed(Some(version))
+            .with_install_provider(Some("downloadInstaller"));
+    }
+    detect_managed_app_marker("hermes-agent").with_install_provider(Some("uvPip"))
+}
+
+fn detect_oh_my_pi() -> DetectedState {
+    if let Some(local_app_data) = std::env::var_os("LOCALAPPDATA").map(PathBuf::from) {
+        let executable = local_app_data.join("omp").join("omp.exe");
+        if executable.is_file() {
+            let program = executable.to_string_lossy().into_owned();
+            return DetectedState::installed(command_version(&program, &["--version"]))
+                .with_install_location(
+                    executable
+                        .parent()
+                        .map(|path| path.to_string_lossy().into_owned()),
+                );
+        }
+    }
+    match command_version("omp", &["--version"]) {
+        Some(version) => DetectedState::installed(Some(version)),
+        None => DetectedState::not_installed(),
+    }
 }
 
 fn antigravity_cli_exe_path_from_local_data(local_data: &std::path::Path) -> PathBuf {

@@ -115,6 +115,8 @@ test("coding-agent launcher shows persisted options instead of samples", async (
     ["kimi-code-cli", "www.kimi.com"],
     ["grok-build", "docs.x.ai"],
     ["opencode", "opencode.ai"],
+    ["pi", "pi.dev"],
+    ["oh-my-pi", "omp.sh"],
   ]) {
     assert.match(referenceBlock, new RegExp(`"?${id}"?:`));
     assert.match(referenceBlock, new RegExp(domain.replaceAll(".", "\\.")));
@@ -214,7 +216,7 @@ test("coding-agent launchers remember project folders", async () => {
   )?.[1];
   assert.ok(agentBlock, "launch.ts should declare the coding-agent set");
   const agentIds = [...agentBlock.matchAll(/"([^"]+)"/g)].map((match) => match[1]);
-  for (const id of ["antigravity-cli", "claude-code-cli", "codex-cli", "cursor-cli", "kimi-code-cli", "grok-build", "opencode"]) {
+  for (const id of ["antigravity-cli", "claude-code-cli", "codex-cli", "cursor-cli", "kimi-code-cli", "grok-build", "opencode", "pi", "oh-my-pi"]) {
     assert.ok(agentIds.includes(id), `${id} should remember launch folders`);
   }
   for (const id of agentIds) {
