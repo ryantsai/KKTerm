@@ -241,14 +241,70 @@ pub struct HostScan {
     /// SSH (port 22) answered.
     #[serde(default)]
     pub ssh: bool,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub ssh_ports: Vec<u16>,
     /// WinRM (port 5985/5986) answered.
     #[serde(default)]
     pub winrm: bool,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub winrm_ports: Vec<u16>,
+    /// SMB (port 445) answered, which is the network prerequisite used by
+    /// Sysinternals PsExec for its temporary service and named pipe.
+    #[serde(default)]
+    pub psexec: bool,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub psexec_ports: Vec<u16>,
     /// HTTPS (port 443) answered — a management-interface hint.
     #[serde(default)]
     pub https: bool,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub https_ports: Vec<u16>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scanned_at: Option<String>,
+}
+
+/// Per-Host remote execution policy. The credential id is a soft reference to
+/// the shared saved-credential metadata; the password remains in the OS
+/// keychain. WinRM always runs as that authenticated user. Execution-context
+/// switching is intentionally PsExec-only.
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum WindowsExecutionContext {
+    User,
+    Elevated,
+    #[default]
+    System,
+    Limited,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct HostExecutionConfig {
+    #[serde(default)]
+    pub transport: Transport,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub credential_id: Option<String>,
+    #[serde(default)]
+    pub winrm_use_tls: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub winrm_port: Option<u16>,
+    #[serde(default)]
+    pub winrm_accept_invalid_certs: bool,
+    #[serde(default)]
+    pub psexec_context: WindowsExecutionContext,
+}
+
+impl Default for HostExecutionConfig {
+    fn default() -> Self {
+        Self {
+            transport: Transport::Auto,
+            credential_id: None,
+            winrm_use_tls: false,
+            winrm_port: None,
+            winrm_accept_invalid_certs: false,
+            psexec_context: WindowsExecutionContext::System,
+        }
+    }
 }
 
 /// A durable IT Ops Host (docs/ITOPS.md Hosts): one device or guest in a Site's
@@ -272,6 +328,8 @@ pub struct SiteHost {
     pub connection_ids: Vec<String>,
     #[serde(default)]
     pub scan: Option<HostScan>,
+    #[serde(default)]
+    pub execution: HostExecutionConfig,
     #[serde(default)]
     pub notes: String,
     pub sort_order: i64,
@@ -625,7 +683,7 @@ pub struct RunScope {
     #[serde(default)]
     pub server_room: Option<String>,
     /// Site Host ids selected on the Hosts page. Each Host resolves through
-    /// its first bound SSH Connection; Hosts without one are not runnable.
+    /// a bound SSH Connection or the Host's configured Windows transport.
     #[serde(default)]
     pub host_ids: Vec<String>,
 }
@@ -644,6 +702,8 @@ impl RunScope {
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ResolvedHost {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub host_id: Option<String>,
     pub connection_id: String,
     pub name: String,
     pub host: String,
@@ -876,6 +936,8 @@ pub struct ExecOutcome {
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct HostReport {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub host_id: Option<String>,
     pub connection_id: String,
     pub name: String,
     pub host: String,
@@ -922,6 +984,8 @@ pub struct RunHistoryEntry {
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RunEventHost {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub host_id: Option<String>,
     pub connection_id: String,
     pub name: String,
     pub host: String,

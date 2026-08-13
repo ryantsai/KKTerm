@@ -19,6 +19,7 @@ import type {
   PrefixStatus,
   TaskOperatingSystem,
   HostImportResult,
+  HostExecutionConfig,
   HostKind,
   HostScanEvent,
   Site,
@@ -214,6 +215,7 @@ function addressArgs(input: AddressInput) {
 export type LiveRunHostStatus = "pending" | "running" | "ok" | "failed";
 
 export interface LiveRunHost {
+  hostId?: string | null;
   connectionId: string;
   name: string;
   host: string;
@@ -441,8 +443,17 @@ interface ItOpsState {
   /** Import a parsed hostname list, then start a connectivity scan over the
    *  created rows. Returns the import outcome (created + skipped counts). */
   importHosts: (siteId: string, hostnames: string[]) => Promise<HostImportResult>;
-  /** Scan the given Hosts (all of the Site's Hosts when empty) for SSH/WinRM/
-   *  HTTPS endpoints. Per-host results stream in via applyHostScanEvent. */
+  importHostsFromConnections: (
+    siteId: string,
+    connectionIds: string[],
+  ) => Promise<HostImportResult>;
+  setHostExecution: (
+    siteId: string,
+    id: string,
+    execution: HostExecutionConfig,
+  ) => Promise<SiteHost>;
+  /** Scan Hosts for SSH, WinRM, PsExec-over-SMB, and HTTPS endpoints.
+   *  Per-host results stream in via applyHostScanEvent. */
   scanHosts: (siteId: string, hostIds: string[]) => Promise<void>;
   /** Fold one streamed `itops://host-scan` event into the Host cache. */
   applyHostScanEvent: (event: HostScanEvent) => void;
@@ -791,6 +802,24 @@ export const useItOpsStore = create<ItOpsState>((set, get) => ({
       void get().scanHosts(siteId, result.hosts.map((host) => host.id));
     }
     return result;
+  },
+
+  async importHostsFromConnections(siteId, connectionIds) {
+    const result = await invokeCommand("itops_import_hosts_from_connections", {
+      siteId,
+      connectionIds,
+    });
+    await get().loadHosts(siteId);
+    if (result.hosts.length > 0) {
+      void get().scanHosts(siteId, result.hosts.map((host) => host.id));
+    }
+    return result;
+  },
+
+  async setHostExecution(siteId, id, execution) {
+    const updated = await invokeCommand("itops_set_host_execution", { id, execution });
+    await get().loadHosts(siteId);
+    return updated;
   },
 
   async scanHosts(siteId, hostIds) {

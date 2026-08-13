@@ -6916,7 +6916,100 @@
 }
 .itops-page .connection-binding-list.standalone {
   grid-template-columns: 1fr;
-  max-height: 430px;
+  max-height: 230px;
+}
+
+.itops-page .it-host-import-source {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+.itops-page .it-host-import-source button {
+  border: 0;
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: var(--text-muted);
+  background: transparent;
+  cursor: pointer;
+}
+.itops-page .it-host-import-source button.active {
+  color: var(--text);
+  background: var(--surface);
+}
+.itops-page .it-host-import-groups {
+  display: grid;
+  gap: 4px;
+  max-height: 320px;
+  overflow: auto;
+}
+.itops-page .it-host-import-group {
+  display: grid;
+  grid-template-columns: auto minmax(120px, 1fr) minmax(180px, 2fr);
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+.itops-page .it-host-import-name {
+  font-weight: 600;
+}
+.itops-page .it-host-import-endpoints {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+.itops-page .it-host-import-endpoints span {
+  padding: 2px 6px;
+  border-radius: 999px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  font-size: 11px;
+}
+.itops-page .it-host-execution-settings {
+  display: grid;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.itops-page .it-host-execution-settings h3 {
+  margin: 0 0 2px;
+}
+.itops-page .it-host-execution-settings > label,
+.itops-page .it-host-winrm-options > label:not(.it-host-checkbox) {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  align-items: center;
+  gap: 10px;
+}
+.itops-page .it-host-execution-settings select {
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--text);
+  background: var(--surface);
+}
+.itops-page .it-host-new-credential {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+.itops-page .it-host-winrm-options {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+.itops-page .it-host-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 7px;
 }
 
 .itops-page .rk-item-bind {
@@ -6976,7 +7069,12 @@
   .rack-item-dialog-grid { grid-template-columns: 1fr; }
   .itops-page .rack-form-grid.two,
   .itops-page .rack-kuaiguai-fields,
-  .itops-page .connection-binding-list {
+  .itops-page .connection-binding-list,
+  .itops-page .it-host-new-credential {
+    grid-template-columns: 1fr;
+  }
+  .itops-page .it-host-execution-settings > label,
+  .itops-page .it-host-winrm-options > label:not(.it-host-checkbox) {
     grid-template-columns: 1fr;
   }
 }

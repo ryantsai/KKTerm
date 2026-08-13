@@ -160,7 +160,7 @@ fn now_millis() -> String {
 }
 
 /// Start a Batch Run of `task` against a Site. Resolves the group and each
-/// SSH host's auth up front (DB + keychain), then fans out on a background
+/// Host transport auth up front (DB + keychain), then fans out on a background
 /// thread, streaming `itops://run` events and writing the consolidated report to
 /// itops_run_history on completion. Returns the run id immediately.
 #[tauri::command]
@@ -171,11 +171,9 @@ pub async fn itops_start_batch_run(
     scope: Option<RunScope>,
     task_id: Option<String>,
 ) -> Result<String, String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        start_run(&app, site_id, task, scope, task_id)
-    })
-    .await
-    .map_err(|error| format!("batch run preparation task failed: {error}"))?
+    tauri::async_runtime::spawn_blocking(move || start_run(&app, site_id, task, scope, task_id))
+        .await
+        .map_err(|error| format!("batch run preparation task failed: {error}"))?
 }
 
 /// Start a Batch Run; reusable by the command above and internal callers.
@@ -193,7 +191,7 @@ pub fn start_run(
     let known_hosts = ssh::app_known_hosts_path(app)?;
     let scoped = scope.filter(|scope| !scope.is_empty());
     let task_secrets = runner::resolve_task_secrets(&task, &secrets)?;
-    let (hosts, specs) = storage(app).with_connection_infallible(|conn| {
+    let (hosts, ssh_specs, windows_specs) = storage(app).with_connection_infallible(|conn| {
         let group = ito::list_sites(conn)
             .map_err(|error| error.to_string())?
             .into_iter()
@@ -205,14 +203,16 @@ pub fn start_run(
             }
             None => ito::resolve_site(conn, &group).map_err(|error| error.to_string())?,
         };
-        let specs = runner::resolve_ssh_specs(
+        let ssh_specs = runner::resolve_ssh_specs(
             conn,
             &secrets,
             known_hosts.clone(),
             &hosts,
             DEFAULT_TIMEOUT_SECONDS,
         );
-        Ok::<_, String>((hosts, specs))
+        let windows_specs =
+            runner::resolve_windows_specs(conn, &secrets, &hosts, DEFAULT_TIMEOUT_SECONDS);
+        Ok::<_, String>((hosts, ssh_specs, windows_specs))
     })?;
 
     if hosts.is_empty() {
@@ -225,6 +225,7 @@ pub fn start_run(
     let event_hosts: Vec<RunEventHost> = hosts
         .iter()
         .map(|host| RunEventHost {
+            host_id: host.host_id.clone(),
             connection_id: host.connection_id.clone(),
             name: host.name.clone(),
             host: host.host.clone(),
@@ -234,7 +235,8 @@ pub fn start_run(
 
     let cancel = app.state::<ItopsRunRegistry>().register(&run_id);
 
-    let transport = SshTransport::new(app.clone(), specs, task_secrets);
+    let ssh_transport = SshTransport::new(app.clone(), ssh_specs, task_secrets);
+    let transport = runner::RoutedTransport::new(ssh_transport, windows_specs)?;
     let app_thread = app.clone();
     let run_id_thread = run_id.clone();
     std::thread::spawn(move || {
@@ -811,6 +813,74 @@ pub fn itops_import_hosts(
     })
 }
 
+/// Import selected network Connections into Host inventory. Several
+/// Connections that address the same normalized hostname/IP become one Host
+/// with every matching Connection bound to it.
+#[tauri::command]
+pub fn itops_import_hosts_from_connections(
+    app: AppHandle,
+    site_id: String,
+    connection_ids: Vec<String>,
+) -> Result<hosts::HostImportResult, String> {
+    if connection_ids.is_empty() {
+        return Err("select at least one Connection to import".to_string());
+    }
+    storage(&app).with_connection_infallible(|conn| {
+        let wanted: std::collections::HashSet<&str> =
+            connection_ids.iter().map(String::as_str).collect();
+        let mut statement = conn
+            .prepare("SELECT id, host, url, connection_type FROM connections ORDER BY sort_order")
+            .map_err(|error| error.to_string())?;
+        let rows = statement
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, Option<String>>(2)?,
+                    row.get::<_, String>(3)?,
+                ))
+            })
+            .map_err(|error| error.to_string())?;
+        let mut inputs = Vec::new();
+        for row in rows {
+            let (id, host, url, connection_type) = row.map_err(|error| error.to_string())?;
+            if !wanted.contains(id.as_str()) {
+                continue;
+            }
+            let hostname = if connection_type == "url" {
+                url.as_deref()
+                    .and_then(|value| url::Url::parse(value).ok())
+                    .and_then(|value| value.host_str().map(str::to_string))
+                    .unwrap_or_default()
+            } else {
+                host
+            };
+            if hostname.trim().is_empty()
+                || matches!(
+                    connection_type.as_str(),
+                    "local" | "serial" | "localFiles" | "fileView"
+                )
+            {
+                continue;
+            }
+            inputs.push(hosts::ImportConnectionHost { id, hostname });
+        }
+        hosts::import_connection_hosts(conn, &site_id, &inputs, || new_itops_id("host"))
+            .map_err(|error| error.to_string())
+    })
+}
+
+#[tauri::command]
+pub fn itops_set_host_execution(
+    app: AppHandle,
+    id: String,
+    execution: super::types::HostExecutionConfig,
+) -> Result<SiteHost, String> {
+    storage(&app).with_connection_infallible(|conn| {
+        hosts::set_host_execution(conn, &id, execution).map_err(|error| error.to_string())
+    })
+}
+
 /// One TCP reachability probe; an accepted connection within the timeout means
 /// the endpoint is listening.
 async fn probe_port(hostname: &str, port: u16) -> bool {
@@ -832,8 +902,8 @@ fn scan_timestamp() -> Option<String> {
 }
 
 /// Scan the given Hosts (all of the Site's Hosts when `host_ids` is empty) for
-/// remote-orchestration endpoints: SSH (22), WinRM (5985/5986), and HTTPS
-/// (443, a management-interface hint). Each finished Host persists its scan
+/// remote-orchestration endpoints: SSH (22), WinRM (5985/5986), PsExec's SMB
+/// prerequisite (445), and HTTPS (443). Each finished Host persists its scan
 /// snapshot and streams an `itops://host-scan` event so the panel updates as
 /// results land; the full updated list returns when the scan completes.
 #[tauri::command]
@@ -861,18 +931,45 @@ pub async fn itops_scan_hosts(
         probes.spawn(async move {
             let _permit = semaphore.acquire_owned().await.ok()?;
             let hostname = host.hostname.clone();
-            let (ssh, winrm_http, winrm_https, https) = tokio::join!(
+            let custom_winrm_port = host.execution.winrm_port;
+            let (ssh, winrm_http, winrm_https, psexec, https, custom_winrm) = tokio::join!(
                 probe_port(&hostname, 22),
                 probe_port(&hostname, 5985),
                 probe_port(&hostname, 5986),
+                probe_port(&hostname, 445),
                 probe_port(&hostname, 443),
+                async {
+                    match custom_winrm_port {
+                        Some(port) if port != 5985 && port != 5986 => {
+                            probe_port(&hostname, port).await
+                        }
+                        _ => false,
+                    }
+                },
             );
+            let mut winrm_ports = Vec::new();
+            if winrm_http {
+                winrm_ports.push(5985);
+            }
+            if winrm_https {
+                winrm_ports.push(5986);
+            }
+            if custom_winrm {
+                if let Some(port) = custom_winrm_port {
+                    winrm_ports.push(port);
+                }
+            }
             Some((
                 host.id,
                 HostScan {
                     ssh,
-                    winrm: winrm_http || winrm_https,
+                    ssh_ports: ssh.then_some(22).into_iter().collect(),
+                    winrm: winrm_http || winrm_https || custom_winrm,
+                    winrm_ports,
+                    psexec,
+                    psexec_ports: psexec.then_some(445).into_iter().collect(),
                     https,
+                    https_ports: https.then_some(443).into_iter().collect(),
                     scanned_at: scan_timestamp(),
                 },
             ))

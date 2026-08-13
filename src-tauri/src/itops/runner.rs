@@ -6,18 +6,22 @@
 
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, mpsc};
 use std::time::Instant;
 
+use base64::Engine;
 use rusqlite::{Connection as SqliteConnection, OptionalExtension, params};
 use tauri::AppHandle;
+use winrm_rs::{WinrmClient, WinrmConfig, WinrmCredentials};
 
 use crate::secrets;
 use crate::ssh::{self, NativeSshAuth, NativeSshCommandRequest};
 
 use super::types::{
     BatchTask, ExecOutcome, HostReport, PlaybookStepKind, ResolvedHost, RunEvent, RunReport,
+    Transport, WindowsExecutionContext,
 };
 
 pub const DEFAULT_CONCURRENCY: usize = 8;
@@ -143,6 +147,7 @@ pub fn run_batch(
                         error: outcome.error.clone(),
                     });
                     results.lock().unwrap()[index] = Some(HostReport {
+                        host_id: host.host_id.clone(),
                         connection_id: host.connection_id.clone(),
                         name: host.name.clone(),
                         host: host.host.clone(),
@@ -430,9 +435,340 @@ impl BatchTransport for SshTransport {
     }
 }
 
+#[derive(Clone)]
+pub struct WindowsExecSpec {
+    pub host: String,
+    pub username: String,
+    pub domain: String,
+    pub password: String,
+    pub winrm_port: u16,
+    pub winrm_use_tls: bool,
+    pub winrm_accept_invalid_certs: bool,
+    pub psexec_context: WindowsExecutionContext,
+    pub timeout_seconds: u64,
+}
+
+/// Dispatches each resolved target to SSH, WinRM, or PsExec while preserving a
+/// single bounded batch pool and report/event stream.
+pub struct RoutedTransport {
+    ssh: SshTransport,
+    windows: HashMap<String, WindowsExecSpec>,
+    runtime: tokio::runtime::Runtime,
+}
+
+impl RoutedTransport {
+    pub fn new(
+        ssh: SshTransport,
+        windows: HashMap<String, WindowsExecSpec>,
+    ) -> Result<Self, String> {
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .worker_threads(2)
+            .thread_name("kkterm-winrm")
+            .build()
+            .map_err(|error| format!("failed to start WinRM runtime: {error}"))?;
+        Ok(Self {
+            ssh,
+            windows,
+            runtime,
+        })
+    }
+
+    fn exec_winrm(
+        &self,
+        spec: &WindowsExecSpec,
+        task: &BatchTask,
+        on_chunk: &(dyn Fn(&str) + Send + Sync),
+    ) -> ExecOutcome {
+        let BatchTask::Script { body, .. } = task else {
+            return ExecOutcome {
+                ok: false,
+                exit_code: None,
+                output: String::new(),
+                error: Some(
+                    "WinRM currently supports script Tasks; interactive Playbooks require SSH"
+                        .to_string(),
+                ),
+            };
+        };
+        let mut config = WinrmConfig::default();
+        config.port = spec.winrm_port;
+        config.use_tls = spec.winrm_use_tls;
+        config.accept_invalid_certs = spec.winrm_accept_invalid_certs;
+        config.connect_timeout_secs = spec.timeout_seconds.min(30);
+        config.operation_timeout_secs = spec.timeout_seconds;
+        config.max_output_bytes = Some(MAX_STORED_OUTPUT);
+        let credentials = WinrmCredentials::new(
+            spec.username.clone(),
+            spec.password.clone(),
+            spec.domain.clone(),
+        );
+        let client = match WinrmClient::new(config, credentials) {
+            Ok(client) => client,
+            Err(error) => {
+                return ExecOutcome {
+                    ok: false,
+                    exit_code: None,
+                    output: String::new(),
+                    error: Some(format!("WinRM client setup failed: {error}")),
+                };
+            }
+        };
+        match self
+            .runtime
+            .block_on(client.run_powershell(&spec.host, body))
+        {
+            Ok(result) => {
+                let mut output = String::from_utf8_lossy(&result.stdout).into_owned();
+                let stderr = String::from_utf8_lossy(&result.stderr);
+                if !stderr.is_empty() {
+                    if !output.is_empty() && !output.ends_with('\n') {
+                        output.push('\n');
+                    }
+                    output.push_str(&stderr);
+                }
+                let output = redact_secrets(&output, std::slice::from_ref(&spec.password));
+                if !output.is_empty() {
+                    on_chunk(&output);
+                }
+                ExecOutcome {
+                    ok: result.exit_code == 0,
+                    exit_code: Some(result.exit_code),
+                    output,
+                    error: None,
+                }
+            }
+            Err(error) => ExecOutcome {
+                ok: false,
+                exit_code: None,
+                output: String::new(),
+                error: Some(format!("WinRM execution failed: {error}")),
+            },
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    fn exec_psexec(
+        &self,
+        spec: &WindowsExecSpec,
+        task: &BatchTask,
+        on_chunk: &(dyn Fn(&str) + Send + Sync),
+    ) -> ExecOutcome {
+        let BatchTask::Script { body, .. } = task else {
+            return ExecOutcome {
+                ok: false,
+                exit_code: None,
+                output: String::new(),
+                error: Some(
+                    "PsExec currently supports script Tasks; interactive Playbooks require SSH"
+                        .to_string(),
+                ),
+            };
+        };
+        let encoded = base64::engine::general_purpose::STANDARD.encode(
+            body.encode_utf16()
+                .flat_map(u16::to_le_bytes)
+                .collect::<Vec<_>>(),
+        );
+        let psexec_username = if spec.domain.is_empty() {
+            spec.username.clone()
+        } else {
+            format!("{}\\{}", spec.domain, spec.username)
+        };
+        let mut last_not_found = None;
+        for executable in ["psexec64.exe", "psexec.exe"] {
+            let mut command = Command::new(executable);
+            command.args([
+                "-accepteula",
+                "-nobanner",
+                "-n",
+                &spec.timeout_seconds.to_string(),
+                &format!("\\\\{}", spec.host),
+                "-u",
+                &psexec_username,
+                "-p",
+                &spec.password,
+            ]);
+            match spec.psexec_context {
+                WindowsExecutionContext::User => {}
+                WindowsExecutionContext::Elevated => {
+                    command.arg("-h");
+                }
+                WindowsExecutionContext::System => {
+                    command.arg("-s");
+                }
+                WindowsExecutionContext::Limited => {
+                    command.arg("-l");
+                }
+            }
+            command.args([
+                "powershell.exe",
+                "-NoLogo",
+                "-NoProfile",
+                "-NonInteractive",
+                "-EncodedCommand",
+                &encoded,
+            ]);
+            match command.output() {
+                Ok(result) => {
+                    let mut output = String::from_utf8_lossy(&result.stdout).into_owned();
+                    let stderr = String::from_utf8_lossy(&result.stderr);
+                    if !stderr.is_empty() {
+                        if !output.is_empty() && !output.ends_with('\n') {
+                            output.push('\n');
+                        }
+                        output.push_str(&stderr);
+                    }
+                    let output = redact_secrets(&output, std::slice::from_ref(&spec.password));
+                    if !output.is_empty() {
+                        on_chunk(&output);
+                    }
+                    let exit_code = result.status.code();
+                    return ExecOutcome {
+                        ok: result.status.success(),
+                        exit_code,
+                        output,
+                        error: None,
+                    };
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                    last_not_found = Some(error);
+                }
+                Err(error) => {
+                    return ExecOutcome {
+                        ok: false,
+                        exit_code: None,
+                        output: String::new(),
+                        error: Some(format!("PsExec launch failed: {error}")),
+                    };
+                }
+            }
+        }
+        ExecOutcome {
+            ok: false,
+            exit_code: None,
+            output: String::new(),
+            error: Some(format!(
+                "PsExec was not found in PATH; install Sysinternals PsExec first{}",
+                last_not_found
+                    .map(|error| format!(": {error}"))
+                    .unwrap_or_default()
+            )),
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    fn exec_psexec(
+        &self,
+        _spec: &WindowsExecSpec,
+        _task: &BatchTask,
+        _on_chunk: &(dyn Fn(&str) + Send + Sync),
+    ) -> ExecOutcome {
+        ExecOutcome {
+            ok: false,
+            exit_code: None,
+            output: String::new(),
+            error: Some(
+                "PsExec execution is available only when KKTerm runs on Windows".to_string(),
+            ),
+        }
+    }
+}
+
+impl BatchTransport for RoutedTransport {
+    fn exec(
+        &self,
+        host: &ResolvedHost,
+        task: &BatchTask,
+        on_chunk: &(dyn Fn(&str) + Send + Sync),
+    ) -> ExecOutcome {
+        match host.transport {
+            Transport::Ssh | Transport::Auto => self.ssh.exec(host, task, on_chunk),
+            Transport::Winrm | Transport::Psexec => {
+                let Some(spec) = self.windows.get(&host.connection_id) else {
+                    return ExecOutcome {
+                        ok: false,
+                        exit_code: None,
+                        output: String::new(),
+                        error: Some(
+                            "Windows remote credential is missing or unavailable".to_string(),
+                        ),
+                    };
+                };
+                if host.transport == Transport::Winrm {
+                    self.exec_winrm(spec, task, on_chunk)
+                } else {
+                    self.exec_psexec(spec, task, on_chunk)
+                }
+            }
+        }
+    }
+}
+
+pub fn resolve_windows_specs(
+    conn: &SqliteConnection,
+    secrets: &secrets::Secrets,
+    hosts: &[ResolvedHost],
+    timeout_seconds: u64,
+) -> HashMap<String, WindowsExecSpec> {
+    let mut specs = HashMap::new();
+    for target in hosts {
+        if !matches!(target.transport, Transport::Winrm | Transport::Psexec) {
+            continue;
+        }
+        let Some(host_id) = target.host_id.as_deref() else {
+            continue;
+        };
+        let Ok(host) = super::host_storage::get_host(conn, host_id) else {
+            continue;
+        };
+        let Some(credential_id) = host.execution.credential_id.as_deref() else {
+            continue;
+        };
+        let username = conn
+            .query_row(
+                "SELECT username FROM connection_password_credentials WHERE id = ?",
+                params![credential_id],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()
+            .ok()
+            .flatten();
+        let password = secrets
+            .read_connection_password(credential_id.to_string())
+            .ok()
+            .flatten();
+        let (Some(username), Some(password)) = (username, password) else {
+            continue;
+        };
+        let (domain, username) = username
+            .split_once('\\')
+            .map(|(domain, username)| (domain.to_string(), username.to_string()))
+            .unwrap_or_else(|| (String::new(), username));
+        let use_tls = host.execution.winrm_use_tls;
+        specs.insert(
+            target.connection_id.clone(),
+            WindowsExecSpec {
+                host: target.host.clone(),
+                username,
+                domain,
+                password,
+                winrm_port: host
+                    .execution
+                    .winrm_port
+                    .unwrap_or(if use_tls { 5986 } else { 5985 }),
+                winrm_use_tls: use_tls,
+                winrm_accept_invalid_certs: host.execution.winrm_accept_invalid_certs,
+                psexec_context: host.execution.psexec_context,
+                timeout_seconds,
+            },
+        );
+    }
+    specs
+}
+
 /// Resolve each SSH-typed host to a ready exec spec (host/user/port + auth from
-/// the keychain). Non-SSH hosts are skipped in Phase 2 (WinRM/PsExec land in
-/// Phase 6); a skipped host surfaces as a transport error at run time.
+/// the keychain). Windows Host targets are resolved separately above.
 pub fn resolve_ssh_specs(
     conn: &SqliteConnection,
     secrets: &secrets::Secrets,
@@ -588,6 +924,7 @@ mod tests {
 
     fn host(id: &str) -> ResolvedHost {
         ResolvedHost {
+            host_id: None,
             connection_id: id.to_string(),
             name: id.to_string(),
             host: format!("{id}.example"),

@@ -15,6 +15,7 @@ import { flattenConnections } from "../workspace/connections/treeUtils";
 import { ItIcon, type ItIconName } from "./icons";
 import { HostDialog } from "./HostDialog";
 import { HostImportDialog } from "./HostImportDialog";
+import { connectionImportEndpoint } from "./hostConnectionImport";
 import { HostBindingsDialog } from "./HostBindingsDialog";
 import { ItOpsEmptyHint } from "./ItOpsEmptyHint";
 import { buildHostTreeRows, childHostsOf, hostDisplayName } from "./hostTree";
@@ -66,7 +67,7 @@ function HostLastRunStatus({ status }: { status: HostRunStatus["last"] }) {
 }
 
 /** Detected remote-access chips for one Host's last scan. */
-export function HostScanChips({ host, scanning }: { host: SiteHost; scanning: boolean }) {
+export function HostScanChips({ host, scanning, connections = [] }: { host: SiteHost; scanning: boolean; connections?: Connection[] }) {
   const { t } = useTranslation();
   if (scanning) {
     return (
@@ -76,15 +77,34 @@ export function HostScanChips({ host, scanning }: { host: SiteHost; scanning: bo
       </span>
     );
   }
-  if (!host.scan) {
+  const boundEndpoints = connections
+    .filter((connection) => host.connectionIds.includes(connection.id))
+    .map(connectionImportEndpoint)
+    .filter((endpoint) => endpoint !== null);
+  if (!host.scan && boundEndpoints.length === 0) {
     return <span className="it-host-chip muted">{t("itops.hosts.scanPending")}</span>;
   }
   const chips: { key: string; icon: ItIconName; label: string }[] = [];
   // The endpoint names are technical tokens rendered verbatim, like the
   // TransportChip's transport ids.
-  if (host.scan.ssh) chips.push({ key: "ssh", icon: "ssh", label: "ssh" });
-  if (host.scan.winrm) chips.push({ key: "winrm", icon: "windows", label: "winrm" });
-  if (host.scan.https) chips.push({ key: "https", icon: "globe", label: "https" });
+  for (const endpoint of boundEndpoints) {
+    chips.push({
+      key: `connection-${endpoint.connectionId}`,
+      icon: endpoint.protocol === "SSH" ? "ssh" : endpoint.protocol === "HTTP" || endpoint.protocol === "HTTPS" ? "globe" : "windows",
+      label: `${endpoint.protocol} ${endpoint.port}`,
+    });
+  }
+  const addScanPorts = (key: string, icon: ItIconName, label: string, ports: number[]) => {
+    for (const port of ports) {
+      if (!chips.some((chip) => chip.label.toLocaleLowerCase() === `${label} ${port}`.toLocaleLowerCase())) {
+        chips.push({ key: `${key}-${port}`, icon, label: `${label} ${port}` });
+      }
+    }
+  };
+  if (host.scan?.ssh) addScanPorts("ssh", "ssh", "SSH", host.scan.sshPorts?.length ? host.scan.sshPorts : [22]);
+  if (host.scan?.winrm) addScanPorts("winrm", "windows", "WinRM", host.scan.winrmPorts?.length ? host.scan.winrmPorts : [5985]);
+  if (host.scan?.psexec) addScanPorts("psexec", "windows", "PsExec/SMB", host.scan.psexecPorts?.length ? host.scan.psexecPorts : [445]);
+  if (host.scan?.https) addScanPorts("https", "globe", "HTTPS", host.scan.httpsPorts?.length ? host.scan.httpsPorts : [443]);
   if (chips.length === 0) {
     return <span className="it-host-chip muted">{t("itops.hosts.scanNone")}</span>;
   }
@@ -141,7 +161,13 @@ export function HostsPanel({ siteId }: { siteId: string }) {
     );
     return new Set(
       (hosts ?? [])
-        .filter((host) => host.connectionIds.some((id) => sshConnectionIds.has(id)))
+        .filter((host) =>
+          host.connectionIds.some((id) => sshConnectionIds.has(id)) ||
+          (!!host.execution?.credentialId &&
+            (host.execution.transport === "winrm" ||
+              host.execution.transport === "psexec" ||
+              (host.execution.transport === "auto" && !!(host.scan?.winrm || host.scan?.psexec)))),
+        )
         .map((host) => host.id),
     );
   }, [connections, hosts]);
@@ -314,7 +340,7 @@ export function HostsPanel({ siteId }: { siteId: string }) {
                   ) : null}
                 </span>
                 <span className="it-host-chips">
-                  <HostScanChips host={host} scanning={scanning} />
+                  <HostScanChips host={host} scanning={scanning} connections={connections} />
                 </span>
                 <HostTaskStatus status={runStatus.current} />
                 <HostLastRunStatus status={runStatus.last} />

@@ -4,12 +4,12 @@
 // `TEXT` for non-relational fields, integer `sort_order`). Reuses
 // `ItopsStorageError`.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use rusqlite::{Connection as SqliteConnection, OptionalExtension, params};
 
 use super::storage::ItopsStorageError;
-use super::types::{HostKind, HostScan, SiteHost};
+use super::types::{HostExecutionConfig, HostKind, HostScan, SiteHost};
 
 type Result<T> = std::result::Result<T, ItopsStorageError>;
 
@@ -136,15 +136,21 @@ fn scan_to_json(scan: &Option<HostScan>) -> Result<Option<String>> {
     }
 }
 
+fn execution_to_json(execution: &HostExecutionConfig) -> Result<String> {
+    serde_json::to_string(execution)
+        .map_err(|error| ItopsStorageError::Validation(error.to_string()))
+}
+
 // ── Reads ───────────────────────────────────────────────────────────────────
 
 const SELECT_HOST_COLUMNS: &str = "id, site_id, parent_host_id, hostname, label, kind, \
-     connection_ids_json, scan_json, notes, sort_order FROM itops_hosts";
+     connection_ids_json, scan_json, execution_json, notes, sort_order FROM itops_hosts";
 
 fn row_to_host(row: &rusqlite::Row<'_>) -> rusqlite::Result<SiteHost> {
     let kind: String = row.get(5)?;
     let connection_ids_json: String = row.get(6)?;
     let scan_json: Option<String> = row.get(7)?;
+    let execution_json: String = row.get(8)?;
     Ok(SiteHost {
         id: row.get(0)?,
         site_id: row.get(1)?,
@@ -154,8 +160,9 @@ fn row_to_host(row: &rusqlite::Row<'_>) -> rusqlite::Result<SiteHost> {
         kind: HostKind::from_db_str(&kind).unwrap_or(HostKind::Other),
         connection_ids: serde_json::from_str(&connection_ids_json).unwrap_or_default(),
         scan: scan_json.and_then(|json| serde_json::from_str(&json).ok()),
-        notes: row.get(8)?,
-        sort_order: row.get(9)?,
+        execution: serde_json::from_str(&execution_json).unwrap_or_default(),
+        notes: row.get(9)?,
+        sort_order: row.get(10)?,
     })
 }
 
@@ -278,6 +285,33 @@ pub fn set_host_scan(
     get_host(conn, id)
 }
 
+/// Update only the remote-execution policy. This stays separate from identity
+/// editing so a credentials/settings dialog cannot accidentally rewrite Host
+/// names, topology, or Connection bindings from stale UI state.
+pub fn set_host_execution(
+    conn: &SqliteConnection,
+    id: &str,
+    mut execution: HostExecutionConfig,
+) -> Result<SiteHost> {
+    if execution.winrm_port == Some(0) {
+        return Err(ItopsStorageError::Validation(
+            "WinRM port must be between 1 and 65535".to_string(),
+        ));
+    }
+    execution.credential_id = execution
+        .credential_id
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
+    let affected = conn.execute(
+        "UPDATE itops_hosts SET execution_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        params![execution_to_json(&execution)?, id],
+    )?;
+    if affected == 0 {
+        return Err(ItopsStorageError::NotFound);
+    }
+    get_host(conn, id)
+}
+
 /// Delete a Host. Its child Hosts are re-parented to the deleted Host's own
 /// parent (top level when it had none) so a guest inventory never vanishes
 /// with the device row.
@@ -294,13 +328,17 @@ pub fn delete_host(conn: &SqliteConnection, id: &str) -> Result<()> {
     Ok(())
 }
 
-/// The outcome of one hostname-list import: the created rows plus how many
-/// input lines were skipped as blank, invalid, or duplicates.
+/// The outcome of one Host import. `hosts` contains created or reconciled rows;
+/// counts distinguish newly created, updated, and unchanged/invalid inputs.
 #[derive(Clone, Debug, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HostImportResult {
     pub hosts: Vec<SiteHost>,
     pub skipped: usize,
+    #[serde(default)]
+    pub created: usize,
+    #[serde(default)]
+    pub updated: usize,
 }
 
 /// Import a pasted hostname list into a Site. Entries are trimmed; blanks,
@@ -353,7 +391,127 @@ pub fn import_hosts(
         .iter()
         .map(|id| get_host(conn, id))
         .collect::<Result<Vec<_>>>()?;
-    Ok(HostImportResult { hosts, skipped })
+    let created_count = hosts.len();
+    Ok(HostImportResult {
+        hosts,
+        skipped,
+        created: created_count,
+        updated: 0,
+    })
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ImportConnectionHost {
+    pub id: String,
+    pub hostname: String,
+}
+
+fn normalized_endpoint(hostname: &str) -> String {
+    hostname.trim().trim_end_matches('.').to_ascii_lowercase()
+}
+
+/// Import network Connections as Host inventory. Connections that resolve to
+/// the same normalized hostname/IP become one Host with all of the Connection
+/// ids bound in input order. Existing Hosts are reconciled by adding missing
+/// bindings; unchanged duplicates remain write-free.
+pub fn import_connection_hosts(
+    conn: &SqliteConnection,
+    site_id: &str,
+    connections: &[ImportConnectionHost],
+    mut new_id: impl FnMut() -> String,
+) -> Result<HostImportResult> {
+    if connections.len() > MAX_IMPORT_HOSTS {
+        return Err(ItopsStorageError::Validation(format!(
+            "too many connections in one import (max {MAX_IMPORT_HOSTS})"
+        )));
+    }
+
+    let existing = list_hosts(conn, site_id)?;
+    let mut existing_by_endpoint: HashMap<String, SiteHost> = existing
+        .into_iter()
+        .map(|host| (normalized_endpoint(&host.hostname), host))
+        .collect();
+    let mut grouped: Vec<(String, String, Vec<String>)> = Vec::new();
+    let mut group_index = HashMap::<String, usize>::new();
+    let mut skipped = 0usize;
+    for connection in connections {
+        let Ok(hostname) = validate_hostname(&connection.hostname) else {
+            skipped += 1;
+            continue;
+        };
+        let key = normalized_endpoint(&hostname);
+        if key.is_empty() || connection.id.trim().is_empty() {
+            skipped += 1;
+            continue;
+        }
+        if let Some(index) = group_index.get(&key).copied() {
+            let ids = &mut grouped[index].2;
+            if !ids.iter().any(|id| id == connection.id.trim()) {
+                ids.push(connection.id.trim().to_string());
+            }
+            continue;
+        }
+        group_index.insert(key.clone(), grouped.len());
+        grouped.push((key, hostname, vec![connection.id.trim().to_string()]));
+    }
+
+    let tx = conn.unchecked_transaction()?;
+    let mut next_sort: i64 = tx.query_row(
+        "SELECT COALESCE(MAX(sort_order), -1) + 1 FROM itops_hosts WHERE site_id = ?",
+        params![site_id],
+        |row| row.get(0),
+    )?;
+    let mut changed_ids = Vec::new();
+    let mut created = 0usize;
+    let mut updated = 0usize;
+    for (key, hostname, connection_ids) in grouped {
+        if let Some(mut host) = existing_by_endpoint.remove(&key) {
+            let before = host.connection_ids.len();
+            for connection_id in connection_ids {
+                if !host.connection_ids.contains(&connection_id) {
+                    host.connection_ids.push(connection_id);
+                }
+            }
+            if host.connection_ids.len() == before {
+                skipped += 1;
+                continue;
+            }
+            tx.execute(
+                "UPDATE itops_hosts SET connection_ids_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                params![connection_ids_to_json(&host.connection_ids)?, host.id],
+            )?;
+            changed_ids.push(host.id);
+            updated += 1;
+            continue;
+        }
+
+        let id = new_id();
+        tx.execute(
+            "INSERT INTO itops_hosts (id, site_id, hostname, connection_ids_json, kind, sort_order)
+             VALUES (?, ?, ?, ?, 'physical', ?)",
+            params![
+                id,
+                site_id,
+                hostname,
+                connection_ids_to_json(&connection_ids)?,
+                next_sort
+            ],
+        )?;
+        next_sort += 1;
+        changed_ids.push(id);
+        created += 1;
+    }
+    tx.commit()?;
+    let hosts = changed_ids
+        .iter()
+        .map(|id| get_host(conn, id))
+        .collect::<Result<Vec<_>>>()?;
+    Ok(HostImportResult {
+        hosts,
+        skipped,
+        created,
+        updated,
+    })
 }
 
 #[cfg(test)]
@@ -373,6 +531,7 @@ mod tests {
                 kind                TEXT NOT NULL DEFAULT 'physical',
                 connection_ids_json TEXT NOT NULL DEFAULT '[]',
                 scan_json           TEXT,
+                execution_json      TEXT NOT NULL DEFAULT '{}',
                 notes               TEXT NOT NULL DEFAULT '',
                 sort_order          INTEGER NOT NULL,
                 created_at          TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -688,6 +847,68 @@ mod tests {
     }
 
     #[test]
+    fn connection_import_deduplicates_hosts_and_reconciles_bindings() {
+        let conn = open_test_db();
+        create_host(
+            &conn,
+            "existing",
+            "s1",
+            "db-01.example.com.",
+            "",
+            HostKind::Physical,
+            None,
+            "",
+        )
+        .unwrap();
+        let result = import_connection_hosts(
+            &conn,
+            "s1",
+            &[
+                ImportConnectionHost {
+                    id: "ssh-web".into(),
+                    hostname: "WEB-01.example.com".into(),
+                },
+                ImportConnectionHost {
+                    id: "rdp-web".into(),
+                    hostname: "web-01.EXAMPLE.com.".into(),
+                },
+                ImportConnectionHost {
+                    id: "rdp-db".into(),
+                    hostname: "db-01.example.com".into(),
+                },
+            ],
+            || "new-host".into(),
+        )
+        .unwrap();
+        assert_eq!(result.created, 1);
+        assert_eq!(result.updated, 1);
+        assert_eq!(result.hosts.len(), 2);
+        assert_eq!(
+            get_host(&conn, "new-host").unwrap().connection_ids,
+            vec!["ssh-web", "rdp-web"]
+        );
+        assert_eq!(
+            get_host(&conn, "existing").unwrap().connection_ids,
+            vec!["rdp-db"]
+        );
+
+        let unchanged = import_connection_hosts(
+            &conn,
+            "s1",
+            &[ImportConnectionHost {
+                id: "ssh-web".into(),
+                hostname: "web-01.example.com".into(),
+            }],
+            || "unused".into(),
+        )
+        .unwrap();
+        assert_eq!(unchanged.created, 0);
+        assert_eq!(unchanged.updated, 0);
+        assert_eq!(unchanged.skipped, 1);
+        assert!(unchanged.hosts.is_empty());
+    }
+
+    #[test]
     fn scan_snapshot_persists_and_clears() {
         let conn = open_test_db();
         create_host(
@@ -709,6 +930,7 @@ mod tests {
                 winrm: false,
                 https: true,
                 scanned_at: Some("2026-07-09T00:00:00Z".to_string()),
+                ..Default::default()
             }),
         )
         .unwrap();

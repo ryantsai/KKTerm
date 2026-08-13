@@ -4266,6 +4266,7 @@ dependencies = [
  "windows-native-keyring-store",
  "windows-sys 0.61.2",
  "winping",
+ "winrm-rs",
  "x509-cert 0.3.0",
  "xcap",
  "zbus",
@@ -4634,6 +4635,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7da5ac363534dce5fabf69949225e174fbf111a498bf0ff794c8ea1fba9f3dda"
 dependencies = [
  "digest 0.10.7",
+]
+
+[[package]]
+name = "md4"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bd76fb0fd6b2e4be62a73f8e0858ca97f81babcb1af322dcaca196f735f17f80"
+dependencies = [
+ "digest 0.11.3",
 ]
 
 [[package]]
@@ -7571,6 +7581,7 @@ version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e891af845473308773346dc847b2c23ee78fe442e0472ac50e22a18a93d3ae5a"
 dependencies = [
+ "serde",
  "zeroize",
 ]
 
@@ -8205,7 +8216,7 @@ dependencies = [
  "group",
  "hmac",
  "md-5 0.11.0",
- "md4",
+ "md4 0.10.2",
  "num-derive",
  "num-traits",
  "oid",
@@ -10688,6 +10699,31 @@ checksum = "cb5a765337c50e9ec252c2069be9bf91c7df47afb103b642ba3a53bf8101be97"
 dependencies = [
  "cfg-if",
  "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "winrm-rs"
+version = "1.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6296df157160d4d327779aad2c45ed189979955282cc52c323fc8a93c0efefb9"
+dependencies = [
+ "base64 0.22.1",
+ "hmac",
+ "md-5 0.11.0",
+ "md4 0.11.0",
+ "rand 0.10.2",
+ "reqwest 0.13.4",
+ "rustls",
+ "secrecy",
+ "sha2 0.11.0",
+ "subtle",
+ "thiserror 2.0.20",
+ "tokio",
+ "tokio-util",
+ "tracing",
+ "uuid",
+ "webpki-roots",
+ "zeroize",
 ]
 
 [[package]]

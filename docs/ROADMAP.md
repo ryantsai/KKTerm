@@ -262,10 +262,10 @@ Second-tier follow-ups to the shipped OSC 133 / Quick Select / inline images / n
 
 ### IT Ops Center
 
-Design accepted: see `docs/ADR/0011-it-ops-module.md`, `docs/ADR/0012-winrm-transport-library.md` (WinRM transport for Windows Update playbooks), `docs/ITOPS.md`, and `docs/manual/12-it-ops.md`. The Site-first module now ships Sites, Server Room/Rack topology, Hosts inventory, the global Task Library (script and Playbook Tasks), and SSH Batch Runs with Run History. Batch Runs currently reach hosts over SSH only; the items below extend transports and operational depth.
+Design accepted: see `docs/ADR/0011-it-ops-module.md`, `docs/ADR/0013-winrm-rs-transport.md`, `docs/ITOPS.md`, and `docs/manual/12-it-ops.md`. The Site-first module now ships Sites, Server Room/Rack topology, deduplicating Host import from Connections, the global Task Library, and SSH/WinRM/PsExec Script Batch Runs with Run History. Interactive Playbooks remain SSH-only; the items below extend operational depth.
 
-- [ ] Windows remote management (WinRM/WS-Man) Batch Run transport per ADR-0012, so Batch Runs and playbooks reach Windows hosts without OpenSSH. The runner and UI already target a common `Transport` trait; today non-SSH hosts are skipped and the WinRM/PsExec adapters remain stubbed (Phase 6).
-- [ ] PsExec (SMB/named-pipe) Batch Run transport for Windows hosts, shipped as an Install Helper recipe behind the same `Transport` trait.
+- [x] Windows remote management (WinRM/WS-Man) transport per ADR-0013 for Script Batch Tasks, with saved credentials, HTTP/HTTPS and custom-port policy, and authenticated-user execution. Interactive WinRM Playbooks remain future work.
+- [x] PsExec (SMB/named-pipe) Script Batch Task transport for Windows hosts, using the Install Helper recipe and selectable user/elevated/LocalSystem/limited context behind the same `BatchTransport` boundary.
 - [ ] Network device SNMP status polling: promote the scaffolded SNMP path (`SnmpRefreshRequest`/`SnmpPortSample` model, port-speed parser, and Rack Device `snmp` metadata) from its current no-op transport to real SNMP GET/WALK polling, surfacing live port speed/state on Rack Devices and Hosts with scheduled refresh.
 - [ ] Automated server-update playbooks (apt, dnf, yum, Windows Update via WinRM) with dry-run preview and rollback-aware sequencing.
 - [ ] AI-enabled triggers watching terminal output, SFTP changes, or scheduled probes.

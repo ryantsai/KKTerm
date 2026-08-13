@@ -15,9 +15,11 @@ export function hostRunStatuses(
   runHistory: RunHistoryEntry[],
 ): Map<string, HostRunStatus> {
   const currentByConnection = new Map<string, LiveRunHostStatus>();
+  const currentByHost = new Map<string, LiveRunHostStatus>();
   if (activeRun?.state === "running" && activeRun.siteId === siteId) {
     for (const host of activeRun.hosts) {
       currentByConnection.set(host.connectionId, host.status);
+      if (host.hostId) currentByHost.set(host.hostId, host.status);
     }
   }
 
@@ -28,11 +30,11 @@ export function hostRunStatuses(
       const lastReport = runHistory
         .filter((run) => run.siteId === siteId)
         .flatMap((run) => run.report.hosts)
-        .find((report) => connectionIds.has(report.connectionId));
+        .find((report) => report.hostId === host.id || connectionIds.has(report.connectionId));
       return [
         host.id,
         {
-          current: currentConnection ? (currentByConnection.get(currentConnection) ?? null) : null,
+          current: currentByHost.get(host.id) ?? (currentConnection ? (currentByConnection.get(currentConnection) ?? null) : null),
           last: lastReport ? (lastReport.ok ? "ok" : "failed") : null,
         },
       ];

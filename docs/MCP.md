@@ -402,10 +402,10 @@ parent first.
 | `kkterm.itops.ipam.import` | Atomically create a structured batch of VLANs, Prefixes, and Address Records. Existing/repeated keys are skipped; any other error rolls back the batch. AI clients can normalize pasted prose, tables, CSV, or notes into this schema and should omit ambiguous facts rather than guess. |
 | `kkterm.itops.hosts.list` | List one Site's Hosts by `siteId`: hostname, kind, parent Host, bound Connection ids, and last connectivity-scan snapshot. |
 | `kkterm.itops.hosts.create` | Create one Host in a Site's inventory. `parentHostId` nests it as a VM/container guest. |
-| `kkterm.itops.hosts.update` | Update one Host by id. Full-value semantics; `connectionIds` are ordered saved Connection references, and the first bound SSH Connection makes the Host runnable. |
+| `kkterm.itops.hosts.update` | Update one Host by id. Full-value semantics; `connectionIds` are ordered saved Connection references. Remote-execution policy is managed by the app's Host bindings sheet. |
 | `kkterm.itops.hosts.remove` | Delete one Host by id. Child Hosts re-parent one level up. |
 | `kkterm.itops.hosts.import` | Bulk-import a hostname list into a Site. Blanks and case-insensitive duplicates are skipped, not errors. |
-| `kkterm.itops.hosts.scan` | Probe a Site's Hosts (all or by `hostIds`) for SSH (22), WinRM (5985/5986), and HTTPS (443) with bounded TCP probes; waits for completion, persists each snapshot, and returns the updated list. |
+| `kkterm.itops.hosts.scan` | Probe a Site's Hosts (all or by `hostIds`) for SSH (22), WinRM (5985/5986 plus a configured custom port), PsExec readiness over SMB (445), and HTTPS (443) with bounded TCP probes; waits for completion, persists exact responding ports, and returns the updated list. |
 | `kkterm.itops.tasks.list` | List the global Task Library: metadata plus a redacted one-line summary per Task, never full script bodies. |
 | `kkterm.itops.tasks.get` | Read one Task's full definition by id (script body or playbook steps). |
 | `kkterm.itops.tasks.remove` | Delete one user Task by id (built-ins are protected). Run History keeps its redacted summaries; orphaned task credentials are removed from the vault. |

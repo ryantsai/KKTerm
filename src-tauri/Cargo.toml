@@ -80,6 +80,10 @@ lazy_static = "1.5.0"
 shared_library = "0.1.9"
 winapi = "0.3.9"
 lettre = { version = "0.11", default-features = false, features = ["builder", "smtp-transport", "rustls-tls"] }
+# Direct WS-Man transport for IT Ops Windows execution. Default features keep
+# the production path pure Rust (NTLMv2/Basic over reqwest+rustls); CredSSP is
+# intentionally not enabled because upstream marks it experimental.
+winrm-rs = { version = "1.1.2", default-features = false }
 
 # AST-based validation of AI-authored script widget source. oxc is ~3x faster
 # than swc on the parse-only path and ships a stable visitor API for

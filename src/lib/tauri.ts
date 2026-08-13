@@ -54,6 +54,7 @@ import type {
   ResolvedHost,
   HostKind,
   HostImportResult,
+  HostExecutionConfig,
   SiteHost,
   RoomIconEntry,
   BatchTask,
@@ -1591,6 +1592,14 @@ type CommandMap = {
   itops_import_hosts: {
     args: { siteId: string; hostnames: string[] };
     result: HostImportResult;
+  };
+  itops_import_hosts_from_connections: {
+    args: { siteId: string; connectionIds: string[] };
+    result: HostImportResult;
+  };
+  itops_set_host_execution: {
+    args: { id: string; execution: HostExecutionConfig };
+    result: SiteHost;
   };
   itops_scan_hosts: {
     args: { siteId: string; hostIds: string[] };

@@ -106,9 +106,13 @@ Host; a Host may carry **child Hosts** (its VMs or containers) via a soft
 level up rather than dropping them. A Host binds any number of Connections at
 once (`connection_ids_json`, ordered soft refs) — e.g. an SSH terminal plus an
 HTTPS URL Connection to its management interface. Hosts are imported from a
-pasted hostname list (blank/duplicate lines skipped) and then scanned with
-bounded-concurrency TCP probes for SSH (22), WinRM (5985/5986), and HTTPS
-(443); the scan snapshot is stored on the Host (`scan_json`) as data, never
+pasted hostname list or selected Connections. Connection import normalizes
+hostnames/IPs case-insensitively (and ignores a trailing DNS dot), creates one
+Host per endpoint, and aggregates every matching Connection binding; rerunning
+an unchanged import is write-free. Imported Hosts are scanned with
+bounded-concurrency TCP probes for SSH (22), WinRM (5985/5986 or the configured
+custom port), PsExec readiness over SMB (445), and HTTPS (443); the scan
+snapshot records the exact responding ports on the Host (`scan_json`) as data, never
 live Session state and never a secret, and per-host results stream on the
 `itops://host-scan` event channel. A Rack Device may reference a Host through
 `metadata.hostId` so the Rack View balloon callout lists the Host and its
@@ -117,8 +121,8 @@ Site-owned Hosts page is implemented by `src/modules/itops/HostsPanel.tsx`.
 Each Host row also shows its current Batch Run state (queued, running,
 succeeded, or failed) while a run is active, plus the newest persisted run
 result for that Host in a separate Last run status column. That page owns
-manual execution targeting: the operator selects Hosts with SSH
-Connection bindings, chooses a reusable Task or ad-hoc Script Batch Task, and starts a
+manual execution targeting: the operator selects runnable Hosts, chooses a
+reusable Task or ad-hoc Script Batch Task, and starts a
 Batch Run scoped to exactly those Host ids.
 _Avoid_: node, agent, connection host field
 
@@ -128,8 +132,8 @@ the Connection, overridable per Site/run):
 | Transport | Reaches | Backend |
 | --- | --- | --- |
 | `ssh` | SSH/Linux hosts and Windows hosts running OpenSSH | existing `russh` exec channel — no new transport code |
-| `winrm` | Windows hosts over WS-Man/HTTP(S) | pure-Rust WinRM client; standard path for Windows Update playbooks |
-| `psexec` | Windows hosts over SMB/named pipes | Sysinternals `PsExec` shipped via an Install Helper recipe |
+| `winrm` | Windows hosts over WS-Man/HTTP(S) | `winrm-rs` client with NTLM password authentication; Script Tasks run as the authenticated Windows account |
+| `psexec` | Windows hosts over SMB/named pipes | installed Sysinternals `PsExec` executable; Script Tasks can run as the user, elevated user, LocalSystem, or limited user |
 
 **Batch Task** — what a run executes on every targeted host. Two kinds:
 
@@ -302,8 +306,10 @@ Three SQLite tables (new schema version):
   Devices. Pure metadata; Connection ids are soft references.
 - `itops_hosts` — per-Site Host inventory: hostname, label, kind
   (physical/vm/container/other), soft `parent_host_id` self reference for
-  child Hosts, ordered soft Connection references, and the last
-  connectivity-scan snapshot. No secret, no live state.
+  child Hosts, ordered soft Connection references, the last connectivity-scan
+  snapshot, and a non-secret execution policy (`execution_json`) containing
+  transport, credential reference, WinRM endpoint settings, and PsExec context.
+  No secret, no live state.
 - `itops_automations` — retained legacy definitions only. Schema version 55
   sets `enabled = 0` and stamps `obsolete_at` without rewriting the saved
   trigger, condition, actions, or runtime JSON. The table remains in full
@@ -346,9 +352,12 @@ Current-version startup does not reconcile legacy Monitor data because there
 is no runtime capable of loading it. Selective IT Ops import marks imported
 legacy rows obsolete inside the import transaction.
 
-Secrets (WinRM/PsExec credentials)
-live in the OS keychain under existing secret-owner ids; SQLite stores
-only non-secret metadata and credential references. IT Ops state is
+Secrets (WinRM/PsExec credentials) live in the OS keychain through the existing
+saved Connection credential vault; SQLite stores only non-secret metadata and
+credential references. WinRM executes as the authenticated account and cannot
+select LocalSystem. PsExec exposes user, elevated-user, LocalSystem, and limited
+contexts. LocalSystem has no reusable remote-user network identity, so Tasks
+that need a second network hop should use an appropriate user context. IT Ops state is
 included in the selective export/import shape (ADR-0010) as non-secret
 metadata.
 
@@ -1116,10 +1125,12 @@ SSH hosts and get results back."
 trigger extensions were removed at schema version 55. Their stored definitions
 remain obsolete for recovery only, as described above.
 
-**Phase 6 — WinRM + PsExec transports.** The thin WinRM/WS-Man client per
-ADR 0012 (`reqwest` + `sspi` + `quick-xml`, new `WinrmPassword` secret);
-the PsExec adapter with its Install Helper catalog recipe. Both implement
-the same `Transport` trait, so the Phase 2 runner and UI are unchanged.
+**Phase 6 — WinRM + PsExec transports (shipped for Script Tasks).** WinRM uses
+the pure-Rust `winrm-rs` client with NTLM password authentication, HTTP/HTTPS,
+custom port, and an explicit opt-in for invalid TLS certificates. PsExec uses
+an installed `psexec64.exe` or `psexec.exe` and maps the configured execution
+context to its standard flags. Both use the saved credential vault and the same
+bounded Batch Run worker/report pipeline. Interactive Playbooks remain SSH-only.
 
 **Phase 7 — Interactive playbooks.** `BatchTask::Playbook` as an ordered,
 expect-style step sequence (`send` + optional `expect` + per-step

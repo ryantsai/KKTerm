@@ -142,6 +142,7 @@ mod tests {
             total: 2,
             hosts: vec![
                 HostReport {
+                    host_id: None,
                     connection_id: "c1".into(),
                     name: "web-01".into(),
                     host: "10.0.0.1".into(),
@@ -154,6 +155,7 @@ mod tests {
                     error: None,
                 },
                 HostReport {
+                    host_id: None,
                     connection_id: "c2".into(),
                     name: "web-02".into(),
                     host: "10.0.0.2".into(),

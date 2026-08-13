@@ -2,6 +2,67 @@ use super::*;
 use rusqlite::params;
 
 #[test]
+fn v58_host_execution_upgrade_and_current_reopen_preserve_policy() {
+    let db_path = temp_db_path("itops-host-execution-v58");
+    {
+        let storage = Storage::open(db_path.clone()).expect("fixture storage opens");
+        storage
+            .with_connection(|connection| {
+                connection
+                    .execute_batch(
+                        "ALTER TABLE itops_hosts DROP COLUMN execution_json;
+                         PRAGMA user_version = 57;",
+                    )
+                    .map_err(to_storage_error)
+            })
+            .expect("v57 fixture shape is prepared");
+    }
+
+    let upgraded = Storage::open(db_path.clone()).expect("v57 storage upgrades");
+    upgraded
+        .with_connection(|connection| {
+            connection
+                .execute(
+                    "INSERT INTO itops_sites(id, name, sort_order) VALUES ('site', 'Site', 0)",
+                    [],
+                )
+                .map_err(to_storage_error)?;
+            connection
+                .execute(
+                    "INSERT INTO itops_hosts(id, site_id, hostname, execution_json, sort_order)
+                     VALUES ('host', 'site', 'server-01',
+                        '{\"transport\":\"winrm\",\"credentialId\":\"cred-1\",\"winrmUseTls\":true,\"winrmPort\":5986,\"winrmAcceptInvalidCerts\":false,\"psexecContext\":\"system\"}', 0)",
+                    [],
+                )
+                .map_err(to_storage_error)?;
+            Ok(())
+        })
+        .expect("execution policy is stored");
+    drop(upgraded);
+
+    let reopened = Storage::open(db_path.clone()).expect("current v58 storage reopens");
+    reopened
+        .with_connection(|connection| {
+            let policy: String = connection
+                .query_row(
+                    "SELECT execution_json FROM itops_hosts WHERE id = 'host'",
+                    [],
+                    |row| row.get(0),
+                )
+                .map_err(to_storage_error)?;
+            assert!(policy.contains("credentialId"));
+            let version: i32 = connection
+                .pragma_query_value(None, "user_version", |row| row.get(0))
+                .map_err(to_storage_error)?;
+            assert_eq!(version, SCHEMA_USER_VERSION);
+            Ok(())
+        })
+        .expect("current-version reopen keeps the Host policy");
+    drop(reopened);
+    let _ = fs::remove_file(db_path);
+}
+
+#[test]
 fn v57_system_cleaner_tables_upgrade_and_current_reopen_preserve_records() {
     let db_path = temp_db_path("system-cleaner-v57");
     {

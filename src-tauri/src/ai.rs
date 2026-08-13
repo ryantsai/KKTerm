@@ -3310,7 +3310,7 @@ fn ai_tool_definitions_with_skills(
         ));
         tools.push(tool_definition(
             "itops_update_host",
-            "Update one Host by id. Full-value semantics: read the Host via itops_list_hosts first and resend every field you want to keep — omitted label/kind/parentHostId/connectionIds/notes are cleared or reset. connectionIds are ordered saved Connection ids; the first bound SSH Connection makes the Host runnable in Batch Runs.",
+            "Update one Host by id. Full-value semantics: read the Host via itops_list_hosts first and resend every field you want to keep — omitted label/kind/parentHostId/connectionIds/notes are cleared or reset. connectionIds are ordered saved Connection ids; remote-execution policy is managed by the app's Host bindings sheet.",
             json!({"type":"object","properties":{
                 "id":{"type":"string"},
                 "hostname":{"type":"string","minLength":1},
@@ -3336,7 +3336,7 @@ fn ai_tool_definitions_with_skills(
         ));
         tools.push(tool_definition(
             "itops_scan_hosts",
-            "Scan a Site's Hosts (all of them, or only hostIds) for remote-access endpoints with bounded TCP probes: SSH (22), WinRM (5985/5986), and HTTPS (443). Waits for the scan to finish and returns the updated Host list; each Host's scan snapshot is persisted.",
+            "Scan a Site's Hosts (all of them, or only hostIds) for remote-access endpoints with bounded TCP probes: SSH (22), WinRM (5985/5986 plus the configured custom port), PsExec readiness over SMB (445), and HTTPS (443). Waits for the scan to finish and returns the updated Host list; each Host's exact responding ports are persisted in its scan snapshot.",
             json!({"type":"object","properties":{
                 "siteId":{"type":"string"},
                 "hostIds":{"type":"array","items":{"type":"string"}}
@@ -3440,7 +3440,7 @@ fn ai_tool_definitions_with_skills(
         ));
         tools.push(tool_definition(
             "itops_start_batch_run",
-            "Start a Batch Run against an IT Ops Site: either a reusable Task Library definition by taskId, or an ad-hoc script. Optional scope narrows targets to one Server Room, one Rack, or selected Host ids (Hosts resolve through their first bound SSH Connection). Returns the runId immediately; execution streams in the IT Ops UI and the consolidated report lands in Run History when finished — poll itops_get_run_report to read results. After starting a run, tell the user it is running and yield.",
+            "Start a Batch Run against an IT Ops Site: either a reusable Task Library definition by taskId, or an ad-hoc script. Optional scope narrows targets to one Server Room, one Rack, or selected Host ids. Selected Hosts resolve through their configured SSH, WinRM, or PsExec policy; interactive Playbooks require SSH. Returns the runId immediately; execution streams in the IT Ops UI and the consolidated report lands in Run History when finished — poll itops_get_run_report to read results. After starting a run, tell the user it is running and yield.",
             json!({"type":"object","properties":{
                 "siteId":{"type":"string"},
                 "taskId":{"type":"string","description":"A Task Library definition to execute. Exactly one of taskId or script is required."},

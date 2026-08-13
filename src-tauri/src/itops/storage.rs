@@ -350,6 +350,7 @@ fn fetch_resolved_host(
         params![connection_id],
         |row| {
             Ok(ResolvedHost {
+                host_id: None,
                 connection_id: row.get(0)?,
                 name: row.get(1)?,
                 host: row.get(2)?,
@@ -387,6 +388,7 @@ fn fetch_filtered_hosts(
     let rows = stmt
         .query_map(params_from_iter(bind.iter()), |row| {
             Ok(ResolvedHost {
+                host_id: None,
                 connection_id: row.get(0)?,
                 name: row.get(1)?,
                 host: row.get(2)?,
@@ -446,16 +448,63 @@ pub fn resolve_site_scoped(
             if !wanted.contains(host.id.as_str()) {
                 continue;
             }
-            // One inventory Host can bind several Connections (for example
-            // SSH plus a management URL). Execution uses its first SSH binding.
-            for connection_id in host.connection_ids {
-                let Some(target) = fetch_resolved_host(conn, &connection_id, site.transport)?
-                else {
+            let configured_transport = host.execution.transport;
+            if matches!(configured_transport, Transport::Auto | Transport::Ssh) {
+                // Auto prefers the established SSH binding. This preserves the
+                // existing behavior for Windows hosts that run OpenSSH.
+                for connection_id in &host.connection_ids {
+                    let Some(mut target) =
+                        fetch_resolved_host(conn, connection_id, Transport::Ssh)?
+                    else {
+                        continue;
+                    };
+                    if target.connection_type == "ssh" && seen.insert(target.connection_id.clone())
+                    {
+                        target.host_id = Some(host.id.clone());
+                        resolved.push(target);
+                        break;
+                    }
+                }
+                if resolved
+                    .last()
+                    .is_some_and(|target| target.host_id.as_deref() == Some(host.id.as_str()))
+                {
                     continue;
-                };
-                if target.connection_type == "ssh" && seen.insert(target.connection_id.clone()) {
-                    resolved.push(target);
-                    break;
+                }
+            }
+
+            let windows_transport = match configured_transport {
+                Transport::Winrm => Some(Transport::Winrm),
+                Transport::Psexec => Some(Transport::Psexec),
+                Transport::Auto if host.execution.credential_id.is_some() => {
+                    let scan = host.scan.as_ref();
+                    if scan.is_some_and(|scan| scan.winrm) {
+                        Some(Transport::Winrm)
+                    } else if scan.is_some_and(|scan| scan.psexec) {
+                        Some(Transport::Psexec)
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            };
+            if let Some(transport) = windows_transport {
+                let target_id = format!("host:{}", host.id);
+                if seen.insert(target_id.clone()) {
+                    resolved.push(ResolvedHost {
+                        host_id: Some(host.id.clone()),
+                        connection_id: target_id,
+                        name: if host.label.trim().is_empty() {
+                            host.hostname.clone()
+                        } else {
+                            host.label.clone()
+                        },
+                        host: host.hostname,
+                        username: String::new(),
+                        port: host.execution.winrm_port.map(i64::from),
+                        connection_type: "itopsHost".to_string(),
+                        transport,
+                    });
                 }
             }
         }
@@ -604,6 +653,7 @@ mod tests {
                 kind TEXT NOT NULL DEFAULT 'physical',
                 connection_ids_json TEXT NOT NULL DEFAULT '[]',
                 scan_json TEXT,
+                execution_json TEXT NOT NULL DEFAULT '{}',
                 notes TEXT NOT NULL DEFAULT '',
                 sort_order INTEGER NOT NULL
             );
@@ -661,6 +711,47 @@ mod tests {
         )
         .unwrap();
         assert!(unrunnable.is_empty());
+    }
+
+    #[test]
+    fn host_scope_resolves_explicit_winrm_without_an_ssh_binding() {
+        let conn = open_test_db();
+        let site = create_site(
+            &conn,
+            "site-1",
+            "Site",
+            Vec::new(),
+            None,
+            Transport::Auto,
+            None,
+            None,
+            None,
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO itops_hosts
+             (id, site_id, hostname, execution_json, sort_order)
+             VALUES ('host-1', 'site-1', 'windows-01',
+                '{\"transport\":\"winrm\",\"credentialId\":\"cred-1\",\"winrmUseTls\":true,\"winrmPort\":5986,\"winrmAcceptInvalidCerts\":false,\"psexecContext\":\"system\"}', 0)",
+            [],
+        )
+        .unwrap();
+
+        let resolved = resolve_site_scoped(
+            &conn,
+            &site,
+            &RunScope {
+                host_ids: vec!["host-1".into()],
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(resolved.len(), 1);
+        assert_eq!(resolved[0].host_id.as_deref(), Some("host-1"));
+        assert_eq!(resolved[0].connection_id, "host:host-1");
+        assert_eq!(resolved[0].host, "windows-01");
+        assert_eq!(resolved[0].port, Some(5986));
+        assert_eq!(resolved[0].transport, Transport::Winrm);
     }
 
     fn insert_connection(

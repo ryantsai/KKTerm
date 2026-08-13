@@ -5267,6 +5267,8 @@ pub fn run() {
             itops::commands::itops_update_host,
             itops::commands::itops_delete_host,
             itops::commands::itops_import_hosts,
+            itops::commands::itops_import_hosts_from_connections,
+            itops::commands::itops_set_host_execution,
             itops::commands::itops_scan_hosts,
             itops::commands::itops_get_connection,
             itops::commands::itops_start_batch_run,

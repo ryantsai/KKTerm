@@ -13,7 +13,7 @@ use std::{
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use zip::{ZipArchive, ZipWriter, write::SimpleFileOptions};
 
-const SCHEMA_USER_VERSION: i32 = 57;
+const SCHEMA_USER_VERSION: i32 = 58;
 
 const DEFAULT_TERMINAL_OPACITY: u8 = 50;
 
@@ -568,6 +568,9 @@ CREATE TABLE IF NOT EXISTS itops_hosts (
     kind                TEXT NOT NULL DEFAULT 'physical',
     connection_ids_json TEXT NOT NULL DEFAULT '[]',
     scan_json           TEXT,
+    -- Non-secret transport policy plus a soft saved-credential id. The secret
+    -- itself remains in the configured OS keychain. v58.
+    execution_json      TEXT NOT NULL DEFAULT '{}',
     notes               TEXT NOT NULL DEFAULT '',
     sort_order          INTEGER NOT NULL,
     created_at          TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -2611,6 +2614,17 @@ impl Storage {
                     "#,
                 )
                 .map_err(to_storage_error)?;
+        }
+        // v58: Windows execution policy is ordinary per-Host durable metadata.
+        // It requires no current-version reconciliation; unchanged startup
+        // remains write-free after the one-time additive upgrade.
+        if stored_version < 58 {
+            ensure_column(
+                &connection,
+                "itops_hosts",
+                "execution_json",
+                "TEXT NOT NULL DEFAULT '{}'",
+            )?;
         }
         // Reusable Task execution statistics need a stable identity. Older
         // history rows remain unattributed instead of being guessed by label.

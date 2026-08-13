@@ -224,9 +224,25 @@ export type HostKind = "physical" | "vm" | "container" | "other";
 // one was never scanned.
 export interface HostScan {
   ssh: boolean;
+  sshPorts?: number[];
   winrm: boolean;
+  winrmPorts?: number[];
+  psexec?: boolean;
+  psexecPorts?: number[];
   https: boolean;
+  httpsPorts?: number[];
   scannedAt?: string | null;
+}
+
+export type WindowsExecutionContext = "user" | "elevated" | "system" | "limited";
+
+export interface HostExecutionConfig {
+  transport: ItopsTransport;
+  credentialId?: string | null;
+  winrmUseTls: boolean;
+  winrmPort?: number | null;
+  winrmAcceptInvalidCerts: boolean;
+  psexecContext: WindowsExecutionContext;
 }
 
 export interface SiteHost {
@@ -241,6 +257,7 @@ export interface SiteHost {
   // Connections (an SSH terminal plus an HTTPS management URL).
   connectionIds: string[];
   scan?: HostScan | null;
+  execution?: HostExecutionConfig;
   notes: string;
   sortOrder: number;
 }
@@ -248,6 +265,8 @@ export interface SiteHost {
 export interface HostImportResult {
   hosts: SiteHost[];
   skipped: number;
+  created: number;
+  updated: number;
 }
 
 // Live Host connectivity-scan progress streamed on `itops://host-scan`.
@@ -458,6 +477,7 @@ export interface ItopsTask {
 }
 
 export interface HostReport {
+  hostId?: string | null;
   connectionId: string;
   name: string;
   host: string;
@@ -491,6 +511,7 @@ export interface RunHistoryEntry {
 }
 
 export interface RunEventHost {
+  hostId?: string | null;
   connectionId: string;
   name: string;
   host: string;

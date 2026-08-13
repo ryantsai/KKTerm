@@ -43,5 +43,7 @@ test("Hosts page owns selected-Host Task launches", async () => {
   assert.match(hosts, /connection\.type === "ssh"/);
   assert.match(dialog, /scope\.hostIds\?\.length/);
   assert.match(rustTypes, /pub host_ids: Vec<String>/);
-  assert.match(storage, /first SSH binding/);
+  assert.match(storage, /Auto prefers the established SSH binding/);
+  assert.match(storage, /Transport::Winrm/);
+  assert.match(storage, /Transport::Psexec/);
 });
