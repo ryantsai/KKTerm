@@ -3549,8 +3549,12 @@ type CommandMap = {
     args: undefined;
     result: CustomModuleCatalogEntry[];
   };
+  refresh_custom_module_catalog: {
+    args: undefined;
+    result: CustomModuleCatalogEntry[];
+  };
   install_custom_module_from_catalog: {
-    args: { moduleId: string };
+    args: { moduleId: string; version: string };
     result: InstalledCustomModule;
   };
   cancel_custom_module_download: {

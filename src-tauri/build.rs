@@ -1,10 +1,20 @@
 fn main() {
+    println!("cargo:rerun-if-changed=../.env");
+    let _ = dotenvy::from_path("../.env");
     println!("cargo:rerun-if-env-changed=KKTERM_CUSTOM_MODULE_CATALOG_PUBLIC_KEY");
+    println!("cargo:rerun-if-env-changed=KKTERM_CUSTOM_MODULE_CATALOG_URL");
     let catalog_public_key = std::env::var("KKTERM_CUSTOM_MODULE_CATALOG_PUBLIC_KEY")
-        .unwrap_or_else(|_| {
+        .ok()
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| {
             "0000000000000000000000000000000000000000000000000000000000000000".into()
         });
     println!("cargo:rustc-env=KKTERM_CUSTOM_MODULE_CATALOG_PUBLIC_KEY={catalog_public_key}");
+    let catalog_url = std::env::var("KKTERM_CUSTOM_MODULE_CATALOG_URL")
+        .unwrap_or_default()
+        .trim()
+        .to_owned();
+    println!("cargo:rustc-env=KKTERM_CUSTOM_MODULE_CATALOG_URL={catalog_url}");
     let permission_source = include_str!("permissions/main.toml");
     let mut in_commands = false;
     let commands = permission_source

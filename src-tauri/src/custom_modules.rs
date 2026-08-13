@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeMap, HashMap, HashSet},
     fs::{self, File},
     io::{Read, Write},
     path::{Component, Path, PathBuf},
@@ -20,6 +20,7 @@ use std::{
 };
 use tauri::{Emitter, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 use tauri_plugin_opener::OpenerExt;
+use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use url::Url;
 use zip::ZipArchive;
 
@@ -32,8 +33,12 @@ const MAX_SINGLE_FILE_BYTES: u64 = 128 * 1024 * 1024;
 const STORAGE_QUOTA_BYTES: i64 = 10 * 1024 * 1024;
 const MAX_STORAGE_KEYS: i64 = 10_000;
 const MAX_BRIDGE_PAYLOAD_BYTES: usize = 11 * 1024 * 1024;
+const MAX_CATALOG_BYTES: u64 = 4 * 1024 * 1024;
+const MAX_CATALOG_VALIDITY_DAYS: i64 = 45;
 const FIRST_PARTY_VERIFYING_KEY_HEX: &str = env!("KKTERM_CUSTOM_MODULE_CATALOG_PUBLIC_KEY");
+const ONLINE_CATALOG_URL: &str = env!("KKTERM_CUSTOM_MODULE_CATALOG_URL");
 const CATALOG_JSON: &str = include_str!("../../custom-modules/catalog.v1.json");
+const CATALOG_CACHE_FILE: &str = "catalog-cache.v1.json";
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -106,11 +111,37 @@ pub struct CatalogEntry {
     pub download_size: u64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct Catalog {
     schema_version: u32,
     modules: Vec<CatalogEntry>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct SignedCatalogEnvelope {
+    schema_version: u32,
+    key_id: String,
+    payload: String,
+    signature: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct OnlineCatalogPayload {
+    schema_version: u32,
+    sequence: u64,
+    generated_at: String,
+    expires_at: String,
+    modules: Vec<CatalogEntry>,
+}
+
+#[derive(Debug)]
+struct VerifiedOnlineCatalog {
+    payload: OnlineCatalogPayload,
+    payload_sha256: String,
+    expired: bool,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -998,10 +1029,7 @@ pub async fn install_custom_module_from_file(
     .map_err(|error| format!("Custom Module install task failed: {error}"))?
 }
 
-#[tauri::command]
-pub fn list_custom_module_catalog() -> Result<Vec<CatalogEntry>, String> {
-    let catalog: Catalog = serde_json::from_str(CATALOG_JSON)
-        .map_err(|error| format!("Custom Module catalog is invalid: {error}"))?;
+fn validate_catalog_with_key(catalog: &Catalog, public_key_hex: &str) -> Result<(), String> {
     if catalog.schema_version != 1 {
         return Err("unsupported Custom Module catalog schema".into());
     }
@@ -1038,6 +1066,7 @@ pub fn list_custom_module_catalog() -> Result<Vec<CatalogEntry>, String> {
             .map_err(|error| format!("invalid catalog signature encoding: {error}"))?;
         Signature::from_slice(&signature)
             .map_err(|error| format!("invalid catalog package signature: {error}"))?;
+        verify_catalog_signature_with_key(public_key_hex, &entry.sha256, &entry.signature)?;
         let mut permissions = HashSet::new();
         for permission in &entry.permissions {
             if !matches!(permission.as_str(), "storage" | "openExternal") {
@@ -1059,7 +1088,272 @@ pub fn list_custom_module_catalog() -> Result<Vec<CatalogEntry>, String> {
             return Err("catalog packages must be downloaded over HTTPS".into());
         }
     }
-    Ok(catalog.modules)
+    Ok(())
+}
+
+fn validate_catalog(catalog: &Catalog) -> Result<(), String> {
+    validate_catalog_with_key(catalog, FIRST_PARTY_VERIFYING_KEY_HEX)
+}
+
+fn baseline_catalog() -> Result<Catalog, String> {
+    let catalog: Catalog = serde_json::from_str(CATALOG_JSON)
+        .map_err(|error| format!("bundled Custom Module catalog is invalid: {error}"))?;
+    validate_catalog(&catalog)?;
+    Ok(catalog)
+}
+
+fn catalog_cache_path(paths: &AppPaths) -> PathBuf {
+    modules_root(paths).join(CATALOG_CACHE_FILE)
+}
+
+fn catalog_key_id_for_key(key: &VerifyingKey) -> String {
+    encode_hex(Sha256::digest(key.as_bytes()).as_slice())
+}
+
+fn parse_catalog_time(value: &str, field: &str) -> Result<OffsetDateTime, String> {
+    OffsetDateTime::parse(value, &Rfc3339)
+        .map_err(|error| format!("online Custom Module catalog {field} is invalid: {error}"))
+}
+
+fn verify_online_catalog(
+    bytes: &[u8],
+    now: OffsetDateTime,
+) -> Result<VerifiedOnlineCatalog, String> {
+    verify_online_catalog_with_key(
+        bytes,
+        now,
+        FIRST_PARTY_VERIFYING_KEY_HEX,
+        ONLINE_CATALOG_URL,
+    )
+}
+
+fn verify_online_catalog_with_key(
+    bytes: &[u8],
+    now: OffsetDateTime,
+    public_key_hex: &str,
+    online_catalog_url: &str,
+) -> Result<VerifiedOnlineCatalog, String> {
+    if bytes.is_empty() || bytes.len() as u64 > MAX_CATALOG_BYTES {
+        return Err("online Custom Module catalog exceeds the 4 MiB limit".into());
+    }
+    let envelope: SignedCatalogEnvelope = serde_json::from_slice(bytes)
+        .map_err(|error| format!("online Custom Module catalog envelope is invalid: {error}"))?;
+    if envelope.schema_version != 1 {
+        return Err("unsupported online Custom Module catalog envelope schema".into());
+    }
+    let verifying_key = VerifyingKey::from_bytes(&decode_hex(public_key_hex)?)
+        .map_err(|error| format!("invalid embedded catalog key: {error}"))?;
+    if envelope.key_id != catalog_key_id_for_key(&verifying_key) {
+        return Err("online Custom Module catalog was signed by an unexpected key".into());
+    }
+    let payload_bytes = BASE64.decode(&envelope.payload).map_err(|error| {
+        format!("online Custom Module catalog payload encoding is invalid: {error}")
+    })?;
+    if payload_bytes.is_empty() || payload_bytes.len() as u64 > MAX_CATALOG_BYTES {
+        return Err("online Custom Module catalog payload exceeds the 4 MiB limit".into());
+    }
+    let signature_bytes = BASE64.decode(&envelope.signature).map_err(|error| {
+        format!("online Custom Module catalog signature encoding is invalid: {error}")
+    })?;
+    let signature = Signature::from_slice(&signature_bytes)
+        .map_err(|error| format!("online Custom Module catalog signature is invalid: {error}"))?;
+    verifying_key
+        .verify(&payload_bytes, &signature)
+        .map_err(|_| "online Custom Module catalog signature is not trusted".to_string())?;
+
+    let payload: OnlineCatalogPayload = serde_json::from_slice(&payload_bytes)
+        .map_err(|error| format!("online Custom Module catalog payload is invalid: {error}"))?;
+    if payload.schema_version != 1 || payload.sequence == 0 {
+        return Err("unsupported online Custom Module catalog payload schema".into());
+    }
+    let generated_at = parse_catalog_time(&payload.generated_at, "generatedAt")?;
+    let expires_at = parse_catalog_time(&payload.expires_at, "expiresAt")?;
+    if generated_at > now + time::Duration::minutes(10) {
+        return Err("online Custom Module catalog is dated too far in the future".into());
+    }
+    if expires_at <= generated_at
+        || expires_at - generated_at > time::Duration::days(MAX_CATALOG_VALIDITY_DAYS)
+    {
+        return Err("online Custom Module catalog validity period is invalid".into());
+    }
+    let catalog = Catalog {
+        schema_version: payload.schema_version,
+        modules: payload.modules.clone(),
+    };
+    validate_catalog_with_key(&catalog, public_key_hex)?;
+
+    if !online_catalog_url.is_empty() {
+        let catalog_url = Url::parse(online_catalog_url)
+            .map_err(|error| format!("online Custom Module catalog URL is invalid: {error}"))?;
+        for entry in &payload.modules {
+            let download_url = Url::parse(&entry.download_url)
+                .map_err(|error| format!("catalog package URL is invalid: {error}"))?;
+            if download_url.origin() != catalog_url.origin() {
+                return Err(format!(
+                    "catalog package '{}' is not hosted by the configured catalog origin",
+                    entry.id
+                ));
+            }
+        }
+    }
+
+    Ok(VerifiedOnlineCatalog {
+        payload,
+        payload_sha256: encode_hex(Sha256::digest(&payload_bytes).as_slice()),
+        expired: expires_at <= now,
+    })
+}
+
+fn cached_online_catalog(
+    paths: &AppPaths,
+    now: OffsetDateTime,
+) -> Result<Option<VerifiedOnlineCatalog>, String> {
+    let path = catalog_cache_path(paths);
+    let bytes = match fs::read(&path) {
+        Ok(bytes) => bytes,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => {
+            return Err(format!(
+                "failed to read cached Custom Module catalog {}: {error}",
+                path.display()
+            ));
+        }
+    };
+    verify_online_catalog(&bytes, now).map(Some)
+}
+
+fn merge_catalogs(
+    baseline: Catalog,
+    online: Option<&VerifiedOnlineCatalog>,
+) -> Result<Vec<CatalogEntry>, String> {
+    let mut merged = BTreeMap::<String, CatalogEntry>::new();
+    for entry in baseline.modules {
+        merged.insert(entry.id.clone(), entry);
+    }
+    if let Some(online) = online.filter(|catalog| !catalog.expired) {
+        for entry in &online.payload.modules {
+            if let Some(existing) = merged.get(&entry.id) {
+                if existing.name != entry.name || existing.publisher != entry.publisher {
+                    return Err(format!(
+                        "online catalog changed the identity of Custom Module '{}'",
+                        entry.id
+                    ));
+                }
+                if Version::parse(&entry.version).map_err(|error| error.to_string())?
+                    <= Version::parse(&existing.version).map_err(|error| error.to_string())?
+                {
+                    continue;
+                }
+            }
+            merged.insert(entry.id.clone(), entry.clone());
+        }
+    }
+    Ok(merged.into_values().collect())
+}
+
+fn available_catalog(paths: &AppPaths) -> Result<Vec<CatalogEntry>, String> {
+    let baseline = baseline_catalog()?;
+    let cached = match cached_online_catalog(paths, OffsetDateTime::now_utc()) {
+        Ok(cached) => cached,
+        Err(_) => None,
+    };
+    merge_catalogs(baseline, cached.as_ref())
+}
+
+fn write_catalog_cache(paths: &AppPaths, bytes: &[u8]) -> Result<(), String> {
+    let destination = catalog_cache_path(paths);
+    let parent = destination
+        .parent()
+        .ok_or_else(|| "Custom Module catalog cache path has no parent".to_string())?;
+    fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    let temporary = destination.with_extension(format!("tmp-{:016x}", rand::random::<u64>()));
+    let mut output = File::create(&temporary).map_err(|error| error.to_string())?;
+    output.write_all(bytes).map_err(|error| error.to_string())?;
+    output.sync_all().map_err(|error| error.to_string())?;
+    drop(output);
+    if let Err(error) = fs::rename(&temporary, &destination) {
+        if destination.exists() {
+            fs::remove_file(&destination).map_err(|remove_error| {
+                format!("failed to replace cached Custom Module catalog: {remove_error}")
+            })?;
+            fs::rename(&temporary, &destination).map_err(|rename_error| {
+                format!("failed to activate cached Custom Module catalog: {rename_error}")
+            })?;
+        } else {
+            let _ = fs::remove_file(&temporary);
+            return Err(format!("failed to cache Custom Module catalog: {error}"));
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn list_custom_module_catalog(
+    paths: tauri::State<'_, AppPaths>,
+) -> Result<Vec<CatalogEntry>, String> {
+    available_catalog(&paths)
+}
+
+#[tauri::command]
+pub async fn refresh_custom_module_catalog(
+    app: tauri::AppHandle,
+) -> Result<Vec<CatalogEntry>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let paths = app.state::<AppPaths>();
+        if ONLINE_CATALOG_URL.is_empty() {
+            return available_catalog(&paths);
+        }
+        let url = Url::parse(ONLINE_CATALOG_URL)
+            .map_err(|error| format!("online Custom Module catalog URL is invalid: {error}"))?;
+        if url.scheme() != "https" {
+            return Err("online Custom Module catalog must use HTTPS".into());
+        }
+        let client = crate::net::proxy::apply_blocking(
+            Client::builder()
+                .connect_timeout(Duration::from_secs(15))
+                .timeout(Duration::from_secs(60)),
+        )
+        .build()
+        .map_err(|error| error.to_string())?;
+        let response = client
+            .get(url)
+            .send()
+            .and_then(|response| response.error_for_status())
+            .map_err(|error| format!("failed to refresh Custom Module catalog: {error}"))?;
+        if response
+            .content_length()
+            .is_some_and(|length| length > MAX_CATALOG_BYTES)
+        {
+            return Err("online Custom Module catalog exceeds the 4 MiB limit".into());
+        }
+        let mut bytes = Vec::new();
+        response
+            .take(MAX_CATALOG_BYTES + 1)
+            .read_to_end(&mut bytes)
+            .map_err(|error| format!("failed to read Custom Module catalog: {error}"))?;
+        if bytes.len() as u64 > MAX_CATALOG_BYTES {
+            return Err("online Custom Module catalog exceeds the 4 MiB limit".into());
+        }
+        let now = OffsetDateTime::now_utc();
+        let refreshed = verify_online_catalog(&bytes, now)?;
+        if refreshed.expired {
+            return Err("online Custom Module catalog has expired".into());
+        }
+        if let Ok(Some(current)) = cached_online_catalog(&paths, now) {
+            if refreshed.payload.sequence < current.payload.sequence {
+                return Err("online Custom Module catalog sequence was rolled back".into());
+            }
+            if refreshed.payload.sequence == current.payload.sequence
+                && refreshed.payload_sha256 != current.payload_sha256
+            {
+                return Err("online Custom Module catalog changed without a new sequence".into());
+            }
+        }
+        write_catalog_cache(&paths, &bytes)?;
+        merge_catalogs(baseline_catalog()?, Some(&refreshed))
+    })
+    .await
+    .map_err(|error| format!("Custom Module catalog refresh task failed: {error}"))?
 }
 
 fn decode_hex<const N: usize>(value: &str) -> Result<[u8; N], String> {
@@ -1098,12 +1392,15 @@ fn verify_catalog_signature_with_key(
 #[tauri::command]
 pub async fn install_custom_module_from_catalog(
     module_id: String,
+    version: String,
     app: tauri::AppHandle,
 ) -> Result<InstalledCustomModule, String> {
-    let entry = list_custom_module_catalog()?
+    let entry = available_catalog(&app.state::<AppPaths>())?
         .into_iter()
-        .find(|entry| entry.id == module_id)
-        .ok_or_else(|| "Custom Module is not present in the first-party catalog".to_string())?;
+        .find(|entry| entry.id == module_id && entry.version == version)
+        .ok_or_else(|| {
+            "Custom Module version is not present in the verified catalog".to_string()
+        })?;
     if entry.api_version != HOST_API_VERSION {
         return Err(format!(
             "module requires host API {}, but this KKTerm supports API {HOST_API_VERSION}",
@@ -2153,6 +2450,138 @@ mod tests {
                 .unwrap_err()
                 .contains("not trusted")
         );
+    }
+
+    fn signed_catalog_fixture(
+        signing_key: &SigningKey,
+        sequence: u64,
+        version: &str,
+        generated_at: OffsetDateTime,
+        expires_at: OffsetDateTime,
+    ) -> Vec<u8> {
+        let digest = "2f6b2dcf7f8d7d53e3f0f375d4f48130276f9cf9466ee63f04745bbda870f070";
+        let package_signature = BASE64.encode(signing_key.sign(digest.as_bytes()).to_bytes());
+        let payload = OnlineCatalogPayload {
+            schema_version: 1,
+            sequence,
+            generated_at: generated_at.format(&Rfc3339).unwrap(),
+            expires_at: expires_at.format(&Rfc3339).unwrap(),
+            modules: vec![CatalogEntry {
+                id: "com.kkterm.fixture".into(),
+                name: "Fixture".into(),
+                version: version.into(),
+                publisher: "KKTerm".into(),
+                summary: "Fixture module".into(),
+                api_version: 1,
+                download_url: format!(
+                    "https://modules.example.test/packages/sha256/{digest}.kkmod"
+                ),
+                sha256: digest.into(),
+                signature: package_signature,
+                license: "MIT".into(),
+                permissions: vec!["storage".into()],
+                download_size: 1234,
+            }],
+        };
+        let payload_bytes = serde_json::to_vec(&payload).unwrap();
+        let envelope = SignedCatalogEnvelope {
+            schema_version: 1,
+            key_id: catalog_key_id_for_key(&signing_key.verifying_key()),
+            payload: BASE64.encode(&payload_bytes),
+            signature: BASE64.encode(signing_key.sign(&payload_bytes).to_bytes()),
+        };
+        serde_json::to_vec(&envelope).unwrap()
+    }
+
+    #[test]
+    fn online_catalog_verifies_envelope_package_and_origin() {
+        let signing_key = SigningKey::from_bytes(&[9_u8; 32]);
+        let key_hex = encode_hex(signing_key.verifying_key().as_bytes());
+        let now = OffsetDateTime::from_unix_timestamp(1_800_000_000).unwrap();
+        let bytes = signed_catalog_fixture(
+            &signing_key,
+            7,
+            "1.2.0",
+            now - time::Duration::minutes(1),
+            now + time::Duration::days(30),
+        );
+        let verified = verify_online_catalog_with_key(
+            &bytes,
+            now,
+            &key_hex,
+            "https://modules.example.test/catalog/v1/catalog.json",
+        )
+        .unwrap();
+        assert_eq!(verified.payload.sequence, 7);
+        assert_eq!(verified.payload.modules[0].version, "1.2.0");
+        assert!(!verified.expired);
+    }
+
+    #[test]
+    fn online_catalog_rejects_tampering_and_marks_expiration() {
+        let signing_key = SigningKey::from_bytes(&[11_u8; 32]);
+        let key_hex = encode_hex(signing_key.verifying_key().as_bytes());
+        let now = OffsetDateTime::from_unix_timestamp(1_800_000_000).unwrap();
+        let expired = signed_catalog_fixture(
+            &signing_key,
+            2,
+            "1.0.0",
+            now - time::Duration::days(2),
+            now - time::Duration::days(1),
+        );
+        assert!(
+            verify_online_catalog_with_key(&expired, now, &key_hex, "")
+                .unwrap()
+                .expired
+        );
+
+        let mut tampered: SignedCatalogEnvelope = serde_json::from_slice(&expired).unwrap();
+        let mut payload_bytes = BASE64.decode(&tampered.payload).unwrap();
+        payload_bytes[0] ^= 1;
+        tampered.payload = BASE64.encode(payload_bytes);
+        assert!(
+            verify_online_catalog_with_key(
+                &serde_json::to_vec(&tampered).unwrap(),
+                now,
+                &key_hex,
+                "",
+            )
+            .unwrap_err()
+            .contains("signature")
+        );
+    }
+
+    #[test]
+    fn online_catalog_cannot_downgrade_the_bundled_baseline() {
+        let signing_key = SigningKey::from_bytes(&[13_u8; 32]);
+        let now = OffsetDateTime::from_unix_timestamp(1_800_000_000).unwrap();
+        let key_hex = encode_hex(signing_key.verifying_key().as_bytes());
+        let baseline_bytes = signed_catalog_fixture(
+            &signing_key,
+            1,
+            "2.0.0",
+            now - time::Duration::minutes(1),
+            now + time::Duration::days(30),
+        );
+        let baseline_verified =
+            verify_online_catalog_with_key(&baseline_bytes, now, &key_hex, "").unwrap();
+        let online_bytes = signed_catalog_fixture(
+            &signing_key,
+            2,
+            "1.9.0",
+            now - time::Duration::minutes(1),
+            now + time::Duration::days(30),
+        );
+        let online = verify_online_catalog_with_key(&online_bytes, now, &key_hex, "").unwrap();
+        let merged = merge_catalogs(
+            Catalog {
+                schema_version: 1,
+                modules: baseline_verified.payload.modules,
+            },
+            Some(&online),
+        )
+        .unwrap();
+        assert_eq!(merged[0].version, "2.0.0");
     }
 
     #[test]

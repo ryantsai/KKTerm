@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Download, Package, Shield, Trash2 } from "../../lib/reicon";
+import { Download, Package, RefreshCw, Shield, Trash2 } from "../../lib/reicon";
 import { useTranslation } from "react-i18next";
 import { Actions, Btn, ConfirmSheet, DialogShell, Sheet } from "../../app/ui/dialog";
 import {
@@ -13,6 +13,7 @@ import type {
   CustomModulePackageReview,
   InstalledCustomModule,
 } from "../custom-modules/types";
+import { compareCustomModuleVersions } from "../custom-modules/catalog";
 import { SettingsSectionHeader } from "./shared";
 import { ToggleSwitch } from "./ToggleSwitch";
 
@@ -34,6 +35,7 @@ export function CustomModulesSettings() {
   const [installed, setInstalled] = useState<InstalledCustomModule[]>([]);
   const [catalog, setCatalog] = useState<CustomModuleCatalogEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [pendingInstall, setPendingInstall] = useState<PendingInstall | null>(null);
   const [pendingCatalogInstall, setPendingCatalogInstall] =
@@ -63,9 +65,32 @@ export function CustomModulesSettings() {
     }
   }, [showStatusBarNotice]);
 
+  const refreshCatalog = useCallback(async (announce: boolean) => {
+    if (!isTauriRuntime()) return;
+    setRefreshing(true);
+    try {
+      const nextCatalog = await invokeCommand("refresh_custom_module_catalog");
+      setCatalog(nextCatalog);
+      if (announce) {
+        showStatusBarNotice(t("settings.customModulesCatalogRefreshedNotice"), {
+          tone: "success",
+        });
+      }
+    } catch (error) {
+      if (announce) {
+        showStatusBarNotice(error instanceof Error ? error.message : String(error), {
+          tone: "error",
+        });
+      }
+    } finally {
+      setRefreshing(false);
+    }
+  }, [showStatusBarNotice, t]);
+
   useEffect(() => {
     void reload();
-  }, [reload]);
+    void refreshCatalog(false);
+  }, [refreshCatalog, reload]);
 
   function publishChange() {
     window.dispatchEvent(new Event(MODULES_CHANGED_EVENT));
@@ -115,13 +140,19 @@ export function CustomModulesSettings() {
   }
 
   async function installCatalogModule(entry: CustomModuleCatalogEntry) {
+    const current = installed.find((module) => module.id === entry.id);
     setPendingCatalogInstall(null);
     setBusyId(entry.id);
     try {
-      await invokeCommand("install_custom_module_from_catalog", { moduleId: entry.id });
+      await invokeCommand("install_custom_module_from_catalog", {
+        moduleId: entry.id,
+        version: entry.version,
+      });
       await reload();
       publishChange();
-      showStatusBarNotice(t("settings.customModulesInstalledNotice", { name: entry.name }), {
+      showStatusBarNotice(t(current
+        ? "settings.customModulesUpdatedNotice"
+        : "settings.customModulesInstalledNotice", { name: entry.name, version: entry.version }), {
         tone: "success",
       });
     } catch (error) {
@@ -229,9 +260,13 @@ export function CustomModulesSettings() {
     }
   }
 
-  const available = catalog.filter(
-    (entry) => !installed.some((module) => module.id === entry.id && module.version === entry.version),
-  );
+  const available = catalog.filter((entry) => {
+    const current = installed.find((module) => module.id === entry.id);
+    return !current || compareCustomModuleVersions(entry.version, current.version) > 0;
+  });
+  const pendingCatalogCurrent = pendingCatalogInstall
+    ? installed.find((module) => module.id === pendingCatalogInstall.id)
+    : undefined;
 
   return (
     <section
@@ -240,10 +275,21 @@ export function CustomModulesSettings() {
     >
       <SettingsSectionHeader
         actions={
-          <button className="toolbar-button" onClick={() => void choosePackage()} type="button">
-            <Download size={15} />
-            {t("settings.customModulesInstallFile")}
-          </button>
+          <>
+            <button
+              className="toolbar-button"
+              disabled={refreshing}
+              onClick={() => void refreshCatalog(true)}
+              type="button"
+            >
+              <RefreshCw size={15} />
+              {t("settings.customModulesRefreshCatalog")}
+            </button>
+            <button className="toolbar-button" onClick={() => void choosePackage()} type="button">
+              <Download size={15} />
+              {t("settings.customModulesInstallFile")}
+            </button>
+          </>
         }
         icon={<Package size={18} />}
         label={t("settings.sectionCustomModules")}
@@ -358,7 +404,9 @@ export function CustomModulesSettings() {
                     type="button"
                   >
                     <Download size={14} />
-                    {t("settings.customModulesInstall")}
+                    {installed.some((module) => module.id === entry.id)
+                      ? t("settings.customModulesUpdate")
+                      : t("settings.customModulesInstall")}
                   </button>
                 </div>
                 {entry.apiVersion !== 1 ? (
@@ -407,14 +455,20 @@ export function CustomModulesSettings() {
 
       {pendingCatalogInstall ? (
         <ConfirmSheet
-          confirmLabel={t("settings.customModulesInstall")}
+          confirmLabel={t(pendingCatalogCurrent
+            ? "settings.customModulesUpdate"
+            : "settings.customModulesInstall")}
           icon="info"
           message={
             <div>
-              <p>{t("settings.customModulesInstallMessage", {
-                name: pendingCatalogInstall.name,
-                publisher: pendingCatalogInstall.publisher,
-              })}</p>
+              <p>{t(pendingCatalogCurrent
+                ? "settings.customModulesUpdateMessage"
+                : "settings.customModulesInstallVerifiedMessage", {
+                  name: pendingCatalogInstall.name,
+                  publisher: pendingCatalogInstall.publisher,
+                  currentVersion: pendingCatalogCurrent?.version,
+                  version: pendingCatalogInstall.version,
+                })}</p>
               <p><strong>{t("settings.customModulesPermissions")}: </strong>{
                 pendingCatalogInstall.permissions.length
                   ? pendingCatalogInstall.permissions.join(", ")
@@ -424,7 +478,9 @@ export function CustomModulesSettings() {
           }
           onCancel={() => setPendingCatalogInstall(null)}
           onConfirm={() => void installCatalogModule(pendingCatalogInstall)}
-          title={t("settings.customModulesInstallTitle")}
+          title={t(pendingCatalogCurrent
+            ? "settings.customModulesUpdateTitle"
+            : "settings.customModulesInstallTitle")}
           tone="warn"
         />
       ) : null}

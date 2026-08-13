@@ -1,6 +1,7 @@
 # Custom Modules implementation plan
 
-Status: Implementation complete; desktop release QA remains a release gate
+Status: Curated signed online catalog implemented; Cloudflare environment setup
+and desktop release QA remain release gates
 
 Custom Modules are optional, locally installed extension packages that contribute
 permanent top-level Module destinations to KKTerm. Packages are not part of the
@@ -27,8 +28,9 @@ grant private host capabilities.
   only a caller-bound, permission-checked Custom Module bridge.
 - Local packages work offline after installation. Failed upgrades retain a
   recoverable previous version.
-- First-party packages can be added to a signed catalog without changing KKTerm's
-  frontend routing or Rust command list.
+- Curated packages and updates can be published independently to Cloudflare R2;
+  KKTerm combines its embedded baseline with a signed, expiring, rollback-safe
+  online catalog without changing frontend routing or the runtime command list.
 - Excalidraw can be shipped later as a separate package, with its MIT license and
   third-party notices inside that package rather than the KKTerm installer.
 
