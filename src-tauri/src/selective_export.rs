@@ -2822,6 +2822,9 @@ mod tests {
         // Cleaner Keep paths are absolute paths tied to this PC, history is
         // operational telemetry, and verified recipe bundles must be reviewed
         // and imported explicitly on each machine so signer trust is local.
+        // Custom Module packages are a separately installed machine-local
+        // lifecycle; their metadata, grants, retained versions, and storage
+        // therefore remain outside selective bundles as one coherent group.
         const EXCLUDED: &[&str] = &[
             "encrypted_secret_store_entries",
             "ai_coding_usage_accounts",
@@ -2830,6 +2833,10 @@ mod tests {
             "system_cleaner_keep_paths",
             "system_cleaner_history",
             "system_cleaner_recipe_bundles",
+            "custom_modules",
+            "custom_module_versions",
+            "custom_module_permissions",
+            "custom_module_storage",
         ];
         let covered: Vec<&str> = SEGMENT_ORDER
             .iter()

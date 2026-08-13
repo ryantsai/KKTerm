@@ -50,6 +50,13 @@ export function documentHasWebviewBlockingOverlay(surface: Element | null) {
   );
 }
 
+export function documentHasCustomModuleBlockingOverlay(surface: Element | null) {
+  return documentHasNativeBlockingOverlay(
+    surface,
+    INTERSECTING_NATIVE_SURFACE_OVERLAY_SELECTOR,
+  );
+}
+
 function documentHasNativeBlockingOverlay(
   surface: Element | null,
   selector: string,

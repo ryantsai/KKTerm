@@ -1395,6 +1395,174 @@
   accent-color: var(--accent);
 }
 
+.custom-modules-settings > .settings-help-text {
+  margin: -4px 0 14px;
+}
+
+.custom-modules-list {
+  display: grid;
+  gap: 10px;
+}
+
+.custom-module-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.custom-module-card-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.custom-module-card-heading > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.custom-module-card-heading h3,
+.custom-module-license-dialog h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.custom-module-card-heading p {
+  margin: 3px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.custom-module-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--surface-muted);
+  color: var(--accent);
+}
+
+.custom-module-trust {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.custom-module-trust.firstParty {
+  border-color: color-mix(in srgb, var(--green) 45%, var(--border));
+  color: var(--green);
+}
+
+.custom-module-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin: 0;
+}
+
+.custom-module-meta div {
+  display: flex;
+  gap: 5px;
+  font-size: 11px;
+}
+
+.custom-module-meta dt {
+  color: var(--text-muted);
+}
+
+.custom-module-meta dd {
+  margin: 0;
+  color: var(--text);
+}
+
+.custom-module-permissions {
+  display: flex;
+  gap: 7px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.custom-module-permissions strong {
+  color: var(--text);
+}
+
+.custom-module-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.custom-module-controls label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 7px;
+  background: var(--surface-muted);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.custom-module-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.custom-module-health-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 12px;
+}
+
+.custom-module-delete-data {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 12px;
+  color: var(--text);
+}
+
+.custom-module-license-dialog {
+  display: grid;
+  gap: 12px;
+}
+
+.custom-module-license-dialog pre {
+  max-height: min(58vh, 520px);
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-muted);
+  color: var(--text);
+  font: 12px/1.5 var(--font-mono);
+  white-space: pre-wrap;
+}
+
+@media (max-width: 780px) {
+  .custom-module-controls {
+    grid-template-columns: 1fr;
+  }
+}
+
 .toggle-switch {
   flex: 0 0 auto;
   cursor: pointer;

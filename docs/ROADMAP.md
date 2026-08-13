@@ -210,7 +210,8 @@ Design and deep dive: `docs/ADR/0011-it-ops-module.md`, `docs/ITOPS.md`, `docs/S
 
 ### Extension Platform
 
-- [ ] General user-installable extension support (permissions, install/update lifecycle, and trust boundaries defined in ADR-0005).
+- [x] Custom Module platform: optional static `.kkmod` packages, safe local install, signed first-party catalog support, Settings management, isolated storage, Tauri command ACLs, caller-bound native WebView bridge, dynamic Activity Rail contributions, retained-version rollback, and a development fixture.
+- [ ] Add individually reviewed Connection, Workspace, terminal, SFTP, screenshot, secret-reference, and declared-origin network permission families from ADR 0005.
 
 ### Workflow Simplification
 

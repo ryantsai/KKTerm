@@ -2,6 +2,73 @@ use super::*;
 use rusqlite::params;
 
 #[test]
+fn v59_custom_module_tables_upgrade_and_current_reopen_preserve_data() {
+    let db_path = temp_db_path("custom-modules-v59");
+    {
+        let storage = Storage::open(db_path.clone()).expect("fixture storage opens");
+        storage
+            .with_connection(|connection| {
+                connection
+                    .execute_batch(
+                        "DROP TABLE custom_module_storage;
+                         DROP TABLE custom_module_permissions;
+                         DROP TABLE custom_module_versions;
+                         DROP TABLE custom_modules;
+                         PRAGMA user_version = 58;",
+                    )
+                    .map_err(to_storage_error)
+            })
+            .expect("v58 fixture shape is prepared");
+    }
+
+    let upgraded = Storage::open(db_path.clone()).expect("v58 storage upgrades");
+    upgraded
+        .with_connection(|connection| {
+            connection
+                .execute(
+                    "INSERT INTO custom_modules (
+                        id, manifest_json, active_version, source, trust, installed,
+                        enabled, rail_visible, sha256
+                     ) VALUES ('com.example.fixture', '{}', '1.0.0', 'local', 'local', 1, 1, 1, 'abc')",
+                    [],
+                )
+                .map_err(to_storage_error)?;
+            connection
+                .execute(
+                    "INSERT INTO custom_module_storage (module_id, key, value_json, byte_size)
+                     VALUES ('com.example.fixture', 'note', '\"kept\"', 10)",
+                    [],
+                )
+                .map_err(to_storage_error)?;
+            Ok(())
+        })
+        .expect("Custom Module rows are stored");
+    drop(upgraded);
+
+    let reopened = Storage::open(db_path.clone()).expect("current v59 storage reopens");
+    reopened
+        .with_connection(|connection| {
+            let value: String = connection
+                .query_row(
+                    "SELECT value_json FROM custom_module_storage
+                     WHERE module_id = 'com.example.fixture' AND key = 'note'",
+                    [],
+                    |row| row.get(0),
+                )
+                .map_err(to_storage_error)?;
+            assert_eq!(value, "\"kept\"");
+            let version: i32 = connection
+                .pragma_query_value(None, "user_version", |row| row.get(0))
+                .map_err(to_storage_error)?;
+            assert_eq!(version, SCHEMA_USER_VERSION);
+            Ok(())
+        })
+        .expect("current-version reopen preserves Custom Module data");
+    drop(reopened);
+    let _ = fs::remove_file(db_path);
+}
+
+#[test]
 fn v58_host_execution_upgrade_and_current_reopen_preserve_policy() {
     let db_path = temp_db_path("itops-host-execution-v58");
     {

@@ -16,6 +16,7 @@
     "package:portable:arm64": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-portable.ps1 -Arch arm64",
     "package:macos": "zsh scripts/package-macos.sh",
     "package:linux": "bash scripts/package-linux.sh",
+    "package:custom-module-fixture": "node scripts/package-custom-module-fixture.mjs",
     "release:github": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release-github.ps1",
     "release:github:both-arch": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release-github-both-arch.ps1",
     "release:github:macos": "zsh scripts/release-github-macos.sh",

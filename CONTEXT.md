@@ -85,6 +85,15 @@ _Avoid_: landing page, overview
 A built-in Activity Rail Module that manages a curated catalog of Windows developer tools (e.g. nvm, Node, uv, Python, VS Code, Docker, WSL, n8n, Claude Code CLI, Codex CLI, Cursor Agent CLI, Antigravity CLI, OpenCode CLI, Notepad++, NSSM, OpenClaw, Hermes agent, Hermes Desktop, Draw.IO, Krita, Inkscape). For each catalog entry the Module detects local install state, fetches the latest available version, presents a per-tool install panel with tool-specific options, and supports check-for-update and apply-update actions. Lives above Settings on the Activity Rail. Not a Connection, not a Session, not a Dashboard Widget.
 _Avoid_: AI Installer, App Installer, package manager, store
 
+**Custom Module**:
+An optional top-level Activity Rail Module contributed by a user-installed
+static `.kkmod` package. Its HTML/CSS/JavaScript/WASM assets load locally in an
+isolated native WebView through an app-owned protocol, with no Node.js runtime
+or HTTP server. Settings → Custom Modules owns install review, trust, license,
+permission, enable/disable, rail visibility, rollback, and uninstall. A Custom
+Module is not a built-in Module, Connection, Session, Tab, or Dashboard Widget.
+_Avoid_: plugin, website Connection, bundled app, Dashboard widget
+
 **Dashboard View**:
 A durable SQLite-backed tab in the Dashboard Module, stored in `dashboard_views`. Each View carries its own ordered set of Widget Instances and a `grid_density` (`compact` / `default` / `roomy`). The first View is named "Default" and is seeded on first run with one App Launcher Widget Instance. Views are not Sessions and not Connections.
 _Avoid_: dashboard page, tab, board
@@ -260,7 +269,7 @@ _Avoid_: workflow, recipe (an Install Helper term), curated update sequence
 ## UI Layout
 
 **Activity Rail (Left Rail)**:
-The vertical icon bar on the far left of the app. Its top section is the **Workspace switcher** — the Default Workspace, any additional Workspaces, and a `+` button that opens the New Workspace wizard; selecting a Workspace activates it and navigates to the Workspace Module. Below that it shows the other top-level built-in Modules (Dashboard, IT Ops, Install Helper, Screenshots, and the Windows-only System Cleaner), connected Connection shortcuts when enabled, and Settings at the bottom. Icons use app-owned delayed hover labels via `RailTooltip`, not native `title` tooltips. App Launcher is intentionally not a Module; it lives inside Dashboard as a widget.
+The vertical icon bar on the far left of the app. Its top section is the **Workspace switcher** — the Default Workspace, any additional Workspaces, and a `+` button that opens the New Workspace wizard; selecting a Workspace activates it and navigates to the Workspace Module. Below that it shows the other top-level built-in Modules (Dashboard, IT Ops, Install Helper, Screenshots, and the Windows-only System Cleaner), enabled Custom Module contributions, connected Connection shortcuts when enabled, and Settings at the bottom. Icons use app-owned delayed hover labels via `RailTooltip`, not native `title` tooltips. App Launcher is intentionally not a Module; it lives inside Dashboard as a widget.
 _Avoid_: sidebar, left sidebar, nav bar
 
 **Connection Tree (Connections Panel)**:

@@ -3,14 +3,14 @@
 ## AI grep hints
 
 - Keys: `settings.exportSettings`, `settings.importSettings`, `settings.importBackupFileHint`, `settings.fullBackupImport`, `settings.includeCredentials`, `settings.includeCredentialsWarning`, `settings.importPassphrase`, `settings.importEncryptedStorePassword`, `settings.importEncryptedStorePasswordHint`, `settings.importActionAdd`, `settings.importActionReplace`, `settings.segment_workspacesConnections`, `settings.segment_dashboards`, `settings.segment_itops`, `settings.segment_assistant`, `settings.segment_settings`, `settings.resetAllSettings`, `settings.resetAllSettingsConfirm`, `settings.resetAllSettingsComplete`, `settings.sectionCredentials`, `settings.credentialStorage`, `settings.credentialStorageFilePortable`, `settings.portableCredentialStorageOsWarning`, `settings.credentialsStored`, `settings.deleteCredential`
-- Topics: SQLite store, OS keychain, encrypted SQLite secret store, settings Import/Export `.kkbackup`, startup backup ZIP snapshots, import / restore, reset all, where my data lives
+- Topics: SQLite store, OS keychain, encrypted SQLite secret store, Custom Module package/storage backup, settings Import/Export `.kkbackup`, startup backup ZIP snapshots, import / restore, reset all, where my data lives
 - Synonyms: "where is my data", "back up settings", "restore", "factory reset", "uninstall", "API key storage", "export connections without passwords", "share connections", "selective backup"
 
 ## Storage model
 
 KKTerm is local-first. Two distinct store families:
 
-1. **SQLite** — non-secret durable data. Lives on the user's machine, never sent off-device. Holds Connections, Dashboard Views and Widget Instances, Custom Widgets, Settings rows, and assistant chat history.
+1. **SQLite** — non-secret durable data. Lives on the user's machine, never sent off-device. Holds Connections, Dashboard Views and Widget Instances, Custom Widgets, Settings rows, assistant chat history, and Custom Module metadata plus permission-checked storage.
 2. **Credential backend** — secrets. Holds Connection passwords, URL credentials, AI provider API keys, email API keys / SMTP passwords, widget secrets, MCP server secrets. Windows and macOS default to the OS keystore and may optionally use the encrypted SQLite store. Linux uses the encrypted SQLite store only.
 
 Terminal contents are **not** logged by default. There is no telemetry and no cloud sync.
@@ -26,6 +26,13 @@ Do **not** put live session state (open Tabs, focused Pane, in-flight Sessions) 
 `settings.exportSettings` opens the category-aware export dialog and produces a `.kkbackup` bundle (a ZIP holding `manifest.json`, `data.json`, and an optional `secrets.enc`). The dialog offers five UI groups: `settings.segment_workspacesConnections` maps to the existing `workspaces` and `connections` segments; `settings.segment_dashboards` maps to `dashboards`; `settings.segment_itops` maps to `itops` (Sites, Server Rooms, Racks, Hosts, Tasks, Automations, and run history); `settings.segment_assistant` maps to `assistant` (AI Assistant chat history and memories); and `settings.segment_settings` maps to `settings` and `mcpServers`. The bundle manifest and `data.json` retain those individual segment names for forward/backward compatibility. Import shows only groups represented in the selected bundle and applies one chosen action to every present segment in a group, including when an older bundle contains only one of the now-grouped segments. Machine-local state — the encrypted secret store rows, AI coding usage accounts/snapshots, and Install Helper tool state — is never part of a selective bundle; the full ZIP snapshot still carries it.
 
 ## Automatic backup snapshots
+
+Optional `.kkmod` package payloads live beside, not inside, SQLite. Selective
+exports do not include Custom Modules. Full database snapshots retain installed
+metadata and bridge storage but not package files; after restoring on a machine
+without the matching app-data package directory, Settings marks the Module
+package missing and it must be reinstalled. Copying an entire stopped portable
+folder does include its package directory as part of the portable backup unit.
 
 Full database snapshot backups may run at:
 

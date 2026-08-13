@@ -1,0 +1,9 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "custom-modules",
+  "description": "Narrow bridge for isolated user-installed Custom Module WebViews",
+  "windows": ["custom-module-*"],
+  "permissions": [
+    "allow-custom-module-bridge"
+  ]
+}
