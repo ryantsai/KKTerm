@@ -1071,12 +1071,14 @@ pub fn duplicate_rack(
 }
 
 pub fn reorder_racks(conn: &SqliteConnection, site_id: &str, ordered_ids: &[String]) -> Result<()> {
+    let tx = conn.unchecked_transaction()?;
+    let mut statement =
+        tx.prepare("UPDATE itops_site_racks SET sort_order = ? WHERE id = ? AND site_id = ?")?;
     for (index, id) in ordered_ids.iter().enumerate() {
-        conn.execute(
-            "UPDATE itops_site_racks SET sort_order = ? WHERE id = ? AND site_id = ?",
-            params![index as i64, id, site_id],
-        )?;
+        statement.execute(params![index as i64, id, site_id])?;
     }
+    drop(statement);
+    tx.commit()?;
     Ok(())
 }
 
@@ -1115,29 +1117,35 @@ pub fn set_rack_placements(
                 "rack placement coordinates must be finite".to_string(),
             ));
         }
-        match kind {
-            RackPlacementKind::Floor => {
-                conn.execute(
-                    "UPDATE itops_site_racks
-                     SET floor_x = ?, floor_y = ?, updated_at = CURRENT_TIMESTAMP
-                     WHERE id = ?",
-                    params![entry.x.max(0.0), entry.y.max(0.0), entry.id],
-                )?;
+    }
+    let tx = conn.unchecked_transaction()?;
+    match kind {
+        RackPlacementKind::Floor => {
+            let mut statement = tx.prepare(
+                "UPDATE itops_site_racks
+                 SET floor_x = ?, floor_y = ?, updated_at = CURRENT_TIMESTAMP
+                 WHERE id = ?",
+            )?;
+            for entry in entries {
+                statement.execute(params![entry.x.max(0.0), entry.y.max(0.0), entry.id])?;
             }
-            RackPlacementKind::Grid => {
-                conn.execute(
-                    "UPDATE itops_site_racks
-                     SET grid_x = ?, grid_y = ?, updated_at = CURRENT_TIMESTAMP
-                     WHERE id = ?",
-                    params![
-                        entry.x.round().max(0.0) as i64,
-                        entry.y.round().max(0.0) as i64,
-                        entry.id
-                    ],
-                )?;
+        }
+        RackPlacementKind::Grid => {
+            let mut statement = tx.prepare(
+                "UPDATE itops_site_racks
+                 SET grid_x = ?, grid_y = ?, updated_at = CURRENT_TIMESTAMP
+                 WHERE id = ?",
+            )?;
+            for entry in entries {
+                statement.execute(params![
+                    entry.x.round().max(0.0) as i64,
+                    entry.y.round().max(0.0) as i64,
+                    entry.id
+                ])?;
             }
         }
     }
+    tx.commit()?;
     Ok(())
 }
 
@@ -1152,13 +1160,18 @@ pub fn set_rack_facings(conn: &SqliteConnection, entries: &[RackFacingEntry]) ->
                 entry.facing
             )));
         }
-        conn.execute(
-            "UPDATE itops_site_racks
-             SET facing = ?, updated_at = CURRENT_TIMESTAMP
-             WHERE id = ?",
-            params![entry.facing, entry.id],
-        )?;
     }
+    let tx = conn.unchecked_transaction()?;
+    let mut statement = tx.prepare(
+        "UPDATE itops_site_racks
+         SET facing = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?",
+    )?;
+    for entry in entries {
+        statement.execute(params![entry.facing, entry.id])?;
+    }
+    drop(statement);
+    tx.commit()?;
     Ok(())
 }
 
@@ -1272,23 +1285,24 @@ pub fn set_room_objects(
         "DELETE FROM itops_room_objects WHERE site_id = ? AND server_room = ?",
         params![site_id, server_room],
     )?;
+    let mut statement = tx.prepare(
+        "INSERT INTO itops_room_objects (id, site_id, server_room, kind, x, y, z, rot, corner)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    )?;
     for object in objects {
-        tx.execute(
-            "INSERT INTO itops_room_objects (id, site_id, server_room, kind, x, y, z, rot, corner)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            params![
-                object.id,
-                site_id,
-                server_room,
-                object.kind,
-                object.x,
-                object.y,
-                object.z,
-                object.rot,
-                object.corner
-            ],
-        )?;
+        statement.execute(params![
+            object.id,
+            site_id,
+            server_room,
+            object.kind,
+            object.x,
+            object.y,
+            object.z,
+            object.rot,
+            object.corner
+        ])?;
     }
+    drop(statement);
     tx.commit()?;
     Ok(())
 }

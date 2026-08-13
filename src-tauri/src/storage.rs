@@ -2,7 +2,7 @@ use crate::window_state::{MainWindowSettings, validate_main_window_settings};
 use rusqlite::{Connection as SqliteConnection, OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, HashMap},
     fs,
     fs::{File, OpenOptions},
     io::{Read, Write, copy},
@@ -13,7 +13,7 @@ use std::{
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use zip::{ZipArchive, ZipWriter, write::SimpleFileOptions};
 
-const SCHEMA_USER_VERSION: i32 = 60;
+const SCHEMA_USER_VERSION: i32 = 61;
 
 const DEFAULT_TERMINAL_OPACITY: u8 = 50;
 
@@ -3367,6 +3367,33 @@ impl Storage {
             ensure_column(&connection, "itops_automations", "obsolete_at", "TEXT")?;
             mark_legacy_monitors_obsolete(&connection)?;
         }
+        // v61: cover the workspace-scoped Connection Tree hot path, Saved
+        // Credential usage joins, URL credential recency lookup, Dashboard
+        // custom-widget lookup, and global IT Ops run-history ordering. Keep
+        // this after every older table rebuild so fresh databases retain the
+        // indexes created by CURRENT_SCHEMA. Current-version startup stays on
+        // the reconciliation-only fast path above.
+        if stored_version < 61 {
+            connection
+                .execute_batch(
+                    r#"
+                    CREATE INDEX IF NOT EXISTS idx_connections_workspace_folder_sort
+                        ON connections(workspace_id, folder_id, sort_order);
+                    CREATE INDEX IF NOT EXISTS idx_connections_password_credential
+                        ON connections(password_credential_id);
+                    CREATE INDEX IF NOT EXISTS idx_connection_folders_workspace_parent_sort
+                        ON connection_folders(workspace_id, parent_folder_id, sort_order);
+                    DROP INDEX IF EXISTS idx_url_credentials_connection;
+                    CREATE INDEX idx_url_credentials_connection
+                        ON url_credentials(connection_id, updated_at DESC);
+                    CREATE INDEX IF NOT EXISTS idx_dashboard_widget_instances_source
+                        ON dashboard_widget_instances(source_id, kind);
+                    CREATE INDEX IF NOT EXISTS idx_itops_run_history_started
+                        ON itops_run_history(started_at DESC, id DESC);
+                    "#,
+                )
+                .map_err(to_storage_error)?;
+        }
         connection
             .execute_batch(&format!("PRAGMA user_version = {SCHEMA_USER_VERSION}"))
             .map_err(to_storage_error)?;
@@ -4271,17 +4298,12 @@ fn list_root_connections_for_workspace(
              ORDER BY sort_order, name",
         )
         .map_err(to_storage_error)?;
-    let rows = statement
+    let mut connections = statement
         .query_map(params![workspace_id], saved_connection_from_row)
         .map_err(to_storage_error)?
         .collect::<Result<Vec<_>, _>>()
         .map_err(to_storage_error)?;
-    let mut connections = Vec::new();
-    for row in rows {
-        let mut saved_connection = row;
-        saved_connection.tags = list_tags(connection, &saved_connection.id)?;
-        connections.push(saved_connection);
-    }
+    populate_connection_tags(connection, &mut connections)?;
     Ok(connections)
 }
 
@@ -4334,7 +4356,7 @@ fn list_connections_for_folder(
         ))
         .map_err(to_storage_error)?;
 
-    let rows = if let Some(folder_id) = folder_id {
+    let mut connections = if let Some(folder_id) = folder_id {
         statement
             .query_map(params![folder_id], saved_connection_from_row)
             .map_err(to_storage_error)?
@@ -4347,14 +4369,7 @@ fn list_connections_for_folder(
             .collect::<Result<Vec<_>, _>>()
             .map_err(to_storage_error)?
     };
-
-    let mut connections = Vec::new();
-    for row in rows {
-        let mut saved_connection = row;
-        saved_connection.tags = list_tags(connection, &saved_connection.id)?;
-        connections.push(saved_connection);
-    }
-
+    populate_connection_tags(connection, &mut connections)?;
     Ok(connections)
 }
 
@@ -4362,19 +4377,47 @@ fn list_folders_for_parent(
     connection: &SqliteConnection,
     parent_folder_id: Option<&str>,
 ) -> Result<Vec<ConnectionFolder>, String> {
-    let folder_ids = list_folder_ids_for_parent(connection, parent_folder_id)?;
-    folder_ids
+    let where_clause = if parent_folder_id.is_some() {
+        "parent_folder_id = ?1"
+    } else {
+        "parent_folder_id IS NULL"
+    };
+    let mut statement = connection
+        .prepare(&format!(
+            "SELECT id, name, icon_data_url
+             FROM connection_folders
+             WHERE {where_clause}
+             ORDER BY sort_order, name",
+        ))
+        .map_err(to_storage_error)?;
+    let folders = if let Some(parent_folder_id) = parent_folder_id {
+        statement
+            .query_map(params![parent_folder_id], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, Option<String>>(2)?,
+                ))
+            })
+            .map_err(to_storage_error)?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(to_storage_error)?
+    } else {
+        statement
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, Option<String>>(2)?,
+                ))
+            })
+            .map_err(to_storage_error)?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(to_storage_error)?
+    };
+    folders
         .into_iter()
-        .map(|folder_id| {
-            let (name, icon_data_url) = connection
-                .query_row(
-                    "SELECT name, icon_data_url FROM connection_folders WHERE id = ?1",
-                    params![folder_id],
-                    |row| Ok((row.get::<_, String>(0)?, row.get::<_, Option<String>>(1)?)),
-                )
-                .map_err(to_storage_error)?;
-            get_folder_by_id(connection, &folder_id, name, icon_data_url)
-        })
+        .map(|(id, name, icon_data_url)| get_folder_by_id(connection, &id, name, icon_data_url))
         .collect()
 }
 
@@ -4540,12 +4583,12 @@ fn reorder_folder_ids(
         folder_ids.insert(target_index, folder_id.to_string());
     }
 
+    let mut statement = connection
+        .prepare("UPDATE connection_folders SET sort_order = ?1 WHERE id = ?2")
+        .map_err(to_storage_error)?;
     for (index, folder_id) in folder_ids.iter().enumerate() {
-        connection
-            .execute(
-                "UPDATE connection_folders SET sort_order = ?1 WHERE id = ?2",
-                params![index as i64, folder_id],
-            )
+        statement
+            .execute(params![index as i64, folder_id])
             .map_err(to_storage_error)?;
     }
 
@@ -4564,12 +4607,12 @@ fn reorder_root_folder_ids_for_workspace(
         folder_ids.insert(target_index, folder_id.to_string());
     }
 
+    let mut statement = connection
+        .prepare("UPDATE connection_folders SET sort_order = ?1 WHERE id = ?2")
+        .map_err(to_storage_error)?;
     for (index, folder_id) in folder_ids.iter().enumerate() {
-        connection
-            .execute(
-                "UPDATE connection_folders SET sort_order = ?1 WHERE id = ?2",
-                params![index as i64, folder_id],
-            )
+        statement
+            .execute(params![index as i64, folder_id])
             .map_err(to_storage_error)?;
     }
 
@@ -4588,12 +4631,12 @@ fn reorder_connection_ids(
         connection_ids.insert(target_index, connection_id.to_string());
     }
 
+    let mut statement = connection
+        .prepare("UPDATE connections SET sort_order = ?1 WHERE id = ?2")
+        .map_err(to_storage_error)?;
     for (index, connection_id) in connection_ids.iter().enumerate() {
-        connection
-            .execute(
-                "UPDATE connections SET sort_order = ?1 WHERE id = ?2",
-                params![index as i64, connection_id],
-            )
+        statement
+            .execute(params![index as i64, connection_id])
             .map_err(to_storage_error)?;
     }
 
@@ -4612,12 +4655,12 @@ fn reorder_root_connection_ids_for_workspace(
         connection_ids.insert(target_index, connection_id.to_string());
     }
 
+    let mut statement = connection
+        .prepare("UPDATE connections SET sort_order = ?1 WHERE id = ?2")
+        .map_err(to_storage_error)?;
     for (index, connection_id) in connection_ids.iter().enumerate() {
-        connection
-            .execute(
-                "UPDATE connections SET sort_order = ?1 WHERE id = ?2",
-                params![index as i64, connection_id],
-            )
+        statement
+            .execute(params![index as i64, connection_id])
             .map_err(to_storage_error)?;
     }
 
@@ -5097,6 +5140,59 @@ fn list_tags(connection: &SqliteConnection, connection_id: &str) -> Result<Vec<S
 
     rows.collect::<Result<Vec<_>, _>>()
         .map_err(to_storage_error)
+}
+
+/// Populate a group of Connection tag lists in bounded batches. The tree
+/// loader used to prepare and run one tag query per Connection while holding
+/// the shared SQLite mutex; a flat tree with hundreds of Connections therefore
+/// spent most of its time in repeated SQL setup. SQLite's default variable
+/// limit is safely above this deliberately conservative batch size.
+fn populate_connection_tags(
+    connection: &SqliteConnection,
+    connections: &mut [SavedConnection],
+) -> Result<(), String> {
+    const TAG_QUERY_BATCH_SIZE: usize = 500;
+    if connections.is_empty() {
+        return Ok(());
+    }
+
+    let ids = connections
+        .iter()
+        .map(|saved_connection| saved_connection.id.clone())
+        .collect::<Vec<_>>();
+    let mut tags_by_connection = HashMap::<String, Vec<String>>::new();
+    for batch in ids.chunks(TAG_QUERY_BATCH_SIZE) {
+        let placeholders = std::iter::repeat_n("?", batch.len())
+            .collect::<Vec<_>>()
+            .join(",");
+        let mut statement = connection
+            .prepare(&format!(
+                "SELECT connection_id, tag
+                 FROM connection_tags
+                 WHERE connection_id IN ({placeholders})
+                 ORDER BY connection_id, sort_order, tag",
+            ))
+            .map_err(to_storage_error)?;
+        let rows = statement
+            .query_map(rusqlite::params_from_iter(batch.iter()), |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })
+            .map_err(to_storage_error)?;
+        for row in rows {
+            let (connection_id, tag) = row.map_err(to_storage_error)?;
+            tags_by_connection
+                .entry(connection_id)
+                .or_default()
+                .push(tag);
+        }
+    }
+
+    for saved_connection in connections {
+        saved_connection.tags = tags_by_connection
+            .remove(&saved_connection.id)
+            .unwrap_or_default();
+    }
+    Ok(())
 }
 
 fn insert_folder(

@@ -536,14 +536,14 @@ fn load_background_image_from_folder(
 }
 
 #[tauri::command]
-fn list_connection_tree(
+async fn list_connection_tree(
     storage: tauri::State<'_, storage::Storage>,
     workspace_id: Option<String>,
 ) -> Result<storage::ConnectionTree, String> {
-    match workspace_id {
+    storage::run_blocking_db(|| match workspace_id {
         Some(workspace_id) => storage.list_connection_tree_for_workspace(workspace_id),
         None => storage.list_connection_tree(),
-    }
+    })
 }
 
 #[tauri::command]
@@ -1000,6 +1000,7 @@ async fn import_settings_database(
     let power = app.state::<power::DontSleepManager>();
     let webviews = app.state::<webview::WebviewSessionManager>();
     secrets.set_secret_store(credential_settings.secret_store())?;
+    secrets.refresh_selected_store()?;
     logging::set_advanced_debugging_enabled(general_settings.advanced_debugging_enabled());
     debug_heartbeat::start(app.clone());
     tray_state.set_minimize_to_tray(general_settings.minimize_to_tray());
