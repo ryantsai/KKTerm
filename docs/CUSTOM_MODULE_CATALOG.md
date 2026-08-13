@@ -96,7 +96,9 @@ npm run publish:custom-module -- `
 ```
 
 The wrapper runs the skill's `kkmod_tool.py check` before asking for the signing
-key passphrase. It then downloads and verifies the current catalog, increments
+key passphrase. The publisher also requires every rail-visible contribution to
+ship a bounded, inert SVG icon; the desktop host renders those curated icons as
+monochrome masks. It then downloads and verifies the current catalog, increments
 the sequence, signs the package and catalog, uploads the content-addressed
 package with `wrangler r2 object put --remote`, verifies its public URL, uploads
 the catalog, and verifies the published envelope again.

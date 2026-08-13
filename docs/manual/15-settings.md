@@ -166,7 +166,9 @@ toggle list while their persisted backend settings remain enabled.
 - The Installed group shows publisher, version, license, trust, permissions,
   package health, enablement, and `settings.customModulesShowRail`. An enabled,
   visible contribution becomes a permanent Activity Rail Module and runs in an
-  isolated native WebView without Node.js or an HTTP service.
+  isolated native WebView without Node.js or an HTTP service. Signed curated
+  packages display their declared SVG as a monochrome, theme-aware Activity Rail
+  icon; local packages keep the generic Package glyph.
 - The Available group loads immediately from the embedded baseline or last
   unexpired verified cache, then refreshes signed metadata from the configured
   KKTerm catalog. `settings.customModulesRefreshCatalog` performs the same
@@ -190,19 +192,31 @@ toggle list while their persisted backend settings remain enabled.
   `settings.customModulesRollback`.
 - `settings.customModulesUninstall` removes package files. By default isolated
   Module data is retained for reinstall; `settings.customModulesDeleteData` is
-  the explicit destructive option that removes metadata, grants, and storage.
+  the explicit destructive option that removes metadata, grants, small storage,
+  and filesystem-backed document data.
+- In Windows portable mode, the complete Custom Module installation remains
+  beside KKTerm: metadata and small storage use `data/kkterm.sqlite3`, while
+  packages, staging, downloads, catalog cache, per-Module WebView data, and
+  document files use `data/custom-modules/`. Keep the whole portable folder
+  together when moving it. Portable updates retain this `data` directory.
 - Database backups and Settings exports retain Custom Module metadata and
-  isolated storage but do not embed optional package payloads. After restoring
-  to a machine without those files, the package is shown as missing and must be
-  reinstalled before it can be enabled.
-- V1 host permissions are `storage` (10 MiB quota, module-id namespace) and
-  `openExternal` (HTTP(S) system-browser handoff). Custom Modules cannot call
+  small isolated storage but do not embed optional package payloads or external
+  document files. After restoring to a machine without package files, the
+  package is shown as missing and must be reinstalled before it can be enabled;
+  document metadata whose content file was not restored produces a verified
+  missing-content error when the Module reads it.
+- V1 host permissions are `storage` (10 MiB quota, module-id namespace),
+  `documentStorage` (512 MiB filesystem quota, 64 MiB per JSON document, 4,096
+  keys), `openExternal` (HTTP(S) system-browser handoff), and `clipboard`
+  (native WebView copy/paste and image clipboard access). Custom Modules cannot call
   Connections, Sessions, terminal, SFTP, credentials, arbitrary files, shell,
   native libraries, or ordinary KKTerm backend commands. Durable browser
   localStorage, IndexedDB, caches, cookies, workers, and origin storage are
   disabled; localStorage is session-memory-only, and durable data must use the
-  permission-checked bridge. Clipboard, device, sensor, media-capture, location,
-  payment, and related ambient browser capabilities are denied by policy.
+  permission-checked bridge. Device, sensor, media-capture, location, payment,
+  and related ambient browser capabilities are denied by policy. Without the
+  declared `clipboard` permission, the clipboard object is a compatibility shim
+  for library feature detection only and every operation rejects.
 - Grep hints: `settings.customModules`, `settings.customModulesInstallFile`,
   `settings.customModulesInstalled`, `settings.customModulesShowRail`,
   `settings.customModulesPermissions`, `settings.customModulesLicense`.

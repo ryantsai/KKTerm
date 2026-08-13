@@ -4481,7 +4481,7 @@ pub fn run() {
             let paths =
                 app_paths::AppPaths::resolve(app.handle(), &launch_context).map_err(setup_error)?;
             let portable_mode = paths.is_portable();
-            let db_path = paths.data_dir().join("kkterm.sqlite3");
+            let db_path = paths.database_path();
             let mcp_bridge_dir = paths.data_dir().to_path_buf();
             installer::cache::set_portable_mode(portable_mode);
             if portable_mode {

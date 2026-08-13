@@ -44,7 +44,13 @@ package manifest.
 The implemented v1 permission families are deliberately narrow:
 
 - `storage`: quota-bound access to the package's isolated non-secret namespace.
+- `documentStorage`: quota-bound filesystem storage for large non-secret JSON
+  documents and encoded browser blobs; SQLite retains only package-scoped
+  metadata and content hashes.
 - `openExternal`: request opening an HTTP(S) URL in the system browser.
+- `clipboard`: retain the native WebView clipboard API for deliberate copy,
+  paste, and image-transfer workflows. Packages without this grant receive a
+  rejecting compatibility shim.
 
 The following permission families remain the reviewed expansion direction and
 are not exposed to v1 Custom Module code:
@@ -102,11 +108,17 @@ Execution model:
   backend runtime registry, then enforces grants and storage isolation.
 - First-party and local packages use the same runtime. First-party catalog trust
   adds Ed25519 signature verification but no private capability bypass.
+- Tauri commands that construct a Custom Module `WebviewWindow` remain
+  asynchronous. On Windows, synchronous WebView2 window construction can
+  deadlock the IPC dispatcher and prevent readiness or unrelated invokes from
+  completing.
 
 Storage model:
 
 - SQLite stores extension metadata, enabled/disabled state, granted permissions,
-  install timestamps, active/previous versions, and non-secret extension settings.
+  install timestamps, active/previous versions, non-secret extension settings,
+  and document keys/hashes/sizes/timestamps. Document content lives in
+  content-addressed files under the app data Custom Module tree.
 - Each extension gets an isolated storage namespace.
 - Secrets stay in the OS keychain and are referenced through existing owner ids
   or future extension-specific secret owners.

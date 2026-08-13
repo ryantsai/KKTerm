@@ -208,6 +208,12 @@
   overflow: visible;
   background: var(--nav-toolbar-bg);
   color: var(--nav-toolbar-text);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.activity-rail img {
+  -webkit-user-drag: none;
 }
 
 .rail-button,
@@ -226,6 +232,20 @@
 
 .rail-button {
   position: relative;
+}
+
+.custom-module-rail-icon {
+  display: block;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  background: currentColor;
+  mask-position: center;
+  mask-repeat: no-repeat;
+  mask-size: contain;
+  -webkit-mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
 }
 
 .rail-connected-connections {

@@ -73,6 +73,18 @@ const CONNECTION_RAIL_ORDER_KEY = "kkterm.connectionRail.order.v1";
 const WORKSPACE_RAIL_ICON_SIZE = 18;
 const WORKSPACE_RAIL_ICON_SHELL_SIZE = 24;
 
+function CustomModuleRailIcon({ iconDataUrl }: { iconDataUrl?: string | null }) {
+  if (!iconDataUrl) return <Package size={18} />;
+  const maskImage = `url("${iconDataUrl}")`;
+  return (
+    <span
+      aria-hidden="true"
+      className="custom-module-rail-icon"
+      style={{ WebkitMaskImage: maskImage, maskImage }}
+    />
+  );
+}
+
 function loadConnectionRailOrder() {
   if (typeof window === "undefined") {
     return [];
@@ -855,7 +867,7 @@ export function ActivityRail({
             onClick={() => onNavigateCustomModule(destination)}
             type="button"
           >
-            <Package size={18} />
+            <CustomModuleRailIcon iconDataUrl={destination.iconDataUrl} />
             <RailTooltip label={destination.title} />
           </button>
         );

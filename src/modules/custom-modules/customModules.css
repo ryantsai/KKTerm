@@ -25,6 +25,8 @@
   padding: 0 14px;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .custom-module-page-header h1 {

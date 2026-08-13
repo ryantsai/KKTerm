@@ -1,0 +1,21 @@
+{
+  "id": "com.example.my-module",
+  "name": "My Module",
+  "version": "0.1.0",
+  "publisher": "Replace Me",
+  "summary": "Describe what this Module does.",
+  "apiVersion": 1,
+  "license": {
+    "name": "MIT",
+    "file": "licenses/LICENSE"
+  },
+  "permissions": [],
+  "modules": [
+    {
+      "id": "main",
+      "title": "My Module",
+      "entrypoint": "dist/index.html",
+      "railVisible": true
+    }
+  ]
+}

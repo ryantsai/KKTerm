@@ -1,0 +1,4 @@
+interface:
+  display_name: "Develop KKMod Modules"
+  short_description: "Build safe, compatible KKTerm modules"
+  default_prompt: "Use $develop-kkmod-modules to design and build a KKTerm .kkmod package."

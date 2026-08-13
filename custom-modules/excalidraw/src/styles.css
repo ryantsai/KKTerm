@@ -1,0 +1,34 @@
+:root,
+body,
+#root,
+.module-shell {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+.fatal-error {
+  align-items: center;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  justify-content: center;
+  min-height: 100%;
+  padding: 2rem;
+  text-align: center;
+}
+
+.fatal-error span {
+  color: var(--color-on-surface-muted, #666);
+  max-width: 42rem;
+}
+
+body {
+  background: Canvas;
+}
+
+.module-shell {
+  position: relative;
+}
