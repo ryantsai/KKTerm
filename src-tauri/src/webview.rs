@@ -1433,6 +1433,30 @@ fn hide_webview(window: &WebviewWindow) -> Result<(), String> {
         .map_err(|error| format!("failed to hide webview: {error}"))
 }
 
+/// Shared native-overlay geometry for app-owned child WebViews. Custom Modules
+/// deliberately reuse the proven URL Connection placement path without sharing
+/// URL Session state or its navigation/authentication lifecycle.
+pub(crate) fn set_overlay_bounds(
+    host_window: &WebviewWindow,
+    window: &WebviewWindow,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+) -> Result<(), String> {
+    let (position, size) = overlay_rect(host_window, x, y, width, height)?;
+    position_webview_window(window, position, size)?;
+    show_webview_window(window)
+}
+
+pub(crate) fn hide_overlay(window: &WebviewWindow) -> Result<(), String> {
+    hide_webview(window)
+}
+
+pub(crate) fn show_overlay(window: &WebviewWindow) -> Result<(), String> {
+    show_webview_window(window)
+}
+
 fn overlay_rect(
     host_window: &WebviewWindow,
     x: f64,

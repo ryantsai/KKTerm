@@ -122,6 +122,13 @@ import type {
 } from "../modules/dashboard/widgets/builtin/ai-coding-usage/types";
 import type { PcInfoSnapshot } from "../modules/dashboard/widgets/builtin/pc-info/types";
 import type {
+  CustomModuleCatalogEntry,
+  CustomModulePackageReview,
+  CustomModuleSessionStarted,
+  InstalledCustomModule,
+  StartCustomModuleRequest,
+} from "../modules/custom-modules/types";
+import type {
   GitChangedFile,
   GitCommit,
   GitDetect,
@@ -3526,6 +3533,78 @@ type CommandMap = {
     args: { request: WebviewSimpleRequest };
     result: null;
   };
+  list_custom_modules: {
+    args: undefined;
+    result: InstalledCustomModule[];
+  };
+  inspect_custom_module_package: {
+    args: { path: string };
+    result: CustomModulePackageReview;
+  };
+  install_custom_module_from_file: {
+    args: { path: string; expectedSha256: string };
+    result: InstalledCustomModule;
+  };
+  list_custom_module_catalog: {
+    args: undefined;
+    result: CustomModuleCatalogEntry[];
+  };
+  install_custom_module_from_catalog: {
+    args: { moduleId: string };
+    result: InstalledCustomModule;
+  };
+  cancel_custom_module_download: {
+    args: { moduleId: string };
+    result: null;
+  };
+  set_custom_module_enabled: {
+    args: { moduleId: string; enabled: boolean };
+    result: null;
+  };
+  set_custom_module_rail_visible: {
+    args: { moduleId: string; railVisible: boolean };
+    result: null;
+  };
+  read_custom_module_license_file: {
+    args: { moduleId: string; notices: boolean };
+    result: string;
+  };
+  rollback_custom_module: {
+    args: { moduleId: string };
+    result: InstalledCustomModule;
+  };
+  uninstall_custom_module: {
+    args: { moduleId: string; deleteData: boolean };
+    result: null;
+  };
+  start_custom_module: {
+    args: { request: StartCustomModuleRequest };
+    result: CustomModuleSessionStarted;
+  };
+  update_custom_module_bounds: {
+    args: {
+      request: {
+        sessionId: string;
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+      };
+    };
+    result: null;
+  };
+  set_custom_module_visibility: {
+    args: { sessionId: string; visible: boolean };
+    result: null;
+  };
+  update_custom_module_context: {
+    args: { request: { sessionId: string; theme: string; locale: string } };
+    result: null;
+  };
+  close_custom_module: {
+    args: { sessionId: string };
+    result: null;
+  };
   start_rdp_session: {
     args: { request: StartRdpSessionRequest };
     result: RdpSessionStarted;
@@ -4067,6 +4146,22 @@ export async function selectInstallerGuiLauncherFile(options: {
     title: options.title,
   });
 
+  return typeof selectedPath === "string" ? selectedPath : null;
+}
+
+export async function selectCustomModulePackage(options: {
+  title: string;
+  filterName: string;
+}) {
+  if (!isTauriRuntime()) {
+    return null;
+  }
+  const selectedPath = await openDialog({
+    directory: false,
+    filters: [{ name: options.filterName, extensions: ["kkmod"] }],
+    multiple: false,
+    title: options.title,
+  });
   return typeof selectedPath === "string" ? selectedPath : null;
 }
 

@@ -32,6 +32,7 @@ Settings tutorial targets:
 - Workspace: `settings.connectedConnectionsRail`, `settings.hideTopTabButtons`, `settings.doubleClickOpensConnection`, `settings.submitAiAttachmentsDirectly`, `settings.separateSplitTerminalBackgrounds`.
 - File Explorer: `settings.fileExplorerOpenMode`, `settings.fileExplorerTerminal`.
 - Dashboard: `settings.dashboardDefaultLanding`, `settings.dashboardUseRandomDynamicBackground`, `settings.dashboardMaxActiveScriptWidgets`.
+- Custom Modules: `settings.customModules` (navigation `settingsSectionId=custom-modules-settings`).
 - Credentials: `settings.credentialStorage`, `settings.encryptedSecretStoreSetupTitle`,
   `settings.encryptedSecretStoreSetupAction`, `settings.encryptedSecretStoreSetupRequiredTitle`, `settings.credentialsStored`,
   `settings.widgetCredentialsStored`, `settings.savedCredentials`, `settings.perConnectionPasswords`.
@@ -151,6 +152,51 @@ also individually visible through `settings.aiTools.itops.label`,
 `settings.aiTools.screenshots.label`, and
 `settings.aiTools.watchdog.label`; these rows must not be omitted from the
 toggle list while their persisted backend settings remain enabled.
+
+## Custom Modules
+
+- Section header `settings.sectionCustomModules`. Owned by
+  `src/modules/settings/CustomModulesSettings.tsx`.
+- `settings.customModulesInstallFile` selects one `.kkmod`. KKTerm validates the
+  archive, manifest, API version, entrypoint, license files, requested
+  permissions, expanded size, paths, links, duplicate names, and executable
+  payloads before showing `settings.customModulesInstallTitle`. Local packages
+  are marked `settings.customModulesTrustLocal`; install only packages from a
+  trusted source.
+- The Installed group shows publisher, version, license, trust, permissions,
+  package health, enablement, and `settings.customModulesShowRail`. An enabled,
+  visible contribution becomes a permanent Activity Rail Module and runs in an
+  isolated native WebView without Node.js or an HTTP service.
+- First-party catalog packages use the same runtime and permissions, but their
+  identity, version, publisher, license, requested permissions, download size,
+  checksum, and Ed25519 signature must match catalog metadata before install.
+  Downloads use `settings.customModulesDownloading` in the shared progress
+  popup and can be stopped with `settings.customModulesDownloadCancel` without
+  changing the installed version. They display
+  `settings.customModulesTrustFirstParty`; entries requiring a newer bridge are
+  disabled with `settings.customModulesIncompatible`.
+- `settings.customModulesOpenLicense` and
+  `settings.customModulesOpenNotices` display texts shipped inside the package.
+  An update retains the previous package version and exposes
+  `settings.customModulesRollback`.
+- `settings.customModulesUninstall` removes package files. By default isolated
+  Module data is retained for reinstall; `settings.customModulesDeleteData` is
+  the explicit destructive option that removes metadata, grants, and storage.
+- Database backups and Settings exports retain Custom Module metadata and
+  isolated storage but do not embed optional package payloads. After restoring
+  to a machine without those files, the package is shown as missing and must be
+  reinstalled before it can be enabled.
+- V1 host permissions are `storage` (10 MiB quota, module-id namespace) and
+  `openExternal` (HTTP(S) system-browser handoff). Custom Modules cannot call
+  Connections, Sessions, terminal, SFTP, credentials, arbitrary files, shell,
+  native libraries, or ordinary KKTerm backend commands. Durable browser
+  localStorage, IndexedDB, caches, cookies, workers, and origin storage are
+  disabled; localStorage is session-memory-only, and durable data must use the
+  permission-checked bridge. Clipboard, device, sensor, media-capture, location,
+  payment, and related ambient browser capabilities are denied by policy.
+- Grep hints: `settings.customModules`, `settings.customModulesInstallFile`,
+  `settings.customModulesInstalled`, `settings.customModulesShowRail`,
+  `settings.customModulesPermissions`, `settings.customModulesLicense`.
 
 ## Credentials & MCP
 

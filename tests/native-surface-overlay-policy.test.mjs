@@ -52,6 +52,10 @@ test("advanced DOM overlays share URL and RDP intersection detection", async () 
     source,
     /documentHasWebviewBlockingOverlay[\s\S]*INTERSECTING_NATIVE_SURFACE_OVERLAY_SELECTOR/,
   );
+  assert.match(
+    source,
+    /documentHasCustomModuleBlockingOverlay[\s\S]*INTERSECTING_NATIVE_SURFACE_OVERLAY_SELECTOR/,
+  );
 
   for (const selector of [
     ".assistant-image-preview-backdrop",

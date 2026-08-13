@@ -49,6 +49,7 @@ const SETTINGS_SECTION_IDS = new Set<SettingsSectionId>([
   "file-explorer-settings",
   "dont-sleep-settings",
   "installer-settings",
+  "custom-modules-settings",
   "credentials-settings",
   "assistant-settings",
   "ssh-settings",
@@ -111,6 +112,7 @@ const SETTINGS_TUTORIAL_TARGET_SECTIONS: Record<string, SettingsSectionId> = {
   "settings.fileExplorer": "file-explorer-settings",
   "settings.dontSleep": "dont-sleep-settings",
   "settings.installer": "installer-settings",
+  "settings.customModules": "custom-modules-settings",
 };
 
 const WORKSPACE_TUTORIAL_TARGET_IDS = [

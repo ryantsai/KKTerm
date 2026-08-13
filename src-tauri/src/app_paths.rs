@@ -116,6 +116,16 @@ pub struct AppModeInfo {
 }
 
 impl AppPaths {
+    #[cfg(test)]
+    pub(crate) fn for_test(data_dir: PathBuf) -> Self {
+        Self {
+            mode: AppMode::Installed,
+            cache_dir: data_dir.join("cache"),
+            media_dir: data_dir.clone(),
+            data_dir,
+        }
+    }
+
     pub fn resolve(app: &AppHandle, launch: &LaunchContext) -> Result<Self, String> {
         if let Some(data_dir) = launch.portable_data_dir.as_ref() {
             return Ok(Self {

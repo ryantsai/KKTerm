@@ -21,27 +21,33 @@ KKTerm extensions will start as signed-or-local user-installed packages with
 a manifest, explicit permissions, isolated storage, and user-mediated lifecycle
 actions.
 
-An extension package contains:
+The first implemented package kind is a Custom Module `.kkmod`. It contains:
 
-- `kkterm.extension.json` manifest.
-- extension source or bundled assets.
-- optional UI contribution metadata.
-- optional command contribution metadata.
-- optional activation events.
+- root `kkterm-extension.json` manifest.
+- bundled static HTML/CSS/JavaScript/WASM and media below `dist/`.
+- license and optional third-party notice files.
+- one or more top-level Module contributions.
 
 The manifest declares:
 
 - stable extension id.
 - name, version, publisher, and description.
 - requested KKTerm API version.
-- activation events.
-- UI contributions.
-- command contributions.
+- Module contributions with stable ids, entrypoints, icons, and rail defaults.
 - requested permissions.
-- storage namespace.
-- update source, if any.
 
-Initial permission families:
+Storage namespaces are derived from the stable package id rather than supplied
+by the package. First-party download URL, hash, signature, size, declared
+license, and requested permissions live in the app-owned catalog, not in the
+package manifest.
+
+The implemented v1 permission families are deliberately narrow:
+
+- `storage`: quota-bound access to the package's isolated non-secret namespace.
+- `openExternal`: request opening an HTTP(S) URL in the system browser.
+
+The following permission families remain the reviewed expansion direction and
+are not exposed to v1 Custom Module code:
 
 - `connections:read`: read non-secret Connection metadata.
 - `connections:write`: create or edit durable Connections.
@@ -56,48 +62,51 @@ Initial permission families:
 - `secrets:reference`: request secret presence by owner id, never raw secret
   values.
 - `network:fetch`: perform outbound HTTP requests to declared origins.
-- `storage:extension`: read and write the extension's own namespace.
+- `storage:extension`: superseded for Custom Modules by the v1 `storage` grant.
 
 Extensions cannot directly read terminal contents, raw screenshots, credentials,
 AI API keys, SSH private keys, or arbitrary SQLite tables. Extensions cannot run
 local commands, terminal input, SFTP write actions, install/update operations,
-or other state-changing host actions without an KKTerm approval surface.
+or other state-changing host actions without a KKTerm approval surface.
 
 Install lifecycle:
 
 - User chooses an extension package.
 - KKTerm validates the manifest and package shape.
-- KKTerm shows permissions, activation events, update source, and trust
+- KKTerm shows identity, publisher, license, permissions, source, and trust
   warnings.
 - User explicitly approves install.
 - KKTerm stores package metadata in SQLite and package files under an app
   data extension directory.
-- Extension is disabled by default if manifest validation fails, permissions are
-  unknown, or the package requests an unsupported API version.
+- Invalid, unknown-permission, unsafe, or incompatible packages are rejected
+  before extraction. Valid reviewed packages are enabled after install.
 
 Update lifecycle:
 
 - Updates are user-mediated.
-- An update can only request the same or narrower permissions silently in the
-  review screen.
+- Every install or update has an explicit review screen.
 - New or broader permissions require explicit approval.
 - Auto-install updates are deferred.
 
 Execution model:
 
-- Phase 1 extension execution is disabled until the runtime boundary is
-  implemented.
-- Phase 1 AI-generated extension output is draft-only: design, manifest,
-  permissions, and source files for review.
-- A future runtime should prefer an isolated process or webview worker boundary
-  over in-process arbitrary code.
-- Host APIs must be message-based and typed. Frontend calls still go through
-  typed wrappers, and backend commands enforce permissions server-side.
+- V1 Custom Modules run in a dedicated borderless native WebView over a React
+  placeholder. They do not run in the main React realm and do not start a local
+  HTTP service or Node.js runtime.
+- An app-owned `kkmodule` protocol serves only files from the active validated
+  package root with a restrictive CSP and MIME headers.
+- Tauri application commands use generated ACL permissions. The trusted main
+  window receives the application command surface; `custom-module-*` windows
+  receive only `custom_module_bridge`.
+- The bridge derives package identity from the calling WebView label and the
+  backend runtime registry, then enforces grants and storage isolation.
+- First-party and local packages use the same runtime. First-party catalog trust
+  adds Ed25519 signature verification but no private capability bypass.
 
 Storage model:
 
 - SQLite stores extension metadata, enabled/disabled state, granted permissions,
-  install timestamps, update metadata, and non-secret extension settings.
+  install timestamps, active/previous versions, and non-secret extension settings.
 - Each extension gets an isolated storage namespace.
 - Secrets stay in the OS keychain and are referenced through existing owner ids
   or future extension-specific secret owners.
@@ -117,10 +126,10 @@ AI Assistant integration:
 ## Consequences
 
 The extension platform can grow without breaking KKTerm's local-first trust
-model. The first user-visible AI work can help produce reviewable extension
-drafts, while actual installable extension support remains gated by manifest
-validation, permission review, isolated storage, and a runtime boundary.
+model. Installable Custom Modules remain gated by manifest/archive validation,
+permission review, isolated storage, explicit lifecycle actions, Tauri command
+ACLs, and a caller-bound native WebView bridge.
 
-This defers convenient one-click generated extension installation, but avoids
-creating a privileged code execution path before permissions and lifecycle are
-clear.
+Broader Connection, Session, terminal, SFTP, screenshot, secret-reference, and
+network capabilities remain deferred until each one has its own typed bridge,
+backend enforcement, approval semantics, and tests.

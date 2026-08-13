@@ -13,7 +13,7 @@ use std::{
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use zip::{ZipArchive, ZipWriter, write::SimpleFileOptions};
 
-const SCHEMA_USER_VERSION: i32 = 58;
+const SCHEMA_USER_VERSION: i32 = 59;
 
 const DEFAULT_TERMINAL_OPACITY: u8 = 50;
 
@@ -613,6 +613,53 @@ CREATE TABLE IF NOT EXISTS system_cleaner_recipe_bundles (
     imported_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Optional user-installed Custom Modules. Package payloads live under the
+-- app data directory; SQLite owns only validated metadata, lifecycle state,
+-- grants, and isolated non-secret extension storage. v59.
+CREATE TABLE IF NOT EXISTS custom_modules (
+    id TEXT PRIMARY KEY,
+    manifest_json TEXT NOT NULL,
+    active_version TEXT NOT NULL,
+    previous_version TEXT,
+    source TEXT NOT NULL CHECK (source IN ('local', 'catalog')),
+    trust TEXT NOT NULL CHECK (trust IN ('local', 'firstParty')),
+    installed INTEGER NOT NULL DEFAULT 1,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    rail_visible INTEGER NOT NULL DEFAULT 1,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    sha256 TEXT NOT NULL,
+    installed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS custom_module_versions (
+    module_id TEXT NOT NULL REFERENCES custom_modules(id) ON DELETE CASCADE,
+    version TEXT NOT NULL,
+    relative_path TEXT NOT NULL,
+    sha256 TEXT NOT NULL,
+    installed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (module_id, version)
+);
+
+CREATE TABLE IF NOT EXISTS custom_module_permissions (
+    module_id TEXT NOT NULL REFERENCES custom_modules(id) ON DELETE CASCADE,
+    permission TEXT NOT NULL,
+    granted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (module_id, permission)
+);
+
+CREATE TABLE IF NOT EXISTS custom_module_storage (
+    module_id TEXT NOT NULL REFERENCES custom_modules(id) ON DELETE CASCADE,
+    key TEXT NOT NULL,
+    value_json TEXT NOT NULL,
+    byte_size INTEGER NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (module_id, key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_custom_module_versions_module
+    ON custom_module_versions(module_id, installed_at DESC);
 "#;
 
 pub struct Storage {
@@ -2573,6 +2620,57 @@ impl Storage {
         connection
             .execute_batch(CURRENT_SCHEMA)
             .map_err(to_storage_error)?;
+        // v59: Custom Modules store validated package metadata, grants, and
+        // isolated non-secret storage. Package files are deliberately outside
+        // SQLite. There is no ongoing seed or reconciliation, so the
+        // current-version startup fast path remains write-free.
+        if stored_version < 59 {
+            connection
+                .execute_batch(
+                    r#"
+                    CREATE TABLE IF NOT EXISTS custom_modules (
+                        id TEXT PRIMARY KEY,
+                        manifest_json TEXT NOT NULL,
+                        active_version TEXT NOT NULL,
+                        previous_version TEXT,
+                        source TEXT NOT NULL CHECK (source IN ('local', 'catalog')),
+                        trust TEXT NOT NULL CHECK (trust IN ('local', 'firstParty')),
+                        installed INTEGER NOT NULL DEFAULT 1,
+                        enabled INTEGER NOT NULL DEFAULT 1,
+                        rail_visible INTEGER NOT NULL DEFAULT 1,
+                        sort_order INTEGER NOT NULL DEFAULT 0,
+                        sha256 TEXT NOT NULL,
+                        installed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    );
+                    CREATE TABLE IF NOT EXISTS custom_module_versions (
+                        module_id TEXT NOT NULL REFERENCES custom_modules(id) ON DELETE CASCADE,
+                        version TEXT NOT NULL,
+                        relative_path TEXT NOT NULL,
+                        sha256 TEXT NOT NULL,
+                        installed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        PRIMARY KEY (module_id, version)
+                    );
+                    CREATE TABLE IF NOT EXISTS custom_module_permissions (
+                        module_id TEXT NOT NULL REFERENCES custom_modules(id) ON DELETE CASCADE,
+                        permission TEXT NOT NULL,
+                        granted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        PRIMARY KEY (module_id, permission)
+                    );
+                    CREATE TABLE IF NOT EXISTS custom_module_storage (
+                        module_id TEXT NOT NULL REFERENCES custom_modules(id) ON DELETE CASCADE,
+                        key TEXT NOT NULL,
+                        value_json TEXT NOT NULL,
+                        byte_size INTEGER NOT NULL,
+                        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        PRIMARY KEY (module_id, key)
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_custom_module_versions_module
+                        ON custom_module_versions(module_id, installed_at DESC);
+                    "#,
+                )
+                .map_err(to_storage_error)?;
+        }
         // v57: System Cleaner keeps user-authored exclusions, structured run
         // history, and verified recipe bundles in SQLite. These are ordinary
         // durable records: there is no startup reconciliation, so the

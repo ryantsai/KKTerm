@@ -81,6 +81,7 @@ The product will be light chrome with dark terminal panes by default, optimized 
 56. As a Windows user of the installed app, I want update installation to require my confirmation, so that KKTerm does not silently replace itself while I am using administrative tools.
 57. As a privacy-conscious user, I want update checks to be clearly described as contacting GitHub Releases/update metadata only when the update mechanism is enabled, so that the local-first trust model remains understandable.
 58. As a power user, I want the AI Assistant to draft KKTerm extensions with manifests, permissions, and source files, so that I can explore workflow automation without generated code being installed or run automatically.
+58a. As a user, I want to install optional static web apps as Custom Modules after KKTerm is installed, so they can become permanent Activity Rail tools without bloating the main installer or requiring a local HTTP service.
 59. As an operator, I want the AI Assistant to list, add, edit, open, and delete saved Connections through typed tools, so that routine Connection maintenance can be done conversationally while preserving saved-data boundaries.
 60. As an operator, I want the AI Assistant to inspect and interact with active Sessions through typed tools, so that it can read terminal buffers, send terminal text, inspect RDP/VNC screenshots, send remote desktop text/keys/mouse clicks, and perform SFTP/FTP file-browser actions when permitted.
 

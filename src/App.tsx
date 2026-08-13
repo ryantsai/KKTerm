@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTranslation } from "react-i18next";
 import { AssistantPanel } from "./ai/AssistantPanel";
@@ -7,7 +7,9 @@ import { ActivityRail } from "./app/ActivityRail";
 import type { ActivePage } from "./app/ActivityRail";
 import {
   baseModulePageForPersistence,
+  loadStoredCustomModuleKey,
   loadStoredActivePage,
+  persistActiveCustomModuleKey,
   persistActivePage,
   shouldExpandConnectionPanelOnLaunch,
   type BaseModulePage,
@@ -70,6 +72,13 @@ import { useWorkspaceStore } from "./store";
 import type { WorkspaceTab } from "./types";
 import { StatusBar } from "./modules/workspace/StatusBar";
 import { TabStrip, WorkspaceCanvas } from "./modules/workspace/WorkspaceCanvas";
+import { CustomModuleHost } from "./modules/custom-modules/CustomModuleHost";
+import type { CustomModuleDestination } from "./modules/custom-modules/types";
+import {
+  customModuleDestinationKey,
+  customModuleDestinations as deriveCustomModuleDestinations,
+  useCustomModules,
+} from "./modules/custom-modules/useCustomModules";
 import "@xterm/xterm/css/xterm.css";
 
 const DashboardPage = lazy(() =>
@@ -118,6 +127,13 @@ function App() {
     }
   }
   const [activePage, setActivePage] = useState<ActivePage>(launchPageRef.current);
+  const [activeCustomModule, setActiveCustomModule] =
+    useState<CustomModuleDestination | null>(null);
+  const { modules: installedCustomModules, loaded: customModulesLoaded } = useCustomModules();
+  const customModuleDestinations = useMemo(
+    () => deriveCustomModuleDestinations(installedCustomModules),
+    [installedCustomModules],
+  );
   const [dashboardMounted, setDashboardMounted] = useState(
     () => activePage === "dashboard",
   );
@@ -181,6 +197,16 @@ function App() {
     }
     persistActivePage(basePage);
     setActivePage(page);
+  }, [activePage]);
+
+  const navigateToCustomModule = useCallback((destination: CustomModuleDestination) => {
+    if (activePage !== "settings") {
+      previousBasePageRef.current = "customModule";
+    }
+    setActiveCustomModule(destination);
+    persistActiveCustomModuleKey(customModuleDestinationKey(destination));
+    persistActivePage("customModule");
+    setActivePage("customModule");
   }, [activePage]);
 
   function openAssistantPanel() {
@@ -530,6 +556,43 @@ function App() {
   }, [showSystemCleanerOnRail, activePage]);
 
   useEffect(() => {
+    if (!customModulesLoaded) return;
+    if (!activeCustomModule) {
+      if (activePage !== "customModule" && previousBasePageRef.current !== "customModule") return;
+      const storedKey = loadStoredCustomModuleKey();
+      const restored = customModuleDestinations.find(
+        (destination) => customModuleDestinationKey(destination) === storedKey,
+      );
+      if (restored) {
+        setActiveCustomModule(restored);
+        return;
+      }
+      persistActiveCustomModuleKey(null);
+      if (previousBasePageRef.current === "customModule") {
+        previousBasePageRef.current = "workspace";
+      }
+      if (activePage === "customModule") {
+        persistActivePage("workspace");
+        setActivePage("workspace");
+      }
+      return;
+    }
+    const activeKey = customModuleDestinationKey(activeCustomModule);
+    if (customModuleDestinations.some((destination) => customModuleDestinationKey(destination) === activeKey)) {
+      return;
+    }
+    setActiveCustomModule(null);
+    persistActiveCustomModuleKey(null);
+    if (previousBasePageRef.current === "customModule") {
+      previousBasePageRef.current = "workspace";
+    }
+    if (activePage === "customModule") {
+      persistActivePage("workspace");
+      setActivePage("workspace");
+    }
+  }, [activeCustomModule, activePage, customModuleDestinations, customModulesLoaded]);
+
+  useEffect(() => {
     saveSiteTreeCollapsed(itOpsSiteTreeCollapsed);
   }, [itOpsSiteTreeCollapsed]);
 
@@ -572,6 +635,9 @@ function App() {
         connectionsCollapsed={connectionPanelLayout.collapsed}
         onConnectionsToggle={toggleConnectionPanel}
         onNavigate={navigateToPage}
+        customModuleDestinations={customModuleDestinations}
+        activeCustomModule={activeCustomModule}
+        onNavigateCustomModule={navigateToCustomModule}
       />
       <div key="workspace-page" className="workspace-page" {...ariaHidden(visibleBasePage !== "workspace")}>
         <div className="connection-panel-slot">
@@ -666,6 +732,10 @@ function App() {
           tutorialNavigation={systemCleanerTutorialNavigation}
         />
       ) : null}
+      <CustomModuleHost
+        active={visibleBasePage === "customModule"}
+        destination={activeCustomModule}
+      />
       </Suspense>
       <TutorialOverlay
         key="tutorial-overlay"

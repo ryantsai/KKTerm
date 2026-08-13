@@ -20,6 +20,7 @@ import {
   Globe,
   Network,
   Palette,
+  Package,
   Save,
   Search,
   Server,
@@ -44,6 +45,7 @@ import { CredentialsSettings } from "./CredentialsSettings";
 import { GeneralSettings } from "./GeneralSettings";
 import { FileExplorerSettings } from "./FileExplorerSettings";
 import { InstallerSettings } from "./InstallerSettings";
+import { CustomModulesSettings } from "./CustomModulesSettings";
 import { ItOpsSettings } from "./ItOpsSettings";
 import { ProxySettings } from "./ProxySettings";
 import { RdpSettings } from "./RdpSettings";
@@ -78,6 +80,7 @@ const SETTINGS_SECTION_IDS: readonly SettingsSectionId[] = [
   "workspace-settings",
   "file-explorer-settings",
   "installer-settings",
+  "custom-modules-settings",
   "credentials-settings",
   "assistant-settings",
   "ssh-settings",
@@ -118,6 +121,7 @@ const SETTINGS_NAV: readonly SettingsNavItem[] = [
   { id: "file-explorer-settings", Icon: FolderOpen, color: "#14b8a6", labelKey: "settings.fileExplorer" },
   { id: "dashboard-settings", Icon: Gauge, color: "#0a84ff", labelKey: "settings.sectionDashboard", module: "dashboard" },
   { id: "installer-settings", Icon: InstallHelperModuleIcon, color: "#ff9f0a", labelKey: "settings.sectionInstaller", module: "installer", requires: "installer" },
+  { id: "custom-modules-settings", Icon: Package, color: "var(--accent)", labelKey: "settings.sectionCustomModules" },
   { id: "credentials-settings", Icon: KeyRound, color: "#34c759", labelKey: "settings.sectionCredentials" },
   { id: "assistant-settings", Icon: Bot, color: "#bf5af2", labelKey: "settings.sectionAiAssistant" },
   { id: "ssh-settings", Icon: Server, color: "#30b0c7", labelKey: "settings.sectionSsh" },
@@ -472,6 +476,7 @@ export function SettingsPage({
             {installerSupported
               ? renderSettingsSection("installer-settings", <InstallerSettings />)
               : null}
+            {renderSettingsSection("custom-modules-settings", <CustomModulesSettings />)}
             {renderSettingsSection("credentials-settings", <CredentialsSettings />)}
             {renderSettingsSection("assistant-settings", <AiSettings />)}
             {renderSettingsSection("ssh-settings", <SshSettings />)}

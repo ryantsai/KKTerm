@@ -33,7 +33,7 @@ When a doc says "right-click on X", the implementation is a Tauri native context
 | 12 | [12-it-ops.md](12-it-ops.md) | IT Ops Module — Sites, topology, Task Library, Batch Runs, Automations, run reports | `itops`, `watchdog` |
 | 13 | [13-ai-assistant.md](13-ai-assistant.md) | AI Assistant panel, chats, tools, intents (Watchdog / Create Widget / Extension Draft), MCP | `ai` |
 | 14 | [14-screenshots.md](14-screenshots.md) | Screenshots Module — library, capture region / window / full screen, tray captures, global shortcuts; settings-aware Pane capture or AI Assistant attachment | `screenshots`, `workspace` |
-| 15 | [15-settings.md](15-settings.md) | Every Settings section: General, Appearance, Dashboard, Workspace, File Explorer, Install Helper, Credentials, AI, SSH, Terminal, RDP, VNC, URL, Screenshots, Don't Sleep, Proxy, About | `settings` |
+| 15 | [15-settings.md](15-settings.md) | Every Settings section: General, Appearance, Dashboard, Workspace, File Explorer, Install Helper, Custom Modules, Credentials, AI, SSH, Terminal, RDP, VNC, URL, Screenshots, Don't Sleep, Proxy, About | `settings` |
 | 16 | [16-localization.md](16-localization.md) | Switching language, supported locales | `settings`, `languages` |
 | 17 | [17-data-backup-secrets.md](17-data-backup-secrets.md) | SQLite store, OS keychain, settings Import/Export `.kkbackup`, startup backup ZIP snapshots, sharing connections without passwords | `settings`, `common` |
 | 18 | [18-installer.md](18-installer.md) | Install Helper Module — Windows dev-tool catalog, install/update/uninstall, bundled catalog, UAC and WSL behaviour | `installer` |

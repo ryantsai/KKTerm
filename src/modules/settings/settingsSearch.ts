@@ -73,6 +73,13 @@ export const SETTINGS_SEARCH_KEYS: Record<SettingsSectionId, readonly string[]> 
     "settings.installerDefaultProvider", "settings.installerDefaultProviderWinget",
     "settings.installerDefaultProviderChocolatey",
   ],
+  "custom-modules-settings": [
+    "settings.sectionCustomModules", "settings.customModulesIntro",
+    "settings.customModulesInstalled", "settings.customModulesAvailable",
+    "settings.customModulesInstallFile", "settings.customModulesEnabled",
+    "settings.customModulesShowRail", "settings.customModulesPermissions",
+    "settings.customModulesLicense", "settings.customModulesUninstall",
+  ],
   "credentials-settings": [
     "settings.credentialStorage", "settings.credentialStorageBackend",
     "settings.credentialsStored", "settings.savedWebsitePasswords",

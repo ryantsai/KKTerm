@@ -6,6 +6,7 @@ export type SettingsSectionId =
   | "file-explorer-settings"
   | "dont-sleep-settings"
   | "installer-settings"
+  | "custom-modules-settings"
   | "credentials-settings"
   | "assistant-settings"
   | "ssh-settings"
@@ -198,6 +199,26 @@ const SETTINGS_SECTIONS: Record<SettingsSectionId, SettingsSectionSummary> = {
         key: "settings.installerCheckInterval",
         description:
           "How often the Install Helper auto-checks for the latest tool versions when opened (hour/day/week/month; default daily).",
+      },
+    ],
+  },
+  "custom-modules-settings": {
+    labelKey: "settings.sectionCustomModules",
+    fallbackLabel: "Custom Modules",
+    tutorialTargetId: "settings.customModules",
+    controls: [
+      {
+        key: "settings.customModulesInstallFile",
+        description: "Review and install a local static .kkmod package.",
+        tutorialTargetId: "settings.customModules",
+      },
+      {
+        key: "settings.customModulesInstalled",
+        description: "Enable, disable, inspect, or uninstall optional Module packages.",
+      },
+      {
+        key: "settings.customModulesShowRail",
+        description: "Show enabled Custom Module contributions in the Activity Rail.",
       },
     ],
   },

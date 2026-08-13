@@ -4,6 +4,7 @@ import {
   Coffee,
   Gauge,
   LayoutDashboard,
+  Package,
   Pin,
   PinOff,
   Plus,
@@ -30,6 +31,8 @@ import { ItOpsModuleIcon } from "../modules/itops/icons";
 import { InstallHelperModuleIcon, ScreenshotsModuleIcon, SystemCleanerModuleIcon } from "./moduleIdentityIcons";
 import { RailTooltip } from "./RailTooltip";
 import { showShutdownTimerMenu } from "./shutdownTimerMenu";
+import type { CustomModuleDestination } from "../modules/custom-modules/types";
+import { customModuleDestinationKey } from "../modules/custom-modules/useCustomModules";
 
 export type ActivePage =
   | "workspace"
@@ -38,6 +41,7 @@ export type ActivePage =
   | "installer"
   | "screenshots"
   | "systemCleaner"
+  | "customModule"
   | "settings";
 
 type ConnectedRailItem = {
@@ -101,11 +105,17 @@ export function ActivityRail({
   connectionsCollapsed,
   onConnectionsToggle,
   onNavigate,
+  customModuleDestinations,
+  activeCustomModule,
+  onNavigateCustomModule,
 }: {
   activePage: ActivePage;
   connectionsCollapsed: boolean;
   onConnectionsToggle: () => void;
   onNavigate: (page: ActivePage) => void;
+  customModuleDestinations: CustomModuleDestination[];
+  activeCustomModule: CustomModuleDestination | null;
+  onNavigateCustomModule: (destination: CustomModuleDestination) => void;
 }) {
   const { t, i18n } = useTranslation();
   const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
@@ -831,6 +841,25 @@ export function ActivityRail({
           <RailTooltip label={t("systemCleaner.title")} />
         </button>
       ) : null}
+      {customModuleDestinations.map((destination) => {
+        const key = customModuleDestinationKey(destination);
+        const isActive = activePage === "customModule"
+          && activeCustomModule
+          && customModuleDestinationKey(activeCustomModule) === key;
+        return (
+          <button
+            aria-label={destination.title}
+            className={`rail-button rail-button-custom-module ${isActive ? "active" : ""}`}
+            data-custom-module-id={destination.moduleId}
+            key={key}
+            onClick={() => onNavigateCustomModule(destination)}
+            type="button"
+          >
+            <Package size={18} />
+            <RailTooltip label={destination.title} />
+          </button>
+        );
+      })}
       {connectedRailItems.length > 0 ? (
         <div className="rail-connected-connections-spacer">
           <div

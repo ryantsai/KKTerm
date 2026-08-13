@@ -8,6 +8,7 @@ mod assistant_skills;
 mod auto_start;
 mod bundle_identifier;
 mod currency_rates;
+mod custom_modules;
 mod dashboard_commands;
 mod dashboard_ids;
 mod dashboard_storage;
@@ -4471,6 +4472,7 @@ pub fn run() {
     let builder = builder.manage(launch_path_state);
 
     configure_macos_updater(builder)
+        .register_uri_scheme_protocol("kkmodule", custom_modules::protocol_response)
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
@@ -4497,6 +4499,7 @@ pub fn run() {
                 }
             }
             app.manage(paths);
+            app.manage(custom_modules::CustomModuleRuntime::default());
             let storage = storage::Storage::open(db_path).map_err(setup_error)?;
             let general_settings = storage.general_settings().map_err(setup_error)?;
             let credential_settings = if portable_mode {
@@ -5166,6 +5169,24 @@ pub fn run() {
             capture_webview_credential,
             request_webview_page_capture_state,
             close_webview_session,
+            // ── Optional Custom Modules
+            custom_modules::list_custom_modules,
+            custom_modules::inspect_custom_module_package,
+            custom_modules::install_custom_module_from_file,
+            custom_modules::list_custom_module_catalog,
+            custom_modules::install_custom_module_from_catalog,
+            custom_modules::cancel_custom_module_download,
+            custom_modules::set_custom_module_enabled,
+            custom_modules::set_custom_module_rail_visible,
+            custom_modules::read_custom_module_license_file,
+            custom_modules::rollback_custom_module,
+            custom_modules::uninstall_custom_module,
+            custom_modules::start_custom_module,
+            custom_modules::update_custom_module_bounds,
+            custom_modules::set_custom_module_visibility,
+            custom_modules::update_custom_module_context,
+            custom_modules::close_custom_module,
+            custom_modules::custom_module_bridge,
             // ── RDP
             start_rdp_session,
             update_rdp_bounds,
