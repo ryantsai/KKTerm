@@ -18,7 +18,6 @@ pub fn is_managed_app(tool_id: &str) -> bool {
             | "flowise"
             | "open-webui"
             | "langflow"
-            | "hermes-agent"
             | "excalidraw"
             | "bentopdf"
             | "openflowkit"
@@ -60,7 +59,6 @@ mod tests {
             "flowise",
             "open-webui",
             "langflow",
-            "hermes-agent",
             "excalidraw",
             "bentopdf",
             "openflowkit",

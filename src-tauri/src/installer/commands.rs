@@ -1006,6 +1006,8 @@ fn terminal_launch_affordance(tool_id: &str) -> Option<TerminalLaunchAffordance>
         "kimi-code-cli" => plain("kimi", &[]),
         "grok-build" => plain("grok", &[]),
         "opencode" => plain("opencode", &[]),
+        "pi" => plain("pi", &[]),
+        "oh-my-pi" => plain("omp", &[]),
         "rustup" => plain(
             "rustup show",
             &[
@@ -1065,25 +1067,15 @@ fn terminal_launch_affordance(tool_id: &str) -> Option<TerminalLaunchAffordance>
                 "psmux --help  —  list commands and flags",
             ],
         ),
-        "hermes-agent" => {
-            let activate = managed_app_install_dir("hermes-agent")
-                .join(".venv")
-                .join("Scripts")
-                .join("Activate.ps1")
-                .to_string_lossy()
-                .into_owned();
-            Some(TerminalLaunchAffordance {
-                activate_ps1: Some(activate),
-                setup_lines: vec![],
-                prefill: "hermes setup".into(),
-                hints: vec![
-                    "hermes setup  —  configure providers and accounts".into(),
-                    "hermes postinstall  —  optional dependencies".into(),
-                    "hermes doctor  —  health check".into(),
-                    "hermes  —  start chatting".into(),
-                ],
-            })
-        }
+        "hermes-agent" => plain(
+            "hermes setup",
+            &[
+                "hermes setup  —  configure providers and accounts",
+                "hermes postinstall  —  optional dependencies",
+                "hermes doctor  —  health check",
+                "hermes  —  start chatting",
+            ],
+        ),
         "openclaw" => {
             let prefix = managed_app_install_dir("openclaw")
                 .to_string_lossy()
@@ -3493,6 +3485,8 @@ mod tests {
             "kimi-code-cli",
             "grok-build",
             "opencode",
+            "pi",
+            "oh-my-pi",
             "rustup",
             "bun",
             "ripgrep",
@@ -3519,6 +3513,8 @@ mod tests {
             "kimi-code-cli",
             "grok-build",
             "opencode",
+            "pi",
+            "oh-my-pi",
         ] {
             assert!(
                 terminal_launch_affordance(tool_id)

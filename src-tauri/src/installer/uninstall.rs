@@ -30,6 +30,10 @@ pub fn uninstall_recipe(
         uninstall_managed_app(&recipe.id, emit)
     } else if recipe.id == "cursor-cli" {
         uninstall_cursor_cli(cancel, emit)
+    } else if recipe.id == "hermes-agent" {
+        uninstall_hermes_agent(cancel, emit)
+    } else if recipe.id == "oh-my-pi" {
+        uninstall_oh_my_pi(cancel, emit)
     } else if recipe.id == "uv" && detect_one(recipe).is_official_script_install() {
         // A standalone receipt proves Astral owns this binary; it does not
         // authorize `winget uninstall`, which could target a separate copy.
@@ -98,7 +102,7 @@ fn uninstall_official_cli_installer(
         tool_id: tool_id.into(),
         message: format!("Removing native CLI binaries from {}", bin_dir.display()),
     });
-    super::install::run_streamed_public(
+    super::install::run_streamed_with_refreshed_path_public(
         "powershell",
         &[
             "-NoProfile".into(),
@@ -135,7 +139,7 @@ fn uninstall_cursor_cli(cancel: Arc<AtomicBool>, emit: &EventSink) -> Result<(),
         tool_id: "cursor-cli".into(),
         message: format!("Removing Cursor Agent CLI from {}", install_dir.display()),
     });
-    super::install::run_streamed_public(
+    super::install::run_streamed_with_refreshed_path_public(
         "powershell",
         &[
             "-NoProfile".into(),
@@ -147,6 +151,75 @@ fn uninstall_cursor_cli(cancel: Arc<AtomicBool>, emit: &EventSink) -> Result<(),
         "cursor-cli",
         cancel,
         emit,
+    )
+}
+
+fn uninstall_hermes_agent(cancel: Arc<AtomicBool>, emit: &EventSink) -> Result<(), String> {
+    let local_app_data = std::env::var_os("LOCALAPPDATA")
+        .map(std::path::PathBuf::from)
+        .ok_or_else(|| "LOCALAPPDATA is unavailable".to_string())?;
+    let install_dir = local_app_data.join("hermes").join("hermes-agent");
+    let legacy_dir = managed_app_install_dir("hermes-agent");
+
+    emit(ProgressEvent::Step {
+        tool_id: "hermes-agent".into(),
+        message: format!("Removing Hermes Agent from {}", install_dir.display()),
+    });
+    super::install::run_streamed_with_refreshed_path_public(
+        "powershell",
+        &[
+            "-NoProfile".into(),
+            "-ExecutionPolicy".into(),
+            "Bypass".into(),
+            "-Command".into(),
+            hermes_agent_uninstall_script(&install_dir, &legacy_dir),
+        ],
+        "hermes-agent",
+        cancel,
+        emit,
+    )
+}
+
+fn hermes_agent_uninstall_script(
+    install_dir: &std::path::Path,
+    legacy_dir: &std::path::Path,
+) -> String {
+    let quoted_install_dir = super::install::powershell_single_quote(&install_dir.to_string_lossy());
+    let quoted_legacy_dir = super::install::powershell_single_quote(&legacy_dir.to_string_lossy());
+    format!(
+        "$ErrorActionPreference = 'Stop'; $targets = @({quoted_install_dir}, {quoted_legacy_dir}); foreach ($target in $targets) {{ if (Test-Path -LiteralPath $target -PathType Container) {{ Remove-Item -LiteralPath $target -Recurse -Force }} }}; $userPath = [Environment]::GetEnvironmentVariable('Path', 'User'); if ($userPath) {{ $bin = Join-Path {quoted_install_dir} 'bin'; $entries = @($userPath -split ';' | Where-Object {{ $_ -and $_.TrimEnd('\\') -ine $bin.TrimEnd('\\') }}); [Environment]::SetEnvironmentVariable('Path', ($entries -join ';'), 'User') }}; exit 0"
+    )
+}
+
+fn uninstall_oh_my_pi(cancel: Arc<AtomicBool>, emit: &EventSink) -> Result<(), String> {
+    let local_app_data = std::env::var_os("LOCALAPPDATA")
+        .map(std::path::PathBuf::from)
+        .ok_or_else(|| "LOCALAPPDATA is unavailable".to_string())?;
+    let install_dir = local_app_data.join("omp");
+
+    emit(ProgressEvent::Step {
+        tool_id: "oh-my-pi".into(),
+        message: format!("Removing Oh My Pi from {}", install_dir.display()),
+    });
+    super::install::run_streamed_with_refreshed_path_public(
+        "powershell",
+        &[
+            "-NoProfile".into(),
+            "-ExecutionPolicy".into(),
+            "Bypass".into(),
+            "-Command".into(),
+            oh_my_pi_uninstall_script(&install_dir),
+        ],
+        "oh-my-pi",
+        cancel,
+        emit,
+    )
+}
+
+fn oh_my_pi_uninstall_script(install_dir: &std::path::Path) -> String {
+    let quoted_install_dir = super::install::powershell_single_quote(&install_dir.to_string_lossy());
+    format!(
+        "$ErrorActionPreference = 'Stop'; if (Test-Path -LiteralPath {quoted_install_dir} -PathType Container) {{ Remove-Item -LiteralPath {quoted_install_dir} -Recurse -Force }}; $userPath = [Environment]::GetEnvironmentVariable('Path', 'User'); if ($userPath) {{ $entries = @($userPath -split ';' | Where-Object {{ $_ -and $_.TrimEnd('\\') -ine {quoted_install_dir}.TrimEnd('\\') }}); [Environment]::SetEnvironmentVariable('Path', ($entries -join ';'), 'User') }}; $bunShim = Join-Path $env:USERPROFILE '.bun\\bin\\omp.exe'; $bun = Get-Command bun -ErrorAction SilentlyContinue; if ($bun -and (Test-Path -LiteralPath $bunShim -PathType Leaf)) {{ & $bun.Source remove -g '@oh-my-pi/pi-coding-agent' | Out-Host }}; exit 0"
     )
 }
 

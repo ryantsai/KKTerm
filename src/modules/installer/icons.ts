@@ -135,6 +135,8 @@ const RECIPE_ICON_URLS: Record<string, string> = {
   bentopdf,
   openflowkit,
   openclaw,
+  pi: defaultIcon,
+  "oh-my-pi": defaultIcon,
 };
 
 export function iconUrlForRecipe(recipeId: string): string {

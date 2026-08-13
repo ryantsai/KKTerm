@@ -595,7 +595,6 @@ mod tests {
         for (id, package) in [
             ("open-webui", "open-webui"),
             ("langflow", "langflow"),
-            ("hermes-agent", "hermes-agent"),
         ] {
             let recipe = catalog
                 .recipes
@@ -629,6 +628,8 @@ mod tests {
             "claude-desktop",
             "hermes-agent",
             "hermes-desktop",
+            "pi",
+            "oh-my-pi",
             "flowise",
             "powertoys",
             "psmux",
@@ -817,6 +818,18 @@ mod tests {
             Provider::DownloadInstaller { url, .. }
                 if url == "https://hermes-assets.nousresearch.com/Hermes-Setup.exe"
         ));
+
+        let hermes_agent = catalog
+            .recipes
+            .iter()
+            .find(|recipe| recipe.id == "hermes-agent")
+            .expect("catalog should include Hermes AI Agent");
+        assert!(matches!(
+            &hermes_agent.provider,
+            Provider::DownloadInstaller { url, file_name, .. }
+                if url == "https://hermes-agent.nousresearch.com/install.ps1"
+                    && file_name == "hermes-agent-install.ps1"
+        ));
     }
 
     #[test]
@@ -915,6 +928,32 @@ mod tests {
             Some(Provider::DownloadInstaller { url, file_name, .. })
                 if url == "https://x.ai/cli/install.ps1"
                     && file_name == "grok-build-install.ps1"
+        ));
+
+        let pi = catalog
+            .recipes
+            .iter()
+            .find(|recipe| recipe.id == "pi")
+            .expect("catalog should include Pi");
+        assert_eq!(pi.category.as_deref(), Some("ai-agent"));
+        assert!(pi.needs.contains(&"node-bundle".to_string()));
+        assert!(matches!(
+            &pi.provider,
+            Provider::Npm { pkg } if pkg == "@earendil-works/pi-coding-agent"
+        ));
+
+        let oh_my_pi = catalog
+            .recipes
+            .iter()
+            .find(|recipe| recipe.id == "oh-my-pi")
+            .expect("catalog should include Oh My Pi");
+        assert_eq!(oh_my_pi.category.as_deref(), Some("ai-agent"));
+        assert!(oh_my_pi.needs.is_empty());
+        assert!(matches!(
+            &oh_my_pi.provider,
+            Provider::DownloadInstaller { url, file_name, .. }
+                if url == "https://omp.sh/install.ps1"
+                    && file_name == "oh-my-pi-install.ps1"
         ));
     }
 
@@ -1031,7 +1070,7 @@ mod tests {
 
         // Recipes whose download fallback has a deterministic native ARM64 asset.
         let arm64_ready = [
-            ("github-cli", "gh_2.93.0_windows_arm64.msi"),
+            ("github-cli", "gh_2.97.0_windows_arm64.msi"),
             ("vscode", "win32-arm64-user"),
             ("rustup", "aarch64"),
         ];

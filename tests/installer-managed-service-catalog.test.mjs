@@ -276,6 +276,39 @@ test("Hermes Desktop retains its direct installer source", () => {
   });
 });
 
+test("Hermes Agent uses the official Windows bootstrapper", () => {
+  const hermes = recipe("hermes-agent");
+  assert.equal(hermes.section, "aiAgents");
+  assert.deepEqual(hermes.needs, undefined);
+  assert.deepEqual(hermes.provider, {
+    kind: "downloadInstaller",
+    url: "https://hermes-agent.nousresearch.com/install.ps1",
+    fileName: "hermes-agent-install.ps1",
+  });
+  assert.deepEqual(hermes.options, []);
+});
+
+test("Pi and Oh My Pi expose their current Windows install methods", () => {
+  const pi = recipe("pi");
+  assert.equal(pi.section, "aiAgents");
+  assert.deepEqual(pi.needs, ["node-bundle"]);
+  assert.deepEqual(pi.provider, {
+    kind: "npm",
+    pkg: "@earendil-works/pi-coding-agent",
+  });
+  assert.ok(pi.options?.includes("version"));
+
+  const ohMyPi = recipe("oh-my-pi");
+  assert.equal(ohMyPi.section, "aiAgents");
+  assert.deepEqual(ohMyPi.needs, undefined);
+  assert.deepEqual(ohMyPi.provider, {
+    kind: "downloadInstaller",
+    url: "https://omp.sh/install.ps1",
+    fileName: "oh-my-pi-install.ps1",
+  });
+  assert.deepEqual(ohMyPi.options, []);
+});
+
 test("Kimi Code and Grok Build expose every verified Windows provider", () => {
   const kimi = recipe("kimi-code-cli");
   assert.equal(kimi.section, "aiAgents");
@@ -323,6 +356,31 @@ test("Cursor Agent CLI uses the official native Windows installer", () => {
     fileName: "cursor-agent-install.ps1",
   });
   assert.deepEqual(cursor.options, []);
+});
+
+test("fixed direct-download fallbacks point at current release assets", () => {
+  const expected = new Map([
+    ["git", "Git-2.55.0.4-64-bit.exe"],
+    ["github-cli", "gh_2.97.0_windows_amd64.msi"],
+    ["notepadpp", "npp.8.9.7.Installer.x64.exe"],
+    ["bruno", "bruno_4.0.0_x64_win.exe"],
+    ["coreutils", "coreutils-2026.6.16-x64.exe"],
+    ["powertoys", "PowerToysUserSetup-0.100.2-x64.exe"],
+    ["powershell-7", "PowerShell-7.6.4-win-x64.msi"],
+    ["sharex", "ShareX-21.0.0-setup-x64.exe"],
+    ["drawio", "draw.io-31.1.8-windows-installer.exe"],
+  ]);
+
+  for (const [id, fileName] of expected) {
+    const provider = recipe(id).downloadProvider;
+    assert.equal(provider?.kind, "downloadInstaller");
+    assert.equal(provider?.fileName, fileName, `${id} should use its current asset`);
+    assert.match(provider?.url ?? "", new RegExp(fileName.replaceAll(".", "\\.")));
+  }
+  assert.equal(
+    recipe("cursor").downloadProvider?.url,
+    "https://api2.cursor.sh/updates/download/golden/win32-x64-user/cursor/latest",
+  );
 });
 
 test("Claude Desktop detection covers the official Windows MSIX package", () => {
