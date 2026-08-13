@@ -101,6 +101,15 @@
   white-space: nowrap;
 }
 
+.module-header__lead,
+.module-header__title,
+.module-header__meta,
+.module-header__tile,
+.module-header__divider {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 .module-header__divider {
   flex: 0 0 auto;
   width: 1px;

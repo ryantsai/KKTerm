@@ -60,6 +60,9 @@ that template instead of rebuilding the icon, title, divider, or spacer markup.
   architecture requires it, but must keep the shared title position and height.
 - Do not add a subtitle by default. Supporting state belongs in compact metadata
   or the content area, not in a second title line.
+- Module identity tiles, titles, and compact metadata are non-selectable chrome;
+  dragging across a header must not produce browser selection highlighting.
+  Keep inputs and other editable controls inside the header normally selectable.
 - Workspace keeps its resizable Connection-panel divider. Its header action sits
   to the right of the Workspace name, and the content-area top bar is reserved
   for the Tab Strip when that strip is enabled.

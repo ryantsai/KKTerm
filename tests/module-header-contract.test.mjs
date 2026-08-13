@@ -21,6 +21,29 @@ test("top-level Modules use the shared compact header template", async () => {
   }
 });
 
+test("Activity Rail and Module identity text cannot be selected", async () => {
+  const [appStyles, headerStyles, customModuleStyles] = await Promise.all([
+    read("src/app/app.css"),
+    read("src/app/moduleHeader.css"),
+    read("src/modules/custom-modules/customModules.css"),
+  ]);
+
+  assert.match(
+    appStyles,
+    /\.activity-rail\s*\{[^}]*user-select:\s*none;[^}]*-webkit-user-select:\s*none;/s,
+  );
+  assert.match(appStyles, /\.activity-rail img\s*\{[^}]*-webkit-user-drag:\s*none;/s);
+  assert.match(
+    headerStyles,
+    /\.module-header__lead,[\s\S]*\.module-header__title,[\s\S]*\.module-header__meta,[\s\S]*user-select:\s*none;[\s\S]*-webkit-user-select:\s*none;/,
+  );
+  assert.doesNotMatch(headerStyles, /\.module-header\s*\{[^}]*user-select:\s*none/s);
+  assert.match(
+    customModuleStyles,
+    /\.custom-module-page-header\s*\{[^}]*user-select:\s*none;[^}]*-webkit-user-select:\s*none;/s,
+  );
+});
+
 test("Install Helper pane header uses the Activity Rail module icon", async () => {
   const [activityRail, installerPage] = await Promise.all([
     read("src/app/ActivityRail.tsx"),
