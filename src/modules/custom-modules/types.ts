@@ -33,6 +33,7 @@ export interface InstalledCustomModule extends CustomModuleManifest {
   sha256: string;
   previousVersion?: string | null;
   health: "ready" | "missing";
+  iconDataUrls?: Record<string, string>;
 }
 
 export interface CustomModuleCatalogEntry {
@@ -64,6 +65,7 @@ export interface CustomModuleDestination {
   contributionId: string;
   title: string;
   icon?: string | null;
+  iconDataUrl?: string | null;
 }
 
 export interface StartCustomModuleRequest extends CustomModuleDestination {

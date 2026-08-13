@@ -1,7 +1,7 @@
 {
   "id": "com.kkterm.excalidraw",
   "name": "Excalidraw",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "publisher": "KKTerm",
   "summary": "An unofficial offline Excalidraw integration for KKTerm.",
   "apiVersion": 1,

@@ -73,7 +73,13 @@ npm run package:custom-module-fixture
 Curated catalog packages use the same manifest, WebView, permissions, and
 storage as local packages. They are not bundled into KKTerm releases. Manual
 publication uses `scripts/publish-custom-module.ps1` after the KKMod development
-skill has built, audited, and validated the archive. The publication workflow:
+skill has built, audited, and validated the archive. Every rail-visible curated
+contribution must declare a packaged SVG icon no larger than 64 KiB. The
+publisher rejects active or external SVG content, and KKTerm renders the icon
+as a `currentColor` mask so curated Activity Rail icons stay monochrome across
+all themes. Local packages retain the generic Package rail glyph.
+
+The publication workflow:
 
 1. Build and audit the static package.
 2. Compute its SHA-256.

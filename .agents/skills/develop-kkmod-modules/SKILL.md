@@ -35,13 +35,13 @@ When changing the KKTerm host itself, keep every Tauri command that constructs a
 
 ## Workflow
 
-1. **Define the outcome.** Record the package id, publisher, semantic version, license, contribution ids/titles, offline behavior, durable-data needs, external links, and source/build toolchain.
+1. **Define the outcome.** Record the package id, publisher, semantic version, license, contribution ids/titles/icons, offline behavior, durable-data needs, external links, and source/build toolchain. For KKTerm-curated publication, every rail-visible contribution needs distinct, attributable SVG artwork suitable for a monochrome Activity Rail mask.
 2. **Audit feasibility.** Inventory every runtime URL, dependency, worker/service worker, iframe, inline script, navigation route, browser persistence call, device API, secret, font, asset, and license. Resolve each against the runtime reference.
 3. **Choose the starting point.** For a new module, copy `assets/starter-kkmod/`. For an existing app, preserve its source project but emit a self-contained production build into `dist/`.
 4. **Adapt for isolation.** Use relative local asset URLs, external script files, hash/in-memory routing, browser file inputs for deliberate imports, and the narrow `window.KKTerm` bridge. Remove runtime CDN/API dependencies. Do not expose secrets through module storage.
 5. **Declare least privilege.** Request `storage` only for small durable non-secret JSON settings, `documentStorage` only for large JSON documents or encoded browser blobs, `openExternal` only when the Module opens HTTP(S) URLs in the system browser, and `clipboard` only when users need copy/paste or image transfer through the OS clipboard.
 6. **Integrate lifecycle.** Read initial context, subscribe to `contextChanged`, apply theme/locale changes, handle bridge rejections, and call `window.KKTerm.ready()` only after the usable UI has initialized. Finish within 15 seconds.
-7. **Audit licenses.** Include the package's license and all required third-party notices. Recheck bundled dependencies, fonts, icons, examples, and media for the exact release version.
+7. **Audit licenses.** Include the package's license and all required third-party notices. Recheck bundled dependencies, fonts, icons, examples, and media for the exact release version. Record the source and license of curated Activity Rail artwork.
 8. **Validate and package.** Run:
 
    ```powershell
@@ -51,7 +51,7 @@ When changing the KKTerm host itself, keep every Tauri command that constructs a
    ```
 
 9. **Verify behavior.** Test in the real Tauri desktop runtime: startup/readiness, keyboard and focus, resizing, theme/locale updates, overlay visibility, restart persistence, permissions, clipboard copy/paste when granted, offline startup, disable/uninstall, and URL/RDP overlap. Browser/Vite preview is insufficient for native integration. If host code changed, also verify that starting a Module does not stall unrelated main-window Tauri invokes.
-10. **Prepare publication only when requested.** Generate catalog metadata from the final immutable archive, sign its lowercase SHA-256 text outside the repository, and keep the private key out of source and package files.
+10. **Prepare publication only when requested.** Ensure every rail-visible curated contribution declares an inert packaged SVG icon no larger than 64 KiB; KKTerm renders it as a monochrome `currentColor` mask. Generate catalog metadata from the final immutable archive, sign its lowercase SHA-256 text outside the repository, and keep the private key out of source and package files.
 
 ## Completion report
 

@@ -70,7 +70,27 @@ test("dynamic Custom Module rail destinations do not become a compile-time id un
   ]);
   assert.match(hook, /`custom:\$\{destination\.moduleId\}:\$\{destination\.contributionId\}`/);
   assert.match(rail, /customModuleDestinations\.map/);
+  assert.match(rail, /CustomModuleRailIcon iconDataUrl=\{destination\.iconDataUrl\}/);
   assert.match(app, /<CustomModuleHost/);
+});
+
+test("curated Custom Module rail icons remain bounded and monochrome", async () => {
+  const [backend, rail, publisher, packaging, skill, contract] = await Promise.all([
+    readFile(new URL("../src-tauri/src/custom_modules.rs", import.meta.url), "utf8"),
+    readFile(new URL("../src/app/ActivityRail.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/publish-custom-module.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../docs/CUSTOM_MODULE_PACKAGING.md", import.meta.url), "utf8"),
+    readFile(new URL("../.agents/skills/develop-kkmod-modules/SKILL.md", import.meta.url), "utf8"),
+    readFile(new URL("../.agents/skills/develop-kkmod-modules/references/package-contract.md", import.meta.url), "utf8"),
+  ]);
+  assert.match(backend, /trust != "firstParty"/);
+  assert.match(backend, /MAX_ACTIVITY_RAIL_ICON_BYTES/);
+  assert.match(rail, /maskImage/);
+  assert.match(publisher, /validateCuratedModuleIcons/);
+  for (const source of [packaging, skill, contract]) {
+    assert.match(source, /monochrome/i);
+    assert.match(source, /64 KiB/);
+  }
 });
 
 test("Custom Module host and agent guidance preserve the Windows async window boundary", async () => {

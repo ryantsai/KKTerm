@@ -24,6 +24,7 @@ export function customModuleDestinations(modules: InstalledCustomModule[]) {
             contributionId: contribution.id,
             title: contribution.title,
             icon: contribution.icon,
+            iconDataUrl: module.iconDataUrls?.[contribution.id],
           }))
       : [],
   );

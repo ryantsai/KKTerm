@@ -84,11 +84,20 @@ The root file is UTF-8 JSON. All objects reject unknown fields. Use camelCase ex
 |---|---:|---|
 | `id` | yes | same identifier rules as package id; unique in this manifest |
 | `title` | yes | non-blank, at most 128 bytes |
-| `icon` | no | packaged portable path below `dist/` |
+| `icon` | no | packaged portable path below `dist/`; required as SVG for a rail-visible KKTerm-curated contribution |
 | `entrypoint` | yes | packaged portable `.html` path below `dist/`; lowercase `.html` extension |
 | `railVisible` | no | boolean; defaults to `true` |
 
 One package may contribute multiple Activity Rail Modules. Their durable destination keys are derived by KKTerm as `custom:<package-id>:<contribution-id>`.
+
+For KKTerm-curated catalog publication, every rail-visible contribution must
+declare an SVG icon no larger than 64 KiB. The SVG must be self-contained and
+inert: no scripts, event handlers, external references, embedded documents or
+images, stylesheet blocks, or URL references. The host exposes artwork only
+from signature-verified first-party packages and paints it as a monochrome
+`currentColor` mask, so authors should design a clear silhouette that remains
+legible at 18×18 px. Record the artwork's source and license in the package
+notices. Local packages use the host's generic Package rail glyph.
 
 ## Validation constraints
 
@@ -154,6 +163,9 @@ The app-owned catalog has this strict schema:
 ```
 
 Catalog ids are unique. Identity (`id`, `name`, `version`, `publisher`), API version, permission set, and license name must match the downloaded manifest exactly. `downloadUrl` must use HTTPS. `downloadSize` is 1–256 MiB. `sha256` is lowercase hexadecimal. `signature` is Base64 Ed25519 over the lowercase SHA-256 text, not over the raw archive bytes. Release builds embed the verifying key from `KKTERM_CUSTOM_MODULE_CATALOG_PUBLIC_KEY`; private signing keys must never enter the repository or package.
+
+The curated publisher additionally rejects any rail-visible contribution that
+does not contain the bounded inert SVG icon described above.
 
 ## Licensing requirements
 

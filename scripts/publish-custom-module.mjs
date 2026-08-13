@@ -19,6 +19,7 @@ const semverPattern = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z.
 const moduleIdPattern = /^[a-z][a-z0-9.-]{0,127}$/;
 const allowedPermissions = new Set(["storage", "documentStorage", "openExternal", "clipboard"]);
 const maxArchiveBytes = 256 * 1024 * 1024;
+const maxCuratedIconBytes = 64 * 1024;
 
 function fail(message) {
   throw new Error(message);
@@ -114,7 +115,35 @@ function readManifest(packageBytes) {
   for (const permission of permissions) {
     if (!allowedPermissions.has(permission)) fail(`Unsupported package permission: ${permission}`);
   }
+  validateCuratedModuleIcons(packageBytes, manifest);
   return manifest;
+}
+
+function validateCuratedModuleIcons(packageBytes, manifest) {
+  if (!Array.isArray(manifest.modules) || manifest.modules.length === 0) {
+    fail("The package manifest must declare at least one Module contribution");
+  }
+  const iconPaths = manifest.modules
+    .filter((module) => module.railVisible !== false)
+    .map((module) => {
+      if (typeof module.icon !== "string" || !/^dist\/[A-Za-z0-9/._@-]+\.svg$/i.test(module.icon)) {
+        fail(`Curated Activity Rail contribution ${module.id ?? "(unknown)"} must declare a packaged SVG icon`);
+      }
+      return module.icon;
+    });
+  const requested = new Set(iconPaths);
+  const files = unzipSync(new Uint8Array(packageBytes), { filter: (file) => requested.has(file.name) });
+  for (const iconPath of iconPaths) {
+    const iconBytes = files[iconPath];
+    if (!iconBytes || iconBytes.length === 0 || iconBytes.length > maxCuratedIconBytes) {
+      fail(`Curated Activity Rail icon ${iconPath} must be between 1 byte and 64 KiB`);
+    }
+    const svg = Buffer.from(iconBytes).toString("utf8");
+    if (!/<svg\b/i.test(svg)) fail(`Curated Activity Rail icon ${iconPath} is not SVG markup`);
+    if (/<(?:script|foreignObject|iframe|object|embed|image|use|style)\b|\bon[a-z]+\s*=|\b(?:href|xlink:href)\s*=|url\s*\(|<!DOCTYPE|<\?xml-stylesheet/i.test(svg)) {
+      fail(`Curated Activity Rail icon ${iconPath} contains active or external SVG content`);
+    }
+  }
 }
 
 function loadSigningKey(pemBytes, passphrase) {
@@ -358,6 +387,7 @@ export {
   createEnvelope,
   loadSigningKey,
   readManifest,
+  validateCuratedModuleIcons,
   validateCatalogEntries,
   verifyEnvelope,
 };

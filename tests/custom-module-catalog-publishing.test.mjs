@@ -27,11 +27,12 @@ function packageBytes(version = "1.0.0", marker = "one") {
     apiVersion: 1,
     license: { name: "MIT", file: "licenses/LICENSE" },
     permissions: ["storage", "documentStorage"],
-    modules: [{ id: "main", title: "Fixture", entrypoint: "dist/index.html" }],
+    modules: [{ id: "main", title: "Fixture", icon: "dist/icon.svg", entrypoint: "dist/index.html" }],
   };
   return Buffer.from(zipSync({
     "kkterm-extension.json": Buffer.from(JSON.stringify(manifest)),
     "dist/index.html": Buffer.from(`<title>${marker}</title>`),
+    "dist/icon.svg": Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0h1v1z"/></svg>'),
     "licenses/LICENSE": Buffer.from("MIT"),
   }));
 }
@@ -63,6 +64,37 @@ test("publisher creates immutable content-addressed package metadata", () => {
   assert.equal(release.entry.downloadUrl, `https://modules.example.test/${release.objectKey}`);
   assert.equal(release.entry.downloadSize, bytes.length);
   assert.deepEqual(release.entry.permissions, ["storage", "documentStorage"]);
+});
+
+test("publisher requires inert SVG icons for curated Activity Rail contributions", () => {
+  const missingIconManifest = {
+    id: "com.kkterm.fixture",
+    name: "Fixture",
+    version: "1.0.0",
+    publisher: "KKTerm",
+    summary: "Fixture module",
+    apiVersion: 1,
+    license: { name: "MIT", file: "licenses/LICENSE" },
+    modules: [{ id: "main", title: "Fixture", entrypoint: "dist/index.html" }],
+  };
+  const missingIconBytes = Buffer.from(zipSync({
+    "kkterm-extension.json": Buffer.from(JSON.stringify(missingIconManifest)),
+    "dist/index.html": Buffer.from("<title>Fixture</title>"),
+    "licenses/LICENSE": Buffer.from("MIT"),
+  }));
+  assert.throws(() => readManifest(missingIconBytes), /packaged SVG icon/);
+
+  const unsafeManifest = {
+    ...missingIconManifest,
+    modules: [{ ...missingIconManifest.modules[0], icon: "dist/icon.svg" }],
+  };
+  const unsafeIconBytes = Buffer.from(zipSync({
+    "kkterm-extension.json": Buffer.from(JSON.stringify(unsafeManifest)),
+    "dist/index.html": Buffer.from("<title>Fixture</title>"),
+    "dist/icon.svg": Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script/></svg>'),
+    "licenses/LICENSE": Buffer.from("MIT"),
+  }));
+  assert.throws(() => readManifest(unsafeIconBytes), /active or external SVG content/);
 });
 
 test("publisher refuses downgrade and same-version byte replacement", () => {

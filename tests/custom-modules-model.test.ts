@@ -48,6 +48,16 @@ test("Custom Module rail normalization preserves installed order and namespaces 
   );
 });
 
+test("Custom Module rail normalization carries curated icon data", () => {
+  const [destination] = customModuleDestinations([
+    installed("com.kkterm.fixture", {
+      trust: "firstParty",
+      iconDataUrls: { main: "data:image/svg+xml;base64,PHN2Zy8+" },
+    }),
+  ]);
+  assert.equal(destination.iconDataUrl, "data:image/svg+xml;base64,PHN2Zy8+");
+});
+
 test("disabled, hidden, missing, and contribution-hidden Modules stay off the rail", () => {
   const destinations = customModuleDestinations([
     installed("com.example.disabled", { enabled: false }),

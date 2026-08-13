@@ -37,6 +37,7 @@ const DOCUMENT_STORAGE_QUOTA_BYTES: i64 = 512 * 1024 * 1024;
 const MAX_DOCUMENT_BYTES: usize = 64 * 1024 * 1024;
 const MAX_DOCUMENT_KEYS: i64 = 4_096;
 const MAX_DOCUMENT_BRIDGE_PAYLOAD_BYTES: usize = MAX_DOCUMENT_BYTES + 1024 * 1024;
+const MAX_ACTIVITY_RAIL_ICON_BYTES: u64 = 64 * 1024;
 const MAX_CATALOG_BYTES: u64 = 4 * 1024 * 1024;
 const MAX_CATALOG_VALIDITY_DAYS: i64 = 45;
 const FIRST_PARTY_VERIFYING_KEY_HEX: &str = env!("KKTERM_CUSTOM_MODULE_CATALOG_PUBLIC_KEY");
@@ -95,6 +96,7 @@ pub struct InstalledCustomModule {
     pub sha256: String,
     pub previous_version: Option<String>,
     pub health: String,
+    pub icon_data_urls: BTreeMap<String, String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -953,6 +955,12 @@ fn installed_module(
                 }
                 let package_path = modules_root(paths)
                     .join(package_relative_path(&manifest.id, &manifest.version));
+                let icon_data_urls = curated_icon_data_urls(
+                    paths,
+                    &package_path,
+                    &manifest,
+                    &trust,
+                );
                 Ok(InstalledCustomModule {
                     manifest,
                     source,
@@ -962,10 +970,55 @@ fn installed_module(
                     sha256,
                     previous_version,
                     health: if package_path.is_dir() { "ready" } else { "missing" }.into(),
+                    icon_data_urls,
                 })
             })
             .transpose()
     })
+}
+
+fn curated_icon_data_urls(
+    paths: &AppPaths,
+    package_path: &Path,
+    manifest: &CustomModuleManifest,
+    trust: &str,
+) -> BTreeMap<String, String> {
+    if trust != "firstParty" {
+        return BTreeMap::new();
+    }
+    let Ok(canonical_root) = canonical_package_root(paths, package_path) else {
+        return BTreeMap::new();
+    };
+    manifest
+        .modules
+        .iter()
+        .filter_map(|contribution| {
+            let relative = contribution.icon.as_deref()?;
+            if Path::new(relative)
+                .extension()
+                .and_then(|extension| extension.to_str())
+                .is_none_or(|extension| !extension.eq_ignore_ascii_case("svg"))
+            {
+                return None;
+            }
+            let path = fs::canonicalize(package_path.join(relative)).ok()?;
+            if !path.starts_with(&canonical_root) {
+                return None;
+            }
+            let metadata = path.metadata().ok()?;
+            if !metadata.is_file()
+                || metadata.len() == 0
+                || metadata.len() > MAX_ACTIVITY_RAIL_ICON_BYTES
+            {
+                return None;
+            }
+            let bytes = fs::read(path).ok()?;
+            Some((
+                contribution.id.clone(),
+                format!("data:image/svg+xml;base64,{}", BASE64.encode(bytes)),
+            ))
+        })
+        .collect()
 }
 
 fn granted_permissions(storage: &Storage, module_id: &str) -> Result<HashSet<String>, String> {
@@ -2714,6 +2767,39 @@ mod tests {
         let review = inspect_archive(&package).unwrap();
         assert_eq!(review.manifest.id, "com.kkterm.fixture");
         assert_eq!(review.file_count, 3);
+    }
+
+    #[test]
+    fn curated_activity_rail_icons_are_bounded_svg_data_urls() {
+        let directory = tempfile::tempdir().unwrap();
+        let paths = AppPaths::for_test(directory.path().join("data"));
+        let package_path =
+            modules_root(&paths).join(package_relative_path("com.kkterm.fixture", "1.0.0"));
+        fs::create_dir_all(package_path.join("dist")).unwrap();
+        fs::write(
+            package_path.join("dist/icon.svg"),
+            br#"<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0h1v1z"/></svg>"#,
+        )
+        .unwrap();
+        let mut manifest = valid_manifest();
+        manifest.modules[0].icon = Some("dist/icon.svg".into());
+
+        let icons = curated_icon_data_urls(&paths, &package_path, &manifest, "firstParty");
+        assert!(
+            icons["fixture"].starts_with("data:image/svg+xml;base64,"),
+            "curated SVG should be exposed only as an inert image data URL"
+        );
+        assert!(curated_icon_data_urls(&paths, &package_path, &manifest, "local").is_empty());
+
+        fs::write(
+            package_path.join("dist/icon.svg"),
+            vec![b'x'; MAX_ACTIVITY_RAIL_ICON_BYTES as usize + 1],
+        )
+        .unwrap();
+        assert!(
+            curated_icon_data_urls(&paths, &package_path, &manifest, "firstParty").is_empty(),
+            "oversized icons must fall back to the generic glyph"
+        );
     }
 
     #[test]
