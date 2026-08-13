@@ -23,6 +23,8 @@ export function CustomModuleHost({
   const surfaceRef = useRef<HTMLDivElement | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const frameRef = useRef<number | null>(null);
+  const activeRef = useRef(active);
+  activeRef.current = active;
   const contextRef = useRef({
     theme: appearance.colorScheme,
     locale: i18n.resolvedLanguage || i18n.language || "en",
@@ -37,7 +39,7 @@ export function CustomModuleHost({
   const [ready, setReady] = useState(false);
 
   const pushBounds = useCallback(() => {
-    if (!active || !sessionIdRef.current || !surfaceRef.current) return;
+    if (!sessionIdRef.current || !surfaceRef.current) return;
     if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current);
     frameRef.current = window.requestAnimationFrame(() => {
       frameRef.current = null;
@@ -53,10 +55,10 @@ export function CustomModuleHost({
         },
       }).catch((caught) => setError(caught instanceof Error ? caught.message : String(caught)));
     });
-  }, [active]);
+  }, []);
 
   useEffect(() => {
-    if (!isTauriRuntime() || !active || !destination || !surfaceRef.current) return;
+    if (!isTauriRuntime() || !activeRef.current || !destination || !surfaceRef.current) return;
     let disposed = false;
     setError(null);
     setReady(false);
@@ -85,7 +87,7 @@ export function CustomModuleHost({
           documentHasCustomModuleBlockingOverlay(surfaceRef.current);
         void invokeCommand("set_custom_module_visibility", {
           sessionId,
-          visible: !blocked,
+          visible: activeRef.current && !blocked,
         }).catch(() => undefined);
       })
       .catch((caught) => {
@@ -97,7 +99,7 @@ export function CustomModuleHost({
       sessionIdRef.current = null;
       if (sessionId) void invokeCommand("close_custom_module", { sessionId });
     };
-  }, [active, destination, pushBounds]);
+  }, [destination, pushBounds]);
 
   useEffect(() => {
     if (!isTauriRuntime()) return;

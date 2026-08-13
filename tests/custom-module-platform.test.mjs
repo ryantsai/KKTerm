@@ -138,6 +138,39 @@ test("Custom Module bounds updates cannot reshow an overlay hidden for Settings"
   );
 });
 
+test("Custom Module WebViews stay loaded while users visit another Module", async () => {
+  const host = await readFile(
+    new URL("../src/modules/custom-modules/CustomModuleHost.tsx", import.meta.url),
+    "utf8",
+  );
+  const startInvoke = host.indexOf('invokeCommand("start_custom_module"');
+  const lifecycleStart = host.lastIndexOf("useEffect(() => {", startInvoke);
+  const lifecycleEnd = host.indexOf("\n  useEffect(() => {", startInvoke);
+  const lifecycleEffect = host.slice(lifecycleStart, lifecycleEnd);
+  const boundsCallbackStart = host.indexOf("const pushBounds = useCallback");
+  const boundsCallbackEnd = host.indexOf("\n\n  useEffect(() => {", boundsCallbackStart);
+  const boundsCallback = host.slice(boundsCallbackStart, boundsCallbackEnd);
+
+  assert.ok(startInvoke >= 0, "the Custom Module start invoke should remain discoverable");
+  assert.ok(lifecycleStart >= 0 && lifecycleEnd > lifecycleStart);
+  assert.match(host, /const activeRef = useRef\(active\)/);
+  assert.match(
+    lifecycleEffect,
+    /visible: activeRef\.current && !blocked/,
+    "a Module that finishes starting in the background must remain hidden",
+  );
+  assert.match(
+    lifecycleEffect,
+    /}, \[destination, pushBounds\]\);/,
+    "ordinary navigation must not close and recreate the loaded WebView",
+  );
+  assert.match(
+    boundsCallback,
+    /}, \[\]\);/,
+    "bounds updates must remain stable when active visibility changes",
+  );
+});
+
 test("Custom Module host and agent guidance preserve the Windows async window boundary", async () => {
   const [architecture, packaging, implementationPlan, skill, runtimeReference] = await Promise.all([
     readFile(new URL("../docs/ARCHITECTURE.md", import.meta.url), "utf8"),
