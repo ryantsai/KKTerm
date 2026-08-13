@@ -22,8 +22,13 @@ All asset references must be relative so they work below the app-owned
 `kkmodule` origin. Runtime scripts, styles, images, fonts, and WASM must be local
 package files. V1 CSP blocks network connections, remote scripts, frames,
 workers, objects, and form submission. A restrictive browser Permissions Policy
-also denies clipboard, device, sensor, media-capture, location, payment, and
-similar ambient host capabilities.
+also denies device, sensor, media-capture, location, payment, and similar
+ambient host capabilities. Clipboard access is available only to packages that
+declare and are granted `clipboard`.
+
+Without that permission, `navigator.clipboard` is present only as a
+nonfunctional compatibility shim. Every read or write rejects with
+`NotAllowedError` and cannot expose the operating-system clipboard.
 
 Durable browser `localStorage`, IndexedDB, Cache Storage, cookies, and origin
 storage are unavailable to package code; `localStorage` is an in-memory
@@ -32,12 +37,28 @@ compatibility shim for the current Module session. Declare `storage` and use
 input can still read a file the user deliberately selects, but v1 has no
 arbitrary filesystem bridge.
 
+Large non-secret JSON documents and encoded browser blobs use the separate
+`documentStorage` permission and `window.KKTerm.documents` API. The host stores
+immutable SHA-256-addressed JSON files outside SQLite and keeps only key/hash/
+size/timestamp metadata in SQLite. The package quota is 512 MiB, each document
+is capped at 64 MiB, and a package may keep at most 4,096 document keys.
+
 Archive paths use portable ASCII letters, digits, `/`, `.`, `_`, `-`, and `@`;
 spaces, backslashes, traversal, Windows reserved device names, and trailing dots
 are rejected. Payload files belong below `dist/` or `licenses/`, and only the
 documented static web/media/font/WASM and license text types are accepted.
 The local-file confirmation is bound to the reviewed archive SHA-256, so a file
 changed between review and activation is rejected and must be reviewed again.
+
+## Host runtime integration constraint
+
+This is a KKTerm host-maintenance rule rather than a package-format field. Any
+Tauri command that constructs a Custom Module `WebviewWindow` must be `async`.
+On Windows, `WebviewWindowBuilder` construction from a synchronous command can
+deadlock WebView2 and Tauri's IPC dispatcher. Affected Modules appear to start
+but never finish `window.KKTerm.ready()`, while unrelated main-window invokes
+can remain pending. Keep the command-boundary policy test and verify startup in
+the real Windows Tauri runtime whenever this path changes.
 
 The development fixture under `custom-modules/fixtures/hello-world/` exercises
 the v1 host context, theme/locale event, isolated storage, readiness handshake,
@@ -79,8 +100,9 @@ renewal, cache behavior, and recovery.
 Excalidraw should live in a separate package/release project and remain absent
 from the KKTerm installer. Build its self-contained production web output and a
 small adapter that calls `window.KKTerm.ready()`, applies host context changes,
-and maps document persistence/import/export to the supported bridge or browser
-file APIs.
+stores scene JSON and individual encoded image assets through
+`window.KKTerm.documents`, and maps deliberate import/export to browser file
+APIs.
 
 Excalidraw is MIT-licensed, so redistribution and modification are permitted if
 the copyright and license notice remain with the distributed software. The

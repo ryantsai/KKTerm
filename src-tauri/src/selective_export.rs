@@ -2837,6 +2837,7 @@ mod tests {
             "custom_module_versions",
             "custom_module_permissions",
             "custom_module_storage",
+            "custom_module_documents",
         ];
         let covered: Vec<&str> = SEGMENT_ORDER
             .iter()

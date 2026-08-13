@@ -26,7 +26,7 @@ function packageBytes(version = "1.0.0", marker = "one") {
     summary: "Fixture module",
     apiVersion: 1,
     license: { name: "MIT", file: "licenses/LICENSE" },
-    permissions: ["storage"],
+    permissions: ["storage", "documentStorage"],
     modules: [{ id: "main", title: "Fixture", entrypoint: "dist/index.html" }],
   };
   return Buffer.from(zipSync({
@@ -62,6 +62,7 @@ test("publisher creates immutable content-addressed package metadata", () => {
   assert.match(release.objectKey, /^packages\/sha256\/[a-f0-9]{64}\.kkmod$/);
   assert.equal(release.entry.downloadUrl, `https://modules.example.test/${release.objectKey}`);
   assert.equal(release.entry.downloadSize, bytes.length);
+  assert.deepEqual(release.entry.permissions, ["storage", "documentStorage"]);
 });
 
 test("publisher refuses downgrade and same-version byte replacement", () => {

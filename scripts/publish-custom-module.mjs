@@ -17,7 +17,7 @@ const wranglerCli = resolve(repositoryRoot, "node_modules/wrangler/bin/wrangler.
 const defaultBaselinePath = resolve(repositoryRoot, "custom-modules/catalog.v1.json");
 const semverPattern = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/;
 const moduleIdPattern = /^[a-z][a-z0-9.-]{0,127}$/;
-const allowedPermissions = new Set(["storage", "openExternal"]);
+const allowedPermissions = new Set(["storage", "documentStorage", "openExternal", "clipboard"]);
 const maxArchiveBytes = 256 * 1024 * 1024;
 
 function fail(message) {

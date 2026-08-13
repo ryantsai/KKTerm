@@ -13,7 +13,7 @@ use std::{
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use zip::{ZipArchive, ZipWriter, write::SimpleFileOptions};
 
-const SCHEMA_USER_VERSION: i32 = 59;
+const SCHEMA_USER_VERSION: i32 = 60;
 
 const DEFAULT_TERMINAL_OPACITY: u8 = 50;
 
@@ -658,8 +658,19 @@ CREATE TABLE IF NOT EXISTS custom_module_storage (
     PRIMARY KEY (module_id, key)
 );
 
+CREATE TABLE IF NOT EXISTS custom_module_documents (
+    module_id TEXT NOT NULL REFERENCES custom_modules(id) ON DELETE CASCADE,
+    key TEXT NOT NULL,
+    content_sha256 TEXT NOT NULL,
+    byte_size INTEGER NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (module_id, key)
+);
+
 CREATE INDEX IF NOT EXISTS idx_custom_module_versions_module
     ON custom_module_versions(module_id, installed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_custom_module_documents_content
+    ON custom_module_documents(module_id, content_sha256);
 "#;
 
 pub struct Storage {
@@ -2620,6 +2631,28 @@ impl Storage {
         connection
             .execute_batch(CURRENT_SCHEMA)
             .map_err(to_storage_error)?;
+        // v60: large Custom Module JSON documents and encoded browser blobs
+        // move to quota-bound files under app data. SQLite stores only their
+        // package-scoped key, content hash, byte size, and update timestamp.
+        // This is an ordinary schema migration with no startup reconciliation.
+        if stored_version < 60 {
+            connection
+                .execute_batch(
+                    r#"
+                    CREATE TABLE IF NOT EXISTS custom_module_documents (
+                        module_id TEXT NOT NULL REFERENCES custom_modules(id) ON DELETE CASCADE,
+                        key TEXT NOT NULL,
+                        content_sha256 TEXT NOT NULL,
+                        byte_size INTEGER NOT NULL,
+                        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        PRIMARY KEY (module_id, key)
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_custom_module_documents_content
+                        ON custom_module_documents(module_id, content_sha256);
+                    "#,
+                )
+                .map_err(to_storage_error)?;
+        }
         // v59: Custom Modules store validated package metadata, grants, and
         // isolated non-secret storage. Package files are deliberately outside
         // SQLite. There is no ongoing seed or reconciliation, so the
@@ -3299,12 +3332,7 @@ impl Storage {
         // Prefix or Address Record never requires a Site.
         if stored_version < 52 {
             ensure_column(&connection, "itops_ip_prefixes", "site_id", "TEXT")?;
-            ensure_column(
-                &connection,
-                "itops_ip_address_records",
-                "site_id",
-                "TEXT",
-            )?;
+            ensure_column(&connection, "itops_ip_address_records", "site_id", "TEXT")?;
         }
         // v53: optional device identity on each durable IP Address Record.
         // These are ordinary one-time additive columns: there is no ongoing
@@ -4026,7 +4054,7 @@ fn list_connection_password_credentials(
 ) -> Result<Vec<ConnectionPasswordCredentialSummary>, String> {
     let mut statement = connection
         .prepare(
-             "SELECT id, connection_type, username, label, created_from_connection_id,
+            "SELECT id, connection_type, username, label, created_from_connection_id,
                      created_at, updated_at,
                      (SELECT COUNT(*) FROM connections c
                       WHERE c.password_credential_id = connection_password_credentials.id)
@@ -4951,9 +4979,7 @@ fn find_reusable_connection_password_credentials(
         .query_row(
             "SELECT connection_type, username FROM connections WHERE id = ?1",
             params![connection_id],
-            |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-            },
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
         )
         .optional()
         .map_err(to_storage_error)?
@@ -5023,9 +5049,8 @@ fn merge_connection_password_credentials(
             rusqlite::params_from_iter(params.iter().map(|param| param.as_ref())),
         )
         .map_err(to_storage_error)?;
-    let delete_sql = format!(
-        "DELETE FROM connection_password_credentials WHERE id IN ({placeholders})"
-    );
+    let delete_sql =
+        format!("DELETE FROM connection_password_credentials WHERE id IN ({placeholders})");
     transaction
         .execute(
             &delete_sql,
@@ -6843,7 +6868,9 @@ fn validate_terminal_syntax_highlight_profiles(
             continue;
         }
         if name.chars().count() > 80 {
-            return Err("keyword highlighting profile names must be 80 characters or fewer".to_string());
+            return Err(
+                "keyword highlighting profile names must be 80 characters or fewer".to_string(),
+            );
         }
         if profile.rules.len() > MAX_RULES_PER_PROFILE {
             return Err(format!(
@@ -6863,12 +6890,17 @@ fn validate_terminal_syntax_highlight_profiles(
                 return Err("keyword highlighting rule names or patterns are too long".to_string());
             }
             let normalize_color = |value: Option<String>| -> Result<Option<String>, String> {
-                let Some(value) = value.map(|value| value.trim().to_string()).filter(|value| !value.is_empty()) else {
+                let Some(value) = value
+                    .map(|value| value.trim().to_string())
+                    .filter(|value| !value.is_empty())
+                else {
                     return Ok(None);
                 };
                 if value.len() != 7
                     || !value.starts_with('#')
-                    || !value[1..].chars().all(|character| character.is_ascii_hexdigit())
+                    || !value[1..]
+                        .chars()
+                        .all(|character| character.is_ascii_hexdigit())
                 {
                     return Err("keyword highlighting colors must use #RRGGBB".to_string());
                 }
@@ -7265,8 +7297,7 @@ fn validate_remote_desktop_view_mode(value: String) -> Result<String, String> {
 fn validate_vnc_settings(mut settings: VncSettings) -> Result<VncSettings, String> {
     settings.color_level = validate_vnc_color_level(settings.color_level)?;
     settings.preferred_encoding = validate_vnc_preferred_encoding(settings.preferred_encoding)?;
-    settings.performance_preset =
-        validate_vnc_performance_preset(settings.performance_preset)?;
+    settings.performance_preset = validate_vnc_performance_preset(settings.performance_preset)?;
     settings.compression_level =
         validate_vnc_tuning_level("compression", settings.compression_level)?;
     settings.jpeg_quality = validate_vnc_tuning_level("JPEG quality", settings.jpeg_quality)?;
@@ -7358,7 +7389,11 @@ fn validate_screenshot_settings(
         _ => return Err("screenshot border style must be solid, dashed, or dotted".to_string()),
     };
     settings.border_color = {
-        let trimmed = settings.border_color.trim().trim_start_matches('#').to_lowercase();
+        let trimmed = settings
+            .border_color
+            .trim()
+            .trim_start_matches('#')
+            .to_lowercase();
         if trimmed.is_empty() {
             default_screenshot_border_color()
         } else if trimmed.len() == 6 && trimmed.chars().all(|c| c.is_ascii_hexdigit()) {

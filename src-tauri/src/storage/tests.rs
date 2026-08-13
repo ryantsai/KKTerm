@@ -2,6 +2,71 @@ use super::*;
 use rusqlite::params;
 
 #[test]
+fn v60_custom_module_document_metadata_upgrade_and_current_reopen_preserve_data() {
+    let db_path = temp_db_path("custom-module-documents-v60");
+    {
+        let storage = Storage::open(db_path.clone()).expect("fixture storage opens");
+        storage
+            .with_connection(|connection| {
+                connection
+                    .execute_batch(
+                        "DROP TABLE custom_module_documents;
+                         PRAGMA user_version = 59;",
+                    )
+                    .map_err(to_storage_error)
+            })
+            .expect("v59 fixture shape is prepared");
+    }
+
+    let upgraded = Storage::open(db_path.clone()).expect("v59 storage upgrades");
+    upgraded
+        .with_connection(|connection| {
+            connection
+                .execute(
+                    "INSERT INTO custom_modules (
+                        id, manifest_json, active_version, source, trust, installed,
+                        enabled, rail_visible, sha256
+                     ) VALUES ('com.example.documents', '{}', '1.0.0', 'local', 'local', 1, 1, 1, 'abc')",
+                    [],
+                )
+                .map_err(to_storage_error)?;
+            connection
+                .execute(
+                    "INSERT INTO custom_module_documents (
+                        module_id, key, content_sha256, byte_size
+                     ) VALUES ('com.example.documents', 'scene', 'def', 42)",
+                    [],
+                )
+                .map_err(to_storage_error)?;
+            Ok(())
+        })
+        .expect("Custom Module document metadata is stored");
+    drop(upgraded);
+
+    let reopened = Storage::open(db_path.clone()).expect("current v60 storage reopens");
+    reopened
+        .with_connection(|connection| {
+            let metadata: (String, i64) = connection
+                .query_row(
+                    "SELECT content_sha256, byte_size FROM custom_module_documents
+                     WHERE module_id = 'com.example.documents' AND key = 'scene'",
+                    [],
+                    |row| Ok((row.get(0)?, row.get(1)?)),
+                )
+                .map_err(to_storage_error)?;
+            assert_eq!(metadata, ("def".into(), 42));
+            let version: i32 = connection
+                .pragma_query_value(None, "user_version", |row| row.get(0))
+                .map_err(to_storage_error)?;
+            assert_eq!(version, SCHEMA_USER_VERSION);
+            Ok(())
+        })
+        .expect("current-version reopen preserves document metadata");
+    drop(reopened);
+    let _ = fs::remove_file(db_path);
+}
+
+#[test]
 fn v59_custom_module_tables_upgrade_and_current_reopen_preserve_data() {
     let db_path = temp_db_path("custom-modules-v59");
     {
@@ -197,10 +262,18 @@ fn v57_system_cleaner_tables_upgrade_and_current_reopen_preserve_records() {
     reopened
         .with_connection(|connection| {
             let keep_rows: i64 = connection
-                .query_row("SELECT COUNT(*) FROM system_cleaner_keep_paths", [], |row| row.get(0))
+                .query_row(
+                    "SELECT COUNT(*) FROM system_cleaner_keep_paths",
+                    [],
+                    |row| row.get(0),
+                )
                 .map_err(to_storage_error)?;
             let bundle_rows: i64 = connection
-                .query_row("SELECT COUNT(*) FROM system_cleaner_recipe_bundles", [], |row| row.get(0))
+                .query_row(
+                    "SELECT COUNT(*) FROM system_cleaner_recipe_bundles",
+                    [],
+                    |row| row.get(0),
+                )
                 .map_err(to_storage_error)?;
             assert_eq!(keep_rows, 1);
             assert_eq!(bundle_rows, 1);
@@ -686,9 +759,9 @@ fn v51_ipam_site_columns_are_added_and_current_reopen_keeps_them_optional() {
     let reopened = Storage::open(db_path).expect("current storage reopens");
     reopened
         .with_connection(|connection| {
-            let version: i32 =
-                connection.pragma_query_value(None, "user_version", |row| row.get(0))
-                    .map_err(to_storage_error)?;
+            let version: i32 = connection
+                .pragma_query_value(None, "user_version", |row| row.get(0))
+                .map_err(to_storage_error)?;
             let site_id: Option<String> = connection
                 .query_row(
                     "SELECT site_id FROM itops_ip_address_records WHERE id = 'address-2'",
@@ -771,9 +844,9 @@ fn v52_ipam_device_identity_columns_upgrade_and_survive_current_reopen() {
     let reopened = Storage::open(db_path).expect("current storage reopens");
     reopened
         .with_connection(|connection| {
-            let version: i32 =
-                connection.pragma_query_value(None, "user_version", |row| row.get(0))
-                    .map_err(to_storage_error)?;
+            let version: i32 = connection
+                .pragma_query_value(None, "user_version", |row| row.get(0))
+                .map_err(to_storage_error)?;
             let identity: (String, String) = connection
                 .query_row(
                     "SELECT device_type, device_model

@@ -1,0 +1,24 @@
+{
+  "id": "com.kkterm.excalidraw",
+  "name": "Excalidraw",
+  "version": "1.0.1",
+  "publisher": "KKTerm",
+  "summary": "An unofficial offline Excalidraw integration for KKTerm.",
+  "apiVersion": 1,
+  "homepage": "https://excalidraw.com",
+  "license": {
+    "name": "MIT",
+    "file": "licenses/LICENSE",
+    "noticesFile": "licenses/THIRD_PARTY_NOTICES.txt"
+  },
+  "permissions": ["documentStorage", "openExternal", "clipboard"],
+  "modules": [
+    {
+      "id": "excalidraw",
+      "title": "Excalidraw",
+      "icon": "dist/icon.svg",
+      "entrypoint": "dist/index.html",
+      "railVisible": true
+    }
+  ]
+}

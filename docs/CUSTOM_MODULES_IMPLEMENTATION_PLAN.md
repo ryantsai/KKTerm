@@ -20,8 +20,9 @@ grant private host capabilities.
   permissions, and package source, enable or disable it, show or hide its Module
   contribution in the Activity Rail, and uninstall it.
 - Installed package payloads remain outside the main installer and outside
-  SQLite. SQLite stores validated metadata, grants, lifecycle state, and isolated
-  key/value data.
+  SQLite. SQLite stores validated metadata, grants, lifecycle state, isolated
+  small key/value data, and external-document keys/hashes/sizes/timestamps;
+  large document content stays in quota-bound content-addressed app-data files.
 - Enabled Module contributions appear as durable Activity Rail destinations and
   load in a dedicated native WebView without a localhost service.
 - External module code cannot call KKTerm's ordinary Tauri commands. It can call
@@ -81,7 +82,7 @@ No external package may load until this gate passes.
 ### 2. Persistence and package service
 
 - Add schema-versioned tables for installed packages, retained versions,
-  permission grants, and isolated storage.
+  permission grants, isolated small storage, and external document metadata.
 - Store extracted package versions under the resolved KKTerm data directory.
 - Validate manifests and archives before activation: bounded entry count and
   expanded size, safe relative paths, no links, no duplicate/case-colliding
@@ -104,10 +105,15 @@ No external package may load until this gate passes.
 - Apply a restrictive CSP, correct MIME types, navigation filtering, and denied
   popup-window behavior. Direct external navigation is denied; a granted
   `openExternal` bridge request opens HTTP(S) links in the system browser.
+- Keep the Tauri command that constructs a Custom Module `WebviewWindow`
+  asynchronous. Synchronous construction can deadlock WebView2 and the Tauri
+  IPC dispatcher on Windows, preventing readiness and unrelated invokes from
+  completing.
 - Implement readiness with a bounded startup timeout, host context,
-  theme/locale/visibility notifications, isolated quota-bound storage, and the
-  mediated external-link API. User-selected browser file inputs remain inside
-  the isolated WebView; v1 exposes no arbitrary host-filesystem API.
+  theme/locale/visibility notifications, isolated quota-bound small/document
+  storage, permission-gated native clipboard access, and the mediated
+  external-link API. User-selected browser file inputs remain inside the
+  isolated WebView; v1 exposes no arbitrary host-filesystem API.
 - Participate in the shared native-overlay intersection registry so dialogs and
   popovers cannot render underneath the module WebView.
 
@@ -149,7 +155,8 @@ No external package may load until this gate passes.
   migrations and current-version reopen, atomic activation and rollback.
 - Frontend tests: Settings navigation/search/assistant/tutorial mappings,
   installed/catalog states, confirmation flows, dynamic rail normalization and
-  routing, host lifecycle, and native-overlay policy.
+  routing, asynchronous window-construction boundary, host lifecycle, and
+  native-overlay policy.
 - Run `npm run check`, `npm run build`, `cargo check --manifest-path
   src-tauri/Cargo.toml`, and `cargo test --manifest-path src-tauri/Cargo.toml`.
 - Release QA validates installation, restart persistence, input/focus, module switching,

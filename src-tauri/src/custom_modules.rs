@@ -33,6 +33,10 @@ const MAX_SINGLE_FILE_BYTES: u64 = 128 * 1024 * 1024;
 const STORAGE_QUOTA_BYTES: i64 = 10 * 1024 * 1024;
 const MAX_STORAGE_KEYS: i64 = 10_000;
 const MAX_BRIDGE_PAYLOAD_BYTES: usize = 11 * 1024 * 1024;
+const DOCUMENT_STORAGE_QUOTA_BYTES: i64 = 512 * 1024 * 1024;
+const MAX_DOCUMENT_BYTES: usize = 64 * 1024 * 1024;
+const MAX_DOCUMENT_KEYS: i64 = 4_096;
+const MAX_DOCUMENT_BRIDGE_PAYLOAD_BYTES: usize = MAX_DOCUMENT_BYTES + 1024 * 1024;
 const MAX_CATALOG_BYTES: u64 = 4 * 1024 * 1024;
 const MAX_CATALOG_VALIDITY_DAYS: i64 = 45;
 const FIRST_PARTY_VERIFYING_KEY_HEX: &str = env!("KKTERM_CUSTOM_MODULE_CATALOG_PUBLIC_KEY");
@@ -255,6 +259,10 @@ fn modules_root(paths: &AppPaths) -> PathBuf {
     paths.data_dir().join("custom-modules")
 }
 
+fn document_storage_root(paths: &AppPaths) -> PathBuf {
+    modules_root(paths).join("documents")
+}
+
 fn package_relative_path(module_id: &str, version: &str) -> PathBuf {
     PathBuf::from("packages").join(module_id).join(version)
 }
@@ -386,7 +394,7 @@ fn validate_manifest(manifest: &CustomModuleManifest) -> Result<(), String> {
     if let Some(path) = manifest.license.notices_file.as_deref() {
         validate_relative_path(path, "notices file")?;
     }
-    let allowed_permissions = ["storage", "openExternal"];
+    let allowed_permissions = ["storage", "documentStorage", "openExternal", "clipboard"];
     let mut permissions = HashSet::new();
     for permission in &manifest.permissions {
         if !allowed_permissions.contains(&permission.as_str()) {
@@ -1069,7 +1077,10 @@ fn validate_catalog_with_key(catalog: &Catalog, public_key_hex: &str) -> Result<
         verify_catalog_signature_with_key(public_key_hex, &entry.sha256, &entry.signature)?;
         let mut permissions = HashSet::new();
         for permission in &entry.permissions {
-            if !matches!(permission.as_str(), "storage" | "openExternal") {
+            if !matches!(
+                permission.as_str(),
+                "storage" | "documentStorage" | "openExternal" | "clipboard"
+            ) {
                 return Err(format!("unsupported catalog permission '{permission}'"));
             }
             if !permissions.insert(permission) {
@@ -1760,6 +1771,12 @@ pub fn uninstall_custom_module(
             &webview_data,
             "Custom Module WebView data",
         )?;
+        let document_data = document_storage_root(&paths).join(&module_id);
+        remove_owned_directory(
+            &document_storage_root(&paths),
+            &document_data,
+            "Custom Module document data",
+        )?;
     }
     storage.with_connection_mut(|connection| {
         let transaction = connection.transaction().map_err(|error| error.to_string())?;
@@ -1791,7 +1808,11 @@ fn session_label(module_id: &str, contribution_id: &str) -> String {
     format!("custom-module-{}", encode_hex(&digest[..12]))
 }
 
-fn initialization_script(theme: &str, locale: &str) -> Result<String, String> {
+fn initialization_script(
+    theme: &str,
+    locale: &str,
+    clipboard_allowed: bool,
+) -> Result<String, String> {
     let context = serde_json::to_string(&json!({
         "apiVersion": HOST_API_VERSION,
         "theme": theme,
@@ -1810,6 +1831,15 @@ fn initialization_script(theme: &str, locale: &str) -> Result<String, String> {
             removeItem: (key) => ephemeralValues.delete(String(key)),
             setItem: (key, value) => ephemeralValues.set(String(key), String(value))
           }});
+          const clipboardUnavailable = () => Promise.reject(
+            new DOMException('Clipboard access is unavailable to Custom Modules.', 'NotAllowedError')
+          );
+          const unavailableClipboard = Object.freeze({{
+            read: clipboardUnavailable,
+            readText: clipboardUnavailable,
+            write: clipboardUnavailable,
+            writeText: clipboardUnavailable
+          }});
           const replace = (target, name, value) => {{
             try {{ Object.defineProperty(target, name, {{ configurable: false, value }}); }} catch {{}}
           }};
@@ -1820,7 +1850,7 @@ fn initialization_script(theme: &str, locale: &str) -> Result<String, String> {
           }}
           for (const target of [navigator, Navigator.prototype]) {{
             replace(target, 'storage', undefined);
-            replace(target, 'clipboard', undefined);
+            if (!{clipboard_allowed}) replace(target, 'clipboard', unavailableClipboard);
           }}
           for (const target of [document, Document.prototype]) {{
             try {{ Object.defineProperty(target, 'cookie', {{ configurable: false, get: () => '', set: () => true }}); }} catch {{}}
@@ -1840,6 +1870,12 @@ fn initialization_script(theme: &str, locale: &str) -> Result<String, String> {
               delete: (key) => invoke('storage.delete', {{ key }}),
               list: () => invoke('storage.list')
             }}),
+            documents: Object.freeze({{
+              get: (key) => invoke('documents.get', {{ key }}),
+              set: (key, value) => invoke('documents.set', {{ key, value }}),
+              delete: (key) => invoke('documents.delete', {{ key }}),
+              list: () => invoke('documents.list')
+            }}),
             on: (event, listener) => {{
               const current = listeners.get(event) || new Set();
               current.add(listener); listeners.set(event, current);
@@ -1857,7 +1893,7 @@ fn initialization_script(theme: &str, locale: &str) -> Result<String, String> {
 }
 
 #[tauri::command]
-pub fn start_custom_module(
+pub async fn start_custom_module(
     request: StartCustomModuleRequest,
     app: tauri::AppHandle,
     storage: tauri::State<'_, Storage>,
@@ -1899,8 +1935,13 @@ pub fn start_custom_module(
     let initial_url = Url::parse(&format!("kkmodule://localhost/{}", contribution.entrypoint))
         .map_err(|error| format!("failed to build Custom Module URL: {error}"))?;
     let permissions = granted_permissions(&storage, &installed.manifest.id)?;
+    let clipboard_allowed = permissions.contains("clipboard");
     let mut builder = WebviewWindowBuilder::new(&app, &label, WebviewUrl::External(initial_url))
-        .initialization_script(initialization_script(&request.theme, &request.locale)?)
+        .initialization_script(initialization_script(
+            &request.theme,
+            &request.locale,
+            clipboard_allowed,
+        )?)
         .decorations(false)
         .resizable(false)
         .minimizable(false)
@@ -1921,6 +1962,9 @@ pub fn start_custom_module(
             is_module_asset
         })
         .on_new_window(|_, _| tauri::webview::NewWindowResponse::Deny);
+    if clipboard_allowed {
+        builder = builder.enable_clipboard_access();
+    }
     #[cfg(windows)]
     {
         builder = builder
@@ -2061,6 +2105,262 @@ fn bridge_key(payload: &Value) -> Result<&str, String> {
     Ok(key)
 }
 
+fn document_content_path(paths: &AppPaths, module_id: &str, sha256: &str) -> PathBuf {
+    document_storage_root(paths)
+        .join(module_id)
+        .join(format!("{sha256}.json"))
+}
+
+fn ensure_document_quota(
+    connection: &rusqlite::Connection,
+    module_id: &str,
+    key: &str,
+    byte_size: i64,
+) -> Result<(), String> {
+    let (existing, key_count): (i64, i64) = connection
+        .query_row(
+            "SELECT COALESCE(SUM(byte_size), 0), COUNT(*) FROM custom_module_documents
+             WHERE module_id = ?1 AND key <> ?2",
+            params![module_id, key],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .map_err(|error| error.to_string())?;
+    if key_count >= MAX_DOCUMENT_KEYS {
+        return Err("Custom Module document key limit exceeded".into());
+    }
+    if existing.saturating_add(byte_size) > DOCUMENT_STORAGE_QUOTA_BYTES {
+        return Err("Custom Module document storage quota exceeded".into());
+    }
+    Ok(())
+}
+
+fn write_document_content(
+    paths: &AppPaths,
+    module_id: &str,
+    sha256: &str,
+    bytes: &[u8],
+) -> Result<(), String> {
+    let directory = document_storage_root(paths).join(module_id);
+    fs::create_dir_all(&directory)
+        .map_err(|error| format!("failed to create Custom Module document directory: {error}"))?;
+    let destination = document_content_path(paths, module_id, sha256);
+    if destination.exists() {
+        let existing = fs::read(&destination)
+            .map_err(|error| format!("failed to verify Custom Module document: {error}"))?;
+        if existing == bytes {
+            return Ok(());
+        }
+        return Err("Custom Module document content hash collision or corruption detected".into());
+    }
+    let temporary = directory.join(format!(".{sha256}-{:016x}.tmp", rand::random::<u64>()));
+    let result = (|| -> Result<(), String> {
+        let mut output = File::create(&temporary)
+            .map_err(|error| format!("failed to create Custom Module document: {error}"))?;
+        output
+            .write_all(bytes)
+            .map_err(|error| format!("failed to write Custom Module document: {error}"))?;
+        output
+            .sync_all()
+            .map_err(|error| format!("failed to flush Custom Module document: {error}"))?;
+        drop(output);
+        match fs::rename(&temporary, &destination) {
+            Ok(()) => Ok(()),
+            Err(_) if destination.exists() => {
+                let existing = fs::read(&destination).map_err(|error| {
+                    format!("failed to verify concurrently written Custom Module document: {error}")
+                })?;
+                if existing == bytes {
+                    Ok(())
+                } else {
+                    Err(
+                        "Custom Module document content hash collision or corruption detected"
+                            .into(),
+                    )
+                }
+            }
+            Err(error) => Err(format!(
+                "failed to activate Custom Module document: {error}"
+            )),
+        }
+    })();
+    let _ = fs::remove_file(&temporary);
+    result
+}
+
+fn remove_unreferenced_document(
+    storage: &Storage,
+    paths: &AppPaths,
+    module_id: &str,
+    sha256: &str,
+) -> Result<(), String> {
+    let references: i64 = storage.with_connection(|connection| {
+        connection
+            .query_row(
+                "SELECT COUNT(*) FROM custom_module_documents
+                 WHERE module_id = ?1 AND content_sha256 = ?2",
+                params![module_id, sha256],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())
+    })?;
+    if references == 0 {
+        let path = document_content_path(paths, module_id, sha256);
+        match fs::remove_file(path) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(format!("failed to remove Custom Module document: {error}")),
+        }
+    }
+    Ok(())
+}
+
+fn set_document(
+    storage: &Storage,
+    paths: &AppPaths,
+    module_id: &str,
+    key: &str,
+    value: &Value,
+) -> Result<Value, String> {
+    let bytes = serde_json::to_vec(value).map_err(|error| error.to_string())?;
+    if bytes.len() > MAX_DOCUMENT_BYTES {
+        return Err("Custom Module document exceeds the 64 MiB per-document limit".into());
+    }
+    let byte_size = i64::try_from(bytes.len())
+        .map_err(|_| "Custom Module document is too large".to_string())?;
+    let sha256 = encode_hex(&Sha256::digest(&bytes));
+    let previous_sha256 = storage.with_connection(|connection| {
+        ensure_document_quota(connection, module_id, key, byte_size)?;
+        connection
+            .query_row(
+                "SELECT content_sha256 FROM custom_module_documents
+                 WHERE module_id = ?1 AND key = ?2",
+                params![module_id, key],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()
+            .map_err(|error| error.to_string())
+    })?;
+    write_document_content(paths, module_id, &sha256, &bytes)?;
+    let update = storage.with_connection_mut(|connection| {
+        let transaction = connection
+            .transaction()
+            .map_err(|error| error.to_string())?;
+        ensure_document_quota(&transaction, module_id, key, byte_size)?;
+        transaction
+            .execute(
+                "INSERT INTO custom_module_documents (
+                    module_id, key, content_sha256, byte_size
+                 ) VALUES (?1, ?2, ?3, ?4)
+                 ON CONFLICT(module_id, key) DO UPDATE SET
+                    content_sha256 = excluded.content_sha256,
+                    byte_size = excluded.byte_size,
+                    updated_at = CURRENT_TIMESTAMP",
+                params![module_id, key, sha256, byte_size],
+            )
+            .map_err(|error| error.to_string())?;
+        transaction.commit().map_err(|error| error.to_string())
+    });
+    if let Err(error) = update {
+        let _ = remove_unreferenced_document(storage, paths, module_id, &sha256);
+        return Err(error);
+    }
+    if let Some(previous) = previous_sha256.filter(|previous| previous != &sha256) {
+        remove_unreferenced_document(storage, paths, module_id, &previous)?;
+    }
+    Ok(json!(true))
+}
+
+fn get_document(
+    storage: &Storage,
+    paths: &AppPaths,
+    module_id: &str,
+    key: &str,
+) -> Result<Value, String> {
+    let metadata: Option<(String, i64)> = storage.with_connection(|connection| {
+        connection
+            .query_row(
+                "SELECT content_sha256, byte_size FROM custom_module_documents
+                 WHERE module_id = ?1 AND key = ?2",
+                params![module_id, key],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .optional()
+            .map_err(|error| error.to_string())
+    })?;
+    let Some((sha256, byte_size)) = metadata else {
+        return Ok(Value::Null);
+    };
+    let path = document_content_path(paths, module_id, &sha256);
+    let bytes = fs::read(path)
+        .map_err(|error| format!("failed to read Custom Module document: {error}"))?;
+    if bytes.len() > MAX_DOCUMENT_BYTES
+        || i64::try_from(bytes.len()).ok() != Some(byte_size)
+        || encode_hex(&Sha256::digest(&bytes)) != sha256
+    {
+        return Err("Custom Module document metadata does not match its stored content".into());
+    }
+    serde_json::from_slice(&bytes)
+        .map_err(|error| format!("Custom Module document contains invalid JSON: {error}"))
+}
+
+fn list_documents(storage: &Storage, module_id: &str) -> Result<Value, String> {
+    storage.with_connection(|connection| {
+        let mut statement = connection
+            .prepare(
+                "SELECT key, content_sha256, byte_size, updated_at
+                 FROM custom_module_documents WHERE module_id = ?1 ORDER BY key",
+            )
+            .map_err(|error| error.to_string())?;
+        let documents = statement
+            .query_map([module_id], |row| {
+                Ok(json!({
+                    "key": row.get::<_, String>(0)?,
+                    "sha256": row.get::<_, String>(1)?,
+                    "byteSize": row.get::<_, i64>(2)?,
+                    "updatedAt": row.get::<_, String>(3)?,
+                }))
+            })
+            .map_err(|error| error.to_string())?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|error| error.to_string())?;
+        Ok(json!(documents))
+    })
+}
+
+fn delete_document(
+    storage: &Storage,
+    paths: &AppPaths,
+    module_id: &str,
+    key: &str,
+) -> Result<Value, String> {
+    let previous_sha256 = storage.with_connection_mut(|connection| {
+        let transaction = connection
+            .transaction()
+            .map_err(|error| error.to_string())?;
+        let previous = transaction
+            .query_row(
+                "SELECT content_sha256 FROM custom_module_documents
+                 WHERE module_id = ?1 AND key = ?2",
+                params![module_id, key],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()
+            .map_err(|error| error.to_string())?;
+        transaction
+            .execute(
+                "DELETE FROM custom_module_documents WHERE module_id = ?1 AND key = ?2",
+                params![module_id, key],
+            )
+            .map_err(|error| error.to_string())?;
+        transaction.commit().map_err(|error| error.to_string())?;
+        Ok(previous)
+    })?;
+    if let Some(sha256) = previous_sha256 {
+        remove_unreferenced_document(storage, paths, module_id, &sha256)?;
+    }
+    Ok(json!(true))
+}
+
 fn ensure_storage_quota(
     connection: &rusqlite::Connection,
     module_id: &str,
@@ -2090,16 +2390,22 @@ pub fn custom_module_bridge(
     webview_window: WebviewWindow,
     app: tauri::AppHandle,
     storage: tauri::State<'_, Storage>,
+    paths: tauri::State<'_, AppPaths>,
     runtime: tauri::State<'_, CustomModuleRuntime>,
 ) -> Result<Value, String> {
     let label = webview_window.label();
     if !label.starts_with("custom-module-") {
         return Err("Custom Module bridge is available only to registered module WebViews".into());
     }
+    let max_payload_bytes = if request.operation == "documents.set" {
+        MAX_DOCUMENT_BRIDGE_PAYLOAD_BYTES
+    } else {
+        MAX_BRIDGE_PAYLOAD_BYTES
+    };
     if serde_json::to_vec(&request.payload)
         .map_err(|error| error.to_string())?
         .len()
-        > MAX_BRIDGE_PAYLOAD_BYTES
+        > max_payload_bytes
     {
         return Err("Custom Module bridge payload is too large".into());
     }
@@ -2219,6 +2525,31 @@ pub fn custom_module_bridge(
                 _ => Err("unknown Custom Module storage operation".into()),
             })
         }
+        operation if operation.starts_with("documents.") => {
+            if !session.permissions.contains("documentStorage") {
+                return Err("Custom Module has not been granted documentStorage permission".into());
+            }
+            match operation {
+                "documents.get" => {
+                    let key = bridge_key(&request.payload)?;
+                    get_document(&storage, &paths, &session.module_id, key)
+                }
+                "documents.set" => {
+                    let key = bridge_key(&request.payload)?;
+                    let value = request
+                        .payload
+                        .get("value")
+                        .ok_or_else(|| "documents.set requires a value".to_string())?;
+                    set_document(&storage, &paths, &session.module_id, key, value)
+                }
+                "documents.delete" => {
+                    let key = bridge_key(&request.payload)?;
+                    delete_document(&storage, &paths, &session.module_id, key)
+                }
+                "documents.list" => list_documents(&storage, &session.module_id),
+                _ => Err("unknown Custom Module document operation".into()),
+            }
+        }
         _ => Err("unknown Custom Module bridge operation".into()),
     }
 }
@@ -2267,7 +2598,7 @@ pub fn protocol_response(
             .header("Cache-Control", "no-store")
             .header(
                 "Permissions-Policy",
-                "accelerometer=(), ambient-light-sensor=(), autoplay=(), bluetooth=(), camera=(), clipboard-read=(), clipboard-write=(), display-capture=(), encrypted-media=(), geolocation=(), gyroscope=(), hid=(), idle-detection=(), local-fonts=(), magnetometer=(), microphone=(), midi=(), payment=(), publickey-credentials-get=(), screen-wake-lock=(), serial=(), usb=(), web-share=(), window-management=(), xr-spatial-tracking=()",
+                "accelerometer=(), ambient-light-sensor=(), autoplay=(), bluetooth=(), camera=(), display-capture=(), encrypted-media=(), geolocation=(), gyroscope=(), hid=(), idle-detection=(), local-fonts=(), magnetometer=(), microphone=(), midi=(), payment=(), publickey-credentials-get=(), screen-wake-lock=(), serial=(), usb=(), web-share=(), window-management=(), xr-spatial-tracking=()",
             )
             .header(
                 "Content-Security-Policy",
@@ -2359,6 +2690,20 @@ mod tests {
                 .unwrap_err()
                 .contains("unsupported")
         );
+    }
+
+    #[test]
+    fn manifest_accepts_document_storage_permission() {
+        let mut manifest = valid_manifest();
+        manifest.permissions.push("documentStorage".into());
+        validate_manifest(&manifest).unwrap();
+    }
+
+    #[test]
+    fn manifest_accepts_clipboard_permission() {
+        let mut manifest = valid_manifest();
+        manifest.permissions.push("clipboard".into());
+        validate_manifest(&manifest).unwrap();
     }
 
     #[test]
@@ -2682,6 +3027,106 @@ mod tests {
                 ensure_storage_quota(connection, "com.example.one", "existing", 8)?;
                 assert!(
                     ensure_storage_quota(connection, "com.example.one", "new", 8)
+                        .unwrap_err()
+                        .contains("quota")
+                );
+                Ok(())
+            })
+            .unwrap();
+    }
+
+    #[test]
+    fn document_storage_keeps_content_outside_sqlite_and_cleans_replaced_files() {
+        let directory = tempfile::tempdir().unwrap();
+        let storage = Storage::open(directory.path().join("test.sqlite3")).unwrap();
+        let paths = AppPaths::for_test(directory.path().join("data"));
+        storage
+            .with_connection(|connection| {
+                connection
+                    .execute(
+                        "INSERT INTO custom_modules (
+                            id, manifest_json, active_version, source, trust, sha256
+                         ) VALUES ('com.example.documents', '{}', '1.0.0', 'local', 'local', 'hash')",
+                        [],
+                    )
+                    .map(|_| ())
+                    .map_err(|error| error.to_string())
+            })
+            .unwrap();
+
+        let first =
+            json!({"elements": [{"id": "one"}], "files": {"image": "data:image/png;base64,AA=="}});
+        set_document(&storage, &paths, "com.example.documents", "scene", &first).unwrap();
+        let (first_sha256, byte_size): (String, i64) = storage
+            .with_connection(|connection| {
+                connection
+                    .query_row(
+                        "SELECT content_sha256, byte_size FROM custom_module_documents
+                         WHERE module_id = 'com.example.documents' AND key = 'scene'",
+                        [],
+                        |row| Ok((row.get(0)?, row.get(1)?)),
+                    )
+                    .map_err(|error| error.to_string())
+            })
+            .unwrap();
+        assert!(byte_size > 0);
+        let first_path = document_content_path(&paths, "com.example.documents", &first_sha256);
+        assert!(first_path.is_file());
+        assert_eq!(
+            get_document(&storage, &paths, "com.example.documents", "scene").unwrap(),
+            first
+        );
+        assert_eq!(
+            list_documents(&storage, "com.example.documents").unwrap()[0]["key"],
+            "scene"
+        );
+
+        let second = json!({"elements": [{"id": "two"}], "files": {}});
+        set_document(&storage, &paths, "com.example.documents", "scene", &second).unwrap();
+        assert!(!first_path.exists());
+        assert_eq!(
+            get_document(&storage, &paths, "com.example.documents", "scene").unwrap(),
+            second
+        );
+        delete_document(&storage, &paths, "com.example.documents", "scene").unwrap();
+        assert_eq!(
+            get_document(&storage, &paths, "com.example.documents", "scene").unwrap(),
+            Value::Null
+        );
+        assert_eq!(
+            list_documents(&storage, "com.example.documents").unwrap(),
+            json!([])
+        );
+    }
+
+    #[test]
+    fn document_quota_is_scoped_by_module_and_excludes_the_replaced_key() {
+        let directory = tempfile::tempdir().unwrap();
+        let storage = Storage::open(directory.path().join("test.sqlite3")).unwrap();
+        storage
+            .with_connection(|connection| {
+                for id in ["com.example.one", "com.example.two"] {
+                    connection
+                        .execute(
+                            "INSERT INTO custom_modules (
+                                id, manifest_json, active_version, source, trust, sha256
+                             ) VALUES (?1, '{}', '1.0.0', 'local', 'local', 'hash')",
+                            [id],
+                        )
+                        .map_err(|error| error.to_string())?;
+                }
+                connection
+                    .execute(
+                        "INSERT INTO custom_module_documents (
+                            module_id, key, content_sha256, byte_size
+                         ) VALUES ('com.example.one', 'existing', 'one', ?1),
+                                  ('com.example.two', 'other', 'two', ?1)",
+                        [DOCUMENT_STORAGE_QUOTA_BYTES - 4],
+                    )
+                    .map_err(|error| error.to_string())?;
+                ensure_document_quota(connection, "com.example.one", "existing", 8)?;
+                assert!(
+                    ensure_document_quota(connection, "com.example.one", "new", 8)
                         .unwrap_err()
                         .contains("quota")
                 );
