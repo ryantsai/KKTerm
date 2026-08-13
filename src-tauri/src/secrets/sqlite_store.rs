@@ -6,7 +6,11 @@ use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use rusqlite::{Connection, OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::path::PathBuf;
+use std::{
+    path::{Path, PathBuf},
+    sync::atomic::{AtomicBool, Ordering},
+    time::Duration,
+};
 
 const PASSWORD_ENV: &str = "KKTERM_SECRET_STORE_PASSWORD";
 const STORE_VERSION: u8 = 1;
@@ -17,6 +21,7 @@ const SENTINEL_PLAINTEXT: &str = "kkterm-sqlite-secret-store-v1";
 pub(super) struct SqliteSecretStore {
     db_path: PathBuf,
     password: String,
+    verified: AtomicBool,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -38,7 +43,11 @@ impl SqliteSecretStore {
             ));
         }
 
-        Ok(Self { db_path, password })
+        Ok(Self {
+            db_path,
+            password,
+            verified: AtomicBool::new(false),
+        })
     }
 
     pub(super) fn from_environment(db_path: PathBuf) -> Result<Self, String> {
@@ -59,12 +68,7 @@ impl SqliteSecretStore {
     }
 
     pub(super) fn store_exists(db_path: &std::path::Path) -> Result<bool, String> {
-        let connection = Connection::open(db_path).map_err(|error| {
-            format!(
-                "Could not open encrypted SQLite secret store {}: {error}",
-                db_path.display()
-            )
-        })?;
+        let connection = open_connection(db_path)?;
         let sentinel_key = storage_key(SENTINEL_KEY);
         let count: i64 = connection
             .query_row(
@@ -82,12 +86,7 @@ impl SqliteSecretStore {
         db_path: &std::path::Path,
         reference: &SecretReference,
     ) -> Result<bool, String> {
-        let connection = Connection::open(db_path).map_err(|error| {
-            format!(
-                "Could not open encrypted SQLite secret store {}: {error}",
-                db_path.display()
-            )
-        })?;
+        let connection = open_connection(db_path)?;
         let count: i64 = connection
             .query_row(
                 "SELECT COUNT(1) FROM encrypted_secret_store_entries WHERE secret_key = ?1",
@@ -101,31 +100,40 @@ impl SqliteSecretStore {
     }
 
     pub(super) fn initialize_or_verify(&self, create_if_missing: bool) -> Result<(), String> {
+        if self.verified.load(Ordering::Relaxed) {
+            return Ok(());
+        }
         let sentinel_key = storage_key(SENTINEL_KEY);
         if self.exists_by_key(&sentinel_key)? {
             let plaintext = self.read_by_key(&sentinel_key)?.ok_or_else(|| {
                 "Encrypted SQLite secret store verification record is missing".to_string()
             })?;
             if plaintext == SENTINEL_PLAINTEXT {
+                self.verified.store(true, Ordering::Relaxed);
                 return Ok(());
             }
             return Err("Encrypted SQLite secret store verification failed".to_string());
         }
 
         if create_if_missing {
-            return self.write_by_key(&sentinel_key, SENTINEL_PLAINTEXT);
+            self.write_by_key(&sentinel_key, SENTINEL_PLAINTEXT)?;
+            self.verified.store(true, Ordering::Relaxed);
+            return Ok(());
         }
 
         Err("Encrypted SQLite secret store has not been set up".to_string())
     }
 
     pub(super) fn reset(&self) -> Result<(), String> {
+        self.verified.store(false, Ordering::Relaxed);
         let connection = self.open()?;
         connection
             .execute("DELETE FROM encrypted_secret_store_entries", [])
             .map_err(|error| format!("Could not clear encrypted SQLite secrets: {error}"))?;
         drop(connection);
-        self.write_by_key(&storage_key(SENTINEL_KEY), SENTINEL_PLAINTEXT)
+        self.write_by_key(&storage_key(SENTINEL_KEY), SENTINEL_PLAINTEXT)?;
+        self.verified.store(true, Ordering::Relaxed);
+        Ok(())
     }
 
     pub(super) fn rotate_password(&self, new_password: String) -> Result<Self, String> {
@@ -190,16 +198,12 @@ impl SqliteSecretStore {
         transaction.commit().map_err(|error| {
             format!("Could not commit encrypted SQLite secret rotation: {error}")
         })?;
+        replacement.verified.store(true, Ordering::Relaxed);
         Ok(replacement)
     }
 
     fn open(&self) -> Result<Connection, String> {
-        Connection::open(&self.db_path).map_err(|error| {
-            format!(
-                "Could not open encrypted SQLite secret store {}: {error}",
-                self.db_path.display()
-            )
-        })
+        open_connection(&self.db_path)
     }
 
     fn write_by_key(&self, key: &str, secret: &str) -> Result<(), String> {
@@ -299,9 +303,30 @@ impl SecretStore for SqliteSecretStore {
         self.delete_by_key(&storage_key(&reference.key()))
     }
 
+    fn refresh(&self) -> Result<(), String> {
+        self.verified.store(false, Ordering::Relaxed);
+        self.initialize_or_verify(false)
+    }
+
     fn exists(&self, reference: &SecretReference) -> Result<bool, String> {
         self.exists_by_key(&storage_key(&reference.key()))
     }
+}
+
+fn open_connection(db_path: &Path) -> Result<Connection, String> {
+    let connection = Connection::open(db_path).map_err(|error| {
+        format!(
+            "Could not open encrypted SQLite secret store {}: {error}",
+            db_path.display()
+        )
+    })?;
+    connection
+        .busy_timeout(Duration::from_secs(5))
+        .map_err(|error| format!("Could not configure encrypted SQLite secret store: {error}"))?;
+    connection
+        .pragma_update(None, "synchronous", "NORMAL")
+        .map_err(|error| format!("Could not configure encrypted SQLite secret store: {error}"))?;
+    Ok(connection)
 }
 
 fn storage_key(secret_key: &str) -> String {

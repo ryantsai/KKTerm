@@ -33,7 +33,7 @@ test("IP Address editor supports direct, Host-implied, and segment-inherited Sit
 
   // The v52 repair stays in place under later bumps; only the current version
   // moves, so this guard tracks the constant rather than pinning it to 52.
-  assert.match(storage, /const SCHEMA_USER_VERSION: i32 = 60;/);
+  assert.match(storage, /const SCHEMA_USER_VERSION: i32 = 61;/);
   assert.match(storage, /if stored_version < 52/);
   assert.match(storage, /"itops_ip_address_records",\s*"site_id"/s);
   assert.match(ipamStorage, /fn apply_prefix_site_bindings/);

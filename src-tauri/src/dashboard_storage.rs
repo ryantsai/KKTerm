@@ -524,12 +524,13 @@ pub fn reorder_views(
     conn: &SqliteConnection,
     ordered_ids: &[String],
 ) -> Result<(), DashboardStorageError> {
+    let tx = conn.unchecked_transaction()?;
+    let mut statement = tx.prepare("UPDATE dashboard_views SET sort_order = ? WHERE id = ?")?;
     for (idx, id) in ordered_ids.iter().enumerate() {
-        conn.execute(
-            "UPDATE dashboard_views SET sort_order = ? WHERE id = ?",
-            params![idx as i64, id],
-        )?;
+        statement.execute(params![idx as i64, id])?;
     }
+    drop(statement);
+    tx.commit()?;
     Ok(())
 }
 
@@ -783,22 +784,23 @@ pub fn apply_layout(
         validate_grid_bounds(entry.grid_x, entry.grid_y, entry.grid_w, entry.grid_h)?;
     }
     let tx_savepoint = conn.unchecked_transaction()?;
+    let mut statement = tx_savepoint.prepare(
+        "UPDATE dashboard_widget_instances
+            SET grid_x = ?, grid_y = ?, grid_w = ?, grid_h = ?, sort_order = ?
+            WHERE id = ? AND view_id = ?",
+    )?;
     for (idx, entry) in layout.iter().enumerate() {
-        tx_savepoint.execute(
-            "UPDATE dashboard_widget_instances
-                SET grid_x = ?, grid_y = ?, grid_w = ?, grid_h = ?, sort_order = ?
-                WHERE id = ? AND view_id = ?",
-            params![
-                entry.grid_x,
-                entry.grid_y,
-                entry.grid_w,
-                entry.grid_h,
-                idx as i64,
-                entry.id,
-                view_id
-            ],
-        )?;
+        statement.execute(params![
+            entry.grid_x,
+            entry.grid_y,
+            entry.grid_w,
+            entry.grid_h,
+            idx as i64,
+            entry.id,
+            view_id
+        ])?;
     }
+    drop(statement);
     tx_savepoint.commit()?;
     Ok(())
 }
@@ -983,12 +985,10 @@ pub fn remove_custom_widget(
     }
     let tx = conn.unchecked_transaction()?;
     if !instance_ids.is_empty() {
-        for inst_id in &instance_ids {
-            tx.execute(
-                "DELETE FROM dashboard_widget_instances WHERE id = ?",
-                params![inst_id],
-            )?;
-        }
+        tx.execute(
+            "DELETE FROM dashboard_widget_instances WHERE source_id = ? AND kind = 'script'",
+            params![id],
+        )?;
     }
     tx.execute(
         "DELETE FROM dashboard_custom_widgets WHERE id = ?",
@@ -1096,9 +1096,12 @@ pub fn widget_secret_owner_id_for_instance(
 }
 
 pub fn seed_default(conn: &SqliteConnection) -> Result<(), DashboardStorageError> {
-    let view_exists: i64 =
-        conn.query_row("SELECT COUNT(*) FROM dashboard_views", [], |row| row.get(0))?;
-    if view_exists > 0 {
+    let view_exists: bool = conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM dashboard_views LIMIT 1)",
+        [],
+        |row| row.get(0),
+    )?;
+    if view_exists {
         return Ok(());
     }
     create_view(conn, "default", "Default", Some("default"))?;

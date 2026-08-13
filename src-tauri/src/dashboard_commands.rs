@@ -89,8 +89,12 @@ fn storage(app: &AppHandle) -> State<'_, crate::storage::Storage> {
 }
 
 #[tauri::command]
-pub fn dashboard_load_state(app: AppHandle) -> Result<DashboardLoadState, DashboardCommandError> {
-    storage(&app).with_connection_infallible(|conn| ds::load_state(conn).map_err(Into::into))
+pub async fn dashboard_load_state(
+    app: AppHandle,
+) -> Result<DashboardLoadState, DashboardCommandError> {
+    crate::storage::run_blocking_db(|| {
+        storage(&app).with_connection_infallible(|conn| ds::load_state(conn).map_err(Into::into))
+    })
 }
 
 #[tauri::command]

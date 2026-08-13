@@ -490,6 +490,25 @@ const BUILTIN_TASKS: &[BuiltinTaskSpec] = &[
 
 pub fn sync_builtin_catalog(conn: &SqliteConnection) -> Result<()> {
     let tx = conn.unchecked_transaction()?;
+    let mut upsert = tx.prepare(
+        "INSERT INTO itops_tasks
+            (id, name, description, sort_order, applicable_os_json, built_in_key, task_json)
+         VALUES (?, ?, '', ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET
+            name = excluded.name,
+            description = excluded.description,
+            sort_order = excluded.sort_order,
+            applicable_os_json = excluded.applicable_os_json,
+            built_in_key = excluded.built_in_key,
+            task_json = excluded.task_json,
+            updated_at = CURRENT_TIMESTAMP
+         WHERE itops_tasks.name IS NOT excluded.name
+            OR itops_tasks.description IS NOT excluded.description
+            OR itops_tasks.sort_order IS NOT excluded.sort_order
+            OR itops_tasks.applicable_os_json IS NOT excluded.applicable_os_json
+            OR itops_tasks.built_in_key IS NOT excluded.built_in_key
+            OR itops_tasks.task_json IS NOT excluded.task_json",
+    )?;
     for (index, spec) in BUILTIN_TASKS.iter().enumerate() {
         let id = format!("builtin-task-{}", spec.key);
         let task = BatchTask::Script {
@@ -498,34 +517,16 @@ pub fn sync_builtin_catalog(conn: &SqliteConnection) -> Result<()> {
         };
         let task_json = task_to_json(&task)?;
         let (_, applicable_os_json) = os_to_json(&[spec.os])?;
-        tx.execute(
-            "INSERT INTO itops_tasks
-                (id, name, description, sort_order, applicable_os_json, built_in_key, task_json)
-             VALUES (?, ?, '', ?, ?, ?, ?)
-             ON CONFLICT(id) DO UPDATE SET
-                name = excluded.name,
-                description = excluded.description,
-                sort_order = excluded.sort_order,
-                applicable_os_json = excluded.applicable_os_json,
-                built_in_key = excluded.built_in_key,
-                task_json = excluded.task_json,
-                updated_at = CURRENT_TIMESTAMP
-             WHERE itops_tasks.name IS NOT excluded.name
-                OR itops_tasks.description IS NOT excluded.description
-                OR itops_tasks.sort_order IS NOT excluded.sort_order
-                OR itops_tasks.applicable_os_json IS NOT excluded.applicable_os_json
-                OR itops_tasks.built_in_key IS NOT excluded.built_in_key
-                OR itops_tasks.task_json IS NOT excluded.task_json",
-            params![
-                id,
-                spec.name,
-                -10_000_i64 + index as i64,
-                applicable_os_json,
-                spec.key,
-                task_json
-            ],
-        )?;
+        upsert.execute(params![
+            id,
+            spec.name,
+            -10_000_i64 + index as i64,
+            applicable_os_json,
+            spec.key,
+            task_json
+        ])?;
     }
+    drop(upsert);
     tx.commit()?;
     Ok(())
 }

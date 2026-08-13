@@ -2,6 +2,135 @@ use super::*;
 use rusqlite::params;
 
 #[test]
+fn v61_query_indexes_upgrade_and_current_reopen_preserve_schema_fast_path() {
+    let db_path = temp_db_path("query-indexes-v61");
+    {
+        let storage = Storage::open(db_path.clone()).expect("fixture storage opens");
+        storage
+            .with_connection(|connection| {
+                connection
+                    .execute_batch(
+                        "DROP INDEX idx_connections_workspace_folder_sort;
+                         DROP INDEX idx_connections_password_credential;
+                         DROP INDEX idx_connection_folders_workspace_parent_sort;
+                         DROP INDEX idx_url_credentials_connection;
+                         CREATE INDEX idx_url_credentials_connection
+                            ON url_credentials(connection_id);
+                         DROP INDEX idx_dashboard_widget_instances_source;
+                         DROP INDEX idx_itops_run_history_started;
+                         PRAGMA user_version = 60;",
+                    )
+                    .map_err(to_storage_error)
+            })
+            .expect("v60 fixture indexes are prepared");
+    }
+
+    let upgraded = Storage::open(db_path.clone()).expect("v60 storage upgrades");
+    let schema_version: i64 = upgraded
+        .with_connection(|connection| {
+            for (index, columns) in [
+                (
+                    "idx_connections_workspace_folder_sort",
+                    "workspace_id, folder_id, sort_order",
+                ),
+                (
+                    "idx_connections_password_credential",
+                    "password_credential_id",
+                ),
+                (
+                    "idx_connection_folders_workspace_parent_sort",
+                    "workspace_id, parent_folder_id, sort_order",
+                ),
+                (
+                    "idx_url_credentials_connection",
+                    "connection_id, updated_at DESC",
+                ),
+                ("idx_dashboard_widget_instances_source", "source_id, kind"),
+                ("idx_itops_run_history_started", "started_at DESC, id DESC"),
+            ] {
+                let sql: String = connection
+                    .query_row(
+                        "SELECT sql FROM sqlite_master WHERE type = 'index' AND name = ?1",
+                        params![index],
+                        |row| row.get(0),
+                    )
+                    .map_err(to_storage_error)?;
+                assert!(
+                    sql.contains(columns),
+                    "{index} should cover {columns}: {sql}"
+                );
+            }
+            for (sql, index) in [
+                (
+                    "SELECT id FROM connections
+                     WHERE folder_id IS NULL AND workspace_id = 'default'
+                     ORDER BY sort_order, name",
+                    "idx_connections_workspace_folder_sort",
+                ),
+                (
+                    "SELECT id FROM connection_folders
+                     WHERE parent_folder_id IS NULL AND workspace_id = 'default'
+                     ORDER BY sort_order, name",
+                    "idx_connection_folders_workspace_parent_sort",
+                ),
+                (
+                    "SELECT id FROM connections WHERE password_credential_id = 'credential'",
+                    "idx_connections_password_credential",
+                ),
+                (
+                    "SELECT username FROM url_credentials
+                     WHERE connection_id = 'connection'
+                     ORDER BY updated_at DESC LIMIT 1",
+                    "idx_url_credentials_connection",
+                ),
+                (
+                    "SELECT id FROM dashboard_widget_instances
+                     WHERE source_id = 'widget' AND kind = 'script'",
+                    "idx_dashboard_widget_instances_source",
+                ),
+                (
+                    "SELECT id FROM itops_run_history
+                     ORDER BY started_at DESC, id DESC LIMIT 50",
+                    "idx_itops_run_history_started",
+                ),
+            ] {
+                let mut statement = connection
+                    .prepare(&format!("EXPLAIN QUERY PLAN {sql}"))
+                    .map_err(to_storage_error)?;
+                let plan = statement
+                    .query_map([], |row| row.get::<_, String>(3))
+                    .map_err(to_storage_error)?
+                    .collect::<rusqlite::Result<Vec<_>>>()
+                    .map_err(to_storage_error)?
+                    .join("\n");
+                assert!(plan.contains(index), "query should use {index}: {plan}");
+            }
+            let version: i32 = connection
+                .pragma_query_value(None, "user_version", |row| row.get(0))
+                .map_err(to_storage_error)?;
+            assert_eq!(version, SCHEMA_USER_VERSION);
+            connection
+                .pragma_query_value(None, "schema_version", |row| row.get(0))
+                .map_err(to_storage_error)
+        })
+        .expect("v61 indexes are present");
+    drop(upgraded);
+
+    let reopened = Storage::open(db_path.clone()).expect("current v61 storage reopens");
+    reopened
+        .with_connection(|connection| {
+            let reopened_schema_version: i64 = connection
+                .pragma_query_value(None, "schema_version", |row| row.get(0))
+                .map_err(to_storage_error)?;
+            assert_eq!(reopened_schema_version, schema_version);
+            Ok(())
+        })
+        .expect("current-version reopen leaves the schema unchanged");
+    drop(reopened);
+    let _ = fs::remove_file(db_path);
+}
+
+#[test]
 fn v60_custom_module_document_metadata_upgrade_and_current_reopen_preserve_data() {
     let db_path = temp_db_path("custom-module-documents-v60");
     {
@@ -5383,6 +5512,35 @@ fn default_workspace_is_seeded_and_scopes_the_connection_tree() {
         .list_connection_tree_for_workspace(other.id.clone())
         .expect("other tree loads");
     assert!(other_tree.connections.is_empty());
+}
+
+#[test]
+fn workspace_connection_tree_loads_batched_tags_in_sort_order() {
+    let storage = Storage::open(temp_db_path("workspace-batched-tags")).expect("storage opens");
+    let saved = create_test_ssh_connection_in_workspace(
+        &storage,
+        "Tagged",
+        "tagged.internal",
+        DEFAULT_WORKSPACE_ID.to_string(),
+    );
+    storage
+        .with_connection(|connection| {
+            connection
+                .execute(
+                    "INSERT INTO connection_tags (connection_id, tag, sort_order)
+                     VALUES (?1, 'later', 2), (?1, 'first', 0), (?1, 'middle', 1)",
+                    params![saved.id],
+                )
+                .map_err(to_storage_error)?;
+            Ok(())
+        })
+        .expect("tags are inserted");
+
+    let tree = storage
+        .list_connection_tree_for_workspace(DEFAULT_WORKSPACE_ID.to_string())
+        .expect("workspace tree loads");
+    assert_eq!(tree.connections.len(), 1);
+    assert_eq!(tree.connections[0].tags, ["first", "middle", "later"]);
 }
 
 #[test]

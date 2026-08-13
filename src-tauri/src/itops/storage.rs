@@ -331,12 +331,13 @@ pub fn remove_site(conn: &SqliteConnection, id: &str) -> Result<()> {
 }
 
 pub fn reorder_sites(conn: &SqliteConnection, ordered_ids: &[String]) -> Result<()> {
+    let tx = conn.unchecked_transaction()?;
+    let mut statement = tx.prepare("UPDATE itops_sites SET sort_order = ? WHERE id = ?")?;
     for (index, id) in ordered_ids.iter().enumerate() {
-        conn.execute(
-            "UPDATE itops_sites SET sort_order = ? WHERE id = ?",
-            params![index as i64, id],
-        )?;
+        statement.execute(params![index as i64, id])?;
     }
+    drop(statement);
+    tx.commit()?;
     Ok(())
 }
 

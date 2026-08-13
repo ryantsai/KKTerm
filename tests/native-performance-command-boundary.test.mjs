@@ -4,6 +4,7 @@ import test from "node:test";
 
 const [
   source,
+  dashboardCommandsSource,
   itOpsCommandsSource,
   selectiveExportSource,
   xServerSource,
@@ -11,6 +12,7 @@ const [
   remoteFullscreenSource,
 ] = await Promise.all([
   readFile(new URL("../src-tauri/src/lib.rs", import.meta.url), "utf8"),
+  readFile(new URL("../src-tauri/src/dashboard_commands.rs", import.meta.url), "utf8"),
   readFile(new URL("../src-tauri/src/itops/commands.rs", import.meta.url), "utf8"),
   readFile(new URL("../src-tauri/src/selective_export.rs", import.meta.url), "utf8"),
   readFile(new URL("../src-tauri/src/x_server.rs", import.meta.url), "utf8"),
@@ -50,6 +52,14 @@ test("system counter collection runs outside Tauri's native main thread", () => 
   const command = commandSource("get_system_performance_counters", "pc_info_get");
   assert.match(command, /tauri::async_runtime::spawn_blocking/);
   assert.match(command, /system_performance_counters_snapshot\(\)/);
+});
+
+test("unbounded SQLite UI reads run from async commands outside Tokio workers", () => {
+  assert.match(asyncCommandSource(source, "list_connection_tree"), /run_blocking_db\(/);
+  assert.match(
+    asyncCommandSource(dashboardCommandsSource, "dashboard_load_state"),
+    /run_blocking_db\(/,
+  );
 });
 
 test("detached remote full-screen creation leaves the WebView2 IPC callback", () => {

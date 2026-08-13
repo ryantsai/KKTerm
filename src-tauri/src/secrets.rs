@@ -255,6 +255,9 @@ trait SecretStore: Send + Sync {
     fn write(&self, reference: &SecretReference, secret: &str) -> Result<(), String>;
     fn read(&self, reference: &SecretReference) -> Result<Option<String>, String>;
     fn delete(&self, reference: &SecretReference) -> Result<(), String>;
+    fn refresh(&self) -> Result<(), String> {
+        Ok(())
+    }
     fn exists(&self, reference: &SecretReference) -> Result<bool, String> {
         self.read(reference).map(|secret| secret.is_some())
     }
@@ -437,6 +440,21 @@ impl Secrets {
         };
         drop(state);
         Ok(self.status())
+    }
+
+    /// Revalidate the selected store after the settings database file has been
+    /// replaced. A locked encrypted store has no live backend to refresh and
+    /// intentionally stays locked.
+    pub(crate) fn refresh_selected_store(&self) -> Result<(), String> {
+        let _guard = self.lock()?;
+        let state = self
+            .state
+            .lock()
+            .map_err(|_| "secret store state lock is poisoned".to_string())?;
+        match state.store.as_ref() {
+            Some(store) => store.refresh(),
+            None => Ok(()),
+        }
     }
 
     pub fn configure_encrypted_file_store(
@@ -1050,6 +1068,36 @@ mod tests {
             .read(&reference)
             .expect_err("wrong password should not decrypt sqlite secret");
         assert!(error.contains("could not decrypt"));
+    }
+
+    #[test]
+    fn encrypted_sqlite_store_caches_unlock_and_refresh_revalidates_replaced_data() {
+        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let path = temp_dir.path().join("kkterm.sqlite3");
+        crate::storage::Storage::open(path.clone()).expect("storage opens");
+        let store =
+            super::sqlite_store::SqliteSecretStore::new(path.clone(), "test-password".to_string())
+                .expect("sqlite store");
+        store
+            .initialize_or_verify(true)
+            .expect("store sentinel is created");
+
+        let connection = rusqlite::Connection::open(path).expect("raw database opens");
+        connection
+            .execute(
+                "UPDATE encrypted_secret_store_entries SET ciphertext = 'invalid-base64'",
+                [],
+            )
+            .expect("sentinel is replaced");
+        drop(connection);
+
+        // Ordinary operations reuse the unlock verification; the explicit
+        // refresh used after full database replacement must inspect the new
+        // sentinel again.
+        store
+            .initialize_or_verify(false)
+            .expect("cached verification avoids a second password KDF");
+        assert!(store.refresh().is_err());
     }
 
     #[test]

@@ -1885,44 +1885,50 @@ impl Storage {
         // independent copies that keep the shared, non-secret
         // `password_credential_id` reference.
         if let Some(connection_ids) = request.import_connection_ids.as_ref() {
+            let mut next_connection_sort_order =
+                next_root_connection_sort_order_for_workspace(&transaction, &id)?;
+            let mut insert = transaction
+                .prepare(
+                    "INSERT INTO connections (
+                        id, folder_id, workspace_id, name, tab_title, host, username, port,
+                        key_path, proxy_jump, ssh_socks_proxy, ssh_socks_proxy_username, ssh_socks_proxy_inherit_defaults, ssh_compression,
+                        auth_method, local_shell, local_startup_directory,
+                        local_startup_script, url, data_partition, use_tmux_sessions, use_psmux_sessions,
+                        tmux_connection_id, serial_line, serial_speed, rdp_options, vnc_options,
+                        ftp_options, password_credential_id, icon_color, icon_data_url, icon_background_color,
+                        terminal_opacity, terminal_background_json, terminal_color_scheme, terminal_syntax_highlight_profile_id, file_view_open_external,
+                        connection_type, status, sort_order
+                    )
+                    SELECT
+                        ?1, NULL, ?2, name, tab_title, host, username, port,
+                        key_path, proxy_jump, ssh_socks_proxy, ssh_socks_proxy_username, ssh_socks_proxy_inherit_defaults, ssh_compression,
+                        auth_method, local_shell, local_startup_directory,
+                        local_startup_script, url, data_partition, use_tmux_sessions, use_psmux_sessions,
+                        ?3, serial_line, serial_speed, rdp_options, vnc_options,
+                        ftp_options, password_credential_id, icon_color, icon_data_url, icon_background_color,
+                        terminal_opacity, terminal_background_json, terminal_color_scheme, terminal_syntax_highlight_profile_id, file_view_open_external,
+                        connection_type, 'idle', ?4
+                    FROM connections
+                    WHERE id = ?5",
+                )
+                .map_err(to_storage_error)?;
             for source_id in connection_ids {
                 let new_id = make_connection_id(source_id);
                 let tmux_connection_id = make_tmux_connection_id(&new_id);
-                let next_connection_sort_order =
-                    next_root_connection_sort_order_for_workspace(&transaction, &id)?;
-                transaction
-                    .execute(
-                        "INSERT INTO connections (
-                            id, folder_id, workspace_id, name, tab_title, host, username, port,
-                            key_path, proxy_jump, ssh_socks_proxy, ssh_socks_proxy_username, ssh_socks_proxy_inherit_defaults, ssh_compression,
-                            auth_method, local_shell, local_startup_directory,
-                            local_startup_script, url, data_partition, use_tmux_sessions, use_psmux_sessions,
-                            tmux_connection_id, serial_line, serial_speed, rdp_options, vnc_options,
-                            ftp_options, password_credential_id, icon_color, icon_data_url, icon_background_color,
-                            terminal_opacity, terminal_background_json, terminal_color_scheme, terminal_syntax_highlight_profile_id, file_view_open_external,
-                            connection_type, status, sort_order
-                        )
-                        SELECT
-                            ?1, NULL, ?2, name, tab_title, host, username, port,
-                            key_path, proxy_jump, ssh_socks_proxy, ssh_socks_proxy_username, ssh_socks_proxy_inherit_defaults, ssh_compression,
-                            auth_method, local_shell, local_startup_directory,
-                            local_startup_script, url, data_partition, use_tmux_sessions, use_psmux_sessions,
-                            ?3, serial_line, serial_speed, rdp_options, vnc_options,
-                            ftp_options, password_credential_id, icon_color, icon_data_url, icon_background_color,
-                            terminal_opacity, terminal_background_json, terminal_color_scheme, terminal_syntax_highlight_profile_id, file_view_open_external,
-                            connection_type, 'idle', ?4
-                        FROM connections
-                        WHERE id = ?5",
-                        params![
-                            new_id,
-                            id,
-                            tmux_connection_id,
-                            next_connection_sort_order,
-                            source_id
-                        ],
-                    )
+                let inserted = insert
+                    .execute(params![
+                        new_id,
+                        id,
+                        tmux_connection_id,
+                        next_connection_sort_order,
+                        source_id
+                    ])
                     .map_err(to_storage_error)?;
+                if inserted > 0 {
+                    next_connection_sort_order += 1;
+                }
             }
+            drop(insert);
         }
 
         transaction.commit().map_err(to_storage_error)?;
@@ -2009,14 +2015,15 @@ impl Storage {
     ) -> Result<Vec<Workspace>, String> {
         let mut connection = self.lock()?;
         let transaction = connection.transaction().map_err(to_storage_error)?;
+        let mut statement = transaction
+            .prepare("UPDATE workspaces SET sort_order = ?1 WHERE id = ?2")
+            .map_err(to_storage_error)?;
         for (index, workspace_id) in request.ordered_ids.iter().enumerate() {
-            transaction
-                .execute(
-                    "UPDATE workspaces SET sort_order = ?1 WHERE id = ?2",
-                    params![index as i64, workspace_id],
-                )
+            statement
+                .execute(params![index as i64, workspace_id])
                 .map_err(to_storage_error)?;
         }
+        drop(statement);
         transaction.commit().map_err(to_storage_error)?;
         drop(connection);
         self.list_workspaces()
