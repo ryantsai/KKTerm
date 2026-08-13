@@ -1414,14 +1414,14 @@
 }
 
 .custom-module-card-heading {
-  display: flex;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
   align-items: flex-start;
   gap: 10px;
   min-width: 0;
 }
 
 .custom-module-card-heading > div {
-  flex: 1 1 auto;
   min-width: 0;
 }
 
@@ -1456,6 +1456,7 @@
   align-items: center;
   gap: 4px;
   flex: 0 0 auto;
+  justify-self: end;
   padding: 3px 7px;
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -1486,31 +1487,44 @@
 }
 
 .custom-module-meta dd {
+  min-width: 0;
   margin: 0;
   color: var(--text);
+  overflow-wrap: anywhere;
 }
 
 .custom-module-permissions {
   display: flex;
+  align-items: baseline;
   gap: 7px;
+  min-width: 0;
   color: var(--text-muted);
   font-size: 11px;
 }
 
 .custom-module-permissions strong {
+  flex: 0 0 auto;
   color: var(--text);
+}
+
+.custom-module-permissions span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .custom-module-controls {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
 }
 
-.custom-module-controls label {
+.custom-module-toggle-row {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
   padding: 8px 10px;
   border-radius: 7px;
   background: var(--surface-muted);
@@ -1518,11 +1532,24 @@
   font-size: 12px;
 }
 
+.custom-module-toggle-row > span {
+  min-width: 0;
+  line-height: 1.3;
+  text-wrap: pretty;
+}
+
 .custom-module-actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
   gap: 7px;
+  min-width: 0;
+}
+
+.custom-module-actions .primary-button,
+.custom-module-actions .secondary-button {
+  white-space: nowrap;
 }
 
 .custom-module-health-error {
@@ -1558,8 +1585,31 @@
 }
 
 @media (max-width: 780px) {
+  .custom-modules-settings .settings-section-header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .custom-modules-settings .settings-header-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .custom-module-card-heading {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .custom-module-trust {
+    grid-column: 2;
+    justify-self: start;
+  }
+
   .custom-module-controls {
     grid-template-columns: 1fr;
+  }
+
+  .custom-module-actions {
+    justify-content: flex-start;
   }
 }
 

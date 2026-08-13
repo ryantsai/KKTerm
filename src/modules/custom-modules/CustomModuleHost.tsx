@@ -1,18 +1,20 @@
 import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Package } from "../../lib/reicon";
 import { useTranslation } from "react-i18next";
 import { invokeCommand, isTauriRuntime } from "../../lib/tauri";
 import { useWorkspaceStore } from "../../store";
 import { documentHasCustomModuleBlockingOverlay } from "../workspace/nativeOverlay";
 import type { CustomModuleDestination } from "./types";
+import { CustomModuleIcon } from "./CustomModuleIcon";
 import "./customModules.css";
 
 export function CustomModuleHost({
   active,
+  blockingOverlayOpen,
   destination,
 }: {
   active: boolean;
+  blockingOverlayOpen: boolean;
   destination: CustomModuleDestination | null;
 }) {
   const { i18n, t } = useTranslation();
@@ -29,6 +31,8 @@ export function CustomModuleHost({
     theme: appearance.colorScheme,
     locale: i18n.resolvedLanguage || i18n.language || "en",
   };
+  const blockingOverlayOpenRef = useRef(blockingOverlayOpen);
+  blockingOverlayOpenRef.current = blockingOverlayOpen;
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
 
@@ -76,7 +80,9 @@ export function CustomModuleHost({
         }
         sessionIdRef.current = sessionId;
         pushBounds();
-        const blocked = documentHasCustomModuleBlockingOverlay(surfaceRef.current);
+        const blocked =
+          blockingOverlayOpenRef.current ||
+          documentHasCustomModuleBlockingOverlay(surfaceRef.current);
         void invokeCommand("set_custom_module_visibility", {
           sessionId,
           visible: !blocked,
@@ -115,7 +121,8 @@ export function CustomModuleHost({
     const updateVisibility = () => {
       const sessionId = sessionIdRef.current;
       if (!sessionId) return;
-      const blocked = documentHasCustomModuleBlockingOverlay(surfaceRef.current);
+      const blocked =
+        blockingOverlayOpen || documentHasCustomModuleBlockingOverlay(surfaceRef.current);
       void invokeCommand("set_custom_module_visibility", {
         sessionId,
         visible: active && !blocked,
@@ -129,7 +136,7 @@ export function CustomModuleHost({
       observer.disconnect();
       window.removeEventListener("resize", updateVisibility);
     };
-  }, [active, destination]);
+  }, [active, blockingOverlayOpen, destination]);
 
   useEffect(() => {
     const sessionId = sessionIdRef.current;
@@ -175,7 +182,9 @@ export function CustomModuleHost({
   return (
     <main className="custom-module-page" data-active={active}>
       <header className="custom-module-page-header">
-        <span className="custom-module-page-icon"><Package size={17} /></span>
+        <span className="custom-module-page-icon">
+          <CustomModuleIcon iconDataUrl={destination.iconDataUrl} size={17} />
+        </span>
         <h1>{destination.title}</h1>
         {!ready && !error ? <span>{t("common.loading")}</span> : null}
       </header>

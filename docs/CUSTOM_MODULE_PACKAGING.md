@@ -85,7 +85,9 @@ skill has built, audited, and validated the archive. Every rail-visible curated
 contribution must declare a packaged SVG icon no larger than 64 KiB. The
 publisher rejects active or external SVG content, and KKTerm renders the icon
 as a `currentColor` mask so curated Activity Rail icons stay monochrome across
-all themes. Local packages retain the generic Package rail glyph.
+all themes. The desktop host also validates optional SVG artwork from local
+packages before displaying it; missing, invalid, active, external, or oversized
+artwork falls back to the generic Package rail glyph.
 
 The publication workflow:
 

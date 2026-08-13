@@ -734,6 +734,7 @@ function App() {
       ) : null}
       <CustomModuleHost
         active={visibleBasePage === "customModule"}
+        blockingOverlayOpen={activePage === "settings"}
         destination={activeCustomModule}
       />
       </Suspense>

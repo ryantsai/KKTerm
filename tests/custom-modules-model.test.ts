@@ -48,10 +48,9 @@ test("Custom Module rail normalization preserves installed order and namespaces 
   );
 });
 
-test("Custom Module rail normalization carries curated icon data", () => {
+test("Custom Module rail normalization carries validated packaged icon data", () => {
   const [destination] = customModuleDestinations([
     installed("com.kkterm.fixture", {
-      trust: "firstParty",
       iconDataUrls: { main: "data:image/svg+xml;base64,PHN2Zy8+" },
     }),
   ]);

@@ -93,11 +93,12 @@ One package may contribute multiple Activity Rail Modules. Their durable destina
 For KKTerm-curated catalog publication, every rail-visible contribution must
 declare an SVG icon no larger than 64 KiB. The SVG must be self-contained and
 inert: no scripts, event handlers, external references, embedded documents or
-images, stylesheet blocks, or URL references. The host exposes artwork only
-from signature-verified first-party packages and paints it as a monochrome
-`currentColor` mask, so authors should design a clear silhouette that remains
-legible at 18×18 px. Record the artwork's source and license in the package
-notices. Local packages use the host's generic Package rail glyph.
+images, stylesheet blocks, or URL references. The host applies the same inert-
+content and 64 KiB checks to optional local-package SVG artwork, then paints
+accepted icons as a monochrome `currentColor` mask, so authors should design a
+clear silhouette that remains legible at 18×18 px. Record the artwork's source
+and license in the package notices. Missing, invalid, or unsafe artwork falls
+back to the generic Package rail glyph.
 
 ## Validation constraints
 

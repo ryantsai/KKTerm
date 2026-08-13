@@ -1453,10 +1453,6 @@ pub(crate) fn hide_overlay(window: &WebviewWindow) -> Result<(), String> {
     hide_webview(window)
 }
 
-pub(crate) fn show_overlay(window: &WebviewWindow) -> Result<(), String> {
-    show_webview_window(window)
-}
-
 fn overlay_rect(
     host_window: &WebviewWindow,
     x: f64,

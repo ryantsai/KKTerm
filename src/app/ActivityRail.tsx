@@ -4,7 +4,6 @@ import {
   Coffee,
   Gauge,
   LayoutDashboard,
-  Package,
   Pin,
   PinOff,
   Plus,
@@ -32,6 +31,7 @@ import { InstallHelperModuleIcon, ScreenshotsModuleIcon, SystemCleanerModuleIcon
 import { RailTooltip } from "./RailTooltip";
 import { showShutdownTimerMenu } from "./shutdownTimerMenu";
 import type { CustomModuleDestination } from "../modules/custom-modules/types";
+import { CustomModuleIcon } from "../modules/custom-modules/CustomModuleIcon";
 import { customModuleDestinationKey } from "../modules/custom-modules/useCustomModules";
 
 export type ActivePage =
@@ -72,18 +72,6 @@ type RailConnectionMenuState = {
 const CONNECTION_RAIL_ORDER_KEY = "kkterm.connectionRail.order.v1";
 const WORKSPACE_RAIL_ICON_SIZE = 18;
 const WORKSPACE_RAIL_ICON_SHELL_SIZE = 24;
-
-function CustomModuleRailIcon({ iconDataUrl }: { iconDataUrl?: string | null }) {
-  if (!iconDataUrl) return <Package size={18} />;
-  const maskImage = `url("${iconDataUrl}")`;
-  return (
-    <span
-      aria-hidden="true"
-      className="custom-module-rail-icon"
-      style={{ WebkitMaskImage: maskImage, maskImage }}
-    />
-  );
-}
 
 function loadConnectionRailOrder() {
   if (typeof window === "undefined") {
@@ -867,7 +855,7 @@ export function ActivityRail({
             onClick={() => onNavigateCustomModule(destination)}
             type="button"
           >
-            <CustomModuleRailIcon iconDataUrl={destination.iconDataUrl} />
+            <CustomModuleIcon iconDataUrl={destination.iconDataUrl} />
             <RailTooltip label={destination.title} />
           </button>
         );

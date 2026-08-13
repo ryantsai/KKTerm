@@ -70,27 +70,72 @@ test("dynamic Custom Module rail destinations do not become a compile-time id un
   ]);
   assert.match(hook, /`custom:\$\{destination\.moduleId\}:\$\{destination\.contributionId\}`/);
   assert.match(rail, /customModuleDestinations\.map/);
-  assert.match(rail, /CustomModuleRailIcon iconDataUrl=\{destination\.iconDataUrl\}/);
+  assert.match(rail, /CustomModuleIcon iconDataUrl=\{destination\.iconDataUrl\}/);
   assert.match(app, /<CustomModuleHost/);
 });
 
-test("curated Custom Module rail icons remain bounded and monochrome", async () => {
-  const [backend, rail, publisher, packaging, skill, contract] = await Promise.all([
+test("packaged Custom Module rail icons remain inert, bounded, and monochrome", async () => {
+  const [backend, rail, icon, publisher, packaging, skill, contract] = await Promise.all([
     readFile(new URL("../src-tauri/src/custom_modules.rs", import.meta.url), "utf8"),
     readFile(new URL("../src/app/ActivityRail.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/modules/custom-modules/CustomModuleIcon.tsx", import.meta.url), "utf8"),
     readFile(new URL("../scripts/publish-custom-module.mjs", import.meta.url), "utf8"),
     readFile(new URL("../docs/CUSTOM_MODULE_PACKAGING.md", import.meta.url), "utf8"),
     readFile(new URL("../.agents/skills/develop-kkmod-modules/SKILL.md", import.meta.url), "utf8"),
     readFile(new URL("../.agents/skills/develop-kkmod-modules/references/package-contract.md", import.meta.url), "utf8"),
   ]);
-  assert.match(backend, /trust != "firstParty"/);
+  assert.doesNotMatch(
+    backend,
+    /trust != "firstParty"/,
+    "local packages should expose validated packaged SVG artwork too",
+  );
+  assert.match(backend, /is_inert_activity_rail_svg/);
   assert.match(backend, /MAX_ACTIVITY_RAIL_ICON_BYTES/);
-  assert.match(rail, /maskImage/);
+  assert.match(rail, /CustomModuleIcon/);
+  assert.match(icon, /maskImage/);
   assert.match(publisher, /validateCuratedModuleIcons/);
   for (const source of [packaging, skill, contract]) {
     assert.match(source, /monochrome/i);
     assert.match(source, /64 KiB/);
   }
+});
+
+test("Custom Module bounds updates cannot reshow an overlay hidden for Settings", async () => {
+  const [backend, host, app] = await Promise.all([
+    readFile(new URL("../src-tauri/src/custom_modules.rs", import.meta.url), "utf8"),
+    readFile(new URL("../src/modules/custom-modules/CustomModuleHost.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/App.tsx", import.meta.url), "utf8"),
+  ]);
+  const boundsCommand = backend.match(
+    /fn update_runtime_view_bounds\([\s\S]*?\n}\n\nfn set_runtime_view_visibility/,
+  )?.[0];
+  const visibilityCommand = backend.match(
+    /fn set_runtime_view_visibility\([\s\S]*?\n}\n\n#\[tauri::command\]/,
+  )?.[0];
+
+  assert.ok(boundsCommand, "the Custom Module bounds command should remain discoverable");
+  assert.ok(visibilityCommand, "the Custom Module visibility command should remain discoverable");
+  assert.match(
+    boundsCommand,
+    /if state\.visible\s*\{[\s\S]*set_overlay_bounds/,
+    "bounds updates should reposition only a currently visible native WebView",
+  );
+  assert.match(
+    visibilityCommand,
+    /set_overlay_bounds/,
+    "showing a hidden native WebView should restore its last known bounds",
+  );
+  assert.match(
+    backend,
+    /set_runtime_view_visibility\(&session, true\)/,
+    "initial placement should use the same authoritative visibility transition as later reveals",
+  );
+  assert.match(app, /blockingOverlayOpen=\{activePage === "settings"\}/);
+  assert.match(
+    host,
+    /blockingOverlayOpen\s*\|\|\s*documentHasCustomModuleBlockingOverlay/,
+    "Settings state should hide the native Module directly instead of relying only on DOM geometry",
+  );
 });
 
 test("Custom Module host and agent guidance preserve the Windows async window boundary", async () => {

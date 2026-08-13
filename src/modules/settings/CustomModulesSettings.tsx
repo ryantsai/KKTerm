@@ -13,6 +13,7 @@ import type {
   CustomModulePackageReview,
   InstalledCustomModule,
 } from "../custom-modules/types";
+import { CustomModuleIcon } from "../custom-modules/CustomModuleIcon";
 import { compareCustomModuleVersions } from "../custom-modules/catalog";
 import { SettingsSectionHeader } from "./shared";
 import { ToggleSwitch } from "./ToggleSwitch";
@@ -308,7 +309,12 @@ export function CustomModulesSettings() {
             <article className="custom-module-card" key={module.id}>
               <div className="custom-module-card-heading">
                 <span className="custom-module-icon" aria-hidden="true">
-                  <Package size={20} />
+                  <CustomModuleIcon
+                    iconDataUrl={module.modules
+                      .map((contribution) => module.iconDataUrls?.[contribution.id])
+                      .find((iconDataUrl): iconDataUrl is string => Boolean(iconDataUrl))}
+                    size={20}
+                  />
                 </span>
                 <div>
                   <h3>{module.name}</h3>
@@ -340,7 +346,7 @@ export function CustomModulesSettings() {
                 </span>
               </div>
               <div className="custom-module-controls">
-                <label>
+                <label className="settings-toggle-row custom-module-toggle-row">
                   <span>{t("settings.customModulesEnabled")}</span>
                   <ToggleSwitch
                     checked={module.enabled}
@@ -348,7 +354,7 @@ export function CustomModulesSettings() {
                     onChange={(value) => void updateFlag(module, "enabled", value)}
                   />
                 </label>
-                <label>
+                <label className="settings-toggle-row custom-module-toggle-row">
                   <span>{t("settings.customModulesShowRail")}</span>
                   <ToggleSwitch
                     checked={module.railVisible}
@@ -372,13 +378,13 @@ export function CustomModulesSettings() {
                   </button>
                 ) : null}
                 <button
-                  className="secondary-button danger-button"
+                  aria-label={t("settings.customModulesUninstall")}
+                  className="settings-icon-danger-button"
                   disabled={busyId === module.id}
                   onClick={() => setPendingUninstall(module)}
                   type="button"
                 >
-                  <Trash2 size={14} />
-                  {t("settings.customModulesUninstall")}
+                  <Trash2 size={16} />
                 </button>
               </div>
             </article>

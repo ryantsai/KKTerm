@@ -164,11 +164,15 @@ toggle list while their persisted backend settings remain enabled.
   are marked `settings.customModulesTrustLocal`; install only packages from a
   trusted source.
 - The Installed group shows publisher, version, license, trust, permissions,
-  package health, enablement, and `settings.customModulesShowRail`. An enabled,
-  visible contribution becomes a permanent Activity Rail Module and runs in an
-  isolated native WebView without Node.js or an HTTP service. Signed curated
-  packages display their declared SVG as a monochrome, theme-aware Activity Rail
-  icon; local packages keep the generic Package glyph.
+  package health, enablement, and `settings.customModulesShowRail`. Its switches
+  use compact grouped rows and collapse to one column when the Settings popup is
+  narrow; the destructive `settings.customModulesUninstall` action uses the
+  standard icon-only Settings treatment. An enabled, visible contribution
+  becomes a permanent Activity Rail Module and runs in an isolated native WebView
+  without Node.js or an HTTP service. Signed curated and local packages display a
+  declared SVG as a monochrome, theme-aware Settings/Module/Activity Rail icon
+  only after the host verifies that it is inert and no larger than 64 KiB;
+  missing or rejected artwork uses the generic Package glyph.
 - The Available group loads immediately from the embedded baseline or last
   unexpired verified cache, then refreshes signed metadata from the configured
   KKTerm catalog. `settings.customModulesRefreshCatalog` performs the same

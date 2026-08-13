@@ -51,6 +51,18 @@
   color: var(--accent);
 }
 
+.custom-module-artwork {
+  display: block;
+  flex: 0 0 auto;
+  background: currentColor;
+  mask-position: center;
+  mask-repeat: no-repeat;
+  mask-size: contain;
+  -webkit-mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+}
+
 .custom-module-surface {
   position: relative;
   min-width: 0;

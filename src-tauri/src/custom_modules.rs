@@ -1,6 +1,7 @@
 use crate::{app_paths::AppPaths, storage::Storage, webview};
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
+use regex::Regex;
 use reqwest::blocking::Client;
 use rusqlite::{OptionalExtension, params};
 use semver::Version;
@@ -13,7 +14,7 @@ use std::{
     io::{Read, Write},
     path::{Component, Path, PathBuf},
     sync::{
-        Arc, Mutex, MutexGuard,
+        Arc, Mutex, MutexGuard, OnceLock,
         atomic::{AtomicBool, Ordering},
     },
     time::{Duration, Instant},
@@ -215,8 +216,22 @@ struct RuntimeSession {
     locale: String,
     ready_sent: Arc<AtomicBool>,
     last_external_open: Arc<Mutex<Option<Instant>>>,
+    view_state: Arc<Mutex<RuntimeViewState>>,
     window: WebviewWindow,
     host_window: WebviewWindow,
+}
+
+#[derive(Clone, Copy)]
+struct RuntimeBounds {
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+}
+
+struct RuntimeViewState {
+    bounds: RuntimeBounds,
+    visible: bool,
 }
 
 #[derive(Default)]
@@ -971,12 +986,7 @@ fn installed_module(
                 }
                 let package_path = modules_root(paths)
                     .join(package_relative_path(&manifest.id, &manifest.version));
-                let icon_data_urls = curated_icon_data_urls(
-                    paths,
-                    &package_path,
-                    &manifest,
-                    &trust,
-                );
+                let icon_data_urls = activity_rail_icon_data_urls(paths, &package_path, &manifest);
                 Ok(InstalledCustomModule {
                     manifest,
                     source,
@@ -993,15 +1003,11 @@ fn installed_module(
     })
 }
 
-fn curated_icon_data_urls(
+fn activity_rail_icon_data_urls(
     paths: &AppPaths,
     package_path: &Path,
     manifest: &CustomModuleManifest,
-    trust: &str,
 ) -> BTreeMap<String, String> {
-    if trust != "firstParty" {
-        return BTreeMap::new();
-    }
     let Ok(canonical_root) = canonical_package_root(paths, package_path) else {
         return BTreeMap::new();
     };
@@ -1029,12 +1035,31 @@ fn curated_icon_data_urls(
                 return None;
             }
             let bytes = fs::read(path).ok()?;
+            if !is_inert_activity_rail_svg(&bytes) {
+                return None;
+            }
             Some((
                 contribution.id.clone(),
                 format!("data:image/svg+xml;base64,{}", BASE64.encode(bytes)),
             ))
         })
         .collect()
+}
+
+fn is_inert_activity_rail_svg(bytes: &[u8]) -> bool {
+    static SVG_ROOT: OnceLock<Regex> = OnceLock::new();
+    static FORBIDDEN_SVG_CONTENT: OnceLock<Regex> = OnceLock::new();
+    let Ok(svg) = std::str::from_utf8(bytes) else {
+        return false;
+    };
+    let svg_root = SVG_ROOT.get_or_init(|| Regex::new(r"(?is)<svg\b").expect("valid SVG regex"));
+    let forbidden = FORBIDDEN_SVG_CONTENT.get_or_init(|| {
+        Regex::new(
+            r"(?is)<(?:script|foreignobject|iframe|object|embed|image|use|style)\b|\bon[a-z]+\s*=|\b(?:href|xlink:href)\s*=|url\s*\(|<!doctype|<\?xml-stylesheet",
+        )
+        .expect("valid inert SVG regex")
+    });
+    svg_root.is_match(svg) && !forbidden.is_match(svg)
 }
 
 fn granted_permissions(storage: &Storage, module_id: &str) -> Result<HashSet<String>, String> {
@@ -1977,13 +2002,14 @@ pub async fn start_custom_module(
         .ok_or_else(|| "Custom Module contribution is not declared".to_string())?;
     let label = session_label(&request.module_id, &request.contribution_id);
     if let Some(session) = runtime.lock()?.get(&label).cloned() {
-        webview::set_overlay_bounds(
-            &session.host_window,
-            &session.window,
-            request.x,
-            request.y,
-            request.width,
-            request.height,
+        update_runtime_view_bounds(
+            &session,
+            RuntimeBounds {
+                x: request.x,
+                y: request.y,
+                width: request.width,
+                height: request.height,
+            },
         )?;
         return Ok(CustomModuleSessionStarted { session_id: label });
     }
@@ -2055,24 +2081,26 @@ pub async fn start_custom_module(
         locale: request.locale,
         ready_sent: Arc::new(AtomicBool::new(false)),
         last_external_open: Arc::new(Mutex::new(None)),
+        view_state: Arc::new(Mutex::new(RuntimeViewState {
+            bounds: RuntimeBounds {
+                x: request.x,
+                y: request.y,
+                width: request.width,
+                height: request.height,
+            },
+            visible: false,
+        })),
         window: window.clone(),
         host_window: host_window.clone(),
     };
     if let Err(error) = runtime.lock().map(|mut sessions| {
-        sessions.insert(label.clone(), session);
+        sessions.insert(label.clone(), session.clone());
     }) {
         runtime.lock_routes()?.remove(&label);
         let _ = window.close();
         return Err(error);
     }
-    if let Err(error) = webview::set_overlay_bounds(
-        &host_window,
-        &window,
-        request.x,
-        request.y,
-        request.width,
-        request.height,
-    ) {
+    if let Err(error) = set_runtime_view_visibility(&session, true) {
         let _ = runtime.lock().map(|mut sessions| sessions.remove(&label));
         let _ = runtime
             .lock_routes()
@@ -2083,19 +2111,64 @@ pub async fn start_custom_module(
     Ok(CustomModuleSessionStarted { session_id: label })
 }
 
+fn update_runtime_view_bounds(
+    session: &RuntimeSession,
+    bounds: RuntimeBounds,
+) -> Result<(), String> {
+    let mut state = session
+        .view_state
+        .lock()
+        .map_err(|_| "Custom Module view-state lock is poisoned".to_string())?;
+    state.bounds = bounds;
+    if state.visible {
+        webview::set_overlay_bounds(
+            &session.host_window,
+            &session.window,
+            bounds.x,
+            bounds.y,
+            bounds.width,
+            bounds.height,
+        )?;
+    }
+    Ok(())
+}
+
+fn set_runtime_view_visibility(session: &RuntimeSession, visible: bool) -> Result<(), String> {
+    let mut state = session
+        .view_state
+        .lock()
+        .map_err(|_| "Custom Module view-state lock is poisoned".to_string())?;
+    if visible {
+        let bounds = state.bounds;
+        webview::set_overlay_bounds(
+            &session.host_window,
+            &session.window,
+            bounds.x,
+            bounds.y,
+            bounds.width,
+            bounds.height,
+        )?;
+    } else {
+        webview::hide_overlay(&session.window)?;
+    }
+    state.visible = visible;
+    Ok(())
+}
+
 #[tauri::command]
 pub fn update_custom_module_bounds(
     request: CustomModuleBoundsRequest,
     runtime: tauri::State<'_, CustomModuleRuntime>,
 ) -> Result<(), String> {
     let session = runtime.session(&request.session_id)?;
-    webview::set_overlay_bounds(
-        &session.host_window,
-        &session.window,
-        request.x,
-        request.y,
-        request.width,
-        request.height,
+    update_runtime_view_bounds(
+        &session,
+        RuntimeBounds {
+            x: request.x,
+            y: request.y,
+            width: request.width,
+            height: request.height,
+        },
     )
 }
 
@@ -2106,11 +2179,7 @@ pub fn set_custom_module_visibility(
     runtime: tauri::State<'_, CustomModuleRuntime>,
 ) -> Result<(), String> {
     let session = runtime.session(&session_id)?;
-    if visible {
-        webview::show_overlay(&session.window)
-    } else {
-        webview::hide_overlay(&session.window)
-    }
+    set_runtime_view_visibility(&session, visible)
 }
 
 #[tauri::command]
@@ -2776,7 +2845,7 @@ mod tests {
     }
 
     #[test]
-    fn curated_activity_rail_icons_are_bounded_svg_data_urls() {
+    fn activity_rail_icons_are_inert_bounded_svg_data_urls_for_all_trust_levels() {
         let directory = tempfile::tempdir().unwrap();
         let paths = AppPaths::for_test(directory.path().join("data"));
         let package_path =
@@ -2790,12 +2859,21 @@ mod tests {
         let mut manifest = valid_manifest();
         manifest.modules[0].icon = Some("dist/icon.svg".into());
 
-        let icons = curated_icon_data_urls(&paths, &package_path, &manifest, "firstParty");
+        let icons = activity_rail_icon_data_urls(&paths, &package_path, &manifest);
         assert!(
             icons["fixture"].starts_with("data:image/svg+xml;base64,"),
-            "curated SVG should be exposed only as an inert image data URL"
+            "validated SVG should be exposed only as an inert image data URL"
         );
-        assert!(curated_icon_data_urls(&paths, &package_path, &manifest, "local").is_empty());
+
+        fs::write(
+            package_path.join("dist/icon.svg"),
+            br#"<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>"#,
+        )
+        .unwrap();
+        assert!(
+            activity_rail_icon_data_urls(&paths, &package_path, &manifest).is_empty(),
+            "active SVG content must fall back to the generic glyph"
+        );
 
         fs::write(
             package_path.join("dist/icon.svg"),
@@ -2803,7 +2881,7 @@ mod tests {
         )
         .unwrap();
         assert!(
-            curated_icon_data_urls(&paths, &package_path, &manifest, "firstParty").is_empty(),
+            activity_rail_icon_data_urls(&paths, &package_path, &manifest).is_empty(),
             "oversized icons must fall back to the generic glyph"
         );
     }
