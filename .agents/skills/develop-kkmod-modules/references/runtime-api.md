@@ -94,6 +94,7 @@ Declare `"storage"` before calling the storage API.
 - Limit is 10,000 keys per package id.
 - Data is non-secret and isolated by package id. It survives Module sessions and upgrades until the user deletes it.
 - `get()` returns `null` for a missing key. `list()` returns keys in sorted order.
+- In Windows portable mode, the host keeps this SQLite-backed data in the executable's sibling `data/kkterm.sqlite3`; package code must not derive or persist that absolute path.
 
 Do not store credentials, tokens, private keys, connection secrets, or sensitive document content unless the product explicitly accepts non-secret local storage semantics.
 
@@ -109,6 +110,7 @@ Declare `"documentStorage"` before calling the documents API.
 - Replacing or deleting a key removes content files once no key in that package references them.
 - Data is non-secret and isolated by package id. It survives Module sessions, upgrades, and an uninstall that retains data; the explicit delete-data uninstall removes it.
 - Database-only backups and Settings exports retain document metadata, not the external document files.
+- In Windows portable mode, document content stays below the executable's sibling `data/custom-modules/documents/` tree, alongside the package, catalog, download, staging, and per-Module WebView data roots. Moving the complete portable folder preserves them.
 
 Use `storage` for small settings and `documents` for larger scene files or encoded assets. Do not store credentials, tokens, private keys, Connection secrets, or other secrets in either API.
 
@@ -196,6 +198,7 @@ Validate in the real Tauri app, not only Vite or a normal browser:
 - keyboard, pointer, focus, resize/move, and high-DPI bounds;
 - context changes for every supported theme/locale flow;
 - storage/document isolation, quota errors, content-integrity errors, permission denial, and offline restart;
+- Windows portable install, restart, folder move, and update retention with all package and Module data remaining below the sibling `data` directory;
 - external link scheme rejection and one-second rate limit;
 - dialogs/popovers and URL/RDP native-surface overlap;
 - Windows, macOS, and Linux release targets before publication.

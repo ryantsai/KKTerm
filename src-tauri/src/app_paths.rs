@@ -126,14 +126,23 @@ impl AppPaths {
         }
     }
 
+    #[cfg(test)]
+    pub(crate) fn for_portable_test(data_dir: PathBuf) -> Self {
+        Self::portable(data_dir)
+    }
+
+    fn portable(data_dir: PathBuf) -> Self {
+        Self {
+            mode: AppMode::Portable,
+            cache_dir: data_dir.join("cache"),
+            media_dir: data_dir.clone(),
+            data_dir,
+        }
+    }
+
     pub fn resolve(app: &AppHandle, launch: &LaunchContext) -> Result<Self, String> {
         if let Some(data_dir) = launch.portable_data_dir.as_ref() {
-            return Ok(Self {
-                mode: AppMode::Portable,
-                data_dir: data_dir.clone(),
-                cache_dir: data_dir.join("cache"),
-                media_dir: data_dir.clone(),
-            });
+            return Ok(Self::portable(data_dir.clone()));
         }
 
         let data_dir = app
@@ -163,6 +172,10 @@ impl AppPaths {
 
     pub fn data_dir(&self) -> &Path {
         &self.data_dir
+    }
+
+    pub fn database_path(&self) -> PathBuf {
+        self.data_dir.join("kkterm.sqlite3")
     }
 
     pub fn cache_dir(&self) -> &Path {

@@ -194,6 +194,11 @@ toggle list while their persisted backend settings remain enabled.
   Module data is retained for reinstall; `settings.customModulesDeleteData` is
   the explicit destructive option that removes metadata, grants, small storage,
   and filesystem-backed document data.
+- In Windows portable mode, the complete Custom Module installation remains
+  beside KKTerm: metadata and small storage use `data/kkterm.sqlite3`, while
+  packages, staging, downloads, catalog cache, per-Module WebView data, and
+  document files use `data/custom-modules/`. Keep the whole portable folder
+  together when moving it. Portable updates retain this `data` directory.
 - Database backups and Settings exports retain Custom Module metadata and
   small isolated storage but do not embed optional package payloads or external
   document files. After restoring to a machine without package files, the

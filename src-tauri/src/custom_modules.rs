@@ -261,6 +261,22 @@ fn modules_root(paths: &AppPaths) -> PathBuf {
     paths.data_dir().join("custom-modules")
 }
 
+fn package_storage_root(paths: &AppPaths) -> PathBuf {
+    modules_root(paths).join("packages")
+}
+
+fn staging_root(paths: &AppPaths) -> PathBuf {
+    modules_root(paths).join("staging")
+}
+
+fn downloads_root(paths: &AppPaths) -> PathBuf {
+    modules_root(paths).join("downloads")
+}
+
+fn webview_data_root(paths: &AppPaths) -> PathBuf {
+    modules_root(paths).join("webview-data")
+}
+
 fn document_storage_root(paths: &AppPaths) -> PathBuf {
     modules_root(paths).join("documents")
 }
@@ -270,7 +286,7 @@ fn package_relative_path(module_id: &str, version: &str) -> PathBuf {
 }
 
 fn canonical_package_root(paths: &AppPaths, package_root: &Path) -> Result<PathBuf, String> {
-    let packages_root = fs::canonicalize(modules_root(paths).join("packages"))
+    let packages_root = fs::canonicalize(package_storage_root(paths))
         .map_err(|error| format!("failed to resolve Custom Module packages directory: {error}"))?;
     let canonical_root = fs::canonicalize(package_root)
         .map_err(|error| format!("failed to resolve Custom Module package root: {error}"))?;
@@ -731,7 +747,7 @@ fn install_package(
         }
     }
     let root = modules_root(paths);
-    let staging = root.join("staging").join(format!(
+    let staging = staging_root(paths).join(format!(
         "{}-{}-{:016x}",
         review.manifest.id,
         review.manifest.version,
@@ -900,7 +916,7 @@ fn install_package(
     })?;
     for obsolete in obsolete_paths {
         let _ = remove_owned_directory(
-            &root.join("packages"),
+            &package_storage_root(paths),
             &root.join(obsolete),
             "obsolete Custom Module version",
         );
@@ -1487,7 +1503,7 @@ pub async fn install_custom_module_from_catalog(
         let result = (|| {
             let storage = app.state::<Storage>();
             let paths = app.state::<AppPaths>();
-            let cache = modules_root(&paths).join("downloads");
+            let cache = downloads_root(&paths);
             fs::create_dir_all(&cache).map_err(|error| error.to_string())?;
             let destination = cache.join(format!("{}-{}.kkmod", entry.id, entry.version));
             let client = crate::net::proxy::apply_blocking(
@@ -1811,19 +1827,13 @@ pub fn uninstall_custom_module(
         }
         runtime.lock_routes()?.remove(&label);
     }
-    let package_dir = modules_root(&paths).join("packages").join(&module_id);
-    remove_owned_directory(
-        &modules_root(&paths).join("packages"),
-        &package_dir,
-        "Custom Module package files",
-    )?;
+    let packages = package_storage_root(&paths);
+    let package_dir = packages.join(&module_id);
+    remove_owned_directory(&packages, &package_dir, "Custom Module package files")?;
     if delete_data {
-        let webview_data = modules_root(&paths).join("webview-data").join(&module_id);
-        remove_owned_directory(
-            &modules_root(&paths).join("webview-data"),
-            &webview_data,
-            "Custom Module WebView data",
-        )?;
+        let webview_root = webview_data_root(&paths);
+        let webview_data = webview_root.join(&module_id);
+        remove_owned_directory(&webview_root, &webview_data, "Custom Module WebView data")?;
         let document_data = document_storage_root(&paths).join(&module_id);
         remove_owned_directory(
             &document_storage_root(&paths),
@@ -2004,11 +2014,7 @@ pub async fn start_custom_module(
         .visible(false)
         .position(-32_000.0, -32_000.0)
         .inner_size(request.width.max(1.0), request.height.max(1.0))
-        .data_directory(
-            modules_root(&paths)
-                .join("webview-data")
-                .join(&installed.manifest.id),
-        )
+        .data_directory(webview_data_root(&paths).join(&installed.manifest.id))
         .on_navigation(move |url| {
             let is_module_asset = url.scheme() == "kkmodule"
                 || (url.scheme() == "http" && url.host_str() == Some("kkmodule.localhost"));
@@ -3084,6 +3090,77 @@ mod tests {
         )
         .unwrap();
         assert_eq!(repaired.previous_version.as_deref(), Some("1.0.0"));
+    }
+
+    #[test]
+    fn portable_mode_keeps_custom_module_packages_and_data_beside_the_executable() {
+        let directory = tempfile::tempdir().unwrap();
+        let portable_data = directory.path().join("portable").join("data");
+        fs::create_dir_all(&portable_data).unwrap();
+        let paths = AppPaths::for_portable_test(portable_data.clone());
+        let database_path = paths.database_path();
+        let storage = Storage::open(database_path.clone()).unwrap();
+        let package = directory.path().join("fixture.kkmod");
+        write_package(&package, None);
+
+        install_package(&storage, &paths, &package, "local", "local", None, None).unwrap();
+        let document = json!({"elements": [{"id": "portable"}], "files": {}});
+        set_document(&storage, &paths, "com.kkterm.fixture", "scene", &document).unwrap();
+        let document_sha256: String = storage
+            .with_connection(|connection| {
+                connection
+                    .query_row(
+                        "SELECT content_sha256 FROM custom_module_documents
+                         WHERE module_id = 'com.kkterm.fixture' AND key = 'scene'",
+                        [],
+                        |row| row.get(0),
+                    )
+                    .map_err(|error| error.to_string())
+            })
+            .unwrap();
+
+        assert!(paths.is_portable());
+        assert_eq!(database_path, portable_data.join("kkterm.sqlite3"));
+        assert!(database_path.is_file());
+        assert_eq!(
+            package_storage_root(&paths),
+            portable_data.join("custom-modules").join("packages")
+        );
+        assert_eq!(
+            staging_root(&paths),
+            portable_data.join("custom-modules").join("staging")
+        );
+        assert_eq!(
+            downloads_root(&paths),
+            portable_data.join("custom-modules").join("downloads")
+        );
+        assert_eq!(
+            webview_data_root(&paths),
+            portable_data.join("custom-modules").join("webview-data")
+        );
+        assert_eq!(
+            catalog_cache_path(&paths),
+            portable_data
+                .join("custom-modules")
+                .join(CATALOG_CACHE_FILE)
+        );
+        assert!(
+            package_storage_root(&paths)
+                .join("com.kkterm.fixture")
+                .join("1.0.0")
+                .join("dist")
+                .join("index.html")
+                .is_file()
+        );
+        assert_eq!(
+            document_content_path(&paths, "com.kkterm.fixture", &document_sha256),
+            portable_data
+                .join("custom-modules")
+                .join("documents")
+                .join("com.kkterm.fixture")
+                .join(format!("{document_sha256}.json"))
+        );
+        assert!(document_content_path(&paths, "com.kkterm.fixture", &document_sha256).is_file());
     }
 
     #[test]

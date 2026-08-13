@@ -43,6 +43,14 @@ immutable SHA-256-addressed JSON files outside SQLite and keeps only key/hash/
 size/timestamp metadata in SQLite. The package quota is 512 MiB, each document
 is capped at 64 MiB, and a package may keep at most 4,096 document keys.
 
+Installed builds resolve those files through the platform app-data directory.
+Windows portable builds resolve the same layout through the executable's
+sibling `data` directory: metadata and small storage use `data/kkterm.sqlite3`,
+and package files, document files, WebView data, catalog artifacts, downloads,
+and staging stay below `data/custom-modules/`. A portable Module must not derive
+or persist an absolute host path; use the bridge and keep the complete portable
+folder together when moving the app.
+
 Archive paths use portable ASCII letters, digits, `/`, `.`, `_`, `-`, and `@`;
 spaces, backslashes, traversal, Windows reserved device names, and trailing dots
 are rejected. Payload files belong below `dist/` or `licenses/`, and only the

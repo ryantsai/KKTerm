@@ -50,7 +50,7 @@ When changing the KKTerm host itself, keep every Tauri command that constructs a
    python <skill-dir>\scripts\kkmod_tool.py check <name>.kkmod
    ```
 
-9. **Verify behavior.** Test in the real Tauri desktop runtime: startup/readiness, keyboard and focus, resizing, theme/locale updates, overlay visibility, restart persistence, permissions, clipboard copy/paste when granted, offline startup, disable/uninstall, and URL/RDP overlap. Browser/Vite preview is insufficient for native integration. If host code changed, also verify that starting a Module does not stall unrelated main-window Tauri invokes.
+9. **Verify behavior.** Test in the real Tauri desktop runtime: startup/readiness, keyboard and focus, resizing, theme/locale updates, overlay visibility, restart persistence, permissions, clipboard copy/paste when granted, offline startup, disable/uninstall, and URL/RDP overlap. For Windows portable builds, verify install, restart, folder move, and update retention with SQLite metadata in `data/kkterm.sqlite3` and every package/document/WebView/catalog/download/staging artifact below `data/custom-modules/`. Browser/Vite preview is insufficient for native integration. If host code changed, also verify that starting a Module does not stall unrelated main-window Tauri invokes.
 10. **Prepare publication only when requested.** Ensure every rail-visible curated contribution declares an inert packaged SVG icon no larger than 64 KiB; KKTerm renders it as a monochrome `currentColor` mask. Generate catalog metadata from the final immutable archive, sign its lowercase SHA-256 text outside the repository, and keep the private key out of source and package files.
 
 ## Completion report
