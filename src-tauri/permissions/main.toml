@@ -369,7 +369,6 @@ commands.allow = [
   "install_custom_module_from_catalog",
   "cancel_custom_module_download",
   "set_custom_module_enabled",
-  "set_custom_module_rail_visible",
   "read_custom_module_license_file",
   "rollback_custom_module",
   "uninstall_custom_module",

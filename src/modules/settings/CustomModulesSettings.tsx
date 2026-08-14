@@ -1,5 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
-import { Download, Package, RefreshCw, Shield, Trash2 } from "../../lib/reicon";
+import {
+  Database,
+  Download,
+  FileText,
+  Package,
+  RefreshCw,
+  RotateCcw,
+  ScrollText,
+  Shield,
+  Trash2,
+} from "../../lib/reicon";
 import { useTranslation } from "react-i18next";
 import { Actions, Btn, ConfirmSheet, DialogShell, Sheet } from "../../app/ui/dialog";
 import {
@@ -225,24 +235,13 @@ export function CustomModulesSettings() {
     }
   }
 
-  async function updateFlag(
-    module: InstalledCustomModule,
-    field: "enabled" | "railVisible",
-    value: boolean,
-  ) {
+  async function updateEnabled(module: InstalledCustomModule, value: boolean) {
     setBusyId(module.id);
     try {
-      if (field === "enabled") {
-        await invokeCommand("set_custom_module_enabled", {
-          moduleId: module.id,
-          enabled: value,
-        });
-      } else {
-        await invokeCommand("set_custom_module_rail_visible", {
-          moduleId: module.id,
-          railVisible: value,
-        });
-      }
+      await invokeCommand("set_custom_module_enabled", {
+        moduleId: module.id,
+        enabled: value,
+      });
       await reload();
       publishChange();
     } catch (error) {
@@ -416,74 +415,88 @@ export function CustomModulesSettings() {
                   {t("settings.customModulesHealthMissing")}
                 </p>
               ) : null}
-              <div className="custom-module-permissions">
-                <strong>{t("settings.customModulesPermissions")}</strong>
-                <span>
-                  {formatPermissions(module.permissions, t("settings.customModulesNoPermissions"))}
-                </span>
-              </div>
-              <div className="custom-module-permissions">
-                <strong>{t("settings.customModulesDataUsageLabel")}</strong>
-                <span>
-                  {dataUsage[module.id]
-                    ? t("settings.customModulesDataUsage", {
-                        size: formatDataSize(dataUsage[module.id]?.totalBytes ?? 0),
-                        secretCount: dataUsage[module.id]?.secretCount ?? 0,
-                      })
-                    : t("settings.customModulesDataUsageUnavailable")}
-                </span>
-              </div>
-              <div className="custom-module-controls">
+              <dl className="custom-module-sizes">
+                <div>
+                  <dt>{t("settings.customModulesModuleSize")}</dt>
+                  <dd>{dataUsage[module.id]
+                    ? formatDataSize(dataUsage[module.id]?.moduleBytes ?? 0)
+                    : t("settings.customModulesDataUsageUnavailable")}</dd>
+                </div>
+                <div>
+                  <dt>{t("settings.customModulesDataUsageLabel")}</dt>
+                  <dd>{dataUsage[module.id]
+                    ? formatDataSize(dataUsage[module.id]?.appDataBytes ?? 0)
+                    : t("settings.customModulesDataUsageUnavailable")}</dd>
+                </div>
+              </dl>
+              <footer className="custom-module-card-footer">
                 <label className="settings-toggle-row custom-module-toggle-row">
                   <span>{t("settings.customModulesEnabled")}</span>
                   <ToggleSwitch
                     checked={module.enabled}
                     disabled={busyId === module.id || module.health !== "ready"}
-                    onChange={(value) => void updateFlag(module, "enabled", value)}
+                    onChange={(value) => void updateEnabled(module, value)}
                   />
                 </label>
-                <label className="settings-toggle-row custom-module-toggle-row">
-                  <span>{t("settings.customModulesShowRail")}</span>
-                  <ToggleSwitch
-                    checked={module.railVisible}
-                    disabled={busyId === module.id || !module.enabled}
-                    onChange={(value) => void updateFlag(module, "railVisible", value)}
-                  />
-                </label>
-              </div>
-              <div className="custom-module-actions">
-                {module.previousVersion ? (
-                  <button className="secondary-button" onClick={() => void rollbackModule(module)} type="button">
-                    {t("settings.customModulesRollback", { version: module.previousVersion })}
+                <div className="custom-module-actions">
+                  {module.previousVersion ? (
+                    <button
+                      aria-label={t("settings.customModulesRollback", {
+                        version: module.previousVersion,
+                      })}
+                      className="custom-module-action-button"
+                      onClick={() => void rollbackModule(module)}
+                      title={t("settings.customModulesRollback", {
+                        version: module.previousVersion,
+                      })}
+                      type="button"
+                    >
+                      <RotateCcw size={15} />
+                    </button>
+                  ) : null}
+                  <button
+                    aria-label={t("settings.customModulesOpenLicense")}
+                    className="custom-module-action-button"
+                    onClick={() => void showLicense(module, false)}
+                    title={t("settings.customModulesOpenLicense")}
+                    type="button"
+                  >
+                    <FileText size={15} />
                   </button>
-                ) : null}
-                <button className="secondary-button" onClick={() => void showLicense(module, false)} type="button">
-                  {t("settings.customModulesOpenLicense")}
-                </button>
-                {module.license.noticesFile ? (
-                  <button className="secondary-button" onClick={() => void showLicense(module, true)} type="button">
-                    {t("settings.customModulesOpenNotices")}
+                  {module.license.noticesFile ? (
+                    <button
+                      aria-label={t("settings.customModulesOpenNotices")}
+                      className="custom-module-action-button"
+                      onClick={() => void showLicense(module, true)}
+                      title={t("settings.customModulesOpenNotices")}
+                      type="button"
+                    >
+                      <ScrollText size={15} />
+                    </button>
+                  ) : null}
+                  <button
+                    aria-label={t("settings.customModulesClearData")}
+                    className="custom-module-action-button"
+                    disabled={busyId === module.id || module.enabled}
+                    onClick={() => setPendingClearData(module)}
+                    title={module.enabled
+                      ? t("settings.customModulesClearDataDisabled")
+                      : t("settings.customModulesClearData")}
+                    type="button"
+                  >
+                    <Database size={15} />
                   </button>
-                ) : null}
-                <button
-                  className="secondary-button"
-                  disabled={busyId === module.id || module.enabled}
-                  onClick={() => setPendingClearData(module)}
-                  title={module.enabled ? t("settings.customModulesClearDataDisabled") : undefined}
-                  type="button"
-                >
-                  {t("settings.customModulesClearData")}
-                </button>
-                <button
-                  aria-label={t("settings.customModulesUninstall")}
-                  className="settings-icon-danger-button"
-                  disabled={busyId === module.id}
-                  onClick={() => setPendingUninstall(module)}
-                  type="button"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
+                  <button
+                    aria-label={t("settings.customModulesUninstall")}
+                    className="settings-icon-danger-button"
+                    disabled={busyId === module.id}
+                    onClick={() => setPendingUninstall(module)}
+                    type="button"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </footer>
             </article>
           ))}
         </div>
@@ -494,23 +507,16 @@ export function CustomModulesSettings() {
         {available.length === 0 ? (
           <p className="settings-help-text">{t("settings.customModulesNoneAvailable")}</p>
         ) : (
-          <div className="custom-modules-list">
+          <div className="custom-modules-list custom-modules-catalog-list">
             {available.map((entry) => (
-              <article className="custom-module-card compact" key={entry.id}>
+              <article className="custom-module-card" key={entry.id}>
                 <div className="custom-module-card-heading">
                   <span className="custom-module-icon"><Package size={20} /></span>
                   <div><h3>{entry.name}</h3><p>{entry.summary}</p></div>
-                  <button
-                    className="primary-button"
-                    disabled={busyId === entry.id || entry.apiVersion !== 2}
-                    onClick={() => setPendingCatalogInstall(entry)}
-                    type="button"
-                  >
-                    <Download size={14} />
-                    {installed.some((module) => module.id === entry.id)
-                      ? t("settings.customModulesUpdate")
-                      : t("settings.customModulesInstall")}
-                  </button>
+                  <span className="custom-module-trust firstParty">
+                    <Shield size={13} />
+                    {t("settings.customModulesTrustFirstParty")}
+                  </span>
                 </div>
                 {entry.apiVersion !== 2 ? (
                   <p className="custom-module-health-error">
@@ -522,10 +528,25 @@ export function CustomModulesSettings() {
                   <div><dt>{t("settings.customModulesVersion")}</dt><dd>{entry.version}</dd></div>
                   <div><dt>{t("settings.customModulesLicense")}</dt><dd>{entry.license}</dd></div>
                 </dl>
-                <div className="custom-module-permissions">
-                  <strong>{t("settings.customModulesPermissions")}</strong>
-                  <span>{formatPermissions(entry.permissions, t("settings.customModulesNoPermissions"))}</span>
-                </div>
+                <dl className="custom-module-sizes">
+                  <div>
+                    <dt>{t("settings.customModulesModuleSize")}</dt>
+                    <dd>{formatDataSize(entry.downloadSize)}</dd>
+                  </div>
+                </dl>
+                <footer className="custom-module-card-footer catalog">
+                  <button
+                    className="primary-button"
+                    disabled={busyId === entry.id || entry.apiVersion !== 2}
+                    onClick={() => setPendingCatalogInstall(entry)}
+                    type="button"
+                  >
+                    <Download size={14} />
+                    {installed.some((module) => module.id === entry.id)
+                      ? t("settings.customModulesUpdate")
+                      : t("settings.customModulesInstall")}
+                  </button>
+                </footer>
               </article>
             ))}
           </div>

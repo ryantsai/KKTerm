@@ -17,14 +17,14 @@ grant private host capabilities.
 
 - Settings contains a searchable **Custom Modules** section.
 - A user can install a static `.kkmod`, inspect its publisher, license, declared
-  permissions, and package source, enable or disable it, show or hide its Module
-  contribution in the Activity Rail, and uninstall it.
+  permissions, and package source, enable or disable it, and uninstall it.
 - Installed package payloads remain outside the main installer and outside
   SQLite. SQLite stores validated metadata, grants, lifecycle state, isolated
   small key/value data, and external-document keys/hashes/sizes/timestamps;
   large document content stays in quota-bound content-addressed app-data files.
-- Enabled Module contributions appear as durable Activity Rail destinations and
-  load in a dedicated native WebView without a localhost service.
+- Enabled, manifest-declared rail-visible Module contributions appear as durable
+  Activity Rail destinations and load in a dedicated native WebView without a
+  localhost service. There is no separate user visibility preference.
 - External module code cannot call KKTerm's ordinary Tauri commands. It can call
   only a caller-bound, permission-checked Custom Module bridge.
 - Local packages work offline after installation. Failed upgrades retain a
@@ -53,7 +53,7 @@ The v2 manifest contains:
 - host API compatibility version;
 - license name, license file, optional notices file, and homepage;
 - one or more `modules` contributions with a stable id, title, icon, entrypoint,
-  and default Activity Rail visibility;
+  and manifest-declared Activity Rail eligibility;
 - requested permissions.
 
 First-party download URL, host API version, checksum, signature, download size,
@@ -92,7 +92,7 @@ No external package may load until this gate passes.
   staged version. Keep the previous version available for explicit rollback if
   the newly activated version fails at runtime.
 - Implement list, inspect, install-from-file, catalog install/update, enable,
-  disable, rail visibility, uninstall, and data deletion commands.
+  disable, uninstall, and data deletion commands.
 - Stream cancellable download progress and expose actionable errors without
   persisting transient runtime progress.
 
@@ -130,8 +130,7 @@ No external package may load until this gate passes.
 - Show installed packages and available first-party catalog entries, trust and
   compatibility state, requested permissions, license/notices, and package
   health.
-- Add install-from-file, install/update, enable/disable, Activity Rail visibility,
-  and uninstall controls.
+- Add install-from-file, install/update, enable/disable, and uninstall controls.
 - Use Status Bar progress/notices and shared dialog primitives. Permission
   expansion and destructive data deletion require explicit confirmation.
 - Add English i18n keys and one pending localization file per new key.
