@@ -7,10 +7,22 @@ import {
   buildRenewal,
   createEnvelope,
   loadSigningKey,
+  parseArguments,
   readManifest,
   validateCatalogEntries,
   verifyEnvelope,
 } from "../scripts/publish-custom-module.mjs";
+
+test("publisher can skip an externally completed package upload", () => {
+  const options = parseArguments([
+    "--bucket", "modules",
+    "--base-url", "https://modules.example.test",
+    "--private-key", "private.pem",
+    "--package", "fixture.kkmod",
+    "--skip-package-upload",
+  ]);
+  assert.equal(options.skipPackageUpload, true);
+});
 
 function signingKey() {
   const { privateKey } = generateKeyPairSync("ed25519");

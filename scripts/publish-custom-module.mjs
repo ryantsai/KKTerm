@@ -32,8 +32,8 @@ function parseArguments(argv) {
   const options = { catalogPath: "catalog/v2/catalog.json", expiresDays: 30, dryRun: false, renewOnly: false };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
-    if (argument === "--dry-run" || argument === "--renew-only") {
-      options[argument === "--dry-run" ? "dryRun" : "renewOnly"] = true;
+    if (["--dry-run", "--renew-only", "--skip-package-upload"].includes(argument)) {
+      options[argument.slice(2).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())] = true;
       continue;
     }
     const name = argument.startsWith("--") ? argument.slice(2) : "";
@@ -346,13 +346,15 @@ async function main(argv) {
   try {
     await writeFile(catalogFile, `${JSON.stringify(release.envelope, null, 2)}\n`, "utf8");
     if (!options.renewOnly) {
-      await runWrangler([
-        "r2", "object", "put", `${options.bucket}/${release.objectKey}`,
-        `--file=${packagePath}`,
-        "--remote",
-        "--content-type=application/vnd.kkterm.kkmod+zip",
-        "--cache-control=public, max-age=31536000, immutable",
-      ]);
+      if (!options.skipPackageUpload) {
+        await runWrangler([
+          "r2", "object", "put", `${options.bucket}/${release.objectKey}`,
+          `--file=${packagePath}`,
+          "--remote",
+          "--content-type=application/vnd.kkterm.kkmod+zip",
+          "--cache-control=public, max-age=31536000, immutable",
+        ]);
+      }
       await verifyPublicObject(release.entry.downloadUrl, packageBytes.length);
     }
     await runWrangler([
@@ -389,6 +391,7 @@ export {
   compareVersions,
   createEnvelope,
   loadSigningKey,
+  parseArguments,
   readManifest,
   validateCuratedModuleIcons,
   validateCatalogEntries,

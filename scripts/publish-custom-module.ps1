@@ -13,6 +13,7 @@ param(
     [string]$WriteBaseline,
     [switch]$DryRun,
     [switch]$RenewOnly,
+    [switch]$SkipPackageUpload,
     [switch]$UnencryptedSigningKey
 )
 
@@ -65,6 +66,9 @@ else {
 }
 if ($DryRun) {
     $Arguments += "--dry-run"
+}
+if ($SkipPackageUpload) {
+    $Arguments += "--skip-package-upload"
 }
 if ($WriteBaseline) {
     $Arguments += @("--write-baseline", $WriteBaseline)

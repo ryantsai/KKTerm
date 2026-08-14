@@ -110,6 +110,12 @@ Use `-DryRun` to validate and print release metadata without writing R2. Use
 `-KkmodToolPath` if the skill is installed somewhere other than the default
 personal Codex skills directory.
 
+If an archive exceeds Wrangler's object-upload limit, upload its immutable
+`packages/sha256/<sha256>.kkmod` object through R2's S3-compatible multipart
+API first, then publish with `-SkipPackageUpload`. The publisher still verifies
+the public object's exact byte size before uploading the signed catalog with
+Wrangler.
+
 Before a KKTerm desktop release, optionally snapshot the successfully published
 entries into the embedded baseline:
 
