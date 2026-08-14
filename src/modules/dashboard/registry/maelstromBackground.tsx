@@ -121,8 +121,9 @@ export function MaelstromBg() {
   const runtimeRef = useRef<{ start: () => void; stop: () => void } | null>(null);
 
   useEffect(() => {
-    const host = hostRef.current;
-    if (!host) return;
+    const hostElement = hostRef.current;
+    if (!hostElement) return;
+    const host = hostElement;
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x7896aa);
