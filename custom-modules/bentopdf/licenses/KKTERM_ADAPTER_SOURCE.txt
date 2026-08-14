@@ -1,0 +1,73 @@
+KKTerm BentoPDF API v2 adapter source
+======================================
+
+interface KKTermContext {
+  apiVersion: 2;
+  theme: string;
+  locale: string;
+}
+
+interface KKTermHost {
+  readonly apiVersion: 2;
+  ready(): Promise<boolean>;
+  getContext(): Promise<KKTermContext>;
+  getCapabilities(): Promise<Record<string, unknown>>;
+  on(event: 'contextChanged', listener: (detail: KKTermContext) => void): () => boolean;
+  on(
+    event: 'visibilityChanged' | 'focusChanged' | 'suspending' | 'closing',
+    listener: (detail: unknown) => void
+  ): () => boolean;
+}
+
+declare global {
+  interface Window {
+    KKTerm?: KKTermHost;
+  }
+}
+
+function applyContext(context: KKTermContext): void {
+  document.documentElement.lang = context.locale;
+  document.documentElement.dataset.theme = context.theme;
+  document.documentElement.style.colorScheme = context.theme
+    .toLowerCase()
+    .includes('dark')
+    ? 'dark'
+    : 'light';
+}
+
+async function initializeKKTermV2(): Promise<void> {
+  const host = window.KKTerm;
+  if (!host || host.apiVersion !== 2) {
+    throw new Error('KKTerm host API v2 is unavailable.');
+  }
+
+  const [context] = await Promise.all([
+    host.getContext(),
+    host.getCapabilities(),
+  ]);
+  applyContext(context);
+
+  host.on('contextChanged', applyContext);
+  host.on('visibilityChanged', () => undefined);
+  host.on('focusChanged', () => undefined);
+  host.on('suspending', () => undefined);
+  host.on('closing', () => undefined);
+
+  if (document.readyState === 'loading') {
+    await new Promise<void>((resolve) => {
+      document.addEventListener('DOMContentLoaded', () => resolve(), {
+        once: true,
+      });
+    });
+  }
+  await host.ready();
+}
+
+void initializeKKTermV2().catch((error) => {
+  console.error('Failed to initialize the BentoPDF KKTerm v2 adapter', error);
+  void window.KKTerm?.ready().catch((readyError) => {
+    console.error('Failed to reveal the BentoPDF startup error', readyError);
+  });
+});
+
+export {};

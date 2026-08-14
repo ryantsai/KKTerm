@@ -9,7 +9,7 @@ param(
     [string]$CatalogPath = "catalog/v2/catalog.json",
     [ValidateRange(1, 45)]
     [int]$ExpiresDays = 30,
-    [string]$KkmodToolPath = "$env:USERPROFILE\.codex\skills\develop-kkmod-modules\scripts\kkmod_tool.py",
+    [string]$KkmodToolPath,
     [string]$WriteBaseline,
     [switch]$DryRun,
     [switch]$RenewOnly,
@@ -18,13 +18,19 @@ param(
 
 $ErrorActionPreference = "Stop"
 $RepositoryRoot = Split-Path -Parent $PSScriptRoot
+$ResolvedKkmodToolPath = if ($KkmodToolPath) {
+    $KkmodToolPath
+}
+else {
+    Join-Path $RepositoryRoot ".agents\skills\develop-kkmod-modules\scripts\kkmod_tool.py"
+}
 $ResolvedSigningKey = (Resolve-Path -LiteralPath $SigningKeyPath).Path
 if (-not $RenewOnly) {
     if (-not $Package) {
         throw "-Package is required unless -RenewOnly is used."
     }
     $ResolvedPackage = (Resolve-Path -LiteralPath $Package).Path
-    $ResolvedKkmodTool = (Resolve-Path -LiteralPath $KkmodToolPath).Path
+    $ResolvedKkmodTool = (Resolve-Path -LiteralPath $ResolvedKkmodToolPath).Path
     & python $ResolvedKkmodTool check $ResolvedPackage
     if ($LASTEXITCODE -ne 0) {
         throw "KKMod validation failed. Publication was not started."

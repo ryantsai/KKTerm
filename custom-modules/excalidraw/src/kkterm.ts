@@ -24,6 +24,12 @@ export interface KKTermHost {
     delete(key: string): Promise<boolean>;
     list(): Promise<KKTermDocumentMetadata[]>;
   };
+  ui: {
+    notice(
+      message: string,
+      options?: { tone?: "info" | "success" | "warning" | "error" },
+    ): Promise<boolean>;
+  };
   on(event: "contextChanged", listener: (context: KKTermContext) => void): () => boolean;
   on(
     event: "visibilityChanged" | "focusChanged" | "suspending" | "closing",

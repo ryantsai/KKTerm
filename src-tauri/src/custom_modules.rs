@@ -27,9 +27,9 @@ use zip::ZipArchive;
 
 const MANIFEST_FILE: &str = "kkterm-extension.json";
 const HOST_API_VERSION: u32 = 2;
-const MAX_ARCHIVE_BYTES: u64 = 256 * 1024 * 1024;
+const MAX_ARCHIVE_BYTES: u64 = 1024 * 1024 * 1024;
 const MAX_ARCHIVE_ENTRIES: usize = 10_000;
-const MAX_UNCOMPRESSED_BYTES: u64 = 512 * 1024 * 1024;
+const MAX_UNCOMPRESSED_BYTES: u64 = 1024 * 1024 * 1024;
 const MAX_SINGLE_FILE_BYTES: u64 = 128 * 1024 * 1024;
 const STORAGE_QUOTA_BYTES: i64 = 10 * 1024 * 1024;
 const MAX_STORAGE_KEYS: i64 = 10_000;
@@ -811,6 +811,13 @@ fn is_allowed_payload(path: &Path) -> bool {
                 | "md"
                 | "xml"
                 | "webmanifest"
+                | "gz"
+                | "bcmap"
+                | "pfb"
+                | "ftl"
+                | "icc"
+                | "whl"
+                | "zip"
         )
     })
 }
@@ -822,7 +829,7 @@ fn sha256_file(path: &Path) -> Result<String, String> {
         .metadata()
         .map_err(|error| format!("failed to inspect package {}: {error}", path.display()))?;
     if metadata.len() == 0 || metadata.len() > MAX_ARCHIVE_BYTES {
-        return Err("Custom Module package is empty or exceeds the 256 MiB limit".into());
+        return Err("Custom Module package is empty or exceeds the 1 GiB limit".into());
     }
     let mut hasher = Sha256::new();
     let mut buffer = [0_u8; 64 * 1024];
@@ -906,7 +913,7 @@ fn inspect_archive(path: &Path) -> Result<PackageReview, String> {
             .checked_add(entry.size())
             .ok_or_else(|| "Custom Module expanded size overflowed".to_string())?;
         if expanded_bytes > MAX_UNCOMPRESSED_BYTES {
-            return Err("Custom Module package expands beyond the 512 MiB limit".into());
+            return Err("Custom Module package expands beyond the 1 GiB limit".into());
         }
         if is_forbidden_payload(&relative) {
             return Err(format!(
@@ -1805,7 +1812,7 @@ pub async fn install_custom_module_from_catalog(
                 .content_length()
                 .is_some_and(|length| length > MAX_ARCHIVE_BYTES)
             {
-                return Err("catalog package exceeds the 256 MiB download limit".into());
+                return Err("catalog package exceeds the 1 GiB download limit".into());
             }
             if response
                 .content_length()
@@ -1847,7 +1854,7 @@ pub async fn install_custom_module_from_catalog(
                 if downloaded > MAX_ARCHIVE_BYTES {
                     drop(output);
                     let _ = fs::remove_file(&destination);
-                    return Err("catalog package exceeds the 256 MiB download limit".into());
+                    return Err("catalog package exceeds the 1 GiB download limit".into());
                 }
                 output
                     .write_all(&buffer[..read])
@@ -4822,6 +4829,22 @@ mod tests {
                 .unwrap_err()
                 .contains("unsupported payload type")
         );
+    }
+
+    #[test]
+    fn packaged_browser_runtime_data_types_are_allowed() {
+        for asset in [
+            "dist/runtime.wasm.gz",
+            "dist/cmaps/identity.bcmap",
+            "dist/fonts/standard.pfb",
+            "dist/locales/en.ftl",
+            "dist/profiles/srgb.icc",
+            "dist/python/package.whl",
+            "dist/python/stdlib.zip",
+        ] {
+            assert!(is_allowed_payload(Path::new(asset)), "rejected {asset}");
+        }
+        assert!(!is_allowed_payload(Path::new("dist/runtime.py")));
     }
 
     #[test]

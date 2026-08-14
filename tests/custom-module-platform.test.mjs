@@ -71,6 +71,28 @@ test("Custom Module packages are optional and static", async () => {
   assert.doesNotMatch(tauriConfig, /\.kkmod|custom-modules[\\/]fixtures|excalidraw/i);
 });
 
+test("Custom Module package tooling consistently enforces the 1 GiB hard limit", async () => {
+  const [backend, publisher, validator, contract] = await Promise.all([
+    readFile(new URL("../src-tauri/src/custom_modules.rs", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/publish-custom-module.mjs", import.meta.url), "utf8"),
+    readFile(
+      new URL("../.agents/skills/develop-kkmod-modules/scripts/kkmod_tool.py", import.meta.url),
+      "utf8",
+    ),
+    readFile(
+      new URL("../.agents/skills/develop-kkmod-modules/references/package-contract.md", import.meta.url),
+      "utf8",
+    ),
+  ]);
+
+  assert.match(backend, /MAX_ARCHIVE_BYTES: u64 = 1024 \* 1024 \* 1024/);
+  assert.match(backend, /MAX_UNCOMPRESSED_BYTES: u64 = 1024 \* 1024 \* 1024/);
+  assert.match(publisher, /maxArchiveBytes = 1024 \* 1024 \* 1024/);
+  assert.match(validator, /MAX_ARCHIVE_BYTES = 1024 \* 1024 \* 1024/);
+  assert.match(validator, /MAX_EXPANDED_BYTES = 1024 \* 1024 \* 1024/);
+  assert.match(contract, /1 GiB compressed,\s*\n1 GiB expanded/);
+});
+
 test("dynamic Custom Module rail destinations do not become a compile-time id union", async () => {
   const [rail, hook, app] = await Promise.all([
     readFile(new URL("../src/app/ActivityRail.tsx", import.meta.url), "utf8"),

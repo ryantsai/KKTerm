@@ -57,7 +57,7 @@ function App({ host, initialContext, initialData, initialError }: AppProps) {
     () =>
       new DrawingPersistence(host, (error) => {
         console.error("Failed to persist Excalidraw document", error);
-        apiRef.current?.setToast({ message: MESSAGES.saveFailed });
+        void host.ui.notice(MESSAGES.saveFailed, { tone: "error" });
       }),
     [host],
   );
@@ -83,7 +83,7 @@ function App({ host, initialContext, initialData, initialError }: AppProps) {
       apiRef.current = api;
       if (initialErrorRef.current) {
         initialErrorRef.current = false;
-        api.setToast({ message: MESSAGES.loadFailed });
+        void host.ui.notice(MESSAGES.loadFailed, { tone: "warning" });
       }
       if (!readyRef.current) {
         readyRef.current = true;
@@ -108,18 +108,18 @@ function App({ host, initialContext, initialData, initialError }: AppProps) {
       try {
         url = new URL(link);
       } catch {
-        apiRef.current?.setToast({ message: MESSAGES.linkScheme });
+        void host.ui.notice(MESSAGES.linkScheme, { tone: "warning" });
         return;
       }
 
       if (url.protocol !== "http:" && url.protocol !== "https:") {
-        apiRef.current?.setToast({ message: MESSAGES.linkScheme });
+        void host.ui.notice(MESSAGES.linkScheme, { tone: "warning" });
         return;
       }
 
       void host.openExternal(url.href).catch((error) => {
         console.error("Failed to open Excalidraw link", error);
-        apiRef.current?.setToast({ message: MESSAGES.linkFailed });
+        void host.ui.notice(MESSAGES.linkFailed, { tone: "error" });
       });
     },
     [host],
@@ -148,7 +148,10 @@ function App({ host, initialContext, initialData, initialError }: AppProps) {
 
 async function bootstrap(): Promise<void> {
   const host = getKKTerm();
-  const context = await host.getContext();
+  const [context] = await Promise.all([
+    host.getContext(),
+    host.getCapabilities(),
+  ]);
   applyDocumentContext(context);
 
   let initialData: ExcalidrawInitialDataState | null = null;

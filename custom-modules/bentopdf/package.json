@@ -1,0 +1,11 @@
+{
+  "name": "@kkterm/bentopdf-module",
+  "version": "2.8.7",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "adapt": "node scripts/apply-adaptation.mjs",
+    "finalize": "node scripts/finalize-dist.mjs",
+    "generate:notices": "node scripts/generate-third-party-notices.mjs"
+  }
+}

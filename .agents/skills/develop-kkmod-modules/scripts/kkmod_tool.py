@@ -19,9 +19,9 @@ import zipfile
 
 MANIFEST = "kkterm-extension.json"
 HOST_API_VERSION = 2
-MAX_ARCHIVE_BYTES = 256 * 1024 * 1024
+MAX_ARCHIVE_BYTES = 1024 * 1024 * 1024
 MAX_ENTRIES = 10_000
-MAX_EXPANDED_BYTES = 512 * 1024 * 1024
+MAX_EXPANDED_BYTES = 1024 * 1024 * 1024
 MAX_FILE_BYTES = 128 * 1024 * 1024
 MAX_MANIFEST_BYTES = 1024 * 1024
 MAX_RATIO = 1_000
@@ -34,7 +34,8 @@ PERMISSION_KEYS = BOOLEAN_PERMISSIONS | {"files", "networkFetch"}
 ALLOWED_DIST_EXTENSIONS = {
     "html", "css", "js", "mjs", "json", "map", "wasm", "svg", "png",
     "jpg", "jpeg", "gif", "webp", "avif", "ico", "woff", "woff2", "ttf",
-    "otf", "txt", "md", "xml", "webmanifest",
+    "otf", "txt", "md", "xml", "webmanifest", "gz", "bcmap", "pfb",
+    "ftl", "icc", "whl", "zip",
 }
 ALLOWED_LICENSE_EXTENSIONS = {None, "txt", "md", "html"}
 FORBIDDEN_EXTENSIONS = {
@@ -365,7 +366,7 @@ def inspect_directory(root: Path) -> tuple[dict[str, Any], list[tuple[str, Path]
             raise ContractError(f"package file exceeds 128 MiB: {relative}")
         expanded += size
         if expanded > MAX_EXPANDED_BYTES:
-            raise ContractError("package expands beyond 512 MiB")
+            raise ContractError("package expands beyond 1 GiB")
         if relative == MANIFEST:
             manifest_raw = path.read_bytes()
     assert manifest_raw is not None
@@ -392,7 +393,7 @@ def inspect_archive(path: Path) -> dict[str, Any]:
         raise ContractError(f"archive does not exist: {path}")
     archive_bytes = path.stat().st_size
     if not 0 < archive_bytes <= MAX_ARCHIVE_BYTES:
-        raise ContractError("archive is empty or exceeds 256 MiB")
+        raise ContractError("archive is empty or exceeds 1 GiB")
     try:
         with zipfile.ZipFile(path, "r") as archive:
             entries = archive.infolist()
@@ -426,7 +427,7 @@ def inspect_archive(path: Path) -> dict[str, Any]:
                     raise ContractError(f"unsafe ZIP compression ratio: {raw_name}")
                 expanded += info.file_size
                 if expanded > MAX_EXPANDED_BYTES:
-                    raise ContractError("archive expands beyond 512 MiB")
+                    raise ContractError("archive expands beyond 1 GiB")
                 if raw_name == MANIFEST:
                     manifest_raw = archive.read(info)
             if manifest_raw is None:

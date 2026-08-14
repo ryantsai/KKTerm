@@ -21,7 +21,7 @@ const allowedPermissions = new Set([
   "storage", "documentStorage", "blobStorage", "browserStorage", "openExternal",
   "clipboard", "files", "networkFetch", "secretReferences", "hostUi",
 ]);
-const maxArchiveBytes = 256 * 1024 * 1024;
+const maxArchiveBytes = 1024 * 1024 * 1024;
 const maxCuratedIconBytes = 64 * 1024;
 
 function fail(message) {
@@ -98,7 +98,7 @@ function compareVersions(leftValue, rightValue) {
 
 function readManifest(packageBytes) {
   if (packageBytes.length === 0 || packageBytes.length > maxArchiveBytes) {
-    fail("The .kkmod archive must be between 1 byte and 256 MiB");
+    fail("The .kkmod archive must be between 1 byte and 1 GiB");
   }
   const files = unzipSync(new Uint8Array(packageBytes), { filter: (file) => file.name === "kkterm-extension.json" });
   const manifestBytes = files["kkterm-extension.json"];

@@ -1,0 +1,40 @@
+{
+  "id": "com.kkterm.bentopdf",
+  "name": "BentoPDF",
+  "version": "2.8.7",
+  "publisher": "KKTerm",
+  "summary": "An unofficial self-contained BentoPDF integration for KKTerm API v2.",
+  "apiVersion": 2,
+  "homepage": "https://bentopdf.com",
+  "license": {
+    "name": "AGPL-3.0-only",
+    "file": "licenses/LICENSE",
+    "noticesFile": "licenses/THIRD_PARTY_NOTICES.txt"
+  },
+  "permissions": {
+    "browserStorage": true,
+    "openExternal": true,
+    "clipboard": true,
+    "files": {
+      "open": true,
+      "save": true,
+      "extensions": [
+        "pdf", "jpg", "jpeg", "png", "webp", "gif", "bmp", "tif", "tiff",
+        "heic", "heif", "svg", "txt", "md", "json", "csv", "xls", "xlsx",
+        "doc", "docx", "odt", "ods", "odp", "ppt", "pptx", "rtf", "xps",
+        "mobi", "epub", "fb2", "cbz", "wpd", "wps", "pages", "pub", "vsd",
+        "psd", "xml", "p12", "pfx", "pem", "crt", "key", "ttf", "otf"
+      ]
+    }
+  },
+  "modules": [
+    {
+      "id": "bentopdf",
+      "title": "BentoPDF",
+      "icon": "dist/icon.svg",
+      "entrypoint": "dist/index.html",
+      "railVisible": true,
+      "routing": "static"
+    }
+  ]
+}

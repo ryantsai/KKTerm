@@ -1,4 +1,94 @@
 {
   "schemaVersion": 2,
-  "modules": []
+  "modules": [
+    {
+      "id": "com.kkterm.bentopdf",
+      "name": "BentoPDF",
+      "version": "2.8.7",
+      "publisher": "KKTerm",
+      "summary": "An unofficial self-contained BentoPDF integration for KKTerm API v2.",
+      "apiVersion": 2,
+      "downloadUrl": "https://modules.kkterm.ryantsai.com/packages/sha256/91fd672a870c03b281cbb78dfc2952fb7a5234072ad24270ce38df177cfea821.kkmod",
+      "sha256": "91fd672a870c03b281cbb78dfc2952fb7a5234072ad24270ce38df177cfea821",
+      "signature": "AgQiAY+kwozKXW+IafAl2xW+h8JL6KWPdviir7pOCQ4u75TbdRGVzctsMMX6SXKjrp/iFV5A2Vw5xkq0axAHCg==",
+      "license": "AGPL-3.0-only",
+      "permissions": {
+        "browserStorage": true,
+        "openExternal": true,
+        "clipboard": true,
+        "files": {
+          "open": true,
+          "save": true,
+          "extensions": [
+            "pdf",
+            "jpg",
+            "jpeg",
+            "png",
+            "webp",
+            "gif",
+            "bmp",
+            "tif",
+            "tiff",
+            "heic",
+            "heif",
+            "svg",
+            "txt",
+            "md",
+            "json",
+            "csv",
+            "xls",
+            "xlsx",
+            "doc",
+            "docx",
+            "odt",
+            "ods",
+            "odp",
+            "ppt",
+            "pptx",
+            "rtf",
+            "xps",
+            "mobi",
+            "epub",
+            "fb2",
+            "cbz",
+            "wpd",
+            "wps",
+            "pages",
+            "pub",
+            "vsd",
+            "psd",
+            "xml",
+            "p12",
+            "pfx",
+            "pem",
+            "crt",
+            "key",
+            "ttf",
+            "otf"
+          ]
+        }
+      },
+      "downloadSize": 310845525
+    },
+    {
+      "id": "com.kkterm.excalidraw",
+      "name": "Excalidraw",
+      "version": "2.0.0",
+      "publisher": "KKTerm",
+      "summary": "An unofficial offline Excalidraw integration for KKTerm.",
+      "apiVersion": 2,
+      "downloadUrl": "https://modules.kkterm.ryantsai.com/packages/sha256/ef5b3f7810cf969ae9f0fb11913d9f93b31c37ba931ea32c15d516295ecd02a6.kkmod",
+      "sha256": "ef5b3f7810cf969ae9f0fb11913d9f93b31c37ba931ea32c15d516295ecd02a6",
+      "signature": "0W2LGXuaagtS/wZ4wRQcDs9pU1EnxyEBHZ/xWsZkYLcNjwSsh+lVpEkgB5XiFy2ACZT/co4h94pxJcjom7/iDg==",
+      "license": "MIT",
+      "permissions": {
+        "documentStorage": true,
+        "browserStorage": true,
+        "openExternal": true,
+        "clipboard": true,
+        "hostUi": true
+      },
+      "downloadSize": 20368606
+    }
+  ]
 }

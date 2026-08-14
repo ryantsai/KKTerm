@@ -4,15 +4,6 @@ KKTerm Excalidraw Custom Module — third-party notices
 Generated from package-lock.json and the installed production dependency tree.
 The Module is an unofficial integration and is not affiliated with Excalidraw.
 
-Activity Rail icon
-==================
-
-The monochrome Activity Rail icon is adapted from ExcalLogo in Excalidraw
-0.18.1. Copyright (c) 2020 Excalidraw. Source:
-https://github.com/excalidraw/excalidraw/blob/v0.18.1/packages/excalidraw/components/icons.tsx
-License: MIT (the Excalidraw license is included in LICENSE and in the
-dependency notices below).
-
 Bundled font notices
 ====================
 

@@ -13,8 +13,8 @@ licenses/LICENSE
 licenses/THIRD_PARTY_NOTICES.txt
 ```
 
-The `.kkmod` file is a ZIP with at most 10,000 entries, 256 MiB compressed,
-512 MiB expanded, and 128 MiB per entry. Entries must be regular files or
+The `.kkmod` file is a ZIP with at most 10,000 entries, 1 GiB compressed,
+1 GiB expanded, and 128 MiB per entry. Entries must be regular files or
 directories: no links, executables, native libraries, scripts, duplicate or
 case-colliding names, traversal, absolute paths, backslashes, trailing dots,
 Windows device names, or unsafe compression ratios.
@@ -22,6 +22,12 @@ Windows device names, or unsafe compression ratios.
 Paths contain only ASCII letters, digits, `/`, `.`, `_`, `-`, and `@`.
 Production browser assets live below `dist/`; license text lives below
 `licenses/`. The manifest is root-only UTF-8 JSON and is capped at 1 MiB.
+
+The validator accepts browser code, markup, maps, fonts, images, WASM, and
+inert runtime data below `dist/`. Runtime data may use `.gz`, `.bcmap`, `.pfb`,
+`.ftl`, `.icc`, `.whl`, or `.zip` when a packaged browser/WASM runtime needs
+those exact filenames. Native libraries, executables, shell scripts, and other
+unlisted payload types remain forbidden.
 
 ## Strict manifest
 
