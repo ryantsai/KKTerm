@@ -22,6 +22,9 @@ dist
 dist-ssr
 *.local
 
+# Generated package outputs
+/target/
+
 # Rust build outputs
 /src-tauri/target
 /src-tauri/binaries
