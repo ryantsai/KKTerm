@@ -304,7 +304,7 @@ export function CustomModulesSettings() {
         {!loading && installed.length === 0 ? (
           <p className="settings-help-text">{t("settings.customModulesNoneInstalled")}</p>
         ) : null}
-        <div className="custom-modules-list">
+        <div className="custom-modules-list custom-modules-installed-list">
           {installed.map((module) => (
             <article className="custom-module-card" key={module.id}>
               <div className="custom-module-card-heading">

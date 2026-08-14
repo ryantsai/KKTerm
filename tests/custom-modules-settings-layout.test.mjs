@@ -14,7 +14,15 @@ test("installed Custom Module controls use the shared Settings row layout", asyn
     "both installed-module switches should opt out of the generic two-column field grid",
   );
   assert.match(source, /className="settings-icon-danger-button"/);
+  assert.match(source, /className="custom-modules-list custom-modules-installed-list"/);
+  assert.match(css, /\.custom-modules-installed-list\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s);
   assert.match(css, /\.custom-module-card-heading\s*\{[^}]*grid-template-columns:/s);
-  assert.match(css, /\.custom-module-toggle-row\s*\{[^}]*min-width:\s*0;/s);
+  assert.doesNotMatch(css, /\.custom-module-controls\s*\{[^}]*border-top:/s);
+  assert.match(css, /\.custom-module-controls::before\s*\{[^}]*width:\s*72px;/s);
+  assert.match(
+    css,
+    /\.custom-module-controls\s+\.custom-module-toggle-row\s*\{[^}]*display:\s*flex;[^}]*min-width:\s*0;[^}]*border:\s*0;/s,
+  );
   assert.match(css, /@media \(max-width:\s*780px\)[\s\S]*\.custom-module-card-heading/s);
+  assert.match(css, /@media \(max-width:\s*1180px\)[\s\S]*\.custom-modules-installed-list/s);
 });

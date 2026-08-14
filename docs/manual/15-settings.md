@@ -165,9 +165,10 @@ toggle list while their persisted backend settings remain enabled.
   trusted source.
 - The Installed group shows publisher, version, license, trust, permissions,
   package health, enablement, and `settings.customModulesShowRail`. Its switches
-  use compact grouped rows and collapse to one column when the Settings popup is
-  narrow; the destructive `settings.customModulesUninstall` action uses the
-  standard icon-only Settings treatment. An enabled, visible contribution
+  use compact grouped rows, and installed Module cards use a compact two-column
+  layout that collapses to one column when the Settings popup is narrow. The
+  destructive `settings.customModulesUninstall` action uses the standard
+  icon-only Settings treatment. An enabled, visible contribution
   becomes a permanent Activity Rail Module and runs in an isolated native WebView
   without Node.js or an HTTP service. Signed curated and local packages display a
   declared SVG as a monochrome, theme-aware Settings/Module/Activity Rail icon
