@@ -71,6 +71,13 @@ but never finish `window.KKTerm.ready()`, while unrelated main-window invokes
 can remain pending. Keep the command-boundary policy test and verify startup in
 the real Windows Tauri runtime whenever this path changes.
 
+On macOS, the asynchronous startup path runs on a Tokio worker, while AppKit
+window ordering is main-thread-only. Native overlay reveal must dispatch
+`NSWindow.orderFront` through Tauri's main-thread runner. A direct call can
+terminate KKTerm with AppKit's "Must only be used from the main thread"
+assertion when a Custom Module starts or is restored at launch. Keep the
+platform policy test and verify launch restoration in the real macOS runtime.
+
 The development fixture under `custom-modules/fixtures/hello-world/` exercises
 the v2 host context, lifecycle events, isolated storage, readiness handshake,
 and external-link bridge. Build its installable archive with:

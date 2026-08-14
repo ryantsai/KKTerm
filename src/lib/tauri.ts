@@ -3582,10 +3582,6 @@ type CommandMap = {
     args: { moduleId: string; enabled: boolean };
     result: null;
   };
-  set_custom_module_rail_visible: {
-    args: { moduleId: string; railVisible: boolean };
-    result: null;
-  };
   read_custom_module_license_file: {
     args: { moduleId: string; notices: boolean };
     result: string;

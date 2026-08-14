@@ -216,10 +216,6 @@ const SETTINGS_SECTIONS: Record<SettingsSectionId, SettingsSectionSummary> = {
         key: "settings.customModulesInstalled",
         description: "Enable, disable, inspect, or uninstall optional Module packages.",
       },
-      {
-        key: "settings.customModulesShowRail",
-        description: "Show enabled Custom Module contributions in the Activity Rail.",
-      },
     ],
   },
   "credentials-settings": {

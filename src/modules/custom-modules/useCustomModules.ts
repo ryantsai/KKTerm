@@ -16,7 +16,7 @@ type DownloadProgress = {
 
 export function customModuleDestinations(modules: InstalledCustomModule[]) {
   return modules.flatMap<CustomModuleDestination>((module) =>
-    module.enabled && module.railVisible && module.health === "ready"
+    module.enabled && module.health === "ready"
       ? module.modules
           .filter((contribution) => contribution.railVisible)
           .map((contribution) => ({

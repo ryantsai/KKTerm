@@ -90,7 +90,8 @@ An optional top-level Activity Rail Module contributed by a user-installed
 static `.kkmod` package. Its HTML/CSS/JavaScript/WASM assets load locally in an
 isolated native WebView through an app-owned protocol, with no Node.js runtime
 or HTTP server. Settings → Custom Modules owns install review, trust, license,
-permission, enable/disable, rail visibility, rollback, and uninstall. A Custom
+permission, enable/disable, rollback, and uninstall. Every enabled, rail-visible
+package contribution appears in the Activity Rail. A Custom
 Module is not a built-in Module, Connection, Session, Tab, or Dashboard Widget.
 _Avoid_: plugin, website Connection, bundled app, Dashboard widget
 

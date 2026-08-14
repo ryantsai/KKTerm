@@ -196,7 +196,6 @@ pub struct InstalledCustomModule {
     pub source: String,
     pub trust: String,
     pub enabled: bool,
-    pub rail_visible: bool,
     pub sha256: String,
     pub previous_version: Option<String>,
     pub health: String,
@@ -320,12 +319,8 @@ pub struct CustomModuleSessionStarted {
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CustomModuleDataUsage {
-    pub storage_bytes: u64,
-    pub document_bytes: u64,
-    pub blob_bytes: u64,
-    pub browser_bytes: u64,
-    pub secret_count: u64,
-    pub total_bytes: u64,
+    pub module_bytes: u64,
+    pub app_data_bytes: u64,
 }
 
 #[derive(Clone)]
@@ -1225,7 +1220,7 @@ fn installed_module(
     storage.with_connection(|connection| {
         connection
             .query_row(
-                "SELECT manifest_json, active_version, source, trust, enabled, rail_visible, sha256, previous_version
+                "SELECT manifest_json, active_version, source, trust, enabled, sha256, previous_version
                  FROM custom_modules WHERE id = ?1 AND installed = 1",
                 [module_id],
                 |row| {
@@ -1236,9 +1231,8 @@ fn installed_module(
                         row.get::<_, String>(2)?,
                         row.get::<_, String>(3)?,
                         row.get::<_, bool>(4)?,
-                        row.get::<_, bool>(5)?,
-                        row.get::<_, String>(6)?,
-                        row.get::<_, Option<String>>(7)?,
+                        row.get::<_, String>(5)?,
+                        row.get::<_, Option<String>>(6)?,
                     ))
                 },
             )
@@ -1250,7 +1244,6 @@ fn installed_module(
                 source,
                 trust,
                 enabled,
-                rail_visible,
                 sha256,
                 previous_version,
             )| {
@@ -1268,7 +1261,6 @@ fn installed_module(
                     source,
                     trust,
                     enabled,
-                    rail_visible,
                     sha256,
                     previous_version,
                     health: if package_path.is_dir() { "ready" } else { "missing" }.into(),
@@ -1949,26 +1941,6 @@ pub fn set_custom_module_enabled(
 }
 
 #[tauri::command]
-pub fn set_custom_module_rail_visible(
-    module_id: String,
-    rail_visible: bool,
-    storage: tauri::State<'_, Storage>,
-) -> Result<(), String> {
-    storage.with_connection(|connection| {
-        let changed = connection
-            .execute(
-                "UPDATE custom_modules SET rail_visible = ?2, updated_at = CURRENT_TIMESTAMP WHERE id = ?1 AND installed = 1",
-                params![module_id, rail_visible],
-            )
-            .map_err(|error| error.to_string())?;
-        if changed == 0 {
-            return Err("Custom Module is not installed".into());
-        }
-        Ok(())
-    })
-}
-
-#[tauri::command]
 pub fn read_custom_module_license_file(
     module_id: String,
     notices: bool,
@@ -2204,35 +2176,44 @@ pub fn get_custom_module_data_usage(
     storage: tauri::State<'_, Storage>,
     paths: tauri::State<'_, AppPaths>,
 ) -> Result<CustomModuleDataUsage, String> {
-    validate_identifier(&module_id, "module id")?;
-    let (storage_bytes, document_bytes, blob_bytes, secret_count): (i64, i64, i64, i64) =
+    custom_module_data_usage(&storage, &paths, &module_id)
+}
+
+fn custom_module_data_usage(
+    storage: &Storage,
+    paths: &AppPaths,
+    module_id: &str,
+) -> Result<CustomModuleDataUsage, String> {
+    validate_identifier(module_id, "module id")?;
+    let installed = installed_module(storage, paths, module_id)?
+        .ok_or_else(|| "Custom Module is not installed".to_string())?;
+    let (storage_bytes, document_bytes, blob_bytes): (i64, i64, i64) =
         storage.with_connection(|connection| {
             connection
                 .query_row(
                     "SELECT
                         COALESCE((SELECT SUM(byte_size) FROM custom_module_storage WHERE module_id = ?1), 0),
                         COALESCE((SELECT SUM(byte_size) FROM custom_module_documents WHERE module_id = ?1), 0),
-                        COALESCE((SELECT SUM(byte_size) FROM custom_module_blobs WHERE module_id = ?1), 0),
-                        (SELECT COUNT(*) FROM custom_module_secret_refs WHERE module_id = ?1)",
-                    [&module_id],
-                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+                        COALESCE((SELECT SUM(byte_size) FROM custom_module_blobs WHERE module_id = ?1), 0)",
+                    [module_id],
+                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
                 )
                 .map_err(|error| error.to_string())
         })?;
+    let module_bytes = owned_directory_size(
+        &package_storage_root(paths),
+        &package_storage_root(paths).join(&installed.manifest.id),
+    )?;
     let browser_bytes = owned_directory_size(
-        &webview_data_root(&paths),
-        &webview_data_root(&paths).join(&module_id),
+        &webview_data_root(paths),
+        &webview_data_root(paths).join(module_id),
     )?;
     let storage_bytes = storage_bytes.max(0) as u64;
     let document_bytes = document_bytes.max(0) as u64;
     let blob_bytes = blob_bytes.max(0) as u64;
     Ok(CustomModuleDataUsage {
-        storage_bytes,
-        document_bytes,
-        blob_bytes,
-        browser_bytes,
-        secret_count: secret_count.max(0) as u64,
-        total_bytes: storage_bytes
+        module_bytes,
+        app_data_bytes: storage_bytes
             .saturating_add(document_bytes)
             .saturating_add(blob_bytes)
             .saturating_add(browser_bytes),
@@ -5085,7 +5066,7 @@ mod tests {
             .with_connection(|connection| {
                 connection
                     .execute(
-                        "UPDATE custom_modules SET enabled = 0, rail_visible = 0
+                        "UPDATE custom_modules SET enabled = 0
                          WHERE id = 'com.kkterm.fixture'",
                         [],
                     )
@@ -5111,7 +5092,6 @@ mod tests {
         assert_eq!(second.manifest.version, "1.1.0");
         assert_eq!(second.previous_version.as_deref(), Some("1.0.0"));
         assert!(!second.enabled);
-        assert!(!second.rail_visible);
         assert!(
             modules_root(&paths)
                 .join(package_relative_path("com.kkterm.fixture", "1.0.0"))
@@ -5132,6 +5112,41 @@ mod tests {
         )
         .unwrap();
         assert_eq!(repaired.previous_version.as_deref(), Some("1.0.0"));
+    }
+
+    #[test]
+    fn data_usage_reports_module_and_app_data_sizes_separately() {
+        let directory = tempfile::tempdir().unwrap();
+        let storage = Storage::open(directory.path().join("test.sqlite3")).unwrap();
+        let paths = AppPaths::for_test(directory.path().join("data"));
+        let package = directory.path().join("fixture.kkmod");
+        write_package(&package, None);
+        install_package(&storage, &paths, &package, "local", "local", None, None).unwrap();
+
+        storage
+            .with_connection(|connection| {
+                connection
+                    .execute(
+                        "INSERT INTO custom_module_storage (module_id, key, value_json, byte_size)
+                         VALUES ('com.kkterm.fixture', 'state', 'null', 7)",
+                        [],
+                    )
+                    .map(|_| ())
+                    .map_err(|error| error.to_string())
+            })
+            .unwrap();
+        let browser_root = webview_data_root(&paths).join("com.kkterm.fixture");
+        fs::create_dir_all(&browser_root).unwrap();
+        fs::write(browser_root.join("state.bin"), [1_u8, 2, 3]).unwrap();
+
+        let expected_module_bytes = owned_directory_size(
+            &package_storage_root(&paths),
+            &package_storage_root(&paths).join("com.kkterm.fixture"),
+        )
+        .unwrap();
+        let usage = custom_module_data_usage(&storage, &paths, "com.kkterm.fixture").unwrap();
+        assert_eq!(usage.module_bytes, expected_module_bytes);
+        assert_eq!(usage.app_data_bytes, 10);
     }
 
     #[test]

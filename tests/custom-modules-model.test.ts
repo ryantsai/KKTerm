@@ -42,7 +42,6 @@ function installed(
     source: "local",
     trust: "local",
     enabled: true,
-    railVisible: true,
     sha256: "hash",
     health: "ready",
     ...overrides,
@@ -69,10 +68,9 @@ test("Custom Module rail normalization carries validated packaged icon data", ()
   assert.equal(destination.iconDataUrl, "data:image/svg+xml;base64,PHN2Zy8+");
 });
 
-test("disabled, hidden, missing, and contribution-hidden Modules stay off the rail", () => {
+test("enabled Modules always appear while disabled, missing, and contribution-hidden Modules do not", () => {
   const destinations = customModuleDestinations([
     installed("com.example.disabled", { enabled: false }),
-    installed("com.example.hidden", { railVisible: false }),
     installed("com.example.missing", { health: "missing" }),
     installed("com.example.contribution", {
       modules: [

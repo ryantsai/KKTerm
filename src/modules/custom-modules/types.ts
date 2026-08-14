@@ -40,12 +40,8 @@ export interface CustomModulePermissions {
 }
 
 export interface CustomModuleDataUsage {
-  storageBytes: number;
-  documentBytes: number;
-  blobBytes: number;
-  browserBytes: number;
-  secretCount: number;
-  totalBytes: number;
+  moduleBytes: number;
+  appDataBytes: number;
 }
 
 export interface CustomModuleManifest {
@@ -65,7 +61,6 @@ export interface InstalledCustomModule extends CustomModuleManifest {
   source: "local" | "catalog";
   trust: "local" | "firstParty";
   enabled: boolean;
-  railVisible: boolean;
   sha256: string;
   previousVersion?: string | null;
   health: "ready" | "missing";

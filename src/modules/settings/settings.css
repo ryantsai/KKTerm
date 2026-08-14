@@ -1401,18 +1401,19 @@
 
 .custom-modules-list {
   display: grid;
-  gap: 10px;
-}
-
-.custom-modules-installed-list {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: start;
+  align-items: stretch;
+  gap: 10px;
 }
 
 .custom-module-card {
   display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
   gap: 12px;
+  height: 248px;
+  min-width: 0;
   padding: 14px;
+  overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--surface);
@@ -1437,11 +1438,21 @@
   font-size: 14px;
 }
 
+.custom-module-card-heading h3 {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .custom-module-card-heading p {
+  display: -webkit-box;
   margin: 3px 0 0;
+  overflow: hidden;
   color: var(--text-muted);
   font-size: 12px;
   line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .custom-module-icon {
@@ -1467,6 +1478,14 @@
   border-radius: 999px;
   color: var(--text-muted);
   font-size: 11px;
+  max-width: 132px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.custom-module-trust svg {
+  flex: 0 0 auto;
 }
 
 .custom-module-trust.firstParty {
@@ -1475,6 +1494,7 @@
 }
 
 .custom-module-meta {
+  grid-row: 2;
   display: flex;
   flex-wrap: wrap;
   gap: 8px 18px;
@@ -1484,6 +1504,7 @@
 .custom-module-meta div {
   display: flex;
   gap: 5px;
+  min-width: 0;
   font-size: 11px;
 }
 
@@ -1494,48 +1515,64 @@
 .custom-module-meta dd {
   min-width: 0;
   margin: 0;
+  overflow: hidden;
   color: var(--text);
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-.custom-module-permissions {
+.custom-module-sizes {
+  grid-row: 3;
   display: flex;
-  align-items: baseline;
-  gap: 7px;
+  gap: 22px;
   min-width: 0;
+  margin: 0;
+}
+
+.custom-module-sizes div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.custom-module-sizes dt {
   color: var(--text-muted);
   font-size: 11px;
 }
 
-.custom-module-permissions strong {
-  flex: 0 0 auto;
+.custom-module-sizes dd {
+  margin: 0;
   color: var(--text);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
 }
 
-.custom-module-permissions span {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.custom-module-controls {
+.custom-module-card-footer {
+  grid-row: 5;
   position: relative;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  padding-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  padding-top: 13px;
 }
 
-.custom-module-controls::before {
+.custom-module-card-footer::before {
   position: absolute;
   top: 0;
-  left: 44px;
-  width: 72px;
+  left: 0;
+  width: 100%;
   height: 1px;
   background: var(--border);
   content: "";
 }
 
-.custom-module-controls .custom-module-toggle-row {
+.custom-module-card-footer.catalog {
+  justify-content: flex-end;
+}
+
+.custom-module-card-footer .custom-module-toggle-row {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1549,7 +1586,7 @@
   font-size: 12px;
 }
 
-.custom-module-controls .custom-module-toggle-row > span {
+.custom-module-card-footer .custom-module-toggle-row > span {
   min-width: 0;
   line-height: 1.3;
   text-wrap: pretty;
@@ -1557,19 +1594,45 @@
 
 .custom-module-actions {
   display: flex;
-  flex-wrap: wrap;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: flex-end;
-  gap: 7px;
+  gap: 3px;
   min-width: 0;
 }
 
-.custom-module-actions .primary-button,
-.custom-module-actions .secondary-button {
-  white-space: nowrap;
+.custom-module-action-button {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.custom-module-action-button:hover:not(:disabled) {
+  border-color: var(--border);
+  background: var(--hover);
+  color: var(--text);
+}
+
+.custom-module-action-button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.custom-module-action-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
 }
 
 .custom-module-health-error {
+  grid-row: 4;
   margin: 0;
   color: var(--danger);
   font-size: 12px;
@@ -1616,22 +1679,22 @@
     grid-template-columns: 34px minmax(0, 1fr);
   }
 
+  .custom-module-card {
+    height: 270px;
+  }
+
   .custom-module-trust {
     grid-column: 2;
     justify-self: start;
   }
 
-  .custom-module-controls {
-    grid-template-columns: 1fr;
-  }
-
-  .custom-module-actions {
-    justify-content: flex-start;
+  .custom-module-card-footer {
+    align-items: flex-end;
   }
 }
 
 @media (max-width: 1180px) {
-  .custom-modules-installed-list {
+  .custom-modules-list {
     grid-template-columns: minmax(0, 1fr);
   }
 }

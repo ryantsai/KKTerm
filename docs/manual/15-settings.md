@@ -163,13 +163,16 @@ toggle list while their persisted backend settings remain enabled.
   payloads before showing `settings.customModulesInstallTitle`. Local packages
   are marked `settings.customModulesTrustLocal`; install only packages from a
   trusted source.
-- The Installed group shows publisher, version, license, trust, permissions,
-  package health, enablement, and `settings.customModulesShowRail`. Its switches
-  use compact grouped rows, and installed Module cards use a compact two-column
-  layout that collapses to one column when the Settings popup is narrow. The
-  destructive `settings.customModulesUninstall` action uses the standard
-  icon-only Settings treatment. An enabled, visible contribution
-  becomes a permanent Activity Rail Module and runs in an isolated native WebView
+- The Installed group shows publisher, version, license, trust, package health,
+  enablement, `settings.customModulesModuleSize`, and
+  `settings.customModulesDataUsageLabel`. Installed and catalog entries share
+  equal-size cards in a compact two-column layout that collapses to one column
+  when the Settings popup is narrow; long summaries are truncated inside the
+  fixed card. Card dividers span the full content width, and card actions use
+  compact icon buttons. The destructive `settings.customModulesUninstall`
+  action uses the standard icon-only Settings treatment. Every enabled,
+  rail-visible package contribution becomes a permanent Activity Rail Module
+  and runs in an isolated native WebView
   without Node.js or an HTTP service. Signed curated and local packages display a
   declared SVG as a monochrome, theme-aware Settings/Module/Activity Rail icon
   only after the host verifies that it is inert and no larger than 64 KiB;
@@ -180,7 +183,9 @@ toggle list while their persisted backend settings remain enabled.
   refresh on demand and reports success through
   `settings.customModulesCatalogRefreshedNotice`. A failed refresh does not
   remove locally available baseline entries or installed Modules.
-- KKTerm-curated catalog packages use the same runtime and permissions, but their
+- KKTerm-curated catalog packages use the same runtime and permissions. Catalog
+  cards omit the permission list and show the package download size; requested
+  permissions remain visible in the install/update confirmation. Their
   identity, version, publisher, license, requested permissions, download size,
   checksum, and Ed25519 signature must match signed catalog metadata before
   install. Only a strictly newer semantic version is presented as
@@ -199,7 +204,8 @@ toggle list while their persisted backend settings remain enabled.
   Module data is retained for reinstall; `settings.customModulesDeleteData` is
   the explicit destructive option that removes metadata, grants, small storage,
   document/blob files, browser-profile data, and package-owned secret
-  references. Installed cards report `settings.customModulesDataUsageLabel` and
+  references. Installed cards report the package footprint separately from the
+  flat aggregate app-data size under `settings.customModulesDataUsageLabel` and
   expose `settings.customModulesClearData` while the Module is disabled. Clear
   Data keeps the installed package but deletes all of its isolated data.
 - In Windows portable mode, the complete Custom Module installation remains
@@ -234,7 +240,7 @@ toggle list while their persisted backend settings remain enabled.
   dedicated workers are supported. Without `clipboard`, every clipboard
   operation rejects.
 - Grep hints: `settings.customModules`, `settings.customModulesInstallFile`,
-  `settings.customModulesInstalled`, `settings.customModulesShowRail`,
+  `settings.customModulesInstalled`, `settings.customModulesModuleSize`,
   `settings.customModulesPermissions`, `settings.customModulesLicense`,
   `settings.customModulesClearData`, `settings.customModulesSecretTitle`.
 

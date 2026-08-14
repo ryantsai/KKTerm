@@ -23,6 +23,9 @@ grant.
 
 The Rust command that constructs the native WebView must be `async`. Creating
 it from a synchronous Tauri command can deadlock Windows WebView2 initialization.
+On macOS, native overlay ordering must dispatch `NSWindow.orderFront` through
+Tauri's main-thread runner because asynchronous startup runs on a Tokio worker
+and AppKit window operations are main-thread-only.
 
 ## Injected API
 

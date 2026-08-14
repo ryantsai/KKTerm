@@ -5237,7 +5237,6 @@ pub fn run() {
             custom_modules::install_custom_module_from_catalog,
             custom_modules::cancel_custom_module_download,
             custom_modules::set_custom_module_enabled,
-            custom_modules::set_custom_module_rail_visible,
             custom_modules::read_custom_module_license_file,
             custom_modules::rollback_custom_module,
             custom_modules::uninstall_custom_module,
