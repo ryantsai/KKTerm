@@ -3,6 +3,62 @@
 All notable changes to KKTerm are documented here.
 
 ## Direct Downloads
+* 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.145/kkterm-0.1.145-windows-x64-setup.exe)
+* 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.145/kkterm-0.1.145-windows-arm64-setup.exe)
+* 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.145/kkterm-0.1.145-windows-x64-portable.zip)
+* 📦 [Portable for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.145/kkterm-0.1.145-windows-arm64-portable.zip)
+
+## Highlights
+- Custom Module platform is getting more dynamic: richer curated catalog metadata, plus updated Install Helper AI Agent catalog/provider URLs.
+- Excalidraw Custom Module is added with document storage and clipboard permissions (ready for your next “draw the topology” session).
+
+## New
+- Dynamic Custom Module platform (#726 by @ryantsai): unlocks a more flexible Custom Module platform foundation.
+- Excalidraw Custom Module (#729 by @ryantsai): includes document storage and clipboard permissions.
+
+## Improved
+- Enhanced Custom Module catalog with new metadata and functionality (#727 by @ryantsai).
+- Custom Module overlays/icons/settings layout fixes:
+  - Better WebView handling and removal of outdated localization files (#728 by @ryantsai).
+  - Fix custom module overlays, icons, and settings layout (commit @22e83b7).
+- Prevent Module chrome selection (commit @783ad7a).
+
+## Fixed
+- Optimize SQLite access and encrypted secret store performance (#730 by @ryantsai) — because secrets shouldn’t lag like a bad network hop.
+- Keep portable Custom Module data self-contained (commit @a477f9f).
+- Render curated rail icons (commit @1a24098).
+
+## Internal
+- Optimize SQLite access and encrypted secret stores (merge of #730 by @ryantsai).
+- Various documentation and styling updates for Custom Modules settings/layout.
+
+---
+
+## 重點摘要
+- 自訂模組（Custom Module）平台變得更動態：包含更豐富的精選目錄（curated catalog）中繼資料，並同步更新 Install Helper AI Agent 目錄與提供者（provider）URL。
+- 新增 Excalidraw 自訂模組：支援文件儲存與剪貼簿權限，讓你的下一段「把網路拓樸畫出來」的 Session 不再卡關。
+
+## 新增
+- 動態自訂模組平台（#726，由 @ryantsai 負責）：讓 Custom Module 平台具備更彈性的基礎。
+- Excalidraw 自訂模組（#729，由 @ryantsai 負責）：包含文件儲存與剪貼簿權限。
+
+## 改進
+- 增強自訂模組目錄（Custom Module catalog）：新增中繼資料與功能（#727，由 @ryantsai 負責）。
+- 修正自訂模組的覆蓋層（overlays）/圖示/設定版面：
+  - 改善 WebView 處理並移除過時的在地化檔案（#728，由 @ryantsai 負責）。
+  - 修正自訂模組覆蓋層、圖示與設定版面（@22e83b7）。
+- 防止選到 Module 的 chrome（commit @783ad7a）。
+
+## 修正
+- 優化 SQLite 存取與加密的密鑰儲存效能（#730，由 @ryantsai 負責）——祕密不該像糟糕網路跳點一樣慢。
+- 保留可攜式（portable）的自訂模組資料為獨立自成一體（commit @a477f9f）。
+- 顯示精選（curated）的軌道/側邊列（rail）圖示（commit @1a24098）。
+
+## 內部
+- 優化 SQLite 存取與加密密鑰儲存（#730，由 @ryantsai 的合併工作）。
+- 針對自訂模組設定/版面進行各種文件與樣式更新。
+
+## Direct Downloads
 * 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.144/kkterm-0.1.144-windows-x64-setup.exe)
 * 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.144/kkterm-0.1.144-windows-arm64-setup.exe)
 * 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.144/kkterm-0.1.144-windows-x64-portable.zip)
