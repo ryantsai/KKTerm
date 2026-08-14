@@ -24,6 +24,7 @@ const DARK_DYNAMIC_BACKGROUND_IDS = new Set([
   "animatedGradient",
   "prismGradient",
   "liquidChrome",
+  "maelstrom",
 ]);
 const DARK_BACKGROUND_PRESET_IDS = new Set([
   "graphite",

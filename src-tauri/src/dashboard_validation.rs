@@ -637,6 +637,7 @@ pub const DYNAMIC_BACKGROUND_IDS: &[&str] = &[
     "clouds",
     "ocean",
     "mistySea",
+    "maelstrom",
     "waters",
     "raindrops",
     "rainywindow",
