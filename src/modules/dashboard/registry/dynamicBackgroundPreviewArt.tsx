@@ -717,6 +717,16 @@ BUILDERS.crystals = (id) => {
   return svgWrap(id, inner, d);
 };
 
+/* Poseidon-derived Maelstrom — steel sky, steep teal waves, bright whitecaps */
+BUILDERS.maelstrom = (id) => {
+  const defs = lg(id + 'stormSky', [[0, '#385c78'], [.55, '#7896aa'], [1, '#aab9c0']], 0, 0, 0, 1)
+    + lg(id + 'stormSea', [[0, '#184a55'], [.48, '#0d303b'], [1, '#061b26']], 0, 0, 0, 1);
+  const waves = `<path d="M-8 68 C14 43 30 84 54 55 C76 29 94 78 116 50 C136 28 151 60 170 42 L170 108 L-8 108 Z" fill="url(#${id}stormSea)"/>
+    <path d="M-8 70 C14 45 30 86 54 57 C76 31 94 80 116 52 C136 30 151 62 170 44" fill="none" stroke="#dce7ea" stroke-width="3" opacity=".78"/>
+    <path d="M-8 85 C22 68 40 95 68 73 C94 54 116 91 170 63" fill="none" stroke="#5c929b" stroke-width="7" opacity=".65"/>`;
+  return svgWrap(id, `<rect width="160" height="100" fill="url(#${id}stormSky)"/><circle cx="122" cy="24" r="7" fill="#fff1dc" opacity=".7"/><g class="anim br" style="--d:4.2s">${waves}</g>`, defs);
+};
+
 /* 38. Componentry Hero Geometric — pale field with refracted planes */
 BUILDERS.heroGeometric = (id) => {
   const defs = lg(id + 'hero', [[0, '#f8fbff'], [.52, '#dbeafe'], [1, '#7bb5ff']], 0, 0, 1, 1);
