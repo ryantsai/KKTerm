@@ -1,0 +1,50 @@
+{
+  "id": "com.kkterm.tiddlywiki",
+  "name": "TiddlyWiki",
+  "version": "5.4.1",
+  "publisher": "KKTerm",
+  "summary": "An unofficial self-contained TiddlyWiki integration for KKTerm API v2.",
+  "apiVersion": 2,
+  "homepage": "https://tiddlywiki.com",
+  "license": {
+    "name": "BSD-3-Clause",
+    "file": "licenses/LICENSE",
+    "noticesFile": "licenses/THIRD_PARTY_NOTICES.txt"
+  },
+  "permissions": {
+    "browserStorage": true,
+    "openExternal": true,
+    "clipboard": true,
+    "hostUi": true,
+    "files": {
+      "open": true,
+      "save": true,
+      "extensions": [
+        "html",
+        "htm",
+        "json",
+        "tid",
+        "txt",
+        "md",
+        "csv",
+        "png",
+        "jpg",
+        "jpeg",
+        "gif",
+        "svg",
+        "webp",
+        "pdf"
+      ]
+    }
+  },
+  "modules": [
+    {
+      "id": "tiddlywiki",
+      "title": "TiddlyWiki",
+      "icon": "dist/icon.svg",
+      "entrypoint": "dist/index.html",
+      "railVisible": true,
+      "routing": "static"
+    }
+  ]
+}

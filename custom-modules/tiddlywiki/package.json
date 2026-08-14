@@ -1,0 +1,13 @@
+{
+  "name": "@kkterm/tiddlywiki-module",
+  "version": "5.4.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-dist.mjs",
+    "generate:notices": "node scripts/generate-third-party-notices.mjs"
+  },
+  "devDependencies": {
+    "tiddlywiki": "5.4.1"
+  }
+}

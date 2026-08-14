@@ -1,0 +1,16 @@
+{
+	"description": "KKTerm TiddlyWiki Custom Module edition",
+	"plugins": [
+		"tiddlywiki/browser-storage"
+	],
+	"themes": [
+		"tiddlywiki/vanilla",
+		"tiddlywiki/snowwhite"
+	],
+	"build": {
+		"index": [
+			"--render","$:/core/save/offline-external-js","index.html","text/plain",
+			"--render","$:/core/templates/tiddlywiki5.js","[[tiddlywikicore-]addsuffix<version>addsuffix[.js]]","text/plain"
+		]
+	}
+}

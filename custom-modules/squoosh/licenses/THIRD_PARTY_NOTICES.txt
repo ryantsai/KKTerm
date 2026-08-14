@@ -1,0 +1,131 @@
+THIRD-PARTY NOTICES
+===================
+
+This KKTerm Custom Module redistributes Squoosh and the image codecs it bundles.
+KKTerm is not affiliated with, and this package is not endorsed by, Google,
+Google Chrome Labs, or the Squoosh maintainers.
+
+
+-------------------------------------------------------------------------------
+1. Squoosh
+-------------------------------------------------------------------------------
+
+Homepage: https://squoosh.app
+Source:   https://github.com/GoogleChromeLabs/squoosh
+License:  Apache-2.0 -- full text in licenses/LICENSE
+Copyright 2020 Google Inc.
+
+
+-------------------------------------------------------------------------------
+2. Bundled codecs
+-------------------------------------------------------------------------------
+
+Each codec is compiled to WebAssembly and shipped under dist/c/. Where upstream
+provides a license file, it is reproduced verbatim under licenses/codecs/.
+
+  Codec       Upstream project                                  License
+  ----------  ------------------------------------------------  ---------------
+  mozjpeg     https://github.com/mozilla/mozjpeg                 BSD-style (3)*
+  webp        https://chromium.googlesource.com/webm/libwebp     BSD-3-Clause
+  avif        https://github.com/AOMediaCodec/libavif            BSD-2-Clause
+  jxl         https://github.com/libjxl/libjxl                   BSD-3-Clause
+  wp2         https://chromium.googlesource.com/codecs/libwebp2  Apache-2.0
+  oxipng      https://github.com/shssoichiro/oxipng              MIT
+  imagequant  https://github.com/ImageOptim/libimagequant        pngquant license
+  qoi         https://github.com/phoboslab/qoi                   MIT
+  resize      https://github.com/PistonDevelopers/image          MIT
+  hqx         https://github.com/CryZe/wasmboy-rs (hqx)          Apache-2.0
+  rotate      part of Squoosh                                    Apache-2.0
+
+  * libjpeg-turbo/mozjpeg is covered by three compatible BSD-style licenses
+    (the IJG license, a BSD-3-Clause license, and the zlib license). The full
+    combined text is reproduced in licenses/codecs/mozjpeg.md.
+
+License texts reproduced in this package:
+  licenses/codecs/hqx.md
+  licenses/codecs/imagequant.md
+  licenses/codecs/mozjpeg.md
+  licenses/codecs/oxipng.md
+  licenses/codecs/resize.md
+  licenses/codecs/webp.md
+
+Upstream Squoosh does not ship separate license files for avif, jxl, qoi, wp2 or
+rotate; refer to the projects listed above for their authoritative terms.
+
+
+-------------------------------------------------------------------------------
+3. KKTerm-authored components
+-------------------------------------------------------------------------------
+
+License:  MIT (same terms as KKTerm)
+Copyright (c) 2026 KKTerm
+
+  - dist/icon.svg
+      Activity Rail artwork drawn for this package by KKTerm. It is original
+      work and does not reproduce the Squoosh logo or mascot, which are project
+      marks not covered by the Apache-2.0 code license.
+
+
+-------------------------------------------------------------------------------
+4. Modifications made for this package
+-------------------------------------------------------------------------------
+
+The Apache-2.0 license requires that modified files carry prominent notice.
+The following changes were made to upstream Squoosh when building this package:
+
+  a) Google Analytics removed.
+     src/client/initial-app/index.tsx
+
+     Upstream reports a pageview to Google Analytics (property UA-128752250-1)
+     and injects https://www.google-analytics.com/analytics.js on window load.
+     A locally installed Module must not contact a third party without consent.
+     `window.ga` is retained as an inert no-op because four unrelated UI call
+     sites invoke it; removing it outright would raise ReferenceError.
+     The packaged output contains no reference to google-analytics.com.
+
+  b) Service-worker access guarded.
+     src/client/lazy-app/sw-bridge/index.ts
+
+     KKMod host API v2 replaces `navigator.serviceWorker` with `undefined`.
+     Upstream dereferences it with no capability check, which throws during
+     startup. Capability guards were added to the three exported entry points.
+     No imports or exports changed, so the module graph -- which Squoosh's
+     entry-data and client-bundle Rollup plugins depend on -- is unchanged.
+
+  c) PWA and host-configuration artefacts dropped.
+     _headers, _redirects, manifest.json, sw.js, serviceworker.js
+
+     These are Netlify directives and PWA install/precache metadata with no
+     meaning inside a Module. Note that upstream's _headers requests
+     Cross-Origin-Embedder-Policy and Cross-Origin-Opener-Policy in order to
+     enable threaded WebAssembly.
+
+  d) Asset URLs rewritten.
+
+     Squoosh emits root-absolute "/c/<hashed-asset>" references. The kkmodule
+     protocol resolves a request path against the package root while these
+     files live under dist/, so the originals would not resolve. In index.html
+     they became "./c/...", and in JavaScript "/dist/c/...".
+
+  e) Inline scripts externalised, source maps omitted.
+
+     The Module CSP is "script-src 'self' 'wasm-unsafe-eval'" with no
+     'unsafe-inline'.
+
+
+-------------------------------------------------------------------------------
+5. Functional note: encoder threading
+-------------------------------------------------------------------------------
+
+Squoosh uses threaded WebAssembly for its AVIF, JPEG XL, OxiPNG and WebP2
+encoders where the browser is cross-origin isolated. The kkmodule protocol
+sends no COOP/COEP headers, so `crossOriginIsolated` is false, SharedArrayBuffer
+is unavailable, and the "_mt" codec variants cannot initialise.
+
+This is not a defect in the package. Squoosh feature-detects thread support
+(worker-shared/supports-wasm-threads) and falls back to the single-threaded
+build of each encoder. Output is identical; encoding those formats is slower.
+
+The unreachable _mt binaries are retained rather than stripped so the upstream
+detection paths stay intact and would light up unchanged if the host ever
+serves cross-origin isolation headers.
