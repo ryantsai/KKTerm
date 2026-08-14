@@ -1,0 +1,97 @@
+THIRD-PARTY NOTICES
+===================
+
+This KKTerm Custom Module redistributes the components listed below. KKTerm is
+not affiliated with, and this package is not endorsed by, the TiddlyWiki project
+or the UnaMesa Association.
+
+
+-------------------------------------------------------------------------------
+1. TiddlyWiki5 (core, themes, and the browser-storage plugin)
+-------------------------------------------------------------------------------
+
+Homepage: https://tiddlywiki.com
+Source:   https://github.com/TiddlyWiki/TiddlyWiki5
+Version:  5.4.1
+License:  BSD-3-Clause -- full text in licenses/LICENSE
+
+Copyright (c) 2004-2007, Jeremy Ruston
+Copyright (c) 2007-2025, UnaMesa Association
+All rights reserved.
+
+The complete license text, including the required retention-of-notice and
+no-endorsement conditions, is reproduced in licenses/LICENSE.
+
+Included TiddlyWiki components:
+  - TiddlyWiki5 core (dist/tiddlywikicore-5.4.1.js)
+  - Themes: tiddlywiki/vanilla, tiddlywiki/snowwhite
+  - Plugin: tiddlywiki/browser-storage
+
+
+-------------------------------------------------------------------------------
+2. Stanford JavaScript Crypto Library (SJCL)
+-------------------------------------------------------------------------------
+
+Homepage: https://github.com/bitwiseshiftleft/sjcl
+License:  BSD-2-Clause OR GPL-2.0 (dual-licensed; used here under BSD-2-Clause)
+
+Copyright (c) 2009-2015, Emily Stark, Mike Hamburg, Dan Boneh
+Stanford University
+
+SJCL is vendored by TiddlyWiki and is present in minified form inside
+dist/tiddlywikicore-5.4.1.js. It backs TiddlyWiki's optional wiki-encryption
+feature.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice,
+   this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+
+
+-------------------------------------------------------------------------------
+3. KKTerm-authored components
+-------------------------------------------------------------------------------
+
+License:  MIT (same terms as KKTerm)
+Copyright (c) 2026 KKTerm
+
+  - dist/icon.svg
+      Activity Rail artwork. Drawn for this package by KKTerm. It is original
+      work and deliberately does NOT reproduce the TiddlyWiki logo, which is a
+      project mark not covered by the BSD-3-Clause code license.
+
+  - $:/plugins/kkterm/host/saver.js
+      Routes "save wiki" through KKTerm's user-mediated file bridge.
+
+  - $:/plugins/kkterm/host/startup.js
+      Mirrors KKTerm's theme and locale onto the wiki and signals readiness.
+
+
+-------------------------------------------------------------------------------
+4. Packaging note
+-------------------------------------------------------------------------------
+
+KKTerm's Custom Module WebView applies a Content-Security-Policy of
+"script-src 'self' 'wasm-unsafe-eval'" with no 'unsafe-inline'. The upstream
+saved-wiki format relies on inline <script> blocks, so this package is built
+with TiddlyWiki's own offline-external-js target and a post-build step that
+moves the remaining inline script (the browser-storage boot hook) into an
+external file. No upstream logic is modified -- only its placement in the
+document. Script execution order is preserved.

@@ -1,0 +1,48 @@
+{
+  "id": "com.kkterm.squoosh",
+  "name": "Squoosh",
+  "version": "2.0.0",
+  "publisher": "KKTerm",
+  "summary": "An unofficial self-contained Squoosh image compressor for KKTerm API v2. All encoding runs locally in WebAssembly.",
+  "apiVersion": 2,
+  "homepage": "https://squoosh.app",
+  "license": {
+    "name": "Apache-2.0",
+    "file": "licenses/LICENSE",
+    "noticesFile": "licenses/THIRD_PARTY_NOTICES.txt"
+  },
+  "permissions": {
+    "browserStorage": true,
+    "openExternal": true,
+    "clipboard": true,
+    "files": {
+      "open": true,
+      "save": true,
+      "extensions": [
+        "png",
+        "jpg",
+        "jpeg",
+        "webp",
+        "avif",
+        "jxl",
+        "wp2",
+        "qoi",
+        "gif",
+        "bmp",
+        "tif",
+        "tiff",
+        "svg"
+      ]
+    }
+  },
+  "modules": [
+    {
+      "id": "squoosh",
+      "title": "Squoosh",
+      "icon": "dist/icon.svg",
+      "entrypoint": "dist/index.html",
+      "railVisible": true,
+      "routing": "static"
+    }
+  ]
+}

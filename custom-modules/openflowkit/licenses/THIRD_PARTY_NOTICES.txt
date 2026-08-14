@@ -1,0 +1,147 @@
+THIRD-PARTY NOTICES
+===================
+
+This KKTerm Custom Module redistributes OpenFlowKit and its bundled runtime
+dependencies. KKTerm is not affiliated with, and this package is not endorsed
+by, the OpenFlowKit project or its authors.
+
+
+-------------------------------------------------------------------------------
+1. OpenFlowKit
+-------------------------------------------------------------------------------
+
+Homepage: https://openflowkit.com
+Source:   https://github.com/Vrun-design/openflowkit
+Version:  0.1.1
+License:  MIT -- full text in licenses/LICENSE
+Copyright (c) 2026 Varun
+
+
+-------------------------------------------------------------------------------
+2. Bundled runtime dependencies
+-------------------------------------------------------------------------------
+
+Compiled into dist/assets/. Each remains under its own license; consult the
+upstream project for authoritative terms.
+
+  Package                        License
+  -----------------------------  -----------
+  react, react-dom               MIT
+  @xyflow/react (React Flow)     MIT
+  mermaid                        MIT
+  @mermaid-js/layout-elk, elkjs  EPL-2.0 (elkjs), MIT
+  cytoscape (via mermaid)        MIT
+  d3-shape                       ISC
+  framer-motion                  MIT
+  lucide-react                   ISC
+  zustand                        MIT
+  yjs, y-indexeddb, y-webrtc     MIT
+  jszip                          MIT OR GPL-3.0
+  pako                           MIT AND Zlib
+  html-to-image                  MIT
+  mp4-muxer                      MIT
+  i18next, react-i18next         MIT
+  react-router-dom               MIT
+  react-markdown, remark-*,      MIT
+    rehype-slug
+  react-syntax-highlighter       MIT
+  @google/genai                  Apache-2.0
+  posthog-js                     MIT
+
+Bundled typefaces (public/fonts/google-sans/, shipped as .woff2):
+  Google Sans, Google Sans Text, Google Sans Flex, Google Sans Code
+  Redistributed as vendored by upstream OpenFlowKit.
+
+
+-------------------------------------------------------------------------------
+3. KKTerm-authored components
+-------------------------------------------------------------------------------
+
+License:  MIT (same terms as KKTerm)
+Copyright (c) 2026 KKTerm
+
+  - dist/icon.svg
+      Activity Rail artwork drawn for this package by KKTerm. Original work;
+      it does not reproduce the OpenFlowKit logo, which is a project mark not
+      covered by the MIT code license.
+
+
+-------------------------------------------------------------------------------
+4. Modifications made for this package
+-------------------------------------------------------------------------------
+
+  a) AI generation disabled.
+     src/services/aiService.ts
+
+     All ten providers stream their replies (`stream: true` plus
+     response.body.getReader()). KKMod host API v2 offers only a buffered
+     bridge -- KKTerm.network.fetch resolves once with a complete
+     NetworkResponse and exposes no reader -- and the Module CSP
+     ("connect-src 'self'") blocks the direct fetch calls outright.
+
+     The three exported entry points (generateDiagramFromChat, chatWithDocs,
+     chatWithFlowpilot) now reject immediately with an explanation instead of
+     failing deep in the transport with an opaque network error. This package
+     therefore requests NO network permission at all.
+
+     Diagram editing, templates, Mermaid import/export, and animated export are
+     unaffected: they run entirely locally.
+
+  b) Service-worker registration guard corrected.
+     src/services/offline/registerAppShellServiceWorker.ts
+
+     Upstream guards with `'serviceWorker' in navigator`. KKTerm disables
+     service workers via
+         Object.defineProperty(navigator, 'serviceWorker', { value: undefined })
+     which leaves the property PRESENT. The `in` test therefore still returns
+     true and the following navigator.serviceWorker.register() call throws
+     "Cannot read properties of undefined". The guard now reads the property's
+     value (Boolean(navigator.serviceWorker)), which is the only form that
+     survives the shim.
+
+  c) Remote Google Fonts import removed.
+     src/index.css
+
+     The stylesheet began with an @import of Roboto, Outfit, Playfair Display
+     and Fira Code from fonts.googleapis.com. The Module CSP ("style-src
+     'self'", "font-src 'self'") blocks it, and it was already redundant: none
+     of those families appear in any font-family stack. The typefaces actually
+     used are bundled locally and declared via @font-face, so rendering is
+     unchanged.
+
+  d) PWA and public-site artefacts dropped.
+     sw.js, manifest.webmanifest, sitemap.xml, robots.txt, canonical/og/twitter
+     meta tags, and the ld+json site metadata block.
+
+
+-------------------------------------------------------------------------------
+5. Telemetry and networking status in this build
+-------------------------------------------------------------------------------
+
+PostHog analytics: PRESENT AS DEAD CODE, NEVER INITIALISED.
+
+  Upstream can report usage to https://us.i.posthog.com, gated in
+  src/services/analytics/analytics.ts by
+
+      ANALYTICS_FEATURE_FLAG && Boolean(POSTHOG_API_KEY)
+
+  where both come from build-time environment variables
+  (VITE_ENABLE_ANALYTICS, VITE_POSTHOG_KEY). This package was built with
+  neither set and with no .env file present, so Vite substituted `undefined`
+  for both and isAnalyticsConfigured() is statically false. posthog.init() is
+  never reached, no events are captured, and no request is made.
+
+  The posthog-js library remains in the bundle as unreachable code. It is not
+  stripped because doing so would require patching upstream modules that the
+  settings UI imports; leaving it inert is the smaller, more auditable change.
+  Regardless, the Module declares no network permission, so the host would
+  refuse any outbound request it attempted.
+
+WebRTC collaboration (y-webrtc): DISABLED BY DEFAULT UPSTREAM.
+
+  src/config/rolloutFlags.ts ships the peer-collaboration flag off, noting the
+  signaling path is unreliable for end users. No signaling server is contacted.
+  The Module's CSP ("connect-src 'self'") would block it in any case.
+
+Net effect: this package makes no outbound network requests, and requests no
+network permission in its manifest.
