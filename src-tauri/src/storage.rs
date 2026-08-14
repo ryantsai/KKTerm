@@ -14,8 +14,9 @@ use std::{
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use zip::{ZipArchive, ZipWriter, write::SimpleFileOptions};
 
-const SCHEMA_USER_VERSION: i32 = 63;
+const SCHEMA_USER_VERSION: i32 = 64;
 const MAX_SETTINGS_IMPORT_BYTES: u64 = 16 * 1024 * 1024 * 1024;
+const AUTOMATIC_BACKUP_INTERVAL_SECONDS: i64 = 24 * 60 * 60;
 
 const DEFAULT_TERMINAL_OPACITY: u8 = 50;
 
@@ -699,6 +700,7 @@ CREATE INDEX IF NOT EXISTS idx_custom_module_blobs_content
 pub struct Storage {
     db_path: PathBuf,
     connection: Mutex<SqliteConnection>,
+    flat_json_lock: Mutex<()>,
 }
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -2206,6 +2208,9 @@ mod connections;
 
 mod durable_ui_state;
 
+mod flat_json;
+pub use flat_json::AssistantChatThreadSummaryRecord;
+
 impl Storage {
     pub fn open(db_path: PathBuf) -> Result<Self, String> {
         if let Some(parent) = db_path.parent() {
@@ -2222,6 +2227,7 @@ impl Storage {
         let storage = Self {
             db_path,
             connection: Mutex::new(connection),
+            flat_json_lock: Mutex::new(()),
         };
         storage.initialize_schema()?;
         Ok(storage)
@@ -2229,71 +2235,6 @@ impl Storage {
 
     pub fn status(&self) -> String {
         format!("SQLite: {}", self.db_path.display())
-    }
-
-    pub(crate) fn system_cleaner_record_history(
-        &self,
-        record: &SystemCleanerHistoryRecord,
-    ) -> Result<(), String> {
-        let connection = self.lock()?;
-        connection
-            .execute(
-                "INSERT INTO system_cleaner_history (
-                    id, started_at, completed_at, origin, status,
-                    recipe_versions_json, planned_bytes, freed_bytes,
-                    deleted_items, skipped_items, details_json
-                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
-                params![
-                    record.id,
-                    record.started_at,
-                    record.completed_at,
-                    record.origin,
-                    record.status,
-                    record.recipe_versions_json,
-                    i64::try_from(record.planned_bytes).unwrap_or(i64::MAX),
-                    i64::try_from(record.freed_bytes).unwrap_or(i64::MAX),
-                    i64::try_from(record.deleted_items).unwrap_or(i64::MAX),
-                    i64::try_from(record.skipped_items).unwrap_or(i64::MAX),
-                    record.details_json,
-                ],
-            )
-            .map_err(to_storage_error)?;
-        Ok(())
-    }
-
-    pub(crate) fn system_cleaner_history(
-        &self,
-        limit: usize,
-    ) -> Result<Vec<SystemCleanerHistoryRecord>, String> {
-        let connection = self.lock()?;
-        let mut statement = connection
-            .prepare(
-                "SELECT id, started_at, completed_at, origin, status,
-                        recipe_versions_json, planned_bytes, freed_bytes,
-                        deleted_items, skipped_items, details_json
-                 FROM system_cleaner_history
-                 ORDER BY completed_at DESC LIMIT ?1",
-            )
-            .map_err(to_storage_error)?;
-        let rows = statement
-            .query_map([i64::try_from(limit.min(200)).unwrap_or(200)], |row| {
-                Ok(SystemCleanerHistoryRecord {
-                    id: row.get(0)?,
-                    started_at: row.get(1)?,
-                    completed_at: row.get(2)?,
-                    origin: row.get(3)?,
-                    status: row.get(4)?,
-                    recipe_versions_json: row.get(5)?,
-                    planned_bytes: row.get::<_, i64>(6)?.max(0) as u64,
-                    freed_bytes: row.get::<_, i64>(7)?.max(0) as u64,
-                    deleted_items: row.get::<_, i64>(8)?.max(0) as u64,
-                    skipped_items: row.get::<_, i64>(9)?.max(0) as u64,
-                    details_json: row.get(10)?,
-                })
-            })
-            .map_err(to_storage_error)?;
-        rows.collect::<rusqlite::Result<Vec<_>>>()
-            .map_err(to_storage_error)
     }
 
     pub(crate) fn db_path(&self) -> PathBuf {
@@ -2322,13 +2263,15 @@ impl Storage {
     }
 
     pub fn backup_if_enabled_for_startup(&self) -> Result<Option<DatabaseBackupInfo>, String> {
-        if self.general_settings()?.auto_backup_enabled {
-            let backup = self.backup_database()?;
-            self.delete_old_backups()?;
-            Ok(Some(backup))
-        } else {
-            Ok(None)
+        let settings = self.general_settings()?;
+        if !settings.auto_backup_enabled
+            || !automatic_backup_is_due(settings.last_backup_at.as_deref(), OffsetDateTime::now_utc())
+        {
+            return Ok(None);
         }
+        let backup = self.backup_database()?;
+        self.delete_old_backups()?;
+        Ok(Some(backup))
     }
 
     pub fn backup_database(&self) -> Result<DatabaseBackupInfo, String> {
@@ -2391,6 +2334,7 @@ impl Storage {
                 .execute_batch(&format!("VACUUM INTO '{}';", sql_path))
                 .map_err(|error| format!("failed to snapshot database for export: {error}"))?;
         }
+        scrub_custom_module_data_from_database(&temp_db_path)?;
 
         let export_file = if create_new {
             OpenOptions::new()
@@ -2417,16 +2361,19 @@ impl Storage {
             options,
             &mut integrity,
         )?;
-        let data_root = self
-            .db_path
-            .parent()
-            .ok_or_else(|| "database path must include a parent directory".to_string())?;
-        let custom_modules_root = data_root.join("custom-modules");
-        for section in ["packages", "documents", "blobs", "webview-data"] {
+        {
+            let _flat_json_guard = self.lock_flat_json()?;
             add_directory_to_settings_zip(
                 &mut zip,
-                &custom_modules_root.join(section),
-                &format!("custom-modules/{section}"),
+                &self.assistant_chat_threads_dir(),
+                flat_json::ASSISTANT_CHAT_THREADS_DIR,
+                options,
+                &mut integrity,
+            )?;
+            add_directory_to_settings_zip(
+                &mut zip,
+                &self.system_cleaner_history_dir(),
+                flat_json::SYSTEM_CLEANER_HISTORY_DIR,
                 options,
                 &mut integrity,
             )?;
@@ -2436,11 +2383,14 @@ impl Storage {
         let manifest = serde_json::json!({
             "product": "KKTerm",
             "format": "kkterm-settings-export",
-            "version": 2,
+            "version": 4,
             "createdAt": OffsetDateTime::now_utc().format(&Rfc3339).unwrap_or_else(|_| "unknown".to_string()),
             "customModules": {
-                "included": true,
-                "roots": ["packages", "documents", "blobs", "webview-data"]
+                "included": false
+            },
+            "flatJson": {
+                "assistantChatThreads": true,
+                "systemCleanerHistory": true
             },
             "sha256": integrity,
         });
@@ -2461,22 +2411,30 @@ impl Storage {
             .db_path
             .parent()
             .ok_or_else(|| "database path must include a parent directory".to_string())?;
-        let temp_modules_path = data_root.join(format!(
-            ".kkterm-custom-modules-import-{}-{}",
-            std::process::id(),
-            timestamp_for_filename()
-        ));
+        let stage_suffix = format!("{}-{}", std::process::id(), timestamp_for_filename());
+        let assistant_stage = data_root.join(format!(".kkterm-assistant-import-{stage_suffix}"));
+        let cleaner_stage = data_root.join(format!(".kkterm-cleaner-import-{stage_suffix}"));
         remove_file_if_exists(&temp_import_path)?;
-        remove_directory_if_exists(&temp_modules_path)?;
-        extract_imported_settings(
+        remove_import_stage_directory(&assistant_stage)?;
+        remove_import_stage_directory(&cleaner_stage)?;
+        fs::create_dir_all(&assistant_stage)
+            .map_err(|error| format!("failed to create Assistant import stage: {error}"))?;
+        fs::create_dir_all(&cleaner_stage)
+            .map_err(|error| format!("failed to create System Cleaner import stage: {error}"))?;
+        let version = extract_imported_settings(
             &import_path,
             &temp_import_path,
-            &temp_modules_path,
+            &assistant_stage,
+            &cleaner_stage,
         )?;
+        if version < 4 {
+            flat_json::upgrade_imported_v63_history(&temp_import_path, &cleaner_stage)?;
+        }
+        flat_json::validate_flat_json_import(&assistant_stage, &cleaner_stage)?;
         validate_import_database(&temp_import_path)?;
+        replace_imported_custom_module_metadata_with_current(&self.db_path, &temp_import_path)?;
 
         let backup = self.backup_database()?;
-        replace_imported_custom_module_data(data_root, &temp_modules_path)?;
         {
             let mut connection = self.lock()?;
             let placeholder = SqliteConnection::open_in_memory()
@@ -2498,8 +2456,12 @@ impl Storage {
             let new_connection = open_initialized_connection(&self.db_path)?;
             *connection = new_connection;
         }
+        {
+            let _flat_json_guard = self.lock_flat_json()?;
+            replace_flat_json_directory(&assistant_stage, &self.assistant_chat_threads_dir())?;
+            replace_flat_json_directory(&cleaner_stage, &self.system_cleaner_history_dir())?;
+        }
         remove_file_if_exists(&temp_import_path)?;
-        remove_directory_if_exists(&temp_modules_path)?;
         self.record_last_backup_at(&backup.created_at)?;
         Ok(ImportedDatabaseSnapshot {
             general_settings: self.general_settings()?,
@@ -2760,10 +2722,9 @@ impl Storage {
                 )
                 .map_err(to_storage_error)?;
         }
-        // v57: System Cleaner keeps user-authored exclusions, structured run
-        // history, and verified recipe bundles in SQLite. These are ordinary
-        // durable records: there is no startup reconciliation, so the
-        // current-version fast path remains write-free for this feature.
+        // v57 originally kept user-authored exclusions, structured run history,
+        // and verified recipe bundles in SQLite. v64 migrates only run history
+        // to app-data JSON; these tables remain as upgrade/import staging shape.
         if stored_version < 57 {
             connection
                 .execute_batch(
@@ -3506,6 +3467,13 @@ impl Storage {
                 )
                 .map_err(to_storage_error)?;
         }
+        // v64: System Cleaner run history moves to one atomic JSON file per
+        // run under app data. Existing Assistant chat rows deliberately stay
+        // in SQLite for compatibility; only new thread ids use per-thread JSON.
+        // The current-version fast path performs no migration or file writes.
+        if stored_version < 64 {
+            self.migrate_system_cleaner_history_to_flat_json(&connection)?;
+        }
         connection
             .execute_batch(&format!("PRAGMA user_version = {SCHEMA_USER_VERSION}"))
             .map_err(to_storage_error)?;
@@ -3995,12 +3963,141 @@ fn timestamp_for_filename() -> String {
         })
 }
 
+fn automatic_backup_is_due(last_backup_at: Option<&str>, now: OffsetDateTime) -> bool {
+    let Some(last_backup_at) = last_backup_at else {
+        return true;
+    };
+    let Ok(last_backup_at) = OffsetDateTime::parse(last_backup_at, &Rfc3339) else {
+        return true;
+    };
+    now.unix_timestamp()
+        .checked_sub(last_backup_at.unix_timestamp())
+        .is_some_and(|elapsed| elapsed >= AUTOMATIC_BACKUP_INTERVAL_SECONDS)
+}
+
 fn remove_file_if_exists(path: &Path) -> Result<(), String> {
     match fs::remove_file(path) {
         Ok(()) => Ok(()),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
         Err(error) => Err(format!("failed to remove file {}: {error}", path.display())),
     }
+}
+
+const CUSTOM_MODULE_TABLES: [&str; 7] = [
+    "custom_modules",
+    "custom_module_versions",
+    "custom_module_permissions",
+    "custom_module_storage",
+    "custom_module_documents",
+    "custom_module_blobs",
+    "custom_module_secret_refs",
+];
+
+fn custom_module_secret_storage_keys(
+    connection: &SqliteConnection,
+    schema: &str,
+) -> Result<Vec<String>, String> {
+    let query = match schema {
+        "main" => "SELECT owner_id FROM main.custom_module_secret_refs",
+        "current_custom_modules" => {
+            "SELECT owner_id FROM current_custom_modules.custom_module_secret_refs"
+        }
+        _ => return Err("unsupported Custom Module database schema".to_string()),
+    };
+    let mut statement = connection.prepare(query).map_err(to_storage_error)?;
+    statement
+        .query_map([], |row| row.get::<_, String>(0))
+        .map_err(to_storage_error)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(to_storage_error)
+        .map(|owner_ids| {
+            owner_ids
+                .iter()
+                .map(|owner_id| crate::secrets::custom_module_sqlite_storage_key(owner_id))
+                .collect()
+        })
+}
+
+fn clear_custom_module_database_rows(connection: &mut SqliteConnection) -> Result<(), String> {
+    let secret_storage_keys = custom_module_secret_storage_keys(connection, "main")?;
+    let transaction = connection.transaction().map_err(to_storage_error)?;
+    for table in CUSTOM_MODULE_TABLES.iter().skip(1).rev() {
+        transaction
+            .execute(&format!("DELETE FROM {table}"), [])
+            .map_err(to_storage_error)?;
+    }
+    transaction
+        .execute("DELETE FROM custom_modules", [])
+        .map_err(to_storage_error)?;
+    for secret_storage_key in secret_storage_keys {
+        transaction
+            .execute(
+                "DELETE FROM encrypted_secret_store_entries WHERE secret_key = ?1",
+                [secret_storage_key],
+            )
+            .map_err(to_storage_error)?;
+    }
+    transaction.commit().map_err(to_storage_error)
+}
+
+fn scrub_custom_module_data_from_database(path: &Path) -> Result<(), String> {
+    let mut connection = SqliteConnection::open(path).map_err(to_storage_error)?;
+    clear_custom_module_database_rows(&mut connection)?;
+    connection
+        .execute_batch("VACUUM; PRAGMA wal_checkpoint(TRUNCATE);")
+        .map_err(to_storage_error)
+}
+
+fn replace_imported_custom_module_metadata_with_current(
+    current_database_path: &Path,
+    imported_database_path: &Path,
+) -> Result<(), String> {
+    let mut imported = SqliteConnection::open(imported_database_path).map_err(to_storage_error)?;
+    let current_database_path = current_database_path
+        .to_str()
+        .ok_or_else(|| "current database path is not valid UTF-8".to_string())?;
+    imported
+        .execute(
+            "ATTACH DATABASE ?1 AS current_custom_modules",
+            [current_database_path],
+        )
+        .map_err(to_storage_error)?;
+
+    let result = (|| {
+        clear_custom_module_database_rows(&mut imported)?;
+        let current_secret_storage_keys =
+            custom_module_secret_storage_keys(&imported, "current_custom_modules")?;
+        let transaction = imported.transaction().map_err(to_storage_error)?;
+        for table in CUSTOM_MODULE_TABLES {
+            transaction
+                .execute(
+                    &format!(
+                        "INSERT INTO main.{table} SELECT * FROM current_custom_modules.{table}"
+                    ),
+                    [],
+                )
+                .map_err(to_storage_error)?;
+        }
+        for secret_storage_key in current_secret_storage_keys {
+            transaction
+                .execute(
+                    "INSERT OR REPLACE INTO main.encrypted_secret_store_entries
+                     SELECT * FROM current_custom_modules.encrypted_secret_store_entries
+                     WHERE secret_key = ?1",
+                    [secret_storage_key],
+                )
+                .map_err(to_storage_error)?;
+        }
+        transaction.commit().map_err(to_storage_error)
+    })();
+    let detach_result = imported
+        .execute_batch("DETACH DATABASE current_custom_modules;")
+        .map_err(to_storage_error);
+    result?;
+    detach_result?;
+    imported
+        .execute_batch("PRAGMA wal_checkpoint(TRUNCATE);")
+        .map_err(to_storage_error)
 }
 
 fn add_file_to_settings_zip(
@@ -4014,7 +4111,7 @@ fn add_file_to_settings_zip(
         .map_err(|error| format!("failed to inspect backup file {}: {error}", source.display()))?;
     if metadata.file_type().is_symlink() || !metadata.is_file() {
         return Err(format!(
-            "refusing to back up non-regular Custom Module file {}",
+            "refusing to back up non-regular file {}",
             source.display()
         ));
     }
@@ -4048,52 +4145,56 @@ fn add_file_to_settings_zip(
 
 fn add_directory_to_settings_zip(
     zip: &mut ZipWriter<File>,
-    source: &Path,
+    source_root: &Path,
     archive_root: &str,
     options: SimpleFileOptions,
     integrity: &mut BTreeMap<String, String>,
 ) -> Result<(), String> {
-    if !source.exists() {
+    if !source_root.exists() {
         return Ok(());
     }
-    let source_metadata = fs::symlink_metadata(source)
-        .map_err(|error| format!("failed to inspect backup directory {}: {error}", source.display()))?;
-    if source_metadata.file_type().is_symlink() || !source_metadata.is_dir() {
-        return Err(format!(
-            "refusing to back up non-directory Custom Module root {}",
-            source.display()
-        ));
+    let mut pending = vec![source_root.to_path_buf()];
+    let mut files = Vec::new();
+    while let Some(directory) = pending.pop() {
+        for entry in fs::read_dir(&directory).map_err(|error| {
+            format!("failed to read backup directory {}: {error}", directory.display())
+        })? {
+            let entry = entry.map_err(|error| {
+                format!("failed to inspect backup directory {}: {error}", directory.display())
+            })?;
+            let path = entry.path();
+            let metadata = fs::symlink_metadata(&path).map_err(|error| {
+                format!("failed to inspect backup path {}: {error}", path.display())
+            })?;
+            if metadata.file_type().is_symlink() {
+                return Err(format!("refusing to back up symlink {}", path.display()));
+            }
+            if metadata.is_dir() {
+                pending.push(path);
+            } else if metadata.is_file() {
+                files.push(path);
+            } else {
+                return Err(format!("refusing to back up non-regular path {}", path.display()));
+            }
+        }
     }
-    let mut entries = fs::read_dir(source)
-        .map_err(|error| format!("failed to read backup directory {}: {error}", source.display()))?
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|error| format!("failed to inspect backup directory {}: {error}", source.display()))?;
-    entries.sort_by_key(|entry| entry.file_name());
-    for entry in entries {
-        let path = entry.path();
-        let name = entry
-            .file_name()
-            .into_string()
-            .map_err(|_| format!("backup path is not valid UTF-8: {}", path.display()))?;
-        let archive_name = format!("{archive_root}/{name}");
-        let metadata = fs::symlink_metadata(&path)
-            .map_err(|error| format!("failed to inspect backup path {}: {error}", path.display()))?;
-        if metadata.file_type().is_symlink() {
-            return Err(format!(
-                "refusing to follow symlink in Custom Module data: {}",
-                path.display()
-            ));
-        }
-        if metadata.is_dir() {
-            add_directory_to_settings_zip(zip, &path, &archive_name, options, integrity)?;
-        } else if metadata.is_file() {
-            add_file_to_settings_zip(zip, &path, &archive_name, options, integrity)?;
-        } else {
-            return Err(format!(
-                "refusing to back up non-regular Custom Module path {}",
-                path.display()
-            ));
-        }
+    files.sort();
+    for path in files {
+        let relative = path
+            .strip_prefix(source_root)
+            .map_err(|_| format!("backup path escaped source root: {}", path.display()))?;
+        let relative = relative
+            .components()
+            .map(|component| component.as_os_str().to_string_lossy())
+            .collect::<Vec<_>>()
+            .join("/");
+        add_file_to_settings_zip(
+            zip,
+            &path,
+            &format!("{archive_root}/{relative}"),
+            options,
+            integrity,
+        )?;
     }
     Ok(())
 }
@@ -4101,8 +4202,9 @@ fn add_directory_to_settings_zip(
 fn extract_imported_settings(
     import_path: &Path,
     temp_import_path: &Path,
-    temp_modules_path: &Path,
-) -> Result<(), String> {
+    assistant_stage: &Path,
+    cleaner_stage: &Path,
+) -> Result<u64, String> {
     let import_file = File::open(import_path).map_err(|error| {
         format!(
             "failed to open import file {}: {error}",
@@ -4135,22 +4237,17 @@ fn extract_imported_settings(
         .get("version")
         .and_then(|value| value.as_u64())
         .ok_or_else(|| "import manifest does not contain a valid version".to_string())?;
-    if !matches!(version, 1 | 2) {
+    if !matches!(version, 1 | 2 | 3 | 4) {
         return Err(format!("unsupported KKTerm settings export version {version}"));
     }
     let integrity = manifest
         .get("sha256")
         .and_then(|value| value.as_object());
-    if version == 2 && integrity.is_none() {
-        return Err("settings export v2 does not contain integrity metadata".into());
+    if version >= 2 && integrity.is_none() {
+        return Err(format!(
+            "settings export v{version} does not contain integrity metadata"
+        ));
     }
-
-    fs::create_dir_all(temp_modules_path).map_err(|error| {
-        format!(
-            "failed to create Custom Module import staging directory {}: {error}",
-            temp_modules_path.display()
-        )
-    })?;
     let mut total_bytes = 0_u64;
     let mut found_database = false;
     let mut extracted_hashes = BTreeMap::<String, String>::new();
@@ -4174,7 +4271,23 @@ fn extract_imported_settings(
         }
         let target = if name == "kkterm.sqlite3" {
             found_database = true;
-            temp_import_path.to_path_buf()
+            Some(temp_import_path.to_path_buf())
+        } else if version >= 4
+            && let Some(relative) = name.strip_prefix("assistant-chat-threads/")
+        {
+            Some(validated_flat_json_import_path(
+                assistant_stage,
+                relative,
+                "Assistant chat",
+            )?)
+        } else if version >= 4
+            && let Some(relative) = name.strip_prefix("system-cleaner-history/")
+        {
+            Some(validated_flat_json_import_path(
+                cleaner_stage,
+                relative,
+                "System Cleaner history",
+            )?)
         } else if let Some(relative) = name.strip_prefix("custom-modules/") {
             let mut components = Path::new(relative).components();
             let Some(std::path::Component::Normal(root)) = components.next() else {
@@ -4183,7 +4296,7 @@ fn extract_imported_settings(
             if !matches!(root.to_str(), Some("packages" | "documents" | "blobs" | "webview-data")) {
                 return Err(format!("import contains an unsupported Custom Module root: {name}"));
             }
-            temp_modules_path.join(relative)
+            None
         } else {
             return Err(format!("import contains an unsupported entry: {name}"));
         };
@@ -4193,13 +4306,18 @@ fn extract_imported_settings(
         if total_bytes > MAX_SETTINGS_IMPORT_BYTES {
             return Err("import expands beyond the 16 GiB safety limit".into());
         }
-        if let Some(parent) = target.parent() {
-            fs::create_dir_all(parent).map_err(|error| {
-                format!("failed to create import directory {}: {error}", parent.display())
-            })?;
-        }
-        let mut output = File::create(&target)
-            .map_err(|error| format!("failed to create import file {}: {error}", target.display()))?;
+        let mut output = if let Some(target) = target.as_ref() {
+            if let Some(parent) = target.parent() {
+                fs::create_dir_all(parent).map_err(|error| {
+                    format!("failed to create import directory {}: {error}", parent.display())
+                })?;
+            }
+            Some(File::create(target).map_err(|error| {
+                format!("failed to create import file {}: {error}", target.display())
+            })?)
+        } else {
+            None
+        };
         let mut hash = Sha256::new();
         let mut buffer = [0_u8; 64 * 1024];
         loop {
@@ -4210,13 +4328,19 @@ fn extract_imported_settings(
                 break;
             }
             hash.update(&buffer[..read]);
-            output
-                .write_all(&buffer[..read])
-                .map_err(|error| format!("failed to write import file {}: {error}", target.display()))?;
+            if let Some(output) = output.as_mut() {
+                output.write_all(&buffer[..read]).map_err(|error| {
+                    let target = target.as_ref().expect("output target exists");
+                    format!("failed to write import file {}: {error}", target.display())
+                })?;
+            }
         }
-        output
-            .sync_all()
-            .map_err(|error| format!("failed to flush import file {}: {error}", target.display()))?;
+        if let Some(output) = output {
+            output.sync_all().map_err(|error| {
+                let target = target.as_ref().expect("output target exists");
+                format!("failed to flush import file {}: {error}", target.display())
+            })?;
+        }
         let digest = hash.finalize();
         extracted_hashes.insert(
             name,
@@ -4243,46 +4367,76 @@ fn extract_imported_settings(
             }
         }
     }
-    Ok(())
+    Ok(version)
 }
 
-fn remove_directory_if_exists(path: &Path) -> Result<(), String> {
+fn validated_flat_json_import_path(
+    stage_root: &Path,
+    relative: &str,
+    label: &str,
+) -> Result<PathBuf, String> {
+    let relative = Path::new(relative);
+    let components = relative.components().collect::<Vec<_>>();
+    if components.len() != 1
+        || !matches!(components[0], std::path::Component::Normal(_))
+        || relative.extension().and_then(|value| value.to_str()) != Some("json")
+    {
+        return Err(format!("import contains an unsafe {label} JSON path"));
+    }
+    Ok(stage_root.join(relative))
+}
+
+fn remove_import_stage_directory(path: &Path) -> Result<(), String> {
+    let safe_name = path
+        .file_name()
+        .and_then(|value| value.to_str())
+        .is_some_and(|name| {
+            name.starts_with(".kkterm-assistant-import-")
+                || name.starts_with(".kkterm-cleaner-import-")
+        });
+    if !safe_name {
+        return Err(format!("refusing to remove unsafe import stage {}", path.display()));
+    }
     match fs::remove_dir_all(path) {
         Ok(()) => Ok(()),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
-        Err(error) => Err(format!("failed to remove directory {}: {error}", path.display())),
+        Err(error) => Err(format!("failed to remove import stage {}: {error}", path.display())),
     }
 }
 
-fn replace_imported_custom_module_data(
-    data_root: &Path,
-    imported_root: &Path,
-) -> Result<(), String> {
-    let target = data_root.join("custom-modules");
-    let previous = data_root.join(format!(
-        ".kkterm-custom-modules-before-import-{}-{}",
+fn replace_flat_json_directory(stage: &Path, target: &Path) -> Result<(), String> {
+    let parent = target
+        .parent()
+        .ok_or_else(|| format!("flat JSON target has no parent: {}", target.display()))?;
+    let target_name = target
+        .file_name()
+        .and_then(|value| value.to_str())
+        .ok_or_else(|| format!("flat JSON target name is invalid: {}", target.display()))?;
+    let backup = parent.join(format!(
+        ".kkterm-{target_name}-restore-backup-{}-{}",
         std::process::id(),
         timestamp_for_filename()
     ));
-    remove_directory_if_exists(&previous)?;
-    if target.exists() {
-        fs::rename(&target, &previous).map_err(|error| {
-            format!(
-                "failed to stage existing Custom Module data {}: {error}",
-                target.display()
-            )
+    if backup.exists() {
+        return Err(format!("flat JSON restore backup already exists: {}", backup.display()));
+    }
+    let had_target = target.exists();
+    if had_target {
+        fs::rename(target, &backup).map_err(|error| {
+            format!("failed to stage flat JSON directory {}: {error}", target.display())
         })?;
     }
-    if let Err(error) = fs::rename(imported_root, &target) {
-        if previous.exists() {
-            let _ = fs::rename(&previous, &target);
+    if let Err(error) = fs::rename(stage, target) {
+        if had_target {
+            let _ = fs::rename(&backup, target);
         }
-        return Err(format!(
-            "failed to activate imported Custom Module data {}: {error}",
-            target.display()
-        ));
+        return Err(format!("failed to restore flat JSON directory {}: {error}", target.display()));
     }
-    remove_directory_if_exists(&previous)?;
+    if had_target {
+        fs::remove_dir_all(&backup).map_err(|error| {
+            format!("failed to remove flat JSON restore backup {}: {error}", backup.display())
+        })?;
+    }
     Ok(())
 }
 

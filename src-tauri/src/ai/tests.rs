@@ -1490,7 +1490,7 @@ fn openai_agent_messages_include_context_compaction_notice() {
 #[test]
 fn model_context_limit_tracks_current_large_context_families() {
     assert_eq!(
-        model_context_limit_tokens("openai", "gpt-5.5"),
+        model_context_limit_tokens("openai", "gpt-5.6-luna"),
         (1_050_000, false)
     );
     assert_eq!(
@@ -1518,8 +1518,12 @@ fn model_context_limit_tracks_current_large_context_families() {
         (200_000, false)
     );
     assert_eq!(
-        model_context_limit_tokens("grok", "grok-4.5"),
+        model_context_limit_tokens("grok", "grok-4.6"),
         (500_000, false)
+    );
+    assert_eq!(
+        model_context_limit_tokens("deepseek", "deepseek-v4-pro"),
+        (1_000_000, false)
     );
     assert_eq!(
         model_context_limit_tokens("zai", "glm-5.2"),
@@ -1541,6 +1545,13 @@ fn model_context_limit_tracks_current_large_context_families() {
         model_context_limit_tokens("openai-compatible", "custom-local-model"),
         (32_000, true)
     );
+}
+
+#[test]
+fn current_multimodal_model_families_accept_image_input() {
+    assert!(supports_image_input("grok", "grok-4.6"));
+    assert!(supports_image_input("ollama", "qwen3.6"));
+    assert!(!supports_image_input("ollama", "qwen3:latest"));
 }
 
 #[test]

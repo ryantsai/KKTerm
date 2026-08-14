@@ -329,7 +329,7 @@ fn open_connection(db_path: &Path) -> Result<Connection, String> {
     Ok(connection)
 }
 
-fn storage_key(secret_key: &str) -> String {
+pub(super) fn storage_key(secret_key: &str) -> String {
     let digest = Sha256::digest(secret_key.as_bytes());
     format!("sha256:{}", BASE64.encode(digest))
 }

@@ -1149,64 +1149,6 @@ impl Storage {
         })
     }
 
-    pub fn list_assistant_chat_threads(&self) -> Result<Vec<AssistantChatThreadRecord>, String> {
-        let connection = self.lock()?;
-        let mut statement = connection
-            .prepare(
-                "SELECT id, title, context_label, messages_json, created_at, updated_at
-                 FROM assistant_chat_threads
-                 ORDER BY updated_at DESC, created_at DESC",
-            )
-            .map_err(to_storage_error)?;
-        let rows = statement
-            .query_map([], assistant_chat_thread_from_row)
-            .map_err(to_storage_error)?;
-        rows.collect::<Result<Vec<_>, _>>()
-            .map_err(to_storage_error)
-    }
-
-    pub fn upsert_assistant_chat_thread(
-        &self,
-        request: AssistantChatThreadRecord,
-    ) -> Result<AssistantChatThreadRecord, String> {
-        let thread = validate_assistant_chat_thread(request)?;
-        let connection = self.lock()?;
-        connection
-            .execute(
-                "INSERT INTO assistant_chat_threads
-                    (id, title, context_label, messages_json, created_at, updated_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)
-                 ON CONFLICT(id) DO UPDATE SET
-                    title = excluded.title,
-                    context_label = excluded.context_label,
-                    messages_json = excluded.messages_json,
-                    created_at = excluded.created_at,
-                    updated_at = excluded.updated_at",
-                params![
-                    &thread.id,
-                    &thread.title,
-                    &thread.context_label,
-                    &thread.messages_json,
-                    &thread.created_at,
-                    &thread.updated_at,
-                ],
-            )
-            .map_err(to_storage_error)?;
-        Ok(thread)
-    }
-
-    pub fn delete_assistant_chat_thread(&self, thread_id: String) -> Result<(), String> {
-        let thread_id = required_field("assistant chat thread id", thread_id)?;
-        let connection = self.lock()?;
-        connection
-            .execute(
-                "DELETE FROM assistant_chat_threads WHERE id = ?1",
-                params![thread_id],
-            )
-            .map_err(to_storage_error)?;
-        Ok(())
-    }
-
     /// List assistant memories for the given scopes, newest first. Callers pass
     /// "global" plus the active "connection:<id>" scope so the assistant only
     /// recalls notes relevant to where the user is working.

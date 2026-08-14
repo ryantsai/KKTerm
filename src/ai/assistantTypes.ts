@@ -25,6 +25,8 @@ export type AssistantChatThread = {
   messages: AssistantChatMessage[];
   createdAt: string;
   updatedAt: string;
+  /** Cached history-list preview; full messages load only when a saved thread opens. */
+  preview?: string;
 };
 
 export type AssistantPromptIntent = "chat" | "extensionCreation" | "createWidget" | "watchdog";

@@ -200,7 +200,7 @@ export const defaultAiProviderSettings: AiProviderSettings = {
   providerKind: "openai",
   baseUrl: "https://api.openai.com/v1",
   model: "gpt-5.6-luna",
-  reasoningEffort: "medium",
+  reasoningEffort: "high",
   outputLanguage: "",
   customInstructions: "",
   apiMode: "chatCompletions",

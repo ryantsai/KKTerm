@@ -2864,6 +2864,7 @@
     "selectiveImportChooseFile": "選擇備份檔案...",
     "fullBackupImport": "完整備份 ZIP",
     "fullBackupImportHint": "匯入完整的 KKTerm 設定資料庫並重新載入應用程式。",
+    "fullBackupCustomModulesWarning": "Custom Modules are not included in database backups. Importing this backup will not restore or change installed Custom Modules, including their metadata and data.",
     "selectiveImportActionsHint": "選擇每個類別的處理方式",
     "selectiveImportWarning": "匯入前會先建立目前資料的安全備份。取代會先清空該類別；新增會保留現有項目並加入匯入的項目。",
     "importActionSkip": "略過",

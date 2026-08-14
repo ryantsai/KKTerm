@@ -4,7 +4,10 @@
 // Extracted verbatim from AssistantPanel.tsx; behavior must not change.
 import i18next from "../i18n/config";
 import { invokeCommand } from "../lib/tauri";
-import type { AssistantChatThreadRecord } from "../lib/tauri";
+import type {
+  AssistantChatThreadRecord,
+  AssistantChatThreadSummaryRecord,
+} from "../lib/tauri";
 import type { AssistantToolCallStatus } from "./streamMessage";
 import type {
   AssistantChatMessage,
@@ -30,7 +33,9 @@ export function assistantThreadTitle(messages: AssistantChatMessage[]) {
 
 export function assistantThreadPreview(thread: AssistantChatThread) {
   const lastMessage = thread.messages[thread.messages.length - 1];
-  const preview = lastMessage?.content.trim().replace(/\s+/g, " ") || i18next.t("ai.noMessages");
+  const preview = lastMessage?.content.trim().replace(/\s+/g, " ")
+    || thread.preview
+    || i18next.t("ai.noMessages");
   return preview.length > 64 ? `${preview.slice(0, 61)}...` : preview;
 }
 
@@ -128,8 +133,8 @@ export function assistantChatThreadFromRecord(
 
 export async function loadAssistantChatHistoryFromStorage(): Promise<AssistantChatThread[]> {
   try {
-    const records = await invokeCommand("list_assistant_chat_threads", undefined);
-    const storedThreads = records.flatMap(assistantChatThreadFromRecord);
+    const records = await invokeCommand("list_assistant_chat_thread_summaries", undefined);
+    const storedThreads = records.map(assistantChatThreadFromSummaryRecord);
     const legacyThreads = readLegacyAssistantChatHistory();
     if (legacyThreads.length === 0) {
       return storedThreads;
@@ -143,12 +148,33 @@ export async function loadAssistantChatHistoryFromStorage(): Promise<AssistantCh
       ),
     );
     clearLegacyAssistantChatHistory();
-    const migratedRecords = await invokeCommand("list_assistant_chat_threads", undefined);
-    return migratedRecords.flatMap(assistantChatThreadFromRecord);
+    const migratedRecords = await invokeCommand("list_assistant_chat_thread_summaries", undefined);
+    return migratedRecords.map(assistantChatThreadFromSummaryRecord);
   } catch (error) {
-    console.warn("[kkterm-ai] failed to load SQLite chat history", error);
+    console.warn("[kkterm-ai] failed to load saved chat history", error);
     return readLegacyAssistantChatHistory();
   }
+}
+
+export async function loadAssistantChatThreadFromStorage(
+  threadId: string,
+): Promise<AssistantChatThread | undefined> {
+  const record = await invokeCommand("get_assistant_chat_thread", { threadId });
+  return assistantChatThreadFromRecord(record)[0];
+}
+
+function assistantChatThreadFromSummaryRecord(
+  record: AssistantChatThreadSummaryRecord,
+): AssistantChatThread {
+  return {
+    id: record.id,
+    title: record.title,
+    contextLabel: record.contextLabel,
+    messages: [],
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
+    preview: record.preview,
+  };
 }
 
 export function normalizeAssistantChatThread(value: unknown): AssistantChatThread[] {

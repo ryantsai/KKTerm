@@ -2864,6 +2864,7 @@
     "selectiveImportChooseFile": "バックアップファイルを選択...",
     "fullBackupImport": "完全バックアップ ZIP",
     "fullBackupImportHint": "KKTerm の設定データベース全体をインポートし、アプリを再読み込みします。",
+    "fullBackupCustomModulesWarning": "Custom Modules are not included in database backups. Importing this backup will not restore or change installed Custom Modules, including their metadata and data.",
     "selectiveImportActionsHint": "各カテゴリで行う操作を選択",
     "selectiveImportWarning": "インポート前に現在のデータの安全バックアップが作成されます。置き換えでは先にそのカテゴリを空にします。追加では既存の項目を残し、インポートした項目を追加します。",
     "importActionSkip": "スキップ",

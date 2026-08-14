@@ -1193,6 +1193,15 @@ export interface AssistantChatThreadRecord {
   updatedAt: string;
 }
 
+export interface AssistantChatThreadSummaryRecord {
+  id: string;
+  title: string;
+  contextLabel: string;
+  preview: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface CurrencyRatesResult {
   base: string;
   date: string;
@@ -2205,6 +2214,14 @@ type CommandMap = {
   list_assistant_chat_threads: {
     args: undefined;
     result: AssistantChatThreadRecord[];
+  };
+  list_assistant_chat_thread_summaries: {
+    args: undefined;
+    result: AssistantChatThreadSummaryRecord[];
+  };
+  get_assistant_chat_thread: {
+    args: { threadId: string };
+    result: AssistantChatThreadRecord;
   };
   upsert_assistant_chat_thread: {
     args: { request: AssistantChatThreadRecord };

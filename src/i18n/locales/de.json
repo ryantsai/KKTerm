@@ -2864,6 +2864,7 @@
     "selectiveImportChooseFile": "Sicherungsdatei auswählen...",
     "fullBackupImport": "Vollständige Sicherungs-ZIP",
     "fullBackupImportHint": "Importiert die vollständige KKTerm-Einstellungsdatenbank und lädt die App neu.",
+    "fullBackupCustomModulesWarning": "Custom Modules are not included in database backups. Importing this backup will not restore or change installed Custom Modules, including their metadata and data.",
     "selectiveImportActionsHint": "Auswählen, was mit jeder Kategorie geschehen soll",
     "selectiveImportWarning": "Vor dem Import wird eine Sicherheitskopie Ihrer aktuellen Daten erstellt. Ersetzen leert diese Kategorie zuerst; Hinzufügen behält Ihre vorhandenen Einträge und fügt die importierten hinzu.",
     "importActionSkip": "Überspringen",

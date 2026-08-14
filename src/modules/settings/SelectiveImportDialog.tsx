@@ -239,6 +239,7 @@ export function SelectiveImportDialog({
                 desc={t("settings.fullBackupImportHint")}
               />
             </Group>
+            <p className="kk-dlg-warn">{t("settings.fullBackupCustomModulesWarning")}</p>
             <p className="kk-dlg-warn">{t("settings.importSettingsConfirm")}</p>
           </>
         ) : selectiveManifest ? (

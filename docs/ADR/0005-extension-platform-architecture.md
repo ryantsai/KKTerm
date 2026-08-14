@@ -135,9 +135,13 @@ Storage model:
   extension-specific owner ids. Plaintext is never returned to package code.
 - Extension package files live under app data, outside the Connection and
   diagnostics data models.
-- Full Settings backup format 2 includes package files, documents, blobs, and
-  browser profiles with SHA-256 integrity metadata alongside SQLite. OS-keystore
-  secret values remain device-bound.
+- Database backup format 4 excludes all Custom Module metadata, encrypted
+  module-secret rows, package files, documents, blobs, and browser profiles.
+  Restore ignores those payloads in legacy format-2 archives and preserves the
+  Custom Modules already installed on the destination machine. Copying a
+  stopped portable folder remains the deliberate way to back up a complete
+  portable Custom Module installation. OS-keystore secret values remain
+  device-bound.
 
 AI Assistant integration:
 

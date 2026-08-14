@@ -2864,6 +2864,7 @@
     "selectiveImportChooseFile": "Chọn tệp sao lưu...",
     "fullBackupImport": "ZIP sao lưu đầy đủ",
     "fullBackupImportHint": "Nhập toàn bộ cơ sở dữ liệu cài đặt KKTerm và tải lại ứng dụng.",
+    "fullBackupCustomModulesWarning": "Custom Modules are not included in database backups. Importing this backup will not restore or change installed Custom Modules, including their metadata and data.",
     "selectiveImportActionsHint": "Chọn việc cần làm với từng danh mục",
     "selectiveImportWarning": "Một bản sao lưu an toàn của dữ liệu hiện tại sẽ được tạo trước khi nhập. Thay thế sẽ xóa danh mục đó trước; Thêm sẽ giữ các mục hiện có và thêm các mục được nhập.",
     "importActionSkip": "Bỏ qua",

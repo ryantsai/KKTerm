@@ -4243,7 +4243,61 @@ fn database_backup_zip_is_serialized_and_importable() {
 }
 
 #[test]
-fn full_settings_backup_round_trips_custom_module_external_data_with_integrity() {
+fn full_settings_backup_round_trips_flat_json_histories() {
+    let db_path = temp_db_path("database-backup-flat-json");
+    let data_root = db_path.parent().unwrap().to_path_buf();
+    let storage = Storage::open(db_path).expect("storage opens");
+    storage
+        .upsert_assistant_chat_thread(AssistantChatThreadRecord {
+            id: "new-file-thread".into(),
+            title: "File thread".into(),
+            context_label: "Workspace".into(),
+            messages_json: r#"[{"role":"user","content":"kept"}]"#.into(),
+            created_at: "2026-08-14T00:00:00Z".into(),
+            updated_at: "2026-08-14T00:00:01Z".into(),
+        })
+        .expect("new Assistant thread is stored in a file");
+    storage
+        .system_cleaner_record_history(&SystemCleanerHistoryRecord {
+            id: "cleaner-file-run".into(),
+            started_at: "2026-08-14T00:00:00Z".into(),
+            completed_at: "2026-08-14T00:00:02Z".into(),
+            origin: "manual".into(),
+            status: "partial".into(),
+            recipe_versions_json: "{}".into(),
+            planned_bytes: 10,
+            freed_bytes: 5,
+            deleted_items: 1,
+            skipped_items: 1,
+            details_json: r#"{"skipped":[{"path":"kept","reason":"locked"}]}"#.into(),
+        })
+        .expect("Cleaner run is stored in a file");
+
+    let backup = storage.backup_database().expect("database backup succeeds");
+    {
+        let file = File::open(&backup.path).expect("backup opens");
+        let mut archive = ZipArchive::new(file).expect("backup is a zip");
+        let names = (0..archive.len())
+            .map(|index| archive.by_index(index).unwrap().name().to_string())
+            .collect::<Vec<_>>();
+        assert!(names.iter().any(|name| name == "assistant-chat-threads/index.json"));
+        assert!(names.iter().any(|name| {
+            name.starts_with("assistant-chat-threads/") && name != "assistant-chat-threads/index.json"
+        }));
+        assert!(names.iter().any(|name| name.starts_with("system-cleaner-history/")));
+    }
+
+    fs::remove_dir_all(data_root.join("assistant-chat-threads")).unwrap();
+    fs::remove_dir_all(data_root.join("system-cleaner-history")).unwrap();
+    storage
+        .import_database_zip(PathBuf::from(&backup.path))
+        .expect("full settings backup imports");
+    assert_eq!(storage.list_assistant_chat_threads().unwrap().len(), 1);
+    assert_eq!(storage.system_cleaner_history(10).unwrap().len(), 1);
+}
+
+#[test]
+fn full_settings_backup_excludes_custom_modules_and_import_preserves_installed_modules() {
     let db_path = temp_db_path("database-backup-custom-modules");
     let data_root = db_path.parent().unwrap().to_path_buf();
     let module_root = data_root.join("custom-modules");
@@ -4259,6 +4313,39 @@ fn full_settings_backup_round_trips_custom_module_external_data_with_integrity()
         fs::write(path, contents).unwrap();
     }
     let storage = Storage::open(db_path).expect("storage opens");
+    let module_secret_key = crate::secrets::custom_module_sqlite_storage_key("module-secret-owner");
+    storage
+        .with_connection(|connection| {
+            connection
+                .execute_batch(
+                    "INSERT INTO custom_modules (
+                        id, manifest_json, active_version, source, trust, installed,
+                        enabled, rail_visible, sha256
+                     ) VALUES (
+                        'com.example.module', '{}', '1.0.0', 'local', 'local', 1, 1, 1, 'abc'
+                     );
+                     INSERT INTO custom_module_versions (
+                        module_id, version, relative_path, sha256
+                     ) VALUES (
+                        'com.example.module', '1.0.0', 'com.example.module/1.0.0', 'abc'
+                     );
+                     INSERT INTO custom_module_storage (module_id, key, value_json, byte_size)
+                     VALUES ('com.example.module', 'note', '\"before backup\"', 13);
+                     INSERT INTO custom_module_secret_refs (module_id, key, owner_id)
+                     VALUES ('com.example.module', 'token', 'module-secret-owner');",
+                )
+                .map_err(to_storage_error)?;
+            connection
+                .execute(
+                    "INSERT INTO encrypted_secret_store_entries (
+                        secret_key, version, kdf, cipher, salt, nonce, ciphertext
+                     ) VALUES (?1, 1, 'argon2id', 'aes-256-gcm', 'salt', 'nonce', 'ciphertext')",
+                    [&module_secret_key],
+                )
+                .map_err(to_storage_error)?;
+            Ok(())
+        })
+        .expect("Custom Module fixture metadata is stored");
     let backup = storage.backup_database().expect("database backup succeeds");
 
     {
@@ -4270,14 +4357,39 @@ fn full_settings_backup_round_trips_custom_module_external_data_with_integrity()
             entry.read_to_string(&mut json).unwrap();
             serde_json::from_str(&json).unwrap()
         };
-        assert_eq!(manifest["version"], 2);
-        assert_eq!(manifest["customModules"]["included"], true);
+        assert_eq!(manifest["version"], 4);
+        assert_eq!(manifest["customModules"]["included"], false);
         assert!(manifest["sha256"]["kkterm.sqlite3"].is_string());
-        assert!(
-            manifest["sha256"]
-                ["custom-modules/packages/com.example.module/1.0.0/dist/index.html"]
-                .is_string()
-        );
+        assert_eq!(manifest["sha256"].as_object().unwrap().len(), 1);
+        assert_eq!(archive.len(), 2, "only the database and manifest are archived");
+
+        let snapshot_path = temp_db_path("database-backup-custom-modules-snapshot");
+        {
+            let mut database = archive.by_name("kkterm.sqlite3").expect("database exists");
+            let mut snapshot = File::create(&snapshot_path).expect("snapshot file is created");
+            std::io::copy(&mut database, &mut snapshot).expect("snapshot is extracted");
+        }
+        let snapshot = SqliteConnection::open(&snapshot_path).expect("snapshot opens");
+        for table in CUSTOM_MODULE_TABLES {
+            let count: i64 = snapshot
+                .query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| row.get(0))
+                .unwrap();
+            assert_eq!(count, 0, "{table} must be empty in the backup snapshot");
+        }
+        let secret_count: i64 = snapshot
+            .query_row(
+                "SELECT COUNT(*) FROM encrypted_secret_store_entries WHERE secret_key = ?1",
+                [&module_secret_key],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(secret_count, 0, "Module secrets must be excluded");
+        let freelist_count: i64 = snapshot
+            .pragma_query_value(None, "freelist_count", |row| row.get(0))
+            .unwrap();
+        assert_eq!(freelist_count, 0, "scrubbed Module pages must be reclaimed");
+        drop(snapshot);
+        fs::remove_file(snapshot_path).unwrap();
     }
 
     fs::write(
@@ -4287,12 +4399,75 @@ fn full_settings_backup_round_trips_custom_module_external_data_with_integrity()
     .unwrap();
     fs::remove_file(module_root.join("blobs/com.example.module/blob.bin")).unwrap();
     storage
+        .with_connection(|connection| {
+            connection
+                .execute(
+                    "UPDATE custom_module_storage SET value_json = '\"current machine\"'
+                     WHERE module_id = 'com.example.module' AND key = 'note'",
+                    [],
+                )
+                .map_err(to_storage_error)?;
+            Ok(())
+        })
+        .expect("current Module metadata is changed after backup");
+    storage
         .import_database_zip(PathBuf::from(&backup.path))
         .expect("full settings backup imports");
 
-    for (relative, contents) in fixtures {
-        assert_eq!(fs::read(module_root.join(relative)).unwrap(), contents);
-    }
+    assert_eq!(
+        fs::read(module_root.join("documents/com.example.module/document.json")).unwrap(),
+        b"changed"
+    );
+    assert!(!module_root.join("blobs/com.example.module/blob.bin").exists());
+    assert_eq!(
+        fs::read(module_root.join("packages/com.example.module/1.0.0/dist/index.html")).unwrap(),
+        b"package"
+    );
+    storage
+        .with_connection(|connection| {
+            let value: String = connection
+                .query_row(
+                    "SELECT value_json FROM custom_module_storage
+                     WHERE module_id = 'com.example.module' AND key = 'note'",
+                    [],
+                    |row| row.get(0),
+                )
+                .map_err(to_storage_error)?;
+            assert_eq!(value, "\"current machine\"");
+            let secret_count: i64 = connection
+                .query_row(
+                    "SELECT COUNT(*) FROM encrypted_secret_store_entries WHERE secret_key = ?1",
+                    [&module_secret_key],
+                    |row| row.get(0),
+                )
+                .map_err(to_storage_error)?;
+            assert_eq!(secret_count, 1, "current Module secret remains installed");
+            Ok(())
+        })
+        .expect("current Custom Module metadata is preserved");
+}
+
+#[test]
+fn automatic_backup_due_respects_the_24_hour_interval() {
+    let now = OffsetDateTime::parse("2026-08-14T12:00:00Z", &Rfc3339).unwrap();
+    assert!(automatic_backup_is_due(None, now));
+    assert!(automatic_backup_is_due(Some("not-a-timestamp"), now));
+    assert!(!automatic_backup_is_due(
+        Some("2026-08-13T12:00:01Z"),
+        now
+    ));
+    assert!(automatic_backup_is_due(
+        Some("2026-08-13T12:00:00Z"),
+        now
+    ));
+    assert!(automatic_backup_is_due(
+        Some("2026-08-12T12:00:00Z"),
+        now
+    ));
+    assert!(!automatic_backup_is_due(
+        Some("2026-08-15T12:00:00Z"),
+        now
+    ));
 }
 
 #[test]
@@ -5459,8 +5634,10 @@ fn main_window_settings_round_trip_through_settings_table() {
 }
 
 #[test]
-fn assistant_chat_history_round_trips_from_sqlite_by_recent_update() {
-    let storage = Storage::open(temp_db_path("assistant-chat-history")).expect("storage opens");
+fn assistant_chat_history_round_trips_from_flat_json_by_recent_update() {
+    let db_path = temp_db_path("assistant-chat-history");
+    let assistant_dir = db_path.parent().unwrap().join("assistant-chat-threads");
+    let storage = Storage::open(db_path).expect("storage opens");
     let older = AssistantChatThreadRecord {
         id: "thread-older".to_string(),
         title: "Older".to_string(),
@@ -5500,6 +5677,109 @@ fn assistant_chat_history_round_trips_from_sqlite_by_recent_update() {
         .expect("assistant chat history reloads");
     assert_eq!(threads.len(), 1);
     assert_eq!(threads[0].id, older.id);
+    assert!(assistant_dir.join("index.json").exists(), "Assistant index must be written");
+    let thread_files = fs::read_dir(&assistant_dir)
+        .unwrap()
+        .filter_map(Result::ok)
+        .filter(|entry| entry.file_name() != "index.json")
+        .collect::<Vec<_>>();
+    assert_eq!(thread_files.len(), 1);
+    let stored: AssistantChatThreadRecord =
+        serde_json::from_slice(&fs::read(thread_files[0].path()).unwrap()).unwrap();
+    assert_eq!(stored.id, older.id);
+    storage
+        .with_connection(|connection| {
+            let rows: i64 = connection
+                .query_row("SELECT COUNT(*) FROM assistant_chat_threads", [], |row| row.get(0))
+                .map_err(to_storage_error)?;
+            assert_eq!(rows, 0, "SQLite Assistant staging table must stay empty");
+            Ok(())
+        })
+        .unwrap();
+}
+
+#[test]
+fn v64_histories_migrate_to_flat_json_and_current_reopen_is_write_free() {
+    let db_path = temp_db_path("flat-json-v64");
+    let data_root = db_path.parent().unwrap();
+    let cleaner_path = data_root.join("system-cleaner-history");
+    {
+        let storage = Storage::open(db_path.clone()).expect("fixture storage opens");
+        storage
+            .with_connection(|connection| {
+                connection
+                    .execute_batch(
+                        "INSERT INTO assistant_chat_threads (
+                            id, title, context_label, messages_json, created_at, updated_at
+                         ) VALUES ('thread-v63', 'Legacy', 'Workspace', '[]', 'created', 'updated');
+                         INSERT INTO system_cleaner_history (
+                            id, started_at, completed_at, origin, status,
+                            recipe_versions_json, planned_bytes, freed_bytes,
+                            deleted_items, skipped_items, details_json
+                         ) VALUES (
+                            'run-v63', 'started', 'completed', 'manual', 'partial',
+                            '{}', 100, 50, 1, 1,
+                            '{\"skipped\":[{\"path\":\"C:\\\\kept.txt\",\"reason\":\"locked\"}]}'
+                         );
+                         PRAGMA user_version = 63;",
+                    )
+                    .map_err(to_storage_error)
+            })
+            .expect("v63 rows are prepared");
+    }
+    let _ = fs::remove_dir_all(&cleaner_path);
+
+    let upgraded = Storage::open(db_path.clone()).expect("v63 storage upgrades");
+    assert_eq!(upgraded.list_assistant_chat_threads().unwrap().len(), 1);
+    let cleaner = upgraded.system_cleaner_history(10).unwrap();
+    assert_eq!(cleaner.len(), 1);
+    assert!(cleaner[0].details_json.contains("kept.txt"));
+    let schema_version: i64 = upgraded
+        .with_connection(|connection| {
+            let counts: (i64, i64) = connection
+                .query_row(
+                    "SELECT
+                        (SELECT COUNT(*) FROM assistant_chat_threads),
+                        (SELECT COUNT(*) FROM system_cleaner_history)",
+                    [],
+                    |row| Ok((row.get(0)?, row.get(1)?)),
+                )
+                .map_err(to_storage_error)?;
+            assert_eq!(counts, (1, 0));
+            let version: i32 = connection
+                .pragma_query_value(None, "user_version", |row| row.get(0))
+                .map_err(to_storage_error)?;
+            assert_eq!(version, SCHEMA_USER_VERSION);
+            connection
+                .pragma_query_value(None, "schema_version", |row| row.get(0))
+                .map_err(to_storage_error)
+        })
+        .unwrap();
+    drop(upgraded);
+
+    let cleaner_before = fs::read_dir(&cleaner_path)
+        .unwrap()
+        .filter_map(Result::ok)
+        .map(|entry| fs::read(entry.path()).unwrap())
+        .collect::<Vec<_>>();
+    let reopened = Storage::open(db_path).expect("current storage reopens");
+    reopened
+        .with_connection(|connection| {
+            let reopened_schema: i64 = connection
+                .pragma_query_value(None, "schema_version", |row| row.get(0))
+                .map_err(to_storage_error)?;
+            assert_eq!(reopened_schema, schema_version);
+            Ok(())
+        })
+        .unwrap();
+    assert_eq!(
+        fs::read_dir(cleaner_path)
+            .unwrap()
+            .filter_map(Result::ok)
+            .map(|entry| fs::read(entry.path()).unwrap())
+            .collect::<Vec<_>>(),
+        cleaner_before
+    );
 }
 
 #[test]

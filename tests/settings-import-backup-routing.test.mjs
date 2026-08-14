@@ -12,6 +12,7 @@ test("Settings Import routes selective backups and full settings ZIP backups", a
   assert.match(dialog, /selectSettingsBackupImportFile/);
   assert.match(dialog, /inspect_selective_database/);
   assert.match(dialog, /setImportKind\("full"\)/);
+  assert.match(dialog, /settings\.fullBackupCustomModulesWarning/);
   assert.match(dialog, /onFullImport/);
   assert.match(general, /handleImportFullSettings/);
   assert.match(general, /import_settings_database/);

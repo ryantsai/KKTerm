@@ -191,13 +191,15 @@ API version decision; manifests containing undeclared fields are rejected.
 
 ## Backup, removal, and updates
 
-Full Settings backups use export format 2 and include package files, documents,
-blobs, browser profile data, and SHA-256 integrity metadata alongside SQLite.
-Selective Connection exports continue to exclude Modules. OS-keychain secret
-values remain device-bound; only their non-secret references are in SQLite.
-Settings reports per-package usage and lets the user clear all package data.
-Uninstall offers retain or delete; delete also removes keychain references and
-browser-profile data.
+Database backups use export format 4 and exclude all Custom Module content:
+installation metadata, isolated storage metadata, secret references and their
+encrypted SQLite rows, package files, documents, blobs, and browser profiles.
+Import also ignores Module payloads from legacy format-2 archives and preserves
+the destination machine's currently installed Modules. The complete stopped
+portable folder remains the backup unit when Module installations and data must
+move together. Settings reports per-package usage and lets the user clear all
+package data. Uninstall offers retain or delete; delete also removes keychain
+references and browser-profile data.
 
 Updates are user-mediated. The catalog repeats the complete structured
 permission object and must exactly match the downloaded manifest. Any widening

@@ -107,6 +107,7 @@ import {
   assistantThreadTitle,
   createAssistantChatThreadId,
   loadAssistantChatHistoryFromStorage,
+  loadAssistantChatThreadFromStorage,
   readLegacyAssistantChatHistory,
   sanitizeAssistantThreadTitle,
   sortedAssistantThreads,
@@ -780,15 +781,24 @@ export function AssistantPanel({
     saveChatMessages(nextMessages, title);
   }
 
-  function resumeChat(thread: AssistantChatThread) {
+  async function resumeChat(thread: AssistantChatThread) {
     if (isSendingPrompt) {
       return;
     }
+    let loadedThread = thread;
+    if (isTauriRuntime() && thread.messages.length === 0) {
+      try {
+        loadedThread = await loadAssistantChatThreadFromStorage(thread.id) ?? thread;
+      } catch (error) {
+        setChatError(error instanceof Error ? error.message : String(error));
+        return;
+      }
+    }
     saveCurrentChat();
-    setCurrentThreadId(thread.id);
-    setCurrentThreadTitle(thread.title);
-    messagesRef.current = thread.messages;
-    setMessages(thread.messages);
+    setCurrentThreadId(loadedThread.id);
+    setCurrentThreadTitle(loadedThread.title);
+    messagesRef.current = loadedThread.messages;
+    setMessages(loadedThread.messages);
     setPrompt("");
     setChatError("");
     setContextUsage(undefined);
@@ -2027,7 +2037,7 @@ export function AssistantPanel({
                 <div className="assistant-chat-history-row-wrap" key={thread.id}>
                   <button
                     className="assistant-chat-history-row"
-                    onClick={() => resumeChat(thread)}
+                    onClick={() => void resumeChat(thread)}
                     type="button"
                   >
                     <strong>{thread.title}</strong>
@@ -2051,7 +2061,7 @@ export function AssistantPanel({
               <button
                 className="assistant-task-row"
                 key={thread.id}
-                onClick={() => resumeChat(thread)}
+                onClick={() => void resumeChat(thread)}
                 type="button"
               >
                 <span>{thread.title}</span>

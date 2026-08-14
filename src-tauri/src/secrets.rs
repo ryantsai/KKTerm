@@ -797,6 +797,10 @@ impl SecretKind {
     }
 }
 
+pub(crate) fn custom_module_sqlite_storage_key(owner_id: &str) -> String {
+    sqlite_store::storage_key(&format!("custom-module-secret:{owner_id}"))
+}
+
 fn configure_state(secret_store: &str, db_path: &std::path::Path) -> SecretStoreState {
     let requested = secret_store.trim().to_lowercase();
     let selected_store = if storage::secret_store_options().contains(&requested.as_str()) {

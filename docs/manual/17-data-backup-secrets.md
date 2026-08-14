@@ -2,15 +2,15 @@
 
 ## AI grep hints
 
-- Keys: `settings.exportSettings`, `settings.importSettings`, `settings.importBackupFileHint`, `settings.fullBackupImport`, `settings.includeCredentials`, `settings.includeCredentialsWarning`, `settings.importPassphrase`, `settings.importEncryptedStorePassword`, `settings.importEncryptedStorePasswordHint`, `settings.importActionAdd`, `settings.importActionReplace`, `settings.segment_workspacesConnections`, `settings.segment_dashboards`, `settings.segment_itops`, `settings.segment_assistant`, `settings.segment_settings`, `settings.resetAllSettings`, `settings.resetAllSettingsConfirm`, `settings.resetAllSettingsComplete`, `settings.sectionCredentials`, `settings.credentialStorage`, `settings.credentialStorageFilePortable`, `settings.portableCredentialStorageOsWarning`, `settings.credentialsStored`, `settings.deleteCredential`
-- Topics: SQLite store, OS keychain, encrypted SQLite secret store, Custom Module package/storage backup, settings Import/Export `.kkbackup`, startup backup ZIP snapshots, import / restore, reset all, where my data lives
+- Keys: `settings.exportSettings`, `settings.importSettings`, `settings.importBackupFileHint`, `settings.fullBackupImport`, `settings.fullBackupCustomModulesWarning`, `settings.includeCredentials`, `settings.includeCredentialsWarning`, `settings.importPassphrase`, `settings.importEncryptedStorePassword`, `settings.importEncryptedStorePasswordHint`, `settings.importActionAdd`, `settings.importActionReplace`, `settings.segment_workspacesConnections`, `settings.segment_dashboards`, `settings.segment_itops`, `settings.segment_assistant`, `settings.segment_settings`, `settings.resetAllSettings`, `settings.resetAllSettingsConfirm`, `settings.resetAllSettingsComplete`, `settings.sectionCredentials`, `settings.credentialStorage`, `settings.credentialStorageFilePortable`, `settings.portableCredentialStorageOsWarning`, `settings.credentialsStored`, `settings.deleteCredential`
+- Topics: SQLite store, OS keychain, encrypted SQLite secret store, Custom Module exclusion from database backups, settings Import/Export `.kkbackup`, background database-backup ZIP snapshots, import / restore, reset all, where my data lives
 - Synonyms: "where is my data", "back up settings", "restore", "factory reset", "uninstall", "API key storage", "export connections without passwords", "share connections", "selective backup"
 
 ## Storage model
 
 KKTerm is local-first. Two distinct store families:
 
-1. **SQLite and app-data files** — non-secret durable data. They live on the user's machine and are never sent off-device. SQLite holds Connections, Dashboard Views and Widget Instances, Custom Widgets, Settings rows, assistant chat history, and Custom Module metadata plus small permission-checked storage. Custom Module packages, documents, blobs, and isolated browser profiles live below the app-data `custom-modules` directory.
+1. **SQLite and app-data files** — non-secret durable data. They live on the user's machine and are never sent off-device. SQLite holds Connections, Dashboard Views and Widget Instances, Custom Widgets, Settings rows, legacy assistant chat threads, and Custom Module metadata plus small permission-checked storage. New Assistant threads use per-thread JSON below `assistant-chat-threads/`; System Cleaner runs use per-run JSON below `system-cleaner-history/`. Custom Module packages, documents, blobs, and isolated browser profiles live below the app-data `custom-modules` directory.
 2. **Credential backend** — secrets. Holds Connection passwords, URL credentials, AI provider API keys, email API keys / SMTP passwords, widget secrets, MCP server secrets. Windows and macOS default to the OS keystore and may optionally use the encrypted SQLite store. Linux uses the encrypted SQLite store only.
 
 Terminal contents are **not** logged by default. There is no telemetry and no cloud sync.
@@ -28,24 +28,32 @@ Do **not** put live session state (open Tabs, focused Pane, in-flight Sessions) 
 ## Automatic backup snapshots
 
 Optional `.kkmod` package payloads live beside, not inside, SQLite. Selective
-exports do not include Custom Modules. Full Settings snapshot format 2 includes
-SQLite plus installed package files, document/blob content, isolated browser
-profiles, and SHA-256 integrity metadata. Import verifies the complete payload
-before replacing the active database and Custom Module data. OS-keystore secret
-values remain bound to the current account/device; only their non-secret
-references travel in SQLite. Encrypted-database secret values do travel with
-SQLite. Copying an entire stopped portable folder also includes all Custom
-Module data as part of the portable backup unit.
+exports and database-backup ZIPs do not include Custom Modules. Database backup
+format 4 contains a scrubbed SQLite snapshot, the two history JSON directories,
+and SHA-256 integrity metadata;
+the snapshot removes Custom Module installation metadata, versions, grants,
+storage/document/blob/secret-reference rows, and package-owned encrypted secret
+rows. Package files, documents, blobs, and isolated browser profiles are never
+added to the archive. Import verifies the archive before replacing ordinary
+settings data, ignores Custom Module entries in legacy format-2 archives, and
+preserves the Custom Modules already installed on the destination machine.
+OS-keystore secret values remain bound to the current account/device.
+Non-Module encrypted-database secret values travel with SQLite. Copying an
+entire stopped portable folder remains the backup unit when the complete
+portable Custom Module installation must travel.
 
-Full database snapshot backups may run at:
-
-- App startup (configured).
+When Auto Backup is enabled, app startup schedules a delayed blocking worker.
+It creates a backup only when no successful automatic or explicit database
+backup has been recorded during the preceding 24 hours. The worker starts after
+the launch-critical path so Tauri setup and the frontend's initial SQLite reads
+do not wait for snapshot or compression work. Backups older than seven days are
+removed after a successful automatic backup.
 
 Automatic backups must **not** run from app-window close.
 
 ## Import / restore
 
-`settings.importSettings` opens the backup import dialog. A chosen `.kkbackup` is inspected before applying anything; a chosen full `.zip` backup restores the complete settings database and reloads the app.
+`settings.importSettings` opens the backup import dialog. A chosen `.kkbackup` is inspected before applying anything; a chosen database-backup `.zip` shows `settings.fullBackupCustomModulesWarning`, restores the non-Custom-Module settings database, preserves the destination machine's installed Custom Modules, and reloads the app. Legacy ZIPs may physically contain Custom Module entries, but import validates and discards those entries rather than activating them.
 
 Installed-to-portable and portable-to-installed migration use this same export/import flow; neither mode reads the other mode's database directly. Extracting a newer portable release over the program folder does not migrate or overwrite data because release ZIPs never contain `data`.
 

@@ -20,7 +20,7 @@ Header `ai.chats`. View all `ai.viewAll` → dialog `ai.allChats`. Empty `ai.noC
 - Delete: `ai.deleteChat`.
 - No-messages state: `ai.noMessages`. Saved indicator `ai.saved`.
 
-Chat history is stored in SQLite table `assistant_chat_threads`, indexed for recent-first history loading. Older WebView2 `localStorage` history under `kkterm.aiAssistant.chatHistory.v1` is migrated into SQLite on startup and then removed. The unsent composer draft is temporary `sessionStorage` under `ai-chat-draft`.
+Chat history uses a compatibility-aware split store. Threads created by older versions remain in SQLite table `assistant_chat_threads`; new thread ids use one atomic JSON file each under app-data `assistant-chat-threads/`. A compact `index.json` supplies recent-first titles and previews, and the full transcript loads only when a saved chat is opened. Updating a legacy SQL thread keeps it in SQL. Older WebView2 `localStorage` history under `kkterm.aiAssistant.chatHistory.v1` is migrated through the current backend and then removed. The unsent composer draft is temporary `sessionStorage` under `ai-chat-draft`.
 
 ## Composer
 

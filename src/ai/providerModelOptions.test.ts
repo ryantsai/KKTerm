@@ -32,8 +32,14 @@ const openAiDefinition = getAiProviderDefinition("openai");
 if (openAiDefinition.defaultModel !== "gpt-5.6-luna") {
   throw new Error(`OpenAI should default to GPT-5.6 Luna, got: ${openAiDefinition.defaultModel}`);
 }
+if (openAiDefinition.defaultReasoningEffort !== "high") {
+  throw new Error(`OpenAI should recommend GPT-5.6 Luna at High effort, got: ${openAiDefinition.defaultReasoningEffort}`);
+}
 if (defaultAiProviderSettings.model !== openAiDefinition.defaultModel) {
   throw new Error("Fresh-install and OpenAI provider defaults should stay aligned.");
+}
+if (defaultAiProviderSettings.reasoningEffort !== openAiDefinition.defaultReasoningEffort) {
+  throw new Error("Fresh-install and OpenAI reasoning-effort defaults should stay aligned.");
 }
 
 const recommendedOpenAiModelIds = openAiDefinition.modelOptions
@@ -58,18 +64,26 @@ if (!anthropicDefinition.modelOptions.some((model) => model.id === "claude-sonne
 if (!anthropicDefinition.modelOptions.some((model) => model.id === "claude-opus-5" && model.recommended)) {
   throw new Error("Anthropic curated models should include Claude Opus 5.");
 }
+if (!anthropicDefinition.modelOptions.some((model) => model.id === "claude-fable-5" && model.recommended)) {
+  throw new Error("Anthropic curated models should include Claude Fable 5.");
+}
 
 const grokDefinition = getAiProviderDefinition("grok");
-if (!grokDefinition.modelOptions.some((model) => model.id === "grok-4.5" && model.recommended)) {
-  throw new Error("Grok curated models should include Grok 4.5.");
+if (grokDefinition.defaultModel !== "grok-4.6") {
+  throw new Error(`Grok should default to Grok 4.6, got: ${grokDefinition.defaultModel}`);
+}
+if (!grokDefinition.modelOptions.some((model) => model.id === "grok-4.6" && model.recommended)) {
+  throw new Error("Grok curated models should include Grok 4.6.");
 }
 
 const openRouterDefinition = getAiProviderDefinition("openrouter");
 for (const modelId of [
   "openrouter/auto",
+  "openai/gpt-5.6-luna",
+  "anthropic/claude-fable-5",
   "anthropic/claude-opus-5",
-  "google/gemini-3.6-flash",
-  "x-ai/grok-4.5",
+  "google/gemini-3.7-flash",
+  "x-ai/grok-4.6",
   "moonshotai/kimi-k3",
   "xiaomi/mimo-v2.5",
   "z-ai/glm-5.2",
@@ -78,6 +92,16 @@ for (const modelId of [
   if (!openRouterDefinition.modelOptions.some((model) => model.id === modelId && model.recommended)) {
     throw new Error(`OpenRouter curated models should recommend ${modelId}.`);
   }
+}
+
+const geminiDefinition = getAiProviderDefinition("gemini");
+if (geminiDefinition.defaultModel !== "gemini-3.7-flash") {
+  throw new Error(`Gemini should default to Gemini 3.7 Flash, got: ${geminiDefinition.defaultModel}`);
+}
+
+const azureDefinition = getAiProviderDefinition("azure-openai");
+if (azureDefinition.defaultModel !== "gpt-5.6-luna") {
+  throw new Error(`Azure OpenAI should default to GPT-5.6 Luna, got: ${azureDefinition.defaultModel}`);
 }
 
 const zaiDefinition = getAiProviderDefinition("zai");
@@ -127,7 +151,7 @@ if (curatedOpenAiModels.some((model) => model.id === "unlisted-lab-model")) {
   throw new Error("Curated model list should hide refreshed non-curated models.");
 }
 
-if (!curatedOpenAiModels.some((model) => model.id === "gpt-5.4-mini")) {
+if (!curatedOpenAiModels.some((model) => model.id === "gpt-5.6-luna")) {
   throw new Error("Curated model list should include recommended provider defaults.");
 }
 
@@ -152,7 +176,7 @@ const copilotModels = selectModelOptionsForProvider({
   refreshedModels: [
     { id: "account-enabled-model", label: "Account Enabled Model" },
     { id: "gpt-5.4-mini", label: "GPT-5.4 Mini" },
-    { id: "gpt-5.1-mini", label: "GPT-5.1 Mini" },
+    { id: "gpt-5.6-luna", label: "GPT-5.6 Luna" },
   ],
   showAllModels: false,
 });
@@ -165,7 +189,7 @@ if (copilotModels.some((model) => model.id === "account-enabled-model")) {
   throw new Error("GitHub Copilot should hide refreshed account models that are not curated.");
 }
 
-if (!copilotModels.some((model) => model.id === "gpt-5.1-mini")) {
+if (!copilotModels.some((model) => model.id === "gpt-5.6-luna")) {
   throw new Error("GitHub Copilot should show curated models that are available to the signed-in account.");
 }
 

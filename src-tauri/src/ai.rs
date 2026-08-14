@@ -7896,7 +7896,10 @@ fn model_context_limit_tokens(provider_kind: &str, model: &str) -> (usize, bool)
     if model.starts_with("gpt-5.4-mini") || model.starts_with("gpt-5.4-nano") {
         return (400_000, false);
     }
-    if model.starts_with("gpt-5.5") || model.starts_with("gpt-5.4") {
+    if model.starts_with("gpt-5.6")
+        || model.starts_with("gpt-5.5")
+        || model.starts_with("gpt-5.4")
+    {
         return (1_050_000, false);
     }
     if model.starts_with("gpt-5") {
@@ -7919,10 +7922,13 @@ fn model_context_limit_tokens(provider_kind: &str, model: &str) -> (usize, bool)
     if model.starts_with("gpt-3.5") {
         return (16_000, true);
     }
+    if model.starts_with("deepseek-v4") {
+        return (1_000_000, false);
+    }
     if model.starts_with("deepseek") || provider == "deepseek" {
         return (64_000, true);
     }
-    if model.starts_with("grok-4.5") {
+    if model.starts_with("grok-4.6") || model.starts_with("grok-4.5") {
         return (500_000, false);
     }
     if model.starts_with("grok-") || provider == "grok" {
@@ -8574,7 +8580,9 @@ fn text_only_model(model: &str) -> bool {
     model.starts_with("deepseek")
         || model.contains("/deepseek")
         || model.starts_with("grok-code")
-        || model.starts_with("qwen3")
+        || model == "qwen3"
+        || model.starts_with("qwen3:")
+        || model.starts_with("qwen3-")
         || model.starts_with("gpt-oss")
         || model.starts_with("meta/llama")
         || model.starts_with("llama")
@@ -8594,6 +8602,8 @@ fn image_input_model(model: &str) -> bool {
         || model.starts_with("qwen-vl")
         || model.starts_with("qwen2-vl")
         || model.starts_with("qwen2.5-vl")
+        || model.starts_with("qwen3.5")
+        || model.starts_with("qwen3.6")
         || model.starts_with("kimi-vl")
         || model.starts_with("kimi-k")
         || model.contains("-vision")

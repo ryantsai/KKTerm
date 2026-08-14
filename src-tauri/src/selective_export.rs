@@ -424,23 +424,30 @@ fn collect_segment_data(
     storage: &Storage,
     segments: &[String],
 ) -> Result<Map<String, Value>, String> {
-    storage.with_connection(|conn| {
-        let mut data = Map::new();
-        for segment in segments {
-            let tables = segment_tables(segment).expect("segment validated above");
-            let mut segment_map = Map::new();
-            for table in tables {
-                let rows = if segment == "dashboards" && table.name == "durable_ui_state" {
-                    read_dashboard_note_rows(conn)?
-                } else {
-                    read_table(conn, table.name)?
-                };
-                segment_map.insert(table.name.to_string(), Value::Array(rows));
-            }
-            data.insert(segment.clone(), Value::Object(segment_map));
+    let mut data = Map::new();
+    for segment in segments {
+        let tables = segment_tables(segment).expect("segment validated above");
+        let mut segment_map = Map::new();
+        for table in tables {
+            let rows = if segment == "assistant" && table.name == "assistant_chat_threads" {
+                // This method locks SQLite and the flat-file store itself. Do not
+                // call it from inside `with_connection`, which would re-lock the
+                // non-reentrant SQLite mutex when legacy SQL threads are read.
+                storage.assistant_chat_threads_export_rows()?
+            } else {
+                storage.with_connection(|conn| {
+                    if segment == "dashboards" && table.name == "durable_ui_state" {
+                        read_dashboard_note_rows(conn)
+                    } else {
+                        read_table(conn, table.name)
+                    }
+                })?
+            };
+            segment_map.insert(table.name.to_string(), Value::Array(rows));
         }
-        Ok(data)
-    })
+        data.insert(segment.clone(), Value::Object(segment_map));
+    }
+    Ok(data)
 }
 
 pub(crate) fn create_portable_database(
@@ -481,6 +488,10 @@ pub(crate) fn create_portable_database(
             .map_err(|error| format!("failed to commit portable copy: {error}"))?;
         Ok::<(), String>(())
     })?;
+
+    if segments.iter().any(|segment| segment == "assistant") {
+        target.flush_staged_assistant_chat_threads("replace", &[])?;
+    }
 
     target.prepare_for_portable_copy()?;
     target.checkpoint_wal()?;
@@ -821,6 +832,19 @@ fn import_selective_database_sync(
             .map_err(|error| format!("failed to commit import: {error}"))?;
         Ok::<(), String>(())
     })?;
+
+    if let Some(action) = actions.get("assistant").map(String::as_str)
+        && action != "skip"
+        && applied.iter().any(|segment| segment == "assistant")
+    {
+        let imported_ids = remap
+            .iter()
+            .filter_map(|((table, _), id)| {
+                (table == "assistant_chat_threads").then_some(id.clone())
+            })
+            .collect::<Vec<_>>();
+        storage.flush_staged_assistant_chat_threads(action, &imported_ids)?;
+    }
 
     if let Some(target) = target_secret_store.as_deref() {
         let status = secrets.credential_secret_store_status();
@@ -2976,6 +3000,45 @@ mod tests {
                 "imported row count for {table}"
             );
         }
+    }
+
+    #[test]
+    fn assistant_export_combines_legacy_sql_and_new_flat_json_threads() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let storage = Storage::open(dir.path().join("source.sqlite3")).expect("storage");
+        storage
+            .with_connection(|conn| {
+                conn.execute(
+                    "INSERT INTO assistant_chat_threads
+                     (id, title, context_label, messages_json, created_at, updated_at)
+                     VALUES ('legacy', 'Legacy', 'global', '[]', '2026-01-01', '2026-01-01')",
+                    [],
+                )
+                .map_err(|error| error.to_string())?;
+                Ok(())
+            })
+            .expect("legacy chat");
+        storage
+            .upsert_assistant_chat_thread(crate::storage::AssistantChatThreadRecord {
+                id: "new-file".into(),
+                title: "New".into(),
+                context_label: "global".into(),
+                messages_json: "[]".into(),
+                created_at: "2026-02-01".into(),
+                updated_at: "2026-02-01".into(),
+            })
+            .expect("new file chat");
+
+        let data = collect_segment_data(&storage, &["assistant".to_string()])
+            .expect("combined Assistant export");
+        let rows = data["assistant"]["assistant_chat_threads"]
+            .as_array()
+            .expect("thread rows");
+        let ids = rows
+            .iter()
+            .filter_map(|row| row.get("id").and_then(Value::as_str))
+            .collect::<std::collections::HashSet<_>>();
+        assert_eq!(ids, std::collections::HashSet::from(["legacy", "new-file"]));
     }
 
     /// mcp_servers.name is UNIQUE; a merge with a same-named local server must

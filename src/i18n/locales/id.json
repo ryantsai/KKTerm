@@ -2864,6 +2864,7 @@
     "selectiveImportChooseFile": "Pilih File Cadangan...",
     "fullBackupImport": "ZIP cadangan lengkap",
     "fullBackupImportHint": "Mengimpor seluruh basis data pengaturan KKTerm dan memuat ulang aplikasi.",
+    "fullBackupCustomModulesWarning": "Custom Modules are not included in database backups. Importing this backup will not restore or change installed Custom Modules, including their metadata and data.",
     "selectiveImportActionsHint": "Pilih tindakan untuk setiap kategori",
     "selectiveImportWarning": "Cadangan keamanan data Anda saat ini dibuat sebelum impor. Ganti mengosongkan kategori tersebut terlebih dahulu; Tambah mempertahankan item yang ada dan menambahkan item yang diimpor.",
     "importActionSkip": "Lewati",

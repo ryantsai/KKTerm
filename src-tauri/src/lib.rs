@@ -80,6 +80,7 @@ pub(crate) use media::*;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 use tauri::{Emitter, Manager};
 use tauri_plugin_opener::OpenerExt;
 
@@ -1468,26 +1469,60 @@ fn built_in_mcp_config_path(location: BuiltInMcpConfigLocation) -> Result<PathBu
 }
 
 #[tauri::command]
-fn list_assistant_chat_threads(
-    storage: tauri::State<'_, storage::Storage>,
+async fn list_assistant_chat_threads(
+    app: tauri::AppHandle,
 ) -> Result<Vec<storage::AssistantChatThreadRecord>, String> {
-    storage.list_assistant_chat_threads()
+    run_blocking_database_command("list Assistant chat threads", move || {
+        app.state::<storage::Storage>().list_assistant_chat_threads()
+    })
+    .await
 }
 
 #[tauri::command]
-fn upsert_assistant_chat_thread(
-    storage: tauri::State<'_, storage::Storage>,
+async fn list_assistant_chat_thread_summaries(
+    app: tauri::AppHandle,
+) -> Result<Vec<storage::AssistantChatThreadSummaryRecord>, String> {
+    run_blocking_database_command("list Assistant chat summaries", move || {
+        app.state::<storage::Storage>()
+            .list_assistant_chat_thread_summaries()
+    })
+    .await
+}
+
+#[tauri::command]
+async fn get_assistant_chat_thread(
+    app: tauri::AppHandle,
+    thread_id: String,
+) -> Result<storage::AssistantChatThreadRecord, String> {
+    run_blocking_database_command("load Assistant chat thread", move || {
+        app.state::<storage::Storage>()
+            .get_assistant_chat_thread(thread_id)
+    })
+    .await
+}
+
+#[tauri::command]
+async fn upsert_assistant_chat_thread(
+    app: tauri::AppHandle,
     request: storage::AssistantChatThreadRecord,
 ) -> Result<storage::AssistantChatThreadRecord, String> {
-    storage.upsert_assistant_chat_thread(request)
+    run_blocking_database_command("save Assistant chat thread", move || {
+        app.state::<storage::Storage>()
+            .upsert_assistant_chat_thread(request)
+    })
+    .await
 }
 
 #[tauri::command]
-fn delete_assistant_chat_thread(
-    storage: tauri::State<'_, storage::Storage>,
+async fn delete_assistant_chat_thread(
+    app: tauri::AppHandle,
     thread_id: String,
 ) -> Result<(), String> {
-    storage.delete_assistant_chat_thread(thread_id)
+    run_blocking_database_command("delete Assistant chat thread", move || {
+        app.state::<storage::Storage>()
+            .delete_assistant_chat_thread(thread_id)
+    })
+    .await
 }
 
 #[tauri::command]
@@ -3303,6 +3338,29 @@ where
     .await
 }
 
+fn schedule_automatic_startup_backup(app: tauri::AppHandle) {
+    tauri::async_runtime::spawn(async move {
+        // Let the main WebView render and finish its initial SQLite reads before
+        // the snapshot briefly takes the shared database lock. Compression and
+        // filesystem I/O then stay on the blocking worker rather than Tauri's
+        // setup/UI thread.
+        tokio::time::sleep(Duration::from_secs(10)).await;
+        let worker_app = app.clone();
+        if let Err(error) = run_blocking_database_command(
+            "automatic settings backup",
+            move || {
+                worker_app
+                    .state::<storage::Storage>()
+                    .backup_if_enabled_for_startup()
+            },
+        )
+        .await
+        {
+            eprintln!("failed to create automatic database backup: {error}");
+        }
+    });
+}
+
 #[tauri::command]
 async fn start_sftp_session(
     app: tauri::AppHandle,
@@ -4570,9 +4628,6 @@ pub fn run() {
             }
 
             let main_window_settings = storage.main_window_settings().map_err(setup_error)?;
-            if let Err(error) = storage.backup_if_enabled_for_startup() {
-                eprintln!("failed to create automatic database backup at startup: {error}");
-            }
             if !app.state::<app_paths::AppPaths>().is_portable() {
                 if let Err(error) = auto_start::sync_auto_start_with_windows(
                     general_settings.auto_start_with_windows(),
@@ -4711,6 +4766,7 @@ pub fn run() {
             app.manage(std::sync::Arc::new(watchdog::SessionActivityTracker::new()));
             app.manage(installer::InstallerRuntime::new());
             app.manage(video_recording::VideoRecordingState::default());
+            schedule_automatic_startup_backup(app.handle().clone());
             mcp_bridge::start_if_enabled(
                 app.handle().clone(),
                 mcp_bridge_dir,
@@ -4918,6 +4974,8 @@ pub fn run() {
             get_built_in_mcp_command_path,
             open_built_in_mcp_config_location,
             list_assistant_chat_threads,
+            list_assistant_chat_thread_summaries,
+            get_assistant_chat_thread,
             upsert_assistant_chat_thread,
             list_durable_ui_state,
             get_durable_ui_state,

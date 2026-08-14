@@ -124,6 +124,8 @@ commands.allow = [
   "get_built_in_mcp_command_path",
   "open_built_in_mcp_config_location",
   "list_assistant_chat_threads",
+  "list_assistant_chat_thread_summaries",
+  "get_assistant_chat_thread",
   "upsert_assistant_chat_thread",
   "list_durable_ui_state",
   "get_durable_ui_state",

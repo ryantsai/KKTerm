@@ -30,7 +30,7 @@ The main app window close path stays native and free of frontend hooks. Do not a
 
 The single sanctioned exception is the Windows minimize-to-tray diversion in `app_tray.rs`: a native, synchronous Rust-side `WindowEvent::CloseRequested` arm inside the existing `on_window_event` handler. It calls `api.prevent_close()` and hides the window **only when minimize-to-tray is enabled on Windows**; when disabled, or on macOS/Linux, the close request is untouched and quits natively. The handler does no async work, and the tray "Exit" item (`app.exit(0)`) bypasses `CloseRequested` so a guaranteed quit path always exists. On macOS, the menu bar status item uses a monochrome template icon so AppKit can tint it consistently with the menu bar.
 
-Automatic database backups follow the same rule: they run during startup or explicit Settings actions, never during app-window close. Startup backup files are full KKTerm settings ZIP snapshots. The visible Settings Export button creates category-aware `.kkbackup` files, while the visible Settings Import button accepts both category-aware `.kkbackup` files and full KKTerm settings ZIP snapshots.
+Automatic database backups follow the same rule: they are scheduled after startup on a blocking worker or run through explicit Settings actions, never during app-window close. A successful automatic backup suppresses another for 24 hours through persisted `lastBackupAt`; the delayed worker must not block Tauri `setup` or the frontend's initial SQLite reads. Database-backup format 4 contains a scrubbed SQLite snapshot, integrity manifest, new per-thread Assistant JSON files, and per-run System Cleaner history JSON files. Custom Module metadata, encrypted module-secret rows, packages, documents, blobs, and browser profiles remain excluded. Full-ZIP restore ignores Custom Module payloads from legacy archives and preserves the machine's current Custom Modules. The visible Settings Export button creates category-aware `.kkbackup` files, while the visible Settings Import button accepts both category-aware `.kkbackup` files and database-backup ZIP snapshots.
 
 ### Command Boundary
 
@@ -142,6 +142,14 @@ upgrades from supported older releases still need those steps. The fast path is
 what keeps that history out of normal startup.
 
 Plaintext secrets are never stored in SQLite. When the encrypted SQLite backend is selected, SQLite stores only encrypted secret rows plus KDF/cipher metadata.
+
+Schema v64 moves System Cleaner run history to one atomic JSON file per run in
+`system-cleaner-history/`. Existing `assistant_chat_threads` rows remain readable
+and writable for compatibility; thread ids first created by v64+ use one atomic
+JSON file each under `assistant-chat-threads/`, with a compact `index.json` used
+for startup summaries. The Assistant panel loads a full transcript only when the
+user opens it. Current-version startup performs no history migration or file
+rewrite.
 
 ### Secrets
 
@@ -669,8 +677,8 @@ Watchdog, secrets, storage, and diagnostics:
 
 - `watchdog/` — AI Watchdog backend (registry, polling, predicate evaluation, targets, SSH session-activity tracking); see the Watchdog area.
 - `secrets.rs` — secret storage abstraction and platform backend selection (Connection passwords, API keys, MCP auth, widget secrets).
-- `selective_export.rs` — category-aware (`.kkbackup`) export/import: `export_selective_database`, `inspect_selective_database`, `import_selective_database`. A generic, metadata-driven row engine copies chosen segments (connections, workspaces, dashboards, settings, MCP servers) with per-segment skip/add(merge)/replace and foreign-key remap; the Dashboards segment additionally filters and remaps its instance-scoped Notes rows from `durable_ui_state`. Opt-in passwords are passphrase-encrypted into `secrets.enc` (Argon2id + AES-256-GCM, reusing the `secrets/sqlite_store.rs` envelope). See ADR 0010. Distinct from the whole-database snapshot commands in `storage.rs`, which pack/replace the entire SQLite file for startup backup/recovery and the Settings Import full-ZIP restore path.
-- `storage.rs` — SQLite schema, migrations, validation, and core `Storage` lifecycle. The large `impl Storage` is split by entity under `storage/`: `connections.rs` (connection records, folders, duplicate/move, and credential metadata), `settings.rs` (all get/update settings accessors), `durable_ui_state.rs` (the generic `durable_ui_state` key/value table backing `src/lib/durableUiState.ts` — get/set/delete plus prefix list and prefix delete for hydration, per-connection cleanup, and reset), with the test suite in `storage/tests.rs`. Additional `impl Storage` blocks in these files attach to the same `Storage` type, so callers are unaffected.
+- `selective_export.rs` — category-aware (`.kkbackup`) export/import: `export_selective_database`, `inspect_selective_database`, `import_selective_database`. A generic, metadata-driven row engine copies chosen segments (connections, workspaces, dashboards, settings, MCP servers) with per-segment skip/add(merge)/replace and foreign-key remap; the Dashboards segment additionally filters and remaps its instance-scoped Notes rows from `durable_ui_state`. Opt-in passwords are passphrase-encrypted into `secrets.enc` (Argon2id + AES-256-GCM, reusing the `secrets/sqlite_store.rs` envelope). See ADR 0010. Distinct from the database snapshot commands in `storage.rs`, which scrub Custom Module rows/secrets before packing SQLite and preserve current Custom Modules during the Settings Import full-ZIP restore path.
+- `storage.rs` — SQLite schema, migrations, validation, and core `Storage` lifecycle. The large `impl Storage` is split by entity under `storage/`: `connections.rs` (connection records, folders, duplicate/move, and credential metadata), `settings.rs` (all get/update settings accessors), `durable_ui_state.rs` (the generic `durable_ui_state` key/value table backing `src/lib/durableUiState.ts` — get/set/delete plus prefix list and prefix delete for hydration, per-connection cleanup, and reset), and `flat_json.rs` (atomic per-record Assistant and System Cleaner history files plus the legacy-SQL compatibility bridge), with the test suite in `storage/tests.rs`. Additional `impl Storage` blocks in these files attach to the same `Storage` type, so callers are unaffected.
 - `diagnostics.rs` — builds local-only diagnostic bundles (logs, performance snapshots, manifest) while excluding secrets, the database, and terminal output.
 - `logging.rs` — initializes local log files and the Advanced-Debugging-gated subsystem debug logs.
 - `debug_heartbeat.rs` — polls main-thread and frontend liveness, logging stalls for freeze diagnostics.
