@@ -1610,15 +1610,27 @@ fn show_webview_window(window: &WebviewWindow) -> Result<(), String> {
 
 #[cfg(target_os = "macos")]
 fn show_webview_window(window: &WebviewWindow) -> Result<(), String> {
-    let ns_window = window
-        .ns_window()
-        .map_err(|error| format!("failed to read URL webview NSWindow: {error}"))?;
     // Tauri's generic show path calls Tao's macOS set_visible(true), which
     // makes the overlay key. URL overlays must reveal without stealing clicks
-    // from the main Connection Tree and app chrome.
-    let ns_window: &objc2_app_kit::NSWindow = unsafe { &*ns_window.cast() };
-    ns_window.orderFront(None);
-    Ok(())
+    // from the main Connection Tree and app chrome. AppKit window ordering is
+    // main-thread-only; Custom Module startup reaches this helper from an async
+    // Tauri command running on a Tokio worker.
+    let window_for_show = window.clone();
+    window
+        .run_on_main_thread(move || {
+            let result = (|| {
+                let ns_window = window_for_show
+                    .ns_window()
+                    .map_err(|error| format!("failed to read macOS webview NSWindow: {error}"))?;
+                let ns_window: &objc2_app_kit::NSWindow = unsafe { &*ns_window.cast() };
+                ns_window.orderFront(None);
+                Ok::<(), String>(())
+            })();
+            if let Err(error) = result {
+                eprintln!("failed to show macOS webview on the main thread: {error}");
+            }
+        })
+        .map_err(|error| format!("failed to dispatch macOS webview show to main thread: {error}"))
 }
 
 fn webview_debug_log(message: String) {

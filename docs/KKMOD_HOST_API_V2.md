@@ -16,6 +16,9 @@ packages whose manifest declares `apiVersion: 2`.
   must not infer support from user-agent strings.
 - Potentially blocking filesystem, SQLite, keychain, archive, or network work
   runs away from the WebView IPC thread.
+- Host window integration remains platform-correct: Custom Module WebView
+  construction stays asynchronous to avoid a Windows WebView2 IPC deadlock,
+  while macOS AppKit ordering is dispatched to the main thread.
 - A module cannot veto hiding, suspension, shutdown, update, or uninstall.
 - Modules never receive arbitrary Tauri commands, raw database access, a shell,
   terminal keystrokes, Connection secrets, or unrestricted filesystem access.

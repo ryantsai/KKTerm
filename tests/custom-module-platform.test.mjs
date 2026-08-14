@@ -209,19 +209,55 @@ test("Custom Module WebViews stay loaded while users visit another Module", asyn
   );
 });
 
-test("Custom Module host and agent guidance preserve the Windows async window boundary", async () => {
-  const [architecture, packaging, implementationPlan, skill, runtimeReference] = await Promise.all([
-    readFile(new URL("../docs/ARCHITECTURE.md", import.meta.url), "utf8"),
-    readFile(new URL("../docs/CUSTOM_MODULE_PACKAGING.md", import.meta.url), "utf8"),
-    readFile(new URL("../docs/CUSTOM_MODULES_IMPLEMENTATION_PLAN.md", import.meta.url), "utf8"),
-    readFile(new URL("../.agents/skills/develop-kkmod-modules/SKILL.md", import.meta.url), "utf8"),
-    readFile(new URL("../.agents/skills/develop-kkmod-modules/references/runtime-api.md", import.meta.url), "utf8"),
-  ]);
-  for (const source of [architecture, packaging, implementationPlan, skill, runtimeReference]) {
+test("Custom Module host and agent guidance preserve native window thread boundaries", async () => {
+  const [architecture, packaging, hostApi, implementationPlan, skill, runtimeReference] =
+    await Promise.all([
+      readFile(new URL("../docs/ARCHITECTURE.md", import.meta.url), "utf8"),
+      readFile(new URL("../docs/CUSTOM_MODULE_PACKAGING.md", import.meta.url), "utf8"),
+      readFile(new URL("../docs/KKMOD_HOST_API_V2.md", import.meta.url), "utf8"),
+      readFile(new URL("../docs/CUSTOM_MODULES_IMPLEMENTATION_PLAN.md", import.meta.url), "utf8"),
+      readFile(new URL("../.agents/skills/develop-kkmod-modules/SKILL.md", import.meta.url), "utf8"),
+      readFile(
+        new URL(
+          "../.agents/skills/develop-kkmod-modules/references/runtime-api.md",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    ]);
+  for (const source of [
+    architecture,
+    packaging,
+    hostApi,
+    implementationPlan,
+    skill,
+    runtimeReference,
+  ]) {
     assert.match(source, /asynchronous|must be `async`/i);
     assert.match(source, /WebView2/);
     assert.match(source, /deadlock/i);
+    assert.match(source, /macOS/);
+    assert.match(source, /main.thread/i);
   }
   assert.match(runtimeReference, /clipboard/);
   assert.match(runtimeReference, /navigator\.clipboard/);
+});
+
+test("macOS native overlay reveal dispatches AppKit ordering to the main thread", async () => {
+  const backend = await readFile(
+    new URL("../src-tauri/src/webview.rs", import.meta.url),
+    "utf8",
+  );
+  const macShow = backend.match(
+    /#\[cfg\(target_os = "macos"\)\]\s+fn show_webview_window\([\s\S]*?\n}\n\nfn webview_debug_log/,
+  )?.[0];
+
+  assert.ok(macShow, "the macOS overlay reveal helper should remain discoverable");
+  const dispatchIndex = macShow.indexOf(".run_on_main_thread");
+  const orderFrontIndex = macShow.indexOf("ns_window.orderFront(None)");
+  assert.ok(dispatchIndex >= 0, "macOS overlay reveal must use Tauri's main-thread runner");
+  assert.ok(
+    orderFrontIndex > dispatchIndex,
+    "NSWindow.orderFront must execute inside the dispatched main-thread closure",
+  );
 });

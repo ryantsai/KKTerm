@@ -31,7 +31,7 @@ Read both references completely before implementation:
 
 When working inside a KKTerm checkout, also read `docs/CUSTOM_MODULE_PACKAGING.md` and the constants, manifest structs, validators, initialization script, bridge, and protocol response in `src-tauri/src/custom_modules.rs`. If they differ from this skill, follow the checkout and update this skill if requested.
 
-When changing the KKTerm host itself, keep every Tauri command that constructs a Custom Module `WebviewWindow` asynchronous. On Windows, WebView2 window construction from a synchronous command can deadlock Tauri's IPC dispatcher, leaving `window.KKTerm.ready()` and unrelated invokes pending.
+When changing the KKTerm host itself, keep every Tauri command that constructs a Custom Module `WebviewWindow` asynchronous. On Windows, WebView2 window construction from a synchronous command can deadlock Tauri's IPC dispatcher, leaving `window.KKTerm.ready()` and unrelated invokes pending. On macOS, dispatch AppKit window ordering through Tauri's main-thread runner; calling `NSWindow.orderFront` from the asynchronous startup worker can terminate KKTerm when a Custom Module starts or is restored at launch.
 
 ## Workflow
 

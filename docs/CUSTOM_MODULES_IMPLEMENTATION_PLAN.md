@@ -109,6 +109,10 @@ No external package may load until this gate passes.
   asynchronous. Synchronous construction can deadlock WebView2 and the Tauri
   IPC dispatcher on Windows, preventing readiness and unrelated invokes from
   completing.
+- Dispatch macOS native overlay ordering through Tauri's main-thread runner.
+  Calling `NSWindow.orderFront` from the asynchronous startup worker violates
+  AppKit's thread contract and can terminate KKTerm when launch navigation
+  restores a Custom Module.
 - Implement the complete contract in `docs/KKMOD_HOST_API_V2.md`: readiness,
   typed errors and capability discovery, lifecycle notifications, structured
   permissions, isolated JSON/document/blob/browser storage, package-specific
@@ -157,10 +161,11 @@ No external package may load until this gate passes.
   migrations and current-version reopen, atomic activation and rollback.
 - Frontend tests: Settings navigation/search/assistant/tutorial mappings,
   installed/catalog states, confirmation flows, dynamic rail normalization and
-  routing, asynchronous window-construction boundary, host lifecycle, and
-  native-overlay policy.
+  routing, asynchronous window-construction boundary, macOS main-thread window
+  ordering, host lifecycle, and native-overlay policy.
 - Run `npm run check`, `npm run build`, `cargo check --manifest-path
   src-tauri/Cargo.toml`, and `cargo test --manifest-path src-tauri/Cargo.toml`.
-- Release QA validates installation, restart persistence, input/focus, module switching,
+- Release QA validates installation, restart persistence (including restoring a
+  Custom Module as the launch destination), input/focus, module switching,
   dialogs, URL/RDP overlap, disable/uninstall, and offline startup in the real
   Tauri runtime on supported platforms before release.
