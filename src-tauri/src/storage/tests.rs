@@ -2,6 +2,103 @@ use super::*;
 use rusqlite::params;
 
 #[test]
+fn v63_legacy_api_v1_custom_modules_are_deactivated_without_deleting_data() {
+    let db_path = temp_db_path("custom-module-api-v1");
+    {
+        let storage = Storage::open(db_path.clone()).expect("fixture storage opens");
+        storage
+            .with_connection(|connection| {
+                connection
+                    .execute(
+                        "INSERT INTO custom_modules (
+                            id, manifest_json, active_version, source, trust, installed,
+                            enabled, rail_visible, sha256
+                         ) VALUES (?1, ?2, '1.0.2', 'catalog', 'firstParty', 1, 1, 1, ?3)",
+                        params![
+                            "com.kkterm.excalidraw",
+                            r#"{"id":"com.kkterm.excalidraw","name":"Excalidraw","version":"1.0.2","publisher":"KKTerm","apiVersion":1,"license":{"name":"MIT","file":"licenses/LICENSE"},"permissions":["documentStorage","openExternal","clipboard"],"modules":[{"id":"excalidraw","title":"Excalidraw","entrypoint":"dist/index.html"}]}"#,
+                            "a".repeat(64),
+                        ],
+                    )
+                    .map_err(to_storage_error)?;
+                connection
+                    .execute(
+                        "INSERT INTO custom_module_permissions (module_id, permission)
+                         VALUES ('com.kkterm.excalidraw', 'documentStorage')",
+                        [],
+                    )
+                    .map_err(to_storage_error)?;
+                connection
+                    .execute(
+                        "INSERT INTO custom_module_documents (
+                            module_id, key, content_sha256, byte_size
+                         ) VALUES ('com.kkterm.excalidraw', 'scene', ?1, 42)",
+                        ["b".repeat(64)],
+                    )
+                    .map_err(to_storage_error)?;
+                connection
+                    .pragma_update(None, "user_version", 62)
+                    .map_err(to_storage_error)
+            })
+            .expect("v62 API v1 fixture is prepared");
+    }
+
+    let upgraded = Storage::open(db_path.clone()).expect("v62 storage upgrades");
+    let schema_version: i64 = upgraded
+        .with_connection(|connection| {
+            let state: (bool, bool, bool) = connection
+                .query_row(
+                    "SELECT installed, enabled, rail_visible FROM custom_modules
+                     WHERE id = 'com.kkterm.excalidraw'",
+                    [],
+                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+                )
+                .map_err(to_storage_error)?;
+            assert_eq!(state, (false, false, false));
+            let documents: i64 = connection
+                .query_row(
+                    "SELECT COUNT(*) FROM custom_module_documents
+                     WHERE module_id = 'com.kkterm.excalidraw' AND key = 'scene'",
+                    [],
+                    |row| row.get(0),
+                )
+                .map_err(to_storage_error)?;
+            assert_eq!(documents, 1, "legacy Module documents must be preserved");
+            let grants: i64 = connection
+                .query_row(
+                    "SELECT COUNT(*) FROM custom_module_permissions
+                     WHERE module_id = 'com.kkterm.excalidraw'",
+                    [],
+                    |row| row.get(0),
+                )
+                .map_err(to_storage_error)?;
+            assert_eq!(grants, 1, "legacy grants stay available for reinstall review");
+            let version: i32 = connection
+                .pragma_query_value(None, "user_version", |row| row.get(0))
+                .map_err(to_storage_error)?;
+            assert_eq!(version, SCHEMA_USER_VERSION);
+            connection
+                .pragma_query_value(None, "schema_version", |row| row.get(0))
+                .map_err(to_storage_error)
+        })
+        .expect("legacy API v1 Module is safely deactivated");
+    drop(upgraded);
+
+    let reopened = Storage::open(db_path.clone()).expect("current storage reopens");
+    reopened
+        .with_connection(|connection| {
+            let reopened_schema_version: i64 = connection
+                .pragma_query_value(None, "schema_version", |row| row.get(0))
+                .map_err(to_storage_error)?;
+            assert_eq!(reopened_schema_version, schema_version);
+            Ok(())
+        })
+        .expect("current-version reopen leaves the migration write-free");
+    drop(reopened);
+    let _ = fs::remove_file(db_path);
+}
+
+#[test]
 fn v62_custom_module_blob_and_secret_tables_upgrade_and_current_reopen_is_write_free() {
     let db_path = temp_db_path("custom-module-data-v62");
     {

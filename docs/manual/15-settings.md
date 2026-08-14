@@ -213,7 +213,11 @@ toggle list while their persisted backend settings remain enabled.
   activation. OS-keychain secret values remain device-bound; their non-secret
   references are restored, while encrypted-database secrets travel with SQLite.
 - Host API v2 is the only accepted package/runtime contract; every other
-  manifest API version is rejected. Grants are `storage` (10 MiB), `documentStorage`
+  manifest API version is rejected. When upgrading from a database that still
+  records an installed API-v1 package, KKTerm deactivates that incompatible
+  package record while preserving its grants and isolated data; reinstalling
+  the v2 package with the same id can reuse that data after review. Grants are
+  `storage` (10 MiB), `documentStorage`
   (512 MiB total, 64 MiB/document), `blobStorage` (1 GiB total, 256 MiB/blob),
   `browserStorage`, `openExternal`, `clipboard`, filtered `files`, allowlisted
   `networkFetch`, package-owned `secretReferences`, and `hostUi`. Standard

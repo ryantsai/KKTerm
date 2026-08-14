@@ -104,11 +104,12 @@ The publication workflow:
    to a signed online catalog payload. Upload this catalog last.
 6. Optionally snapshot the current online entries into the bundled
    `custom-modules/catalog.v2.json` baseline before a KKTerm release.
-7. Provide the matching public key as
-   `KKTERM_CUSTOM_MODULE_CATALOG_PUBLIC_KEY` while building KKTerm. A build
-   without that release key deliberately cannot verify catalog packages.
-8. Provide the signed catalog URL as `KKTERM_CUSTOM_MODULE_CATALOG_URL` while
-   building KKTerm. An unset URL deliberately leaves the build baseline-only.
+7. Keep the matching production public key pinned in `src-tauri/build.rs`.
+   `KKTERM_CUSTOM_MODULE_CATALOG_PUBLIC_KEY` may override it only for staging or
+   a coordinated signing-key rotation.
+8. Keep the production signed catalog URL pinned beside the key.
+   `KKTERM_CUSTOM_MODULE_CATALOG_URL` may override it; an explicitly empty URL
+   deliberately leaves the build baseline-only.
 
 The signing private key must never enter this repository or a module package.
 See `docs/CUSTOM_MODULE_CATALOG.md` for R2 setup, exact commands, catalog

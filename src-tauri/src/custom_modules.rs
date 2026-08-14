@@ -4922,6 +4922,12 @@ mod tests {
         );
     }
 
+    #[test]
+    fn bundled_catalog_verifies_with_the_build_key() {
+        let catalog: Catalog = serde_json::from_str(CATALOG_JSON).unwrap();
+        validate_catalog(&catalog).unwrap();
+    }
+
     fn signed_catalog_fixture(
         signing_key: &SigningKey,
         sequence: u64,

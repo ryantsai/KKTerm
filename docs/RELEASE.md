@@ -128,12 +128,12 @@ GitHub Releases is canonical, while `kkterm.ryantsai.com` provides resilient upd
 The repository requires `CLOUDFLARE_ACCOUNT_ID` and a scoped `CLOUDFLARE_API_TOKEN` GitHub Actions secret with permission to write the dedicated R2 bucket. Never commit either value or copy Wrangler's local OAuth credentials into Actions.
 
 Optional Custom Module `.kkmod` payloads are separate catalog artifacts and
-must never be added to the KKTerm installer resources. Before publishing a
-catalog-enabled build, provide the 32-byte Ed25519 verification public key as
-64 lowercase hexadecimal characters in
-`KKTERM_CUSTOM_MODULE_CATALOG_PUBLIC_KEY`; the private signing key never enters
-this repository or the app build. Package hashes, signatures, catalog metadata,
-license/notice requirements, and the fixture command are documented in
+must never be added to the KKTerm installer resources. The production 32-byte
+Ed25519 verification public key and catalog URL are pinned in
+`src-tauri/build.rs`; override them together only for staging or a coordinated
+signing-key rotation. The private signing key never enters this repository or
+the app build. Package hashes, signatures, catalog metadata, license/notice
+requirements, and the fixture command are documented in
 `docs/CUSTOM_MODULE_PACKAGING.md`.
 
 Windows publishes first. The Windows release script dispatches the mirror immediately; the macOS and Linux scripts dispatch it again after their staggered uploads, allowing the same manifest to gain those signed platform entries later. A daily workflow schedule reconciles the latest stable release if a dispatch was missed.

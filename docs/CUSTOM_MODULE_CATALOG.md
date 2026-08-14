@@ -62,8 +62,10 @@ openssl genpkey -algorithm ED25519 -aes-256-cbc -out C:\secure\kkmod-prod.privat
 ```
 
 The dry run prints the raw 32-byte public key as 64 lowercase hexadecimal
-characters. Copy the committed sample and set both public values before Cargo
-builds:
+characters. KKTerm pins the production public key and catalog URL in
+`src-tauri/build.rs`, so ordinary debug and release builds verify the production
+catalog without a private `.env`. Copy the committed sample only when overriding
+both values together for staging or a signing-key rotation:
 
 ```powershell
 Copy-Item .env.example .env
@@ -75,8 +77,9 @@ KKTERM_CUSTOM_MODULE_CATALOG_URL=https://modules.example.com/catalog/v2/catalog.
 ```
 
 `src-tauri/build.rs` loads the repository-root `.env`; an already-set process
-environment variable takes precedence. Leaving both values empty keeps the
-embedded baseline catalog only. The real `.env` is ignored by Git.
+environment variable takes precedence. An explicitly empty catalog URL keeps a
+build baseline-only while retaining signature verification with the pinned
+public key. The real `.env` is ignored by Git.
 
 The private key and its passphrase must never be committed, copied into a
 `.kkmod`, or placed in the desktop build environment. Back it up encrypted in

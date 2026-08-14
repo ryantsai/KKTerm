@@ -14,7 +14,7 @@ use std::{
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use zip::{ZipArchive, ZipWriter, write::SimpleFileOptions};
 
-const SCHEMA_USER_VERSION: i32 = 62;
+const SCHEMA_USER_VERSION: i32 = 63;
 const MAX_SETTINGS_IMPORT_BYTES: u64 = 16 * 1024 * 1024 * 1024;
 
 const DEFAULT_TERMINAL_OPACITY: u8 = 50;
@@ -3477,6 +3477,32 @@ impl Storage {
                         UNIQUE (owner_id)
                     );
                     "#,
+                )
+                .map_err(to_storage_error)?;
+        }
+        // v63: host API v2 replaced the v1 manifest permission array with a
+        // structured object. Legacy installed rows cannot be parsed or run by
+        // the v2 host, so deactivate only the package lifecycle flags. Package
+        // records, grants, and isolated data remain available for a reviewed v2
+        // reinstall. This is a one-time migration; current-version startup
+        // requires no ongoing reconciliation.
+        if stored_version < 63 {
+            connection
+                .execute(
+                    r#"
+                    UPDATE custom_modules
+                    SET installed = 0,
+                        enabled = 0,
+                        rail_visible = 0,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE installed = 1
+                      AND CASE
+                            WHEN json_valid(manifest_json)
+                            THEN json_extract(manifest_json, '$.apiVersion') = 1
+                            ELSE 0
+                          END
+                    "#,
+                    [],
                 )
                 .map_err(to_storage_error)?;
         }
