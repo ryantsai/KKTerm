@@ -15,7 +15,7 @@ if (packageJson.name !== 'bento-pdf' || packageJson.version !== '2.8.7') {
 }
 
 async function replaceOnce(path, before, after) {
-  const source = await readFile(path, 'utf8');
+  const source = (await readFile(path, 'utf8')).replaceAll('\r\n', '\n');
   const matches = source.split(before).length - 1;
   if (matches === 0 && source.includes(after)) {
     return;
@@ -27,7 +27,7 @@ async function replaceOnce(path, before, after) {
 }
 
 async function replaceEvery(path, before, after, expectedMatches) {
-  const source = await readFile(path, 'utf8');
+  const source = (await readFile(path, 'utf8')).replaceAll('\r\n', '\n');
   const matches = source.split(before).length - 1;
   if (matches === 0 && source.split(after).length - 1 === expectedMatches) {
     return;
@@ -41,7 +41,7 @@ async function replaceEvery(path, before, after, expectedMatches) {
 }
 
 async function ensureImport(path, statement, anchor) {
-  const source = await readFile(path, 'utf8');
+  const source = (await readFile(path, 'utf8')).replaceAll('\r\n', '\n');
   const escaped = statement.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const withoutDuplicates = source.replace(new RegExp(`${escaped}\\s*`, 'g'), '');
   const matches = withoutDuplicates.split(anchor).length - 1;
@@ -56,7 +56,7 @@ async function ensureImport(path, statement, anchor) {
 }
 
 async function insertBeforeOnce(path, marker, insertion, sentinel) {
-  const source = await readFile(path, 'utf8');
+  const source = (await readFile(path, 'utf8')).replaceAll('\r\n', '\n');
   if (source.includes(sentinel)) return;
   const matches = source.split(marker).length - 1;
   if (matches !== 1) {
@@ -66,7 +66,7 @@ async function insertBeforeOnce(path, marker, insertion, sentinel) {
 }
 
 async function insertAfterOnce(path, marker, insertion, sentinel) {
-  const source = await readFile(path, 'utf8');
+  const source = (await readFile(path, 'utf8')).replaceAll('\r\n', '\n');
   if (source.includes(sentinel)) return;
   const matches = source.split(marker).length - 1;
   if (matches !== 1) {
@@ -108,6 +108,73 @@ await replaceOnce(
   ghostscript: './kkmod-runtime/gs/',
   cpdf: './kkmod-runtime/cpdf/',
 };`
+);
+
+await replaceOnce(
+  resolve(sourceRoot, 'src/js/utils/tesseract-runtime.ts'),
+  `function getDefaultTesseractAssetEnv(): TesseractAssetEnv {
+  return import.meta.env;
+}`,
+  `function getDefaultTesseractAssetEnv(): TesseractAssetEnv {
+  return {
+    ...import.meta.env,
+    VITE_TESSERACT_WORKER_URL: '/dist/kkmod-runtime/ocr/worker.min.js',
+    VITE_TESSERACT_CORE_URL: '/dist/kkmod-runtime/ocr/core',
+    VITE_TESSERACT_LANG_URL: '/dist/kkmod-runtime/ocr/lang-data',
+    VITE_TESSERACT_AVAILABLE_LANGUAGES: 'eng',
+  };
+}`
+);
+
+await replaceOnce(
+  resolve(sourceRoot, 'src/js/utils/tesseract-language-availability.ts'),
+  `function getDefaultEnv(): TesseractAvailabilityEnv {
+  return import.meta.env;
+}`,
+  `function getDefaultEnv(): TesseractAvailabilityEnv {
+  return {
+    ...import.meta.env,
+    VITE_TESSERACT_AVAILABLE_LANGUAGES: 'eng',
+  };
+}`
+);
+
+await replaceOnce(
+  resolve(sourceRoot, 'src/js/utils/font-loader.ts'),
+  `function getDefaultFontEnv(): OcrFontEnv {
+  return import.meta.env;
+}`,
+  `function getDefaultFontEnv(): OcrFontEnv {
+  return {
+    ...import.meta.env,
+    VITE_OCR_FONT_BASE_URL: '/dist/kkmod-runtime/ocr/fonts',
+  };
+}`
+);
+
+await replaceOnce(
+  resolve(sourceRoot, 'src/js/config/timestamp-tsa.ts'),
+  `export const TIMESTAMP_TSA_PRESETS: TimestampTsaPreset[] = [
+  { label: 'DigiCert', url: 'http://timestamp.digicert.com' },
+  { label: 'Sectigo', url: 'http://timestamp.sectigo.com' },
+  { label: 'SSL.com', url: 'http://ts.ssl.com' },
+  { label: 'FreeTSA', url: 'https://freetsa.org/tsr' },
+  { label: 'MeSign', url: 'http://tsa.mesign.com' },
+];`,
+  `export const TIMESTAMP_TSA_PRESETS: TimestampTsaPreset[] = [
+  { label: 'FreeTSA', url: 'https://freetsa.org/tsr' },
+];`
+);
+
+await replaceOnce(
+  resolve(sourceRoot, 'src/js/config/timestamp-tsa.ts'),
+  `    return url.protocol === 'http:' || url.protocol === 'https:';`,
+  `    return url.protocol === 'https:'
+      && url.hostname === 'freetsa.org'
+      && url.port === ''
+      && url.pathname === '/tsr'
+      && url.search === ''
+      && url.hash === '';`
 );
 
 await replaceOnce(
@@ -162,6 +229,10 @@ packageJson.overrides = {
   nanoid: '3.3.18',
   postcss: '8.5.26',
 };
+packageJson.scripts.build = packageJson.scripts.build.replace(
+  "NODE_OPTIONS='--max-old-space-size=3072' node scripts/generate-i18n-pages.mjs",
+  'node --max-old-space-size=3072 scripts/generate-i18n-pages.mjs'
+);
 await writeFile(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`, 'utf8');
 
 console.log(`Applied the KKTerm API v2 adaptation to ${sourceRoot}`);

@@ -37,7 +37,14 @@ shim and IndexedDB/Storage are disabled. Cookies, Cache Storage, and service
 workers stay disabled. Every package has a distinct stable origin/profile.
 Declare `storage` for quota-bound durable non-secret JSON. User-mediated native
 open/save uses the structured `files` grant and opaque session tokens; paths are
-never returned to package code.
+never returned to package code. With `files.open`, browser file inputs and
+HTML5 file drops remain available (including multi-select) but are constrained
+by the manifest extensions. Without it they are blocked. With `files.save`,
+ordinary `<a download>` exports backed by local Blob/data/same-package URLs are
+automatically streamed through the host save picker in bounded chunks. The
+native WebView downloader is always denied, and cross-origin download links are
+not a network bypass; fetch remote bytes only through a declared
+`window.KKTerm.network.fetch` grant.
 
 Large non-secret JSON documents use the separate `documentStorage` permission
 and `window.KKTerm.documents` API. Raw binary data uses `blobStorage` and the

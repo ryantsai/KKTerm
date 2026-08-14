@@ -246,6 +246,12 @@ toggle list while their persisted backend settings remain enabled.
   ordinary KKTerm commands remain unavailable. Same-package frames and
   dedicated workers are supported. Without `clipboard`, every clipboard
   operation rejects.
+- Browser file inputs and file drops work only when the installed package has
+  the filtered `files.open` grant; selected names must match its declared
+  extensions. Local Blob/data/package exports triggered through a normal
+  browser download use the app-owned save picker and the `files.save` grant.
+  Remote download URLs cannot bypass the package's `networkFetch` permission,
+  and cancelling the save picker leaves no partial destination file.
 - Grep hints: `settings.customModules`, `settings.customModulesInstallFile`,
   `settings.customModulesInstalled`, `settings.customModulesModuleSize`,
   `settings.customModulesPermissions`, `settings.customModulesLicense`,

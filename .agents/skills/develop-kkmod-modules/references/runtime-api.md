@@ -19,6 +19,8 @@ Same-package frames and dedicated Workers are allowed. Remote frames, service
 workers, direct cross-origin fetch/WebSocket/EventSource, cookies, CacheStorage,
 popup windows, device/sensor/media/location APIs, arbitrary paths, shell access,
 terminal input, database access, and raw Connection secrets are unavailable.
+The bridge and browser-compatibility policy are injected into every
+same-package frame.
 
 `browserStorage` retains localStorage, IndexedDB, and the Storage API. Without
 it, localStorage is session-memory only and IndexedDB/Storage are disabled.
@@ -101,6 +103,16 @@ filters. Results contain a display name, size, mode, and opaque session token—
 never a path. `read`/`write` use base64 chunks up to 1 MiB. `commit` activates a
 temporary save; `close` or runtime teardown discards incomplete writes.
 
+Browser file inputs and HTML5 file drops require effective `files.open` and are
+rejected when a selected name falls outside the manifest extensions. Native
+multi-select remains available because the browser exposes `File` objects, not
+paths. Ordinary `<a download>` clicks for local Blob/data/same-package URLs are
+automatically streamed through `files.beginSave`/`write`/`commit`; this covers
+common browser export helpers, FileSaver-style anchors, and same-package PDF
+viewer exports without per-app patches. The native WebView downloader is denied
+as a backstop. Cross-origin download URLs are not adapted: use an exact
+`network.fetch` grant to retrieve the bytes, then export a local Blob.
+
 ### Network and secrets
 
 `network.fetch` takes URL, granted method, safe string headers, optional base64
@@ -135,6 +147,11 @@ caller-bound mediation, and app-owned review surfaces.
 - Use external script files; do not depend on remote CDN code.
 - Replace raw fetch with `KKTerm.network.fetch` and declare exact origins.
 - Replace filesystem paths with opaque host file tokens.
+- Keep standard local `<a download>`/Blob export helpers when suitable; declare
+  `files.save` and every possible output extension. Never point `download` at a
+  remote URL.
+- Inventory direct file inputs and drops separately from bridge calls; declare
+  `files.open` and every supported input extension, then test multi-file flows.
 - Put browser-native durable state behind `browserStorage`; prefer host stores
   for portable, inspectable data.
 - Persist application-owned state explicitly. For Excalidraw this includes both

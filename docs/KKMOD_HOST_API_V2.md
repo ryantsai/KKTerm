@@ -105,7 +105,8 @@ Dedicated same-package Web Workers and same-package frames are supported.
 Remote frames remain blocked. Module navigation may remain inside the active
 package only. Standard user-activated HTTP(S) anchors and `window.open` calls
 are mediated through `openExternal`; programmatic top-level redirects stay
-blocked.
+blocked. The host API and browser-compatibility policy are injected into every
+same-package frame, not only the top-level document.
 
 The package protocol permits only packaged assets, data/blob images and fonts,
 same-package frames, and same-package or blob dedicated workers. Network access
@@ -168,6 +169,25 @@ declared extension filters. The module receives a session-scoped opaque token,
 not a path. Reads and writes are chunked. Saves write and flush a sibling
 temporary file, stage any existing target as a recoverable backup, then activate
 the new file on `commit`; closing or runtime teardown abandons uncommitted data.
+
+The host also adapts ordinary browser file interactions to the same effective
+grant. HTML file inputs and file drops are unavailable without `files.open`, and
+the host rejects selected or dropped names outside the declared extensions.
+When `files.open` is granted, HTML5 drag/drop is delivered to the package on
+Windows as well as the other platforms; native path-bearing drop events remain
+disabled. File inputs may keep browser-native multi-select behavior and expose
+only `File` objects, never host paths.
+
+Clicks on `<a download>` for `blob:`, `data:`, or same-package URLs are streamed
+through `files.beginSave`/`write`/`commit`, so existing browser applications can
+retain their local export helpers. The save picker is still required, chunks
+remain bounded to 1 MiB, cancellation is non-destructive, and the manifest's
+save/extension policy still applies. Cross-origin download URLs are never
+adapted. The native WebView downloader is denied as a backstop so it cannot
+bypass `files.save`; adapters must use `network.fetch` for a granted remote
+resource before exporting it as local bytes. A failed adapted download dispatches
+`window` event `kktermDownloadError`; rejected file input/drop dispatches
+`kktermFileAccessError`.
 
 ### Network and secrets
 

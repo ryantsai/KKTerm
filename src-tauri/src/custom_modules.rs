@@ -2287,6 +2287,16 @@ fn initialization_script(
     let capabilities = serde_json::to_string(permissions).map_err(|error| error.to_string())?;
     let clipboard_allowed = permissions.clipboard;
     let browser_storage_allowed = permissions.browser_storage;
+    let files_open_allowed = permissions.files.as_ref().is_some_and(|files| files.open);
+    let files_save_allowed = permissions.files.as_ref().is_some_and(|files| files.save);
+    let allowed_file_extensions = serde_json::to_string(
+        &permissions
+            .files
+            .as_ref()
+            .map(|files| files.extensions.as_slice())
+            .unwrap_or_default(),
+    )
+    .map_err(|error| error.to_string())?;
     Ok(format!(
         r#"
         (() => {{
@@ -2356,6 +2366,9 @@ fn initialization_script(
             return value;
           }};
           const capabilities = deepFreeze({capabilities});
+          const filesOpenAllowed = {files_open_allowed};
+          const filesSaveAllowed = {files_save_allowed};
+          const allowedFileExtensions = deepFreeze({allowed_file_extensions});
           let currentContext = Object.freeze({context});
           window.KKTerm = Object.freeze({{
             apiVersion: {HOST_API_VERSION},
@@ -2420,6 +2433,154 @@ fn initialization_script(
               try {{ listener(detail); }} catch (error) {{ console.error(error); }}
             }}
           }};
+          const dispatchFileError = (eventName, error) => {{
+            const normalized = normalizeError(error);
+            console.error(normalized);
+            window.dispatchEvent(new CustomEvent(eventName, {{
+              detail: {{ code: normalized.code, message: normalized.message }}
+            }}));
+          }};
+          const isAllowedFileName = (file) => {{
+            if (allowedFileExtensions.length === 0) return true;
+            const extension = file.name.split('.').pop()?.toLowerCase();
+            return Boolean(extension && allowedFileExtensions.includes(extension));
+          }};
+          const fileInputForTarget = (target) => {{
+            if (!(target instanceof Element)) return null;
+            const input = target.closest('input[type="file"]');
+            if (input instanceof HTMLInputElement) return input;
+            const label = target.closest('label');
+            return label instanceof HTMLLabelElement && label.control instanceof HTMLInputElement
+              && label.control.type === 'file' ? label.control : null;
+          }};
+          document.addEventListener('click', (event) => {{
+            const input = fileInputForTarget(event.target);
+            if (!input || filesOpenAllowed) return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            dispatchFileError('kktermFileAccessError', new KKTermError(
+              'permission_denied', 'This Custom Module is not allowed to open files.'
+            ));
+          }}, true);
+          document.addEventListener('change', (event) => {{
+            const input = event.target;
+            if (!(input instanceof HTMLInputElement) || input.type !== 'file') return;
+            const files = Array.from(input.files || []);
+            if (filesOpenAllowed && files.every(isAllowedFileName)) return;
+            input.value = '';
+            event.stopImmediatePropagation();
+            dispatchFileError('kktermFileAccessError', new KKTermError(
+              'permission_denied',
+              filesOpenAllowed
+                ? 'One or more files do not match this Custom Module\'s allowed extensions.'
+                : 'This Custom Module is not allowed to open files.'
+            ));
+          }}, true);
+          document.addEventListener('drop', (event) => {{
+            const files = Array.from(event.dataTransfer?.files || []);
+            if (files.length === 0) return;
+            if (filesOpenAllowed && files.every(isAllowedFileName)) return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            dispatchFileError('kktermFileAccessError', new KKTermError(
+              'permission_denied', filesOpenAllowed
+                ? 'One or more dropped files do not match this Custom Module\'s allowed extensions.'
+                : 'This Custom Module is not allowed to open files.'
+            ));
+          }}, true);
+          const nativeShowPicker = HTMLInputElement.prototype.showPicker;
+          if (typeof nativeShowPicker === 'function') {{
+            replace(HTMLInputElement.prototype, 'showPicker', function() {{
+              if (this.type === 'file' && !filesOpenAllowed) {{
+                throw new DOMException(
+                  'This Custom Module is not allowed to open files.', 'NotAllowedError'
+                );
+              }}
+              return nativeShowPicker.call(this);
+            }});
+          }}
+          const browserDownloadUrl = (anchor) => {{
+            try {{
+              const url = new URL(anchor.href, location.href);
+              if (url.protocol === 'data:') return url;
+              if (url.protocol === 'blob:') {{
+                return url.origin === location.origin ? url : null;
+              }}
+              return url.origin === location.origin ? url : null;
+            }} catch {{ return null; }}
+          }};
+          const safeDownloadName = (anchor, url) => {{
+            let candidate = anchor.download;
+            if (!candidate && url.protocol !== 'data:') {{
+              try {{ candidate = decodeURIComponent(url.pathname.split('/').pop() || ''); }} catch {{}}
+            }}
+            return String(candidate || 'download')
+              .split(/[\\/]/).pop()
+              .replace(/[\u0000-\u001f<>:"|?*]/g, '_')
+              .slice(0, 255) || 'download';
+          }};
+          const bytesToBase64 = (bytes) => {{
+            let binary = '';
+            for (let offset = 0; offset < bytes.length; offset += 32 * 1024) {{
+              binary += String.fromCharCode(...bytes.subarray(offset, offset + 32 * 1024));
+            }}
+            return btoa(binary);
+          }};
+          const saveBrowserDownload = async (anchor, url, responsePromise, controller) => {{
+            if (!filesSaveAllowed) {{
+              throw new KKTermError(
+                'permission_denied', 'This Custom Module is not allowed to save files.'
+              );
+            }}
+            const saveTarget = await invoke('files.beginSave', {{
+              suggestedName: safeDownloadName(anchor, url)
+            }});
+            if (!saveTarget) {{
+              controller.abort();
+              await responsePromise.catch(() => undefined);
+              return;
+            }}
+            try {{
+              const response = await responsePromise;
+              if (!response.ok) throw new Error(`Download failed with status ${{response.status}}.`);
+              const blob = await response.blob();
+              const chunkBytes = Math.min(saveTarget.maxChunkBytes, 1024 * 1024);
+              for (let offset = 0; offset < blob.size; offset += chunkBytes) {{
+                const bytes = new Uint8Array(
+                  await blob.slice(offset, offset + chunkBytes).arrayBuffer()
+                );
+                await invoke('files.write', {{
+                  token: saveTarget.token,
+                  dataBase64: bytesToBase64(bytes)
+                }});
+              }}
+              await invoke('files.commit', {{ token: saveTarget.token }});
+            }} catch (error) {{
+              await invoke('files.close', {{ token: saveTarget.token }}).catch(() => undefined);
+              throw error;
+            }}
+          }};
+          document.addEventListener('click', (event) => {{
+            if (event.defaultPrevented || event.button !== 0) return;
+            const target = event.target;
+            const anchor = target instanceof Element ? target.closest('a[download]') : null;
+            if (!(anchor instanceof HTMLAnchorElement) || !anchor.matches('a[download]')) return;
+            const url = browserDownloadUrl(anchor);
+            if (!url) return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            if (!filesSaveAllowed) {{
+              dispatchFileError('kktermDownloadError', new KKTermError(
+                'permission_denied', 'This Custom Module is not allowed to save files.'
+              ));
+              return;
+            }}
+            const controller = new AbortController();
+            const responsePromise = fetch(url.href, {{ signal: controller.signal }});
+            void saveBrowserDownload(anchor, url, responsePromise, controller).catch((error) => {{
+              dispatchFileError('kktermDownloadError', error);
+            }});
+          }}, true);
           const externalUrl = (value) => {{
             try {{
               const url = new URL(String(value), location.href);
@@ -2502,10 +2663,14 @@ pub async fn start_custom_module(
     let permissions = granted_permissions(&storage, &installed.manifest.id)?;
     let effective_permissions = installed.manifest.permissions.restricted_to(&permissions);
     let clipboard_allowed = effective_permissions.clipboard;
+    let browser_file_open_allowed = effective_permissions
+        .files
+        .as_ref()
+        .is_some_and(|files| files.open);
     let navigation_origin_host = origin_host.clone();
     let windows_origin_host = format!("kkmodule.{origin_host}");
     let mut builder = WebviewWindowBuilder::new(&app, &label, WebviewUrl::External(initial_url))
-        .initialization_script(initialization_script(
+        .initialization_script_for_all_frames(initialization_script(
             &request.theme,
             &request.locale,
             &effective_permissions,
@@ -2527,7 +2692,11 @@ pub async fn start_custom_module(
                     && url.host_str() == Some(windows_origin_host.as_str()));
             is_module_asset
         })
+        .on_download(|_, _| false)
         .on_new_window(|_, _| tauri::webview::NewWindowResponse::Deny);
+    if browser_file_open_allowed {
+        builder = builder.disable_drag_drop_handler();
+    }
     if clipboard_allowed {
         builder = builder.enable_clipboard_access();
     }

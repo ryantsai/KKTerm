@@ -14,17 +14,82 @@ interface KKTermContext {
   locale: string;
 }
 
+interface KKTermNetworkResponse {
+  status: number;
+  url: string;
+  headers: Record<string, string>;
+  bodyBase64: string;
+}
+
 interface KKTermHost {
   readonly apiVersion: 2;
   readonly context: KKTermContext;
   ready(): Promise<boolean>;
   getContext(): Promise<KKTermContext>;
   getCapabilities(): Promise<Record<string, unknown>>;
+  readonly network: {
+    fetch(request: {
+      url: string;
+      method: string;
+      headers: Record<string, string>;
+      bodyBase64: string;
+    }): Promise<KKTermNetworkResponse>;
+  };
   on(event: 'contextChanged', listener: (detail: KKTermContext) => void): () => boolean;
   on(
     event: 'visibilityChanged' | 'focusChanged' | 'suspending' | 'closing',
     listener: (detail: unknown) => void
   ): () => boolean;
+}
+
+const FREE_TSA_URL = 'https://freetsa.org/tsr';
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  for (let offset = 0; offset < bytes.length; offset += 32 * 1024) {
+    binary += String.fromCharCode(
+      ...bytes.subarray(offset, offset + 32 * 1024)
+    );
+  }
+  return btoa(binary);
+}
+
+function base64ToArrayBuffer(encoded: string): ArrayBuffer {
+  const binary = atob(encoded);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index++) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes.buffer;
+}
+
+function installFreeTsaFetchBridge(host: KKTermHost): void {
+  const nativeFetch = window.fetch.bind(window);
+  window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const request = new Request(input, init);
+    if (request.url !== FREE_TSA_URL || request.method !== 'POST') {
+      return nativeFetch(input, init);
+    }
+
+    const headers: Record<string, string> = {};
+    for (const name of ['accept', 'content-type']) {
+      const value = request.headers.get(name);
+      if (value) headers[name] = value;
+    }
+    const bodyBase64 = bytesToBase64(
+      new Uint8Array(await request.arrayBuffer())
+    );
+    const response = await host.network.fetch({
+      url: FREE_TSA_URL,
+      method: 'POST',
+      headers,
+      bodyBase64,
+    });
+    return new Response(base64ToArrayBuffer(response.bodyBase64), {
+      status: response.status,
+      headers: response.headers,
+    });
+  };
 }
 
 declare global {
@@ -76,6 +141,8 @@ async function initializeKKTermV2(): Promise<void> {
   if (!host || host.apiVersion !== 2) {
     throw new Error('KKTerm host API v2 is unavailable.');
   }
+
+  installFreeTsaFetchBridge(host);
 
   const [context] = await Promise.all([
     host.getContext(),
