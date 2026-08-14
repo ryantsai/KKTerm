@@ -33,6 +33,10 @@ import { showShutdownTimerMenu } from "./shutdownTimerMenu";
 import type { CustomModuleDestination } from "../modules/custom-modules/types";
 import { CustomModuleIcon } from "../modules/custom-modules/CustomModuleIcon";
 import { customModuleDestinationKey } from "../modules/custom-modules/useCustomModules";
+import {
+  orderCustomModuleDestinations,
+  reorderCustomModuleDestinations,
+} from "./customModuleRailOrder";
 
 export type ActivePage =
   | "workspace"
@@ -62,6 +66,13 @@ type ConnectionRailDropTarget = {
   position: "before" | "after" | "end";
 };
 
+type CustomModuleRailDragState = {
+  destinationKey: string;
+  pointerId: number;
+  startY: number;
+  moved: boolean;
+};
+
 type RailConnectionMenuState = {
   connection: Connection;
   pinned: boolean;
@@ -70,6 +81,7 @@ type RailConnectionMenuState = {
 };
 
 const CONNECTION_RAIL_ORDER_KEY = "kkterm.connectionRail.order.v1";
+const CUSTOM_MODULE_RAIL_ORDER_KEY = "kkterm.customModuleRail.order.v1";
 const WORKSPACE_RAIL_ICON_SIZE = 18;
 const WORKSPACE_RAIL_ICON_SHELL_SIZE = 24;
 
@@ -95,6 +107,33 @@ function persistConnectionRailOrder(order: string[]) {
   }
   try {
     window.localStorage.setItem(CONNECTION_RAIL_ORDER_KEY, JSON.stringify(order));
+  } catch {
+    // Ordering is a convenience preference; fail silently if storage is unavailable.
+  }
+}
+
+function loadCustomModuleRailOrder() {
+  if (typeof window === "undefined") {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(
+      window.localStorage.getItem(CUSTOM_MODULE_RAIL_ORDER_KEY) ?? "[]",
+    );
+    return Array.isArray(parsed)
+      ? parsed.filter((entry): entry is string => typeof entry === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistCustomModuleRailOrder(order: string[]) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    window.localStorage.setItem(CUSTOM_MODULE_RAIL_ORDER_KEY, JSON.stringify(order));
   } catch {
     // Ordering is a convenience preference; fail silently if storage is unavailable.
   }
@@ -143,6 +182,15 @@ export function ActivityRail({
   const [connectionRailOrder, setConnectionRailOrder] = useState(
     loadConnectionRailOrder,
   );
+  const [customModuleRailOrder, setCustomModuleRailOrder] = useState(
+    loadCustomModuleRailOrder,
+  );
+  const [draggedCustomModuleKey, setDraggedCustomModuleKey] = useState<
+    string | null
+  >(null);
+  const [customModuleDropTargetKey, setCustomModuleDropTargetKey] = useState<
+    string | null
+  >(null);
   const [draggedConnectionId, setDraggedConnectionId] = useState<string | null>(
     null,
   );
@@ -157,6 +205,14 @@ export function ActivityRail({
   const connectionRailDragRef = useRef<ConnectionRailDragState | null>(null);
   const connectionRailListRef = useRef<HTMLDivElement | null>(null);
   const suppressConnectionClickRef = useRef<string | null>(null);
+  const customModuleRailDragRef = useRef<CustomModuleRailDragState | null>(null);
+  const customModuleRailListRef = useRef<HTMLDivElement | null>(null);
+  const suppressCustomModuleClickRef = useRef<string | null>(null);
+
+  const orderedCustomModuleDestinations = useMemo(
+    () => orderCustomModuleDestinations(customModuleDestinations, customModuleRailOrder),
+    [customModuleDestinations, customModuleRailOrder],
+  );
 
   useEffect(() => {
     setDontSleepEnabled(storedDontSleepEnabled);
@@ -698,6 +754,113 @@ export function ActivityRail({
     node.style.top = `${Math.max(8, Math.min(railConnectionMenu.y, window.innerHeight - bounds.height - 8))}px`;
   }, [railConnectionMenu]);
 
+  function getCustomModuleRailDropTarget(clientX: number, clientY: number) {
+    const list = customModuleRailListRef.current;
+    if (!list) {
+      return null;
+    }
+
+    const target = document.elementFromPoint(clientX, clientY);
+    const button = target?.closest?.("[data-custom-module-key]");
+    if (button instanceof HTMLElement && list.contains(button)) {
+      const rect = button.getBoundingClientRect();
+      if (clientY < rect.top + rect.height / 2) {
+        return button.dataset.customModuleKey ?? null;
+      }
+      return button.nextElementSibling instanceof HTMLElement
+        ? button.nextElementSibling.dataset.customModuleKey ?? null
+        : null;
+    }
+
+    const firstButton = list.querySelector<HTMLElement>("[data-custom-module-key]");
+    if (firstButton && clientY < firstButton.getBoundingClientRect().top) {
+      return firstButton.dataset.customModuleKey ?? null;
+    }
+    return null;
+  }
+
+  function reorderCustomModuleRailItem(
+    draggedKey: string,
+    targetKey: string | null,
+  ) {
+    setCustomModuleRailOrder((currentOrder) => {
+      const nextOrder = reorderCustomModuleDestinations(
+        customModuleDestinations,
+        currentOrder,
+        draggedKey,
+        targetKey,
+      );
+      if (
+        nextOrder.length === currentOrder.length
+        && nextOrder.every((key, index) => key === currentOrder[index])
+      ) {
+        return currentOrder;
+      }
+      persistCustomModuleRailOrder(nextOrder);
+      return nextOrder;
+    });
+  }
+
+  function handleCustomModulePointerDown(
+    event: ReactPointerEvent<HTMLButtonElement>,
+    destinationKey: string,
+  ) {
+    if (event.button !== 0) {
+      return;
+    }
+    customModuleRailDragRef.current = {
+      destinationKey,
+      pointerId: event.pointerId,
+      startY: event.clientY,
+      moved: false,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handleCustomModulePointerMove(
+    event: ReactPointerEvent<HTMLButtonElement>,
+  ) {
+    const drag = customModuleRailDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
+    if (!drag.moved && Math.abs(event.clientY - drag.startY) < 5) {
+      return;
+    }
+
+    drag.moved = true;
+    setDraggedCustomModuleKey(drag.destinationKey);
+    event.preventDefault();
+    const targetKey = getCustomModuleRailDropTarget(event.clientX, event.clientY);
+    setCustomModuleDropTargetKey(targetKey);
+    if (targetKey !== drag.destinationKey) {
+      reorderCustomModuleRailItem(drag.destinationKey, targetKey);
+    }
+  }
+
+  function handleCustomModulePointerEnd(
+    event: ReactPointerEvent<HTMLButtonElement>,
+  ) {
+    const drag = customModuleRailDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
+
+    if (drag.moved) {
+      reorderCustomModuleRailItem(
+        drag.destinationKey,
+        getCustomModuleRailDropTarget(event.clientX, event.clientY),
+      );
+      suppressCustomModuleClickRef.current = drag.destinationKey;
+    }
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    customModuleRailDragRef.current = null;
+    setDraggedCustomModuleKey(null);
+    setCustomModuleDropTargetKey(null);
+  }
+
   const dontSleepTooltip = dontSleepEnabled
     ? t("app.dontSleepEnabledTooltip")
     : t("app.dontSleepDisabledTooltip");
@@ -841,25 +1004,53 @@ export function ActivityRail({
           <RailTooltip label={t("systemCleaner.title")} />
         </button>
       ) : null}
-      {customModuleDestinations.map((destination) => {
-        const key = customModuleDestinationKey(destination);
-        const isActive = activePage === "customModule"
-          && activeCustomModule
-          && customModuleDestinationKey(activeCustomModule) === key;
-        return (
-          <button
-            aria-label={destination.title}
-            className={`rail-button rail-button-custom-module ${isActive ? "active" : ""}`}
-            data-custom-module-id={destination.moduleId}
-            key={key}
-            onClick={() => onNavigateCustomModule(destination)}
-            type="button"
-          >
-            <CustomModuleIcon iconDataUrl={destination.iconDataUrl} />
-            <RailTooltip label={destination.title} />
-          </button>
-        );
-      })}
+      {orderedCustomModuleDestinations.length > 0 ? (
+        <div
+          ref={customModuleRailListRef}
+          className={`rail-custom-modules ${
+            draggedCustomModuleKey && customModuleDropTargetKey === null
+              ? "rail-drop-end"
+              : ""
+          }`}
+        >
+          {orderedCustomModuleDestinations.map((destination) => {
+            const key = customModuleDestinationKey(destination);
+            const isActive = activePage === "customModule"
+              && activeCustomModule
+              && customModuleDestinationKey(activeCustomModule) === key;
+            return (
+              <button
+                aria-label={destination.title}
+                className={`rail-button rail-button-custom-module ${
+                  isActive ? "active" : ""
+                } ${draggedCustomModuleKey === key ? "dragging" : ""} ${
+                  draggedCustomModuleKey && customModuleDropTargetKey === key
+                    ? "rail-drop-before"
+                    : ""
+                }`}
+                data-custom-module-id={destination.moduleId}
+                data-custom-module-key={key}
+                key={key}
+                onClick={() => {
+                  if (suppressCustomModuleClickRef.current === key) {
+                    suppressCustomModuleClickRef.current = null;
+                    return;
+                  }
+                  onNavigateCustomModule(destination);
+                }}
+                onPointerCancel={handleCustomModulePointerEnd}
+                onPointerDown={(event) => handleCustomModulePointerDown(event, key)}
+                onPointerMove={handleCustomModulePointerMove}
+                onPointerUp={handleCustomModulePointerEnd}
+                type="button"
+              >
+                <CustomModuleIcon iconDataUrl={destination.iconDataUrl} />
+                <RailTooltip label={destination.title} />
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
       {connectedRailItems.length > 0 ? (
         <div className="rail-connected-connections-spacer">
           <div

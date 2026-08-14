@@ -245,6 +245,26 @@
   border-top: 1px solid var(--nav-toolbar-tooltip-border);
 }
 
+.rail-custom-modules {
+  display: grid;
+  position: relative;
+  order: -1;
+  gap: 6px;
+  justify-items: center;
+  width: 100%;
+  padding-top: 8px;
+  margin-top: 2px;
+  border-top: 1px solid var(--nav-toolbar-tooltip-border);
+}
+
+.rail-button-custom-module {
+  touch-action: none;
+}
+
+.rail-button-custom-module.dragging {
+  opacity: 0.48;
+}
+
 .rail-connected-connections-spacer {
   order: -1;
   width: 100%;
@@ -281,6 +301,8 @@
 
 .rail-button-connection.rail-drop-before::before,
 .rail-button-connection.rail-drop-after::after,
+.rail-button-custom-module.rail-drop-before::before,
+.rail-custom-modules.rail-drop-end::after,
 .rail-connected-connections.rail-drop-end::after {
   content: "";
   display: block;
@@ -294,12 +316,17 @@
 }
 
 .rail-button-connection.rail-drop-before::before,
-.rail-button-connection.rail-drop-after::after {
+.rail-button-connection.rail-drop-after::after,
+.rail-button-custom-module.rail-drop-before::before {
   position: absolute;
   left: 4px;
 }
 
 .rail-button-connection.rail-drop-before::before {
+  top: -4px;
+}
+
+.rail-button-custom-module.rail-drop-before::before {
   top: -4px;
 }
 

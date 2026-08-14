@@ -93,14 +93,21 @@ test("Custom Module package tooling consistently enforces the 1 GiB hard limit",
   assert.match(contract, /1 GiB compressed,\s*\n1 GiB expanded/);
 });
 
-test("dynamic Custom Module rail destinations do not become a compile-time id union", async () => {
-  const [rail, hook, app] = await Promise.all([
+test("dynamic Custom Module rail destinations stay in their bounded rail section", async () => {
+  const [rail, railCss, hook, app] = await Promise.all([
     readFile(new URL("../src/app/ActivityRail.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/app/app.css", import.meta.url), "utf8"),
     readFile(new URL("../src/modules/custom-modules/useCustomModules.ts", import.meta.url), "utf8"),
     readFile(new URL("../src/App.tsx", import.meta.url), "utf8"),
   ]);
   assert.match(hook, /`custom:\$\{destination\.moduleId\}:\$\{destination\.contributionId\}`/);
-  assert.match(rail, /customModuleDestinations\.map/);
+  assert.match(rail, /orderedCustomModuleDestinations\.map/);
+  assert.match(rail, /className=\{`rail-custom-modules/);
+  assert.match(rail, /orderedCustomModuleDestinations\.length > 0/);
+  assert.ok(
+    rail.indexOf("rail-custom-modules") < rail.indexOf("rail-connected-connections-spacer"),
+  );
+  assert.match(railCss, /\.rail-custom-modules\s*\{[^}]*order:\s*-1[^}]*border-top:/s);
   assert.match(rail, /CustomModuleIcon iconDataUrl=\{destination\.iconDataUrl\}/);
   assert.match(app, /<CustomModuleHost/);
 });
