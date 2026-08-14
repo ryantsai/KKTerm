@@ -78,6 +78,11 @@ terminate KKTerm with AppKit's "Must only be used from the main thread"
 assertion when a Custom Module starts or is restored at launch. Keep the
 platform policy test and verify launch restoration in the real macOS runtime.
 
+Custom Modules render edge to edge within the child panel. The host deliberately
+adds no contribution title/header row, so packages must provide their own
+visible title, navigation, and application chrome. They must not depend on
+KKTerm to label the content surface.
+
 The development fixture under `custom-modules/fixtures/hello-world/` exercises
 the v2 host context, lifecycle events, isolated storage, readiness handshake,
 and external-link bridge. Build its installable archive with:

@@ -5,7 +5,6 @@ import { invokeCommand, isTauriRuntime } from "../../lib/tauri";
 import { useWorkspaceStore } from "../../store";
 import { documentHasCustomModuleBlockingOverlay } from "../workspace/nativeOverlay";
 import type { CustomModuleDestination } from "./types";
-import { CustomModuleIcon } from "./CustomModuleIcon";
 import "./customModules.css";
 
 export function CustomModuleHost({
@@ -25,13 +24,14 @@ export function CustomModuleHost({
   const frameRef = useRef<number | null>(null);
   const activeRef = useRef(active);
   activeRef.current = active;
+  const activeLocale = i18n.language || i18n.resolvedLanguage || "en";
   const contextRef = useRef({
     theme: appearance.colorScheme,
-    locale: i18n.resolvedLanguage || i18n.language || "en",
+    locale: activeLocale,
   });
   contextRef.current = {
     theme: appearance.colorScheme,
-    locale: i18n.resolvedLanguage || i18n.language || "en",
+    locale: activeLocale,
   };
   const blockingOverlayOpenRef = useRef(blockingOverlayOpen);
   blockingOverlayOpenRef.current = blockingOverlayOpen;
@@ -147,10 +147,10 @@ export function CustomModuleHost({
       request: {
         sessionId,
         theme: appearance.colorScheme,
-        locale: i18n.resolvedLanguage || i18n.language || "en",
+        locale: activeLocale,
       },
     }).catch(() => undefined);
-  }, [appearance.colorScheme, i18n.language, i18n.resolvedLanguage]);
+  }, [activeLocale, appearance.colorScheme]);
 
   useEffect(() => {
     if (!isTauriRuntime()) return;
@@ -183,13 +183,6 @@ export function CustomModuleHost({
   if (!destination) return null;
   return (
     <main className="custom-module-page" data-active={active}>
-      <header className="custom-module-page-header">
-        <span className="custom-module-page-icon">
-          <CustomModuleIcon iconDataUrl={destination.iconDataUrl} size={17} />
-        </span>
-        <h1>{destination.title}</h1>
-        {!ready && !error ? <span>{t("common.loading")}</span> : null}
-      </header>
       <div className="custom-module-surface" ref={surfaceRef}>
         {!isTauriRuntime() ? (
           <div className="custom-module-fallback">{t("settings.customModulesRuntimeRequired")}</div>

@@ -1,5 +1,6 @@
 import { cp, mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
-import { extname, resolve } from 'node:path';
+import { extname, relative, resolve } from 'node:path';
+import { normalizeHtmlReferences } from './html-paths.mjs';
 
 const moduleRoot = resolve(import.meta.dirname, '..');
 const sourceRoot = resolve(process.argv[2] || process.env.BENTOPDF_SOURCE || '');
@@ -15,6 +16,24 @@ if (!(await stat(upstreamDist)).isDirectory()) {
 const targetDist = resolve(moduleRoot, 'dist');
 await rm(targetDist, { recursive: true, force: true });
 await cp(upstreamDist, targetDist, { recursive: true });
+
+async function normalizeHtmlDirectory(directory) {
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const path = resolve(directory, entry.name);
+    if (entry.isDirectory()) {
+      await normalizeHtmlDirectory(path);
+      continue;
+    }
+    if (!entry.name.endsWith('.html')) continue;
+    const packagedPath = relative(targetDist, path).replaceAll('\\', '/');
+    const depth = packagedPath.split('/').length - 1;
+    const packageRootPrefix = depth === 0 ? './' : '../'.repeat(depth);
+    const html = await readFile(path, 'utf8');
+    const normalized = normalizeHtmlReferences(html, packageRootPrefix);
+    if (normalized !== html) await writeFile(path, normalized, 'utf8');
+  }
+}
+await normalizeHtmlDirectory(targetDist);
 
 for (const relative of [
   'kkmod-runtime/pymupdf/build_scripts',
@@ -99,11 +118,12 @@ await clean(targetDist);
 
 await cp(resolve(moduleRoot, 'public/icon.svg'), resolve(targetDist, 'icon.svg'));
 
-const sourceText = await readFile(resolve(moduleRoot, 'src/kkterm-v2-adapter.ts'), 'utf8');
+const adapterSource = await readFile(resolve(moduleRoot, 'src/kkterm-v2-adapter.ts'), 'utf8');
+const localeSource = await readFile(resolve(moduleRoot, 'src/kkterm-locale.ts'), 'utf8');
 await mkdir(resolve(moduleRoot, 'licenses'), { recursive: true });
 await writeFile(
   resolve(moduleRoot, 'licenses/KKTERM_ADAPTER_SOURCE.txt'),
-  `KKTerm BentoPDF API v2 adapter source\n======================================\n\n${sourceText}`,
+  `KKTerm BentoPDF API v2 adapter source\n======================================\n\n${adapterSource}\n\n${localeSource}`,
   'utf8'
 );
 

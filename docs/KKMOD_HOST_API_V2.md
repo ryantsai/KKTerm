@@ -96,6 +96,11 @@ launches. Without that permission, the host installs an in-memory localStorage
 shim and disables IndexedDB, CacheStorage, and the Storage API. Cookies and
 service workers are always disabled.
 
+The native WebView fills the complete Custom Module child panel edge to edge.
+KKTerm does not render a per-Module title/header row above it; each package owns
+its visible title, navigation, and application chrome. The Activity Rail and
+Status Bar remain outside the package-owned surface.
+
 Dedicated same-package Web Workers and same-package frames are supported.
 Remote frames remain blocked. Module navigation may remain inside the active
 package only. Standard user-activated HTTP(S) anchors and `window.open` calls

@@ -171,6 +171,22 @@ test("backend strips Windows URL overlay non-client chrome before positioning", 
   assert.doesNotMatch(positionFunction, /backend\.window\.client_compensated/);
 });
 
+test("backend always refreshes the Windows overlay client frame after installing its subclass", async () => {
+  const source = await readFile(new URL("../src-tauri/src/webview.rs", import.meta.url), "utf8");
+  const configureFunction = source.match(
+    /fn configure_webview_window_client_chrome\([\s\S]*?\n\}\n\n#\[cfg\(target_os = "windows"\)\]\nfn log_positioned_webview_window/,
+  )?.[0];
+
+  assert.ok(configureFunction, "Windows overlay client-chrome helper should exist");
+  const styleMutationIndex = configureFunction.indexOf("let _ = SetWindowLongPtrW");
+  const frameRefreshIndex = configureFunction.indexOf("SetWindowPos(");
+  assert.ok(styleMutationIndex >= 0 && frameRefreshIndex > styleMutationIndex);
+  assert.ok(
+    configureFunction.slice(styleMutationIndex, frameRefreshIndex).includes("\n    }\n"),
+    "SWP_FRAMECHANGED must run even when Tauri already removed the window style bits",
+  );
+});
+
 test("backend positions URL overlays from the host WebView client origin", async () => {
   const source = await readFile(new URL("../src-tauri/src/webview.rs", import.meta.url), "utf8");
   const overlayFunction = source.match(/fn overlay_rect\([\s\S]*?\n\}/)?.[0];

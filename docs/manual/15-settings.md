@@ -177,6 +177,13 @@ toggle list while their persisted backend settings remain enabled.
   declared SVG as a monochrome, theme-aware Settings/Module/Activity Rail icon
   only after the host verifies that it is inert and no larger than 64 KiB;
   missing or rejected artwork uses the generic Package glyph.
+- A running Custom Module fills the child panel edge to edge. KKTerm does not
+  add a duplicate Module title/header row; the package supplies its own visible
+  title, navigation, and application chrome. The Activity Rail and bottom
+  Status Bar remain host-owned.
+- The host passes KKTerm's active UI language to each running Custom Module and
+  updates that context when the language changes. A package uses its matching
+  bundled translation when available and falls back to English otherwise.
 - The Available group loads immediately from the embedded baseline or last
   unexpired verified cache, then refreshes signed metadata from the configured
   KKTerm catalog. `settings.customModulesRefreshCatalog` performs the same

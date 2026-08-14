@@ -132,8 +132,12 @@ generation/expiry timestamps, and a maximum 45-day validity window.
 ## Build and validation
 
 Node or another toolchain may build `dist/`, but no build runtime ships in the
-archive. Use relative packaged assets and external script files. Validate both
-the source directory and final immutable archive:
+archive. Use relative packaged assets and external script files. Audit the final
+generated HTML after all flattening, copying, and finalizer steps: every local
+`href`, `src`, `poster`, or `data` reference must resolve inside the
+package's `dist/` tree. A page at `dist/tool.html` must use
+`./assets/...`, not `../../assets/...` or `/assets/...`. Validate both the
+source directory and final immutable archive:
 
 ```powershell
 python <skill-dir>\scripts\kkmod_tool.py check <module-root>

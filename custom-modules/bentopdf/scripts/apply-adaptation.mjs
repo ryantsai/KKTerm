@@ -26,11 +26,60 @@ async function replaceOnce(path, before, after) {
   await writeFile(path, source.replace(before, after), 'utf8');
 }
 
+async function replaceEvery(path, before, after, expectedMatches) {
+  const source = await readFile(path, 'utf8');
+  const matches = source.split(before).length - 1;
+  if (matches === 0 && source.split(after).length - 1 === expectedMatches) {
+    return;
+  }
+  if (matches !== expectedMatches) {
+    throw new Error(
+      `Expected ${expectedMatches} adaptation targets in ${path}; found ${matches}.`
+    );
+  }
+  await writeFile(path, source.replaceAll(before, after), 'utf8');
+}
+
+async function ensureImport(path, statement, anchor) {
+  const source = await readFile(path, 'utf8');
+  const escaped = statement.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const withoutDuplicates = source.replace(new RegExp(`${escaped}\\s*`, 'g'), '');
+  const matches = withoutDuplicates.split(anchor).length - 1;
+  if (matches !== 1) {
+    throw new Error(`Expected one import anchor in ${path}; found ${matches}.`);
+  }
+  await writeFile(
+    path,
+    withoutDuplicates.replace(anchor, `${statement}\n\n${anchor}`),
+    'utf8'
+  );
+}
+
+async function insertBeforeOnce(path, marker, insertion, sentinel) {
+  const source = await readFile(path, 'utf8');
+  if (source.includes(sentinel)) return;
+  const matches = source.split(marker).length - 1;
+  if (matches !== 1) {
+    throw new Error(`Expected one insertion marker in ${path}; found ${matches}.`);
+  }
+  await writeFile(path, source.replace(marker, `${insertion}${marker}`), 'utf8');
+}
+
+async function insertAfterOnce(path, marker, insertion, sentinel) {
+  const source = await readFile(path, 'utf8');
+  if (source.includes(sentinel)) return;
+  const matches = source.split(marker).length - 1;
+  if (matches !== 1) {
+    throw new Error(`Expected one insertion marker in ${path}; found ${matches}.`);
+  }
+  await writeFile(path, source.replace(marker, `${marker}${insertion}`), 'utf8');
+}
+
 const mainPath = resolve(sourceRoot, 'src/js/main.ts');
-await replaceOnce(
+await ensureImport(
   mainPath,
-  "import { categories } from './config/tools.js';",
-  "import './kkterm-v2-adapter.js';\n\nimport { categories } from './config/tools.js';"
+  "import './kkterm-v2-adapter.js';",
+  "import { categories } from './config/tools.js';"
 );
 await replaceOnce(
   mainPath,
@@ -61,9 +110,48 @@ await replaceOnce(
 };`
 );
 
+await replaceOnce(
+  resolve(sourceRoot, 'src/js/i18n/language-switcher.ts'),
+  'export const injectLanguageSwitcher = (): void => {',
+  `export const injectLanguageSwitcher = (): void => {
+  if ((window as Window & { KKTerm?: { apiVersion?: number } }).KKTerm?.apiVersion === 2) return;`
+);
+
+await replaceOnce(
+  resolve(sourceRoot, 'src/js/i18n/i18n.ts'),
+  'export const rewriteLinks = (): void => {',
+  `export const rewriteLinks = (): void => {
+  if ((window as Window & { KKTerm?: { apiVersion?: number } }).KKTerm?.apiVersion === 2) return;`
+);
+
+await insertAfterOnce(
+  resolve(sourceRoot, 'src/js/i18n/i18n.ts'),
+  '  if (initialized) return i18next;',
+  `
+
+  const kktermContextReady = (
+    window as Window & { KKTermBentoContextReady?: Promise<void> }
+  ).KKTermBentoContextReady;
+  if (kktermContextReady) await kktermContextReady;
+
+`,
+  'if (kktermContextReady) await kktermContextReady;'
+);
+
+await replaceEvery(
+  resolve(sourceRoot, 'vite.config.ts'),
+  "process.env.BASE_URL || '/'",
+  "process.env.BASE_URL || './'",
+  4
+);
+
 await copyFile(
   resolve(moduleRoot, 'src/kkterm-v2-adapter.ts'),
   resolve(sourceRoot, 'src/js/kkterm-v2-adapter.ts')
+);
+await copyFile(
+  resolve(moduleRoot, 'src/kkterm-locale.ts'),
+  resolve(sourceRoot, 'src/js/kkterm-locale.ts')
 );
 
 packageJson.dependencies.dompurify = '3.4.13';

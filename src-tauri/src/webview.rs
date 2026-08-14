@@ -1343,16 +1343,6 @@ fn configure_webview_window_client_chrome(
     if next_style != current_style {
         unsafe {
             let _ = SetWindowLongPtrW(hwnd, GWL_STYLE, next_style);
-            SetWindowPos(
-                hwnd,
-                None,
-                0,
-                0,
-                0,
-                0,
-                SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED,
-            )
-            .map_err(|error| format!("failed to apply URL webview client chrome: {error}"))?;
         }
         logging::url_connection_debug(
             "backend.window.client_chrome_configured",
@@ -1361,6 +1351,21 @@ fn configure_webview_window_client_chrome(
                 "nextStyle": next_style,
             }),
         );
+    }
+    // Tauri may have removed these style bits before this helper runs. Refresh
+    // the frame unconditionally so Windows recalculates the cached client rect
+    // through our WM_NCCALCSIZE subclass instead of retaining its resize inset.
+    unsafe {
+        SetWindowPos(
+            hwnd,
+            None,
+            0,
+            0,
+            0,
+            0,
+            SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED,
+        )
+        .map_err(|error| format!("failed to refresh overlay webview client frame: {error}"))?;
     }
     Ok(())
 }

@@ -209,6 +209,44 @@ test("Custom Module WebViews stay loaded while users visit another Module", asyn
   );
 });
 
+test("Custom Modules fill the child panel without a duplicate host header", async () => {
+  const [host, styles, architecture, hostApi, packaging, skill] = await Promise.all([
+    readFile(new URL("../src/modules/custom-modules/CustomModuleHost.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/modules/custom-modules/customModules.css", import.meta.url), "utf8"),
+    readFile(new URL("../docs/ARCHITECTURE.md", import.meta.url), "utf8"),
+    readFile(new URL("../docs/KKMOD_HOST_API_V2.md", import.meta.url), "utf8"),
+    readFile(new URL("../docs/CUSTOM_MODULE_PACKAGING.md", import.meta.url), "utf8"),
+    readFile(new URL("../.agents/skills/develop-kkmod-modules/SKILL.md", import.meta.url), "utf8"),
+  ]);
+
+  assert.doesNotMatch(host, /custom-module-page-header/);
+  assert.doesNotMatch(host, /<CustomModuleIcon/);
+  assert.match(styles, /grid-template-rows:\s*minmax\(0, 1fr\)/);
+  assert.match(
+    styles,
+    /\.custom-module-surface\s*\{[^}]*width:\s*100%;[^}]*height:\s*100%/s,
+  );
+  assert.doesNotMatch(styles, /\.custom-module-page-header/);
+  for (const source of [architecture, hostApi, packaging, skill]) {
+    assert.match(source, /edge.to.edge/i);
+    assert.match(
+      source,
+      /(?:no|does not (?:add|render))[^.\n]*(?:title\/header row|per-Module header)/i,
+    );
+  }
+});
+
+test("Custom Modules receive KKTerm's active UI language", async () => {
+  const host = await readFile(
+    new URL("../src/modules/custom-modules/CustomModuleHost.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(host, /const activeLocale = i18n\.language \|\| i18n\.resolvedLanguage \|\| "en"/);
+  assert.match(host, /locale: activeLocale/);
+  assert.doesNotMatch(host, /locale: i18n\.resolvedLanguage \|\| i18n\.language/);
+});
+
 test("Custom Module host and agent guidance preserve native window thread boundaries", async () => {
   const [architecture, packaging, hostApi, implementationPlan, skill, runtimeReference] =
     await Promise.all([

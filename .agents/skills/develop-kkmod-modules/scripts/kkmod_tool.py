@@ -5,15 +5,17 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+from html.parser import HTMLParser
 import json
 import os
 from pathlib import Path
+import posixpath
 import re
 import stat
 import sys
 import tempfile
 from typing import Any, Iterable
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse, urlsplit
 import zipfile
 
 
@@ -54,6 +56,41 @@ SEMVER = re.compile(
 
 class ContractError(Exception):
     pass
+
+
+class HtmlReferenceParser(HTMLParser):
+    """Collect URL-bearing attributes without trying to interpret the document."""
+
+    URL_ATTRIBUTES = {"data", "href", "poster", "src"}
+    ASSET_HREF_TAGS = {"base", "image", "link", "use"}
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.references: list[tuple[str, str, str]] = []
+
+    def handle_starttag(
+        self, tag: str, attrs: list[tuple[str, str | None]]
+    ) -> None:
+        self._collect(tag, attrs)
+
+    def handle_startendtag(
+        self, tag: str, attrs: list[tuple[str, str | None]]
+    ) -> None:
+        self._collect(tag, attrs)
+
+    def _collect(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        normalized_tag = tag.lower()
+        for name, value in attrs:
+            normalized_name = name.lower()
+            if (
+                normalized_name in self.URL_ATTRIBUTES
+                and value is not None
+                and (
+                    normalized_name != "href"
+                    or normalized_tag in self.ASSET_HREF_TAGS
+                )
+            ):
+                self.references.append((normalized_tag, normalized_name, value))
 
 
 def byte_len(value: str) -> int:
@@ -126,6 +163,49 @@ def validate_portable_path(value: Any, label: str) -> str:
 
 def below(path: str, root: str) -> bool:
     return path.startswith(root + "/")
+
+
+def validate_html_document(package_path: str, raw: bytes) -> None:
+    try:
+        source = raw.decode("utf-8")
+    except UnicodeDecodeError as error:
+        raise ContractError(f"HTML must be UTF-8: {package_path}: {error}") from error
+
+    parser = HtmlReferenceParser()
+    try:
+        parser.feed(source)
+        parser.close()
+    except Exception as error:
+        raise ContractError(f"invalid HTML in {package_path}: {error}") from error
+
+    document_directory = posixpath.dirname(package_path)
+    for _tag, _attribute, reference in parser.references:
+        candidate = reference.strip()
+        if not candidate or candidate.startswith(("#", "?")):
+            continue
+        if candidate.startswith("//"):
+            continue
+        try:
+            parsed = urlsplit(candidate)
+        except ValueError as error:
+            raise ContractError(
+                f"invalid HTML reference in {package_path}: {reference!r}"
+            ) from error
+        if parsed.scheme:
+            continue
+        local_path = unquote(parsed.path).replace("\\", "/")
+        if not local_path:
+            continue
+        if local_path.startswith("/"):
+            resolved = posixpath.normpath(local_path.lstrip("/"))
+        else:
+            resolved = posixpath.normpath(
+                posixpath.join(document_directory, local_path)
+            )
+        if resolved != "dist" and not below(resolved, "dist"):
+            raise ContractError(
+                f"HTML reference escapes dist/: {package_path}: {reference}"
+            )
 
 
 def validate_payload_path(path: str) -> None:
@@ -369,6 +449,8 @@ def inspect_directory(root: Path) -> tuple[dict[str, Any], list[tuple[str, Path]
             raise ContractError("package expands beyond 1 GiB")
         if relative == MANIFEST:
             manifest_raw = path.read_bytes()
+        elif extension(relative) == "html":
+            validate_html_document(relative, path.read_bytes())
     assert manifest_raw is not None
     manifest = load_manifest(manifest_raw)
     verify_required(seen, manifest)
@@ -430,6 +512,8 @@ def inspect_archive(path: Path) -> dict[str, Any]:
                     raise ContractError("archive expands beyond 1 GiB")
                 if raw_name == MANIFEST:
                     manifest_raw = archive.read(info)
+                elif extension(raw_name) == "html":
+                    validate_html_document(raw_name, archive.read(info))
             if manifest_raw is None:
                 raise ContractError(f"archive is missing root {MANIFEST}")
             manifest = load_manifest(manifest_raw)

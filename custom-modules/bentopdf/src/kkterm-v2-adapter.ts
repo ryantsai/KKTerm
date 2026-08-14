@@ -1,3 +1,10 @@
+import i18next, {
+  applyTranslations,
+  supportedLanguages,
+  type SupportedLanguage,
+} from './i18n/i18n.js';
+import { resolveBentoLocale } from './kkterm-locale.js';
+
 interface KKTermContext {
   apiVersion: 2;
   theme: string;
@@ -6,6 +13,7 @@ interface KKTermContext {
 
 interface KKTermHost {
   readonly apiVersion: 2;
+  readonly context: KKTermContext;
   ready(): Promise<boolean>;
   getContext(): Promise<KKTermContext>;
   getCapabilities(): Promise<Record<string, unknown>>;
@@ -19,17 +27,45 @@ interface KKTermHost {
 declare global {
   interface Window {
     KKTerm?: KKTermHost;
+    KKTermBentoContextReady?: Promise<void>;
   }
 }
 
-function applyContext(context: KKTermContext): void {
-  document.documentElement.lang = context.locale;
+function persistHostLocale(locale: string): SupportedLanguage {
+  const bentoLocale = resolveBentoLocale(
+    locale,
+    supportedLanguages
+  ) as SupportedLanguage;
+  localStorage.setItem('i18nextLng', bentoLocale);
+  document.documentElement.lang = bentoLocale;
+  document.documentElement.dir = bentoLocale === 'ar' ? 'rtl' : 'ltr';
+  return bentoLocale;
+}
+
+function applyTheme(context: KKTermContext): void {
   document.documentElement.dataset.theme = context.theme;
   document.documentElement.style.colorScheme = context.theme
     .toLowerCase()
     .includes('dark')
     ? 'dark'
     : 'light';
+}
+
+async function applyContext(context: KKTermContext): Promise<void> {
+  const bentoLocale = persistHostLocale(context.locale);
+  applyTheme(context);
+
+  if (!i18next.isInitialized) return;
+  if (i18next.resolvedLanguage !== bentoLocale) {
+    await i18next.changeLanguage(bentoLocale);
+  }
+  applyTranslations();
+}
+
+const initialContext = window.KKTerm?.context;
+if (initialContext) {
+  persistHostLocale(initialContext.locale);
+  applyTheme(initialContext);
 }
 
 async function initializeKKTermV2(): Promise<void> {
@@ -42,9 +78,13 @@ async function initializeKKTermV2(): Promise<void> {
     host.getContext(),
     host.getCapabilities(),
   ]);
-  applyContext(context);
+  await applyContext(context);
 
-  host.on('contextChanged', applyContext);
+  host.on('contextChanged', (nextContext) => {
+    void applyContext(nextContext).catch((error) => {
+      console.error('Failed to apply the updated KKTerm context', error);
+    });
+  });
   host.on('visibilityChanged', () => undefined);
   host.on('focusChanged', () => undefined);
   host.on('suspending', () => undefined);
@@ -60,7 +100,9 @@ async function initializeKKTermV2(): Promise<void> {
   await host.ready();
 }
 
-void initializeKKTermV2().catch((error) => {
+const contextReady = initializeKKTermV2();
+window.KKTermBentoContextReady = contextReady;
+void contextReady.catch((error) => {
   console.error('Failed to initialize the BentoPDF KKTerm v2 adapter', error);
   void window.KKTerm?.ready().catch((readyError) => {
     console.error('Failed to reveal the BentoPDF startup error', readyError);

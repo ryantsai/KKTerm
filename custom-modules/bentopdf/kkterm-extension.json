@@ -1,7 +1,7 @@
 {
   "id": "com.kkterm.bentopdf",
   "name": "BentoPDF",
-  "version": "2.8.7",
+  "version": "2.8.8",
   "publisher": "KKTerm",
   "summary": "An unofficial self-contained BentoPDF integration for KKTerm API v2.",
   "apiVersion": 2,

@@ -10,6 +10,11 @@ package-specific `kkmodule` origin. It receives only `custom_module_bridge`, not
 KKTerm's ordinary Tauri commands. Package files are served with MIME headers, a
 restrictive CSP, and a restrictive browser Permissions Policy.
 
+The WebView fills the complete Custom Module child panel. KKTerm deliberately
+does not add a contribution title/header row; the package owns its visible
+title, navigation, and application chrome. The Activity Rail and Status Bar
+remain host-owned outside the package surface.
+
 Same-package frames and dedicated Workers are allowed. Remote frames, service
 workers, direct cross-origin fetch/WebSocket/EventSource, cookies, CacheStorage,
 popup windows, device/sensor/media/location APIs, arbitrary paths, shell access,
@@ -57,6 +62,15 @@ the effective structured grant.
 Context includes `apiVersion`, theme, and locale. Subscribe before long startup
 work, apply `contextChanged`, and call `ready()` only when the usable UI or an
 actionable startup error is rendered. The host timeout is 15 seconds.
+
+The host context locale is the sole authority for Module language. Await a
+fresh `getContext()` result before the Module initializes its localization
+layer; the injected `window.KKTerm.context` object can be an earlier navigation
+snapshot. Prefer an exact bundled locale, use a deliberately compatible
+base-locale mapping only when necessary, and fall back to English only when the
+host locale is unavailable. Keep `zh-TW` distinct from `zh-CN`. Apply later
+`contextChanged` locale updates live, and do not persist or expose a separate
+Module language choice that can override KKTerm.
 
 Events are `contextChanged`, `visibilityChanged`, `focusChanged`, `suspending`,
 and `closing`. Suspension/closing are bounded and non-vetoable; flush promptly.
