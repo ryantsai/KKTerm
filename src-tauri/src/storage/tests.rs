@@ -2,6 +2,62 @@ use super::*;
 use rusqlite::params;
 
 #[test]
+fn v62_custom_module_blob_and_secret_tables_upgrade_and_current_reopen_is_write_free() {
+    let db_path = temp_db_path("custom-module-data-v62");
+    {
+        let storage = Storage::open(db_path.clone()).expect("fixture storage opens");
+        storage
+            .with_connection(|connection| {
+                connection
+                    .execute_batch(
+                        "DROP TABLE custom_module_blobs;
+                         DROP TABLE custom_module_secret_refs;
+                         PRAGMA user_version = 61;",
+                    )
+                    .map_err(to_storage_error)
+            })
+            .expect("v61 fixture shape is prepared");
+    }
+
+    let upgraded = Storage::open(db_path.clone()).expect("v61 storage upgrades");
+    let schema_version: i64 = upgraded
+        .with_connection(|connection| {
+            for table in ["custom_module_blobs", "custom_module_secret_refs"] {
+                let count: i64 = connection
+                    .query_row(
+                        "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?1",
+                        [table],
+                        |row| row.get(0),
+                    )
+                    .map_err(to_storage_error)?;
+                assert_eq!(count, 1, "{table} should be created by v62");
+            }
+            let version: i32 = connection
+                .pragma_query_value(None, "user_version", |row| row.get(0))
+                .map_err(to_storage_error)?;
+            assert_eq!(version, SCHEMA_USER_VERSION);
+            connection
+                .pragma_query_value(None, "schema_version", |row| row.get(0))
+                .map_err(to_storage_error)
+        })
+        .expect("v62 schema is present");
+    drop(upgraded);
+
+    let reopened = Storage::open(db_path.clone()).expect("current v62 storage reopens");
+    reopened
+        .with_connection(|connection| {
+            let reopened_schema_version: i64 = connection
+                .pragma_query_value(None, "schema_version", |row| row.get(0))
+                .map_err(to_storage_error)?;
+            assert_eq!(reopened_schema_version, schema_version);
+            Ok(())
+        })
+        .expect("current-version reopen leaves the schema unchanged");
+    drop(reopened);
+    let _ = fs::remove_file(db_path);
+}
+
+#[test]
 fn v61_query_indexes_upgrade_and_current_reopen_preserve_schema_fast_path() {
     let db_path = temp_db_path("query-indexes-v61");
     {
@@ -4087,6 +4143,59 @@ fn database_backup_zip_is_serialized_and_importable() {
 
     assert_eq!(imported.connection_tree.connections.len(), 1);
     assert_eq!(imported.connection_tree.connections[0].id, connection.id);
+}
+
+#[test]
+fn full_settings_backup_round_trips_custom_module_external_data_with_integrity() {
+    let db_path = temp_db_path("database-backup-custom-modules");
+    let data_root = db_path.parent().unwrap().to_path_buf();
+    let module_root = data_root.join("custom-modules");
+    let fixtures = [
+        ("packages/com.example.module/1.0.0/dist/index.html", b"package".as_slice()),
+        ("documents/com.example.module/document.json", b"document".as_slice()),
+        ("blobs/com.example.module/blob.bin", b"blob".as_slice()),
+        ("webview-data/com.example.module/profile.dat", b"browser".as_slice()),
+    ];
+    for (relative, contents) in fixtures {
+        let path = module_root.join(relative);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, contents).unwrap();
+    }
+    let storage = Storage::open(db_path).expect("storage opens");
+    let backup = storage.backup_database().expect("database backup succeeds");
+
+    {
+        let file = File::open(&backup.path).expect("backup opens");
+        let mut archive = ZipArchive::new(file).expect("backup is a zip");
+        let manifest: serde_json::Value = {
+            let mut entry = archive.by_name("manifest.json").expect("manifest exists");
+            let mut json = String::new();
+            entry.read_to_string(&mut json).unwrap();
+            serde_json::from_str(&json).unwrap()
+        };
+        assert_eq!(manifest["version"], 2);
+        assert_eq!(manifest["customModules"]["included"], true);
+        assert!(manifest["sha256"]["kkterm.sqlite3"].is_string());
+        assert!(
+            manifest["sha256"]
+                ["custom-modules/packages/com.example.module/1.0.0/dist/index.html"]
+                .is_string()
+        );
+    }
+
+    fs::write(
+        module_root.join("documents/com.example.module/document.json"),
+        b"changed",
+    )
+    .unwrap();
+    fs::remove_file(module_root.join("blobs/com.example.module/blob.bin")).unwrap();
+    storage
+        .import_database_zip(PathBuf::from(&backup.path))
+        .expect("full settings backup imports");
+
+    for (relative, contents) in fixtures {
+        assert_eq!(fs::read(module_root.join(relative)).unwrap(), contents);
+    }
 }
 
 #[test]

@@ -47,7 +47,7 @@ licenses/LICENSE
 licenses/THIRD_PARTY_NOTICES.txt
 ```
 
-The v1 manifest contains:
+The v2 manifest contains:
 
 - stable reverse-domain package id, display name, version, publisher, summary;
 - host API compatibility version;
@@ -60,7 +60,7 @@ First-party download URL, host API version, checksum, signature, download size,
 declared license, and requested permissions live in the app-owned catalog rather
 than the package manifest.
 
-V1 payloads are static HTML, CSS, JavaScript, JSON, images, fonts, and WASM.
+V2 payloads are static HTML, CSS, JavaScript, JSON, images, fonts, and WASM.
 Node.js is allowed as a package build tool but is not a KKTerm runtime. Packages
 cannot contain executables, native libraries, shell scripts, symbolic links, or
 an application server.
@@ -109,11 +109,13 @@ No external package may load until this gate passes.
   asynchronous. Synchronous construction can deadlock WebView2 and the Tauri
   IPC dispatcher on Windows, preventing readiness and unrelated invokes from
   completing.
-- Implement readiness with a bounded startup timeout, host context,
-  theme/locale/visibility notifications, isolated quota-bound small/document
-  storage, permission-gated native clipboard access, and the mediated
-  external-link API. User-selected browser file inputs remain inside the
-  isolated WebView; v1 exposes no arbitrary host-filesystem API.
+- Implement the complete contract in `docs/KKMOD_HOST_API_V2.md`: readiness,
+  typed errors and capability discovery, lifecycle notifications, structured
+  permissions, isolated JSON/document/blob/browser storage, package-specific
+  origins, same-package workers/frames, standard user-activated external links,
+  opaque-token user-mediated files, origin-bound network fetch, keychain-backed
+  secret references, and Status Bar host UI. Product-data brokers remain future
+  versioned work and are not accepted as v2 permission fields.
 - Participate in the shared native-overlay intersection registry so dialogs and
   popovers cannot render underneath the module WebView.
 

@@ -1,11 +1,12 @@
 use crate::window_state::{MainWindowSettings, validate_main_window_settings};
 use rusqlite::{Connection as SqliteConnection, OptionalExtension, params};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::{
     collections::{BTreeMap, HashMap},
     fs,
     fs::{File, OpenOptions},
-    io::{Read, Write, copy},
+    io::{Read, Write},
     path::{Path, PathBuf},
     sync::Mutex,
     time::{Duration, SystemTime},
@@ -13,7 +14,8 @@ use std::{
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use zip::{ZipArchive, ZipWriter, write::SimpleFileOptions};
 
-const SCHEMA_USER_VERSION: i32 = 61;
+const SCHEMA_USER_VERSION: i32 = 62;
+const MAX_SETTINGS_IMPORT_BYTES: u64 = 16 * 1024 * 1024 * 1024;
 
 const DEFAULT_TERMINAL_OPACITY: u8 = 50;
 
@@ -667,10 +669,31 @@ CREATE TABLE IF NOT EXISTS custom_module_documents (
     PRIMARY KEY (module_id, key)
 );
 
+CREATE TABLE IF NOT EXISTS custom_module_blobs (
+    module_id TEXT NOT NULL REFERENCES custom_modules(id) ON DELETE CASCADE,
+    key TEXT NOT NULL,
+    content_sha256 TEXT NOT NULL,
+    mime_type TEXT NOT NULL,
+    byte_size INTEGER NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (module_id, key)
+);
+
+CREATE TABLE IF NOT EXISTS custom_module_secret_refs (
+    module_id TEXT NOT NULL REFERENCES custom_modules(id) ON DELETE CASCADE,
+    key TEXT NOT NULL,
+    owner_id TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (module_id, key),
+    UNIQUE (owner_id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_custom_module_versions_module
     ON custom_module_versions(module_id, installed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_custom_module_documents_content
     ON custom_module_documents(module_id, content_sha256);
+CREATE INDEX IF NOT EXISTS idx_custom_module_blobs_content
+    ON custom_module_blobs(module_id, content_sha256);
 "#;
 
 pub struct Storage {
@@ -2386,23 +2409,40 @@ impl Storage {
         let mut zip = ZipWriter::new(export_file);
         let options =
             SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
-        zip.start_file("kkterm.sqlite3", options)
-            .map_err(|error| format!("failed to add database to export: {error}"))?;
-        let mut temp_db = File::open(&temp_db_path).map_err(|error| {
-            format!(
-                "failed to read database snapshot {}: {error}",
-                temp_db_path.display()
-            )
-        })?;
-        copy(&mut temp_db, &mut zip)
-            .map_err(|error| format!("failed to write database export: {error}"))?;
+        let mut integrity = BTreeMap::new();
+        add_file_to_settings_zip(
+            &mut zip,
+            &temp_db_path,
+            "kkterm.sqlite3",
+            options,
+            &mut integrity,
+        )?;
+        let data_root = self
+            .db_path
+            .parent()
+            .ok_or_else(|| "database path must include a parent directory".to_string())?;
+        let custom_modules_root = data_root.join("custom-modules");
+        for section in ["packages", "documents", "blobs", "webview-data"] {
+            add_directory_to_settings_zip(
+                &mut zip,
+                &custom_modules_root.join(section),
+                &format!("custom-modules/{section}"),
+                options,
+                &mut integrity,
+            )?;
+        }
         zip.start_file("manifest.json", options)
             .map_err(|error| format!("failed to add export manifest: {error}"))?;
         let manifest = serde_json::json!({
             "product": "KKTerm",
             "format": "kkterm-settings-export",
-            "version": 1,
+            "version": 2,
             "createdAt": OffsetDateTime::now_utc().format(&Rfc3339).unwrap_or_else(|_| "unknown".to_string()),
+            "customModules": {
+                "included": true,
+                "roots": ["packages", "documents", "blobs", "webview-data"]
+            },
+            "sha256": integrity,
         });
         zip.write_all(manifest.to_string().as_bytes())
             .map_err(|error| format!("failed to write export manifest: {error}"))?;
@@ -2417,11 +2457,26 @@ impl Storage {
         import_path: PathBuf,
     ) -> Result<ImportedDatabaseSnapshot, String> {
         let temp_import_path = self.temp_database_path("import");
+        let data_root = self
+            .db_path
+            .parent()
+            .ok_or_else(|| "database path must include a parent directory".to_string())?;
+        let temp_modules_path = data_root.join(format!(
+            ".kkterm-custom-modules-import-{}-{}",
+            std::process::id(),
+            timestamp_for_filename()
+        ));
         remove_file_if_exists(&temp_import_path)?;
-        extract_imported_database(&import_path, &temp_import_path)?;
+        remove_directory_if_exists(&temp_modules_path)?;
+        extract_imported_settings(
+            &import_path,
+            &temp_import_path,
+            &temp_modules_path,
+        )?;
         validate_import_database(&temp_import_path)?;
 
         let backup = self.backup_database()?;
+        replace_imported_custom_module_data(data_root, &temp_modules_path)?;
         {
             let mut connection = self.lock()?;
             let placeholder = SqliteConnection::open_in_memory()
@@ -2444,6 +2499,7 @@ impl Storage {
             *connection = new_connection;
         }
         remove_file_if_exists(&temp_import_path)?;
+        remove_directory_if_exists(&temp_modules_path)?;
         self.record_last_backup_at(&backup.created_at)?;
         Ok(ImportedDatabaseSnapshot {
             general_settings: self.general_settings()?,
@@ -3394,6 +3450,36 @@ impl Storage {
                 )
                 .map_err(to_storage_error)?;
         }
+        // v62: raw Custom Module blobs use content-addressed app-data files.
+        // SQLite retains only package-scoped metadata and integrity hashes.
+        // No current-version reconciliation is required.
+        if stored_version < 62 {
+            connection
+                .execute_batch(
+                    r#"
+                    CREATE TABLE IF NOT EXISTS custom_module_blobs (
+                        module_id TEXT NOT NULL REFERENCES custom_modules(id) ON DELETE CASCADE,
+                        key TEXT NOT NULL,
+                        content_sha256 TEXT NOT NULL,
+                        mime_type TEXT NOT NULL,
+                        byte_size INTEGER NOT NULL,
+                        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        PRIMARY KEY (module_id, key)
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_custom_module_blobs_content
+                        ON custom_module_blobs(module_id, content_sha256);
+                    CREATE TABLE IF NOT EXISTS custom_module_secret_refs (
+                        module_id TEXT NOT NULL REFERENCES custom_modules(id) ON DELETE CASCADE,
+                        key TEXT NOT NULL,
+                        owner_id TEXT NOT NULL,
+                        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        PRIMARY KEY (module_id, key),
+                        UNIQUE (owner_id)
+                    );
+                    "#,
+                )
+                .map_err(to_storage_error)?;
+        }
         connection
             .execute_batch(&format!("PRAGMA user_version = {SCHEMA_USER_VERSION}"))
             .map_err(to_storage_error)?;
@@ -3891,7 +3977,106 @@ fn remove_file_if_exists(path: &Path) -> Result<(), String> {
     }
 }
 
-fn extract_imported_database(import_path: &Path, temp_import_path: &Path) -> Result<(), String> {
+fn add_file_to_settings_zip(
+    zip: &mut ZipWriter<File>,
+    source: &Path,
+    archive_name: &str,
+    options: SimpleFileOptions,
+    integrity: &mut BTreeMap<String, String>,
+) -> Result<(), String> {
+    let metadata = fs::symlink_metadata(source)
+        .map_err(|error| format!("failed to inspect backup file {}: {error}", source.display()))?;
+    if metadata.file_type().is_symlink() || !metadata.is_file() {
+        return Err(format!(
+            "refusing to back up non-regular Custom Module file {}",
+            source.display()
+        ));
+    }
+    zip.start_file(archive_name, options)
+        .map_err(|error| format!("failed to add {archive_name} to export: {error}"))?;
+    let mut file = File::open(source)
+        .map_err(|error| format!("failed to read backup file {}: {error}", source.display()))?;
+    let mut hash = Sha256::new();
+    let mut buffer = [0_u8; 64 * 1024];
+    loop {
+        let read = file
+            .read(&mut buffer)
+            .map_err(|error| format!("failed to read backup file {}: {error}", source.display()))?;
+        if read == 0 {
+            break;
+        }
+        hash.update(&buffer[..read]);
+        zip.write_all(&buffer[..read])
+            .map_err(|error| format!("failed to write {archive_name} to export: {error}"))?;
+    }
+    let digest = hash.finalize();
+    integrity.insert(
+        archive_name.to_string(),
+        digest
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect::<String>(),
+    );
+    Ok(())
+}
+
+fn add_directory_to_settings_zip(
+    zip: &mut ZipWriter<File>,
+    source: &Path,
+    archive_root: &str,
+    options: SimpleFileOptions,
+    integrity: &mut BTreeMap<String, String>,
+) -> Result<(), String> {
+    if !source.exists() {
+        return Ok(());
+    }
+    let source_metadata = fs::symlink_metadata(source)
+        .map_err(|error| format!("failed to inspect backup directory {}: {error}", source.display()))?;
+    if source_metadata.file_type().is_symlink() || !source_metadata.is_dir() {
+        return Err(format!(
+            "refusing to back up non-directory Custom Module root {}",
+            source.display()
+        ));
+    }
+    let mut entries = fs::read_dir(source)
+        .map_err(|error| format!("failed to read backup directory {}: {error}", source.display()))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|error| format!("failed to inspect backup directory {}: {error}", source.display()))?;
+    entries.sort_by_key(|entry| entry.file_name());
+    for entry in entries {
+        let path = entry.path();
+        let name = entry
+            .file_name()
+            .into_string()
+            .map_err(|_| format!("backup path is not valid UTF-8: {}", path.display()))?;
+        let archive_name = format!("{archive_root}/{name}");
+        let metadata = fs::symlink_metadata(&path)
+            .map_err(|error| format!("failed to inspect backup path {}: {error}", path.display()))?;
+        if metadata.file_type().is_symlink() {
+            return Err(format!(
+                "refusing to follow symlink in Custom Module data: {}",
+                path.display()
+            ));
+        }
+        if metadata.is_dir() {
+            add_directory_to_settings_zip(zip, &path, &archive_name, options, integrity)?;
+        } else if metadata.is_file() {
+            add_file_to_settings_zip(zip, &path, &archive_name, options, integrity)?;
+        } else {
+            return Err(format!(
+                "refusing to back up non-regular Custom Module path {}",
+                path.display()
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn extract_imported_settings(
+    import_path: &Path,
+    temp_import_path: &Path,
+    temp_modules_path: &Path,
+) -> Result<(), String> {
     let import_file = File::open(import_path).map_err(|error| {
         format!(
             "failed to open import file {}: {error}",
@@ -3900,19 +4085,179 @@ fn extract_imported_database(import_path: &Path, temp_import_path: &Path) -> Res
     })?;
     let mut archive = ZipArchive::new(import_file)
         .map_err(|error| format!("import file is not a valid KKTerm export zip: {error}"))?;
-    let mut db_file = archive
-        .by_name("kkterm.sqlite3")
-        .map_err(|_| "import zip does not contain kkterm.sqlite3".to_string())?;
-    let mut contents = Vec::new();
-    db_file
-        .read_to_end(&mut contents)
-        .map_err(|error| format!("failed to read imported database: {error}"))?;
-    fs::write(temp_import_path, contents).map_err(|error| {
+    let manifest = {
+        let mut manifest_file = archive
+            .by_name("manifest.json")
+            .map_err(|_| "import zip does not contain manifest.json".to_string())?;
+        if manifest_file.size() > 4 * 1024 * 1024 {
+            return Err("import manifest exceeds the 4 MiB limit".into());
+        }
+        let mut contents = String::new();
+        manifest_file
+            .read_to_string(&mut contents)
+            .map_err(|error| format!("failed to read import manifest: {error}"))?;
+        serde_json::from_str::<serde_json::Value>(&contents)
+            .map_err(|error| format!("import manifest is invalid JSON: {error}"))?
+    };
+    if manifest.get("product").and_then(|value| value.as_str()) != Some("KKTerm")
+        || manifest.get("format").and_then(|value| value.as_str())
+            != Some("kkterm-settings-export")
+    {
+        return Err("import manifest is not a KKTerm settings export".into());
+    }
+    let version = manifest
+        .get("version")
+        .and_then(|value| value.as_u64())
+        .ok_or_else(|| "import manifest does not contain a valid version".to_string())?;
+    if !matches!(version, 1 | 2) {
+        return Err(format!("unsupported KKTerm settings export version {version}"));
+    }
+    let integrity = manifest
+        .get("sha256")
+        .and_then(|value| value.as_object());
+    if version == 2 && integrity.is_none() {
+        return Err("settings export v2 does not contain integrity metadata".into());
+    }
+
+    fs::create_dir_all(temp_modules_path).map_err(|error| {
         format!(
-            "failed to write imported database snapshot {}: {error}",
-            temp_import_path.display()
+            "failed to create Custom Module import staging directory {}: {error}",
+            temp_modules_path.display()
         )
-    })
+    })?;
+    let mut total_bytes = 0_u64;
+    let mut found_database = false;
+    let mut extracted_hashes = BTreeMap::<String, String>::new();
+    for index in 0..archive.len() {
+        let mut entry = archive
+            .by_index(index)
+            .map_err(|error| format!("failed to inspect import entry: {error}"))?;
+        let name = entry.name().replace('\\', "/");
+        if name == "manifest.json" || name.ends_with('/') {
+            continue;
+        }
+        if entry.unix_mode().is_some_and(|mode| mode & 0o170000 == 0o120000) {
+            return Err(format!("import contains a forbidden symlink entry: {name}"));
+        }
+        let relative = Path::new(&name);
+        if relative
+            .components()
+            .any(|component| !matches!(component, std::path::Component::Normal(_)))
+        {
+            return Err(format!("import contains an unsafe path: {name}"));
+        }
+        let target = if name == "kkterm.sqlite3" {
+            found_database = true;
+            temp_import_path.to_path_buf()
+        } else if let Some(relative) = name.strip_prefix("custom-modules/") {
+            let mut components = Path::new(relative).components();
+            let Some(std::path::Component::Normal(root)) = components.next() else {
+                return Err(format!("import contains an unsafe Custom Module path: {name}"));
+            };
+            if !matches!(root.to_str(), Some("packages" | "documents" | "blobs" | "webview-data")) {
+                return Err(format!("import contains an unsupported Custom Module root: {name}"));
+            }
+            temp_modules_path.join(relative)
+        } else {
+            return Err(format!("import contains an unsupported entry: {name}"));
+        };
+        total_bytes = total_bytes
+            .checked_add(entry.size())
+            .ok_or_else(|| "import expanded size overflowed".to_string())?;
+        if total_bytes > MAX_SETTINGS_IMPORT_BYTES {
+            return Err("import expands beyond the 16 GiB safety limit".into());
+        }
+        if let Some(parent) = target.parent() {
+            fs::create_dir_all(parent).map_err(|error| {
+                format!("failed to create import directory {}: {error}", parent.display())
+            })?;
+        }
+        let mut output = File::create(&target)
+            .map_err(|error| format!("failed to create import file {}: {error}", target.display()))?;
+        let mut hash = Sha256::new();
+        let mut buffer = [0_u8; 64 * 1024];
+        loop {
+            let read = entry
+                .read(&mut buffer)
+                .map_err(|error| format!("failed to read import entry {name}: {error}"))?;
+            if read == 0 {
+                break;
+            }
+            hash.update(&buffer[..read]);
+            output
+                .write_all(&buffer[..read])
+                .map_err(|error| format!("failed to write import file {}: {error}", target.display()))?;
+        }
+        output
+            .sync_all()
+            .map_err(|error| format!("failed to flush import file {}: {error}", target.display()))?;
+        let digest = hash.finalize();
+        extracted_hashes.insert(
+            name,
+            digest
+                .iter()
+                .map(|byte| format!("{byte:02x}"))
+                .collect::<String>(),
+        );
+    }
+    if !found_database {
+        return Err("import zip does not contain kkterm.sqlite3".into());
+    }
+    if let Some(expected) = integrity {
+        if expected.len() != extracted_hashes.len() {
+            return Err("settings export integrity metadata does not match its files".into());
+        }
+        for (name, actual_hash) in extracted_hashes {
+            let expected_hash = expected
+                .get(&name)
+                .and_then(|value| value.as_str())
+                .ok_or_else(|| format!("settings export has no integrity hash for {name}"))?;
+            if !expected_hash.eq_ignore_ascii_case(&actual_hash) {
+                return Err(format!("settings export integrity check failed for {name}"));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn remove_directory_if_exists(path: &Path) -> Result<(), String> {
+    match fs::remove_dir_all(path) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(format!("failed to remove directory {}: {error}", path.display())),
+    }
+}
+
+fn replace_imported_custom_module_data(
+    data_root: &Path,
+    imported_root: &Path,
+) -> Result<(), String> {
+    let target = data_root.join("custom-modules");
+    let previous = data_root.join(format!(
+        ".kkterm-custom-modules-before-import-{}-{}",
+        std::process::id(),
+        timestamp_for_filename()
+    ));
+    remove_directory_if_exists(&previous)?;
+    if target.exists() {
+        fs::rename(&target, &previous).map_err(|error| {
+            format!(
+                "failed to stage existing Custom Module data {}: {error}",
+                target.display()
+            )
+        })?;
+    }
+    if let Err(error) = fs::rename(imported_root, &target) {
+        if previous.exists() {
+            let _ = fs::rename(&previous, &target);
+        }
+        return Err(format!(
+            "failed to activate imported Custom Module data {}: {error}",
+            target.display()
+        ));
+    }
+    remove_directory_if_exists(&previous)?;
+    Ok(())
 }
 
 fn validate_import_database(path: &Path) -> Result<(), String> {

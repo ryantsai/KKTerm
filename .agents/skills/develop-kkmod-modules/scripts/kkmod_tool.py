@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate and reproducibly package KKTerm Custom Module host API v1 archives."""
+"""Validate and reproducibly package KKTerm Custom Module host API v2 archives."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ import zipfile
 
 
 MANIFEST = "kkterm-extension.json"
-HOST_API_VERSION = 1
+HOST_API_VERSION = 2
 MAX_ARCHIVE_BYTES = 256 * 1024 * 1024
 MAX_ENTRIES = 10_000
 MAX_EXPANDED_BYTES = 512 * 1024 * 1024
@@ -26,7 +26,11 @@ MAX_FILE_BYTES = 128 * 1024 * 1024
 MAX_MANIFEST_BYTES = 1024 * 1024
 MAX_RATIO = 1_000
 
-ALLOWED_PERMISSIONS = {"storage", "documentStorage", "openExternal", "clipboard"}
+BOOLEAN_PERMISSIONS = {
+    "storage", "documentStorage", "blobStorage", "browserStorage",
+    "openExternal", "clipboard", "secretReferences", "hostUi",
+}
+PERMISSION_KEYS = BOOLEAN_PERMISSIONS | {"files", "networkFetch"}
 ALLOWED_DIST_EXTENSIONS = {
     "html", "css", "js", "mjs", "json", "map", "wasm", "svg", "png",
     "jpg", "jpeg", "gif", "webp", "avif", "ico", "woff", "woff2", "ttf",
@@ -176,14 +180,70 @@ def validate_manifest(data: Any) -> dict[str, Any]:
     if "noticesFile" in license_data and license_data["noticesFile"] is not None:
         validate_portable_path(license_data["noticesFile"], "manifest.license.noticesFile")
 
-    permissions = manifest.get("permissions", [])
-    if not isinstance(permissions, list) or not all(isinstance(item, str) for item in permissions):
-        raise ContractError("manifest.permissions must be an array of strings")
-    if len(set(permissions)) != len(permissions):
-        raise ContractError("manifest.permissions contains a duplicate")
-    unknown_permissions = sorted(set(permissions) - ALLOWED_PERMISSIONS)
-    if unknown_permissions:
-        raise ContractError(f"unsupported permission(s): {', '.join(unknown_permissions)}")
+    permissions = require_object(manifest.get("permissions", {}), "manifest.permissions")
+    strict_keys(
+        permissions,
+        required=set(),
+        optional=PERMISSION_KEYS,
+        label="manifest.permissions",
+    )
+    for permission in BOOLEAN_PERMISSIONS:
+        if permission in permissions and not isinstance(permissions[permission], bool):
+            raise ContractError(f"manifest.permissions.{permission} must be a boolean")
+    if "files" in permissions and permissions["files"] is not None:
+        files = require_object(permissions["files"], "manifest.permissions.files")
+        strict_keys(files, required=set(), optional={"open", "save", "extensions"}, label="manifest.permissions.files")
+        for operation in ("open", "save"):
+            if operation in files and not isinstance(files[operation], bool):
+                raise ContractError(f"manifest.permissions.files.{operation} must be a boolean")
+        if not files.get("open", False) and not files.get("save", False):
+            raise ContractError("manifest.permissions.files must enable open, save, or both")
+        extensions = files.get("extensions", [])
+        if not isinstance(extensions, list) or len(extensions) > 128:
+            raise ContractError("manifest.permissions.files.extensions must be an array of at most 128 items")
+        if len(set(extensions)) != len(extensions):
+            raise ContractError("manifest.permissions.files.extensions contains a duplicate")
+        for item in extensions:
+            if not isinstance(item, str) or not re.fullmatch(r"[a-z0-9]{1,32}", item):
+                raise ContractError(f"invalid file extension: {item!r}")
+    if "networkFetch" in permissions and permissions["networkFetch"] is not None:
+        network = require_object(permissions["networkFetch"], "manifest.permissions.networkFetch")
+        strict_keys(
+            network,
+            required={"origins"},
+            optional={"methods", "allowPrivateNetwork", "maxResponseBytes"},
+            label="manifest.permissions.networkFetch",
+        )
+        origins = network["origins"]
+        allow_private = network.get("allowPrivateNetwork", False)
+        if not isinstance(allow_private, bool):
+            raise ContractError("manifest.permissions.networkFetch.allowPrivateNetwork must be a boolean")
+        if not isinstance(origins, list) or not 1 <= len(origins) <= 64 or len(set(origins)) != len(origins):
+            raise ContractError("manifest.permissions.networkFetch.origins must contain 1 to 64 unique origins")
+        for origin in origins:
+            origin = require_string(origin, "networkFetch origin", max_bytes=2048)
+            parsed = urlparse(origin)
+            if (
+                parsed.scheme not in ({"https", "http"} if allow_private else {"https"})
+                or not parsed.hostname
+                or parsed.username is not None
+                or parsed.password is not None
+                or parsed.path not in {"", "/"}
+                or parsed.params
+                or parsed.query
+                or parsed.fragment
+                or origin != f"{parsed.scheme}://{parsed.netloc}"
+            ):
+                raise ContractError(f"networkFetch origin must be canonical and path-free: {origin}")
+        methods = network.get("methods", ["GET"])
+        allowed_methods = {"GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"}
+        if not isinstance(methods, list) or not 1 <= len(methods) <= 8 or len(set(methods)) != len(methods):
+            raise ContractError("manifest.permissions.networkFetch.methods must contain 1 to 8 unique methods")
+        if any(method not in allowed_methods for method in methods):
+            raise ContractError("manifest.permissions.networkFetch.methods contains an unsupported method")
+        maximum = network.get("maxResponseBytes", 16 * 1024 * 1024)
+        if not isinstance(maximum, int) or isinstance(maximum, bool) or not 1 <= maximum <= 64 * 1024 * 1024:
+            raise ContractError("manifest.permissions.networkFetch.maxResponseBytes must be 1 to 67108864")
 
     modules = manifest["modules"]
     if not isinstance(modules, list) or not 1 <= len(modules) <= 64:
@@ -195,7 +255,7 @@ def validate_manifest(data: Any) -> dict[str, Any]:
         strict_keys(
             contribution,
             required={"id", "title", "entrypoint"},
-            optional={"icon", "railVisible"},
+            optional={"icon", "railVisible", "routing"},
             label=label,
         )
         contribution_id = validate_identifier(contribution["id"], f"{label}.id")
@@ -212,6 +272,8 @@ def validate_manifest(data: Any) -> dict[str, Any]:
                 raise ContractError(f"{label}.icon must be below dist/")
         if "railVisible" in contribution and not isinstance(contribution["railVisible"], bool):
             raise ContractError(f"{label}.railVisible must be a boolean")
+        if contribution.get("routing", "static") not in {"static", "spa"}:
+            raise ContractError(f"{label}.routing must be static or spa")
     return manifest
 
 
@@ -315,7 +377,7 @@ def inspect_directory(root: Path) -> tuple[dict[str, Any], list[tuple[str, Path]
         "version": manifest["version"],
         "fileCount": len(files),
         "expandedBytes": expanded,
-        "permissions": manifest.get("permissions", []),
+        "permissions": manifest.get("permissions", {}),
         "contributions": [item["id"] for item in manifest["modules"]],
     }, files
 
@@ -381,7 +443,7 @@ def inspect_archive(path: Path) -> dict[str, Any]:
         "expandedBytes": expanded,
         "fileCount": file_count,
         "sha256": sha256(path),
-        "permissions": manifest.get("permissions", []),
+        "permissions": manifest.get("permissions", {}),
         "contributions": [item["id"] for item in manifest["modules"]],
     }
 

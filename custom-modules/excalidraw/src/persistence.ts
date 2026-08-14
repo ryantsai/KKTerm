@@ -8,6 +8,7 @@ import type {
 import type { KKTermHost } from "./kkterm";
 
 const SCENE_KEY = "scene";
+const LIBRARY_KEY = "library";
 const ASSET_KEY_PREFIX = "asset:";
 const FORMAT_VERSION = 1;
 
@@ -44,9 +45,18 @@ function assetKey(id: string): string {
 export async function loadDrawing(
   host: KKTermHost,
 ): Promise<ExcalidrawInitialDataState | null> {
-  const stored = parseStoredScene(await host.documents.get(SCENE_KEY));
-  if (!stored) {
+  const [sceneValue, libraryValue] = await Promise.all([
+    host.documents.get(SCENE_KEY),
+    host.documents.get(LIBRARY_KEY),
+  ]);
+  const stored = parseStoredScene(sceneValue);
+  const libraryItems = Array.isArray(libraryValue) ? libraryValue : undefined;
+  if (!stored && !libraryItems) {
     return null;
+  }
+
+  if (!stored) {
+    return { libraryItems } as ExcalidrawInitialDataState;
   }
 
   const files: BinaryFiles = {};
@@ -63,6 +73,7 @@ export async function loadDrawing(
   return {
     ...stored.document,
     files,
+    libraryItems,
   };
 }
 
@@ -102,6 +113,16 @@ export class DrawingPersistence {
       window.clearTimeout(this.timer);
     }
     this.flush();
+  }
+
+  saveLibrary(
+    libraryItems: Parameters<NonNullable<ExcalidrawProps["onLibraryChange"]>>[0],
+  ): Promise<void> {
+    this.saveChain = this.saveChain
+      .then(() => this.host.documents.set(LIBRARY_KEY, libraryItems))
+      .then(() => undefined)
+      .catch(this.onError);
+    return this.saveChain;
   }
 
   private async save([elements, appState, files]: SceneChange): Promise<void> {

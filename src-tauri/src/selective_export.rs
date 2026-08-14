@@ -2838,6 +2838,8 @@ mod tests {
             "custom_module_permissions",
             "custom_module_storage",
             "custom_module_documents",
+            "custom_module_blobs",
+            "custom_module_secret_refs",
         ];
         let covered: Vec<&str> = SEGMENT_ORDER
             .iter()

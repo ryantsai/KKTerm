@@ -1,6 +1,6 @@
 ---
 name: develop-kkmod-modules
-description: Design, scaffold, adapt, build, validate, package, and prepare publication metadata for KKTerm Custom Modules (`.kkmod`). Use when Codex needs to create a KKMod module, convert an existing browser app such as Excalidraw into an optional KKTerm Module, troubleshoot package validation or host API integration, produce a signed-catalog entry, or review a module for KKTerm host API v1 compatibility and licensing.
+description: Design, scaffold, adapt, build, validate, package, and prepare publication metadata for KKTerm Custom Modules (`.kkmod`). Use when Codex needs to create a KKMod module, convert an existing browser app such as Excalidraw into an optional KKTerm Module, troubleshoot package validation or host API integration, produce a signed-catalog entry, or review a module for KKTerm host API v2 compatibility and licensing.
 ---
 
 # Develop KKMod Modules
@@ -14,10 +14,10 @@ Before creating, editing, generating, installing, or packaging module files:
 1. Inspect the proposed app and identify whether it needs a server, remote APIs, workers, frames, popups, persistent browser storage, clipboard/device APIs, arbitrary filesystem access, or Node.js at runtime.
 2. Present this warning, adapted with concrete findings:
 
-   > KKMod host API v1 runs only local static browser assets in an isolated native WebView. It provides no HTTP/Node.js runtime, remote network access, workers, frames, popups, arbitrary filesystem or terminal access, persistent browser storage, media/device/sensor APIs, or direct Tauri commands. Durable non-secret settings, large JSON documents/encoded blobs, external HTTP(S) links, and WebView clipboard access require the declared `storage`, `documentStorage`, `openExternal`, and `clipboard` permissions respectively. The Module must signal readiness within 15 seconds.
+   > KKMod host API v2 runs local static browser assets in an isolated native WebView. It provides no HTTP/Node.js runtime, service workers, remote frames, arbitrary shell/terminal/database access, media/device/sensor APIs, product-data brokers, or direct Tauri commands. Durable JSON, raw blobs, browser-native persistence, external links, clipboard, user-mediated files, bounded outbound requests, secret references, and Status Bar host UI each require an explicit structured permission. The Module must signal readiness within 15 seconds.
 
-3. Classify the request as **compatible**, **compatible with adaptation**, or **incompatible with v1**. Name every required adaptation and requested permission.
-4. Ask: **“Proceed with KKMod host API v1 under these constraints?”**
+3. Classify the request as **compatible**, **compatible with adaptation**, or **incompatible with v2**. Name every required adaptation and requested permission.
+4. Ask: **“Proceed with KKMod host API v2 under these constraints?”**
 5. Stop before file mutations until the user explicitly confirms. Read-only inspection is allowed. If incompatible, propose a static/offline design or a host-platform change; do not silently remove core behavior.
 
 Present this gate once per development task. A user's explicit acceptance of these exact constraints in the current request counts as confirmation, but still report the compatibility classification before editing.
@@ -38,9 +38,9 @@ When changing the KKTerm host itself, keep every Tauri command that constructs a
 1. **Define the outcome.** Record the package id, publisher, semantic version, license, contribution ids/titles/icons, offline behavior, durable-data needs, external links, and source/build toolchain. For KKTerm-curated publication, every rail-visible contribution needs distinct, attributable SVG artwork suitable for a monochrome Activity Rail mask.
 2. **Audit feasibility.** Inventory every runtime URL, dependency, worker/service worker, iframe, inline script, navigation route, browser persistence call, device API, secret, font, asset, and license. Resolve each against the runtime reference.
 3. **Choose the starting point.** For a new module, copy `assets/starter-kkmod/`. For an existing app, preserve its source project but emit a self-contained production build into `dist/`.
-4. **Adapt for isolation.** Use relative local asset URLs, external script files, hash/in-memory routing, browser file inputs for deliberate imports, and the narrow `window.KKTerm` bridge. Remove runtime CDN/API dependencies. Do not expose secrets through module storage.
-5. **Declare least privilege.** Request `storage` only for small durable non-secret JSON settings, `documentStorage` only for large JSON documents or encoded browser blobs, `openExternal` only when the Module opens HTTP(S) URLs in the system browser, and `clipboard` only when users need copy/paste or image transfer through the OS clipboard.
-6. **Integrate lifecycle.** Read initial context, subscribe to `contextChanged`, apply theme/locale changes, handle bridge rejections, and call `window.KKTerm.ready()` only after the usable UI has initialized. Finish within 15 seconds.
+4. **Adapt for isolation.** Use relative local asset URLs, external script files, declared `static`/`spa` routing, same-package workers/frames, and the narrow `window.KKTerm` bridge. Replace runtime CDNs and direct cross-origin fetches with packaged assets or `network.fetch`. Do not expose secrets through module storage.
+5. **Declare least privilege.** Use the structured permission object. Request only the store, browser persistence, clipboard, external link, file filters, exact network origins/methods, secret references, and host UI the Module actually uses. Product-data proposal permissions are not part of v2.
+6. **Integrate lifecycle.** Read initial context/capabilities; subscribe to `contextChanged`, `visibilityChanged`, `focusChanged`, `suspending`, and `closing`; apply theme/locale changes; handle typed bridge errors; and call `window.KKTerm.ready()` only after the usable UI has initialized. Finish within 15 seconds.
 7. **Audit licenses.** Include the package's license and all required third-party notices. Recheck bundled dependencies, fonts, icons, examples, and media for the exact release version. Record the source and license of curated Activity Rail artwork.
 8. **Validate and package.** Run:
 

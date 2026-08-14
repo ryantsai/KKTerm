@@ -1,5 +1,5 @@
 export interface KKTermContext {
-  apiVersion: 1;
+  apiVersion: 2;
   theme: string;
   locale: string;
 }
@@ -12,10 +12,11 @@ export interface KKTermDocumentMetadata {
 }
 
 export interface KKTermHost {
-  readonly apiVersion: 1;
+  readonly apiVersion: 2;
   readonly context: KKTermContext;
   ready(): Promise<boolean>;
   getContext(): Promise<KKTermContext>;
+  getCapabilities(): Promise<Record<string, unknown>>;
   openExternal(url: string): Promise<boolean>;
   documents: {
     get(key: string): Promise<unknown | null>;
@@ -23,9 +24,10 @@ export interface KKTermHost {
     delete(key: string): Promise<boolean>;
     list(): Promise<KKTermDocumentMetadata[]>;
   };
+  on(event: "contextChanged", listener: (context: KKTermContext) => void): () => boolean;
   on(
-    event: "contextChanged",
-    listener: (context: KKTermContext) => void,
+    event: "visibilityChanged" | "focusChanged" | "suspending" | "closing",
+    listener: (detail: unknown) => void,
   ): () => boolean;
 }
 
@@ -36,8 +38,8 @@ declare global {
 }
 
 export function getKKTerm(): KKTermHost {
-  if (!window.KKTerm || window.KKTerm.apiVersion !== 1) {
-    throw new Error("KKTerm host API v1 is unavailable.");
+  if (!window.KKTerm || window.KKTerm.apiVersion !== 2) {
+    throw new Error("KKTerm host API v2 is unavailable.");
   }
   return window.KKTerm;
 }

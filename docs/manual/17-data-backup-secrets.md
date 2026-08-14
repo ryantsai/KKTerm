@@ -10,7 +10,7 @@
 
 KKTerm is local-first. Two distinct store families:
 
-1. **SQLite** — non-secret durable data. Lives on the user's machine, never sent off-device. Holds Connections, Dashboard Views and Widget Instances, Custom Widgets, Settings rows, assistant chat history, and Custom Module metadata plus permission-checked storage.
+1. **SQLite and app-data files** — non-secret durable data. They live on the user's machine and are never sent off-device. SQLite holds Connections, Dashboard Views and Widget Instances, Custom Widgets, Settings rows, assistant chat history, and Custom Module metadata plus small permission-checked storage. Custom Module packages, documents, blobs, and isolated browser profiles live below the app-data `custom-modules` directory.
 2. **Credential backend** — secrets. Holds Connection passwords, URL credentials, AI provider API keys, email API keys / SMTP passwords, widget secrets, MCP server secrets. Windows and macOS default to the OS keystore and may optionally use the encrypted SQLite store. Linux uses the encrypted SQLite store only.
 
 Terminal contents are **not** logged by default. There is no telemetry and no cloud sync.
@@ -28,11 +28,14 @@ Do **not** put live session state (open Tabs, focused Pane, in-flight Sessions) 
 ## Automatic backup snapshots
 
 Optional `.kkmod` package payloads live beside, not inside, SQLite. Selective
-exports do not include Custom Modules. Full database snapshots retain installed
-metadata and bridge storage but not package files; after restoring on a machine
-without the matching app-data package directory, Settings marks the Module
-package missing and it must be reinstalled. Copying an entire stopped portable
-folder does include its package directory as part of the portable backup unit.
+exports do not include Custom Modules. Full Settings snapshot format 2 includes
+SQLite plus installed package files, document/blob content, isolated browser
+profiles, and SHA-256 integrity metadata. Import verifies the complete payload
+before replacing the active database and Custom Module data. OS-keystore secret
+values remain bound to the current account/device; only their non-secret
+references travel in SQLite. Encrypted-database secret values do travel with
+SQLite. Copying an entire stopped portable folder also includes all Custom
+Module data as part of the portable backup unit.
 
 Full database snapshot backups may run at:
 

@@ -6,7 +6,7 @@ param(
     [string]$BaseUrl,
     [Parameter(Mandatory = $true)]
     [string]$SigningKeyPath,
-    [string]$CatalogPath = "catalog/v1/catalog.json",
+    [string]$CatalogPath = "catalog/v2/catalog.json",
     [ValidateRange(1, 45)]
     [int]$ExpiresDays = 30,
     [string]$KkmodToolPath = "$env:USERPROFILE\.codex\skills\develop-kkmod-modules\scripts\kkmod_tool.py",

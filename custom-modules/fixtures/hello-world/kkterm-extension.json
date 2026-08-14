@@ -4,19 +4,23 @@
   "version": "1.0.0",
   "publisher": "KKTerm",
   "summary": "Exercises the isolated Custom Module host API.",
-  "apiVersion": 1,
+  "apiVersion": 2,
   "homepage": "https://kkterm.ryantsai.com",
   "license": {
     "name": "MIT",
     "file": "licenses/LICENSE"
   },
-  "permissions": ["storage", "openExternal"],
+  "permissions": {
+    "storage": true,
+    "openExternal": true
+  },
   "modules": [
     {
       "id": "fixture",
       "title": "Module Fixture",
       "entrypoint": "dist/index.html",
-      "railVisible": true
+      "railVisible": true,
+      "routing": "static"
     }
   ]
 }

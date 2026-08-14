@@ -91,6 +91,9 @@ const NON_SEARCHABLE_KEYS: Record<SettingsSectionId, readonly string[]> = {
     "settings.customModulesDownloading", "settings.customModulesDownloadCancel",
     "settings.customModulesIncompatible",
     "settings.customModulesReadyTimeout",
+    "settings.customModulesDataClearedNotice", "settings.customModulesDataUsage",
+    "settings.customModulesDataUsageUnavailable", "settings.customModulesClearDataDisabled",
+    "settings.customModulesClearDataMessage", "settings.customModulesClearDataTitle",
   ],
   "credentials-settings": [
     "settings.credentialDeleted", "settings.credentialStorageActive",

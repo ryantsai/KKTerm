@@ -20,8 +20,9 @@ licenses/THIRD_PARTY_NOTICES.txt
 
 All asset references must be relative so they work below the app-owned
 `kkmodule` origin. Runtime scripts, styles, images, fonts, and WASM must be local
-package files. V1 CSP blocks network connections, remote scripts, frames,
-workers, objects, and form submission. A restrictive browser Permissions Policy
+package files. V2 CSP blocks direct network connections, remote scripts/frames,
+service workers, objects, and form submission while allowing same-package
+frames and dedicated workers. A restrictive browser Permissions Policy
 also denies device, sensor, media-capture, location, payment, and similar
 ambient host capabilities. Clipboard access is available only to packages that
 declare and are granted `clipboard`.
@@ -30,15 +31,17 @@ Without that permission, `navigator.clipboard` is present only as a
 nonfunctional compatibility shim. Every read or write rejects with
 `NotAllowedError` and cannot expose the operating-system clipboard.
 
-Durable browser `localStorage`, IndexedDB, Cache Storage, cookies, and origin
-storage are unavailable to package code; `localStorage` is an in-memory
-compatibility shim for the current Module session. Declare `storage` and use
-`window.KKTerm.storage` for quota-bound durable non-secret data. A browser file
-input can still read a file the user deliberately selects, but v1 has no
-arbitrary filesystem bridge.
+Declare `browserStorage` to retain package-origin `localStorage`, IndexedDB, and
+the Storage API across launches. Without it, `localStorage` is an in-memory
+shim and IndexedDB/Storage are disabled. Cookies, Cache Storage, and service
+workers stay disabled. Every package has a distinct stable origin/profile.
+Declare `storage` for quota-bound durable non-secret JSON. User-mediated native
+open/save uses the structured `files` grant and opaque session tokens; paths are
+never returned to package code.
 
-Large non-secret JSON documents and encoded browser blobs use the separate
-`documentStorage` permission and `window.KKTerm.documents` API. The host stores
+Large non-secret JSON documents use the separate `documentStorage` permission
+and `window.KKTerm.documents` API. Raw binary data uses `blobStorage` and the
+chunked `window.KKTerm.blobs` API. The host stores
 immutable SHA-256-addressed JSON files outside SQLite and keeps only key/hash/
 size/timestamp metadata in SQLite. The package quota is 512 MiB, each document
 is capped at 64 MiB, and a package may keep at most 4,096 document keys.
@@ -69,7 +72,7 @@ can remain pending. Keep the command-boundary policy test and verify startup in
 the real Windows Tauri runtime whenever this path changes.
 
 The development fixture under `custom-modules/fixtures/hello-world/` exercises
-the v1 host context, theme/locale event, isolated storage, readiness handshake,
+the v2 host context, lifecycle events, isolated storage, readiness handshake,
 and external-link bridge. Build its installable archive with:
 
 ```bash
@@ -100,7 +103,7 @@ The publication workflow:
    Base64 signature, declared license, requested permissions, and download size
    to a signed online catalog payload. Upload this catalog last.
 6. Optionally snapshot the current online entries into the bundled
-   `custom-modules/catalog.v1.json` baseline before a KKTerm release.
+   `custom-modules/catalog.v2.json` baseline before a KKTerm release.
 7. Provide the matching public key as
    `KKTERM_CUSTOM_MODULE_CATALOG_PUBLIC_KEY` while building KKTerm. A build
    without that release key deliberately cannot verify catalog packages.
@@ -116,9 +119,10 @@ renewal, cache behavior, and recovery.
 Excalidraw should live in a separate package/release project and remain absent
 from the KKTerm installer. Build its self-contained production web output and a
 small adapter that calls `window.KKTerm.ready()`, applies host context changes,
-stores scene JSON and individual encoded image assets through
-`window.KKTerm.documents`, and maps deliberate import/export to browser file
-APIs.
+stores scene JSON, library items, and individual encoded image assets through
+`window.KKTerm.documents`, and maps deliberate import/export to browser or
+opaque-token host file APIs. Standard user-activated library links are mediated
+through `openExternal` by the host.
 
 Excalidraw is MIT-licensed, so redistribution and modification are permitted if
 the copyright and license notice remain with the distributed software. The

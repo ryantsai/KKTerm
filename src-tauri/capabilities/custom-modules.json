@@ -3,6 +3,9 @@
   "identifier": "custom-modules",
   "description": "Narrow bridge for isolated user-installed Custom Module WebViews",
   "windows": ["custom-module-*"],
+  "remote": {
+    "urls": ["http://kkmodule.m-*/*"]
+  },
   "permissions": [
     "allow-custom-module-bridge"
   ]

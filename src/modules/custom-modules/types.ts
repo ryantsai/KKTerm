@@ -10,6 +10,42 @@ export interface CustomModuleContribution {
   icon?: string | null;
   entrypoint: string;
   railVisible: boolean;
+  routing: "static" | "spa";
+}
+
+export interface CustomModuleFilePermission {
+  open: boolean;
+  save: boolean;
+  extensions: string[];
+}
+
+export interface CustomModuleNetworkPermission {
+  origins: string[];
+  methods: Array<"GET" | "HEAD" | "POST" | "PUT" | "PATCH" | "DELETE">;
+  allowPrivateNetwork: boolean;
+  maxResponseBytes: number;
+}
+
+export interface CustomModulePermissions {
+  storage: boolean;
+  documentStorage: boolean;
+  blobStorage: boolean;
+  browserStorage: boolean;
+  openExternal: boolean;
+  clipboard: boolean;
+  files?: CustomModuleFilePermission | null;
+  networkFetch?: CustomModuleNetworkPermission | null;
+  secretReferences: boolean;
+  hostUi: boolean;
+}
+
+export interface CustomModuleDataUsage {
+  storageBytes: number;
+  documentBytes: number;
+  blobBytes: number;
+  browserBytes: number;
+  secretCount: number;
+  totalBytes: number;
 }
 
 export interface CustomModuleManifest {
@@ -18,10 +54,10 @@ export interface CustomModuleManifest {
   version: string;
   publisher: string;
   summary: string;
-  apiVersion: number;
+  apiVersion: 2;
   homepage?: string | null;
   license: CustomModuleLicense;
-  permissions: string[];
+  permissions: CustomModulePermissions;
   modules: CustomModuleContribution[];
 }
 
@@ -42,12 +78,12 @@ export interface CustomModuleCatalogEntry {
   version: string;
   publisher: string;
   summary: string;
-  apiVersion: number;
+  apiVersion: 2;
   downloadUrl: string;
   sha256: string;
   signature: string;
   license: string;
-  permissions: string[];
+  permissions: CustomModulePermissions;
   downloadSize: number;
 }
 

@@ -13,7 +13,7 @@ code-signing certificates, SSH keys, or GPG keys.
 
 ```text
 R2 bucket
-├── catalog/v1/catalog.json
+├── catalog/v2/catalog.json
 └── packages/sha256/<64-lowercase-hex>.kkmod
 ```
 
@@ -43,7 +43,7 @@ version is rejected.
    Cloudflare security and cache rules cannot be bypassed.
 4. Configure a Cache Rule for `packages/sha256/*` to make `.kkmod` responses
    cache eligible and honor their one-year immutable cache metadata. Bypass or
-   revalidate cache for `catalog/v1/catalog.json`; JSON is published with
+   revalidate cache for `catalog/v2/catalog.json`; JSON is published with
    `no-cache, max-age=0, must-revalidate`.
 5. Authenticate Wrangler with a release operator account or a narrowly scoped
    R2 token. The publisher needs object read/write access to this bucket but no
@@ -71,7 +71,7 @@ Copy-Item .env.example .env
 
 ```dotenv
 KKTERM_CUSTOM_MODULE_CATALOG_PUBLIC_KEY=<public-key-hex>
-KKTERM_CUSTOM_MODULE_CATALOG_URL=https://modules.example.com/catalog/v1/catalog.json
+KKTERM_CUSTOM_MODULE_CATALOG_URL=https://modules.example.com/catalog/v2/catalog.json
 ```
 
 `src-tauri/build.rs` loads the repository-root `.env`; an already-set process
@@ -116,7 +116,7 @@ npm run publish:custom-module -- `
   -Bucket kkterm-custom-modules `
   -BaseUrl https://modules.example.com `
   -SigningKeyPath C:\secure\kkmod-prod.private.pem `
-  -WriteBaseline custom-modules/catalog.v1.json
+  -WriteBaseline custom-modules/catalog.v2.json
 ```
 
 This still does not include any `.kkmod` payload in the KKTerm installer; only

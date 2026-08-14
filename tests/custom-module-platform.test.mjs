@@ -14,27 +14,36 @@ test("Custom Module WebViews receive only the caller-bound bridge permission", a
   assert.deepEqual(parsed.permissions, ["allow-custom-module-bridge"]);
   assert.match(permission, /commands\.allow/);
   assert.match(permission, /"custom_module_bridge"/);
+  assert.match(capability, /"http:\/\/kkmodule\.m-\*\/\*"/);
   assert.match(backend, /label\.starts_with\("custom-module-"\)/);
   assert.match(backend, /runtime\.session\(label\)/);
   assert.match(backend, /Permissions-Policy/);
-  assert.match(backend, /worker-src 'none'/);
+  assert.match(backend, /worker-src 'self' blob:/);
+  assert.match(backend, /package_origin_host/);
+  assert.match(backend, /data_directory\(webview_data_root\(&paths\)\.join\(&installed\.manifest\.id\)\)/);
+  assert.match(backend, /document\.addEventListener\('click'/);
+  assert.match(backend, /navigator\.userActivation\?\.isActive/);
+  assert.match(backend, /\.on_new_window\(\|_, _\| tauri::webview::NewWindowResponse::Deny\)/);
   assert.match(backend, /replace\(target, 'localStorage', ephemeralStorage\)/);
   assert.match(backend, /if \(!\{clipboard_allowed\}\) replace\(target, 'clipboard', unavailableClipboard\)/);
   assert.match(backend, /new DOMException\('Clipboard access is unavailable to Custom Modules\.', 'NotAllowedError'\)/);
-  assert.match(backend, /permissions\.contains\("clipboard"\)/);
+  assert.match(backend, /effective_permissions\.clipboard/);
   assert.match(backend, /builder = builder\.enable_clipboard_access\(\)/);
   assert.match(
     backend,
     /pub async fn start_custom_module\(/,
     "Windows WebView creation must run from an async Tauri command to avoid WebView2 deadlock",
   );
-  assert.doesNotMatch(backend, /clipboard-read=\(\)|clipboard-write=\(\)/);
+  assert.match(backend, /clipboard-read=\(self\), clipboard-write=\(self\)/);
+  assert.match(backend, /clipboard-read=\(\), clipboard-write=\(\)/);
   assert.match(backend, /MAX_BRIDGE_PAYLOAD_BYTES/);
   assert.match(backend, /"documentStorage"/);
   assert.match(backend, /documents: Object\.freeze/);
   assert.match(backend, /custom_module_documents/);
   assert.match(backend, /document_storage_root\(paths\)/);
   assert.match(backend, /MAX_DOCUMENT_BYTES/);
+  assert.match(backend, /pub struct CustomModuleBridgeError/);
+  assert.match(backend, /tauri::async_runtime::spawn_blocking/);
   const handler = app.match(/\.invoke_handler\(tauri::generate_handler!\[([\s\S]*?)\]\)/)?.[1];
   assert.ok(handler, "main invoke handler must remain discoverable");
   const handlerCommands = handler
@@ -57,7 +66,7 @@ test("Custom Module packages are optional and static", async () => {
     readFile(new URL("../package.json", import.meta.url), "utf8"),
     readFile(new URL("../src-tauri/tauri.conf.json", import.meta.url), "utf8"),
   ]);
-  assert.equal(JSON.parse(manifest).apiVersion, 1);
+  assert.equal(JSON.parse(manifest).apiVersion, 2);
   assert.match(packageJson, /package:custom-module-fixture/);
   assert.doesNotMatch(tauriConfig, /\.kkmod|custom-modules[\\/]fixtures|excalidraw/i);
 });
@@ -184,6 +193,6 @@ test("Custom Module host and agent guidance preserve the Windows async window bo
     assert.match(source, /WebView2/);
     assert.match(source, /deadlock/i);
   }
-  assert.match(runtimeReference, /declare `clipboard`/);
+  assert.match(runtimeReference, /clipboard/);
   assert.match(runtimeReference, /navigator\.clipboard/);
 });

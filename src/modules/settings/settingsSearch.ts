@@ -79,6 +79,7 @@ export const SETTINGS_SEARCH_KEYS: Record<SettingsSectionId, readonly string[]> 
     "settings.customModulesInstallFile", "settings.customModulesEnabled",
     "settings.customModulesShowRail", "settings.customModulesPermissions",
     "settings.customModulesLicense", "settings.customModulesUninstall",
+    "settings.customModulesDataUsageLabel", "settings.customModulesClearData",
   ],
   "credentials-settings": [
     "settings.credentialStorage", "settings.credentialStorageBackend",

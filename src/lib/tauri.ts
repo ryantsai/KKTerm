@@ -3581,6 +3581,14 @@ type CommandMap = {
     args: { moduleId: string; deleteData: boolean };
     result: null;
   };
+  get_custom_module_data_usage: {
+    args: { moduleId: string };
+    result: import("../modules/custom-modules/types").CustomModuleDataUsage;
+  };
+  clear_custom_module_data: {
+    args: { moduleId: string };
+    result: null;
+  };
   start_custom_module: {
     args: { request: StartCustomModuleRequest };
     result: CustomModuleSessionStarted;
@@ -3608,6 +3616,10 @@ type CommandMap = {
   close_custom_module: {
     args: { sessionId: string };
     result: null;
+  };
+  resolve_custom_module_secret_prompt: {
+    args: { request: { requestId: string; secret: string | null } };
+    result: boolean;
   };
   start_rdp_session: {
     args: { request: StartRdpSessionRequest };

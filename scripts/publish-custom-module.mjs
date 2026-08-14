@@ -14,10 +14,13 @@ import { unzipSync } from "fflate";
 
 const repositoryRoot = resolve(import.meta.dirname, "..");
 const wranglerCli = resolve(repositoryRoot, "node_modules/wrangler/bin/wrangler.js");
-const defaultBaselinePath = resolve(repositoryRoot, "custom-modules/catalog.v1.json");
+const defaultBaselinePath = resolve(repositoryRoot, "custom-modules/catalog.v2.json");
 const semverPattern = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/;
 const moduleIdPattern = /^[a-z][a-z0-9.-]{0,127}$/;
-const allowedPermissions = new Set(["storage", "documentStorage", "openExternal", "clipboard"]);
+const allowedPermissions = new Set([
+  "storage", "documentStorage", "blobStorage", "browserStorage", "openExternal",
+  "clipboard", "files", "networkFetch", "secretReferences", "hostUi",
+]);
 const maxArchiveBytes = 256 * 1024 * 1024;
 const maxCuratedIconBytes = 64 * 1024;
 
@@ -26,7 +29,7 @@ function fail(message) {
 }
 
 function parseArguments(argv) {
-  const options = { catalogPath: "catalog/v1/catalog.json", expiresDays: 30, dryRun: false, renewOnly: false };
+  const options = { catalogPath: "catalog/v2/catalog.json", expiresDays: 30, dryRun: false, renewOnly: false };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === "--dry-run" || argument === "--renew-only") {
@@ -106,13 +109,13 @@ function readManifest(packageBytes) {
   if (!manifest.name?.trim() || !manifest.publisher?.trim() || !manifest.summary?.trim()) {
     fail("The package manifest must provide name, publisher, and summary");
   }
-  if (manifest.apiVersion !== 1) fail("Only KKMod host API v1 packages can be published");
+  if (manifest.apiVersion !== 2) fail("Only KKMod host API v2 packages can be published");
   if (!manifest.license?.name?.trim()) fail("The package manifest license name is required");
-  const permissions = manifest.permissions ?? [];
-  if (!Array.isArray(permissions) || new Set(permissions).size !== permissions.length) {
-    fail("The package manifest permissions must be a unique array");
+  const permissions = manifest.permissions ?? {};
+  if (!permissions || Array.isArray(permissions) || typeof permissions !== "object") {
+    fail("The package manifest permissions must be an object");
   }
-  for (const permission of permissions) {
+  for (const permission of Object.keys(permissions)) {
     if (!allowedPermissions.has(permission)) fail(`Unsupported package permission: ${permission}`);
   }
   validateCuratedModuleIcons(packageBytes, manifest);
@@ -168,7 +171,7 @@ function loadSigningKey(pemBytes, passphrase) {
 function createEnvelope(payload, key) {
   const payloadBytes = Buffer.from(JSON.stringify(payload));
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     keyId: key.keyId,
     payload: payloadBytes.toString("base64"),
     signature: sign(null, payloadBytes, key.privateKey).toString("base64"),
@@ -176,7 +179,7 @@ function createEnvelope(payload, key) {
 }
 
 function verifyEnvelope(envelope, key) {
-  if (envelope?.schemaVersion !== 1 || envelope.keyId !== key.keyId) {
+  if (envelope?.schemaVersion !== 2 || envelope.keyId !== key.keyId) {
     fail("The remote catalog envelope uses an unexpected schema or signing key");
   }
   const payloadBytes = Buffer.from(envelope.payload, "base64");
@@ -185,7 +188,7 @@ function verifyEnvelope(envelope, key) {
     fail("The remote catalog signature is invalid");
   }
   const payload = JSON.parse(payloadBytes.toString("utf8"));
-  if (payload.schemaVersion !== 1 || !Number.isSafeInteger(payload.sequence) || payload.sequence < 1) {
+  if (payload.schemaVersion !== 2 || !Number.isSafeInteger(payload.sequence) || payload.sequence < 1) {
     fail("The remote catalog payload is invalid");
   }
   return payload;
@@ -213,10 +216,10 @@ async function loadCurrentCatalog(catalogUrl, key) {
   const response = await fetch(catalogUrl, { headers: { "cache-control": "no-cache" } });
   if (response.status === 404) {
     const baseline = JSON.parse(await readFile(defaultBaselinePath, "utf8"));
-    if (baseline.schemaVersion !== 1 || !Array.isArray(baseline.modules)) {
+    if (baseline.schemaVersion !== 2 || !Array.isArray(baseline.modules)) {
       fail("The bundled baseline catalog is invalid");
     }
-    return { schemaVersion: 1, sequence: 0, modules: validateCatalogEntries(baseline.modules, key) };
+    return { schemaVersion: 2, sequence: 0, modules: validateCatalogEntries(baseline.modules, key) };
   }
   if (!response.ok) fail(`Failed to download the current catalog: HTTP ${response.status}`);
   const payload = verifyEnvelope(await response.json(), key);
@@ -249,7 +252,7 @@ function buildRelease(current, manifest, packageBytes, baseUrl, key, expiresDays
     sha256: digest,
     signature: sign(null, Buffer.from(digest), key.privateKey).toString("base64"),
     license: manifest.license.name,
-    permissions: manifest.permissions ?? [],
+    permissions: manifest.permissions ?? {},
     downloadSize: packageBytes.length,
   };
   const modules = current.modules.filter((item) => item.id !== manifest.id).concat(entry);
@@ -257,7 +260,7 @@ function buildRelease(current, manifest, packageBytes, baseUrl, key, expiresDays
   const generatedAt = now.toISOString();
   const expiresAt = new Date(now.getTime() + expiresDays * 86_400_000).toISOString();
   const payload = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     sequence: current.sequence + 1,
     generatedAt,
     expiresAt,
@@ -269,7 +272,7 @@ function buildRelease(current, manifest, packageBytes, baseUrl, key, expiresDays
 function buildRenewal(current, key, expiresDays, now = new Date()) {
   if (current.sequence < 1) fail("Cannot renew a catalog that has not been published yet");
   const payload = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     sequence: current.sequence + 1,
     generatedAt: now.toISOString(),
     expiresAt: new Date(now.getTime() + expiresDays * 86_400_000).toISOString(),
@@ -369,7 +372,7 @@ async function main(argv) {
     }
     if (options.writeBaseline) {
       const baselinePath = resolve(options.writeBaseline);
-      await writeFile(baselinePath, `${JSON.stringify({ schemaVersion: 1, modules: release.payload.modules }, null, 2)}\n`, "utf8");
+      await writeFile(baselinePath, `${JSON.stringify({ schemaVersion: 2, modules: release.payload.modules }, null, 2)}\n`, "utf8");
       console.log(`Updated baseline catalog: ${baselinePath}`);
     }
     console.log(options.renewOnly

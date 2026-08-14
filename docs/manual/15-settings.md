@@ -198,33 +198,38 @@ toggle list while their persisted backend settings remain enabled.
 - `settings.customModulesUninstall` removes package files. By default isolated
   Module data is retained for reinstall; `settings.customModulesDeleteData` is
   the explicit destructive option that removes metadata, grants, small storage,
-  and filesystem-backed document data.
+  document/blob files, browser-profile data, and package-owned secret
+  references. Installed cards report `settings.customModulesDataUsageLabel` and
+  expose `settings.customModulesClearData` while the Module is disabled. Clear
+  Data keeps the installed package but deletes all of its isolated data.
 - In Windows portable mode, the complete Custom Module installation remains
   beside KKTerm: metadata and small storage use `data/kkterm.sqlite3`, while
   packages, staging, downloads, catalog cache, per-Module WebView data, and
   document files use `data/custom-modules/`. Keep the whole portable folder
   together when moving it. Portable updates retain this `data` directory.
-- Database backups and Settings exports retain Custom Module metadata and
-  small isolated storage but do not embed optional package payloads or external
-  document files. After restoring to a machine without package files, the
-  package is shown as missing and must be reinstalled before it can be enabled;
-  document metadata whose content file was not restored produces a verified
-  missing-content error when the Module reads it.
-- V1 host permissions are `storage` (10 MiB quota, module-id namespace),
-  `documentStorage` (512 MiB filesystem quota, 64 MiB per JSON document, 4,096
-  keys), `openExternal` (HTTP(S) system-browser handoff), and `clipboard`
-  (native WebView copy/paste and image clipboard access). Custom Modules cannot call
-  Connections, Sessions, terminal, SFTP, credentials, arbitrary files, shell,
-  native libraries, or ordinary KKTerm backend commands. Durable browser
-  localStorage, IndexedDB, caches, cookies, workers, and origin storage are
-  disabled; localStorage is session-memory-only, and durable data must use the
-  permission-checked bridge. Device, sensor, media-capture, location, payment,
-  and related ambient browser capabilities are denied by policy. Without the
-  declared `clipboard` permission, the clipboard object is a compatibility shim
-  for library feature detection only and every operation rejects.
+- Full Settings backups/exports use format 2 and include installed package
+  files, document/blob content, per-Module browser profiles, SQLite metadata,
+  and SHA-256 integrity metadata. Restore verifies every included file before
+  activation. OS-keychain secret values remain device-bound; their non-secret
+  references are restored, while encrypted-database secrets travel with SQLite.
+- Host API v2 is the only accepted package/runtime contract; every other
+  manifest API version is rejected. Grants are `storage` (10 MiB), `documentStorage`
+  (512 MiB total, 64 MiB/document), `blobStorage` (1 GiB total, 256 MiB/blob),
+  `browserStorage`, `openExternal`, `clipboard`, filtered `files`, allowlisted
+  `networkFetch`, package-owned `secretReferences`, and `hostUi`. Standard
+  user-activated HTTP(S) links are handed to the system browser when
+  `openExternal` is granted. `browserStorage` preserves localStorage and
+  IndexedDB between launches; without it, localStorage is session-memory-only.
+  Cookies, CacheStorage, service workers, remote frames, raw cross-origin
+  network APIs, device/sensor/media/location/payment APIs, Connections,
+  Sessions, terminal, SFTP, arbitrary paths, shell, native libraries, and
+  ordinary KKTerm commands remain unavailable. Same-package frames and
+  dedicated workers are supported. Without `clipboard`, every clipboard
+  operation rejects.
 - Grep hints: `settings.customModules`, `settings.customModulesInstallFile`,
   `settings.customModulesInstalled`, `settings.customModulesShowRail`,
-  `settings.customModulesPermissions`, `settings.customModulesLicense`.
+  `settings.customModulesPermissions`, `settings.customModulesLicense`,
+  `settings.customModulesClearData`, `settings.customModulesSecretTitle`.
 
 ## Credentials & MCP
 

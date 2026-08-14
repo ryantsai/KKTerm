@@ -1,4 +1,4 @@
-use crate::{app_paths::AppPaths, storage::Storage, webview};
+use crate::{app_paths::AppPaths, secrets, storage::Storage, webview};
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use regex::Regex;
@@ -11,7 +11,7 @@ use sha2::{Digest, Sha256};
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     fs::{self, File},
-    io::{Read, Write},
+    io::{Read, Seek, SeekFrom, Write},
     path::{Component, Path, PathBuf},
     sync::{
         Arc, Mutex, MutexGuard, OnceLock,
@@ -26,7 +26,7 @@ use url::Url;
 use zip::ZipArchive;
 
 const MANIFEST_FILE: &str = "kkterm-extension.json";
-const HOST_API_VERSION: u32 = 1;
+const HOST_API_VERSION: u32 = 2;
 const MAX_ARCHIVE_BYTES: u64 = 256 * 1024 * 1024;
 const MAX_ARCHIVE_ENTRIES: usize = 10_000;
 const MAX_UNCOMPRESSED_BYTES: u64 = 512 * 1024 * 1024;
@@ -37,14 +37,20 @@ const MAX_BRIDGE_PAYLOAD_BYTES: usize = 11 * 1024 * 1024;
 const DOCUMENT_STORAGE_QUOTA_BYTES: i64 = 512 * 1024 * 1024;
 const MAX_DOCUMENT_BYTES: usize = 64 * 1024 * 1024;
 const MAX_DOCUMENT_KEYS: i64 = 4_096;
+const BLOB_STORAGE_QUOTA_BYTES: i64 = 1024 * 1024 * 1024;
+const MAX_BLOB_BYTES: u64 = 256 * 1024 * 1024;
+const MAX_BLOB_KEYS: i64 = 16_384;
+const MAX_BLOB_CHUNK_BYTES: usize = 1024 * 1024;
+const MAX_NETWORK_REQUEST_BYTES: usize = 8 * 1024 * 1024;
+const MAX_NETWORK_RESPONSE_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_DOCUMENT_BRIDGE_PAYLOAD_BYTES: usize = MAX_DOCUMENT_BYTES + 1024 * 1024;
 const MAX_ACTIVITY_RAIL_ICON_BYTES: u64 = 64 * 1024;
 const MAX_CATALOG_BYTES: u64 = 4 * 1024 * 1024;
 const MAX_CATALOG_VALIDITY_DAYS: i64 = 45;
 const FIRST_PARTY_VERIFYING_KEY_HEX: &str = env!("KKTERM_CUSTOM_MODULE_CATALOG_PUBLIC_KEY");
 const ONLINE_CATALOG_URL: &str = env!("KKTERM_CUSTOM_MODULE_CATALOG_URL");
-const CATALOG_JSON: &str = include_str!("../../custom-modules/catalog.v1.json");
-const CATALOG_CACHE_FILE: &str = "catalog-cache.v1.json";
+const CATALOG_JSON: &str = include_str!("../../custom-modules/catalog.v2.json");
+const CATALOG_CACHE_FILE: &str = "catalog-cache.v2.json";
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -60,7 +66,7 @@ pub struct CustomModuleManifest {
     pub homepage: Option<String>,
     pub license: CustomModuleLicense,
     #[serde(default)]
-    pub permissions: Vec<String>,
+    pub permissions: CustomModulePermissions,
     pub modules: Vec<CustomModuleContribution>,
 }
 
@@ -83,6 +89,103 @@ pub struct CustomModuleContribution {
     pub entrypoint: String,
     #[serde(default = "default_true")]
     pub rail_visible: bool,
+    #[serde(default)]
+    pub routing: CustomModuleRouting,
+}
+
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum CustomModuleRouting {
+    #[default]
+    Static,
+    Spa,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields, default)]
+pub struct CustomModulePermissions {
+    pub storage: bool,
+    pub document_storage: bool,
+    pub blob_storage: bool,
+    pub browser_storage: bool,
+    pub open_external: bool,
+    pub clipboard: bool,
+    pub files: Option<CustomModuleFilePermission>,
+    pub network_fetch: Option<CustomModuleNetworkPermission>,
+    pub secret_references: bool,
+    pub host_ui: bool,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CustomModuleFilePermission {
+    #[serde(default)]
+    pub open: bool,
+    #[serde(default)]
+    pub save: bool,
+    #[serde(default)]
+    pub extensions: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CustomModuleNetworkPermission {
+    pub origins: Vec<String>,
+    #[serde(default = "default_network_methods")]
+    pub methods: Vec<String>,
+    #[serde(default)]
+    pub allow_private_network: bool,
+    #[serde(default = "default_network_response_bytes")]
+    pub max_response_bytes: u64,
+}
+
+impl CustomModulePermissions {
+    fn enabled_names(&self) -> Vec<&'static str> {
+        let mut names = Vec::new();
+        for (enabled, name) in [
+            (self.storage, "storage"),
+            (self.document_storage, "documentStorage"),
+            (self.blob_storage, "blobStorage"),
+            (self.browser_storage, "browserStorage"),
+            (self.open_external, "openExternal"),
+            (self.clipboard, "clipboard"),
+            (self.files.is_some(), "files"),
+            (self.network_fetch.is_some(), "networkFetch"),
+            (self.secret_references, "secretReferences"),
+            (self.host_ui, "hostUi"),
+        ] {
+            if enabled {
+                names.push(name);
+            }
+        }
+        names
+    }
+
+    fn restricted_to(&self, grants: &HashSet<String>) -> Self {
+        let granted = |name: &str| grants.contains(name);
+        Self {
+            storage: self.storage && granted("storage"),
+            document_storage: self.document_storage && granted("documentStorage"),
+            blob_storage: self.blob_storage && granted("blobStorage"),
+            browser_storage: self.browser_storage && granted("browserStorage"),
+            open_external: self.open_external && granted("openExternal"),
+            clipboard: self.clipboard && granted("clipboard"),
+            files: granted("files").then(|| self.files.clone()).flatten(),
+            network_fetch: granted("networkFetch")
+                .then(|| self.network_fetch.clone())
+                .flatten(),
+            secret_references: self.secret_references && granted("secretReferences"),
+            host_ui: self.host_ui && granted("hostUi"),
+        }
+    }
+}
+
+fn default_network_methods() -> Vec<String> {
+    vec!["GET".into()]
+}
+
+fn default_network_response_bytes() -> u64 {
+    16 * 1024 * 1024
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -114,7 +217,7 @@ pub struct CatalogEntry {
     pub signature: String,
     pub license: String,
     #[serde(default)]
-    pub permissions: Vec<String>,
+    pub permissions: CustomModulePermissions,
     pub download_size: u64,
 }
 
@@ -201,10 +304,28 @@ pub struct CustomModuleBridgeRequest {
     pub payload: Value,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResolveCustomModuleSecretPromptRequest {
+    pub request_id: String,
+    pub secret: Option<String>,
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CustomModuleSessionStarted {
     pub session_id: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CustomModuleDataUsage {
+    pub storage_bytes: u64,
+    pub document_bytes: u64,
+    pub blob_bytes: u64,
+    pub browser_bytes: u64,
+    pub secret_count: u64,
+    pub total_bytes: u64,
 }
 
 #[derive(Clone)]
@@ -212,13 +333,37 @@ struct RuntimeSession {
     module_id: String,
     contribution_id: String,
     permissions: HashSet<String>,
+    permission_config: CustomModulePermissions,
     theme: String,
     locale: String,
     ready_sent: Arc<AtomicBool>,
     last_external_open: Arc<Mutex<Option<Instant>>>,
+    blob_writes: Arc<Mutex<HashMap<String, BlobWrite>>>,
+    file_tokens: Arc<Mutex<HashMap<String, FileToken>>>,
     view_state: Arc<Mutex<RuntimeViewState>>,
     window: WebviewWindow,
     host_window: WebviewWindow,
+}
+
+struct BlobWrite {
+    key: String,
+    mime_type: String,
+    path: PathBuf,
+    file: File,
+    byte_size: u64,
+}
+
+enum FileToken {
+    Read {
+        path: PathBuf,
+        byte_size: u64,
+    },
+    Write {
+        target: PathBuf,
+        temporary: PathBuf,
+        file: File,
+        byte_size: u64,
+    },
 }
 
 #[derive(Clone, Copy)]
@@ -234,11 +379,28 @@ struct RuntimeViewState {
     visible: bool,
 }
 
+#[derive(Clone)]
+struct ModuleRoute {
+    root: PathBuf,
+    entrypoint: String,
+    routing: CustomModuleRouting,
+    origin_host: String,
+    clipboard_allowed: bool,
+}
+
 #[derive(Default)]
 pub struct CustomModuleRuntime {
     sessions: Mutex<HashMap<String, RuntimeSession>>,
-    routes: Mutex<HashMap<String, (PathBuf, String)>>,
+    routes: Mutex<HashMap<String, ModuleRoute>>,
     downloads: Mutex<HashMap<String, Arc<AtomicBool>>>,
+    secret_prompts: Mutex<HashMap<String, PendingSecretPrompt>>,
+}
+
+struct PendingSecretPrompt {
+    session_id: String,
+    module_id: String,
+    key: String,
+    completion: tokio::sync::oneshot::Sender<bool>,
 }
 
 impl CustomModuleRuntime {
@@ -255,7 +417,7 @@ impl CustomModuleRuntime {
             .ok_or_else(|| "Custom Module session is not registered".to_string())
     }
 
-    fn lock_routes(&self) -> Result<MutexGuard<'_, HashMap<String, (PathBuf, String)>>, String> {
+    fn lock_routes(&self) -> Result<MutexGuard<'_, HashMap<String, ModuleRoute>>, String> {
         self.routes
             .lock()
             .map_err(|_| "Custom Module route lock is poisoned".to_string())
@@ -265,6 +427,14 @@ impl CustomModuleRuntime {
         self.downloads
             .lock()
             .map_err(|_| "Custom Module download lock is poisoned".to_string())
+    }
+
+    fn lock_secret_prompts(
+        &self,
+    ) -> Result<MutexGuard<'_, HashMap<String, PendingSecretPrompt>>, String> {
+        self.secret_prompts
+            .lock()
+            .map_err(|_| "Custom Module secret-prompt lock is poisoned".to_string())
     }
 }
 
@@ -294,6 +464,10 @@ fn webview_data_root(paths: &AppPaths) -> PathBuf {
 
 fn document_storage_root(paths: &AppPaths) -> PathBuf {
     modules_root(paths).join("documents")
+}
+
+fn blob_storage_root(paths: &AppPaths) -> PathBuf {
+    modules_root(paths).join("blobs")
 }
 
 fn package_relative_path(module_id: &str, version: &str) -> PathBuf {
@@ -332,6 +506,39 @@ fn remove_owned_directory(base: &Path, target: &Path, label: &str) -> Result<(),
         ));
     }
     fs::remove_dir_all(target).map_err(|error| format!("failed to remove {label}: {error}"))
+}
+
+fn owned_directory_size(base: &Path, target: &Path) -> Result<u64, String> {
+    let metadata = match fs::symlink_metadata(target) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(0),
+        Err(error) => return Err(error.to_string()),
+    };
+    if metadata.file_type().is_symlink() || !metadata.is_dir() {
+        return Err("Custom Module data directory is not an owned regular directory".into());
+    }
+    let canonical_base = fs::canonicalize(base).map_err(|error| error.to_string())?;
+    let canonical_target = fs::canonicalize(target).map_err(|error| error.to_string())?;
+    if !canonical_target.starts_with(&canonical_base) {
+        return Err("Custom Module data directory escapes its owned root".into());
+    }
+    let mut total = 0_u64;
+    let mut pending = vec![canonical_target];
+    while let Some(directory) = pending.pop() {
+        for entry in fs::read_dir(directory).map_err(|error| error.to_string())? {
+            let entry = entry.map_err(|error| error.to_string())?;
+            let metadata = fs::symlink_metadata(entry.path()).map_err(|error| error.to_string())?;
+            if metadata.file_type().is_symlink() {
+                return Err("Custom Module data directory contains a symbolic link".into());
+            }
+            if metadata.is_dir() {
+                pending.push(entry.path());
+            } else if metadata.is_file() {
+                total = total.saturating_add(metadata.len());
+            }
+        }
+    }
+    Ok(total)
 }
 
 fn validate_identifier(value: &str, field: &str) -> Result<(), String> {
@@ -427,18 +634,7 @@ fn validate_manifest(manifest: &CustomModuleManifest) -> Result<(), String> {
     if let Some(path) = manifest.license.notices_file.as_deref() {
         validate_relative_path(path, "notices file")?;
     }
-    let allowed_permissions = ["storage", "documentStorage", "openExternal", "clipboard"];
-    let mut permissions = HashSet::new();
-    for permission in &manifest.permissions {
-        if !allowed_permissions.contains(&permission.as_str()) {
-            return Err(format!(
-                "unsupported Custom Module permission '{permission}'"
-            ));
-        }
-        if !permissions.insert(permission) {
-            return Err(format!("duplicate Custom Module permission '{permission}'"));
-        }
-    }
+    validate_permissions(&manifest.permissions)?;
     if manifest.modules.is_empty() || manifest.modules.len() > 64 {
         return Err("manifest must contribute between 1 and 64 Modules".into());
     }
@@ -471,6 +667,81 @@ fn validate_manifest(manifest: &CustomModuleManifest) -> Result<(), String> {
         let url = Url::parse(homepage).map_err(|error| format!("invalid homepage URL: {error}"))?;
         if !matches!(url.scheme(), "http" | "https") {
             return Err("module homepage must use HTTP or HTTPS".into());
+        }
+    }
+    Ok(())
+}
+
+fn validate_permissions(permissions: &CustomModulePermissions) -> Result<(), String> {
+    if let Some(files) = &permissions.files {
+        if !files.open && !files.save {
+            return Err("files permission must enable open, save, or both".into());
+        }
+        if files.extensions.len() > 128 {
+            return Err("files permission declares too many extensions".into());
+        }
+        let mut extensions = HashSet::new();
+        for extension in &files.extensions {
+            if extension.is_empty()
+                || extension.len() > 32
+                || !extension
+                    .bytes()
+                    .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit())
+            {
+                return Err(format!(
+                    "invalid Custom Module file extension '{extension}'"
+                ));
+            }
+            if !extensions.insert(extension) {
+                return Err(format!(
+                    "duplicate Custom Module file extension '{extension}'"
+                ));
+            }
+        }
+    }
+    if let Some(network) = &permissions.network_fetch {
+        if network.origins.is_empty() || network.origins.len() > 64 {
+            return Err("networkFetch must declare between 1 and 64 origins".into());
+        }
+        if network.methods.is_empty() || network.methods.len() > 8 {
+            return Err("networkFetch must declare between 1 and 8 methods".into());
+        }
+        let mut origins = HashSet::new();
+        for origin in &network.origins {
+            let url = Url::parse(origin)
+                .map_err(|error| format!("invalid networkFetch origin '{origin}': {error}"))?;
+            let scheme_allowed = url.scheme() == "https"
+                || (url.scheme() == "http" && network.allow_private_network);
+            if !scheme_allowed
+                || url.host_str().is_none()
+                || !url.username().is_empty()
+                || url.password().is_some()
+                || url.path() != "/"
+                || url.query().is_some()
+                || url.fragment().is_some()
+            {
+                return Err(format!(
+                    "networkFetch origin must be an exact HTTPS origin without credentials, path, query, or fragment: '{origin}'"
+                ));
+            }
+            let canonical = url.origin().ascii_serialization();
+            if canonical != *origin || !origins.insert(canonical) {
+                return Err(format!(
+                    "networkFetch origin must be canonical and unique: '{origin}'"
+                ));
+            }
+        }
+        let mut methods = HashSet::new();
+        for method in &network.methods {
+            if !matches!(method.as_str(), "GET" | "HEAD" | "POST" | "PUT" | "PATCH" | "DELETE") {
+                return Err(format!("unsupported networkFetch method '{method}'"));
+            }
+            if !methods.insert(method) {
+                return Err(format!("duplicate networkFetch method '{method}'"));
+            }
+        }
+        if !(1..=64 * 1024 * 1024).contains(&network.max_response_bytes) {
+            return Err("networkFetch maxResponseBytes must be between 1 byte and 64 MiB".into());
         }
     }
     Ok(())
@@ -748,14 +1019,12 @@ fn install_package(
         );
     }
     if let Some(expected_metadata) = catalog_metadata {
-        let expected = expected_metadata.permissions.iter().collect::<HashSet<_>>();
-        let actual = review.manifest.permissions.iter().collect::<HashSet<_>>();
         if review.manifest.id != expected_metadata.id
             || review.manifest.version != expected_metadata.version
             || review.manifest.name != expected_metadata.name
             || review.manifest.publisher != expected_metadata.publisher
             || review.manifest.api_version != expected_metadata.api_version
-            || expected != actual
+            || review.manifest.permissions != expected_metadata.permissions
             || review.manifest.license.name != expected_metadata.license
         {
             return Err("downloaded Custom Module identity, permissions, or license do not match catalog metadata".into());
@@ -874,7 +1143,7 @@ fn install_package(
                 [&review.manifest.id],
             )
             .map_err(|error| error.to_string())?;
-        for permission in &review.manifest.permissions {
+        for permission in review.manifest.permissions.enabled_names() {
             transaction
                 .execute(
                     "INSERT INTO custom_module_permissions (module_id, permission) VALUES (?1, ?2)",
@@ -1132,7 +1401,7 @@ pub async fn install_custom_module_from_file(
 }
 
 fn validate_catalog_with_key(catalog: &Catalog, public_key_hex: &str) -> Result<(), String> {
-    if catalog.schema_version != 1 {
+    if catalog.schema_version != 2 {
         return Err("unsupported Custom Module catalog schema".into());
     }
     let mut ids = HashSet::new();
@@ -1169,18 +1438,7 @@ fn validate_catalog_with_key(catalog: &Catalog, public_key_hex: &str) -> Result<
         Signature::from_slice(&signature)
             .map_err(|error| format!("invalid catalog package signature: {error}"))?;
         verify_catalog_signature_with_key(public_key_hex, &entry.sha256, &entry.signature)?;
-        let mut permissions = HashSet::new();
-        for permission in &entry.permissions {
-            if !matches!(
-                permission.as_str(),
-                "storage" | "documentStorage" | "openExternal" | "clipboard"
-            ) {
-                return Err(format!("unsupported catalog permission '{permission}'"));
-            }
-            if !permissions.insert(permission) {
-                return Err(format!("duplicate catalog permission '{permission}'"));
-            }
-        }
+        validate_permissions(&entry.permissions)?;
         if entry.download_size == 0 || entry.download_size > MAX_ARCHIVE_BYTES {
             return Err(format!(
                 "catalog package '{}' exceeds the size limit",
@@ -1243,7 +1501,7 @@ fn verify_online_catalog_with_key(
     }
     let envelope: SignedCatalogEnvelope = serde_json::from_slice(bytes)
         .map_err(|error| format!("online Custom Module catalog envelope is invalid: {error}"))?;
-    if envelope.schema_version != 1 {
+    if envelope.schema_version != 2 {
         return Err("unsupported online Custom Module catalog envelope schema".into());
     }
     let verifying_key = VerifyingKey::from_bytes(&decode_hex(public_key_hex)?)
@@ -1268,7 +1526,7 @@ fn verify_online_catalog_with_key(
 
     let payload: OnlineCatalogPayload = serde_json::from_slice(&payload_bytes)
         .map_err(|error| format!("online Custom Module catalog payload is invalid: {error}"))?;
-    if payload.schema_version != 1 || payload.sequence == 0 {
+    if payload.schema_version != 2 || payload.sequence == 0 {
         return Err("unsupported online Custom Module catalog payload schema".into());
     }
     let generated_at = parse_catalog_time(&payload.generated_at, "generatedAt")?;
@@ -1815,7 +2073,7 @@ pub fn rollback_custom_module(
                 [&module_id],
             )
             .map_err(|error| error.to_string())?;
-        for permission in &manifest.permissions {
+        for permission in manifest.permissions.enabled_names() {
             transaction
                 .execute(
                     "INSERT INTO custom_module_permissions (module_id, permission) VALUES (?1, ?2)",
@@ -1833,8 +2091,10 @@ pub fn rollback_custom_module(
 pub fn uninstall_custom_module(
     module_id: String,
     delete_data: bool,
+    app: tauri::AppHandle,
     storage: tauri::State<'_, Storage>,
     paths: tauri::State<'_, AppPaths>,
+    secret_store: tauri::State<'_, secrets::Secrets>,
     runtime: tauri::State<'_, CustomModuleRuntime>,
 ) -> Result<(), String> {
     validate_identifier(&module_id, "module id")?;
@@ -1848,6 +2108,9 @@ pub fn uninstall_custom_module(
     for label in labels {
         if let Some(session) = runtime.lock()?.remove(&label) {
             let _ = webview::hide_overlay(&session.window);
+            abort_session_blob_writes(&session);
+            close_session_file_tokens(&session);
+            cancel_session_secret_prompts(&runtime, &app, &label);
             let _ = session.window.close();
         }
         runtime.lock_routes()?.remove(&label);
@@ -1856,6 +2119,7 @@ pub fn uninstall_custom_module(
     let package_dir = packages.join(&module_id);
     remove_owned_directory(&packages, &package_dir, "Custom Module package files")?;
     if delete_data {
+        delete_all_custom_module_secrets(&storage, &secret_store, &module_id)?;
         let webview_root = webview_data_root(&paths);
         let webview_data = webview_root.join(&module_id);
         remove_owned_directory(&webview_root, &webview_data, "Custom Module WebView data")?;
@@ -1864,6 +2128,12 @@ pub fn uninstall_custom_module(
             &document_storage_root(&paths),
             &document_data,
             "Custom Module document data",
+        )?;
+        let blob_data = blob_storage_root(&paths).join(&module_id);
+        remove_owned_directory(
+            &blob_storage_root(&paths),
+            &blob_data,
+            "Custom Module blob data",
         )?;
     }
     storage.with_connection_mut(|connection| {
@@ -1891,15 +2161,134 @@ pub fn uninstall_custom_module(
     Ok(())
 }
 
+fn delete_all_custom_module_secrets(
+    storage: &Storage,
+    secret_store: &secrets::Secrets,
+    module_id: &str,
+) -> Result<(), String> {
+    let secret_owner_ids = storage.with_connection(|connection| {
+        let mut statement = connection
+            .prepare("SELECT owner_id FROM custom_module_secret_refs WHERE module_id = ?1")
+            .map_err(|error| error.to_string())?;
+        statement
+            .query_map([module_id], |row| row.get::<_, String>(0))
+            .map_err(|error| error.to_string())?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|error| error.to_string())
+    })?;
+    for owner_id in secret_owner_ids {
+        if secret_store
+            .secret_exists(secrets::SecretReferenceRequest::custom_module_secret(
+                owner_id.clone(),
+            ))?
+            .exists()
+        {
+            secret_store.delete_secret(secrets::SecretReferenceRequest::custom_module_secret(
+                owner_id,
+            ))?;
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_custom_module_data_usage(
+    module_id: String,
+    storage: tauri::State<'_, Storage>,
+    paths: tauri::State<'_, AppPaths>,
+) -> Result<CustomModuleDataUsage, String> {
+    validate_identifier(&module_id, "module id")?;
+    let (storage_bytes, document_bytes, blob_bytes, secret_count): (i64, i64, i64, i64) =
+        storage.with_connection(|connection| {
+            connection
+                .query_row(
+                    "SELECT
+                        COALESCE((SELECT SUM(byte_size) FROM custom_module_storage WHERE module_id = ?1), 0),
+                        COALESCE((SELECT SUM(byte_size) FROM custom_module_documents WHERE module_id = ?1), 0),
+                        COALESCE((SELECT SUM(byte_size) FROM custom_module_blobs WHERE module_id = ?1), 0),
+                        (SELECT COUNT(*) FROM custom_module_secret_refs WHERE module_id = ?1)",
+                    [&module_id],
+                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+                )
+                .map_err(|error| error.to_string())
+        })?;
+    let browser_bytes = owned_directory_size(
+        &webview_data_root(&paths),
+        &webview_data_root(&paths).join(&module_id),
+    )?;
+    let storage_bytes = storage_bytes.max(0) as u64;
+    let document_bytes = document_bytes.max(0) as u64;
+    let blob_bytes = blob_bytes.max(0) as u64;
+    Ok(CustomModuleDataUsage {
+        storage_bytes,
+        document_bytes,
+        blob_bytes,
+        browser_bytes,
+        secret_count: secret_count.max(0) as u64,
+        total_bytes: storage_bytes
+            .saturating_add(document_bytes)
+            .saturating_add(blob_bytes)
+            .saturating_add(browser_bytes),
+    })
+}
+
+#[tauri::command]
+pub fn clear_custom_module_data(
+    module_id: String,
+    storage: tauri::State<'_, Storage>,
+    paths: tauri::State<'_, AppPaths>,
+    secret_store: tauri::State<'_, secrets::Secrets>,
+    runtime: tauri::State<'_, CustomModuleRuntime>,
+) -> Result<(), String> {
+    validate_identifier(&module_id, "module id")?;
+    let installed = installed_module(&storage, &paths, &module_id)?
+        .ok_or_else(|| "Custom Module is not installed".to_string())?;
+    if installed.enabled
+        || runtime
+            .lock()?
+            .values()
+            .any(|session| session.module_id == module_id)
+    {
+        return Err("Disable the Custom Module before clearing its data".into());
+    }
+    delete_all_custom_module_secrets(&storage, &secret_store, &module_id)?;
+    for (base, label) in [
+        (webview_data_root(&paths), "Custom Module WebView data"),
+        (document_storage_root(&paths), "Custom Module document data"),
+        (blob_storage_root(&paths), "Custom Module blob data"),
+    ] {
+        remove_owned_directory(&base, &base.join(&module_id), label)?;
+    }
+    storage.with_connection_mut(|connection| {
+        let transaction = connection.transaction().map_err(|error| error.to_string())?;
+        for table in [
+            "custom_module_storage",
+            "custom_module_documents",
+            "custom_module_blobs",
+            "custom_module_secret_refs",
+        ] {
+            transaction
+                .execute(&format!("DELETE FROM {table} WHERE module_id = ?1"), [&module_id])
+                .map_err(|error| error.to_string())?;
+        }
+        transaction.commit().map_err(|error| error.to_string())
+    })
+}
+
 fn session_label(module_id: &str, contribution_id: &str) -> String {
     let digest = Sha256::digest(format!("{module_id}:{contribution_id}"));
     format!("custom-module-{}", encode_hex(&digest[..12]))
 }
 
+fn package_origin_host(module_id: &str) -> String {
+    let digest = Sha256::digest(module_id.as_bytes());
+    format!("m-{}", encode_hex(&digest[..12]))
+}
+
 fn initialization_script(
     theme: &str,
     locale: &str,
-    clipboard_allowed: bool,
+    permissions: &CustomModulePermissions,
 ) -> Result<String, String> {
     let context = serde_json::to_string(&json!({
         "apiVersion": HOST_API_VERSION,
@@ -1907,6 +2296,9 @@ fn initialization_script(
         "locale": locale,
     }))
     .map_err(|error| error.to_string())?;
+    let capabilities = serde_json::to_string(permissions).map_err(|error| error.to_string())?;
+    let clipboard_allowed = permissions.clipboard;
+    let browser_storage_allowed = permissions.browser_storage;
     Ok(format!(
         r#"
         (() => {{
@@ -1931,26 +2323,58 @@ fn initialization_script(
           const replace = (target, name, value) => {{
             try {{ Object.defineProperty(target, name, {{ configurable: false, value }}); }} catch {{}}
           }};
-          for (const target of [window, Window.prototype]) {{
-            replace(target, 'localStorage', ephemeralStorage);
-            replace(target, 'indexedDB', undefined);
-            replace(target, 'caches', undefined);
+          if (!{browser_storage_allowed}) {{
+            for (const target of [window, Window.prototype]) {{
+              replace(target, 'localStorage', ephemeralStorage);
+              replace(target, 'indexedDB', undefined);
+            }}
+            for (const target of [navigator, Navigator.prototype]) replace(target, 'storage', undefined);
           }}
+          for (const target of [window, Window.prototype]) replace(target, 'caches', undefined);
           for (const target of [navigator, Navigator.prototype]) {{
-            replace(target, 'storage', undefined);
+            replace(target, 'serviceWorker', undefined);
             if (!{clipboard_allowed}) replace(target, 'clipboard', unavailableClipboard);
           }}
           for (const target of [document, Document.prototype]) {{
             try {{ Object.defineProperty(target, 'cookie', {{ configurable: false, get: () => '', set: () => true }}); }} catch {{}}
           }}
-          const invoke = (operation, payload = {{}}) =>
-            window.__TAURI_INTERNALS__.invoke('custom_module_bridge', {{ request: {{ operation, payload }} }});
+          class KKTermError extends Error {{
+            constructor(code, message, details) {{
+              super(message); this.name = 'KKTermError'; this.code = code; this.details = details;
+            }}
+          }}
+          const normalizeError = (error) => {{
+            if (error instanceof KKTermError) return error;
+            if (error && typeof error === 'object' && typeof error.code === 'string') {{
+              return new KKTermError(error.code, String(error.message || error.code), error.details);
+            }}
+            const message = error instanceof Error ? error.message : String(error);
+            const code = message.includes('permission') ? 'permission_denied' : 'host_error';
+            return new KKTermError(code, message);
+          }};
+          const invoke = async (operation, payload = {{}}) => {{
+            try {{
+              return await window.__TAURI_INTERNALS__.invoke(
+                'custom_module_bridge', {{ request: {{ operation, payload }} }}
+              );
+            }} catch (error) {{ throw normalizeError(error); }}
+          }};
           const listeners = new Map();
+          const deepFreeze = (value) => {{
+            if (value && typeof value === 'object' && !Object.isFrozen(value)) {{
+              for (const child of Object.values(value)) deepFreeze(child);
+              Object.freeze(value);
+            }}
+            return value;
+          }};
+          const capabilities = deepFreeze({capabilities});
+          let currentContext = Object.freeze({context});
           window.KKTerm = Object.freeze({{
             apiVersion: {HOST_API_VERSION},
-            context: {context},
+            get context() {{ return currentContext; }},
             ready: () => invoke('host.ready'),
             getContext: () => invoke('host.getContext'),
+            getCapabilities: () => Promise.resolve(capabilities),
             openExternal: (url) => invoke('host.openExternal', {{ url }}),
             storage: Object.freeze({{
               get: (key) => invoke('storage.get', {{ key }}),
@@ -1964,6 +2388,36 @@ fn initialization_script(
               delete: (key) => invoke('documents.delete', {{ key }}),
               list: () => invoke('documents.list')
             }}),
+            files: Object.freeze({{
+              open: (options = {{}}) => invoke('files.open', options),
+              beginSave: (options = {{}}) => invoke('files.beginSave', options),
+              read: (token, offset = 0, length) => invoke('files.read', {{ token, offset, length }}),
+              write: (token, dataBase64) => invoke('files.write', {{ token, dataBase64 }}),
+              commit: (token) => invoke('files.commit', {{ token }}),
+              close: (token) => invoke('files.close', {{ token }})
+            }}),
+            network: Object.freeze({{
+              fetch: (request) => invoke('network.fetch', request)
+            }}),
+            secrets: Object.freeze({{
+              has: (key) => invoke('secrets.has', {{ key }}),
+              requestEntry: (key, label) => invoke('secrets.requestEntry', {{ key, label }}),
+              delete: (key) => invoke('secrets.delete', {{ key }})
+            }}),
+            ui: Object.freeze({{
+              notice: (message, options = {{}}) => invoke('ui.notice', {{ message, ...options }}),
+              progress: (id, message, progress) => invoke('ui.progress', {{ id, message, progress }}),
+              clearProgress: (id) => invoke('ui.clearProgress', {{ id }})
+            }}),
+            blobs: Object.freeze({{
+              beginWrite: (key, mimeType) => invoke('blobs.beginWrite', {{ key, mimeType }}),
+              write: (token, dataBase64) => invoke('blobs.write', {{ token, dataBase64 }}),
+              commit: (token) => invoke('blobs.commit', {{ token }}),
+              abort: (token) => invoke('blobs.abort', {{ token }}),
+              read: (key, offset = 0, length) => invoke('blobs.read', {{ key, offset, length }}),
+              delete: (key) => invoke('blobs.delete', {{ key }}),
+              list: () => invoke('blobs.list')
+            }}),
             on: (event, listener) => {{
               const current = listeners.get(event) || new Set();
               current.add(listener); listeners.set(event, current);
@@ -1971,10 +2425,40 @@ fn initialization_script(
             }}
           }});
           window.__KKTERM_MODULE_EVENT__ = (event, detail) => {{
+            if (event === 'contextChanged') {{
+              currentContext = Object.freeze({{ ...currentContext, ...detail }});
+            }}
             for (const listener of listeners.get(event) || []) {{
               try {{ listener(detail); }} catch (error) {{ console.error(error); }}
             }}
           }};
+          const externalUrl = (value) => {{
+            try {{
+              const url = new URL(String(value), location.href);
+              return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : null;
+            }} catch {{ return null; }}
+          }};
+          document.addEventListener('click', (event) => {{
+            if (!event.isTrusted || event.defaultPrevented || event.button !== 0) return;
+            const target = event.target;
+            const anchor = target instanceof Element ? target.closest('a[href]') : null;
+            if (!anchor) return;
+            const url = externalUrl(anchor.getAttribute('href'));
+            if (!url || new URL(url).origin === location.origin) return;
+            event.preventDefault();
+            void invoke('host.openExternal', {{ url }}).catch(console.error);
+          }}, true);
+          const nativeOpen = window.open.bind(window);
+          replace(window, 'open', (url, target, features) => {{
+            const external = externalUrl(url);
+            if (external && new URL(external).origin !== location.origin && navigator.userActivation?.isActive) {{
+              void invoke('host.openExternal', {{ url: external }}).catch(console.error);
+              return null;
+            }}
+            return nativeOpen(url, target, features);
+          }});
+          window.addEventListener('focus', () => window.__KKTERM_MODULE_EVENT__('focusChanged', {{ focused: true }}));
+          window.addEventListener('blur', () => window.__KKTERM_MODULE_EVENT__('focusChanged', {{ focused: false }}));
         }})();
         "#
     ))
@@ -2021,15 +2505,22 @@ pub async fn start_custom_module(
     let host_window = app
         .get_webview_window(crate::window_state::MAIN_WINDOW_LABEL)
         .ok_or_else(|| "main window is not available".to_string())?;
-    let initial_url = Url::parse(&format!("kkmodule://localhost/{}", contribution.entrypoint))
+    let origin_host = package_origin_host(&installed.manifest.id);
+    let initial_url = Url::parse(&format!(
+        "kkmodule://{origin_host}/{}",
+        contribution.entrypoint
+    ))
         .map_err(|error| format!("failed to build Custom Module URL: {error}"))?;
     let permissions = granted_permissions(&storage, &installed.manifest.id)?;
-    let clipboard_allowed = permissions.contains("clipboard");
+    let effective_permissions = installed.manifest.permissions.restricted_to(&permissions);
+    let clipboard_allowed = effective_permissions.clipboard;
+    let navigation_origin_host = origin_host.clone();
+    let windows_origin_host = format!("kkmodule.{origin_host}");
     let mut builder = WebviewWindowBuilder::new(&app, &label, WebviewUrl::External(initial_url))
         .initialization_script(initialization_script(
             &request.theme,
             &request.locale,
-            clipboard_allowed,
+            &effective_permissions,
         )?)
         .decorations(false)
         .resizable(false)
@@ -2042,8 +2533,10 @@ pub async fn start_custom_module(
         .inner_size(request.width.max(1.0), request.height.max(1.0))
         .data_directory(webview_data_root(&paths).join(&installed.manifest.id))
         .on_navigation(move |url| {
-            let is_module_asset = url.scheme() == "kkmodule"
-                || (url.scheme() == "http" && url.host_str() == Some("kkmodule.localhost"));
+            let is_module_asset = (url.scheme() == "kkmodule"
+                && url.host_str() == Some(navigation_origin_host.as_str()))
+                || (url.scheme() == "http"
+                    && url.host_str() == Some(windows_origin_host.as_str()));
             is_module_asset
         })
         .on_new_window(|_, _| tauri::webview::NewWindowResponse::Deny);
@@ -2064,7 +2557,13 @@ pub async fn start_custom_module(
     }
     runtime.lock_routes()?.insert(
         label.clone(),
-        (root.clone(), contribution.entrypoint.clone()),
+        ModuleRoute {
+            root: root.clone(),
+            entrypoint: contribution.entrypoint.clone(),
+            routing: contribution.routing,
+            origin_host,
+            clipboard_allowed,
+        },
     );
     let window = match builder.build() {
         Ok(window) => window,
@@ -2077,10 +2576,13 @@ pub async fn start_custom_module(
         module_id: installed.manifest.id,
         contribution_id: contribution.id,
         permissions,
+        permission_config: effective_permissions,
         theme: request.theme,
         locale: request.locale,
         ready_sent: Arc::new(AtomicBool::new(false)),
         last_external_open: Arc::new(Mutex::new(None)),
+        blob_writes: Arc::new(Mutex::new(HashMap::new())),
+        file_tokens: Arc::new(Mutex::new(HashMap::new())),
         view_state: Arc::new(Mutex::new(RuntimeViewState {
             bounds: RuntimeBounds {
                 x: request.x,
@@ -2149,10 +2651,65 @@ fn set_runtime_view_visibility(session: &RuntimeSession, visible: bool) -> Resul
             bounds.height,
         )?;
     } else {
+        let _ = session.window.eval(
+            "window.__KKTERM_MODULE_EVENT__?.('suspending', { deadlineMs: 500 });",
+        );
         webview::hide_overlay(&session.window)?;
     }
     state.visible = visible;
+    drop(state);
+    let _ = session.window.eval(format!(
+        "window.__KKTERM_MODULE_EVENT__?.('visibilityChanged', {{ visible: {visible} }});"
+    ));
     Ok(())
+}
+
+fn abort_session_blob_writes(session: &RuntimeSession) {
+    if let Ok(mut writes) = session.blob_writes.lock() {
+        for (_, write) in writes.drain() {
+            drop(write.file);
+            let _ = fs::remove_file(write.path);
+        }
+    }
+}
+
+fn close_session_file_tokens(session: &RuntimeSession) {
+    if let Ok(mut tokens) = session.file_tokens.lock() {
+        for (_, token) in tokens.drain() {
+            if let FileToken::Write {
+                temporary, file, ..
+            } = token
+            {
+                drop(file);
+                let _ = fs::remove_file(temporary);
+            }
+        }
+    }
+}
+
+fn cancel_session_secret_prompts(
+    runtime: &CustomModuleRuntime,
+    app: &tauri::AppHandle,
+    session_id: &str,
+) {
+    if let Ok(mut prompts) = runtime.lock_secret_prompts() {
+        let request_ids = prompts
+            .iter()
+            .filter_map(|(request_id, prompt)| {
+                (prompt.session_id == session_id).then_some(request_id.clone())
+            })
+            .collect::<Vec<_>>();
+        for request_id in request_ids {
+            if let Some(prompt) = prompts.remove(&request_id) {
+                let _ = prompt.completion.send(false);
+                let _ = app.emit_to(
+                    crate::window_state::MAIN_WINDOW_LABEL,
+                    "custom-module-secret-prompt-cancelled",
+                    json!({ "requestId": request_id }),
+                );
+            }
+        }
+    }
 }
 
 #[tauri::command]
@@ -2209,10 +2766,17 @@ pub fn update_custom_module_context(
 #[tauri::command]
 pub fn close_custom_module(
     session_id: String,
+    app: tauri::AppHandle,
     runtime: tauri::State<'_, CustomModuleRuntime>,
 ) -> Result<(), String> {
     let session = runtime.session(&session_id)?;
     let _ = webview::hide_overlay(&session.window);
+    let _ = session
+        .window
+        .eval("window.__KKTERM_MODULE_EVENT__?.('closing', { reason: 'host' });");
+    abort_session_blob_writes(&session);
+    close_session_file_tokens(&session);
+    cancel_session_secret_prompts(&runtime, &app, &session_id);
     session
         .window
         .close()
@@ -2455,6 +3019,358 @@ fn list_documents(storage: &Storage, module_id: &str) -> Result<Value, String> {
     })
 }
 
+fn blob_content_path(paths: &AppPaths, module_id: &str, sha256: &str) -> PathBuf {
+    blob_storage_root(paths)
+        .join(module_id)
+        .join(format!("{sha256}.blob"))
+}
+
+fn ensure_blob_quota(
+    connection: &rusqlite::Connection,
+    module_id: &str,
+    key: &str,
+    byte_size: i64,
+) -> Result<(), String> {
+    let (existing, key_count): (i64, i64) = connection
+        .query_row(
+            "SELECT COALESCE(SUM(byte_size), 0), COUNT(*) FROM custom_module_blobs
+             WHERE module_id = ?1 AND key <> ?2",
+            params![module_id, key],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .map_err(|error| error.to_string())?;
+    if key_count >= MAX_BLOB_KEYS {
+        return Err("Custom Module blob key limit exceeded".into());
+    }
+    if existing.saturating_add(byte_size) > BLOB_STORAGE_QUOTA_BYTES {
+        return Err("Custom Module blob storage quota exceeded".into());
+    }
+    Ok(())
+}
+
+fn remove_unreferenced_blob(
+    storage: &Storage,
+    paths: &AppPaths,
+    module_id: &str,
+    sha256: &str,
+) -> Result<(), String> {
+    let references: i64 = storage.with_connection(|connection| {
+        connection
+            .query_row(
+                "SELECT COUNT(*) FROM custom_module_blobs
+                 WHERE module_id = ?1 AND content_sha256 = ?2",
+                params![module_id, sha256],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())
+    })?;
+    if references == 0 {
+        match fs::remove_file(blob_content_path(paths, module_id, sha256)) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(format!("failed to remove Custom Module blob: {error}")),
+        }
+    }
+    Ok(())
+}
+
+fn begin_blob_write(
+    paths: &AppPaths,
+    session: &RuntimeSession,
+    payload: &Value,
+) -> Result<Value, String> {
+    let key = bridge_key(payload)?.to_string();
+    let mime_type = payload
+        .get("mimeType")
+        .and_then(Value::as_str)
+        .unwrap_or("application/octet-stream")
+        .trim()
+        .to_ascii_lowercase();
+    if mime_type.is_empty()
+        || mime_type.len() > 128
+        || mime_type.chars().any(char::is_control)
+        || !mime_type.contains('/')
+    {
+        return Err("Custom Module blob MIME type is invalid".into());
+    }
+    let directory = blob_storage_root(paths)
+        .join(&session.module_id)
+        .join(".staging");
+    fs::create_dir_all(&directory)
+        .map_err(|error| format!("failed to create Custom Module blob directory: {error}"))?;
+    let token = format!("{:032x}", rand::random::<u128>());
+    let path = directory.join(format!("{token}.tmp"));
+    let file = File::create(&path)
+        .map_err(|error| format!("failed to create Custom Module blob: {error}"))?;
+    session
+        .blob_writes
+        .lock()
+        .map_err(|_| "Custom Module blob-write lock is poisoned".to_string())?
+        .insert(
+            token.clone(),
+            BlobWrite {
+                key,
+                mime_type,
+                path,
+                file,
+                byte_size: 0,
+            },
+        );
+    Ok(json!({ "token": token, "maxChunkBytes": MAX_BLOB_CHUNK_BYTES }))
+}
+
+fn blob_write_chunk(session: &RuntimeSession, payload: &Value) -> Result<Value, String> {
+    let token = payload
+        .get("token")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "blobs.write requires a token".to_string())?;
+    let encoded = payload
+        .get("dataBase64")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "blobs.write requires dataBase64".to_string())?;
+    let bytes = BASE64
+        .decode(encoded)
+        .map_err(|error| format!("invalid Custom Module blob chunk: {error}"))?;
+    if bytes.len() > MAX_BLOB_CHUNK_BYTES {
+        return Err("Custom Module blob chunk exceeds 1 MiB".into());
+    }
+    let mut writes = session
+        .blob_writes
+        .lock()
+        .map_err(|_| "Custom Module blob-write lock is poisoned".to_string())?;
+    let write = writes
+        .get_mut(token)
+        .ok_or_else(|| "Custom Module blob-write token is invalid or expired".to_string())?;
+    let next_size = write.byte_size.saturating_add(bytes.len() as u64);
+    if next_size > MAX_BLOB_BYTES {
+        return Err("Custom Module blob exceeds the 256 MiB per-blob limit".into());
+    }
+    write
+        .file
+        .write_all(&bytes)
+        .map_err(|error| format!("failed to write Custom Module blob: {error}"))?;
+    write.byte_size = next_size;
+    Ok(json!({ "byteSize": next_size }))
+}
+
+fn commit_blob_write(
+    storage: &Storage,
+    paths: &AppPaths,
+    session: &RuntimeSession,
+    payload: &Value,
+) -> Result<Value, String> {
+    let token = payload
+        .get("token")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "blobs.commit requires a token".to_string())?;
+    let write = session
+        .blob_writes
+        .lock()
+        .map_err(|_| "Custom Module blob-write lock is poisoned".to_string())?
+        .remove(token)
+        .ok_or_else(|| "Custom Module blob-write token is invalid or expired".to_string())?;
+    let result = (|| -> Result<Value, String> {
+        write
+            .file
+            .sync_all()
+            .map_err(|error| format!("failed to flush Custom Module blob: {error}"))?;
+        drop(write.file);
+        let mut input = File::open(&write.path)
+            .map_err(|error| format!("failed to reopen Custom Module blob: {error}"))?;
+        let mut hasher = Sha256::new();
+        let mut buffer = [0_u8; 64 * 1024];
+        loop {
+            let count = input
+                .read(&mut buffer)
+                .map_err(|error| format!("failed to hash Custom Module blob: {error}"))?;
+            if count == 0 {
+                break;
+            }
+            hasher.update(&buffer[..count]);
+        }
+        let sha256 = encode_hex(&hasher.finalize());
+        let byte_size = i64::try_from(write.byte_size)
+            .map_err(|_| "Custom Module blob is too large".to_string())?;
+        let previous_sha256: Option<String> = storage.with_connection(|connection| {
+            ensure_blob_quota(connection, &session.module_id, &write.key, byte_size)?;
+            connection
+                .query_row(
+                    "SELECT content_sha256 FROM custom_module_blobs WHERE module_id = ?1 AND key = ?2",
+                    params![session.module_id, write.key],
+                    |row| row.get(0),
+                )
+                .optional()
+                .map_err(|error| error.to_string())
+        })?;
+        let destination = blob_content_path(paths, &session.module_id, &sha256);
+        if destination.exists() {
+            fs::remove_file(&write.path)
+                .map_err(|error| format!("failed to discard duplicate Custom Module blob: {error}"))?;
+        } else {
+            fs::rename(&write.path, &destination)
+                .map_err(|error| format!("failed to activate Custom Module blob: {error}"))?;
+        }
+        let update = storage.with_connection_mut(|connection| {
+            let transaction = connection.transaction().map_err(|error| error.to_string())?;
+            ensure_blob_quota(&transaction, &session.module_id, &write.key, byte_size)?;
+            transaction
+                .execute(
+                    "INSERT INTO custom_module_blobs (
+                        module_id, key, content_sha256, mime_type, byte_size
+                     ) VALUES (?1, ?2, ?3, ?4, ?5)
+                     ON CONFLICT(module_id, key) DO UPDATE SET
+                        content_sha256 = excluded.content_sha256,
+                        mime_type = excluded.mime_type,
+                        byte_size = excluded.byte_size,
+                        updated_at = CURRENT_TIMESTAMP",
+                    params![session.module_id, write.key, sha256, write.mime_type, byte_size],
+                )
+                .map_err(|error| error.to_string())?;
+            transaction.commit().map_err(|error| error.to_string())
+        });
+        if let Err(error) = update {
+            let _ = remove_unreferenced_blob(storage, paths, &session.module_id, &sha256);
+            return Err(error);
+        }
+        if let Some(previous) = previous_sha256.filter(|previous| previous != &sha256) {
+            remove_unreferenced_blob(storage, paths, &session.module_id, &previous)?;
+        }
+        Ok(json!({
+            "key": write.key,
+            "sha256": sha256,
+            "mimeType": write.mime_type,
+            "byteSize": byte_size,
+        }))
+    })();
+    let _ = fs::remove_file(&write.path);
+    result
+}
+
+fn abort_blob_write(session: &RuntimeSession, payload: &Value) -> Result<Value, String> {
+    let token = payload
+        .get("token")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "blobs.abort requires a token".to_string())?;
+    if let Some(write) = session
+        .blob_writes
+        .lock()
+        .map_err(|_| "Custom Module blob-write lock is poisoned".to_string())?
+        .remove(token)
+    {
+        drop(write.file);
+        let _ = fs::remove_file(write.path);
+    }
+    Ok(json!(true))
+}
+
+fn read_blob(
+    storage: &Storage,
+    paths: &AppPaths,
+    module_id: &str,
+    payload: &Value,
+) -> Result<Value, String> {
+    let key = bridge_key(payload)?;
+    let offset = payload.get("offset").and_then(Value::as_u64).unwrap_or(0);
+    let length = payload
+        .get("length")
+        .and_then(Value::as_u64)
+        .unwrap_or(MAX_BLOB_CHUNK_BYTES as u64)
+        .min(MAX_BLOB_CHUNK_BYTES as u64) as usize;
+    let metadata: Option<(String, String, i64, String)> = storage.with_connection(|connection| {
+        connection
+            .query_row(
+                "SELECT content_sha256, mime_type, byte_size, updated_at
+                 FROM custom_module_blobs WHERE module_id = ?1 AND key = ?2",
+                params![module_id, key],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+            )
+            .optional()
+            .map_err(|error| error.to_string())
+    })?;
+    let Some((sha256, mime_type, byte_size, updated_at)) = metadata else {
+        return Ok(Value::Null);
+    };
+    let mut file = File::open(blob_content_path(paths, module_id, &sha256))
+        .map_err(|error| format!("failed to read Custom Module blob: {error}"))?;
+    if file.metadata().map_err(|error| error.to_string())?.len() != byte_size as u64 {
+        return Err("Custom Module blob failed its integrity size check".into());
+    }
+    file.seek(SeekFrom::Start(offset))
+        .map_err(|error| format!("failed to seek Custom Module blob: {error}"))?;
+    let mut bytes = vec![0; length];
+    let count = file
+        .read(&mut bytes)
+        .map_err(|error| format!("failed to read Custom Module blob: {error}"))?;
+    bytes.truncate(count);
+    Ok(json!({
+        "key": key,
+        "sha256": sha256,
+        "mimeType": mime_type,
+        "byteSize": byte_size,
+        "updatedAt": updated_at,
+        "offset": offset,
+        "dataBase64": BASE64.encode(bytes),
+        "eof": offset.saturating_add(count as u64) >= byte_size as u64,
+    }))
+}
+
+fn list_blobs(storage: &Storage, module_id: &str) -> Result<Value, String> {
+    storage.with_connection(|connection| {
+        let mut statement = connection
+            .prepare(
+                "SELECT key, content_sha256, mime_type, byte_size, updated_at
+                 FROM custom_module_blobs WHERE module_id = ?1 ORDER BY key",
+            )
+            .map_err(|error| error.to_string())?;
+        let rows = statement
+            .query_map([module_id], |row| {
+                Ok(json!({
+                    "key": row.get::<_, String>(0)?,
+                    "sha256": row.get::<_, String>(1)?,
+                    "mimeType": row.get::<_, String>(2)?,
+                    "byteSize": row.get::<_, i64>(3)?,
+                    "updatedAt": row.get::<_, String>(4)?,
+                }))
+            })
+            .map_err(|error| error.to_string())?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|error| error.to_string())?;
+        Ok(json!(rows))
+    })
+}
+
+fn delete_blob(
+    storage: &Storage,
+    paths: &AppPaths,
+    module_id: &str,
+    payload: &Value,
+) -> Result<Value, String> {
+    let key = bridge_key(payload)?;
+    let previous: Option<String> = storage.with_connection(|connection| {
+        connection
+            .query_row(
+                "SELECT content_sha256 FROM custom_module_blobs WHERE module_id = ?1 AND key = ?2",
+                params![module_id, key],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(|error| error.to_string())
+    })?;
+    storage.with_connection(|connection| {
+        connection
+            .execute(
+                "DELETE FROM custom_module_blobs WHERE module_id = ?1 AND key = ?2",
+                params![module_id, key],
+            )
+            .map_err(|error| error.to_string())?;
+        Ok(())
+    })?;
+    if let Some(sha256) = previous {
+        remove_unreferenced_blob(storage, paths, module_id, &sha256)?;
+    }
+    Ok(json!(true))
+}
+
 fn delete_document(
     storage: &Storage,
     paths: &AppPaths,
@@ -2512,12 +3428,801 @@ fn ensure_storage_quota(
     Ok(())
 }
 
+fn selected_file_allowed(path: &Path, permission: &CustomModuleFilePermission) -> bool {
+    permission.extensions.is_empty()
+        || path
+            .extension()
+            .and_then(|extension| extension.to_str())
+            .map(|extension| extension.to_ascii_lowercase())
+            .is_some_and(|extension| permission.extensions.contains(&extension))
+}
+
+async fn select_module_file(
+    app: &tauri::AppHandle,
+    session: &RuntimeSession,
+    permission: &CustomModuleFilePermission,
+    save: bool,
+    payload: &Value,
+) -> Result<Value, String> {
+    use tauri_plugin_dialog::DialogExt;
+
+    if (save && !permission.save) || (!save && !permission.open) {
+        return Err("Custom Module file operation is not granted".into());
+    }
+    let mut picker = app.dialog().file();
+    if let Some(main_webview) = app.get_webview_window(crate::window_state::MAIN_WINDOW_LABEL) {
+        picker = picker.set_parent(&main_webview.as_ref().window());
+    }
+    if !permission.extensions.is_empty() {
+        let extensions = permission
+            .extensions
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>();
+        picker = picker.add_filter("Allowed files", &extensions);
+    }
+    if save {
+        if let Some(suggested_name) = payload.get("suggestedName").and_then(Value::as_str) {
+            let file_name = Path::new(suggested_name)
+                .file_name()
+                .and_then(|name| name.to_str())
+                .filter(|name| !name.is_empty() && name.len() <= 255)
+                .ok_or_else(|| "files.beginSave suggestedName is invalid".to_string())?;
+            picker = picker.set_file_name(file_name);
+        }
+    }
+    let (sender, receiver) = tokio::sync::oneshot::channel();
+    if save {
+        picker.save_file(move |selection| {
+            let _ = sender.send(selection.and_then(|path| path.into_path().ok()));
+        });
+    } else {
+        picker.pick_file(move |selection| {
+            let _ = sender.send(selection.and_then(|path| path.into_path().ok()));
+        });
+    }
+    let Some(selected) = receiver
+        .await
+        .map_err(|_| "Custom Module file picker was closed unexpectedly".to_string())?
+    else {
+        return Ok(Value::Null);
+    };
+    if !selected_file_allowed(&selected, permission) {
+        return Err("selected file does not match the granted extension filters".into());
+    }
+    let session = session.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let token = format!("{:032x}", rand::random::<u128>());
+        let name = selected
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("file")
+            .to_string();
+        let (file_token, byte_size) = if save {
+            let parent = selected
+                .parent()
+                .ok_or_else(|| "selected save target has no parent directory".to_string())?;
+            let temporary = parent.join(format!(".kkterm-save-{token}.tmp"));
+            let file = File::create(&temporary)
+                .map_err(|error| format!("failed to create temporary save file: {error}"))?;
+            (
+                FileToken::Write {
+                    target: selected,
+                    temporary,
+                    file,
+                    byte_size: 0,
+                },
+                0,
+            )
+        } else {
+            let canonical = fs::canonicalize(&selected)
+                .map_err(|error| format!("failed to resolve selected file: {error}"))?;
+            let metadata = canonical
+                .metadata()
+                .map_err(|error| format!("failed to inspect selected file: {error}"))?;
+            if !metadata.is_file() {
+                return Err("selected path is not a regular file".into());
+            }
+            let byte_size = metadata.len();
+            (
+                FileToken::Read {
+                    path: canonical,
+                    byte_size,
+                },
+                byte_size,
+            )
+        };
+        session
+            .file_tokens
+            .lock()
+            .map_err(|_| "Custom Module file-token lock is poisoned".to_string())?
+            .insert(token.clone(), file_token);
+        Ok(json!({
+            "token": token,
+            "name": name,
+            "byteSize": byte_size,
+            "writable": save,
+            "maxChunkBytes": MAX_BLOB_CHUNK_BYTES,
+        }))
+    })
+    .await
+    .map_err(|error| format!("Custom Module file worker failed: {error}"))?
+}
+
+fn read_selected_file(session: &RuntimeSession, payload: &Value) -> Result<Value, String> {
+    let token = payload
+        .get("token")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "files.read requires a token".to_string())?;
+    let offset = payload.get("offset").and_then(Value::as_u64).unwrap_or(0);
+    let length = payload
+        .get("length")
+        .and_then(Value::as_u64)
+        .unwrap_or(MAX_BLOB_CHUNK_BYTES as u64)
+        .min(MAX_BLOB_CHUNK_BYTES as u64) as usize;
+    let tokens = session
+        .file_tokens
+        .lock()
+        .map_err(|_| "Custom Module file-token lock is poisoned".to_string())?;
+    let FileToken::Read { path, byte_size } = tokens
+        .get(token)
+        .ok_or_else(|| "Custom Module file token is invalid or expired".to_string())?
+    else {
+        return Err("Custom Module file token is not readable".into());
+    };
+    let mut file = File::open(path).map_err(|error| format!("failed to open selected file: {error}"))?;
+    file.seek(SeekFrom::Start(offset))
+        .map_err(|error| format!("failed to seek selected file: {error}"))?;
+    let mut bytes = vec![0; length];
+    let count = file
+        .read(&mut bytes)
+        .map_err(|error| format!("failed to read selected file: {error}"))?;
+    bytes.truncate(count);
+    Ok(json!({
+        "offset": offset,
+        "dataBase64": BASE64.encode(bytes),
+        "eof": offset.saturating_add(count as u64) >= *byte_size,
+    }))
+}
+
+fn write_selected_file(session: &RuntimeSession, payload: &Value) -> Result<Value, String> {
+    let token = payload
+        .get("token")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "files.write requires a token".to_string())?;
+    let encoded = payload
+        .get("dataBase64")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "files.write requires dataBase64".to_string())?;
+    let bytes = BASE64
+        .decode(encoded)
+        .map_err(|error| format!("invalid selected-file chunk: {error}"))?;
+    if bytes.len() > MAX_BLOB_CHUNK_BYTES {
+        return Err("Custom Module file chunk exceeds 1 MiB".into());
+    }
+    let mut tokens = session
+        .file_tokens
+        .lock()
+        .map_err(|_| "Custom Module file-token lock is poisoned".to_string())?;
+    let FileToken::Write {
+        file, byte_size, ..
+    } = tokens
+        .get_mut(token)
+        .ok_or_else(|| "Custom Module file token is invalid or expired".to_string())?
+    else {
+        return Err("Custom Module file token is not writable".into());
+    };
+    file.write_all(&bytes)
+        .map_err(|error| format!("failed to write selected file: {error}"))?;
+    *byte_size = byte_size.saturating_add(bytes.len() as u64);
+    Ok(json!({ "byteSize": *byte_size }))
+}
+
+fn commit_selected_file(session: &RuntimeSession, payload: &Value) -> Result<Value, String> {
+    let token = payload
+        .get("token")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "files.commit requires a token".to_string())?;
+    let selected = session
+        .file_tokens
+        .lock()
+        .map_err(|_| "Custom Module file-token lock is poisoned".to_string())?
+        .remove(token)
+        .ok_or_else(|| "Custom Module file token is invalid or expired".to_string())?;
+    let FileToken::Write {
+        target,
+        temporary,
+        file,
+        byte_size,
+    } = selected
+    else {
+        return Err("Custom Module file token is not writable".into());
+    };
+    file.sync_all()
+        .map_err(|error| format!("failed to flush selected file: {error}"))?;
+    drop(file);
+    let backup = target.with_extension(format!("kkterm-backup-{:016x}", rand::random::<u64>()));
+    let had_target = target.exists();
+    if had_target {
+        fs::rename(&target, &backup)
+            .map_err(|error| format!("failed to stage existing save target: {error}"))?;
+    }
+    if let Err(error) = fs::rename(&temporary, &target) {
+        if had_target {
+            let _ = fs::rename(&backup, &target);
+        }
+        let _ = fs::remove_file(&temporary);
+        return Err(format!("failed to commit selected file: {error}"));
+    }
+    if had_target {
+        let _ = fs::remove_file(backup);
+    }
+    Ok(json!({ "byteSize": byte_size }))
+}
+
+fn close_selected_file(session: &RuntimeSession, payload: &Value) -> Result<Value, String> {
+    let token = payload
+        .get("token")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "files.close requires a token".to_string())?;
+    if let Some(FileToken::Write {
+        temporary, file, ..
+    }) = session
+        .file_tokens
+        .lock()
+        .map_err(|_| "Custom Module file-token lock is poisoned".to_string())?
+        .remove(token)
+    {
+        drop(file);
+        let _ = fs::remove_file(temporary);
+    }
+    Ok(json!(true))
+}
+
+fn network_address_is_private(address: std::net::IpAddr) -> bool {
+    match address {
+        std::net::IpAddr::V4(address) => {
+            let octets = address.octets();
+            address.is_private()
+                || address.is_loopback()
+                || address.is_link_local()
+                || address.is_broadcast()
+                || address.is_documentation()
+                || address.is_unspecified()
+                || address.is_multicast()
+                || octets[0] == 0
+                || (octets[0] == 100 && (64..=127).contains(&octets[1]))
+                || (octets[0] == 192 && octets[1] == 0 && octets[2] == 0)
+                || (octets[0] == 192 && octets[1] == 88 && octets[2] == 99)
+                || (octets[0] == 198 && matches!(octets[1], 18 | 19))
+                || octets[0] >= 240
+        }
+        std::net::IpAddr::V6(address) => {
+            if let Some(ipv4) = address.to_ipv4_mapped() {
+                return network_address_is_private(std::net::IpAddr::V4(ipv4));
+            }
+            let segments = address.segments();
+            address.is_loopback()
+                || address.is_unique_local()
+                || address.is_unicast_link_local()
+                || address.is_unspecified()
+                || address.is_multicast()
+                || segments[0] & 0xe000 != 0x2000
+                || (segments[0] == 0x2001 && segments[1] == 0x0db8)
+                || (segments[0] == 0x2001 && segments[1] == 0x0002)
+                || (segments[0] == 0x2001 && segments[1] == 0)
+                || segments[0] == 0x2002
+                || (segments[0] & 0xfff0 == 0x3ff0)
+        }
+    }
+}
+
+fn custom_module_secret_key(payload: &Value) -> Result<&str, String> {
+    let key = payload
+        .get("key")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "Custom Module secret operation requires a key".to_string())?;
+    validate_custom_module_secret_key(key)?;
+    Ok(key)
+}
+
+fn validate_custom_module_secret_key(key: &str) -> Result<(), String> {
+    if key.is_empty()
+        || key.len() > 64
+        || !key
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-'))
+    {
+        return Err("Custom Module secret key is invalid".into());
+    }
+    Ok(())
+}
+
+fn custom_module_secret_owner_id(module_id: &str, key: &str) -> String {
+    let digest = Sha256::digest(module_id.as_bytes());
+    format!("{}:{key}", encode_hex(&digest[..16]))
+}
+
+async fn request_custom_module_secret(
+    app: &tauri::AppHandle,
+    runtime: &CustomModuleRuntime,
+    session: &RuntimeSession,
+    session_id: &str,
+    payload: &Value,
+) -> Result<Value, String> {
+    let key = custom_module_secret_key(payload)?.to_string();
+    let label = payload
+        .get("label")
+        .and_then(Value::as_str)
+        .unwrap_or(&key)
+        .trim();
+    if label.is_empty() || label.len() > 128 || label.chars().any(char::is_control) {
+        return Err("Custom Module secret label is invalid".into());
+    }
+    let request_id = format!("{:032x}", rand::random::<u128>());
+    let (sender, receiver) = tokio::sync::oneshot::channel();
+    runtime.lock_secret_prompts()?.insert(
+        request_id.clone(),
+        PendingSecretPrompt {
+            session_id: session_id.to_string(),
+            module_id: session.module_id.clone(),
+            key: key.clone(),
+            completion: sender,
+        },
+    );
+    if let Err(error) = app.emit_to(
+        crate::window_state::MAIN_WINDOW_LABEL,
+        "custom-module-secret-prompt",
+        json!({
+            "requestId": request_id,
+            "moduleId": session.module_id,
+            "key": key,
+            "label": label,
+        }),
+    ) {
+        runtime.lock_secret_prompts()?.remove(&request_id);
+        return Err(format!("failed to request Custom Module secret entry: {error}"));
+    }
+    let stored = match tokio::time::timeout(Duration::from_secs(300), receiver).await {
+        Ok(Ok(stored)) => stored,
+        Ok(Err(_)) => false,
+        Err(_) => {
+            runtime.lock_secret_prompts()?.remove(&request_id);
+            return Err("Custom Module secret entry timed out".into());
+        }
+    };
+    Ok(json!({ "stored": stored }))
+}
+
 #[tauri::command]
-pub fn custom_module_bridge(
+pub fn resolve_custom_module_secret_prompt(
+    request: ResolveCustomModuleSecretPromptRequest,
+    webview_window: WebviewWindow,
+    storage: tauri::State<'_, Storage>,
+    secret_store: tauri::State<'_, secrets::Secrets>,
+    runtime: tauri::State<'_, CustomModuleRuntime>,
+) -> Result<bool, String> {
+    if webview_window.label() != crate::window_state::MAIN_WINDOW_LABEL {
+        return Err("Custom Module secret prompts can be resolved only by the main window".into());
+    }
+    let pending = runtime
+        .lock_secret_prompts()?
+        .remove(&request.request_id)
+        .ok_or_else(|| "Custom Module secret prompt is invalid or expired".to_string())?;
+    let stored = if let Some(secret) = request.secret.filter(|secret| !secret.is_empty()) {
+        if secret.len() > 64 * 1024 {
+            let _ = pending.completion.send(false);
+            return Err("Custom Module secret is too large".into());
+        }
+        let owner_id = custom_module_secret_owner_id(&pending.module_id, &pending.key);
+        secret_store.store_secret(secrets::StoreSecretRequest::custom_module_secret(
+            owner_id.clone(),
+            secret,
+        ))?;
+        if let Err(error) = storage.with_connection(|connection| {
+            connection
+                .execute(
+                    "INSERT INTO custom_module_secret_refs (module_id, key, owner_id)
+                     VALUES (?1, ?2, ?3)
+                     ON CONFLICT(module_id, key) DO UPDATE SET
+                        owner_id = excluded.owner_id,
+                        updated_at = CURRENT_TIMESTAMP",
+                    params![pending.module_id, pending.key, owner_id],
+                )
+                .map_err(|error| error.to_string())?;
+            Ok(())
+        }) {
+            let _ = secret_store.delete_secret(secrets::SecretReferenceRequest::custom_module_secret(
+                custom_module_secret_owner_id(&pending.module_id, &pending.key),
+            ));
+            let _ = pending.completion.send(false);
+            return Err(error);
+        }
+        true
+    } else {
+        false
+    };
+    let _ = pending.completion.send(stored);
+    Ok(stored)
+}
+
+fn custom_module_secret_presence(
+    secret_store: &secrets::Secrets,
+    module_id: &str,
+    payload: &Value,
+) -> Result<Value, String> {
+    let key = custom_module_secret_key(payload)?;
+    let presence = secret_store.secret_exists(secrets::SecretReferenceRequest::custom_module_secret(
+        custom_module_secret_owner_id(module_id, key),
+    ))?;
+    Ok(json!({ "exists": presence.exists() }))
+}
+
+fn delete_custom_module_secret(
+    storage: &Storage,
+    secret_store: &secrets::Secrets,
+    module_id: &str,
+    payload: &Value,
+) -> Result<Value, String> {
+    let key = custom_module_secret_key(payload)?;
+    let owner_id = custom_module_secret_owner_id(module_id, key);
+    secret_store.delete_secret(secrets::SecretReferenceRequest::custom_module_secret(
+        owner_id,
+    ))?;
+    storage.with_connection(|connection| {
+        connection
+            .execute(
+                "DELETE FROM custom_module_secret_refs WHERE module_id = ?1 AND key = ?2",
+                params![module_id, key],
+            )
+            .map_err(|error| error.to_string())?;
+        Ok(())
+    })?;
+    Ok(json!(true))
+}
+
+async fn validate_network_target(
+    permission: &CustomModuleNetworkPermission,
+    url: &Url,
+) -> Result<std::net::SocketAddr, String> {
+    if !url.username().is_empty() || url.password().is_some() || url.fragment().is_some() {
+        return Err("network.fetch URL may not contain credentials or a fragment".into());
+    }
+    if url.scheme() != "https" && !(url.scheme() == "http" && permission.allow_private_network) {
+        return Err("network.fetch requires HTTPS unless private-network access is granted".into());
+    }
+    let origin = url.origin().ascii_serialization();
+    if !permission.origins.contains(&origin) {
+        return Err(format!("network.fetch origin '{origin}' is not granted"));
+    }
+    let host = url
+        .host_str()
+        .ok_or_else(|| "network.fetch URL has no host".to_string())?;
+    let port = url
+        .port_or_known_default()
+        .ok_or_else(|| "network.fetch URL has no usable port".to_string())?;
+    let addresses = tokio::net::lookup_host((host, port))
+        .await
+        .map_err(|error| format!("network.fetch DNS lookup failed: {error}"))?
+        .collect::<Vec<_>>();
+    if addresses.is_empty() {
+        return Err("network.fetch DNS lookup returned no addresses".into());
+    }
+    if !permission.allow_private_network
+        && addresses
+            .iter()
+            .any(|address| network_address_is_private(address.ip()))
+    {
+        return Err("network.fetch target resolves to a private or local address".into());
+    }
+    Ok(addresses[0])
+}
+
+fn request_headers(payload: &Value) -> Result<reqwest::header::HeaderMap, String> {
+    let mut output = reqwest::header::HeaderMap::new();
+    let Some(headers) = payload.get("headers") else {
+        return Ok(output);
+    };
+    let headers = headers
+        .as_object()
+        .ok_or_else(|| "network.fetch headers must be an object".to_string())?;
+    if headers.len() > 64 {
+        return Err("network.fetch has too many headers".into());
+    }
+    for (name, value) in headers {
+        let lower = name.to_ascii_lowercase();
+        if matches!(
+            lower.as_str(),
+            "authorization"
+                | "cookie"
+                | "host"
+                | "connection"
+                | "content-length"
+                | "proxy-authorization"
+                | "proxy-connection"
+                | "te"
+                | "trailer"
+                | "transfer-encoding"
+                | "upgrade"
+        ) || lower.starts_with("sec-")
+        {
+            return Err(format!("network.fetch header '{name}' is controlled by the host"));
+        }
+        let value = value
+            .as_str()
+            .ok_or_else(|| format!("network.fetch header '{name}' must be a string"))?;
+        let name = reqwest::header::HeaderName::from_bytes(name.as_bytes())
+            .map_err(|error| format!("invalid network.fetch header name: {error}"))?;
+        let value = reqwest::header::HeaderValue::from_str(value)
+            .map_err(|error| format!("invalid network.fetch header value: {error}"))?;
+        output.insert(name, value);
+    }
+    Ok(output)
+}
+
+async fn module_network_fetch(
+    permission: &CustomModuleNetworkPermission,
+    app: &tauri::AppHandle,
+    module_id: &str,
+    payload: &Value,
+) -> Result<Value, String> {
+    let raw_url = payload
+        .get("url")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "network.fetch requires a URL".to_string())?;
+    let mut url = Url::parse(raw_url).map_err(|error| format!("invalid network.fetch URL: {error}"))?;
+    let method = payload
+        .get("method")
+        .and_then(Value::as_str)
+        .unwrap_or("GET")
+        .to_ascii_uppercase();
+    if !permission.methods.contains(&method) {
+        return Err(format!("network.fetch method '{method}' is not granted"));
+    }
+    let method = reqwest::Method::from_bytes(method.as_bytes())
+        .map_err(|error| format!("invalid network.fetch method: {error}"))?;
+    let mut headers = request_headers(payload)?;
+    if let Some(binding) = payload.get("secret") {
+        let binding = binding
+            .as_object()
+            .ok_or_else(|| "network.fetch secret must be an object".to_string())?;
+        let key = binding
+            .get("key")
+            .and_then(Value::as_str)
+            .ok_or_else(|| "network.fetch secret requires a key".to_string())?;
+        validate_custom_module_secret_key(key)?;
+        let header_name = binding
+            .get("header")
+            .and_then(Value::as_str)
+            .unwrap_or("authorization")
+            .to_ascii_lowercase();
+        if !matches!(header_name.as_str(), "authorization" | "x-api-key" | "api-key") {
+            return Err("network.fetch secret header must be Authorization, X-API-Key, or API-Key".into());
+        }
+        let prefix = binding
+            .get("prefix")
+            .and_then(Value::as_str)
+            .unwrap_or("");
+        if prefix.len() > 32 || prefix.chars().any(char::is_control) {
+            return Err("network.fetch secret prefix is invalid".into());
+        }
+        let owner_id = custom_module_secret_owner_id(module_id, key);
+        let worker_app = app.clone();
+        let secret = tauri::async_runtime::spawn_blocking(move || {
+            worker_app
+                .state::<secrets::Secrets>()
+                .read_custom_module_secret(owner_id)
+        })
+        .await
+        .map_err(|error| format!("Custom Module secret worker failed: {error}"))??
+        .ok_or_else(|| "the requested Custom Module secret is not stored".to_string())?;
+        let name = reqwest::header::HeaderName::from_bytes(header_name.as_bytes())
+            .map_err(|error| format!("invalid network.fetch secret header: {error}"))?;
+        let mut value = reqwest::header::HeaderValue::from_str(&format!("{prefix}{secret}"))
+            .map_err(|_| "stored Custom Module secret cannot be used as an HTTP header".to_string())?;
+        value.set_sensitive(true);
+        headers.insert(name, value);
+    }
+    let body = payload
+        .get("bodyBase64")
+        .and_then(Value::as_str)
+        .map(|body| {
+            BASE64
+                .decode(body)
+                .map_err(|error| format!("invalid network.fetch bodyBase64: {error}"))
+        })
+        .transpose()?
+        .unwrap_or_default();
+    if body.len() > MAX_NETWORK_REQUEST_BYTES {
+        return Err("network.fetch request body exceeds 8 MiB".into());
+    }
+    let max_response = permission
+        .max_response_bytes
+        .min(MAX_NETWORK_RESPONSE_BYTES);
+    for redirect_count in 0..=5 {
+        let pinned_address = validate_network_target(permission, &url).await?;
+        let host = url
+            .host_str()
+            .ok_or_else(|| "network.fetch URL has no host".to_string())?
+            .to_string();
+        let client = crate::net::proxy::apply_async(
+            reqwest::Client::builder()
+                .redirect(reqwest::redirect::Policy::none())
+                .timeout(Duration::from_secs(30))
+                .resolve(&host, pinned_address),
+        )
+        .build()
+        .map_err(|error| format!("failed to create network.fetch client: {error}"))?;
+        let mut response = client
+            .request(method.clone(), url.clone())
+            .headers(headers.clone())
+            .body(body.clone())
+            .send()
+            .await
+            .map_err(|error| format!("network.fetch failed: {error}"))?;
+        if response.status().is_redirection() && matches!(method, reqwest::Method::GET | reqwest::Method::HEAD) {
+            if redirect_count == 5 {
+                return Err("network.fetch exceeded 5 redirects".into());
+            }
+            let location = response
+                .headers()
+                .get(reqwest::header::LOCATION)
+                .and_then(|value| value.to_str().ok())
+                .ok_or_else(|| "network.fetch redirect has no valid Location".to_string())?;
+            url = url
+                .join(location)
+                .map_err(|error| format!("invalid network.fetch redirect: {error}"))?;
+            continue;
+        }
+        if response.content_length().is_some_and(|size| size > max_response) {
+            return Err("network.fetch response exceeds the granted byte limit".into());
+        }
+        let status = response.status().as_u16();
+        let final_url = response.url().as_str().to_string();
+        let mut response_headers = serde_json::Map::new();
+        let mut header_bytes = 0_usize;
+        for (name, value) in response.headers() {
+            if name == reqwest::header::SET_COOKIE {
+                continue;
+            }
+            let Ok(value) = value.to_str() else { continue };
+            header_bytes = header_bytes.saturating_add(name.as_str().len() + value.len());
+            if header_bytes > 64 * 1024 {
+                return Err("network.fetch response headers are too large".into());
+            }
+            response_headers.insert(name.as_str().to_string(), json!(value));
+        }
+        let mut bytes = Vec::new();
+        while let Some(chunk) = response
+            .chunk()
+            .await
+            .map_err(|error| format!("failed to read network.fetch response: {error}"))?
+        {
+            if (bytes.len() as u64).saturating_add(chunk.len() as u64) > max_response {
+                return Err("network.fetch response exceeds the granted byte limit".into());
+            }
+            bytes.extend_from_slice(&chunk);
+        }
+        return Ok(json!({
+            "status": status,
+            "url": final_url,
+            "headers": response_headers,
+            "bodyBase64": BASE64.encode(bytes),
+        }));
+    }
+    Err("network.fetch redirect loop did not terminate".into())
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CustomModuleBridgeError {
+    code: &'static str,
+    message: String,
+}
+
+impl From<String> for CustomModuleBridgeError {
+    fn from(message: String) -> Self {
+        let lower = message.to_ascii_lowercase();
+        let code = if lower.contains("permission") || lower.contains("not been granted") {
+            "permission_denied"
+        } else if lower.contains("cancel") {
+            "cancelled"
+        } else if lower.contains("quota") || lower.contains("limit exceeded") {
+            "quota_exceeded"
+        } else if lower.contains("rate limit") {
+            "rate_limited"
+        } else if lower.contains("not found") || lower.contains("is not installed") {
+            "not_found"
+        } else if lower.contains("integrity")
+            || lower.contains("corrupt")
+            || lower.contains("hash collision")
+        {
+            "integrity_error"
+        } else if lower.contains("invalid")
+            || lower.contains("requires")
+            || lower.contains("unsupported")
+            || lower.contains("unknown")
+            || lower.contains("must ")
+        {
+            "invalid_request"
+        } else if lower.contains("too large") || lower.contains("exceeds") {
+            "size_limit_exceeded"
+        } else if lower.contains("network") || lower.contains("http") || lower.contains("dns") {
+            "network_error"
+        } else {
+            "host_error"
+        };
+        Self { code, message }
+    }
+}
+
+#[tauri::command]
+pub async fn custom_module_bridge(
     request: CustomModuleBridgeRequest,
     webview_window: WebviewWindow,
     app: tauri::AppHandle,
     storage: tauri::State<'_, Storage>,
+    secret_store: tauri::State<'_, secrets::Secrets>,
+    paths: tauri::State<'_, AppPaths>,
+    runtime: tauri::State<'_, CustomModuleRuntime>,
+) -> Result<Value, CustomModuleBridgeError> {
+    let operation = request.operation.as_str();
+    let should_run_blocking = operation.starts_with("storage.")
+        || operation.starts_with("documents.")
+        || operation.starts_with("blobs.")
+        || matches!(
+            operation,
+            "files.read"
+                | "files.write"
+                | "files.commit"
+                | "files.close"
+                | "secrets.has"
+                | "secrets.delete"
+        );
+    if should_run_blocking {
+        let worker_app = app.clone();
+        return tauri::async_runtime::spawn_blocking(move || {
+            let state_app = worker_app.clone();
+            let storage = state_app.state::<Storage>();
+            let secret_store = state_app.state::<secrets::Secrets>();
+            let paths = state_app.state::<AppPaths>();
+            let runtime = state_app.state::<CustomModuleRuntime>();
+            tauri::async_runtime::block_on(custom_module_bridge_inner(
+                request,
+                webview_window,
+                worker_app,
+                storage,
+                secret_store,
+                paths,
+                runtime,
+            ))
+            .map_err(CustomModuleBridgeError::from)
+        })
+        .await
+        .map_err(|error| CustomModuleBridgeError {
+            code: "host_error",
+            message: format!("Custom Module host worker failed: {error}"),
+        })?;
+    }
+    custom_module_bridge_inner(
+        request,
+        webview_window,
+        app,
+        storage,
+        secret_store,
+        paths,
+        runtime,
+    )
+    .await
+    .map_err(CustomModuleBridgeError::from)
+}
+
+async fn custom_module_bridge_inner(
+    request: CustomModuleBridgeRequest,
+    webview_window: WebviewWindow,
+    app: tauri::AppHandle,
+    storage: tauri::State<'_, Storage>,
+    secret_store: tauri::State<'_, secrets::Secrets>,
     paths: tauri::State<'_, AppPaths>,
     runtime: tauri::State<'_, CustomModuleRuntime>,
 ) -> Result<Value, String> {
@@ -2678,6 +4383,170 @@ pub fn custom_module_bridge(
                 _ => Err("unknown Custom Module document operation".into()),
             }
         }
+        operation if operation.starts_with("blobs.") => {
+            if !session.permissions.contains("blobStorage") {
+                return Err("Custom Module has not been granted blobStorage permission".into());
+            }
+            match operation {
+                "blobs.beginWrite" => begin_blob_write(&paths, &session, &request.payload),
+                "blobs.write" => blob_write_chunk(&session, &request.payload),
+                "blobs.commit" => {
+                    commit_blob_write(&storage, &paths, &session, &request.payload)
+                }
+                "blobs.abort" => abort_blob_write(&session, &request.payload),
+                "blobs.read" => {
+                    read_blob(&storage, &paths, &session.module_id, &request.payload)
+                }
+                "blobs.delete" => {
+                    delete_blob(&storage, &paths, &session.module_id, &request.payload)
+                }
+                "blobs.list" => list_blobs(&storage, &session.module_id),
+                _ => Err("unknown Custom Module blob operation".into()),
+            }
+        }
+        operation if operation.starts_with("files.") => {
+            let permission = session
+                .permission_config
+                .files
+                .as_ref()
+                .ok_or_else(|| "Custom Module has not been granted files permission".to_string())?;
+            match operation {
+                "files.open" => {
+                    select_module_file(&app, &session, permission, false, &request.payload).await
+                }
+                "files.beginSave" => {
+                    select_module_file(&app, &session, permission, true, &request.payload).await
+                }
+                "files.read" => read_selected_file(&session, &request.payload),
+                "files.write" => write_selected_file(&session, &request.payload),
+                "files.commit" => commit_selected_file(&session, &request.payload),
+                "files.close" => close_selected_file(&session, &request.payload),
+                _ => Err("unknown Custom Module file operation".into()),
+            }
+        }
+        "network.fetch" => {
+            let permission = session
+                .permission_config
+                .network_fetch
+                .as_ref()
+                .ok_or_else(|| {
+                    "Custom Module has not been granted networkFetch permission".to_string()
+                })?;
+            if request.payload.get("secret").is_some()
+                && !session.permission_config.secret_references
+            {
+                return Err(
+                    "Custom Module has not been granted secretReferences permission".into(),
+                );
+            }
+            module_network_fetch(permission, &app, &session.module_id, &request.payload)
+                .await
+        }
+        operation if operation.starts_with("secrets.") => {
+            if !session.permission_config.secret_references {
+                return Err(
+                    "Custom Module has not been granted secretReferences permission".into(),
+                );
+            }
+            match operation {
+                "secrets.has" => custom_module_secret_presence(
+                    &secret_store,
+                    &session.module_id,
+                    &request.payload,
+                ),
+                "secrets.requestEntry" => {
+                    request_custom_module_secret(
+                        &app,
+                        &runtime,
+                        &session,
+                        label,
+                        &request.payload,
+                    )
+                    .await
+                }
+                "secrets.delete" => delete_custom_module_secret(
+                    &storage,
+                    &secret_store,
+                    &session.module_id,
+                    &request.payload,
+                ),
+                _ => Err("unknown Custom Module secret operation".into()),
+            }
+        }
+        operation if operation.starts_with("ui.") => {
+            if !session.permission_config.host_ui {
+                return Err("Custom Module has not been granted hostUi permission".into());
+            }
+            let message = request
+                .payload
+                .get("message")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .trim();
+            if message.len() > 500 || message.chars().any(char::is_control) {
+                return Err("Custom Module host UI message is invalid".into());
+            }
+            match operation {
+                "ui.notice" => {
+                    if message.is_empty() {
+                        return Err("ui.notice requires a message".into());
+                    }
+                    let tone = request
+                        .payload
+                        .get("tone")
+                        .and_then(Value::as_str)
+                        .unwrap_or("info");
+                    if !matches!(tone, "info" | "success" | "warning" | "error") {
+                        return Err("ui.notice tone is invalid".into());
+                    }
+                    app.emit_to(
+                        crate::window_state::MAIN_WINDOW_LABEL,
+                        "custom-module-host-notice",
+                        json!({ "moduleId": session.module_id, "message": message, "tone": tone }),
+                    )
+                    .map_err(|error| error.to_string())?;
+                    Ok(json!(true))
+                }
+                "ui.progress" | "ui.clearProgress" => {
+                    let id = request
+                        .payload
+                        .get("id")
+                        .and_then(Value::as_str)
+                        .ok_or_else(|| "Custom Module progress requires an id".to_string())?;
+                    if id.is_empty()
+                        || id.len() > 64
+                        || !id.bytes().all(|byte| {
+                            byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-')
+                        })
+                    {
+                        return Err("Custom Module progress id is invalid".into());
+                    }
+                    if operation == "ui.progress" && message.is_empty() {
+                        return Err("ui.progress requires a message".into());
+                    }
+                    let progress = request
+                        .payload
+                        .get("progress")
+                        .and_then(Value::as_f64)
+                        .unwrap_or(0.0)
+                        .clamp(0.0, 100.0);
+                    app.emit_to(
+                        crate::window_state::MAIN_WINDOW_LABEL,
+                        "custom-module-host-progress",
+                        json!({
+                            "moduleId": session.module_id,
+                            "id": id,
+                            "message": message,
+                            "progress": progress,
+                            "clear": operation == "ui.clearProgress",
+                        }),
+                    )
+                    .map_err(|error| error.to_string())?;
+                    Ok(json!(true))
+                }
+                _ => Err("unknown Custom Module host UI operation".into()),
+            }
+        }
         _ => Err("unknown Custom Module bridge operation".into()),
     }
 }
@@ -2686,24 +4555,36 @@ pub fn protocol_response(
     context: tauri::UriSchemeContext<'_, tauri::Wry>,
     request: tauri::http::Request<Vec<u8>>,
 ) -> tauri::http::Response<Vec<u8>> {
-    let result = (|| -> Result<(Vec<u8>, String), String> {
+    let result = (|| -> Result<(Vec<u8>, String, bool), String> {
         let runtime = context.app_handle().state::<CustomModuleRuntime>();
         let paths = context.app_handle().state::<AppPaths>();
-        let (root, entrypoint) = runtime
+        let route = runtime
             .lock_routes()?
             .get(context.webview_label())
             .cloned()
             .ok_or_else(|| "Custom Module route is not registered".to_string())?;
+        let request_host = request.uri().host().unwrap_or_default();
+        let expected_windows_host = format!("kkmodule.{}", route.origin_host);
+        if request_host != route.origin_host && request_host != expected_windows_host {
+            return Err("Custom Module request origin does not match its package".into());
+        }
         let requested = request.uri().path().trim_start_matches('/');
         let relative = if requested.is_empty() {
-            entrypoint
+            route.entrypoint.clone()
         } else {
             requested.to_string()
         };
-        let safe_path = validate_relative_path(&relative, "Custom Module asset")?;
-        let canonical_root = canonical_package_root(&paths, &root)?;
-        let path = fs::canonicalize(root.join(&safe_path))
-            .map_err(|error| format!("failed to resolve Custom Module asset: {error}"))?;
+        let mut safe_path = validate_relative_path(&relative, "Custom Module asset")?;
+        let canonical_root = canonical_package_root(&paths, &route.root)?;
+        let mut path = fs::canonicalize(route.root.join(&safe_path));
+        if path.is_err()
+            && route.routing == CustomModuleRouting::Spa
+            && safe_path.extension().is_none()
+        {
+            safe_path = validate_relative_path(&route.entrypoint, "Custom Module entrypoint")?;
+            path = fs::canonicalize(route.root.join(&safe_path));
+        }
+        let path = path.map_err(|error| format!("failed to resolve Custom Module asset: {error}"))?;
         if !path.starts_with(&canonical_root) {
             return Err("Custom Module asset escapes its package root".into());
         }
@@ -2716,21 +4597,25 @@ pub fn protocol_response(
             .first_or_octet_stream()
             .essence_str()
             .to_string();
-        Ok((bytes, mime))
+        Ok((bytes, mime, route.clipboard_allowed))
     })();
     match result {
-        Ok((body, mime)) => tauri::http::Response::builder()
+        Ok((body, mime, clipboard_allowed)) => tauri::http::Response::builder()
             .status(200)
             .header("Content-Type", mime)
             .header("X-Content-Type-Options", "nosniff")
             .header("Cache-Control", "no-store")
             .header(
                 "Permissions-Policy",
-                "accelerometer=(), ambient-light-sensor=(), autoplay=(), bluetooth=(), camera=(), display-capture=(), encrypted-media=(), geolocation=(), gyroscope=(), hid=(), idle-detection=(), local-fonts=(), magnetometer=(), microphone=(), midi=(), payment=(), publickey-credentials-get=(), screen-wake-lock=(), serial=(), usb=(), web-share=(), window-management=(), xr-spatial-tracking=()",
+                if clipboard_allowed {
+                    "accelerometer=(), ambient-light-sensor=(), autoplay=(), bluetooth=(), camera=(), clipboard-read=(self), clipboard-write=(self), display-capture=(), encrypted-media=(), geolocation=(), gyroscope=(), hid=(), idle-detection=(), local-fonts=(), magnetometer=(), microphone=(), midi=(), payment=(), publickey-credentials-get=(), screen-wake-lock=(), serial=(), usb=(), web-share=(), window-management=(), xr-spatial-tracking=()"
+                } else {
+                    "accelerometer=(), ambient-light-sensor=(), autoplay=(), bluetooth=(), camera=(), clipboard-read=(), clipboard-write=(), display-capture=(), encrypted-media=(), geolocation=(), gyroscope=(), hid=(), idle-detection=(), local-fonts=(), magnetometer=(), microphone=(), midi=(), payment=(), publickey-credentials-get=(), screen-wake-lock=(), serial=(), usb=(), web-share=(), window-management=(), xr-spatial-tracking=()"
+                },
             )
             .header(
                 "Content-Security-Policy",
-                "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; object-src 'none'; frame-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'",
+                "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; object-src 'none'; frame-src 'self'; worker-src 'self' blob:; child-src 'self' blob:; base-uri 'none'; form-action 'none'",
             )
             .body(body)
             .unwrap_or_else(|_| tauri::http::Response::new(Vec::new())),
@@ -2757,20 +4642,24 @@ mod tests {
             version: "1.0.0".into(),
             publisher: "KKTerm".into(),
             summary: "Fixture module".into(),
-            api_version: 1,
+            api_version: 2,
             homepage: Some("https://kkterm.example".into()),
             license: CustomModuleLicense {
                 name: "MIT".into(),
                 file: "licenses/LICENSE".into(),
                 notices_file: None,
             },
-            permissions: vec!["storage".into()],
+            permissions: CustomModulePermissions {
+                storage: true,
+                ..Default::default()
+            },
             modules: vec![CustomModuleContribution {
                 id: "fixture".into(),
                 title: "Fixture".into(),
                 icon: None,
                 entrypoint: "dist/index.html".into(),
                 rail_visible: true,
+                routing: CustomModuleRouting::Static,
             }],
         }
     }
@@ -2805,14 +4694,19 @@ mod tests {
     }
 
     #[test]
-    fn valid_manifest_passes_v1_contract() {
+    fn valid_manifest_passes_v2_contract() {
         validate_manifest(&valid_manifest()).unwrap();
     }
 
     #[test]
-    fn manifest_rejects_unknown_permissions() {
+    fn manifest_rejects_invalid_network_permission() {
         let mut manifest = valid_manifest();
-        manifest.permissions.push("terminal.raw".into());
+        manifest.permissions.network_fetch = Some(CustomModuleNetworkPermission {
+            origins: vec!["https://example.com".into()],
+            methods: vec!["CONNECT".into()],
+            allow_private_network: false,
+            max_response_bytes: 1024,
+        });
         assert!(
             validate_manifest(&manifest)
                 .unwrap_err()
@@ -2821,16 +4715,36 @@ mod tests {
     }
 
     #[test]
+    fn mediated_network_rejects_non_public_and_transition_addresses() {
+        use std::net::IpAddr;
+
+        for address in [
+            "127.0.0.1",
+            "100.64.0.1",
+            "198.18.0.1",
+            "2001:db8::1",
+            "2001::1",
+            "2002::1",
+            "::ffff:127.0.0.1",
+        ] {
+            assert!(network_address_is_private(address.parse::<IpAddr>().unwrap()));
+        }
+        for address in ["8.8.8.8", "2606:4700:4700::1111"] {
+            assert!(!network_address_is_private(address.parse::<IpAddr>().unwrap()));
+        }
+    }
+
+    #[test]
     fn manifest_accepts_document_storage_permission() {
         let mut manifest = valid_manifest();
-        manifest.permissions.push("documentStorage".into());
+        manifest.permissions.document_storage = true;
         validate_manifest(&manifest).unwrap();
     }
 
     #[test]
     fn manifest_accepts_clipboard_permission() {
         let mut manifest = valid_manifest();
-        manifest.permissions.push("clipboard".into());
+        manifest.permissions.clipboard = true;
         validate_manifest(&manifest).unwrap();
     }
 
@@ -2954,6 +4868,24 @@ mod tests {
     }
 
     #[test]
+    fn manifest_rejects_unimplemented_permission_fields() {
+        let mut value = serde_json::to_value(valid_manifest()).unwrap();
+        value["permissions"]["connectionsRead"] = json!(false);
+        assert!(serde_json::from_value::<CustomModuleManifest>(value).is_err());
+    }
+
+    #[test]
+    fn manifest_rejects_unsupported_host_api_versions() {
+        let mut manifest = valid_manifest();
+        manifest.api_version = HOST_API_VERSION + 1;
+        let error = validate_manifest(&manifest).unwrap_err();
+        assert!(error.contains(&format!(
+            "module requires host API {}",
+            HOST_API_VERSION + 1
+        )));
+    }
+
+    #[test]
     fn catalog_signature_verifies_the_declared_hash() {
         let signing_key = SigningKey::from_bytes(&[7_u8; 32]);
         let key_hex = encode_hex(signing_key.verifying_key().as_bytes());
@@ -2977,7 +4909,7 @@ mod tests {
         let digest = "2f6b2dcf7f8d7d53e3f0f375d4f48130276f9cf9466ee63f04745bbda870f070";
         let package_signature = BASE64.encode(signing_key.sign(digest.as_bytes()).to_bytes());
         let payload = OnlineCatalogPayload {
-            schema_version: 1,
+            schema_version: 2,
             sequence,
             generated_at: generated_at.format(&Rfc3339).unwrap(),
             expires_at: expires_at.format(&Rfc3339).unwrap(),
@@ -2987,20 +4919,23 @@ mod tests {
                 version: version.into(),
                 publisher: "KKTerm".into(),
                 summary: "Fixture module".into(),
-                api_version: 1,
+                api_version: 2,
                 download_url: format!(
                     "https://modules.example.test/packages/sha256/{digest}.kkmod"
                 ),
                 sha256: digest.into(),
                 signature: package_signature,
                 license: "MIT".into(),
-                permissions: vec!["storage".into()],
+                permissions: CustomModulePermissions {
+                    storage: true,
+                    ..Default::default()
+                },
                 download_size: 1234,
             }],
         };
         let payload_bytes = serde_json::to_vec(&payload).unwrap();
         let envelope = SignedCatalogEnvelope {
-            schema_version: 1,
+            schema_version: 2,
             key_id: catalog_key_id_for_key(&signing_key.verifying_key()),
             payload: BASE64.encode(&payload_bytes),
             signature: BASE64.encode(signing_key.sign(&payload_bytes).to_bytes()),
@@ -3024,7 +4959,7 @@ mod tests {
             &bytes,
             now,
             &key_hex,
-            "https://modules.example.test/catalog/v1/catalog.json",
+            "https://modules.example.test/catalog/v2/catalog.json",
         )
         .unwrap();
         assert_eq!(verified.payload.sequence, 7);
@@ -3090,7 +5025,7 @@ mod tests {
         let online = verify_online_catalog_with_key(&online_bytes, now, &key_hex, "").unwrap();
         let merged = merge_catalogs(
             Catalog {
-                schema_version: 1,
+                schema_version: 2,
                 modules: baseline_verified.payload.modules,
             },
             Some(&online),

@@ -67,9 +67,13 @@ function App({ host, initialContext, initialData, initialError }: AppProps) {
   }, [context]);
 
   useEffect(() => {
-    const unsubscribe = host.on("contextChanged", setContext);
+    const unsubscribeContext = host.on("contextChanged", setContext);
+    const unsubscribeSuspending = host.on("suspending", () => persistence.flush());
+    const unsubscribeClosing = host.on("closing", () => persistence.flush());
     return () => {
-      unsubscribe();
+      unsubscribeContext();
+      unsubscribeSuspending();
+      unsubscribeClosing();
       persistence.dispose();
     };
   }, [host, persistence]);
@@ -132,6 +136,7 @@ function App({ host, initialContext, initialData, initialError }: AppProps) {
         langCode={resolveLanguage(context.locale)}
         name="KKTerm Excalidraw"
         onChange={(...change) => persistence.schedule(...change)}
+        onLibraryChange={(libraryItems) => persistence.saveLibrary(libraryItems)}
         onLinkOpen={openLink}
         renderEmbeddable={() => null}
         theme={context.theme.toLowerCase().includes("dark") ? THEME.DARK : THEME.LIGHT}

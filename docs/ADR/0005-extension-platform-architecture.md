@@ -41,19 +41,26 @@ by the package. First-party download URL, hash, signature, size, declared
 license, and requested permissions live in the app-owned catalog, not in the
 package manifest.
 
-The implemented v1 permission families are deliberately narrow:
+The v2 permission families are structured, reviewable grants:
 
 - `storage`: quota-bound access to the package's isolated non-secret namespace.
 - `documentStorage`: quota-bound filesystem storage for large non-secret JSON
-  documents and encoded browser blobs; SQLite retains only package-scoped
-  metadata and content hashes.
+  documents; SQLite retains only package-scoped metadata and content hashes.
+- `blobStorage`: content-addressed raw binary storage with chunked transfer.
+- `browserStorage`: durable package-origin localStorage and IndexedDB.
 - `openExternal`: request opening an HTTP(S) URL in the system browser.
 - `clipboard`: retain the native WebView clipboard API for deliberate copy,
   paste, and image-transfer workflows. Packages without this grant receive a
   rejecting compatibility shim.
+- `files`: user-mediated open/save access with declared extension filters and
+  opaque session tokens.
+- `networkFetch`: mediated requests to exact declared origins.
+- `secretReferences`: package-owned keychain references whose values are never
+  returned to module JavaScript.
+- `hostUi`: Status Bar notice/progress surfaces. Package-owned secret entry uses
+  the separate `secretReferences` grant and an app-owned dialog.
 
-The following permission families remain the reviewed expansion direction and
-are not exposed to v1 Custom Module code:
+The following product-data ideas are deliberately not part of v2:
 
 - `connections:read`: read non-secret Connection metadata.
 - `connections:write`: create or edit durable Connections.
@@ -65,10 +72,11 @@ are not exposed to v1 Custom Module code:
   actions for user approval.
 - `screenshot:request`: request explicit screenshot capture through the existing
   screenshot consent flow.
-- `secrets:reference`: request secret presence by owner id, never raw secret
-  values.
-- `network:fetch`: perform outbound HTTP requests to declared origins.
-- `storage:extension`: superseded for Custom Modules by the v1 `storage` grant.
+
+They may be added only through a future versioned broker with reduced DTOs,
+caller binding, explicit review surfaces, and regression coverage. V2 manifests
+that try to declare them are rejected as unknown rather than receiving a grant
+with no working API.
 
 Extensions cannot directly read terminal contents, raw screenshots, credentials,
 AI API keys, SSH private keys, or arbitrary SQLite tables. Extensions cannot run
@@ -96,11 +104,14 @@ Update lifecycle:
 
 Execution model:
 
-- V1 Custom Modules run in a dedicated borderless native WebView over a React
+- V2 Custom Modules run in a dedicated borderless native WebView over a React
   placeholder. They do not run in the main React realm and do not start a local
   HTTP service or Node.js runtime.
 - An app-owned `kkmodule` protocol serves only files from the active validated
   package root with a restrictive CSP and MIME headers.
+- Each package receives a stable, distinct origin. Same-package frames and
+  dedicated workers are supported; service workers and remote frames remain
+  disabled.
 - Tauri application commands use generated ACL permissions. The trusted main
   window receives the application command surface; `custom-module-*` windows
   receive only `custom_module_bridge`.
@@ -120,10 +131,13 @@ Storage model:
   and document keys/hashes/sizes/timestamps. Document content lives in
   content-addressed files under the app data Custom Module tree.
 - Each extension gets an isolated storage namespace.
-- Secrets stay in the OS keychain and are referenced through existing owner ids
-  or future extension-specific secret owners.
+- Package-owned secrets stay in the selected credential backend and use
+  extension-specific owner ids. Plaintext is never returned to package code.
 - Extension package files live under app data, outside the Connection and
   diagnostics data models.
+- Full Settings backup format 2 includes package files, documents, blobs, and
+  browser profiles with SHA-256 integrity metadata alongside SQLite. OS-keystore
+  secret values remain device-bound.
 
 AI Assistant integration:
 
@@ -143,5 +157,6 @@ permission review, isolated storage, explicit lifecycle actions, Tauri command
 ACLs, and a caller-bound native WebView bridge.
 
 Broader Connection, Session, terminal, SFTP, screenshot, secret-reference, and
-network capabilities remain deferred until each one has its own typed bridge,
-backend enforcement, approval semantics, and tests.
+network capabilities require their own typed bridge, backend enforcement,
+approval semantics, and tests. The normative contract is
+`docs/KKMOD_HOST_API_V2.md`.

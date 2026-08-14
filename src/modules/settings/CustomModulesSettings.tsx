@@ -10,7 +10,9 @@ import {
 import { useWorkspaceStore } from "../../store";
 import type {
   CustomModuleCatalogEntry,
+  CustomModuleDataUsage,
   CustomModulePackageReview,
+  CustomModulePermissions,
   InstalledCustomModule,
 } from "../custom-modules/types";
 import { CustomModuleIcon } from "../custom-modules/CustomModuleIcon";
@@ -30,10 +32,56 @@ type LicenseDetails = {
   text: string;
 };
 
+function formatDataSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ["KB", "MB", "GB", "TB"];
+  let value = bytes / 1024;
+  let unit = units[0];
+  for (let index = 1; index < units.length && value >= 1024; index += 1) {
+    value /= 1024;
+    unit = units[index];
+  }
+  return `${value < 10 ? value.toFixed(1) : value.toFixed(0)} ${unit}`;
+}
+
+function permissionNames(permissions: CustomModulePermissions): string[] {
+  const fileOperations = permissions.files
+    ? [permissions.files.open && "open", permissions.files.save && "save"].filter(Boolean)
+    : [];
+  const files = permissions.files
+    ? `files (${fileOperations.join("/")}${permissions.files.extensions.length
+        ? `; ${permissions.files.extensions.map((extension) => `.${extension}`).join(", ")}`
+        : ""})`
+    : false;
+  const networkFetch = permissions.networkFetch
+    ? `networkFetch (${permissions.networkFetch.methods.join(", ")}; ${permissions.networkFetch.origins.join(", ")}${permissions.networkFetch.allowPrivateNetwork
+        ? "; private network"
+        : ""}; max ${formatDataSize(permissions.networkFetch.maxResponseBytes)})`
+    : false;
+  return [
+    permissions.storage && "storage",
+    permissions.documentStorage && "documentStorage",
+    permissions.blobStorage && "blobStorage",
+    permissions.browserStorage && "browserStorage",
+    permissions.openExternal && "openExternal",
+    permissions.clipboard && "clipboard",
+    files,
+    networkFetch,
+    permissions.secretReferences && "secretReferences",
+    permissions.hostUi && "hostUi",
+  ].filter((name): name is string => Boolean(name));
+}
+
+function formatPermissions(permissions: CustomModulePermissions, none: string): string {
+  const names = permissionNames(permissions);
+  return names.length ? names.join(", ") : none;
+}
+
 export function CustomModulesSettings() {
   const { t } = useTranslation();
   const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
   const [installed, setInstalled] = useState<InstalledCustomModule[]>([]);
+  const [dataUsage, setDataUsage] = useState<Record<string, CustomModuleDataUsage | null>>({});
   const [catalog, setCatalog] = useState<CustomModuleCatalogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -42,6 +90,7 @@ export function CustomModulesSettings() {
   const [pendingCatalogInstall, setPendingCatalogInstall] =
     useState<CustomModuleCatalogEntry | null>(null);
   const [pendingUninstall, setPendingUninstall] = useState<InstalledCustomModule | null>(null);
+  const [pendingClearData, setPendingClearData] = useState<InstalledCustomModule | null>(null);
   const [deleteData, setDeleteData] = useState(false);
   const [licenseDetails, setLicenseDetails] = useState<LicenseDetails | null>(null);
 
@@ -57,6 +106,16 @@ export function CustomModulesSettings() {
       ]);
       setInstalled(nextInstalled);
       setCatalog(nextCatalog);
+      const usageEntries = await Promise.all(nextInstalled.map(async (module) => {
+        try {
+          return [module.id, await invokeCommand("get_custom_module_data_usage", {
+            moduleId: module.id,
+          })] as const;
+        } catch {
+          return [module.id, null] as const;
+        }
+      }));
+      setDataUsage(Object.fromEntries(usageEntries));
     } catch (error) {
       showStatusBarNotice(error instanceof Error ? error.message : String(error), {
         tone: "error",
@@ -220,6 +279,26 @@ export function CustomModulesSettings() {
     }
   }
 
+  async function clearModuleData() {
+    const module = pendingClearData;
+    if (!module) return;
+    setPendingClearData(null);
+    setBusyId(module.id);
+    try {
+      await invokeCommand("clear_custom_module_data", { moduleId: module.id });
+      await reload();
+      showStatusBarNotice(t("settings.customModulesDataClearedNotice", { name: module.name }), {
+        tone: "success",
+      });
+    } catch (error) {
+      showStatusBarNotice(error instanceof Error ? error.message : String(error), {
+        tone: "error",
+      });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function showLicense(module: InstalledCustomModule, notices: boolean) {
     try {
       const text = await invokeCommand("read_custom_module_license_file", {
@@ -340,9 +419,18 @@ export function CustomModulesSettings() {
               <div className="custom-module-permissions">
                 <strong>{t("settings.customModulesPermissions")}</strong>
                 <span>
-                  {module.permissions.length > 0
-                    ? module.permissions.join(", ")
-                    : t("settings.customModulesNoPermissions")}
+                  {formatPermissions(module.permissions, t("settings.customModulesNoPermissions"))}
+                </span>
+              </div>
+              <div className="custom-module-permissions">
+                <strong>{t("settings.customModulesDataUsageLabel")}</strong>
+                <span>
+                  {dataUsage[module.id]
+                    ? t("settings.customModulesDataUsage", {
+                        size: formatDataSize(dataUsage[module.id]?.totalBytes ?? 0),
+                        secretCount: dataUsage[module.id]?.secretCount ?? 0,
+                      })
+                    : t("settings.customModulesDataUsageUnavailable")}
                 </span>
               </div>
               <div className="custom-module-controls">
@@ -378,6 +466,15 @@ export function CustomModulesSettings() {
                   </button>
                 ) : null}
                 <button
+                  className="secondary-button"
+                  disabled={busyId === module.id || module.enabled}
+                  onClick={() => setPendingClearData(module)}
+                  title={module.enabled ? t("settings.customModulesClearDataDisabled") : undefined}
+                  type="button"
+                >
+                  {t("settings.customModulesClearData")}
+                </button>
+                <button
                   aria-label={t("settings.customModulesUninstall")}
                   className="settings-icon-danger-button"
                   disabled={busyId === module.id}
@@ -405,7 +502,7 @@ export function CustomModulesSettings() {
                   <div><h3>{entry.name}</h3><p>{entry.summary}</p></div>
                   <button
                     className="primary-button"
-                    disabled={busyId === entry.id || entry.apiVersion !== 1}
+                    disabled={busyId === entry.id || entry.apiVersion !== 2}
                     onClick={() => setPendingCatalogInstall(entry)}
                     type="button"
                   >
@@ -415,7 +512,7 @@ export function CustomModulesSettings() {
                       : t("settings.customModulesInstall")}
                   </button>
                 </div>
-                {entry.apiVersion !== 1 ? (
+                {entry.apiVersion !== 2 ? (
                   <p className="custom-module-health-error">
                     {t("settings.customModulesIncompatible", { version: entry.apiVersion })}
                   </p>
@@ -427,7 +524,7 @@ export function CustomModulesSettings() {
                 </dl>
                 <div className="custom-module-permissions">
                   <strong>{t("settings.customModulesPermissions")}</strong>
-                  <span>{entry.permissions.length ? entry.permissions.join(", ") : t("settings.customModulesNoPermissions")}</span>
+                  <span>{formatPermissions(entry.permissions, t("settings.customModulesNoPermissions"))}</span>
                 </div>
               </article>
             ))}
@@ -446,9 +543,10 @@ export function CustomModulesSettings() {
                 publisher: pendingInstall.review.manifest.publisher,
               })}</p>
               <p><strong>{t("settings.customModulesPermissions")}: </strong>{
-                pendingInstall.review.manifest.permissions.length
-                  ? pendingInstall.review.manifest.permissions.join(", ")
-                  : t("settings.customModulesNoPermissions")
+                formatPermissions(
+                  pendingInstall.review.manifest.permissions,
+                  t("settings.customModulesNoPermissions"),
+                )
               }</p>
             </div>
           }
@@ -476,9 +574,10 @@ export function CustomModulesSettings() {
                   version: pendingCatalogInstall.version,
                 })}</p>
               <p><strong>{t("settings.customModulesPermissions")}: </strong>{
-                pendingCatalogInstall.permissions.length
-                  ? pendingCatalogInstall.permissions.join(", ")
-                  : t("settings.customModulesNoPermissions")
+                formatPermissions(
+                  pendingCatalogInstall.permissions,
+                  t("settings.customModulesNoPermissions"),
+                )
               }</p>
             </div>
           }
@@ -513,6 +612,17 @@ export function CustomModulesSettings() {
           }}
           onConfirm={() => void uninstallModule()}
           title={t("settings.customModulesUninstallTitle")}
+          tone="danger"
+        />
+      ) : null}
+
+      {pendingClearData ? (
+        <ConfirmSheet
+          confirmLabel={t("settings.customModulesClearData")}
+          message={t("settings.customModulesClearDataMessage", { name: pendingClearData.name })}
+          onCancel={() => setPendingClearData(null)}
+          onConfirm={() => void clearModuleData()}
+          title={t("settings.customModulesClearDataTitle")}
           tone="danger"
         />
       ) : null}

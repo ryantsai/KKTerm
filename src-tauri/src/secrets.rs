@@ -88,6 +88,14 @@ pub struct StoreSecretRequest {
 }
 
 impl StoreSecretRequest {
+    pub(crate) fn custom_module_secret(owner_id: String, secret: String) -> Self {
+        Self {
+            kind: SecretKind::CustomModuleSecret,
+            owner_id,
+            secret,
+        }
+    }
+
     pub(crate) fn connection_password(owner_id: String, secret: String) -> Self {
         Self {
             kind: SecretKind::ConnectionPassword,
@@ -129,6 +137,13 @@ pub struct SecretReferenceRequest {
 }
 
 impl SecretReferenceRequest {
+    pub(crate) fn custom_module_secret(owner_id: String) -> Self {
+        Self {
+            kind: SecretKind::CustomModuleSecret,
+            owner_id,
+        }
+    }
+
     pub(crate) fn connection_password(owner_id: String) -> Self {
         Self {
             kind: SecretKind::ConnectionPassword,
@@ -249,6 +264,7 @@ enum SecretKind {
     WidgetSecret,
     ItopsTaskSecret,
     McpServerSecret,
+    CustomModuleSecret,
 }
 
 trait SecretStore: Send + Sync {
@@ -587,6 +603,13 @@ impl Secrets {
         })
     }
 
+    pub(crate) fn read_custom_module_secret(
+        &self,
+        owner_id: String,
+    ) -> Result<Option<String>, String> {
+        self.read_secret(SecretReferenceRequest::custom_module_secret(owner_id))
+    }
+
     pub(crate) fn read_connection_passphrase(
         &self,
         owner_id: String,
@@ -769,6 +792,7 @@ impl SecretKind {
             Self::WidgetSecret => "widget-secret",
             Self::ItopsTaskSecret => "itops-task-secret",
             Self::McpServerSecret => "mcp-server-secret",
+            Self::CustomModuleSecret => "custom-module-secret",
         }
     }
 }

@@ -6,6 +6,17 @@ import {
 } from "../src/modules/custom-modules/useCustomModules";
 import type { InstalledCustomModule } from "../src/modules/custom-modules/types";
 
+const emptyPermissions: InstalledCustomModule["permissions"] = {
+  storage: false,
+  documentStorage: false,
+  blobStorage: false,
+  browserStorage: false,
+  openExternal: false,
+  clipboard: false,
+  secretReferences: false,
+  hostUi: false,
+};
+
 function installed(
   id: string,
   overrides: Partial<InstalledCustomModule> = {},
@@ -16,15 +27,16 @@ function installed(
     version: "1.0.0",
     publisher: "Fixture",
     summary: "",
-    apiVersion: 1,
+    apiVersion: 2,
     license: { name: "MIT", file: "licenses/LICENSE" },
-    permissions: [],
+    permissions: emptyPermissions,
     modules: [
       {
         id: "main",
         title: "Main",
         entrypoint: "dist/index.html",
         railVisible: true,
+        routing: "static",
       },
     ],
     source: "local",
@@ -69,6 +81,7 @@ test("disabled, hidden, missing, and contribution-hidden Modules stay off the ra
           title: "Main",
           entrypoint: "dist/index.html",
           railVisible: false,
+          routing: "static",
         },
       ],
     }),

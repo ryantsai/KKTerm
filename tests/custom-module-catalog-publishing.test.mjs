@@ -24,9 +24,9 @@ function packageBytes(version = "1.0.0", marker = "one") {
     version,
     publisher: "KKTerm",
     summary: "Fixture module",
-    apiVersion: 1,
+    apiVersion: 2,
     license: { name: "MIT", file: "licenses/LICENSE" },
-    permissions: ["storage", "documentStorage"],
+    permissions: { storage: true, documentStorage: true },
     modules: [{ id: "main", title: "Fixture", icon: "dist/icon.svg", entrypoint: "dist/index.html" }],
   };
   return Buffer.from(zipSync({
@@ -39,7 +39,7 @@ function packageBytes(version = "1.0.0", marker = "one") {
 
 test("signed catalog envelope authenticates exact payload bytes", () => {
   const key = signingKey();
-  const payload = { schemaVersion: 1, sequence: 1, modules: [] };
+  const payload = { schemaVersion: 2, sequence: 1, modules: [] };
   const envelope = createEnvelope(payload, key);
   assert.deepEqual(verifyEnvelope(envelope, key), payload);
   envelope.payload = Buffer.from("{}").toString("base64");
@@ -51,7 +51,7 @@ test("publisher creates immutable content-addressed package metadata", () => {
   const bytes = packageBytes();
   const manifest = readManifest(bytes);
   const release = buildRelease(
-    { schemaVersion: 1, sequence: 0, modules: [] },
+    { schemaVersion: 2, sequence: 0, modules: [] },
     manifest,
     bytes,
     "https://modules.example.test",
@@ -63,7 +63,7 @@ test("publisher creates immutable content-addressed package metadata", () => {
   assert.match(release.objectKey, /^packages\/sha256\/[a-f0-9]{64}\.kkmod$/);
   assert.equal(release.entry.downloadUrl, `https://modules.example.test/${release.objectKey}`);
   assert.equal(release.entry.downloadSize, bytes.length);
-  assert.deepEqual(release.entry.permissions, ["storage", "documentStorage"]);
+  assert.deepEqual(release.entry.permissions, { storage: true, documentStorage: true });
 });
 
 test("publisher requires inert SVG icons for curated Activity Rail contributions", () => {
@@ -73,7 +73,7 @@ test("publisher requires inert SVG icons for curated Activity Rail contributions
     version: "1.0.0",
     publisher: "KKTerm",
     summary: "Fixture module",
-    apiVersion: 1,
+    apiVersion: 2,
     license: { name: "MIT", file: "licenses/LICENSE" },
     modules: [{ id: "main", title: "Fixture", entrypoint: "dist/index.html" }],
   };
@@ -101,7 +101,7 @@ test("publisher refuses downgrade and same-version byte replacement", () => {
   const key = signingKey();
   const firstBytes = packageBytes("2.0.0", "one");
   const first = buildRelease(
-    { schemaVersion: 1, sequence: 0, modules: [] },
+    { schemaVersion: 2, sequence: 0, modules: [] },
     readManifest(firstBytes),
     firstBytes,
     "https://modules.example.test",
@@ -124,7 +124,7 @@ test("publisher refuses downgrade and same-version byte replacement", () => {
 test("catalog renewal advances sequence without changing package entries", () => {
   const key = signingKey();
   const current = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     sequence: 8,
     modules: [{ id: "com.kkterm.fixture", version: "1.0.0" }],
   };

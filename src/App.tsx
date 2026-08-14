@@ -73,6 +73,7 @@ import type { WorkspaceTab } from "./types";
 import { StatusBar } from "./modules/workspace/StatusBar";
 import { TabStrip, WorkspaceCanvas } from "./modules/workspace/WorkspaceCanvas";
 import { CustomModuleHost } from "./modules/custom-modules/CustomModuleHost";
+import { CustomModuleSecretPrompt } from "./modules/custom-modules/CustomModuleSecretPrompt";
 import type { CustomModuleDestination } from "./modules/custom-modules/types";
 import {
   customModuleDestinationKey,
@@ -737,6 +738,7 @@ function App() {
         blockingOverlayOpen={activePage === "settings"}
         destination={activeCustomModule}
       />
+      <CustomModuleSecretPrompt />
       </Suspense>
       <TutorialOverlay
         key="tutorial-overlay"
