@@ -32,7 +32,7 @@ BOOLEAN_PERMISSIONS = {
     "storage", "documentStorage", "blobStorage", "browserStorage",
     "openExternal", "clipboard", "secretReferences", "hostUi", "hostAi",
 }
-PERMISSION_KEYS = BOOLEAN_PERMISSIONS | {"files", "networkFetch"}
+PERMISSION_KEYS = BOOLEAN_PERMISSIONS | {"files", "networkFetch", "hostIntegration"}
 ALLOWED_DIST_EXTENSIONS = {
     "html", "css", "js", "mjs", "json", "map", "wasm", "svg", "png",
     "jpg", "jpeg", "gif", "webp", "avif", "ico", "woff", "woff2", "ttf",
@@ -273,12 +273,12 @@ def validate_manifest(data: Any) -> dict[str, Any]:
             raise ContractError(f"manifest.permissions.{permission} must be a boolean")
     if "files" in permissions and permissions["files"] is not None:
         files = require_object(permissions["files"], "manifest.permissions.files")
-        strict_keys(files, required=set(), optional={"open", "save", "extensions"}, label="manifest.permissions.files")
-        for operation in ("open", "save"):
+        strict_keys(files, required=set(), optional={"open", "save", "directoryRead", "directoryWrite", "extensions"}, label="manifest.permissions.files")
+        for operation in ("open", "save", "directoryRead", "directoryWrite"):
             if operation in files and not isinstance(files[operation], bool):
                 raise ContractError(f"manifest.permissions.files.{operation} must be a boolean")
-        if not files.get("open", False) and not files.get("save", False):
-            raise ContractError("manifest.permissions.files must enable open, save, or both")
+        if not any(files.get(operation, False) for operation in ("open", "save", "directoryRead", "directoryWrite")):
+            raise ContractError("manifest.permissions.files must enable a file or directory operation")
         extensions = files.get("extensions", [])
         if not isinstance(extensions, list) or len(extensions) > 128:
             raise ContractError("manifest.permissions.files.extensions must be an array of at most 128 items")
@@ -325,6 +325,17 @@ def validate_manifest(data: Any) -> dict[str, Any]:
         maximum = network.get("maxResponseBytes", 16 * 1024 * 1024)
         if not isinstance(maximum, int) or isinstance(maximum, bool) or not 1 <= maximum <= 64 * 1024 * 1024:
             raise ContractError("manifest.permissions.networkFetch.maxResponseBytes must be 1 to 67108864")
+    if "hostIntegration" in permissions and permissions["hostIntegration"] is not None:
+        if "files" not in permissions or permissions["files"] is None:
+            raise ContractError("manifest.permissions.hostIntegration requires files permission")
+        integration = require_object(permissions["hostIntegration"], "manifest.permissions.hostIntegration")
+        operations = {"openPath", "revealPath", "share", "print"}
+        strict_keys(integration, required=set(), optional=operations, label="manifest.permissions.hostIntegration")
+        for operation in operations:
+            if operation in integration and not isinstance(integration[operation], bool):
+                raise ContractError(f"manifest.permissions.hostIntegration.{operation} must be a boolean")
+        if not any(integration.get(operation, False) for operation in operations):
+            raise ContractError("manifest.permissions.hostIntegration must enable at least one operation")
 
     modules = manifest["modules"]
     if not isinstance(modules, list) or not 1 <= len(modules) <= 64:

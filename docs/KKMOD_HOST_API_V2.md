@@ -51,6 +51,8 @@ packages whose manifest declares `apiVersion: 2`.
     "files": {
       "open": true,
       "save": true,
+      "directoryRead": true,
+      "directoryWrite": true,
       "extensions": ["excalidraw", "json", "png", "svg"]
     },
     "networkFetch": {
@@ -61,7 +63,13 @@ packages whose manifest declares `apiVersion: 2`.
     },
     "secretReferences": false,
     "hostUi": true,
-    "hostAi": false
+    "hostAi": false,
+    "hostIntegration": {
+      "openPath": true,
+      "revealPath": true,
+      "share": true,
+      "print": true
+    }
   },
   "modules": [
     {
@@ -76,8 +84,10 @@ packages whose manifest declares `apiVersion: 2`.
 }
 ```
 
-Boolean permissions default to `false`. `files` and `networkFetch` default to
-absent. File extensions are lowercase ASCII without a leading dot. A network
+Boolean permissions default to `false`. `files`, `networkFetch`, and
+`hostIntegration` default to absent. Host integration requires a `files` grant
+and enables only its declared operations. File extensions are lowercase ASCII
+without a leading dot. A network
 origin is an exact HTTPS origin with no credentials, query, fragment, or path.
 HTTP is accepted only for an explicitly granted loopback/private origin when
 `allowPrivateNetwork` is true. Redirects are revalidated against the same
@@ -102,7 +112,10 @@ KKTerm does not render a per-Module title/header row above it; each package owns
 its visible title, navigation, and application chrome. The Activity Rail and
 Status Bar remain outside the package-owned surface.
 
-Dedicated same-package Web Workers and same-package frames are supported.
+Each dedicated Worker must load a packaged same-package script. Blob, data, and
+remote Worker scripts are blocked. Dedicated Workers do not receive
+`window.KKTerm` or a Tauri bridge; communicate with them through `postMessage`.
+`SharedWorker` and service workers are unavailable. Same-package frames are supported.
 Remote frames remain blocked. Module navigation may remain inside the active
 package only. Standard user-activated HTTP(S) anchors and `window.open` calls
 are mediated through `openExternal`; programmatic top-level redirects stay
@@ -110,7 +123,7 @@ blocked. The host API and browser-compatibility policy are injected into every
 same-package frame, not only the top-level document.
 
 The package protocol permits only packaged assets, data/blob images and fonts,
-same-package frames, and same-package or blob dedicated workers. Network access
+same-package frames, and packaged same-package dedicated Workers. Network access
 is available only through the host fetch API, not raw browser `fetch`, WebSocket,
 EventSource, or WebRTC.
 
@@ -126,7 +139,9 @@ interface KKTermHostV2 {
   ready(): Promise<void>;
   getContext(): Promise<HostContext>;
   getCapabilities(): Promise<CapabilitySnapshot>;
+  capabilities(): Promise<RuntimeCapabilities>;
   openExternal(url: string): Promise<void>;
+  host: HostIntegration;
   storage: JsonKeyValueStore;
   documents: JsonDocumentStore;
   blobs: BlobStore;
@@ -139,7 +154,9 @@ interface KKTermHostV2 {
 }
 ```
 
-Capability discovery returns the effective structured grant. APIs
+`getCapabilities()` returns the effective structured permission grant.
+`capabilities()` additionally returns feature support, platform host-operation
+support, and hard limits for file/network/AI tokens and chunks. APIs
 remain present when ungranted and reject with `permission_denied`, avoiding
 permission-dependent feature detection and brittle package code.
 
@@ -170,7 +187,28 @@ the user, and included in full backup/restore with integrity metadata.
 declared extension filters. The module receives a session-scoped opaque token,
 not a path. Reads and writes are chunked. Saves write and flush a sibling
 temporary file, stage any existing target as a recoverable backup, then activate
-the new file on `commit`; closing or runtime teardown abandons uncommitted data.
+the new file on `commit`; closing, `cancel`, or runtime teardown abandons
+uncommitted data. Reads return byte count, total size, EOF, and percentage
+progress. Writes return chunk count, resulting size, and percentage progress
+when `totalBytes` is supplied. Chunks are capped at 1 MiB and sessions at 64
+file/directory tokens.
+
+`files.pickDirectory({ writable })` displays a directory picker and returns a
+session-bound opaque directory token. The manifest must declare
+`directoryRead` for read-only selection or `directoryWrite` for writable
+selection. Directory grants are never raw paths and are not persisted across
+Module sessions. `files.list(token, relativePath)`,
+`files.read(token, relativePath, offset, length)`, and
+`files.write(token, relativePath, dataBase64, { offset, truncate, totalBytes })`
+operate only below the selected root and retain the extension allowlist for
+files. `files.mkdir` creates one directory and `files.remove` removes one file
+or empty directory; recursive deletion and traversal through links are denied.
+Listings are capped at 4,096 entries and report truncation.
+
+For atomic directory-file streaming, use `files.openAt` or
+`files.beginSaveAt`, then the ordinary chunked `read`/`write` and
+`commit`/`cancel` methods. A committed save token remains valid as a read/host
+token until closed.
 
 The host also adapts ordinary browser file interactions to the same effective
 grant. HTML file inputs and file drops are unavailable without `files.open`, and
@@ -218,6 +256,19 @@ JavaScript.
 `ui.notice`, `ui.progress`, and `ui.clearProgress` are rendered by the app
 through the shared Status Bar. `secrets.requestEntry` uses an app-owned dialog.
 Modules cannot create native popup windows.
+
+`hostUi` is the explicit permission for app-owned transient notifications and
+progress. Browser notification APIs are not a substitute.
+
+### Host integration
+
+`hostIntegration` independently grants `host.openPath`, `host.revealPath`,
+`host.share`, and `host.print`. Every call accepts only an opaque file or
+directory token plus an optional directory-relative path; package JavaScript
+never receives the native path. Open and reveal use the platform shell. The
+Windows host currently exposes native share and file-type print integration;
+`capabilities().host.share` and `.print` are false on unsupported platforms and
+calls reject. Share and print require a regular file.
 
 ### Host AI
 

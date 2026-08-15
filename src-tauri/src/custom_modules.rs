@@ -10,14 +10,14 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
-    fs::{self, File},
+    fs::{self, File, OpenOptions},
     io::{Read, Seek, SeekFrom, Write},
     path::{Component, Path, PathBuf},
     sync::{
         Arc, Mutex, MutexGuard, OnceLock,
         atomic::{AtomicBool, Ordering},
     },
-    time::{Duration, Instant},
+    time::{Duration, Instant, UNIX_EPOCH},
 };
 use tauri::{Emitter, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 use tauri_plugin_opener::OpenerExt;
@@ -41,6 +41,8 @@ const BLOB_STORAGE_QUOTA_BYTES: i64 = 1024 * 1024 * 1024;
 const MAX_BLOB_BYTES: u64 = 256 * 1024 * 1024;
 const MAX_BLOB_KEYS: i64 = 16_384;
 const MAX_BLOB_CHUNK_BYTES: usize = 1024 * 1024;
+const MAX_FILE_TOKENS: usize = 64;
+const MAX_DIRECTORY_LIST_ENTRIES: usize = 4_096;
 const MAX_NETWORK_REQUEST_BYTES: usize = 8 * 1024 * 1024;
 const MAX_NETWORK_RESPONSE_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_NETWORK_STREAMS: usize = 8;
@@ -120,6 +122,7 @@ pub struct CustomModulePermissions {
     pub secret_references: bool,
     pub host_ui: bool,
     pub host_ai: bool,
+    pub host_integration: Option<CustomModuleHostIntegrationPermission>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
@@ -130,7 +133,24 @@ pub struct CustomModuleFilePermission {
     #[serde(default)]
     pub save: bool,
     #[serde(default)]
+    pub directory_read: bool,
+    #[serde(default)]
+    pub directory_write: bool,
+    #[serde(default)]
     pub extensions: Vec<String>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CustomModuleHostIntegrationPermission {
+    #[serde(default)]
+    pub open_path: bool,
+    #[serde(default)]
+    pub reveal_path: bool,
+    #[serde(default)]
+    pub share: bool,
+    #[serde(default)]
+    pub print: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -160,6 +180,7 @@ impl CustomModulePermissions {
             (self.secret_references, "secretReferences"),
             (self.host_ui, "hostUi"),
             (self.host_ai, "hostAi"),
+            (self.host_integration.is_some(), "hostIntegration"),
         ] {
             if enabled {
                 names.push(name);
@@ -184,6 +205,9 @@ impl CustomModulePermissions {
             secret_references: self.secret_references && granted("secretReferences"),
             host_ui: self.host_ui && granted("hostUi"),
             host_ai: self.host_ai && granted("hostAi"),
+            host_integration: granted("hostIntegration")
+                .then(|| self.host_integration.clone())
+                .flatten(),
         }
     }
 }
@@ -390,6 +414,10 @@ enum FileToken {
         temporary: PathBuf,
         file: File,
         byte_size: u64,
+    },
+    Directory {
+        root: PathBuf,
+        writable: bool,
     },
 }
 
@@ -701,8 +729,8 @@ fn validate_manifest(manifest: &CustomModuleManifest) -> Result<(), String> {
 
 fn validate_permissions(permissions: &CustomModulePermissions) -> Result<(), String> {
     if let Some(files) = &permissions.files {
-        if !files.open && !files.save {
-            return Err("files permission must enable open, save, or both".into());
+        if !files.open && !files.save && !files.directory_read && !files.directory_write {
+            return Err("files permission must enable a file or directory operation".into());
         }
         if files.extensions.len() > 128 {
             return Err("files permission declares too many extensions".into());
@@ -724,6 +752,18 @@ fn validate_permissions(permissions: &CustomModulePermissions) -> Result<(), Str
                     "duplicate Custom Module file extension '{extension}'"
                 ));
             }
+        }
+    }
+    if let Some(integration) = &permissions.host_integration {
+        if permissions.files.is_none() {
+            return Err("hostIntegration requires files permission".into());
+        }
+        if !integration.open_path
+            && !integration.reveal_path
+            && !integration.share
+            && !integration.print
+        {
+            return Err("hostIntegration must enable at least one operation".into());
         }
     }
     if let Some(network) = &permissions.network_fetch {
@@ -2326,6 +2366,33 @@ fn initialization_script(
     }))
     .map_err(|error| error.to_string())?;
     let capabilities = serde_json::to_string(permissions).map_err(|error| error.to_string())?;
+    let runtime_capabilities = serde_json::to_string(&json!({
+        "apiVersion": HOST_API_VERSION,
+        "permissions": permissions,
+        "features": {
+            "dedicatedWorkers": true,
+            "sharedWorkers": false,
+            "serviceWorkers": false,
+            "directoryTokens": true,
+            "streamingFiles": true,
+            "notifications": permissions.host_ui,
+        },
+        "host": {
+            "openPath": true,
+            "revealPath": true,
+            "share": cfg!(target_os = "windows"),
+            "print": cfg!(target_os = "windows"),
+        },
+        "limits": {
+            "fileChunkBytes": MAX_BLOB_CHUNK_BYTES,
+            "fileTokens": MAX_FILE_TOKENS,
+            "directoryListEntries": MAX_DIRECTORY_LIST_ENTRIES,
+            "networkStreamChunkBytes": MAX_NETWORK_STREAM_CHUNK_BYTES,
+            "networkStreams": MAX_NETWORK_STREAMS,
+            "hostAiStreams": MAX_HOST_AI_STREAMS,
+        },
+    }))
+    .map_err(|error| error.to_string())?;
     let clipboard_allowed = permissions.clipboard;
     let browser_storage_allowed = permissions.browser_storage;
     let files_open_allowed = permissions.files.as_ref().is_some_and(|files| files.open);
@@ -2370,6 +2437,7 @@ fn initialization_script(
             for (const target of [navigator, Navigator.prototype]) replace(target, 'storage', undefined);
           }}
           for (const target of [window, Window.prototype]) replace(target, 'caches', undefined);
+          for (const target of [window, Window.prototype]) replace(target, 'SharedWorker', undefined);
           for (const target of [navigator, Navigator.prototype]) {{
             replace(target, 'serviceWorker', undefined);
             if (!{clipboard_allowed}) replace(target, 'clipboard', unavailableClipboard);
@@ -2407,6 +2475,7 @@ fn initialization_script(
             return value;
           }};
           const capabilities = deepFreeze({capabilities});
+          const runtimeCapabilities = deepFreeze({runtime_capabilities});
           const filesOpenAllowed = {files_open_allowed};
           const filesSaveAllowed = {files_save_allowed};
           const allowedFileExtensions = deepFreeze({allowed_file_extensions});
@@ -2417,7 +2486,14 @@ fn initialization_script(
             ready: () => invoke('host.ready'),
             getContext: () => invoke('host.getContext'),
             getCapabilities: () => Promise.resolve(capabilities),
+            capabilities: () => Promise.resolve(runtimeCapabilities),
             openExternal: (url) => invoke('host.openExternal', {{ url }}),
+            host: Object.freeze({{
+              openPath: (token, relativePath) => invoke('host.openPath', {{ token, relativePath }}),
+              revealPath: (token, relativePath) => invoke('host.revealPath', {{ token, relativePath }}),
+              share: (token, relativePath) => invoke('host.share', {{ token, relativePath }}),
+              print: (token, relativePath) => invoke('host.print', {{ token, relativePath }})
+            }}),
             storage: Object.freeze({{
               get: (key) => invoke('storage.get', {{ key }}),
               set: (key, value) => invoke('storage.set', {{ key, value }}),
@@ -2433,10 +2509,23 @@ fn initialization_script(
             files: Object.freeze({{
               open: (options = {{}}) => invoke('files.open', options),
               beginSave: (options = {{}}) => invoke('files.beginSave', options),
-              read: (token, offset = 0, length) => invoke('files.read', {{ token, offset, length }}),
-              write: (token, dataBase64) => invoke('files.write', {{ token, dataBase64 }}),
+              pickDirectory: (options = {{}}) => invoke('files.pickDirectory', options),
+              list: (token, relativePath = '') => invoke('files.list', {{ token, relativePath }}),
+              openAt: (token, relativePath) => invoke('files.openAt', {{ token, relativePath }}),
+              beginSaveAt: (token, relativePath) => invoke('files.beginSaveAt', {{ token, relativePath }}),
+              read: (token, relativePathOrOffset = 0, offsetOrLength, length) =>
+                typeof relativePathOrOffset === 'string'
+                  ? invoke('files.read', {{ token, relativePath: relativePathOrOffset, offset: offsetOrLength ?? 0, length }})
+                  : invoke('files.read', {{ token, offset: relativePathOrOffset, length: offsetOrLength }}),
+              write: (token, relativePathOrData, dataOrOptions, options = {{}}) =>
+                typeof dataOrOptions === 'string'
+                  ? invoke('files.write', {{ token, relativePath: relativePathOrData, dataBase64: dataOrOptions, ...options }})
+                  : invoke('files.write', {{ token, dataBase64: relativePathOrData, ...(dataOrOptions || {{}}) }}),
+              mkdir: (token, relativePath) => invoke('files.mkdir', {{ token, relativePath }}),
+              remove: (token, relativePath) => invoke('files.remove', {{ token, relativePath }}),
               commit: (token) => invoke('files.commit', {{ token }}),
-              close: (token) => invoke('files.close', {{ token }})
+              close: (token) => invoke('files.close', {{ token }}),
+              cancel: (token) => invoke('files.cancel', {{ token }})
             }}),
             network: Object.freeze({{
               fetch: (request) => invoke('network.fetch', request),
@@ -3668,6 +3757,192 @@ fn selected_file_allowed(path: &Path, permission: &CustomModuleFilePermission) -
             .is_some_and(|extension| permission.extensions.contains(&extension))
 }
 
+fn file_token<'a>(payload: &'a Value, operation: &str) -> Result<&'a str, String> {
+    let token = payload
+        .get("token")
+        .and_then(Value::as_str)
+        .ok_or_else(|| format!("{operation} requires a token"))?;
+    if token.len() != 32 || !token.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return Err(format!("{operation} token is invalid"));
+    }
+    Ok(token)
+}
+
+fn insert_file_token(
+    session: &RuntimeSession,
+    token: String,
+    value: FileToken,
+) -> Result<(), String> {
+    let mut tokens = session
+        .file_tokens
+        .lock()
+        .map_err(|_| "Custom Module file-token lock is poisoned".to_string())?;
+    if tokens.len() >= MAX_FILE_TOKENS {
+        return Err("Custom Module file token limit exceeded".into());
+    }
+    tokens.insert(token, value);
+    Ok(())
+}
+
+fn safe_directory_relative_path(value: &str, allow_empty: bool) -> Result<PathBuf, String> {
+    if value.len() > 4_096 || value.contains('\0') {
+        return Err("directory relative path is invalid".into());
+    }
+    let path = Path::new(value);
+    if value.is_empty() {
+        return allow_empty
+            .then(PathBuf::new)
+            .ok_or_else(|| "directory relative path is required".to_string());
+    }
+    if path.is_absolute() {
+        return Err("directory relative path must not be absolute".into());
+    }
+    let mut safe = PathBuf::new();
+    for component in path.components() {
+        let Component::Normal(part) = component else {
+            return Err("directory relative path contains traversal".into());
+        };
+        let part = part
+            .to_str()
+            .filter(|part| !part.is_empty() && part.len() <= 255)
+            .ok_or_else(|| "directory relative path is invalid".to_string())?;
+        safe.push(part);
+    }
+    if safe.as_os_str().is_empty() && !allow_empty {
+        return Err("directory relative path is required".into());
+    }
+    Ok(safe)
+}
+
+fn resolve_existing_directory_path(
+    root: &Path,
+    relative: &Path,
+) -> Result<PathBuf, String> {
+    let candidate = root.join(relative);
+    let metadata = fs::symlink_metadata(&candidate)
+        .map_err(|error| format!("failed to inspect directory selection path: {error}"))?;
+    if metadata.file_type().is_symlink() {
+        return Err("directory tokens cannot traverse symbolic links".into());
+    }
+    let canonical = fs::canonicalize(&candidate)
+        .map_err(|error| format!("failed to resolve directory selection path: {error}"))?;
+    if !canonical.starts_with(root) {
+        return Err("directory relative path escapes the selected directory".into());
+    }
+    Ok(canonical)
+}
+
+fn resolve_directory_write_path(root: &Path, relative: &Path) -> Result<PathBuf, String> {
+    let parent = relative
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new(""));
+    let name = relative
+        .file_name()
+        .ok_or_else(|| "directory write path requires a file or directory name".to_string())?;
+    let canonical_parent = fs::canonicalize(root.join(parent))
+        .map_err(|error| format!("failed to resolve directory write parent: {error}"))?;
+    if !canonical_parent.starts_with(root) {
+        return Err("directory relative path escapes the selected directory".into());
+    }
+    let target = canonical_parent.join(name);
+    if let Ok(metadata) = fs::symlink_metadata(&target) {
+        if metadata.file_type().is_symlink() {
+            return Err("directory tokens cannot write through symbolic links".into());
+        }
+        let canonical = fs::canonicalize(&target)
+            .map_err(|error| format!("failed to resolve directory write target: {error}"))?;
+        if !canonical.starts_with(root) {
+            return Err("directory relative path escapes the selected directory".into());
+        }
+    }
+    Ok(target)
+}
+
+fn directory_token_root(
+    session: &RuntimeSession,
+    token: &str,
+    require_write: bool,
+) -> Result<(PathBuf, bool), String> {
+    let tokens = session
+        .file_tokens
+        .lock()
+        .map_err(|_| "Custom Module file-token lock is poisoned".to_string())?;
+    let FileToken::Directory { root, writable } = tokens
+        .get(token)
+        .ok_or_else(|| "Custom Module directory token is invalid or expired".to_string())?
+    else {
+        return Err("Custom Module token is not a directory token".into());
+    };
+    if require_write && !*writable {
+        return Err("Custom Module directory token is read-only".into());
+    }
+    Ok((root.clone(), *writable))
+}
+
+async fn select_module_directory(
+    app: &tauri::AppHandle,
+    session: &RuntimeSession,
+    permission: &CustomModuleFilePermission,
+    payload: &Value,
+) -> Result<Value, String> {
+    use tauri_plugin_dialog::DialogExt;
+
+    let writable = payload
+        .get("writable")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+    if (writable && !permission.directory_write)
+        || (!writable && !permission.directory_read)
+    {
+        return Err("Custom Module directory operation is not granted".into());
+    }
+    let mut picker = app.dialog().file();
+    if let Some(main_webview) = app.get_webview_window(crate::window_state::MAIN_WINDOW_LABEL) {
+        picker = picker.set_parent(&main_webview.as_ref().window());
+    }
+    let (sender, receiver) = tokio::sync::oneshot::channel();
+    picker.pick_folder(move |selection| {
+        let _ = sender.send(selection.and_then(|path| path.into_path().ok()));
+    });
+    let Some(selected) = receiver
+        .await
+        .map_err(|_| "Custom Module directory picker was closed unexpectedly".to_string())?
+    else {
+        return Ok(Value::Null);
+    };
+    let session = session.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let root = fs::canonicalize(&selected)
+            .map_err(|error| format!("failed to resolve selected directory: {error}"))?;
+        if !root.is_dir() {
+            return Err("selected path is not a directory".into());
+        }
+        let token = format!("{:032x}", rand::random::<u128>());
+        let name = root
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("directory")
+            .to_string();
+        insert_file_token(
+            &session,
+            token.clone(),
+            FileToken::Directory {
+                root,
+                writable,
+            },
+        )?;
+        Ok(json!({
+            "token": token,
+            "name": name,
+            "writable": writable,
+            "maxChunkBytes": MAX_BLOB_CHUNK_BYTES,
+        }))
+    })
+    .await
+    .map_err(|error| format!("Custom Module directory worker failed: {error}"))?
+}
+
 async fn select_module_file(
     app: &tauri::AppHandle,
     session: &RuntimeSession,
@@ -3763,11 +4038,7 @@ async fn select_module_file(
                 byte_size,
             )
         };
-        session
-            .file_tokens
-            .lock()
-            .map_err(|_| "Custom Module file-token lock is poisoned".to_string())?
-            .insert(token.clone(), file_token);
+        insert_file_token(&session, token.clone(), file_token)?;
         Ok(json!({
             "token": token,
             "name": name,
@@ -3780,17 +4051,327 @@ async fn select_module_file(
     .map_err(|error| format!("Custom Module file worker failed: {error}"))?
 }
 
-fn read_selected_file(session: &RuntimeSession, payload: &Value) -> Result<Value, String> {
-    let token = payload
-        .get("token")
+fn list_selected_directory(
+    session: &RuntimeSession,
+    permission: &CustomModuleFilePermission,
+    payload: &Value,
+) -> Result<Value, String> {
+    let token = file_token(payload, "files.list")?;
+    let relative_value = payload
+        .get("relativePath")
         .and_then(Value::as_str)
-        .ok_or_else(|| "files.read requires a token".to_string())?;
+        .unwrap_or("");
+    let relative = safe_directory_relative_path(relative_value, true)?;
+    let (root, _) = directory_token_root(session, token, false)?;
+    let directory = resolve_existing_directory_path(&root, &relative)?;
+    if !directory.is_dir() {
+        return Err("files.list target is not a directory".into());
+    }
+    let mut entries = Vec::new();
+    let mut truncated = false;
+    let mut scanned = 0_usize;
+    for entry in fs::read_dir(&directory)
+        .map_err(|error| format!("failed to list selected directory: {error}"))?
+    {
+        scanned += 1;
+        if scanned > MAX_DIRECTORY_LIST_ENTRIES {
+            truncated = true;
+            break;
+        }
+        let entry = entry.map_err(|error| format!("failed to inspect directory entry: {error}"))?;
+        let path = entry.path();
+        let metadata = fs::symlink_metadata(&path)
+            .map_err(|error| format!("failed to inspect directory entry: {error}"))?;
+        if metadata.file_type().is_symlink() {
+            continue;
+        }
+        let is_directory = metadata.is_dir();
+        if !is_directory && (!metadata.is_file() || !selected_file_allowed(&path, permission)) {
+            continue;
+        }
+        if entries.len() >= MAX_DIRECTORY_LIST_ENTRIES {
+            truncated = true;
+            break;
+        }
+        let name = entry
+            .file_name()
+            .to_str()
+            .ok_or_else(|| "directory entry name is not UTF-8".to_string())?
+            .to_string();
+        let relative_path = relative
+            .join(&name)
+            .to_string_lossy()
+            .replace('\\', "/");
+        let modified_ms = metadata
+            .modified()
+            .ok()
+            .and_then(|value| value.duration_since(UNIX_EPOCH).ok())
+            .map(|value| value.as_millis() as u64);
+        entries.push(json!({
+            "name": name,
+            "relativePath": relative_path,
+            "kind": if is_directory { "directory" } else { "file" },
+            "byteSize": if metadata.is_file() { Some(metadata.len()) } else { None },
+            "modifiedMs": modified_ms,
+        }));
+    }
+    entries.sort_by(|left, right| {
+        left.get("name")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .to_lowercase()
+            .cmp(
+                &right
+                    .get("name")
+                    .and_then(Value::as_str)
+                    .unwrap_or("")
+                    .to_lowercase(),
+            )
+    });
+    Ok(json!({ "entries": entries, "truncated": truncated }))
+}
+
+fn open_directory_file(
+    session: &RuntimeSession,
+    permission: &CustomModuleFilePermission,
+    payload: &Value,
+    save: bool,
+) -> Result<Value, String> {
+    let operation = if save {
+        "files.beginSaveAt"
+    } else {
+        "files.openAt"
+    };
+    let directory_token = file_token(payload, operation)?;
+    let relative_value = payload
+        .get("relativePath")
+        .and_then(Value::as_str)
+        .ok_or_else(|| format!("{operation} requires relativePath"))?;
+    let relative = safe_directory_relative_path(relative_value, false)?;
+    if !selected_file_allowed(&relative, permission) {
+        return Err("directory file does not match the granted extension filters".into());
+    }
+    let (root, _) = directory_token_root(session, directory_token, save)?;
+    let token = format!("{:032x}", rand::random::<u128>());
+    let name = relative
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("file")
+        .to_string();
+    let (file_token, byte_size) = if save {
+        let target = resolve_directory_write_path(&root, &relative)?;
+        if target.is_dir() {
+            return Err("files.beginSaveAt target is a directory".into());
+        }
+        let parent = target
+            .parent()
+            .ok_or_else(|| "directory save target has no parent".to_string())?;
+        let temporary = parent.join(format!(".kkterm-save-{token}.tmp"));
+        let file = File::create(&temporary)
+            .map_err(|error| format!("failed to create temporary directory save: {error}"))?;
+        (
+            FileToken::Write {
+                target,
+                temporary,
+                file,
+                byte_size: 0,
+            },
+            0,
+        )
+    } else {
+        let path = resolve_existing_directory_path(&root, &relative)?;
+        let metadata = path
+            .metadata()
+            .map_err(|error| format!("failed to inspect directory file: {error}"))?;
+        if !metadata.is_file() {
+            return Err("files.openAt target is not a regular file".into());
+        }
+        let byte_size = metadata.len();
+        (FileToken::Read { path, byte_size }, byte_size)
+    };
+    insert_file_token(session, token.clone(), file_token)?;
+    Ok(json!({
+        "token": token,
+        "name": name,
+        "byteSize": byte_size,
+        "writable": save,
+        "maxChunkBytes": MAX_BLOB_CHUNK_BYTES,
+    }))
+}
+
+fn read_directory_file(
+    session: &RuntimeSession,
+    permission: &CustomModuleFilePermission,
+    payload: &Value,
+) -> Result<Value, String> {
+    let token = file_token(payload, "files.read")?;
+    let relative_value = payload
+        .get("relativePath")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "files.read requires relativePath for a directory token".to_string())?;
+    let relative = safe_directory_relative_path(relative_value, false)?;
+    if !selected_file_allowed(&relative, permission) {
+        return Err("directory file does not match the granted extension filters".into());
+    }
+    let (root, _) = directory_token_root(session, token, false)?;
+    let path = resolve_existing_directory_path(&root, &relative)?;
+    let metadata = path
+        .metadata()
+        .map_err(|error| format!("failed to inspect directory file: {error}"))?;
+    if !metadata.is_file() {
+        return Err("files.read target is not a regular file".into());
+    }
+    read_file_path(&path, metadata.len(), payload)
+}
+
+fn write_directory_file(
+    session: &RuntimeSession,
+    permission: &CustomModuleFilePermission,
+    payload: &Value,
+) -> Result<Value, String> {
+    let token = file_token(payload, "files.write")?;
+    let relative_value = payload
+        .get("relativePath")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "files.write requires relativePath for a directory token".to_string())?;
+    let relative = safe_directory_relative_path(relative_value, false)?;
+    if !selected_file_allowed(&relative, permission) {
+        return Err("directory file does not match the granted extension filters".into());
+    }
+    let encoded = payload
+        .get("dataBase64")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "files.write requires dataBase64".to_string())?;
+    let bytes = BASE64
+        .decode(encoded)
+        .map_err(|error| format!("invalid directory-file chunk: {error}"))?;
+    if bytes.len() > MAX_BLOB_CHUNK_BYTES {
+        return Err("Custom Module file chunk exceeds 1 MiB".into());
+    }
+    let offset = payload.get("offset").and_then(Value::as_u64).unwrap_or(0);
+    let truncate = payload
+        .get("truncate")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+    if truncate && offset != 0 {
+        return Err("files.write truncate requires offset 0".into());
+    }
+    let (root, _) = directory_token_root(session, token, true)?;
+    let path = resolve_directory_write_path(&root, &relative)?;
+    if path.is_dir() {
+        return Err("files.write target is a directory".into());
+    }
+    let existing_size = path.metadata().map(|metadata| metadata.len()).unwrap_or(0);
+    if offset > existing_size && !truncate {
+        return Err("files.write offset exceeds the current file size".into());
+    }
+    let mut options = OpenOptions::new();
+    options.create(true).write(true);
+    if truncate {
+        options.truncate(true);
+    }
+    let mut file = options
+        .open(&path)
+        .map_err(|error| format!("failed to open directory file for writing: {error}"))?;
+    file.seek(SeekFrom::Start(offset))
+        .map_err(|error| format!("failed to seek directory file: {error}"))?;
+    file.write_all(&bytes)
+        .map_err(|error| format!("failed to write directory file: {error}"))?;
+    file.flush()
+        .map_err(|error| format!("failed to flush directory file: {error}"))?;
+    let byte_size = file
+        .metadata()
+        .map_err(|error| format!("failed to inspect directory file: {error}"))?
+        .len();
+    let total_bytes = payload.get("totalBytes").and_then(Value::as_u64);
+    let progress = total_bytes.filter(|total| *total > 0).map(|total| {
+        ((offset.saturating_add(bytes.len() as u64) as f64 / total as f64) * 100.0)
+            .clamp(0.0, 100.0)
+    });
+    Ok(json!({
+        "offset": offset,
+        "bytesWritten": bytes.len(),
+        "byteSize": byte_size,
+        "progress": progress,
+    }))
+}
+
+fn create_selected_directory(session: &RuntimeSession, payload: &Value) -> Result<Value, String> {
+    let token = file_token(payload, "files.mkdir")?;
+    let relative_value = payload
+        .get("relativePath")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "files.mkdir requires relativePath".to_string())?;
+    let relative = safe_directory_relative_path(relative_value, false)?;
+    let (root, _) = directory_token_root(session, token, true)?;
+    let path = resolve_directory_write_path(&root, &relative)?;
+    fs::create_dir(&path).map_err(|error| format!("failed to create directory: {error}"))?;
+    Ok(json!(true))
+}
+
+fn remove_selected_directory_entry(
+    session: &RuntimeSession,
+    permission: &CustomModuleFilePermission,
+    payload: &Value,
+) -> Result<Value, String> {
+    let token = file_token(payload, "files.remove")?;
+    let relative_value = payload
+        .get("relativePath")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "files.remove requires relativePath".to_string())?;
+    let relative = safe_directory_relative_path(relative_value, false)?;
+    let (root, _) = directory_token_root(session, token, true)?;
+    let path = resolve_existing_directory_path(&root, &relative)?;
+    let metadata = path
+        .metadata()
+        .map_err(|error| format!("failed to inspect directory entry: {error}"))?;
+    if metadata.is_file() {
+        if !selected_file_allowed(&path, permission) {
+            return Err("directory file does not match the granted extension filters".into());
+        }
+        fs::remove_file(&path).map_err(|error| format!("failed to remove file: {error}"))?;
+    } else if metadata.is_dir() {
+        fs::remove_dir(&path)
+            .map_err(|error| format!("failed to remove empty directory: {error}"))?;
+    } else {
+        return Err("files.remove target is not a regular file or directory".into());
+    }
+    Ok(json!(true))
+}
+
+fn read_file_path(path: &Path, byte_size: u64, payload: &Value) -> Result<Value, String> {
     let offset = payload.get("offset").and_then(Value::as_u64).unwrap_or(0);
     let length = payload
         .get("length")
         .and_then(Value::as_u64)
         .unwrap_or(MAX_BLOB_CHUNK_BYTES as u64)
         .min(MAX_BLOB_CHUNK_BYTES as u64) as usize;
+    let mut file = File::open(path).map_err(|error| format!("failed to open selected file: {error}"))?;
+    file.seek(SeekFrom::Start(offset))
+        .map_err(|error| format!("failed to seek selected file: {error}"))?;
+    let mut bytes = vec![0; length];
+    let count = file
+        .read(&mut bytes)
+        .map_err(|error| format!("failed to read selected file: {error}"))?;
+    bytes.truncate(count);
+    let end = offset.saturating_add(count as u64);
+    let progress = if byte_size == 0 {
+        100.0
+    } else {
+        ((end as f64 / byte_size as f64) * 100.0).clamp(0.0, 100.0)
+    };
+    Ok(json!({
+        "offset": offset,
+        "dataBase64": BASE64.encode(bytes),
+        "bytesRead": count,
+        "byteSize": byte_size,
+        "progress": progress,
+        "eof": end >= byte_size,
+    }))
+}
+
+fn read_selected_file(session: &RuntimeSession, payload: &Value) -> Result<Value, String> {
+    let token = file_token(payload, "files.read")?;
     let tokens = session
         .file_tokens
         .lock()
@@ -3801,27 +4382,11 @@ fn read_selected_file(session: &RuntimeSession, payload: &Value) -> Result<Value
     else {
         return Err("Custom Module file token is not readable".into());
     };
-    let mut file =
-        File::open(path).map_err(|error| format!("failed to open selected file: {error}"))?;
-    file.seek(SeekFrom::Start(offset))
-        .map_err(|error| format!("failed to seek selected file: {error}"))?;
-    let mut bytes = vec![0; length];
-    let count = file
-        .read(&mut bytes)
-        .map_err(|error| format!("failed to read selected file: {error}"))?;
-    bytes.truncate(count);
-    Ok(json!({
-        "offset": offset,
-        "dataBase64": BASE64.encode(bytes),
-        "eof": offset.saturating_add(count as u64) >= *byte_size,
-    }))
+    read_file_path(path, *byte_size, payload)
 }
 
 fn write_selected_file(session: &RuntimeSession, payload: &Value) -> Result<Value, String> {
-    let token = payload
-        .get("token")
-        .and_then(Value::as_str)
-        .ok_or_else(|| "files.write requires a token".to_string())?;
+    let token = file_token(payload, "files.write")?;
     let encoded = payload
         .get("dataBase64")
         .and_then(Value::as_str)
@@ -3847,19 +4412,24 @@ fn write_selected_file(session: &RuntimeSession, payload: &Value) -> Result<Valu
     file.write_all(&bytes)
         .map_err(|error| format!("failed to write selected file: {error}"))?;
     *byte_size = byte_size.saturating_add(bytes.len() as u64);
-    Ok(json!({ "byteSize": *byte_size }))
+    let total_bytes = payload.get("totalBytes").and_then(Value::as_u64);
+    let progress = total_bytes.filter(|total| *total > 0).map(|total| {
+        ((*byte_size as f64 / total as f64) * 100.0).clamp(0.0, 100.0)
+    });
+    Ok(json!({
+        "bytesWritten": bytes.len(),
+        "byteSize": *byte_size,
+        "progress": progress,
+    }))
 }
 
 fn commit_selected_file(session: &RuntimeSession, payload: &Value) -> Result<Value, String> {
-    let token = payload
-        .get("token")
-        .and_then(Value::as_str)
-        .ok_or_else(|| "files.commit requires a token".to_string())?;
+    let token = file_token(payload, "files.commit")?.to_string();
     let selected = session
         .file_tokens
         .lock()
         .map_err(|_| "Custom Module file-token lock is poisoned".to_string())?
-        .remove(token)
+        .remove(&token)
         .ok_or_else(|| "Custom Module file token is invalid or expired".to_string())?;
     let FileToken::Write {
         target,
@@ -3889,14 +4459,21 @@ fn commit_selected_file(session: &RuntimeSession, payload: &Value) -> Result<Val
     if had_target {
         let _ = fs::remove_file(backup);
     }
-    Ok(json!({ "byteSize": byte_size }))
+    let committed = fs::canonicalize(&target)
+        .map_err(|error| format!("failed to resolve committed file: {error}"))?;
+    insert_file_token(
+        session,
+        token.clone(),
+        FileToken::Read {
+            path: committed,
+            byte_size,
+        },
+    )?;
+    Ok(json!({ "token": token, "byteSize": byte_size }))
 }
 
 fn close_selected_file(session: &RuntimeSession, payload: &Value) -> Result<Value, String> {
-    let token = payload
-        .get("token")
-        .and_then(Value::as_str)
-        .ok_or_else(|| "files.close requires a token".to_string())?;
+    let token = file_token(payload, "files.close")?;
     if let Some(FileToken::Write {
         temporary, file, ..
     }) = session
@@ -3909,6 +4486,174 @@ fn close_selected_file(session: &RuntimeSession, payload: &Value) -> Result<Valu
         let _ = fs::remove_file(temporary);
     }
     Ok(json!(true))
+}
+
+fn host_token_path(
+    session: &RuntimeSession,
+    permission: &CustomModuleFilePermission,
+    payload: &Value,
+    operation: &str,
+) -> Result<PathBuf, String> {
+    let token = file_token(payload, operation)?;
+    let relative_value = payload
+        .get("relativePath")
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    let tokens = session
+        .file_tokens
+        .lock()
+        .map_err(|_| "Custom Module file-token lock is poisoned".to_string())?;
+    let path = match tokens
+        .get(token)
+        .ok_or_else(|| "Custom Module file token is invalid or expired".to_string())?
+    {
+        FileToken::Read { path, .. } => {
+            if !relative_value.is_empty() {
+                return Err(format!("{operation} does not accept relativePath for a file token"));
+            }
+            path.clone()
+        }
+        FileToken::Write { target, .. } => {
+            if !relative_value.is_empty() {
+                return Err(format!("{operation} does not accept relativePath for a file token"));
+            }
+            if !target.exists() {
+                return Err(format!("{operation} save target has not been committed"));
+            }
+            target.clone()
+        }
+        FileToken::Directory { root, .. } => {
+            let relative = safe_directory_relative_path(relative_value, true)?;
+            resolve_existing_directory_path(root, &relative)?
+        }
+    };
+    if path.is_file() && !selected_file_allowed(&path, permission) {
+        return Err("host path does not match the granted extension filters".into());
+    }
+    Ok(path)
+}
+
+#[cfg(target_os = "windows")]
+fn print_custom_module_path(path: &Path) -> Result<(), String> {
+    use std::os::windows::ffi::OsStrExt;
+    use windows_sys::Win32::UI::{Shell::ShellExecuteW, WindowsAndMessaging::SW_SHOWNORMAL};
+
+    if !path.is_file() {
+        return Err("host.print requires a file token".into());
+    }
+    let verb = std::ffi::OsStr::new("print")
+        .encode_wide()
+        .chain(Some(0))
+        .collect::<Vec<_>>();
+    let path = path
+        .as_os_str()
+        .encode_wide()
+        .chain(Some(0))
+        .collect::<Vec<_>>();
+    let result = unsafe {
+        ShellExecuteW(
+            std::ptr::null_mut(),
+            verb.as_ptr(),
+            path.as_ptr(),
+            std::ptr::null(),
+            std::ptr::null(),
+            SW_SHOWNORMAL,
+        )
+    };
+    if result as isize <= 32 {
+        return Err(format!("Windows could not print this file (ShellExecuteW code {})", result as isize));
+    }
+    Ok(())
+}
+
+#[cfg(not(target_os = "windows"))]
+fn print_custom_module_path(_path: &Path) -> Result<(), String> {
+    Err("host.print is not supported on this platform".into())
+}
+
+#[cfg(target_os = "windows")]
+fn share_custom_module_path(session: &RuntimeSession, path: &Path) -> Result<(), String> {
+    use windows::{
+        ApplicationModel::DataTransfer::{DataRequestedEventArgs, DataTransferManager},
+        Foundation::TypedEventHandler,
+        Storage::{IStorageItem, StorageFile},
+        Win32::{Foundation::HWND, UI::Shell::IDataTransferManagerInterop},
+        core::{AgileReference, HSTRING, Interface, factory},
+    };
+    use windows_collections::IIterable;
+
+    if !path.is_file() {
+        return Err("host.share requires a file token".into());
+    }
+    let path_text = path
+        .to_str()
+        .ok_or_else(|| "host.share path is not valid UTF-8".to_string())?;
+    let file = StorageFile::GetFileFromPathAsync(&HSTRING::from(path_text))
+        .map_err(|error| format!("failed to prepare file for sharing: {error}"))?
+        .join()
+        .map_err(|error| format!("failed to prepare file for sharing: {error}"))?;
+    let title = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("KKTerm file")
+        .to_string();
+    let interop = factory::<DataTransferManager, IDataTransferManagerInterop>()
+        .map_err(|error| format!("Windows sharing is unavailable: {error}"))?;
+    let native = session
+        .host_window
+        .hwnd()
+        .map_err(|error| format!("failed to resolve host window: {error}"))?;
+    let hwnd = HWND(native.0);
+    let manager: DataTransferManager = unsafe { interop.GetForWindow(hwnd) }
+        .map_err(|error| format!("Windows sharing is unavailable: {error}"))?;
+    let registration = Arc::new(Mutex::new(None::<i64>));
+    let handler_manager = AgileReference::new(&manager)
+        .map_err(|error| format!("failed to retain Windows share manager: {error}"))?;
+    let handler_file = AgileReference::new(&file)
+        .map_err(|error| format!("failed to retain Windows shared file: {error}"))?;
+    let handler_registration = Arc::clone(&registration);
+    let handler = TypedEventHandler::<DataTransferManager, DataRequestedEventArgs>::new(
+        move |_, args| {
+            let result = if let Some(args) = args.as_ref() {
+                let item: IStorageItem = handler_file.resolve()?.cast()?;
+                let items: IIterable<IStorageItem> = vec![Some(item)].into();
+                let request = args.Request()?;
+                let package = request.Data()?;
+                package.Properties()?.SetTitle(&HSTRING::from(&title))?;
+                package.SetStorageItems(&items, true)
+            } else {
+                Ok(())
+            };
+            if let Ok(mut token) = handler_registration.lock() {
+                if let Some(token) = token.take() {
+                    if let Ok(manager) = handler_manager.resolve() {
+                        let _ = manager.RemoveDataRequested(token);
+                    }
+                }
+            }
+            result
+        },
+    );
+    let token = manager
+        .DataRequested(&handler)
+        .map_err(|error| format!("failed to prepare Windows share event: {error}"))?;
+    *registration
+        .lock()
+        .map_err(|_| "Windows share registration lock is poisoned".to_string())? = Some(token);
+    if let Err(error) = unsafe { interop.ShowShareUIForWindow(hwnd) } {
+        if let Ok(mut registered) = registration.lock() {
+            if let Some(token) = registered.take() {
+                let _ = manager.RemoveDataRequested(token);
+            }
+        }
+        return Err(format!("failed to show Windows share UI: {error}"));
+    }
+    Ok(())
+}
+
+#[cfg(not(target_os = "windows"))]
+fn share_custom_module_path(_session: &RuntimeSession, _path: &Path) -> Result<(), String> {
+    Err("host.share is not supported on this platform".into())
 }
 
 fn network_address_is_private(address: std::net::IpAddr) -> bool {
@@ -4842,6 +5587,46 @@ async fn custom_module_bridge_inner(
                 .map_err(|error| error.to_string())?;
             Ok(json!(true))
         }
+        operation if matches!(
+            operation,
+            "host.openPath" | "host.revealPath" | "host.share" | "host.print"
+        ) => {
+            let integration = session
+                .permission_config
+                .host_integration
+                .as_ref()
+                .ok_or_else(|| {
+                    "Custom Module has not been granted hostIntegration permission".to_string()
+                })?;
+            let allowed = match operation {
+                "host.openPath" => integration.open_path,
+                "host.revealPath" => integration.reveal_path,
+                "host.share" => integration.share,
+                "host.print" => integration.print,
+                _ => false,
+            };
+            if !allowed {
+                return Err(format!("Custom Module has not been granted {operation}"));
+            }
+            let file_permission = session.permission_config.files.as_ref().ok_or_else(|| {
+                "Custom Module host path operations require files permission".to_string()
+            })?;
+            let path = host_token_path(&session, file_permission, &request.payload, operation)?;
+            match operation {
+                "host.openPath" => app
+                    .opener()
+                    .open_path(path.to_string_lossy().to_string(), None::<String>)
+                    .map_err(|error| format!("failed to open selected path: {error}"))?,
+                "host.revealPath" => app
+                    .opener()
+                    .reveal_item_in_dir(&path)
+                    .map_err(|error| format!("failed to reveal selected path: {error}"))?,
+                "host.share" => share_custom_module_path(&session, &path)?,
+                "host.print" => print_custom_module_path(&path)?,
+                _ => unreachable!(),
+            }
+            Ok(json!(true))
+        }
         operation if operation.starts_with("storage.") => {
             if !session.permissions.contains("storage") {
                 return Err("Custom Module has not been granted storage permission".into());
@@ -4965,10 +5750,57 @@ async fn custom_module_bridge_inner(
                 "files.beginSave" => {
                     select_module_file(&app, &session, permission, true, &request.payload).await
                 }
+                "files.pickDirectory" => {
+                    select_module_directory(&app, &session, permission, &request.payload).await
+                }
+                "files.list" => {
+                    if !permission.directory_read {
+                        return Err("Custom Module has not been granted directoryRead".into());
+                    }
+                    list_selected_directory(&session, permission, &request.payload)
+                }
+                "files.openAt" => {
+                    if !permission.directory_read {
+                        return Err("Custom Module has not been granted directoryRead".into());
+                    }
+                    open_directory_file(&session, permission, &request.payload, false)
+                }
+                "files.beginSaveAt" => {
+                    if !permission.directory_write {
+                        return Err("Custom Module has not been granted directoryWrite".into());
+                    }
+                    open_directory_file(&session, permission, &request.payload, true)
+                }
+                "files.read" if request.payload.get("relativePath").is_some() => {
+                    if !permission.directory_read {
+                        return Err("Custom Module has not been granted directoryRead".into());
+                    }
+                    read_directory_file(&session, permission, &request.payload)
+                }
                 "files.read" => read_selected_file(&session, &request.payload),
+                "files.write" if request.payload.get("relativePath").is_some() => {
+                    if !permission.directory_write {
+                        return Err("Custom Module has not been granted directoryWrite".into());
+                    }
+                    write_directory_file(&session, permission, &request.payload)
+                }
                 "files.write" => write_selected_file(&session, &request.payload),
+                "files.mkdir" => {
+                    if !permission.directory_write {
+                        return Err("Custom Module has not been granted directoryWrite".into());
+                    }
+                    create_selected_directory(&session, &request.payload)
+                }
+                "files.remove" => {
+                    if !permission.directory_write {
+                        return Err("Custom Module has not been granted directoryWrite".into());
+                    }
+                    remove_selected_directory_entry(&session, permission, &request.payload)
+                }
                 "files.commit" => commit_selected_file(&session, &request.payload),
-                "files.close" => close_selected_file(&session, &request.payload),
+                "files.close" | "files.cancel" => {
+                    close_selected_file(&session, &request.payload)
+                }
                 _ => Err("unknown Custom Module file operation".into()),
             }
         }
@@ -5131,6 +5963,14 @@ pub fn protocol_response(
     request: tauri::http::Request<Vec<u8>>,
 ) -> tauri::http::Response<Vec<u8>> {
     let result = (|| -> Result<(Vec<u8>, String, bool), String> {
+        if request
+            .headers()
+            .get("Sec-Fetch-Dest")
+            .and_then(|value| value.to_str().ok())
+            .is_some_and(|destination| matches!(destination, "sharedworker" | "serviceworker"))
+        {
+            return Err("Shared and service workers are unavailable to Custom Modules".into());
+        }
         let runtime = context.app_handle().state::<CustomModuleRuntime>();
         let paths = context.app_handle().state::<AppPaths>();
         let route = runtime
@@ -5191,7 +6031,7 @@ pub fn protocol_response(
             )
             .header(
                 "Content-Security-Policy",
-                "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; object-src 'none'; frame-src 'self'; worker-src 'self' blob:; child-src 'self' blob:; base-uri 'none'; form-action 'none'",
+                "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; object-src 'none'; frame-src 'self'; worker-src 'self'; child-src 'self'; base-uri 'none'; form-action 'none'",
             )
             .body(body)
             .unwrap_or_else(|_| tauri::http::Response::new(Vec::new())),
@@ -5260,6 +6100,68 @@ mod tests {
         let mut value = "a終端機b".to_string();
         assert_eq!(take_prefix_chars(&mut value, 2), "a終");
         assert_eq!(value, "端機b");
+    }
+
+    #[test]
+    fn directory_and_host_integrations_are_explicit_restrictable_permissions() {
+        let permissions = CustomModulePermissions {
+            files: Some(CustomModuleFilePermission {
+                directory_read: true,
+                directory_write: true,
+                extensions: vec!["txt".into()],
+                ..Default::default()
+            }),
+            host_integration: Some(CustomModuleHostIntegrationPermission {
+                open_path: true,
+                reveal_path: true,
+                share: true,
+                print: true,
+            }),
+            ..Default::default()
+        };
+        assert_eq!(
+            permissions.enabled_names(),
+            vec!["files", "hostIntegration"]
+        );
+        assert!(permissions.restricted_to(&HashSet::new()).files.is_none());
+        assert!(
+            permissions
+                .restricted_to(&HashSet::from([
+                    "files".to_string(),
+                    "hostIntegration".to_string()
+                ]))
+                .host_integration
+                .is_some()
+        );
+        validate_permissions(&permissions).unwrap();
+    }
+
+    #[test]
+    fn directory_relative_paths_are_bounded_below_the_selected_root() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = fs::canonicalize(directory.path()).unwrap();
+        fs::create_dir(root.join("nested")).unwrap();
+        fs::write(root.join("nested/file.txt"), b"safe").unwrap();
+
+        let relative = safe_directory_relative_path("nested/file.txt", false).unwrap();
+        assert_eq!(
+            resolve_existing_directory_path(&root, &relative).unwrap(),
+            fs::canonicalize(root.join("nested/file.txt")).unwrap()
+        );
+        assert!(safe_directory_relative_path("../outside.txt", false).is_err());
+        assert!(safe_directory_relative_path(&root.to_string_lossy(), false).is_err());
+        assert!(safe_directory_relative_path("", false).is_err());
+        assert!(safe_directory_relative_path("", true).unwrap().as_os_str().is_empty());
+    }
+
+    #[test]
+    fn initialization_exposes_packaged_workers_and_rich_capabilities() {
+        let script = initialization_script("dark", "en", &CustomModulePermissions::default())
+            .unwrap();
+        assert!(script.contains("capabilities: () => Promise.resolve(runtimeCapabilities)"));
+        assert!(script.contains("replace(target, 'SharedWorker', undefined)"));
+        assert!(script.contains("pickDirectory"));
+        assert!(script.contains("host.openPath"));
     }
 
     fn write_package(path: &Path, unsafe_path: Option<&str>) {

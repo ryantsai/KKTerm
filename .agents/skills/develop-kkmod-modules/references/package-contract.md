@@ -57,6 +57,8 @@ Unknown fields are rejected at every level.
     "files": {
       "open": true,
       "save": true,
+      "directoryRead": true,
+      "directoryWrite": true,
       "extensions": ["json", "png"]
     },
     "networkFetch": {
@@ -67,7 +69,13 @@ Unknown fields are rejected at every level.
     },
     "secretReferences": true,
     "hostUi": true,
-    "hostAi": true
+    "hostAi": true,
+    "hostIntegration": {
+      "openPath": true,
+      "revealPath": true,
+      "share": true,
+      "print": true
+    }
   },
   "modules": [
     {
@@ -102,8 +110,15 @@ Unknown fields are rejected at every level.
 - `storage`, `documentStorage`, `blobStorage`, `browserStorage`
 - `openExternal`, `clipboard`, `secretReferences`, `hostUi`, `hostAi`
 
-`files` is absent or contains `open`, `save`, and up to 128 unique lowercase
-extensions without dots. At least one operation must be true.
+`files` is absent or contains `open`, `save`, `directoryRead`,
+`directoryWrite`, and up to 128 unique lowercase extensions without dots. At
+least one operation must be true. Directory operations still enforce the file
+extension list and return session-bound opaque tokens, never paths.
+
+`hostIntegration` is absent or enables one or more of `openPath`, `revealPath`,
+`share`, and `print`. It requires a `files` grant because all operations consume
+opaque file/directory tokens. Share and print availability is platform-specific
+and must be checked through `KKTerm.capabilities()`.
 
 `networkFetch` is absent or contains 1–64 unique canonical origins, 1–8 unique
 methods from `GET`, `HEAD`, `POST`, `PUT`, `PATCH`, `DELETE`, a private-network
@@ -111,7 +126,7 @@ flag, and a 1-byte to 64-MiB response cap. Origins normally require HTTPS and
 have no credentials, path, query, or fragment. HTTP requires an explicit
 private-network grant.
 
-Permission parameters are grant data. Any boolean widening, new file operation
+Permission parameters are grant data. Any boolean widening, new file or host operation
 or extension, added network origin/method, private-network enablement, or larger
 response limit requires fresh update approval.
 

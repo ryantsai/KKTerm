@@ -19,6 +19,8 @@ pnpm-debug.log*
 artifacts
 node_modules
 dist
+!custom-modules/fixtures/hello-world/dist/
+!custom-modules/fixtures/hello-world/dist/**
 dist-ssr
 /output/
 *.local

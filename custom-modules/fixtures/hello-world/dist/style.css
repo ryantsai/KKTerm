@@ -1,0 +1,42 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: Canvas;
+  color: CanvasText;
+}
+
+main {
+  box-sizing: border-box;
+  max-width: 52rem;
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+dl {
+  display: grid;
+  gap: 0.75rem;
+}
+
+dl div {
+  display: grid;
+  grid-template-columns: 10rem 1fr;
+  gap: 1rem;
+}
+
+dt {
+  font-weight: 700;
+}
+
+dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+button {
+  margin-top: 1rem;
+  padding: 0.55rem 0.9rem;
+}

@@ -56,7 +56,12 @@ function formatDataSize(bytes: number): string {
 
 function permissionNames(permissions: CustomModulePermissions): string[] {
   const fileOperations = permissions.files
-    ? [permissions.files.open && "open", permissions.files.save && "save"].filter(Boolean)
+    ? [
+        permissions.files.open && "open",
+        permissions.files.save && "save",
+        permissions.files.directoryRead && "directory read",
+        permissions.files.directoryWrite && "directory write",
+      ].filter(Boolean)
     : [];
   const files = permissions.files
     ? `files (${fileOperations.join("/")}${permissions.files.extensions.length
@@ -80,6 +85,15 @@ function permissionNames(permissions: CustomModulePermissions): string[] {
     permissions.secretReferences && "secretReferences",
     permissions.hostUi && "hostUi",
     permissions.hostAi && "hostAi",
+    permissions.hostIntegration &&
+      `hostIntegration (${[
+        permissions.hostIntegration.openPath && "open path",
+        permissions.hostIntegration.revealPath && "reveal path",
+        permissions.hostIntegration.share && "share",
+        permissions.hostIntegration.print && "print",
+      ]
+        .filter(Boolean)
+        .join("/")})`,
   ].filter((name): name is string => Boolean(name));
 }
 

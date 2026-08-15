@@ -15,6 +15,8 @@ const emptyPermissions: InstalledCustomModule["permissions"] = {
   clipboard: false,
   secretReferences: false,
   hostUi: false,
+  hostAi: false,
+  hostIntegration: null,
 };
 
 function installed(

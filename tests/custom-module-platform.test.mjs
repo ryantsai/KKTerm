@@ -18,7 +18,7 @@ test("Custom Module WebViews receive only the caller-bound bridge permission", a
   assert.match(backend, /label\.starts_with\("custom-module-"\)/);
   assert.match(backend, /runtime\.session\(label\)/);
   assert.match(backend, /Permissions-Policy/);
-  assert.match(backend, /worker-src 'self' blob:/);
+  assert.match(backend, /worker-src 'self';/);
   assert.match(backend, /package_origin_host/);
   assert.match(backend, /data_directory\(webview_data_root\(&paths\)\.join\(&installed\.manifest\.id\)\)/);
   assert.match(backend, /document\.addEventListener\('click'/);
@@ -61,13 +61,18 @@ test("Custom Module WebViews receive only the caller-bound bridge permission", a
 });
 
 test("Custom Module packages are optional and static", async () => {
-  const [manifest, packageJson, tauriConfig] = await Promise.all([
+  const [manifest, packageJson, tauriConfig, fixture, worker] = await Promise.all([
     readFile(new URL("../custom-modules/fixtures/hello-world/kkterm-extension.json", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
     readFile(new URL("../src-tauri/tauri.conf.json", import.meta.url), "utf8"),
+    readFile(new URL("../custom-modules/fixtures/hello-world/dist/app.js", import.meta.url), "utf8"),
+    readFile(new URL("../custom-modules/fixtures/hello-world/dist/worker.js", import.meta.url), "utf8"),
   ]);
   assert.equal(JSON.parse(manifest).apiVersion, 2);
   assert.match(packageJson, /package:custom-module-fixture/);
+  assert.match(fixture, /new Worker\("\.\/worker\.js"/);
+  assert.match(fixture, /KKTerm\.capabilities\(\)/);
+  assert.match(worker, /postMessage\("pong"\)/);
   assert.doesNotMatch(tauriConfig, /\.kkmod|custom-modules[\\/]fixtures|excalidraw/i);
 });
 
@@ -109,6 +114,47 @@ test("Custom Module API v2 provides bounded raw-byte and isolated host-AI stream
   }
   assert.match(publisher, /"hostAi"/);
   assert.match(validator, /"hostAi"/);
+});
+
+test("Custom Module API v2 exposes tokenized directories, packaged Workers, discovery, and system brokers", async () => {
+  const [backend, contract, runtime, publisher, validator] = await Promise.all([
+    readFile(new URL("../src-tauri/src/custom_modules.rs", import.meta.url), "utf8"),
+    readFile(new URL("../docs/KKMOD_HOST_API_V2.md", import.meta.url), "utf8"),
+    readFile(
+      new URL("../.agents/skills/develop-kkmod-modules/references/runtime-api.md", import.meta.url),
+      "utf8",
+    ),
+    readFile(new URL("../scripts/publish-custom-module.mjs", import.meta.url), "utf8"),
+    readFile(
+      new URL("../.agents/skills/develop-kkmod-modules/scripts/kkmod_tool.py", import.meta.url),
+      "utf8",
+    ),
+  ]);
+
+  assert.match(backend, /directory_read: bool/);
+  assert.match(backend, /directory_write: bool/);
+  assert.match(backend, /pickDirectory:.*files\.pickDirectory/s);
+  assert.match(backend, /list:.*files\.list/s);
+  assert.match(backend, /mkdir:.*files\.mkdir/s);
+  assert.match(backend, /remove:.*files\.remove/s);
+  assert.match(backend, /cancel:.*files\.cancel/s);
+  assert.match(backend, /capabilities: \(\) => Promise\.resolve/);
+  assert.match(backend, /openPath:.*host\.openPath/s);
+  assert.match(backend, /revealPath:.*host\.revealPath/s);
+  assert.match(backend, /share:.*host\.share/s);
+  assert.match(backend, /print:.*host\.print/s);
+  assert.match(backend, /worker-src 'self';/);
+  assert.doesNotMatch(backend, /worker-src 'self' blob:/);
+  assert.match(backend, /replace\(target, 'SharedWorker', undefined\)/);
+  assert.match(backend, /"sharedworker" \| "serviceworker"/);
+  for (const source of [contract, runtime]) {
+    assert.match(source, /pickDirectory/);
+    assert.match(source, /dedicated Worker/i);
+    assert.match(source, /capabilities\(\)/);
+    assert.match(source, /host\.openPath/);
+  }
+  assert.match(publisher, /"hostIntegration"/);
+  assert.match(validator, /"hostIntegration"/);
 });
 
 test("Custom Module package tooling consistently enforces the 1 GiB hard limit", async () => {

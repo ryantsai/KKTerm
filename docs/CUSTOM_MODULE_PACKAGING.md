@@ -22,7 +22,9 @@ All asset references must be relative so they work below the app-owned
 `kkmodule` origin. Runtime scripts, styles, images, fonts, and WASM must be local
 package files. V2 CSP blocks direct network connections, remote scripts/frames,
 service workers, objects, and form submission while allowing same-package
-frames and dedicated workers. A restrictive browser Permissions Policy
+frames and dedicated Workers loaded only from packaged same-package scripts.
+Workers have no host bridge; Shared Workers and blob/data/remote Worker scripts
+are blocked. A restrictive browser Permissions Policy
 also denies device, sensor, media-capture, location, payment, and similar
 ambient host capabilities. Clipboard access is available only to packages that
 declare and are granted `clipboard`.
@@ -47,6 +49,15 @@ not a network bypass; fetch remote bytes only through a declared
 `window.KKTerm.network.fetch` grant. Use the same grant's
 `network.open`/`read`/`cancel` methods when the response must be consumed as a
 bounded raw-byte stream instead of one buffered value.
+
+For workspace-style tools, `files.directoryRead`/`directoryWrite` provide a
+native directory picker and a session-bound root token. List/read/write/mkdir/
+non-recursive remove calls accept only validated relative paths below that root,
+remain extension-filtered and bounded, and never expose an absolute path. Use
+`openAt`/`beginSaveAt` for atomic chunked file streaming. If a Module needs the
+system shell for a selected path, declare only the required structured
+`hostIntegration` operations (`openPath`, `revealPath`, `share`, `print`) and
+feature-detect platform support through `window.KKTerm.capabilities()`.
 
 Modules that need generative text should normally declare `hostAi` and use
 `window.KKTerm.ai` instead of collecting provider keys. The broker uses the AI

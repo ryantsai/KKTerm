@@ -19,7 +19,7 @@ const semverPattern = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z.
 const moduleIdPattern = /^[a-z][a-z0-9.-]{0,127}$/;
 const allowedPermissions = new Set([
   "storage", "documentStorage", "blobStorage", "browserStorage", "openExternal",
-  "clipboard", "files", "networkFetch", "secretReferences", "hostUi", "hostAi",
+  "clipboard", "files", "networkFetch", "secretReferences", "hostUi", "hostAi", "hostIntegration",
 ]);
 const maxArchiveBytes = 1024 * 1024 * 1024;
 const maxCuratedIconBytes = 64 * 1024;
@@ -117,6 +117,20 @@ function readManifest(packageBytes) {
   }
   for (const permission of Object.keys(permissions)) {
     if (!allowedPermissions.has(permission)) fail(`Unsupported package permission: ${permission}`);
+  }
+  if (permissions.hostIntegration != null) {
+    if (permissions.files == null) fail("hostIntegration requires files permission");
+    if (Array.isArray(permissions.hostIntegration) || typeof permissions.hostIntegration !== "object") {
+      fail("hostIntegration must be an object");
+    }
+    const operations = new Set(["openPath", "revealPath", "share", "print"]);
+    for (const [operation, enabled] of Object.entries(permissions.hostIntegration)) {
+      if (!operations.has(operation)) fail(`Unsupported hostIntegration operation: ${operation}`);
+      if (typeof enabled !== "boolean") fail(`hostIntegration.${operation} must be a boolean`);
+    }
+    if (![...operations].some((operation) => permissions.hostIntegration[operation] === true)) {
+      fail("hostIntegration must enable at least one operation");
+    }
   }
   validateCuratedModuleIcons(packageBytes, manifest);
   return manifest;

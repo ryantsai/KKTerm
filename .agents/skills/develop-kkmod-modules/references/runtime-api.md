@@ -15,7 +15,9 @@ does not add a contribution title/header row; the package owns its visible
 title, navigation, and application chrome. The Activity Rail and Status Bar
 remain host-owned outside the package surface.
 
-Same-package frames and dedicated Workers are allowed. Remote frames, service
+Same-package frames and a dedicated Worker loaded from a packaged same-package
+script are allowed. Dedicated Workers have no `window.KKTerm` or Tauri bridge;
+use `postMessage`. Blob/data/remote Worker scripts, Shared Workers, service
 workers, direct cross-origin fetch/WebSocket/EventSource, cookies, CacheStorage,
 popup windows, device/sensor/media/location APIs, arbitrary paths, shell access,
 terminal input, database access, and raw Connection secrets are unavailable.
@@ -43,7 +45,9 @@ interface KKTermHost {
   ready(): Promise<boolean>;
   getContext(): Promise<HostContext>;
   getCapabilities(): Promise<PermissionSnapshot>;
+  capabilities(): Promise<RuntimeCapabilities>;
   openExternal(url: string): Promise<boolean>;
+  host: HostIntegration;
   storage: JsonStore;
   documents: DocumentStore;
   blobs: BlobStore;
@@ -62,8 +66,9 @@ interface KKTermHost {
 ```
 
 The object and namespaces are frozen. Rejections normalize to `KKTermError`
-with `code`, `message`, and optional `details`. Capability discovery returns
-the effective structured grant.
+with `code`, `message`, and optional `details`. `getCapabilities()` returns the
+effective structured grant. `capabilities()` also reports supported features,
+platform host operations, and hard token/chunk/list/concurrency limits.
 
 ### Context and lifecycle
 
@@ -108,6 +113,16 @@ timestamps. Writes commit through temporary files and integrity metadata.
 filters. Results contain a display name, size, mode, and opaque session token—
 never a path. `read`/`write` use base64 chunks up to 1 MiB. `commit` activates a
 temporary save; `close` or runtime teardown discards incomplete writes.
+`cancel` is an alias for `close`. Read and write results include progress
+metadata, and an optional `totalBytes` supplies determinate write progress.
+
+`files.pickDirectory({ writable })` returns a session-only opaque root token;
+it requires `directoryRead` or `directoryWrite`. Use `list`, direct
+`read`/`write`, `mkdir`, and non-recursive `remove` with validated relative
+paths. Reads/writes remain 1 MiB per call, listings are capped at 4,096 entries,
+extensions remain filtered, links/traversal are rejected, and no absolute path
+is exposed. Use `openAt`/`beginSaveAt` with ordinary `read`/`write` and
+`commit`/`cancel` for transactional streaming of a file below that root.
 
 Browser file inputs and HTML5 file drops require effective `files.open` and are
 rejected when a selected name falls outside the manifest extensions. Native
@@ -143,6 +158,15 @@ with the Module.
 `ui.notice` routes transient info/success/warning/error messages through
 KKTerm's Status Bar. `ui.progress` and `ui.clearProgress` use a module-local id
 and 0–100 progress. Modules do not create native windows.
+This `hostUi` grant is also the explicit permission for app-owned notifications.
+
+### Host integration
+
+With the structured `hostIntegration` grant, `host.openPath`,
+`host.revealPath`, `host.share`, and `host.print` consume only file/directory
+tokens plus an optional relative path. Open/reveal use the platform shell.
+Native share and file-type print are currently implemented on Windows; inspect
+`capabilities().host` before showing those actions. Share/print require a file.
 
 ### Host AI
 

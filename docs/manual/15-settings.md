@@ -235,9 +235,13 @@ toggle list while their persisted backend settings remain enabled.
   the v2 package with the same id can reuse that data after review. Grants are
   `storage` (10 MiB), `documentStorage`
   (512 MiB total, 64 MiB/document), `blobStorage` (1 GiB total, 256 MiB/blob),
-  `browserStorage`, `openExternal`, `clipboard`, filtered `files`, allowlisted
+  `browserStorage`, `openExternal`, `clipboard`, filtered `files` (including
+  session-bound user-selected directory tokens), allowlisted
   `networkFetch` (buffered fetch or bounded pull-based raw-byte streams),
-  package-owned `secretReferences`, `hostUi`, and `hostAi`. `hostAi` uses the
+  package-owned `secretReferences`, `hostUi`, `hostAi`, and token-bound
+  `hostIntegration` system open/reveal/share/print actions. Share/print support
+  is platform-specific and reported to the Module at runtime. `hostUi` is the
+  explicit grant for app-owned Status Bar notifications/progress. `hostAi` uses the
   provider selected in AI Assistant Settings and may incur provider charges;
   it never gives the Module the provider key. A Module may route here through
   its host-AI settings action when AI is disabled or needs configuration. Host
@@ -252,7 +256,9 @@ toggle list while their persisted backend settings remain enabled.
   network APIs, device/sensor/media/location/payment APIs, Connections,
   Sessions, terminal, SFTP, arbitrary paths, shell, native libraries, and
   ordinary KKTerm commands remain unavailable. Same-package frames and
-  dedicated workers are supported. Without `clipboard`, every clipboard
+  packaged same-package dedicated Workers are supported without a host bridge;
+  Shared Workers, blob/remote Worker scripts, and service workers are blocked.
+  Without `clipboard`, every clipboard
   operation rejects.
 - Browser file inputs and file drops work only when the installed package has
   the filtered `files.open` grant; selected names must match its declared

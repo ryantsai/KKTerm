@@ -16,7 +16,16 @@ export interface CustomModuleContribution {
 export interface CustomModuleFilePermission {
   open: boolean;
   save: boolean;
+  directoryRead: boolean;
+  directoryWrite: boolean;
   extensions: string[];
+}
+
+export interface CustomModuleHostIntegrationPermission {
+  openPath: boolean;
+  revealPath: boolean;
+  share: boolean;
+  print: boolean;
 }
 
 export interface CustomModuleNetworkPermission {
@@ -38,6 +47,7 @@ export interface CustomModulePermissions {
   secretReferences: boolean;
   hostUi: boolean;
   hostAi: boolean;
+  hostIntegration?: CustomModuleHostIntegrationPermission | null;
 }
 
 export interface CustomModuleDataUsage {
