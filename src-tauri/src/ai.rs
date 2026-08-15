@@ -883,10 +883,28 @@ pub(crate) struct CustomModuleAiRequest {
     image_data_url: Option<String>,
 }
 
+/// Whether the configured provider can currently serve a Host-AI request.
+/// The persisted `enabled` flag has no Settings UI to set it (Settings → AI
+/// Assistant configures the provider directly), so readiness is derived from
+/// the configuration: key-based providers are ready when an API key is
+/// stored, and keyless providers such as Ollama are ready whenever configured.
+/// CLI-only setups do not satisfy Host-AI requests.
+pub(crate) fn host_ai_available(settings: &AiProviderSettings, api_key: Option<&str>) -> bool {
+    let has_key = api_key.is_some_and(|value| !value.trim().is_empty());
+    has_key || !ai_provider_requires_api_key(settings.provider_kind())
+}
+
+/// Only local Ollama serves requests without stored credentials.
+fn ai_provider_requires_api_key(provider_kind: &str) -> bool {
+    provider_kind != "ollama"
+}
+
 pub(crate) fn custom_module_ai_status(app: &tauri::AppHandle) -> Result<Value, String> {
     let settings = app.state::<Storage>().ai_provider_settings()?;
+    let secrets = app.state::<crate::secrets::Secrets>();
+    let api_key = crate::read_ai_provider_api_key(&secrets, settings.provider_kind())?;
     Ok(json!({
-        "enabled": settings.enabled(),
+        "enabled": host_ai_available(&settings, api_key.as_deref()),
         "providerKind": settings.provider_kind(),
         "model": settings.model(),
     }))
@@ -953,12 +971,12 @@ pub(crate) async fn run_custom_module_ai_stream(
 
     let storage = app.state::<Storage>();
     let mut settings = storage.ai_provider_settings()?;
-    if !settings.enabled() {
+    let secrets = app.state::<crate::secrets::Secrets>();
+    let api_key = crate::read_ai_provider_api_key(&secrets, settings.provider_kind())?;
+    if !host_ai_available(&settings, api_key.as_deref()) {
         return Err("KKTerm AI is disabled; configure it in Settings → AI Assistant".to_string());
     }
     settings.isolate_for_host_ai();
-    let secrets = app.state::<crate::secrets::Secrets>();
-    let api_key = crate::read_ai_provider_api_key(&secrets, settings.provider_kind())?;
     let request = AgentRunRequest {
         prompt: request.prompt,
         context_label: "Custom Module".to_string(),
@@ -1007,11 +1025,18 @@ pub(crate) async fn run_playbook_ai_decision(
     const MAX_INPUT_CHARS: usize = 32_000;
     let storage = app.state::<Storage>();
     let settings = storage.ai_provider_settings()?;
-    if !settings.enabled() {
-        return Err("AI Assistant is disabled; enable and configure it in Settings".to_string());
-    }
     let secrets = app.state::<crate::secrets::Secrets>();
     let api_key = crate::read_ai_provider_api_key(&secrets, settings.provider_kind())?;
+    // The persisted `enabled` flag has no Settings UI to set it, so readiness
+    // is derived from the configuration; playbook decisions may also use the
+    // CLI backends, which authenticate without a stored API key.
+    if !(settings.use_codex_cli()
+        || settings.use_claude_cli()
+        || settings.use_cursor_cli()
+        || host_ai_available(&settings, api_key.as_deref()))
+    {
+        return Err("AI Assistant is disabled; enable and configure it in Settings".to_string());
+    }
     let input = tail_chars(&previous_output, MAX_INPUT_CHARS);
     let request = AgentRunRequest {
         prompt: format!(

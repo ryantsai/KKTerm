@@ -1506,10 +1506,6 @@ pub struct AiProviderSettings {
 }
 
 impl AiProviderSettings {
-    pub(crate) fn enabled(&self) -> bool {
-        self.enabled
-    }
-
     pub(crate) fn isolate_for_host_ai(&mut self) {
         self.custom_instructions.clear();
         self.custom_skills_enabled = false;

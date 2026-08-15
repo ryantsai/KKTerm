@@ -1307,6 +1307,30 @@ fn isolated_host_ai_disables_agent_cli_transports() {
 }
 
 #[test]
+fn host_ai_available_derives_readiness_from_credentials() {
+    let openai: AiProviderSettings = serde_json::from_value(json!({
+        "baseUrl": "https://api.openai.com/v1",
+        "model": "gpt-4o",
+    }))
+    .expect("provider settings deserialize");
+
+    assert!(!host_ai_available(&openai, None));
+    assert!(!host_ai_available(&openai, Some("")));
+    assert!(!host_ai_available(&openai, Some("   ")));
+    assert!(host_ai_available(&openai, Some("sk-123")));
+
+    let ollama: AiProviderSettings = serde_json::from_value(json!({
+        "providerKind": "ollama",
+        "baseUrl": "http://localhost:11434/v1",
+        "model": "llama3",
+    }))
+    .expect("ollama settings deserialize");
+
+    assert!(host_ai_available(&ollama, None));
+    assert!(host_ai_available(&ollama, Some("sk-123")));
+}
+
+#[test]
 fn history_tool_transcripts_survive_into_later_turns() {
     // A pure tool turn (no visible text) used to be dropped entirely;
     // now it replays as a compact transcript.
