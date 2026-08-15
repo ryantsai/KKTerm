@@ -44,7 +44,16 @@ ordinary `<a download>` exports backed by local Blob/data/same-package URLs are
 automatically streamed through the host save picker in bounded chunks. The
 native WebView downloader is always denied, and cross-origin download links are
 not a network bypass; fetch remote bytes only through a declared
-`window.KKTerm.network.fetch` grant.
+`window.KKTerm.network.fetch` grant. Use the same grant's
+`network.open`/`read`/`cancel` methods when the response must be consumed as a
+bounded raw-byte stream instead of one buffered value.
+
+Modules that need generative text should normally declare `hostAi` and use
+`window.KKTerm.ai` instead of collecting provider keys. The broker uses the AI
+provider configured in KKTerm, streams text deltas, omits Assistant tools,
+memories, custom instructions, and product context, and can route the user to
+Settings → AI Assistant through `ai.openSettings()`. The install review must
+make clear that this can incur charges on the configured provider.
 
 Large non-secret JSON documents use the separate `documentStorage` permission
 and `window.KKTerm.documents` API. Raw binary data uses `blobStorage` and the

@@ -12,7 +12,7 @@ by, the OpenFlowKit project or its authors.
 
 Homepage: https://openflowkit.com
 Source:   https://github.com/Vrun-design/openflowkit
-Version:  0.1.1
+Version:  upstream commit b8faef1071d162a36c83baeba5e1f36fe7475ac9
 License:  MIT -- full text in licenses/LICENSE
 Copyright (c) 2026 Varun
 
@@ -70,19 +70,17 @@ Copyright (c) 2026 KKTerm
 4. Modifications made for this package
 -------------------------------------------------------------------------------
 
-  a) AI generation disabled.
+  a) AI requests use KKTerm host AI.
      src/services/aiService.ts
+     src/components/SettingsModal/AISettings.tsx
+     src/hooks/ai-generation/readiness.ts
 
-     All ten providers stream their replies (`stream: true` plus
-     response.body.getReader()). KKMod host API v2 offers only a buffered
-     bridge -- KKTerm.network.fetch resolves once with a complete
-     NetworkResponse and exposes no reader -- and the Module CSP
-     ("connect-src 'self'") blocks the direct fetch calls outright.
-
-     The three exported entry points (generateDiagramFromChat, chatWithDocs,
-     chatWithFlowpilot) now reject immediately with an explanation instead of
-     failing deep in the transport with an opaque network error. This package
-     therefore requests NO network permission at all.
+     The browser-owned provider transports and API-key settings are replaced
+     by the permission-gated KKTerm hostAi broker. Diagram, documentation, and
+     Flowpilot requests stream text deltas from the provider selected in
+     KKTerm Settings. Provider keys remain in KKTerm's secret store. The
+     OpenFlowKit AI settings surface contains one action that routes to
+     Settings → AI Assistant.
 
      Diagram editing, templates, Mermaid import/export, and animated export are
      unaffected: they run entirely locally.
@@ -98,6 +96,20 @@ Copyright (c) 2026 KKTerm
      "Cannot read properties of undefined". The guard now reads the property's
      value (Boolean(navigator.serviceWorker)), which is the only form that
      survives the shim.
+
+  c) KKTerm lifecycle, theme, and locale adaptation.
+     src/kktermRuntime.ts
+     src/index.tsx
+
+     The Module applies the injected host context, listens for context changes,
+     and calls host.ready after local-first persistence finishes. zh-TW falls
+     back to English because this upstream checkout does not bundle a distinct
+     Taiwan locale; it is never mapped to the bundled Simplified Chinese text.
+
+  d) Remote Google Fonts import removed.
+     src/index.css
+
+     The package keeps its bundled fonts and makes no runtime font request.
 
   c) Remote Google Fonts import removed.
      src/index.css

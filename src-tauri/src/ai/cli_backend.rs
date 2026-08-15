@@ -1236,9 +1236,13 @@ pub(crate) fn build_cli_agent_prompt_with_usage(
     let prompt = trim_required("assistant prompt", request.prompt)?;
     let context_label = trim_required("assistant context", request.context_label)?;
     let mut out = String::new();
-    out.push_str("You are KKTerm's AI Assistant for local-first administration workflows. ");
-    out.push_str("Answer concisely. Do not claim to have used KKTerm tools or observed live state unless it appears in the context. ");
-    out.push_str("When this turn is running through ACP, KKTerm tools are available through the attached kkterm MCP server. Use kkterm.workspace.connections.create/update/rename/move/delete to manage saved Connections, kkterm.workspace.connection_folders.create/rename/move/delete to organize folders, kkterm.workspace.connections.open to open saved Connections, and the other kkterm tools when they fit the user's request. Connection tools do not accept passwords or other secrets. If ACP is unavailable and the backend falls back to a one-shot CLI command, suggest commands or Connection details for user review instead of claiming that tools ran.\n\n");
+    if request.isolated_host_ai {
+        out.push_str("You are a text-generation provider for a sandboxed application. Follow only the supplied system instruction, conversation history, and user request. Do not assume access to host product context, tools, memories, or live application state.\n\n");
+    } else {
+        out.push_str("You are KKTerm's AI Assistant for local-first administration workflows. ");
+        out.push_str("Answer concisely. Do not claim to have used KKTerm tools or observed live state unless it appears in the context. ");
+        out.push_str("When this turn is running through ACP, KKTerm tools are available through the attached kkterm MCP server. Use kkterm.workspace.connections.create/update/rename/move/delete to manage saved Connections, kkterm.workspace.connection_folders.create/rename/move/delete to organize folders, kkterm.workspace.connections.open to open saved Connections, and the other kkterm tools when they fit the user's request. Connection tools do not accept passwords or other secrets. If ACP is unavailable and the backend falls back to a one-shot CLI command, suggest commands or Connection details for user review instead of claiming that tools ran.\n\n");
+    }
     if let Some(custom) =
         normalize_custom_instructions(Some(settings.custom_instructions().to_string()))
     {
@@ -1249,11 +1253,13 @@ pub(crate) fn build_cli_agent_prompt_with_usage(
         out.push_str(&language);
         out.push_str("\n\n");
     }
-    out.push_str(&format!(
-        "Active context: {context_label}\nAssistant intent: {}\nReasoning effort: {}\n\n",
-        normalize_agent_intent(request.intent).as_str(),
-        settings.reasoning_effort()
-    ));
+    if !request.isolated_host_ai {
+        out.push_str(&format!(
+            "Active context: {context_label}\nAssistant intent: {}\nReasoning effort: {}\n\n",
+            normalize_agent_intent(request.intent).as_str(),
+            settings.reasoning_effort()
+        ));
+    }
     let non_history_chars = out.chars().count()
         + prompt.chars().count()
         + request
@@ -1304,9 +1310,17 @@ pub(crate) fn build_cli_agent_prompt_with_usage(
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty())
     {
-        out.push_str("SSH target system context:\n```text\n");
+        out.push_str(if request.isolated_host_ai {
+            "System instruction:\n"
+        } else {
+            "SSH target system context:\n```text\n"
+        });
         out.push_str(&truncate_prompt_section(&system_context, 12_000));
-        out.push_str("\n```\n\n");
+        out.push_str(if request.isolated_host_ai {
+            "\n\n"
+        } else {
+            "\n```\n\n"
+        });
     }
     if let Some(selected_output) = request
         .selected_output

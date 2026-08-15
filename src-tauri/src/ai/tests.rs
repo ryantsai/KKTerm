@@ -167,6 +167,7 @@ fn cli_agent_prompt_allows_acp_kkterm_tools() {
     let request = AgentRunRequest {
         prompt: "add a ssh connection to 10.0.0.157".to_string(),
         context_label: "Workspace".to_string(),
+        isolated_host_ai: false,
         intent: Some("chat".to_string()),
         allow_tools: true,
         allowed_tools: Vec::new(),
@@ -1186,6 +1187,7 @@ fn copilot_prompt_history_includes_tool_transcripts() {
     let request = AgentRunRequest {
         prompt: "and now?".to_string(),
         context_label: "Workspace".to_string(),
+        isolated_host_ai: false,
         intent: None,
         allow_tools: true,
         allowed_tools: vec![],
@@ -1210,6 +1212,98 @@ fn copilot_prompt_history_includes_tool_transcripts() {
     let prompt = build_copilot_prompt(request, "github-copilot", "gpt-4o", None, Vec::new());
     assert!(prompt.contains("assistant: Checked the dashboard."));
     assert!(prompt.contains("[Tools used in this turn: dashboard_load_state (ok)]"));
+}
+
+#[test]
+fn isolated_host_ai_prompts_exclude_kkterm_product_context() {
+    let request = AgentRunRequest {
+        prompt: "Draw a deployment diagram".to_string(),
+        context_label: "Custom Module".to_string(),
+        isolated_host_ai: true,
+        intent: Some("chat".to_string()),
+        allow_tools: false,
+        allowed_tools: Vec::new(),
+        selected_output: None,
+        screenshot: None,
+        screenshots: Vec::new(),
+        files: Vec::new(),
+        system_context: Some("Return Mermaid syntax.".to_string()),
+        messages: Vec::new(),
+        output_language: None,
+        page_context: None,
+        active_connection_id: None,
+    };
+
+    let copilot = build_copilot_prompt(
+        serde_json::from_value(serde_json::to_value(&request).expect("serialize request"))
+            .expect("clone request"),
+        "github-copilot",
+        "gpt-4o",
+        None,
+        Vec::new(),
+    );
+    let settings: AiProviderSettings = serde_json::from_value(json!({
+        "baseUrl": "https://api.openai.com/v1"
+    }))
+    .expect("provider settings deserialize");
+    let cli = build_cli_agent_prompt(
+        "openai",
+        &settings,
+        serde_json::from_value(serde_json::to_value(&request).expect("serialize request"))
+            .expect("clone request"),
+    )
+    .expect("CLI prompt builds");
+    let messages = build_agent_messages_for_provider(
+        "openai",
+        "gpt-4o",
+        request.prompt,
+        request.context_label,
+        request.intent,
+        "medium".to_string(),
+        request.system_context,
+        request.selected_output,
+        request.page_context,
+        false,
+        request.screenshot,
+        request.screenshots,
+        request.messages,
+        request.output_language,
+        None,
+        Vec::new(),
+        false,
+        Vec::new(),
+        true,
+    );
+    let openai = messages
+        .iter()
+        .map(text_content)
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    for prompt in [&copilot, &cli, &openai] {
+        assert!(prompt.contains("Return Mermaid syntax."));
+        assert!(prompt.contains("Draw a deployment diagram"));
+        assert!(!prompt.contains("KKTerm"));
+        assert!(!prompt.contains("Workspace"));
+        assert!(!prompt.contains("Active context"));
+    }
+}
+
+#[test]
+fn isolated_host_ai_disables_agent_cli_transports() {
+    let mut settings: AiProviderSettings = serde_json::from_value(json!({
+        "baseUrl": "https://api.openai.com/v1",
+        "useCodexCli": true,
+        "useClaudeCli": true,
+        "useCursorCli": true
+    }))
+    .expect("provider settings deserialize");
+
+    settings.isolate_for_host_ai();
+
+    assert!(!settings.use_codex_cli());
+    assert!(!settings.use_claude_cli());
+    assert!(!settings.use_cursor_cli());
 }
 
 #[test]
@@ -1369,6 +1463,7 @@ fn cli_agent_prompt_compacts_old_history_and_keeps_newest_turns() {
     let request = AgentRunRequest {
         prompt: "continue".to_string(),
         context_label: "Workspace".to_string(),
+        isolated_host_ai: false,
         intent: Some("chat".to_string()),
         allow_tools: true,
         allowed_tools: Vec::new(),
@@ -1418,6 +1513,7 @@ fn cli_agent_prompt_preserves_history_below_large_model_context_trigger() {
     let request = AgentRunRequest {
         prompt: "continue".to_string(),
         context_label: "Workspace".to_string(),
+        isolated_host_ai: false,
         intent: Some("chat".to_string()),
         allow_tools: true,
         allowed_tools: Vec::new(),
@@ -1469,6 +1565,7 @@ fn openai_agent_messages_include_context_compaction_notice() {
         Vec::new(),
         false,
         Vec::new(),
+        false,
     );
 
     let system = text_content(messages.first().expect("system message"));

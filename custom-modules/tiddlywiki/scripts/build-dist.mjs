@@ -33,7 +33,14 @@ function resetDir(dir) {
 // --- 1. Build the wiki with an external core -------------------------------
 
 resetDir(buildDir);
-run("npx", ["tiddlywiki", editionDir, "--output", buildDir, "--build", "index"]);
+run(process.execPath, [
+  path.join(moduleRoot, "node_modules", "tiddlywiki", "tiddlywiki.js"),
+  editionDir,
+  "--output",
+  buildDir,
+  "--build",
+  "index",
+]);
 
 // --- 2. Externalise every executable inline script -------------------------
 

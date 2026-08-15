@@ -60,7 +60,8 @@ packages whose manifest declares `apiVersion: 2`.
       "maxResponseBytes": 16777216
     },
     "secretReferences": false,
-    "hostUi": true
+    "hostUi": true,
+    "hostAi": false
   },
   "modules": [
     {
@@ -131,6 +132,7 @@ interface KKTermHostV2 {
   blobs: BlobStore;
   files: UserMediatedFiles;
   network: MediatedNetwork;
+  ai: HostAi;
   secrets: SecretReferences;
   ui: HostUi;
   on(event: HostEvent, listener: (detail: unknown) => void): () => void;
@@ -197,6 +199,14 @@ loopback addresses unless explicitly granted, disables ambient credentials,
 revalidates redirects, applies the global proxy policy, limits time and bytes,
 and strips hop-by-hop and forbidden headers.
 
+For incremental or binary responses, `network.open(request)` performs the same
+validation and returns response metadata plus an opaque session token.
+`network.read(token)` pulls the next base64 byte chunk (at most 256 KiB) and
+`network.cancel(token)` drops the response. A session may hold at most eight
+network streams. The same declared response-byte cap applies across all reads;
+connects and idle reads are timed out, while an actively producing response may
+remain open. Tokens are caller-bound and are cancelled on Module teardown.
+
 `secrets` exposes presence, delete, and app-owned entry/update requests for
 package-owned references. Plaintext is never returned. A secret reference may
 be attached to a mediated network request in an approved authentication header,
@@ -208,6 +218,31 @@ JavaScript.
 `ui.notice`, `ui.progress`, and `ui.clearProgress` are rendered by the app
 through the shared Status Bar. `secrets.requestEntry` uses an app-owned dialog.
 Modules cannot create native popup windows.
+
+### Host AI
+
+`hostAi` grants a Module use of the AI provider configured in KKTerm Settings.
+It does not expose provider credentials, base URLs, or request headers. The
+grant can incur charges on the user's configured provider and is reviewed
+separately from `networkFetch`.
+
+`ai.getStatus()` reports whether KKTerm AI is enabled plus the provider kind
+and model. `ai.open({ prompt, systemInstruction?, messages?, imageDataUrl? })`
+returns an opaque stream token. `ai.read(token)` pulls text deltas and final
+provider/model metadata; `ai.cancel(token)` cancels that Module request.
+`ai.openSettings()` routes the host to Settings → AI Assistant so the user can
+configure or change the provider.
+
+Host-AI requests are isolated from the Assistant surface: built-in and MCP
+tools are disabled, Assistant memories and custom instructions are omitted,
+no active Connection or page context is attached, reasoning is not returned,
+and only user/assistant history plus an optional base64 image is accepted.
+The broker uses direct provider API credentials or GitHub Copilot; Codex,
+Claude, and Cursor agent CLI modes are not exposed because those runtimes can
+carry separate tool and filesystem context. CLI-only authentication therefore
+does not satisfy a Host-AI request.
+Streams are caller-bound, bounded for backpressure, limited to four concurrent
+requests per session, and cancelled on Module teardown.
 
 ## Future broker extensions
 

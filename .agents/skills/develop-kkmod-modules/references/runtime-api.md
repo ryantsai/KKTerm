@@ -48,7 +48,13 @@ interface KKTermHost {
   documents: DocumentStore;
   blobs: BlobStore;
   files: UserMediatedFiles;
-  network: { fetch(request: NetworkRequest): Promise<NetworkResponse> };
+  network: {
+    fetch(request: NetworkRequest): Promise<NetworkResponse>;
+    open(request: NetworkRequest): Promise<NetworkStreamOpened>;
+    read(token: string): Promise<{ dataBase64: string; done: boolean }>;
+    cancel(token: string): Promise<boolean>;
+  };
+  ai: HostAi;
   secrets: SecretReferences;
   ui: HostUi;
   on(event: HostEvent, listener: (detail: unknown) => void): () => boolean;
@@ -126,11 +132,29 @@ references. Secret entry is an app-owned password dialog. Plaintext is never
 returned. A stored reference can be attached by the host to Authorization,
 X-API-Key, or API-Key on a mediated fetch.
 
+Use `network.open`/`read`/`cancel` for incremental or binary responses. Reads
+are pull-based base64 chunks up to 256 KiB, retain the same origin/DNS/proxy/
+redirect/secret safeguards as `network.fetch`, and share its declared total
+response-byte cap. Handles are session-bound, limited to eight, and torn down
+with the Module.
+
 ### Host UI
 
 `ui.notice` routes transient info/success/warning/error messages through
 KKTerm's Status Bar. `ui.progress` and `ui.clearProgress` use a module-local id
 and 0–100 progress. Modules do not create native windows.
+
+### Host AI
+
+With `hostAi`, use `ai.getStatus`, `open`, `read`, `cancel`, and `openSettings`
+to stream text from KKTerm's configured AI provider without receiving its key.
+The broker disables tools, memories, Assistant custom instructions, and product
+context; accepts bounded user/assistant history and an optional base64 image;
+and never returns reasoning. `openSettings` navigates to Settings → AI
+Assistant. Direct provider API credentials or GitHub Copilot are used; Codex,
+Claude, and Cursor agent CLI modes are excluded because they can carry separate
+tool and filesystem context. This permission may incur provider charges and
+must be reviewed.
 
 ### Future product-data APIs
 

@@ -80,6 +80,7 @@ impl OpenAiCompatibleProvider {
             &request.files,
             api_style == OpenAiApiStyle::Responses,
         );
+        let isolated_host_ai = request.isolated_host_ai;
         let built_messages = build_agent_messages_for_provider_with_usage(
             self.provider_kind,
             settings.model(),
@@ -100,6 +101,7 @@ impl OpenAiCompatibleProvider {
             settings.tools().dashboard(),
             recalled_memories,
             attachment_chars,
+            isolated_host_ai,
         );
         if let Some(channel) = channel.as_ref() {
             emit_stream(

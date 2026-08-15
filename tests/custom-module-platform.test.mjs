@@ -71,6 +71,46 @@ test("Custom Module packages are optional and static", async () => {
   assert.doesNotMatch(tauriConfig, /\.kkmod|custom-modules[\\/]fixtures|excalidraw/i);
 });
 
+test("Custom Module API v2 provides bounded raw-byte and isolated host-AI streams", async () => {
+  const [backend, app, contract, runtime, publisher, validator] = await Promise.all([
+    readFile(new URL("../src-tauri/src/custom_modules.rs", import.meta.url), "utf8"),
+    readFile(new URL("../src/App.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../docs/KKMOD_HOST_API_V2.md", import.meta.url), "utf8"),
+    readFile(
+      new URL("../.agents/skills/develop-kkmod-modules/references/runtime-api.md", import.meta.url),
+      "utf8",
+    ),
+    readFile(new URL("../scripts/publish-custom-module.mjs", import.meta.url), "utf8"),
+    readFile(
+      new URL("../.agents/skills/develop-kkmod-modules/scripts/kkmod_tool.py", import.meta.url),
+      "utf8",
+    ),
+  ]);
+
+  assert.match(backend, /open: \(request\) => invoke\('network\.open'/);
+  assert.match(backend, /read: \(token\) => invoke\('network\.read'/);
+  assert.match(backend, /MAX_NETWORK_STREAM_CHUNK_BYTES: usize = 256 \* 1024/);
+  assert.match(backend, /validate_network_target\(permission, &url\)\.await/);
+  assert.match(backend, /cancel_session_streams\(&session\)/);
+  assert.match(backend, /pub host_ai: bool/);
+  assert.match(backend, /run_custom_module_ai_stream/);
+  assert.match(backend, /Some\("contentDelta"\)/);
+  assert.doesNotMatch(
+    backend.match(/fn open_host_ai_stream[\s\S]*?fn take_prefix_chars/)?.[0] ?? "",
+    /reasoningDelta.*push_str/s,
+  );
+  assert.match(app, /custom-module-open-ai-settings/);
+  assert.match(app, /setActiveSettingsSectionId\("assistant-settings"\)/);
+  for (const source of [contract, runtime]) {
+    assert.match(source, /network\.open/);
+    assert.match(source, /hostAi/);
+    assert.match(source, /memories/);
+    assert.match(source, /product\s+context|page\s+context/i);
+  }
+  assert.match(publisher, /"hostAi"/);
+  assert.match(validator, /"hostAi"/);
+});
+
 test("Custom Module package tooling consistently enforces the 1 GiB hard limit", async () => {
   const [backend, publisher, validator, contract] = await Promise.all([
     readFile(new URL("../src-tauri/src/custom_modules.rs", import.meta.url), "utf8"),

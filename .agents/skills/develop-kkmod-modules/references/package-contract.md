@@ -66,7 +66,8 @@ Unknown fields are rejected at every level.
       "maxResponseBytes": 16777216
     },
     "secretReferences": true,
-    "hostUi": true
+    "hostUi": true,
+    "hostAi": true
   },
   "modules": [
     {
@@ -99,7 +100,7 @@ Unknown fields are rejected at every level.
 `permissions` is an object and defaults to `{}`. Boolean grants default false:
 
 - `storage`, `documentStorage`, `blobStorage`, `browserStorage`
-- `openExternal`, `clipboard`, `secretReferences`, `hostUi`
+- `openExternal`, `clipboard`, `secretReferences`, `hostUi`, `hostAi`
 
 `files` is absent or contains `open`, `save`, and up to 128 unique lowercase
 extensions without dots. At least one operation must be true.

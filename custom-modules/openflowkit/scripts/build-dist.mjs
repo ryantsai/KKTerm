@@ -1,6 +1,7 @@
 // Assembles the packaged OpenFlowKit dist/ tree for the KKTerm Custom Module.
 //
-// Run against an already-built OpenFlowKit checkout (npm run build there first).
+// Run against an adapted, already-built OpenFlowKit checkout (run
+// apply-adaptation.mjs and npm run build there first).
 // Pass the checkout path as argv[2], or set OPENFLOWKIT_SRC.
 //
 // OpenFlowKit needs far less reshaping than most web apps: its Vite config
@@ -111,14 +112,14 @@ for (const [, ref] of finalHtml.matchAll(/(?:src|href)\s*=\s*"(\.\/[^"]+)"/g)) {
   const target = path.join(distDir, ref.replace(/^\.\//, "").split(/[?#]/)[0]);
   if (!fs.existsSync(target)) problems.push(`index.html references missing asset: ${ref}`);
 }
-// The AI transport must be inert in this build.
-let aiGuardSeen = false;
+// The AI transport must use the KKTerm host broker in this build.
+let hostAiSeen = false;
 for (const file of fs.readdirSync(path.join(distDir, "assets"))) {
   if (!file.endsWith(".js")) continue;
   const text = fs.readFileSync(path.join(distDir, "assets", file), "utf8");
-  if (text.includes("AI generation is unavailable in the KKTerm Module build")) aiGuardSeen = true;
+  if (text.includes("hostAi backpressure") || text.includes("KKTerm host AI is unavailable")) hostAiSeen = true;
 }
-if (!aiGuardSeen) problems.push("AI disable guard is missing from the bundle");
+if (!hostAiSeen) problems.push("KKTerm host-AI adapter is missing from the bundle");
 if (fs.existsSync(path.join(distDir, "sw.js"))) problems.push("sw.js was not dropped");
 for (const dirent of fs.readdirSync(distDir, { recursive: true })) {
   if (typeof dirent === "string" && /fonts\.googleapis\.com/.test(dirent)) {

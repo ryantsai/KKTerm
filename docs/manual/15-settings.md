@@ -236,7 +236,15 @@ toggle list while their persisted backend settings remain enabled.
   `storage` (10 MiB), `documentStorage`
   (512 MiB total, 64 MiB/document), `blobStorage` (1 GiB total, 256 MiB/blob),
   `browserStorage`, `openExternal`, `clipboard`, filtered `files`, allowlisted
-  `networkFetch`, package-owned `secretReferences`, and `hostUi`. Standard
+  `networkFetch` (buffered fetch or bounded pull-based raw-byte streams),
+  package-owned `secretReferences`, `hostUi`, and `hostAi`. `hostAi` uses the
+  provider selected in AI Assistant Settings and may incur provider charges;
+  it never gives the Module the provider key. A Module may route here through
+  its host-AI settings action when AI is disabled or needs configuration. Host
+  AI streams text only and does not receive Assistant tools, memories, custom
+  instructions, active Connection state, or page context. It uses direct API
+  credentials or GitHub Copilot; Codex, Claude, and Cursor agent CLI modes are
+  not exposed to Custom Modules. Standard
   user-activated HTTP(S) links are handed to the system browser when
   `openExternal` is granted. `browserStorage` preserves localStorage and
   IndexedDB between launches; without it, localStorage is session-memory-only.

@@ -79,6 +79,7 @@ function permissionNames(permissions: CustomModulePermissions): string[] {
     networkFetch,
     permissions.secretReferences && "secretReferences",
     permissions.hostUi && "hostUi",
+    permissions.hostAi && "hostAi",
   ].filter((name): name is string => Boolean(name));
 }
 

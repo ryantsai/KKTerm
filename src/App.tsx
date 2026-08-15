@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { listen } from "@tauri-apps/api/event";
 import { useTranslation } from "react-i18next";
 import { AssistantPanel } from "./ai/AssistantPanel";
 import type { AssistantPageContext } from "./ai/AssistantPanel";
@@ -209,6 +210,17 @@ function App() {
     persistActivePage("customModule");
     setActivePage("customModule");
   }, [activePage]);
+
+  useEffect(() => {
+    if (!isTauriRuntime()) return;
+    const unlisten = listen("custom-module-open-ai-settings", () => {
+      setActiveSettingsSectionId("assistant-settings");
+      navigateToPage("settings");
+    });
+    return () => {
+      void unlisten.then((dispose) => dispose());
+    };
+  }, [navigateToPage]);
 
   function openAssistantPanel() {
     expandAiPanel();

@@ -30,7 +30,7 @@ MAX_RATIO = 1_000
 
 BOOLEAN_PERMISSIONS = {
     "storage", "documentStorage", "blobStorage", "browserStorage",
-    "openExternal", "clipboard", "secretReferences", "hostUi",
+    "openExternal", "clipboard", "secretReferences", "hostUi", "hostAi",
 }
 PERMISSION_KEYS = BOOLEAN_PERMISSIONS | {"files", "networkFetch"}
 ALLOWED_DIST_EXTENSIONS = {

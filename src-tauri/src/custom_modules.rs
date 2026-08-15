@@ -43,6 +43,11 @@ const MAX_BLOB_KEYS: i64 = 16_384;
 const MAX_BLOB_CHUNK_BYTES: usize = 1024 * 1024;
 const MAX_NETWORK_REQUEST_BYTES: usize = 8 * 1024 * 1024;
 const MAX_NETWORK_RESPONSE_BYTES: u64 = 64 * 1024 * 1024;
+const MAX_NETWORK_STREAMS: usize = 8;
+const MAX_NETWORK_STREAM_CHUNK_BYTES: usize = 256 * 1024;
+const MAX_HOST_AI_STREAMS: usize = 4;
+const MAX_HOST_AI_BUFFER_BYTES: usize = 1024 * 1024;
+const MAX_HOST_AI_READ_CHARS: usize = 64 * 1024;
 const MAX_DOCUMENT_BRIDGE_PAYLOAD_BYTES: usize = MAX_DOCUMENT_BYTES + 1024 * 1024;
 const MAX_ACTIVITY_RAIL_ICON_BYTES: u64 = 64 * 1024;
 const MAX_CATALOG_BYTES: u64 = 4 * 1024 * 1024;
@@ -114,6 +119,7 @@ pub struct CustomModulePermissions {
     pub network_fetch: Option<CustomModuleNetworkPermission>,
     pub secret_references: bool,
     pub host_ui: bool,
+    pub host_ai: bool,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
@@ -153,6 +159,7 @@ impl CustomModulePermissions {
             (self.network_fetch.is_some(), "networkFetch"),
             (self.secret_references, "secretReferences"),
             (self.host_ui, "hostUi"),
+            (self.host_ai, "hostAi"),
         ] {
             if enabled {
                 names.push(name);
@@ -176,6 +183,7 @@ impl CustomModulePermissions {
                 .flatten(),
             secret_references: self.secret_references && granted("secretReferences"),
             host_ui: self.host_ui && granted("hostUi"),
+            host_ai: self.host_ai && granted("hostAi"),
         }
     }
 }
@@ -335,9 +343,33 @@ struct RuntimeSession {
     last_external_open: Arc<Mutex<Option<Instant>>>,
     blob_writes: Arc<Mutex<HashMap<String, BlobWrite>>>,
     file_tokens: Arc<Mutex<HashMap<String, FileToken>>>,
+    network_streams: Arc<Mutex<HashMap<String, Arc<tokio::sync::Mutex<NetworkStream>>>>>,
+    host_ai_streams: Arc<Mutex<HashMap<String, HostAiStream>>>,
     view_state: Arc<Mutex<RuntimeViewState>>,
     window: WebviewWindow,
     host_window: WebviewWindow,
+}
+
+struct NetworkStream {
+    response: reqwest::Response,
+    max_response_bytes: u64,
+    bytes_read: u64,
+    pending: Vec<u8>,
+}
+
+#[derive(Clone)]
+struct HostAiStream {
+    state: Arc<Mutex<HostAiStreamState>>,
+    cancelled: Arc<AtomicBool>,
+}
+
+#[derive(Default)]
+struct HostAiStreamState {
+    pending: String,
+    done: bool,
+    error: Option<String>,
+    provider_kind: Option<String>,
+    model: Option<String>,
 }
 
 struct BlobWrite {
@@ -728,7 +760,10 @@ fn validate_permissions(permissions: &CustomModulePermissions) -> Result<(), Str
         }
         let mut methods = HashSet::new();
         for method in &network.methods {
-            if !matches!(method.as_str(), "GET" | "HEAD" | "POST" | "PUT" | "PATCH" | "DELETE") {
+            if !matches!(
+                method.as_str(),
+                "GET" | "HEAD" | "POST" | "PUT" | "PATCH" | "DELETE"
+            ) {
                 return Err(format!("unsupported networkFetch method '{method}'"));
             }
             if !methods.insert(method) {
@@ -2089,6 +2124,7 @@ pub fn uninstall_custom_module(
             let _ = webview::hide_overlay(&session.window);
             abort_session_blob_writes(&session);
             close_session_file_tokens(&session);
+            cancel_session_streams(&session);
             cancel_session_secret_prompts(&runtime, &app, &label);
             let _ = session.window.close();
         }
@@ -2248,7 +2284,9 @@ pub fn clear_custom_module_data(
         remove_owned_directory(&base, &base.join(&module_id), label)?;
     }
     storage.with_connection_mut(|connection| {
-        let transaction = connection.transaction().map_err(|error| error.to_string())?;
+        let transaction = connection
+            .transaction()
+            .map_err(|error| error.to_string())?;
         for table in [
             "custom_module_storage",
             "custom_module_documents",
@@ -2256,7 +2294,10 @@ pub fn clear_custom_module_data(
             "custom_module_secret_refs",
         ] {
             transaction
-                .execute(&format!("DELETE FROM {table} WHERE module_id = ?1"), [&module_id])
+                .execute(
+                    &format!("DELETE FROM {table} WHERE module_id = ?1"),
+                    [&module_id],
+                )
                 .map_err(|error| error.to_string())?;
         }
         transaction.commit().map_err(|error| error.to_string())
@@ -2398,7 +2439,17 @@ fn initialization_script(
               close: (token) => invoke('files.close', {{ token }})
             }}),
             network: Object.freeze({{
-              fetch: (request) => invoke('network.fetch', request)
+              fetch: (request) => invoke('network.fetch', request),
+              open: (request) => invoke('network.open', request),
+              read: (token) => invoke('network.read', {{ token }}),
+              cancel: (token) => invoke('network.cancel', {{ token }})
+            }}),
+            ai: Object.freeze({{
+              getStatus: () => invoke('ai.getStatus'),
+              open: (request) => invoke('ai.open', request),
+              read: (token) => invoke('ai.read', {{ token }}),
+              cancel: (token) => invoke('ai.cancel', {{ token }}),
+              openSettings: () => invoke('ai.openSettings')
             }}),
             secrets: Object.freeze({{
               has: (key) => invoke('secrets.has', {{ key }}),
@@ -2659,7 +2710,7 @@ pub async fn start_custom_module(
         "kkmodule://{origin_host}/{}",
         contribution.entrypoint
     ))
-        .map_err(|error| format!("failed to build Custom Module URL: {error}"))?;
+    .map_err(|error| format!("failed to build Custom Module URL: {error}"))?;
     let permissions = granted_permissions(&storage, &installed.manifest.id)?;
     let effective_permissions = installed.manifest.permissions.restricted_to(&permissions);
     let clipboard_allowed = effective_permissions.clipboard;
@@ -2688,8 +2739,7 @@ pub async fn start_custom_module(
         .on_navigation(move |url| {
             let is_module_asset = (url.scheme() == "kkmodule"
                 && url.host_str() == Some(navigation_origin_host.as_str()))
-                || (url.scheme() == "http"
-                    && url.host_str() == Some(windows_origin_host.as_str()));
+                || (url.scheme() == "http" && url.host_str() == Some(windows_origin_host.as_str()));
             is_module_asset
         })
         .on_download(|_, _| false)
@@ -2740,6 +2790,8 @@ pub async fn start_custom_module(
         last_external_open: Arc::new(Mutex::new(None)),
         blob_writes: Arc::new(Mutex::new(HashMap::new())),
         file_tokens: Arc::new(Mutex::new(HashMap::new())),
+        network_streams: Arc::new(Mutex::new(HashMap::new())),
+        host_ai_streams: Arc::new(Mutex::new(HashMap::new())),
         view_state: Arc::new(Mutex::new(RuntimeViewState {
             bounds: RuntimeBounds {
                 x: request.x,
@@ -2808,9 +2860,9 @@ fn set_runtime_view_visibility(session: &RuntimeSession, visible: bool) -> Resul
             bounds.height,
         )?;
     } else {
-        let _ = session.window.eval(
-            "window.__KKTERM_MODULE_EVENT__?.('suspending', { deadlineMs: 500 });",
-        );
+        let _ = session
+            .window
+            .eval("window.__KKTERM_MODULE_EVENT__?.('suspending', { deadlineMs: 500 });");
         webview::hide_overlay(&session.window)?;
     }
     state.visible = visible;
@@ -2840,6 +2892,17 @@ fn close_session_file_tokens(session: &RuntimeSession) {
                 drop(file);
                 let _ = fs::remove_file(temporary);
             }
+        }
+    }
+}
+
+fn cancel_session_streams(session: &RuntimeSession) {
+    if let Ok(mut streams) = session.network_streams.lock() {
+        streams.clear();
+    }
+    if let Ok(mut streams) = session.host_ai_streams.lock() {
+        for (_, stream) in streams.drain() {
+            stream.cancelled.store(true, Ordering::Relaxed);
         }
     }
 }
@@ -2933,6 +2996,7 @@ pub fn close_custom_module(
         .eval("window.__KKTERM_MODULE_EVENT__?.('closing', { reason: 'host' });");
     abort_session_blob_writes(&session);
     close_session_file_tokens(&session);
+    cancel_session_streams(&session);
     cancel_session_secret_prompts(&runtime, &app, &session_id);
     session
         .window
@@ -3361,14 +3425,17 @@ fn commit_blob_write(
         })?;
         let destination = blob_content_path(paths, &session.module_id, &sha256);
         if destination.exists() {
-            fs::remove_file(&write.path)
-                .map_err(|error| format!("failed to discard duplicate Custom Module blob: {error}"))?;
+            fs::remove_file(&write.path).map_err(|error| {
+                format!("failed to discard duplicate Custom Module blob: {error}")
+            })?;
         } else {
             fs::rename(&write.path, &destination)
                 .map_err(|error| format!("failed to activate Custom Module blob: {error}"))?;
         }
         let update = storage.with_connection_mut(|connection| {
-            let transaction = connection.transaction().map_err(|error| error.to_string())?;
+            let transaction = connection
+                .transaction()
+                .map_err(|error| error.to_string())?;
             ensure_blob_quota(&transaction, &session.module_id, &write.key, byte_size)?;
             transaction
                 .execute(
@@ -3380,7 +3447,13 @@ fn commit_blob_write(
                         mime_type = excluded.mime_type,
                         byte_size = excluded.byte_size,
                         updated_at = CURRENT_TIMESTAMP",
-                    params![session.module_id, write.key, sha256, write.mime_type, byte_size],
+                    params![
+                        session.module_id,
+                        write.key,
+                        sha256,
+                        write.mime_type,
+                        byte_size
+                    ],
                 )
                 .map_err(|error| error.to_string())?;
             transaction.commit().map_err(|error| error.to_string())
@@ -3433,17 +3506,18 @@ fn read_blob(
         .and_then(Value::as_u64)
         .unwrap_or(MAX_BLOB_CHUNK_BYTES as u64)
         .min(MAX_BLOB_CHUNK_BYTES as u64) as usize;
-    let metadata: Option<(String, String, i64, String)> = storage.with_connection(|connection| {
-        connection
-            .query_row(
-                "SELECT content_sha256, mime_type, byte_size, updated_at
+    let metadata: Option<(String, String, i64, String)> =
+        storage.with_connection(|connection| {
+            connection
+                .query_row(
+                    "SELECT content_sha256, mime_type, byte_size, updated_at
                  FROM custom_module_blobs WHERE module_id = ?1 AND key = ?2",
-                params![module_id, key],
-                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
-            )
-            .optional()
-            .map_err(|error| error.to_string())
-    })?;
+                    params![module_id, key],
+                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+                )
+                .optional()
+                .map_err(|error| error.to_string())
+        })?;
     let Some((sha256, mime_type, byte_size, updated_at)) = metadata else {
         return Ok(Value::Null);
     };
@@ -3727,7 +3801,8 @@ fn read_selected_file(session: &RuntimeSession, payload: &Value) -> Result<Value
     else {
         return Err("Custom Module file token is not readable".into());
     };
-    let mut file = File::open(path).map_err(|error| format!("failed to open selected file: {error}"))?;
+    let mut file =
+        File::open(path).map_err(|error| format!("failed to open selected file: {error}"))?;
     file.seek(SeekFrom::Start(offset))
         .map_err(|error| format!("failed to seek selected file: {error}"))?;
     let mut bytes = vec![0; length];
@@ -3938,7 +4013,9 @@ async fn request_custom_module_secret(
         }),
     ) {
         runtime.lock_secret_prompts()?.remove(&request_id);
-        return Err(format!("failed to request Custom Module secret entry: {error}"));
+        return Err(format!(
+            "failed to request Custom Module secret entry: {error}"
+        ));
     }
     let stored = match tokio::time::timeout(Duration::from_secs(300), receiver).await {
         Ok(Ok(stored)) => stored,
@@ -3989,9 +4066,10 @@ pub fn resolve_custom_module_secret_prompt(
                 .map_err(|error| error.to_string())?;
             Ok(())
         }) {
-            let _ = secret_store.delete_secret(secrets::SecretReferenceRequest::custom_module_secret(
-                custom_module_secret_owner_id(&pending.module_id, &pending.key),
-            ));
+            let _ =
+                secret_store.delete_secret(secrets::SecretReferenceRequest::custom_module_secret(
+                    custom_module_secret_owner_id(&pending.module_id, &pending.key),
+                ));
             let _ = pending.completion.send(false);
             return Err(error);
         }
@@ -4009,9 +4087,10 @@ fn custom_module_secret_presence(
     payload: &Value,
 ) -> Result<Value, String> {
     let key = custom_module_secret_key(payload)?;
-    let presence = secret_store.secret_exists(secrets::SecretReferenceRequest::custom_module_secret(
-        custom_module_secret_owner_id(module_id, key),
-    ))?;
+    let presence =
+        secret_store.secret_exists(secrets::SecretReferenceRequest::custom_module_secret(
+            custom_module_secret_owner_id(module_id, key),
+        ))?;
     Ok(json!({ "exists": presence.exists() }))
 }
 
@@ -4103,7 +4182,9 @@ fn request_headers(payload: &Value) -> Result<reqwest::header::HeaderMap, String
                 | "upgrade"
         ) || lower.starts_with("sec-")
         {
-            return Err(format!("network.fetch header '{name}' is controlled by the host"));
+            return Err(format!(
+                "network.fetch header '{name}' is controlled by the host"
+            ));
         }
         let value = value
             .as_str()
@@ -4117,17 +4198,26 @@ fn request_headers(payload: &Value) -> Result<reqwest::header::HeaderMap, String
     Ok(output)
 }
 
-async fn module_network_fetch(
+struct ModuleNetworkResponse {
+    status: u16,
+    url: String,
+    headers: serde_json::Map<String, Value>,
+    response: reqwest::Response,
+    max_response_bytes: u64,
+}
+
+async fn module_network_response(
     permission: &CustomModuleNetworkPermission,
     app: &tauri::AppHandle,
     module_id: &str,
     payload: &Value,
-) -> Result<Value, String> {
+) -> Result<ModuleNetworkResponse, String> {
     let raw_url = payload
         .get("url")
         .and_then(Value::as_str)
         .ok_or_else(|| "network.fetch requires a URL".to_string())?;
-    let mut url = Url::parse(raw_url).map_err(|error| format!("invalid network.fetch URL: {error}"))?;
+    let mut url =
+        Url::parse(raw_url).map_err(|error| format!("invalid network.fetch URL: {error}"))?;
     let method = payload
         .get("method")
         .and_then(Value::as_str)
@@ -4153,13 +4243,15 @@ async fn module_network_fetch(
             .and_then(Value::as_str)
             .unwrap_or("authorization")
             .to_ascii_lowercase();
-        if !matches!(header_name.as_str(), "authorization" | "x-api-key" | "api-key") {
-            return Err("network.fetch secret header must be Authorization, X-API-Key, or API-Key".into());
+        if !matches!(
+            header_name.as_str(),
+            "authorization" | "x-api-key" | "api-key"
+        ) {
+            return Err(
+                "network.fetch secret header must be Authorization, X-API-Key, or API-Key".into(),
+            );
         }
-        let prefix = binding
-            .get("prefix")
-            .and_then(Value::as_str)
-            .unwrap_or("");
+        let prefix = binding.get("prefix").and_then(Value::as_str).unwrap_or("");
         if prefix.len() > 32 || prefix.chars().any(char::is_control) {
             return Err("network.fetch secret prefix is invalid".into());
         }
@@ -4176,7 +4268,9 @@ async fn module_network_fetch(
         let name = reqwest::header::HeaderName::from_bytes(header_name.as_bytes())
             .map_err(|error| format!("invalid network.fetch secret header: {error}"))?;
         let mut value = reqwest::header::HeaderValue::from_str(&format!("{prefix}{secret}"))
-            .map_err(|_| "stored Custom Module secret cannot be used as an HTTP header".to_string())?;
+            .map_err(|_| {
+                "stored Custom Module secret cannot be used as an HTTP header".to_string()
+            })?;
         value.set_sensitive(true);
         headers.insert(name, value);
     }
@@ -4205,19 +4299,22 @@ async fn module_network_fetch(
         let client = crate::net::proxy::apply_async(
             reqwest::Client::builder()
                 .redirect(reqwest::redirect::Policy::none())
-                .timeout(Duration::from_secs(30))
+                .connect_timeout(Duration::from_secs(15))
+                .read_timeout(Duration::from_secs(30))
                 .resolve(&host, pinned_address),
         )
         .build()
         .map_err(|error| format!("failed to create network.fetch client: {error}"))?;
-        let mut response = client
+        let response = client
             .request(method.clone(), url.clone())
             .headers(headers.clone())
             .body(body.clone())
             .send()
             .await
             .map_err(|error| format!("network.fetch failed: {error}"))?;
-        if response.status().is_redirection() && matches!(method, reqwest::Method::GET | reqwest::Method::HEAD) {
+        if response.status().is_redirection()
+            && matches!(method, reqwest::Method::GET | reqwest::Method::HEAD)
+        {
             if redirect_count == 5 {
                 return Err("network.fetch exceeded 5 redirects".into());
             }
@@ -4231,7 +4328,10 @@ async fn module_network_fetch(
                 .map_err(|error| format!("invalid network.fetch redirect: {error}"))?;
             continue;
         }
-        if response.content_length().is_some_and(|size| size > max_response) {
+        if response
+            .content_length()
+            .is_some_and(|size| size > max_response)
+        {
             return Err("network.fetch response exceeds the granted byte limit".into());
         }
         let status = response.status().as_u16();
@@ -4249,25 +4349,321 @@ async fn module_network_fetch(
             }
             response_headers.insert(name.as_str().to_string(), json!(value));
         }
-        let mut bytes = Vec::new();
-        while let Some(chunk) = response
-            .chunk()
-            .await
-            .map_err(|error| format!("failed to read network.fetch response: {error}"))?
-        {
-            if (bytes.len() as u64).saturating_add(chunk.len() as u64) > max_response {
-                return Err("network.fetch response exceeds the granted byte limit".into());
-            }
-            bytes.extend_from_slice(&chunk);
-        }
-        return Ok(json!({
-            "status": status,
-            "url": final_url,
-            "headers": response_headers,
-            "bodyBase64": BASE64.encode(bytes),
-        }));
+        return Ok(ModuleNetworkResponse {
+            status,
+            url: final_url,
+            headers: response_headers,
+            response,
+            max_response_bytes: max_response,
+        });
     }
     Err("network.fetch redirect loop did not terminate".into())
+}
+
+async fn module_network_fetch(
+    permission: &CustomModuleNetworkPermission,
+    app: &tauri::AppHandle,
+    module_id: &str,
+    payload: &Value,
+) -> Result<Value, String> {
+    let ModuleNetworkResponse {
+        status,
+        url,
+        headers,
+        mut response,
+        max_response_bytes,
+    } = module_network_response(permission, app, module_id, payload).await?;
+    let mut bytes = Vec::new();
+    while let Some(chunk) = response
+        .chunk()
+        .await
+        .map_err(|error| format!("failed to read network.fetch response: {error}"))?
+    {
+        if (bytes.len() as u64).saturating_add(chunk.len() as u64) > max_response_bytes {
+            return Err("network.fetch response exceeds the granted byte limit".into());
+        }
+        bytes.extend_from_slice(&chunk);
+    }
+    Ok(json!({
+        "status": status,
+        "url": url,
+        "headers": headers,
+        "bodyBase64": BASE64.encode(bytes),
+    }))
+}
+
+async fn open_module_network_stream(
+    session: &RuntimeSession,
+    app: &tauri::AppHandle,
+    payload: &Value,
+) -> Result<Value, String> {
+    let permission = session
+        .permission_config
+        .network_fetch
+        .as_ref()
+        .ok_or_else(|| "Custom Module has not been granted networkFetch permission".to_string())?;
+    if payload.get("secret").is_some() && !session.permission_config.secret_references {
+        return Err("Custom Module has not been granted secretReferences permission".into());
+    }
+    if session
+        .network_streams
+        .lock()
+        .map_err(|_| "Custom Module network-stream lock is poisoned".to_string())?
+        .len()
+        >= MAX_NETWORK_STREAMS
+    {
+        return Err("Custom Module network stream limit exceeded".into());
+    }
+    let result = module_network_response(permission, app, &session.module_id, payload).await?;
+    let token = format!("{:032x}", rand::random::<u128>());
+    let status = result.status;
+    let url = result.url;
+    let headers = result.headers;
+    let stream = NetworkStream {
+        response: result.response,
+        max_response_bytes: result.max_response_bytes,
+        bytes_read: 0,
+        pending: Vec::new(),
+    };
+    let mut streams = session
+        .network_streams
+        .lock()
+        .map_err(|_| "Custom Module network-stream lock is poisoned".to_string())?;
+    if streams.len() >= MAX_NETWORK_STREAMS {
+        return Err("Custom Module network stream limit exceeded".into());
+    }
+    streams.insert(token.clone(), Arc::new(tokio::sync::Mutex::new(stream)));
+    Ok(json!({ "token": token, "status": status, "url": url, "headers": headers }))
+}
+
+fn stream_token<'a>(payload: &'a Value, operation: &str) -> Result<&'a str, String> {
+    let token = payload
+        .get("token")
+        .and_then(Value::as_str)
+        .ok_or_else(|| format!("{operation} requires a token"))?;
+    if token.len() != 32 || !token.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return Err(format!("{operation} token is invalid"));
+    }
+    Ok(token)
+}
+
+async fn read_module_network_stream(
+    session: &RuntimeSession,
+    payload: &Value,
+) -> Result<Value, String> {
+    let token = stream_token(payload, "network.read")?.to_string();
+    let stream = session
+        .network_streams
+        .lock()
+        .map_err(|_| "Custom Module network-stream lock is poisoned".to_string())?
+        .get(&token)
+        .cloned()
+        .ok_or_else(|| "network stream was not found".to_string())?;
+    let mut stream = stream.lock().await;
+    let bytes = if !stream.pending.is_empty() {
+        let take = stream.pending.len().min(MAX_NETWORK_STREAM_CHUNK_BYTES);
+        stream.pending.drain(..take).collect::<Vec<_>>()
+    } else {
+        match stream
+            .response
+            .chunk()
+            .await
+            .map_err(|error| format!("failed to read network stream: {error}"))?
+        {
+            Some(chunk) => {
+                let next_total = stream.bytes_read.saturating_add(chunk.len() as u64);
+                if next_total > stream.max_response_bytes {
+                    drop(stream);
+                    session
+                        .network_streams
+                        .lock()
+                        .map_err(|_| "Custom Module network-stream lock is poisoned".to_string())?
+                        .remove(&token);
+                    return Err("network.fetch response exceeds the granted byte limit".into());
+                }
+                stream.bytes_read = next_total;
+                let take = chunk.len().min(MAX_NETWORK_STREAM_CHUNK_BYTES);
+                if take < chunk.len() {
+                    stream.pending.extend_from_slice(&chunk[take..]);
+                }
+                chunk[..take].to_vec()
+            }
+            None => {
+                drop(stream);
+                session
+                    .network_streams
+                    .lock()
+                    .map_err(|_| "Custom Module network-stream lock is poisoned".to_string())?
+                    .remove(&token);
+                return Ok(json!({ "dataBase64": "", "done": true }));
+            }
+        }
+    };
+    Ok(json!({ "dataBase64": BASE64.encode(bytes), "done": false }))
+}
+
+fn cancel_module_network_stream(
+    session: &RuntimeSession,
+    payload: &Value,
+) -> Result<Value, String> {
+    let token = stream_token(payload, "network.cancel")?;
+    let removed = session
+        .network_streams
+        .lock()
+        .map_err(|_| "Custom Module network-stream lock is poisoned".to_string())?
+        .remove(token)
+        .is_some();
+    Ok(json!(removed))
+}
+
+fn open_host_ai_stream(
+    app: &tauri::AppHandle,
+    session: &RuntimeSession,
+    payload: Value,
+) -> Result<Value, String> {
+    if !session.permission_config.host_ai {
+        return Err("Custom Module has not been granted hostAi permission".into());
+    }
+    let request: crate::ai::CustomModuleAiRequest = serde_json::from_value(payload)
+        .map_err(|error| format!("invalid hostAi request: {error}"))?;
+    let mut streams = session
+        .host_ai_streams
+        .lock()
+        .map_err(|_| "Custom Module host-AI stream lock is poisoned".to_string())?;
+    if streams.len() >= MAX_HOST_AI_STREAMS {
+        return Err("Custom Module hostAi stream limit exceeded".into());
+    }
+
+    let token = format!("{:032x}", rand::random::<u128>());
+    let state = Arc::new(Mutex::new(HostAiStreamState::default()));
+    let cancelled = Arc::new(AtomicBool::new(false));
+    streams.insert(
+        token.clone(),
+        HostAiStream {
+            state: state.clone(),
+            cancelled: cancelled.clone(),
+        },
+    );
+    drop(streams);
+
+    let callback_state = state.clone();
+    let callback_cancelled = cancelled.clone();
+    let channel = tauri::ipc::Channel::<Value>::new(move |body| {
+        if callback_cancelled.load(Ordering::Relaxed) {
+            return Err(std::io::Error::other("hostAi stream was cancelled").into());
+        }
+        let event = body.deserialize::<Value>()?;
+        let mut state = callback_state
+            .lock()
+            .map_err(|_| std::io::Error::other("hostAi stream lock is poisoned"))?;
+        match event.get("type").and_then(Value::as_str) {
+            Some("contentDelta") => {
+                let delta = event
+                    .get("delta")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default();
+                if state.pending.len().saturating_add(delta.len()) > MAX_HOST_AI_BUFFER_BYTES {
+                    return Err(std::io::Error::other(
+                        "hostAi backpressure limit exceeded; read the stream more frequently",
+                    )
+                    .into());
+                }
+                state.pending.push_str(delta);
+            }
+            Some("done") => {
+                state.provider_kind = event
+                    .get("providerKind")
+                    .and_then(Value::as_str)
+                    .map(str::to_string);
+                state.model = event
+                    .get("model")
+                    .and_then(Value::as_str)
+                    .map(str::to_string);
+            }
+            _ => {}
+        }
+        Ok(())
+    });
+    let worker_app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let result = crate::ai::run_custom_module_ai_stream(worker_app, request, channel).await;
+        if let Ok(mut state) = state.lock() {
+            if let Err(error) = result {
+                if !cancelled.load(Ordering::Relaxed) {
+                    state.error = Some(error);
+                }
+            }
+            state.done = true;
+        }
+    });
+    Ok(json!({ "token": token }))
+}
+
+fn take_prefix_chars(value: &mut String, max_chars: usize) -> String {
+    let split = value
+        .char_indices()
+        .nth(max_chars)
+        .map(|(index, _)| index)
+        .unwrap_or(value.len());
+    value.drain(..split).collect()
+}
+
+fn read_host_ai_stream(session: &RuntimeSession, payload: &Value) -> Result<Value, String> {
+    let token = stream_token(payload, "ai.read")?.to_string();
+    let stream = session
+        .host_ai_streams
+        .lock()
+        .map_err(|_| "Custom Module host-AI stream lock is poisoned".to_string())?
+        .get(&token)
+        .cloned()
+        .ok_or_else(|| "hostAi stream was not found".to_string())?;
+    let mut state = stream
+        .state
+        .lock()
+        .map_err(|_| "Custom Module host-AI stream lock is poisoned".to_string())?;
+    let delta = take_prefix_chars(&mut state.pending, MAX_HOST_AI_READ_CHARS);
+    let done = state.done && state.pending.is_empty();
+    if done {
+        if let Some(error) = state.error.take() {
+            drop(state);
+            session
+                .host_ai_streams
+                .lock()
+                .map_err(|_| "Custom Module host-AI stream lock is poisoned".to_string())?
+                .remove(&token);
+            return Err(error);
+        }
+    }
+    let provider_kind = state.provider_kind.clone();
+    let model = state.model.clone();
+    drop(state);
+    if done {
+        session
+            .host_ai_streams
+            .lock()
+            .map_err(|_| "Custom Module host-AI stream lock is poisoned".to_string())?
+            .remove(&token);
+    }
+    Ok(json!({
+        "delta": delta,
+        "done": done,
+        "providerKind": provider_kind,
+        "model": model,
+    }))
+}
+
+fn cancel_host_ai_stream(session: &RuntimeSession, payload: &Value) -> Result<Value, String> {
+    let token = stream_token(payload, "ai.cancel")?;
+    let stream = session
+        .host_ai_streams
+        .lock()
+        .map_err(|_| "Custom Module host-AI stream lock is poisoned".to_string())?
+        .remove(token);
+    if let Some(stream) = stream {
+        stream.cancelled.store(true, Ordering::Relaxed);
+        return Ok(json!(true));
+    }
+    Ok(json!(false))
 }
 
 #[derive(Debug, Serialize)]
@@ -4547,13 +4943,9 @@ async fn custom_module_bridge_inner(
             match operation {
                 "blobs.beginWrite" => begin_blob_write(&paths, &session, &request.payload),
                 "blobs.write" => blob_write_chunk(&session, &request.payload),
-                "blobs.commit" => {
-                    commit_blob_write(&storage, &paths, &session, &request.payload)
-                }
+                "blobs.commit" => commit_blob_write(&storage, &paths, &session, &request.payload),
                 "blobs.abort" => abort_blob_write(&session, &request.payload),
-                "blobs.read" => {
-                    read_blob(&storage, &paths, &session.module_id, &request.payload)
-                }
+                "blobs.read" => read_blob(&storage, &paths, &session.module_id, &request.payload),
                 "blobs.delete" => {
                     delete_blob(&storage, &paths, &session.module_id, &request.payload)
                 }
@@ -4562,11 +4954,10 @@ async fn custom_module_bridge_inner(
             }
         }
         operation if operation.starts_with("files.") => {
-            let permission = session
-                .permission_config
-                .files
-                .as_ref()
-                .ok_or_else(|| "Custom Module has not been granted files permission".to_string())?;
+            let permission =
+                session.permission_config.files.as_ref().ok_or_else(|| {
+                    "Custom Module has not been granted files permission".to_string()
+                })?;
             match operation {
                 "files.open" => {
                     select_module_file(&app, &session, permission, false, &request.payload).await
@@ -4596,8 +4987,41 @@ async fn custom_module_bridge_inner(
                     "Custom Module has not been granted secretReferences permission".into(),
                 );
             }
-            module_network_fetch(permission, &app, &session.module_id, &request.payload)
-                .await
+            module_network_fetch(permission, &app, &session.module_id, &request.payload).await
+        }
+        "network.open" => open_module_network_stream(&session, &app, &request.payload).await,
+        "network.read" => read_module_network_stream(&session, &request.payload).await,
+        "network.cancel" => cancel_module_network_stream(&session, &request.payload),
+        "ai.getStatus" => {
+            if !session.permission_config.host_ai {
+                return Err("Custom Module has not been granted hostAi permission".into());
+            }
+            crate::ai::custom_module_ai_status(&app)
+        }
+        "ai.open" => open_host_ai_stream(&app, &session, request.payload),
+        "ai.read" => {
+            if !session.permission_config.host_ai {
+                return Err("Custom Module has not been granted hostAi permission".into());
+            }
+            read_host_ai_stream(&session, &request.payload)
+        }
+        "ai.cancel" => {
+            if !session.permission_config.host_ai {
+                return Err("Custom Module has not been granted hostAi permission".into());
+            }
+            cancel_host_ai_stream(&session, &request.payload)
+        }
+        "ai.openSettings" => {
+            if !session.permission_config.host_ai {
+                return Err("Custom Module has not been granted hostAi permission".into());
+            }
+            app.emit_to(
+                crate::window_state::MAIN_WINDOW_LABEL,
+                "custom-module-open-ai-settings",
+                json!({ "moduleId": session.module_id }),
+            )
+            .map_err(|error| format!("failed to open AI settings: {error}"))?;
+            Ok(json!(true))
         }
         operation if operation.starts_with("secrets.") => {
             if !session.permission_config.secret_references {
@@ -4612,14 +5036,8 @@ async fn custom_module_bridge_inner(
                     &request.payload,
                 ),
                 "secrets.requestEntry" => {
-                    request_custom_module_secret(
-                        &app,
-                        &runtime,
-                        &session,
-                        label,
-                        &request.payload,
-                    )
-                    .await
+                    request_custom_module_secret(&app, &runtime, &session, label, &request.payload)
+                        .await
                 }
                 "secrets.delete" => delete_custom_module_secret(
                     &storage,
@@ -4741,7 +5159,8 @@ pub fn protocol_response(
             safe_path = validate_relative_path(&route.entrypoint, "Custom Module entrypoint")?;
             path = fs::canonicalize(route.root.join(&safe_path));
         }
-        let path = path.map_err(|error| format!("failed to resolve Custom Module asset: {error}"))?;
+        let path =
+            path.map_err(|error| format!("failed to resolve Custom Module asset: {error}"))?;
         if !path.starts_with(&canonical_root) {
             return Err("Custom Module asset escapes its package root".into());
         }
@@ -4821,6 +5240,28 @@ mod tests {
         }
     }
 
+    #[test]
+    fn host_ai_is_an_explicit_restrictable_permission() {
+        let permissions = CustomModulePermissions {
+            host_ai: true,
+            ..Default::default()
+        };
+        assert_eq!(permissions.enabled_names(), vec!["hostAi"]);
+        assert!(!permissions.restricted_to(&HashSet::new()).host_ai);
+        assert!(
+            permissions
+                .restricted_to(&HashSet::from(["hostAi".to_string()]))
+                .host_ai
+        );
+    }
+
+    #[test]
+    fn host_ai_reads_split_only_on_character_boundaries() {
+        let mut value = "a終端機b".to_string();
+        assert_eq!(take_prefix_chars(&mut value, 2), "a終");
+        assert_eq!(value, "端機b");
+    }
+
     fn write_package(path: &Path, unsafe_path: Option<&str>) {
         write_package_manifest(path, &valid_manifest(), unsafe_path);
     }
@@ -4884,10 +5325,14 @@ mod tests {
             "2002::1",
             "::ffff:127.0.0.1",
         ] {
-            assert!(network_address_is_private(address.parse::<IpAddr>().unwrap()));
+            assert!(network_address_is_private(
+                address.parse::<IpAddr>().unwrap()
+            ));
         }
         for address in ["8.8.8.8", "2606:4700:4700::1111"] {
-            assert!(!network_address_is_private(address.parse::<IpAddr>().unwrap()));
+            assert!(!network_address_is_private(
+                address.parse::<IpAddr>().unwrap()
+            ));
         }
     }
 

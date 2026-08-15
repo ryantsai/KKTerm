@@ -19,7 +19,7 @@ const semverPattern = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z.
 const moduleIdPattern = /^[a-z][a-z0-9.-]{0,127}$/;
 const allowedPermissions = new Set([
   "storage", "documentStorage", "blobStorage", "browserStorage", "openExternal",
-  "clipboard", "files", "networkFetch", "secretReferences", "hostUi",
+  "clipboard", "files", "networkFetch", "secretReferences", "hostUi", "hostAi",
 ]);
 const maxArchiveBytes = 1024 * 1024 * 1024;
 const maxCuratedIconBytes = 64 * 1024;

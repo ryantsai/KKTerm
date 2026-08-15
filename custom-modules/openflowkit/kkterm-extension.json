@@ -1,9 +1,9 @@
 {
   "id": "com.kkterm.openflowkit",
   "name": "OpenFlowKit",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "publisher": "KKTerm",
-  "summary": "An unofficial self-contained OpenFlowKit diagram editor for KKTerm API v2. Local-first architecture diagrams and flowcharts; AI generation is disabled in this build.",
+  "summary": "An unofficial self-contained OpenFlowKit diagram editor for KKTerm API v2, with local-first diagrams and AI generation through KKTerm's configured provider.",
   "apiVersion": 2,
   "homepage": "https://openflowkit.com",
   "license": {
@@ -15,6 +15,7 @@
     "browserStorage": true,
     "openExternal": true,
     "clipboard": true,
+    "hostAi": true,
     "files": {
       "open": true,
       "save": true,

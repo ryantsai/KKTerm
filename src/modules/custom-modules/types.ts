@@ -37,6 +37,7 @@ export interface CustomModulePermissions {
   networkFetch?: CustomModuleNetworkPermission | null;
   secretReferences: boolean;
   hostUi: boolean;
+  hostAi: boolean;
 }
 
 export interface CustomModuleDataUsage {
