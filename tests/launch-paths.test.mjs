@@ -176,3 +176,11 @@ test("platform bundles add every recognized extension to Open With without claim
   assert.match(smokeInstaller, /Assert-OpenWithRegistration/);
   assert.match(smokeInstaller, /Assert-DefaultAssociationUnchanged/);
 });
+
+test("NSIS uninstall preserves the automatic database backups folder when deleting app data", () => {
+  assert.match(nsisHooks, /\$DeleteAppDataCheckboxState = 1/);
+  assert.match(nsisHooks, /Rename "\$APPDATA\\\$\{BUNDLEID\}\\backups"/);
+  assert.match(nsisHooks, /\$APPDATA\\KKTerm\\backups/);
+  assert.match(nsisHooks, /MessageBox MB_ICONINFORMATION/);
+  assert.doesNotMatch(nsisHooks, /RmDir \/r "\$APPDATA\\\$\{BUNDLEID\}"/);
+});

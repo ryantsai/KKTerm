@@ -101,4 +101,26 @@
   !insertmacro KKTERM_FOR_EACH_SUPPORTED_EXTENSION KKTERM_UNREGISTER_OPEN_WITH
   DeleteRegKey SHCTX "Software\Classes\${KKTERM_DOCUMENT_PROGID}"
   !insertmacro UPDATEFILEASSOC
+
+  ; When the user selected "Delete app data", move the automatic database
+  ; backup folder out of the app-data directory before the uninstaller wipes
+  ; it, so a mistaken choice does not destroy the periodic backup history.
+  ; The backups land in %APPDATA%\KKTerm\backups (a folder the uninstaller
+  ; never touches) and the user is told where they went.
+  ${If} $DeleteAppDataCheckboxState = 1
+    IfFileExists "$APPDATA\${BUNDLEID}\backups\*.*" 0 kkterm_retain_backups_done
+    CreateDirectory "$APPDATA\KKTerm"
+    StrCpy $R0 "$APPDATA\KKTerm\backups"
+    StrCpy $R1 2
+    kkterm_retain_backups_pick_name:
+      IfFileExists "$R0\*.*" 0 kkterm_retain_backups_move
+      StrCpy $R0 "$APPDATA\KKTerm\backups-$R1"
+      IntOp $R1 $R1 + 1
+      Goto kkterm_retain_backups_pick_name
+    kkterm_retain_backups_move:
+      Rename "$APPDATA\${BUNDLEID}\backups" "$R0"
+      IfErrors kkterm_retain_backups_done
+      MessageBox MB_ICONINFORMATION|MB_OK "KKTerm preserved your automatic database backups so you can recover them later. They are saved here:$\n$\n$R0"
+    kkterm_retain_backups_done:
+  ${EndIf}
 !macroend

@@ -87,6 +87,8 @@ The secret storage selector (`settings.credentialStorage`) controls which backen
 
 Uninstalling KKTerm removes the executable. The SQLite database and credential backend entries persist unless the user deletes them explicitly. Reinstalling reuses the same SQLite database file from the same user profile location.
 
+When the uninstaller is asked to delete app data, the automatic database-backup ZIPs are not wiped with the rest of the app data: the uninstaller first moves the `backups` folder to `%APPDATA%\KKTerm\backups` (adding a numeric suffix such as `backups-2` if that folder already exists) and tells the user where the backups were kept, so periodic snapshots stay recoverable after a mistaken deletion.
+
 Portable mode has no uninstaller. Deleting its folder removes its KKTerm-owned data, but machine-owned effects from explicit integrations remain: OS-keychain entries, external MCP client configuration, Install Helper tools, managed web apps, and Windows services are not removed with the folder.
 
 ## What is _not_ stored
