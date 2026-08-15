@@ -147,6 +147,12 @@ function Set-CargoPackageVersion {
     # in the manifest comments would be misread and then re-written as UTF-8,
     # roughly doubling its byte length on every release run.
     $Content = Get-Content -Raw -Encoding utf8 $Path
+    $Current = [regex]::Match($Content, '(?m)^version = "(\d+\.\d+\.\d+)"')
+    if ($Current.Success -and $Current.Groups[1].Value -eq $Version) {
+        # Already at the target version (e.g. -NoVersionIncrement reuse); treat as
+        # a no-op, matching the `--allow-same-version` behaviour of the npm bump.
+        return
+    }
     $Updated = [regex]::Replace(
         $Content,
         '(?m)^version = "\d+\.\d+\.\d+"',
@@ -267,7 +273,8 @@ try {
         "package-lock.json",
         "src-tauri/tauri.conf.json",
         "src-tauri/Cargo.toml",
-        "src-tauri/Cargo.lock"
+        "src-tauri/Cargo.lock",
+        "CHANGELOG.md"
     )
     $GeneratedReleaseNotes = @($VersionReleaseNotesPath, $ReleaseNotesPath)
 
