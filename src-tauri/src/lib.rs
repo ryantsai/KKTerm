@@ -4790,6 +4790,18 @@ pub fn run() {
                 return;
             }
 
+            // macOS/Linux do not keep Custom Module child windows in sync with
+            // the host: minimizing or hiding the main window would leave the
+            // module overlay on screen. Reconcile overlay visibility whenever
+            // the window gains/loses focus or resizes (minimize/restore always
+            // trigger one of those), as well as on the tray hide/restore paths.
+            if matches!(
+                event,
+                tauri::WindowEvent::Focused(_) | tauri::WindowEvent::Resized(_)
+            ) {
+                custom_modules::sync_custom_module_overlays_with_main_window(window);
+            }
+
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 debug_heartbeat::record_window_event("close-requested");
                 app_tray::hide_window_on_close_if_enabled(window, api);

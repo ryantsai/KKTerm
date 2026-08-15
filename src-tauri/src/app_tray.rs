@@ -353,6 +353,7 @@ pub fn restore_main_window<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
         let show_result = main_window.show().map(|_| "ok").unwrap_or("error");
         let recovery = crate::window_state::recover_if_offscreen(&main_window);
         set_owned_popups_visible(&main_window, true);
+        crate::custom_modules::sync_custom_module_overlays_with_main_window(&main_window);
         let focus_result = main_window.set_focus().map(|_| "ok").unwrap_or("error");
         let recovery_result = recovery
             .map(|bounds| {
@@ -382,6 +383,7 @@ pub fn hide_minimized_window_if_enabled<R: tauri::Runtime>(window: &tauri::Windo
     crate::debug_heartbeat::record_window_event("hide-minimized-to-tray");
     let _ = window.hide();
     set_owned_popups_visible(window, false);
+    crate::custom_modules::sync_custom_module_overlays_with_main_window(window);
 }
 
 /// Diverts the native title-bar close button to a hide-to-tray when minimize-to-tray is enabled.
@@ -392,7 +394,8 @@ pub fn hide_minimized_window_if_enabled<R: tauri::Runtime>(window: &tauri::Windo
 /// In both branches we synchronously hide every owned popup HWND (e.g. the RDP ActiveX host
 /// window). Owned popups are not auto-hidden when their owner is hidden via `ShowWindow(SW_HIDE)`
 /// (only when the owner is minimized), so without this the RDP pane lingers on screen after the
-/// main window goes away.
+/// main window goes away. Custom Module overlays are reconciled the same way (macOS/Linux child
+/// windows otherwise stay on screen when the host is hidden).
 pub fn hide_window_on_close_if_enabled<R: tauri::Runtime>(
     window: &tauri::Window<R>,
     api: &tauri::CloseRequestApi,
@@ -410,6 +413,7 @@ pub fn hide_window_on_close_if_enabled<R: tauri::Runtime>(
     api.prevent_close();
     crate::debug_heartbeat::record_window_event("hide-close-to-tray");
     let _ = window.hide();
+    crate::custom_modules::sync_custom_module_overlays_with_main_window(window);
 }
 
 #[cfg(target_os = "windows")]

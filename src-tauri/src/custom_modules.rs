@@ -2922,6 +2922,55 @@ pub async fn start_custom_module(
     Ok(CustomModuleSessionStarted { session_id: label })
 }
 
+/// Whether the host (main) window is currently minimized or hidden. macOS and
+/// Linux do NOT keep child/separate module windows in sync with the host: a
+/// miniaturized or hidden host leaves the module overlay on screen, so overlay
+/// show/positioning is suppressed (and later re-applied) while the host is
+/// away. Windows is unaffected — owned windows track the owner automatically.
+fn main_window_suppresses_overlay(session: &RuntimeSession) -> bool {
+    !session.host_window.is_visible().unwrap_or(true)
+        || session.host_window.is_minimized().unwrap_or(false)
+}
+
+/// Reconciles every active Custom Module overlay with the main window's
+/// visibility: while the main window is minimized or hidden the overlays are
+/// hidden, and when it is visible again the overlays that were visible before
+/// are re-placed and re-shown. Call from main-window lifecycle events (focus,
+/// resize, tray close/minimize/restore) — the per-session `visible` flag is the
+/// frontend's intent and is never overwritten here.
+pub(crate) fn sync_custom_module_overlays_with_main_window<R: tauri::Runtime>(
+    main_window: &tauri::Window<R>,
+) {
+    let Some(runtime) = main_window.try_state::<CustomModuleRuntime>() else {
+        return;
+    };
+    let main_visible = main_window.is_visible().unwrap_or(true)
+        && !main_window.is_minimized().unwrap_or(false);
+    let Ok(sessions) = runtime.lock() else {
+        return;
+    };
+    for session in sessions.values() {
+        let Ok(state) = session.view_state.lock() else {
+            continue;
+        };
+        if main_visible {
+            if state.visible {
+                let bounds = state.bounds;
+                let _ = webview::set_overlay_bounds(
+                    &session.host_window,
+                    &session.window,
+                    bounds.x,
+                    bounds.y,
+                    bounds.width,
+                    bounds.height,
+                );
+            }
+        } else {
+            let _ = webview::hide_overlay(&session.window);
+        }
+    }
+}
+
 fn update_runtime_view_bounds(
     session: &RuntimeSession,
     bounds: RuntimeBounds,
@@ -2931,7 +2980,7 @@ fn update_runtime_view_bounds(
         .lock()
         .map_err(|_| "Custom Module view-state lock is poisoned".to_string())?;
     state.bounds = bounds;
-    if state.visible {
+    if state.visible && !main_window_suppresses_overlay(session) {
         webview::set_overlay_bounds(
             &session.host_window,
             &session.window,
@@ -2950,15 +2999,17 @@ fn set_runtime_view_visibility(session: &RuntimeSession, visible: bool) -> Resul
         .lock()
         .map_err(|_| "Custom Module view-state lock is poisoned".to_string())?;
     if visible {
-        let bounds = state.bounds;
-        webview::set_overlay_bounds(
-            &session.host_window,
-            &session.window,
-            bounds.x,
-            bounds.y,
-            bounds.width,
-            bounds.height,
-        )?;
+        if !main_window_suppresses_overlay(session) {
+            let bounds = state.bounds;
+            webview::set_overlay_bounds(
+                &session.host_window,
+                &session.window,
+                bounds.x,
+                bounds.y,
+                bounds.width,
+                bounds.height,
+            )?;
+        }
     } else {
         let _ = session
             .window
