@@ -1952,7 +1952,7 @@ export function AssistantPanel({
 
   return (
     <aside
-      className="assistant-panel"
+      className={`assistant-panel${isSendingPrompt ? " assistant-panel-working" : ""}`}
       data-tutorial-id="assistant.panel"
       onContextMenu={(event) => void handleAssistantPanelContextMenu(event)}
     >
@@ -2178,6 +2178,9 @@ export function AssistantPanel({
         data-tutorial-id="assistant.composer"
         onSubmit={handleChatSubmit}
       >
+        <div className="assistant-composer-beam" aria-hidden="true">
+          <div className="assistant-composer-beam-bloom" />
+        </div>
         {assistantContextSnippet ? (
           <section
             className="assistant-selection-context"
