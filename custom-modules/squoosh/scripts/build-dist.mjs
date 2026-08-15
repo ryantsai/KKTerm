@@ -27,6 +27,13 @@
 //     A single relative form cannot be right for both, so these become
 //     "/dist/c/x": root-absolute ignores the base entirely and lands correctly
 //     for every caller. The validator only parses HTML, so this stays clean.
+//
+// Dot-relative "./c/x" refs are left untouched: they resolve against the
+// DOCUMENT (dist/index.html) and land on dist/c/x correctly, and rewriting
+// them to "./dist/c/x" would silently double the dist segment. The inline
+// bootstrap also concatenates location.origin with a path, and origin carries
+// no trailing slash, so any "./c/..." append would corrupt the host; those
+// concatenations must stay root-absolute ("/dist/c/...").
 
 import { createHash } from "node:crypto";
 import fs from "node:fs";
@@ -96,7 +103,7 @@ function rewriteJs(dir) {
     }
     if (!entry.name.endsWith(".js")) continue;
     const before = fs.readFileSync(full, "utf8");
-    const after = before.replaceAll(/(?<!\/dist)\/c\//g, "/dist/c/");
+    const after = before.replaceAll(/(?<![\w./-])\/c\//g, "/dist/c/");
     if (before !== after) {
       jsRewrites += before.split("/c/").length - 1;
       fs.writeFileSync(full, after, "utf8");
@@ -111,6 +118,11 @@ const indexPath = path.join(distDir, "index.html");
 let html = fs.readFileSync(indexPath, "utf8");
 
 html = html.replaceAll('"/c/', '"./c/');
+// The inline bootstrap concatenates location.origin with a path; origin has no
+// trailing slash, so a dot-relative append would corrupt the host. The generic
+// rewrite above normalizes the "/c/" part first; recover any such
+// concatenation to a root-absolute "/dist/c/..." form afterwards.
+html = html.replaceAll('location.origin+"./c/', 'location.origin+"/dist/c/');
 // The PWA manifest and the canonical/social tags point at squoosh.app; neither
 // is reachable or meaningful from inside a Module.
 html = html.replace(/<link[^>]*\brel="manifest"[^>]*>\s*/gi, "");
@@ -166,6 +178,22 @@ if (/(?:^|[^.])\/c\//.test(finalHtml)) {
 }
 if (!finalHtml.includes(`${runtimeTag}<script src="./inline-`)) {
   problems.push("KKTerm runtime adapter is missing or loads after the Squoosh application");
+}
+
+// Document-relative "./dist/..." refs would double the dist segment from any
+// file below dist/, and a "location.origin + \"./\" concatenation would corrupt
+// the origin host (no trailing slash). Both patterns are fatal asset bugs.
+const assetRefCheck = /["'`]\.\/dist\//;
+const originConcatCheck = /location\.origin\s*\+\s*["'`]\s*\.\//;
+for (const file of fs.readdirSync(distDir, { recursive: true })) {
+  if (typeof file !== "string" || !/\.(?:js|html)$/.test(file)) continue;
+  const text = fs.readFileSync(path.join(distDir, file), "utf8");
+  if (assetRefCheck.test(text)) {
+    problems.push(`document-relative ./dist/ reference survived: ${file}`);
+  }
+  if (originConcatCheck.test(text)) {
+    problems.push(`malformed location.origin + "./" concatenation survived: ${file}`);
+  }
 }
 
 // Every rewritten JS target must actually exist on disk.

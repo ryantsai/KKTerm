@@ -26,5 +26,9 @@ test("Squoosh signals readiness through a packaged lifecycle adapter", async () 
   assert.match(build, /src["'], ["']kkterm-runtime\.js/);
   assert.match(build, /<script src="\.\/kkterm-runtime\.js"><\/script>/);
   assert.match(build, /html = html\.replace\(inlineScript,[\s\S]*html = html\.replaceAll\(runtimeTag, ""\)/);
-  assert.match(build, /\(\?<!\\\/dist\)\\\/c\\\//);
+  assert.ok(
+    build.includes('replaceAll(/(?<![\\w./-])\\/c\\//g'),
+    "the JS rewrite must skip dot-relative ./c/ references",
+  );
+  assert.match(build, /location\.origin\s*\+\s*"\.\/c\//);
 });

@@ -27,6 +27,26 @@ test("Custom Module browser downloads use the permission-bound save bridge", asy
   );
 });
 
+test("Custom Module CSP permits local blob:/data: reads for mediated downloads", async () => {
+  const backend = await readFile(backendUrl, "utf8");
+
+  const csp = backend.match(
+    /"Content-Security-Policy",\s*\n\s*"([^"]*)"/s,
+    "the CSP header must be a single literal string",
+  )?.[1];
+  assert.ok(csp, "the Content-Security-Policy header must exist");
+  assert.match(
+    csp,
+    /connect-src 'self' blob: data:/,
+    "the save bridge reads blob:/data: exports with fetch(), which connect-src controls; 'self' alone blocks the read and discards the save",
+  );
+  assert.doesNotMatch(
+    csp,
+    /https?:|:\/\/|\*/,
+    "the CSP must not permit remote connect targets; only local blob:/data: reads are added",
+  );
+});
+
 test("Custom Module browser file compatibility reaches same-package frames", async () => {
   const backend = await readFile(backendUrl, "utf8");
 

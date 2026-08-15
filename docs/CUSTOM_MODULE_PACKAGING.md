@@ -45,7 +45,9 @@ by the manifest extensions. Without it they are blocked. With `files.save`,
 ordinary `<a download>` exports backed by local Blob/data/same-package URLs are
 automatically streamed through the host save picker in bounded chunks. This
 includes application-created detached anchors whose `click()` method is invoked
-directly. The native WebView downloader is always denied, and cross-origin download links are
+directly. The host reads the export bytes with a local browser `fetch`, so the
+Module CSP permits `connect-src` for `'self' blob: data:` only; remote targets
+still require a declared `networkFetch` grant. The native WebView downloader is always denied, and cross-origin download links are
 not a network bypass; fetch remote bytes only through a declared
 `window.KKTerm.network.fetch` grant. Use the same grant's
 `network.open`/`read`/`cancel` methods when the response must be consumed as a

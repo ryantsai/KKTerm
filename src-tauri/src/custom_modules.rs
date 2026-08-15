@@ -6042,7 +6042,7 @@ pub fn protocol_response(
             )
             .header(
                 "Content-Security-Policy",
-                "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; object-src 'none'; frame-src 'self'; worker-src 'self'; child-src 'self'; base-uri 'none'; form-action 'none'",
+                "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' blob: data:; object-src 'none'; frame-src 'self'; worker-src 'self'; child-src 'self'; base-uri 'none'; form-action 'none'",
             )
             .body(body)
             .unwrap_or_else(|_| tauri::http::Response::new(Vec::new())),

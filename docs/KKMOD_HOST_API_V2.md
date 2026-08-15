@@ -123,8 +123,11 @@ blocked. The host API and browser-compatibility policy are injected into every
 same-package frame, not only the top-level document.
 
 The package protocol permits only packaged assets, data/blob images and fonts,
-same-package frames, and packaged same-package dedicated Workers. Network access
-is available only through the host fetch API, not raw browser `fetch`, WebSocket,
+same-package frames, and packaged same-package dedicated Workers. Raw browser
+`fetch` may read only local `blob:`/`data:` URLs (the CSP `connect-src` allows
+`'self' blob: data:`), which is what the adapted `<a download>` save path uses
+to read an export before streaming it through `files.save`. Network access is
+available only through the host fetch API, not raw browser `fetch`, WebSocket,
 EventSource, or WebRTC.
 
 ## JavaScript surface
