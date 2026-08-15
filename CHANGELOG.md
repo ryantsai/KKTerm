@@ -3,6 +3,68 @@
 All notable changes to KKTerm are documented here.
 
 ## Direct Downloads
+* 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.147/kkterm-0.1.147-windows-x64-setup.exe)
+* 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.147/kkterm-0.1.147-windows-arm64-setup.exe)
+* 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.147/kkterm-0.1.147-windows-x64-portable.zip)
+* 📦 [Portable for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.147/kkterm-0.1.147-windows-arm64-portable.zip)
+
+## Highlights
+- New Custom Module permissions for **file read/write** and **host integration**, plus a new **host AI** permission so your Session can request what it actually needs (and not what it *wishes* it needed).
+- Added **OpenFlowKit host AI integration & settings routing**, and included readiness checks for AI generation capabilities.
+- Introduced **TiddlyWiki** as a KKTerm Custom Module.
+- Updated **Bentopdf** custom module to version **2.8.9**, including additional file extensions and new **network fetch** permissions for `POST` to `https://freetsa.org`.
+- Custom Modules now show a **warning during full backup import** that they are **not included** in database backups.
+- Custom module UI rail options were adjusted: **“Show in Activity Rail”** was removed.
+
+## New
+- Added **TiddlyWiki integration** as a KKTerm Custom Module (**7d6496f**).
+- Added **host AI integration** for OpenFlowKit, including an AI settings UI (**e68be90**).
+
+## Improved
+- Enhanced **custom module permissions**:
+  - Added directory **read/write** permissions for `CustomModuleFilePermission`.
+  - Introduced `CustomModuleHostIntegrationPermission` and extended permission naming (**d0daa18**).
+- Updated **Bentopdf** to **2.8.9** with enhanced file handling and **network fetch** permissions for `POST` to `https://freetsa.org` (**986e1ef**).
+
+## Fixed
+- Added a **warning** message during **full backup import** to clarify that **Custom Modules are not included in database backups** (**b9c3cce**).
+
+## Internal
+- Custom module window management improvements for macOS/Windows webview handling to help prevent deadlocks (**ebd19a2**).
+- Refactored/removed some custom module rail visibility plumbing and updated related settings labels and tests (**036933a**).
+- Cleanup: removed generated visual artifacts (**f535645**) and ignored generated package outputs (**98a1cf1**).
+- Test/UI refactors and harness updates (e.g., activity rail test simplification **881bd9c**, rail order drag-and-drop work **abc099a**).
+
+---
+
+## 更新重點
+- 新增自訂模組權限：支援**檔案讀寫**與**主機整合**，並新增**主機 AI**權限，讓 Session 只申請它真正需要的東西（而不是網路上看來很厲害但用不到的東西）。
+- 完成 **OpenFlowKit 主機 AI 整合**與**設定導頁**，並加入 AI 生成能力的就緒檢查。
+- 新增 **TiddlyWiki** 作為 KKTerm 自訂模組。
+- 更新 **Bentopdf** 自訂模組至 **2.8.9**：包含更多檔案副檔名，並加入對 `https://freetsa.org` 的 `POST` **網路抓取**權限。
+- 全量備份匯入時，針對自訂模組新增**警告**：表示自訂模組**不包含在資料庫備份**中。
+- 調整自訂模組 UI：移除了 **「顯示於 Activity Rail」**相關選項。
+
+## 新增
+- 將 **TiddlyWiki** 以 KKTerm 自訂模組形式整合進來（**7d6496f**）。
+- 新增 **OpenFlowKit 主機 AI**整合，包含 AI 設定 UI（**e68be90**）。
+
+## 改進
+- 強化自訂模組權限：
+  - `CustomModuleFilePermission` 新增目錄**讀/寫**權限。
+  - 引入 `CustomModuleHostIntegrationPermission`，並擴充權限命名（**d0daa18**）。
+- 更新 **Bentopdf** 到 **2.8.9**：改善檔案處理，並新增對 `https://freetsa.org` 的 `POST` **網路抓取**權限（**986e1ef**）。
+
+## 修正
+- 在 **全量備份匯入**期間新增**警告**：說明 **Custom Modules 不包含在資料庫備份**中（**b9c3cce**）。
+
+## Internal
+- 改善 macOS/Windows 上自訂模組視窗（webview）管理，處理執行緒使用與避免死結（**ebd19a2**）。
+- 移除/重整部分自訂模組 rail 可見性相關邏輯，並更新相關設定標籤與測試（**036933a**）。
+- 清理：移除產生的視覺素材（**f535645**）與忽略產生的套件輸出（**98a1cf1**）。
+- 測試/介面重構與測試框架更新（例如 Activity Rail 測試簡化 **881bd9c**、rail 排序拖放工作 **abc099a**）。
+
+## Direct Downloads
 * 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.146/kkterm-0.1.146-windows-x64-setup.exe)
 * 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.146/kkterm-0.1.146-windows-arm64-setup.exe)
 * 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.146/kkterm-0.1.146-windows-x64-portable.zip)
