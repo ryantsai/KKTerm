@@ -146,6 +146,25 @@ npm run publish:custom-module -- `
 Renewal preserves entries, increments the sequence, and creates a new bounded
 validity window. Set an operational reminder well before the 30-day default.
 
+## Remove a Module
+
+Withdraw a Module from discovery by publishing a newly signed catalog that
+omits its id:
+
+```powershell
+npm run publish:custom-module -- `
+  -RemoveId com.example.module `
+  -Bucket kkterm-custom-modules `
+  -BaseUrl https://modules.example.com `
+  -SigningKeyPath C:\secure\kkmod-prod.private.pem
+```
+
+Use `-DryRun` first. Removal preserves immutable package objects, increments the
+catalog sequence, renews the bounded validity window, uploads the catalog last,
+and verifies the published signed payload. It does not uninstall a Module that
+a user already installed. Ensure the bundled baseline also omits the withdrawn
+id; otherwise an offline client can continue discovering the baseline entry.
+
 ## Client refresh and recovery
 
 - Settings loads the bundled baseline plus the last unexpired verified cache,

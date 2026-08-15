@@ -13,6 +13,7 @@ param(
     [string]$WriteBaseline,
     [switch]$DryRun,
     [switch]$RenewOnly,
+    [string]$RemoveId,
     [switch]$SkipPackageUpload,
     [switch]$UnencryptedSigningKey
 )
@@ -26,7 +27,11 @@ else {
     Join-Path $RepositoryRoot ".agents\skills\develop-kkmod-modules\scripts\kkmod_tool.py"
 }
 $ResolvedSigningKey = (Resolve-Path -LiteralPath $SigningKeyPath).Path
-if (-not $RenewOnly) {
+$OperationCount = @($RenewOnly.IsPresent, [bool]$RemoveId, [bool]$Package).Where({ $_ }).Count
+if ($OperationCount -ne 1) {
+    throw "Choose exactly one of -Package, -RenewOnly, or -RemoveId."
+}
+if (-not $RenewOnly -and -not $RemoveId) {
     if (-not $Package) {
         throw "-Package is required unless -RenewOnly is used."
     }
@@ -61,6 +66,9 @@ $Arguments = @(
 if ($RenewOnly) {
     $Arguments += "--renew-only"
 }
+elseif ($RemoveId) {
+    $Arguments += @("--remove-id", $RemoveId)
+}
 else {
     $Arguments += @("--package", $ResolvedPackage)
 }
@@ -68,6 +76,9 @@ if ($DryRun) {
     $Arguments += "--dry-run"
 }
 if ($SkipPackageUpload) {
+    if ($RenewOnly -or $RemoveId) {
+        throw "-SkipPackageUpload applies only when publishing a package."
+    }
     $Arguments += "--skip-package-upload"
 }
 if ($WriteBaseline) {

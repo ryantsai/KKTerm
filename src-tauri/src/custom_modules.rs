@@ -2700,26 +2700,37 @@ fn initialization_script(
               throw error;
             }}
           }};
-          document.addEventListener('click', (event) => {{
-            if (event.defaultPrevented || event.button !== 0) return;
-            const target = event.target;
-            const anchor = target instanceof Element ? target.closest('a[download]') : null;
-            if (!(anchor instanceof HTMLAnchorElement) || !anchor.matches('a[download]')) return;
+          const interceptBrowserDownload = (anchor) => {{
             const url = browserDownloadUrl(anchor);
-            if (!url) return;
-            event.preventDefault();
-            event.stopImmediatePropagation();
+            if (!url) return false;
             if (!filesSaveAllowed) {{
               dispatchFileError('kktermDownloadError', new KKTermError(
                 'permission_denied', 'This Custom Module is not allowed to save files.'
               ));
-              return;
+              return true;
             }}
             const controller = new AbortController();
             const responsePromise = fetch(url.href, {{ signal: controller.signal }});
             void saveBrowserDownload(anchor, url, responsePromise, controller).catch((error) => {{
               dispatchFileError('kktermDownloadError', error);
             }});
+            return true;
+          }};
+          const nativeAnchorClick = HTMLAnchorElement.prototype.click;
+          if (typeof nativeAnchorClick === 'function') {{
+            replace(HTMLAnchorElement.prototype, 'click', function() {{
+              if (this.matches('a[download]') && interceptBrowserDownload(this)) return;
+              return nativeAnchorClick.call(this);
+            }});
+          }}
+          document.addEventListener('click', (event) => {{
+            if (event.defaultPrevented || event.button !== 0) return;
+            const target = event.target;
+            const anchor = target instanceof Element ? target.closest('a[download]') : null;
+            if (!(anchor instanceof HTMLAnchorElement) || !anchor.matches('a[download]')) return;
+            if (!interceptBrowserDownload(anchor)) return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
           }}, true);
           const externalUrl = (value) => {{
             try {{

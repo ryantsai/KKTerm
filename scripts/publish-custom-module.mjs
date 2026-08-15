@@ -29,7 +29,12 @@ function fail(message) {
 }
 
 function parseArguments(argv) {
-  const options = { catalogPath: "catalog/v2/catalog.json", expiresDays: 30, dryRun: false, renewOnly: false };
+  const options = {
+    catalogPath: "catalog/v2/catalog.json",
+    expiresDays: 30,
+    dryRun: false,
+    renewOnly: false,
+  };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (["--dry-run", "--renew-only", "--skip-package-upload"].includes(argument)) {
@@ -44,7 +49,13 @@ function parseArguments(argv) {
   for (const required of ["bucket", "baseUrl", "privateKey"]) {
     if (!options[required]) fail(`Missing required --${required.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}`);
   }
-  if (!options.renewOnly && !options.package) fail("Missing required --package");
+  const operationCount = Number(options.renewOnly) + Number(Boolean(options.removeId)) + Number(Boolean(options.package));
+  if (operationCount !== 1) {
+    fail("Choose exactly one of --package, --renew-only, or --remove-id");
+  }
+  if (options.removeId && !moduleIdPattern.test(options.removeId)) {
+    fail("--remove-id must be a valid Custom Module id");
+  }
   options.expiresDays = Number(options.expiresDays);
   if (!Number.isInteger(options.expiresDays) || options.expiresDays < 1 || options.expiresDays > 45) {
     fail("--expires-days must be an integer from 1 through 45");
@@ -295,6 +306,22 @@ function buildRenewal(current, key, expiresDays, now = new Date()) {
   return { payload, envelope: createEnvelope(payload, key) };
 }
 
+function buildRemoval(current, moduleId, key, expiresDays, now = new Date()) {
+  if (current.sequence < 1) fail("Cannot remove a Module from an unpublished catalog");
+  if (!moduleIdPattern.test(moduleId)) fail("The removal id is invalid");
+  if (!current.modules.some((entry) => entry.id === moduleId)) {
+    fail(`The current catalog does not contain ${moduleId}`);
+  }
+  const payload = {
+    schemaVersion: 2,
+    sequence: current.sequence + 1,
+    generatedAt: now.toISOString(),
+    expiresAt: new Date(now.getTime() + expiresDays * 86_400_000).toISOString(),
+    modules: current.modules.filter((entry) => entry.id !== moduleId),
+  };
+  return { payload, envelope: createEnvelope(payload, key) };
+}
+
 async function runWrangler(args) {
   await new Promise((resolvePromise, rejectPromise) => {
     const child = spawn(process.execPath, [wranglerCli, ...args], {
@@ -331,6 +358,8 @@ async function main(argv) {
   let release;
   if (options.renewOnly) {
     release = buildRenewal(current, key, options.expiresDays);
+  } else if (options.removeId) {
+    release = buildRemoval(current, options.removeId, key, options.expiresDays);
   } else {
     packagePath = resolve(options.package);
     if (!packagePath.toLowerCase().endsWith(".kkmod")) fail("--package must point to a .kkmod file");
@@ -340,7 +369,8 @@ async function main(argv) {
   }
 
   console.log(JSON.stringify({
-    mode: options.renewOnly ? "renew" : "publish",
+    mode: options.renewOnly ? "renew" : options.removeId ? "remove" : "publish",
+    removedId: options.removeId,
     package: packagePath ? basename(packagePath) : undefined,
     id: manifest?.id,
     version: manifest?.version,
@@ -359,7 +389,7 @@ async function main(argv) {
   const catalogFile = resolve(temporaryDirectory, "catalog.json");
   try {
     await writeFile(catalogFile, `${JSON.stringify(release.envelope, null, 2)}\n`, "utf8");
-    if (!options.renewOnly) {
+    if (!options.renewOnly && !options.removeId) {
       if (!options.skipPackageUpload) {
         await runWrangler([
           "r2", "object", "put", `${options.bucket}/${release.objectKey}`,
@@ -393,13 +423,16 @@ async function main(argv) {
     }
     console.log(options.renewOnly
       ? `Renewed catalog at sequence ${release.payload.sequence}.`
-      : `Published ${manifest.id}@${manifest.version} and catalog sequence ${release.payload.sequence}.`);
+      : options.removeId
+        ? `Removed ${options.removeId} and published catalog sequence ${release.payload.sequence}.`
+        : `Published ${manifest.id}@${manifest.version} and catalog sequence ${release.payload.sequence}.`);
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
   }
 }
 
 export {
+  buildRemoval,
   buildRelease,
   buildRenewal,
   compareVersions,

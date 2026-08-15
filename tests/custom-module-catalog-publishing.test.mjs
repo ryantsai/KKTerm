@@ -3,6 +3,7 @@ import { generateKeyPairSync } from "node:crypto";
 import test from "node:test";
 import { zipSync } from "fflate";
 import {
+  buildRemoval,
   buildRelease,
   buildRenewal,
   createEnvelope,
@@ -22,6 +23,18 @@ test("publisher can skip an externally completed package upload", () => {
     "--skip-package-upload",
   ]);
   assert.equal(options.skipPackageUpload, true);
+});
+
+test("publisher accepts a catalog-only removal operation", () => {
+  const options = parseArguments([
+    "--bucket", "modules",
+    "--base-url", "https://modules.example.test",
+    "--private-key", "private.pem",
+    "--remove-id", "com.kkterm.tiddlywiki",
+  ]);
+
+  assert.equal(options.removeId, "com.kkterm.tiddlywiki");
+  assert.equal(options.package, undefined);
 });
 
 function signingKey() {
@@ -145,6 +158,30 @@ test("catalog renewal advances sequence without changing package entries", () =>
   assert.deepEqual(renewal.payload.modules, current.modules);
   assert.equal(renewal.payload.expiresAt, "2026-09-12T00:00:00.000Z");
   assert.deepEqual(verifyEnvelope(renewal.envelope, key), renewal.payload);
+});
+
+test("catalog removal advances sequence and removes only the selected Module", () => {
+  const key = signingKey();
+  const current = {
+    schemaVersion: 2,
+    sequence: 7,
+    modules: [
+      { id: "com.kkterm.keep", version: "1.0.0" },
+      { id: "com.kkterm.tiddlywiki", version: "5.4.1" },
+    ],
+  };
+  const removal = buildRemoval(
+    current,
+    "com.kkterm.tiddlywiki",
+    key,
+    30,
+    new Date("2026-08-15T00:00:00.000Z"),
+  );
+
+  assert.equal(removal.payload.sequence, 8);
+  assert.deepEqual(removal.payload.modules, [current.modules[0]]);
+  assert.equal(removal.payload.expiresAt, "2026-09-14T00:00:00.000Z");
+  assert.deepEqual(verifyEnvelope(removal.envelope, key), removal.payload);
 });
 
 test("publisher rejects catalog entries without a valid package signature", () => {

@@ -79,6 +79,10 @@ function copyTree(from, to) {
 }
 copyTree(buildDir, distDir);
 fs.copyFileSync(path.join(moduleRoot, "public", "icon.svg"), path.join(distDir, "icon.svg"));
+fs.copyFileSync(
+  path.join(moduleRoot, "src", "kkterm-runtime.js"),
+  path.join(distDir, "kkterm-runtime.js"),
+);
 
 // --- Rewrite JS: "/c/x" -> "/dist/c/x" -------------------------------------
 
@@ -92,7 +96,7 @@ function rewriteJs(dir) {
     }
     if (!entry.name.endsWith(".js")) continue;
     const before = fs.readFileSync(full, "utf8");
-    const after = before.replaceAll("/c/", "/dist/c/");
+    const after = before.replaceAll(/(?<!\/dist)\/c\//g, "/dist/c/");
     if (before !== after) {
       jsRewrites += before.split("/c/").length - 1;
       fs.writeFileSync(full, after, "utf8");
@@ -131,6 +135,13 @@ html = html.replace(inlineScript, (match, attrs, body) => {
   return `<script src="./${name}"${kept ? " " + kept : ""}></script>`;
 });
 
+// Signal host readiness independently from Squoosh's upstream bundle. Insert
+// the adapter after externalising the upstream application script so this also
+// works from a pristine build. Removing an existing tag keeps rebuilds safe.
+const runtimeTag = '<script src="./kkterm-runtime.js"></script>';
+html = html.replaceAll(runtimeTag, "");
+html = html.replace(/<script src="\.\/inline-/, `${runtimeTag}<script src="./inline-`);
+
 fs.writeFileSync(indexPath, html, "utf8");
 
 // --- Verify ----------------------------------------------------------------
@@ -152,6 +163,9 @@ for (const [, ref] of finalHtml.matchAll(/(?:\bsrc|\bdata|\bposter|<(?:link|base
 }
 if (/(?:^|[^.])\/c\//.test(finalHtml)) {
   problems.push("root-absolute /c/ reference survived in HTML");
+}
+if (!finalHtml.includes(`${runtimeTag}<script src="./inline-`)) {
+  problems.push("KKTerm runtime adapter is missing or loads after the Squoosh application");
 }
 
 // Every rewritten JS target must actually exist on disk.

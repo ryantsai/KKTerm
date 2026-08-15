@@ -220,8 +220,9 @@ only `File` objects, never host paths.
 
 Clicks on `<a download>` for `blob:`, `data:`, or same-package URLs are streamed
 through `files.beginSave`/`write`/`commit`, so existing browser applications can
-retain their local export helpers. The save picker is still required, chunks
-remain bounded to 1 MiB, cancellation is non-destructive, and the manifest's
+retain their local export helpers. This includes detached anchors created by an
+application and activated through their `click()` method. The save picker is
+still required, chunks remain bounded to 1 MiB, cancellation is non-destructive, and the manifest's
 save/extension policy still applies. Cross-origin download URLs are never
 adapted. The native WebView downloader is denied as a backstop so it cannot
 bypass `files.save`; adapters must use `network.fetch` for a granted remote

@@ -1,7 +1,7 @@
 {
   "id": "com.kkterm.squoosh",
   "name": "Squoosh",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "publisher": "KKTerm",
   "summary": "An unofficial self-contained Squoosh image compressor for KKTerm API v2. All encoding runs locally in WebAssembly.",
   "apiVersion": 2,

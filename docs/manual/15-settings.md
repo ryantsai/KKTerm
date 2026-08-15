@@ -262,8 +262,9 @@ toggle list while their persisted backend settings remain enabled.
   operation rejects.
 - Browser file inputs and file drops work only when the installed package has
   the filtered `files.open` grant; selected names must match its declared
-  extensions. Local Blob/data/package exports triggered through a normal
-  browser download use the app-owned save picker and the `files.save` grant.
+  extensions. Local Blob/data/package exports triggered through a browser
+  download—including application-created download links activated directly—use
+  the app-owned save picker and the `files.save` grant.
   Remote download URLs cannot bypass the package's `networkFetch` permission,
   and cancelling the save picker leaves no partial destination file.
 - Grep hints: `settings.customModules`, `settings.customModulesInstallFile`,

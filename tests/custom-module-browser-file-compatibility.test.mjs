@@ -7,6 +7,9 @@ const backendUrl = new URL("../src-tauri/src/custom_modules.rs", import.meta.url
 test("Custom Module browser downloads use the permission-bound save bridge", async () => {
   const backend = await readFile(backendUrl, "utf8");
 
+  assert.match(backend, /const nativeAnchorClick = HTMLAnchorElement\.prototype\.click/);
+  assert.match(backend, /replace\(HTMLAnchorElement\.prototype, 'click'/);
+  assert.match(backend, /interceptBrowserDownload\(this\)/);
   assert.match(backend, /anchor\.matches\('a\[download\]'/);
   assert.match(backend, /url\.protocol === 'data:'/);
   assert.match(backend, /url\.protocol === 'blob:'/);

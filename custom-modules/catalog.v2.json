@@ -73,22 +73,41 @@
     {
       "id": "com.kkterm.excalidraw",
       "name": "Excalidraw",
-      "version": "2.0.0",
+      "version": "2.0.1",
       "publisher": "KKTerm",
       "summary": "An unofficial offline Excalidraw integration for KKTerm.",
       "apiVersion": 2,
-      "downloadUrl": "https://modules.kkterm.ryantsai.com/packages/sha256/ef5b3f7810cf969ae9f0fb11913d9f93b31c37ba931ea32c15d516295ecd02a6.kkmod",
-      "sha256": "ef5b3f7810cf969ae9f0fb11913d9f93b31c37ba931ea32c15d516295ecd02a6",
-      "signature": "0W2LGXuaagtS/wZ4wRQcDs9pU1EnxyEBHZ/xWsZkYLcNjwSsh+lVpEkgB5XiFy2ACZT/co4h94pxJcjom7/iDg==",
+      "downloadUrl": "https://modules.kkterm.ryantsai.com/packages/sha256/503a629e82cfad0340c58ff5ece0ab48c5eb95c8b34296747b5e7cff45d214f2.kkmod",
+      "sha256": "503a629e82cfad0340c58ff5ece0ab48c5eb95c8b34296747b5e7cff45d214f2",
+      "signature": "bd9SDcO5eHxgJnYoKaU3QzdoTULy1bLaj1bJgAm6oR2boFMJvD9tVEnRnnYxJC18LHrO2PrZA2nbf6VG/32LCQ==",
       "license": "MIT",
       "permissions": {
         "documentStorage": true,
         "browserStorage": true,
         "openExternal": true,
         "clipboard": true,
-        "hostUi": true
+        "hostUi": true,
+        "files": {
+          "open": true,
+          "save": true,
+          "extensions": [
+            "excalidraw",
+            "excalidrawlib",
+            "json",
+            "png",
+            "svg",
+            "jpg",
+            "jpeg",
+            "gif",
+            "webp",
+            "bmp",
+            "ico",
+            "avif",
+            "jfif"
+          ]
+        }
       },
-      "downloadSize": 20368606
+      "downloadSize": 20368679
     }
   ]
 }

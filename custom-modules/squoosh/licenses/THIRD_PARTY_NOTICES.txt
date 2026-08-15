@@ -65,6 +65,9 @@ Copyright (c) 2026 KKTerm
       work and does not reproduce the Squoosh logo or mascot, which are project
       marks not covered by the Apache-2.0 code license.
 
+  - dist/kkterm-runtime.js
+      Host lifecycle and readiness adapter authored for KKTerm API v2.
+
 
 -------------------------------------------------------------------------------
 4. Modifications made for this package
@@ -111,6 +114,13 @@ The following changes were made to upstream Squoosh when building this package:
 
      The Module CSP is "script-src 'self' 'wasm-unsafe-eval'" with no
      'unsafe-inline'.
+
+  f) KKTerm lifecycle and readiness adapter added.
+
+     A packaged same-origin script reads the current host context, subscribes
+     to lifecycle events, and signals `window.KKTerm.ready()` after the usable
+     Squoosh UI has mounted. This prevents the host's 15-second startup timeout
+     from hiding an otherwise functional editor.
 
 
 -------------------------------------------------------------------------------
