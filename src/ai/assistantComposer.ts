@@ -4,6 +4,7 @@
 // Extracted verbatim from AssistantPanel.tsx; behavior must not change.
 import type { useTranslation } from "react-i18next";
 import i18next from "../i18n/config";
+import { isMacPlatform } from "../lib/platform";
 import type { AiStreamEvent } from "../lib/tauri";
 import { aiProviderSecretOwnerId } from "../lib/settings";
 import { resolveCreateWidgetFollowupPrompt } from "./widgetFollowupPrompt";
@@ -21,6 +22,38 @@ import type {
 export const ASSISTANT_IMAGE_MAX_EDGE = 1280;
 export const ASSISTANT_IMAGE_JPEG_QUALITY = 0.72;
 export const ASSISTANT_FILE_MAX_BYTES = 10 * 1024 * 1024;
+export const ASSISTANT_COMPOSER_MAC_IME_ENTER_GRACE_MS = 100;
+
+type AssistantComposerKeyboardEvent = Pick<
+  KeyboardEvent,
+  "isComposing" | "key" | "keyCode"
+>;
+
+/**
+ * Keep IME candidate confirmation inside the composer. macOS WebKit can emit
+ * compositionend before the Enter keydown that committed the candidate, so a
+ * short post-composition grace period covers that reversed event order.
+ */
+export function shouldSuppressAssistantComposerEnter(
+  event: AssistantComposerKeyboardEvent,
+  compositionActive = false,
+  compositionEndedAt = 0,
+  now = Date.now(),
+  isMac = isMacPlatform(),
+) {
+  if (event.key !== "Enter") {
+    return false;
+  }
+
+  const timeSinceCompositionEnd = now - compositionEndedAt;
+  const followsMacCompositionEnd =
+    isMac &&
+    compositionEndedAt > 0 &&
+    timeSinceCompositionEnd >= 0 &&
+    timeSinceCompositionEnd < ASSISTANT_COMPOSER_MAC_IME_ENTER_GRACE_MS;
+
+  return compositionActive || event.isComposing || event.keyCode === 229 || followsMacCompositionEnd;
+}
 
 export function resolveAssistantOutputLanguage(outputLanguage: string): string | undefined {
   if (!outputLanguage) {

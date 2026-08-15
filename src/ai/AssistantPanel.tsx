@@ -132,6 +132,7 @@ import {
   readImageFileAsDataUrl,
   resolveAssistantOutputLanguage,
   sampleRandom,
+  shouldSuppressAssistantComposerEnter,
 } from "./assistantComposer";
 
 type AssistantQueuedPrompt = {
@@ -240,6 +241,9 @@ export function AssistantPanel({
   const activeLanguage = i18n.resolvedLanguage ?? i18n.language;
   const [refreshedModelOptions, setRefreshedModelOptions] = useState<AiProviderModelOption[]>([]);
   const composerTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const composerImeActiveRef = useRef(false);
+  const composerImeEnterHandledRef = useRef(false);
+  const composerImeEndedAtRef = useRef(0);
   const chatLogRef = useRef<HTMLDivElement | null>(null);
   const messagesRef = useRef<AssistantChatMessage[]>([]);
   const assistantPromptQueueRef = useRef<AssistantQueuedPrompt[]>([]);
@@ -1557,6 +1561,27 @@ export function AssistantPanel({
 
   function handleComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key !== "Enter") {
+      if (!composerImeActiveRef.current) {
+        composerImeEndedAtRef.current = 0;
+      }
+      return;
+    }
+
+    if (
+      shouldSuppressAssistantComposerEnter(
+        event.nativeEvent,
+        composerImeActiveRef.current,
+        composerImeEndedAtRef.current,
+      )
+    ) {
+      if (
+        composerImeActiveRef.current ||
+        event.nativeEvent.isComposing ||
+        event.nativeEvent.keyCode === 229
+      ) {
+        composerImeEnterHandledRef.current = true;
+      }
+      composerImeEndedAtRef.current = 0;
       return;
     }
 
@@ -1580,6 +1605,18 @@ export function AssistantPanel({
 
     event.preventDefault();
     void submitAssistantPrompt();
+  }
+
+  function handleComposerCompositionStart() {
+    composerImeActiveRef.current = true;
+    composerImeEnterHandledRef.current = false;
+    composerImeEndedAtRef.current = 0;
+  }
+
+  function handleComposerCompositionEnd() {
+    composerImeActiveRef.current = false;
+    composerImeEndedAtRef.current = composerImeEnterHandledRef.current ? 0 : Date.now();
+    composerImeEnterHandledRef.current = false;
   }
 
   async function handleComposerPaste(event: ClipboardEvent<HTMLTextAreaElement>) {
@@ -2329,6 +2366,8 @@ export function AssistantPanel({
         ) : null}
         <textarea
           ref={composerTextareaRef}
+          onCompositionEnd={handleComposerCompositionEnd}
+          onCompositionStart={handleComposerCompositionStart}
           onKeyDown={handleComposerKeyDown}
           onPaste={(event) => void handleComposerPaste(event)}
           onContextMenu={(event) => void handleComposerContextMenu(event)}
