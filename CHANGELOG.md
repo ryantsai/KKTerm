@@ -3,6 +3,48 @@
 All notable changes to KKTerm are documented here.
 
 ## Direct Downloads
+* 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.148/kkterm-0.1.148-windows-x64-setup.exe)
+* 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.148/kkterm-0.1.148-windows-arm64-setup.exe)
+* 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.148/kkterm-0.1.148-windows-x64-portable.zip)
+* 📦 [Portable for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.148/kkterm-0.1.148-windows-arm64-portable.zip)
+
+## Highlights
+- Custom module tooling updates to align with host readiness (so your Session has something to work with when it starts—no “where is the file?” mysteries).
+
+## New
+- Updated custom modules to **v2.0.1** (including Excalidraw and Squoosh).
+
+## Improved
+- Enhanced custom module packaging/permissions and runtime readiness handling for host startup.
+
+## Fixed
+
+## Internal
+- Updated custom module build/publishing inputs and related host API documentation (e.g., `KKMOD_HOST_API_V2` docs and custom module packaging docs).
+- Added/updated tests for custom module browser file compatibility, catalog publishing, and runtime behavior.  
+
+**Full Changelog:** https://github.com/ryantsai/KKTerm/compare/v0.1.147...v0.1.148
+
+---
+
+## 精選重點
+- 更新自訂模組工具流程以符合主機啟用就緒狀態（讓你的 Session 在啟動時就能找到該有的東西——不用再遇到「檔案呢？」的網路/終端機式疑案）。
+
+## 新增
+- 將自訂模組更新到 **v2.0.1**（包含 Excalidraw 與 Squoosh）。
+
+## 改進
+- 強化自訂模組的封裝/權限設定，並改善主機啟動階段的就緒處理。
+
+## 修正
+
+## 內部
+- 更新自訂模組的建置/發佈相關輸入與文件（例如 `KKMOD_HOST_API_V2` 與自訂模組封裝說明）。
+- 更新/新增測試：自訂模組瀏覽器檔案相容性、目錄發佈，以及執行期行為等。  
+
+**完整變更記錄：** https://github.com/ryantsai/KKTerm/compare/v0.1.147...v0.1.148
+
+## Direct Downloads
 * 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.147/kkterm-0.1.147-windows-x64-setup.exe)
 * 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.147/kkterm-0.1.147-windows-arm64-setup.exe)
 * 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.147/kkterm-0.1.147-windows-x64-portable.zip)
