@@ -3,6 +3,52 @@
 All notable changes to KKTerm are documented here.
 
 ## Direct Downloads
+* 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.149/kkterm-0.1.149-windows-x64-setup.exe)
+* 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.149/kkterm-0.1.149-windows-arm64-setup.exe)
+* 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.149/kkterm-0.1.149-windows-x64-portable.zip)
+* 📦 [Portable for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.149/kkterm-0.1.149-windows-arm64-portable.zip)
+
+## v0.1.149 Release Notes
+
+### Highlights
+- Fixes Custom Module saving flow issues related to Squoosh asset URLs (no more “my custom module vanished into the void” moments).
+- Improves IME behavior in the AI assistant composer to avoid premature message submission—your input stays yours.
+
+### New
+- Enhanced IME handling in the assistant composer to prevent premature submission.
+
+### Improved
+- Custom Module save bridge now correctly reads Squoosh-related assets and URLs.
+
+### Fixed
+- Custom Module save bridge reads correctly (including Squoosh asset URLs) after saving.
+- IME input in the assistant composer no longer submits early while composing.
+
+### Internal
+- Bumped Squoosh to **2.0.2** as part of the Custom Module asset/URL fix.
+
+---
+
+## v0.1.149 發行說明（繁體中文 - 台灣）
+
+### 重點（Highlights）
+- 修正自訂模組（Custom Module）儲存流程中與 Squoosh 資產 URL 相關的問題（不再出現「我的自訂模組消失在黑洞裡」的情境）。
+- 改善 AI 助理輸入框的 IME 行為，避免訊息過早送出——你的輸入不會被系統搶走。  
+
+### 新增（New）
+- 增強助理編輯器（assistant composer）的 IME 處理，避免過早提交。
+
+### 改善（Improved）
+- 自訂模組儲存橋接（save bridge）會正確讀取與 Squoosh 相關的資產與 URL。
+
+### 修正（Fixed）
+- 自訂模組儲存橋接可正確讀取（包含 Squoosh 資產 URL）儲存後的內容。
+- 助理編輯器中的 IME 輸入不再在組字/輸入過程中提早送出。
+
+### 內部（Internal）
+- 為配合自訂模組的資產/URL 修正，將 **Squoosh** 更新至 **2.0.2**。
+
+## Direct Downloads
 * 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.148/kkterm-0.1.148-windows-x64-setup.exe)
 * 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.148/kkterm-0.1.148-windows-arm64-setup.exe)
 * 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v0.1.148/kkterm-0.1.148-windows-x64-portable.zip)
