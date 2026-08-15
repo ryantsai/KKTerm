@@ -4902,6 +4902,8 @@
     "noActiveSession": "无活动会话",
     "workspace": "工作区",
     "settingsContextLabel": "当前设置页面",
+    "customModuleContextLabel": "自定义模块页面上下文",
+    "customModuleContextIntro": "用户正在查看此自定义模块。请使用下面的模块元数据作为页面上下文。",
     "skillInvoked": "正在使用技能：{{skills}}",
     "extensionDraft": "扩展功能草稿",
     "extensionReviewOnly": "仅供审查；未经明确批准不得安装或执行。",

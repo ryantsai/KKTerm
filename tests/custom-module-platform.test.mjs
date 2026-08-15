@@ -241,7 +241,7 @@ test("Custom Module bounds updates cannot reshow an overlay hidden for Settings"
   assert.ok(visibilityCommand, "the Custom Module visibility command should remain discoverable");
   assert.match(
     boundsCommand,
-    /if state\.visible\s*\{[\s\S]*set_overlay_bounds/,
+    /if state\.visible(?: && !main_window_suppresses_overlay\(session\))?\s*\{[\s\S]*set_overlay_bounds/,
     "bounds updates should reposition only a currently visible native WebView",
   );
   assert.match(

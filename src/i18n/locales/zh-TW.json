@@ -4902,6 +4902,8 @@
     "noActiveSession": "無使用中的工作階段",
     "workspace": "工作區",
     "settingsContextLabel": "目前的設定頁面",
+    "customModuleContextLabel": "自訂模組頁面內容",
+    "customModuleContextIntro": "使用者正在檢視此自訂模組。請使用下列模組中繼資料作為頁面內容。",
     "skillInvoked": "正在使用技能：{{skills}}",
     "extensionDraft": "擴充功能草稿",
     "extensionReviewOnly": "僅供審查；未經明確核准不得安裝或執行。",

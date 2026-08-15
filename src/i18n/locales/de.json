@@ -4902,6 +4902,8 @@
     "noActiveSession": "Keine aktive Sitzung",
     "workspace": "Arbeitsbereich",
     "settingsContextLabel": "Aktuelle Einstellungsseite",
+    "customModuleContextLabel": "Kontext der Seite „Benutzerdefiniertes Modul“",
+    "customModuleContextIntro": "Der Benutzer betrachtet dieses benutzerdefinierte Modul. Verwenden Sie die unten stehenden Modul-Metadaten als Seitenkontext.",
     "skillInvoked": "Verwendeter Skill: {{skills}}",
     "extensionDraft": "Erweiterungsentwurf",
     "extensionReviewOnly": "Nur Überprüfung; keine Installation oder Ausführung ohne ausdrückliche Genehmigung.",

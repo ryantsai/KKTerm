@@ -4902,6 +4902,8 @@
     "noActiveSession": "No active session",
     "workspace": "Workspace",
     "settingsContextLabel": "Current Settings page",
+    "customModuleContextLabel": "Custom Module page context",
+    "customModuleContextIntro": "The user is viewing this Custom Module. Use the module metadata below as page context.",
     "skillInvoked": "Using skill: {{skills}}",
     "extensionDraft": "Extension draft",
     "extensionReviewOnly": "Review-only; no install or run without explicit approval.",

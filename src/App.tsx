@@ -75,7 +75,10 @@ import { StatusBar } from "./modules/workspace/StatusBar";
 import { TabStrip, WorkspaceCanvas } from "./modules/workspace/WorkspaceCanvas";
 import { CustomModuleHost } from "./modules/custom-modules/CustomModuleHost";
 import { CustomModuleSecretPrompt } from "./modules/custom-modules/CustomModuleSecretPrompt";
-import type { CustomModuleDestination } from "./modules/custom-modules/types";
+import type {
+  CustomModuleDestination,
+  InstalledCustomModule,
+} from "./modules/custom-modules/types";
 import {
   customModuleDestinationKey,
   customModuleDestinations as deriveCustomModuleDestinations,
@@ -484,7 +487,88 @@ function App() {
     if (activePage === "itops") {
       return itOpsAssistantContext;
     }
+    if (activePage === "customModule" && activeCustomModule) {
+      return customModuleAssistantContext(
+        activeCustomModule,
+        installedCustomModules,
+        t,
+      );
+    }
     return undefined;
+  }
+
+  function customModuleAssistantContext(
+    destination: CustomModuleDestination,
+    installedModules: InstalledCustomModule[],
+    t: (key: string) => string,
+  ) {
+    const installed = installedModules.find(
+      (module) => module.id === destination.moduleId,
+    );
+    if (!installed) {
+      return undefined;
+    }
+    const contribution = installed.modules.find(
+      (entry) => entry.id === destination.contributionId,
+    );
+    const permissions = installed.permissions;
+    const granted = [
+      permissions.storage ? "storage" : null,
+      permissions.documentStorage ? "documentStorage" : null,
+      permissions.blobStorage ? "blobStorage" : null,
+      permissions.browserStorage ? "browserStorage" : null,
+      permissions.openExternal ? "openExternal" : null,
+      permissions.clipboard ? "clipboard" : null,
+      permissions.secretReferences ? "secretReferences" : null,
+      permissions.hostUi ? "hostUi" : null,
+      permissions.hostAi ? "hostAi" : null,
+      permissions.files
+        ? `files(open:${permissions.files.open}, save:${permissions.files.save}, directoryRead:${permissions.files.directoryRead}, directoryWrite:${permissions.files.directoryWrite}, extensions:${permissions.files.extensions.join(",") || "none"})`
+        : null,
+      permissions.networkFetch
+        ? `networkFetch(origins:${permissions.networkFetch.origins.join(",") || "none"}, allowPrivateNetwork:${permissions.networkFetch.allowPrivateNetwork})`
+        : null,
+      permissions.hostIntegration
+        ? `hostIntegration(openPath:${permissions.hostIntegration.openPath}, revealPath:${permissions.hostIntegration.revealPath}, share:${permissions.hostIntegration.share}, print:${permissions.hostIntegration.print})`
+        : null,
+    ].filter((entry): entry is string => entry !== null);
+    return {
+      contextKind: "customModule" as const,
+      contextLabel: `${installed.name} - ${contribution?.title ?? destination.title}`,
+      connectionLabel: t("ai.customModuleContextLabel"),
+      sourceLabel: destination.title,
+      text: [
+        t("ai.customModuleContextIntro"),
+        "KKTerm Custom Modules are isolated third-party WebView apps installed by the user; they run locally inside their own restricted WebView without a bundled server.",
+        "The user is viewing this module; answer questions about it using the metadata below. You cannot modify the module, read its internal state, or run tools inside it — the module owns its own interface. Only describe capabilities the module actually declares; do not invent permissions it does not have.",
+        granted.length > 0
+          ? `Granted permissions: ${granted.join(", ")}`
+          : "Granted permissions: none",
+        `Module metadata:\n${JSON.stringify(
+          {
+            name: installed.name,
+            version: installed.version,
+            publisher: installed.publisher,
+            summary: installed.summary,
+            apiVersion: installed.apiVersion,
+            source: installed.source,
+            trust: installed.trust,
+            enabled: installed.enabled,
+            health: installed.health,
+            contribution: contribution
+              ? {
+                  id: contribution.id,
+                  title: contribution.title,
+                  entrypoint: contribution.entrypoint,
+                  routing: contribution.routing,
+                }
+              : { id: destination.contributionId, title: destination.title },
+          },
+          null,
+          2,
+        )}`,
+      ].join("\n"),
+    };
   }
 
   function shouldRevealConnectionPanelForTutorial(targetId: string) {

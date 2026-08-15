@@ -4902,6 +4902,8 @@
     "noActiveSession": "ไม่มีเซสชันที่ใช้งานอยู่",
     "workspace": "พื้นที่ทำงาน",
     "settingsContextLabel": "หน้าการตั้งค่าปัจจุบัน",
+    "customModuleContextLabel": "บริบทหน้าของโมดูลที่กำหนดเอง",
+    "customModuleContextIntro": "ผู้ใช้กำลังดูโมดูลที่กำหนดเองนี้ ใช้ข้อมูลเมตาของโมดูลด้านล่างเป็นบริบทของหน้า",
     "skillInvoked": "กำลังใช้สกิล: {{skills}}",
     "extensionDraft": "ร่างส่วนขยาย",
     "extensionReviewOnly": "ตรวจสอบเท่านั้น ห้ามติดตั้งหรือรันโดยไม่ได้รับการอนุมัติอย่างชัดแจ้ง",

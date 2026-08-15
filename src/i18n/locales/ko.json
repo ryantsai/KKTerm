@@ -4902,6 +4902,8 @@
     "noActiveSession": "활성 세션 없음",
     "workspace": "워크스페이스",
     "settingsContextLabel": "현재 설정 페이지",
+    "customModuleContextLabel": "사용자 지정 모듈 페이지 컨텍스트",
+    "customModuleContextIntro": "사용자가 이 사용자 지정 모듈을 보고 있습니다. 아래의 모듈 메타데이터를 페이지 컨텍스트로 사용하세요.",
     "skillInvoked": "사용 중인 스킬: {{skills}}",
     "extensionDraft": "확장 초안",
     "extensionReviewOnly": "검토 전용. 명시적 승인 없이 설치 또는 실행 불가.",

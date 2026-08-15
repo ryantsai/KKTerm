@@ -102,9 +102,9 @@ export function CustomModuleHost({
   }, [destination, pushBounds]);
 
   useEffect(() => {
-    if (!isTauriRuntime()) return;
+    if (!isTauriRuntime() || !destination || !surfaceRef.current) return;
     const resizeObserver = new ResizeObserver(pushBounds);
-    if (surfaceRef.current) resizeObserver.observe(surfaceRef.current);
+    resizeObserver.observe(surfaceRef.current);
     window.addEventListener("resize", pushBounds);
     window.addEventListener("scroll", pushBounds, true);
     const moveUnlisten = listen("tauri://move", pushBounds).catch(() => null);
@@ -116,7 +116,7 @@ export function CustomModuleHost({
       void moveUnlisten.then((dispose) => dispose?.());
       void resizeUnlisten.then((dispose) => dispose?.());
     };
-  }, [pushBounds]);
+  }, [destination, pushBounds]);
 
   useEffect(() => {
     if (!isTauriRuntime()) return;

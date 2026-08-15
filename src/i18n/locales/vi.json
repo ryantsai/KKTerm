@@ -4902,6 +4902,8 @@
     "noActiveSession": "No active session",
     "workspace": "Workspace",
     "settingsContextLabel": "Trang Cài đặt hiện tại",
+    "customModuleContextLabel": "Ngữ cảnh trang của mô-đun tùy chỉnh",
+    "customModuleContextIntro": "Người dùng đang xem Mô-đun tùy chỉnh này. Sử dụng siêu dữ liệu mô-đun bên dưới làm ngữ cảnh trang.",
     "skillInvoked": "Đang dùng kỹ năng: {{skills}}",
     "extensionDraft": "Extension draft",
     "extensionReviewOnly": "Review-only; no install or run without explicit approval.",

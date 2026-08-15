@@ -4902,6 +4902,8 @@
     "noActiveSession": "Nessuna sessione attiva",
     "workspace": "Spazio di lavoro",
     "settingsContextLabel": "Pagina Impostazioni corrente",
+    "customModuleContextLabel": "Contesto della pagina del modulo personalizzato",
+    "customModuleContextIntro": "L'utente sta visualizzando questo modulo personalizzato. Usa i metadati del modulo di seguito come contesto della pagina.",
     "skillInvoked": "Skill in uso: {{skills}}",
     "extensionDraft": "Bozza estensione",
     "extensionReviewOnly": "Solo revisione; nessuna installazione o esecuzione senza approvazione esplicita.",

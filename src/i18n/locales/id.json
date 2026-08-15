@@ -4902,6 +4902,8 @@
     "noActiveSession": "Tidak ada sesi aktif",
     "workspace": "Ruang kerja",
     "settingsContextLabel": "Halaman Pengaturan saat ini",
+    "customModuleContextLabel": "Konteks halaman Modul Kustom",
+    "customModuleContextIntro": "Pengguna sedang melihat Modul Kustom ini. Gunakan metadata modul di bawah ini sebagai konteks halaman.",
     "skillInvoked": "Menggunakan skill: {{skills}}",
     "extensionDraft": "Draf ekstensi",
     "extensionReviewOnly": "Hanya tinjauan; tidak ada instalasi atau jalankan tanpa persetujuan eksplisit.",

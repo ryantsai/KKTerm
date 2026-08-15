@@ -4902,6 +4902,8 @@
     "noActiveSession": "アクティブなセッションはありません",
     "workspace": "ワークスペース",
     "settingsContextLabel": "現在の設定ページ",
+    "customModuleContextLabel": "カスタムモジュールのページコンテキスト",
+    "customModuleContextIntro": "ユーザーはこのカスタムモジュールを表示しています。以下のモジュールメタデータをページコンテキストとして使用してください。",
     "skillInvoked": "使用中のスキル: {{skills}}",
     "extensionDraft": "拡張機能ドラフト",
     "extensionReviewOnly": "確認のみ。明示的な承認なしにインストールや実行はできません。",
