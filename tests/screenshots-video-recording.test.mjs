@@ -9,6 +9,10 @@ const backend = fs.readFileSync("src-tauri/src/video_recording.rs", "utf8");
 const screenshotBackend = fs.readFileSync("src-tauri/src/screenshot.rs", "utf8");
 const controls = fs.readFileSync("src/modules/screenshots/VideoRecordingControlsWindow.tsx", "utf8");
 const controlsStyles = fs.readFileSync("src/modules/screenshots/videoRecordingControls.css", "utf8");
+const dock = fs.readFileSync("src/modules/screenshots/VideoRecordingDock.tsx", "utf8");
+const dockStyles = fs.readFileSync("src/modules/screenshots/videoRecordingDock.css", "utf8");
+const cargoToml = fs.readFileSync("src-tauri/Cargo.toml", "utf8");
+const tauriConf = fs.readFileSync("src-tauri/tauri.conf.json", "utf8");
 const library = fs.readFileSync("src/modules/screenshots/LibraryView.tsx", "utf8");
 const commandRegistry = fs.readFileSync("src-tauri/src/lib.rs", "utf8");
 const storage = fs.readFileSync("src-tauri/src/storage.rs", "utf8");
@@ -79,9 +83,45 @@ test("recording controls are a protected compact overlay anchored to the capture
   assert.doesNotMatch(controls, /<img|previewDataUrl|video-recording-controls__target/);
   assert.doesNotMatch(backend, /preview_data_url/);
   assert.ok(
-    backend.indexOf("drop(active);") < backend.indexOf("show_controls_window(app, recording_target)"),
+    backend.indexOf("drop(active);") < backend.indexOf("show_controls_window(app, target)"),
     "recording state must be unlocked before the controls WebView requests status",
   );
+});
+
+test("the detached recording controls window is excluded from macOS builds", () => {
+  assert.match(backend, /#\[cfg\(not\(target_os = "macos"\)\)\]\s*const CONTROLS_WINDOW_LABEL/);
+  assert.match(backend, /#\[cfg\(not\(target_os = "macos"\)\)\]\s*fn show_controls_window/);
+  assert.match(backend, /#\[cfg\(not\(target_os = "macos"\)\)\]\s*fn close_controls_window/);
+  assert.match(backend, /#\[cfg\(not\(target_os = "macos"\)\)\][\s\S]*?struct RecordingTarget/);
+  assert.match(backend, /#\[cfg\(not\(target_os = "macos"\)\)\]\s*\#\[test\]/);
+});
+
+test("macOS recording controls live in the main window dock", () => {
+  assert.match(dock, /isMacPlatform\(\)/);
+  assert.match(dock, /VIDEO_RECORDING_STARTED_EVENT/);
+  assert.match(dock, /VIDEO_RECORDING_COMPLETED_EVENT/);
+  assert.match(dock, /video_recording_status/);
+  assert.match(dock, /pause_video_recording/);
+  assert.match(dock, /resume_video_recording/);
+  assert.match(dock, /stop_video_recording/);
+  assert.match(dock, /screenshots\.video\.pause|screenshots\.video\.resume|screenshots\.video\.stop/);
+  assert.doesNotMatch(dock, /<img|video-recording-controls/);
+  assert.match(dockStyles, /position:\s*fixed/);
+  assert.match(dockStyles, /backdrop-filter:\s*blur\(16px\)/);
+});
+
+test("recording start broadcasts a started event for the dock", () => {
+  assert.match(backend, /RECORDING_STARTED_EVENT/);
+  const command = commandRegistry.match(
+    /#\[tauri::command\]\s+async fn start_video_recording\([\s\S]*?\n\}/,
+  )?.[0];
+  assert.ok(command, "start_video_recording must be an async Tauri command");
+  assert.match(command, /app\.emit\([\s\S]*?RECORDING_STARTED_EVENT/);
+});
+
+test("the macOS build does not use private APIs", () => {
+  assert.doesNotMatch(cargoToml, /macos-private-api/);
+  assert.doesNotMatch(tauriConf, /macOSPrivateApi/);
 });
 
 test("video recording starts outside the synchronous WebView IPC handler", () => {

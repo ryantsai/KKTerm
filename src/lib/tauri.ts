@@ -873,6 +873,9 @@ export interface CompletedVideoRecording extends VideoRecordingSession {
   durationMs: number;
 }
 
+export const VIDEO_RECORDING_STARTED_EVENT = "kkterm://video-recording-started";
+export const VIDEO_RECORDING_COMPLETED_EVENT = "kkterm://video-recording-completed";
+
 export interface StartWebviewSessionRequest {
   sessionId: string;
   url: string;

@@ -1,0 +1,88 @@
+.video-recording-dock {
+  position: fixed;
+  top: calc(var(--app-titlebar-height) + 12px);
+  left: 50%;
+  z-index: 110;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 4px 4px 12px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-strong) 76%, transparent);
+  border-radius: 10px;
+  box-shadow:
+    0 8px 24px color-mix(in srgb, var(--text) 18%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--chrome-strong) 62%, transparent);
+  backdrop-filter: blur(16px) saturate(1.25);
+  -webkit-backdrop-filter: blur(16px) saturate(1.25);
+  user-select: none;
+}
+
+.video-recording-dock__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--red);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--red) 18%, transparent);
+}
+
+.video-recording-dock__dot.paused {
+  background: var(--amber);
+  box-shadow: none;
+}
+
+.video-recording-dock__actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.video-recording-dock__actions button {
+  display: grid;
+  width: 40px;
+  height: 32px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  color: var(--text);
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease, transform 90ms ease;
+}
+
+.video-recording-dock__actions button:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.video-recording-dock__actions button:active:not(:disabled) {
+  background: var(--press);
+  transform: scale(.94);
+}
+
+.video-recording-dock__actions button:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+.video-recording-dock__actions button.stop {
+  color: var(--red);
+}
+
+.video-recording-dock__actions button.stop:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--red) 12%, transparent);
+}
+
+.video-recording-dock__actions button:disabled {
+  opacity: .42;
+  cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .video-recording-dock__actions button {
+    transition: none;
+  }
+}
