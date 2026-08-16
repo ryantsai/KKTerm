@@ -148,12 +148,23 @@ fn resolve_binary(name: &str) -> Option<(String, &'static str)> {
     if let Some(path) = find_in_dir(&github_release_install_dir(TOOL_ID), &executable, 4) {
         return Some((path.to_string_lossy().into_owned(), "installer"));
     }
-    hide_window(Command::new(name).arg("-version"))
+    let found_on_path = hide_window(Command::new(name).arg("-version"))
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status()
         .ok()
-        .map(|_| (name.to_string(), "path"))
+        .is_some();
+    if found_on_path {
+        return Some((name.to_string(), "path"));
+    }
+    #[cfg(target_os = "macos")]
+    for prefix in [Path::new("/opt/homebrew"), Path::new("/usr/local")] {
+        let candidate = prefix.join("bin").join(&executable);
+        if candidate.is_file() {
+            return Some((candidate.to_string_lossy().into_owned(), "brew"));
+        }
+    }
+    None
 }
 
 fn resolve_ffmpeg() -> Option<(String, &'static str)> {

@@ -14,6 +14,7 @@ const CONNECTION_ICON_COLORS = [
   { name: "teal", color: "#30b0c7" },
   { name: "gray", color: "#8e8e93" },
   { name: "white", color: "#ffffff" },
+  { name: "black", color: "#000000" },
 ];
 
 type IconColorKind = "foreground" | "background";
