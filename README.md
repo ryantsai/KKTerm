@@ -34,7 +34,7 @@
     <img src="https://img.shields.io/github/issues/ryantsai/KKTerm?style=for-the-badge&logo=github&color=2ea043" alt="Open issues" />
   </a>
   <a href="https://github.com/ryantsai/KKTerm/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/ryantsai/KKTerm?style=for-the-badge&color=blue" alt="MIT License" />
+    <img src="https://img.shields.io/badge/license-MIT%20%2B%20Commons%20Clause-blue?style=for-the-badge" alt="MIT License with Commons Clause" />
   </a>
   <a href="https://github.com/sponsors/ryantsai">
     <img src="https://img.shields.io/badge/Sponsor-%E2%9D%A4-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="Sponsor KKTerm on GitHub" />
@@ -271,4 +271,9 @@ Full setup, project layout, and the PR checklist live in [`CONTRIBUTING.md`](CON
 
 ## License
 
-MIT. See [LICENSE](LICENSE). Use it, fork it, ship it, put it in a homelab nobody else can find — that's the deal.
+KKTerm uses different licenses for different parts of the repository:
+
+* **Main project** (`src/`, `src-tauri/src/`, and everything not called out below): MIT with [Commons Clause](https://commonsclause.com/) — see the [LICENSE](LICENSE) file for details. You can use, modify, and self-host it freely; you just can't repackage and sell it (e.g. list it on your own app store page) without our permission. Official paid builds are distributed on the Microsoft Store and Mac App Store; the GitHub release is the free, unrestricted-use build.
+* `src-tauri/vendor/*`: respective original licenses of the vendored Rust crates (mostly MIT) — see each crate's own `LICENSE`/`LICENSE-MIT` file.
+* `custom-modules/*`: respective original licenses of the bundled third-party modules — see each module's own `licenses/` directory.
+* Bundled fonts and icon packs under `src/assets/*`: respective original licenses — see each folder's `LICENSE*` file.

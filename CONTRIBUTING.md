@@ -311,7 +311,7 @@ If a discussion gets heated, step away for an hour. That advice applies to the m
 
 ## License
 
-By contributing, you agree your contributions are licensed under the project's MIT [LICENSE](LICENSE). No CLA, no copyright assignment — your name stays on your commits, the code stays MIT.
+By contributing, you agree your contributions are licensed under the project's [LICENSE](LICENSE) (MIT with Commons Clause). No CLA, no copyright assignment — your name stays on your commits.
 
 ---
 

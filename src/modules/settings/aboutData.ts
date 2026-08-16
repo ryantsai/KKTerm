@@ -6,5 +6,5 @@ export const ABOUT_PRODUCT = {
   developer: "Ryan Tsai",
   repositoryUrl: "https://github.com/ryantsai/KKTerm",
   version: packageManifest.version,
-  license: "MIT",
+  license: "MIT + Commons Clause",
 };
