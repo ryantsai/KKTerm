@@ -3378,6 +3378,8 @@ fn command_for(request: &StartTerminalSessionRequest) -> Result<CommandBuilder, 
                     }
                 });
             let parsed = parse_local_shell_command_line(&program)?;
+            #[cfg(target_os = "macos")]
+            let parsed = macos_login_shell_command_line(parsed);
             let is_cmd = is_windows_cmd_shell(&parsed.program);
             let resolved_program = resolved_local_shell_program(parsed.program);
             // psmux session management wraps the chosen PowerShell shell in a
@@ -3969,6 +3971,34 @@ fn parse_local_shell_command_line(command_line: &str) -> Result<LocalShellComman
     let args = parts.into_iter().skip(1).collect();
 
     Ok(LocalShellCommandLine { program, args })
+}
+
+// Finder-launched macOS apps inherit launchd's minimal PATH, which lacks the
+// Homebrew bin directories, and a bare interactive shell skips the login
+// startup files (`/etc/zprofile` path_helper and `~/.zprofile` brew
+// shellenv) that restore them. Terminal.app launches local shells as login
+// shells, so mirror that: prepend `-l` to a bare well-known login shell so
+// PATH and login startup files match the user's system terminal exactly.
+// Command lines with their own arguments (or an explicit login flag) are left
+// untouched, as are programs that are not login shells.
+#[cfg(target_os = "macos")]
+fn macos_login_shell_command_line(mut parsed: LocalShellCommandLine) -> LocalShellCommandLine {
+    if parsed.args.is_empty() && macos_program_is_login_shell(&parsed.program) {
+        parsed.args.push("-l".to_string());
+    }
+    parsed
+}
+
+#[cfg(target_os = "macos")]
+fn macos_program_is_login_shell(program: &str) -> bool {
+    let basename = std::path::Path::new(program.trim())
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or_default();
+    matches!(
+        basename,
+        "sh" | "bash" | "dash" | "ksh" | "zsh" | "csh" | "tcsh" | "fish"
+    )
 }
 
 fn normalize_unquoted_windows_exe_path_parts(parts: Vec<String>) -> Vec<String> {
@@ -4579,6 +4609,41 @@ mod tests {
         assert!(is_windows_cmd_shell("C:/Windows/System32/cmd.exe"));
         assert!(is_windows_cmd_shell("C:\\Windows\\System32\\cmd.exe"));
         assert!(!is_windows_cmd_shell("powershell.exe"));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_bare_local_login_shell_gets_login_flag() {
+        let mut request = local_request();
+        request.shell = Some("/bin/zsh".to_string());
+
+        let command = command_for(&request).expect("local zsh command should build");
+        let argv = command
+            .get_argv()
+            .iter()
+            .map(|value| value.to_string_lossy().into_owned())
+            .collect::<Vec<_>>();
+
+        assert_eq!(argv, vec!["/bin/zsh".to_string(), "-l".to_string()]);
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_login_shell_flag_only_augments_bare_known_shells() {
+        let parsed = parse_local_shell_command_line("/opt/homebrew/bin/fish").unwrap();
+        let augmented = macos_login_shell_command_line(parsed);
+        assert_eq!(augmented.program, "/opt/homebrew/bin/fish");
+        assert_eq!(augmented.args, vec!["-l".to_string()]);
+
+        // A custom command line with its own arguments keeps them untouched.
+        let parsed = parse_local_shell_command_line("/bin/zsh -i").unwrap();
+        let augmented = macos_login_shell_command_line(parsed);
+        assert_eq!(augmented.args, vec!["-i".to_string()]);
+
+        // Non-shell programs never receive the login flag.
+        let parsed = parse_local_shell_command_line("/opt/homebrew/bin/nu").unwrap();
+        let augmented = macos_login_shell_command_line(parsed);
+        assert!(augmented.args.is_empty());
     }
 
     #[test]
