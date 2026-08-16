@@ -43,6 +43,35 @@ if (-not $RenewOnly -and -not $RemoveId) {
     }
 }
 
+if (-not (Test-Path Env:KKTERM_CUSTOM_MODULE_SIGNING_KEY_PASSPHRASE)) {
+    foreach ($EnvFileName in @(".env.local", ".env")) {
+        $EnvFile = Join-Path $RepositoryRoot $EnvFileName
+        if (-not (Test-Path $EnvFile)) {
+            continue
+        }
+        foreach ($Line in Get-Content -Path $EnvFile) {
+            $Trimmed = $Line.Trim()
+            if (-not $Trimmed -or $Trimmed.StartsWith("#")) {
+                continue
+            }
+            $Match = [regex]::Match($Trimmed, "^KKTERM_CUSTOM_MODULE_SIGNING_KEY_PASSPHRASE=(.*)$")
+            if (-not $Match.Success) {
+                continue
+            }
+            $Value = $Match.Groups[1].Value.Trim()
+            if (($Value.StartsWith('"') -and $Value.EndsWith('"')) -or ($Value.StartsWith("'") -and $Value.EndsWith("'"))) {
+                $Value = $Value.Substring(1, $Value.Length - 2)
+            }
+            if ($Value.Length -gt 0) {
+                $env:KKTERM_CUSTOM_MODULE_SIGNING_KEY_PASSPHRASE = $Value
+            }
+            break
+        }
+        if (Test-Path Env:KKTERM_CUSTOM_MODULE_SIGNING_KEY_PASSPHRASE) {
+            break
+        }
+    }
+}
 $PassphraseWasSet = Test-Path Env:KKTERM_CUSTOM_MODULE_SIGNING_KEY_PASSPHRASE
 if (-not $UnencryptedSigningKey -and -not $PassphraseWasSet) {
     $SecurePassphrase = Read-Host "Ed25519 signing-key passphrase" -AsSecureString

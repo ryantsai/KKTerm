@@ -82,8 +82,12 @@ build baseline-only while retaining signature verification with the pinned
 public key. The real `.env` is ignored by Git.
 
 The private key and its passphrase must never be committed, copied into a
-`.kkmod`, or placed in the desktop build environment. Back it up encrypted in
-two separately controlled locations.
+`.kkmod`, or placed in the desktop build environment. Keep the passphrase in
+the uncommitted repository-root `.env.local` (or `.env`) as
+`KKTERM_CUSTOM_MODULE_SIGNING_KEY_PASSPHRASE=<passphrase>`; the committed
+`.env.example` ships an empty placeholder. The publish wrapper loads it
+automatically and prompts interactively only when the variable is unset. Back
+the key and passphrase up encrypted in two separately controlled locations.
 
 ## Publish or update a Module
 
@@ -98,8 +102,10 @@ npm run publish:custom-module -- `
   -SigningKeyPath C:\secure\kkmod-prod.private.pem
 ```
 
-The wrapper runs the skill's `kkmod_tool.py check` before asking for the signing
-key passphrase. The publisher also requires every rail-visible contribution to
+The wrapper runs the skill's `kkmod_tool.py check` before signing with the
+passphrase loaded from `.env.local`; it prompts interactively only when
+`KKTERM_CUSTOM_MODULE_SIGNING_KEY_PASSPHRASE` is unset. The publisher also
+requires every rail-visible contribution to
 ship a bounded, inert SVG icon; the desktop host renders those curated icons as
 monochrome masks. It then downloads and verifies the current catalog, increments
 the sequence, signs the package and catalog, uploads the content-addressed
