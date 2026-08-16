@@ -75,6 +75,7 @@ import { StatusBar } from "./modules/workspace/StatusBar";
 import { TabStrip, WorkspaceCanvas } from "./modules/workspace/WorkspaceCanvas";
 import { CustomModuleHost } from "./modules/custom-modules/CustomModuleHost";
 import { CustomModuleSecretPrompt } from "./modules/custom-modules/CustomModuleSecretPrompt";
+import { VideoRecordingDock } from "./modules/screenshots/VideoRecordingDock";
 import type {
   CustomModuleDestination,
   InstalledCustomModule,
@@ -836,6 +837,7 @@ function App() {
       />
       <CustomModuleSecretPrompt />
       </Suspense>
+      <VideoRecordingDock />
       <TutorialOverlay
         key="tutorial-overlay"
         onDismiss={() => setTutorialHighlightRequest(undefined)}

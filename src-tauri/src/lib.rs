@@ -1256,19 +1256,27 @@ async fn start_video_recording(
     app: tauri::AppHandle,
     request: video_recording::StartVideoRecordingRequest,
 ) -> Result<video_recording::VideoRecordingSession, String> {
-    run_blocking_command("video recording startup", move || {
-        let storage = app.state::<storage::Storage>();
-        let state = app.state::<video_recording::VideoRecordingState>();
-        let settings = storage.screenshot_settings()?;
-        video_recording::start(
-            &app,
-            &state,
-            request,
-            settings.folder_path(),
-            settings.video_format(),
-        )
+    let session = run_blocking_command("video recording startup", {
+        let app = app.clone();
+        move || {
+            let storage = app.state::<storage::Storage>();
+            let state = app.state::<video_recording::VideoRecordingState>();
+            let settings = storage.screenshot_settings()?;
+            video_recording::start(
+                &app,
+                &state,
+                request,
+                settings.folder_path(),
+                settings.video_format(),
+            )
+        }
     })
-    .await
+    .await?;
+    let _ = app.emit(
+        video_recording::RECORDING_STARTED_EVENT,
+        session.clone(),
+    );
+    Ok(session)
 }
 
 #[tauri::command]

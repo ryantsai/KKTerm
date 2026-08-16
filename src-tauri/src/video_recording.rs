@@ -8,7 +8,9 @@ use std::{
 };
 
 use serde::{Deserialize, Serialize};
-use tauri::{Manager, PhysicalPosition, Position, WebviewUrl, WebviewWindowBuilder};
+use tauri::Manager;
+#[cfg(not(target_os = "macos"))]
+use tauri::{PhysicalPosition, Position, WebviewUrl, WebviewWindowBuilder};
 
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
@@ -16,11 +18,17 @@ use std::os::windows::process::CommandExt;
 use crate::installer::detect::github_release_install_dir;
 
 const TOOL_ID: &str = "ffmpeg";
+pub const RECORDING_STARTED_EVENT: &str = "kkterm://video-recording-started";
 pub const RECORDING_COMPLETED_EVENT: &str = "kkterm://video-recording-completed";
+#[cfg(not(target_os = "macos"))]
 const CONTROLS_WINDOW_LABEL: &str = "video-recording-controls";
+#[cfg(not(target_os = "macos"))]
 const CONTROLS_WINDOW_ROUTE: &str = "index.html#/video-recording-controls";
+#[cfg(not(target_os = "macos"))]
 const CONTROLS_WIDTH: i32 = 124;
+#[cfg(not(target_os = "macos"))]
 const CONTROLS_HEIGHT: i32 = 42;
+#[cfg(not(target_os = "macos"))]
 const CONTROLS_TARGET_INSET: i32 = 10;
 
 #[derive(Default)]
@@ -54,6 +62,7 @@ struct ActiveRecording {
     height: Option<u32>,
 }
 
+#[cfg(not(target_os = "macos"))]
 #[derive(Clone, Copy)]
 struct RecordingTarget {
     x: i32,
@@ -277,6 +286,7 @@ fn add_encoding_args(command: &mut Command, format: &str) -> Result<&'static str
     }
 }
 
+#[cfg_attr(target_os = "macos", allow(unused_variables))]
 pub fn start(
     app: &tauri::AppHandle,
     state: &VideoRecordingState,
@@ -309,7 +319,7 @@ pub fn start(
     #[cfg(target_os = "windows")]
     let (width, height, recording_target);
     #[cfg(not(target_os = "windows"))]
-    let (width, height, recording_target) = (None, None, None);
+    let (width, height) = (None, None);
     #[cfg(target_os = "windows")]
     {
         let rect = crate::screenshot::select_recording_rect(
@@ -400,19 +410,27 @@ pub fn start(
     // Creating the controls WebView loads frontend code that immediately asks
     // for recording status. Release the state lock first so that request cannot
     // deadlock WebView creation and leave FFmpeg running without controls.
+    // macOS has no controls WebView; recording controls live in the main window.
     drop(active);
-    if let Err(error) = show_controls_window(app, recording_target) {
-        if let Ok(mut active) = state.active.lock()
-            && let Some(mut recording) = active.take()
-        {
-            if let Some(stdin) = recording.child.stdin.as_mut() {
-                let _ = stdin.write_all(b"q\n");
+    #[cfg(not(target_os = "macos"))]
+    {
+        #[cfg(target_os = "windows")]
+        let target = recording_target;
+        #[cfg(not(target_os = "windows"))]
+        let target = None;
+        if let Err(error) = show_controls_window(app, target) {
+            if let Ok(mut active) = state.active.lock()
+                && let Some(mut recording) = active.take()
+            {
+                if let Some(stdin) = recording.child.stdin.as_mut() {
+                    let _ = stdin.write_all(b"q\n");
+                }
+                let _ = recording.child.kill();
+                let _ = recording.child.wait();
             }
-            let _ = recording.child.kill();
-            let _ = recording.child.wait();
+            let _ = fs::remove_file(&path);
+            return Err(error);
         }
-        let _ = fs::remove_file(&path);
-        return Err(error);
     }
     Ok(VideoRecordingSession {
         path: path.to_string_lossy().into_owned(),
@@ -421,6 +439,7 @@ pub fn start(
     })
 }
 
+#[cfg(not(target_os = "macos"))]
 fn controls_position(target: RecordingTarget) -> PhysicalPosition<i32> {
     PhysicalPosition::new(
         target.x + (target.width - CONTROLS_WIDTH) / 2,
@@ -428,6 +447,7 @@ fn controls_position(target: RecordingTarget) -> PhysicalPosition<i32> {
     )
 }
 
+#[cfg(not(target_os = "macos"))]
 fn position_controls_window(window: &tauri::WebviewWindow, target: Option<RecordingTarget>) {
     if let Some(target) = target {
         let _ = window.set_position(Position::Physical(controls_position(target)));
@@ -444,6 +464,7 @@ fn position_controls_window(window: &tauri::WebviewWindow, target: Option<Record
     }
 }
 
+#[cfg(not(target_os = "macos"))]
 fn show_controls_window(
     app: &tauri::AppHandle,
     target: Option<RecordingTarget>,
@@ -480,6 +501,7 @@ fn show_controls_window(
     Ok(())
 }
 
+#[cfg(not(target_os = "macos"))]
 fn close_controls_window(app: &tauri::AppHandle) {
     if let Some(window) = app.get_webview_window(CONTROLS_WINDOW_LABEL) {
         let _ = window.close();
@@ -589,6 +611,7 @@ pub fn set_paused(state: &VideoRecordingState, paused: bool) -> Result<(), Strin
     Ok(())
 }
 
+#[cfg_attr(target_os = "macos", allow(unused_variables))]
 pub fn stop(
     app: &tauri::AppHandle,
     state: &VideoRecordingState,
@@ -629,6 +652,7 @@ pub fn stop(
         .and_then(|name| name.to_str())
         .unwrap_or("recording")
         .to_string();
+    #[cfg(not(target_os = "macos"))]
     close_controls_window(app);
     Ok(CompletedVideoRecording {
         path: recording.path.to_string_lossy().into_owned(),
@@ -784,6 +808,7 @@ pub fn trim(request: TrimVideoRequest, folder_path: &str) -> Result<String, Stri
 mod tests {
     use super::*;
 
+    #[cfg(not(target_os = "macos"))]
     #[test]
     fn recording_controls_are_centered_near_the_target_top_edge() {
         let position = controls_position(RecordingTarget {
