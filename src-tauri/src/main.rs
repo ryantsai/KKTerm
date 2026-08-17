@@ -4,6 +4,8 @@
 fn main() {
     #[cfg(target_os = "linux")]
     apply_linux_gpu_workarounds();
+    #[cfg(target_os = "windows")]
+    apply_embedded_webview2_runtime();
 
     kkterm_lib::run()
 }
@@ -31,6 +33,33 @@ fn apply_linux_gpu_workarounds() {
     if running_in_vm {
         unsafe {
             std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+        }
+    }
+}
+
+/// MSIX (Microsoft Store) packages embed a WebView2 Fixed Version runtime in a
+/// sibling `WebView2Runtime` folder (see scripts/package-msix.ps1). wry creates
+/// the WebView2 environment with a null browser folder, so the WebView2 loader
+/// honors the WEBVIEW2_BROWSER_EXECUTABLE_FOLDER environment variable. Point it
+/// at the embedded runtime before the first WebView2 environment is created;
+/// other install modes have no such folder, so nothing changes for them.
+#[cfg(target_os = "windows")]
+fn apply_embedded_webview2_runtime() {
+    if std::env::var_os("WEBVIEW2_BROWSER_EXECUTABLE_FOLDER").is_some() {
+        return;
+    }
+
+    let Some(exe_dir) = std::env::current_exe()
+        .ok()
+        .and_then(|exe| exe.parent().map(|dir| dir.to_path_buf()))
+    else {
+        return;
+    };
+
+    let runtime_dir = exe_dir.join("WebView2Runtime");
+    if runtime_dir.join("msedgewebview2.exe").is_file() {
+        unsafe {
+            std::env::set_var("WEBVIEW2_BROWSER_EXECUTABLE_FOLDER", runtime_dir);
         }
     }
 }

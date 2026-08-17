@@ -90,6 +90,21 @@ Feature code that must stay arch-aware:
 
 `src-tauri/src/diagnostics.rs` records `target_arch` at runtime, so an ARM64 build self-identifies in diagnostics bundles.
 
+## Windows MSIX (Microsoft Store)
+
+Tauri v2 has no native MSIX bundle target, so `scripts/package-msix.ps1` assembles the package from the standard `tauri build --no-bundle` output and packs it with the Windows SDK's MakeAppx. Build with:
+
+```powershell
+npm run package:msix          # x64
+npm run package:msix:arm64    # ARM64 (same toolchain as the ARM64 installer)
+```
+
+The script writes `artifacts/kkterm-<version>-windows-<arch>.msix` plus a `.sha256` checksum. The package declares the desktop `runFullTrust` capability, targets `Windows.Desktop` (minimum `10.0.17763.0`), and contains the executable, the `kkterm-cli` sidecar, the manual, the bundled Assistant Skills, and the tile assets from `src-tauri/icons/`.
+
+Because the Microsoft Store requires self-contained packages, the build embeds the official WebView2 Fixed Version runtime by default. The script expects it through `-WebView2CabUrl` (the "Get the Link" URL for the Fixed Version `<arch>` package at https://developer.microsoft.com/microsoft-edge/webview2/) or `-WebView2RuntimePath` (an already-extracted runtime folder); it downloads, expands with `expand.exe`, and caches the runtime under `%LOCALAPPDATA%\KKTerm\msix-webview2-cache`. Fixed Version binaries are over 250 MB, so the MSIX is that much larger than the NSIS installer. `src-tauri/src/main.rs` points `WEBVIEW2_BROWSER_EXECUTABLE_FOLDER` at the embedded `WebView2Runtime` folder when it exists, which is how wry picks it up (wry creates the WebView2 environment with a null browser folder). `-SkipWebView2` builds a package that relies on the machine's Evergreen runtime — fine for local testing, but likely to fail Store certification.
+
+The manifest identity is `RyanTsai.KKTerm` / `CN=KKTerm` by default; for a Store submission, pass `-PackageName` and `-Publisher` with the values Partner Center shows after reserving the app name, and submit the unsigned MSIX (the Store re-signs packages at publication). For sideload testing, sign with `-CertificatePath` (the certificate subject CN must match `-Publisher`) and use `-InstallPackage` to install on the local machine.
+
 ## Windows Portable ZIP
 
 Build the Windows x64 portable package with `npm run package:portable`, or ARM64 with `npm run package:portable:arm64`. Each command writes an architecture-specific ZIP and checksum:
