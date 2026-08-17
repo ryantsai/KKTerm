@@ -4,6 +4,7 @@
   "description": "Capability for detached RDP/VNC full-screen windows",
   "windows": ["remote-fullscreen-*"],
   "permissions": [
+    "remote-fullscreen-commands",
     "core:default",
     "core:app:allow-version",
     "core:window:allow-start-dragging",

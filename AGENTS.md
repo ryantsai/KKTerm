@@ -159,6 +159,19 @@ Strong success criteria let you loop independently.
   ActiveX HWND off-screen and only work when immediately followed by a
   `set_rdp_visibility` reveal; using them on their own blanks a "Connected"
   pane. See the RDP command lifecycle note in `docs/ARCHITECTURE.md`.
+- A detached RDP/VNC full-screen `WebviewWindow` (`remote-fullscreen-*`) does
+  not inherit the main window's `main-commands` permission set. Any custom
+  command that window's own code calls (VNC frame fetch/ack/refresh, VNC or
+  canvas-RDP input, `list_display_monitors`, etc.) must be added to the
+  `remote-fullscreen-commands` permission set in
+  `src-tauri/permissions/main.toml` and granted in
+  `src-tauri/capabilities/remote-fullscreen.json`, never bolted onto
+  `main-commands`. A missing grant compiles fine and fails silently at Tauri's
+  IPC ACL, surfacing as a blank full-screen surface. Also: closing that window
+  must `await` the VNC frame-ownership "inactive" handoff before calling
+  `closeCurrentWindow()`, not rely on a `beforeunload` fire-and-forget emit —
+  see `docs/ARCHITECTURE.md`'s VNC Session paragraphs for both pitfalls and the
+  related `vnc-rs` close/reconnect race.
 - Simple command menus in Workspace use Tauri native context menus through
   `src/lib/nativeContextMenu.ts`; do not replace them with DOM menus unless the
   menu needs forms or custom interactive content.

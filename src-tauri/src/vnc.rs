@@ -410,7 +410,16 @@ impl VncSessionManager {
             if let Some(stop) = session.stop.take() {
                 let _ = stop.send(());
             }
-            let _ = self.runtime.block_on(session.client.close());
+            self.runtime.block_on(async {
+                let _ = session.client.close().await;
+                // client.close() only signals the network/decode tasks to stop;
+                // it does not wait for them to actually drop the TcpStream. A
+                // reconnect to the same host right after this returns can race
+                // that teardown and get refused/EOF'd by servers that only
+                // accept a single connection. Give the stop signal a moment to
+                // be scheduled and the socket to actually close.
+                time::sleep(Duration::from_millis(250)).await;
+            });
         }
         Ok(())
     }

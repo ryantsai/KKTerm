@@ -43,6 +43,29 @@ export function RemoteFullscreenApp({ route }: { route: RemoteFullscreenRoute })
     [t],
   );
 
+  // `beforeunload` + a fire-and-forget emit is not reliable for the "this
+  // surface is going away" announcement: closing a WebviewWindow can tear the
+  // webview down before an in-flight async emit's IPC message is delivered,
+  // which would leave the Pane's "a detached surface owns painting" flag stuck
+  // true forever (silently freezing the pane, even across reconnects). For the
+  // paths we control (exit button, shortcut) we await the announcement before
+  // closing so delivery is ordered ahead of teardown; `beforeunload` stays as a
+  // best-effort fallback for closes we don't control (Alt+F4, OS window kill).
+  const announceInactive = useRef<() => Promise<void>>(async () => {});
+  announceInactive.current = async () => {
+    if (!isTauriRuntime() || route.kind !== "vnc") {
+      return;
+    }
+    await emit(VNC_FULLSCREEN_SURFACE_EVENT, { sessionId: route.sessionId, active: false }).catch(
+      () => undefined,
+    );
+  };
+
+  const requestClose = async () => {
+    await announceInactive.current();
+    await closeCurrentWindow();
+  };
+
   useEffect(() => {
     if (!isTauriRuntime()) {
       return;
@@ -51,7 +74,7 @@ export function RemoteFullscreenApp({ route }: { route: RemoteFullscreenRoute })
     let dispose: (() => void) | undefined;
     void listen(REMOTE_FULLSCREEN_SHORTCUT_EVENT, () => {
       if (!disposed) {
-        void closeCurrentWindow();
+        void requestClose();
       }
     }).then((unlisten) => {
       if (disposed) {
@@ -64,18 +87,17 @@ export function RemoteFullscreenApp({ route }: { route: RemoteFullscreenRoute })
       disposed = true;
       dispose?.();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (!isTauriRuntime() || route.kind !== "vnc") return;
-    const announce = (active: boolean) =>
-      emit(VNC_FULLSCREEN_SURFACE_EVENT, { sessionId: route.sessionId, active });
-    void announce(true);
-    const handleUnload = () => void announce(false);
+    void emit(VNC_FULLSCREEN_SURFACE_EVENT, { sessionId: route.sessionId, active: true });
+    const handleUnload = () => void announceInactive.current();
     window.addEventListener("beforeunload", handleUnload);
     return () => {
       window.removeEventListener("beforeunload", handleUnload);
-      void announce(false);
+      void announceInactive.current();
     };
   }, [route.kind, route.sessionId]);
 
@@ -88,6 +110,7 @@ export function RemoteFullscreenApp({ route }: { route: RemoteFullscreenRoute })
         sessionId={route.sessionId}
         kind={route.kind}
         title={title}
+        onRequestClose={requestClose}
       />
 
       {route.kind === "vnc" ? (

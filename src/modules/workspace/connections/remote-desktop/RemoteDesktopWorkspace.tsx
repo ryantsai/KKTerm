@@ -808,6 +808,13 @@ export function RemoteDesktopWorkspace({
     sessionStartedRef.current = false;
     sessionStartingRef.current = false;
     sessionIdRef.current = null;
+    // Safety net: a detached full-screen window announces "inactive" via an
+    // async event emitted from its own beforeunload handler, which is not
+    // guaranteed to land before the window is torn down (e.g. closed via Alt+F4
+    // or the OS). If that announcement is lost, this flag would otherwise stay
+    // stuck true and silently swallow every future frame for this pane,
+    // including across reconnects. Every reset clears it unconditionally.
+    vncFullscreenAttachedRef.current = false;
     vncButtonMaskRef.current = 0;
     vncPendingPointerRef.current = null;
     if (vncPointerRafRef.current !== null) {

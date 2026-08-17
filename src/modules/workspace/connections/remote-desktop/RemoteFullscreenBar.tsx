@@ -8,7 +8,6 @@ import { useTranslation } from "react-i18next";
 import { ChevronDown, Monitor, Pin, PinOff, X } from "../../../../lib/reicon";
 import { usesCanvasRdp } from "../../../../lib/platform";
 import {
-  closeCurrentWindow,
   invokeCommand,
   isTauriRuntime,
   listDisplayMonitors,
@@ -40,10 +39,12 @@ export function RemoteFullscreenBar({
   sessionId,
   kind,
   title,
+  onRequestClose,
 }: {
   sessionId: string;
   kind: "rdp" | "vnc";
   title: string;
+  onRequestClose: () => void | Promise<void>;
 }) {
   const { t } = useTranslation();
   const [pinned, setPinned] = useState(false);
@@ -188,7 +189,7 @@ export function RemoteFullscreenBar({
         <button
           type="button"
           className="remote-fullscreen-bar-button remote-fullscreen-bar-exit"
-          onClick={() => void closeCurrentWindow()}
+          onClick={() => void onRequestClose()}
           title={t("remoteDesktop.fullscreen.exit")}
         >
           <X size={14} />

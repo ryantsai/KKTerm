@@ -549,3 +549,23 @@ commands.allow = [
   "watchdog_get_report",
   "watchdog_record_intervention",
 ]
+
+[[permission]]
+identifier = "remote-fullscreen-commands"
+description = "Allows a detached RDP/VNC full-screen window to drive the live session it attached to (VNC frame pump, canvas-RDP input/refresh, shared monitor listing)."
+commands.allow = [
+  "list_display_monitors",
+  "read_vnc_frame",
+  "acknowledge_vnc_frame",
+  "refresh_vnc_session",
+  "send_vnc_pointer_event",
+  "send_vnc_key_event",
+  "send_vnc_ctrl_alt_delete",
+  "refresh_rdp_client_session",
+  "send_rdp_client_pointer_event",
+  "send_rdp_client_key_event",
+  "send_rdp_client_text",
+  "send_rdp_client_clipboard_text",
+  "paste_rdp_client_clipboard",
+  "send_rdp_client_ctrl_alt_delete",
+]
