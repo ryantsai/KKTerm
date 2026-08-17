@@ -24,7 +24,7 @@ import {
   type ReconnectTerminalConnectionDetail,
 } from "../connectionSidebarState";
 import { defaultTerminalSettings } from "../../../../app-defaults";
-import { forgetTmuxSessionId, useWorkspaceStore } from "../../../../store";
+import { connectionUsesTmux, forgetTmuxSessionId, useWorkspaceStore } from "../../../../store";
 import { resolveVisibleTerminalBackground } from "../terminalAppearanceDefaults";
 import { GitIcon } from "../../../git/GitIcon";
 import { useGitRepoDetection } from "../../../git/useGitRepoDetection";
@@ -976,6 +976,9 @@ function TmuxSessionTag({
   const { t } = useTranslation();
 
   const tabs = useWorkspaceStore((state) => state.tabs);
+  const defaultUseTmuxSessions = useWorkspaceStore(
+    (state) => state.sshSettings.defaultUseTmuxSessions,
+  );
   const activateTab = useWorkspaceStore((state) => state.activateTab);
   const setFocusedPane = useWorkspaceStore((state) => state.setFocusedPane);
   const openTmuxSessionInPane = useWorkspaceStore((state) => state.openTmuxSessionInPane);
@@ -987,7 +990,7 @@ function TmuxSessionTag({
   const isPsmux = connection.type === "local" && connection.usePsmuxSessions === true;
   const enabled =
     Boolean(sessionId) &&
-    (isPsmux || (connection.type === "ssh" && connection.useTmuxSessions !== false));
+    (isPsmux || connectionUsesTmux(connection, defaultUseTmuxSessions));
   const multiplexerLabel = isPsmux ? "psmux" : "tmux";
   const showLabel = isPsmux ? t("terminal.showPsmux") : t("terminal.showTmux");
   const sessionsLabel = isPsmux ? t("terminal.psmuxSessions") : t("terminal.tmuxSessions");
@@ -2448,7 +2451,8 @@ function TerminalPaneView({
         // tmux session id is present; otherwise the backend falls back to a plain
         // shell, which we treat like non-tmux SSH and inject into directly.
         const sshUsesTmux =
-          connection.type === "ssh" && connection.useTmuxSessions !== false && Boolean(pane.tmuxSessionId);
+          connectionUsesTmux(connection, sshSettings.defaultUseTmuxSessions) &&
+          Boolean(pane.tmuxSessionId);
         sshStartupInjectedRef.current = false;
         sshStartupMarkerTailRef.current = "";
         sshStartupPendingInputRef.current = sshStartupInput && sshUsesTmux ? sshStartupInput : "";
@@ -2478,7 +2482,7 @@ function TerminalPaneView({
             pixelHeight: terminalDimensions.pixelHeight,
             pixelWidth: terminalDimensions.pixelWidth,
             rows: terminalDimensions.rows,
-            useTmux: connection.type === "ssh" && connection.useTmuxSessions !== false,
+            useTmux: connectionUsesTmux(connection, sshSettings.defaultUseTmuxSessions),
             tmuxSessionId: pane.tmuxSessionId,
             usePsmux: connection.type === "local" && connection.usePsmuxSessions === true,
             psmuxSessionId: connection.type === "local" ? pane.tmuxSessionId : undefined,

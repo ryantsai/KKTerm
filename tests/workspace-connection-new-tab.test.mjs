@@ -154,17 +154,17 @@ test("Connection Tree supports forced new Tabs from Ctrl-click and Add to menu",
   );
   assert.match(
     storeSource,
-    /const tmuxDisabled =[\s\S]*?fallbackPane\.connection\.useTmuxSessions === false[\s\S]*?tmuxSessionId: tmuxDisabled\s*\?\s*undefined/,
-    "stored SSH panes should clear stale tmux ids when the current durable Connection disables tmux",
+    /const tmuxDisabled =[\s\S]*?connectionUsesMultiplexer\([\s\S]*?defaultUseTmuxSessions[\s\S]*?tmuxSessionId: tmuxDisabled\s*\?\s*undefined/,
+    "stored SSH panes should clear stale tmux ids when the effective durable Connection setting disables tmux",
   );
   assert.match(
     storeSource,
-    /function refreshTerminalPaneConnection[\s\S]*?connection\.useTmuxSessions === false[\s\S]*?tmuxSessionId: tmuxDisabled \? undefined : pane\.tmuxSessionId/,
-    "reactivating an existing SSH tab should clear stale tmux ids when the current durable Connection disables tmux",
+    /function refreshTerminalPaneConnection[\s\S]*?connectionUsesMultiplexer\([\s\S]*?defaultUseTmuxSessions[\s\S]*?tmuxSessionId: tmuxDisabled \? undefined : pane\.tmuxSessionId/,
+    "reactivating an existing SSH tab should clear stale tmux ids when the effective durable Connection setting disables tmux",
   );
   assert.match(
     storeSource,
-    /existingTab[\s\S]*?refreshTabConnectionMetadata\(tab,\s*connection\)[\s\S]*?activeTabId: existingTab\.id/,
+    /existingTab[\s\S]*?refreshTabConnectionMetadata\([\s\S]*?state\.sshSettings\.defaultUseTmuxSessions[\s\S]*?activeTabId: existingTab\.id/,
     "opening an already-live Connection should refresh stale Tab metadata before reactivation",
   );
   assert.match(
