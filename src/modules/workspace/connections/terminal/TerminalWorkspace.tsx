@@ -3219,12 +3219,6 @@ function TerminalPaneView({
         </span>
         <div className="terminal-pane-actions">
           {pane.connection ? (
-            <NoteToolbarButton
-              connectionId={pane.connection.id}
-              onOpen={() => openNoteEditor(pane.connection!.id, pane.connection!.name)}
-            />
-          ) : null}
-          {pane.connection ? (
             <TmuxSessionTag
               connection={pane.connection}
               isChildConnection={Boolean(pane.childConnectionId)}
@@ -3336,6 +3330,12 @@ function TerminalPaneView({
           >
             <Copy size={13} />
           </button>
+          {pane.connection ? (
+            <NoteToolbarButton
+              connectionId={pane.connection.id}
+              onOpen={() => openNoteEditor(pane.connection!.id, pane.connection!.name)}
+            />
+          ) : null}
           <button
             className="terminal-pane-action"
             aria-label={t("terminal.sendToAi")}

@@ -1599,12 +1599,6 @@ export function WebViewWorkspace({
           </div>
           <div className="terminal-pane-actions">
             {fillStatus ? <span className="webview-toolbar-status">{fillStatus}</span> : null}
-            {tab.connection ? (
-              <NoteToolbarButton
-                connectionId={tab.connection.id}
-                onOpen={() => openNoteEditor(tab.connection!.id, tab.connection!.name)}
-              />
-            ) : null}
             {downloads.length > 0 ? (
               <button
                 aria-label={t("webview.downloads")}
@@ -1675,6 +1669,12 @@ export function WebViewWorkspace({
               targetLabel={t("webview.screenshotTarget", { title: tab.title })}
               targetRef={workspaceRef}
             />
+            {tab.connection ? (
+              <NoteToolbarButton
+                connectionId={tab.connection.id}
+                onOpen={() => openNoteEditor(tab.connection!.id, tab.connection!.name)}
+              />
+            ) : null}
             <button
               aria-label={t("workspace.sendEntirePanelToAi")}
               className="terminal-pane-action"

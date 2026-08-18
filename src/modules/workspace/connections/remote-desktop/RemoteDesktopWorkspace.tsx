@@ -1677,12 +1677,6 @@ export function RemoteDesktopWorkspace({
           </span>
           <div className="terminal-pane-actions" data-tutorial-id="remoteDesktop.toolbar">
             {tab.subtitle ? <small>{tab.subtitle}</small> : null}
-            {connection ? (
-              <NoteToolbarButton
-                connectionId={connection.id}
-                onOpen={() => openNoteEditor(connection.id, connection.name)}
-              />
-            ) : null}
           {rdpStatus ? <span className="webview-toolbar-status">{rdpStatus}</span> : null}
           {showRemoteDesktopToolbar ? (
             <button
@@ -1716,6 +1710,12 @@ export function RemoteDesktopWorkspace({
             onCapture={captureRemoteDesktopCanvas}
             targetRef={connection?.type === "rdp" || connection?.type === "vnc" ? hostRef : workspaceRef}
           />
+          {connection ? (
+            <NoteToolbarButton
+              connectionId={connection.id}
+              onOpen={() => openNoteEditor(connection.id, connection.name)}
+            />
+          ) : null}
           {showRemoteDesktopToolbar ? (
             <button
               aria-label={t("workspace.sendEntirePanelToAi")}

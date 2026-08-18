@@ -22,10 +22,10 @@ A Connection Note is distinct from the **Notes** Dashboard widget, which is a fr
 
 Every Connection Pane toolbar carries the note control (`notes.openNote`):
 
-- **Terminal Panes** — local, SSH, Telnet, and Serial, in the Pane action row.
+- **Terminal Panes** — local, SSH, Telnet, and Serial, in the Pane action row, directly left of the AI Assistant control.
 - **SFTP / FTP browser** — in the toolbar's right-hand group.
-- **URL Connections** — in the toolbar's action group.
-- **RDP and VNC Connections** — in the Pane action row.
+- **URL Connections** — in the toolbar's action group, directly left of the AI Assistant control.
+- **RDP and VNC Connections** — in the Pane action row, directly left of the AI Assistant control.
 
 The control shows one of two states, so a documented Connection is recognizable without opening anything:
 
