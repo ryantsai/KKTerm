@@ -66,6 +66,8 @@ test("package scripts expose checksummed Windows portable builds and smoke cover
   assert.match(packageScript, /ValidateSet\("x64", "arm64"\)/);
   assert.match(packageScript, /kkterm-portable\.marker/);
   assert.match(packageScript, /must not ship with a data directory/);
+  assert.match(packageScript, /VersionInfo\.ProductVersion/);
+  assert.match(packageScript, /Portable package input KKTerm\.exe is version/);
   assert.match(packageScript, /SHA256/);
   assert.match(smokeScript, /portable-smoke-ready/);
   assert.match(smokeScript, /SameRootSingleInstance/);

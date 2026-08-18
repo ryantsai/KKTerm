@@ -43,7 +43,7 @@ test("stored Connection layouts include URL panes and URL Connections hydrate th
 
   assert.match(layoutSource, /serializeLayout\(\s*layout: LayoutNode,\s*panes: WorkspacePane\[\]/);
   assert.match(layoutSource, /pane\.kind === "webview"/);
-  assert.match(storeSource, /const stored = loadStoredLayout\(connection\.id\);[\s\S]*?buildPanesFromStoredLayout\(connection, stored\)/);
+  assert.match(storeSource, /const stored = loadStoredLayout\(connection\.id\);[\s\S]*?buildPanesFromStoredLayout\(\s*connection,\s*stored,/);
   assert.match(storeSource, /stored \? hydrateLayout\(stored\.layout, paneIds\) : undefined/);
   assert.match(storeSource, /buildPaneFromStoredLayoutPane/);
 });

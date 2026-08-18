@@ -123,7 +123,7 @@ test("child-enabled Add-to and canvas dock create Child Connection Tab panes", a
   );
   assert.match(
     storeSource,
-    /buildPaneForConnection\(paneConnection,\s*targetPane,\s*options\)/,
+    /buildPaneForConnection\(\s*paneConnection,\s*targetPane,\s*options,/,
     "the split action should build panes with child-specific metadata",
   );
   assert.match(

@@ -567,8 +567,17 @@ function mutateQuickCommandsAtTarget(
   };
 }
 
-function connectionUsesTmux(connection: Connection) {
-  return connection.type === "ssh" && connection.useTmuxSessions !== false;
+export function connectionUsesTmux(
+  connection: Connection,
+  defaultUseTmuxSessions = true,
+) {
+  if (connection.type !== "ssh") {
+    return false;
+  }
+  if (connection.sshSocksProxyInheritDefaults !== false) {
+    return defaultUseTmuxSessions;
+  }
+  return connection.useTmuxSessions !== false;
 }
 
 // psmux is the local-shell counterpart to SSH tmux: a native Windows multiplexer
@@ -579,16 +588,26 @@ export function connectionUsesPsmux(connection: Connection) {
   return connection.type === "local" && connection.usePsmuxSessions === true;
 }
 
-function connectionUsesMultiplexer(connection: Connection) {
-  return connectionUsesTmux(connection) || connectionUsesPsmux(connection);
+function connectionUsesMultiplexer(
+  connection: Connection,
+  defaultUseTmuxSessions = true,
+) {
+  return (
+    connectionUsesTmux(connection, defaultUseTmuxSessions) ||
+    connectionUsesPsmux(connection)
+  );
 }
 
 function isRemoteDesktopConnection(connection: Connection) {
   return connection.type === "rdp" || connection.type === "vnc";
 }
 
-export function tmuxSessionIdsForConnection(connection: Connection, count: number) {
-  if (!connectionUsesMultiplexer(connection)) {
+export function tmuxSessionIdsForConnection(
+  connection: Connection,
+  count: number,
+  defaultUseTmuxSessions = true,
+) {
+  if (!connectionUsesMultiplexer(connection, defaultUseTmuxSessions)) {
     return [];
   }
   const sessionIds = loadStoredTmuxSessionIds(connection.id).slice(0, count);
@@ -602,8 +621,11 @@ export function tmuxSessionIdsForConnection(connection: Connection, count: numbe
   return sessionIds;
 }
 
-export function appendTmuxSessionId(connection: Connection) {
-  if (!connectionUsesMultiplexer(connection)) {
+export function appendTmuxSessionId(
+  connection: Connection,
+  defaultUseTmuxSessions = true,
+) {
+  if (!connectionUsesMultiplexer(connection, defaultUseTmuxSessions)) {
     return undefined;
   }
   const sessionIds = loadStoredTmuxSessionIds(connection.id);
@@ -683,11 +705,16 @@ function formatTmuxSessionNumber(value: number) {
 function buildPanesForConnection(
   connection: Connection,
   count: number,
+  defaultUseTmuxSessions = true,
 ): TerminalPane[] {
   const baseId = connection.id;
   const baseTitle = terminalPaneTitleForConnection(connection);
   const baseCwd = defaultTerminalCwdForConnection(connection);
-  const tmuxSessionIds = tmuxSessionIdsForConnection(connection, count);
+  const tmuxSessionIds = tmuxSessionIdsForConnection(
+    connection,
+    count,
+    defaultUseTmuxSessions,
+  );
   const panes: TerminalPane[] = [];
   for (let index = 0; index < count; index += 1) {
     panes.push({
@@ -709,6 +736,7 @@ function buildPanesForConnection(
 function buildPanesFromStoredLayout(
   connection: Connection,
   stored?: StoredConnectionLayout,
+  defaultUseTmuxSessions = true,
 ): WorkspacePane[] {
   const paneCount = Math.max(1, stored?.paneCount ?? 1);
   const fallback =
@@ -721,12 +749,14 @@ function buildPanesFromStoredLayout(
           const pane = buildPaneForConnection(connection);
           return pane ? { ...pane, id: createPaneId(connection.id) } : null;
         }).filter((pane): pane is WorkspacePane => Boolean(pane))
-      : buildPanesForConnection(connection, paneCount);
+      : buildPanesForConnection(connection, paneCount, defaultUseTmuxSessions);
   if (!stored?.panes?.length) {
     return fallback;
   }
   return Array.from({ length: paneCount }, (_, index) => {
-    const fallbackPane = fallback[index] ?? buildPaneForConnection(connection);
+    const fallbackPane =
+      fallback[index] ??
+      buildPaneForConnection(connection, undefined, undefined, defaultUseTmuxSessions);
     const storedPane = stored.panes?.[index];
     const pane = storedPane?.connection
       ? buildPaneFromStoredLayoutPane(storedPane, index)
@@ -735,8 +765,11 @@ function buildPanesFromStoredLayout(
       const sameConnection = pane.connection?.id === fallbackPane.connection?.id;
       if (sameConnection) {
         const tmuxDisabled =
-          fallbackPane.connection?.type === "ssh" &&
-          fallbackPane.connection.useTmuxSessions === false;
+          !fallbackPane.connection ||
+          !connectionUsesMultiplexer(
+            fallbackPane.connection,
+            defaultUseTmuxSessions,
+          );
         return {
           ...pane,
           connection: fallbackPane.connection,
@@ -754,6 +787,8 @@ function buildPanesFromStoredLayout(
       !pane.tmuxUnavailable &&
       fallbackPane &&
       isTerminalPane(fallbackPane) &&
+      fallbackPane.connection &&
+      connectionUsesMultiplexer(fallbackPane.connection, defaultUseTmuxSessions) &&
       fallbackPane.tmuxSessionId
     ) {
       return {
@@ -977,6 +1012,7 @@ function buildPaneForConnection(
   connection: Connection,
   focusedPane?: WorkspacePane,
   options?: ConnectionPaneOptions,
+  defaultUseTmuxSessions = true,
 ): WorkspacePane | null {
   if (connection.type === "url") {
     if (!connection.url) {
@@ -1064,7 +1100,10 @@ function buildPaneForConnection(
         }
       : connection,
     terminalBackground: options?.terminalBackground,
-    tmuxSessionId: options?.tmuxSessionId ?? appendTmuxSessionId(connection),
+    tmuxSessionId: connectionUsesMultiplexer(connection, defaultUseTmuxSessions)
+      ? options?.tmuxSessionId ??
+        appendTmuxSessionId(connection, defaultUseTmuxSessions)
+      : undefined,
   };
 }
 
@@ -1267,17 +1306,25 @@ function refreshTerminalPaneConnection(
   pane: TerminalPane,
   connection: Connection,
   toolbarTitle = toolbarTitleForConnection(connection),
+  defaultUseTmuxSessions = true,
 ): TerminalPane {
-  const tmuxDisabled =
-    (connection.type === "ssh" && connection.useTmuxSessions === false) ||
-    (connection.type === "local" && connection.usePsmuxSessions !== true);
+  const usesMultiplexer = connectionUsesMultiplexer(
+    connection,
+    defaultUseTmuxSessions,
+  );
+  const tmuxSessionId = usesMultiplexer
+    ? pane.tmuxSessionId ??
+      (pane.tmuxUnavailable
+        ? undefined
+        : appendTmuxSessionId(connection, defaultUseTmuxSessions))
+    : undefined;
   return {
     ...pane,
     connection,
     title: refreshedPaneTitle(pane, connection),
     toolbarTitle,
-    tmuxSessionId: tmuxDisabled ? undefined : pane.tmuxSessionId,
-    tmuxUnavailable: tmuxDisabled ? undefined : pane.tmuxUnavailable,
+    tmuxSessionId,
+    tmuxUnavailable: usesMultiplexer ? pane.tmuxUnavailable : undefined,
   };
 }
 
@@ -1809,7 +1856,33 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   setDashboardSettings: (dashboardSettings) => set({ dashboardSettings }),
   setTerminalSettings: (terminalSettings) => set({ terminalSettings }),
   setAppearanceSettings: (appearanceSettings) => set({ appearanceSettings }),
-  setSshSettings: (sshSettings) => set({ sshSettings }),
+  setSshSettings: (sshSettings) =>
+    set((state) => {
+      if (
+        state.sshSettings.defaultUseTmuxSessions ===
+        sshSettings.defaultUseTmuxSessions
+      ) {
+        return { sshSettings };
+      }
+      return {
+        sshSettings,
+        tabs: state.tabs.map((tab) => ({
+          ...tab,
+          panes: tab.panes.map((pane) =>
+            isTerminalPane(pane) &&
+            pane.connection?.type === "ssh" &&
+            pane.connection.sshSocksProxyInheritDefaults !== false
+              ? refreshTerminalPaneConnection(
+                  pane,
+                  pane.connection,
+                  pane.toolbarTitle,
+                  sshSettings.defaultUseTmuxSessions,
+                )
+              : pane,
+          ),
+        })),
+      };
+    }),
   setSftpSettings: (sftpSettings) => set({ sftpSettings }),
   setUrlSettings: (urlSettings) => set({ urlSettings }),
   setRdpSettings: (rdpSettings) => set({ rdpSettings }),
@@ -2090,14 +2163,24 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     );
     if (existingTab) {
       set((state) => ({
-        tabs: state.tabs.map((tab) => refreshTabConnectionMetadata(tab, connection)),
+        tabs: state.tabs.map((tab) =>
+          refreshTabConnectionMetadata(
+            tab,
+            connection,
+            state.sshSettings.defaultUseTmuxSessions,
+          ),
+        ),
         activeTabId: existingTab.id,
       }));
       return;
     }
 
     const stored = loadStoredLayout(connection.id);
-    const panes = buildPanesFromStoredLayout(connection, stored);
+    const panes = buildPanesFromStoredLayout(
+      connection,
+      stored,
+      get().sshSettings.defaultUseTmuxSessions,
+    );
     const paneIds = panes.map((pane) => pane.id);
     const layout =
       (stored ? hydrateLayout(stored.layout, paneIds) : undefined) ??
@@ -2177,7 +2260,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       title: options?.tmuxSessionId ?? options?.title,
       toolbarTitle: options?.toolbarTitle,
       tmuxSessionId: options?.tmuxSessionId,
-    });
+    }, get().sshSettings.defaultUseTmuxSessions);
     if (!pane) {
       return;
     }
@@ -2393,7 +2476,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
           title: child.tmuxSessionId ?? child.name,
           toolbarTitle: child.name,
           tmuxSessionId: child.tmuxSessionId,
-        });
+        }, state.sshSettings.defaultUseTmuxSessions);
         if (pane) {
           newPanes.push(pane);
         }
@@ -2494,8 +2577,16 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     // Lay every connection out as split Panes inside one terminal Tab, the same
     // grid the parent/child Connection panorama uses. Pane-incapable or invalid
     // connections (e.g. a URL with no address) are skipped.
+    const defaultUseTmuxSessions = get().sshSettings.defaultUseTmuxSessions;
     const panes = connections
-      .map((connection) => buildPaneForConnection(connection))
+      .map((connection) =>
+        buildPaneForConnection(
+          connection,
+          undefined,
+          undefined,
+          defaultUseTmuxSessions,
+        ),
+      )
       .filter((pane): pane is WorkspacePane => Boolean(pane));
     if (panes.length === 0) {
       return;
@@ -3140,7 +3231,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
           cwd: normalizedPath,
           buffer: "",
           connection,
-          tmuxSessionId: appendTmuxSessionId(connection),
+          tmuxSessionId: appendTmuxSessionId(
+            connection,
+            get().sshSettings.defaultUseTmuxSessions,
+          ),
         },
       ],
       quickCommandBarVisible: loadStoredQuickCommandBarVisible(connection.id),
@@ -3267,7 +3361,12 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
           return tab;
         }
 
-        const newPane = buildPaneForConnection(connection, focusedPane);
+        const newPane = buildPaneForConnection(
+          connection,
+          focusedPane,
+          undefined,
+          state.sshSettings.defaultUseTmuxSessions,
+        );
         if (!newPane) {
           return tab;
         }
@@ -3321,7 +3420,12 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
           return tab;
         }
         const paneConnection = connectionWithPaneOptions(connection, options);
-        const newPane = buildPaneForConnection(paneConnection, targetPane, options);
+        const newPane = buildPaneForConnection(
+          paneConnection,
+          targetPane,
+          options,
+          state.sshSettings.defaultUseTmuxSessions,
+        );
         if (!newPane) {
           return tab;
         }
@@ -3877,7 +3981,13 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
   refreshOpenConnectionMetadata: (connection) => {
     set((state) => ({
-      tabs: state.tabs.map((tab) => refreshTabConnectionMetadata(tab, connection)),
+      tabs: state.tabs.map((tab) =>
+        refreshTabConnectionMetadata(
+          tab,
+          connection,
+          state.sshSettings.defaultUseTmuxSessions,
+        ),
+      ),
     }));
   },
   updateOpenConnectionTerminalAppearance: (connectionId, appearance) => {
@@ -4134,7 +4244,11 @@ function updateTabTerminalAppearance(
   };
 }
 
-function refreshTabConnectionMetadata(tab: WorkspaceTab, connection: Connection): WorkspaceTab {
+function refreshTabConnectionMetadata(
+  tab: WorkspaceTab,
+  connection: Connection,
+  defaultUseTmuxSessions = true,
+): WorkspaceTab {
   const tabConnectionMatches = tab.connection?.id === connection.id;
   const refreshedConnection =
     tab.kind === "sftp" && connection.type === "ftp" && connection.ftpOptions?.protocol === "sftp"
@@ -4150,6 +4264,7 @@ function refreshTabConnectionMetadata(tab: WorkspaceTab, connection: Connection)
       pane,
       pane.childConnectionId ? paneConnection : refreshedConnection,
       pane.childConnectionId ? pane.toolbarTitle : toolbarTitle,
+      defaultUseTmuxSessions,
     );
   });
   const panesChanged = panes.some((pane, index) => pane !== tab.panes[index]);

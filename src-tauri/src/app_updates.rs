@@ -10,7 +10,7 @@ use std::sync::{
     Arc, LazyLock, Mutex,
     atomic::{AtomicBool, Ordering},
 };
-use std::time::Duration;
+use std::time::{Duration, UNIX_EPOCH};
 use tauri::{Emitter, Manager};
 use url::Url;
 use zip::ZipArchive;
@@ -475,6 +475,8 @@ fn prepare_portable_update(
         .join(format!("portable-{}", request.version));
     let staging_dir = work_dir.join("staging");
     let rollback_dir = work_dir.join("rollback");
+    remove_file_if_present(&work_dir.join("awaiting-ready"))?;
+    remove_file_if_present(&work_dir.join("ready"))?;
     remove_dir_if_present(&staging_dir)?;
     remove_dir_if_present(&rollback_dir)?;
     fs::create_dir_all(&staging_dir).map_err(|error| {
@@ -552,10 +554,9 @@ pub fn mark_portable_update_ready(app: &tauri::AppHandle) -> Result<(), String> 
     if !paths.is_portable() {
         return Ok(());
     }
-    let work_dir = paths
-        .cache_dir()
-        .join("updates")
-        .join(format!("portable-{}", env!("CARGO_PKG_VERSION")));
+    let Some(work_dir) = pending_portable_update_work_dir(paths.cache_dir())? else {
+        return Ok(());
+    };
     let awaiting_ready_path = work_dir.join("awaiting-ready");
     if !awaiting_ready_path.is_file() {
         return Ok(());
@@ -566,6 +567,77 @@ pub fn mark_portable_update_ready(app: &tauri::AppHandle) -> Result<(), String> 
             work_dir.display()
         )
     })
+}
+
+fn pending_portable_update_work_dir(cache_dir: &Path) -> Result<Option<PathBuf>, String> {
+    let updates_dir = cache_dir.join("updates");
+    let entries = match fs::read_dir(&updates_dir) {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => {
+            return Err(format!(
+                "failed to inspect portable update directory {}: {error}",
+                updates_dir.display()
+            ));
+        }
+    };
+
+    let mut candidates = Vec::new();
+    for entry in entries {
+        let entry = entry.map_err(|error| {
+            format!(
+                "failed to inspect portable update entry in {}: {error}",
+                updates_dir.display()
+            )
+        })?;
+        if !entry
+            .file_type()
+            .map_err(|error| {
+                format!(
+                    "failed to inspect portable update entry {}: {error}",
+                    entry.path().display()
+                )
+            })?
+            .is_dir()
+        {
+            continue;
+        }
+
+        let path = entry.path();
+        let Some(name) = path.file_name().and_then(|value| value.to_str()) else {
+            continue;
+        };
+        let Some(version) = name.strip_prefix("portable-") else {
+            continue;
+        };
+        if version.is_empty()
+            || !version
+                .chars()
+                .all(|character| character.is_ascii_digit() || character == '.')
+        {
+            continue;
+        }
+
+        let awaiting_ready_path = path.join("awaiting-ready");
+        if !awaiting_ready_path.is_file() {
+            continue;
+        }
+        let modified = fs::metadata(&awaiting_ready_path)
+            .and_then(|metadata| metadata.modified())
+            .unwrap_or(UNIX_EPOCH);
+        candidates.push((modified, path));
+    }
+
+    candidates.sort_by_key(|(modified, _)| *modified);
+    Ok(candidates.pop().map(|(_, path)| path))
+}
+
+fn remove_file_if_present(path: &Path) -> Result<(), String> {
+    match fs::remove_file(path) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(format!("failed to clear {}: {error}", path.display())),
+    }
 }
 
 fn remove_dir_if_present(path: &Path) -> Result<(), String> {
@@ -873,6 +945,30 @@ mod tests {
         assert_eq!(
             parse_sha256(&format!("{hash}  kkterm-0.1.54-windows-x64-setup.exe")).unwrap(),
             hash
+        );
+    }
+
+    #[test]
+    fn pending_portable_update_ignores_non_version_work_directories() {
+        let temp = tempdir().unwrap();
+        let updates_dir = temp.path().join("updates");
+        let pending_dir = updates_dir.join("portable-3000.0.2");
+        fs::create_dir_all(&pending_dir).unwrap();
+        fs::write(pending_dir.join("awaiting-ready"), b"awaiting").unwrap();
+
+        for name in [
+            "portable-update-error.txt",
+            "portable-3000.0.3-beta",
+            "portable-3000.0.4-nope",
+        ] {
+            let path = updates_dir.join(name);
+            fs::create_dir_all(&path).unwrap();
+            fs::write(path.join("awaiting-ready"), b"ignore").unwrap();
+        }
+
+        assert_eq!(
+            pending_portable_update_work_dir(temp.path()),
+            Ok(Some(pending_dir)),
         );
     }
 

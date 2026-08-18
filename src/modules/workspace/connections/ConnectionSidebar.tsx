@@ -83,7 +83,7 @@ import { DeleteConfirmationDialog } from "../../../app/DeleteConfirmationDialog"
 import { DialogPortal } from "../../../app/DialogPortal";
 import { Btn, ConfirmSheet, LegacyDialogActions } from "../../../app/ui/dialog";
 import { pushTrayMenu } from "../../../app/trayMenu";
-import { CHILD_CONNECTION_CLOSED_EVENT, DEFAULT_WORKSPACE_ID, appendTmuxSessionId, forgetConnectionLocalState, useWorkspaceStore } from "../../../store";
+import { CHILD_CONNECTION_CLOSED_EVENT, DEFAULT_WORKSPACE_ID, appendTmuxSessionId, connectionUsesTmux, forgetConnectionLocalState, useWorkspaceStore } from "../../../store";
 import type { Connection, ConnectionFolder, ConnectionStatus, ConnectionTree, ConnectionType, CreateConnectionRequest, RdpSettings, SplitDirection, SshCompressionMode, SshOldProtocolsMode, SshSettings, StoredCredentialSummary, UpdateConnectionRequest, VncSettings, WorkspaceChildConnection, WorkspaceTab } from "../../../types";
 
 // Pointer travel (px, either axis) before a press is treated as a drag rather
@@ -857,8 +857,9 @@ export function ConnectionSidebar({
       ? resolveDefaultTerminalAppearance(connection.type, sshSettings, terminalSettings)
       : null;
     const tmuxSessionId =
-      connection.type === "ssh" && connection.useTmuxSessions !== false
-        ? (await preferredTmuxSessionIdForNewTab(connection)) ?? appendTmuxSessionId(connection)
+      connectionUsesTmux(connection, sshSettings.defaultUseTmuxSessions)
+        ? (await preferredTmuxSessionIdForNewTab(connection)) ??
+          appendTmuxSessionId(connection, sshSettings.defaultUseTmuxSessions)
         : connection.type === "local" && connection.usePsmuxSessions === true
           ? appendTmuxSessionId(connection)
           : undefined;
@@ -973,7 +974,7 @@ export function ConnectionSidebar({
   }
 
   async function preferredTmuxSessionIdForNewTab(connection: Connection) {
-    if (connection.type !== "ssh" || connection.useTmuxSessions === false) {
+    if (!connectionUsesTmux(connection, sshSettings.defaultUseTmuxSessions)) {
       return undefined;
     }
 

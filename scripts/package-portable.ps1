@@ -120,6 +120,12 @@ try {
         }
     }
 
+    $PortableExecutablePath = Join-Path $ReleaseDir "kkterm.exe"
+    $PortableExecutableVersion = (Get-Item -LiteralPath $PortableExecutablePath).VersionInfo.ProductVersion
+    if ($PortableExecutableVersion -ne $Version) {
+        throw "Portable package input KKTerm.exe is version '$PortableExecutableVersion', but package.json is '$Version'. Rebuild the release executable before packaging."
+    }
+
     New-Item -ItemType Directory -Path $StageRoot | Out-Null
     Copy-Item -LiteralPath (Join-Path $ReleaseDir "kkterm.exe") -Destination (Join-Path $StageRoot "KKTerm.exe")
     Copy-Item -LiteralPath (Join-Path $ReleaseDir "kkterm-cli.exe") -Destination $StageRoot

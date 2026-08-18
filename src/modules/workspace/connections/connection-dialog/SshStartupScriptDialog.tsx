@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Actions, Btn, DialogShell, GRow, Group, Sheet, Switch, TextArea } from "../../../../app/ui/dialog";
 import { technicalInputProps } from "../../../../lib/inputBehavior";
 import { invokeCommand, isTauriRuntime } from "../../../../lib/tauri";
-import { useWorkspaceStore } from "../../../../store";
+import { connectionUsesTmux, useWorkspaceStore } from "../../../../store";
 import type { Connection } from "../../../../types";
 
 export type SshStartupScriptDraft = {
@@ -20,14 +20,20 @@ function sanitizeGeneratedScript(value: string) {
     .trim();
 }
 
-function connectionAiContext(connection: Connection | undefined, connectionName: string) {
+function connectionAiContext(
+  connection: Connection | undefined,
+  connectionName: string,
+  defaultUseTmuxSessions = true,
+) {
   return [
     `Connection name: ${connection?.name || connectionName || "SSH connection"}`,
     "Connection type: ssh",
     connection?.host ? `Host: ${connection.host}` : undefined,
     connection?.user ? `User: ${connection.user}` : undefined,
     connection?.port ? `Port: ${connection.port}` : undefined,
-    connection?.useTmuxSessions !== false ? "tmux session management: enabled" : "tmux session management: disabled",
+    (!connection || connectionUsesTmux(connection, defaultUseTmuxSessions))
+      ? "tmux session management: enabled"
+      : "tmux session management: disabled",
   ]
     .filter(Boolean)
     .join("\n");
@@ -51,6 +57,9 @@ export function SshStartupScriptDialog({
   const { t } = useTranslation();
   const scriptInputId = useId();
   const aiProviderSettings = useWorkspaceStore((state) => state.aiProviderSettings);
+  const defaultUseTmuxSessions = useWorkspaceStore(
+    (state) => state.sshSettings.defaultUseTmuxSessions,
+  );
   const aiProviderHasApiKey = useWorkspaceStore((state) => state.aiProviderHasApiKey);
   const canGenerateWithAi = aiProviderHasApiKey && isTauriRuntime();
 
@@ -78,7 +87,7 @@ export function SshStartupScriptDialog({
             "Keep it POSIX-shell compatible unless the connection clearly targets another shell.",
             "",
             "Connection context:",
-            connectionAiContext(connection, connectionName),
+            connectionAiContext(connection, connectionName, defaultUseTmuxSessions),
             "",
             `User request: ${normalizedPrompt}`,
           ].join("\n"),

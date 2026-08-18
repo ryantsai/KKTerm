@@ -5,7 +5,7 @@ import { ConnectionIcon } from "../../../../workspace/connections/ConnectionIcon
 import { connectionSubtitle, connectionTypeLabel } from "../../../../workspace/connections/utils";
 import { flattenConnections, withLiveConnectionStatuses } from "../../../../workspace/connections/treeUtils";
 import { invokeCommand, isTauriRuntime } from "../../../../../lib/tauri";
-import { tmuxSessionIdsForConnection, useWorkspaceStore } from "../../../../../store";
+import { connectionUsesTmux, tmuxSessionIdsForConnection, useWorkspaceStore } from "../../../../../store";
 import { defaultLayoutFor } from "../../../../workspace/layout";
 import { TerminalWorkspace } from "../../../../workspace/connections/terminal/TerminalWorkspace";
 import type { BuiltInWidgetBodyProps } from "../../../registry/builtInRegistry";
@@ -364,7 +364,10 @@ function ConnectionWidgetSession({
   isViewActive: boolean;
 }) {
   const [tmuxSession, setTmuxSession] = useState<{ connectionId: string; sessionId: string } | null>(null);
-  const usesTmux = connection.type === "ssh" && connection.useTmuxSessions !== false;
+  const defaultUseTmuxSessions = useWorkspaceStore(
+    (state) => state.sshSettings.defaultUseTmuxSessions,
+  );
+  const usesTmux = connectionUsesTmux(connection, defaultUseTmuxSessions);
   const tmuxSessionId =
     usesTmux && tmuxSession?.connectionId === connection.id ? tmuxSession.sessionId : undefined;
 
@@ -373,9 +376,13 @@ function ConnectionWidgetSession({
       setTmuxSession(null);
       return;
     }
-    const sessionId = tmuxSessionIdsForConnection(connection, 1)[0];
+    const sessionId = tmuxSessionIdsForConnection(
+      connection,
+      1,
+      defaultUseTmuxSessions,
+    )[0];
     setTmuxSession(sessionId ? { connectionId: connection.id, sessionId } : null);
-  }, [connection, usesTmux]);
+  }, [connection, defaultUseTmuxSessions, usesTmux]);
 
   const tab = useMemo(
     () => createConnectionWidgetTab(instanceId, connection, tmuxSessionId),
