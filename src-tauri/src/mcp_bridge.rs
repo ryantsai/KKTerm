@@ -659,8 +659,10 @@ fn redact_tool_arguments(name: &str, arguments: &Value) -> Value {
     let mut redacted = redact_sensitive_debug_value(arguments);
     match name {
         "kkterm.workspace.sessions.dangerous.send_input"
-        | "kkterm.workspace.dangerous.remote_desktop_send_text" => {
+        | "kkterm.workspace.dangerous.remote_desktop_send_text"
+        | "kkterm.workspace.file_browser.dangerous.write" => {
             redact_object_key(&mut redacted, "text");
+            redact_object_key(&mut redacted, "content");
         }
         "kkterm.dashboard.dangerous.create_widget" => {
             if let Some(body) = redacted.get_mut("body") {
@@ -697,6 +699,7 @@ fn redact_tool_arguments(name: &str, arguments: &Value) -> Value {
 fn redact_tool_result(name: &str, result: &Value) -> Value {
     match name {
         "kkterm.workspace.sessions.read_buffer"
+        | "kkterm.workspace.file_browser.dangerous.read"
         | "kkterm.dashboard.read_widget_source"
         | "kkterm.app.dangerous.capture_window"
         // Task reads and mutation responses contain the full script/playbook.
@@ -892,6 +895,125 @@ async fn dispatch_tool(app: &AppHandle, name: &str, args: Value) -> Result<Value
         }
         "kkterm.workspace.sessions.list" => {
             let raw = crate::ai::live_session_tool(app, "session_state", json!({})).await;
+            parse_tool_json(&raw)
+        }
+        "kkterm.workspace.sessions.activate_tab" => {
+            let tab_id = required_tool_string(&args, "tabId")?;
+            let raw = crate::ai::live_session_tool(
+                app,
+                "session_activate_tab",
+                json!({
+                    "tabId": tab_id,
+                    "paneId": args.get("paneId").and_then(Value::as_str),
+                }),
+            )
+            .await;
+            parse_tool_json(&raw)
+        }
+        "kkterm.workspace.sessions.dangerous.open_file_browser" => {
+            let connection_id = required_tool_string(&args, "connectionId")?;
+            let raw = crate::ai::live_session_tool(
+                app,
+                "session_open_file_browser",
+                json!({
+                    "connectionId": connection_id,
+                    "surface": args.get("surface").and_then(Value::as_str),
+                }),
+            )
+            .await;
+            parse_tool_json(&raw)
+        }
+        "kkterm.workspace.sessions.open_file_viewer" => {
+            let path = required_tool_string(&args, "path")?;
+            let raw = crate::ai::live_session_tool(
+                app,
+                "session_open_file_viewer",
+                json!({
+                    "path": path,
+                    "connectionId": args.get("connectionId").and_then(Value::as_str),
+                    "ephemeral": args.get("ephemeral").and_then(Value::as_bool),
+                }),
+            )
+            .await;
+            parse_tool_json(&raw)
+        }
+        "kkterm.workspace.sessions.dangerous.close_tab" => {
+            let tab_id = required_tool_string(&args, "tabId")?;
+            let raw = crate::ai::live_session_tool(
+                app,
+                "session_close_tab",
+                json!({"tabId": tab_id}),
+            )
+            .await;
+            parse_tool_json(&raw)
+        }
+        "kkterm.workspace.sessions.dangerous.split_pane" => {
+            let tab_id = required_tool_string(&args, "tabId")?;
+            let raw = crate::ai::live_session_tool(
+                app,
+                "session_split_pane",
+                json!({
+                    "tabId": tab_id,
+                    "direction": args.get("direction").and_then(Value::as_str),
+                }),
+            )
+            .await;
+            parse_tool_json(&raw)
+        }
+        "kkterm.workspace.sessions.dangerous.close_pane" => {
+            let tab_id = required_tool_string(&args, "tabId")?;
+            let pane_id = required_tool_string(&args, "paneId")?;
+            let raw = crate::ai::live_session_tool(
+                app,
+                "session_close_pane",
+                json!({"tabId": tab_id, "paneId": pane_id}),
+            )
+            .await;
+            parse_tool_json(&raw)
+        }
+        "kkterm.workspace.sessions.url_state" => {
+            let raw = crate::ai::live_session_tool(
+                app,
+                "session_url_state",
+                json!({
+                    "tabId": args.get("tabId").and_then(Value::as_str),
+                    "paneId": args.get("paneId").and_then(Value::as_str),
+                }),
+            )
+            .await;
+            parse_tool_json(&raw)
+        }
+        "kkterm.workspace.sessions.dangerous.url_navigate" => {
+            let url = required_tool_string(&args, "url")?;
+            let raw = crate::ai::live_session_tool(
+                app,
+                "session_url_navigate",
+                json!({
+                    "tabId": args.get("tabId").and_then(Value::as_str),
+                    "paneId": args.get("paneId").and_then(Value::as_str),
+                    "url": url,
+                }),
+            )
+            .await;
+            parse_tool_json(&raw)
+        }
+        "kkterm.workspace.sessions.dangerous.url_reload"
+        | "kkterm.workspace.sessions.dangerous.url_back"
+        | "kkterm.workspace.sessions.dangerous.url_forward" => {
+            let live_name = match name {
+                "kkterm.workspace.sessions.dangerous.url_reload" => "session_url_reload",
+                "kkterm.workspace.sessions.dangerous.url_back" => "session_url_back",
+                _ => "session_url_forward",
+            };
+            let raw = crate::ai::live_session_tool(
+                app,
+                live_name,
+                json!({
+                    "tabId": args.get("tabId").and_then(Value::as_str),
+                    "paneId": args.get("paneId").and_then(Value::as_str),
+                }),
+            )
+            .await;
             parse_tool_json(&raw)
         }
         "kkterm.workspace.sessions.dangerous.send_input" => {
@@ -1519,6 +1641,126 @@ async fn dispatch_tool(app: &AppHandle, name: &str, args: Value) -> Result<Value
             .await;
             parse_tool_json(&raw)
         }
+        "kkterm.workspace.file_browser.properties" => {
+            let path = required_tool_string(&args, "path")?;
+            let raw = crate::ai::live_session_tool(
+                app,
+                "session_file_browser_properties",
+                json!({
+                    "tabId": args.get("tabId").and_then(Value::as_str),
+                    "path": path,
+                }),
+            )
+            .await;
+            parse_tool_json(&raw)
+        }
+        "kkterm.workspace.file_browser.dangerous.update_properties" => {
+            let path = required_tool_string(&args, "path")?;
+            let raw = crate::ai::live_session_tool(
+                app,
+                "session_file_browser_update_properties",
+                json!({
+                    "tabId": args.get("tabId").and_then(Value::as_str),
+                    "path": path,
+                    "permissions": args.get("permissions").and_then(Value::as_str),
+                    "uid": args.get("uid").and_then(Value::as_u64),
+                    "gid": args.get("gid").and_then(Value::as_u64),
+                }),
+            )
+            .await;
+            parse_tool_json(&raw)
+        }
+        "kkterm.workspace.file_browser.dangerous.read" => {
+            let path = required_tool_string(&args, "path")?;
+            let raw = crate::ai::live_session_tool(
+                app,
+                "session_file_browser_read",
+                json!({
+                    "tabId": args.get("tabId").and_then(Value::as_str),
+                    "path": path,
+                    "maxBytes": args.get("maxBytes").and_then(Value::as_u64),
+                    "fromEnd": args.get("fromEnd").and_then(Value::as_bool),
+                }),
+            )
+            .await;
+            parse_tool_json(&raw)
+        }
+        "kkterm.workspace.file_browser.dangerous.write" => {
+            let path = required_tool_string(&args, "path")?;
+            let content = args
+                .get("content")
+                .and_then(Value::as_str)
+                .ok_or_else(|| "content is required".to_string())?;
+            let raw = crate::ai::live_session_tool(
+                app,
+                "session_file_browser_write",
+                json!({
+                    "tabId": args.get("tabId").and_then(Value::as_str),
+                    "path": path,
+                    "content": content,
+                    "expectedModified": args.get("expectedModified").and_then(Value::as_u64),
+                    "force": args.get("force").and_then(Value::as_bool),
+                }),
+            )
+            .await;
+            parse_tool_json(&raw)
+        }
+        "kkterm.workspace.file_browser.dangerous.upload" => {
+            let local_path = required_tool_string(&args, "localPath")?;
+            let remote_directory = required_tool_string(&args, "remoteDirectory")?;
+            let raw = crate::ai::live_session_tool(
+                app,
+                "session_file_browser_upload",
+                json!({
+                    "tabId": args.get("tabId").and_then(Value::as_str),
+                    "transferId": args.get("transferId").and_then(Value::as_str),
+                    "localPath": local_path,
+                    "remoteDirectory": remote_directory,
+                    "overwriteBehavior": args.get("overwriteBehavior").and_then(Value::as_str),
+                }),
+            )
+            .await;
+            parse_tool_json(&raw)
+        }
+        "kkterm.workspace.file_browser.dangerous.download" => {
+            let remote_path = required_tool_string(&args, "remotePath")?;
+            let local_directory = required_tool_string(&args, "localDirectory")?;
+            let raw = crate::ai::live_session_tool(
+                app,
+                "session_file_browser_download",
+                json!({
+                    "tabId": args.get("tabId").and_then(Value::as_str),
+                    "transferId": args.get("transferId").and_then(Value::as_str),
+                    "remotePath": remote_path,
+                    "localDirectory": local_directory,
+                    "overwriteBehavior": args.get("overwriteBehavior").and_then(Value::as_str),
+                }),
+            )
+            .await;
+            parse_tool_json(&raw)
+        }
+        "kkterm.workspace.file_browser.transfer_status" => {
+            let raw = crate::ai::live_session_tool(
+                app,
+                "session_file_browser_transfer_status",
+                json!({"tabId": args.get("tabId").and_then(Value::as_str)}),
+            )
+            .await;
+            parse_tool_json(&raw)
+        }
+        "kkterm.workspace.file_browser.dangerous.cancel_transfer" => {
+            let transfer_id = required_tool_string(&args, "transferId")?;
+            let raw = crate::ai::live_session_tool(
+                app,
+                "session_file_browser_cancel_transfer",
+                json!({
+                    "tabId": args.get("tabId").and_then(Value::as_str),
+                    "transferId": transfer_id,
+                }),
+            )
+            .await;
+            parse_tool_json(&raw)
+        }
         "kkterm.workspace.file_browser.dangerous.create_folder" => {
             let parent_path = args
                 .get("parentPath")
@@ -2033,9 +2275,25 @@ mod tests {
             "kkterm.workspace.sessions.dangerous.send_input"
         ));
         assert!(dangerous_tool(
+            "kkterm.workspace.sessions.dangerous.open_file_browser"
+        ));
+        assert!(dangerous_tool(
+            "kkterm.workspace.sessions.dangerous.url_navigate"
+        ));
+        assert!(dangerous_tool(
+            "kkterm.workspace.file_browser.dangerous.write"
+        ));
+        assert!(dangerous_tool(
+            "kkterm.workspace.file_browser.dangerous.upload"
+        ));
+        assert!(dangerous_tool(
             "kkterm.workspace.workspaces.dangerous.delete"
         ));
         assert!(!dangerous_tool("kkterm.workspace.file_browser.list"));
+        assert!(!dangerous_tool("kkterm.workspace.file_browser.properties"));
+        assert!(!dangerous_tool("kkterm.workspace.file_browser.transfer_status"));
+        assert!(!dangerous_tool("kkterm.workspace.sessions.activate_tab"));
+        assert!(!dangerous_tool("kkterm.workspace.sessions.url_state"));
         assert!(!dangerous_tool(
             "kkterm.workspace.sessions.remote_desktop_screenshot"
         ));
@@ -2081,6 +2339,21 @@ mod tests {
         assert!(names.contains(&"kkterm.workspace.connections.screenshot".to_string()));
         assert!(names.contains(&"kkterm.workspace.sessions.dangerous.send_input".to_string()));
         assert!(names.contains(&"kkterm.workspace.sessions.read_buffer".to_string()));
+        for name in [
+            "kkterm.workspace.sessions.activate_tab",
+            "kkterm.workspace.sessions.dangerous.open_file_browser",
+            "kkterm.workspace.sessions.open_file_viewer",
+            "kkterm.workspace.sessions.dangerous.close_tab",
+            "kkterm.workspace.sessions.dangerous.split_pane",
+            "kkterm.workspace.sessions.dangerous.close_pane",
+            "kkterm.workspace.sessions.url_state",
+            "kkterm.workspace.sessions.dangerous.url_navigate",
+            "kkterm.workspace.sessions.dangerous.url_reload",
+            "kkterm.workspace.sessions.dangerous.url_back",
+            "kkterm.workspace.sessions.dangerous.url_forward",
+        ] {
+            assert!(names.contains(&name.to_string()), "missing {name}");
+        }
         assert!(names.contains(&"kkterm.workspace.quick_commands.list".to_string()));
         assert!(names.contains(&"kkterm.workspace.quick_commands.read".to_string()));
         assert!(names.contains(&"kkterm.workspace.quick_commands.dangerous.create".to_string()));
@@ -2116,6 +2389,18 @@ mod tests {
         );
         assert!(names.contains(&"kkterm.workspace.file_browser.dangerous.rename".to_string()));
         assert!(names.contains(&"kkterm.workspace.file_browser.dangerous.delete".to_string()));
+        for name in [
+            "kkterm.workspace.file_browser.properties",
+            "kkterm.workspace.file_browser.dangerous.update_properties",
+            "kkterm.workspace.file_browser.dangerous.read",
+            "kkterm.workspace.file_browser.dangerous.write",
+            "kkterm.workspace.file_browser.dangerous.upload",
+            "kkterm.workspace.file_browser.dangerous.download",
+            "kkterm.workspace.file_browser.transfer_status",
+            "kkterm.workspace.file_browser.dangerous.cancel_transfer",
+        ] {
+            assert!(names.contains(&name.to_string()), "missing {name}");
+        }
         // Remote desktop surface
         assert!(names.contains(&"kkterm.workspace.sessions.remote_desktop_screenshot".to_string()));
         assert!(names.contains(&"kkterm.workspace.dangerous.remote_desktop_send_text".to_string()));

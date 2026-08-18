@@ -55,6 +55,13 @@ The URL Pane chrome follows the File Explorer (SFTP) Apple-esque design language
 - Close the URL Pane/Tab: toolbar close button (tutorial target `webview.close`, label `workspace.closeTab`), shown only when a close handler is provided.
 - Save/reset split Pane layout for a saved URL Connection from the Connection Tree right-click submenu `connections.layout` with `common.save` / `common.reset`.
 
+The native Assistant and kkterm-cli MCP can inspect and control an open URL Tab
+or embedded WebView Pane through `session_url_state`,
+`session_url_navigate`, `session_url_back`, `session_url_forward`, and
+`session_url_reload`. The target is a `tabId` or `paneId` returned by
+`session_state`; when omitted, the active URL surface is used. Navigation and
+history/reload actions require approval in Prompt mode.
+
 Tutorial targets: `webview.toolbar`, `webview.address`, `webview.openExternally`, `webview.autoRefresh`, `webview.savePassword`, `webview.fillCredential`, `webview.sendToAi`, `webview.close`.
 
 ## Save & restore form data

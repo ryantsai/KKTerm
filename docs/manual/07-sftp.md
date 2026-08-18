@@ -81,6 +81,16 @@ Per-transfer controls:
 - Cancel: `sftp.cancelTransfer` / `sftp.cancelTransferName`, in-flight `sftp.canceling`, post-state `sftp.canceledBeforeStart` or `sftp.transferCanceled`.
 - Skip existing target: `sftp.skippedExisting`.
 
+The native Assistant and kkterm-cli MCP can drive the same live browser Session
+through `session_file_browser_*` / `kkterm.workspace.file_browser.*`. The
+operations include bounded list and properties reads, folder creation, rename,
+delete, SFTP property updates, text read/write, upload, download, transfer
+status, and cancellation. Local File Explorer uses the same bridge with a
+single local pane; its upload/download operations are local copies. Remote
+text reads and writes use a temporary local staging directory and clean it up
+afterward. The MCP tools that expose file contents or mutate the filesystem
+require Allow-all; the native Assistant uses its normal Prompt-mode approval.
+
 For transfer integrity, KKTerm disables SSH compression inside native SFTP Sessions even when compression is enabled for the parent SSH Connection; the SSH terminal continues to use its configured compression setting. KKTerm sends one SFTP write at a time and waits for its acknowledgement. Canceling an in-flight transfer or reaching its I/O timeout closes the affected SFTP Session and reconnects before the next queued transfer starts. The interrupted transfer is not retried automatically. If the remote protocol stream had already stopped responding, a partial upload may remain because KKTerm does not issue cleanup commands through the unusable Session.
 
 ## SFTP Debug Logging

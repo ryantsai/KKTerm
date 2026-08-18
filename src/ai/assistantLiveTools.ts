@@ -23,8 +23,10 @@ import {
   getFileBrowserController,
   getPaneRenderer,
   getRemoteDesktopController,
+  getWebviewController,
   writeInputToPane,
 } from "../modules/workspace/paneRegistry";
+import { findConnectionInTree } from "../modules/workspace/connections/treeUtils";
 import { prepareAssistantTerminalInput } from "./terminalCommandSend";
 import { waitForScreenshotSurface } from "./assistantScreenshotRegion";
 import { assistantQuickCommandId } from "./assistantComposer";
@@ -57,6 +59,26 @@ export async function runAssistantLiveTool(
       return assistantSessionState();
     case "session_activate_tab":
       return assistantActivateTab(args);
+    case "session_open_file_browser":
+      return assistantOpenFileBrowser(args);
+    case "session_open_file_viewer":
+      return assistantOpenFileViewer(args);
+    case "session_close_tab":
+      return assistantCloseTab(args);
+    case "session_split_pane":
+      return assistantSplitPane(args);
+    case "session_close_pane":
+      return assistantClosePane(args);
+    case "session_url_state":
+      return assistantUrlState(args);
+    case "session_url_navigate":
+      return assistantUrlNavigate(args);
+    case "session_url_reload":
+      return assistantUrlSimple(args, "reload");
+    case "session_url_back":
+      return assistantUrlSimple(args, "back");
+    case "session_url_forward":
+      return assistantUrlSimple(args, "forward");
     case "session_terminal_read_buffer":
       return assistantTerminalReadBuffer(args);
     case "session_terminal_send_text":
@@ -83,6 +105,22 @@ export async function runAssistantLiveTool(
       return assistantFileBrowserRename(args);
     case "session_file_browser_delete":
       return assistantFileBrowserDelete(args);
+    case "session_file_browser_properties":
+      return assistantFileBrowserProperties(args);
+    case "session_file_browser_update_properties":
+      return assistantFileBrowserUpdateProperties(args);
+    case "session_file_browser_read":
+      return assistantFileBrowserRead(args);
+    case "session_file_browser_write":
+      return assistantFileBrowserWrite(args);
+    case "session_file_browser_upload":
+      return assistantFileBrowserUpload(args);
+    case "session_file_browser_download":
+      return assistantFileBrowserDownload(args);
+    case "session_file_browser_transfer_status":
+      return assistantFileBrowserTransferStatus(args);
+    case "session_file_browser_cancel_transfer":
+      return assistantFileBrowserCancelTransfer(args);
     case "quick_command_list":
       return assistantQuickCommandList(args);
     case "quick_command_read":
@@ -400,9 +438,20 @@ function assistantSessionState() {
         title: pane.title,
         hasTerminalBuffer: Boolean(getPaneRenderer(pane.id)),
         hasRemoteDesktopController: Boolean(getRemoteDesktopController(pane.id)),
+        hasWebviewController: Boolean(getWebviewController(pane.id)),
+        hasFileBrowserController: Boolean(getFileBrowserController(pane.id)),
+        webview: pane.kind === "webview"
+          ? getWebviewController(pane.id)?.snapshot() ?? null
+          : null,
+        fileBrowser: pane.kind === "sftp" || pane.kind === "ftp" || pane.kind === "localFiles"
+          ? getFileBrowserController(pane.id)?.snapshot() ?? null
+          : null,
       })),
-      fileBrowser: tab.kind === "sftp" || tab.kind === "ftp"
+      fileBrowser: tab.kind === "sftp" || tab.kind === "ftp" || tab.kind === "localFiles"
         ? getFileBrowserController(tab.id)?.snapshot() ?? null
+        : null,
+      webview: tab.kind === "webview"
+        ? getWebviewController(tab.id)?.snapshot() ?? null
         : null,
     })),
   };
@@ -431,6 +480,174 @@ function assistantActivateTab(args: Record<string, unknown>) {
     activeTabId: tabId,
     focusedPaneId: paneId || tab.focusedPaneId || null,
   };
+}
+
+async function assistantOpenFileBrowser(args: Record<string, unknown>) {
+  const connectionId = typeof args.connectionId === "string" ? args.connectionId.trim() : "";
+  const surface = typeof args.surface === "string" ? args.surface.trim() : "";
+  if (!connectionId) {
+    return { ok: false, error: "connectionId is required." };
+  }
+  if (surface && !["sftp", "ftp", "localFiles"].includes(surface)) {
+    return { ok: false, error: "surface must be sftp, ftp, or localFiles." };
+  }
+
+  const state = useWorkspaceStore.getState();
+  const tree = await invokeCommand("list_connection_tree", {
+    workspaceId: state.activeWorkspaceId,
+  });
+  const found = findConnectionInTree(tree, connectionId);
+  if (!found) {
+    return { ok: false, error: `No saved Connection with id ${connectionId}.` };
+  }
+
+  if (surface === "localFiles") {
+    if (found.connection.type !== "localFiles") {
+      return { ok: false, error: "The selected Connection is not a local File Explorer Connection." };
+    }
+    state.openLocalFilesBrowser(found.connection);
+  } else if (surface === "sftp") {
+    if (found.connection.type === "ssh") {
+      state.openSftpBrowser(found.connection);
+    } else if (found.connection.type === "ftp" && found.connection.ftpOptions?.protocol === "sftp") {
+      state.openFtpBrowser(found.connection);
+    } else {
+      return { ok: false, error: "The selected Connection does not support an SFTP browser." };
+    }
+  } else if (surface === "ftp") {
+    if (found.connection.type !== "ftp" || found.connection.ftpOptions?.protocol === "sftp") {
+      return { ok: false, error: "The selected Connection does not support a plain FTP/FTPS browser." };
+    }
+    state.openFtpBrowser(found.connection);
+  } else {
+    if (found.connection.type !== "ssh" && found.connection.type !== "ftp" && found.connection.type !== "localFiles") {
+      return { ok: false, error: "The selected Connection is not a file-browser Connection." };
+    }
+    state.openConnection(found.connection);
+  }
+
+  const nextState = useWorkspaceStore.getState();
+  const tab = nextState.tabs.find(
+    (entry) =>
+      entry.connection?.id === connectionId ||
+      (entry.kind === "sftp" && entry.connection?.id === connectionId),
+  );
+  return {
+    ok: true,
+    connectionId,
+    surface: surface || tab?.kind || "connection",
+    tabId: tab?.id ?? nextState.activeTabId,
+  };
+}
+
+async function assistantOpenFileViewer(args: Record<string, unknown>) {
+  const path = typeof args.path === "string" ? args.path.trim() : "";
+  if (!path) {
+    return { ok: false, error: "path is required." };
+  }
+  const connectionId = typeof args.connectionId === "string" ? args.connectionId.trim() : "";
+  let sourceConnection;
+  if (connectionId) {
+    const state = useWorkspaceStore.getState();
+    const tree = await invokeCommand("list_connection_tree", {
+      workspaceId: state.activeWorkspaceId,
+    });
+    sourceConnection = findConnectionInTree(tree, connectionId)?.connection;
+    if (!sourceConnection) {
+      return { ok: false, error: `No saved Connection with id ${connectionId}.` };
+    }
+  }
+  useWorkspaceStore.getState().openFileViewerPath(path, {
+    sourceConnection,
+    ephemeral: args.ephemeral !== false,
+  });
+  return { ok: true, path, activeTabId: useWorkspaceStore.getState().activeTabId };
+}
+
+function assistantCloseTab(args: Record<string, unknown>) {
+  const tabId = typeof args.tabId === "string" ? args.tabId.trim() : "";
+  if (!tabId) {
+    return { ok: false, error: "tabId is required." };
+  }
+  const state = useWorkspaceStore.getState();
+  if (!state.tabs.some((tab) => tab.id === tabId)) {
+    return { ok: false, error: `No open Tab with id ${tabId}.` };
+  }
+  state.closeTab(tabId);
+  return { ok: true, closedTabId: tabId, activeTabId: useWorkspaceStore.getState().activeTabId };
+}
+
+function assistantSplitPane(args: Record<string, unknown>) {
+  const tabId = typeof args.tabId === "string" ? args.tabId.trim() : "";
+  const direction = typeof args.direction === "string" ? args.direction.trim() : "right";
+  if (!tabId) {
+    return { ok: false, error: "tabId is required." };
+  }
+  if (!["right", "left", "down", "up"].includes(direction)) {
+    return { ok: false, error: "direction must be right, left, down, or up." };
+  }
+  const state = useWorkspaceStore.getState();
+  const tab = state.tabs.find((entry) => entry.id === tabId);
+  if (!tab) {
+    return { ok: false, error: `No open Tab with id ${tabId}.` };
+  }
+  if (tab.kind !== "terminal") {
+    return { ok: false, error: "Only terminal Workspace Tabs can be split." };
+  }
+  state.splitTerminalPaneDirected(tabId, direction as "right" | "left" | "down" | "up");
+  const next = useWorkspaceStore.getState().tabs.find((entry) => entry.id === tabId);
+  return { ok: true, tabId, focusedPaneId: next?.focusedPaneId ?? null, paneCount: next?.panes.length ?? 0 };
+}
+
+function assistantClosePane(args: Record<string, unknown>) {
+  const tabId = typeof args.tabId === "string" ? args.tabId.trim() : "";
+  const paneId = typeof args.paneId === "string" ? args.paneId.trim() : "";
+  if (!tabId || !paneId) {
+    return { ok: false, error: "tabId and paneId are required." };
+  }
+  const state = useWorkspaceStore.getState();
+  const tab = state.tabs.find((entry) => entry.id === tabId);
+  if (!tab || !tab.panes.some((pane) => pane.id === paneId)) {
+    return { ok: false, error: `No open Pane ${paneId} in Tab ${tabId}.` };
+  }
+  state.closePane(tabId, paneId);
+  return { ok: true, tabId, closedPaneId: paneId, activeTabId: useWorkspaceStore.getState().activeTabId };
+}
+
+function assistantUrlState(args: Record<string, unknown>) {
+  const { id, controller } = urlControllerForLiveTool(args);
+  if (!id || !controller) {
+    return { ok: false, error: "No open URL Session is available for the requested Tab or Pane." };
+  }
+  return { ok: true, targetId: id, state: controller.snapshot() };
+}
+
+async function assistantUrlNavigate(args: Record<string, unknown>) {
+  const { id, controller } = urlControllerForLiveTool(args);
+  const url = typeof args.url === "string" ? args.url.trim() : "";
+  if (!id || !controller || !url) {
+    return { ok: false, error: "A URL Session target and url are required." };
+  }
+  await controller.navigate(url);
+  return { ok: true, targetId: id, url, state: controller.snapshot() };
+}
+
+async function assistantUrlSimple(
+  args: Record<string, unknown>,
+  action: "reload" | "back" | "forward",
+) {
+  const { id, controller } = urlControllerForLiveTool(args);
+  if (!id || !controller) {
+    return { ok: false, error: "No open URL Session is available for the requested Tab or Pane." };
+  }
+  if (action === "reload") {
+    await controller.reload();
+  } else if (action === "back") {
+    await controller.goBack();
+  } else {
+    await controller.goForward();
+  }
+  return { ok: true, targetId: id, action, state: controller.snapshot() };
 }
 
 function activeTerminalPaneIdForLiveTool(paneId: unknown) {
@@ -463,10 +680,51 @@ function activeFileBrowserTabIdForLiveTool(tabId: unknown) {
   }
   const state = useWorkspaceStore.getState();
   const tab = state.tabs.find((entry) => entry.id === state.activeTabId);
-  if (!tab || (tab.kind !== "sftp" && tab.kind !== "ftp")) {
+  if (!tab) {
     return "";
   }
-  return tab.id;
+  if (tab.kind === "sftp" || tab.kind === "ftp" || tab.kind === "localFiles") {
+    return tab.id;
+  }
+  const embedded = tab.panes.find(
+    (pane) =>
+      (pane.kind === "sftp" || pane.kind === "ftp" || pane.kind === "localFiles") &&
+      Boolean(getFileBrowserController(pane.id)),
+  );
+  return embedded?.id ?? "";
+}
+
+function fileBrowserControllerForLiveTool(args: Record<string, unknown>) {
+  const explicitTarget = args.tabId ?? args.paneId;
+  const tabId = activeFileBrowserTabIdForLiveTool(explicitTarget);
+  return {
+    tabId,
+    controller: tabId ? getFileBrowserController(tabId) : undefined,
+  };
+}
+
+function urlControllerForLiveTool(args: Record<string, unknown>) {
+  const state = useWorkspaceStore.getState();
+  const requestedId =
+    typeof args.tabId === "string" && args.tabId.trim()
+      ? args.tabId.trim()
+      : typeof args.paneId === "string" && args.paneId.trim()
+        ? args.paneId.trim()
+        : "";
+  if (requestedId) {
+    const requested = getWebviewController(requestedId);
+    return { id: requestedId, controller: requested };
+  }
+
+  const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId);
+  if (!activeTab) {
+    return { id: "", controller: undefined };
+  }
+  if (activeTab.kind === "webview") {
+    return { id: activeTab.id, controller: getWebviewController(activeTab.id) };
+  }
+  const focusedPaneId = activeTab.focusedPaneId ?? activeTab.panes[0]?.id ?? "";
+  return { id: focusedPaneId, controller: focusedPaneId ? getWebviewController(focusedPaneId) : undefined };
 }
 
 function assistantTerminalReadBuffer(args: Record<string, unknown>) {
@@ -545,10 +803,9 @@ async function assistantRemoteDesktopMouseClick(args: Record<string, unknown>) {
 }
 
 async function assistantFileBrowserList(args: Record<string, unknown>) {
-  const tabId = activeFileBrowserTabIdForLiveTool(args.tabId);
-  const controller = tabId ? getFileBrowserController(tabId) : undefined;
+  const { tabId, controller } = fileBrowserControllerForLiveTool(args);
   if (!tabId || !controller) {
-    return { ok: false, error: "No active SFTP/FTP file browser Session is available." };
+    return { ok: false, error: "No active SFTP/FTP/local File Explorer Session is available." };
   }
   const path = typeof args.path === "string" ? args.path : null;
   const listing = await controller.list(path);
@@ -556,8 +813,7 @@ async function assistantFileBrowserList(args: Record<string, unknown>) {
 }
 
 async function assistantFileBrowserCreateFolder(args: Record<string, unknown>) {
-  const tabId = activeFileBrowserTabIdForLiveTool(args.tabId);
-  const controller = tabId ? getFileBrowserController(tabId) : undefined;
+  const { tabId, controller } = fileBrowserControllerForLiveTool(args);
   const parentPath = typeof args.parentPath === "string" ? args.parentPath : "";
   const name = typeof args.name === "string" ? args.name : "";
   if (!tabId || !controller || !parentPath || !name) {
@@ -568,8 +824,7 @@ async function assistantFileBrowserCreateFolder(args: Record<string, unknown>) {
 }
 
 async function assistantFileBrowserRename(args: Record<string, unknown>) {
-  const tabId = activeFileBrowserTabIdForLiveTool(args.tabId);
-  const controller = tabId ? getFileBrowserController(tabId) : undefined;
+  const { tabId, controller } = fileBrowserControllerForLiveTool(args);
   const path = typeof args.path === "string" ? args.path : "";
   const newName = typeof args.newName === "string" ? args.newName : "";
   if (!tabId || !controller || !path || !newName) {
@@ -580,13 +835,138 @@ async function assistantFileBrowserRename(args: Record<string, unknown>) {
 }
 
 async function assistantFileBrowserDelete(args: Record<string, unknown>) {
-  const tabId = activeFileBrowserTabIdForLiveTool(args.tabId);
-  const controller = tabId ? getFileBrowserController(tabId) : undefined;
+  const { tabId, controller } = fileBrowserControllerForLiveTool(args);
   const path = typeof args.path === "string" ? args.path : "";
   if (!tabId || !controller || !path) {
     return { ok: false, error: "File browser tabId and path are required." };
   }
   const result = await controller.deletePath(path);
+  return { ok: true, tabId, kind: controller.kind, result };
+}
+
+async function assistantFileBrowserProperties(args: Record<string, unknown>) {
+  const { tabId, controller } = fileBrowserControllerForLiveTool(args);
+  const path = typeof args.path === "string" ? args.path.trim() : "";
+  if (!tabId || !controller || !path) {
+    return { ok: false, error: "File browser tabId and path are required." };
+  }
+  const properties = await controller.properties(path);
+  return { ok: true, tabId, kind: controller.kind, properties };
+}
+
+async function assistantFileBrowserUpdateProperties(args: Record<string, unknown>) {
+  const { tabId, controller } = fileBrowserControllerForLiveTool(args);
+  const path = typeof args.path === "string" ? args.path.trim() : "";
+  if (!tabId || !controller || !path) {
+    return { ok: false, error: "File browser tabId and path are required." };
+  }
+  const patch: { permissions?: string; uid?: number; gid?: number } = {};
+  if (typeof args.permissions === "string" && args.permissions.trim()) {
+    patch.permissions = args.permissions.trim();
+  }
+  if (typeof args.uid === "number" && Number.isInteger(args.uid) && args.uid >= 0) {
+    patch.uid = args.uid;
+  }
+  if (typeof args.gid === "number" && Number.isInteger(args.gid) && args.gid >= 0) {
+    patch.gid = args.gid;
+  }
+  if (!patch.permissions && patch.uid === undefined && patch.gid === undefined) {
+    return { ok: false, error: "At least one of permissions, uid, or gid is required." };
+  }
+  const properties = await controller.updateProperties(path, patch);
+  return { ok: true, tabId, kind: controller.kind, properties };
+}
+
+async function assistantFileBrowserRead(args: Record<string, unknown>) {
+  const { tabId, controller } = fileBrowserControllerForLiveTool(args);
+  const path = typeof args.path === "string" ? args.path.trim() : "";
+  if (!tabId || !controller || !path) {
+    return { ok: false, error: "File browser tabId and path are required." };
+  }
+  const maxBytes =
+    typeof args.maxBytes === "number" && Number.isFinite(args.maxBytes)
+      ? Math.max(1, Math.min(4 * 1024 * 1024, Math.trunc(args.maxBytes)))
+      : 512 * 1024;
+  const result = await controller.readFile({
+    path,
+    maxBytes,
+    fromEnd: args.fromEnd === true,
+  });
+  return { ok: true, tabId, kind: controller.kind, path, result };
+}
+
+async function assistantFileBrowserWrite(args: Record<string, unknown>) {
+  const { tabId, controller } = fileBrowserControllerForLiveTool(args);
+  const path = typeof args.path === "string" ? args.path.trim() : "";
+  const content = typeof args.content === "string" ? args.content : "";
+  if (!tabId || !controller || !path) {
+    return { ok: false, error: "File browser tabId and path are required." };
+  }
+  if (content.length > 16 * 1024 * 1024) {
+    return { ok: false, error: "File content exceeds the 16 MiB Assistant limit." };
+  }
+  const expectedModified =
+    typeof args.expectedModified === "number" && Number.isFinite(args.expectedModified)
+      ? args.expectedModified
+      : undefined;
+  const result = await controller.writeFile({
+    path,
+    content,
+    expectedModified,
+    force: args.force === true,
+  });
+  return { ok: true, tabId, kind: controller.kind, path, result };
+}
+
+async function assistantFileBrowserUpload(args: Record<string, unknown>) {
+  const { tabId, controller } = fileBrowserControllerForLiveTool(args);
+  const localPath = typeof args.localPath === "string" ? args.localPath.trim() : "";
+  const remoteDirectory = typeof args.remoteDirectory === "string" ? args.remoteDirectory.trim() : "";
+  if (!tabId || !controller || !localPath || !remoteDirectory) {
+    return { ok: false, error: "File browser tabId, localPath, and remoteDirectory are required." };
+  }
+  const overwriteBehavior = args.overwriteBehavior === "overwrite" ? "overwrite" : "fail";
+  const result = await controller.upload({
+    transferId: typeof args.transferId === "string" ? args.transferId.trim() : undefined,
+    localPath,
+    remoteDirectory,
+    overwriteBehavior,
+  });
+  return { ok: true, tabId, kind: controller.kind, direction: "upload", result };
+}
+
+async function assistantFileBrowserDownload(args: Record<string, unknown>) {
+  const { tabId, controller } = fileBrowserControllerForLiveTool(args);
+  const remotePath = typeof args.remotePath === "string" ? args.remotePath.trim() : "";
+  const localDirectory = typeof args.localDirectory === "string" ? args.localDirectory.trim() : "";
+  if (!tabId || !controller || !remotePath || !localDirectory) {
+    return { ok: false, error: "File browser tabId, remotePath, and localDirectory are required." };
+  }
+  const overwriteBehavior = args.overwriteBehavior === "overwrite" ? "overwrite" : "fail";
+  const result = await controller.download({
+    transferId: typeof args.transferId === "string" ? args.transferId.trim() : undefined,
+    remotePath,
+    localDirectory,
+    overwriteBehavior,
+  });
+  return { ok: true, tabId, kind: controller.kind, direction: "download", result };
+}
+
+function assistantFileBrowserTransferStatus(args: Record<string, unknown>) {
+  const { tabId, controller } = fileBrowserControllerForLiveTool(args);
+  if (!tabId || !controller) {
+    return { ok: false, error: "No active SFTP/FTP/local File Explorer Session is available." };
+  }
+  return { ok: true, tabId, kind: controller.kind, transfers: controller.transferStatus() };
+}
+
+async function assistantFileBrowserCancelTransfer(args: Record<string, unknown>) {
+  const { tabId, controller } = fileBrowserControllerForLiveTool(args);
+  const transferId = typeof args.transferId === "string" ? args.transferId.trim() : "";
+  if (!tabId || !controller || !transferId) {
+    return { ok: false, error: "File browser tabId and transferId are required." };
+  }
+  const result = await controller.cancelTransfer(transferId);
   return { ok: true, tabId, kind: controller.kind, result };
 }
 

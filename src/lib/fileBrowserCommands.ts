@@ -202,6 +202,47 @@ export function ftpBrowserCommands(
  */
 let localBrowserCommandsSingleton: FileBrowserCommands | null = null;
 
+function localPathName(path: string) {
+  const trimmed = path.trim().replace(/[\\/]+$/, "");
+  return trimmed.split(/[\\/]/).pop() ?? "";
+}
+
+function localDestinationPath(sourcePath: string, destinationDirectory: string) {
+  const name = localPathName(sourcePath);
+  if (!name) {
+    throw new Error("source path must name a file or folder");
+  }
+  const directory = destinationDirectory.trim();
+  if (!directory) {
+    throw new Error("destination directory is required");
+  }
+  const separator = directory.endsWith("\\") || directory.endsWith("/")
+    ? ""
+    : directory.startsWith("/")
+      ? "/"
+      : "\\";
+  return `${directory}${separator}${name}`;
+}
+
+async function copyLocalBrowserPath(
+  sourcePath: string,
+  destinationDirectory: string,
+  overwriteBehavior: SftpSettings["overwriteBehavior"],
+) {
+  const destinationPath = localDestinationPath(sourcePath, destinationDirectory);
+  if (overwriteBehavior !== "overwrite") {
+    const existing = await invokeCommand("local_path_properties", {
+      request: { path: destinationPath },
+    }).catch(() => null);
+    if (existing) {
+      throw new Error(`destination already exists: ${destinationPath}`);
+    }
+  }
+  return invokeCommand("copy_local_path_to", {
+    request: { sourcePath, destinationPath },
+  });
+}
+
 export function localBrowserCommands(): FileBrowserCommands {
   if (localBrowserCommandsSingleton) {
     return localBrowserCommandsSingleton;
@@ -237,14 +278,10 @@ export function localBrowserCommands(): FileBrowserCommands {
     updatePathProperties: () => {
       throw new Error("Local File Explorer does not support editing POSIX properties");
     },
-    uploadPath: ({ localPath, remoteDirectory }) =>
-      invokeCommand("copy_local_path", {
-        request: { sourcePath: localPath, destinationDirectory: remoteDirectory },
-      }),
-    downloadPath: ({ remotePath, localDirectory }) =>
-      invokeCommand("copy_local_path", {
-        request: { sourcePath: remotePath, destinationDirectory: localDirectory },
-      }),
+    uploadPath: ({ localPath, remoteDirectory, overwriteBehavior }) =>
+      copyLocalBrowserPath(localPath, remoteDirectory, overwriteBehavior),
+    downloadPath: ({ remotePath, localDirectory, overwriteBehavior }) =>
+      copyLocalBrowserPath(remotePath, localDirectory, overwriteBehavior),
     cancelTransfer: () => Promise.resolve(),
     transferProgressEvent: "local-files-transfer-progress",
   };

@@ -58,6 +58,7 @@ const FILE_BROWSER_SIDEBAR_STORAGE_KEY = "kkterm.fileBrowserSidebarCollapsed.v1"
 const SSH_FILE_BROWSER_PROTOCOL_STORAGE_KEY = "kkterm.sshFileBrowserProtocol.v1";
 const SSH_FILE_BROWSER_LOCAL_PATH_STORAGE_KEY = "kkterm.sshFileBrowserLocalPath.v1";
 const SFTP_SESSION_INVALIDATED_MARKER = "[KKTERM_SFTP_SESSION_INVALIDATED]";
+const LOCAL_BROWSER_SESSION_ID = "__kkterm_local_files__";
 const RECENT_PATH_LIMIT = 5;
 
 function parseSftpTransferError(error: unknown) {
@@ -2000,61 +2001,284 @@ export function SftpWorkspace({
 
 
   useEffect(() => {
-    if (isLocalFilesBrowser || !commands || !isTauriRuntime()) {
+    if (!commands || !isTauriRuntime()) {
       return;
     }
-    const controller: FileBrowserController = {
-      kind: effectiveBrowserKind === "ftp" ? "ftp" : "sftp",
-      list: async (path) => {
-        const sessionId = sessionIdRef.current;
-        if (!sessionId) {
-          throw new Error(t("sftp.sessionUnavailable"));
+
+    const kind: FileBrowserController["kind"] = isLocalFilesBrowser
+      ? "localFiles"
+      : effectiveBrowserKind === "ftp"
+        ? "ftp"
+        : "sftp";
+    const sessionIdForCommand = () =>
+      isLocalFilesBrowser ? LOCAL_BROWSER_SESSION_ID : sessionIdRef.current;
+    const requireSessionId = () => {
+      const sessionId = sessionIdForCommand();
+      if (!sessionId) {
+        throw new Error(t("sftp.sessionUnavailable"));
+      }
+      return sessionId;
+    };
+    const refreshBrowserDirectory = () =>
+      isLocalFilesBrowser ? refreshLocalDirectory() : refreshRemoteDirectory();
+    const localPathForFile = (path: string) => path.trim();
+
+    const runControllerTransfer = async (
+      direction: TransferDirection,
+      request: {
+        transferId?: string;
+        localPath?: string;
+        remoteDirectory?: string;
+        remotePath?: string;
+        localDirectory?: string;
+        overwriteBehavior: SftpSettings["overwriteBehavior"];
+      },
+    ) => {
+      const sessionId = requireSessionId();
+      const transferId = request.transferId?.trim() || uniqueRuntimeId(`assistant-${direction}`);
+      const sourcePath = direction === "upload" ? request.localPath ?? "" : request.remotePath ?? "";
+      const name = direction === "upload" ? localNameFromPath(sourcePath) : remoteNameFromPath(sourcePath);
+      if (!sourcePath || !name) {
+        throw new Error(`${direction === "upload" ? "localPath" : "remotePath"} is required`);
+      }
+      const record: TransferRecord = {
+        id: transferId,
+        direction,
+        name,
+        state: "active",
+        progress: 0,
+        detail: t("sftp.preparing"),
+        overwriteBehavior: request.overwriteBehavior,
+        localPath: request.localPath,
+        remoteDirectory: request.remoteDirectory,
+        remotePath: request.remotePath,
+        localDirectory: request.localDirectory,
+      };
+      setTransfers((current) => [
+        ...current.filter((transfer) => transfer.id !== transferId),
+        record,
+      ]);
+
+      try {
+        const result =
+          direction === "upload"
+            ? await commands.uploadPath({
+                sessionId,
+                transferId,
+                localPath: request.localPath ?? "",
+                remoteDirectory: request.remoteDirectory ?? remotePath,
+                overwriteBehavior: request.overwriteBehavior,
+              })
+            : await commands.downloadPath({
+                sessionId,
+                transferId,
+                remotePath: request.remotePath ?? "",
+                localDirectory: request.localDirectory ?? localPath,
+                overwriteBehavior: request.overwriteBehavior,
+              });
+        setTransfers((current) =>
+          current.map((transfer) =>
+            transfer.id === transferId
+              ? { ...transfer, state: "done", progress: 100, detail: formatTransferResult(result) }
+              : transfer,
+          ),
+        );
+        await refreshBrowserDirectory();
+        return { transferId, result };
+      } catch (error) {
+        setTransfers((current) =>
+          current.map((transfer) =>
+            transfer.id === transferId
+              ? {
+                  ...transfer,
+                  state: "failed",
+                  progress: 100,
+                  detail: error instanceof Error ? error.message : String(error),
+                }
+              : transfer,
+          ),
+        );
+        throw error;
+      }
+    };
+
+    const readLocalText = (path: string, maxBytes: number, fromEnd = false) =>
+      invokeCommand("read_file_view_text", {
+        request: { path, maxBytes, fromEnd },
+      });
+
+    const readRemoteText = async (path: string, maxBytes: number, fromEnd = false) => {
+      const sessionId = requireSessionId();
+      const tempDir = await invokeCommand("create_compare_temp_dir");
+      const name = remoteNameFromPath(path) || "kkterm-remote-file";
+      const tempPath = joinLocalPath(tempDir, name);
+      const transferId = uniqueRuntimeId("assistant-read");
+      try {
+        await commands.downloadPath({
+          sessionId,
+          transferId,
+          remotePath: path,
+          localDirectory: tempDir,
+          overwriteBehavior: "overwrite",
+        });
+        return await readLocalText(tempPath, maxBytes, fromEnd);
+      } finally {
+        await invokeCommand("delete_local_path", { request: { path: tempDir } }).catch(() => undefined);
+      }
+    };
+
+    const writeRemoteText = async (request: {
+      path: string;
+      content: string;
+      expectedModified?: number;
+      force?: boolean;
+    }) => {
+      const sessionId = requireSessionId();
+      const normalizedPath = request.path.trim().replace(/\/+$/, "");
+      const name = remoteNameFromPath(normalizedPath);
+      if (!normalizedPath || !name) {
+        throw new Error("path must identify a file");
+      }
+      if (!request.force && typeof request.expectedModified === "number") {
+        const current = await commands.pathProperties({ sessionId, path: normalizedPath });
+        if (current.modified !== undefined && current.modified !== request.expectedModified) {
+          throw new Error("Remote file changed since expectedModified; retry with force=true.");
         }
-        return commands.listDirectory({ sessionId, path: path?.trim() || remotePath });
+      }
+      const tempDir = await invokeCommand("create_compare_temp_dir");
+      const tempPath = joinLocalPath(tempDir, name);
+      try {
+        await invokeCommand("write_file_view", {
+          request: { path: tempPath, content: request.content, force: true },
+        });
+        const transferId = uniqueRuntimeId("assistant-write");
+        const result = await commands.uploadPath({
+          sessionId,
+          transferId,
+          localPath: tempPath,
+          remoteDirectory: normalizedPath.slice(0, Math.max(0, normalizedPath.length - name.length)) || ".",
+          overwriteBehavior: "overwrite",
+        });
+        await refreshRemoteDirectory();
+        return { transferId, result };
+      } finally {
+        await invokeCommand("delete_local_path", { request: { path: tempDir } }).catch(() => undefined);
+      }
+    };
+
+    const controller: FileBrowserController = {
+      kind,
+      list: async (path) => {
+        const sessionId = requireSessionId();
+        const listing = await commands.listDirectory({
+          sessionId,
+          path: path?.trim() || (isLocalFilesBrowser ? localPath : remotePath),
+        });
+        if (isLocalFilesBrowser) {
+          setLocalPath(listing.path);
+          setLocalFiles(listing.entries.map(localEntryToFileEntry));
+          setSelectedLocalNames([]);
+        } else {
+          setRemotePath(listing.path);
+          setRemoteFiles(listing.entries.map(remoteEntryToFileEntry));
+          setSelectedRemoteNames([]);
+        }
+        return listing;
       },
       createFolder: async (parentPath, name) => {
-        const sessionId = sessionIdRef.current;
-        if (!sessionId) {
-          throw new Error(t("sftp.sessionUnavailable"));
-        }
-        const result = await commands.createFolder({ sessionId, parentPath, name });
-        await refreshRemoteDirectory();
+        const result = await commands.createFolder({ sessionId: requireSessionId(), parentPath, name });
+        await refreshBrowserDirectory();
         return result ?? { ok: true };
       },
       rename: async (path, newName) => {
-        const sessionId = sessionIdRef.current;
-        if (!sessionId) {
-          throw new Error(t("sftp.sessionUnavailable"));
-        }
-        const result = await commands.renamePath({ sessionId, path, newName });
-        await refreshRemoteDirectory();
+        const result = await commands.renamePath({ sessionId: requireSessionId(), path, newName });
+        await refreshBrowserDirectory();
         return result ?? { ok: true };
       },
       deletePath: async (path) => {
-        const sessionId = sessionIdRef.current;
-        if (!sessionId) {
-          throw new Error(t("sftp.sessionUnavailable"));
-        }
-        const result = await commands.deletePath({ sessionId, path });
-        await refreshRemoteDirectory();
+        const result = await commands.deletePath({ sessionId: requireSessionId(), path });
+        await refreshBrowserDirectory();
         return result ?? { ok: true };
       },
+      properties: (path) =>
+        commands.pathProperties({ sessionId: requireSessionId(), path }),
+      updateProperties: async (path, patch) => {
+        const result = await commands.updatePathProperties({
+          sessionId: requireSessionId(),
+          path,
+          ...patch,
+        });
+        await refreshBrowserDirectory();
+        return result;
+      },
+      readFile: async ({ path, maxBytes, fromEnd }) =>
+        isLocalFilesBrowser
+          ? readLocalText(localPathForFile(path), maxBytes, fromEnd)
+          : readRemoteText(path, maxBytes, fromEnd),
+      writeFile: async (request) =>
+        isLocalFilesBrowser
+          ? (async () => {
+              const path = localPathForFile(request.path);
+              let expectedMtimeMs = request.expectedModified;
+              if (typeof request.expectedModified === "number" && !request.force) {
+                const current = await invokeCommand("local_path_properties", { request: { path } });
+                const currentModified = current.modified;
+                if (
+                  typeof currentModified === "number" &&
+                  currentModified !== request.expectedModified &&
+                  currentModified * 1000 !== request.expectedModified
+                ) {
+                  throw new Error("Local file changed since expectedModified; retry with force=true.");
+                }
+                expectedMtimeMs = typeof currentModified === "number" ? currentModified * 1000 : undefined;
+              }
+              return invokeCommand("write_file_view", {
+                request: {
+                  path,
+                  content: request.content,
+                  expectedMtimeMs,
+                  force: request.force,
+                },
+              });
+            })()
+          : writeRemoteText(request),
+      upload: (request) =>
+        runControllerTransfer("upload", request),
+      download: (request) =>
+        runControllerTransfer("download", request),
+      cancelTransfer: async (transferId) => {
+        await commands.cancelTransfer({ transferId });
+        setTransfers((current) =>
+          current.map((transfer) =>
+            transfer.id === transferId && (transfer.state === "active" || transfer.state === "queued")
+              ? { ...transfer, state: "canceled", progress: 100, detail: t("sftp.canceled") }
+              : transfer,
+          ),
+        );
+        return { transferId, canceled: true };
+      },
+      transferStatus: () => transfers,
       snapshot: () => ({
-        kind: effectiveBrowserKind === "ftp" ? "ftp" : "sftp",
+        kind,
         tabId: tab.id,
         connectionId: connection?.id,
         connectionName: connection?.name,
-        remotePath,
-        remoteFiles,
-        selectedRemoteNames,
-        status,
+        path: isLocalFilesBrowser ? localPath : remotePath,
+        localPath,
+        remotePath: isLocalFilesBrowser ? undefined : remotePath,
+        localFiles,
+        remoteFiles: isLocalFilesBrowser ? undefined : remoteFiles,
+        selectedLocalNames,
+        selectedRemoteNames: isLocalFilesBrowser ? undefined : selectedRemoteNames,
+        status: isLocalFilesBrowser ? localStatus || "ready" : status,
+        transfers,
       }),
     };
     registerFileBrowserController(tab.id, controller);
     return () => unregisterFileBrowserController(tab.id, controller);
-    // Re-register only on the listed inputs; refreshRemoteDirectory is recreated each render and read at call time.
+    // The controller is intentionally refreshed with live paths, selections, and transfer state.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [commands, connection?.id, connection?.name, effectiveBrowserKind, isLocalFilesBrowser, remoteFiles, remotePath, selectedRemoteNames, status, t, tab.id]);
+  }, [commands, connection?.id, connection?.name, effectiveBrowserKind, isLocalFilesBrowser, localFiles, localPath, localStatus, remoteFiles, remotePath, selectedLocalNames, selectedRemoteNames, status, t, tab.id, transfers]);
 
   return (
     <section

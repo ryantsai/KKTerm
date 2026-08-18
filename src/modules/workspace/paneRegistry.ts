@@ -5,6 +5,7 @@ const inputWriters = new Map<string, (data: string) => void>();
 const rdpTextSenders = new Map<string, (text: string, pressEnter: boolean) => Promise<void>>();
 const remoteDesktopControllers = new Map<string, RemoteDesktopController>();
 const fileBrowserControllers = new Map<string, FileBrowserController>();
+const webviewControllers = new Map<string, WebviewController>();
 const movingTerminalPaneIds = new Set<string>();
 const preservedTerminalPaneRuntimes = new Map<string, PreservedTerminalPaneRuntime>();
 
@@ -23,11 +24,49 @@ export type RemoteDesktopController = {
 };
 
 export type FileBrowserController = {
-  kind: "sftp" | "ftp";
+  kind: "sftp" | "ftp" | "localFiles";
   list: (path?: string | null) => Promise<unknown>;
   createFolder: (parentPath: string, name: string) => Promise<unknown>;
   rename: (path: string, newName: string) => Promise<unknown>;
   deletePath: (path: string) => Promise<unknown>;
+  properties: (path: string) => Promise<unknown>;
+  updateProperties: (
+    path: string,
+    patch: { permissions?: string; uid?: number; gid?: number },
+  ) => Promise<unknown>;
+  readFile: (request: {
+    path: string;
+    maxBytes: number;
+    fromEnd?: boolean;
+  }) => Promise<unknown>;
+  writeFile: (request: {
+    path: string;
+    content: string;
+    expectedModified?: number;
+    force?: boolean;
+  }) => Promise<unknown>;
+  upload: (request: {
+    transferId?: string;
+    localPath: string;
+    remoteDirectory: string;
+    overwriteBehavior: "fail" | "overwrite";
+  }) => Promise<unknown>;
+  download: (request: {
+    transferId?: string;
+    remotePath: string;
+    localDirectory: string;
+    overwriteBehavior: "fail" | "overwrite";
+  }) => Promise<unknown>;
+  cancelTransfer: (transferId: string) => Promise<unknown>;
+  transferStatus: () => unknown;
+  snapshot: () => unknown;
+};
+
+export type WebviewController = {
+  navigate: (url: string) => Promise<unknown>;
+  reload: () => Promise<unknown>;
+  goBack: () => Promise<unknown>;
+  goForward: () => Promise<unknown>;
   snapshot: () => unknown;
 };
 
@@ -173,4 +212,18 @@ export function unregisterFileBrowserController(tabId: string, controller: FileB
 
 export function getFileBrowserController(tabId: string) {
   return fileBrowserControllers.get(tabId);
+}
+
+export function registerWebviewController(id: string, controller: WebviewController) {
+  webviewControllers.set(id, controller);
+}
+
+export function unregisterWebviewController(id: string, controller: WebviewController) {
+  if (webviewControllers.get(id) === controller) {
+    webviewControllers.delete(id);
+  }
+}
+
+export function getWebviewController(id: string) {
+  return webviewControllers.get(id);
 }

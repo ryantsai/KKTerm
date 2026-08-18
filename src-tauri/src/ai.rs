@@ -513,7 +513,11 @@ fn live_tool_timeout(tool_name: &str) -> Duration {
     match tool_name {
         "session_remote_desktop_screenshot"
         | "session_terminal_read_buffer"
-        | "session_file_browser_list" => Duration::from_secs(60),
+        | "session_file_browser_list"
+        | "session_file_browser_properties"
+        | "session_file_browser_read"
+        | "session_file_browser_transfer_status"
+        | "session_url_state" => Duration::from_secs(60),
         "installer_list_tools" | "installer_check_updates" => Duration::from_secs(180),
         "installer_install" | "installer_uninstall" => Duration::from_secs(1_800),
         _ => Duration::from_secs(15),
@@ -3721,6 +3725,56 @@ fn ai_tool_definitions_with_skills(
             json!({"type":"object","properties":{"tabId":{"type":"string"},"paneId":{"type":["string","null"]}},"required":["tabId"]}),
         ));
         tools.push(tool_definition(
+            "session_open_file_browser",
+            "Open a saved Connection's SFTP, FTP/FTPS, or local File Explorer surface in the Workspace and activate its Tab. Use connection_list or the saved Connection id from context first.",
+            json!({"type":"object","properties":{"connectionId":{"type":"string"},"surface":{"type":"string","enum":["sftp","ftp","localFiles"]}},"required":["connectionId"]}),
+        ));
+        tools.push(tool_definition(
+            "session_open_file_viewer",
+            "Open a local path in KKTerm's Document viewer. This reads the local filesystem and does not open a remote file directly.",
+            json!({"type":"object","properties":{"path":{"type":"string"},"connectionId":{"type":["string","null"]},"ephemeral":{"type":"boolean"}},"required":["path"]}),
+        ));
+        tools.push(tool_definition(
+            "session_close_tab",
+            "Close an open Workspace Tab and its live Session. Use session_state first; this cannot be undone by the tool.",
+            json!({"type":"object","properties":{"tabId":{"type":"string"}},"required":["tabId"]}),
+        ));
+        tools.push(tool_definition(
+            "session_split_pane",
+            "Split a terminal Workspace Tab beside its focused Pane and start the same Connection in the new Pane.",
+            json!({"type":"object","properties":{"tabId":{"type":"string"},"direction":{"type":"string","enum":["right","left","down","up"]}},"required":["tabId"]}),
+        ));
+        tools.push(tool_definition(
+            "session_close_pane",
+            "Close one live Workspace Pane. If it is the last Pane, the containing Tab is closed too.",
+            json!({"type":"object","properties":{"tabId":{"type":"string"},"paneId":{"type":"string"}},"required":["tabId","paneId"]}),
+        ));
+        tools.push(tool_definition(
+            "session_url_state",
+            "Read the current URL and readiness state for an open URL Connection Tab or WebView Pane.",
+            json!({"type":"object","properties":{"tabId":{"type":["string","null"]},"paneId":{"type":["string","null"]}},"required":[]}),
+        ));
+        tools.push(tool_definition(
+            "session_url_navigate",
+            "Navigate an open URL Connection Tab or WebView Pane to a URL.",
+            json!({"type":"object","properties":{"tabId":{"type":["string","null"]},"paneId":{"type":["string","null"]},"url":{"type":"string"}},"required":["url"]}),
+        ));
+        tools.push(tool_definition(
+            "session_url_reload",
+            "Reload an open URL Connection Tab or WebView Pane.",
+            json!({"type":"object","properties":{"tabId":{"type":["string","null"]},"paneId":{"type":["string","null"]}},"required":[]}),
+        ));
+        tools.push(tool_definition(
+            "session_url_back",
+            "Navigate an open URL Connection Tab or WebView Pane back one history entry.",
+            json!({"type":"object","properties":{"tabId":{"type":["string","null"]},"paneId":{"type":["string","null"]}},"required":[]}),
+        ));
+        tools.push(tool_definition(
+            "session_url_forward",
+            "Navigate an open URL Connection Tab or WebView Pane forward one history entry.",
+            json!({"type":"object","properties":{"tabId":{"type":["string","null"]},"paneId":{"type":["string","null"]}},"required":[]}),
+        ));
+        tools.push(tool_definition(
             "session_terminal_read_buffer",
             "Read visible terminal buffer text from an open terminal Pane. Use session_state first to discover paneId. Defaults to the active terminal Pane.",
             json!({"type":"object","properties":{"paneId":{"type":["string","null"]},"maxChars":{"type":["integer","null"],"minimum":1,"maximum":50000}},"required":["paneId","maxChars"]}),
@@ -3769,6 +3823,46 @@ fn ai_tool_definitions_with_skills(
             "session_file_browser_delete",
             "Delete a path in an active SFTP/FTP file browser Session.",
             json!({"type":"object","properties":{"tabId":{"type":["string","null"]},"path":{"type":"string"}},"required":["tabId","path"]}),
+        ));
+        tools.push(tool_definition(
+            "session_file_browser_properties",
+            "Read metadata for a path in an active SFTP/FTP/local File Explorer Session.",
+            json!({"type":"object","properties":{"tabId":{"type":["string","null"]},"path":{"type":"string"}},"required":["tabId","path"]}),
+        ));
+        tools.push(tool_definition(
+            "session_file_browser_update_properties",
+            "Update SFTP path permissions, owner, or group in an active file browser Session. Plain FTP and local File Explorer do not support POSIX property editing.",
+            json!({"type":"object","properties":{"tabId":{"type":["string","null"]},"path":{"type":"string"},"permissions":{"type":"string"},"uid":{"type":"integer","minimum":0},"gid":{"type":"integer","minimum":0}},"required":["tabId","path"]}),
+        ));
+        tools.push(tool_definition(
+            "session_file_browser_read",
+            "Read bounded text from a local or remote file in an active file browser Session. Remote files are staged transiently and the staging copy is removed after the read.",
+            json!({"type":"object","properties":{"tabId":{"type":["string","null"]},"path":{"type":"string"},"maxBytes":{"type":"integer","minimum":1,"maximum":4194304},"fromEnd":{"type":"boolean"}},"required":["tabId","path"]}),
+        ));
+        tools.push(tool_definition(
+            "session_file_browser_write",
+            "Write text to a local or remote file in an active file browser Session. This is destructive and should include expectedModified when overwriting a remote file unless force is explicitly intended.",
+            json!({"type":"object","properties":{"tabId":{"type":["string","null"]},"path":{"type":"string"},"content":{"type":"string","maxLength":16777216},"expectedModified":{"type":"integer","minimum":0},"force":{"type":"boolean"}},"required":["tabId","path","content"]}),
+        ));
+        tools.push(tool_definition(
+            "session_file_browser_upload",
+            "Upload a local path into the current SFTP/FTP directory, or copy a local path into a local File Explorer directory. Set overwriteBehavior to overwrite to replace an existing destination.",
+            json!({"type":"object","properties":{"tabId":{"type":["string","null"]},"transferId":{"type":"string"},"localPath":{"type":"string"},"remoteDirectory":{"type":"string"},"overwriteBehavior":{"type":"string","enum":["fail","overwrite"]}},"required":["tabId","localPath","remoteDirectory"]}),
+        ));
+        tools.push(tool_definition(
+            "session_file_browser_download",
+            "Download a remote path into a local directory, or copy a source path into a destination directory in local File Explorer. Set overwriteBehavior to overwrite to replace an existing destination.",
+            json!({"type":"object","properties":{"tabId":{"type":["string","null"]},"transferId":{"type":"string"},"remotePath":{"type":"string"},"localDirectory":{"type":"string"},"overwriteBehavior":{"type":"string","enum":["fail","overwrite"]}},"required":["tabId","remotePath","localDirectory"]}),
+        ));
+        tools.push(tool_definition(
+            "session_file_browser_transfer_status",
+            "Read the active file browser transfer queue, including progress, completion, failure, and cancellation states.",
+            json!({"type":"object","properties":{"tabId":{"type":["string","null"]}},"required":[]}),
+        ));
+        tools.push(tool_definition(
+            "session_file_browser_cancel_transfer",
+            "Cancel an active file browser transfer by transferId when the transport supports cancellation.",
+            json!({"type":"object","properties":{"tabId":{"type":["string","null"]},"transferId":{"type":"string"}},"required":["transferId"]}),
         ));
         tools.push(tool_definition(
             "quick_command_list",
@@ -4808,6 +4902,14 @@ fn tool_requires_allow_all(tool_name: &str) -> bool {
                 | "connection_folder_rename"
                 | "connection_folder_move"
                 | "connection_folder_delete"
+                | "session_open_file_browser"
+                | "session_close_tab"
+                | "session_split_pane"
+                | "session_close_pane"
+                | "session_url_navigate"
+                | "session_url_reload"
+                | "session_url_back"
+                | "session_url_forward"
         )
         || matches!(
             tool_name,
@@ -4818,6 +4920,11 @@ fn tool_requires_allow_all(tool_name: &str) -> bool {
                 | "session_file_browser_create_folder"
                 | "session_file_browser_rename"
                 | "session_file_browser_delete"
+                | "session_file_browser_update_properties"
+                | "session_file_browser_write"
+                | "session_file_browser_upload"
+                | "session_file_browser_download"
+                | "session_file_browser_cancel_transfer"
                 | "quick_command_create"
                 | "quick_command_edit"
         )
@@ -8464,7 +8571,7 @@ fn build_agent_messages_for_provider_with_usage(
         "TOOLS: When you need to search the web, fetch URLs, read files, check the current time, or run shell commands, you MUST use the provided function-calling mechanism. Always make the actual function call alongside your explanation. Do not describe what you plan to do with a tool without calling it — invoke the tool in the same response.".to_string(),
         "PLAN: For multi-step tasks that need three or more tool calls, call update_plan early with 2-6 short steps, then update step statuses as you work and mark blockers instead of silently retrying. Skip the plan for single-step requests.".to_string(),
         "MEMORY: When the user tells you a durable fact about their environment, or you verify one worth keeping (how a host is set up, a convention, a recurring gotcha), save it with assistant_memory_remember so future chats recall it — default host-specific notes to the active connection and use global only for cross-host preferences. Never store secrets, credentials, or transient state. Saved notes are surfaced to you automatically at the start of each turn; do not save duplicates, and use assistant_memory_forget to remove notes that become wrong.".to_string(),
-        "SESSION TOOLS: Use session_state to discover active Tabs, pane ids, remote desktop targets, and SFTP/FTP browser Sessions before using session_* interaction tools. To actually switch which Tab the user is looking at, call session_activate_tab with a tabId from session_state (optionally a paneId to focus a Pane); do not claim you switched Tabs without calling it, and do not invent tab or pane ids. Terminal, remote desktop, and file browser tools operate on live Sessions, not saved Connections. Prefer read tools before mutating tools. For RDP/VNC, use send_text for text, keypress for named keys, and mouse_click for remote surface coordinates. In Default permissions mode, KKTerm shows an in-chat Yes/No approval prompt for mutating tools and resumes the same tool call after the user answers; do not ask the user to change the global permission mode.".to_string(),
+        "SESSION TOOLS: Use session_state to discover active Tabs, pane ids, URL surfaces, remote desktop targets, and SFTP/FTP/local File Explorer browser Sessions before using session_* interaction tools. To switch which Tab the user is looking at, call session_activate_tab with a tabId from session_state (optionally a paneId to focus a Pane); do not claim you switched Tabs without calling it, and do not invent ids. Use session_open_file_browser with a saved connectionId when the requested file-browser Tab is not open. File browser tools operate on live Sessions, not saved Connections; read properties/list/status before mutating, and use bounded file reads. Remote file reads/writes are staged through a temporary local copy and cleaned up. Use session_file_browser_transfer_status and session_file_browser_cancel_transfer for long-running transfers. URL tools target an open URL Tab or WebView Pane; use session_url_state first, and navigate only when the user asks. Use session_split_pane/session_close_pane only for explicit Workspace layout requests. For RDP/VNC, use send_text for text, keypress for named keys, and mouse_click for remote surface coordinates. In Default permissions mode, KKTerm shows an in-chat Yes/No approval prompt for mutating tools and resumes the same tool call after the user answers; do not ask the user to change the global permission mode.".to_string(),
         "TUTORIAL TOOL: For UI/how-to questions, first answer with concise steps. When a known tutorial target is relevant, offer to navigate to that UI for the user. Do not navigate in the same answer unless the user explicitly asks to be shown/taken there. If the user accepts that offer or says yes to it in a follow-up, only call tutorial_highlight after the user accepts, using the exact targetId from current page context or the tutorial_highlight schema and including navigation when the target is on another app surface. terminal.*, sftp.*, webview.*, and remoteDesktop.* targets live inside an open Workspace Tab; the tool activates a matching open Tab automatically but reports an error when no Tab of that kind is open, so check session_state or open the relevant Connection first instead of insisting on a control that is not on screen. Do not invent target ids or CSS selectors.".to_string(),
         ]
     };
