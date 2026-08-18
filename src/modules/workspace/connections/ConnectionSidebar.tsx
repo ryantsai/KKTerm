@@ -73,6 +73,7 @@ import i18next from "../../../i18n/config";
 import { ariaExpanded, dialogButtonAria } from "../../../lib/aria";
 import { reiconIconRefForName } from "../../../lib/iconCatalog";
 import { requestCredentialUnlock } from "../../../lib/credentialUnlock";
+import { useImeCompositionGuard } from "../../../lib/ime";
 import { nativeMenuIcons } from "../../../lib/nativeMenuIcons";
 import { lockOsIconAutoDetect } from "../../../lib/osIcons";
 import { isMacPlatform, isWindowsPlatform } from "../../../lib/platform";
@@ -4092,6 +4093,7 @@ function NewFolderDraftRow({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const isSettledRef = useRef(false);
   const groupRef = useRef<HTMLDivElement | null>(null);
+  const imeGuard = useImeCompositionGuard();
   const { t } = useTranslation();
 
   useLayoutEffect(() => {
@@ -4126,7 +4128,12 @@ function NewFolderDraftRow({
             aria-label={t("connections.newFolderName")}
             className="pending-folder-input"
             onBlur={(event) => settle(event.currentTarget.value)}
+            onCompositionEnd={imeGuard.onCompositionEnd}
+            onCompositionStart={imeGuard.onCompositionStart}
             onKeyDown={(event) => {
+              if (imeGuard.shouldSuppressAction(event.nativeEvent)) {
+                return;
+              }
               if (event.key === "Enter") {
                 event.preventDefault();
                 settle(event.currentTarget.value);
@@ -4178,6 +4185,7 @@ function InlineTreeRenameInput({
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const isSettlingRef = useRef(false);
+  const imeGuard = useImeCompositionGuard();
   const [draft, setDraft] = useState(initialName);
 
   useLayoutEffect(() => {
@@ -4215,7 +4223,12 @@ function InlineTreeRenameInput({
       onChange={(event) => setDraft(event.currentTarget.value)}
       onClick={(event) => event.stopPropagation()}
       onContextMenu={(event) => event.stopPropagation()}
+      onCompositionEnd={imeGuard.onCompositionEnd}
+      onCompositionStart={imeGuard.onCompositionStart}
       onKeyDown={(event) => {
+        if (imeGuard.shouldSuppressAction(event.nativeEvent)) {
+          return;
+        }
         if (event.key === "Enter") {
           event.preventDefault();
           void settle(event.currentTarget.value);

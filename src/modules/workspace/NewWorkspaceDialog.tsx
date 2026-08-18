@@ -7,6 +7,7 @@ import { LegacyDialogActions } from "../../app/ui/dialog";
 import { dialogButtonAria } from "../../lib/aria";
 import { brandIconUrlForId } from "../../lib/brandIconUrls";
 import { BRAND_ICON_ENTRIES, brandIconRefForId } from "../../lib/brandIcons";
+import { useImeCompositionGuard } from "../../lib/ime";
 import { invokeCommand } from "../../lib/tauri";
 import type { Connection, Workspace } from "../../types";
 import { ConnectionIconBackgroundPicker, ConnectionIconColorPicker } from "./connections/ConnectionIconBackgroundPicker";
@@ -60,6 +61,7 @@ export function NewWorkspaceDialog({
   const [importType, setImportType] = useState<WorkspaceImportTypeFilter>("all");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const imeGuard = useImeCompositionGuard();
 
   useEffect(() => {
     if (isEditMode) {
@@ -250,8 +252,13 @@ export function NewWorkspaceDialog({
               <input
                 autoFocus
                 className="connection-dialog-input"
+                onCompositionEnd={imeGuard.onCompositionEnd}
+                onCompositionStart={imeGuard.onCompositionStart}
                 onChange={(event) => setName(event.target.value)}
                 onKeyDown={(event) => {
+                  if (imeGuard.shouldSuppressAction(event.nativeEvent)) {
+                    return;
+                  }
                   if (event.key === "Enter") {
                     void handleSave();
                   }

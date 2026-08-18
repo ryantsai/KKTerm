@@ -72,6 +72,8 @@ Driven by `src/lib/nativeContextMenu.ts`. On a Connection or folder node:
 
 Icons are rasterized to 16 px PNG bytes via `src/lib/nativeContextMenu.ts`. Do not pass raw SVG paths to Tauri menu APIs.
 
+Inline Connection Tree name editors, including folder names and new folder names, keep IME candidate confirmation and cancellation inside the input: Enter or Escape only commits or cancels after composition has ended. Candidate keys from the IME do not trigger the surrounding rename action.
+
 ## Connection Tree keyboard shortcuts
 
 When the Connection Tree has keyboard focus, two shortcuts act on the Connection row that is focused (falling back to the currently selected Connection):
