@@ -26,11 +26,22 @@ export function NoteSearchBar({
   const [term, setTerm] = useState("");
   const [replacement, setReplacement] = useState("");
   const [caseSensitive, setCaseSensitive] = useState(false);
+  const [, setTransactionRevision] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  // The Editor instance is stable; subscribe explicitly so match counts and
+  // the active position follow search and document transactions.
+  useEffect(() => {
+    const refresh = () => setTransactionRevision((revision) => revision + 1);
+    editor.on("transaction", refresh);
+    return () => {
+      editor.off("transaction", refresh);
+    };
+  }, [editor]);
 
   // Re-run the query whenever the term or case mode changes; clearing the term
   // removes the highlight without closing the bar.

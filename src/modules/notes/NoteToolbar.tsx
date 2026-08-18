@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { useEditorState } from "@tiptap/react";
 import type { Editor } from "@tiptap/react";
 import {
   Code, ImagePlus, Link, List, ListChecks, Minus, Palette, RotateCcw, RotateCw,
@@ -66,6 +67,9 @@ export function NoteToolbar({
 }: NoteToolbarProps) {
   const { t } = useTranslation();
   const size = 13;
+  // Tiptap v3 does not re-render useEditor consumers on transactions by
+  // default. The toolbar needs live selection/undo state for its controls.
+  useEditorState({ editor, selector: ({ transactionNumber }) => transactionNumber });
 
   return (
     <div className="note-toolbar" role="toolbar" aria-label={t("notes.toolbar.label")}>

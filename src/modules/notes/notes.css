@@ -41,6 +41,12 @@
   min-height: 0;
 }
 
+/* The caret menu uses viewport coordinates. Let it escape the Sheet's rounded
+   clipping edge when the caret is close to the editor boundary. */
+.note-editor-sheet:has(.note-deep-link-menu) {
+  overflow: visible;
+}
+
 .note-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -146,7 +152,7 @@
 
 .note-search-hit-active {
   background: var(--amber);
-  color: #1d1d1f;
+  color: var(--text);
 }
 
 /* ----------------------------- editing surface -------------------------- */
@@ -267,7 +273,7 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--shadow);
 }
 
 .note-deep-link-menu .note-deep-link-option.is-active {

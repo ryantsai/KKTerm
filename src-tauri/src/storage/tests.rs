@@ -6629,14 +6629,14 @@ fn note_images_deduplicate_on_disk_and_are_removed_with_their_note() {
     assert_eq!(fetched.bytes, png);
     assert_eq!(fetched.mime_type, "image/png");
 
-    // Images can be pasted before the first save, so storing one creates the
-    // owning note row up front.
+    // Images can be pasted before the first save, but storing one must not bind
+    // a note. Save is the only operation that creates the owning row.
     assert!(
         storage
             .get_connection_note(connection.id.clone())
             .expect("note lookup succeeds")
-            .is_some(),
-        "storing an image creates the owning note row"
+            .is_none(),
+        "storing an image leaves the Connection noteless until save"
     );
 
     let other = vec![0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x02];
@@ -6690,6 +6690,9 @@ fn note_image_ids_cannot_escape_the_note_image_directory() {
         "conn/../../secret.png",
         "conn/..%2Fsecret.png",
         "no-slash.png",
+        "./aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.png",
+        "conn/not-a-content-hash.png",
+        "conn/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.svg",
     ] {
         let resolved = storage.get_note_asset(hostile.to_string());
         assert!(

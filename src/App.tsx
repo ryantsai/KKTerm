@@ -178,10 +178,18 @@ function App() {
   const setNoteBound = useNoteBindings((state) => state.setBound);
   const loadNoteBindings = useNoteBindings((state) => state.load);
 
-  // Which Connections own a note is read once at startup so every pane toolbar
-  // can render its post-it icon in the bound state without its own query.
+  // Which Connections own a note is read at startup and whenever the durable
+  // Connection tree changes (including selective import and deletion), so
+  // every pane toolbar stays in sync without loading note bodies itself.
   useEffect(() => {
+    const refresh = () => {
+      void loadNoteBindings();
+    };
+    window.addEventListener("kkterm:connection-tree-invalidated", refresh);
     void loadNoteBindings();
+    return () => {
+      window.removeEventListener("kkterm:connection-tree-invalidated", refresh);
+    };
   }, [loadNoteBindings]);
 
   const navigateToPage = useCallback((page: ActivePage) => {

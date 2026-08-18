@@ -42,7 +42,7 @@ The lifecycle is deliberately explicit: **saving is what binds a note to its Con
 4. Re-opening the control on a bound Connection loads the saved note for viewing and editing.
 5. `notes.editor.delete` (shown only once a note exists) unbinds and deletes the note after a `notes.confirmDelete.title` confirmation. The note and its embedded images are removed permanently.
 
-Closing the editor with unsaved edits raises `notes.confirmDiscard.title` rather than discarding silently.
+Closing the editor with unsaved edits raises `notes.confirmDiscard.title` rather than discarding silently. Discarding also removes images added during that editing pass while preserving the images referenced by the last saved version.
 
 Deleting a Connection deletes its note and images with it.
 
@@ -54,7 +54,6 @@ The toolbar (`notes.toolbar.label`) covers:
 - **Blocks** — `notes.toolbar.heading1` … `notes.toolbar.heading3`, `notes.toolbar.blockquote`, `notes.toolbar.codeBlock`, `notes.toolbar.horizontalRule`.
 - **Inline styles** — `notes.toolbar.bold`, `notes.toolbar.italic`, `notes.toolbar.underline`, `notes.toolbar.strikethrough`, `notes.toolbar.highlight`, `notes.toolbar.inlineCode`.
 - **Lists** — `notes.toolbar.bulletList`, `notes.toolbar.orderedList`, `notes.toolbar.taskList` (checkable items).
-- **Alignment** — left, center, and right for headings and paragraphs.
 - **Tables** — `notes.toolbar.insertTable` inserts a 3×3 table with a header row; columns are resizable.
 
 ## Images
@@ -91,7 +90,7 @@ Both list three kinds of target:
 
 Connections from **every** Workspace are listed, not just the active one, so a note can point anywhere in the app.
 
-Clicking a Deep Link chip inside a note follows it and closes the note editor. A chip keeps the label captured when it was inserted, so a note still reads sensibly after the target is renamed; following a chip whose target has since been deleted reports `notes.notice.deepLinkUnavailable` and leaves the note open.
+Clicking a Deep Link chip inside a note follows it and closes the note editor. If the note has unsaved changes, `notes.confirmDiscard.title` asks before closing. A chip keeps the label captured when it was inserted, so a note still reads sensibly after the target is renamed; following a chip whose target has since been deleted reports `notes.notice.deepLinkUnavailable` and leaves the note open.
 
 ## Searching inside a note
 

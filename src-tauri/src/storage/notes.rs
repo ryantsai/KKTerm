@@ -17,12 +17,11 @@ const MAX_NOTE_HTML_BYTES: usize = 2 * 1024 * 1024;
 const MAX_NOTE_ASSET_BYTES: usize = 8 * 1024 * 1024;
 
 /// Accepted image types and the extension each is stored under.
-const ALLOWED_NOTE_ASSET_MIME: [(&str, &str); 5] = [
+const ALLOWED_NOTE_ASSET_MIME: [(&str, &str); 4] = [
     ("image/png", "png"),
     ("image/jpeg", "jpg"),
     ("image/gif", "gif"),
     ("image/webp", "webp"),
-    ("image/svg+xml", "svg"),
 ];
 
 fn extension_for_mime(mime_type: &str) -> Option<&'static str> {
@@ -42,19 +41,24 @@ fn mime_for_extension(extension: &str) -> Option<&'static str> {
 /// Reject anything that is not a plain content-addressed id. Asset ids come
 /// from note HTML, which is user-editable, so they are never trusted as path
 /// components without this check.
-fn validate_asset_id(asset_id: &str) -> Result<(&str, &str), String> {
+pub(crate) fn validate_asset_id(asset_id: &str) -> Result<(&str, &str), String> {
     let (connection_id, file_name) = asset_id
         .split_once('/')
         .ok_or_else(|| format!("malformed note image id {asset_id}"))?;
-    let safe = |value: &str| {
-        !value.is_empty()
-            && value.len() <= 128
-            && value
-                .chars()
-                .all(|character| character.is_ascii_alphanumeric() || matches!(character, '-' | '_' | '.'))
-            && !value.contains("..")
+    let safe_connection_id = !connection_id.is_empty()
+        && connection_id.len() <= 128
+        && connection_id
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || matches!(character, '-' | '_'));
+    let Some((digest, extension)) = file_name.rsplit_once('.') else {
+        return Err(format!("malformed note image id {asset_id}"));
     };
-    if !safe(connection_id) || !safe(file_name) {
+    let safe_file_name = digest.len() == 64
+        && digest
+            .chars()
+            .all(|character| character.is_ascii_hexdigit())
+        && mime_for_extension(extension).is_some();
+    if !safe_connection_id || !safe_file_name {
         return Err(format!("malformed note image id {asset_id}"));
     }
     Ok((connection_id, file_name))
@@ -178,7 +182,7 @@ impl Storage {
     pub(crate) fn remove_note_images_for(&self, connection_id: &str) -> Result<(), String> {
         // Guard the path component even though it comes from the database, so a
         // hand-edited id can never escape the note image root.
-        if validate_asset_id(&format!("{connection_id}/x")).is_err() {
+        if validate_asset_id(&format!("{connection_id}/{}.png", "0".repeat(64))).is_err() {
             return Ok(());
         }
         let directory = self.note_images_dir_for(connection_id);
@@ -219,16 +223,6 @@ impl Storage {
             if !connection_exists(&connection, &connection_id)? {
                 return Err(format!("connection {connection_id} does not exist"));
             }
-            // Images can be pasted before the first save, so the note row is
-            // created up front; an empty body is replaced by the eventual save.
-            connection
-                .execute(
-                    "INSERT INTO connection_notes (connection_id, content_html, created_at, updated_at)
-                     VALUES (?1, '', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                     ON CONFLICT(connection_id) DO NOTHING",
-                    params![connection_id],
-                )
-                .map_err(to_storage_error)?;
         }
 
         let digest = Sha256::digest(&bytes)
@@ -287,13 +281,15 @@ impl Storage {
         referenced_ids: Vec<String>,
     ) -> Result<u64, String> {
         let connection_id = required_field("note connection id", connection_id)?;
+        validate_asset_id(&format!("{connection_id}/{}.png", "0".repeat(64)))?;
         let directory = self.note_images_dir_for(&connection_id);
         if !directory.exists() {
             return Ok(0);
         }
         let keep: Vec<&str> = referenced_ids
             .iter()
-            .filter_map(|id| id.split_once('/').map(|(_, file_name)| file_name))
+            .filter_map(|id| validate_asset_id(id).ok())
+            .filter_map(|(owner_id, file_name)| (owner_id == connection_id).then_some(file_name))
             .collect();
         let entries = fs::read_dir(&directory).map_err(|error| {
             format!(

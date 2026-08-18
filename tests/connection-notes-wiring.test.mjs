@@ -46,6 +46,33 @@ test("saved note HTML never carries image bytes", () => {
   const html = read("src/modules/notes/noteHtml.ts");
   assert.match(html, /export function dehydrateNoteAssets/);
   assert.match(html, /image\.removeAttribute\("src"\)/);
+  assert.match(html, /id\.startsWith\(`\$\{connectionId\}\/`\)/);
+});
+
+test("unsaved image assets neither bind a note nor survive discard", () => {
+  const backend = read("src-tauri/src/storage/notes.rs");
+  const editor = read("src/modules/notes/NoteEditorSheet.tsx");
+  assert.doesNotMatch(
+    backend,
+    /INSERT INTO connection_notes[\s\S]*ON CONFLICT\(connection_id\) DO NOTHING/,
+    "uploading an image must not create the note row before Save",
+  );
+  assert.match(editor, /originalAssetIdsRef/);
+  assert.match(editor, /Promise\.allSettled\(\[\.\.\.pendingImageUploadsRef\.current\]\)/);
+  assert.match(editor, /pruneNoteAssets\(connectionId, originalAssetIdsRef\.current\)/);
+});
+
+test("pasted note HTML cannot retain remote images or arbitrary inline CSS", () => {
+  const html = read("src/modules/notes/noteHtml.ts");
+  assert.match(html, /NOTE_ASSET_ID_PATTERN/);
+  assert.match(html, /image\.remove\(\)/);
+  assert.match(html, /element\.removeAttribute\("style"\)/);
+});
+
+test("note binding indicators refresh with durable Connection changes", () => {
+  const app = read("src/App.tsx");
+  assert.match(app, /addEventListener\("kkterm:connection-tree-invalidated", refresh\)/);
+  assert.match(app, /removeEventListener\("kkterm:connection-tree-invalidated", refresh\)/);
 });
 
 test("deleting a Connection removes its note and images explicitly", () => {

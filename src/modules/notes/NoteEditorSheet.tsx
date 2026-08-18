@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
@@ -22,6 +22,7 @@ import { NoteDeepLinkNode, noteDeepLinkAttributes } from "./noteDeepLinkNode";
 import { NOTE_ASSET_ATTRIBUTE, collectNoteAssetIds, dehydrateNoteAssets, hydrateNoteAssets, isNoteHtmlEmpty, sanitizeNoteHtml } from "./noteHtml";
 import { deleteConnectionNote, getConnectionNote, pruneNoteAssets, putNoteAsset, saveConnectionNote } from "./noteCommands";
 import { navigateNoteDeepLink, parseNoteDeepLink } from "./noteDeepLink";
+import type { NoteDeepLink } from "./noteDeepLink";
 import { downscaleImageFile } from "./noteImages";
 
 interface NoteEditorSheetProps {
@@ -49,6 +50,7 @@ export function NoteEditorSheet({
   const [bound, setBound] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [imageUploadCount, setImageUploadCount] = useState(0);
   const [searchOpen, setSearchOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -56,6 +58,10 @@ export function NoteEditorSheet({
   const fileInputRef = useRef<HTMLInputElement>(null);
   // Object URLs minted while hydrating images; revoked when the sheet unmounts.
   const objectUrlsRef = useRef<string[]>([]);
+  const originalAssetIdsRef = useRef<string[]>([]);
+  const pendingImageUploadsRef = useRef<Set<Promise<void>>>(new Set());
+  const pendingDeepLinkRef = useRef<NoteDeepLink | null>(null);
+  const closingRef = useRef(false);
 
   const deepLinkChoices = useNoteDeepLinkChoices();
   const [suggestion, setSuggestion] = useState<NoteDeepLinkSuggestionState>(
@@ -87,7 +93,7 @@ export function NoteEditorSheet({
             },
           };
         },
-      }).configure({ inline: false, allowBase64: true }),
+      }).configure({ inline: false, allowBase64: false }),
       Highlight,
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       TableKit.configure({ table: { resizable: true } }),
@@ -109,6 +115,7 @@ export function NoteEditorSheet({
   const editor = useEditor({
     extensions,
     content: "",
+    editable: false,
     onUpdate: () => setDirty(true),
     editorProps: {
       attributes: {
@@ -117,6 +124,12 @@ export function NoteEditorSheet({
       },
     },
   });
+  const empty =
+    useEditorState({
+      editor,
+      selector: ({ editor: currentEditor }) =>
+        currentEditor ? isNoteHtmlEmpty(currentEditor.getHTML()) : true,
+    }) ?? true;
 
   // Load the Connection's note. A Connection with no note opens on a blank
   // editor and only binds once the user saves.
@@ -124,17 +137,19 @@ export function NoteEditorSheet({
     if (!editor) return;
     let cancelled = false;
     setLoading(true);
+    editor.setEditable(false);
     void getConnectionNote(connectionId)
       .then(async (note) => {
         if (cancelled) return;
         if (!note) {
           setBound(false);
+          originalAssetIdsRef.current = [];
           editor.commands.setContent("");
         } else {
           setBound(true);
-          const { html, objectUrls } = await hydrateNoteAssets(
-            sanitizeNoteHtml(note.contentHtml),
-          );
+          const sanitizedHtml = sanitizeNoteHtml(note.contentHtml);
+          originalAssetIdsRef.current = collectNoteAssetIds(sanitizedHtml);
+          const { html, objectUrls } = await hydrateNoteAssets(sanitizedHtml, connectionId);
           if (cancelled) {
             objectUrls.forEach((url) => URL.revokeObjectURL(url));
             return;
@@ -146,6 +161,7 @@ export function NoteEditorSheet({
         // until they actually type.
         setDirty(false);
         setLoading(false);
+        editor.setEditable(true);
       })
       .catch((error: unknown) => {
         if (cancelled) return;
@@ -169,26 +185,38 @@ export function NoteEditorSheet({
   );
 
   const storeImage = useCallback(
-    async (file: File) => {
-      if (!editor) return;
-      try {
-        const { bytes, mimeType } = await downscaleImageFile(file);
-        const assetId = await putNoteAsset(connectionId, mimeType, bytes);
-        const blob = new Blob([bytes as BlobPart], { type: mimeType });
-        const url = URL.createObjectURL(blob);
-        objectUrlsRef.current.push(url);
-        editor
-          .chain()
-          .focus()
-          .setImage({ src: url, [NOTE_ASSET_ATTRIBUTE]: assetId } as never)
-          .run();
-        setDirty(true);
-      } catch (error) {
-        showStatusBarNotice(
-          t("notes.notice.imageFailed", { error: String(error) }),
-          { tone: "error" },
-        );
-      }
+    (file: File) => {
+      if (!editor || closingRef.current) return Promise.resolve();
+      setImageUploadCount((count) => count + 1);
+      const operation = (async () => {
+        try {
+          const { bytes, mimeType } = await downscaleImageFile(file);
+          const assetId = await putNoteAsset(connectionId, mimeType, bytes);
+          if (closingRef.current || editor.isDestroyed) return;
+          const blob = new Blob([bytes as BlobPart], { type: mimeType });
+          const url = URL.createObjectURL(blob);
+          objectUrlsRef.current.push(url);
+          editor
+            .chain()
+            .focus()
+            .setImage({ src: url, [NOTE_ASSET_ATTRIBUTE]: assetId } as never)
+            .run();
+          setDirty(true);
+        } catch (error) {
+          if (!closingRef.current) {
+            showStatusBarNotice(
+              t("notes.notice.imageFailed", { error: String(error) }),
+              { tone: "error" },
+            );
+          }
+        }
+      })();
+      pendingImageUploadsRef.current.add(operation);
+      void operation.finally(() => {
+        pendingImageUploadsRef.current.delete(operation);
+        setImageUploadCount((count) => Math.max(0, count - 1));
+      });
+      return operation;
     },
     [editor, connectionId, showStatusBarNotice, t],
   );
@@ -204,15 +232,29 @@ export function NoteEditorSheet({
     }
     function onPaste(event: ClipboardEvent) {
       const files = imageFilesFrom(event.clipboardData);
-      if (files.length === 0) return;
-      event.preventDefault();
-      files.forEach((file) => void storeImage(file));
+      if (files.length > 0) {
+        event.preventDefault();
+        files.forEach((file) => void storeImage(file));
+        return;
+      }
+      const html = event.clipboardData?.getData("text/html");
+      if (html) {
+        event.preventDefault();
+        editor.chain().focus().insertContent(sanitizeNoteHtml(html)).run();
+      }
     }
     function onDrop(event: DragEvent) {
       const files = imageFilesFrom(event.dataTransfer);
-      if (files.length === 0) return;
-      event.preventDefault();
-      files.forEach((file) => void storeImage(file));
+      if (files.length > 0) {
+        event.preventDefault();
+        files.forEach((file) => void storeImage(file));
+        return;
+      }
+      const html = event.dataTransfer?.getData("text/html");
+      if (html) {
+        event.preventDefault();
+        editor.chain().focus().insertContent(sanitizeNoteHtml(html)).run();
+      }
     }
     dom.addEventListener("paste", onPaste);
     dom.addEventListener("drop", onDrop);
@@ -233,6 +275,11 @@ export function NoteEditorSheet({
       const link = parseNoteDeepLink(chip.getAttribute("data-note-deep-link"));
       if (!link) return;
       event.preventDefault();
+      if (dirty || pendingImageUploadsRef.current.size > 0) {
+        pendingDeepLinkRef.current = link;
+        setConfirmDiscard(true);
+        return;
+      }
       void navigateNoteDeepLink(link, showWorkspace, showItOps).then((navigated) => {
         if (!navigated) {
           showStatusBarNotice(t("notes.notice.deepLinkUnavailable"), { tone: "warning" });
@@ -243,7 +290,7 @@ export function NoteEditorSheet({
     }
     dom.addEventListener("click", onClick);
     return () => dom.removeEventListener("click", onClick);
-  }, [editor, showWorkspace, showItOps, showStatusBarNotice, onClose, t]);
+  }, [editor, showWorkspace, showItOps, showStatusBarNotice, onClose, dirty, t]);
 
   async function handleSave() {
     if (!editor) return;
@@ -271,6 +318,8 @@ export function NoteEditorSheet({
   async function handleDelete() {
     setConfirmDelete(false);
     try {
+      closingRef.current = true;
+      await Promise.allSettled([...pendingImageUploadsRef.current]);
       await deleteConnectionNote(connectionId);
       onBoundChange(connectionId, false);
       showStatusBarNotice(t("notes.notice.deleted", { name: connectionName }), {
@@ -278,6 +327,7 @@ export function NoteEditorSheet({
       });
       onClose();
     } catch (error) {
+      closingRef.current = false;
       showStatusBarNotice(t("notes.notice.deleteFailed", { error: String(error) }), {
         tone: "error",
       });
@@ -285,10 +335,29 @@ export function NoteEditorSheet({
   }
 
   function requestClose() {
-    if (dirty) {
+    pendingDeepLinkRef.current = null;
+    if (dirty || pendingImageUploadsRef.current.size > 0) {
       setConfirmDiscard(true);
       return;
     }
+    onClose();
+  }
+
+  async function discardAndClose() {
+    const pendingDeepLink = pendingDeepLinkRef.current;
+    pendingDeepLinkRef.current = null;
+    if (pendingDeepLink) {
+      const navigated = await navigateNoteDeepLink(pendingDeepLink, showWorkspace, showItOps);
+      if (!navigated) {
+        setConfirmDiscard(false);
+        showStatusBarNotice(t("notes.notice.deepLinkUnavailable"), { tone: "warning" });
+        return;
+      }
+    }
+    closingRef.current = true;
+    setConfirmDiscard(false);
+    await Promise.allSettled([...pendingImageUploadsRef.current]);
+    await pruneNoteAssets(connectionId, originalAssetIdsRef.current).catch(() => 0);
     onClose();
   }
 
@@ -346,9 +415,8 @@ export function NoteEditorSheet({
     editor.chain().focus().setLink({ href: text }).run();
   }
 
-  const canSave = Boolean(editor) && !loading && !saving && (dirty || !bound);
-  const empty = editor ? isNoteHtmlEmpty(editor.getHTML()) : true;
-
+  const canSave =
+    Boolean(editor) && !loading && !saving && imageUploadCount === 0 && (dirty || !bound);
   return (
     <>
       <DialogShell onBackdrop={requestClose}>
@@ -454,11 +522,11 @@ export function NoteEditorSheet({
           message={t("notes.confirmDiscard.message")}
           confirmLabel={t("notes.confirmDiscard.confirm")}
           cancelLabel={t("common.cancel")}
-          onConfirm={() => {
+          onConfirm={() => void discardAndClose()}
+          onCancel={() => {
+            pendingDeepLinkRef.current = null;
             setConfirmDiscard(false);
-            onClose();
           }}
-          onCancel={() => setConfirmDiscard(false)}
         />
       ) : null}
     </>

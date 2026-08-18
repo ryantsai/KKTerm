@@ -4474,7 +4474,6 @@ fn validated_flat_json_import_path(
 /// bundle. Unlike the flat-JSON directories this is two levels deep and holds
 /// image files, so it gets its own check rather than loosening that one.
 fn validated_note_image_import_path(stage_root: &Path, relative: &str) -> Result<PathBuf, String> {
-    const ALLOWED_EXTENSIONS: [&str; 5] = ["png", "jpg", "gif", "webp", "svg"];
     let relative = Path::new(relative);
     let components = relative.components().collect::<Vec<_>>();
     if components.len() != 2
@@ -4484,15 +4483,8 @@ fn validated_note_image_import_path(stage_root: &Path, relative: &str) -> Result
     {
         return Err("import contains an unsafe note image path".to_string());
     }
-    let extension = relative
-        .extension()
-        .and_then(|value| value.to_str())
-        .unwrap_or_default();
-    if !ALLOWED_EXTENSIONS.contains(&extension) {
-        return Err(format!(
-            "import contains an unsupported note image type: {extension}"
-        ));
-    }
+    notes::validate_asset_id(&relative.to_string_lossy().replace('\\', "/"))
+        .map_err(|_| "import contains an invalid note image id".to_string())?;
     Ok(stage_root.join(relative))
 }
 
