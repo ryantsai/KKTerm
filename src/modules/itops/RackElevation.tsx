@@ -12,6 +12,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
+import { isImeComposingEvent, isImeEditableTarget } from "../../lib/ime";
 import type { Rack, RackItem, RackItemStatus, RackMountFace } from "../../types";
 import { ItIcon } from "./icons";
 import { collectBoundConnectionIds, summarizeRackDeviceMetadata } from "./rackInventory";
@@ -253,7 +254,10 @@ export function RackElevation({
       onCancelPlacement?.();
     };
     const cancelFromKeyboard = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
+      if (
+        event.key !== "Escape" ||
+        (isImeEditableTarget(event.target) && isImeComposingEvent(event))
+      ) return;
       event.preventDefault();
       pointerRef.current = null;
       setPointerGhost(null);

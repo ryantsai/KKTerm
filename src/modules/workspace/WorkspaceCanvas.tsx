@@ -24,6 +24,7 @@ import type {
   ReactNode,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { isImeComposingEvent, isImeEditableTarget } from "../../lib/ime";
 import { isWindowsPlatform } from "../../lib/platform";
 import { invokeCommand } from "../../lib/tauri";
 import { DEFAULT_WORKSPACE_ID, useWorkspaceStore } from "../../store";
@@ -448,6 +449,9 @@ export function WorkspaceCanvas({
       // shortcuts whenever a Settings or dialog backdrop is mounted as focus
       // can still be parked on a Workspace control behind a modal.
       if (target?.closest(".rdp-canvas-view, .vnc-display")) {
+        return;
+      }
+      if (isImeEditableTarget(event.target) && isImeComposingEvent(event)) {
         return;
       }
       if (document.querySelector(".settings-backdrop, .dialog-backdrop, .kk-dlg-backdrop")) {

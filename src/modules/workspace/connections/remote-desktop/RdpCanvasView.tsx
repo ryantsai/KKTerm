@@ -14,6 +14,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { writeToClipboard } from "../../../../lib/clipboard";
+import { isImeComposingEvent } from "../../../../lib/ime";
 import { isMacPlatform } from "../../../../lib/platform";
 import { invokeCommand, isTauriRuntime, logUiDebug } from "../../../../lib/tauri";
 import type { Connection, RdpSettings } from "../../../../types";
@@ -98,6 +99,7 @@ export function RdpCanvasView({
   const sessionIdRef = useRef<string | null>(null);
   const buttonMaskRef = useRef(0);
   const composingRef = useRef(false);
+  const compositionEndedAtRef = useRef(0);
   const [status, setStatus] = useState<"connecting" | "connected" | "disconnected">("connecting");
   const [errorMessage, setErrorMessage] = useState("");
   const sharedLocalFoldersKey = (rdpOptions?.sharedLocalFolders ?? []).join("\u0000");
@@ -403,7 +405,11 @@ export function RdpCanvasView({
       composing: composingRef.current,
       documentHasFocus: document.hasFocus(),
     });
-    if (composingRef.current || e.key === "Process") {
+    if (
+      composingRef.current ||
+      isImeComposingEvent(e.nativeEvent) ||
+      (compositionEndedAtRef.current > 0 && Date.now() - compositionEndedAtRef.current < 100)
+    ) {
       return; // IME is composing — let composition events handle it.
     }
     // Let the focused IME input produce a trusted paste event. `onPaste` reads
@@ -432,7 +438,11 @@ export function RdpCanvasView({
   };
 
   const onKeyUp = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (composingRef.current) {
+    if (
+      composingRef.current ||
+      isImeComposingEvent(e.nativeEvent) ||
+      (compositionEndedAtRef.current > 0 && Date.now() - compositionEndedAtRef.current < 100)
+    ) {
       return;
     }
     // Matches the paste interception in onKeyDown: swallow the "V" release so it
@@ -458,9 +468,11 @@ export function RdpCanvasView({
 
   const onCompositionStart = () => {
     composingRef.current = true;
+    compositionEndedAtRef.current = 0;
   };
   const onCompositionEnd = (e: React.CompositionEvent<HTMLInputElement>) => {
     composingRef.current = false;
+    compositionEndedAtRef.current = Date.now();
     if (e.data) {
       sendText(e.data);
     }

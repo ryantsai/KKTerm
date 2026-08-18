@@ -14,6 +14,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
+import { isImeComposingEvent, isImeEditableTarget } from "../../lib/ime";
 import type { Rack } from "../../types";
 import { rackFloorMetrics } from "./roomFloorPlan";
 import type { Facing } from "./roomIsoLayout";
@@ -104,7 +105,10 @@ export function useRoomPlacementPointer(
       cancelRef.current?.();
     };
     const cancelFromKeyboard = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
+      if (
+        event.key !== "Escape" ||
+        (isImeEditableTarget(event.target) && isImeComposingEvent(event))
+      ) return;
       event.preventDefault();
       cancelRef.current?.();
     };

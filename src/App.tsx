@@ -54,6 +54,7 @@ import {
   type TutorialSurfaceKind,
 } from "./app/tutorialNavigationModel";
 import { ariaHidden } from "./lib/aria";
+import { isImeEditableTarget, useImeCompositionGuard } from "./lib/ime";
 import { currentPlatform, isWindowsPlatform, supportsInstallerHelper } from "./lib/platform";
 import { useBootstrapSettings } from "./lib/settings";
 import {
@@ -120,6 +121,7 @@ const SettingsPage = lazy(() =>
 
 function App() {
   const { t } = useTranslation();
+  const imeGuard = useImeCompositionGuard();
   const launchPageRef = useRef<BaseModulePage | null>(null);
   if (launchPageRef.current === null) {
     const storedPage = loadStoredActivePage();
@@ -704,6 +706,24 @@ function App() {
       data-platform={currentPlatform()}
       data-color-scheme={appliedColorScheme}
       data-selected-color-scheme={appearanceSettings.colorScheme}
+      // Portaled dialogs still bubble through this React tree, so keep the
+      // IME action boundary here instead of relying on individual editors.
+      onCompositionEndCapture={imeGuard.onCompositionEnd}
+      onCompositionStartCapture={imeGuard.onCompositionStart}
+      onKeyDownCapture={(event) => {
+        if (!isImeEditableTarget(event.target)) {
+          return;
+        }
+        if (imeGuard.shouldSuppressAction(event.nativeEvent)) {
+          event.stopPropagation();
+        }
+      }}
+      onSubmitCapture={(event) => {
+        if (imeGuard.consumeSuppressedSubmit()) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }}
     >
       <TitleBar
         activePage={activePage}

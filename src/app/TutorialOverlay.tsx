@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { isImeComposingEvent, isImeEditableTarget } from "../lib/ime";
 import type { TutorialNavigationTarget } from "./tutorialNavigationModel";
 import { chooseTutorialBalloonPlacement, type TutorialRect } from "./tutorialOverlayModel";
 
@@ -70,15 +71,22 @@ export function TutorialOverlay({
       return;
     }
 
-    function dismiss() {
+    function dismissPointer() {
       onDismiss();
     }
 
-    document.addEventListener("pointerdown", dismiss, true);
-    document.addEventListener("keydown", dismiss, true);
+    function dismissKey(event: KeyboardEvent) {
+      if (isImeEditableTarget(event.target) && isImeComposingEvent(event)) {
+        return;
+      }
+      onDismiss();
+    }
+
+    document.addEventListener("pointerdown", dismissPointer, true);
+    document.addEventListener("keydown", dismissKey, true);
     return () => {
-      document.removeEventListener("pointerdown", dismiss, true);
-      document.removeEventListener("keydown", dismiss, true);
+      document.removeEventListener("pointerdown", dismissPointer, true);
+      document.removeEventListener("keydown", dismissKey, true);
     };
   }, [onDismiss, request]);
 

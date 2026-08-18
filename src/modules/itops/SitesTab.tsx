@@ -17,6 +17,7 @@ import {
   type RefObject,
 } from "react";
 import { Trans, useTranslation } from "react-i18next";
+import { isImeComposingEvent, isImeEditableTarget } from "../../lib/ime";
 import { ArrowUpDown, Maximize2, Minimize2 } from "../../lib/reicon";
 import { ConfirmSheet } from "../../app/ui/dialog";
 import { showNativeContextMenu, type NativeContextMenuItem } from "../../lib/nativeContextMenu";
@@ -2826,7 +2827,10 @@ function useNearestPlacementRack(
       cancelRef.current();
     };
     const cancelFromKeyboard = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
+      if (
+        event.key !== "Escape" ||
+        (isImeEditableTarget(event.target) && isImeComposingEvent(event))
+      ) return;
       event.preventDefault();
       cancelRef.current();
     };
