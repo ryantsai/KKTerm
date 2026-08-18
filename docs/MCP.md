@@ -172,7 +172,10 @@ Workspace id as `workspaceId` when creating a Connection or Connection folder.
 | `kkterm.workspace.connection_folders.move` | Move one Connection folder by `folderId` to `parentFolderId` and `targetIndex`; use `parentFolderId: null` for the root list. |
 | `kkterm.workspace.connections.open` | Open a saved Connection by `connectionId`. Routes through the existing AI assistant `connection_open` path and emits `assistant-open-connection` for the frontend to start the appropriate Session or local surface for every supported Connection kind. |
 | `kkterm.workspace.connections.screenshot` | Capture the visible Workspace Canvas for an open Connection by `connectionId`. The app activates the matching Tab before capture and returns a JPEG data URL plus dimensions. |
-| `kkterm.workspace.sessions.list` | List live Sessions (terminal Panes, remote desktop targets, file browsers). Backed by `session_state`. |
+| `kkterm.workspace.sessions.list` | List live Sessions (terminal Panes, remote desktop targets, URL surfaces, and SFTP/FTP/local File Explorer browsers). File-browser entries are bounded: current path, entry counts, selection counts, and transfer counts, not directory listings. Backed by `session_state`. |
+| `kkterm.workspace.sessions.activate_tab` | Switch the active Workspace Tab and optionally focus a Pane. This does not open or close a Session. Backed by `session_activate_tab`. |
+| `kkterm.workspace.sessions.open_file_viewer` | Open a local path in KKTerm's Document viewer. Backed by `session_open_file_viewer`. |
+| `kkterm.workspace.sessions.url_state` | Read the current URL and readiness state for an open URL Tab or WebView Pane. Backed by `session_url_state`. |
 | `kkterm.workspace.sessions.read_buffer` | Read a snapshot of the visible terminal buffer for a live Pane. Backed by `session_terminal_read_buffer`. |
 | `kkterm.workspace.quick_commands.list` | List saved Quick Commands for a Connection's Quick Command Bar. Backed by `quick_command_list` through the frontend live-tool bridge because Quick Commands live in workspace storage. |
 | `kkterm.workspace.quick_commands.read` | Read one saved Quick Command for a Connection by Quick Command id. Backed by `quick_command_read`. |
@@ -183,6 +186,14 @@ Workspace id as `workspaceId` when creating a Connection or Connection folder.
 |---|---|
 | `kkterm.workspace.dangerous.pointer_click` | Send a mouse click to a live RDP/VNC remote desktop surface. Requires `built_in_mcp_allow_all_dangerous = true`. Backed by `session_remote_desktop_mouse_click`. |
 | `kkterm.workspace.sessions.dangerous.send_input` | Send text/keystrokes to a live terminal Pane. `submit: true` appends a terminal Enter key as carriage return (`\r`). Requires Allow-all because submitted text can execute commands. Backed by `session_terminal_send_text`. |
+| `kkterm.workspace.sessions.dangerous.open_file_browser` | Open and activate a saved SFTP, FTP/FTPS, or local File Explorer surface. Opening a remote browser starts a live network Session. Requires Allow-all. Backed by `session_open_file_browser`. |
+| `kkterm.workspace.sessions.dangerous.close_tab` | Close an open Workspace Tab and its live Session. Requires Allow-all. Backed by `session_close_tab`. |
+| `kkterm.workspace.sessions.dangerous.split_pane` | Split a terminal Workspace Tab and start another live Pane. Requires Allow-all. Backed by `session_split_pane`. |
+| `kkterm.workspace.sessions.dangerous.close_pane` | Close one live Workspace Pane; closing the last Pane closes its Tab. Requires Allow-all. Backed by `session_close_pane`. |
+| `kkterm.workspace.sessions.dangerous.url_navigate` | Navigate an open URL Tab or WebView Pane to a URL. A navigation may submit a GET request or change authenticated web state. Requires Allow-all. Backed by `session_url_navigate`. |
+| `kkterm.workspace.sessions.dangerous.url_reload` | Reload an open URL Tab or WebView Pane. Requires Allow-all. Backed by `session_url_reload`. |
+| `kkterm.workspace.sessions.dangerous.url_back` | Navigate an open URL Tab or WebView Pane back one history entry. Requires Allow-all. Backed by `session_url_back`. |
+| `kkterm.workspace.sessions.dangerous.url_forward` | Navigate an open URL Tab or WebView Pane forward one history entry. Requires Allow-all. Backed by `session_url_forward`. |
 
 ### Workspace Module — Quick Commands dangerous (`kkterm.workspace.quick_commands.dangerous.*`)
 
@@ -196,14 +207,25 @@ Every `quick_commands.*` tool follows the Connection's Quick Command Bundle sele
 ### Workspace Module — SFTP/FTP file browser (`kkterm.workspace.file_browser.*`)
 
 Backed by the frontend live-tool bridge (`session_file_browser_*`), so MCP and
-the in-app assistant drive the same active file browser Session.
+the in-app assistant drive the same active SFTP, FTP, or local File Explorer
+Session. Remote file reads and writes use a bounded temporary local staging copy
+that is removed after the operation. Uploads and downloads join the browser's own
+transfer queue, which runs one transfer at a time.
 
 | Name | Description |
 |---|---|
-| `kkterm.workspace.file_browser.list` | List entries in an active SFTP/FTP file browser Session. Defaults to the browser's current remote path. Safe (read-only). Backed by `session_file_browser_list`. |
+| `kkterm.workspace.file_browser.list` | List entries in an active SFTP/FTP/local File Explorer Session. Defaults to the browser's current path. Safe (read-only). Backed by `session_file_browser_list`. |
+| `kkterm.workspace.file_browser.properties` | Read metadata for a path in an active SFTP/FTP/local File Explorer Session. Safe (read-only). Backed by `session_file_browser_properties`. |
 | `kkterm.workspace.file_browser.dangerous.create_folder` | Create a folder in an active file browser Session. Requires `built_in_mcp_allow_all_dangerous = true`. Backed by `session_file_browser_create_folder`. |
 | `kkterm.workspace.file_browser.dangerous.rename` | Rename a path in an active file browser Session. Requires Allow-all. Backed by `session_file_browser_rename`. |
 | `kkterm.workspace.file_browser.dangerous.delete` | Delete a path in an active file browser Session. Requires Allow-all. Backed by `session_file_browser_delete`. |
+| `kkterm.workspace.file_browser.transfer_status` | Read the full transfer queue and progress states for an active file browser Session. Safe (read-only). Backed by `session_file_browser_transfer_status`. |
+| `kkterm.workspace.file_browser.dangerous.update_properties` | Update SFTP permissions, owner, or group. Plain FTP and local File Explorer do not support POSIX property editing. Requires Allow-all. Backed by `session_file_browser_update_properties`. |
+| `kkterm.workspace.file_browser.dangerous.read` | Read bounded text from a local or remote file. Remote files are staged transiently. Requires Allow-all because file contents may be sensitive. Backed by `session_file_browser_read`. |
+| `kkterm.workspace.file_browser.dangerous.write` | Write text to a local or remote file. Requires Allow-all. Remote writes support `expectedModified` and `force` conflict controls. Backed by `session_file_browser_write`. |
+| `kkterm.workspace.file_browser.dangerous.upload` | Queue an upload or copy of a local path into an active browser destination, with `fail` or `overwrite` behavior. Returns the queued `transferId`; poll `transfer_status` for the outcome. Requires Allow-all. Backed by `session_file_browser_upload`. |
+| `kkterm.workspace.file_browser.dangerous.download` | Queue a download or copy of a browser path into a local destination, with `fail` or `overwrite` behavior. Returns the queued `transferId`; poll `transfer_status` for the outcome. Requires Allow-all. Backed by `session_file_browser_download`. |
+| `kkterm.workspace.file_browser.dangerous.cancel_transfer` | Cancel a file-browser transfer. A queued transfer is canceled immediately; a running one only when the transport supports cancellation (local File Explorer copies do not). Requires Allow-all. Backed by `session_file_browser_cancel_transfer`. |
 
 ### Workspace Module — remote desktop capture/input
 

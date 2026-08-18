@@ -59,7 +59,30 @@ const FILE_BROWSER_SIDEBAR_STORAGE_KEY = "kkterm.fileBrowserSidebarCollapsed.v1"
 const SSH_FILE_BROWSER_PROTOCOL_STORAGE_KEY = "kkterm.sshFileBrowserProtocol.v1";
 const SSH_FILE_BROWSER_LOCAL_PATH_STORAGE_KEY = "kkterm.sshFileBrowserLocalPath.v1";
 const SFTP_SESSION_INVALIDATED_MARKER = "[KKTERM_SFTP_SESSION_INVALIDATED]";
+const LOCAL_BROWSER_SESSION_ID = "__kkterm_local_files__";
 const RECENT_PATH_LIMIT = 5;
+// session_state embeds one file-browser snapshot per open browser, so the
+// snapshot reports counts and at most this many selected names.
+const SNAPSHOT_NAME_LIMIT = 20;
+
+function boundedSnapshotNames(names: string[]) {
+  return names.length > SNAPSHOT_NAME_LIMIT ? names.slice(0, SNAPSHOT_NAME_LIMIT) : names;
+}
+
+function summarizeTransfers(transfers: TransferRecord[]) {
+  const summary = {
+    total: transfers.length,
+    queued: 0,
+    active: 0,
+    done: 0,
+    failed: 0,
+    canceled: 0,
+  };
+  for (const transfer of transfers) {
+    summary[transfer.state] += 1;
+  }
+  return summary;
+}
 
 function parseSftpTransferError(error: unknown) {
   const rawMessage = error instanceof Error ? error.message : String(error);
@@ -902,7 +925,9 @@ export function SftpWorkspace({
   };
 
   const runQueuedTransfer = async (transfer: TransferRecord) => {
-    const sessionId = sessionIdRef.current;
+    // Local File Explorer transfers have no network Session; the local adapter
+    // ignores the id, so a placeholder keeps them on the same serialized queue.
+    const sessionId = isLocalFilesBrowser ? LOCAL_BROWSER_SESSION_ID : sessionIdRef.current;
     if (!sessionId || !isTauriRuntime()) {
       setTransferState(transfer.id, {
         state: "failed",
@@ -957,8 +982,10 @@ export function SftpWorkspace({
       });
 
       if (transfer.direction === "upload") {
+        // refreshRemoteDirectory is a no-op without a network Session, so the
+        // local File Explorer refreshes its single pane either way.
         await refreshRemoteDirectory();
-        if (transfer.deleteSourceWhenDone?.side === "local") {
+        if (isLocalFilesBrowser || transfer.deleteSourceWhenDone?.side === "local") {
           await refreshLocalDirectory();
         }
       } else {
@@ -972,7 +999,12 @@ export function SftpWorkspace({
       }
     } catch (error) {
       const { message } = handleSftpTransferError(error);
+      // Assistant/MCP transfers pass an explicit overwriteBehavior, so a
+      // conflict fails the tool call instead of opening a prompt nobody is
+      // waiting on.
+      const canPromptForConflict = transfer.origin !== "assistant";
       if (
+        canPromptForConflict &&
         transfer.overwriteBehavior !== "overwrite" &&
         isExistingDestinationError(message) &&
         overwriteAllConflictsRef.current[transfer.direction]
@@ -987,6 +1019,7 @@ export function SftpWorkspace({
       }
 
       if (
+        canPromptForConflict &&
         transfer.overwriteBehavior !== "overwrite" &&
         isExistingDestinationError(message) &&
         !overwriteAllConflictsRef.current[transfer.direction]
@@ -2000,63 +2033,302 @@ export function SftpWorkspace({
       : t("sftp.connecting");
   const connectionStatusState = isConnected ? "connected" : remoteError ? "error" : "connecting";
 
+  // Everything the live file-browser controller reads at call time. Keeping it
+  // in a ref means the controller registration below does not have to re-run
+  // (and re-register) on every directory refresh or transfer progress tick.
+  const controllerLive = {
+    connectionId: connection?.id,
+    connectionName: connection?.name,
+    localPath,
+    remotePath,
+    localFiles,
+    remoteFiles,
+    selectedLocalNames,
+    selectedRemoteNames,
+    status,
+    localStatus,
+    transfers,
+    refreshRemoteDirectory,
+    refreshLocalDirectory,
+    cancelTransfer: handleCancelTransfer,
+  };
+  const controllerLiveRef = useRef(controllerLive);
+  useEffect(() => {
+    controllerLiveRef.current = controllerLive;
+  });
 
   useEffect(() => {
-    if (isLocalFilesBrowser || !commands || !isTauriRuntime()) {
+    if (!commands || !isTauriRuntime()) {
       return;
     }
-    const controller: FileBrowserController = {
-      kind: effectiveBrowserKind === "ftp" ? "ftp" : "sftp",
-      list: async (path) => {
-        const sessionId = sessionIdRef.current;
-        if (!sessionId) {
-          throw new Error(t("sftp.sessionUnavailable"));
+
+    const kind: FileBrowserController["kind"] = isLocalFilesBrowser
+      ? "localFiles"
+      : effectiveBrowserKind === "ftp"
+        ? "ftp"
+        : "sftp";
+    const sessionIdForCommand = () =>
+      isLocalFilesBrowser ? LOCAL_BROWSER_SESSION_ID : sessionIdRef.current;
+    const requireSessionId = () => {
+      const sessionId = sessionIdForCommand();
+      if (!sessionId) {
+        throw new Error(t("sftp.sessionUnavailable"));
+      }
+      return sessionId;
+    };
+    const refreshBrowserDirectory = () =>
+      isLocalFilesBrowser
+        ? controllerLiveRef.current.refreshLocalDirectory()
+        : controllerLiveRef.current.refreshRemoteDirectory();
+    const localPathForFile = (path: string) => path.trim();
+
+    // Queue the transfer on the browser's existing transfer queue instead of
+    // running it inline: the queue is what serializes transfers, drives progress
+    // events, and refreshes the directory afterwards. The tool returns as soon
+    // as the transfer is queued; callers poll transfer_status for the outcome.
+    const queueControllerTransfer = (
+      direction: TransferDirection,
+      request: {
+        transferId?: string;
+        localPath?: string;
+        remoteDirectory?: string;
+        remotePath?: string;
+        localDirectory?: string;
+        overwriteBehavior: SftpSettings["overwriteBehavior"];
+      },
+    ) => {
+      requireSessionId();
+      const live = controllerLiveRef.current;
+      const transferId = request.transferId?.trim() || uniqueRuntimeId(`assistant-${direction}`);
+      if (live.transfers.some((transfer) => transfer.id === transferId)) {
+        throw new Error(`transferId ${transferId} is already in use`);
+      }
+      const sourcePath = direction === "upload" ? request.localPath ?? "" : request.remotePath ?? "";
+      const name = direction === "upload" ? localNameFromPath(sourcePath) : remoteNameFromPath(sourcePath);
+      if (!sourcePath || !name) {
+        throw new Error(`${direction === "upload" ? "localPath" : "remotePath"} is required`);
+      }
+      const record: TransferRecord = {
+        id: transferId,
+        direction,
+        name,
+        state: "queued",
+        progress: 0,
+        detail: t("sftp.waiting"),
+        overwriteBehavior: request.overwriteBehavior,
+        origin: "assistant",
+        localPath: request.localPath,
+        remoteDirectory: request.remoteDirectory ?? (direction === "upload" ? live.remotePath : undefined),
+        remotePath: request.remotePath,
+        localDirectory: request.localDirectory ?? (direction === "download" ? live.localPath : undefined),
+      };
+      setTransfers((current) => [...current, record]);
+      return {
+        transferId,
+        direction,
+        name,
+        state: record.state,
+        queuedBehind: live.transfers.filter(
+          (transfer) => transfer.state === "queued" || transfer.state === "active",
+        ).length,
+      };
+    };
+
+    const readLocalText = (path: string, maxBytes: number, fromEnd = false) =>
+      invokeCommand("read_file_view_text", {
+        request: { path, maxBytes, fromEnd },
+      });
+
+    const readRemoteText = async (path: string, maxBytes: number, fromEnd = false) => {
+      const sessionId = requireSessionId();
+      const tempDir = await invokeCommand("create_compare_temp_dir");
+      const name = remoteNameFromPath(path) || "kkterm-remote-file";
+      const tempPath = joinLocalPath(tempDir, name);
+      const transferId = uniqueRuntimeId("assistant-read");
+      try {
+        await commands.downloadPath({
+          sessionId,
+          transferId,
+          remotePath: path,
+          localDirectory: tempDir,
+          overwriteBehavior: "overwrite",
+        });
+        return await readLocalText(tempPath, maxBytes, fromEnd);
+      } finally {
+        await invokeCommand("delete_local_path", { request: { path: tempDir } }).catch(() => undefined);
+      }
+    };
+
+    const writeRemoteText = async (request: {
+      path: string;
+      content: string;
+      expectedModified?: number;
+      force?: boolean;
+    }) => {
+      const sessionId = requireSessionId();
+      const normalizedPath = request.path.trim().replace(/\/+$/, "");
+      const name = remoteNameFromPath(normalizedPath);
+      if (!normalizedPath || !name) {
+        throw new Error("path must identify a file");
+      }
+      if (!request.force && typeof request.expectedModified === "number") {
+        const current = await commands.pathProperties({ sessionId, path: normalizedPath });
+        if (current.modified !== undefined && current.modified !== request.expectedModified) {
+          throw new Error("Remote file changed since expectedModified; retry with force=true.");
         }
-        return commands.listDirectory({ sessionId, path: path?.trim() || remotePath });
+      }
+      const tempDir = await invokeCommand("create_compare_temp_dir");
+      const tempPath = joinLocalPath(tempDir, name);
+      try {
+        await invokeCommand("write_file_view", {
+          request: { path: tempPath, content: request.content, force: true },
+        });
+        const transferId = uniqueRuntimeId("assistant-write");
+        const result = await commands.uploadPath({
+          sessionId,
+          transferId,
+          localPath: tempPath,
+          remoteDirectory: normalizedPath.slice(0, Math.max(0, normalizedPath.length - name.length)) || ".",
+          overwriteBehavior: "overwrite",
+        });
+        await controllerLiveRef.current.refreshRemoteDirectory();
+        return { transferId, result };
+      } finally {
+        await invokeCommand("delete_local_path", { request: { path: tempDir } }).catch(() => undefined);
+      }
+    };
+
+    const controller: FileBrowserController = {
+      kind,
+      // Read-only: listing another path must not navigate the visible browser
+      // or drop the user's selection, which the delete/transfer actions read.
+      list: async (path) => {
+        const live = controllerLiveRef.current;
+        return commands.listDirectory({
+          sessionId: requireSessionId(),
+          path: path?.trim() || (isLocalFilesBrowser ? live.localPath : live.remotePath),
+        });
       },
       createFolder: async (parentPath, name) => {
-        const sessionId = sessionIdRef.current;
-        if (!sessionId) {
-          throw new Error(t("sftp.sessionUnavailable"));
-        }
-        const result = await commands.createFolder({ sessionId, parentPath, name });
-        await refreshRemoteDirectory();
+        const result = await commands.createFolder({ sessionId: requireSessionId(), parentPath, name });
+        await refreshBrowserDirectory();
         return result ?? { ok: true };
       },
       rename: async (path, newName) => {
-        const sessionId = sessionIdRef.current;
-        if (!sessionId) {
-          throw new Error(t("sftp.sessionUnavailable"));
-        }
-        const result = await commands.renamePath({ sessionId, path, newName });
-        await refreshRemoteDirectory();
+        const result = await commands.renamePath({ sessionId: requireSessionId(), path, newName });
+        await refreshBrowserDirectory();
         return result ?? { ok: true };
       },
       deletePath: async (path) => {
-        const sessionId = sessionIdRef.current;
-        if (!sessionId) {
-          throw new Error(t("sftp.sessionUnavailable"));
-        }
-        const result = await commands.deletePath({ sessionId, path });
-        await refreshRemoteDirectory();
+        const result = await commands.deletePath({ sessionId: requireSessionId(), path });
+        await refreshBrowserDirectory();
         return result ?? { ok: true };
       },
-      snapshot: () => ({
-        kind: effectiveBrowserKind === "ftp" ? "ftp" : "sftp",
-        tabId: tab.id,
-        connectionId: connection?.id,
-        connectionName: connection?.name,
-        remotePath,
-        remoteFiles,
-        selectedRemoteNames,
-        status,
-      }),
+      properties: (path) =>
+        commands.pathProperties({ sessionId: requireSessionId(), path }),
+      updateProperties: async (path, patch) => {
+        const result = await commands.updatePathProperties({
+          sessionId: requireSessionId(),
+          path,
+          ...patch,
+        });
+        await refreshBrowserDirectory();
+        return result;
+      },
+      readFile: async ({ path, maxBytes, fromEnd }) =>
+        isLocalFilesBrowser
+          ? readLocalText(localPathForFile(path), maxBytes, fromEnd)
+          : readRemoteText(path, maxBytes, fromEnd),
+      writeFile: async (request) =>
+        isLocalFilesBrowser
+          ? (async () => {
+              const path = localPathForFile(request.path);
+              // local_path_properties reports whole seconds while write_file_view
+              // compares millisecond mtimes, so a re-derived expectedMtimeMs would
+              // report a conflict for any file whose mtime carries milliseconds.
+              // Do the conflict check here (accepting seconds or milliseconds) and
+              // write once it passes.
+              if (typeof request.expectedModified === "number" && !request.force) {
+                const current = await invokeCommand("local_path_properties", { request: { path } });
+                const currentModified = current.modified;
+                if (
+                  typeof currentModified === "number" &&
+                  currentModified !== request.expectedModified &&
+                  currentModified * 1000 !== request.expectedModified
+                ) {
+                  throw new Error("Local file changed since expectedModified; retry with force=true.");
+                }
+              }
+              return invokeCommand("write_file_view", {
+                request: { path, content: request.content, force: true },
+              });
+            })()
+          : writeRemoteText(request),
+      upload: async (request) => queueControllerTransfer("upload", request),
+      download: async (request) => queueControllerTransfer("download", request),
+      cancelTransfer: async (transferId) => {
+        const live = controllerLiveRef.current;
+        const transfer = live.transfers.find((entry) => entry.id === transferId);
+        if (!transfer) {
+          throw new Error(`no transfer with id ${transferId}`);
+        }
+        if (transfer.state === "queued") {
+          await live.cancelTransfer(transfer);
+          return { transferId, canceled: true, state: "canceled" };
+        }
+        if (transfer.state !== "active") {
+          return {
+            transferId,
+            canceled: false,
+            state: transfer.state,
+            reason: "The transfer already finished.",
+          };
+        }
+        if (!commands.capabilities.cancelTransfers) {
+          return {
+            transferId,
+            canceled: false,
+            state: transfer.state,
+            reason: "This file browser cannot cancel a transfer that already started.",
+          };
+        }
+        await live.cancelTransfer(transfer);
+        // The transport acknowledges asynchronously; the final state shows up in
+        // transfer_status.
+        return { transferId, canceled: false, cancelRequested: true, state: transfer.state };
+      },
+      transferStatus: () => controllerLiveRef.current.transfers,
+      // Deliberately bounded: session_state embeds this snapshot for every open
+      // browser at the top of most turns. Directory entries come from
+      // file_browser.list and transfer detail from file_browser.transfer_status.
+      snapshot: () => {
+        const live = controllerLiveRef.current;
+        return {
+          kind,
+          tabId: tab.id,
+          connectionId: live.connectionId,
+          connectionName: live.connectionName,
+          path: isLocalFilesBrowser ? live.localPath : live.remotePath,
+          localPath: live.localPath,
+          remotePath: isLocalFilesBrowser ? undefined : live.remotePath,
+          localEntryCount: live.localFiles.length,
+          remoteEntryCount: isLocalFilesBrowser ? undefined : live.remoteFiles.length,
+          selectedLocalCount: live.selectedLocalNames.length,
+          selectedLocalNames: boundedSnapshotNames(live.selectedLocalNames),
+          selectedRemoteCount: isLocalFilesBrowser ? undefined : live.selectedRemoteNames.length,
+          selectedRemoteNames: isLocalFilesBrowser
+            ? undefined
+            : boundedSnapshotNames(live.selectedRemoteNames),
+          status: isLocalFilesBrowser ? live.localStatus || "ready" : live.status,
+          transfers: summarizeTransfers(live.transfers),
+        };
+      },
     };
     registerFileBrowserController(tab.id, controller);
     return () => unregisterFileBrowserController(tab.id, controller);
-    // Re-register only on the listed inputs; refreshRemoteDirectory is recreated each render and read at call time.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [commands, connection?.id, connection?.name, effectiveBrowserKind, isLocalFilesBrowser, remoteFiles, remotePath, selectedRemoteNames, status, t, tab.id]);
+    // Live paths, selections, and transfer state are read from controllerLiveRef
+    // at call time, so the controller only re-registers when its identity changes.
+  }, [commands, effectiveBrowserKind, isLocalFilesBrowser, t, tab.id]);
 
   return (
     <section

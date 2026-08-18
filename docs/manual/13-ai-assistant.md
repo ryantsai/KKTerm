@@ -141,6 +141,32 @@ The Tutorial tool is enabled by `settings.aiTools.tutorial.label`. For UI "how d
 
 Switching Tabs is also available to the Sessions tool directly: when the Sessions tool is enabled the assistant can call `session_activate_tab` with a `tabId` (and optional `paneId`) from `session_state` to bring a Tab into view and focus a Pane. Like the tutorial navigation, this only changes which Tab/Pane is shown and never opens, closes, or ends a Session, so it runs without an approval prompt.
 
+`session_state` describes each live Session rather than dumping its contents: a
+file-browser Session reports its current path, entry and selection counts, and
+transfer counts, and the assistant calls the file-browser list and transfer
+status tools when it needs the entries themselves.
+
+The Sessions tool can also open a saved file-browser Connection with
+`session_open_file_browser` (SFTP, FTP/FTPS, or local File Explorer), open a local
+path with `session_open_file_viewer`, and manage explicit Workspace layout
+requests with `session_split_pane`, `session_close_pane`, and `session_close_tab`.
+URL Tabs and WebView Panes expose `session_url_state`, `session_url_navigate`,
+`session_url_back`, `session_url_forward`, and `session_url_reload`; navigation
+and lifecycle changes require the normal approval in Prompt mode.
+
+File-browser Sessions share one live surface across the native Assistant and
+kkterm-cli MCP. In addition to list/create-folder/rename/delete, the Assistant
+can read properties, update SFTP permissions/owner/group, read bounded text,
+write text, upload/download paths, inspect transfer progress, and cancel a
+transfer. Uploads and downloads are queued on the file browser's transfer queue
+and run one at a time, so those tools report a transfer id and the assistant
+reads the outcome back from the transfer status tool rather than waiting.
+Local File Explorer uses the same tool family. Remote reads and writes
+stage a bounded temporary local copy and remove it after completion; pass
+`expectedModified` for remote or local conflict checking and use `force` only
+when an overwrite is intentional. File-content reads and all file mutations are
+approval-gated for the external MCP surface.
+
 Known tutorial targets:
 
 - `connections.addConnection` in Workspace.

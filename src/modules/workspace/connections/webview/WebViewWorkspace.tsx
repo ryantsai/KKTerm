@@ -22,6 +22,11 @@ import {
 } from "../../../../lib/tauri";
 import type { AssistantScreenshot, WebviewSessionStarted } from "../../../../lib/tauri";
 import { useWorkspaceStore } from "../../../../store";
+import {
+  registerWebviewController,
+  unregisterWebviewController,
+  type WebviewController,
+} from "../../paneRegistry";
 import { urlCredentialSecretOwnerId } from "./urlCredentialKeys";
 import { resolveUrlDataPartition, resolveUrlProxy, resolveUrlUserAgent } from "./urlProxy";
 import type { WorkspaceTab } from "../../../../types";
@@ -387,6 +392,47 @@ export function WebViewWorkspace({
     connectionSessionCountedRef.current = false;
     markConnectionSessionEnded(tab.connection.id);
   };
+
+  useEffect(() => {
+    const invokeSimple = (name: "webview_reload" | "webview_go_back" | "webview_go_forward") => {
+      if (!isTauriRuntime() || !sessionStartedRef.current) {
+        throw new Error("URL Session is not ready.");
+      }
+      return invokeCommand(name, {
+        request: { sessionId: sessionIdRef.current },
+      });
+    };
+    const controller: WebviewController = {
+      navigate: (url) => {
+        const nextUrl = url.trim();
+        if (!nextUrl) {
+          throw new Error("url is required");
+        }
+        if (!isTauriRuntime() || !sessionStartedRef.current) {
+          throw new Error("URL Session is not ready.");
+        }
+        return invokeCommand("webview_navigate", {
+          request: { sessionId: sessionIdRef.current, url: nextUrl },
+        });
+      },
+      reload: () => invokeSimple("webview_reload"),
+      goBack: () => invokeSimple("webview_go_back"),
+      goForward: () => invokeSimple("webview_go_forward"),
+      snapshot: () => ({
+        kind: "webview",
+        tabId: tab.id,
+        connectionId: tab.connection?.id,
+        connectionName: tab.connection?.name,
+        url: addressInput || initialUrl,
+        ready: sessionStartedRef.current,
+        webviewReady,
+        navError: navError || undefined,
+      }),
+    };
+    registerWebviewController(tab.id, controller);
+    return () => unregisterWebviewController(tab.id, controller);
+    // Methods read refs at call time; the snapshot follows the current URL/readiness state.
+  }, [addressInput, initialUrl, navError, tab.connection?.id, tab.connection?.name, tab.id, webviewReady]);
 
   useEffect(() => {
     credentialRef.current = {

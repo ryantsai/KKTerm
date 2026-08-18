@@ -27,6 +27,8 @@ export interface FileBrowserCapabilities {
   verifySshHostKey: boolean;
   /** UI may offer "Open SSH terminal here" from a remote folder */
   openTerminalHere: boolean;
+  /** Transport can cancel a transfer that has already started */
+  cancelTransfers: boolean;
 }
 
 export interface FileBrowserCommands {
@@ -91,6 +93,7 @@ export function sftpBrowserCommands(connection: Connection): FileBrowserCommands
       editPermissions: true,
       verifySshHostKey: true,
       openTerminalHere: true,
+      cancelTransfers: true,
     },
     startSession: ({ sessionId, path, password }) =>
       invokeCommand("start_sftp_session", {
@@ -156,6 +159,7 @@ export function ftpBrowserCommands(
       editPermissions: false,
       verifySshHostKey: false,
       openTerminalHere: false,
+      cancelTransfers: true,
     },
     startSession: ({ sessionId, path, password }) =>
       invokeCommand("start_ftp_session", {
@@ -202,6 +206,53 @@ export function ftpBrowserCommands(
  */
 let localBrowserCommandsSingleton: FileBrowserCommands | null = null;
 
+function localPathName(path: string) {
+  const trimmed = path.trim().replace(/[\\/]+$/, "");
+  return trimmed.split(/[\\/]/).pop() ?? "";
+}
+
+function localDestinationPath(sourcePath: string, destinationDirectory: string) {
+  const name = localPathName(sourcePath);
+  if (!name) {
+    throw new Error("source path must name a file or folder");
+  }
+  const directory = destinationDirectory.trim();
+  if (!directory) {
+    throw new Error("destination directory is required");
+  }
+  if (directory.endsWith("\\") || directory.endsWith("/")) {
+    return `${directory}${name}`;
+  }
+  // Drive-letter roots ("C:"), UNC shares, and any backslash-separated path join
+  // with a backslash; everything else — including relative POSIX paths — joins
+  // with a forward slash.
+  const separator = /^[A-Za-z]:$/.test(directory) || directory.includes("\\") ? "\\" : "/";
+  return `${directory}${separator}${name}`;
+}
+
+async function copyLocalBrowserPath(
+  sourcePath: string,
+  destinationDirectory: string,
+  overwriteBehavior: SftpSettings["overwriteBehavior"],
+) {
+  if (overwriteBehavior !== "overwrite") {
+    const destinationPath = localDestinationPath(sourcePath, destinationDirectory);
+    const existing = await invokeCommand("local_path_properties", {
+      request: { path: destinationPath },
+    }).catch(() => null);
+    if (existing) {
+      throw new Error(`destination already exists: ${destinationPath}`);
+    }
+  }
+  // `copy_local_path` resolves the destination directory and refuses to copy a
+  // folder into itself or one of its own subfolders. `copy_local_path_to` skips
+  // that guard whenever the target does not exist yet, which would let a copy
+  // recurse into the tree it is still reading.
+  return invokeCommand("copy_local_path", {
+    request: { sourcePath, destinationDirectory },
+  });
+}
+
 export function localBrowserCommands(): FileBrowserCommands {
   if (localBrowserCommandsSingleton) {
     return localBrowserCommandsSingleton;
@@ -218,6 +269,8 @@ export function localBrowserCommands(): FileBrowserCommands {
       editPermissions: false,
       verifySshHostKey: false,
       openTerminalHere: false,
+      // copy_local_path runs to completion in one blocking call.
+      cancelTransfers: false,
     },
     startSession: ({ sessionId, path }) => listLocal(path, sessionId),
     listDirectory: ({ sessionId, path }) => listLocal(path, sessionId),
@@ -237,14 +290,10 @@ export function localBrowserCommands(): FileBrowserCommands {
     updatePathProperties: () => {
       throw new Error("Local File Explorer does not support editing POSIX properties");
     },
-    uploadPath: ({ localPath, remoteDirectory }) =>
-      invokeCommand("copy_local_path", {
-        request: { sourcePath: localPath, destinationDirectory: remoteDirectory },
-      }),
-    downloadPath: ({ remotePath, localDirectory }) =>
-      invokeCommand("copy_local_path", {
-        request: { sourcePath: remotePath, destinationDirectory: localDirectory },
-      }),
+    uploadPath: ({ localPath, remoteDirectory, overwriteBehavior }) =>
+      copyLocalBrowserPath(localPath, remoteDirectory, overwriteBehavior),
+    downloadPath: ({ remotePath, localDirectory, overwriteBehavior }) =>
+      copyLocalBrowserPath(remotePath, localDirectory, overwriteBehavior),
     cancelTransfer: () => Promise.resolve(),
     transferProgressEvent: "local-files-transfer-progress",
   };

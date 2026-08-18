@@ -125,8 +125,104 @@ pub fn tool_descriptors() -> Vec<Value> {
         }),
         json!({
             "name": "kkterm.workspace.sessions.list",
-            "description": "List live Sessions (terminal Panes, remote desktop targets, file browsers).",
+            "description": "List live Sessions (terminal Panes, remote desktop targets, URL surfaces, and file browsers). File-browser entries report paths, entry counts, and transfer counts; use file_browser.list for directory entries.",
             "inputSchema": {"type": "object", "properties": {}, "additionalProperties": false},
+        }),
+        json!({
+            "name": "kkterm.workspace.sessions.activate_tab",
+            "description": "Switch the active Workspace Tab and optionally focus one Pane. This does not open or close a Session.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {"tabId": {"type": "string"}, "paneId": {"type": "string"}},
+                "required": ["tabId"],
+                "additionalProperties": false,
+            },
+        }),
+        json!({
+            "name": "kkterm.workspace.sessions.dangerous.open_file_browser",
+            "description": "DANGEROUS: open and activate a saved SFTP, FTP/FTPS, or local File Explorer surface. Opening a remote browser starts a live network Session. Requires built_in_mcp_allow_all_dangerous = true.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "connectionId": {"type": "string"},
+                    "surface": {"type": "string", "enum": ["sftp", "ftp", "localFiles"]},
+                },
+                "required": ["connectionId"],
+                "additionalProperties": false,
+            },
+        }),
+        json!({
+            "name": "kkterm.workspace.sessions.open_file_viewer",
+            "description": "Open a local path in KKTerm's Document viewer. The path is read by the local desktop app.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string"},
+                    "connectionId": {"type": "string"},
+                    "ephemeral": {"type": "boolean"},
+                },
+                "required": ["path"],
+                "additionalProperties": false,
+            },
+        }),
+        json!({
+            "name": "kkterm.workspace.sessions.dangerous.close_tab",
+            "description": "DANGEROUS: close an open Workspace Tab and its live Session. Requires built_in_mcp_allow_all_dangerous = true.",
+            "inputSchema": id_input_schema("tabId"),
+        }),
+        json!({
+            "name": "kkterm.workspace.sessions.dangerous.split_pane",
+            "description": "DANGEROUS: split a terminal Workspace Tab and start another live Pane. Requires built_in_mcp_allow_all_dangerous = true.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {"tabId": {"type": "string"}, "direction": {"type": "string", "enum": ["right", "left", "down", "up"]}},
+                "required": ["tabId"],
+                "additionalProperties": false,
+            },
+        }),
+        json!({
+            "name": "kkterm.workspace.sessions.dangerous.close_pane",
+            "description": "DANGEROUS: close one live Workspace Pane; closing the last Pane closes its Tab. Requires built_in_mcp_allow_all_dangerous = true.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {"tabId": {"type": "string"}, "paneId": {"type": "string"}},
+                "required": ["tabId", "paneId"],
+                "additionalProperties": false,
+            },
+        }),
+        json!({
+            "name": "kkterm.workspace.sessions.url_state",
+            "description": "Read the current URL and readiness state for an open URL Connection Tab or WebView Pane. Omit the target to use the active URL surface.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {"tabId": {"type": "string"}, "paneId": {"type": "string"}},
+                "additionalProperties": false,
+            },
+        }),
+        json!({
+            "name": "kkterm.workspace.sessions.dangerous.url_navigate",
+            "description": "DANGEROUS: navigate an open URL Connection Tab or WebView Pane. A navigation can submit a GET request or change authenticated web state. Requires built_in_mcp_allow_all_dangerous = true.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {"tabId": {"type": "string"}, "paneId": {"type": "string"}, "url": {"type": "string"}},
+                "required": ["url"],
+                "additionalProperties": false,
+            },
+        }),
+        json!({
+            "name": "kkterm.workspace.sessions.dangerous.url_reload",
+            "description": "DANGEROUS: reload an open URL Connection Tab or WebView Pane. Requires built_in_mcp_allow_all_dangerous = true.",
+            "inputSchema": {"type": "object", "properties": {"tabId": {"type": "string"}, "paneId": {"type": "string"}}, "additionalProperties": false},
+        }),
+        json!({
+            "name": "kkterm.workspace.sessions.dangerous.url_back",
+            "description": "DANGEROUS: navigate an open URL Connection Tab or WebView Pane back one history entry. Requires built_in_mcp_allow_all_dangerous = true.",
+            "inputSchema": {"type": "object", "properties": {"tabId": {"type": "string"}, "paneId": {"type": "string"}}, "additionalProperties": false},
+        }),
+        json!({
+            "name": "kkterm.workspace.sessions.dangerous.url_forward",
+            "description": "DANGEROUS: navigate an open URL Connection Tab or WebView Pane forward one history entry. Requires built_in_mcp_allow_all_dangerous = true.",
+            "inputSchema": {"type": "object", "properties": {"tabId": {"type": "string"}, "paneId": {"type": "string"}}, "additionalProperties": false},
         }),
         json!({
             "name": "kkterm.workspace.sessions.dangerous.send_input",
@@ -232,13 +328,92 @@ pub fn tool_descriptors() -> Vec<Value> {
         // -- Workspace: SFTP/FTP file browser ------------------------------
         json!({
             "name": "kkterm.workspace.file_browser.list",
-            "description": "List entries in an active SFTP/FTP file browser Session. Defaults to the browser's current remote path. Use sessions.list to discover the tabId.",
+            "description": "List entries in an active SFTP/FTP/local File Explorer Session. Defaults to the browser's current path. Use sessions.list to discover the tabId.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
                     "tabId": {"type": "string", "description": "File browser Tab id. Defaults to the active file browser when omitted."},
                     "path": {"type": "string", "description": "Remote directory to list. Defaults to the browser's current path when omitted."},
                 },
+                "additionalProperties": false,
+            },
+        }),
+        json!({
+            "name": "kkterm.workspace.file_browser.properties",
+            "description": "Read metadata for a path in an active SFTP/FTP/local File Explorer Session.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {"tabId": {"type": "string"}, "path": {"type": "string"}},
+                "required": ["path"],
+                "additionalProperties": false,
+            },
+        }),
+        json!({
+            "name": "kkterm.workspace.file_browser.dangerous.update_properties",
+            "description": "DANGEROUS: update SFTP permissions, owner, or group for a path. Plain FTP and local File Explorer do not support POSIX property editing. Requires built_in_mcp_allow_all_dangerous = true.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {"tabId": {"type": "string"}, "path": {"type": "string"}, "permissions": {"type": "string"}, "uid": {"type": "integer", "minimum": 0}, "gid": {"type": "integer", "minimum": 0}},
+                "required": ["path"],
+                "additionalProperties": false,
+            },
+        }),
+        json!({
+            "name": "kkterm.workspace.file_browser.dangerous.read",
+            "description": "DANGEROUS: read bounded text from a local or remote file in an active file browser Session. Remote files are staged transiently. Requires built_in_mcp_allow_all_dangerous = true because file contents may be sensitive.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {"tabId": {"type": "string"}, "path": {"type": "string"}, "maxBytes": {"type": "integer", "minimum": 1, "maximum": 4194304}, "fromEnd": {"type": "boolean"}},
+                "required": ["path"],
+                "additionalProperties": false,
+            },
+        }),
+        json!({
+            "name": "kkterm.workspace.file_browser.dangerous.write",
+            "description": "DANGEROUS: write text to a local or remote file in an active file browser Session. Requires built_in_mcp_allow_all_dangerous = true.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {"tabId": {"type": "string"}, "path": {"type": "string"}, "content": {"type": "string", "maxLength": 16777216}, "expectedModified": {"type": "integer", "minimum": 0}, "force": {"type": "boolean"}},
+                "required": ["path", "content"],
+                "additionalProperties": false,
+            },
+        }),
+        json!({
+            "name": "kkterm.workspace.file_browser.dangerous.upload",
+            "description": "DANGEROUS: queue an upload or copy of a local path into an active file browser destination. Returns the queued transferId; poll file_browser.transfer_status for the outcome. Requires built_in_mcp_allow_all_dangerous = true.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {"tabId": {"type": "string"}, "transferId": {"type": "string"}, "localPath": {"type": "string"}, "remoteDirectory": {"type": "string"}, "overwriteBehavior": {"type": "string", "enum": ["fail", "overwrite"]}},
+                "required": ["localPath", "remoteDirectory"],
+                "additionalProperties": false,
+            },
+        }),
+        json!({
+            "name": "kkterm.workspace.file_browser.dangerous.download",
+            "description": "DANGEROUS: queue a download or copy of a path from an active file browser into a local destination. Returns the queued transferId; poll file_browser.transfer_status for the outcome. Requires built_in_mcp_allow_all_dangerous = true.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {"tabId": {"type": "string"}, "transferId": {"type": "string"}, "remotePath": {"type": "string"}, "localDirectory": {"type": "string"}, "overwriteBehavior": {"type": "string", "enum": ["fail", "overwrite"]}},
+                "required": ["remotePath", "localDirectory"],
+                "additionalProperties": false,
+            },
+        }),
+        json!({
+            "name": "kkterm.workspace.file_browser.transfer_status",
+            "description": "Read the full file browser transfer queue and progress states. sessions.list reports transfer counts only.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {"tabId": {"type": "string"}},
+                "additionalProperties": false,
+            },
+        }),
+        json!({
+            "name": "kkterm.workspace.file_browser.dangerous.cancel_transfer",
+            "description": "DANGEROUS: cancel a file browser transfer. A queued transfer is canceled immediately; a running one only when the transport supports it. Requires built_in_mcp_allow_all_dangerous = true.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {"tabId": {"type": "string"}, "transferId": {"type": "string"}},
+                "required": ["transferId"],
                 "additionalProperties": false,
             },
         }),
