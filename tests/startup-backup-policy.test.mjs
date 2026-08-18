@@ -29,7 +29,7 @@ test("automatic startup backup is delayed, backgrounded, and daily-gated", async
 test("database backup format excludes all Custom Module content", async () => {
   const storage = await readFile(new URL("../src-tauri/src/storage.rs", import.meta.url), "utf8");
 
-  assert.match(storage, /"version": 4/);
+  assert.match(storage, /"version": 5/);
   assert.match(storage, /"customModules": \{\s*"included": false\s*\}/s);
   assert.match(storage, /scrub_custom_module_data_from_database\(&temp_db_path\)/);
   assert.doesNotMatch(

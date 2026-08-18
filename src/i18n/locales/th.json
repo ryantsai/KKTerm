@@ -5757,5 +5757,83 @@
     "loading": "กำลังโหลด…",
     "loadError": "ไม่สามารถโหลดคู่มือได้: {{message}}",
     "tauriRequired": "คู่มือใช้งานได้เฉพาะในสภาพแวดล้อม runtime บนเดสก์ท็อปเท่านั้น"
+  },
+  "notes": {
+    "toolbarButton": {
+      "open": "เปิดบันทึก",
+      "create": "เพิ่มบันทึก"
+    },
+    "toolbar": {
+      "label": "การจัดรูปแบบบันทึก",
+      "undo": "เลิกทำ",
+      "redo": "ทำซ้ำ",
+      "heading1": "หัวเรื่อง 1",
+      "heading2": "หัวเรื่อง 2",
+      "heading3": "หัวเรื่อง 3",
+      "bold": "ตัวหนา",
+      "italic": "ตัวเอียง",
+      "underline": "ขีดเส้นใต้",
+      "strikethrough": "ขีดฆ่า",
+      "highlight": "ไฮไลต์",
+      "inlineCode": "โค้ดในบรรทัด",
+      "bulletList": "รายการสัญลักษณ์",
+      "orderedList": "รายการลำดับเลข",
+      "taskList": "รายการตรวจสอบ",
+      "blockquote": "คำอ้างอิง",
+      "codeBlock": "บล็อกโค้ด",
+      "horizontalRule": "เส้นคั่น",
+      "insertTable": "แทรกตาราง",
+      "insertImage": "แทรกรูปภาพ",
+      "insertLink": "แทรกลิงก์เว็บ",
+      "insertDeepLink": "ลิงก์ไปยังรายการใน KKTerm",
+      "search": "ค้นหาและแทนที่"
+    },
+    "search": {
+      "placeholder": "ค้นหาในบันทึก",
+      "replacePlaceholder": "แทนที่ด้วย",
+      "matchCount": "{{position}} จาก {{total}}",
+      "previous": "ผลลัพธ์ก่อนหน้า",
+      "next": "ผลลัพธ์ถัดไป",
+      "caseSensitive": "ตรงตามตัวพิมพ์ใหญ่-เล็ก",
+      "replace": "แทนที่",
+      "replaceAll": "แทนที่ทั้งหมด"
+    },
+    "editor": {
+      "title": "บันทึก — {{name}}",
+      "contentLabel": "เนื้อหาบันทึก",
+      "delete": "ลบบันทึก"
+    },
+    "deepLink": {
+      "title": "ลิงก์ไปยังรายการใน KKTerm",
+      "searchPlaceholder": "ค้นหาการเชื่อมต่อ พื้นที่ทำงาน และอุปกรณ์ในแร็ค",
+      "noResults": "ไม่พบรายการที่ตรงกัน",
+      "kind": {
+        "connection": "การเชื่อมต่อ",
+        "workspace": "พื้นที่ทำงาน",
+        "rackItem": "อุปกรณ์ในแร็ค"
+      },
+      "menuLabel": "คำแนะนำลิงก์",
+      "triggerHint": "พิมพ์ @ เพื่อลิงก์การเชื่อมต่อ พื้นที่ทำงาน หรืออุปกรณ์ในแร็ค"
+    },
+    "confirmDelete": {
+      "title": "ลบบันทึกนี้หรือไม่",
+      "message": "บันทึกของ {{name}} และรูปภาพจะถูกลบอย่างถาวร"
+    },
+    "confirmDiscard": {
+      "title": "ละทิ้งการเปลี่ยนแปลงที่ยังไม่บันทึกหรือไม่",
+      "message": "บันทึกนี้มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก",
+      "confirm": "ละทิ้ง"
+    },
+    "notice": {
+      "saved": "บันทึกของ {{name}} ถูกบันทึกแล้ว",
+      "saveFailed": "ไม่สามารถบันทึกได้ {{error}}",
+      "deleted": "ลบบันทึกของ {{name}} แล้ว",
+      "deleteFailed": "ไม่สามารถลบบันทึกได้ {{error}}",
+      "loadFailed": "ไม่สามารถเปิดบันทึกได้ {{error}}",
+      "imageFailed": "ไม่สามารถเพิ่มรูปภาพลงในบันทึกได้ {{error}}",
+      "deepLinkUnavailable": "รายการที่ลิงก์ไว้ไม่มีอยู่แล้ว",
+      "selectTextForLink": "เลือกข้อความที่ต้องการทำเป็นลิงก์",
+      "selectUrlForLink": "เลือกที่อยู่เว็บที่ขึ้นต้นด้วย http:// หรือ https:// เพื่อทำเป็นลิงก์"
+    }
   }
 }

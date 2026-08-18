@@ -139,6 +139,12 @@ const CHAPTERS: &[ManualChapter] = &[
         filename: "20-system-cleaner.md",
         title: "System Cleaner",
     },
+    ManualChapter {
+        slug: "connection-notes",
+        order: 21,
+        filename: "21-connection-notes.md",
+        title: "Connection Notes",
+    },
 ];
 
 fn resolve_chapter_path(app: &AppHandle, filename: &str) -> Result<std::path::PathBuf, String> {

@@ -44,6 +44,8 @@ import { useItOpsBackendInvalidation } from "./modules/itops/invalidation";
 import { useScreenshotCaptureBridge } from "./modules/screenshots/captureBridge";
 import { useScreenshotsStore } from "./modules/screenshots/state";
 import { useItOpsStore } from "./modules/itops/state";
+import { NoteEditorSheet } from "./modules/notes/NoteEditorSheet";
+import { useNoteBindings } from "./modules/notes/noteBindings";
 import {
   loadSiteTreeCollapsed,
   saveSiteTreeCollapsed,
@@ -170,6 +172,25 @@ function App() {
   function isOverlayPage(page: ActivePage): page is "settings" {
     return page === "settings";
   }
+
+  const noteEditor = useWorkspaceStore((state) => state.noteEditor);
+  const closeNoteEditor = useWorkspaceStore((state) => state.closeNoteEditor);
+  const setNoteBound = useNoteBindings((state) => state.setBound);
+  const loadNoteBindings = useNoteBindings((state) => state.load);
+
+  // Which Connections own a note is read at startup and whenever the durable
+  // Connection tree changes (including selective import and deletion), so
+  // every pane toolbar stays in sync without loading note bodies itself.
+  useEffect(() => {
+    const refresh = () => {
+      void loadNoteBindings();
+    };
+    window.addEventListener("kkterm:connection-tree-invalidated", refresh);
+    void loadNoteBindings();
+    return () => {
+      window.removeEventListener("kkterm:connection-tree-invalidated", refresh);
+    };
+  }, [loadNoteBindings]);
 
   const navigateToPage = useCallback((page: ActivePage) => {
     if (page === "installer" && !supportsInstallerHelper()) {
@@ -858,6 +879,16 @@ function App() {
       <CustomModuleSecretPrompt />
       </Suspense>
       <VideoRecordingDock />
+      {noteEditor ? (
+        <NoteEditorSheet
+          connectionId={noteEditor.connectionId}
+          connectionName={noteEditor.connectionName}
+          onBoundChange={setNoteBound}
+          onClose={closeNoteEditor}
+          showItOps={() => navigateToPage("itops")}
+          showWorkspace={() => navigateToPage("workspace")}
+        />
+      ) : null}
       <TutorialOverlay
         key="tutorial-overlay"
         onDismiss={() => setTutorialHighlightRequest(undefined)}

@@ -10,7 +10,7 @@
 
 KKTerm is local-first. Two distinct store families:
 
-1. **SQLite and app-data files** — non-secret durable data. They live on the user's machine and are never sent off-device. SQLite holds Connections, Dashboard Views and Widget Instances, Custom Widgets, Settings rows, legacy assistant chat threads, and Custom Module metadata plus small permission-checked storage. New Assistant threads use per-thread JSON below `assistant-chat-threads/`; System Cleaner runs use per-run JSON below `system-cleaner-history/`. Custom Module packages, documents, blobs, and isolated browser profiles live below the app-data `custom-modules` directory.
+1. **SQLite and app-data files** — non-secret durable data. They live on the user's machine and are never sent off-device. SQLite holds Connections, Dashboard Views and Widget Instances, Custom Widgets, Settings rows, legacy assistant chat threads, and Custom Module metadata plus small permission-checked storage. New Assistant threads use per-thread JSON below `assistant-chat-threads/`; System Cleaner runs use per-run JSON below `system-cleaner-history/`; Connection Note images are image files below `note-images/<connection id>/` (see [21-connection-notes.md](21-connection-notes.md)). Custom Module packages, documents, blobs, and isolated browser profiles live below the app-data `custom-modules` directory.
 2. **Credential backend** — secrets. Holds Connection passwords, URL credentials, AI provider API keys, email API keys / SMTP passwords, widget secrets, MCP server secrets. Windows and macOS default to the OS keystore and may optionally use the encrypted SQLite store. Linux uses the encrypted SQLite store only.
 
 Terminal contents are **not** logged by default. There is no telemetry and no cloud sync.

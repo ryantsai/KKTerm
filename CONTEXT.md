@@ -65,6 +65,10 @@ _Avoid_: Command group, command profile, command set (as a Connection field), pa
 The optional bottom bar in a terminal Tab that displays the active Connection's Quick Commands — the selected Quick Command Bundle's commands when the Connection uses one, otherwise the Connection's own list. The Quick Command Bar is off by default, can be toggled from the terminal Pane toolbar, and remembers visibility per Connection. Its leading bundle chip switches the Connection's Quick Command Bundle.
 _Avoid_: Command bar, shortcut bar, Session command bar
 
+**Connection Note**:
+One rich-text note bound to a single **Connection**, stored in SQLite (`connection_notes`). A Connection has at most one; the note exists only once the user saves, so "has a row" is exactly "this Connection has a note". Content is sanitized HTML authored in an app-owned WYSIWYG editor opened from every Connection Pane toolbar. Embedded images are files under the app-data `note-images/<connection id>/` directory — not BLOBs and not inline data URIs — and travel with the settings backup/export. A note may carry **Deep Links** to a Connection, a Workspace, or an IT Ops rack device. Deleting the Connection deletes its note and images. Distinct from the Notes Dashboard Widget, which is an unbound sticky note on a Dashboard View.
+_Avoid_: annotation, comment, sticky note, description
+
 **Session**:
 A live runtime instance for a process, SSH channel, file-browser, webview, or remote-desktop state.
 _Avoid_: Connection, profile, tab

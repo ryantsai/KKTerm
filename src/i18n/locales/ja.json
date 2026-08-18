@@ -5757,5 +5757,83 @@
     "loading": "読み込み中…",
     "loadError": "マニュアルを読み込めませんでした：{{message}}",
     "tauriRequired": "マニュアルはデスクトップランタイムでのみ利用できます。"
+  },
+  "notes": {
+    "toolbarButton": {
+      "open": "メモを開く",
+      "create": "メモを追加"
+    },
+    "toolbar": {
+      "label": "メモの書式設定",
+      "undo": "元に戻す",
+      "redo": "やり直す",
+      "heading1": "見出し 1",
+      "heading2": "見出し 2",
+      "heading3": "見出し 3",
+      "bold": "太字",
+      "italic": "斜体",
+      "underline": "下線",
+      "strikethrough": "取り消し線",
+      "highlight": "ハイライト",
+      "inlineCode": "インラインコード",
+      "bulletList": "箇条書き",
+      "orderedList": "番号付きリスト",
+      "taskList": "チェックリスト",
+      "blockquote": "引用",
+      "codeBlock": "コードブロック",
+      "horizontalRule": "区切り線",
+      "insertTable": "表を挿入",
+      "insertImage": "画像を挿入",
+      "insertLink": "Web リンクを挿入",
+      "insertDeepLink": "KKTerm の項目にリンク",
+      "search": "検索と置換"
+    },
+    "search": {
+      "placeholder": "メモ内を検索",
+      "replacePlaceholder": "置換後の文字列",
+      "matchCount": "{{total}} 件中 {{position}} 件目",
+      "previous": "前の一致",
+      "next": "次の一致",
+      "caseSensitive": "大文字と小文字を区別",
+      "replace": "置換",
+      "replaceAll": "すべて置換"
+    },
+    "editor": {
+      "title": "メモ — {{name}}",
+      "contentLabel": "メモの内容",
+      "delete": "メモを削除"
+    },
+    "deepLink": {
+      "title": "KKTerm の項目にリンク",
+      "searchPlaceholder": "接続、ワークスペース、ラック機器を検索",
+      "noResults": "一致する項目はありません。",
+      "kind": {
+        "connection": "接続",
+        "workspace": "ワークスペース",
+        "rackItem": "ラック機器"
+      },
+      "menuLabel": "リンクの候補",
+      "triggerHint": "@ を入力すると、接続・ワークスペース・ラック機器にリンクできます。"
+    },
+    "confirmDelete": {
+      "title": "このメモを削除しますか？",
+      "message": "{{name}} のメモと画像は完全に削除されます。"
+    },
+    "confirmDiscard": {
+      "title": "保存していない変更を破棄しますか？",
+      "message": "このメモには保存されていない変更があります。",
+      "confirm": "破棄"
+    },
+    "notice": {
+      "saved": "{{name}} のメモを保存しました。",
+      "saveFailed": "メモを保存できませんでした。{{error}}",
+      "deleted": "{{name}} のメモを削除しました。",
+      "deleteFailed": "メモを削除できませんでした。{{error}}",
+      "loadFailed": "メモを開けませんでした。{{error}}",
+      "imageFailed": "画像をメモに追加できませんでした。{{error}}",
+      "deepLinkUnavailable": "リンク先の項目は存在しません。",
+      "selectTextForLink": "リンクにするテキストを選択してください。",
+      "selectUrlForLink": "http:// または https:// で始まる Web アドレスを選択するとリンクにできます。"
+    }
   }
 }

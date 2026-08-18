@@ -12,7 +12,61 @@ const validator = fileURLToPath(
     import.meta.url,
   ),
 );
-const python = process.env.PYTHON || (process.platform === "win32" ? "python" : "python3");
+
+function findPython() {
+  const candidates = [];
+  if (process.env.PYTHON) {
+    candidates.push({ command: process.env.PYTHON, args: [] });
+  }
+
+  const launchers = process.platform === "win32"
+    ? [
+        { command: "python", args: [] },
+        { command: "python3", args: [] },
+        { command: "py", args: ["-3"] },
+      ]
+    : [
+        { command: "python3", args: [] },
+        { command: "python", args: [] },
+      ];
+  candidates.push(...launchers);
+
+  if (process.platform === "win32") {
+    for (const launcher of launchers) {
+      const located = spawnSync("where.exe", [launcher.command], {
+        encoding: "utf8",
+        windowsHide: true,
+      });
+      if (located.status === 0) {
+        candidates.push(
+          ...located.stdout
+            .split(/\r?\n/)
+            .filter(Boolean)
+            .map((command) => ({ command, args: launcher.args })),
+        );
+      }
+    }
+  }
+
+  const attempted = new Set();
+  for (const candidate of candidates) {
+    const key = `${candidate.command}\0${candidate.args.join("\0")}`;
+    if (attempted.has(key)) continue;
+    attempted.add(key);
+    const probe = spawnSync(candidate.command, [
+      ...candidate.args,
+      "-c",
+      "import sys; raise SystemExit(sys.version_info.major != 3)",
+    ], {
+      encoding: "utf8",
+      windowsHide: true,
+    });
+    if (probe.status === 0) return candidate;
+  }
+  throw new Error("KKMod validator tests require a runnable Python 3 interpreter");
+}
+
+const python = findPython();
 
 async function createFixture(html) {
   const root = await mkdtemp(join(tmpdir(), "kkmod-html-paths-"));
@@ -44,7 +98,7 @@ async function createFixture(html) {
 }
 
 function check(root) {
-  return spawnSync(python, [validator, "check", root], {
+  return spawnSync(python.command, [...python.args, validator, "check", root], {
     encoding: "utf8",
     windowsHide: true,
   });

@@ -484,8 +484,21 @@ export function SitesTab({
     if (!siteId) {
       return;
     }
+    // A rack-item request drills into the owning rack and opens the item; a
+    // rack or item that has since been removed degrades to the Site itself.
+    if (pendingNavigation.rackId && pendingNavigation.rackItemId) {
+      const rack = (racksBySite[siteId] ?? []).find(
+        (entry) => entry.id === pendingNavigation.rackId,
+      );
+      const item = rack?.items.find((entry) => entry.id === pendingNavigation.rackItemId);
+      if (rack && item) {
+        selectNode(siteId, { serverRoom: rack.serverRoom, rackId: rack.id });
+        setItemDialog({ rack, item });
+        return;
+      }
+    }
     selectSiteDestination(siteId, destination);
-  }, [pendingNavigation, loaded, sites, activeId]);
+  }, [pendingNavigation, loaded, sites, activeId, racksBySite]);
 
   // Mirror the navigator's position into the store so the assistant page
   // context can describe where the user is (never persisted).

@@ -5757,5 +5757,83 @@
     "loading": "Carregando…",
     "loadError": "Não foi possível carregar o manual: {{message}}",
     "tauriRequired": "O manual está disponível apenas no ambiente de execução desktop."
+  },
+  "notes": {
+    "toolbarButton": {
+      "open": "Abrir nota",
+      "create": "Adicionar nota"
+    },
+    "toolbar": {
+      "label": "Formatação da nota",
+      "undo": "Desfazer",
+      "redo": "Refazer",
+      "heading1": "Título 1",
+      "heading2": "Título 2",
+      "heading3": "Título 3",
+      "bold": "Negrito",
+      "italic": "Itálico",
+      "underline": "Sublinhado",
+      "strikethrough": "Tachado",
+      "highlight": "Destacar",
+      "inlineCode": "Código embutido",
+      "bulletList": "Lista com marcadores",
+      "orderedList": "Lista numerada",
+      "taskList": "Lista de verificação",
+      "blockquote": "Citação",
+      "codeBlock": "Bloco de código",
+      "horizontalRule": "Divisor",
+      "insertTable": "Inserir tabela",
+      "insertImage": "Inserir imagem",
+      "insertLink": "Inserir link da web",
+      "insertDeepLink": "Vincular a um item do KKTerm",
+      "search": "Localizar e substituir"
+    },
+    "search": {
+      "placeholder": "Localizar na nota",
+      "replacePlaceholder": "Substituir por",
+      "matchCount": "{{position}} de {{total}}",
+      "previous": "Ocorrência anterior",
+      "next": "Próxima ocorrência",
+      "caseSensitive": "Diferenciar maiúsculas",
+      "replace": "Substituir",
+      "replaceAll": "Substituir tudo"
+    },
+    "editor": {
+      "title": "Nota — {{name}}",
+      "contentLabel": "Conteúdo da nota",
+      "delete": "Excluir nota"
+    },
+    "deepLink": {
+      "title": "Vincular a um item do KKTerm",
+      "searchPlaceholder": "Pesquisar conexões, espaços de trabalho e dispositivos de rack",
+      "noResults": "Nenhum item correspondente.",
+      "kind": {
+        "connection": "Conexão",
+        "workspace": "Espaço de trabalho",
+        "rackItem": "Dispositivo de rack"
+      },
+      "menuLabel": "Sugestões de link",
+      "triggerHint": "Digite @ para vincular uma conexão, um espaço de trabalho ou um dispositivo de rack."
+    },
+    "confirmDelete": {
+      "title": "Excluir esta nota?",
+      "message": "A nota de {{name}} e suas imagens são excluídas permanentemente."
+    },
+    "confirmDiscard": {
+      "title": "Descartar alterações não salvas?",
+      "message": "Esta nota tem alterações que não foram salvas.",
+      "confirm": "Descartar"
+    },
+    "notice": {
+      "saved": "Nota salva para {{name}}.",
+      "saveFailed": "Não foi possível salvar a nota. {{error}}",
+      "deleted": "Nota excluída para {{name}}.",
+      "deleteFailed": "Não foi possível excluir a nota. {{error}}",
+      "loadFailed": "Não foi possível abrir a nota. {{error}}",
+      "imageFailed": "Não foi possível adicionar a imagem à nota. {{error}}",
+      "deepLinkUnavailable": "O item vinculado não existe mais.",
+      "selectTextForLink": "Selecione o texto que deseja transformar em link.",
+      "selectUrlForLink": "Selecione um endereço da web começando com http:// ou https:// para vinculá-lo."
+    }
   }
 }

@@ -1150,6 +1150,22 @@ export interface GitHubCopilotDeviceFlow {
   interval: number;
 }
 
+/** The single rich-text note bound to a Connection. Present only once the
+ *  user has saved; its absence is what makes a Connection "noteless". */
+export type ConnectionNote = {
+  connectionId: string;
+  contentHtml: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** One image embedded in a Connection note, stored out of line from the HTML. */
+export type NoteAsset = {
+  id: string;
+  mimeType: string;
+  bytes: number[];
+};
+
 export type GitHubCopilotDevicePollStatus = "pending" | "slowDown" | "authorized";
 
 export interface GitHubCopilotDevicePollResponse {
@@ -2253,6 +2269,34 @@ type CommandMap = {
   delete_durable_ui_state_by_prefix: {
     args: { prefix: string };
     result: null;
+  };
+  get_connection_note: {
+    args: { connectionId: string };
+    result: ConnectionNote | null;
+  };
+  list_connection_note_ids: {
+    args: undefined;
+    result: string[];
+  };
+  save_connection_note: {
+    args: { connectionId: string; contentHtml: string };
+    result: ConnectionNote;
+  };
+  delete_connection_note: {
+    args: { connectionId: string };
+    result: null;
+  };
+  put_note_asset: {
+    args: { connectionId: string; mimeType: string; bytes: number[] };
+    result: string;
+  };
+  get_note_asset: {
+    args: { assetId: string };
+    result: NoteAsset | null;
+  };
+  prune_note_assets: {
+    args: { connectionId: string; referencedIds: string[] };
+    result: number;
   };
   start_github_copilot_device_flow: {
     args: undefined;

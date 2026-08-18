@@ -14,7 +14,7 @@ use std::{
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use zip::{ZipArchive, ZipWriter, write::SimpleFileOptions};
 
-const SCHEMA_USER_VERSION: i32 = 64;
+const SCHEMA_USER_VERSION: i32 = 65;
 const MAX_SETTINGS_IMPORT_BYTES: u64 = 16 * 1024 * 1024 * 1024;
 const AUTOMATIC_BACKUP_INTERVAL_SECONDS: i64 = 24 * 60 * 60;
 
@@ -260,6 +260,27 @@ CREATE TABLE IF NOT EXISTS durable_ui_state (
     key        TEXT PRIMARY KEY,
     value      TEXT NOT NULL,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- One rich-text note bound to a Connection. The note is created only when the
+-- user saves, so "has a row" is exactly "this Connection has a note". Content
+-- is sanitized HTML authored in the note editor; embedded images live as files
+-- beside the database rather than inline, keeping this row small.
+--
+-- `connection_id` is a deliberate soft reference, not a foreign key: the
+-- historical v20/v25 `connections` rebuilds rename the table, which rewrites
+-- dependent FK clauses to the scratch name, and `repair_connections_scratch_
+-- references` only repairs a fixed legacy table list. `delete_connection`
+-- removes the note row explicitly instead.
+--
+-- Embedded images are NOT stored here. They live as files under the
+-- `note-images/<connection_id>/` app-data directory, so the database stays
+-- small and the images ride the same backup/export path as Assistant chats. v65.
+CREATE TABLE IF NOT EXISTS connection_notes (
+    connection_id TEXT PRIMARY KEY,
+    content_html  TEXT NOT NULL,
+    created_at    TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at    TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS ai_coding_usage_accounts (
@@ -2193,6 +2214,23 @@ pub struct DurableUiStateRecord {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct NoteRecord {
+    pub connection_id: String,
+    pub content_html: String,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteAssetRecord {
+    pub id: String,
+    pub mime_type: String,
+    pub bytes: Vec<u8>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SystemCleanerHistoryRecord {
     pub id: String,
     pub started_at: String,
@@ -2212,6 +2250,8 @@ mod settings;
 mod connections;
 
 mod durable_ui_state;
+
+mod notes;
 
 mod flat_json;
 pub use flat_json::AssistantChatThreadSummaryRecord;
@@ -2382,13 +2422,20 @@ impl Storage {
                 options,
                 &mut integrity,
             )?;
+            add_directory_to_settings_zip(
+                &mut zip,
+                &self.note_images_dir(),
+                notes::NOTE_IMAGES_DIR,
+                options,
+                &mut integrity,
+            )?;
         }
         zip.start_file("manifest.json", options)
             .map_err(|error| format!("failed to add export manifest: {error}"))?;
         let manifest = serde_json::json!({
             "product": "KKTerm",
             "format": "kkterm-settings-export",
-            "version": 4,
+            "version": 5,
             "createdAt": OffsetDateTime::now_utc().format(&Rfc3339).unwrap_or_else(|_| "unknown".to_string()),
             "customModules": {
                 "included": false
@@ -2419,18 +2466,23 @@ impl Storage {
         let stage_suffix = format!("{}-{}", std::process::id(), timestamp_for_filename());
         let assistant_stage = data_root.join(format!(".kkterm-assistant-import-{stage_suffix}"));
         let cleaner_stage = data_root.join(format!(".kkterm-cleaner-import-{stage_suffix}"));
+        let note_images_stage = data_root.join(format!(".kkterm-note-images-import-{stage_suffix}"));
         remove_file_if_exists(&temp_import_path)?;
         remove_import_stage_directory(&assistant_stage)?;
         remove_import_stage_directory(&cleaner_stage)?;
+        remove_import_stage_directory(&note_images_stage)?;
         fs::create_dir_all(&assistant_stage)
             .map_err(|error| format!("failed to create Assistant import stage: {error}"))?;
         fs::create_dir_all(&cleaner_stage)
             .map_err(|error| format!("failed to create System Cleaner import stage: {error}"))?;
+        fs::create_dir_all(&note_images_stage)
+            .map_err(|error| format!("failed to create note image import stage: {error}"))?;
         let version = extract_imported_settings(
             &import_path,
             &temp_import_path,
             &assistant_stage,
             &cleaner_stage,
+            &note_images_stage,
         )?;
         if version < 4 {
             flat_json::upgrade_imported_v63_history(&temp_import_path, &cleaner_stage)?;
@@ -2465,6 +2517,9 @@ impl Storage {
             let _flat_json_guard = self.lock_flat_json()?;
             replace_flat_json_directory(&assistant_stage, &self.assistant_chat_threads_dir())?;
             replace_flat_json_directory(&cleaner_stage, &self.system_cleaner_history_dir())?;
+            // Note images are replaced wholesale with the bundle's set, so an
+            // import cannot leave images belonging to the replaced database.
+            replace_flat_json_directory(&note_images_stage, &self.note_images_dir())?;
         }
         remove_file_if_exists(&temp_import_path)?;
         self.record_last_backup_at(&backup.created_at)?;
@@ -3479,6 +3534,25 @@ impl Storage {
         if stored_version < 64 {
             self.migrate_system_cleaner_history_to_flat_json(&connection)?;
         }
+        // v65: per-Connection notes. Purely additive — one new table created by
+        // CURRENT_SCHEMA's CREATE TABLE IF NOT EXISTS above; note images are
+        // files, not rows. Notes are only ever user-authored, so there is
+        // nothing to seed and current-version startup needs no ongoing
+        // reconciliation.
+        if stored_version < 65 {
+            connection
+                .execute_batch(
+                    r#"
+                    CREATE TABLE IF NOT EXISTS connection_notes (
+                        connection_id TEXT PRIMARY KEY,
+                        content_html  TEXT NOT NULL,
+                        created_at    TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated_at    TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    );
+                    "#,
+                )
+                .map_err(to_storage_error)?;
+        }
         connection
             .execute_batch(&format!("PRAGMA user_version = {SCHEMA_USER_VERSION}"))
             .map_err(to_storage_error)?;
@@ -4209,6 +4283,7 @@ fn extract_imported_settings(
     temp_import_path: &Path,
     assistant_stage: &Path,
     cleaner_stage: &Path,
+    note_images_stage: &Path,
 ) -> Result<u64, String> {
     let import_file = File::open(import_path).map_err(|error| {
         format!(
@@ -4242,7 +4317,7 @@ fn extract_imported_settings(
         .get("version")
         .and_then(|value| value.as_u64())
         .ok_or_else(|| "import manifest does not contain a valid version".to_string())?;
-    if !matches!(version, 1 | 2 | 3 | 4) {
+    if !matches!(version, 1 | 2 | 3 | 4 | 5) {
         return Err(format!("unsupported KKTerm settings export version {version}"));
     }
     let integrity = manifest
@@ -4293,6 +4368,10 @@ fn extract_imported_settings(
                 relative,
                 "System Cleaner history",
             )?)
+        } else if version >= 5
+            && let Some(relative) = name.strip_prefix("note-images/")
+        {
+            Some(validated_note_image_import_path(note_images_stage, relative)?)
         } else if let Some(relative) = name.strip_prefix("custom-modules/") {
             let mut components = Path::new(relative).components();
             let Some(std::path::Component::Normal(root)) = components.next() else {
@@ -4391,6 +4470,24 @@ fn validated_flat_json_import_path(
     Ok(stage_root.join(relative))
 }
 
+/// Validate one `note-images/<connection_id>/<file>` entry from an import
+/// bundle. Unlike the flat-JSON directories this is two levels deep and holds
+/// image files, so it gets its own check rather than loosening that one.
+fn validated_note_image_import_path(stage_root: &Path, relative: &str) -> Result<PathBuf, String> {
+    let relative = Path::new(relative);
+    let components = relative.components().collect::<Vec<_>>();
+    if components.len() != 2
+        || !components
+            .iter()
+            .all(|component| matches!(component, std::path::Component::Normal(_)))
+    {
+        return Err("import contains an unsafe note image path".to_string());
+    }
+    notes::validate_asset_id(&relative.to_string_lossy().replace('\\', "/"))
+        .map_err(|_| "import contains an invalid note image id".to_string())?;
+    Ok(stage_root.join(relative))
+}
+
 fn remove_import_stage_directory(path: &Path) -> Result<(), String> {
     let safe_name = path
         .file_name()
@@ -4398,6 +4495,7 @@ fn remove_import_stage_directory(path: &Path) -> Result<(), String> {
         .is_some_and(|name| {
             name.starts_with(".kkterm-assistant-import-")
                 || name.starts_with(".kkterm-cleaner-import-")
+                || name.starts_with(".kkterm-note-images-import-")
         });
     if !safe_name {
         return Err(format!("refusing to remove unsafe import stage {}", path.display()));

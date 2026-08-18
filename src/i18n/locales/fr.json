@@ -5757,5 +5757,83 @@
     "loading": "Chargement…",
     "loadError": "Impossible de charger le manuel : {{message}}",
     "tauriRequired": "Le manuel est disponible uniquement dans l’environnement d’exécution de bureau."
+  },
+  "notes": {
+    "toolbarButton": {
+      "open": "Ouvrir la note",
+      "create": "Ajouter une note"
+    },
+    "toolbar": {
+      "label": "Mise en forme de la note",
+      "undo": "Annuler",
+      "redo": "Rétablir",
+      "heading1": "Titre 1",
+      "heading2": "Titre 2",
+      "heading3": "Titre 3",
+      "bold": "Gras",
+      "italic": "Italique",
+      "underline": "Souligné",
+      "strikethrough": "Barré",
+      "highlight": "Surligner",
+      "inlineCode": "Code en ligne",
+      "bulletList": "Liste à puces",
+      "orderedList": "Liste numérotée",
+      "taskList": "Liste de contrôle",
+      "blockquote": "Citation",
+      "codeBlock": "Bloc de code",
+      "horizontalRule": "Séparateur",
+      "insertTable": "Insérer un tableau",
+      "insertImage": "Insérer une image",
+      "insertLink": "Insérer un lien web",
+      "insertDeepLink": "Lier à un élément KKTerm",
+      "search": "Rechercher et remplacer"
+    },
+    "search": {
+      "placeholder": "Rechercher dans la note",
+      "replacePlaceholder": "Remplacer par",
+      "matchCount": "{{position}} sur {{total}}",
+      "previous": "Résultat précédent",
+      "next": "Résultat suivant",
+      "caseSensitive": "Respecter la casse",
+      "replace": "Remplacer",
+      "replaceAll": "Tout remplacer"
+    },
+    "editor": {
+      "title": "Note — {{name}}",
+      "contentLabel": "Contenu de la note",
+      "delete": "Supprimer la note"
+    },
+    "deepLink": {
+      "title": "Lier à un élément KKTerm",
+      "searchPlaceholder": "Rechercher des connexions, espaces de travail et équipements de baie",
+      "noResults": "Aucun élément correspondant.",
+      "kind": {
+        "connection": "Connexion",
+        "workspace": "Espace de travail",
+        "rackItem": "Équipement de baie"
+      },
+      "menuLabel": "Suggestions de liens",
+      "triggerHint": "Tapez @ pour lier une connexion, un espace de travail ou un équipement de baie."
+    },
+    "confirmDelete": {
+      "title": "Supprimer cette note ?",
+      "message": "La note de {{name}} et ses images sont supprimées définitivement."
+    },
+    "confirmDiscard": {
+      "title": "Abandonner les modifications non enregistrées ?",
+      "message": "Cette note comporte des modifications qui n'ont pas été enregistrées.",
+      "confirm": "Abandonner"
+    },
+    "notice": {
+      "saved": "Note enregistrée pour {{name}}.",
+      "saveFailed": "La note n'a pas pu être enregistrée. {{error}}",
+      "deleted": "Note supprimée pour {{name}}.",
+      "deleteFailed": "La note n'a pas pu être supprimée. {{error}}",
+      "loadFailed": "La note n'a pas pu être ouverte. {{error}}",
+      "imageFailed": "L'image n'a pas pu être ajoutée à la note. {{error}}",
+      "deepLinkUnavailable": "L'élément lié n'existe plus.",
+      "selectTextForLink": "Sélectionnez le texte à transformer en lien.",
+      "selectUrlForLink": "Sélectionnez une adresse web commençant par http:// ou https:// pour la lier."
+    }
   }
 }

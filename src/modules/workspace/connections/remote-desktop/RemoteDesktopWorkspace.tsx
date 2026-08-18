@@ -57,6 +57,7 @@ import {
   type VncFullscreenSurfaceEvent,
 } from "./vncSurface";
 import { isCurrentVncFrame } from "./vncFrame";
+import { NoteToolbarButton } from "../../../notes/NoteToolbarButton";
 
 const RDP_ESTABLISHING_STATE = 2;
 const RDP_PRE_CAPTURE_INTERVAL_MS = 800;
@@ -88,6 +89,7 @@ export function RemoteDesktopWorkspace({
 }) {
   const { t } = useTranslation();
   const connection = tab.connection;
+  const openNoteEditor = useWorkspaceStore((state) => state.openNoteEditor);
   const typeLabel = connection ? connectionTypeLabel(connection.type) : t("remoteDesktop.typeLabel");
   const Icon = connection ? connectionIconForType(connection.type) : Monitor;
   const toolbarTitle = tab.toolbarTitle ?? (connection ? connectionToolbarTitle(connection) : tab.title);
@@ -1675,6 +1677,12 @@ export function RemoteDesktopWorkspace({
           </span>
           <div className="terminal-pane-actions" data-tutorial-id="remoteDesktop.toolbar">
             {tab.subtitle ? <small>{tab.subtitle}</small> : null}
+            {connection ? (
+              <NoteToolbarButton
+                connectionId={connection.id}
+                onOpen={() => openNoteEditor(connection.id, connection.name)}
+              />
+            ) : null}
           {rdpStatus ? <span className="webview-toolbar-status">{rdpStatus}</span> : null}
           {showRemoteDesktopToolbar ? (
             <button

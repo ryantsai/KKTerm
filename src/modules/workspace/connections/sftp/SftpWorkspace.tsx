@@ -38,6 +38,7 @@ import {
   TransferConflictDialog,
 } from "./SftpOverlays";
 import { formatFileSize, formatMode, formatRemoteTime, formatTransferResult, joinLocalPath, joinRemotePath } from "./format";
+import { NoteToolbarButton } from "../../../notes/NoteToolbarButton";
 import type {
   DeleteRequest,
   FilePaneSide,
@@ -164,6 +165,7 @@ export function SftpWorkspace({
   const { t } = useTranslation();
   const appearanceSettings = useWorkspaceStore((state) => state.appearanceSettings);
   const sftpSettings = useWorkspaceStore((state) => state.sftpSettings);
+  const openNoteEditor = useWorkspaceStore((state) => state.openNoteEditor);
   const terminalSettings = useWorkspaceStore((state) => state.terminalSettings);
   const fileExplorerOpenMode = sftpSettings.fileExplorerOpenMode;
   const openFileViewerPath = useWorkspaceStore((state) => state.openFileViewerPath);
@@ -2125,6 +2127,13 @@ export function SftpWorkspace({
           {hasRemoteHost ? hostLabel : null}
         </span>
         <span className="sftp-bar-right">
+          {sourceConnection ? (
+            <NoteToolbarButton
+              className="sftp-bar-action"
+              connectionId={sourceConnection.id}
+              onOpen={() => openNoteEditor(sourceConnection.id, sourceConnection.name)}
+            />
+          ) : null}
           {showPlainFtpWarning ? (
             <span
               className="sftp-title-warning"

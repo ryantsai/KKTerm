@@ -25,6 +25,7 @@ import { useWorkspaceStore } from "../../../../store";
 import { urlCredentialSecretOwnerId } from "./urlCredentialKeys";
 import { resolveUrlDataPartition, resolveUrlProxy, resolveUrlUserAgent } from "./urlProxy";
 import type { WorkspaceTab } from "../../../../types";
+import { NoteToolbarButton } from "../../../notes/NoteToolbarButton";
 
 type WebviewNavigationEvent = {
   sessionId: string;
@@ -325,6 +326,7 @@ export function WebViewWorkspace({
   const appearanceSettings = useWorkspaceStore((state) => state.appearanceSettings);
   const updateWebviewTabMetadata = useWorkspaceStore((state) => state.updateWebviewTabMetadata);
   const openUrlInNewTab = useWorkspaceStore((state) => state.openUrlInNewTab);
+  const openNoteEditor = useWorkspaceStore((state) => state.openNoteEditor);
   const refreshOpenConnectionMetadata = useWorkspaceStore((state) => state.refreshOpenConnectionMetadata);
   const markConnectionSessionStarted = useWorkspaceStore((state) => state.markConnectionSessionStarted);
   const markConnectionSessionEnded = useWorkspaceStore((state) => state.markConnectionSessionEnded);
@@ -1551,6 +1553,12 @@ export function WebViewWorkspace({
           </div>
           <div className="terminal-pane-actions">
             {fillStatus ? <span className="webview-toolbar-status">{fillStatus}</span> : null}
+            {tab.connection ? (
+              <NoteToolbarButton
+                connectionId={tab.connection.id}
+                onOpen={() => openNoteEditor(tab.connection!.id, tab.connection!.name)}
+              />
+            ) : null}
             {downloads.length > 0 ? (
               <button
                 aria-label={t("webview.downloads")}

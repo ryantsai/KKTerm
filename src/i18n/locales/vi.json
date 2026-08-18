@@ -5757,5 +5757,83 @@
     "loading": "Đang tải…",
     "loadError": "Không thể tải hướng dẫn: {{message}}",
     "tauriRequired": "Hướng dẫn chỉ có sẵn trong môi trường chạy máy tính để bàn."
+  },
+  "notes": {
+    "toolbarButton": {
+      "open": "Mở ghi chú",
+      "create": "Thêm ghi chú"
+    },
+    "toolbar": {
+      "label": "Định dạng ghi chú",
+      "undo": "Hoàn tác",
+      "redo": "Làm lại",
+      "heading1": "Tiêu đề 1",
+      "heading2": "Tiêu đề 2",
+      "heading3": "Tiêu đề 3",
+      "bold": "Đậm",
+      "italic": "Nghiêng",
+      "underline": "Gạch chân",
+      "strikethrough": "Gạch ngang",
+      "highlight": "Đánh dấu",
+      "inlineCode": "Mã nội dòng",
+      "bulletList": "Danh sách dấu đầu dòng",
+      "orderedList": "Danh sách đánh số",
+      "taskList": "Danh sách kiểm",
+      "blockquote": "Trích dẫn",
+      "codeBlock": "Khối mã",
+      "horizontalRule": "Đường phân cách",
+      "insertTable": "Chèn bảng",
+      "insertImage": "Chèn hình ảnh",
+      "insertLink": "Chèn liên kết web",
+      "insertDeepLink": "Liên kết tới một mục KKTerm",
+      "search": "Tìm và thay thế"
+    },
+    "search": {
+      "placeholder": "Tìm trong ghi chú",
+      "replacePlaceholder": "Thay bằng",
+      "matchCount": "{{position}} trên {{total}}",
+      "previous": "Kết quả trước",
+      "next": "Kết quả sau",
+      "caseSensitive": "Phân biệt chữ hoa/thường",
+      "replace": "Thay thế",
+      "replaceAll": "Thay thế tất cả"
+    },
+    "editor": {
+      "title": "Ghi chú — {{name}}",
+      "contentLabel": "Nội dung ghi chú",
+      "delete": "Xóa ghi chú"
+    },
+    "deepLink": {
+      "title": "Liên kết tới một mục KKTerm",
+      "searchPlaceholder": "Tìm kết nối, không gian làm việc và thiết bị tủ rack",
+      "noResults": "Không có mục nào phù hợp.",
+      "kind": {
+        "connection": "Kết nối",
+        "workspace": "Không gian làm việc",
+        "rackItem": "Thiết bị tủ rack"
+      },
+      "menuLabel": "Gợi ý liên kết",
+      "triggerHint": "Nhập @ để liên kết một kết nối, không gian làm việc hoặc thiết bị tủ rack."
+    },
+    "confirmDelete": {
+      "title": "Xóa ghi chú này?",
+      "message": "Ghi chú của {{name}} và hình ảnh của nó bị xóa vĩnh viễn."
+    },
+    "confirmDiscard": {
+      "title": "Bỏ các thay đổi chưa lưu?",
+      "message": "Ghi chú này có các thay đổi chưa được lưu.",
+      "confirm": "Bỏ"
+    },
+    "notice": {
+      "saved": "Đã lưu ghi chú cho {{name}}.",
+      "saveFailed": "Không thể lưu ghi chú. {{error}}",
+      "deleted": "Đã xóa ghi chú của {{name}}.",
+      "deleteFailed": "Không thể xóa ghi chú. {{error}}",
+      "loadFailed": "Không thể mở ghi chú. {{error}}",
+      "imageFailed": "Không thể thêm hình ảnh vào ghi chú. {{error}}",
+      "deepLinkUnavailable": "Mục được liên kết không còn tồn tại.",
+      "selectTextForLink": "Hãy chọn đoạn văn bản bạn muốn biến thành liên kết.",
+      "selectUrlForLink": "Hãy chọn một địa chỉ web bắt đầu bằng http:// hoặc https:// để tạo liên kết."
+    }
   }
 }

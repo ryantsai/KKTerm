@@ -19,6 +19,7 @@
 @import "./modules/workspace/connections/webview/webview.css";
 @import "./modules/git/git.css";
 @import "./modules/compare/compare.css";
+@import "./modules/notes/notes.css";
 @import "./manual/manual.css";
 @import "./modules/dashboard/widgets/builtin/ai-coding-usage/ai-coding-usage.css";
 @import "./modules/dashboard/widgets/builtin/subnet-calculator/subnet-calculator.css";
