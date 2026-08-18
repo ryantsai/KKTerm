@@ -5794,7 +5794,7 @@
       "matchCount": "{{position}} de {{total}}",
       "previous": "Coincidencia anterior",
       "next": "Coincidencia siguiente",
-      "caseSensitive": "Distinguir mayúsculas",
+      "caseSensitive": "Distinguir mayúsculas y minúsculas",
       "replace": "Reemplazar",
       "replaceAll": "Reemplazar todo"
     },

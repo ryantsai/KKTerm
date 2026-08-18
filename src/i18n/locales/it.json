@@ -5820,9 +5820,9 @@
       "message": "La nota di {{name}} e le sue immagini vengono eliminate definitivamente."
     },
     "confirmDiscard": {
-      "title": "Ignorare le modifiche non salvate?",
+      "title": "Scartare le modifiche non salvate?",
       "message": "Questa nota contiene modifiche non salvate.",
-      "confirm": "Ignora"
+      "confirm": "Scarta"
     },
     "notice": {
       "saved": "Nota salvata per {{name}}.",

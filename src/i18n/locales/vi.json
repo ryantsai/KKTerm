@@ -5776,9 +5776,9 @@
       "strikethrough": "Gạch ngang",
       "highlight": "Đánh dấu",
       "inlineCode": "Mã nội dòng",
-      "bulletList": "Danh sách dấu đầu dòng",
+      "bulletList": "Danh sách gạch đầu dòng",
       "orderedList": "Danh sách đánh số",
-      "taskList": "Danh sách kiểm",
+      "taskList": "Danh sách kiểm tra",
       "blockquote": "Trích dẫn",
       "codeBlock": "Khối mã",
       "horizontalRule": "Đường phân cách",
@@ -5793,7 +5793,7 @@
       "replacePlaceholder": "Thay bằng",
       "matchCount": "{{position}} trên {{total}}",
       "previous": "Kết quả trước",
-      "next": "Kết quả sau",
+      "next": "Kết quả tiếp theo",
       "caseSensitive": "Phân biệt chữ hoa/thường",
       "replace": "Thay thế",
       "replaceAll": "Thay thế tất cả"
@@ -5817,7 +5817,7 @@
     },
     "confirmDelete": {
       "title": "Xóa ghi chú này?",
-      "message": "Ghi chú của {{name}} và hình ảnh của nó bị xóa vĩnh viễn."
+      "message": "Ghi chú của {{name}} và các hình ảnh trong đó sẽ bị xóa vĩnh viễn."
     },
     "confirmDiscard": {
       "title": "Bỏ các thay đổi chưa lưu?",

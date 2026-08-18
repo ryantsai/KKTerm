@@ -5775,7 +5775,7 @@
       "underline": "Sublinhado",
       "strikethrough": "Tachado",
       "highlight": "Destacar",
-      "inlineCode": "Código embutido",
+      "inlineCode": "Código em linha",
       "bulletList": "Lista com marcadores",
       "orderedList": "Lista numerada",
       "taskList": "Lista de verificação",
@@ -5794,7 +5794,7 @@
       "matchCount": "{{position}} de {{total}}",
       "previous": "Ocorrência anterior",
       "next": "Próxima ocorrência",
-      "caseSensitive": "Diferenciar maiúsculas",
+      "caseSensitive": "Diferenciar maiúsculas e minúsculas",
       "replace": "Substituir",
       "replaceAll": "Substituir tudo"
     },
