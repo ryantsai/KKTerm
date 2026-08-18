@@ -2168,23 +2168,13 @@ export function SftpWorkspace({
 
     const controller: FileBrowserController = {
       kind,
-      list: async (path) => {
-        const sessionId = requireSessionId();
-        const listing = await commands.listDirectory({
-          sessionId,
+      // Read-only: listing another path must not navigate the visible browser
+      // or drop the user's selection, which the delete/transfer actions read.
+      list: async (path) =>
+        commands.listDirectory({
+          sessionId: requireSessionId(),
           path: path?.trim() || (isLocalFilesBrowser ? localPath : remotePath),
-        });
-        if (isLocalFilesBrowser) {
-          setLocalPath(listing.path);
-          setLocalFiles(listing.entries.map(localEntryToFileEntry));
-          setSelectedLocalNames([]);
-        } else {
-          setRemotePath(listing.path);
-          setRemoteFiles(listing.entries.map(remoteEntryToFileEntry));
-          setSelectedRemoteNames([]);
-        }
-        return listing;
-      },
+        }),
       createFolder: async (parentPath, name) => {
         const result = await commands.createFolder({ sessionId: requireSessionId(), parentPath, name });
         await refreshBrowserDirectory();
@@ -2219,7 +2209,11 @@ export function SftpWorkspace({
         isLocalFilesBrowser
           ? (async () => {
               const path = localPathForFile(request.path);
-              let expectedMtimeMs = request.expectedModified;
+              // local_path_properties reports whole seconds while write_file_view
+              // compares millisecond mtimes, so a re-derived expectedMtimeMs would
+              // report a conflict for any file whose mtime carries milliseconds.
+              // Do the conflict check here (accepting seconds or milliseconds) and
+              // write once it passes.
               if (typeof request.expectedModified === "number" && !request.force) {
                 const current = await invokeCommand("local_path_properties", { request: { path } });
                 const currentModified = current.modified;
@@ -2230,15 +2224,9 @@ export function SftpWorkspace({
                 ) {
                   throw new Error("Local file changed since expectedModified; retry with force=true.");
                 }
-                expectedMtimeMs = typeof currentModified === "number" ? currentModified * 1000 : undefined;
               }
               return invokeCommand("write_file_view", {
-                request: {
-                  path,
-                  content: request.content,
-                  expectedMtimeMs,
-                  force: request.force,
-                },
+                request: { path, content: request.content, force: true },
               });
             })()
           : writeRemoteText(request),

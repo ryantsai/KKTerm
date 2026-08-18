@@ -80,7 +80,10 @@ test("Workspace C/D Assistant and MCP surfaces stay in parity", async () => {
   assert.ok(paneRegistry.includes('kind: "sftp" | "ftp" | "localFiles"'));
   assert.ok(paneRegistry.includes("readFile:") && paneRegistry.includes("transferStatus:"));
   assert.ok(fileBrowser.includes("localBrowserCommands"), "local File Explorer adapter must remain available");
-  assert.ok(fileBrowser.includes("copy_local_path_to"), "local File Explorer transfers must honor destination semantics");
+  assert.ok(
+    fileBrowser.includes("copy_local_path") && fileBrowser.includes('overwriteBehavior !== "overwrite"'),
+    "local File Explorer transfers must honor overwrite semantics",
+  );
   assert.ok(
     sftp.includes('kind: FileBrowserController["kind"]') && sftp.includes('"localFiles"'),
     "local File Explorer must register a live file-browser controller",

@@ -216,11 +216,13 @@ function localDestinationPath(sourcePath: string, destinationDirectory: string) 
   if (!directory) {
     throw new Error("destination directory is required");
   }
-  const separator = directory.endsWith("\\") || directory.endsWith("/")
-    ? ""
-    : directory.startsWith("/")
-      ? "/"
-      : "\\";
+  if (directory.endsWith("\\") || directory.endsWith("/")) {
+    return `${directory}${name}`;
+  }
+  // Drive-letter roots ("C:"), UNC shares, and any backslash-separated path join
+  // with a backslash; everything else — including relative POSIX paths — joins
+  // with a forward slash.
+  const separator = /^[A-Za-z]:$/.test(directory) || directory.includes("\\") ? "\\" : "/";
   return `${directory}${separator}${name}`;
 }
 
@@ -229,8 +231,8 @@ async function copyLocalBrowserPath(
   destinationDirectory: string,
   overwriteBehavior: SftpSettings["overwriteBehavior"],
 ) {
-  const destinationPath = localDestinationPath(sourcePath, destinationDirectory);
   if (overwriteBehavior !== "overwrite") {
+    const destinationPath = localDestinationPath(sourcePath, destinationDirectory);
     const existing = await invokeCommand("local_path_properties", {
       request: { path: destinationPath },
     }).catch(() => null);
@@ -238,8 +240,12 @@ async function copyLocalBrowserPath(
       throw new Error(`destination already exists: ${destinationPath}`);
     }
   }
-  return invokeCommand("copy_local_path_to", {
-    request: { sourcePath, destinationPath },
+  // `copy_local_path` resolves the destination directory and refuses to copy a
+  // folder into itself or one of its own subfolders. `copy_local_path_to` skips
+  // that guard whenever the target does not exist yet, which would let a copy
+  // recurse into the tree it is still reading.
+  return invokeCommand("copy_local_path", {
+    request: { sourcePath, destinationDirectory },
   });
 }
 

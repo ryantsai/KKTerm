@@ -519,25 +519,42 @@ async function assistantOpenFileBrowser(args: Record<string, unknown>) {
       return { ok: false, error: "The selected Connection does not support a plain FTP/FTPS browser." };
     }
     state.openFtpBrowser(found.connection);
+  } else if (found.connection.type === "ssh") {
+    // openConnection would start a terminal Session for an SSH Connection, so
+    // route each Connection kind to its own file-browser surface instead.
+    state.openSftpBrowser(found.connection);
+  } else if (found.connection.type === "ftp") {
+    state.openFtpBrowser(found.connection);
+  } else if (found.connection.type === "localFiles") {
+    state.openLocalFilesBrowser(found.connection);
   } else {
-    if (found.connection.type !== "ssh" && found.connection.type !== "ftp" && found.connection.type !== "localFiles") {
-      return { ok: false, error: "The selected Connection is not a file-browser Connection." };
-    }
-    state.openConnection(found.connection);
+    return { ok: false, error: "The selected Connection is not a file-browser Connection." };
   }
 
+  // The store activates the Tab it just opened. Matching on connectionId alone
+  // can return an unrelated Tab (a terminal Tab for the same Connection), so
+  // only accept a file-browser Tab.
   const nextState = useWorkspaceStore.getState();
-  const tab = nextState.tabs.find(
-    (entry) =>
-      entry.connection?.id === connectionId ||
-      (entry.kind === "sftp" && entry.connection?.id === connectionId),
-  );
+  const activeTab = nextState.tabs.find((entry) => entry.id === nextState.activeTabId);
+  const tab =
+    activeTab && isFileBrowserTabKind(activeTab.kind)
+      ? activeTab
+      : nextState.tabs.find(
+          (entry) => isFileBrowserTabKind(entry.kind) && entry.connection?.id === connectionId,
+        );
+  if (!tab) {
+    return { ok: false, error: "The file-browser Tab could not be opened." };
+  }
   return {
     ok: true,
     connectionId,
-    surface: surface || tab?.kind || "connection",
-    tabId: tab?.id ?? nextState.activeTabId,
+    surface: surface || tab.kind,
+    tabId: tab.id,
   };
+}
+
+function isFileBrowserTabKind(kind: string) {
+  return kind === "sftp" || kind === "ftp" || kind === "localFiles";
 }
 
 async function assistantOpenFileViewer(args: Record<string, unknown>) {
