@@ -2,7 +2,7 @@
 
 ## AI grep hints
 
-- Keys: `notes.*` (full namespace), `notes.deepLink.menuLabel`, `notes.deepLink.triggerHint`, `notes.toolbarButton.open`, `notes.toolbarButton.create`, `notes.toolbar.label`, `notes.toolbar.insertImage`, `notes.toolbar.insertLink`, `notes.toolbar.insertDeepLink`, `notes.toolbar.search`, `notes.search.placeholder`, `notes.search.replace`, `notes.search.replaceAll`, `notes.editor.title`, `notes.editor.delete`, `notes.editor.resizeDialog`, `notes.deepLink.title`, `notes.deepLink.searchPlaceholder`, `notes.confirmDelete.title`, `notes.confirmDiscard.title`, `notes.notice.saved`, `notes.notice.deleted`, `notes.notice.deepLinkUnavailable`, `dashboard.notesAddTableRow`, `dashboard.notesDeleteTableRow`, `dashboard.notesAddTableColumn`, `dashboard.notesDeleteTableColumn`, `dashboard.notesDeleteTable`
+- Keys: `notes.*` (full namespace), `notes.deepLink.menuLabel`, `notes.deepLink.triggerHint`, `notes.toolbarButton.open`, `notes.toolbarButton.create`, `notes.toolbar.label`, `notes.toolbar.insertImage`, `notes.toolbar.insertLink`, `notes.toolbar.insertDeepLink`, `notes.toolbar.search`, `notes.search.placeholder`, `notes.search.replace`, `notes.search.replaceAll`, `notes.editor.title`, `notes.editor.eyebrow`, `notes.editor.delete`, `notes.editor.resizeDialog`, `notes.editor.sendCodeToTerminal`, `notes.deepLink.title`, `notes.deepLink.searchPlaceholder`, `notes.confirmDelete.title`, `notes.confirmDiscard.title`, `notes.notice.saved`, `notes.notice.deleted`, `notes.notice.deepLinkUnavailable`, `notes.notice.sendToTerminalUnavailable`, `dashboard.notesAddTableRow`, `dashboard.notesDeleteTableRow`, `dashboard.notesAddTableColumn`, `dashboard.notesDeleteTableColumn`, `dashboard.notesDeleteTable`
 - Files: `src/modules/notes/` (editor, toolbar, search, Deep Link picker, asset handling), `src-tauri/src/storage/notes.rs` (backend), entry points in `src/modules/workspace/connections/terminal/TerminalWorkspace.tsx`, `src/modules/workspace/connections/sftp/SftpWorkspace.tsx`, `src/modules/workspace/connections/webview/WebViewWorkspace.tsx`, and `src/modules/workspace/connections/remote-desktop/RemoteDesktopWorkspace.tsx`
 - Topics: per-Connection notes, rich text, WYSIWYG, HTML notes, note images, note search, find and replace in a note, Deep Links from a note, @ mention trigger, note deletion
 - Synonyms: "sticky note on a connection", "server notes", "document a host", "remember the restart command", "where is the VM directory", "annotate a connection", "at mention", "link to another connection from a note"
@@ -34,6 +34,8 @@ The control shows one of two states, so a documented Connection is recognizable 
 
 The editor window itself is resizable: drag its bottom-right corner (`notes.editor.resizeDialog`; Arrow keys with the handle focused also work) to change its size. The dragged size is remembered in `localStorage` and reused the next time any note is opened.
 
+The editor window's header carries a small `notes.editor.eyebrow` icon+label in the top-left corner, identifying the dialog as a note. The centered title is the Connection's own icon (its Connection Tree glyph) followed by the Connection's name, not a generic "Note" caption.
+
 ## Creating, saving, and deleting
 
 The lifecycle is deliberately explicit: **saving is what binds a note to its Connection.**
@@ -57,6 +59,10 @@ The toolbar (`notes.toolbar.label`) covers:
 - **Inline styles** — `notes.toolbar.bold`, `notes.toolbar.italic`, `notes.toolbar.underline`, `notes.toolbar.strikethrough`, `notes.toolbar.highlight`, `notes.toolbar.inlineCode`.
 - **Lists** — `notes.toolbar.bulletList`, `notes.toolbar.orderedList`, `notes.toolbar.taskList` (checkable items).
 - **Tables** — `notes.toolbar.insertTable` inserts a 3×3 table with a header row; columns are resizable. Right-clicking inside a cell opens a menu (the same row/column vocabulary as the Dashboard Notes widget: `dashboard.notesAddTableRow`, `dashboard.notesDeleteTableRow`, `dashboard.notesAddTableColumn`, `dashboard.notesDeleteTableColumn`, `dashboard.notesDeleteTable`) to add or delete rows and columns, or remove the whole table.
+
+### Sending a code block to the terminal
+
+When the note's own Connection is a terminal type (local, SSH, Telnet, or Serial), hovering a `notes.toolbar.codeBlock` reveals a `notes.editor.sendCodeToTerminal` button in its top-right corner. Clicking it types the block's text into that Connection's open terminal Pane — one line at a time, each followed by Enter, the same payload shape Quick Commands use. The button does not appear for notes bound to non-terminal Connections (RDP, VNC, SFTP/FTP, URL). If the Connection has no open terminal Pane, `notes.notice.sendToTerminalUnavailable` reports it in the Status Bar instead of sending anything.
 
 ## Images
 

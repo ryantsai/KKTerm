@@ -5800,9 +5800,11 @@
     },
     "editor": {
       "title": "メモ — {{name}}",
+      "eyebrow": "メモ",
       "contentLabel": "メモの内容",
       "delete": "メモを削除",
-      "resizeDialog": "メモウィンドウのサイズを変更"
+      "resizeDialog": "メモウィンドウのサイズを変更",
+      "sendCodeToTerminal": "ターミナルに送信"
     },
     "deepLink": {
       "title": "KKTerm の項目にリンク",
@@ -5834,7 +5836,8 @@
       "imageFailed": "画像をメモに追加できませんでした。{{error}}",
       "deepLinkUnavailable": "リンク先の項目は存在しません。",
       "selectTextForLink": "リンクにするテキストを選択してください。",
-      "selectUrlForLink": "http:// または https:// で始まる Web アドレスを選択するとリンクにできます。"
+      "selectUrlForLink": "http:// または https:// で始まる Web アドレスを選択するとリンクにできます。",
+      "sendToTerminalUnavailable": "この接続に対するアクティブなターミナルペインがありません。"
     }
   }
 }

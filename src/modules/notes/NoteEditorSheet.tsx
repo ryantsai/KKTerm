@@ -9,12 +9,20 @@ import { EditorContent, ReactNodeViewRenderer, useEditor, useEditorState } from 
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import { NoteImageView } from "./NoteImageView";
+import CodeBlock from "@tiptap/extension-code-block";
+import { NoteCodeBlockSendContext, NoteCodeBlockView } from "./NoteCodeBlockView";
+import type { NoteCodeBlockSendTarget } from "./NoteCodeBlockView";
 import Link from "@tiptap/extension-link";
 import Highlight from "@tiptap/extension-highlight";
 import TextAlign from "@tiptap/extension-text-align";
 import { TableKit } from "@tiptap/extension-table";
+import { FileText } from "../../lib/reicon";
 import { Actions, Btn, ConfirmSheet, DialogShell, Sheet } from "../../app/ui/dialog";
 import { useWorkspaceStore } from "../../store";
+import { ConnectionGlyph } from "../workspace/connections/ConnectionGlyph";
+import { getPaneRenderer, writeInputToPane } from "../workspace/paneRegistry";
+import type { Connection, ConnectionType } from "../../types";
+import { invokeCommand } from "../../lib/tauri";
 import { NoteToolbar } from "./NoteToolbar";
 import { NoteSearchBar } from "./NoteSearchBar";
 import { NoteDeepLinkPicker } from "./NoteDeepLinkPicker";
@@ -71,6 +79,10 @@ function persistNoteEditorSheetSize(size: { width: number; height: number }) {
   }
 }
 
+function isTerminalConnectionType(type: ConnectionType) {
+  return type === "local" || type === "ssh" || type === "telnet" || type === "serial";
+}
+
 interface NoteEditorSheetProps {
   connectionId: string;
   connectionName: string;
@@ -111,6 +123,55 @@ export function NoteEditorSheet({
   const pendingImageUploadsRef = useRef<Set<Promise<void>>>(new Set());
   const pendingDeepLinkRef = useRef<NoteDeepLink | null>(null);
   const closingRef = useRef(false);
+  // Resolved once per open; NoteEditorSheet only receives an id/name pair, so
+  // the header icon and the code-block Terminal gate both need this fetch.
+  const [connectionInfo, setConnectionInfo] = useState<Connection | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void invokeCommand("itops_get_connection", { id: connectionId })
+      .then((connection) => {
+        if (!cancelled) setConnectionInfo(connection ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setConnectionInfo(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [connectionId]);
+
+  const sendCodeBlockToTerminal = useCallback(
+    (text: string) => {
+      const code = text.replace(/\r\n/g, "\n");
+      if (!code.trim()) return;
+      const tab = useWorkspaceStore
+        .getState()
+        .tabs.find((entry) => entry.kind === "terminal" && entry.connection?.id === connectionId);
+      const paneId =
+        tab?.focusedPaneId ??
+        tab?.panes.find((pane) => pane.kind === undefined || pane.kind === "terminal")?.id;
+      // Mirrors QuickCommandBar's payload: `\r` is the PTY's Enter, one per
+      // line, so a multi-line block runs each line in turn.
+      const payload = code.includes("\n")
+        ? code
+            .split("\n")
+            .map((line) => `${line}\r`)
+            .join("")
+        : `${code}\r`;
+      if (!paneId || !writeInputToPane(paneId, payload)) {
+        showStatusBarNotice(t("notes.notice.sendToTerminalUnavailable"), { tone: "warning" });
+        return;
+      }
+      getPaneRenderer(paneId)?.focus();
+    },
+    [connectionId, showStatusBarNotice, t],
+  );
+
+  const codeBlockSendTarget = useMemo<NoteCodeBlockSendTarget | null>(() => {
+    if (!connectionInfo || !isTerminalConnectionType(connectionInfo.type)) return null;
+    return { onSend: sendCodeBlockToTerminal };
+  }, [connectionInfo, sendCodeBlockToTerminal]);
 
   const deepLinkChoices = useNoteDeepLinkChoices();
   const [suggestion, setSuggestion] = useState<NoteDeepLinkSuggestionState>(
@@ -124,8 +185,13 @@ export function NoteEditorSheet({
 
   const extensions = useMemo(
     () => [
-      StarterKit.configure({ link: false }),
+      StarterKit.configure({ link: false, codeBlock: false }),
       Link.configure({ openOnClick: false, autolink: false }),
+      CodeBlock.extend({
+        addNodeView() {
+          return ReactNodeViewRenderer(NoteCodeBlockView);
+        },
+      }),
       Image.extend({
         addAttributes() {
           return {
@@ -570,7 +636,28 @@ export function NoteEditorSheet({
           width={860}
           height={620}
           className="note-editor-sheet"
-          title={t("notes.editor.title", { name: connectionName })}
+          ariaLabel={t("notes.editor.title", { name: connectionName })}
+          eyebrow={
+            <span className="note-editor-eyebrow">
+              <FileText size={12} />
+              {t("notes.editor.eyebrow")}
+            </span>
+          }
+          title={
+            <span className="note-editor-title-content">
+              {connectionInfo ? (
+                <ConnectionGlyph
+                  iconBackgroundColor={connectionInfo.iconBackgroundColor}
+                  iconColor={connectionInfo.iconColor}
+                  iconDataUrl={connectionInfo.iconDataUrl}
+                  localShell={connectionInfo.localShell}
+                  size={14}
+                  type={connectionInfo.type}
+                />
+              ) : null}
+              {connectionName}
+            </span>
+          }
           rule
           footer={
             <>
@@ -615,11 +702,13 @@ export function NoteEditorSheet({
                   onClose={() => setSearchOpen(false)}
                 />
               ) : null}
-              <EditorContent
-                className="note-editor-content"
-                editor={editor}
-                onContextMenu={handleTableContextMenu}
-              />
+              <NoteCodeBlockSendContext.Provider value={codeBlockSendTarget}>
+                <EditorContent
+                  className="note-editor-content"
+                  editor={editor}
+                  onContextMenu={handleTableContextMenu}
+                />
+              </NoteCodeBlockSendContext.Provider>
               <NoteDeepLinkMenu onPick={pickSuggestion} state={suggestion} />
               <input
                 ref={fileInputRef}

@@ -5800,9 +5800,11 @@
     },
     "editor": {
       "title": "筆記 — {{name}}",
+      "eyebrow": "筆記",
       "contentLabel": "筆記內容",
       "delete": "刪除筆記",
-      "resizeDialog": "調整筆記視窗大小"
+      "resizeDialog": "調整筆記視窗大小",
+      "sendCodeToTerminal": "傳送至終端機"
     },
     "deepLink": {
       "title": "連結至 KKTerm 項目",
@@ -5834,7 +5836,8 @@
       "imageFailed": "無法將影像加入筆記。{{error}}",
       "deepLinkUnavailable": "連結的項目已不存在。",
       "selectTextForLink": "請選取要轉換為連結的文字。",
-      "selectUrlForLink": "請選取以 http:// 或 https:// 開頭的網址以建立連結。"
+      "selectUrlForLink": "請選取以 http:// 或 https:// 開頭的網址以建立連結。",
+      "sendToTerminalUnavailable": "此連線沒有作用中的終端機窗格。"
     }
   }
 }

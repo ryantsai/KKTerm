@@ -5800,9 +5800,11 @@
     },
     "editor": {
       "title": "Note — {{name}}",
+      "eyebrow": "Notes",
       "contentLabel": "Note content",
       "delete": "Delete note",
-      "resizeDialog": "Resize note window"
+      "resizeDialog": "Resize note window",
+      "sendCodeToTerminal": "Send to terminal"
     },
     "deepLink": {
       "title": "Link to a KKTerm item",
@@ -5834,7 +5836,8 @@
       "imageFailed": "The image could not be added to the note. {{error}}",
       "deepLinkUnavailable": "That linked item no longer exists.",
       "selectTextForLink": "Select the text you want to turn into a link.",
-      "selectUrlForLink": "Select a web address starting with http:// or https:// to link it."
+      "selectUrlForLink": "Select a web address starting with http:// or https:// to link it.",
+      "sendToTerminalUnavailable": "No active terminal Pane for this Connection."
     }
   }
 }

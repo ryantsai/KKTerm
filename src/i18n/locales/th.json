@@ -5800,9 +5800,11 @@
     },
     "editor": {
       "title": "บันทึก — {{name}}",
+      "eyebrow": "บันทึก",
       "contentLabel": "เนื้อหาบันทึก",
       "delete": "ลบบันทึก",
-      "resizeDialog": "ปรับขนาดหน้าต่างบันทึก"
+      "resizeDialog": "ปรับขนาดหน้าต่างบันทึก",
+      "sendCodeToTerminal": "ส่งไปยังเทอร์มินัล"
     },
     "deepLink": {
       "title": "ลิงก์ไปยังรายการใน KKTerm",
@@ -5834,7 +5836,8 @@
       "imageFailed": "ไม่สามารถเพิ่มรูปภาพลงในบันทึกได้ {{error}}",
       "deepLinkUnavailable": "รายการที่ลิงก์ไว้ไม่มีอยู่แล้ว",
       "selectTextForLink": "เลือกข้อความที่ต้องการทำเป็นลิงก์",
-      "selectUrlForLink": "เลือกที่อยู่เว็บที่ขึ้นต้นด้วย http:// หรือ https:// เพื่อทำเป็นลิงก์"
+      "selectUrlForLink": "เลือกที่อยู่เว็บที่ขึ้นต้นด้วย http:// หรือ https:// เพื่อทำเป็นลิงก์",
+      "sendToTerminalUnavailable": "ไม่มีแผงเทอร์มินัลที่ใช้งานอยู่สำหรับการเชื่อมต่อนี้"
     }
   }
 }

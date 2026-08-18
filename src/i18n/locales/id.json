@@ -5800,9 +5800,11 @@
     },
     "editor": {
       "title": "Catatan — {{name}}",
+      "eyebrow": "Catatan",
       "contentLabel": "Isi catatan",
       "delete": "Hapus catatan",
-      "resizeDialog": "Ubah ukuran jendela catatan"
+      "resizeDialog": "Ubah ukuran jendela catatan",
+      "sendCodeToTerminal": "Kirim ke terminal"
     },
     "deepLink": {
       "title": "Tautkan ke item KKTerm",
@@ -5834,7 +5836,8 @@
       "imageFailed": "Gambar tidak dapat ditambahkan ke catatan. {{error}}",
       "deepLinkUnavailable": "Item yang ditautkan sudah tidak ada.",
       "selectTextForLink": "Pilih teks yang ingin dijadikan tautan.",
-      "selectUrlForLink": "Pilih alamat web yang diawali http:// atau https:// untuk menautkannya."
+      "selectUrlForLink": "Pilih alamat web yang diawali http:// atau https:// untuk menautkannya.",
+      "sendToTerminalUnavailable": "Tidak ada panel terminal aktif untuk koneksi ini."
     }
   }
 }

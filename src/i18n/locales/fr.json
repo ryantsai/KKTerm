@@ -5800,9 +5800,11 @@
     },
     "editor": {
       "title": "Note — {{name}}",
+      "eyebrow": "Notes",
       "contentLabel": "Contenu de la note",
       "delete": "Supprimer la note",
-      "resizeDialog": "Redimensionner la fenêtre de la note"
+      "resizeDialog": "Redimensionner la fenêtre de la note",
+      "sendCodeToTerminal": "Envoyer au terminal"
     },
     "deepLink": {
       "title": "Lier à un élément KKTerm",
@@ -5834,7 +5836,8 @@
       "imageFailed": "L'image n'a pas pu être ajoutée à la note. {{error}}",
       "deepLinkUnavailable": "L'élément lié n'existe plus.",
       "selectTextForLink": "Sélectionnez le texte à transformer en lien.",
-      "selectUrlForLink": "Sélectionnez une adresse web commençant par http:// ou https:// pour la lier."
+      "selectUrlForLink": "Sélectionnez une adresse web commençant par http:// ou https:// pour la lier.",
+      "sendToTerminalUnavailable": "Aucun volet terminal actif pour cette connexion."
     }
   }
 }

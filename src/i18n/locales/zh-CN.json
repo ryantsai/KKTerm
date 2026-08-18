@@ -5800,9 +5800,11 @@
     },
     "editor": {
       "title": "笔记 — {{name}}",
+      "eyebrow": "笔记",
       "contentLabel": "笔记内容",
       "delete": "删除笔记",
-      "resizeDialog": "调整笔记窗口大小"
+      "resizeDialog": "调整笔记窗口大小",
+      "sendCodeToTerminal": "发送到终端"
     },
     "deepLink": {
       "title": "链接到 KKTerm 项目",
@@ -5834,7 +5836,8 @@
       "imageFailed": "无法将图片添加到笔记。{{error}}",
       "deepLinkUnavailable": "链接的项目已不存在。",
       "selectTextForLink": "请选择要转换为链接的文字。",
-      "selectUrlForLink": "请选择以 http:// 或 https:// 开头的网址以创建链接。"
+      "selectUrlForLink": "请选择以 http:// 或 https:// 开头的网址以创建链接。",
+      "sendToTerminalUnavailable": "没有此连接的活动终端窗格。"
     }
   }
 }

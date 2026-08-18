@@ -5800,9 +5800,11 @@
     },
     "editor": {
       "title": "Ghi chú — {{name}}",
+      "eyebrow": "Ghi chú",
       "contentLabel": "Nội dung ghi chú",
       "delete": "Xóa ghi chú",
-      "resizeDialog": "Thay đổi kích thước cửa sổ ghi chú"
+      "resizeDialog": "Thay đổi kích thước cửa sổ ghi chú",
+      "sendCodeToTerminal": "Gửi đến terminal"
     },
     "deepLink": {
       "title": "Liên kết tới một mục KKTerm",
@@ -5834,7 +5836,8 @@
       "imageFailed": "Không thể thêm hình ảnh vào ghi chú. {{error}}",
       "deepLinkUnavailable": "Mục được liên kết không còn tồn tại.",
       "selectTextForLink": "Hãy chọn đoạn văn bản bạn muốn biến thành liên kết.",
-      "selectUrlForLink": "Hãy chọn một địa chỉ web bắt đầu bằng http:// hoặc https:// để tạo liên kết."
+      "selectUrlForLink": "Hãy chọn một địa chỉ web bắt đầu bằng http:// hoặc https:// để tạo liên kết.",
+      "sendToTerminalUnavailable": "Không có bảng terminal đang hoạt động cho kết nối này."
     }
   }
 }

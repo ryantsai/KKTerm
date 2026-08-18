@@ -4,9 +4,11 @@
 /* ------------------------- pane toolbar affordance ---------------------- */
 
 /* A Connection that already owns a note reads as documented at a glance. Only
-   the glyph tints, like a Post-it — no inverted background badge. */
+   the glyph tints, like a Post-it — no inverted background badge. A literal
+   yellow rather than `--amber` (KKTerm's warning/orange token) so it reads as
+   a sticky-note color, not a caution color. */
 .note-toolbar-button.has-note {
-  color: var(--amber);
+  color: #ffcc00;
 }
 
 .sftp-bar-action {
@@ -81,6 +83,31 @@
   text-align: center;
   font-size: 13px;
   font-weight: 600;
+  color: var(--text-muted);
+}
+
+.note-editor-title-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Pinned to the head's top-left corner. `.kk-dlg-head` is already
+   `position: relative`, so this sits beside the centered title without
+   pushing it — the title stays centered on the dialog, not the remaining
+   space. */
+.note-editor-sheet .kk-dlg-eyebrow {
+  position: absolute;
+  top: 20px;
+  left: 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
   color: var(--text-muted);
 }
 
@@ -258,6 +285,38 @@
   padding: 0;
   background: transparent;
   color: inherit;
+}
+
+.note-code-block-view {
+  position: relative;
+}
+
+.note-code-block-send {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--terminal-fg);
+  background: color-mix(in srgb, var(--terminal) 60%, transparent);
+  border: 1px solid color-mix(in srgb, var(--terminal-fg) 25%, transparent);
+  border-radius: 5px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.note-code-block-view:hover .note-code-block-send,
+.note-code-block-send:focus-visible {
+  opacity: 1;
+}
+
+.note-code-block-send:hover {
+  background: color-mix(in srgb, var(--terminal) 85%, transparent);
 }
 
 .note-editor-surface img {

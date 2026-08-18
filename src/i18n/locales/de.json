@@ -5800,9 +5800,11 @@
     },
     "editor": {
       "title": "Notiz – {{name}}",
+      "eyebrow": "Notizen",
       "contentLabel": "Notizinhalt",
       "delete": "Notiz löschen",
-      "resizeDialog": "Notizfenster in der Größe ändern"
+      "resizeDialog": "Notizfenster in der Größe ändern",
+      "sendCodeToTerminal": "An Terminal senden"
     },
     "deepLink": {
       "title": "Mit einem KKTerm-Element verknüpfen",
@@ -5834,7 +5836,8 @@
       "imageFailed": "Das Bild konnte der Notiz nicht hinzugefügt werden. {{error}}",
       "deepLinkUnavailable": "Das verknüpfte Element existiert nicht mehr.",
       "selectTextForLink": "Markieren Sie den Text, der zu einem Link werden soll.",
-      "selectUrlForLink": "Markieren Sie eine Webadresse, die mit http:// oder https:// beginnt, um sie zu verlinken."
+      "selectUrlForLink": "Markieren Sie eine Webadresse, die mit http:// oder https:// beginnt, um sie zu verlinken.",
+      "sendToTerminalUnavailable": "Kein aktiver Terminal-Bereich für diese Verbindung."
     }
   }
 }
