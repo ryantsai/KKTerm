@@ -125,7 +125,7 @@ pub fn tool_descriptors() -> Vec<Value> {
         }),
         json!({
             "name": "kkterm.workspace.sessions.list",
-            "description": "List live Sessions (terminal Panes, remote desktop targets, URL surfaces, and file browsers).",
+            "description": "List live Sessions (terminal Panes, remote desktop targets, URL surfaces, and file browsers). File-browser entries report paths, entry counts, and transfer counts; use file_browser.list for directory entries.",
             "inputSchema": {"type": "object", "properties": {}, "additionalProperties": false},
         }),
         json!({
@@ -380,7 +380,7 @@ pub fn tool_descriptors() -> Vec<Value> {
         }),
         json!({
             "name": "kkterm.workspace.file_browser.dangerous.upload",
-            "description": "DANGEROUS: upload or copy a local path into an active file browser destination. Requires built_in_mcp_allow_all_dangerous = true.",
+            "description": "DANGEROUS: queue an upload or copy of a local path into an active file browser destination. Returns the queued transferId; poll file_browser.transfer_status for the outcome. Requires built_in_mcp_allow_all_dangerous = true.",
             "inputSchema": {
                 "type": "object",
                 "properties": {"tabId": {"type": "string"}, "transferId": {"type": "string"}, "localPath": {"type": "string"}, "remoteDirectory": {"type": "string"}, "overwriteBehavior": {"type": "string", "enum": ["fail", "overwrite"]}},
@@ -390,7 +390,7 @@ pub fn tool_descriptors() -> Vec<Value> {
         }),
         json!({
             "name": "kkterm.workspace.file_browser.dangerous.download",
-            "description": "DANGEROUS: download or copy a path from an active file browser into a local destination. Requires built_in_mcp_allow_all_dangerous = true.",
+            "description": "DANGEROUS: queue a download or copy of a path from an active file browser into a local destination. Returns the queued transferId; poll file_browser.transfer_status for the outcome. Requires built_in_mcp_allow_all_dangerous = true.",
             "inputSchema": {
                 "type": "object",
                 "properties": {"tabId": {"type": "string"}, "transferId": {"type": "string"}, "remotePath": {"type": "string"}, "localDirectory": {"type": "string"}, "overwriteBehavior": {"type": "string", "enum": ["fail", "overwrite"]}},
@@ -400,7 +400,7 @@ pub fn tool_descriptors() -> Vec<Value> {
         }),
         json!({
             "name": "kkterm.workspace.file_browser.transfer_status",
-            "description": "Read the active file browser transfer queue and progress states.",
+            "description": "Read the full file browser transfer queue and progress states. sessions.list reports transfer counts only.",
             "inputSchema": {
                 "type": "object",
                 "properties": {"tabId": {"type": "string"}},
@@ -409,7 +409,7 @@ pub fn tool_descriptors() -> Vec<Value> {
         }),
         json!({
             "name": "kkterm.workspace.file_browser.dangerous.cancel_transfer",
-            "description": "DANGEROUS: cancel an active file browser transfer. Requires built_in_mcp_allow_all_dangerous = true.",
+            "description": "DANGEROUS: cancel a file browser transfer. A queued transfer is canceled immediately; a running one only when the transport supports it. Requires built_in_mcp_allow_all_dangerous = true.",
             "inputSchema": {
                 "type": "object",
                 "properties": {"tabId": {"type": "string"}, "transferId": {"type": "string"}},

@@ -18,6 +18,10 @@ export type TransferRecord = {
     side: FilePaneSide;
     path: string;
   };
+  // Queued by the Assistant/MCP file-browser tools rather than the UI. These
+  // carry an explicit overwriteBehavior, so a destination conflict fails the
+  // transfer instead of opening the interactive overwrite prompt.
+  origin?: "assistant";
 };
 
 export type TransferDirection = TransferRecord["direction"];

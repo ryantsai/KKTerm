@@ -27,6 +27,8 @@ export interface FileBrowserCapabilities {
   verifySshHostKey: boolean;
   /** UI may offer "Open SSH terminal here" from a remote folder */
   openTerminalHere: boolean;
+  /** Transport can cancel a transfer that has already started */
+  cancelTransfers: boolean;
 }
 
 export interface FileBrowserCommands {
@@ -91,6 +93,7 @@ export function sftpBrowserCommands(connection: Connection): FileBrowserCommands
       editPermissions: true,
       verifySshHostKey: true,
       openTerminalHere: true,
+      cancelTransfers: true,
     },
     startSession: ({ sessionId, path, password }) =>
       invokeCommand("start_sftp_session", {
@@ -156,6 +159,7 @@ export function ftpBrowserCommands(
       editPermissions: false,
       verifySshHostKey: false,
       openTerminalHere: false,
+      cancelTransfers: true,
     },
     startSession: ({ sessionId, path, password }) =>
       invokeCommand("start_ftp_session", {
@@ -265,6 +269,8 @@ export function localBrowserCommands(): FileBrowserCommands {
       editPermissions: false,
       verifySshHostKey: false,
       openTerminalHere: false,
+      // copy_local_path runs to completion in one blocking call.
+      cancelTransfers: false,
     },
     startSession: ({ sessionId, path }) => listLocal(path, sessionId),
     listDirectory: ({ sessionId, path }) => listLocal(path, sessionId),

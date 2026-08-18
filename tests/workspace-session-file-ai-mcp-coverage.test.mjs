@@ -92,6 +92,46 @@ test("Workspace C/D Assistant and MCP surfaces stay in parity", async () => {
   assert.ok(webview.includes("registerWebviewController"), "URL surfaces must register live navigation controls");
 });
 
+test("file-browser snapshots stay bounded and transfers stay queued", async () => {
+  const [sftp, fileBrowser] = await Promise.all([
+    read("src/modules/workspace/connections/sftp/SftpWorkspace.tsx"),
+    read("src/lib/fileBrowserCommands.ts"),
+  ]);
+
+  // session_state embeds one snapshot per open browser on most turns, so the
+  // snapshot must report counts instead of whole directory listings.
+  assert.ok(
+    sftp.includes("localEntryCount:") && sftp.includes("summarizeTransfers("),
+    "the file-browser snapshot must report entry and transfer counts",
+  );
+  assert.ok(
+    !/snapshot: \(\) => \{[\s\S]*?\n *remoteFiles,/.test(sftp),
+    "the file-browser snapshot must not embed directory entries",
+  );
+  assert.ok(
+    sftp.includes("boundedSnapshotNames("),
+    "selected names in the snapshot must be bounded",
+  );
+
+  // Tool-initiated transfers join the same serialized queue as the UI's own.
+  assert.ok(
+    sftp.includes('origin: "assistant"') && sftp.includes("queueControllerTransfer"),
+    "Assistant transfers must be queued rather than run inline",
+  );
+  assert.ok(
+    sftp.includes("transfer.origin !== \"assistant\""),
+    "queued Assistant transfers must not open the interactive overwrite prompt",
+  );
+  assert.ok(
+    fileBrowser.includes("cancelTransfers: false"),
+    "local File Explorer must declare that a started transfer cannot be canceled",
+  );
+  assert.ok(
+    sftp.includes("commands.capabilities.cancelTransfers"),
+    "cancel must report honestly when the transport cannot cancel a running transfer",
+  );
+});
+
 test("C/D MCP mutations remain explicitly safety-gated", async () => {
   const [ai, catalog, bridge] = await Promise.all([
     read("src-tauri/src/ai.rs"),
