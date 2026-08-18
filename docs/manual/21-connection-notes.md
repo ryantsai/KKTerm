@@ -2,7 +2,7 @@
 
 ## AI grep hints
 
-- Keys: `notes.*` (full namespace), `notes.deepLink.menuLabel`, `notes.deepLink.triggerHint`, `notes.toolbarButton.open`, `notes.toolbarButton.create`, `notes.toolbar.label`, `notes.toolbar.insertImage`, `notes.toolbar.insertLink`, `notes.toolbar.insertDeepLink`, `notes.toolbar.search`, `notes.search.placeholder`, `notes.search.replace`, `notes.search.replaceAll`, `notes.editor.title`, `notes.editor.delete`, `notes.deepLink.title`, `notes.deepLink.searchPlaceholder`, `notes.confirmDelete.title`, `notes.confirmDiscard.title`, `notes.notice.saved`, `notes.notice.deleted`, `notes.notice.deepLinkUnavailable`
+- Keys: `notes.*` (full namespace), `notes.deepLink.menuLabel`, `notes.deepLink.triggerHint`, `notes.toolbarButton.open`, `notes.toolbarButton.create`, `notes.toolbar.label`, `notes.toolbar.insertImage`, `notes.toolbar.insertLink`, `notes.toolbar.insertDeepLink`, `notes.toolbar.search`, `notes.search.placeholder`, `notes.search.replace`, `notes.search.replaceAll`, `notes.editor.title`, `notes.editor.delete`, `notes.editor.resizeDialog`, `notes.deepLink.title`, `notes.deepLink.searchPlaceholder`, `notes.confirmDelete.title`, `notes.confirmDiscard.title`, `notes.notice.saved`, `notes.notice.deleted`, `notes.notice.deepLinkUnavailable`, `dashboard.notesAddTableRow`, `dashboard.notesDeleteTableRow`, `dashboard.notesAddTableColumn`, `dashboard.notesDeleteTableColumn`, `dashboard.notesDeleteTable`
 - Files: `src/modules/notes/` (editor, toolbar, search, Deep Link picker, asset handling), `src-tauri/src/storage/notes.rs` (backend), entry points in `src/modules/workspace/connections/terminal/TerminalWorkspace.tsx`, `src/modules/workspace/connections/sftp/SftpWorkspace.tsx`, `src/modules/workspace/connections/webview/WebViewWorkspace.tsx`, and `src/modules/workspace/connections/remote-desktop/RemoteDesktopWorkspace.tsx`
 - Topics: per-Connection notes, rich text, WYSIWYG, HTML notes, note images, note search, find and replace in a note, Deep Links from a note, @ mention trigger, note deletion
 - Synonyms: "sticky note on a connection", "server notes", "document a host", "remember the restart command", "where is the VM directory", "annotate a connection", "at mention", "link to another connection from a note"
@@ -30,7 +30,9 @@ Every Connection Pane toolbar carries the note control (`notes.openNote`):
 The control shows one of two states, so a documented Connection is recognizable without opening anything:
 
 - `notes.toolbarButton.create` — this Connection has no note yet.
-- `notes.toolbarButton.open` — this Connection already owns a note, and the control is tinted.
+- `notes.toolbarButton.open` — this Connection already owns a note, and the control's glyph tints amber, like a Post-it — no background badge.
+
+The editor window itself is resizable: drag its bottom-right corner (`notes.editor.resizeDialog`; Arrow keys with the handle focused also work) to change its size. The dragged size is remembered in `localStorage` and reused the next time any note is opened.
 
 ## Creating, saving, and deleting
 
@@ -54,13 +56,15 @@ The toolbar (`notes.toolbar.label`) covers:
 - **Blocks** — `notes.toolbar.heading1` … `notes.toolbar.heading3`, `notes.toolbar.blockquote`, `notes.toolbar.codeBlock`, `notes.toolbar.horizontalRule`.
 - **Inline styles** — `notes.toolbar.bold`, `notes.toolbar.italic`, `notes.toolbar.underline`, `notes.toolbar.strikethrough`, `notes.toolbar.highlight`, `notes.toolbar.inlineCode`.
 - **Lists** — `notes.toolbar.bulletList`, `notes.toolbar.orderedList`, `notes.toolbar.taskList` (checkable items).
-- **Tables** — `notes.toolbar.insertTable` inserts a 3×3 table with a header row; columns are resizable.
+- **Tables** — `notes.toolbar.insertTable` inserts a 3×3 table with a header row; columns are resizable. Right-clicking inside a cell opens a menu (the same row/column vocabulary as the Dashboard Notes widget: `dashboard.notesAddTableRow`, `dashboard.notesDeleteTableRow`, `dashboard.notesAddTableColumn`, `dashboard.notesDeleteTableColumn`, `dashboard.notesDeleteTable`) to add or delete rows and columns, or remove the whole table.
 
 ## Images
 
 `notes.toolbar.insertImage` opens a file picker for PNG, JPEG, GIF, or WebP. Images can also be **pasted** or **dragged** straight onto the note.
 
 Images are stored as **files on disk**, under a `note-images/` directory beside the KKTerm database, not inlined into the note text and not inside the database. Identical images added twice are stored once. Images wider or taller than 1600 px are downscaled on the way in; animated GIFs are stored unchanged so they keep their frames. An image added and then removed before saving is discarded when the note is saved.
+
+Hovering an image reveals a drag handle at its bottom-right corner; dragging it resizes the image inline. The chosen width is stored on the image itself and is preserved on save/reload.
 
 Because they are ordinary files in the app data directory, note images are included in the settings export (`.kkbackup`) and in the startup backup ZIP snapshots, and they are restored with them — see [17-data-backup-secrets.md](17-data-backup-secrets.md). Deleting a note or its Connection deletes that Connection's image directory.
 
@@ -90,7 +94,7 @@ Both list three kinds of target:
 
 Connections from **every** Workspace are listed, not just the active one, so a note can point anywhere in the app.
 
-Clicking a Deep Link chip inside a note follows it and closes the note editor. If the note has unsaved changes, `notes.confirmDiscard.title` asks before closing. A chip keeps the label captured when it was inserted, so a note still reads sensibly after the target is renamed; following a chip whose target has since been deleted reports `notes.notice.deepLinkUnavailable` and leaves the note open.
+Clicking a Deep Link chip inside a note follows it and closes the note editor. If the note has unsaved changes, `notes.confirmDiscard.title` asks before closing. A chip keeps the label captured when it was inserted, so a note still reads sensibly after the target is renamed; following a chip whose target has since been deleted reports `notes.notice.deepLinkUnavailable`, leaves the note open, and flattens that one chip into plain text (its captured label) in place, since a permanently dead-looking colored chip is worse than the plain text it displays. This edit is unsaved like any other — `notes.confirmDiscard.title` still guards closing without saving.
 
 ## Searching inside a note
 

@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type {
+  KeyboardEvent as ReactKeyboardEvent,
+  MouseEvent as ReactMouseEvent,
+  PointerEvent as ReactPointerEvent,
+} from "react";
 import { useTranslation } from "react-i18next";
-import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
+import { EditorContent, ReactNodeViewRenderer, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
+import { NoteImageView } from "./NoteImageView";
 import Link from "@tiptap/extension-link";
 import Highlight from "@tiptap/extension-highlight";
 import TextAlign from "@tiptap/extension-text-align";
@@ -24,6 +30,46 @@ import { deleteConnectionNote, getConnectionNote, pruneNoteAssets, putNoteAsset,
 import { navigateNoteDeepLink, parseNoteDeepLink } from "./noteDeepLink";
 import type { NoteDeepLink } from "./noteDeepLink";
 import { downscaleImageFile } from "./noteImages";
+import { showNativeContextMenu } from "../../lib/nativeContextMenu";
+import type { NativeContextMenuItem } from "../../lib/nativeContextMenu";
+
+const NOTE_EDITOR_SHEET_SIZE_KEY = "kkterm.notes.editorSheetSize.v1";
+const NOTE_EDITOR_SHEET_DEFAULT_WIDTH = 860;
+const NOTE_EDITOR_SHEET_DEFAULT_HEIGHT = 620;
+const NOTE_EDITOR_SHEET_MIN_WIDTH = 560;
+const NOTE_EDITOR_SHEET_MIN_HEIGHT = 380;
+
+/** The Sheet's last dragged size, remembered across notes and app restarts. */
+function loadNoteEditorSheetSize(): { width: number; height: number } {
+  if (typeof window === "undefined") {
+    return { width: NOTE_EDITOR_SHEET_DEFAULT_WIDTH, height: NOTE_EDITOR_SHEET_DEFAULT_HEIGHT };
+  }
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(NOTE_EDITOR_SHEET_SIZE_KEY) ?? "null") as
+      | { width?: number; height?: number }
+      | null;
+    const width =
+      typeof parsed?.width === "number" && Number.isFinite(parsed.width)
+        ? parsed.width
+        : NOTE_EDITOR_SHEET_DEFAULT_WIDTH;
+    const height =
+      typeof parsed?.height === "number" && Number.isFinite(parsed.height)
+        ? parsed.height
+        : NOTE_EDITOR_SHEET_DEFAULT_HEIGHT;
+    return { width, height };
+  } catch {
+    return { width: NOTE_EDITOR_SHEET_DEFAULT_WIDTH, height: NOTE_EDITOR_SHEET_DEFAULT_HEIGHT };
+  }
+}
+
+function persistNoteEditorSheetSize(size: { width: number; height: number }) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(NOTE_EDITOR_SHEET_SIZE_KEY, JSON.stringify(size));
+  } catch {
+    // Storage may be unavailable (private mode, quota); fail silently.
+  }
+}
 
 interface NoteEditorSheetProps {
   connectionId: string;
@@ -56,6 +102,9 @@ export function NoteEditorSheet({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Reaches the ancestor `.note-editor-sheet` Sheet via `.closest()` to seed its
+  // remembered size, the same way the resize handle finds it (no Sheet API change).
+  const editorWrapperRef = useRef<HTMLDivElement>(null);
   // Object URLs minted while hydrating images; revoked when the sheet unmounts.
   const objectUrlsRef = useRef<string[]>([]);
   const originalAssetIdsRef = useRef<string[]>([]);
@@ -91,7 +140,21 @@ export function NoteEditorSheet({
                 return id ? { [NOTE_ASSET_ATTRIBUTE]: id } : {};
               },
             },
+            // Set by the drag-to-resize handle; `width` is already
+            // sanitizer-allowlisted, so it round-trips through save/load.
+            width: {
+              default: null,
+              parseHTML: (element) => {
+                const value = element.getAttribute("width");
+                return value ? Number(value) : null;
+              },
+              renderHTML: (attributes) =>
+                typeof attributes.width === "number" ? { width: String(attributes.width) } : {},
+            },
           };
+        },
+        addNodeView() {
+          return ReactNodeViewRenderer(NoteImageView);
         },
       }).configure({ inline: false, allowBase64: false }),
       Highlight,
@@ -184,6 +247,16 @@ export function NoteEditorSheet({
     [],
   );
 
+  // Seed the Sheet's remembered size once on mount; the resize handle updates
+  // these same CSS custom properties (and localStorage) as the user drags.
+  useEffect(() => {
+    const dialog = editorWrapperRef.current?.closest<HTMLElement>(".note-editor-sheet");
+    if (!dialog) return;
+    const size = loadNoteEditorSheetSize();
+    dialog.style.setProperty("--note-editor-sheet-width", `${size.width}px`);
+    dialog.style.setProperty("--note-editor-sheet-height", `${size.height}px`);
+  }, []);
+
   const storeImage = useCallback(
     (file: File) => {
       if (!editor || closingRef.current) return Promise.resolve();
@@ -269,6 +342,34 @@ export function NoteEditorSheet({
   useEffect(() => {
     if (!editor) return;
     const dom = editor.view.dom;
+    // A chip whose target was renamed or deleted can never navigate again;
+    // leaving it a permanently dead-looking colored pill is worse than
+    // flattening it to the plain text it displays, so it self-heals in place.
+    function unwrapDeadDeepLinkChip(chip: HTMLElement) {
+      if (editor.isDestroyed) return;
+      let pos: number;
+      try {
+        pos = editor.view.posAtDOM(chip, 0);
+      } catch {
+        return;
+      }
+      let node = editor.state.doc.nodeAt(pos);
+      if (node?.type.name !== "noteDeepLink" && pos > 0) {
+        node = editor.state.doc.nodeAt(pos - 1);
+        if (node?.type.name === "noteDeepLink") pos -= 1;
+      }
+      if (!node || node.type.name !== "noteDeepLink") return;
+      const label = typeof node.attrs.label === "string" ? node.attrs.label : "";
+      editor
+        .chain()
+        .insertContentAt(
+          { from: pos, to: pos + node.nodeSize },
+          label ? [{ type: "text", text: label }] : [],
+        )
+        .run();
+      setDirty(true);
+    }
+
     function onClick(event: MouseEvent) {
       const chip = (event.target as HTMLElement | null)?.closest?.(".note-deep-link");
       if (!chip) return;
@@ -283,6 +384,7 @@ export function NoteEditorSheet({
       void navigateNoteDeepLink(link, showWorkspace, showItOps).then((navigated) => {
         if (!navigated) {
           showStatusBarNotice(t("notes.notice.deepLinkUnavailable"), { tone: "warning" });
+          unwrapDeadDeepLinkChip(chip as HTMLElement);
           return;
         }
         onClose();
@@ -415,6 +517,50 @@ export function NoteEditorSheet({
     editor.chain().focus().setLink({ href: text }).run();
   }
 
+  // The table toolbar button only inserts a fixed 3x3 grid; row/column editing
+  // and table removal live here as a right-click menu on the cell, matching
+  // how every other native-feeling context menu in the app is built.
+  function handleTableContextMenu(event: ReactMouseEvent<HTMLDivElement>) {
+    if (!editor || loading) return;
+    const cell = (event.target as HTMLElement | null)?.closest<HTMLElement>("td, th");
+    if (!cell) return;
+    event.preventDefault();
+    const pos = editor.view.posAtDOM(cell, 0);
+    editor.chain().focus().setTextSelection(pos).run();
+    // Reuses the Dashboard Notes widget's table-editing vocabulary
+    // (`dashboard.notes*`) rather than minting a parallel set of strings.
+    const items: NativeContextMenuItem[] = [
+      {
+        kind: "item",
+        label: t("dashboard.notesAddTableRow"),
+        action: () => editor.chain().focus().addRowAfter().run(),
+      },
+      {
+        kind: "item",
+        label: t("dashboard.notesDeleteTableRow"),
+        action: () => editor.chain().focus().deleteRow().run(),
+      },
+      { kind: "separator" },
+      {
+        kind: "item",
+        label: t("dashboard.notesAddTableColumn"),
+        action: () => editor.chain().focus().addColumnAfter().run(),
+      },
+      {
+        kind: "item",
+        label: t("dashboard.notesDeleteTableColumn"),
+        action: () => editor.chain().focus().deleteColumn().run(),
+      },
+      { kind: "separator" },
+      {
+        kind: "item",
+        label: t("dashboard.notesDeleteTable"),
+        action: () => editor.chain().focus().deleteTable().run(),
+      },
+    ];
+    void showNativeContextMenu(items, { x: event.clientX, y: event.clientY });
+  }
+
   const canSave =
     Boolean(editor) && !loading && !saving && imageUploadCount === 0 && (dirty || !bound);
   return (
@@ -425,30 +571,34 @@ export function NoteEditorSheet({
           height={620}
           className="note-editor-sheet"
           title={t("notes.editor.title", { name: connectionName })}
+          rule
           footer={
-            <Actions
-              extraLeft={
-                bound ? (
-                  <Btn kind="danger" onClick={() => setConfirmDelete(true)}>
-                    {t("notes.editor.delete")}
+            <>
+              <Actions
+                extraLeft={
+                  bound ? (
+                    <Btn kind="danger" onClick={() => setConfirmDelete(true)}>
+                      {t("notes.editor.delete")}
+                    </Btn>
+                  ) : null
+                }
+                cancel={<Btn onClick={requestClose}>{t("common.cancel")}</Btn>}
+                primary={
+                  <Btn
+                    kind="primary"
+                    disabled={!canSave || (empty && !bound)}
+                    onClick={() => void handleSave()}
+                  >
+                    {t("common.save")}
                   </Btn>
-                ) : null
-              }
-              cancel={<Btn onClick={requestClose}>{t("common.cancel")}</Btn>}
-              primary={
-                <Btn
-                  kind="primary"
-                  disabled={!canSave || (empty && !bound)}
-                  onClick={() => void handleSave()}
-                >
-                  {t("common.save")}
-                </Btn>
-              }
-            />
+                }
+              />
+              <NoteEditorSheetResizeHandle label={t("notes.editor.resizeDialog")} />
+            </>
           }
         >
           {editor ? (
-            <div className="note-editor">
+            <div className="note-editor" ref={editorWrapperRef}>
               <NoteToolbar
                 editor={editor}
                 readOnly={loading}
@@ -465,7 +615,11 @@ export function NoteEditorSheet({
                   onClose={() => setSearchOpen(false)}
                 />
               ) : null}
-              <EditorContent className="note-editor-content" editor={editor} />
+              <EditorContent
+                className="note-editor-content"
+                editor={editor}
+                onContextMenu={handleTableContextMenu}
+              />
               <NoteDeepLinkMenu onPick={pickSuggestion} state={suggestion} />
               <input
                 ref={fileInputRef}
@@ -530,5 +684,111 @@ export function NoteEditorSheet({
         />
       ) : null}
     </>
+  );
+}
+
+/** Bottom-right corner drag handle for the note editor Sheet, mirroring
+ *  `TerminalRecordingsDialogResizeHandle`'s pointer-captured resize (writing
+ *  CSS custom properties the Sheet's own `!important` sizing rule reads), plus
+ *  localStorage persistence so the dragged size survives across notes and app
+ *  restarts. */
+function NoteEditorSheetResizeHandle({ label }: { label: string }) {
+  const dragStart = useRef<
+    | {
+        height: number;
+        pointerId: number;
+        startX: number;
+        startY: number;
+        width: number;
+      }
+    | undefined
+  >(undefined);
+
+  function dialogFor(target: HTMLElement) {
+    return target.closest<HTMLElement>(".note-editor-sheet");
+  }
+
+  function resizeDialog(dialog: HTMLElement, width: number, height: number) {
+    const maxWidth = Math.max(320, window.innerWidth - 24);
+    const maxHeight = Math.max(320, window.innerHeight - 24);
+    const minWidth = Math.min(NOTE_EDITOR_SHEET_MIN_WIDTH, maxWidth);
+    const minHeight = Math.min(NOTE_EDITOR_SHEET_MIN_HEIGHT, maxHeight);
+    const nextWidth = Math.min(maxWidth, Math.max(minWidth, Math.round(width)));
+    const nextHeight = Math.min(maxHeight, Math.max(minHeight, Math.round(height)));
+    dialog.style.setProperty("--note-editor-sheet-width", `${nextWidth}px`);
+    dialog.style.setProperty("--note-editor-sheet-height", `${nextHeight}px`);
+    persistNoteEditorSheetSize({ width: nextWidth, height: nextHeight });
+  }
+
+  function handlePointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
+    const dialog = dialogFor(event.currentTarget);
+    if (!dialog) {
+      return;
+    }
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const bounds = dialog.getBoundingClientRect();
+    dragStart.current = {
+      height: bounds.height,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      width: bounds.width,
+    };
+  }
+
+  function handlePointerMove(event: ReactPointerEvent<HTMLButtonElement>) {
+    const start = dragStart.current;
+    const dialog = dialogFor(event.currentTarget);
+    if (!start || start.pointerId !== event.pointerId || !dialog) {
+      return;
+    }
+    resizeDialog(
+      dialog,
+      start.width + event.clientX - start.startX,
+      start.height + event.clientY - start.startY,
+    );
+  }
+
+  function finishPointerResize(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (dragStart.current?.pointerId !== event.pointerId) {
+      return;
+    }
+    dragStart.current = undefined;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }
+
+  function handleResizeKey(event: ReactKeyboardEvent<HTMLButtonElement>) {
+    if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) {
+      return;
+    }
+    const dialog = dialogFor(event.currentTarget);
+    if (!dialog) {
+      return;
+    }
+    event.preventDefault();
+    const bounds = dialog.getBoundingClientRect();
+    const step = event.shiftKey ? 64 : 24;
+    resizeDialog(
+      dialog,
+      bounds.width + (event.key === "ArrowRight" ? step : event.key === "ArrowLeft" ? -step : 0),
+      bounds.height + (event.key === "ArrowDown" ? step : event.key === "ArrowUp" ? -step : 0),
+    );
+  }
+
+  return (
+    <button
+      aria-label={label}
+      className="note-editor-sheet-resizer"
+      onKeyDown={handleResizeKey}
+      onPointerCancel={finishPointerResize}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={finishPointerResize}
+      title={label}
+      type="button"
+    />
   );
 }

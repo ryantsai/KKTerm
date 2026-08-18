@@ -5801,7 +5801,8 @@
     "editor": {
       "title": "Notiz – {{name}}",
       "contentLabel": "Notizinhalt",
-      "delete": "Notiz löschen"
+      "delete": "Notiz löschen",
+      "resizeDialog": "Notizfenster in der Größe ändern"
     },
     "deepLink": {
       "title": "Mit einem KKTerm-Element verknüpfen",

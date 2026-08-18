@@ -5801,7 +5801,8 @@
     "editor": {
       "title": "筆記 — {{name}}",
       "contentLabel": "筆記內容",
-      "delete": "刪除筆記"
+      "delete": "刪除筆記",
+      "resizeDialog": "調整筆記視窗大小"
     },
     "deepLink": {
       "title": "連結至 KKTerm 項目",

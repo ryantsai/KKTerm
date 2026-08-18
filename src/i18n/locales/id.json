@@ -5801,7 +5801,8 @@
     "editor": {
       "title": "Catatan — {{name}}",
       "contentLabel": "Isi catatan",
-      "delete": "Hapus catatan"
+      "delete": "Hapus catatan",
+      "resizeDialog": "Ubah ukuran jendela catatan"
     },
     "deepLink": {
       "title": "Tautkan ke item KKTerm",

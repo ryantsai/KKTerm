@@ -5801,7 +5801,8 @@
     "editor": {
       "title": "Note — {{name}}",
       "contentLabel": "Contenu de la note",
-      "delete": "Supprimer la note"
+      "delete": "Supprimer la note",
+      "resizeDialog": "Redimensionner la fenêtre de la note"
     },
     "deepLink": {
       "title": "Lier à un élément KKTerm",

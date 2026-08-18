@@ -5801,7 +5801,8 @@
     "editor": {
       "title": "메모 — {{name}}",
       "contentLabel": "메모 내용",
-      "delete": "메모 삭제"
+      "delete": "메모 삭제",
+      "resizeDialog": "메모 창 크기 조정"
     },
     "deepLink": {
       "title": "KKTerm 항목에 연결",

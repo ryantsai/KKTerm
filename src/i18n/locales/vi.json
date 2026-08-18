@@ -5801,7 +5801,8 @@
     "editor": {
       "title": "Ghi chú — {{name}}",
       "contentLabel": "Nội dung ghi chú",
-      "delete": "Xóa ghi chú"
+      "delete": "Xóa ghi chú",
+      "resizeDialog": "Thay đổi kích thước cửa sổ ghi chú"
     },
     "deepLink": {
       "title": "Liên kết tới một mục KKTerm",

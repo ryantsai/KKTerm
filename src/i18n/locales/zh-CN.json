@@ -5801,7 +5801,8 @@
     "editor": {
       "title": "笔记 — {{name}}",
       "contentLabel": "笔记内容",
-      "delete": "删除笔记"
+      "delete": "删除笔记",
+      "resizeDialog": "调整笔记窗口大小"
     },
     "deepLink": {
       "title": "链接到 KKTerm 项目",

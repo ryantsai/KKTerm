@@ -3,10 +3,10 @@
 
 /* ------------------------- pane toolbar affordance ---------------------- */
 
-/* A Connection that already owns a note reads as documented at a glance. */
+/* A Connection that already owns a note reads as documented at a glance. Only
+   the glyph tints, like a Post-it — no inverted background badge. */
 .note-toolbar-button.has-note {
   color: var(--amber);
-  background: var(--amber-soft);
 }
 
 .sftp-bar-action {
@@ -27,10 +27,61 @@
 
 /* ------------------------------ editor sheet ---------------------------- */
 
+/* Resizable: the drag handle below writes these custom properties (and mirrors
+   them to localStorage), overriding the Sheet's inline width/height style. */
+.note-editor-sheet {
+  position: relative;
+  width: min(var(--note-editor-sheet-width, 860px), calc(100vw - 48px)) !important;
+  height: min(var(--note-editor-sheet-height, 620px), calc(100vh - 48px)) !important;
+  min-width: min(560px, calc(100vw - 24px));
+  min-height: min(380px, calc(100vh - 24px));
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 24px) !important;
+}
+
+.note-editor-sheet-resizer {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  z-index: 4;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  background:
+    linear-gradient(
+      135deg,
+      transparent 0 56%,
+      color-mix(in srgb, var(--text-faint) 70%, transparent) 57% 61%,
+      transparent 62% 70%,
+      color-mix(in srgb, var(--text-faint) 70%, transparent) 71% 75%,
+      transparent 76%
+    );
+  border: 0;
+  border-radius: 4px;
+  cursor: nwse-resize;
+  touch-action: none;
+}
+
+.note-editor-sheet-resizer:hover {
+  background-color: var(--hover);
+}
+
+.note-editor-sheet-resizer:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
 .note-editor-sheet .kk-dlg-body {
   display: flex;
   min-height: 0;
   padding: 0;
+}
+
+.note-editor-sheet .kk-dlg-title {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
 }
 
 .note-editor {
@@ -213,6 +264,44 @@
   max-width: 100%;
   height: auto;
   border-radius: 6px;
+}
+
+/* Drag-to-resize node view for inline images. */
+.note-image-view {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.note-image-view img {
+  display: block;
+}
+
+.note-image-resize-handle {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  cursor: nwse-resize;
+  touch-action: none;
+  opacity: 0;
+  background:
+    linear-gradient(
+      135deg,
+      transparent 0 50%,
+      color-mix(in srgb, var(--text-faint) 75%, transparent) 51% 58%,
+      transparent 59% 68%,
+      color-mix(in srgb, var(--text-faint) 75%, transparent) 69% 76%,
+      transparent 77%
+    );
+  transition: opacity 0.1s;
+}
+
+.note-image-view:hover .note-image-resize-handle,
+.note-image-resize-handle:focus-visible {
+  opacity: 1;
 }
 
 .note-editor-surface hr {

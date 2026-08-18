@@ -5801,7 +5801,8 @@
     "editor": {
       "title": "บันทึก — {{name}}",
       "contentLabel": "เนื้อหาบันทึก",
-      "delete": "ลบบันทึก"
+      "delete": "ลบบันทึก",
+      "resizeDialog": "ปรับขนาดหน้าต่างบันทึก"
     },
     "deepLink": {
       "title": "ลิงก์ไปยังรายการใน KKTerm",

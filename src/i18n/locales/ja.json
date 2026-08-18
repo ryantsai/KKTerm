@@ -5801,7 +5801,8 @@
     "editor": {
       "title": "メモ — {{name}}",
       "contentLabel": "メモの内容",
-      "delete": "メモを削除"
+      "delete": "メモを削除",
+      "resizeDialog": "メモウィンドウのサイズを変更"
     },
     "deepLink": {
       "title": "KKTerm の項目にリンク",
