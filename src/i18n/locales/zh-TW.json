@@ -5757,5 +5757,83 @@
     "loading": "載入中…",
     "loadError": "無法載入手冊：{{message}}",
     "tauriRequired": "手冊僅在桌面執行環境中可用。"
+  },
+  "notes": {
+    "toolbarButton": {
+      "open": "開啟筆記",
+      "create": "新增筆記"
+    },
+    "toolbar": {
+      "label": "筆記格式",
+      "undo": "復原",
+      "redo": "重做",
+      "heading1": "標題 1",
+      "heading2": "標題 2",
+      "heading3": "標題 3",
+      "bold": "粗體",
+      "italic": "斜體",
+      "underline": "底線",
+      "strikethrough": "刪除線",
+      "highlight": "醒目提示",
+      "inlineCode": "行內程式碼",
+      "bulletList": "項目符號清單",
+      "orderedList": "編號清單",
+      "taskList": "檢查清單",
+      "blockquote": "引言",
+      "codeBlock": "程式碼區塊",
+      "horizontalRule": "分隔線",
+      "insertTable": "插入表格",
+      "insertImage": "插入影像",
+      "insertLink": "插入網頁連結",
+      "insertDeepLink": "連結至 KKTerm 項目",
+      "search": "尋找與取代"
+    },
+    "search": {
+      "placeholder": "在筆記中尋找",
+      "replacePlaceholder": "取代為",
+      "matchCount": "第 {{position}} 筆，共 {{total}} 筆",
+      "previous": "上一個相符項目",
+      "next": "下一個相符項目",
+      "caseSensitive": "區分大小寫",
+      "replace": "取代",
+      "replaceAll": "全部取代"
+    },
+    "editor": {
+      "title": "筆記 — {{name}}",
+      "contentLabel": "筆記內容",
+      "delete": "刪除筆記"
+    },
+    "deepLink": {
+      "title": "連結至 KKTerm 項目",
+      "searchPlaceholder": "搜尋連線、工作區與機櫃裝置",
+      "noResults": "沒有相符的項目。",
+      "kind": {
+        "connection": "連線",
+        "workspace": "工作區",
+        "rackItem": "機櫃裝置"
+      },
+      "menuLabel": "連結建議",
+      "triggerHint": "輸入 @ 即可連結連線、工作區或機櫃裝置。"
+    },
+    "confirmDelete": {
+      "title": "刪除此筆記？",
+      "message": "{{name}} 的筆記與其影像將永久刪除。"
+    },
+    "confirmDiscard": {
+      "title": "捨棄未儲存的變更？",
+      "message": "此筆記有尚未儲存的變更。",
+      "confirm": "捨棄"
+    },
+    "notice": {
+      "saved": "已儲存 {{name}} 的筆記。",
+      "saveFailed": "無法儲存筆記。{{error}}",
+      "deleted": "已刪除 {{name}} 的筆記。",
+      "deleteFailed": "無法刪除筆記。{{error}}",
+      "loadFailed": "無法開啟筆記。{{error}}",
+      "imageFailed": "無法將影像加入筆記。{{error}}",
+      "deepLinkUnavailable": "連結的項目已不存在。",
+      "selectTextForLink": "請選取要轉換為連結的文字。",
+      "selectUrlForLink": "請選取以 http:// 或 https:// 開頭的網址以建立連結。"
+    }
   }
 }

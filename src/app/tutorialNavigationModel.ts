@@ -153,6 +153,7 @@ const WORKSPACE_TUTORIAL_TARGET_IDS = [
   "terminal.sshPortRedirect",
   "terminal.startRecording",
   "terminal.openSftp",
+  "notes.openNote",
   "terminal.copySelection",
   "terminal.sendToAi",
   "terminal.actions",

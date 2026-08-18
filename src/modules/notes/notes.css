@@ -1,0 +1,329 @@
+/* Connection notes: the post-it pane-toolbar affordance and the rich-text note
+   editor Sheet. Colors read design tokens from styles/colorSchemes.css. */
+
+/* ------------------------- pane toolbar affordance ---------------------- */
+
+/* A Connection that already owns a note reads as documented at a glance. */
+.note-toolbar-button.has-note {
+  color: var(--amber);
+  background: var(--amber-soft);
+}
+
+.sftp-bar-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: var(--text-muted);
+  background: transparent;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.sftp-bar-action:hover {
+  background: var(--hover);
+}
+
+/* ------------------------------ editor sheet ---------------------------- */
+
+.note-editor-sheet .kk-dlg-body {
+  display: flex;
+  min-height: 0;
+  padding: 0;
+}
+
+.note-editor {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.note-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.note-tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 5px;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.note-tool:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--hover);
+}
+
+.note-tool:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.note-tool.is-active {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+/* Text-formatting controls are typographic glyphs, so each carries the styling
+   it applies — the button previews its own effect. */
+.note-tool.is-bold { font-weight: 800; }
+.note-tool.is-italic { font-style: italic; font-family: Georgia, serif; }
+.note-tool.is-underline { text-decoration: underline; }
+.note-tool.is-strike { text-decoration: line-through; }
+.note-tool.is-quote { font-size: 17px; line-height: 1; }
+.note-tool.is-ordered,
+.note-tool.is-code-block { font-size: 11px; font-weight: 700; }
+
+.note-tool-divider {
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background: var(--border);
+}
+
+.note-tool-spacer {
+  flex: 1;
+}
+
+/* -------------------------------- search -------------------------------- */
+
+.note-search-bar {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 12px;
+  background: var(--surface-muted);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.note-search-input {
+  flex: 1;
+  min-width: 90px;
+  height: 26px;
+}
+
+.note-search-count {
+  flex: none;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.note-search-action {
+  flex: none;
+  height: 26px;
+  padding: 0 8px;
+  font-size: 11px;
+}
+
+.note-search-case {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.note-search-hit {
+  background: var(--amber-soft);
+  box-shadow: inset 0 -1px 0 var(--amber);
+}
+
+.note-search-hit-active {
+  background: var(--amber);
+  color: #1d1d1f;
+}
+
+/* ----------------------------- editing surface -------------------------- */
+
+.note-editor-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.note-editor-surface {
+  min-height: 100%;
+  padding: 16px 20px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text);
+  outline: none;
+}
+
+.note-editor-surface h1 { margin: 14px 0 6px; font-size: 20px; font-weight: 700; }
+.note-editor-surface h2 { margin: 12px 0 6px; font-size: 17px; font-weight: 700; }
+.note-editor-surface h3 { margin: 10px 0 4px; font-size: 15px; font-weight: 700; }
+.note-editor-surface p { margin: 0 0 8px; }
+.note-editor-surface ul,
+.note-editor-surface ol { margin: 0 0 8px; padding-left: 22px; }
+
+.note-editor-surface blockquote {
+  margin: 0 0 8px;
+  padding-left: 12px;
+  color: var(--text-muted);
+  border-left: 3px solid var(--border-strong);
+}
+
+.note-editor-surface code {
+  padding: 1px 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  background: var(--surface-muted);
+  border-radius: 4px;
+}
+
+.note-editor-surface pre {
+  margin: 0 0 8px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  background: var(--terminal);
+  color: var(--terminal-fg);
+  border-radius: 6px;
+}
+
+.note-editor-surface pre code {
+  padding: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.note-editor-surface img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+
+.note-editor-surface hr {
+  margin: 12px 0;
+  border: none;
+  border-top: 1px solid var(--border);
+}
+
+.note-editor-surface table {
+  width: 100%;
+  margin: 0 0 8px;
+  border-collapse: collapse;
+}
+
+.note-editor-surface th,
+.note-editor-surface td {
+  padding: 5px 8px;
+  text-align: left;
+  border: 1px solid var(--border);
+}
+
+.note-editor-surface th {
+  background: var(--surface-muted);
+  font-weight: 600;
+}
+
+.note-editor-surface mark {
+  padding: 0 2px;
+  background: var(--amber-soft);
+  border-radius: 3px;
+}
+
+/* ------------------------------- deep links ----------------------------- */
+
+.note-deep-link {
+  padding: 1px 6px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.note-deep-link:hover {
+  background: var(--sel-soft);
+  text-decoration: underline;
+}
+
+/* The `@` trigger menu. Anchored to the caret rect the suggestion plugin
+   reports, and rendered inside the editor so it inherits the Sheet's stacking
+   context rather than needing its own portal. */
+.note-deep-link-menu {
+  position: fixed;
+  z-index: 5;
+  max-height: 240px;
+  padding: 4px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.note-deep-link-menu .note-deep-link-option.is-active {
+  background: var(--accent-soft);
+}
+
+.note-deep-link-menu .note-deep-link-option.is-active .note-deep-link-option-label {
+  color: var(--accent);
+}
+
+.note-deep-link-hint {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.note-deep-link-list {
+  max-height: 320px;
+  margin: 10px 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.note-deep-link-option {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  justify-content: space-between;
+  width: 100%;
+  padding: 7px 9px;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.note-deep-link-option:hover {
+  background: var(--hover);
+}
+
+.note-deep-link-option-label {
+  font-size: 12px;
+  color: var(--text);
+}
+
+.note-deep-link-option-detail {
+  flex: none;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.note-deep-link-empty {
+  padding: 14px 9px;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+}

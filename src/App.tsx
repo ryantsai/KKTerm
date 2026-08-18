@@ -44,6 +44,8 @@ import { useItOpsBackendInvalidation } from "./modules/itops/invalidation";
 import { useScreenshotCaptureBridge } from "./modules/screenshots/captureBridge";
 import { useScreenshotsStore } from "./modules/screenshots/state";
 import { useItOpsStore } from "./modules/itops/state";
+import { NoteEditorSheet } from "./modules/notes/NoteEditorSheet";
+import { useNoteBindings } from "./modules/notes/noteBindings";
 import {
   loadSiteTreeCollapsed,
   saveSiteTreeCollapsed,
@@ -170,6 +172,17 @@ function App() {
   function isOverlayPage(page: ActivePage): page is "settings" {
     return page === "settings";
   }
+
+  const noteEditor = useWorkspaceStore((state) => state.noteEditor);
+  const closeNoteEditor = useWorkspaceStore((state) => state.closeNoteEditor);
+  const setNoteBound = useNoteBindings((state) => state.setBound);
+  const loadNoteBindings = useNoteBindings((state) => state.load);
+
+  // Which Connections own a note is read once at startup so every pane toolbar
+  // can render its post-it icon in the bound state without its own query.
+  useEffect(() => {
+    void loadNoteBindings();
+  }, [loadNoteBindings]);
 
   const navigateToPage = useCallback((page: ActivePage) => {
     if (page === "installer" && !supportsInstallerHelper()) {
@@ -858,6 +871,16 @@ function App() {
       <CustomModuleSecretPrompt />
       </Suspense>
       <VideoRecordingDock />
+      {noteEditor ? (
+        <NoteEditorSheet
+          connectionId={noteEditor.connectionId}
+          connectionName={noteEditor.connectionName}
+          onBoundChange={setNoteBound}
+          onClose={closeNoteEditor}
+          showItOps={() => navigateToPage("itops")}
+          showWorkspace={() => navigateToPage("workspace")}
+        />
+      ) : null}
       <TutorialOverlay
         key="tutorial-overlay"
         onDismiss={() => setTutorialHighlightRequest(undefined)}

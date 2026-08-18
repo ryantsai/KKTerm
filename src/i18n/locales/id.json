@@ -5757,5 +5757,83 @@
     "loading": "Memuat…",
     "loadError": "Gagal memuat panduan: {{message}}",
     "tauriRequired": "Panduan hanya tersedia di runtime desktop."
+  },
+  "notes": {
+    "toolbarButton": {
+      "open": "Buka catatan",
+      "create": "Tambah catatan"
+    },
+    "toolbar": {
+      "label": "Format catatan",
+      "undo": "Urungkan",
+      "redo": "Ulangi",
+      "heading1": "Judul 1",
+      "heading2": "Judul 2",
+      "heading3": "Judul 3",
+      "bold": "Tebal",
+      "italic": "Miring",
+      "underline": "Garis bawah",
+      "strikethrough": "Coret",
+      "highlight": "Sorot",
+      "inlineCode": "Kode sebaris",
+      "bulletList": "Daftar berpoin",
+      "orderedList": "Daftar bernomor",
+      "taskList": "Daftar periksa",
+      "blockquote": "Kutipan",
+      "codeBlock": "Blok kode",
+      "horizontalRule": "Pemisah",
+      "insertTable": "Sisipkan tabel",
+      "insertImage": "Sisipkan gambar",
+      "insertLink": "Sisipkan tautan web",
+      "insertDeepLink": "Tautkan ke item KKTerm",
+      "search": "Cari dan ganti"
+    },
+    "search": {
+      "placeholder": "Cari dalam catatan",
+      "replacePlaceholder": "Ganti dengan",
+      "matchCount": "{{position}} dari {{total}}",
+      "previous": "Hasil sebelumnya",
+      "next": "Hasil berikutnya",
+      "caseSensitive": "Cocokkan huruf besar/kecil",
+      "replace": "Ganti",
+      "replaceAll": "Ganti semua"
+    },
+    "editor": {
+      "title": "Catatan — {{name}}",
+      "contentLabel": "Isi catatan",
+      "delete": "Hapus catatan"
+    },
+    "deepLink": {
+      "title": "Tautkan ke item KKTerm",
+      "searchPlaceholder": "Cari koneksi, ruang kerja, dan perangkat rak",
+      "noResults": "Tidak ada item yang cocok.",
+      "kind": {
+        "connection": "Koneksi",
+        "workspace": "Ruang kerja",
+        "rackItem": "Perangkat rak"
+      },
+      "menuLabel": "Saran tautan",
+      "triggerHint": "Ketik @ untuk menautkan koneksi, ruang kerja, atau perangkat rak."
+    },
+    "confirmDelete": {
+      "title": "Hapus catatan ini?",
+      "message": "Catatan untuk {{name}} dan gambarnya dihapus secara permanen."
+    },
+    "confirmDiscard": {
+      "title": "Buang perubahan yang belum disimpan?",
+      "message": "Catatan ini memiliki perubahan yang belum disimpan.",
+      "confirm": "Buang"
+    },
+    "notice": {
+      "saved": "Catatan disimpan untuk {{name}}.",
+      "saveFailed": "Catatan tidak dapat disimpan. {{error}}",
+      "deleted": "Catatan dihapus untuk {{name}}.",
+      "deleteFailed": "Catatan tidak dapat dihapus. {{error}}",
+      "loadFailed": "Catatan tidak dapat dibuka. {{error}}",
+      "imageFailed": "Gambar tidak dapat ditambahkan ke catatan. {{error}}",
+      "deepLinkUnavailable": "Item yang ditautkan sudah tidak ada.",
+      "selectTextForLink": "Pilih teks yang ingin dijadikan tautan.",
+      "selectUrlForLink": "Pilih alamat web yang diawali http:// atau https:// untuk menautkannya."
+    }
   }
 }

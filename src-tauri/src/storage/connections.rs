@@ -1409,6 +1409,20 @@ impl Storage {
             return Err("connection was not found".to_string());
         }
 
+        // `connection_notes.connection_id` is a soft reference rather than a
+        // foreign key (see the table comment in storage.rs), so the note row is
+        // removed explicitly here.
+        connection
+            .execute(
+                "DELETE FROM connection_notes WHERE connection_id = ?1",
+                params![connection_id],
+            )
+            .map_err(to_storage_error)?;
+        drop(connection);
+        // Note images are files rather than rows, so they need their own
+        // cleanup; a Connection must not leave an orphaned image directory.
+        self.remove_note_images_for(&connection_id)?;
+
         Ok(())
     }
 

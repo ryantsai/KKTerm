@@ -1502,6 +1502,9 @@ export interface WorkspaceState {
   };
   /** Open Git Browser overlay target (repo root + label); undefined when closed. */
   gitBrowser?: GitBrowserTarget;
+  /** Open Connection note editor target; undefined when closed. The editor is
+   *  opened from every Connection pane toolbar, so its state is app-global. */
+  noteEditor?: { connectionId: string; connectionName: string };
   /** App-global "left file" remembered for File Compare; undefined when none picked. */
   compareLeft?: CompareEndpoint;
   /** Open File Compare overlay (left + right endpoints); undefined when closed. */
@@ -1628,6 +1631,8 @@ export interface WorkspaceState {
   closeTerminalRecordingsBrowser: () => void;
   openGitBrowser: (repoRoot: string, label: string) => void;
   closeGitBrowser: () => void;
+  openNoteEditor: (connectionId: string, connectionName: string) => void;
+  closeNoteEditor: () => void;
   setCompareLeft: (endpoint: CompareEndpoint) => void;
   clearCompareLeft: () => void;
   openCompareView: (left: CompareEndpoint, right: CompareEndpoint) => void;
@@ -3315,6 +3320,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   closeTerminalRecordingsBrowser: () => set({ terminalRecordingsBrowser: undefined }),
   openGitBrowser: (repoRoot, label) => set({ gitBrowser: { repoRoot, label } }),
   closeGitBrowser: () => set({ gitBrowser: undefined }),
+  openNoteEditor: (connectionId, connectionName) =>
+    set({ noteEditor: { connectionId, connectionName } }),
+  closeNoteEditor: () => set({ noteEditor: undefined }),
   setCompareLeft: (endpoint) => set({ compareLeft: endpoint }),
   clearCompareLeft: () => set({ compareLeft: undefined }),
   openCompareView: (left, right) => set({ compareView: { left, right } }),

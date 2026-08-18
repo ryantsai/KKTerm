@@ -5757,5 +5757,83 @@
     "loading": "Wird geladen…",
     "loadError": "Handbuch konnte nicht geladen werden: {{message}}",
     "tauriRequired": "Das Handbuch ist nur in der Desktop-Laufzeitumgebung verfügbar."
+  },
+  "notes": {
+    "toolbarButton": {
+      "open": "Notiz öffnen",
+      "create": "Notiz hinzufügen"
+    },
+    "toolbar": {
+      "label": "Notizformatierung",
+      "undo": "Rückgängig",
+      "redo": "Wiederholen",
+      "heading1": "Überschrift 1",
+      "heading2": "Überschrift 2",
+      "heading3": "Überschrift 3",
+      "bold": "Fett",
+      "italic": "Kursiv",
+      "underline": "Unterstrichen",
+      "strikethrough": "Durchgestrichen",
+      "highlight": "Hervorheben",
+      "inlineCode": "Inline-Code",
+      "bulletList": "Aufzählung",
+      "orderedList": "Nummerierte Liste",
+      "taskList": "Checkliste",
+      "blockquote": "Zitat",
+      "codeBlock": "Codeblock",
+      "horizontalRule": "Trennlinie",
+      "insertTable": "Tabelle einfügen",
+      "insertImage": "Bild einfügen",
+      "insertLink": "Weblink einfügen",
+      "insertDeepLink": "Mit einem KKTerm-Element verknüpfen",
+      "search": "Suchen und ersetzen"
+    },
+    "search": {
+      "placeholder": "In Notiz suchen",
+      "replacePlaceholder": "Ersetzen durch",
+      "matchCount": "{{position}} von {{total}}",
+      "previous": "Vorheriger Treffer",
+      "next": "Nächster Treffer",
+      "caseSensitive": "Groß-/Kleinschreibung beachten",
+      "replace": "Ersetzen",
+      "replaceAll": "Alle ersetzen"
+    },
+    "editor": {
+      "title": "Notiz – {{name}}",
+      "contentLabel": "Notizinhalt",
+      "delete": "Notiz löschen"
+    },
+    "deepLink": {
+      "title": "Mit einem KKTerm-Element verknüpfen",
+      "searchPlaceholder": "Verbindungen, Arbeitsbereiche und Rack-Geräte suchen",
+      "noResults": "Kein passendes Element.",
+      "kind": {
+        "connection": "Verbindung",
+        "workspace": "Arbeitsbereich",
+        "rackItem": "Rack-Gerät"
+      },
+      "menuLabel": "Verknüpfungsvorschläge",
+      "triggerHint": "Geben Sie @ ein, um eine Verbindung, einen Arbeitsbereich oder ein Rack-Gerät zu verknüpfen."
+    },
+    "confirmDelete": {
+      "title": "Diese Notiz löschen?",
+      "message": "Die Notiz für {{name}} und ihre Bilder werden endgültig gelöscht."
+    },
+    "confirmDiscard": {
+      "title": "Nicht gespeicherte Änderungen verwerfen?",
+      "message": "Diese Notiz enthält Änderungen, die nicht gespeichert wurden.",
+      "confirm": "Verwerfen"
+    },
+    "notice": {
+      "saved": "Notiz für {{name}} gespeichert.",
+      "saveFailed": "Die Notiz konnte nicht gespeichert werden. {{error}}",
+      "deleted": "Notiz für {{name}} gelöscht.",
+      "deleteFailed": "Die Notiz konnte nicht gelöscht werden. {{error}}",
+      "loadFailed": "Die Notiz konnte nicht geöffnet werden. {{error}}",
+      "imageFailed": "Das Bild konnte der Notiz nicht hinzugefügt werden. {{error}}",
+      "deepLinkUnavailable": "Das verknüpfte Element existiert nicht mehr.",
+      "selectTextForLink": "Markieren Sie den Text, der zu einem Link werden soll.",
+      "selectUrlForLink": "Markieren Sie eine Webadresse, die mit http:// oder https:// beginnt, um sie zu verlinken."
+    }
   }
 }

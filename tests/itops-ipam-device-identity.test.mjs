@@ -38,7 +38,7 @@ test("IPAM Address Records persist and import discovered device identity", async
   assert.match(panel, /deviceType: entry\.deviceType/);
   assert.match(panel, /deviceModel: entry\.deviceModel/);
 
-  assert.match(storage, /const SCHEMA_USER_VERSION: i32 = 64;/);
+  assert.match(storage, /const SCHEMA_USER_VERSION: i32 = 65;/);
   assert.match(storage, /device_type\s+TEXT NOT NULL DEFAULT ''/);
   assert.match(storage, /device_model\s+TEXT NOT NULL DEFAULT ''/);
   assert.match(storage, /if stored_version < 53/);

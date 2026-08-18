@@ -118,6 +118,15 @@ fn segment_tables(segment: &str) -> Option<&'static [TableSpec]> {
                 pk: Pk::Composite,
                 fks: &[("connection_id", "connections")],
             },
+            // The note body travels with its Connection so operator
+            // documentation survives a move between machines. Note images are
+            // files under `note-images/`, outside the SQLite bundle; they ride
+            // the full settings backup/export instead.
+            TableSpec {
+                name: "connection_notes",
+                pk: Pk::Composite,
+                fks: &[("connection_id", "connections")],
+            },
         ]),
         "dashboards" => Some(&[
             TableSpec {
@@ -1895,6 +1904,12 @@ mod tests {
                  secret_owner_id TEXT NOT NULL,
                  username TEXT NOT NULL,
                  PRIMARY KEY (connection_id, page_key)
+             );
+             CREATE TABLE connection_notes (
+                 connection_id TEXT PRIMARY KEY,
+                 content_html TEXT NOT NULL,
+                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
              );",
         )
         .expect("schema");

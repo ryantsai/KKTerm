@@ -57,6 +57,11 @@ export type ItOpsDestination =
 export interface ItOpsNavigationRequest {
   siteId?: string;
   destination?: ItOpsDestination;
+  /** Drill straight to one rack item (a Connection note Deep Link target).
+   *  Requires `siteId`; a rack or item that no longer exists falls back to the
+   *  Site destination rather than failing the navigation. */
+  rackId?: string;
+  rackItemId?: string;
 }
 
 /** Where the IT Ops navigator currently is. Mirrored by the Sites tab so the

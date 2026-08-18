@@ -57,6 +57,7 @@ import { classifyEnvironmentShell, prepareLocalStartup } from "../connection-dia
 import { readSshApplyStartupToExistingTmux } from "../connection-dialog/sshStartupScript";
 import { showNativeContextMenu } from "../../../../lib/nativeContextMenu";
 import { nativeMenuIcons } from "../../../../lib/nativeMenuIcons";
+import { NoteToolbarButton } from "../../../notes/NoteToolbarButton";
 import {
   allSyntaxHighlightProfiles,
   findSyntaxHighlightProfile,
@@ -1753,6 +1754,7 @@ function TerminalPaneView({
   const actionsMenuPortalRef = useRef<HTMLDivElement | null>(null);
   const terminalSettings = useWorkspaceStore((state) => state.terminalSettings);
   const sshSettings = useWorkspaceStore((state) => state.sshSettings);
+  const openNoteEditor = useWorkspaceStore((state) => state.openNoteEditor);
   const generalSettings = useWorkspaceStore((state) => state.generalSettings);
   const syncInputEnabled = useWorkspaceStore((state) => state.syncInputEnabled);
   const setSyncInputEnabled = useWorkspaceStore((state) => state.setSyncInputEnabled);
@@ -3216,6 +3218,12 @@ function TerminalPaneView({
           {paneToolbarTitle}
         </span>
         <div className="terminal-pane-actions">
+          {pane.connection ? (
+            <NoteToolbarButton
+              connectionId={pane.connection.id}
+              onOpen={() => openNoteEditor(pane.connection!.id, pane.connection!.name)}
+            />
+          ) : null}
           {pane.connection ? (
             <TmuxSessionTag
               connection={pane.connection}

@@ -1575,6 +1575,65 @@ fn delete_durable_ui_state_by_prefix(
 }
 
 #[tauri::command]
+fn get_connection_note(
+    storage: tauri::State<'_, storage::Storage>,
+    connection_id: String,
+) -> Result<Option<storage::NoteRecord>, String> {
+    storage.get_connection_note(connection_id)
+}
+
+#[tauri::command]
+fn list_connection_note_ids(
+    storage: tauri::State<'_, storage::Storage>,
+) -> Result<Vec<String>, String> {
+    storage.list_connection_note_ids()
+}
+
+#[tauri::command]
+fn save_connection_note(
+    storage: tauri::State<'_, storage::Storage>,
+    connection_id: String,
+    content_html: String,
+) -> Result<storage::NoteRecord, String> {
+    storage.save_connection_note(connection_id, content_html)
+}
+
+#[tauri::command]
+fn delete_connection_note(
+    storage: tauri::State<'_, storage::Storage>,
+    connection_id: String,
+) -> Result<(), String> {
+    storage.delete_connection_note(connection_id)
+}
+
+#[tauri::command]
+fn put_note_asset(
+    storage: tauri::State<'_, storage::Storage>,
+    connection_id: String,
+    mime_type: String,
+    bytes: Vec<u8>,
+) -> Result<String, String> {
+    storage.put_note_asset(connection_id, mime_type, bytes)
+}
+
+#[tauri::command]
+fn get_note_asset(
+    storage: tauri::State<'_, storage::Storage>,
+    asset_id: String,
+) -> Result<Option<storage::NoteAssetRecord>, String> {
+    storage.get_note_asset(asset_id)
+}
+
+#[tauri::command]
+fn prune_note_assets(
+    storage: tauri::State<'_, storage::Storage>,
+    connection_id: String,
+    referenced_ids: Vec<String>,
+) -> Result<u64, String> {
+    storage.prune_note_assets(connection_id, referenced_ids)
+}
+
+#[tauri::command]
 async fn start_github_copilot_device_flow()
 -> Result<github_copilot::GitHubCopilotDeviceFlow, String> {
     github_copilot::start_device_flow().await
@@ -5002,6 +5061,13 @@ pub fn run() {
             set_durable_ui_state,
             delete_durable_ui_state,
             delete_durable_ui_state_by_prefix,
+            get_connection_note,
+            list_connection_note_ids,
+            save_connection_note,
+            delete_connection_note,
+            put_note_asset,
+            get_note_asset,
+            prune_note_assets,
             delete_assistant_chat_thread,
             // ── AI providers, models & CLI backends
             start_github_copilot_device_flow,

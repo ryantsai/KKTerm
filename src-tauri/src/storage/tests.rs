@@ -4357,7 +4357,7 @@ fn full_settings_backup_excludes_custom_modules_and_import_preserves_installed_m
             entry.read_to_string(&mut json).unwrap();
             serde_json::from_str(&json).unwrap()
         };
-        assert_eq!(manifest["version"], 4);
+        assert_eq!(manifest["version"], 5);
         assert_eq!(manifest["customModules"]["included"], false);
         assert!(manifest["sha256"]["kkterm.sqlite3"].is_string());
         assert_eq!(manifest["sha256"].as_object().unwrap().len(), 1);
@@ -6475,4 +6475,322 @@ fn temp_db_path(name: &str) -> PathBuf {
     let dir = std::env::temp_dir().join(format!("kkterm-storage-{name}-{unique}"));
     fs::create_dir_all(&dir).expect("temp directory is created");
     dir.join("kkterm.sqlite3")
+}
+
+#[test]
+fn v65_connection_note_tables_upgrade_and_current_reopen_is_write_free() {
+    let db_path = temp_db_path("connection-notes-v65");
+    {
+        let storage = Storage::open(db_path.clone()).expect("fixture storage opens");
+        storage
+            .with_connection(|connection| {
+                connection
+                    .execute_batch(
+                        "DROP TABLE connection_notes;
+                         PRAGMA user_version = 64;",
+                    )
+                    .map_err(to_storage_error)
+            })
+            .expect("v64 fixture shape is prepared");
+    }
+
+    let upgraded = Storage::open(db_path.clone()).expect("v64 storage upgrades");
+    let schema_version: i64 = upgraded
+        .with_connection(|connection| {
+            for table in ["connection_notes"] {
+                let count: i64 = connection
+                    .query_row(
+                        "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?1",
+                        [table],
+                        |row| row.get(0),
+                    )
+                    .map_err(to_storage_error)?;
+                assert_eq!(count, 1, "{table} should be created by v65");
+            }
+            let version: i32 = connection
+                .pragma_query_value(None, "user_version", |row| row.get(0))
+                .map_err(to_storage_error)?;
+            assert_eq!(version, SCHEMA_USER_VERSION);
+            connection
+                .pragma_query_value(None, "schema_version", |row| row.get(0))
+                .map_err(to_storage_error)
+        })
+        .expect("v65 schema is present");
+    drop(upgraded);
+
+    let reopened = Storage::open(db_path.clone()).expect("current storage reopens");
+    reopened
+        .with_connection(|connection| {
+            let reopened_schema_version: i64 = connection
+                .pragma_query_value(None, "schema_version", |row| row.get(0))
+                .map_err(to_storage_error)?;
+            assert_eq!(reopened_schema_version, schema_version);
+            Ok(())
+        })
+        .expect("current-version reopen leaves the migration write-free");
+    drop(reopened);
+    let _ = fs::remove_file(db_path);
+}
+
+#[test]
+fn connection_note_binds_on_save_and_unbinds_on_delete() {
+    let db_path = temp_db_path("connection-note-lifecycle");
+    let storage = Storage::open(db_path.clone()).expect("storage opens");
+    let connection = create_test_ssh_connection(&storage, "web-01", "10.0.0.5", None);
+
+    // An unsaved Connection has no note: this is what makes the editor open
+    // blank instead of showing a stale body.
+    assert!(
+        storage
+            .get_connection_note(connection.id.clone())
+            .expect("note lookup succeeds")
+            .is_none(),
+        "a Connection starts with no bound note"
+    );
+    assert!(
+        storage
+            .list_connection_note_ids()
+            .expect("note id listing succeeds")
+            .is_empty()
+    );
+
+    let saved = storage
+        .save_connection_note(connection.id.clone(), "<p>restart: systemctl restart api</p>".to_string())
+        .expect("saving binds the note");
+    assert_eq!(saved.connection_id, connection.id);
+    assert_eq!(
+        storage
+            .list_connection_note_ids()
+            .expect("note id listing succeeds"),
+        vec![connection.id.clone()],
+        "a saved note makes its Connection report as note-bearing"
+    );
+
+    let updated = storage
+        .save_connection_note(connection.id.clone(), "<p>vm dir: /srv/vm</p>".to_string())
+        .expect("re-saving updates in place");
+    assert_eq!(updated.content_html, "<p>vm dir: /srv/vm</p>");
+    assert_eq!(
+        updated.created_at, saved.created_at,
+        "editing a note preserves its original creation time"
+    );
+
+    storage
+        .delete_connection_note(connection.id.clone())
+        .expect("deleting unbinds the note");
+    assert!(
+        storage
+            .get_connection_note(connection.id.clone())
+            .expect("note lookup succeeds")
+            .is_none(),
+        "deleting a note unbinds it from the Connection"
+    );
+    // A second delete is the user clicking Delete on an already-noteless
+    // Connection; it must not surface an error.
+    storage
+        .delete_connection_note(connection.id.clone())
+        .expect("deleting a missing note is a no-op");
+
+    let _ = fs::remove_file(db_path);
+}
+
+#[test]
+fn note_images_deduplicate_on_disk_and_are_removed_with_their_note() {
+    let db_path = temp_db_path("connection-note-images");
+    let storage = Storage::open(db_path.clone()).expect("storage opens");
+    let connection = create_test_ssh_connection(&storage, "db-01", "10.0.0.6", None);
+
+    let png = vec![0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x01];
+    let first = storage
+        .put_note_asset(connection.id.clone(), "image/png".to_string(), png.clone())
+        .expect("storing an image succeeds");
+    let second = storage
+        .put_note_asset(connection.id.clone(), "image/png".to_string(), png.clone())
+        .expect("storing the same image succeeds");
+    assert_eq!(
+        first, second,
+        "pasting the same screenshot twice writes one file"
+    );
+
+    // Images are files beside the database, not rows, so the database stays
+    // small and the bytes ride the settings backup.
+    let image_dir = storage.note_images_dir().join(&connection.id);
+    assert!(image_dir.is_dir(), "the Connection gets a note image directory");
+    assert_eq!(
+        fs::read_dir(&image_dir).expect("image dir lists").count(),
+        1,
+        "the deduplicated image is stored once on disk"
+    );
+
+    let fetched = storage
+        .get_note_asset(first.clone())
+        .expect("asset lookup succeeds")
+        .expect("asset exists");
+    assert_eq!(fetched.bytes, png);
+    assert_eq!(fetched.mime_type, "image/png");
+
+    // Images can be pasted before the first save, so storing one creates the
+    // owning note row up front.
+    assert!(
+        storage
+            .get_connection_note(connection.id.clone())
+            .expect("note lookup succeeds")
+            .is_some(),
+        "storing an image creates the owning note row"
+    );
+
+    let other = vec![0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x02];
+    let orphan = storage
+        .put_note_asset(connection.id.clone(), "image/png".to_string(), other)
+        .expect("storing a second image succeeds");
+    let pruned = storage
+        .prune_note_assets(connection.id.clone(), vec![first.clone()])
+        .expect("pruning succeeds");
+    assert_eq!(pruned, 1, "an image dropped during editing is pruned");
+    assert!(
+        storage
+            .get_note_asset(orphan)
+            .expect("asset lookup succeeds")
+            .is_none()
+    );
+    assert!(
+        storage
+            .get_note_asset(first.clone())
+            .expect("asset lookup succeeds")
+            .is_some(),
+        "a still-referenced image survives pruning"
+    );
+
+    storage
+        .delete_connection_note(connection.id.clone())
+        .expect("deleting the note succeeds");
+    assert!(
+        !image_dir.exists(),
+        "deleting a note removes its image directory"
+    );
+    assert!(
+        storage
+            .get_note_asset(first)
+            .expect("asset lookup succeeds")
+            .is_none()
+    );
+
+    let _ = fs::remove_file(db_path);
+}
+
+#[test]
+fn note_image_ids_cannot_escape_the_note_image_directory() {
+    let db_path = temp_db_path("connection-note-image-traversal");
+    let storage = Storage::open(db_path.clone()).expect("storage opens");
+
+    // Asset ids come out of note HTML, which the user can edit, so a traversal
+    // attempt must never resolve to a readable file outside the image root.
+    for hostile in [
+        "../../etc/passwd",
+        "conn/../../secret.png",
+        "conn/..%2Fsecret.png",
+        "no-slash.png",
+    ] {
+        let resolved = storage.get_note_asset(hostile.to_string());
+        assert!(
+            resolved.is_err() || resolved.expect("lookup resolves").is_none(),
+            "{hostile} must not resolve to a readable file"
+        );
+    }
+
+    let _ = fs::remove_file(db_path);
+}
+
+#[test]
+fn deleting_a_connection_cascades_its_note() {
+    let db_path = temp_db_path("connection-note-cascade");
+    let storage = Storage::open(db_path.clone()).expect("storage opens");
+    let connection = create_test_ssh_connection(&storage, "app-01", "10.0.0.7", None);
+    storage
+        .save_connection_note(connection.id.clone(), "<p>keep</p>".to_string())
+        .expect("saving binds the note");
+    storage
+        .put_note_asset(
+            connection.id.clone(),
+            "image/png".to_string(),
+            vec![0x89, 0x50, 0x4E, 0x47],
+        )
+        .expect("storing an image succeeds");
+    let image_dir = storage.note_images_dir().join(&connection.id);
+    assert!(image_dir.is_dir());
+
+    storage
+        .delete_connection(connection.id.clone())
+        .expect("deleting the Connection succeeds");
+
+    assert!(
+        !image_dir.exists(),
+        "a deleted Connection must not leave orphaned note images"
+    );
+
+    assert!(
+        storage
+            .get_connection_note(connection.id.clone())
+            .expect("note lookup succeeds")
+            .is_none(),
+        "a deleted Connection must not leave an orphaned note"
+    );
+
+    // A note may only bind to a Connection that exists, so a stale editor
+    // cannot resurrect the row after the Connection is gone.
+    assert!(
+        storage
+            .save_connection_note(connection.id, "<p>stale</p>".to_string())
+            .is_err(),
+        "saving a note for a deleted Connection is rejected"
+    );
+
+    let _ = fs::remove_file(db_path);
+}
+
+#[test]
+fn note_images_survive_a_settings_export_and_import_round_trip() {
+    // Note images are files rather than rows, so they must be carried by the
+    // settings bundle explicitly; a round trip is what proves it.
+    let source_path = temp_db_path("note-image-backup-source");
+    let export_path = temp_db_path("note-image-backup-export").with_extension("kkbackup");
+    let png = vec![0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x07];
+    let asset_id;
+    {
+        let storage = Storage::open(source_path.clone()).expect("source storage opens");
+        let connection = create_test_ssh_connection(&storage, "web-01", "10.0.0.8", None);
+        storage
+            .save_connection_note(connection.id.clone(), "<p>vm dir: /srv/vm</p>".to_string())
+            .expect("saving binds the note");
+        asset_id = storage
+            .put_note_asset(connection.id.clone(), "image/png".to_string(), png.clone())
+            .expect("storing an image succeeds");
+        storage
+            .export_database(export_path.clone())
+            .expect("settings export succeeds");
+    }
+
+    let target_path = temp_db_path("note-image-backup-target");
+    let target = Storage::open(target_path.clone()).expect("target storage opens");
+    target
+        .import_database_zip(export_path.clone())
+        .expect("settings import succeeds");
+
+    let restored = target
+        .get_note_asset(asset_id.clone())
+        .expect("asset lookup succeeds")
+        .expect("the imported bundle restored the note image");
+    assert_eq!(restored.bytes, png, "note image bytes survive the round trip");
+    assert_eq!(restored.mime_type, "image/png");
+
+    let (connection_id, _) = asset_id.split_once('/').expect("asset id has a connection");
+    let note = target
+        .get_connection_note(connection_id.to_string())
+        .expect("note lookup succeeds")
+        .expect("the note itself survived");
+    assert_eq!(note.content_html, "<p>vm dir: /srv/vm</p>");
+
+    let _ = fs::remove_file(source_path);
+    let _ = fs::remove_file(target_path);
+    let _ = fs::remove_file(export_path);
 }
