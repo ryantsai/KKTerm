@@ -159,8 +159,8 @@ test("Connection Tree supports forced new Tabs from Ctrl-click and Add to menu",
   );
   assert.match(
     storeSource,
-    /function refreshTerminalPaneConnection[\s\S]*?connectionUsesMultiplexer\([\s\S]*?defaultUseTmuxSessions[\s\S]*?tmuxSessionId: tmuxDisabled \? undefined : pane\.tmuxSessionId/,
-    "reactivating an existing SSH tab should clear stale tmux ids when the effective durable Connection setting disables tmux",
+    /function refreshTerminalPaneConnection[\s\S]*?const usesMultiplexer = connectionUsesMultiplexer\([\s\S]*?defaultUseTmuxSessions[\s\S]*?const tmuxSessionId = usesMultiplexer/,
+    "reactivating an existing SSH tab should reconcile tmux ids with the effective durable Connection setting",
   );
   assert.match(
     storeSource,

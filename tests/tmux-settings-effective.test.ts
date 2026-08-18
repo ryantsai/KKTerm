@@ -95,3 +95,36 @@ test("opening pb60 with the tmux default off does not allocate a tmux Pane", () 
   const pane = useWorkspaceStore.getState().tabs[0]?.panes[0];
   assert.equal(pane?.tmuxSessionId, undefined);
 });
+
+test("changing the inherited tmux default updates open Panes for the next reconnect", () => {
+  resetStore();
+  useWorkspaceStore.getState().openConnection(inheritedPb60Connection);
+
+  const disabledSettings = useWorkspaceStore.getState().sshSettings;
+  useWorkspaceStore.getState().setSshSettings({
+    ...disabledSettings,
+    defaultUseTmuxSessions: true,
+  });
+
+  const enabledPane = useWorkspaceStore.getState().tabs[0]?.panes[0];
+  assert.ok(enabledPane?.tmuxSessionId);
+
+  useWorkspaceStore.getState().setSshSettings({
+    ...disabledSettings,
+    defaultUseTmuxSessions: false,
+  });
+
+  const disabledPane = useWorkspaceStore.getState().tabs[0]?.panes[0];
+  assert.equal(disabledPane?.tmuxSessionId, undefined);
+});
+
+test("disabled inherited tmux ignores a stale Child Connection Tab session id", () => {
+  resetStore();
+  useWorkspaceStore.getState().openConnectionInNewTab(inheritedPb60Connection, {
+    childConnectionId: "pb60-child",
+    tmuxSessionId: "kkterm-stale001",
+  });
+
+  const pane = useWorkspaceStore.getState().tabs[0]?.panes[0];
+  assert.equal(pane?.tmuxSessionId, undefined);
+});

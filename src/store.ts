@@ -1100,9 +1100,10 @@ function buildPaneForConnection(
         }
       : connection,
     terminalBackground: options?.terminalBackground,
-    tmuxSessionId:
-      options?.tmuxSessionId ??
-      appendTmuxSessionId(connection, defaultUseTmuxSessions),
+    tmuxSessionId: connectionUsesMultiplexer(connection, defaultUseTmuxSessions)
+      ? options?.tmuxSessionId ??
+        appendTmuxSessionId(connection, defaultUseTmuxSessions)
+      : undefined,
   };
 }
 
@@ -1307,17 +1308,23 @@ function refreshTerminalPaneConnection(
   toolbarTitle = toolbarTitleForConnection(connection),
   defaultUseTmuxSessions = true,
 ): TerminalPane {
-  const tmuxDisabled = !connectionUsesMultiplexer(
+  const usesMultiplexer = connectionUsesMultiplexer(
     connection,
     defaultUseTmuxSessions,
   );
+  const tmuxSessionId = usesMultiplexer
+    ? pane.tmuxSessionId ??
+      (pane.tmuxUnavailable
+        ? undefined
+        : appendTmuxSessionId(connection, defaultUseTmuxSessions))
+    : undefined;
   return {
     ...pane,
     connection,
     title: refreshedPaneTitle(pane, connection),
     toolbarTitle,
-    tmuxSessionId: tmuxDisabled ? undefined : pane.tmuxSessionId,
-    tmuxUnavailable: tmuxDisabled ? undefined : pane.tmuxUnavailable,
+    tmuxSessionId,
+    tmuxUnavailable: usesMultiplexer ? pane.tmuxUnavailable : undefined,
   };
 }
 
@@ -1849,7 +1856,33 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   setDashboardSettings: (dashboardSettings) => set({ dashboardSettings }),
   setTerminalSettings: (terminalSettings) => set({ terminalSettings }),
   setAppearanceSettings: (appearanceSettings) => set({ appearanceSettings }),
-  setSshSettings: (sshSettings) => set({ sshSettings }),
+  setSshSettings: (sshSettings) =>
+    set((state) => {
+      if (
+        state.sshSettings.defaultUseTmuxSessions ===
+        sshSettings.defaultUseTmuxSessions
+      ) {
+        return { sshSettings };
+      }
+      return {
+        sshSettings,
+        tabs: state.tabs.map((tab) => ({
+          ...tab,
+          panes: tab.panes.map((pane) =>
+            isTerminalPane(pane) &&
+            pane.connection?.type === "ssh" &&
+            pane.connection.sshSocksProxyInheritDefaults !== false
+              ? refreshTerminalPaneConnection(
+                  pane,
+                  pane.connection,
+                  pane.toolbarTitle,
+                  sshSettings.defaultUseTmuxSessions,
+                )
+              : pane,
+          ),
+        })),
+      };
+    }),
   setSftpSettings: (sftpSettings) => set({ sftpSettings }),
   setUrlSettings: (urlSettings) => set({ urlSettings }),
   setRdpSettings: (rdpSettings) => set({ rdpSettings }),
