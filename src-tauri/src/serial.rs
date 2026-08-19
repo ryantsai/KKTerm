@@ -23,6 +23,7 @@ pub struct NativeSerialTerminalRequest {
 }
 
 const MACOS_SERIAL_CALLOUT_PREFIX: &str = "/dev/cu.";
+const MACOS_SERIAL_DIAL_IN_PREFIX: &str = "/dev/tty.";
 
 impl NativeSerialTerminal {
     pub fn write_input(&mut self, data: Vec<u8>) -> Result<(), String> {
@@ -75,8 +76,13 @@ fn validate_serial_line(line: &str, macos: bool) -> Result<&str, String> {
     if line.is_empty() {
         return Err("serial line is required".to_string());
     }
-    if macos && !line.starts_with(MACOS_SERIAL_CALLOUT_PREFIX) {
-        return Err("macOS serial lines must use a /dev/cu.* callout device".to_string());
+    // Only the dial-in twin is rejected: it waits for carrier detection. Anything
+    // else stays open to manual entry, including PTY-backed virtual ports such as
+    // /dev/ttys004, which have no dot and no /dev/cu.* counterpart.
+    if macos && line.starts_with(MACOS_SERIAL_DIAL_IN_PREFIX) {
+        return Err(format!(
+            "macOS serial lines must use a {MACOS_SERIAL_CALLOUT_PREFIX}* callout device, not a {MACOS_SERIAL_DIAL_IN_PREFIX}* dial-in device"
+        ));
     }
     Ok(line)
 }
@@ -124,6 +130,9 @@ pub fn start_native_terminal(
                     continue;
                 }
                 Err(error) => {
+                    if let Some(text) = decoder.finish_lossy() {
+                        emit_terminal_output(&app, &request.session_id, text);
+                    }
                     emit_terminal_output(
                         &app,
                         &request.session_id,
@@ -133,6 +142,10 @@ pub fn start_native_terminal(
                 }
             }
         }
+        // Unplugging a USB adapter (or any read error) only ends this thread. Without
+        // the same session-ended signal telnet and SSH emit, the pane keeps reporting
+        // a live Session: keystrokes go nowhere and no reconnect is offered.
+        crate::sessions::emit_terminal_session_ended(&app, &request.session_id);
     });
 
     Ok(NativeSerialTerminal {
@@ -152,6 +165,8 @@ mod tests {
             Ok("/dev/cu.usbserial-A"),
         );
         assert!(validate_serial_line("/dev/tty.usbserial-A", true).is_err());
+        // PTY-backed virtual ports have no dial-in twin to prefer.
+        assert_eq!(validate_serial_line("/dev/ttys004", true), Ok("/dev/ttys004"));
     }
 
     #[test]

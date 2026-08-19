@@ -1804,7 +1804,9 @@ function TerminalPaneView({
   const gitRepo = useGitRepoDetection(gitDetectPath, isLocalTerminal);
   const { t } = useTranslation();
   const isReconnectableTerminal =
-    pane.connection?.type === "ssh" || pane.connection?.type === "telnet";
+    pane.connection?.type === "ssh" ||
+    pane.connection?.type === "telnet" ||
+    pane.connection?.type === "serial";
   const terminalOpacity =
     pane.connection?.terminalOpacity ?? (100 - terminalSettings.defaultTransparency);
   const terminalTransparency = 100 - terminalOpacity;

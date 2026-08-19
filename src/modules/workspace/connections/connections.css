@@ -1708,6 +1708,16 @@ fieldset.connection-specific-options > legend {
   padding-right: 38px;
 }
 
+/* The speed field is type="number" for numeric keypads and validation, but its
+   native stepper would compete with the chevron for the same corner and step a
+   baud rate by 1. The suggestion list is the affordance instead. */
+.serial-combobox > input::-webkit-outer-spin-button,
+.serial-combobox > input::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 .serial-combobox-toggle {
   position: absolute;
   top: 50%;

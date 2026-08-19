@@ -2579,7 +2579,9 @@ export function ConnectionSidebar({
     setTreeContextMenu(null);
     if (
       menu.kind !== "connection" ||
-      (menu.connection.type !== "ssh" && menu.connection.type !== "telnet")
+      (menu.connection.type !== "ssh" &&
+        menu.connection.type !== "telnet" &&
+        menu.connection.type !== "serial")
     ) {
       return;
     }
