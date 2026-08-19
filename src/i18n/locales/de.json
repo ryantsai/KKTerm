@@ -5788,7 +5788,12 @@
       "insertImage": "Bild einfügen",
       "insertLink": "Weblink einfügen",
       "insertDeepLink": "Mit einem KKTerm-Element verknüpfen",
+      "exportMarkdown": "Als Markdown exportieren",
       "search": "Suchen und ersetzen"
+    },
+    "export": {
+      "dialogTitle": "Notiz als Markdown exportieren",
+      "filterName": "Markdown-Datei"
     },
     "search": {
       "placeholder": "In Notiz suchen",
@@ -5839,7 +5844,9 @@
       "deepLinkUnavailable": "Das verknüpfte Element existiert nicht mehr.",
       "selectTextForLink": "Markieren Sie den Text, der zu einem Link werden soll.",
       "selectUrlForLink": "Markieren Sie eine Webadresse, die mit http:// oder https:// beginnt, um sie zu verlinken.",
-      "sendToTerminalUnavailable": "Kein aktiver Terminal-Bereich für diese Verbindung."
+      "sendToTerminalUnavailable": "Kein aktiver Terminal-Bereich für diese Verbindung.",
+      "exported": "Notiz nach {{path}} exportiert.",
+      "exportFailed": "Die Notiz konnte nicht exportiert werden. {{error}}"
     }
   }
 }

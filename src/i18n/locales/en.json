@@ -5788,7 +5788,12 @@
       "insertImage": "Insert image",
       "insertLink": "Insert web link",
       "insertDeepLink": "Link to a KKTerm item",
+      "exportMarkdown": "Export to Markdown",
       "search": "Find and replace"
+    },
+    "export": {
+      "dialogTitle": "Export note to Markdown",
+      "filterName": "Markdown file"
     },
     "search": {
       "placeholder": "Find in note",
@@ -5839,7 +5844,9 @@
       "deepLinkUnavailable": "That linked item no longer exists.",
       "selectTextForLink": "Select the text you want to turn into a link.",
       "selectUrlForLink": "Select a web address starting with http:// or https:// to link it.",
-      "sendToTerminalUnavailable": "No active terminal Pane for this Connection."
+      "sendToTerminalUnavailable": "No active terminal Pane for this Connection.",
+      "exported": "Note exported to {{path}}.",
+      "exportFailed": "The note could not be exported. {{error}}"
     }
   }
 }

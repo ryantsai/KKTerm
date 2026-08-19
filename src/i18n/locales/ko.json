@@ -5788,7 +5788,12 @@
       "insertImage": "이미지 삽입",
       "insertLink": "웹 링크 삽입",
       "insertDeepLink": "KKTerm 항목에 연결",
+      "exportMarkdown": "Markdown으로 내보내기",
       "search": "찾기 및 바꾸기"
+    },
+    "export": {
+      "dialogTitle": "메모를 Markdown으로 내보내기",
+      "filterName": "Markdown 파일"
     },
     "search": {
       "placeholder": "메모에서 찾기",
@@ -5839,7 +5844,9 @@
       "deepLinkUnavailable": "연결된 항목이 더 이상 존재하지 않습니다.",
       "selectTextForLink": "링크로 만들 텍스트를 선택하세요.",
       "selectUrlForLink": "http:// 또는 https://로 시작하는 웹 주소를 선택하면 링크로 만들 수 있습니다.",
-      "sendToTerminalUnavailable": "이 연결에 대한 활성 터미널 창이 없습니다."
+      "sendToTerminalUnavailable": "이 연결에 대한 활성 터미널 창이 없습니다.",
+      "exported": "{{path}}에 메모를 내보냈습니다.",
+      "exportFailed": "메모를 내보내지 못했습니다. {{error}}"
     }
   }
 }

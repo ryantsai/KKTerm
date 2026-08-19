@@ -4948,6 +4948,28 @@ export async function pickAndSaveFile(
   return path;
 }
 
+/**
+ * Show a native save dialog for a Markdown file and write the text to the
+ * chosen path. Returns the chosen path, or null when the user cancels.
+ */
+export async function saveMarkdownFile(
+  defaultFilename: string,
+  contents: string,
+  options: { title: string; filterName: string },
+): Promise<string | null> {
+  if (!isTauriRuntime()) {
+    return null;
+  }
+  const path = await saveDialog({
+    defaultPath: defaultFilename,
+    filters: [{ name: options.filterName, extensions: ["md"] }],
+    title: options.title,
+  });
+  if (typeof path !== "string" || !path) return null;
+  await writeTextFile(path, contents);
+  return path;
+}
+
 export async function selectPngSavePath(defaultFilename: string, title: string) {
   if (!isTauriRuntime()) {
     return null;

@@ -2,10 +2,10 @@
 
 ## AI grep hints
 
-- Keys: `notes.*` (full namespace), `notes.deepLink.menuLabel`, `notes.deepLink.triggerHint`, `notes.toolbarButton.open`, `notes.toolbarButton.create`, `notes.toolbar.label`, `notes.toolbar.insertImage`, `notes.toolbar.insertLink`, `notes.toolbar.insertDeepLink`, `notes.toolbar.search`, `notes.search.placeholder`, `notes.search.replace`, `notes.search.replaceAll`, `notes.editor.title`, `notes.editor.eyebrow`, `notes.editor.delete`, `notes.editor.resizeDialog`, `notes.editor.sendCodeToTerminal`, `notes.deepLink.title`, `notes.deepLink.searchPlaceholder`, `notes.confirmDelete.title`, `notes.confirmDiscard.title`, `notes.notice.saved`, `notes.notice.deleted`, `notes.notice.deepLinkUnavailable`, `notes.notice.sendToTerminalUnavailable`, `dashboard.notesAddTableRow`, `dashboard.notesDeleteTableRow`, `dashboard.notesAddTableColumn`, `dashboard.notesDeleteTableColumn`, `dashboard.notesDeleteTable`
+- Keys: `notes.*` (full namespace), `notes.deepLink.menuLabel`, `notes.deepLink.triggerHint`, `notes.toolbarButton.open`, `notes.toolbarButton.create`, `notes.toolbar.label`, `notes.toolbar.insertImage`, `notes.toolbar.insertLink`, `notes.toolbar.insertDeepLink`, `notes.toolbar.exportMarkdown`, `notes.toolbar.search`, `notes.search.placeholder`, `notes.search.replace`, `notes.search.replaceAll`, `notes.editor.title`, `notes.editor.eyebrow`, `notes.editor.delete`, `notes.editor.resizeDialog`, `notes.editor.sendCodeToTerminal`, `notes.deepLink.title`, `notes.deepLink.searchPlaceholder`, `notes.confirmDelete.title`, `notes.confirmDiscard.title`, `notes.export.dialogTitle`, `notes.export.filterName`, `notes.notice.saved`, `notes.notice.deleted`, `notes.notice.exported`, `notes.notice.deepLinkUnavailable`, `notes.notice.sendToTerminalUnavailable`, `dashboard.notesAddTableRow`, `dashboard.notesDeleteTableRow`, `dashboard.notesAddTableColumn`, `dashboard.notesDeleteTableColumn`, `dashboard.notesDeleteTable`
 - Files: `src/modules/notes/` (editor, toolbar, search, Deep Link picker, asset handling), `src-tauri/src/storage/notes.rs` (backend), entry points in `src/modules/workspace/connections/terminal/TerminalWorkspace.tsx`, `src/modules/workspace/connections/sftp/SftpWorkspace.tsx`, `src/modules/workspace/connections/webview/WebViewWorkspace.tsx`, and `src/modules/workspace/connections/remote-desktop/RemoteDesktopWorkspace.tsx`
-- Topics: per-Connection notes, rich text, WYSIWYG, HTML notes, note images, note search, find and replace in a note, Deep Links from a note, @ mention trigger, note deletion
-- Synonyms: "sticky note on a connection", "server notes", "document a host", "remember the restart command", "where is the VM directory", "annotate a connection", "at mention", "link to another connection from a note"
+- Topics: per-Connection notes, rich text, WYSIWYG, HTML notes, note images, note search, find and replace in a note, Deep Links from a note, @ mention trigger, note deletion, exporting a note to Markdown
+- Synonyms: "sticky note on a connection", "server notes", "document a host", "remember the restart command", "where is the VM directory", "annotate a connection", "at mention", "link to another connection from a note", "save a note as a .md file", "share a note with someone outside KKTerm"
 - Tutorial targets: `notes.openNote`
 
 ## What a Connection Note is
@@ -75,6 +75,14 @@ Hovering an image reveals a drag handle at its bottom-right corner; dragging it 
 Because they are ordinary files in the app data directory, note images are included in the settings export (`.kkbackup`) and in the startup backup ZIP snapshots, and they are restored with them — see [17-data-backup-secrets.md](17-data-backup-secrets.md). Deleting a note or its Connection deletes that Connection's image directory.
 
 > Selective export bundles carry the note **text** with the Connection, but not its images: the selective bundle format is a database extract and does not include app-data files. Use the full settings export to move notes with their images.
+
+## Exporting a note to Markdown
+
+`notes.toolbar.exportMarkdown`, at the right end of the toolbar next to the search control, writes the note to a `.md` file of your choosing (`notes.export.dialogTitle`, `notes.export.filterName`). It exports **what is currently in the editor**, saved or not, so a note you are still drafting can be handed off; the export changes nothing about the note itself and never binds an unsaved note to its Connection. The default file name is the Connection's name. On success `notes.notice.exported` reports the path in the Status Bar; a failed write reports `notes.notice.exportFailed`. The control is unavailable while the note is loading and on an empty note.
+
+Headings, bold/italic, inline code, code blocks, quotes, dividers, bulleted and numbered lists, checklists (as `- [x]` / `- [ ]`), strikethrough, web links, and tables (as GitHub-flavored Markdown tables) all carry over. Underline and `notes.toolbar.highlight` have no Markdown equivalent and export as plain text. A Deep Link chip exports as the label it displays, because the link only resolves inside KKTerm.
+
+**Images are not exported.** They stay where they live — files under `note-images/` in the app data directory — and the Markdown keeps a reference to each one in that directory instead, in the form `![alt](note-images/<connection id>/<file>.png)`. The exported file therefore records which image was where without copying the bytes; to move notes together with their images, use the full settings export described in [17-data-backup-secrets.md](17-data-backup-secrets.md).
 
 ## Links
 

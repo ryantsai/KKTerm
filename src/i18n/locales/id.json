@@ -5788,7 +5788,12 @@
       "insertImage": "Sisipkan gambar",
       "insertLink": "Sisipkan tautan web",
       "insertDeepLink": "Tautkan ke item KKTerm",
+      "exportMarkdown": "Ekspor ke Markdown",
       "search": "Cari dan ganti"
+    },
+    "export": {
+      "dialogTitle": "Ekspor catatan ke Markdown",
+      "filterName": "Berkas Markdown"
     },
     "search": {
       "placeholder": "Cari dalam catatan",
@@ -5839,7 +5844,9 @@
       "deepLinkUnavailable": "Item yang ditautkan sudah tidak ada.",
       "selectTextForLink": "Pilih teks yang ingin dijadikan tautan.",
       "selectUrlForLink": "Pilih alamat web yang diawali http:// atau https:// untuk menautkannya.",
-      "sendToTerminalUnavailable": "Tidak ada panel terminal aktif untuk koneksi ini."
+      "sendToTerminalUnavailable": "Tidak ada panel terminal aktif untuk koneksi ini.",
+      "exported": "Catatan diekspor ke {{path}}.",
+      "exportFailed": "Catatan tidak dapat diekspor. {{error}}"
     }
   }
 }

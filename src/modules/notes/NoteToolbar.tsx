@@ -3,8 +3,8 @@ import { useTranslation } from "react-i18next";
 import { useEditorState } from "@tiptap/react";
 import type { Editor } from "@tiptap/react";
 import {
-  Code, ImagePlus, Link, List, ListChecks, Minus, Palette, RotateCcw, RotateCw,
-  Search, TableProperties, Waypoints,
+  Code, Download, ImagePlus, Link, List, ListChecks, Minus, Palette, RotateCcw,
+  RotateCw, Search, TableProperties, Waypoints,
 } from "../../lib/reicon";
 
 interface NoteToolbarProps {
@@ -14,6 +14,9 @@ interface NoteToolbarProps {
   onInsertImage: () => void;
   onInsertLink: () => void;
   onInsertDeepLink: () => void;
+  onExportMarkdown: () => void;
+  /** False while the note is loading or has nothing worth writing to a file. */
+  canExport: boolean;
   readOnly: boolean;
 }
 
@@ -63,6 +66,8 @@ export function NoteToolbar({
   onInsertImage,
   onInsertLink,
   onInsertDeepLink,
+  onExportMarkdown,
+  canExport,
   readOnly,
 }: NoteToolbarProps) {
   const { t } = useTranslation();
@@ -259,6 +264,13 @@ export function NoteToolbar({
 
       <span className="note-tool-spacer" />
 
+      <ToolButton
+        disabled={!canExport}
+        label={t("notes.toolbar.exportMarkdown")}
+        onClick={onExportMarkdown}
+      >
+        <Download size={size} />
+      </ToolButton>
       <ToolButton
         active={searchOpen}
         label={t("notes.toolbar.search")}

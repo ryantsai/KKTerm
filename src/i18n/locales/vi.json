@@ -5788,7 +5788,12 @@
       "insertImage": "Chèn hình ảnh",
       "insertLink": "Chèn liên kết web",
       "insertDeepLink": "Liên kết tới một mục KKTerm",
+      "exportMarkdown": "Xuất sang Markdown",
       "search": "Tìm và thay thế"
+    },
+    "export": {
+      "dialogTitle": "Xuất ghi chú sang Markdown",
+      "filterName": "Tệp Markdown"
     },
     "search": {
       "placeholder": "Tìm trong ghi chú",
@@ -5839,7 +5844,9 @@
       "deepLinkUnavailable": "Mục được liên kết không còn tồn tại.",
       "selectTextForLink": "Hãy chọn đoạn văn bản bạn muốn biến thành liên kết.",
       "selectUrlForLink": "Hãy chọn một địa chỉ web bắt đầu bằng http:// hoặc https:// để tạo liên kết.",
-      "sendToTerminalUnavailable": "Không có bảng terminal đang hoạt động cho kết nối này."
+      "sendToTerminalUnavailable": "Không có bảng terminal đang hoạt động cho kết nối này.",
+      "exported": "Đã xuất ghi chú sang {{path}}.",
+      "exportFailed": "Không thể xuất ghi chú. {{error}}"
     }
   }
 }

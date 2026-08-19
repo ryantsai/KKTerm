@@ -5788,7 +5788,12 @@
       "insertImage": "Inserir imagem",
       "insertLink": "Inserir link da web",
       "insertDeepLink": "Vincular a um item do KKTerm",
+      "exportMarkdown": "Exportar para Markdown",
       "search": "Localizar e substituir"
+    },
+    "export": {
+      "dialogTitle": "Exportar nota para Markdown",
+      "filterName": "Arquivo Markdown"
     },
     "search": {
       "placeholder": "Localizar na nota",
@@ -5839,7 +5844,9 @@
       "deepLinkUnavailable": "O item vinculado não existe mais.",
       "selectTextForLink": "Selecione o texto que deseja transformar em link.",
       "selectUrlForLink": "Selecione um endereço da web começando com http:// ou https:// para vinculá-lo.",
-      "sendToTerminalUnavailable": "Nenhum painel de terminal ativo para esta conexão."
+      "sendToTerminalUnavailable": "Nenhum painel de terminal ativo para esta conexão.",
+      "exported": "Nota exportada para {{path}}.",
+      "exportFailed": "Não foi possível exportar a nota. {{error}}"
     }
   }
 }
