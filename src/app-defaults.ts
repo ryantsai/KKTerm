@@ -155,6 +155,7 @@ export const defaultRdpSettings: RdpSettings = {
   driveSelection: { mode: "all" },
   sharedLocalFolders: [],
   sharedLocalFolder: "",
+  redirectPrinters: false,
   bitmapCache: true,
   performanceProfile: "balanced",
   remoteResolution: "automatic",

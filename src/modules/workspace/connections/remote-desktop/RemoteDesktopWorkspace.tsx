@@ -1981,6 +1981,7 @@ function resolveRdpOptions(
       overrides.sharedLocalFolder ?? defaults.sharedLocalFolder,
     ),
     sharedLocalFolder: undefined,
+    redirectPrinters: overrides.redirectPrinters ?? defaults.redirectPrinters,
     bitmapCache: overrides.bitmapCache ?? defaults.bitmapCache,
     performanceProfile: overrides.performanceProfile ?? defaults.performanceProfile,
     remoteResolution: overrides.remoteResolution ?? defaults.remoteResolution,

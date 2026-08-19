@@ -1,4 +1,4 @@
-import { Clipboard, HardDrive, Layers, Monitor, Palette, Scaling, Settings2, Shield, Zap } from "../../../../lib/reicon";
+import { Clipboard, HardDrive, Layers, Monitor, Palette, Printer, Scaling, Settings2, Shield, Zap } from "../../../../lib/reicon";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { technicalInputProps } from "../../../../lib/inputBehavior";
@@ -126,6 +126,12 @@ export function RdpConnectionOptions({
     ? normalizeRdpSharedLocalFolders(rdpSettings.sharedLocalFolders, rdpSettings.sharedLocalFolder)
     : sharedLocalFolders;
   const usesWindowsDriveMapping = isWindowsPlatform();
+  // Printer redirection is an RDP ActiveX property; the macOS/Linux IronRDP
+  // canvas path has no printer backend, so the toggle would be a no-op there.
+  const supportsPrinterRedirection = isWindowsPlatform();
+  const effectiveRedirectPrinters = rdpInheritsSettingsDefaults
+    ? rdpSettings.redirectPrinters
+    : initialConnection?.rdpOptions?.redirectPrinters ?? rdpSettings.redirectPrinters;
 
   return (
       <fieldset className="connection-session-fields connection-specific-options">
@@ -250,6 +256,26 @@ export function RdpConnectionOptions({
                 />
               ) : null}
             </div>
+            {supportsPrinterRedirection ? (
+              <label className="connection-session-toggle">
+                <Printer className="option-glyph" size={17} aria-hidden />
+                <span>{t("settings.rdpRedirectPrinters")}</span>
+                <input
+                  disabled={rdpInheritsSettingsDefaults}
+                  name="rdpRedirectPrinters"
+                  type="checkbox"
+                  defaultChecked={initialConnection?.rdpOptions?.redirectPrinters ?? rdpSettings.redirectPrinters}
+                />
+              </label>
+            ) : (
+              // Keep a Windows-only override intact when the Connection is edited
+              // on macOS or Linux, where the toggle is not rendered.
+              <input
+                name="rdpRedirectPrinters"
+                type="hidden"
+                value={effectiveRedirectPrinters ? "on" : ""}
+              />
+            )}
             <label className="connection-session-toggle">
               <Layers className="option-glyph" size={17} aria-hidden />
               <span>{t("settings.bitmapCache")}</span>

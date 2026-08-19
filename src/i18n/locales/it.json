@@ -3067,6 +3067,8 @@
     "rdpRedirectClipboardHint": "Consenti la copia e incolla degli appunti tra KKTerm e il desktop remoto.",
     "rdpRedirectDrives": "Reindirizzamento unità",
     "rdpRedirectDrivesHint": "Esponi le unità locali alla sessione desktop remoto.",
+    "rdpRedirectPrinters": "Reindirizzamento stampanti",
+    "rdpRedirectPrintersHint": "Esponi le stampanti locali alla sessione desktop remoto. Il server remoto richiede Easy Print di Desktop remoto o un driver di stampa corrispondente.",
     "rdpShareLocalFolders": "Condividi cartelle locali",
     "rdpShareLocalFoldersHint": "Espone le cartelle locali selezionate alla sessione desktop remoto.",
     "rdpAllLocalDrives": "Tutte le unità locali",

@@ -3067,6 +3067,8 @@
     "rdpRedirectClipboardHint": "KKTerm とリモートデスクトップ間でのクリップボードのコピー＆ペーストを許可します。",
     "rdpRedirectDrives": "ドライブリダイレクト",
     "rdpRedirectDrivesHint": "ローカルドライブをリモートデスクトップセッションに公開します。",
+    "rdpRedirectPrinters": "プリンターリダイレクト",
+    "rdpRedirectPrintersHint": "ローカルプリンターをリモートデスクトップセッションに公開します。リモートサーバーにはリモートデスクトップ Easy Print または対応するプリンタードライバーが必要です。",
     "rdpShareLocalFolders": "ローカルフォルダーを共有",
     "rdpShareLocalFoldersHint": "選択したローカルフォルダーをリモートデスクトップセッションに公開します。",
     "rdpAllLocalDrives": "すべてのローカルドライブ",

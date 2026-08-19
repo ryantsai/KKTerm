@@ -3067,6 +3067,8 @@
     "rdpRedirectClipboardHint": "Izinkan salin dan tempel clipboard antara KKTerm dan desktop jarak jauh.",
     "rdpRedirectDrives": "Pengalihan drive",
     "rdpRedirectDrivesHint": "Ekspos drive lokal ke sesi desktop jarak jauh.",
+    "rdpRedirectPrinters": "Pengalihan printer",
+    "rdpRedirectPrintersHint": "Ekspos printer lokal ke sesi desktop jarak jauh. Server jarak jauh memerlukan Remote Desktop Easy Print atau driver printer yang sesuai.",
     "rdpShareLocalFolders": "Bagikan folder lokal",
     "rdpShareLocalFoldersHint": "Membuka folder lokal terpilih ke sesi desktop jarak jauh.",
     "rdpAllLocalDrives": "Semua drive lokal",

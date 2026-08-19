@@ -4832,6 +4832,7 @@ fn rdp_and_vnc_settings_round_trip_through_settings_table() {
     assert!(!rdp_defaults.administrative_session);
     assert!(rdp_defaults.redirect_clipboard);
     assert!(!rdp_defaults.redirect_drives);
+    assert!(!rdp_defaults.redirect_printers);
     assert_eq!(rdp_defaults.drive_selection, RdpDriveSelection::All);
     assert!(rdp_defaults.shared_local_folders.is_empty());
 
@@ -4850,6 +4851,7 @@ fn rdp_and_vnc_settings_round_trip_through_settings_table() {
                 "/tmp/rdp-share".to_string(),
             ],
             shared_local_folder: None,
+            redirect_printers: true,
             bitmap_cache: true,
             performance_profile: "quality".to_string(),
             remote_resolution: "automatic".to_string(),
@@ -4862,6 +4864,7 @@ fn rdp_and_vnc_settings_round_trip_through_settings_table() {
     assert!(rdp_reloaded.administrative_session);
     assert!(!rdp_reloaded.redirect_clipboard);
     assert!(rdp_reloaded.redirect_drives);
+    assert!(rdp_reloaded.redirect_printers);
     assert_eq!(
         rdp_reloaded.drive_selection,
         RdpDriveSelection::Selected {
@@ -5028,6 +5031,7 @@ fn remote_desktop_connection_options_are_optional_protocol_overrides() {
                     "/tmp/share-b".to_string(),
                 ]),
                 shared_local_folder: None,
+                redirect_printers: Some(true),
                 bitmap_cache: Some(true),
                 performance_profile: Some("quality".to_string()),
                 remote_resolution: None,
@@ -5093,6 +5097,7 @@ fn remote_desktop_connection_options_are_optional_protocol_overrides() {
                 drive_selection: Some(RdpDriveSelection::All),
                 shared_local_folders: Some(vec!["/tmp/share-a".to_string()]),
                 shared_local_folder: None,
+                redirect_printers: Some(true),
                 bitmap_cache: Some(true),
                 performance_profile: Some("quality".to_string()),
                 remote_resolution: None,
@@ -5144,6 +5149,13 @@ fn remote_desktop_connection_options_are_optional_protocol_overrides() {
             .as_ref()
             .and_then(|options| options.view_mode.as_deref()),
         Some("actualSize")
+    );
+    assert_eq!(
+        saved_rdp
+            .rdp_options
+            .as_ref()
+            .and_then(|options| options.redirect_printers),
+        Some(true)
     );
 }
 
