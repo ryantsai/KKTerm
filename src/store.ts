@@ -567,6 +567,13 @@ function mutateQuickCommandsAtTarget(
   };
 }
 
+// `sshSocksProxyInheritDefaults` is a historical field name: in the SSH dialog it
+// is the shared Default Options switch covering proxy, tmux, compression, and
+// legacy protocols alike. While it is on, saving snapshots the current
+// `defaultUseTmuxSessions` into `useTmuxSessions`, so that stored value goes stale
+// the moment Settings change and the live default has to win instead. Compression
+// and old protocols encode "inherit" as `undefined`; tmux cannot, because
+// `undefined` already means "on" for Connections predating the switch.
 export function connectionUsesTmux(
   connection: Connection,
   defaultUseTmuxSessions = true,
