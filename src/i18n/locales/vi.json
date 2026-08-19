@@ -3067,6 +3067,8 @@
     "rdpRedirectClipboardHint": "Cho phép sao chép và dán clipboard giữa KKTerm và desktop từ xa.",
     "rdpRedirectDrives": "Chuyển hướng ổ đĩa",
     "rdpRedirectDrivesHint": "Hiển thị ổ đĩa cục bộ cho phiên desktop từ xa.",
+    "rdpRedirectPrinters": "Chuyển hướng máy in",
+    "rdpRedirectPrintersHint": "Hiển thị máy in cục bộ cho phiên desktop từ xa. Máy chủ từ xa cần Remote Desktop Easy Print hoặc trình điều khiển máy in tương ứng.",
     "rdpShareLocalFolders": "Chia sẻ các thư mục cục bộ",
     "rdpShareLocalFoldersHint": "Hiển thị các thư mục cục bộ đã chọn cho phiên màn hình từ xa.",
     "rdpAllLocalDrives": "Tất cả ổ đĩa cục bộ",

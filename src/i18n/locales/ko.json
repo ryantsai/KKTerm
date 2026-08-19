@@ -3067,6 +3067,8 @@
     "rdpRedirectClipboardHint": "KKTerm과 원격 데스크톱 간 클립보드 복사 및 붙여넣기를 허용합니다.",
     "rdpRedirectDrives": "드라이브 리다이렉션",
     "rdpRedirectDrivesHint": "로컬 드라이브를 원격 데스크톱 세션에 노출합니다.",
+    "rdpRedirectPrinters": "프린터 리다이렉션",
+    "rdpRedirectPrintersHint": "로컬 프린터를 원격 데스크톱 세션에 노출합니다. 원격 서버에 원격 데스크톱 Easy Print 또는 해당 프린터 드라이버가 필요합니다.",
     "rdpShareLocalFolders": "로컬 폴더 공유",
     "rdpShareLocalFoldersHint": "선택된 로컬 폴더를 원격 데스크톱 세션에 노출합니다.",
     "rdpAllLocalDrives": "모든 로컬 드라이브",

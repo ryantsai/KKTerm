@@ -3067,6 +3067,8 @@
     "rdpRedirectClipboardHint": "Erlauben Sie das Kopieren und Einfügen der Zwischenablage zwischen KKTerm und dem Remotedesktop.",
     "rdpRedirectDrives": "Laufwerk-Weiterleitung",
     "rdpRedirectDrivesHint": "Lokale Laufwerke für die Remotedesktop-Sitzung freigeben.",
+    "rdpRedirectPrinters": "Druckerumleitung",
+    "rdpRedirectPrintersHint": "Lokale Drucker für die Remotedesktop-Sitzung freigeben. Der Remoteserver benötigt Remotedesktop-Easy-Print oder einen passenden Druckertreiber.",
     "rdpShareLocalFolders": "Lokale Ordner freigeben",
     "rdpShareLocalFoldersHint": "Stellt ausgewählte lokale Ordner für die Remotedesktop-Sitzung bereit.",
     "rdpAllLocalDrives": "Alle lokalen Laufwerke",

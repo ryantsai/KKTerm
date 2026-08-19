@@ -3067,6 +3067,8 @@
     "rdpRedirectClipboardHint": "Allow clipboard copy and paste between KKTerm and the remote desktop.",
     "rdpRedirectDrives": "Drive redirection",
     "rdpRedirectDrivesHint": "Expose local drives to the remote desktop session.",
+    "rdpRedirectPrinters": "Printer redirection",
+    "rdpRedirectPrintersHint": "Expose local printers to the remote desktop session. The remote server needs Remote Desktop Easy Print or a matching printer driver.",
     "rdpShareLocalFolders": "Share local folders",
     "rdpShareLocalFoldersHint": "Expose selected local folders to the remote desktop session.",
     "rdpAllLocalDrives": "All local drives",

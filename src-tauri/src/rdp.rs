@@ -314,6 +314,8 @@ mod platform {
         redirect_drives: bool,
         #[serde(default)]
         drive_selection: RdpDriveSelection,
+        #[serde(default)]
+        redirect_printers: bool,
         #[serde(default = "default_true")]
         bitmap_cache: bool,
         #[serde(default = "default_performance_profile")]
@@ -2222,14 +2224,14 @@ mod platform {
         let _ = set_property_bool(&advanced, "NegotiateSecurityLayer", true);
         // Match mstsc's Local Resources defaults closely enough for embedded sessions:
         // Windows shortcut replacements (including Ctrl+Alt+End for SAS) must be routed to
-        // the remote host, while higher-risk device redirects stay disabled until KKTerm
-        // exposes durable Connection settings for them.
+        // the remote host, while device redirects without a durable Connection setting
+        // (ports, smart cards) stay disabled until KKTerm exposes one for them.
         let _ = set_property_bool(&advanced, "RedirectClipboard", options.redirect_clipboard);
         let redirect_all_drives =
             options.redirect_drives && matches!(&options.drive_selection, RdpDriveSelection::All);
         let _ = set_property_bool(&advanced, "RedirectDrives", redirect_all_drives);
         let _ = set_property_bool(&advanced, "RedirectPorts", false);
-        let _ = set_property_bool(&advanced, "RedirectPrinters", false);
+        let _ = set_property_bool(&advanced, "RedirectPrinters", options.redirect_printers);
         let _ = set_property_bool(&advanced, "RedirectSmartCards", false);
         let _ = set_property_i32(&advanced, "SasSequence", RDP_STANDARD_SAS_SEQUENCE);
         let _ = set_property_i32(&advanced, "HotKeyCtrlAltDel", VK_END_KEY as i32);
@@ -2277,6 +2279,7 @@ mod platform {
                 redirect_clipboard: true,
                 redirect_drives: false,
                 drive_selection: RdpDriveSelection::All,
+                redirect_printers: false,
                 bitmap_cache: true,
                 performance_profile: default_performance_profile(),
                 remote_resolution: default_remote_resolution(),
@@ -4701,6 +4704,8 @@ mod platform {
         pub administrative_session: bool,
         pub redirect_clipboard: bool,
         pub redirect_drives: bool,
+        #[serde(default)]
+        pub redirect_printers: bool,
         pub bitmap_cache: bool,
         pub performance_profile: String,
         #[serde(default)]

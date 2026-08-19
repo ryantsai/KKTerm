@@ -3067,6 +3067,8 @@
     "rdpRedirectClipboardHint": "อนุญาตให้คัดลอกและวางคลิปบอร์ดระหว่าง KKTerm และเดสก์ท็อประยะไกล",
     "rdpRedirectDrives": "การเปลี่ยนเส้นทางไดรฟ์",
     "rdpRedirectDrivesHint": "เปิดเผยไดรฟ์ภายในเครื่องไปยังเซสชันเดสก์ท็อประยะไกล",
+    "rdpRedirectPrinters": "การเปลี่ยนเส้นทางเครื่องพิมพ์",
+    "rdpRedirectPrintersHint": "เปิดเผยเครื่องพิมพ์ภายในเครื่องไปยังเซสชันเดสก์ท็อประยะไกล เซิร์ฟเวอร์ระยะไกลต้องมี Remote Desktop Easy Print หรือไดรเวอร์เครื่องพิมพ์ที่ตรงกัน",
     "rdpShareLocalFolders": "แชร์โฟลเดอร์ในเครื่อง",
     "rdpShareLocalFoldersHint": "เปิดเผยโฟลเดอร์ในเครื่องที่เลือกให้เซสชันเดสก์ท็อประยะไกล",
     "rdpAllLocalDrives": "ไดรว์ในเครื่องทั้งหมด",

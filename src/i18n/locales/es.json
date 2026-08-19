@@ -3067,6 +3067,8 @@
     "rdpRedirectClipboardHint": "Permite copiar y pegar entre KKTerm y el escritorio remoto.",
     "rdpRedirectDrives": "Redirección de unidades",
     "rdpRedirectDrivesHint": "Expone las unidades locales a la sesión de escritorio remoto.",
+    "rdpRedirectPrinters": "Redirección de impresoras",
+    "rdpRedirectPrintersHint": "Expone las impresoras locales a la sesión de escritorio remoto. El servidor remoto necesita Easy Print de Escritorio remoto o un controlador de impresora compatible.",
     "rdpShareLocalFolders": "Compartir carpetas locales",
     "rdpShareLocalFoldersHint": "Expone las carpetas locales seleccionadas a la sesión de escritorio remoto.",
     "rdpAllLocalDrives": "Todas las unidades locales",

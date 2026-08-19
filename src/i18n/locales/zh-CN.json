@@ -3067,6 +3067,8 @@
     "rdpRedirectClipboardHint": "允许在 KKTerm 和远程桌面之间复制和粘贴剪贴板内容。",
     "rdpRedirectDrives": "驱动器重定向",
     "rdpRedirectDrivesHint": "将本地驱动器公开给远程桌面会话。",
+    "rdpRedirectPrinters": "打印机重定向",
+    "rdpRedirectPrintersHint": "将本地打印机公开给远程桌面会话。远程服务器需要远程桌面 Easy Print 或匹配的打印机驱动程序。",
     "rdpShareLocalFolders": "共享本地文件夹",
     "rdpShareLocalFoldersHint": "将选定的本地文件夹公开给远程桌面会话。",
     "rdpAllLocalDrives": "所有本地驱动器",

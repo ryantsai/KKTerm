@@ -24,6 +24,9 @@ export function RdpSettings() {
   const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
   const [draft, setDraft] = useState<RdpSettingsModel>(() => normalizeRdpResolutionSettings(rdpSettings));
   const usesWindowsDriveMapping = isWindowsPlatform();
+  // Printer redirection is an RDP ActiveX property; the macOS/Linux IronRDP
+  // canvas path has no printer backend, so the toggle would be a no-op there.
+  const supportsPrinterRedirection = isWindowsPlatform();
   const hasChanges = JSON.stringify(draft) !== JSON.stringify(normalizeRdpResolutionSettings(rdpSettings));
 
   useEffect(() => {
@@ -187,6 +190,18 @@ export function RdpSettings() {
               />
             ) : null}
           </div>
+          {supportsPrinterRedirection ? (
+            <label className="settings-toggle-row">
+              <ToggleSwitch
+                checked={draft.redirectPrinters}
+                onChange={(checked) => setDraft((settings) => ({ ...settings, redirectPrinters: checked }))}
+              />
+              <span>
+                <strong>{t("settings.rdpRedirectPrinters")}</strong>
+                <small>{t("settings.rdpRedirectPrintersHint")}</small>
+              </span>
+            </label>
+          ) : null}
           <label className="settings-toggle-row">
             <ToggleSwitch
               checked={draft.bitmapCache}

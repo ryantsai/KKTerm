@@ -3067,6 +3067,8 @@
     "rdpRedirectClipboardHint": "Autoriser la copie et le collage du presse-papiers entre KKTerm et le bureau distant.",
     "rdpRedirectDrives": "Redirection de lecteurs",
     "rdpRedirectDrivesHint": "Exposer les lecteurs locaux à la session de bureau distant.",
+    "rdpRedirectPrinters": "Redirection des imprimantes",
+    "rdpRedirectPrintersHint": "Exposer les imprimantes locales à la session de bureau distant. Le serveur distant nécessite Easy Print de Bureau à distance ou un pilote d'imprimante correspondant.",
     "rdpShareLocalFolders": "Partager des dossiers locaux",
     "rdpShareLocalFoldersHint": "Expose les dossiers locaux sélectionnés à la session de bureau distant.",
     "rdpAllLocalDrives": "Tous les lecteurs locaux",

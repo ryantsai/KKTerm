@@ -4947,6 +4947,9 @@ function ConnectionDialog({
               driveSelection: rdpDriveSelection,
               sharedLocalFolders: rdpSharedLocalFolders,
               sharedLocalFolder: undefined,
+              redirectPrinters: inheritRdpDefaults
+                ? rdpSettings.redirectPrinters
+                : form.get("rdpRedirectPrinters") === "on",
               bitmapCache: inheritRdpDefaults
                 ? rdpSettings.bitmapCache
                 : form.get("rdpBitmapCache") === "on",

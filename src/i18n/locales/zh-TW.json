@@ -3067,6 +3067,8 @@
     "rdpRedirectClipboardHint": "允許在 KKTerm 和遠端桌面之間複製和貼上剪貼簿內容。",
     "rdpRedirectDrives": "磁碟機重新導向",
     "rdpRedirectDrivesHint": "將本機磁碟機公開給遠端桌面工作階段。",
+    "rdpRedirectPrinters": "印表機重新導向",
+    "rdpRedirectPrintersHint": "將本機印表機公開給遠端桌面工作階段。遠端伺服器需要遠端桌面 Easy Print 或對應的印表機驅動程式。",
     "rdpShareLocalFolders": "分享本機資料夾",
     "rdpShareLocalFoldersHint": "將選取的本機資料夾公開給遠端桌面工作階段。",
     "rdpAllLocalDrives": "所有本機磁碟機",
