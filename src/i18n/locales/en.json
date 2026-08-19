@@ -5791,6 +5791,11 @@
       "exportMarkdown": "Export to Markdown",
       "search": "Find and replace"
     },
+    "linkPopover": {
+      "textLabel": "Text",
+      "urlLabel": "URL",
+      "urlPlaceholder": "https://example.com"
+    },
     "export": {
       "dialogTitle": "Export note to Markdown",
       "filterName": "Markdown file"
@@ -5822,12 +5827,18 @@
         "workspace": "Workspace",
         "rackItem": "Rack device"
       },
+      "linkedItem": "linked item",
       "menuLabel": "Link suggestions",
       "triggerHint": "Type @ to link a connection, workspace, or rack device."
     },
     "confirmDelete": {
       "title": "Delete this note?",
       "message": "The note for {{name}} and its images are deleted permanently."
+    },
+    "confirmDeepLink": {
+      "title": "Open linked item?",
+      "message": "Closing this note will open “{{target}}”. Any unsaved changes will be lost. Do you want to continue?",
+      "confirm": "Open"
     },
     "confirmDiscard": {
       "title": "Discard unsaved changes?",
@@ -5844,6 +5855,7 @@
       "deepLinkUnavailable": "That linked item no longer exists.",
       "selectTextForLink": "Select the text you want to turn into a link.",
       "selectUrlForLink": "Select a web address starting with http:// or https:// to link it.",
+      "invalidLinkUrl": "Enter a web address starting with http:// or https://.",
       "sendToTerminalUnavailable": "No active terminal Pane for this Connection.",
       "exported": "Note exported to {{path}}.",
       "exportFailed": "The note could not be exported. {{error}}"

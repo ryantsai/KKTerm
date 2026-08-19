@@ -5791,6 +5791,11 @@
       "exportMarkdown": "Als Markdown exportieren",
       "search": "Suchen und ersetzen"
     },
+    "linkPopover": {
+      "textLabel": "Text",
+      "urlLabel": "URL",
+      "urlPlaceholder": "https://example.com"
+    },
     "export": {
       "dialogTitle": "Notiz als Markdown exportieren",
       "filterName": "Markdown-Datei"
@@ -5822,12 +5827,18 @@
         "workspace": "Arbeitsbereich",
         "rackItem": "Rack-Gerät"
       },
+      "linkedItem": "verknüpftes Element",
       "menuLabel": "Verknüpfungsvorschläge",
       "triggerHint": "Geben Sie @ ein, um eine Verbindung, einen Arbeitsbereich oder ein Rack-Gerät zu verknüpfen."
     },
     "confirmDelete": {
       "title": "Diese Notiz löschen?",
       "message": "Die Notiz für {{name}} und ihre Bilder werden endgültig gelöscht."
+    },
+    "confirmDeepLink": {
+      "title": "Verknüpftes Element öffnen?",
+      "message": "Beim Schließen dieser Notiz wird „{{target}}“ geöffnet. Alle nicht gespeicherten Änderungen gehen verloren. Möchtest du fortfahren?",
+      "confirm": "Öffnen"
     },
     "confirmDiscard": {
       "title": "Nicht gespeicherte Änderungen verwerfen?",
@@ -5844,6 +5855,7 @@
       "deepLinkUnavailable": "Das verknüpfte Element existiert nicht mehr.",
       "selectTextForLink": "Markieren Sie den Text, der zu einem Link werden soll.",
       "selectUrlForLink": "Markieren Sie eine Webadresse, die mit http:// oder https:// beginnt, um sie zu verlinken.",
+      "invalidLinkUrl": "Geben Sie eine Webadresse ein, die mit http:// oder https:// beginnt.",
       "sendToTerminalUnavailable": "Kein aktiver Terminal-Bereich für diese Verbindung.",
       "exported": "Notiz nach {{path}} exportiert.",
       "exportFailed": "Die Notiz konnte nicht exportiert werden. {{error}}"

@@ -5,6 +5,7 @@ import type {
   PointerEvent as ReactPointerEvent,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { getMarkRange } from "@tiptap/core";
 import { EditorContent, ReactNodeViewRenderer, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
@@ -24,6 +25,8 @@ import { getPaneRenderer, writeInputToPane } from "../workspace/paneRegistry";
 import type { Connection, ConnectionType } from "../../types";
 import { invokeCommand, saveMarkdownFile } from "../../lib/tauri";
 import { NoteToolbar } from "./NoteToolbar";
+import { NoteLinkPopover } from "./NoteLinkPopover";
+import type { NoteLinkPopoverState } from "./NoteLinkPopover";
 import { NoteSearchBar } from "./NoteSearchBar";
 import { NoteDeepLinkPicker } from "./NoteDeepLinkPicker";
 import { NoteDeepLinkMenu } from "./NoteDeepLinkMenu";
@@ -84,6 +87,17 @@ function isTerminalConnectionType(type: ConnectionType) {
   return type === "local" || type === "ssh" || type === "telnet" || type === "serial";
 }
 
+function normalizeNoteWebUrl(value: string): string | null {
+  const trimmed = value.trim();
+  if (!/^https?:\/\//i.test(trimmed)) return null;
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.protocol === "http:" || parsed.protocol === "https:" ? trimmed : null;
+  } catch {
+    return null;
+  }
+}
+
 interface NoteEditorSheetProps {
   connectionId: string;
   connectionName: string;
@@ -112,6 +126,7 @@ export function NoteEditorSheet({
   const [imageUploadCount, setImageUploadCount] = useState(0);
   const [searchOpen, setSearchOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [linkPopover, setLinkPopover] = useState<NoteLinkPopoverState | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -122,7 +137,7 @@ export function NoteEditorSheet({
   const objectUrlsRef = useRef<string[]>([]);
   const originalAssetIdsRef = useRef<string[]>([]);
   const pendingImageUploadsRef = useRef<Set<Promise<void>>>(new Set());
-  const pendingDeepLinkRef = useRef<NoteDeepLink | null>(null);
+  const pendingDeepLinkRef = useRef<{ link: NoteDeepLink; label: string } | null>(null);
   const closingRef = useRef(false);
   // Resolved once per open; NoteEditorSheet only receives an id/name pair, so
   // the header icon and the code-block Terminal gate both need this fetch.
@@ -274,7 +289,7 @@ export function NoteEditorSheet({
         if (!note) {
           setBound(false);
           originalAssetIdsRef.current = [];
-          editor.commands.setContent("");
+          editor.commands.setContent("", { emitUpdate: false });
         } else {
           setBound(true);
           const sanitizedHtml = sanitizeNoteHtml(note.contentHtml);
@@ -285,7 +300,7 @@ export function NoteEditorSheet({
             return;
           }
           objectUrlsRef.current.push(...objectUrls);
-          editor.commands.setContent(html);
+          editor.commands.setContent(html, { emitUpdate: false });
         }
         // Loading content marks the editor updated; the note is not user-dirty
         // until they actually type.
@@ -444,7 +459,11 @@ export function NoteEditorSheet({
       if (!link) return;
       event.preventDefault();
       if (dirty || pendingImageUploadsRef.current.size > 0) {
-        pendingDeepLinkRef.current = link;
+        const targetLabel =
+          chip.getAttribute("data-note-label")?.trim() ||
+          chip.textContent?.trim() ||
+          t("notes.deepLink.linkedItem");
+        pendingDeepLinkRef.current = { link, label: targetLabel };
         setConfirmDiscard(true);
         return;
       }
@@ -524,6 +543,7 @@ export function NoteEditorSheet({
   }
 
   function requestClose() {
+    setLinkPopover(null);
     pendingDeepLinkRef.current = null;
     if (dirty || pendingImageUploadsRef.current.size > 0) {
       setConfirmDiscard(true);
@@ -536,7 +556,7 @@ export function NoteEditorSheet({
     const pendingDeepLink = pendingDeepLinkRef.current;
     pendingDeepLinkRef.current = null;
     if (pendingDeepLink) {
-      const navigated = await navigateNoteDeepLink(pendingDeepLink, showWorkspace, showItOps);
+      const navigated = await navigateNoteDeepLink(pendingDeepLink.link, showWorkspace, showItOps);
       if (!navigated) {
         setConfirmDiscard(false);
         showStatusBarNotice(t("notes.notice.deepLinkUnavailable"), { tone: "warning" });
@@ -577,31 +597,209 @@ export function NoteEditorSheet({
     setDirty(true);
   }
 
-  function insertLink() {
+  function linkRangeAtPosition(position: number) {
+    if (!editor) return null;
+    const markType = editor.state.schema.marks.link;
+    if (!markType) return null;
+    const maxPosition = editor.state.doc.content.size;
+    for (const candidate of [position, position + 1, position - 1]) {
+      const clamped = Math.max(0, Math.min(candidate, maxPosition));
+      const range = getMarkRange(editor.state.doc.resolve(clamped), markType);
+      if (range) return range;
+    }
+    return null;
+  }
+
+  function linkRangeAtElement(element: HTMLAnchorElement) {
+    if (!editor) return null;
+    const nodes: Node[] = [element];
+    if (element.firstChild) nodes.push(element.firstChild);
+    for (const node of nodes) {
+      try {
+        const range = linkRangeAtPosition(editor.view.posAtDOM(node, 0));
+        if (range) return range;
+      } catch {
+        // A stale DOM node can disappear between the event and the position
+        // lookup. The click simply falls back to the editor's normal behavior.
+      }
+    }
+    return null;
+  }
+
+  function linkHrefAtRange(range: { from: number; to: number }) {
+    if (!editor) return "";
+    const markType = editor.state.schema.marks.link;
+    if (!markType) return "";
+    const maxPosition = editor.state.doc.content.size;
+    for (const candidate of [range.from, range.from + 1, range.to - 1]) {
+      const clamped = Math.max(0, Math.min(candidate, maxPosition));
+      const mark = editor.state.doc
+        .resolve(clamped)
+        .marks()
+        .find((item) => item.type === markType);
+      if (typeof mark?.attrs.href === "string") return mark.attrs.href;
+    }
+    return "";
+  }
+
+  function clampLinkPopoverPosition(left: number, top: number) {
+    if (typeof window === "undefined") return { left, top };
+    const margin = 8;
+    const width = 340;
+    const height = 220;
+    const maxLeft = Math.max(margin, window.innerWidth - width - margin);
+    const nextLeft = Math.min(Math.max(margin, left), maxLeft);
+    const nextTop =
+      top + height <= window.innerHeight - margin
+        ? Math.max(margin, top)
+        : Math.max(margin, top - height - margin);
+    return { left: nextLeft, top: nextTop };
+  }
+
+  function selectionLinkPopoverPosition(range: { from: number; to: number }) {
+    if (!editor) return { left: 8, top: 8 };
+    try {
+      const start = editor.view.coordsAtPos(range.from);
+      const end = editor.view.coordsAtPos(range.to);
+      return clampLinkPopoverPosition(
+        Math.min(start.left, end.left),
+        Math.max(start.bottom, end.bottom) + 8,
+      );
+    } catch {
+      return clampLinkPopoverPosition(8, 8);
+    }
+  }
+
+  function openLinkEditor(
+    range: { from: number; to: number },
+    href = "",
+    existing = false,
+    position?: { left: number; top: number },
+  ) {
     if (!editor) return;
-    const previous = editor.getAttributes("link").href ?? "";
-    // The note editor is app-owned UI, so the URL prompt is a dialog field
-    // rather than window.prompt (AGENTS.md forbids native prompts).
-    const selectionEmpty = editor.state.selection.empty;
-    if (selectionEmpty && !previous) {
+    const text = editor.state.doc.textBetween(range.from, range.to, " ");
+    if (!text.trim()) {
       showStatusBarNotice(t("notes.notice.selectTextForLink"), { tone: "info" });
       return;
     }
-    if (previous) {
-      editor.chain().focus().unsetLink().run();
+    setLinkPopover({
+      from: range.from,
+      to: range.to,
+      text,
+      href,
+      existing,
+      position: position
+        ? clampLinkPopoverPosition(position.left, position.top)
+        : selectionLinkPopoverPosition(range),
+    });
+  }
+
+  function insertLink() {
+    if (!editor) return;
+    const selection = editor.state.selection;
+    let range = { from: selection.from, to: selection.to };
+    let href: string;
+    if (selection.empty) {
+      const markType = editor.state.schema.marks.link;
+      const linkedRange = markType ? getMarkRange(selection.$from, markType) : undefined;
+      if (!linkedRange) {
+        showStatusBarNotice(t("notes.notice.selectTextForLink"), { tone: "info" });
+        return;
+      }
+      range = linkedRange;
+      href = linkHrefAtRange(range);
+    } else {
+      href = editor.getAttributes("link").href ?? linkHrefAtRange(range);
+      if (!href) {
+        const selectedText = editor.state.doc.textBetween(range.from, range.to, " ");
+        if (normalizeNoteWebUrl(selectedText)) href = selectedText;
+      }
+    }
+    openLinkEditor(range, href, Boolean(href));
+  }
+
+  function applyNoteLink(text: string, href: string) {
+    if (!editor || !linkPopover) return false;
+    const normalizedHref = normalizeNoteWebUrl(href);
+    if (!normalizedHref) {
+      showStatusBarNotice(t("notes.notice.invalidLinkUrl"), { tone: "info" });
+      return false;
+    }
+    const linkText = text.trim();
+    if (!linkText) {
+      showStatusBarNotice(t("notes.notice.selectTextForLink"), { tone: "info" });
+      return false;
+    }
+
+    const command = editor.chain().focus().setTextSelection({
+      from: linkPopover.from,
+      to: linkPopover.to,
+    });
+    const applied =
+      linkText === linkPopover.text
+        ? command.setLink({ href: normalizedHref }).run()
+        : command
+            .insertContentAt(
+              { from: linkPopover.from, to: linkPopover.to },
+              {
+                type: "text",
+                text: linkText,
+                marks: [{ type: "link", attrs: { href: normalizedHref } }],
+              },
+            )
+            .run();
+    if (applied) setDirty(true);
+    return applied;
+  }
+
+  function removeNoteLink() {
+    if (!editor || !linkPopover) return;
+    const removed = editor
+      .chain()
+      .focus()
+      .setTextSelection({ from: linkPopover.from, to: linkPopover.to })
+      .unsetLink()
+      .run();
+    if (removed) setDirty(true);
+  }
+
+  function linkAnchorFromEvent(event: ReactMouseEvent<HTMLDivElement>) {
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    return target?.closest<HTMLAnchorElement>("a[href]") ?? null;
+  }
+
+  function handleNoteLinkClick(event: ReactMouseEvent<HTMLDivElement>) {
+    if (!editor || loading) return;
+    const anchor = linkAnchorFromEvent(event);
+    if (!anchor) return;
+    const range = linkRangeAtElement(anchor);
+    if (!range) return;
+    event.preventDefault();
+    event.stopPropagation();
+    editor.chain().focus().setTextSelection(range).run();
+    const rect = anchor.getBoundingClientRect();
+    openLinkEditor(range, anchor.getAttribute("href") ?? "", true, {
+      left: rect.left,
+      top: rect.bottom + 8,
+    });
+  }
+
+  function handleNoteLinkContextMenu(event: ReactMouseEvent<HTMLDivElement>) {
+    if (!editor || loading) return;
+    const anchor = linkAnchorFromEvent(event);
+    if (anchor) {
+      const range = linkRangeAtElement(anchor);
+      if (!range) return;
+      event.preventDefault();
+      event.stopPropagation();
+      editor.chain().focus().setTextSelection(range).run();
+      openLinkEditor(range, anchor.getAttribute("href") ?? "", true, {
+        left: event.clientX,
+        top: event.clientY + 8,
+      });
       return;
     }
-    const text = editor.state.doc.textBetween(
-      editor.state.selection.from,
-      editor.state.selection.to,
-    );
-    // A selected URL links to itself; anything else needs an explicit target,
-    // which the Deep Link picker covers for in-app destinations.
-    if (!/^https?:\/\//i.test(text)) {
-      showStatusBarNotice(t("notes.notice.selectUrlForLink"), { tone: "info" });
-      return;
-    }
-    editor.chain().focus().setLink({ href: text }).run();
+    handleTableContextMenu(event);
   }
 
   // The table toolbar button only inserts a fixed 3x3 grid; row/column editing
@@ -729,10 +927,17 @@ export function NoteEditorSheet({
                 <EditorContent
                   className="note-editor-content"
                   editor={editor}
-                  onContextMenu={handleTableContextMenu}
+                  onClick={handleNoteLinkClick}
+                  onContextMenu={handleNoteLinkContextMenu}
                 />
               </NoteCodeBlockSendContext.Provider>
               <NoteDeepLinkMenu onPick={pickSuggestion} state={suggestion} />
+              <NoteLinkPopover
+                state={linkPopover}
+                onCancel={() => setLinkPopover(null)}
+                onApply={applyNoteLink}
+                onRemove={removeNoteLink}
+              />
               <input
                 ref={fileInputRef}
                 type="file"
@@ -784,9 +989,13 @@ export function NoteEditorSheet({
         <ConfirmSheet
           tone="warn"
           zClassName="kk-qc-subdialog"
-          title={t("notes.confirmDiscard.title")}
-          message={t("notes.confirmDiscard.message")}
-          confirmLabel={t("notes.confirmDiscard.confirm")}
+          title={t(pendingDeepLinkRef.current ? "notes.confirmDeepLink.title" : "notes.confirmDiscard.title")}
+          message={
+            pendingDeepLinkRef.current
+              ? t("notes.confirmDeepLink.message", { target: pendingDeepLinkRef.current.label })
+              : t("notes.confirmDiscard.message")
+          }
+          confirmLabel={t(pendingDeepLinkRef.current ? "notes.confirmDeepLink.confirm" : "notes.confirmDiscard.confirm")}
           cancelLabel={t("common.cancel")}
           onConfirm={() => void discardAndClose()}
           onCancel={() => {

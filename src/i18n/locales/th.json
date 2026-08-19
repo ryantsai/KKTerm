@@ -5791,6 +5791,11 @@
       "exportMarkdown": "ส่งออกเป็น Markdown",
       "search": "ค้นหาและแทนที่"
     },
+    "linkPopover": {
+      "textLabel": "ข้อความ",
+      "urlLabel": "URL",
+      "urlPlaceholder": "https://example.com"
+    },
     "export": {
       "dialogTitle": "ส่งออกบันทึกเป็น Markdown",
       "filterName": "ไฟล์ Markdown"
@@ -5822,12 +5827,18 @@
         "workspace": "พื้นที่ทำงาน",
         "rackItem": "อุปกรณ์ในแร็ค"
       },
+      "linkedItem": "รายการที่เชื่อมโยง",
       "menuLabel": "คำแนะนำลิงก์",
       "triggerHint": "พิมพ์ @ เพื่อลิงก์การเชื่อมต่อ พื้นที่ทำงาน หรืออุปกรณ์ในแร็ค"
     },
     "confirmDelete": {
       "title": "ลบบันทึกนี้หรือไม่",
       "message": "บันทึกของ {{name}} และรูปภาพจะถูกลบอย่างถาวร"
+    },
+    "confirmDeepLink": {
+      "title": "เปิดรายการที่เชื่อมโยงหรือไม่",
+      "message": "เมื่อปิดบันทึกนี้ ระบบจะเปิด “{{target}}” การเปลี่ยนแปลงที่ยังไม่ได้บันทึกจะหายไปทั้งหมด ต้องการดำเนินการต่อหรือไม่",
+      "confirm": "เปิด"
     },
     "confirmDiscard": {
       "title": "ละทิ้งการเปลี่ยนแปลงที่ยังไม่บันทึกหรือไม่",
@@ -5844,6 +5855,7 @@
       "deepLinkUnavailable": "รายการที่ลิงก์ไว้ไม่มีอยู่แล้ว",
       "selectTextForLink": "เลือกข้อความที่ต้องการทำเป็นลิงก์",
       "selectUrlForLink": "เลือกที่อยู่เว็บที่ขึ้นต้นด้วย http:// หรือ https:// เพื่อทำเป็นลิงก์",
+      "invalidLinkUrl": "ป้อนที่อยู่เว็บที่ขึ้นต้นด้วย http:// หรือ https://",
       "sendToTerminalUnavailable": "ไม่มีแผงเทอร์มินัลที่ใช้งานอยู่สำหรับการเชื่อมต่อนี้",
       "exported": "ส่งออกบันทึกไปที่ {{path}} แล้ว",
       "exportFailed": "ไม่สามารถส่งออกบันทึกได้ {{error}}"

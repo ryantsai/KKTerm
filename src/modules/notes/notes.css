@@ -92,6 +92,12 @@
   gap: 6px;
 }
 
+.note-editor-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
 /* Pinned to the head's top-left corner. `.kk-dlg-head` is already
    `position: relative`, so this sits beside the centered title without
    pushing it — the title stays centered on the dialog, not the remaining
@@ -133,6 +139,55 @@
   align-items: center;
   padding: 8px 12px;
   border-bottom: 1px solid var(--hairline);
+}
+
+.note-link-popover {
+  position: fixed;
+  z-index: 140;
+  width: 340px;
+  padding: 12px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+
+.note-link-popover-form {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.note-link-popover-field {
+  display: grid;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--text-muted);
+}
+
+.note-link-popover-field .kk-inp {
+  width: 100%;
+  min-width: 0;
+  height: 30px;
+}
+
+.note-link-popover-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 3px;
+}
+
+.note-link-popover-actions .note-link-popover-remove {
+  margin-right: auto;
+}
+
+.note-link-popover-actions .kk-btn {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
 }
 
 .note-tool {

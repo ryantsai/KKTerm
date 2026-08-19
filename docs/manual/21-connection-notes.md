@@ -88,7 +88,7 @@ Headings, bold/italic, inline code, code blocks, quotes, dividers, bulleted and 
 
 Two different link controls exist, and they do different things:
 
-- `notes.toolbar.insertLink` — an ordinary **web link**. Select text that is an `http://` or `https://` address and press the control. With a link already selected, the control removes it. Selecting non-URL text produces the `notes.notice.selectUrlForLink` hint.
+- `notes.toolbar.insertLink` — an ordinary **web link**. Select any text and press the control to open the in-editor link form (`notes.linkPopover.textLabel` and `notes.linkPopover.urlLabel`), then enter the `http://` or `https://` destination. Clicking an existing web link opens the same form; right-clicking it does the same so both the visible text and destination can be edited. `common.remove` removes an existing link without removing its text. An unsupported destination reports `notes.notice.invalidLinkUrl` in the Status Bar.
 - `notes.toolbar.insertDeepLink` — a **Deep Link** to another element inside KKTerm.
 
 ### Deep Links
@@ -108,7 +108,7 @@ Both list three kinds of target:
 
 Connections from **every** Workspace are listed, not just the active one, so a note can point anywhere in the app.
 
-Clicking a Deep Link chip inside a note follows it and closes the note editor. If the note has unsaved changes, `notes.confirmDiscard.title` asks before closing. A chip keeps the label captured when it was inserted, so a note still reads sensibly after the target is renamed; following a chip whose target has since been deleted reports `notes.notice.deepLinkUnavailable`, leaves the note open, and flattens that one chip into plain text (its captured label) in place, since a permanently dead-looking colored chip is worse than the plain text it displays. This edit is unsaved like any other — `notes.confirmDiscard.title` still guards closing without saving.
+Clicking a Deep Link chip inside a note follows it and closes the note editor. If the note has unsaved changes, the target-specific confirmation `notes.confirmDeepLink.title` / `notes.confirmDeepLink.message` names the destination and explains that any unsaved changes will be lost; `notes.confirmDeepLink.confirm` continues to the target. Cancel keeps the note open. Closing the editor by another path still uses `notes.confirmDiscard.title`. A chip keeps the label captured when it was inserted, so a note still reads sensibly after the target is renamed; following a chip whose target has since been deleted reports `notes.notice.deepLinkUnavailable`, leaves the note open, and flattens that one chip into plain text (its captured label) in place, since a permanently dead-looking colored chip is worse than the plain text it displays. This edit is unsaved like any other — `notes.confirmDiscard.title` still guards closing without saving.
 
 ## Searching inside a note
 

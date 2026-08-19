@@ -5791,6 +5791,11 @@
       "exportMarkdown": "Xuất sang Markdown",
       "search": "Tìm và thay thế"
     },
+    "linkPopover": {
+      "textLabel": "Văn bản",
+      "urlLabel": "URL",
+      "urlPlaceholder": "https://example.com"
+    },
     "export": {
       "dialogTitle": "Xuất ghi chú sang Markdown",
       "filterName": "Tệp Markdown"
@@ -5822,12 +5827,18 @@
         "workspace": "Không gian làm việc",
         "rackItem": "Thiết bị tủ rack"
       },
+      "linkedItem": "mục được liên kết",
       "menuLabel": "Gợi ý liên kết",
       "triggerHint": "Nhập @ để liên kết một kết nối, không gian làm việc hoặc thiết bị tủ rack."
     },
     "confirmDelete": {
       "title": "Xóa ghi chú này?",
       "message": "Ghi chú của {{name}} và các hình ảnh trong đó sẽ bị xóa vĩnh viễn."
+    },
+    "confirmDeepLink": {
+      "title": "Mở mục được liên kết?",
+      "message": "Đóng ghi chú này sẽ mở “{{target}}”. Mọi thay đổi chưa lưu sẽ bị mất. Bạn có muốn tiếp tục không?",
+      "confirm": "Mở"
     },
     "confirmDiscard": {
       "title": "Bỏ các thay đổi chưa lưu?",
@@ -5844,6 +5855,7 @@
       "deepLinkUnavailable": "Mục được liên kết không còn tồn tại.",
       "selectTextForLink": "Hãy chọn đoạn văn bản bạn muốn biến thành liên kết.",
       "selectUrlForLink": "Hãy chọn một địa chỉ web bắt đầu bằng http:// hoặc https:// để tạo liên kết.",
+      "invalidLinkUrl": "Nhập địa chỉ web bắt đầu bằng http:// hoặc https://.",
       "sendToTerminalUnavailable": "Không có bảng terminal đang hoạt động cho kết nối này.",
       "exported": "Đã xuất ghi chú sang {{path}}.",
       "exportFailed": "Không thể xuất ghi chú. {{error}}"

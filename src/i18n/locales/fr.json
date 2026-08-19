@@ -5791,6 +5791,11 @@
       "exportMarkdown": "Exporter en Markdown",
       "search": "Rechercher et remplacer"
     },
+    "linkPopover": {
+      "textLabel": "Texte",
+      "urlLabel": "URL",
+      "urlPlaceholder": "https://example.com"
+    },
     "export": {
       "dialogTitle": "Exporter la note en Markdown",
       "filterName": "Fichier Markdown"
@@ -5822,12 +5827,18 @@
         "workspace": "Espace de travail",
         "rackItem": "Équipement de baie"
       },
+      "linkedItem": "élément lié",
       "menuLabel": "Suggestions de liens",
       "triggerHint": "Tapez @ pour lier une connexion, un espace de travail ou un équipement de baie."
     },
     "confirmDelete": {
       "title": "Supprimer cette note ?",
       "message": "La note de {{name}} et ses images sont supprimées définitivement."
+    },
+    "confirmDeepLink": {
+      "title": "Ouvrir l’élément lié ?",
+      "message": "La fermeture de cette note ouvrira « {{target}} ». Toutes les modifications non enregistrées seront perdues. Voulez-vous continuer ?",
+      "confirm": "Ouvrir"
     },
     "confirmDiscard": {
       "title": "Abandonner les modifications non enregistrées ?",
@@ -5844,6 +5855,7 @@
       "deepLinkUnavailable": "L'élément lié n'existe plus.",
       "selectTextForLink": "Sélectionnez le texte à transformer en lien.",
       "selectUrlForLink": "Sélectionnez une adresse web commençant par http:// ou https:// pour la lier.",
+      "invalidLinkUrl": "Saisissez une adresse web commençant par http:// ou https://.",
       "sendToTerminalUnavailable": "Aucun volet terminal actif pour cette connexion.",
       "exported": "Note exportée vers {{path}}.",
       "exportFailed": "La note n'a pas pu être exportée. {{error}}"

@@ -5791,6 +5791,11 @@
       "exportMarkdown": "Ekspor ke Markdown",
       "search": "Cari dan ganti"
     },
+    "linkPopover": {
+      "textLabel": "Teks",
+      "urlLabel": "URL",
+      "urlPlaceholder": "https://example.com"
+    },
     "export": {
       "dialogTitle": "Ekspor catatan ke Markdown",
       "filterName": "Berkas Markdown"
@@ -5822,12 +5827,18 @@
         "workspace": "Ruang kerja",
         "rackItem": "Perangkat rak"
       },
+      "linkedItem": "item tertaut",
       "menuLabel": "Saran tautan",
       "triggerHint": "Ketik @ untuk menautkan koneksi, ruang kerja, atau perangkat rak."
     },
     "confirmDelete": {
       "title": "Hapus catatan ini?",
       "message": "Catatan untuk {{name}} dan gambarnya dihapus secara permanen."
+    },
+    "confirmDeepLink": {
+      "title": "Buka item tertaut?",
+      "message": "Menutup catatan ini akan membuka “{{target}}”. Semua perubahan yang belum disimpan akan hilang. Lanjutkan?",
+      "confirm": "Buka"
     },
     "confirmDiscard": {
       "title": "Buang perubahan yang belum disimpan?",
@@ -5844,6 +5855,7 @@
       "deepLinkUnavailable": "Item yang ditautkan sudah tidak ada.",
       "selectTextForLink": "Pilih teks yang ingin dijadikan tautan.",
       "selectUrlForLink": "Pilih alamat web yang diawali http:// atau https:// untuk menautkannya.",
+      "invalidLinkUrl": "Masukkan alamat web yang diawali http:// atau https://.",
       "sendToTerminalUnavailable": "Tidak ada panel terminal aktif untuk koneksi ini.",
       "exported": "Catatan diekspor ke {{path}}.",
       "exportFailed": "Catatan tidak dapat diekspor. {{error}}"

@@ -5791,6 +5791,11 @@
       "exportMarkdown": "Markdown にエクスポート",
       "search": "検索と置換"
     },
+    "linkPopover": {
+      "textLabel": "テキスト",
+      "urlLabel": "URL",
+      "urlPlaceholder": "https://example.com"
+    },
     "export": {
       "dialogTitle": "メモを Markdown にエクスポート",
       "filterName": "Markdown ファイル"
@@ -5822,12 +5827,18 @@
         "workspace": "ワークスペース",
         "rackItem": "ラック機器"
       },
+      "linkedItem": "リンク先の項目",
       "menuLabel": "リンクの候補",
       "triggerHint": "@ を入力すると、接続・ワークスペース・ラック機器にリンクできます。"
     },
     "confirmDelete": {
       "title": "このメモを削除しますか？",
       "message": "{{name}} のメモと画像は完全に削除されます。"
+    },
+    "confirmDeepLink": {
+      "title": "リンク先の項目を開きますか？",
+      "message": "このノートを閉じると「{{target}}」を開きます。保存していない変更はすべて失われます。続行しますか？",
+      "confirm": "開く"
     },
     "confirmDiscard": {
       "title": "保存していない変更を破棄しますか？",
@@ -5844,6 +5855,7 @@
       "deepLinkUnavailable": "リンク先の項目は存在しません。",
       "selectTextForLink": "リンクにするテキストを選択してください。",
       "selectUrlForLink": "http:// または https:// で始まる Web アドレスを選択するとリンクにできます。",
+      "invalidLinkUrl": "http:// または https:// で始まるウェブアドレスを入力してください。",
       "sendToTerminalUnavailable": "この接続に対するアクティブなターミナルペインがありません。",
       "exported": "メモを {{path}} にエクスポートしました。",
       "exportFailed": "メモをエクスポートできませんでした。{{error}}"

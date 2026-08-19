@@ -192,3 +192,39 @@ test("the @ trigger uses the maintained suggestion plugin for IME safety", () =>
   const menu = read("src/modules/notes/NoteDeepLinkMenu.tsx");
   assert.doesNotMatch(menu, /createPortal|DialogPortal/);
 });
+
+test("Deep Link navigation uses a target-specific close confirmation", () => {
+  const editor = read("src/modules/notes/NoteEditorSheet.tsx");
+
+  // A dirty Deep Link closes the editor after confirmation, so the prompt must
+  // describe the close/open transition instead of falsely asserting that the
+  // note currently has unsaved changes.
+  assert.match(editor, /data-note-label/);
+  assert.match(editor, /editor\.commands\.setContent\("", \{ emitUpdate: false \}\)/);
+  assert.match(editor, /editor\.commands\.setContent\(html, \{ emitUpdate: false \}\)/);
+  assert.match(editor, /pendingDeepLinkRef\.current = \{ link, label: targetLabel \}/);
+  assert.match(editor, /notes\.confirmDeepLink\.title/);
+  assert.match(editor, /notes\.confirmDeepLink\.message/);
+  assert.match(editor, /notes\.confirmDeepLink\.confirm/);
+  assert.match(editor, /notes\.confirmDiscard\.title/);
+});
+
+test("web links use an in-editor add and edit surface", () => {
+  const editor = read("src/modules/notes/NoteEditorSheet.tsx");
+  const popover = read("src/modules/notes/NoteLinkPopover.tsx");
+  const css = read("src/modules/notes/notes.css");
+
+  // A selected label must open a form for its URL, while an existing link must
+  // be editable by clicking or right-clicking it instead of silently doing
+  // nothing or invoking a browser prompt.
+  assert.match(editor, /NoteLinkPopover/);
+  assert.match(editor, /handleNoteLinkClick/);
+  assert.match(editor, /handleNoteLinkContextMenu/);
+  assert.match(editor, /insertContentAt/);
+  assert.match(editor, /setTextSelection/);
+  assert.doesNotMatch(editor, /window\.prompt/);
+  assert.match(popover, /data-note-link-popover/);
+  assert.match(popover, /notes\.linkPopover\.textLabel/);
+  assert.match(popover, /notes\.linkPopover\.urlLabel/);
+  assert.match(css, /\.note-editor-eyebrow\s*\{[\s\S]*display:\s*inline-flex/);
+});

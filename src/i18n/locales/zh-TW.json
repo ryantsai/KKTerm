@@ -5791,6 +5791,11 @@
       "exportMarkdown": "匯出為 Markdown",
       "search": "尋找與取代"
     },
+    "linkPopover": {
+      "textLabel": "文字",
+      "urlLabel": "URL",
+      "urlPlaceholder": "https://example.com"
+    },
     "export": {
       "dialogTitle": "將筆記匯出為 Markdown",
       "filterName": "Markdown 檔案"
@@ -5822,12 +5827,18 @@
         "workspace": "工作區",
         "rackItem": "機櫃裝置"
       },
+      "linkedItem": "連結的項目",
       "menuLabel": "連結建議",
       "triggerHint": "輸入 @ 即可連結連線、工作區或機櫃裝置。"
     },
     "confirmDelete": {
       "title": "刪除此筆記？",
       "message": "{{name}} 的筆記與其影像將永久刪除。"
+    },
+    "confirmDeepLink": {
+      "title": "要開啟連結的項目嗎？",
+      "message": "關閉此筆記後將開啟「{{target}}」。所有尚未儲存的變更都會遺失。要繼續嗎？",
+      "confirm": "開啟"
     },
     "confirmDiscard": {
       "title": "捨棄未儲存的變更？",
@@ -5844,6 +5855,7 @@
       "deepLinkUnavailable": "連結的項目已不存在。",
       "selectTextForLink": "請選取要轉換為連結的文字。",
       "selectUrlForLink": "請選取以 http:// 或 https:// 開頭的網址以建立連結。",
+      "invalidLinkUrl": "請輸入以 http:// 或 https:// 開頭的網址。",
       "sendToTerminalUnavailable": "此連線沒有作用中的終端機窗格。",
       "exported": "筆記已匯出至 {{path}}。",
       "exportFailed": "無法匯出筆記。{{error}}"

@@ -5791,6 +5791,11 @@
       "exportMarkdown": "Exportar para Markdown",
       "search": "Localizar e substituir"
     },
+    "linkPopover": {
+      "textLabel": "Texto",
+      "urlLabel": "URL",
+      "urlPlaceholder": "https://example.com"
+    },
     "export": {
       "dialogTitle": "Exportar nota para Markdown",
       "filterName": "Arquivo Markdown"
@@ -5822,12 +5827,18 @@
         "workspace": "Espaço de trabalho",
         "rackItem": "Dispositivo de rack"
       },
+      "linkedItem": "item vinculado",
       "menuLabel": "Sugestões de link",
       "triggerHint": "Digite @ para vincular uma conexão, um espaço de trabalho ou um dispositivo de rack."
     },
     "confirmDelete": {
       "title": "Excluir esta nota?",
       "message": "A nota de {{name}} e suas imagens são excluídas permanentemente."
+    },
+    "confirmDeepLink": {
+      "title": "Abrir item vinculado?",
+      "message": "Ao fechar esta nota, {{target}} será aberto. Todas as alterações não salvas serão perdidas. Deseja continuar?",
+      "confirm": "Abrir"
     },
     "confirmDiscard": {
       "title": "Descartar alterações não salvas?",
@@ -5844,6 +5855,7 @@
       "deepLinkUnavailable": "O item vinculado não existe mais.",
       "selectTextForLink": "Selecione o texto que deseja transformar em link.",
       "selectUrlForLink": "Selecione um endereço da web começando com http:// ou https:// para vinculá-lo.",
+      "invalidLinkUrl": "Digite um endereço da web que comece com http:// ou https://.",
       "sendToTerminalUnavailable": "Nenhum painel de terminal ativo para esta conexão.",
       "exported": "Nota exportada para {{path}}.",
       "exportFailed": "Não foi possível exportar a nota. {{error}}"
