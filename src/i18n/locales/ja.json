@@ -5796,6 +5796,9 @@
     "mask": {
       "reveal": "マスクしたテキストを表示"
     },
+    "task": {
+      "checkboxLabel": "タスク項目のチェックボックス"
+    },
     "linkPopover": {
       "textLabel": "テキスト",
       "urlLabel": "URL",

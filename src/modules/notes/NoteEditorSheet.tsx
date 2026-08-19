@@ -15,6 +15,7 @@ import { NoteCodeBlockSendContext, NoteCodeBlockView } from "./NoteCodeBlockView
 import type { NoteCodeBlockSendTarget } from "./NoteCodeBlockView";
 import Link from "@tiptap/extension-link";
 import Highlight from "@tiptap/extension-highlight";
+import { TaskItem, TaskList } from "@tiptap/extension-list";
 import { Color, TextStyle } from "@tiptap/extension-text-style";
 import TextAlign from "@tiptap/extension-text-align";
 import { TableKit } from "@tiptap/extension-table";
@@ -204,12 +205,21 @@ export function NoteEditorSheet({
   // never torn down when Connections, Workspaces, or Sites finish loading.
   const deepLinkChoicesRef = useRef<NoteDeepLinkChoice[]>([]);
   const suggestionIndexRef = useRef(0);
+  const taskTranslateRef = useRef(t);
   deepLinkChoicesRef.current = deepLinkChoices;
+  taskTranslateRef.current = t;
 
   const extensions = useMemo(
     () => [
       StarterKit.configure({ link: false, codeBlock: false }),
       Link.configure({ openOnClick: false, autolink: false }),
+      TaskItem.configure({
+        nested: true,
+        a11y: {
+          checkboxLabel: () => taskTranslateRef.current("notes.task.checkboxLabel"),
+        },
+      }),
+      TaskList,
       TextStyle,
       Color,
       NoteMask,

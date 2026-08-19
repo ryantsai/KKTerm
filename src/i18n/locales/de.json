@@ -5796,6 +5796,9 @@
     "mask": {
       "reveal": "Maskierten Text anzeigen"
     },
+    "task": {
+      "checkboxLabel": "Kontrollkästchen für Aufgabe"
+    },
     "linkPopover": {
       "textLabel": "Text",
       "urlLabel": "URL",

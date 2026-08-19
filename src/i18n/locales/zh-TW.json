@@ -5796,6 +5796,9 @@
     "mask": {
       "reveal": "顯示已遮蔽的文字"
     },
+    "task": {
+      "checkboxLabel": "工作項目核取方塊"
+    },
     "linkPopover": {
       "textLabel": "文字",
       "urlLabel": "URL",

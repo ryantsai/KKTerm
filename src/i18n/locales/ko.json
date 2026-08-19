@@ -5796,6 +5796,9 @@
     "mask": {
       "reveal": "마스킹된 텍스트 표시"
     },
+    "task": {
+      "checkboxLabel": "작업 항목 체크박스"
+    },
     "linkPopover": {
       "textLabel": "텍스트",
       "urlLabel": "URL",

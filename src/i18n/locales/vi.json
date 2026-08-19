@@ -5796,6 +5796,9 @@
     "mask": {
       "reveal": "Hiện văn bản đã che"
     },
+    "task": {
+      "checkboxLabel": "Hộp kiểm mục tác vụ"
+    },
     "linkPopover": {
       "textLabel": "Văn bản",
       "urlLabel": "URL",

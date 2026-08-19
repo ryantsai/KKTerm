@@ -5796,6 +5796,9 @@
     "mask": {
       "reveal": "Tampilkan teks yang disamarkan"
     },
+    "task": {
+      "checkboxLabel": "Kotak centang tugas"
+    },
     "linkPopover": {
       "textLabel": "Teks",
       "urlLabel": "URL",

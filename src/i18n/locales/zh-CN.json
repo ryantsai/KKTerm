@@ -5796,6 +5796,9 @@
     "mask": {
       "reveal": "显示已遮挡的文本"
     },
+    "task": {
+      "checkboxLabel": "任务项复选框"
+    },
     "linkPopover": {
       "textLabel": "文本",
       "urlLabel": "URL",

@@ -5796,6 +5796,9 @@
     "mask": {
       "reveal": "Revelar texto mascarado"
     },
+    "task": {
+      "checkboxLabel": "Caixa de seleção da tarefa"
+    },
     "linkPopover": {
       "textLabel": "Texto",
       "urlLabel": "URL",

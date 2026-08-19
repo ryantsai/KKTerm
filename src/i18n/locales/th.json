@@ -5796,6 +5796,9 @@
     "mask": {
       "reveal": "แสดงข้อความที่ปิดบัง"
     },
+    "task": {
+      "checkboxLabel": "ช่องทำเครื่องหมายของงาน"
+    },
     "linkPopover": {
       "textLabel": "ข้อความ",
       "urlLabel": "URL",
