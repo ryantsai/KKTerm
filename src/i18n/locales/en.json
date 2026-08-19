@@ -5777,6 +5777,8 @@
       "underline": "Underline",
       "strikethrough": "Strikethrough",
       "highlight": "Highlight",
+      "textColor": "Text color",
+      "maskText": "Mask selected text",
       "inlineCode": "Inline code",
       "bulletList": "Bulleted list",
       "orderedList": "Numbered list",
@@ -5790,6 +5792,9 @@
       "insertDeepLink": "Link to a KKTerm item",
       "exportMarkdown": "Export to Markdown",
       "search": "Find and replace"
+    },
+    "mask": {
+      "reveal": "Reveal masked text"
     },
     "linkPopover": {
       "textLabel": "Text",
@@ -5854,8 +5859,9 @@
       "imageFailed": "The image could not be added to the note. {{error}}",
       "deepLinkUnavailable": "That linked item no longer exists.",
       "selectTextForLink": "Select the text you want to turn into a link.",
+      "selectTextForMask": "Select the text you want to mask first.",
       "selectUrlForLink": "Select a web address starting with http:// or https:// to link it.",
-      "invalidLinkUrl": "Enter a web address starting with http:// or https://.",
+      "invalidLinkUrl": "Enter a valid web address, such as example.com.",
       "sendToTerminalUnavailable": "No active terminal Pane for this Connection.",
       "exported": "Note exported to {{path}}.",
       "exportFailed": "The note could not be exported. {{error}}"

@@ -18,6 +18,13 @@
   transform: scale(1.06);
 }
 
+.color-palette-rainbow:disabled,
+.color-palette-swatch:disabled {
+  opacity: 0.4;
+  cursor: default;
+  transform: none;
+}
+
 .color-palette-rainbow.selected,
 .color-palette-rainbow[aria-expanded="true"] {
   box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);

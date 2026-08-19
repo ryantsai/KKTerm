@@ -15,6 +15,7 @@ import { NoteCodeBlockSendContext, NoteCodeBlockView } from "./NoteCodeBlockView
 import type { NoteCodeBlockSendTarget } from "./NoteCodeBlockView";
 import Link from "@tiptap/extension-link";
 import Highlight from "@tiptap/extension-highlight";
+import { Color, TextStyle } from "@tiptap/extension-text-style";
 import TextAlign from "@tiptap/extension-text-align";
 import { TableKit } from "@tiptap/extension-table";
 import { FileText } from "../../lib/reicon";
@@ -23,7 +24,7 @@ import { useWorkspaceStore } from "../../store";
 import { ConnectionGlyph } from "../workspace/connections/ConnectionGlyph";
 import { getPaneRenderer, writeInputToPane } from "../workspace/paneRegistry";
 import type { Connection, ConnectionType } from "../../types";
-import { invokeCommand, saveMarkdownFile } from "../../lib/tauri";
+import { invokeCommand, openExternalUrl, saveMarkdownFile } from "../../lib/tauri";
 import { NoteToolbar } from "./NoteToolbar";
 import { NoteLinkPopover } from "./NoteLinkPopover";
 import type { NoteLinkPopoverState } from "./NoteLinkPopover";
@@ -37,6 +38,7 @@ import type { NoteDeepLinkSuggestionState } from "./noteDeepLinkSuggestion";
 import { NoteSearch } from "./noteSearch";
 import { NoteDeepLinkNode, noteDeepLinkAttributes } from "./noteDeepLinkNode";
 import { NOTE_ASSET_ATTRIBUTE, collectNoteAssetIds, dehydrateNoteAssets, hydrateNoteAssets, isNoteHtmlEmpty, sanitizeNoteHtml } from "./noteHtml";
+import { createNoteMaskId, NOTE_MASK_ATTRIBUTE, NOTE_MASK_ID_ATTRIBUTE, NOTE_MASK_REVEALED_ATTRIBUTE, NoteMask } from "./noteMask";
 import { deleteConnectionNote, getConnectionNote, pruneNoteAssets, putNoteAsset, saveConnectionNote } from "./noteCommands";
 import { navigateNoteDeepLink, parseNoteDeepLink } from "./noteDeepLink";
 import type { NoteDeepLink } from "./noteDeepLink";
@@ -89,10 +91,14 @@ function isTerminalConnectionType(type: ConnectionType) {
 
 function normalizeNoteWebUrl(value: string): string | null {
   const trimmed = value.trim();
-  if (!/^https?:\/\//i.test(trimmed)) return null;
+  if (!trimmed) return null;
+  if (/^[a-z][a-z\d+.-]*:\/\//i.test(trimmed) && !/^https?:\/\//i.test(trimmed)) {
+    return null;
+  }
+  const candidate = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
   try {
-    const parsed = new URL(trimmed);
-    return parsed.protocol === "http:" || parsed.protocol === "https:" ? trimmed : null;
+    const parsed = new URL(candidate);
+    return parsed.protocol === "http:" || parsed.protocol === "https:" ? candidate : null;
   } catch {
     return null;
   }
@@ -138,6 +144,7 @@ export function NoteEditorSheet({
   const originalAssetIdsRef = useRef<string[]>([]);
   const pendingImageUploadsRef = useRef<Set<Promise<void>>>(new Set());
   const pendingDeepLinkRef = useRef<{ link: NoteDeepLink; label: string } | null>(null);
+  const revealedNoteMaskIdsRef = useRef<Set<string>>(new Set());
   const closingRef = useRef(false);
   // Resolved once per open; NoteEditorSheet only receives an id/name pair, so
   // the header icon and the code-block Terminal gate both need this fetch.
@@ -203,6 +210,9 @@ export function NoteEditorSheet({
     () => [
       StarterKit.configure({ link: false, codeBlock: false }),
       Link.configure({ openOnClick: false, autolink: false }),
+      TextStyle,
+      Color,
+      NoteMask,
       CodeBlock.extend({
         addNodeView() {
           return ReactNodeViewRenderer(NoteCodeBlockView);
@@ -282,6 +292,7 @@ export function NoteEditorSheet({
     if (!editor) return;
     let cancelled = false;
     setLoading(true);
+    revealedNoteMaskIdsRef.current.clear();
     editor.setEditable(false);
     void getConnectionNote(connectionId)
       .then(async (note) => {
@@ -480,6 +491,103 @@ export function NoteEditorSheet({
     return () => dom.removeEventListener("click", onClick);
   }, [editor, showWorkspace, showItOps, showStatusBarNotice, onClose, dirty, t]);
 
+  useEffect(() => {
+    if (!editor) return;
+    const dom = editor.view.dom;
+    const revealLabel = t("notes.mask.reveal");
+
+    const syncNoteMasks = () => {
+      dom.querySelectorAll<HTMLElement>(`[${NOTE_MASK_ATTRIBUTE}="true"]`).forEach((element) => {
+        const maskId = element.getAttribute(NOTE_MASK_ID_ATTRIBUTE) ?? createNoteMaskId();
+        element.setAttribute(NOTE_MASK_ID_ATTRIBUTE, maskId);
+        const revealed = revealedNoteMaskIdsRef.current.has(maskId);
+        if (revealed) {
+          element.setAttribute(NOTE_MASK_REVEALED_ATTRIBUTE, "true");
+          element.removeAttribute("role");
+          element.removeAttribute("tabindex");
+          element.removeAttribute("aria-label");
+          element.removeAttribute("title");
+          return;
+        }
+        element.removeAttribute(NOTE_MASK_REVEALED_ATTRIBUTE);
+        element.setAttribute("role", "button");
+        element.setAttribute("tabindex", "0");
+        element.setAttribute("aria-label", revealLabel);
+        element.setAttribute("title", revealLabel);
+      });
+    };
+
+    const maskFromTarget = (target: EventTarget | null) =>
+      target instanceof HTMLElement
+        ? target.closest<HTMLElement>(`[${NOTE_MASK_ATTRIBUTE}="true"]`)
+        : null;
+
+    const revealMask = (element: HTMLElement) => {
+      const maskId = element.getAttribute(NOTE_MASK_ID_ATTRIBUTE);
+      if (!maskId || revealedNoteMaskIdsRef.current.has(maskId)) return;
+      revealedNoteMaskIdsRef.current.add(maskId);
+      syncNoteMasks();
+      if (
+        typeof window === "undefined" ||
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+        typeof element.animate !== "function"
+      ) {
+        return;
+      }
+      element.animate(
+        [
+          { opacity: 0.28, filter: "blur(3px)" },
+          { opacity: 1, filter: "blur(0)" },
+        ],
+        {
+          duration: 360,
+          easing: "cubic-bezier(0.2, 0.8, 0.2, 1)",
+          fill: "both",
+        },
+      );
+    };
+
+    const onClick = (event: MouseEvent) => {
+      const mask = maskFromTarget(event.target);
+      if (!mask || mask.getAttribute(NOTE_MASK_REVEALED_ATTRIBUTE) === "true") return;
+      event.preventDefault();
+      event.stopPropagation();
+      revealMask(mask);
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      const mask = maskFromTarget(event.target);
+      if (!mask || mask.getAttribute(NOTE_MASK_REVEALED_ATTRIBUTE) === "true") return;
+      event.preventDefault();
+      event.stopPropagation();
+      revealMask(mask);
+    };
+
+    editor.on("transaction", syncNoteMasks);
+    dom.addEventListener("click", onClick);
+    dom.addEventListener("keydown", onKeyDown);
+    syncNoteMasks();
+    return () => {
+      editor.off("transaction", syncNoteMasks);
+      dom.removeEventListener("click", onClick);
+      dom.removeEventListener("keydown", onKeyDown);
+    };
+  }, [editor, t]);
+
+  function toggleNoteMask() {
+    if (!editor) return;
+    if (editor.state.selection.empty) {
+      showStatusBarNotice(t("notes.notice.selectTextForMask"), { tone: "info" });
+      return;
+    }
+    const chain = editor.chain().focus();
+    const applied = editor.isActive("noteMask")
+      ? chain.unsetMark("noteMask").run()
+      : chain.setMark("noteMask", { id: createNoteMaskId() }).run();
+    if (applied) setDirty(true);
+  }
+
   async function handleSave() {
     if (!editor) return;
     setSaving(true);
@@ -642,10 +750,16 @@ export function NoteEditorSheet({
     return "";
   }
 
+  function openNoteLink(href: string) {
+    const normalizedHref = normalizeNoteWebUrl(href);
+    if (!normalizedHref) return;
+    void openExternalUrl(normalizedHref);
+  }
+
   function clampLinkPopoverPosition(left: number, top: number) {
     if (typeof window === "undefined") return { left, top };
     const margin = 8;
-    const width = 340;
+    const width = Math.min(360, Math.max(0, window.innerWidth - margin * 2));
     const height = 220;
     const maxLeft = Math.max(margin, window.innerWidth - width - margin);
     const nextLeft = Math.min(Math.max(margin, left), maxLeft);
@@ -774,6 +888,12 @@ export function NoteEditorSheet({
     if (!anchor) return;
     const range = linkRangeAtElement(anchor);
     if (!range) return;
+    if (event.ctrlKey || event.metaKey || event.shiftKey) {
+      event.preventDefault();
+      event.stopPropagation();
+      openNoteLink(anchor.getAttribute("href") ?? "");
+      return;
+    }
     event.preventDefault();
     event.stopPropagation();
     editor.chain().focus().setTextSelection(range).run();
@@ -793,9 +913,32 @@ export function NoteEditorSheet({
       event.preventDefault();
       event.stopPropagation();
       editor.chain().focus().setTextSelection(range).run();
-      openLinkEditor(range, anchor.getAttribute("href") ?? "", true, {
-        left: event.clientX,
-        top: event.clientY + 8,
+      const href = normalizeNoteWebUrl(anchor.getAttribute("href") ?? "");
+      const contextPosition = { x: event.clientX, y: event.clientY };
+      const editLink = () =>
+        openLinkEditor(range, href ?? anchor.getAttribute("href") ?? "", true, {
+          left: contextPosition.x,
+          top: contextPosition.y + 8,
+        });
+      if (!href) {
+        editLink();
+        return;
+      }
+      const items: NativeContextMenuItem[] = [
+        {
+          kind: "item",
+          label: t("webview.openExternally"),
+          action: () => openNoteLink(href),
+        },
+        { kind: "separator" },
+        {
+          kind: "item",
+          label: t("common.edit"),
+          action: editLink,
+        },
+      ];
+      void showNativeContextMenu(items, contextPosition).then((shown) => {
+        if (!shown) editLink();
       });
       return;
     }
@@ -912,6 +1055,7 @@ export function NoteEditorSheet({
                 onToggleSearch={() => setSearchOpen((previous) => !previous)}
                 onInsertImage={() => fileInputRef.current?.click()}
                 onInsertLink={insertLink}
+                onToggleMask={toggleNoteMask}
                 onInsertDeepLink={() => setPickerOpen(true)}
                 onExportMarkdown={() => void handleExportMarkdown()}
                 canExport={!loading && !empty}

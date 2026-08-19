@@ -2,8 +2,9 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useEditorState } from "@tiptap/react";
 import type { Editor } from "@tiptap/react";
+import { ColorPalettePicker, isHexColor } from "../../app/ui/ColorPalettePicker";
 import {
-  Code, Download, ImagePlus, Link, List, ListChecks, Minus, Palette, RotateCcw,
+  Code, Download, EyeOff, ImagePlus, Link, List, ListChecks, Minus, Palette, RotateCcw,
   RotateCw, Search, TableProperties, Waypoints,
 } from "../../lib/reicon";
 
@@ -13,6 +14,7 @@ interface NoteToolbarProps {
   onToggleSearch: () => void;
   onInsertImage: () => void;
   onInsertLink: () => void;
+  onToggleMask: () => void;
   onInsertDeepLink: () => void;
   onExportMarkdown: () => void;
   /** False while the note is loading or has nothing worth writing to a file. */
@@ -65,6 +67,7 @@ export function NoteToolbar({
   onToggleSearch,
   onInsertImage,
   onInsertLink,
+  onToggleMask,
   onInsertDeepLink,
   onExportMarkdown,
   canExport,
@@ -72,6 +75,7 @@ export function NoteToolbar({
 }: NoteToolbarProps) {
   const { t } = useTranslation();
   const size = 13;
+  const textColor = editor.getAttributes("textStyle").color as string | null | undefined;
   // Tiptap v3 does not re-render useEditor consumers on transactions by
   // default. The toolbar needs live selection/undo state for its controls.
   useEditorState({ editor, selector: ({ transactionNumber }) => transactionNumber });
@@ -165,6 +169,27 @@ export function NoteToolbar({
         onClick={() => editor.chain().focus().toggleHighlight().run()}
       >
         <Palette size={size} />
+      </ToolButton>
+      <div
+        className={`note-tool-color${isHexColor(textColor) ? " has-color" : ""}`}
+        onMouseDown={(event) => event.preventDefault()}
+      >
+        <ColorPalettePicker
+          ariaLabel={t("notes.toolbar.textColor")}
+          disabled={readOnly}
+          onChange={(color) => editor.chain().focus().setColor(color).run()}
+          onClear={() => editor.chain().focus().unsetColor().run()}
+          trigger="swatch"
+          value={isHexColor(textColor) ? textColor : null}
+        />
+      </div>
+      <ToolButton
+        active={editor.isActive("noteMask")}
+        disabled={readOnly}
+        label={t("notes.toolbar.maskText")}
+        onClick={onToggleMask}
+      >
+        <EyeOff size={size} />
       </ToolButton>
       <ToolButton
         active={editor.isActive("code")}

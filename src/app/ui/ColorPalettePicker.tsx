@@ -17,6 +17,7 @@ export function ColorPalettePicker({
   trigger = "rainbow",
   ariaLabel,
   onClear,
+  disabled = false,
 }: {
   value?: string | null;
   onChange: (color: `#${string}`) => void;
@@ -24,6 +25,7 @@ export function ColorPalettePicker({
   trigger?: "rainbow" | "swatch";
   ariaLabel?: string;
   onClear?: () => void;
+  disabled?: boolean;
 }) {
   const { t } = useTranslation();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -131,6 +133,7 @@ export function ColorPalettePicker({
         aria-haspopup="dialog"
         aria-label={ariaLabel ?? t("common.customColor")}
         className={`color-palette-${trigger}${isHexColor(value) ? " selected" : " empty"}`}
+        disabled={disabled}
         onClick={() => setOpen((current) => !current)}
         style={trigger === "swatch" && isHexColor(value) ? { "--color-palette-swatch": value } as CSSProperties : undefined}
         type="button"

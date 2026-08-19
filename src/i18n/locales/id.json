@@ -5777,6 +5777,8 @@
       "underline": "Garis bawah",
       "strikethrough": "Coret",
       "highlight": "Sorot",
+      "textColor": "Warna teks",
+      "maskText": "Samarkan teks yang dipilih",
       "inlineCode": "Kode sebaris",
       "bulletList": "Daftar berpoin",
       "orderedList": "Daftar bernomor",
@@ -5790,6 +5792,9 @@
       "insertDeepLink": "Tautkan ke item KKTerm",
       "exportMarkdown": "Ekspor ke Markdown",
       "search": "Cari dan ganti"
+    },
+    "mask": {
+      "reveal": "Tampilkan teks yang disamarkan"
     },
     "linkPopover": {
       "textLabel": "Teks",
@@ -5854,8 +5859,9 @@
       "imageFailed": "Gambar tidak dapat ditambahkan ke catatan. {{error}}",
       "deepLinkUnavailable": "Item yang ditautkan sudah tidak ada.",
       "selectTextForLink": "Pilih teks yang ingin dijadikan tautan.",
+      "selectTextForMask": "Pilih teks yang ingin disamarkan terlebih dahulu.",
       "selectUrlForLink": "Pilih alamat web yang diawali http:// atau https:// untuk menautkannya.",
-      "invalidLinkUrl": "Masukkan alamat web yang diawali http:// atau https://.",
+      "invalidLinkUrl": "Masukkan alamat web yang valid, seperti example.com.",
       "sendToTerminalUnavailable": "Tidak ada panel terminal aktif untuk koneksi ini.",
       "exported": "Catatan diekspor ke {{path}}.",
       "exportFailed": "Catatan tidak dapat diekspor. {{error}}"

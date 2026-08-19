@@ -5777,6 +5777,8 @@
       "underline": "底線",
       "strikethrough": "刪除線",
       "highlight": "醒目提示",
+      "textColor": "文字顏色",
+      "maskText": "遮蔽選取的文字",
       "inlineCode": "行內程式碼",
       "bulletList": "項目符號清單",
       "orderedList": "編號清單",
@@ -5790,6 +5792,9 @@
       "insertDeepLink": "連結至 KKTerm 項目",
       "exportMarkdown": "匯出為 Markdown",
       "search": "尋找與取代"
+    },
+    "mask": {
+      "reveal": "顯示已遮蔽的文字"
     },
     "linkPopover": {
       "textLabel": "文字",
@@ -5854,8 +5859,9 @@
       "imageFailed": "無法將影像加入筆記。{{error}}",
       "deepLinkUnavailable": "連結的項目已不存在。",
       "selectTextForLink": "請選取要轉換為連結的文字。",
+      "selectTextForMask": "請先選取要遮蔽的文字。",
       "selectUrlForLink": "請選取以 http:// 或 https:// 開頭的網址以建立連結。",
-      "invalidLinkUrl": "請輸入以 http:// 或 https:// 開頭的網址。",
+      "invalidLinkUrl": "請輸入有效的網址，例如 example.com。",
       "sendToTerminalUnavailable": "此連線沒有作用中的終端機窗格。",
       "exported": "筆記已匯出至 {{path}}。",
       "exportFailed": "無法匯出筆記。{{error}}"

@@ -5777,6 +5777,8 @@
       "underline": "Unterstrichen",
       "strikethrough": "Durchgestrichen",
       "highlight": "Hervorheben",
+      "textColor": "Textfarbe",
+      "maskText": "Ausgewählten Text maskieren",
       "inlineCode": "Inline-Code",
       "bulletList": "Aufzählung",
       "orderedList": "Nummerierte Liste",
@@ -5790,6 +5792,9 @@
       "insertDeepLink": "Mit einem KKTerm-Element verknüpfen",
       "exportMarkdown": "Als Markdown exportieren",
       "search": "Suchen und ersetzen"
+    },
+    "mask": {
+      "reveal": "Maskierten Text anzeigen"
     },
     "linkPopover": {
       "textLabel": "Text",
@@ -5854,8 +5859,9 @@
       "imageFailed": "Das Bild konnte der Notiz nicht hinzugefügt werden. {{error}}",
       "deepLinkUnavailable": "Das verknüpfte Element existiert nicht mehr.",
       "selectTextForLink": "Markieren Sie den Text, der zu einem Link werden soll.",
+      "selectTextForMask": "Wählen Sie zuerst den Text aus, den Sie maskieren möchten.",
       "selectUrlForLink": "Markieren Sie eine Webadresse, die mit http:// oder https:// beginnt, um sie zu verlinken.",
-      "invalidLinkUrl": "Geben Sie eine Webadresse ein, die mit http:// oder https:// beginnt.",
+      "invalidLinkUrl": "Geben Sie eine gültige Webadresse ein, z. B. example.com.",
       "sendToTerminalUnavailable": "Kein aktiver Terminal-Bereich für diese Verbindung.",
       "exported": "Notiz nach {{path}} exportiert.",
       "exportFailed": "Die Notiz konnte nicht exportiert werden. {{error}}"

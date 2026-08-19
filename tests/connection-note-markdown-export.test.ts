@@ -58,6 +58,13 @@ test("note export flattens a Deep Link chip to its captured label", () => {
   assert.equal(markdown.trim(), "See edge-01.");
 });
 
+test("note export keeps the underlying text from a masked range", () => {
+  const markdown = noteHtmlToMarkdown(
+    '<p>Token: <span data-note-mask="true" data-note-mask-id="note-mask-1">p@ssw0rd</span></p>',
+  );
+  assert.equal(markdown.trim(), "Token: p@ssw0rd");
+});
+
 test("the export file name survives a Connection name that is not a file name", () => {
   assert.equal(noteMarkdownFilename("prod/db: main*"), "prod db main.md");
   // Non-ASCII names stay readable rather than collapsing to placeholders.

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { Btn, TextInput } from "../../app/ui/dialog";
+import { Actions, Btn, Field, TextInput } from "../../app/ui/dialog";
 
 export interface NoteLinkPopoverState {
   from: number;
@@ -74,7 +74,7 @@ export function NoteLinkPopover({
   return createPortal(
     <div
       ref={popoverRef}
-      className="note-link-popover"
+      className="note-link-popover kk-surface"
       data-note-link-popover
       role="dialog"
       aria-label={t("notes.toolbar.insertLink")}
@@ -88,16 +88,14 @@ export function NoteLinkPopover({
           apply();
         }}
       >
-        <label className="note-link-popover-field">
-          <span>{t("notes.linkPopover.textLabel")}</span>
+        <Field className="note-link-popover-field" label={t("notes.linkPopover.textLabel")}>
           <TextInput
             value={text}
             aria-label={t("notes.linkPopover.textLabel")}
             onChange={(event) => setText(event.target.value)}
           />
-        </label>
-        <label className="note-link-popover-field">
-          <span>{t("notes.linkPopover.urlLabel")}</span>
+        </Field>
+        <Field className="note-link-popover-field" label={t("notes.linkPopover.urlLabel")}>
           <TextInput
             autoFocus
             value={href}
@@ -105,19 +103,27 @@ export function NoteLinkPopover({
             aria-label={t("notes.linkPopover.urlLabel")}
             onChange={(event) => setHref(event.target.value)}
           />
-        </label>
+        </Field>
         <div className="note-link-popover-actions">
-          {state.existing ? (
-            <Btn className="note-link-popover-remove" sm onClick={remove}>
-              {t("common.remove")}
-            </Btn>
-          ) : null}
-          <Btn sm onClick={onCancel}>
-            {t("common.cancel")}
-          </Btn>
-          <Btn kind="primary" sm type="submit">
-            {t("common.save")}
-          </Btn>
+          <Actions
+            extraLeft={
+              state.existing ? (
+                <Btn kind="danger" sm onClick={remove}>
+                  {t("common.remove")}
+                </Btn>
+              ) : undefined
+            }
+            cancel={
+              <Btn sm onClick={onCancel}>
+                {t("common.cancel")}
+              </Btn>
+            }
+            primary={
+              <Btn kind="primary" sm type="submit">
+                {t("common.save")}
+              </Btn>
+            }
+          />
         </div>
       </form>
     </div>,

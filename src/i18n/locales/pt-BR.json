@@ -5777,6 +5777,8 @@
       "underline": "Sublinhado",
       "strikethrough": "Tachado",
       "highlight": "Destacar",
+      "textColor": "Cor do texto",
+      "maskText": "Mascarar texto selecionado",
       "inlineCode": "Código em linha",
       "bulletList": "Lista com marcadores",
       "orderedList": "Lista numerada",
@@ -5790,6 +5792,9 @@
       "insertDeepLink": "Vincular a um item do KKTerm",
       "exportMarkdown": "Exportar para Markdown",
       "search": "Localizar e substituir"
+    },
+    "mask": {
+      "reveal": "Revelar texto mascarado"
     },
     "linkPopover": {
       "textLabel": "Texto",
@@ -5854,8 +5859,9 @@
       "imageFailed": "Não foi possível adicionar a imagem à nota. {{error}}",
       "deepLinkUnavailable": "O item vinculado não existe mais.",
       "selectTextForLink": "Selecione o texto que deseja transformar em link.",
+      "selectTextForMask": "Selecione primeiro o texto que deseja mascarar.",
       "selectUrlForLink": "Selecione um endereço da web começando com http:// ou https:// para vinculá-lo.",
-      "invalidLinkUrl": "Digite um endereço da web que comece com http:// ou https://.",
+      "invalidLinkUrl": "Digite um endereço da web válido, como example.com.",
       "sendToTerminalUnavailable": "Nenhum painel de terminal ativo para esta conexão.",
       "exported": "Nota exportada para {{path}}.",
       "exportFailed": "Não foi possível exportar a nota. {{error}}"

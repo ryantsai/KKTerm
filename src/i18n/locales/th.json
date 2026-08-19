@@ -5777,6 +5777,8 @@
       "underline": "ขีดเส้นใต้",
       "strikethrough": "ขีดฆ่า",
       "highlight": "ไฮไลต์",
+      "textColor": "สีข้อความ",
+      "maskText": "ปิดบังข้อความที่เลือก",
       "inlineCode": "โค้ดในบรรทัด",
       "bulletList": "รายการแบบจุดนำ",
       "orderedList": "รายการลำดับเลข",
@@ -5790,6 +5792,9 @@
       "insertDeepLink": "ลิงก์ไปยังรายการใน KKTerm",
       "exportMarkdown": "ส่งออกเป็น Markdown",
       "search": "ค้นหาและแทนที่"
+    },
+    "mask": {
+      "reveal": "แสดงข้อความที่ปิดบัง"
     },
     "linkPopover": {
       "textLabel": "ข้อความ",
@@ -5854,8 +5859,9 @@
       "imageFailed": "ไม่สามารถเพิ่มรูปภาพลงในบันทึกได้ {{error}}",
       "deepLinkUnavailable": "รายการที่ลิงก์ไว้ไม่มีอยู่แล้ว",
       "selectTextForLink": "เลือกข้อความที่ต้องการทำเป็นลิงก์",
+      "selectTextForMask": "เลือกข้อความที่ต้องการปิดบังก่อน",
       "selectUrlForLink": "เลือกที่อยู่เว็บที่ขึ้นต้นด้วย http:// หรือ https:// เพื่อทำเป็นลิงก์",
-      "invalidLinkUrl": "ป้อนที่อยู่เว็บที่ขึ้นต้นด้วย http:// หรือ https://",
+      "invalidLinkUrl": "ป้อนที่อยู่เว็บที่ถูกต้อง เช่น example.com",
       "sendToTerminalUnavailable": "ไม่มีแผงเทอร์มินัลที่ใช้งานอยู่สำหรับการเชื่อมต่อนี้",
       "exported": "ส่งออกบันทึกไปที่ {{path}} แล้ว",
       "exportFailed": "ไม่สามารถส่งออกบันทึกได้ {{error}}"

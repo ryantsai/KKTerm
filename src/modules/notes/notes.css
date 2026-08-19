@@ -79,10 +79,19 @@
   padding: 0;
 }
 
+.note-editor-sheet .kk-dlg-head {
+  padding: 12px 22px 0;
+}
+
+.note-editor-sheet .kk-dlg-head.with-rule {
+  padding-bottom: 10px;
+}
+
 .note-editor-sheet .kk-dlg-title {
   text-align: center;
   font-size: 13px;
   font-weight: 600;
+  line-height: 1.25;
   color: var(--text-muted);
 }
 
@@ -104,7 +113,7 @@
    space. */
 .note-editor-sheet .kk-dlg-eyebrow {
   position: absolute;
-  top: 20px;
+  top: 12px;
   left: 22px;
   display: inline-flex;
   align-items: center;
@@ -144,50 +153,47 @@
 .note-link-popover {
   position: fixed;
   z-index: 140;
-  width: 340px;
-  padding: 12px;
+  width: min(360px, calc(100vw - 24px));
+  padding: 14px;
   color: var(--text);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 12px;
   box-shadow: var(--shadow);
 }
 
 .note-link-popover-form {
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 10px;
 }
 
 .note-link-popover-field {
-  display: grid;
-  gap: 4px;
+  gap: 5px;
+}
+
+.note-link-popover-field > .kk-lbl {
   font-size: 11px;
   font-weight: 650;
-  color: var(--text-muted);
 }
 
 .note-link-popover-field .kk-inp {
   width: 100%;
   min-width: 0;
-  height: 30px;
 }
 
 .note-link-popover-actions {
   display: flex;
-  gap: 6px;
   align-items: center;
-  margin-top: 3px;
-}
-
-.note-link-popover-actions .note-link-popover-remove {
-  margin-right: auto;
+  gap: 9px;
+  margin-top: 2px;
 }
 
 .note-link-popover-actions .kk-btn {
   height: 28px;
   padding: 0 10px;
   font-size: 12px;
+  border-radius: var(--radius-field);
 }
 
 .note-tool {
@@ -219,6 +225,39 @@
   color: var(--accent);
   background: var(--accent-soft);
   border-color: var(--accent);
+}
+
+.note-tool-color {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 3px;
+  border-radius: 5px;
+}
+
+.note-tool-color:hover {
+  background: var(--hover);
+}
+
+.note-tool-color:focus-within {
+  box-shadow: var(--ring);
+}
+
+.note-tool-color.has-color {
+  background: var(--accent-soft);
+}
+
+.note-tool-color .color-palette-picker,
+.note-tool-color .color-palette-swatch {
+  display: inline-flex;
+}
+
+.note-tool-color .color-palette-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
 }
 
 /* Text-formatting controls are typographic glyphs, so each carries the styling
@@ -304,6 +343,71 @@
   line-height: 1.6;
   color: var(--text);
   outline: none;
+}
+
+.note-editor-surface a {
+  color: var(--notice-info);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.note-editor-surface a:hover {
+  color: color-mix(in srgb, var(--notice-info) 82%, var(--text));
+}
+
+.note-editor-surface a:focus-visible {
+  border-radius: 3px;
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+/* Masked text keeps its real content in the document, but paints as moving
+   speckles until the user reveals it for this editor session. */
+.note-editor-surface [data-note-mask="true"] {
+  position: relative;
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+.note-editor-surface [data-note-mask="true"]:not([data-note-mask-revealed="true"]),
+.note-editor-surface [data-note-mask="true"]:not([data-note-mask-revealed="true"]) * {
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+.note-editor-surface [data-note-mask="true"]:not([data-note-mask-revealed="true"]) {
+  background-image:
+    radial-gradient(circle, var(--text-muted) 0 1px, transparent 1.3px),
+    radial-gradient(circle, color-mix(in srgb, var(--text-faint) 82%, transparent) 0 0.8px, transparent 1.2px);
+  background-position: 0 0, 3px 4px;
+  background-size: 7px 7px, 11px 11px;
+  background-clip: text;
+  -webkit-background-clip: text;
+  animation: note-mask-speckles 1.1s steps(8, end) infinite;
+}
+
+.note-editor-surface [data-note-mask="true"][data-note-mask-revealed="true"] {
+  cursor: text;
+  background-image: none;
+  background-clip: border-box;
+  -webkit-background-clip: border-box;
+  animation: none;
+}
+
+.note-editor-surface [data-note-mask="true"]:not([data-note-mask-revealed="true"]):focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+@keyframes note-mask-speckles {
+  from { background-position: 0 0, 3px 4px; }
+  to { background-position: 7px -5px, -4px 8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .note-editor-surface [data-note-mask="true"] {
+    animation: none;
+  }
 }
 
 .note-editor-surface h1 { margin: 14px 0 6px; font-size: 20px; font-weight: 700; }

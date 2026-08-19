@@ -5777,6 +5777,8 @@
       "underline": "下線",
       "strikethrough": "取り消し線",
       "highlight": "ハイライト",
+      "textColor": "文字色",
+      "maskText": "選択したテキストをマスク",
       "inlineCode": "インラインコード",
       "bulletList": "箇条書き",
       "orderedList": "番号付きリスト",
@@ -5790,6 +5792,9 @@
       "insertDeepLink": "KKTerm の項目にリンク",
       "exportMarkdown": "Markdown にエクスポート",
       "search": "検索と置換"
+    },
+    "mask": {
+      "reveal": "マスクしたテキストを表示"
     },
     "linkPopover": {
       "textLabel": "テキスト",
@@ -5854,8 +5859,9 @@
       "imageFailed": "画像をメモに追加できませんでした。{{error}}",
       "deepLinkUnavailable": "リンク先の項目は存在しません。",
       "selectTextForLink": "リンクにするテキストを選択してください。",
+      "selectTextForMask": "まずマスクするテキストを選択してください。",
       "selectUrlForLink": "http:// または https:// で始まる Web アドレスを選択するとリンクにできます。",
-      "invalidLinkUrl": "http:// または https:// で始まるウェブアドレスを入力してください。",
+      "invalidLinkUrl": "有効なウェブアドレスを入力してください（例: example.com）。",
       "sendToTerminalUnavailable": "この接続に対するアクティブなターミナルペインがありません。",
       "exported": "メモを {{path}} にエクスポートしました。",
       "exportFailed": "メモをエクスポートできませんでした。{{error}}"

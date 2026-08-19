@@ -1,5 +1,6 @@
 import DOMPurify, { type UponSanitizeAttributeHook } from "dompurify";
 import { getNoteAsset } from "./noteCommands";
+import { NOTE_MASK_ATTRIBUTE, NOTE_MASK_ID_ATTRIBUTE, NOTE_MASK_REVEALED_ATTRIBUTE } from "./noteMask";
 
 /** Attribute carrying an out-of-line image's asset id. The `src` is filled in
  *  only at render time, so stored note HTML never embeds image bytes. */
@@ -13,6 +14,7 @@ const NOTE_ASSET_ID_PATTERN =
 const NOTE_DEEP_LINK_TARGET_PATTERN =
   /^(?:connection|workspace):[A-Za-z0-9_-]+$|^rackItem:[A-Za-z0-9_-]+:[A-Za-z0-9_-]+:[A-Za-z0-9_-]+$/;
 const NOTE_TEXT_ALIGNMENTS = new Set(["left", "center", "right", "justify"]);
+const NOTE_TEXT_COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
 
 const ALLOWED_TAGS = [
   "p", "br", "strong", "em", "u", "s", "code", "pre", "blockquote",
@@ -26,6 +28,8 @@ const ALLOWED_ATTR = [
   "data-type", "data-checked",
   NOTE_ASSET_ATTRIBUTE,
   NOTE_DEEP_LINK_ATTRIBUTE,
+  NOTE_MASK_ATTRIBUTE,
+  NOTE_MASK_ID_ATTRIBUTE,
   "data-note-label",
 ];
 
@@ -34,6 +38,22 @@ const ALLOWED_ATTR = [
  *  only the formats produced by this app, never arbitrary data attributes. */
 export function isValidNoteDeepLinkTarget(value: string): boolean {
   return NOTE_DEEP_LINK_TARGET_PATTERN.test(value);
+}
+
+function inlineStyleProperty(element: HTMLElement, propertyName: string): string {
+  const declarations = element.getAttribute("style")?.split(";") ?? [];
+  for (const declaration of declarations.reverse()) {
+    const separator = declaration.indexOf(":");
+    if (separator === -1) continue;
+    if (declaration.slice(0, separator).trim().toLowerCase() === propertyName) {
+      return declaration.slice(separator + 1).trim();
+    }
+  }
+  return "";
+}
+
+function isSafeNoteTextColor(value: string): boolean {
+  return NOTE_TEXT_COLOR_PATTERN.test(value.trim());
 }
 
 const preserveValidNoteDeepLinkTarget: UponSanitizeAttributeHook = (_node, data) => {
@@ -47,8 +67,9 @@ const preserveValidNoteDeepLinkTarget: UponSanitizeAttributeHook = (_node, data)
 
 /** Sanitize note HTML. Notes are user-authored and local, but they also accept
  *  pasted web content, so everything entering the editor or the DB is cleaned.
- *  Only content-addressed app-owned images and the alignment style emitted by
- *  Tiptap survive; scripts, event handlers, and remote resources do not. */
+ *  Only content-addressed app-owned images and the alignment/text-color styles
+ *  emitted by Tiptap survive; scripts, event handlers, and remote resources do
+ *  not. */
 export function sanitizeNoteHtml(html: string): string {
   DOMPurify.addHook("uponSanitizeAttribute", preserveValidNoteDeepLinkTarget);
   let sanitized: string;
@@ -71,10 +92,27 @@ export function sanitizeNoteHtml(html: string): string {
   // otherwise escape the editor visually or trigger remote resource loads.
   root.querySelectorAll<HTMLElement>("[style]").forEach((element) => {
     const textAlign = element.style.textAlign;
+    const textColor = inlineStyleProperty(element, "color");
     element.removeAttribute("style");
     if (NOTE_TEXT_ALIGNMENTS.has(textAlign)) {
       element.style.textAlign = textAlign;
     }
+    if (isSafeNoteTextColor(textColor)) {
+      element.style.color = textColor;
+    }
+  });
+
+  // Mask identities only keep a range revealed during this editor session;
+  // they are regenerated when the note is opened again. Keep the marker but
+  // never persist the runtime identity or the DOM-only revealed state.
+  root.querySelectorAll<HTMLElement>(`[${NOTE_MASK_ATTRIBUTE}]`).forEach((element) => {
+    if (element.getAttribute(NOTE_MASK_ATTRIBUTE) !== "true") {
+      element.removeAttribute(NOTE_MASK_ATTRIBUTE);
+      element.removeAttribute(NOTE_MASK_ID_ATTRIBUTE);
+      return;
+    }
+    element.removeAttribute(NOTE_MASK_ID_ATTRIBUTE);
+    element.removeAttribute(NOTE_MASK_REVEALED_ATTRIBUTE);
   });
 
   // Only app-owned, content-addressed images survive. Clipboard/file images

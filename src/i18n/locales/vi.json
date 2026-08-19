@@ -5777,6 +5777,8 @@
       "underline": "Gạch chân",
       "strikethrough": "Gạch ngang",
       "highlight": "Đánh dấu",
+      "textColor": "Màu văn bản",
+      "maskText": "Che văn bản đã chọn",
       "inlineCode": "Mã nội dòng",
       "bulletList": "Danh sách gạch đầu dòng",
       "orderedList": "Danh sách đánh số",
@@ -5790,6 +5792,9 @@
       "insertDeepLink": "Liên kết tới một mục KKTerm",
       "exportMarkdown": "Xuất sang Markdown",
       "search": "Tìm và thay thế"
+    },
+    "mask": {
+      "reveal": "Hiện văn bản đã che"
     },
     "linkPopover": {
       "textLabel": "Văn bản",
@@ -5854,8 +5859,9 @@
       "imageFailed": "Không thể thêm hình ảnh vào ghi chú. {{error}}",
       "deepLinkUnavailable": "Mục được liên kết không còn tồn tại.",
       "selectTextForLink": "Hãy chọn đoạn văn bản bạn muốn biến thành liên kết.",
+      "selectTextForMask": "Trước tiên, hãy chọn văn bản bạn muốn che.",
       "selectUrlForLink": "Hãy chọn một địa chỉ web bắt đầu bằng http:// hoặc https:// để tạo liên kết.",
-      "invalidLinkUrl": "Nhập địa chỉ web bắt đầu bằng http:// hoặc https://.",
+      "invalidLinkUrl": "Nhập địa chỉ web hợp lệ, chẳng hạn như example.com.",
       "sendToTerminalUnavailable": "Không có bảng terminal đang hoạt động cho kết nối này.",
       "exported": "Đã xuất ghi chú sang {{path}}.",
       "exportFailed": "Không thể xuất ghi chú. {{error}}"
