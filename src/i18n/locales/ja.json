@@ -5788,7 +5788,12 @@
       "insertImage": "画像を挿入",
       "insertLink": "Web リンクを挿入",
       "insertDeepLink": "KKTerm の項目にリンク",
+      "exportMarkdown": "Markdown にエクスポート",
       "search": "検索と置換"
+    },
+    "export": {
+      "dialogTitle": "メモを Markdown にエクスポート",
+      "filterName": "Markdown ファイル"
     },
     "search": {
       "placeholder": "メモ内を検索",
@@ -5839,7 +5844,9 @@
       "deepLinkUnavailable": "リンク先の項目は存在しません。",
       "selectTextForLink": "リンクにするテキストを選択してください。",
       "selectUrlForLink": "http:// または https:// で始まる Web アドレスを選択するとリンクにできます。",
-      "sendToTerminalUnavailable": "この接続に対するアクティブなターミナルペインがありません。"
+      "sendToTerminalUnavailable": "この接続に対するアクティブなターミナルペインがありません。",
+      "exported": "メモを {{path}} にエクスポートしました。",
+      "exportFailed": "メモをエクスポートできませんでした。{{error}}"
     }
   }
 }

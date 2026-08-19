@@ -5788,7 +5788,12 @@
       "insertImage": "แทรกรูปภาพ",
       "insertLink": "แทรกลิงก์เว็บ",
       "insertDeepLink": "ลิงก์ไปยังรายการใน KKTerm",
+      "exportMarkdown": "ส่งออกเป็น Markdown",
       "search": "ค้นหาและแทนที่"
+    },
+    "export": {
+      "dialogTitle": "ส่งออกบันทึกเป็น Markdown",
+      "filterName": "ไฟล์ Markdown"
     },
     "search": {
       "placeholder": "ค้นหาในบันทึก",
@@ -5839,7 +5844,9 @@
       "deepLinkUnavailable": "รายการที่ลิงก์ไว้ไม่มีอยู่แล้ว",
       "selectTextForLink": "เลือกข้อความที่ต้องการทำเป็นลิงก์",
       "selectUrlForLink": "เลือกที่อยู่เว็บที่ขึ้นต้นด้วย http:// หรือ https:// เพื่อทำเป็นลิงก์",
-      "sendToTerminalUnavailable": "ไม่มีแผงเทอร์มินัลที่ใช้งานอยู่สำหรับการเชื่อมต่อนี้"
+      "sendToTerminalUnavailable": "ไม่มีแผงเทอร์มินัลที่ใช้งานอยู่สำหรับการเชื่อมต่อนี้",
+      "exported": "ส่งออกบันทึกไปที่ {{path}} แล้ว",
+      "exportFailed": "ไม่สามารถส่งออกบันทึกได้ {{error}}"
     }
   }
 }

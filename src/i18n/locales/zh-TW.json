@@ -5788,7 +5788,12 @@
       "insertImage": "插入影像",
       "insertLink": "插入網頁連結",
       "insertDeepLink": "連結至 KKTerm 項目",
+      "exportMarkdown": "匯出為 Markdown",
       "search": "尋找與取代"
+    },
+    "export": {
+      "dialogTitle": "將筆記匯出為 Markdown",
+      "filterName": "Markdown 檔案"
     },
     "search": {
       "placeholder": "在筆記中尋找",
@@ -5839,7 +5844,9 @@
       "deepLinkUnavailable": "連結的項目已不存在。",
       "selectTextForLink": "請選取要轉換為連結的文字。",
       "selectUrlForLink": "請選取以 http:// 或 https:// 開頭的網址以建立連結。",
-      "sendToTerminalUnavailable": "此連線沒有作用中的終端機窗格。"
+      "sendToTerminalUnavailable": "此連線沒有作用中的終端機窗格。",
+      "exported": "筆記已匯出至 {{path}}。",
+      "exportFailed": "無法匯出筆記。{{error}}"
     }
   }
 }

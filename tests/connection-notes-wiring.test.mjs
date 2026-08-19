@@ -147,6 +147,23 @@ test("note commands are granted to the main window permission set", () => {
   }
 });
 
+test("Markdown export writes the same body shape the database stores", () => {
+  const editor = read("src/modules/notes/NoteEditorSheet.tsx");
+  // Export must not be a second, looser serialization path: it reuses the save
+  // path's sanitize + dehydrate pair, so an exported file can no more carry
+  // image bytes or unsanitized pasted markup than a saved note can.
+  assert.match(
+    editor,
+    /noteHtmlToMarkdown\(sanitizeNoteHtml\(dehydrateNoteAssets\(editor\.getHTML\(\)\)\)\)/,
+  );
+
+  const markdown = read("src/modules/notes/noteMarkdown.ts");
+  assert.match(markdown, /NOTE_IMAGE_DIRECTORY = "note-images"/);
+
+  const toolbar = read("src/modules/notes/NoteToolbar.tsx");
+  assert.match(toolbar, /notes\.toolbar\.exportMarkdown/);
+});
+
 test("the @ trigger and the toolbar picker share one Deep Link source", () => {
   // Two surfaces offering different targets would be a silent inconsistency,
   // so both must read the same choice list and the same ranking.

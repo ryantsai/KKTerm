@@ -22,7 +22,7 @@ import { useWorkspaceStore } from "../../store";
 import { ConnectionGlyph } from "../workspace/connections/ConnectionGlyph";
 import { getPaneRenderer, writeInputToPane } from "../workspace/paneRegistry";
 import type { Connection, ConnectionType } from "../../types";
-import { invokeCommand } from "../../lib/tauri";
+import { invokeCommand, saveMarkdownFile } from "../../lib/tauri";
 import { NoteToolbar } from "./NoteToolbar";
 import { NoteSearchBar } from "./NoteSearchBar";
 import { NoteDeepLinkPicker } from "./NoteDeepLinkPicker";
@@ -38,6 +38,7 @@ import { deleteConnectionNote, getConnectionNote, pruneNoteAssets, putNoteAsset,
 import { navigateNoteDeepLink, parseNoteDeepLink } from "./noteDeepLink";
 import type { NoteDeepLink } from "./noteDeepLink";
 import { downscaleImageFile } from "./noteImages";
+import { noteHtmlToMarkdown, noteMarkdownFilename } from "./noteMarkdown";
 import { showNativeContextMenu } from "../../lib/nativeContextMenu";
 import type { NativeContextMenuItem } from "../../lib/nativeContextMenu";
 
@@ -483,6 +484,26 @@ export function NoteEditorSheet({
     }
   }
 
+  // Export writes what is currently in the editor, saved or not, so an
+  // operator can hand off a note they are still drafting. Images stay in the
+  // app data directory; the Markdown carries their path as a reference.
+  async function handleExportMarkdown() {
+    if (!editor) return;
+    try {
+      const markdown = noteHtmlToMarkdown(sanitizeNoteHtml(dehydrateNoteAssets(editor.getHTML())));
+      const path = await saveMarkdownFile(noteMarkdownFilename(connectionName), markdown, {
+        title: t("notes.export.dialogTitle"),
+        filterName: t("notes.export.filterName"),
+      });
+      if (!path) return;
+      showStatusBarNotice(t("notes.notice.exported", { path }), { tone: "success" });
+    } catch (error) {
+      showStatusBarNotice(t("notes.notice.exportFailed", { error: String(error) }), {
+        tone: "error",
+      });
+    }
+  }
+
   async function handleDelete() {
     setConfirmDelete(false);
     try {
@@ -694,6 +715,8 @@ export function NoteEditorSheet({
                 onInsertImage={() => fileInputRef.current?.click()}
                 onInsertLink={insertLink}
                 onInsertDeepLink={() => setPickerOpen(true)}
+                onExportMarkdown={() => void handleExportMarkdown()}
+                canExport={!loading && !empty}
               />
               {searchOpen ? (
                 <NoteSearchBar

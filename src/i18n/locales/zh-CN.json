@@ -5788,7 +5788,12 @@
       "insertImage": "插入图片",
       "insertLink": "插入网页链接",
       "insertDeepLink": "链接到 KKTerm 项目",
+      "exportMarkdown": "导出为 Markdown",
       "search": "查找和替换"
+    },
+    "export": {
+      "dialogTitle": "将笔记导出为 Markdown",
+      "filterName": "Markdown 文件"
     },
     "search": {
       "placeholder": "在笔记中查找",
@@ -5839,7 +5844,9 @@
       "deepLinkUnavailable": "链接的项目已不存在。",
       "selectTextForLink": "请选择要转换为链接的文字。",
       "selectUrlForLink": "请选择以 http:// 或 https:// 开头的网址以创建链接。",
-      "sendToTerminalUnavailable": "没有此连接的活动终端窗格。"
+      "sendToTerminalUnavailable": "没有此连接的活动终端窗格。",
+      "exported": "笔记已导出到 {{path}}。",
+      "exportFailed": "无法导出笔记。{{error}}"
     }
   }
 }
