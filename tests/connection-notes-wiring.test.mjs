@@ -69,6 +69,17 @@ test("pasted note HTML cannot retain remote images or arbitrary inline CSS", () 
   assert.match(html, /element\.removeAttribute\("style"\)/);
 });
 
+test("note sanitization preserves valid Deep Link targets for editor reload", () => {
+  const html = read("src/modules/notes/noteHtml.ts");
+  // DOMPurify classifies the colon in KKTerm's serialized target as a URI-like
+  // value. The narrowly scoped hook is what keeps a valid chip from flattening
+  // to its label when a saved note is opened again.
+  assert.match(html, /isValidNoteDeepLinkTarget/);
+  assert.match(html, /addHook\("uponSanitizeAttribute"/);
+  assert.match(html, /data\.forceKeepAttr = true/);
+  assert.match(html, /removeHook\("uponSanitizeAttribute"/);
+});
+
 test("note binding indicators refresh with durable Connection changes", () => {
   const app = read("src/App.tsx");
   assert.match(app, /addEventListener\("kkterm:connection-tree-invalidated", refresh\)/);

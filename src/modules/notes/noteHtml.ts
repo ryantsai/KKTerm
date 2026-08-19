@@ -1,4 +1,4 @@
-import DOMPurify from "dompurify";
+import DOMPurify, { type UponSanitizeAttributeHook } from "dompurify";
 import { getNoteAsset } from "./noteCommands";
 
 /** Attribute carrying an out-of-line image's asset id. The `src` is filled in
@@ -10,6 +10,8 @@ export const NOTE_DEEP_LINK_ATTRIBUTE = "data-note-deep-link";
 
 const NOTE_ASSET_ID_PATTERN =
   /^[A-Za-z0-9_-]{1,128}\/[A-Fa-f0-9]{64}\.(?:png|jpg|gif|webp)$/;
+const NOTE_DEEP_LINK_TARGET_PATTERN =
+  /^(?:connection|workspace):[A-Za-z0-9_-]+$|^rackItem:[A-Za-z0-9_-]+:[A-Za-z0-9_-]+:[A-Za-z0-9_-]+$/;
 const NOTE_TEXT_ALIGNMENTS = new Set(["left", "center", "right", "justify"]);
 
 const ALLOWED_TAGS = [
@@ -27,18 +29,40 @@ const ALLOWED_ATTR = [
   "data-note-label",
 ];
 
+/** DOMPurify treats the colon in a valid Deep Link target as URI-like and
+ *  removes it even when the custom attribute is explicitly allowlisted. Keep
+ *  only the formats produced by this app, never arbitrary data attributes. */
+export function isValidNoteDeepLinkTarget(value: string): boolean {
+  return NOTE_DEEP_LINK_TARGET_PATTERN.test(value);
+}
+
+const preserveValidNoteDeepLinkTarget: UponSanitizeAttributeHook = (_node, data) => {
+  if (
+    data.attrName === NOTE_DEEP_LINK_ATTRIBUTE &&
+    isValidNoteDeepLinkTarget(data.attrValue)
+  ) {
+    data.forceKeepAttr = true;
+  }
+};
+
 /** Sanitize note HTML. Notes are user-authored and local, but they also accept
  *  pasted web content, so everything entering the editor or the DB is cleaned.
  *  Only content-addressed app-owned images and the alignment style emitted by
  *  Tiptap survive; scripts, event handlers, and remote resources do not. */
 export function sanitizeNoteHtml(html: string): string {
-  const sanitized = DOMPurify.sanitize(html, {
-    ALLOWED_TAGS,
-    ALLOWED_ATTR,
-    ALLOW_DATA_ATTR: false,
-    FORBID_TAGS: ["script", "style", "iframe", "object", "embed", "form", "input"],
-    FORBID_ATTR: ["onerror", "onload", "onclick"],
-  });
+  DOMPurify.addHook("uponSanitizeAttribute", preserveValidNoteDeepLinkTarget);
+  let sanitized: string;
+  try {
+    sanitized = DOMPurify.sanitize(html, {
+      ALLOWED_TAGS,
+      ALLOWED_ATTR,
+      ALLOW_DATA_ATTR: false,
+      FORBID_TAGS: ["script", "style", "iframe", "object", "embed", "form", "input"],
+      FORBID_ATTR: ["onerror", "onload", "onclick"],
+    });
+  } finally {
+    DOMPurify.removeHook("uponSanitizeAttribute", preserveValidNoteDeepLinkTarget);
+  }
   const doc = parseNoteDocument(sanitized);
   const root = doc.getElementById("note-root");
   if (!root) return "";

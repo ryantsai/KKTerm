@@ -22,6 +22,8 @@ pub struct NativeSerialTerminalRequest {
     pub encoding: crate::sessions::TerminalEncodingState,
 }
 
+const MACOS_SERIAL_CALLOUT_PREFIX: &str = "/dev/cu.";
+
 impl NativeSerialTerminal {
     pub fn write_input(&mut self, data: Vec<u8>) -> Result<(), String> {
         self.writer
@@ -61,21 +63,29 @@ fn normalize_available_serial_ports(
 ) -> Vec<String> {
     let mut ports: Vec<String> = paths
         .into_iter()
-        .filter(|path| !macos || path.starts_with("/dev/cu."))
+        .filter(|path| !macos || path.starts_with(MACOS_SERIAL_CALLOUT_PREFIX))
         .collect();
     ports.sort();
     ports.dedup();
     ports
 }
 
+fn validate_serial_line(line: &str, macos: bool) -> Result<&str, String> {
+    let line = line.trim();
+    if line.is_empty() {
+        return Err("serial line is required".to_string());
+    }
+    if macos && !line.starts_with(MACOS_SERIAL_CALLOUT_PREFIX) {
+        return Err("macOS serial lines must use a /dev/cu.* callout device".to_string());
+    }
+    Ok(line)
+}
+
 pub fn start_native_terminal(
     app: AppHandle,
     request: NativeSerialTerminalRequest,
 ) -> Result<NativeSerialTerminal, String> {
-    let line = request.line.trim();
-    if line.is_empty() {
-        return Err("serial line is required".to_string());
-    }
+    let line = validate_serial_line(&request.line, cfg!(target_os = "macos"))?;
     if request.speed == 0 {
         return Err("serial speed must be greater than 0".to_string());
     }
@@ -133,7 +143,24 @@ pub fn start_native_terminal(
 
 #[cfg(test)]
 mod tests {
-    use super::normalize_available_serial_ports;
+    use super::{normalize_available_serial_ports, validate_serial_line};
+
+    #[test]
+    fn macos_serial_line_rejects_dial_in_devices() {
+        assert_eq!(
+            validate_serial_line(" /dev/cu.usbserial-A ", true),
+            Ok("/dev/cu.usbserial-A"),
+        );
+        assert!(validate_serial_line("/dev/tty.usbserial-A", true).is_err());
+    }
+
+    #[test]
+    fn non_macos_serial_line_keeps_manual_paths_available() {
+        assert_eq!(
+            validate_serial_line(" /dev/ttyUSB0 ", false),
+            Ok("/dev/ttyUSB0"),
+        );
+    }
 
     #[test]
     fn macos_serial_enumeration_exposes_only_callout_devices() {

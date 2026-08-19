@@ -5,6 +5,8 @@ import { isMacPlatform, isWindowsPlatform } from "../../../../lib/platform";
 import { invokeCommand } from "../../../../lib/tauri";
 import type { Connection } from "../../../../types";
 
+const COMMON_SERIAL_SPEEDS = [9600, 19200, 38400, 115200] as const;
+
 function platformDefaultLine(): string {
   if (isWindowsPlatform()) return "COM1";
   if (isMacPlatform()) return "/dev/cu.";
@@ -14,11 +16,15 @@ function platformDefaultLine(): string {
 export function SerialConnectionFields({ initialConnection }: { initialConnection?: Connection }) {
   const { t } = useTranslation();
   const listId = useId();
+  const speedListId = useId();
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const speedWrapperRef = useRef<HTMLDivElement>(null);
   const [ports, setPorts] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
+  const [speedOpen, setSpeedOpen] = useState(false);
   const initialLine = initialConnection?.serialLine ?? initialConnection?.host ?? platformDefaultLine();
   const [line, setLine] = useState(initialLine);
+  const [speed, setSpeed] = useState(String(initialConnection?.serialSpeed ?? 9600));
 
   const refreshPorts = useCallback(
     (prefill: boolean) => {
@@ -40,14 +46,19 @@ export function SerialConnectionFields({ initialConnection }: { initialConnectio
     refreshPorts(true);
   }, [refreshPorts]);
 
-  // Close the dropdown on outside click or Escape.
+  // Close either dropdown on outside click or Escape.
   useEffect(() => {
-    if (!open) return;
+    if (!open && !speedOpen) return;
     function onPointerDown(event: MouseEvent) {
-      if (!wrapperRef.current?.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      if (open && !wrapperRef.current?.contains(target)) setOpen(false);
+      if (speedOpen && !speedWrapperRef.current?.contains(target)) setSpeedOpen(false);
     }
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") {
+        setOpen(false);
+        setSpeedOpen(false);
+      }
     }
     document.addEventListener("mousedown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
@@ -55,9 +66,10 @@ export function SerialConnectionFields({ initialConnection }: { initialConnectio
       document.removeEventListener("mousedown", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [open]);
+  }, [open, speedOpen]);
 
   const toggleOpen = () => {
+    setSpeedOpen(false);
     setOpen((wasOpen) => {
       if (!wasOpen) refreshPorts(false); // re-scan on open to catch hot-plugged devices
       return !wasOpen;
@@ -69,6 +81,16 @@ export function SerialConnectionFields({ initialConnection }: { initialConnectio
     setOpen(false);
   };
 
+  const toggleSpeedOpen = () => {
+    setOpen(false);
+    setSpeedOpen((wasOpen) => !wasOpen);
+  };
+
+  const selectSpeed = (value: number) => {
+    setSpeed(String(value));
+    setSpeedOpen(false);
+  };
+
   return (
     <>
       <label>
@@ -78,7 +100,7 @@ export function SerialConnectionFields({ initialConnection }: { initialConnectio
       <div className="connection-endpoint-fields">
         <label className="endpoint-host-input">
           <span>{t("connections.line")}*</span>
-          <div className={`serial-line-combobox${open ? " open" : ""}`} ref={wrapperRef}>
+          <div className={`serial-combobox${open ? " open" : ""}`} ref={wrapperRef}>
             <input
               name="serialLine"
               {...technicalInputProps}
@@ -89,7 +111,7 @@ export function SerialConnectionFields({ initialConnection }: { initialConnectio
             />
             <button
               type="button"
-              className="serial-line-combobox-toggle"
+              className="serial-combobox-toggle"
               aria-label={t("connections.serialLineDetect")}
               aria-expanded={open}
               aria-controls={listId}
@@ -107,9 +129,9 @@ export function SerialConnectionFields({ initialConnection }: { initialConnectio
               </svg>
             </button>
             {open && (
-              <ul className="serial-line-combobox-list" id={listId} role="listbox">
+              <ul className="serial-combobox-list" id={listId} role="listbox">
                 {ports.length === 0 ? (
-                  <li className="serial-line-combobox-empty" aria-disabled="true">
+                  <li className="serial-combobox-empty" aria-disabled="true">
                     {t("connections.serialLineNoneDetected")}
                   </li>
                 ) : (
@@ -133,15 +155,56 @@ export function SerialConnectionFields({ initialConnection }: { initialConnectio
         </label>
         <label className="endpoint-port-input">
           <span>{t("connections.speed")}*</span>
-          <input
-            name="serialSpeed"
-            defaultValue={initialConnection?.serialSpeed ?? 9600}
-            inputMode="numeric"
-            min="1"
-            type="number"
-            placeholder="9600"
-            required
-          />
+          <div className={`serial-combobox${speedOpen ? " open" : ""}`} ref={speedWrapperRef}>
+            <input
+              name="serialSpeed"
+              {...technicalInputProps}
+              value={speed}
+              onChange={(event) => setSpeed(event.currentTarget.value)}
+              inputMode="numeric"
+              min="1"
+              step="1"
+              type="number"
+              placeholder="9600"
+              required
+            />
+            <button
+              type="button"
+              className="serial-combobox-toggle"
+              aria-label={t("connections.speed")}
+              aria-expanded={speedOpen}
+              aria-controls={speedListId}
+              onClick={toggleSpeedOpen}
+            >
+              <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
+                <path
+                  d="M6 8l4 4 4-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+            {speedOpen && (
+              <ul className="serial-combobox-list" id={speedListId} role="listbox">
+                {COMMON_SERIAL_SPEEDS.map((value) => (
+                  <li key={value}>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={String(value) === speed}
+                      className={String(value) === speed ? "selected" : ""}
+                      onClick={() => selectSpeed(value)}
+                    >
+                      {value}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </label>
       </div>
     </>
