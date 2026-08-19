@@ -24,7 +24,7 @@ export function NoteCodeBlockView({ node }: ReactNodeViewProps) {
   return (
     <NodeViewWrapper className="note-code-block-view">
       <pre>
-        <NodeViewContent<"code"> as="code" />
+        <NodeViewContent<"code"> as="code" spellCheck={false} />
       </pre>
       {target ? (
         <button

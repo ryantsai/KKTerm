@@ -62,6 +62,8 @@ The toolbar (`notes.toolbar.label`) covers:
 - **Lists** — `notes.toolbar.bulletList`, `notes.toolbar.orderedList`, `notes.toolbar.taskList` (checkable items). Checklist boxes can be toggled directly in the editor and their checked state is saved and exported.
 - **Tables** — `notes.toolbar.insertTable` inserts a 3×3 table with a header row; columns are resizable. Right-clicking inside a cell opens a menu (the same row/column vocabulary as the Dashboard Notes widget: `dashboard.notesAddTableRow`, `dashboard.notesDeleteTableRow`, `dashboard.notesAddTableColumn`, `dashboard.notesDeleteTableColumn`, `dashboard.notesDeleteTable`) to add or delete rows and columns, or remove the whole table.
 
+Browser spellcheck is disabled throughout the note editor, including code blocks, so native spelling squiggles do not appear. The WebView2 browser context menu is also disabled for note content; link and table right-clicks continue to use KKTerm's app-owned menus.
+
 ### Sending a code block to the terminal
 
 When the note's own Connection is a terminal type (local, SSH, Telnet, or Serial), hovering a `notes.toolbar.codeBlock` reveals a `notes.editor.sendCodeToTerminal` button in its top-right corner. Clicking it types the block's text into that Connection's open terminal Pane — one line at a time, each followed by Enter, the same payload shape Quick Commands use. The button does not appear for notes bound to non-terminal Connections (RDP, VNC, SFTP/FTP, URL). If the Connection has no open terminal Pane, `notes.notice.sendToTerminalUnavailable` reports it in the Status Bar instead of sending anything.

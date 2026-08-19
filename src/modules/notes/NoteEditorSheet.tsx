@@ -286,6 +286,7 @@ export function NoteEditorSheet({
       attributes: {
         class: "note-editor-surface",
         "aria-label": t("notes.editor.contentLabel"),
+        spellcheck: "false",
       },
     },
   });
@@ -915,6 +916,10 @@ export function NoteEditorSheet({
   }
 
   function handleNoteLinkContextMenu(event: ReactMouseEvent<HTMLDivElement>) {
+    // Notes own their context-menu behavior; never let WebView2 show its
+    // browser menu over the editor. Link and table targets below may still
+    // open KKTerm's native app menu.
+    event.preventDefault();
     if (!editor || loading) return;
     const anchor = linkAnchorFromEvent(event);
     if (anchor) {
