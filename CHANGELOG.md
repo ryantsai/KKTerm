@@ -3,6 +3,56 @@
 All notable changes to KKTerm are documented here.
 
 ## Direct Downloads
+* 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.3/kkterm-3000.0.3-windows-x64-setup.exe)
+* 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.3/kkterm-3000.0.3-windows-arm64-setup.exe)
+* 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.3/kkterm-3000.0.3-windows-x64-portable.zip)
+* 📦 [Portable for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.3/kkterm-3000.0.3-windows-arm64-portable.zip)
+
+## Highlights
+- Export **Connection Notes** to **Markdown** from the note editor toolbar (downloads a `.md` file via the native save dialog).  
+- Add **RDP local printer redirection (Windows)** with a global default and per-Connection override.
+
+## New
+- **Connection Notes → Link editing**: Added a link popover to add/edit links inside notes (including deep link navigation confirmation). ([#5515acf](https://github.com/ryantsai/KKTerm/pull/747))
+- **Connection Notes → Task list support**: Added checklist/task list functionality with checkbox support in notes. (✓ with editor + tests)
+- **Connection Notes → Text styling**: Added text masking (reveal within the current Session) and text color formatting in the note toolbar.
+- **Connection Notes → Markdown export**: Added a download control to export the current note content as Markdown.
+
+## Improved
+- Disable browser spellcheck and WebView2 context menu in the Connection Notes editor.
+- Prevent text wrapping in note toolbar button labels for better readability.
+
+## Fixed
+- Harden serial Connection handling and preserve note **Deep Links**.
+
+## Internal
+- Clarify historical context for `sshSocksProxyInheritDefaults` in `connectionUsesTmux` (docs-only).
+- Remove deprecated localization files for Deep Link and export features.
+
+---
+
+## 精選重點
+- 從「連線筆記」編輯器的工具列匯出 **Connection Notes** 到 **Markdown**（透過原生儲存對話框下載 `.md` 檔）。  
+- 新增 **RDP 本機印表機重新導向（Windows）**：支援全域預設與每個 Connection 的覆寫。
+
+## 新增
+- **連線筆記 → 連結編輯**：新增筆記內新增/編輯連結的 **Link Popover**（含深層連結導覽確認）。([#5515acf](https://github.com/ryantsai/KKTerm/pull/747))
+- **連線筆記 → 勾選清單/任務**：加入支援 checkbox 的清單功能，讓你在筆記裡做任務。  
+- **連線筆記 → 文字樣式**：加入文字遮罩（僅在目前 Session 可揭露）與筆記工具列的文字顏色格式化。
+- **連線筆記 → Markdown 匯出**：新增下載控制項，將目前編輯內容匯出為 Markdown。
+
+## 改善
+- 在「連線筆記」編輯器中停用瀏覽器拼字檢查與 WebView2 內容選單。
+- 改善筆記工具列按鈕文字換行問題，提升可讀性（讓按鈕不再像終端機輸出一樣到處折行）。
+
+## 修正
+- 強化序列埠（Serial）連線的處理，並保留筆記中的 **Deep Links**。
+
+## Internal
+- 釐清 `connectionUsesTmux` 中 `sshSocksProxyInheritDefaults` 的歷史背景（僅文件/註解）。
+- 移除與 Deep Link 與匯出功能相關的已過時翻譯檔。
+
+## Direct Downloads
 * 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.2/kkterm-3000.0.2-windows-x64-setup.exe)
 * 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.2/kkterm-3000.0.2-windows-arm64-setup.exe)
 * 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.2/kkterm-3000.0.2-windows-x64-portable.zip)
