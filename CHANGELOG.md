@@ -3,6 +3,62 @@
 All notable changes to KKTerm are documented here.
 
 ## Direct Downloads
+* 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.2/kkterm-3000.0.2-windows-x64-setup.exe)
+* 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.2/kkterm-3000.0.2-windows-arm64-setup.exe)
+* 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.2/kkterm-3000.0.2-windows-x64-portable.zip)
+* 📦 [Portable for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.2/kkterm-3000.0.2-windows-arm64-portable.zip)
+
+## Highlights
+- **Connection Notes (rich-text)**: Create a per-Connection note in each **Connection Pane** toolbar, with **images** and **Deep Links** (e.g., jump between a Connection, Workspace, or rack device). (PR #742, PR #8247164)
+- **Expanded MCP file tools** and **workspace session coverage**. (PR #743, PR #b5f4451)
+- **Portable updates**, **inherited SSH tmux behavior**, and **macOS serial ports** fixes—because release engineering shouldn’t be your full-time job. (PR #739, PR #c06ffe5)
+
+## New
+- **Connection Notes with rich-text editor, images, and Deep Links** (insert via `@` or toolbar picker). (PR #742)
+- **Resizable note editor** UI. (PR #8247164, PR #52bfa09)
+
+## Improved
+- Repositioned the **NoteToolbar** button for **terminal** and **webview** connections. (PR #742, PR #9c1d147)
+
+## Fixed
+- **Portable updates** failure, **inherited SSH tmux** behavior, and **macOS serial ports**. Thanks to the reporters **JosephCLJ (#735)** and **Hank076 (#736)** (PR #739).
+- Hardened the **Connection Note** lifecycle (save/load/delete wiring). Thanks to **lidewu (#737)**. (PR #739 / PR author credited in #739)
+- Addressed **session file-browser** issues affecting **tool reviews** (including ensuring listing is read-only and correcting transfer queuing behavior). (PR #743 / PR #6d615c0)
+
+## Internal
+- Python runnable resolution for KKMod checks. (PR #47db530, PR #47db530)
+- Test/coverage improvements around workspace session + file AI/MCP. (PR #743 / PR #6d615c0)
+- IME support enhancements across text inputs/dialogs and IME composition guards for workspace/folder name editors. (PR #438d7c5, PR #ab908ed)
+- VNC fullscreen fixed. (PR #8cb6da4)
+- Added MSIX packaging support for Windows with embedded WebView2 runtime. (PR #a37da9c)
+
+---
+
+## Highlights（繁體中文（台灣））
+- **連線筆記（富文字）**：在每個 **連線分頁（Connection Pane）工具列**新增**每個連線各自一份**的筆記，支援**圖片**與**Deep Links（深度連結）**（例如在不同的 Connection、Workspace 或機房裝置間跳轉）。(PR #742, PR #8247164)
+- **擴充 MCP 檔案工具**與**工作階段（workspace session）覆蓋範圍**。 (PR #743, PR #b5f4451)
+- **修正可攜式更新（portable updates）**、**繼承的 SSH tmux 行為**、以及**macOS 序列埠（serial ports）**——畢竟版本發布工程師不該變成你的全職網管。 (PR #739, PR #c06ffe5)
+
+## New（新增）
+- **Connection Notes：富文字編輯器、圖片與 Deep Links**（支援用 `@` 或工具列選擇器插入）。 (PR #742)
+- **可調整大小**的筆記編輯器介面。 (PR #8247164, PR #52bfa09)
+
+## Improved（改善）
+- 調整 **NoteToolbar** 按鈕在 **終端機（terminal）**與**網頁檢視（webview）**連線中的位置。 (PR #742, PR #9c1d147)
+
+## Fixed（修正）
+- 修正 **可攜式更新失敗**、**繼承 SSH tmux 行為**、以及 **macOS 序列埠**問題。感謝回報者 **JosephCLJ (#735)** 與 **Hank076 (#736)**（PR #739）。
+- 強化 **Connection Note** 的生命週期（save/load/delete 相關串接）。感謝 **lidewu (#737)**。 (PR #739 / PR author credited in #739)
+- 修正 session file-browser 相關問題，影響工具回顧（包含確保 listing 為唯讀、以及修正傳輸佇列行為）。 (PR #743 / PR #6d615c0)
+
+## Internal（內部）
+- 修正 KKMod 檢查所需的可執行 Python。 (PR #47db530, PR #47db530)
+- 工作階段 + 檔案 AI/MCP 覆蓋測試改善。 (PR #743 / PR #6d615c0)
+- 全面提升文字輸入/對話框的 IME 支援，並在 workspace/資料夾名稱編輯器加入 IME 合成保護。 (PR #438d7c5, PR #ab908ed)
+- 修正 VNC 全螢幕。 (PR #8cb6da4)
+- 新增 Windows MSIX 打包支援（內建 WebView2 runtime）。 (PR #a37da9c)
+
+## Direct Downloads
 * 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.1/kkterm-3000.0.1-windows-x64-setup.exe)
 * 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.1/kkterm-3000.0.1-windows-arm64-setup.exe)
 * 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.1/kkterm-3000.0.1-windows-x64-portable.zip)
