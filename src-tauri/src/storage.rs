@@ -1181,6 +1181,8 @@ pub struct RdpSettings {
     shared_local_folder: Option<String>,
     #[serde(default)]
     redirect_printers: bool,
+    #[serde(default)]
+    redirect_ports: bool,
     #[serde(default = "default_remote_desktop_true")]
     bitmap_cache: bool,
     #[serde(default = "default_remote_desktop_performance_profile")]
@@ -1984,6 +1986,8 @@ pub struct RdpConnectionOptions {
     shared_local_folder: Option<String>,
     #[serde(default)]
     redirect_printers: Option<bool>,
+    #[serde(default)]
+    redirect_ports: Option<bool>,
     #[serde(default)]
     bitmap_cache: Option<bool>,
     #[serde(default)]
@@ -6308,6 +6312,7 @@ fn normalize_rdp_connection_options(
             shared_local_folders: None,
             shared_local_folder: None,
             redirect_printers: None,
+            redirect_ports: None,
             bitmap_cache: None,
             performance_profile: None,
             remote_resolution: None,
@@ -6933,6 +6938,7 @@ fn default_rdp_settings() -> RdpSettings {
         shared_local_folders: Vec::new(),
         shared_local_folder: None,
         redirect_printers: false,
+        redirect_ports: false,
         bitmap_cache: true,
         performance_profile: default_remote_desktop_performance_profile(),
         remote_resolution: default_remote_desktop_resolution(),

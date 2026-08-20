@@ -1531,6 +1531,10 @@ export interface RdpSettings {
   /** Windows-only: maps local printers into the Session via the RDP ActiveX
    * host. The macOS/Linux IronRDP canvas path has no printer backend. */
   redirectPrinters: boolean;
+  /** Windows-only: maps local serial/COM ports into the Session via the RDP
+   * ActiveX host's RedirectPorts property. The macOS/Linux IronRDP canvas
+   * path has no port backend. */
+  redirectPorts: boolean;
   bitmapCache: boolean;
   performanceProfile: RdpPerformanceProfile;
   remoteResolution: RdpRemoteResolution;
@@ -1548,6 +1552,7 @@ export interface RdpConnectionOptions {
   /** Legacy single-folder setting retained for backward-compatible imports. */
   sharedLocalFolder?: string;
   redirectPrinters?: boolean;
+  redirectPorts?: boolean;
   bitmapCache?: boolean;
   performanceProfile?: RdpPerformanceProfile;
   remoteResolution?: RdpRemoteResolution;

@@ -1786,6 +1786,7 @@ pub fn connection_input_schema(id_name: Option<&str>) -> Value {
         "sharedLocalFolders": {"type": ["array", "null"], "items": {"type": "string"}},
         "sharedLocalFolder": {"type": ["string", "null"]},
         "redirectPrinters": {"type": ["boolean", "null"]},
+        "redirectPorts": {"type": ["boolean", "null"]},
         "bitmapCache": {"type": ["boolean", "null"]},
         "performanceProfile": {"type": ["string", "null"], "enum": ["balanced", "quality", "speed", null]},
         "remoteResolution": {"type": ["string", "null"]},

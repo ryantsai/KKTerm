@@ -1155,8 +1155,7 @@
 .connection-dialog-fields-two-column > .connection-dialog-primary-fields {
   display: grid;
   gap: 8px;
-  align-content: space-between;
-  align-self: stretch;
+  align-content: start;
   min-width: 0;
   grid-column: 1;
 }
@@ -1636,6 +1635,77 @@ fieldset.connection-specific-options > legend {
   background: transparent;
   border-radius: 0;
   box-shadow: none;
+}
+
+.connection-advanced-section {
+  margin-top: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.connection-advanced-summary {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 40px;
+  padding: 0 12px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.connection-advanced-summary::-webkit-details-marker {
+  display: none;
+}
+
+.connection-advanced-summary span {
+  flex: 1 1 auto;
+}
+
+.connection-advanced-section.is-disabled .connection-advanced-summary {
+  opacity: 0.55;
+}
+
+.connection-advanced-chevron {
+  flex: 0 0 auto;
+  color: var(--text-faint);
+  transition: transform 0.18s ease;
+}
+
+.connection-advanced-section[open] .connection-advanced-chevron {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .connection-advanced-chevron {
+    transition: none;
+  }
+}
+
+.connection-advanced-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 16px;
+  row-gap: 2px;
+  padding: 6px 12px 10px;
+  border-top: 1px solid var(--hairline);
+}
+
+.connection-advanced-grid .connection-session-toggle {
+  min-height: 38px;
+}
+
+.connection-advanced-grid .rdp-local-resource-summary,
+.connection-advanced-grid .rdp-shared-folder-editor {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--hairline);
 }
 
 .connection-session-toggle {

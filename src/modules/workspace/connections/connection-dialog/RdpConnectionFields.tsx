@@ -1,4 +1,4 @@
-import { Clipboard, HardDrive, Layers, Monitor, Palette, Printer, Scaling, Settings2, Shield, Zap } from "../../../../lib/reicon";
+import { Cable, ChevronRight, Clipboard, HardDrive, Layers, Monitor, Palette, Printer, Scaling, Settings2, Shield, SlidersHorizontal, Zap } from "../../../../lib/reicon";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { technicalInputProps } from "../../../../lib/inputBehavior";
@@ -126,12 +126,17 @@ export function RdpConnectionOptions({
     ? normalizeRdpSharedLocalFolders(rdpSettings.sharedLocalFolders, rdpSettings.sharedLocalFolder)
     : sharedLocalFolders;
   const usesWindowsDriveMapping = isWindowsPlatform();
-  // Printer redirection is an RDP ActiveX property; the macOS/Linux IronRDP
-  // canvas path has no printer backend, so the toggle would be a no-op there.
+  // Printer and port redirection are RDP ActiveX properties; the macOS/Linux
+  // IronRDP canvas path has no printer or port backend, so the toggles would
+  // be a no-op there.
   const supportsPrinterRedirection = isWindowsPlatform();
+  const supportsPortRedirection = isWindowsPlatform();
   const effectiveRedirectPrinters = rdpInheritsSettingsDefaults
     ? rdpSettings.redirectPrinters
     : initialConnection?.rdpOptions?.redirectPrinters ?? rdpSettings.redirectPrinters;
+  const effectiveRedirectPorts = rdpInheritsSettingsDefaults
+    ? rdpSettings.redirectPorts
+    : initialConnection?.rdpOptions?.redirectPorts ?? rdpSettings.redirectPorts;
 
   return (
       <fieldset className="connection-session-fields connection-specific-options">
@@ -207,86 +212,113 @@ export function RdpConnectionOptions({
               </select>
             </label>
           </div>
-          <div className="connection-session-fields">
-            <label className="connection-session-toggle">
-              <Shield className="option-glyph" size={17} aria-hidden />
-              <span>{t("settings.rdpAdministrativeSession")}</span>
-              <input
-                disabled={rdpInheritsSettingsDefaults}
-                name="rdpAdministrativeSession"
-                type="checkbox"
-                defaultChecked={
-                  initialConnection?.rdpOptions?.administrativeSession ?? rdpSettings.administrativeSession
-                }
-              />
-            </label>
-            <label className="connection-session-toggle">
-              <Clipboard className="option-glyph" size={17} aria-hidden />
-              <span>{t("settings.rdpRedirectClipboard")}</span>
-              <input
-                disabled={rdpInheritsSettingsDefaults}
-                name="rdpRedirectClipboard"
-                type="checkbox"
-                defaultChecked={initialConnection?.rdpOptions?.redirectClipboard ?? rdpSettings.redirectClipboard}
-              />
-            </label>
-            <div className="rdp-connection-local-resource">
+          <details className={`connection-advanced-section${rdpInheritsSettingsDefaults ? " is-disabled" : ""}`}>
+            <summary className="connection-advanced-summary">
+              <SlidersHorizontal className="option-glyph" size={16} aria-hidden />
+              <span>{t("connections.rdpAdvancedOptions")}</span>
+              <ChevronRight className="connection-advanced-chevron" size={14} aria-hidden />
+            </summary>
+            <div className="connection-advanced-grid">
               <label className="connection-session-toggle">
-                <HardDrive className="option-glyph" size={17} aria-hidden />
-                <span>
-                  {t(usesWindowsDriveMapping ? "settings.rdpRedirectDrives" : "settings.rdpShareLocalFolders")}
-                </span>
+                <Shield className="option-glyph" size={17} aria-hidden />
+                <span>{t("settings.rdpAdministrativeSession")}</span>
                 <input
-                  checked={effectiveRedirectDrives}
                   disabled={rdpInheritsSettingsDefaults}
-                  name="rdpRedirectDrives"
-                  onChange={(event) => setRedirectDrives(event.currentTarget.checked)}
+                  name="rdpAdministrativeSession"
                   type="checkbox"
+                  defaultChecked={
+                    initialConnection?.rdpOptions?.administrativeSession ?? rdpSettings.administrativeSession
+                  }
                 />
               </label>
-              <input name="rdpDriveSelection" type="hidden" value={JSON.stringify(effectiveDriveSelection)} />
-              <input name="rdpSharedLocalFolders" type="hidden" value={JSON.stringify(effectiveSharedLocalFolders)} />
-              {effectiveRedirectDrives ? (
-                <RdpLocalResourceSelector
-                  disabled={rdpInheritsSettingsDefaults}
-                  driveSelection={effectiveDriveSelection}
-                  sharedLocalFolders={effectiveSharedLocalFolders}
-                  onDriveSelectionChange={setDriveSelection}
-                  onSharedLocalFoldersChange={setSharedLocalFolders}
-                />
-              ) : null}
-            </div>
-            {supportsPrinterRedirection ? (
               <label className="connection-session-toggle">
-                <Printer className="option-glyph" size={17} aria-hidden />
-                <span>{t("settings.rdpRedirectPrinters")}</span>
+                <Clipboard className="option-glyph" size={17} aria-hidden />
+                <span>{t("settings.rdpRedirectClipboard")}</span>
                 <input
                   disabled={rdpInheritsSettingsDefaults}
+                  name="rdpRedirectClipboard"
+                  type="checkbox"
+                  defaultChecked={initialConnection?.rdpOptions?.redirectClipboard ?? rdpSettings.redirectClipboard}
+                />
+              </label>
+              {supportsPrinterRedirection ? (
+                <label className="connection-session-toggle">
+                  <Printer className="option-glyph" size={17} aria-hidden />
+                  <span>{t("settings.rdpRedirectPrinters")}</span>
+                  <input
+                    disabled={rdpInheritsSettingsDefaults}
+                    name="rdpRedirectPrinters"
+                    type="checkbox"
+                    defaultChecked={initialConnection?.rdpOptions?.redirectPrinters ?? rdpSettings.redirectPrinters}
+                  />
+                </label>
+              ) : (
+                // Keep a Windows-only override intact when the Connection is edited
+                // on macOS or Linux, where the toggle is not rendered.
+                <input
                   name="rdpRedirectPrinters"
+                  type="hidden"
+                  value={effectiveRedirectPrinters ? "on" : ""}
+                />
+              )}
+              {supportsPortRedirection ? (
+                <label className="connection-session-toggle">
+                  <Cable className="option-glyph" size={17} aria-hidden />
+                  <span>{t("settings.rdpRedirectPorts")}</span>
+                  <input
+                    disabled={rdpInheritsSettingsDefaults}
+                    name="rdpRedirectPorts"
+                    type="checkbox"
+                    defaultChecked={initialConnection?.rdpOptions?.redirectPorts ?? rdpSettings.redirectPorts}
+                  />
+                </label>
+              ) : (
+                // Keep a Windows-only override intact when the Connection is edited
+                // on macOS or Linux, where the toggle is not rendered.
+                <input
+                  name="rdpRedirectPorts"
+                  type="hidden"
+                  value={effectiveRedirectPorts ? "on" : ""}
+                />
+              )}
+              <label className="connection-session-toggle">
+                <Layers className="option-glyph" size={17} aria-hidden />
+                <span>{t("settings.bitmapCache")}</span>
+                <input
+                  disabled={rdpInheritsSettingsDefaults}
+                  name="rdpBitmapCache"
                   type="checkbox"
-                  defaultChecked={initialConnection?.rdpOptions?.redirectPrinters ?? rdpSettings.redirectPrinters}
+                  defaultChecked={initialConnection?.rdpOptions?.bitmapCache ?? rdpSettings.bitmapCache}
                 />
               </label>
-            ) : (
-              // Keep a Windows-only override intact when the Connection is edited
-              // on macOS or Linux, where the toggle is not rendered.
-              <input
-                name="rdpRedirectPrinters"
-                type="hidden"
-                value={effectiveRedirectPrinters ? "on" : ""}
-              />
-            )}
-            <label className="connection-session-toggle">
-              <Layers className="option-glyph" size={17} aria-hidden />
-              <span>{t("settings.bitmapCache")}</span>
-              <input
-                disabled={rdpInheritsSettingsDefaults}
-                name="rdpBitmapCache"
-                type="checkbox"
-                defaultChecked={initialConnection?.rdpOptions?.bitmapCache ?? rdpSettings.bitmapCache}
-              />
-            </label>
-          </div>
+              <div className="rdp-connection-local-resource">
+                <label className="connection-session-toggle">
+                  <HardDrive className="option-glyph" size={17} aria-hidden />
+                  <span>
+                    {t(usesWindowsDriveMapping ? "settings.rdpRedirectDrives" : "settings.rdpShareLocalFolders")}
+                  </span>
+                  <input
+                    checked={effectiveRedirectDrives}
+                    disabled={rdpInheritsSettingsDefaults}
+                    name="rdpRedirectDrives"
+                    onChange={(event) => setRedirectDrives(event.currentTarget.checked)}
+                    type="checkbox"
+                  />
+                </label>
+                <input name="rdpDriveSelection" type="hidden" value={JSON.stringify(effectiveDriveSelection)} />
+                <input name="rdpSharedLocalFolders" type="hidden" value={JSON.stringify(effectiveSharedLocalFolders)} />
+                {effectiveRedirectDrives ? (
+                  <RdpLocalResourceSelector
+                    disabled={rdpInheritsSettingsDefaults}
+                    driveSelection={effectiveDriveSelection}
+                    sharedLocalFolders={effectiveSharedLocalFolders}
+                    onDriveSelectionChange={setDriveSelection}
+                    onSharedLocalFoldersChange={setSharedLocalFolders}
+                  />
+                ) : null}
+              </div>
+            </div>
+          </details>
         </div>
       </fieldset>
   );

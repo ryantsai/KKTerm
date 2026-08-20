@@ -163,7 +163,6 @@ export function UrlConnectionOptions({ initialConnection }: { initialConnection?
             />
           </label>
         </div>
-        <small className="field-hint">{t("connections.urlProxyOverrideHint")}</small>
       </div>
     </fieldset>
   );

@@ -4952,6 +4952,9 @@ function ConnectionDialog({
               redirectPrinters: inheritRdpDefaults
                 ? rdpSettings.redirectPrinters
                 : form.get("rdpRedirectPrinters") === "on",
+              redirectPorts: inheritRdpDefaults
+                ? rdpSettings.redirectPorts
+                : form.get("rdpRedirectPorts") === "on",
               bitmapCache: inheritRdpDefaults
                 ? rdpSettings.bitmapCache
                 : form.get("rdpBitmapCache") === "on",

@@ -156,6 +156,7 @@ export const defaultRdpSettings: RdpSettings = {
   sharedLocalFolders: [],
   sharedLocalFolder: "",
   redirectPrinters: false,
+  redirectPorts: false,
   bitmapCache: true,
   performanceProfile: "balanced",
   remoteResolution: "automatic",

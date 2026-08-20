@@ -213,6 +213,7 @@ export const SETTINGS_SEARCH_KEYS: Record<SettingsSectionId, readonly string[]> 
     "settings.bitmapCache", "settings.display", "settings.remoteDesktopViewMode",
     "settings.rdpRemoteResolution", "settings.rdpRedirectClipboard",
     "settings.rdpRedirectPrinters", "settings.rdpRedirectPrintersHint",
+    "settings.rdpRedirectPorts", "settings.rdpRedirectPortsHint",
     "settings.rdpAdministrativeSession", "settings.rdpAdministrativeSessionHint",
     "settings.performanceFlags", "settings.rdpBitmapCacheHint",
     "settings.rdpColorDepth15", "settings.rdpColorDepth16", "settings.rdpColorDepth24",
