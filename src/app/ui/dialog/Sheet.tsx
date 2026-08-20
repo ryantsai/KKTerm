@@ -314,9 +314,9 @@ export function Btn({
 
 export function Group({ title, children }: { title?: ReactNode; children: ReactNode }) {
   return (
-    <div className="kk-field" style={{ gap: 0 }}>
-      {title && <div className="kk-group-title">{title}</div>}
+    <div className="kk-group-wrap">
       <div className="kk-group">{children}</div>
+      {title && <div className="kk-group-title">{title}</div>}
     </div>
   );
 }

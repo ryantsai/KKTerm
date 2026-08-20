@@ -1155,7 +1155,8 @@
 .connection-dialog-fields-two-column > .connection-dialog-primary-fields {
   display: grid;
   gap: 8px;
-  align-content: start;
+  align-content: space-between;
+  align-self: stretch;
   min-width: 0;
   grid-column: 1;
 }
@@ -1585,7 +1586,8 @@ fieldset.connection-session-fields > legend {
 }
 
 fieldset.connection-specific-options {
-  gap: 5px;
+  position: relative;
+  gap: 0;
   padding: 0;
   margin: 0;
   background: transparent;
@@ -1593,18 +1595,27 @@ fieldset.connection-specific-options {
 }
 
 fieldset.connection-specific-options > legend {
-  min-height: 18px;
-  margin-bottom: 2px;
+  position: absolute;
+  top: -9px;
+  left: 12px;
+  min-height: 0;
+  margin-bottom: 0;
+  padding: 0 6px;
+  background: var(--surface);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
 
 .connection-specific-options-panel {
   display: grid;
   gap: 0;
   min-width: 0;
-  padding: 10px;
-  background: var(--surface-muted);
+  padding: 18px 12px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 10px;
-  box-shadow: inset 0 0 0 0.5px var(--border);
 }
 
 .connection-specific-options-panel > .connection-session-toggle:first-child {
