@@ -73,12 +73,34 @@ test("maelstrom uses Poseidon v0.0.2's full FFT ocean", () => {
 
 test("Poseidon README scenes use their v0.0.2 camera, sky, and palette variants", () => {
   assert.deepEqual(POSEIDON_OCEAN_SCENES.sunGlitter.camera.position, [0, 6, 0]);
+  assert.equal(POSEIDON_OCEAN_SCENES.sunGlitter.camera.fov, 60);
+  assert.equal(POSEIDON_OCEAN_SCENES.sunGlitter.camera.sunChase, true);
   assert.equal(POSEIDON_OCEAN_SCENES.sunGlitter.sky, "golden");
   assert.equal(POSEIDON_OCEAN_SCENES.whitecaps.sky, "golden");
+  assert.deepEqual(POSEIDON_OCEAN_SCENES.whitecaps.camera.position, [0, 16, 68]);
+  assert.deepEqual(POSEIDON_OCEAN_SCENES.whitecaps.camera.target, [0, 2, -20]);
+  assert.equal(POSEIDON_OCEAN_SCENES.whitecaps.camera.fov, 55);
+  assert.equal(POSEIDON_OCEAN_SCENES.whitecaps.palette, 1);
+  assert.equal(POSEIDON_OCEAN_SCENES.subsurfaceScatter.sky, "golden");
+  assert.equal(POSEIDON_OCEAN_SCENES.subsurfaceScatter.palette, 0);
   assert.deepEqual(POSEIDON_OCEAN_SCENES.subsurfaceScatter.camera.position, [-30, 1.4, 20]);
+  assert.deepEqual(POSEIDON_OCEAN_SCENES.subsurfaceScatter.camera.target, [10, 6, -25]);
+  assert.equal(POSEIDON_OCEAN_SCENES.subsurfaceScatter.camera.fov, 70);
+  assert.equal(POSEIDON_OCEAN_SCENES.waveField.sky, "midday");
+  assert.equal(POSEIDON_OCEAN_SCENES.waveField.palette, 1);
   assert.deepEqual(POSEIDON_OCEAN_SCENES.waveField.camera.position, [0, 90, 180]);
+  assert.deepEqual(POSEIDON_OCEAN_SCENES.waveField.camera.target, [0, 0, -60]);
+  assert.equal(POSEIDON_OCEAN_SCENES.waveField.camera.fov, 55);
+  assert.equal(POSEIDON_OCEAN_SCENES.openOceanBlue.sky, "midday");
   assert.equal(POSEIDON_OCEAN_SCENES.openOceanBlue.palette, 1);
+  assert.deepEqual(POSEIDON_OCEAN_SCENES.openOceanBlue.camera.position, [0, 9, 40]);
+  assert.deepEqual(POSEIDON_OCEAN_SCENES.openOceanBlue.camera.target, [0, 0.5, -90]);
+  assert.equal(POSEIDON_OCEAN_SCENES.openOceanBlue.camera.fov, 62);
+  assert.equal(POSEIDON_OCEAN_SCENES.tropicalGreen.sky, "midday");
   assert.equal(POSEIDON_OCEAN_SCENES.tropicalGreen.palette, 0);
+  assert.deepEqual(POSEIDON_OCEAN_SCENES.tropicalGreen.camera.position, [0, 9, 40]);
+  assert.deepEqual(POSEIDON_OCEAN_SCENES.tropicalGreen.camera.target, [0, 0.5, -90]);
+  assert.equal(POSEIDON_OCEAN_SCENES.tropicalGreen.camera.fov, 62);
   assert.match(skySource, /texture\(u\.skyTexture/);
   assert.doesNotMatch(skySource, /let skyTex = null/);
 });

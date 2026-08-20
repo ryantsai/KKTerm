@@ -73,7 +73,10 @@ export const POSEIDON_OCEAN_SCENES: Readonly<Record<PoseidonOceanSceneId, Poseid
   whitecaps: {
     sky: "golden",
     palette: 1,
-    camera: { position: [0, 7, 10], target: [14, -2, -22], fov: 60 },
+    // The current README image replaced the earlier near-field/midday shot
+    // with the golden-hour swell framing so every bright mark is foam rather
+    // than midday specular reflection.
+    camera: { position: [0, 16, 68], target: [0, 2, -20], fov: 55 },
   },
   subsurfaceScatter: {
     sky: "golden",
