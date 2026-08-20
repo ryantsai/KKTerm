@@ -3075,7 +3075,7 @@
     "rdpRedirectPrinters": "打印机",
     "rdpRedirectPrintersHint": "将本地打印机公开给远程桌面会话。远程服务器需要远程桌面 Easy Print 或匹配的打印机驱动程序。",
     "rdpRedirectPorts": "端口",
-    "rdpRedirectPortsHint": "将本机串行 (COM) 端口暴露给远程桌面会话。",
+    "rdpRedirectPortsHint": "将本地串行 (COM) 端口公开给远程桌面会话。",
     "rdpShareLocalFolders": "共享本地文件夹",
     "rdpShareLocalFoldersHint": "将选定的本地文件夹公开给远程桌面会话。",
     "rdpAllLocalDrives": "所有本地驱动器",

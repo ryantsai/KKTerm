@@ -3068,7 +3068,7 @@
     "rdpRemoteResolutionAutomatic": "Tự động",
     "rdpAdministrativeSession": "Phiên quản trị",
     "rdpAdministrativeSessionHint": "Kết nối với một phiên để quản trị máy chủ.",
-    "rdpRedirectClipboard": "Clipboard",
+    "rdpRedirectClipboard": "Bảng nhớ tạm",
     "rdpRedirectClipboardHint": "Cho phép sao chép và dán clipboard giữa KKTerm và desktop từ xa.",
     "rdpRedirectDrives": "Ổ đĩa",
     "rdpRedirectDrivesHint": "Hiển thị ổ đĩa cục bộ cho phiên desktop từ xa.",

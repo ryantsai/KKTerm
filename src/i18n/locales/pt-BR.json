@@ -3075,7 +3075,7 @@
     "rdpRedirectPrinters": "Impressora",
     "rdpRedirectPrintersHint": "Expõe as impressoras locais para a sessão de área de trabalho remota. O servidor remoto precisa do Easy Print da Área de Trabalho Remota ou de um driver de impressora compatível.",
     "rdpRedirectPorts": "Porta",
-    "rdpRedirectPortsHint": "Expor as portas seriais (COM) locais para a sessão de área de trabalho remota.",
+    "rdpRedirectPortsHint": "Expõe as portas seriais (COM) locais para a sessão de área de trabalho remota.",
     "rdpShareLocalFolders": "Compartilhar pastas locais",
     "rdpShareLocalFoldersHint": "Expõe as pastas locais selecionadas à sessão de desktop remoto.",
     "rdpAllLocalDrives": "Todas as unidades locais",

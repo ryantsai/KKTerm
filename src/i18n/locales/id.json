@@ -3068,7 +3068,7 @@
     "rdpRemoteResolutionAutomatic": "Otomatis",
     "rdpAdministrativeSession": "Sesi administratif",
     "rdpAdministrativeSessionHint": "Hubungkan ke sesi untuk mengelola server.",
-    "rdpRedirectClipboard": "Clipboard",
+    "rdpRedirectClipboard": "Papan klip",
     "rdpRedirectClipboardHint": "Izinkan salin dan tempel clipboard antara KKTerm dan desktop jarak jauh.",
     "rdpRedirectDrives": "Drive",
     "rdpRedirectDrivesHint": "Ekspos drive lokal ke sesi desktop jarak jauh.",

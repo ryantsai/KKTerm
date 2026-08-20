@@ -3075,7 +3075,7 @@
     "rdpRedirectPrinters": "Impresora",
     "rdpRedirectPrintersHint": "Expone las impresoras locales a la sesión de escritorio remoto. El servidor remoto necesita Easy Print de Escritorio remoto o un controlador de impresora compatible.",
     "rdpRedirectPorts": "Puerto",
-    "rdpRedirectPortsHint": "Exponer los puertos serie (COM) locales a la sesión de escritorio remoto.",
+    "rdpRedirectPortsHint": "Expone los puertos serie (COM) locales a la sesión de escritorio remoto.",
     "rdpShareLocalFolders": "Compartir carpetas locales",
     "rdpShareLocalFoldersHint": "Expone las carpetas locales seleccionadas a la sesión de escritorio remoto.",
     "rdpAllLocalDrives": "Todas las unidades locales",
