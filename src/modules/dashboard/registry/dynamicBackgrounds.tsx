@@ -4,7 +4,15 @@ import { dynamicBackgroundDevicePixelRatio } from "./dynamicBackgroundCanvas";
 import { BalloonsBg, DunesBg, JellyfishBg, LighthouseBg, SavannaBg } from "./extraDynamicBackgrounds";
 import { FujiBg } from "./fujiBackground";
 import { MistySeaBg } from "./mistySeaBackground";
-import { MaelstromBg } from "./maelstromBackground";
+import {
+  MaelstromBg,
+  OpenOceanBlueBg,
+  SubsurfaceScatterBg,
+  SunGlitterBg,
+  TropicalGreenBg,
+  WaveFieldBg,
+  WhitecapsBg,
+} from "./maelstromBackground";
 import { WatersBg } from "./watersBackground";
 import {
   AnimatedGradientBg,
@@ -3827,6 +3835,12 @@ const DYNAMIC_BACKGROUND_COMPONENTS = {
   ocean: OceanBg,
   mistySea: MistySeaBg,
   maelstrom: MaelstromBg,
+  sunGlitter: SunGlitterBg,
+  whitecaps: WhitecapsBg,
+  subsurfaceScatter: SubsurfaceScatterBg,
+  waveField: WaveFieldBg,
+  openOceanBlue: OpenOceanBlueBg,
+  tropicalGreen: TropicalGreenBg,
   waters: WatersBg,
   raindrops: RaindropsBg,
   rainywindow: RainyWindowBg,
@@ -3884,6 +3898,16 @@ export const DYNAMIC_BACKGROUNDS: readonly {
   { id: "ocean", labelKey: "dashboard.dynamicBackgrounds.ocean", mood: "calm" },
   { id: "mistySea", labelKey: "dashboard.dynamicBackgrounds.mistySea", mood: "calm" },
   { id: "maelstrom", labelKey: "dashboard.dynamicBackgrounds.maelstrom", mood: "erratic" },
+  { id: "sunGlitter", labelKey: "dashboard.dynamicBackgrounds.sunGlitter", mood: "warm" },
+  { id: "whitecaps", labelKey: "dashboard.dynamicBackgrounds.whitecaps", mood: "erratic" },
+  {
+    id: "subsurfaceScatter",
+    labelKey: "dashboard.dynamicBackgrounds.subsurfaceScatter",
+    mood: "warm",
+  },
+  { id: "waveField", labelKey: "dashboard.dynamicBackgrounds.waveField", mood: "calm" },
+  { id: "openOceanBlue", labelKey: "dashboard.dynamicBackgrounds.openOceanBlue", mood: "calm" },
+  { id: "tropicalGreen", labelKey: "dashboard.dynamicBackgrounds.tropicalGreen", mood: "calm" },
   { id: "waters", labelKey: "dashboard.dynamicBackgrounds.waters", mood: "calm" },
   { id: "raindrops", labelKey: "dashboard.dynamicBackgrounds.raindrops", mood: "calm" },
   { id: "rainywindow", labelKey: "dashboard.dynamicBackgrounds.rainyWindow", mood: "calm" },

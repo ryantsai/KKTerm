@@ -727,6 +727,53 @@ BUILDERS.maelstrom = (id) => {
   return svgWrap(id, `<rect width="160" height="100" fill="url(#${id}stormSky)"/><circle cx="122" cy="24" r="7" fill="#fff1dc" opacity=".7"/><g class="anim br" style="--d:4.2s">${waves}</g>`, defs);
 };
 
+/* Poseidon v0.0.2 README ocean scenes */
+BUILDERS.sunGlitter = (id) => {
+  const defs = lg(id + 'sky', [[0, '#7eb9db'], [.56, '#ffd3a0'], [1, '#f6a56f']], 0, 0, 0, 1)
+    + lg(id + 'sea', [[0, '#17394a'], [.55, '#245c70'], [1, '#071b29']], 0, 0, 0, 1)
+    + lg(id + 'glint', [[0, '#fff8dd', 0], [.5, '#fff3c4', .96], [1, '#fff8dd', 0]], 0, 0, 1, 0);
+  const sea = `<path d="M-8 65 Q16 51 38 66 T82 61 T126 64 T170 55 L170 108 L-8 108 Z" fill="url(#${id}sea)"/>
+    <path class="anim br" style="--d:3.8s" d="M78 58 L116 58 L150 105 L48 105 Z" fill="url(#${id}glint)" opacity=".88"/>`;
+  return svgWrap(id, `<rect width="160" height="100" fill="url(#${id}sky)"/><circle cx="105" cy="34" r="7" fill="#fff7d4"/>${sea}`, defs);
+};
+
+BUILDERS.whitecaps = (id) => {
+  const defs = lg(id + 'sky', [[0, '#79b5d2'], [1, '#f3bf94']], 0, 0, 0, 1)
+    + lg(id + 'sea', [[0, '#2b7181'], [.6, '#0b3546'], [1, '#061d2c']], 0, 0, 0, 1);
+  const caps = `<path d="M-10 81 C12 51 31 76 52 50 C74 25 91 80 116 49 C135 28 151 60 170 44 L170 108 L-10 108 Z" fill="url(#${id}sea)"/>
+    <path class="anim br" style="--d:3.5s" d="M-8 81 C14 51 31 78 52 52 M50 52 C74 26 91 81 116 51 M114 51 C135 30 151 62 169 46" fill="none" stroke="#edf4f2" stroke-width="4" opacity=".92"/>`;
+  return svgWrap(id, `<rect width="160" height="100" fill="url(#${id}sky)"/>${caps}`, defs);
+};
+
+BUILDERS.subsurfaceScatter = (id) => {
+  const defs = lg(id + 'sky', [[0, '#74bde0'], [.65, '#ffd49e'], [1, '#f7a56b']], 0, 0, 0, 1)
+    + lg(id + 'water', [[0, '#0b7b67'], [.55, '#064b46'], [1, '#022c36']], 0, 0, 1, 1)
+    + blurFilter(id + 'glow', 3);
+  const wave = `<path d="M-10 96 C15 15 47 24 70 70 C89 104 123 72 170 62 L170 108 L-10 108 Z" fill="url(#${id}water)"/>
+    <path class="anim tw" style="--d:3s" d="M2 83 C23 30 49 38 68 73" fill="none" stroke="#54e0ad" stroke-width="9" opacity=".66" filter="url(#${id}glow)"/>`;
+  return svgWrap(id, `<rect width="160" height="100" fill="url(#${id}sky)"/>${wave}`, defs);
+};
+
+BUILDERS.waveField = (id) => {
+  const defs = lg(id + 'field', [[0, '#d7e6f5'], [.34, '#74a7d3'], [1, '#082743']], 0, 0, 0, 1);
+  let lines = '';
+  for (let y = 30; y < 108; y += 9) {
+    lines += `<path d="M-8 ${y} Q12 ${y - 8} 32 ${y} T72 ${y} T112 ${y} T168 ${y}" fill="none" stroke="#e8f5ff" stroke-width="${Math.max(.7, (y - 20) / 28)}" opacity="${Math.min(.8, (y - 12) / 100)}"/>`;
+  }
+  return svgWrap(id, `<rect width="160" height="100" fill="url(#${id}field)"/><g class="anim br" style="--d:5s">${lines}</g>`, defs);
+};
+
+function paletteOceanPreview(id: string, colors: readonly [string, string, string]) {
+  const defs = lg(id + 'sky', [[0, '#76a6da'], [1, '#dce8f3']], 0, 0, 0, 1)
+    + lg(id + 'palette', [[0, colors[0]], [.55, colors[1]], [1, colors[2]]], 0, 0, 0, 1);
+  const waves = `<path d="M-8 63 Q12 49 34 63 T77 59 T120 64 T170 52 L170 108 L-8 108 Z" fill="url(#${id}palette)"/>
+    <path class="anim br" style="--d:4.4s" d="M-8 67 Q12 53 34 67 T77 63 T120 68 T170 56" fill="none" stroke="#eaf6f5" stroke-width="2.4" opacity=".7"/>`;
+  return svgWrap(id, `<rect width="160" height="100" fill="url(#${id}sky)"/>${waves}`, defs);
+}
+
+BUILDERS.openOceanBlue = (id) => paletteOceanPreview(id, ['#347aa4', '#0d4c79', '#06233e']);
+BUILDERS.tropicalGreen = (id) => paletteOceanPreview(id, ['#4fc6b1', '#087d78', '#034a54']);
+
 /* 38. Componentry Hero Geometric — pale field with refracted planes */
 BUILDERS.heroGeometric = (id) => {
   const defs = lg(id + 'hero', [[0, '#f8fbff'], [.52, '#dbeafe'], [1, '#7bb5ff']], 0, 0, 1, 1);

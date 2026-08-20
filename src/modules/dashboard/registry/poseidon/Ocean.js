@@ -1,3 +1,4 @@
+import { Vector2 } from 'three/webgpu';
 import { uniform, attributeArray } from 'three/tsl';
 import { createSharedSpectrumUniforms, applySpectrumParams } from './spectrum.js';
 import { gaussianNoise } from './gaussianNoise.js';
@@ -6,6 +7,17 @@ import { FFT } from './fft.js';
 import { createCascadeMaps } from './maps.js';
 
 const FIELD_NAMES = ['DxDz', 'DyDxz', 'DyxDyz', 'DxxDzz'];
+
+// Surface drift the foam rafts ride, as a fraction of U10. Foam is a passive
+// tracer of the surface CURRENT, not of the wave orbital: rafts ride ~3% of the
+// wind plus Stokes drift and are left nearly stationary in the water frame
+// while the waves pass under them (docs/foam-research.md). At the default
+// 10.5 m/s that is 0.32 m/s, two orders below the crest phase speed, so trails
+// lag the crest that made them instead of tracking it, and the lag lies along
+// the wind, which is within a few degrees of where Langmuir windrows actually
+// are. Stokes drift would add another 20-30% on top; 3% is the documented
+// figure, so 3% ships.
+const FOAM_DRIFT_FRACTION = 0.03;
 
 // Orchestrates the spectral ocean: shared Gaussian noise + spectrum uniforms,
 // a set of cascades, and the per-frame compute dispatch. The inverse FFT and
@@ -65,12 +77,32 @@ export class Ocean {
     this.lambda = uniform(params.lambda);
     this.dt = uniform(1 / 60);
     this.foamDecay = uniform(params.foamDecay);
-    this.assembleGroup = [];
+    // Foam rafts drift with the surface current, so the accumulator advects.
+    // Refreshed every evolve() from params.local — never params.swell, since a
+    // distant storm's swell carries no local surface current — so a wind change
+    // carries straight through with no rebuild.
+    this.drift = uniform(new Vector2());
+    this.foamSpread = uniform(params.foamSpread);
+    this.frame = 0;
+    // The accumulator reads its own NEIGHBOURHOOD from last frame, and a
+    // storage texture cannot be sampled and written in the same dispatch, so it
+    // ping-pongs between two history textures swapped by frame parity: one
+    // assemble kernel per parity, six pipelines instead of three. The extra
+    // cost is one-time shader compilation, not per-frame work.
+    this.assembleGroups = [[], []];
     for (const c of this.cascades) {
-      const maps = createCascadeMaps(c, { N: this.N, lambda: this.lambda, dt: this.dt, foamDecay: this.foamDecay });
+      const maps = createCascadeMaps(c, {
+        N: this.N,
+        lambda: this.lambda,
+        dt: this.dt,
+        foamDecay: this.foamDecay,
+        foamSpread: this.foamSpread,
+        drift: this.drift,
+      });
       c.displacement = maps.displacement;
       c.derivatives = maps.derivatives;
-      this.assembleGroup.push(maps.assemble);
+      this.assembleGroups[0].push(maps.assemble[0]);
+      this.assembleGroups[1].push(maps.assemble[1]);
     }
   }
 
@@ -90,9 +122,18 @@ export class Ocean {
   evolve(t, dt = 1 / 60) {
     this.time.value = t;
     this.dt.value = dt;
+    // Downwind unit vector in world XZ, in spectrum.js's own convention
+    // (windX = cos(wd), windZ = sin(wd) — see applySpectrumParams), so the
+    // drift lines up with the sea it is drifting.
+    const wd = (this.params.local.windDirection * Math.PI) / 180;
+    const v = FOAM_DRIFT_FRACTION * this.params.local.windSpeed;
+    this.drift.value.set(v * Math.cos(wd), v * Math.sin(wd));
     this.renderer.compute(this.timeDepGroup); // all cascades' time-dependent spectra
     for (const group of this.stepGroups) this.renderer.compute(group); // logN*2 + 1 steps
-    this.renderer.compute(this.assembleGroup); // pack spatial buffers + accumulate foam
+    // pack spatial buffers + accumulate foam; parity picks which history is
+    // read and which is written
+    this.renderer.compute(this.assembleGroups[this.frame & 1]);
+    this.frame++;
   }
 
   // Read back a cascade's packed h0 buffer for validation/diagnostics.
