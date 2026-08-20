@@ -5800,10 +5800,10 @@
       "search": "Tìm và thay thế"
     },
     "mask": {
-      "reveal": "Hiện văn bản đã che"
+      "reveal": "Hiển thị văn bản bị che"
     },
     "task": {
-      "checkboxLabel": "Hộp kiểm mục tác vụ"
+      "checkboxLabel": "Hộp kiểm của mục tác vụ"
     },
     "linkPopover": {
       "textLabel": "Văn bản",
