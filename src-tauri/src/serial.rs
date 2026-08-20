@@ -1,4 +1,5 @@
 use crate::sessions::emit_terminal_output;
+use serde_json::{Value, json};
 use serial2::SerialPort;
 use std::{
     sync::{
@@ -11,6 +12,7 @@ use tauri::AppHandle;
 
 pub struct NativeSerialTerminal {
     writer: SerialPort,
+    session_id: String,
     closed: Arc<AtomicBool>,
 }
 
@@ -24,20 +26,136 @@ pub struct NativeSerialTerminalRequest {
 
 const MACOS_SERIAL_CALLOUT_PREFIX: &str = "/dev/cu.";
 const MACOS_SERIAL_DIAL_IN_PREFIX: &str = "/dev/tty.";
+const SERIAL_READ_TIMEOUT: Duration = Duration::from_millis(250);
+const SERIAL_WRITE_TIMEOUT: Duration = Duration::from_secs(5);
+// `serial2` polls for `POLLIN` but accepts any `revents`, so a `POLLHUP` or
+// `POLLERR` blip on the tty surfaces as a zero-byte read instead of an error.
+// Ending the reader thread on the first one left a Pane that still reported a
+// live Session while nothing could ever arrive again (issue #745). Only a line
+// that stays hung up across this many polls is treated as a real end.
+const SERIAL_EMPTY_READ_BACKOFF: Duration = Duration::from_millis(50);
+const SERIAL_EMPTY_READS_BEFORE_HANGUP: u32 = 40;
 
 impl NativeSerialTerminal {
     pub fn write_input(&mut self, data: Vec<u8>) -> Result<(), String> {
-        self.writer
+        let byte_count = data.len();
+        let result = self
+            .writer
             .write_all(&data)
-            .map_err(|error| format!("failed to write serial input: {error}"))?;
-        self.writer
-            .flush()
-            .map_err(|error| format!("failed to flush serial input: {error}"))
+            .map_err(|error| format!("failed to write serial input: {error}"))
+            .and_then(|()| {
+                self.writer
+                    .flush()
+                    .map_err(|error| format!("failed to flush serial input: {error}"))
+            });
+        match &result {
+            Ok(()) => serial_debug(
+                "serial.input_written",
+                json!({ "sessionId": self.session_id, "byteCount": byte_count }),
+            ),
+            Err(error) => serial_debug(
+                "serial.input_failed",
+                json!({
+                    "sessionId": self.session_id,
+                    "byteCount": byte_count,
+                    "error": error,
+                }),
+            ),
+        }
+        result
     }
 
     pub fn close(self) {
         self.closed.store(true, Ordering::Relaxed);
+        serial_debug("serial.closed", json!({ "sessionId": self.session_id }));
     }
+}
+
+fn serial_debug(event: &str, payload: Value) {
+    crate::logging::serial_debug(event, &payload);
+}
+
+/// The line settings the OS reports back once the port is configured.
+///
+/// A serial Pane that shows only mojibake is almost always a speed or framing
+/// mismatch, and nothing in KKTerm used to say what had actually been applied.
+/// This summary feeds both the connect banner and `serial.debug.log`.
+struct AppliedSerialSettings {
+    speed: Option<u32>,
+    char_size: Option<u8>,
+    parity: Option<&'static str>,
+    stop_bits: Option<u8>,
+    flow_control: Option<&'static str>,
+    cts: Option<bool>,
+    dsr: Option<bool>,
+    carrier_detect: Option<bool>,
+}
+
+impl AppliedSerialSettings {
+    fn read_from(port: &SerialPort) -> Self {
+        let settings = port.get_configuration().ok();
+        Self {
+            speed: settings.as_ref().and_then(|it| it.get_baud_rate().ok()),
+            char_size: settings
+                .as_ref()
+                .and_then(|it| it.get_char_size().ok())
+                .map(|size| size.as_u8()),
+            parity: settings
+                .as_ref()
+                .and_then(|it| it.get_parity().ok())
+                .map(|parity| parity.as_str()),
+            stop_bits: settings
+                .as_ref()
+                .and_then(|it| it.get_stop_bits().ok())
+                .map(|bits| bits.as_u8()),
+            flow_control: settings
+                .as_ref()
+                .and_then(|it| it.get_flow_control().ok())
+                .map(|flow| flow.as_str()),
+            cts: port.read_cts().ok(),
+            dsr: port.read_dsr().ok(),
+            carrier_detect: port.read_cd().ok(),
+        }
+    }
+
+    fn to_json(&self) -> Value {
+        json!({
+            "speed": self.speed,
+            "charSize": self.char_size,
+            "parity": self.parity,
+            "stopBits": self.stop_bits,
+            "flowControl": self.flow_control,
+            "cts": self.cts,
+            "dsr": self.dsr,
+            "carrierDetect": self.carrier_detect,
+        })
+    }
+}
+
+/// `115200 8N1` style framing summary, with `?` standing in for anything the OS
+/// declined to report.
+fn serial_framing_summary(
+    speed: Option<u32>,
+    char_size: Option<u8>,
+    parity: Option<&str>,
+    stop_bits: Option<u8>,
+) -> String {
+    fn or_unknown<T: std::fmt::Display>(value: Option<T>) -> String {
+        value.map_or_else(|| "?".to_string(), |value| value.to_string())
+    }
+    let parity = match parity {
+        Some("none") => "N",
+        Some("odd") => "O",
+        Some("even") => "E",
+        _ => "?",
+    };
+    format!(
+        "{} {}{}{}",
+        or_unknown(speed),
+        or_unknown(char_size),
+        parity,
+        or_unknown(stop_bits),
+    )
 }
 
 /// Enumerate serial ports the OS currently exposes.
@@ -96,27 +214,95 @@ pub fn start_native_terminal(
         return Err("serial speed must be greater than 0".to_string());
     }
 
-    let mut port = SerialPort::open(line, request.speed)
-        .map_err(|error| format!("failed to open serial line {line}: {error}"))?;
-    port.set_read_timeout(Duration::from_millis(250))
+    serial_debug(
+        "serial.open_requested",
+        json!({
+            "sessionId": request.session_id,
+            "line": line,
+            "speed": request.speed,
+            "encoding": request.encoding.label(),
+        }),
+    );
+
+    let mut port = SerialPort::open(line, request.speed).map_err(|error| {
+        serial_debug(
+            "serial.open_failed",
+            json!({
+                "sessionId": request.session_id,
+                "line": line,
+                "error": error.to_string(),
+            }),
+        );
+        format!("failed to open serial line {line}: {error}")
+    })?;
+    port.set_read_timeout(SERIAL_READ_TIMEOUT)
         .map_err(|error| format!("failed to configure serial read timeout: {error}"))?;
-    port.set_write_timeout(Duration::from_secs(5))
+    port.set_write_timeout(SERIAL_WRITE_TIMEOUT)
         .map_err(|error| format!("failed to configure serial write timeout: {error}"))?;
     let _ = port.set_dtr(true);
     let _ = port.set_rts(true);
+    // Applying the line settings can itself leave bytes in the receive queue. On
+    // macOS `serial2` has to write the termios struct at 9600 first and only then
+    // switch to the requested speed with the IOSSIOSPEED ioctl, so whatever the
+    // device sends during that window is sampled at the wrong rate. Reading it
+    // back painted the Pane with a burst of mojibake before the first real byte
+    // (issue #745); drop it instead of showing it.
+    let _ = port.discard_input_buffer();
+
+    let applied = AppliedSerialSettings::read_from(&port);
+    serial_debug(
+        "serial.opened",
+        json!({
+            "sessionId": request.session_id,
+            "line": line,
+            "requestedSpeed": request.speed,
+            "applied": applied.to_json(),
+        }),
+    );
+    // Mirror what `screen` and `minicom` print on connect. A speed or framing
+    // mismatch is the most common reason a serial Pane looks dead, and this is
+    // the only place the user can see what the OS actually applied.
+    emit_terminal_output(
+        &app,
+        &request.session_id,
+        format!(
+            "\r\n[serial {line} {} flow={}]\r\n",
+            serial_framing_summary(
+                applied.speed,
+                applied.char_size,
+                applied.parity,
+                applied.stop_bits,
+            ),
+            applied.flow_control.unwrap_or("?"),
+        ),
+    );
 
     let reader = port
         .try_clone()
         .map_err(|error| format!("failed to create serial reader: {error}"))?;
+    let session_id = request.session_id.clone();
     let closed = Arc::new(AtomicBool::new(false));
     let reader_closed = Arc::clone(&closed);
     std::thread::spawn(move || {
         let mut buffer = [0_u8; 8192];
         let mut decoder = crate::sessions::TerminalOutputDecoder::new(request.encoding.clone());
-        while !reader_closed.load(Ordering::Relaxed) {
+        let mut empty_reads = 0_u32;
+        let mut byte_count = 0_u64;
+        let end_reason = loop {
+            if reader_closed.load(Ordering::Relaxed) {
+                break None;
+            }
             match reader.read(&mut buffer) {
-                Ok(0) => break,
+                Ok(0) => {
+                    empty_reads += 1;
+                    if empty_reads >= SERIAL_EMPTY_READS_BEFORE_HANGUP {
+                        break Some("serial line hung up".to_string());
+                    }
+                    std::thread::sleep(SERIAL_EMPTY_READ_BACKOFF);
+                }
                 Ok(count) => {
+                    empty_reads = 0;
+                    byte_count += count as u64;
                     if let Some(text) = decoder.decode(&buffer[..count]) {
                         emit_terminal_output(&app, &request.session_id, text);
                     }
@@ -127,21 +313,26 @@ pub fn start_native_terminal(
                         std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
                     ) =>
                 {
-                    continue;
+                    // A real poll timeout means the line is healthy and idle.
+                    empty_reads = 0;
                 }
-                Err(error) => {
-                    if let Some(text) = decoder.finish_lossy() {
-                        emit_terminal_output(&app, &request.session_id, text);
-                    }
-                    emit_terminal_output(
-                        &app,
-                        &request.session_id,
-                        format!("\r\n[serial read error: {error}]\r\n"),
-                    );
-                    break;
-                }
+                Err(error) => break Some(format!("serial read error: {error}")),
             }
+        };
+        if let Some(text) = decoder.finish_lossy() {
+            emit_terminal_output(&app, &request.session_id, text);
         }
+        if let Some(reason) = &end_reason {
+            emit_terminal_output(&app, &request.session_id, format!("\r\n[{reason}]\r\n"));
+        }
+        serial_debug(
+            "serial.reader_stopped",
+            json!({
+                "sessionId": request.session_id,
+                "byteCount": byte_count,
+                "reason": end_reason.as_deref().unwrap_or("closed"),
+            }),
+        );
         // Unplugging a USB adapter (or any read error) only ends this thread. Without
         // the same session-ended signal telnet and SSH emit, the pane keeps reporting
         // a live Session: keystrokes go nowhere and no reconnect is offered.
@@ -150,13 +341,14 @@ pub fn start_native_terminal(
 
     Ok(NativeSerialTerminal {
         writer: port,
+        session_id,
         closed,
     })
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{normalize_available_serial_ports, validate_serial_line};
+    use super::{normalize_available_serial_ports, serial_framing_summary, validate_serial_line};
 
     #[test]
     fn macos_serial_line_rejects_dial_in_devices() {
@@ -205,5 +397,22 @@ mod tests {
             ),
             vec!["COM10".to_string(), "COM2".to_string()],
         );
+    }
+
+    #[test]
+    fn framing_summary_reads_like_a_terminal_program_banner() {
+        assert_eq!(
+            serial_framing_summary(Some(115200), Some(8), Some("none"), Some(1)),
+            "115200 8N1",
+        );
+        assert_eq!(
+            serial_framing_summary(Some(9600), Some(7), Some("even"), Some(2)),
+            "9600 7E2",
+        );
+    }
+
+    #[test]
+    fn framing_summary_marks_settings_the_os_would_not_report() {
+        assert_eq!(serial_framing_summary(None, None, None, None), "? ???");
     }
 }

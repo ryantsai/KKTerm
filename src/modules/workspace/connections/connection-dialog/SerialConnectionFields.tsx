@@ -7,6 +7,18 @@ import type { Connection } from "../../../../types";
 
 const COMMON_SERIAL_SPEEDS = [9600, 19200, 38400, 115200] as const;
 
+// macOS always publishes these callout devices even with no adapter attached,
+// and they sort ahead of every real one. Pre-filling a new Connection with the
+// alphabetically first port therefore aimed it at the Bluetooth line, which
+// opens without error and then stays silent forever (issue #745).
+const NON_DEVICE_SERIAL_PORT_PATTERNS = [/bluetooth/i, /debug-console/i, /wlan-debug/i];
+
+export function preferredSerialPort(ports: string[]): string | undefined {
+  return ports.find(
+    (port) => !NON_DEVICE_SERIAL_PORT_PATTERNS.some((pattern) => pattern.test(port)),
+  );
+}
+
 function platformDefaultLine(): string {
   if (isWindowsPlatform()) return "COM1";
   if (isMacPlatform()) return "/dev/cu.";
@@ -31,10 +43,13 @@ export function SerialConnectionFields({ initialConnection }: { initialConnectio
       invokeCommand("list_serial_ports")
         .then((detected) => {
           setPorts(detected);
-          // Pre-fill the first detected port only when the user hasn't already
-          // provided a line (new connection still showing the platform default).
-          if (prefill && detected[0] && initialLine === platformDefaultLine()) {
-            setLine((current) => (current === platformDefaultLine() ? detected[0] : current));
+          // Pre-fill the first detected device port only when the user hasn't
+          // already provided a line (new connection still showing the platform
+          // default). When every detected port is a built-in non-device callout
+          // we leave the default in place rather than aiming at one of them.
+          const preferred = preferredSerialPort(detected);
+          if (prefill && preferred && initialLine === platformDefaultLine()) {
+            setLine((current) => (current === platformDefaultLine() ? preferred : current));
           }
         })
         .catch(() => setPorts([]));

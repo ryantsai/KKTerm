@@ -41,6 +41,12 @@ Telnet Sessions negotiate binary transfer, remote echo, suppress-go-ahead charac
 
 For troubleshooting, enable `settings.advancedDebugging` and inspect `telnet.debug.log` from `settings.openLogFolder`. The log records option names/codes, negotiation decisions, selected terminal type, window sizes, lifecycle errors, and byte counts. It deliberately omits terminal contents, typed input, and credential values.
 
+## Serial troubleshooting
+
+A Serial Pane prints one `[serial <line> <speed> <framing> flow=<mode>]` banner on connect, reporting the settings the OS actually applied rather than the ones that were requested. Mojibake or a Pane that never echoes almost always means that banner does not match the attached device; correct `connections.speed` in the Connection and use `connections.reconnect`.
+
+For deeper troubleshooting, enable `settings.advancedDebugging` and inspect `serial.debug.log` from `settings.openLogFolder`. The log records the requested line, speed, and text encoding, the applied speed/character size/parity/stop bits/flow control, the CTS, DSR, and carrier-detect line states at open, input and output byte counts, and the reason the reader stopped. It deliberately omits terminal contents and typed input.
+
 ## Copy and paste
 
 Ctrl-click an `http` or `https` link rendered in any terminal Pane to open it in the OS default browser through KKTerm's external opener. This applies to local, SSH, Telnet, and Serial terminal Sessions because they share the same xterm.js renderer.

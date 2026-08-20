@@ -114,7 +114,7 @@ impl TerminalEncodingState {
             normalized.name().to_ascii_lowercase(),
         ))))
     }
-    fn label(&self) -> String {
+    pub(crate) fn label(&self) -> String {
         self.0
             .read()
             .map(|value| value.clone())
