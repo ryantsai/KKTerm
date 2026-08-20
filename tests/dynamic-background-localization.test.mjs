@@ -11,7 +11,6 @@ const localizedDynamicBackgroundKeys = [
   "savanna",
   "sunGlitter",
   "whitecaps",
-  "subsurfaceScatter",
   "waveField",
   "openOceanBlue",
   "tropicalGreen",

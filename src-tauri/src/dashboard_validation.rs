@@ -640,7 +640,6 @@ pub const DYNAMIC_BACKGROUND_IDS: &[&str] = &[
     "maelstrom",
     "sunGlitter",
     "whitecaps",
-    "subsurfaceScatter",
     "waveField",
     "openOceanBlue",
     "tropicalGreen",

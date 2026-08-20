@@ -15,7 +15,6 @@ const expectedIds = [
   "maelstrom",
   "sunGlitter",
   "whitecaps",
-  "subsurfaceScatter",
   "waveField",
   "openOceanBlue",
   "tropicalGreen",

@@ -7,7 +7,6 @@ import { MistySeaBg } from "./mistySeaBackground";
 import {
   MaelstromBg,
   OpenOceanBlueBg,
-  SubsurfaceScatterBg,
   SunGlitterBg,
   TropicalGreenBg,
   WaveFieldBg,
@@ -3837,7 +3836,6 @@ const DYNAMIC_BACKGROUND_COMPONENTS = {
   maelstrom: MaelstromBg,
   sunGlitter: SunGlitterBg,
   whitecaps: WhitecapsBg,
-  subsurfaceScatter: SubsurfaceScatterBg,
   waveField: WaveFieldBg,
   openOceanBlue: OpenOceanBlueBg,
   tropicalGreen: TropicalGreenBg,
@@ -3900,11 +3898,6 @@ export const DYNAMIC_BACKGROUNDS: readonly {
   { id: "maelstrom", labelKey: "dashboard.dynamicBackgrounds.maelstrom", mood: "erratic" },
   { id: "sunGlitter", labelKey: "dashboard.dynamicBackgrounds.sunGlitter", mood: "warm" },
   { id: "whitecaps", labelKey: "dashboard.dynamicBackgrounds.whitecaps", mood: "erratic" },
-  {
-    id: "subsurfaceScatter",
-    labelKey: "dashboard.dynamicBackgrounds.subsurfaceScatter",
-    mood: "warm",
-  },
   { id: "waveField", labelKey: "dashboard.dynamicBackgrounds.waveField", mood: "calm" },
   { id: "openOceanBlue", labelKey: "dashboard.dynamicBackgrounds.openOceanBlue", mood: "calm" },
   { id: "tropicalGreen", labelKey: "dashboard.dynamicBackgrounds.tropicalGreen", mood: "calm" },

@@ -31,16 +31,9 @@ import { createRadialGrid } from "./poseidon/oceanGrid.js";
 // @ts-expect-error Poseidon source is intentionally preserved as JavaScript.
 import { createAerialPerspective } from "./poseidon/atmosphere.js";
 
-// Poseidon is MIT-licensed: https://github.com/owenyuwono/poseidon
-export const MAELSTROM_FFT_RESOLUTION = 256;
-export const MAELSTROM_CASCADE_COUNT = 3;
-export const MAELSTROM_LENGTH_SCALES = [1024, 144, 24] as const;
-
 export type PoseidonOceanSceneId =
-  | "maelstrom"
   | "sunGlitter"
   | "whitecaps"
-  | "subsurfaceScatter"
   | "waveField"
   | "openOceanBlue"
   | "tropicalGreen";
@@ -58,17 +51,12 @@ type PoseidonScene = {
   camera: PoseidonCamera;
 };
 
-// These are Poseidon's v0.0.2 capture framings used for the six README images.
+// These are the remaining Poseidon's v0.0.2 showcase framings.
 export const POSEIDON_OCEAN_SCENES: Readonly<Record<PoseidonOceanSceneId, PoseidonScene>> = {
-  maelstrom: {
-    sky: "midday",
-    palette: 1,
-    camera: { position: [0, 16, 68], target: [0, 2, -20], fov: 55 },
-  },
   sunGlitter: {
     sky: "golden",
     palette: 1,
-    camera: { position: [0, 6, 0], fov: 60, sunChase: true },
+    camera: { position: [0, 16, 0], fov: 60, sunChase: true },
   },
   whitecaps: {
     sky: "golden",
@@ -78,11 +66,6 @@ export const POSEIDON_OCEAN_SCENES: Readonly<Record<PoseidonOceanSceneId, Poseid
     // than midday specular reflection.
     camera: { position: [0, 16, 68], target: [0, 2, -20], fov: 55 },
   },
-  subsurfaceScatter: {
-    sky: "golden",
-    palette: 0,
-    camera: { position: [-30, 1.4, 20], target: [10, 6, -25], fov: 70 },
-  },
   waveField: {
     sky: "midday",
     palette: 1,
@@ -91,12 +74,12 @@ export const POSEIDON_OCEAN_SCENES: Readonly<Record<PoseidonOceanSceneId, Poseid
   openOceanBlue: {
     sky: "midday",
     palette: 1,
-    camera: { position: [0, 9, 40], target: [0, 0.5, -90], fov: 62 },
+    camera: { position: [0, 16, 40], target: [0, 0.5, -90], fov: 62 },
   },
   tropicalGreen: {
     sky: "midday",
     palette: 0,
-    camera: { position: [0, 9, 40], target: [0, 0.5, -90], fov: 62 },
+    camera: { position: [0, 16, 40], target: [0, 0.5, -90], fov: 62 },
   },
 };
 
@@ -326,9 +309,12 @@ function PoseidonOceanBg({ sceneId }: { sceneId: PoseidonOceanSceneId }) {
   return <div ref={hostRef} className="dw-dynamic-bg-canvas" />;
 }
 
-export function MaelstromBg() {
-  return <PoseidonOceanBg sceneId="maelstrom" />;
-}
+export {
+  MaelstromBg,
+  MAELSTROM_FFT_RESOLUTION,
+  MAELSTROM_CASCADE_COUNT,
+  MAELSTROM_LENGTH_SCALES,
+} from "./maelstromNextBackground";
 
 export function SunGlitterBg() {
   return <PoseidonOceanBg sceneId="sunGlitter" />;
@@ -336,10 +322,6 @@ export function SunGlitterBg() {
 
 export function WhitecapsBg() {
   return <PoseidonOceanBg sceneId="whitecaps" />;
-}
-
-export function SubsurfaceScatterBg() {
-  return <PoseidonOceanBg sceneId="subsurfaceScatter" />;
 }
 
 export function WaveFieldBg() {

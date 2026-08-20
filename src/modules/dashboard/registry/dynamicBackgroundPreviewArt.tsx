@@ -745,15 +745,6 @@ BUILDERS.whitecaps = (id) => {
   return svgWrap(id, `<rect width="160" height="100" fill="url(#${id}sky)"/>${caps}`, defs);
 };
 
-BUILDERS.subsurfaceScatter = (id) => {
-  const defs = lg(id + 'sky', [[0, '#74bde0'], [.65, '#ffd49e'], [1, '#f7a56b']], 0, 0, 0, 1)
-    + lg(id + 'water', [[0, '#0b7b67'], [.55, '#064b46'], [1, '#022c36']], 0, 0, 1, 1)
-    + blurFilter(id + 'glow', 3);
-  const wave = `<path d="M-10 96 C15 15 47 24 70 70 C89 104 123 72 170 62 L170 108 L-10 108 Z" fill="url(#${id}water)"/>
-    <path class="anim tw" style="--d:3s" d="M2 83 C23 30 49 38 68 73" fill="none" stroke="#54e0ad" stroke-width="9" opacity=".66" filter="url(#${id}glow)"/>`;
-  return svgWrap(id, `<rect width="160" height="100" fill="url(#${id}sky)"/>${wave}`, defs);
-};
-
 BUILDERS.waveField = (id) => {
   const defs = lg(id + 'field', [[0, '#d7e6f5'], [.34, '#74a7d3'], [1, '#082743']], 0, 0, 0, 1);
   let lines = '';
