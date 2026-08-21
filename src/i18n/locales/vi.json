@@ -1627,6 +1627,8 @@
       },
       "unassigned": "Chưa gán",
       "ungrouped": "Chưa nhóm",
+      "elevationRow": "Hàng {{index}}",
+      "elevationRowGroup": "Hàng {{index}} · {{group}}",
       "groupLabel": "Nhóm",
       "groupPlaceholder": "ví dụ: Tầng web",
       "treeSearchPlaceholder": "Tìm tủ rack…",

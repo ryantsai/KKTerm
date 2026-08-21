@@ -738,11 +738,31 @@ Excel-readable inventory table.
 An empty Server Room uses explanatory guidance with an inline New Rack action.
 An empty Rack uses an inline Edit mode action that reveals the Rack Device
 picker.
-The Server Room elevation layout naturally orders named Rack groups, naturally
-orders Rack names within each group, and places the ungrouped row last. Server
-Room PDF export uses that same presentation order. This ordering is derived at
-render/export time and does not rewrite durable Rack `sortOrder` or either
-spatial layout's coordinates.
+The Server Room elevation layout is a projection of the same floor grid the
+floor plan and the 2.5D view draw, so all three layouts show one arrangement.
+Each occupied grid row becomes one elevation band, bands run from the top of
+the room down, and cabinets inside a band run left to right by grid column.
+Aisle rows hold no cabinets and are skipped, so band numbers count occupied
+rows rather than raw grid coordinates. A band header shows `Row N`
+(`itops.racks.elevationRow`); when every Rack in that row shares one
+`rackGroup` it shows `Row N · group` (`itops.racks.elevationRowGroup`) instead,
+which is the default arrangement because unplaced cabinets fall back to one
+grid row per rack group. `rackGroup` is therefore a tag the elevation reports,
+not the thing that positions cabinets. Server Room PDF export reads in that
+same band order. The projection is derived at render/export time from the
+resolved grid placement and does not rewrite durable Rack `sortOrder`; moving a
+Rack in any of the three layouts writes the one shared `gridX`/`gridY`
+placement, so it moves in all three. The elevation view has no rack-dragging of
+its own — cabinets are repositioned in the floor plan or the 2.5D view.
+Making the elevation a rack editor in its own right (phase B) is TBD and
+deliberately not built yet. It would need a decision on each of: a dedicated
+drag handle, because the elevation surface already owns Rack Device drag/drop
+and armed-device placement; a pointer path, because the spatial views drag
+through pointer events and axonometric inverse math while the elevation uses
+HTML5 drag/drop; and an explicit policy for cabinets whose `facing` is `1` or
+`3`, which present a side rather than a front or rear to any room-level
+elevation camera. Until that decision is made, the displayed Front/Rear face
+stays presentation state and never rewrites durable `facing`.
 In Server Room elevation edit mode, an armed Rack Device targets the currently
 displayed face of the Rack nearest the pointer. That per-Rack face remains
 authoritative when cabinets have been flipped individually; the room-wide flip

@@ -1627,6 +1627,8 @@
       },
       "unassigned": "Belum ditetapkan",
       "ungrouped": "Tidak dikelompokkan",
+      "elevationRow": "Baris {{index}}",
+      "elevationRowGroup": "Baris {{index}} · {{group}}",
       "groupLabel": "Grup",
       "groupPlaceholder": "mis. Lapisan web",
       "treeSearchPlaceholder": "Cari rak…",

@@ -1627,6 +1627,8 @@
       },
       "unassigned": "未指派",
       "ungrouped": "未分組",
+      "elevationRow": "第 {{index}} 排",
+      "elevationRowGroup": "第 {{index}} 排 · {{group}}",
       "groupLabel": "群組",
       "groupPlaceholder": "例如 Web 層",
       "treeSearchPlaceholder": "搜尋機櫃…",

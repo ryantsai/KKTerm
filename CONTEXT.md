@@ -220,7 +220,7 @@ A durable, Site-owned topology entity stored in `itops_server_rooms`. The topolo
 _Avoid_: region, datacenter, site object, zone
 
 **Server Room View**:
-The drill-down view for one Server Room. Its elevation layout can flip each Rack between Front and Rear mounting faces, individually or all at once; the spatial layouts include a top-down 2D floor plan and a 2.5D room whose cabinet skins place devices on their physical front or rear faces. Layout state persists where documented in `docs/ITOPS.md`.
+The drill-down view for one Server Room. All three of its layouts arrange Racks from one shared floor grid: the elevation layout projects that grid as one band of cabinets per occupied floor row, and the spatial layouts include a top-down 2D floor plan and a 2.5D room whose cabinet skins place devices on their physical front or rear faces. The elevation layout can also flip each Rack between Front and Rear mounting faces, individually or all at once; that displayed face is presentation state and does not turn the cabinet in the room. Layout state persists where documented in `docs/ITOPS.md`.
 _Avoid_: area view, datacenter map
 
 **Rack**:

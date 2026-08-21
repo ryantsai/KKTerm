@@ -1,6 +1,8 @@
 import { isTauriRuntime, pickAndSaveFile, type WidgetFilePickFilter } from "../../lib/tauri";
 import type { Rack, RackItem, RackMountFace, Site } from "../../types";
-import { groupRackTopology, sortRacksForElevation, topologyGroupKey } from "./rackTopology";
+import { groupRackTopology, topologyGroupKey } from "./rackTopology";
+import { sortRacksForElevation } from "./roomElevationLayout";
+import type { FreePlacementMap } from "./siteTreeState";
 import { normalizeRackItemMetadata, summarizeRackDeviceMetadata } from "./rackInventory";
 import { rackItemXSpan } from "./rackPlacement";
 
@@ -433,6 +435,7 @@ export function serverRoomPdfDocument({
   site,
   roomName,
   racks,
+  placement,
   unassignedLabel,
   labels,
   kindLabel,
@@ -440,12 +443,15 @@ export function serverRoomPdfDocument({
   site: Site;
   roomName: string;
   racks: Rack[];
+  /** The room's resolved floor-grid placements, so the report reads in the
+   *  same order as the elevation view rather than a separate sort. */
+  placement: FreePlacementMap;
   unassignedLabel: string;
   labels: ItOpsExportLabels;
   kindLabel: (kind: RackItem["kind"]) => string;
 }): ItOpsPdfDocument {
   const title = `${site.name} / ${roomName || unassignedLabel}`;
-  const orderedRacks = sortRacksForElevation(racks);
+  const orderedRacks = sortRacksForElevation(racks, placement);
   return {
     title,
     scope: "serverRoom",

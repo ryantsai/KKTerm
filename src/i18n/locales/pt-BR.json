@@ -1627,6 +1627,8 @@
       },
       "unassigned": "Não atribuído",
       "ungrouped": "Sem grupo",
+      "elevationRow": "Fileira {{index}}",
+      "elevationRowGroup": "Fileira {{index}} · {{group}}",
       "groupLabel": "Grupo",
       "groupPlaceholder": "ex.: Camada web",
       "treeSearchPlaceholder": "Pesquisar racks…",

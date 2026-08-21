@@ -1627,6 +1627,8 @@
       },
       "unassigned": "ยังไม่ได้กำหนด",
       "ungrouped": "ไม่จัดกลุ่ม",
+      "elevationRow": "แถว {{index}}",
+      "elevationRowGroup": "แถว {{index}} · {{group}}",
       "groupLabel": "กลุ่ม",
       "groupPlaceholder": "เช่น ชั้นเว็บ",
       "treeSearchPlaceholder": "ค้นหาแร็ค…",

@@ -61,12 +61,12 @@ import { useItOpsStore, type ItOpsDestination, type RackPlacementKind } from "./
 import {
   EMPTY_DRILL,
   groupRackTopology,
-  groupRacksForElevation,
   nodeId,
   topologyGroupKey,
   type DrillPath,
   type ServerRoomGroup,
 } from "./rackTopology";
+import { resolveElevationRows } from "./roomElevationLayout";
 import { resolveIsoLayout, sanitizeFacing, type Corner, type Facing } from "./roomIsoLayout";
 import { ItOpsBackground } from "./ItOpsBackground";
 import { ItOpsEmptyHint } from "./ItOpsEmptyHint";
@@ -1706,7 +1706,6 @@ function RackDrill({
   const { t } = useTranslation();
   const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
   const unassigned = t("itops.racks.unassigned");
-  const ungrouped = t("itops.racks.ungrouped");
   const [editMode, setEditMode] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [backgroundOpen, setBackgroundOpen] = useState(false);
@@ -1805,10 +1804,6 @@ function RackDrill({
     drill.serverRoom != null
       ? topology.find((s) => topologyGroupKey(s.key) === topologyGroupKey(drill.serverRoom))
       : undefined;
-  const elevationRackGroups = useMemo(
-    () => groupRacksForElevation(serverRoom?.racks ?? []),
-    [serverRoom?.racks],
-  );
   const rack = drill.rackId != null ? racks.find((r) => r.id === drill.rackId) : undefined;
   const viewKey = rack
     ? `rack:${rack.id}`
@@ -1877,6 +1872,14 @@ function RackDrill({
       ...isoEdits,
     }),
     [legacyIsoPlacements, roomRacks, isoEdits],
+  );
+
+  // The elevation view is a projection of that same grid: one band per
+  // occupied floor row, cabinets ordered left to right by column. Moving a
+  // Rack in any of the three layouts moves it in all of them.
+  const elevationRows = useMemo(
+    () => resolveElevationRows(roomRacks ?? [], isoPlacements),
+    [roomRacks, isoPlacements],
   );
 
   // Per-room rack facing, shared by the floor plan and the 2.5D view. Facing
@@ -2278,6 +2281,7 @@ function RackDrill({
               site,
               roomName: serverRoom.key,
               racks: serverRoom.racks,
+              placement: isoPlacements,
               unassignedLabel: unassigned,
               labels,
               kindLabel,
@@ -2603,12 +2607,19 @@ function RackDrill({
                 className="rk-elevations"
                 ref={roomElevationsRef}
               >
-                {elevationRackGroups.map((g) => (
-                  <div className="rk-group" key={g.key}>
-                    {elevationRackGroups.length > 1 || g.key ? (
-                      <div className="rk-group-h">{g.key || ungrouped}</div>
+                {elevationRows.map((row) => (
+                  <div className="rk-group" key={row.index}>
+                    {elevationRows.length > 1 || row.groupKey ? (
+                      <div className="rk-group-h">
+                        {row.groupKey
+                          ? t("itops.racks.elevationRowGroup", {
+                              index: row.index,
+                              group: row.groupKey,
+                            })
+                          : t("itops.racks.elevationRow", { index: row.index })}
+                      </div>
                     ) : null}
-                    <div className="rk-row">{g.racks.map((r) => elevation(r))}</div>
+                    <div className="rk-row">{row.racks.map((r) => elevation(r))}</div>
                   </div>
                 ))}
               </div>

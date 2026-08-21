@@ -1627,6 +1627,8 @@
       },
       "unassigned": "Non attribué",
       "ungrouped": "Non groupé",
+      "elevationRow": "Rangée {{index}}",
+      "elevationRowGroup": "Rangée {{index}} · {{group}}",
       "groupLabel": "Groupe",
       "groupPlaceholder": "p. ex. Niveau web",
       "treeSearchPlaceholder": "Rechercher des racks…",

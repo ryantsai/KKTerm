@@ -1627,6 +1627,8 @@
       },
       "unassigned": "미할당",
       "ungrouped": "그룹 없음",
+      "elevationRow": "{{index}}열",
+      "elevationRowGroup": "{{index}}열 · {{group}}",
       "groupLabel": "그룹",
       "groupPlaceholder": "예: 웹 계층",
       "treeSearchPlaceholder": "랙 검색…",
