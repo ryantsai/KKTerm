@@ -1635,6 +1635,7 @@
       "sortAction": "並べ替え",
       "sortAscending": "昇順",
       "sortDescending": "降順",
+      "sortViewOrder": "表示順",
       "placedDevices": "配置済みデバイス",
       "changeBackground": "背景を変更",
       "backgroundDefaultHint": "テーマの既定の背景を使用します。",

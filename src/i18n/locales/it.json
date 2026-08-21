@@ -1635,6 +1635,7 @@
       "sortAction": "Ordina",
       "sortAscending": "Crescente",
       "sortDescending": "Decrescente",
+      "sortViewOrder": "Ordine della vista",
       "placedDevices": "Dispositivi posizionati",
       "changeBackground": "Cambia sfondo",
       "backgroundDefaultHint": "Usa lo sfondo predefinito del tema.",

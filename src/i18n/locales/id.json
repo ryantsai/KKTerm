@@ -1635,6 +1635,7 @@
       "sortAction": "Urutkan",
       "sortAscending": "Menaik",
       "sortDescending": "Menurun",
+      "sortViewOrder": "Urutan tampilan",
       "placedDevices": "Perangkat terpasang",
       "changeBackground": "Ubah latar belakang",
       "backgroundDefaultHint": "Menggunakan latar belakang default tema.",

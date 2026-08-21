@@ -101,7 +101,17 @@ export function sortServerRoomTopology<T extends { key: string }>(
   );
 }
 
-export type RackSortMap = Record<string, ServerRoomSortDirection>;
+// Rack tree ordering for one Server Room: by name, or "view" to follow the
+// Server Room View layout — the elevation bands, top floor row first and left
+// to right within a row — so the navigator lists cabinets in the order the
+// room actually shows them.
+export type RackSortMode = ServerRoomSortDirection | "view";
+
+export type RackSortMap = Record<string, RackSortMode>;
+
+function isRackSortMode(value: unknown): value is RackSortMode {
+  return value === "asc" || value === "desc" || value === "view";
+}
 
 export function loadRackTreeSort(): RackSortMap {
   if (typeof localStorage === "undefined") return {};
@@ -109,8 +119,8 @@ export function loadRackTreeSort(): RackSortMap {
     const stored = JSON.parse(localStorage.getItem(RACK_SORT_KEY) ?? "{}");
     if (!stored || typeof stored !== "object" || Array.isArray(stored)) return {};
     const sort: RackSortMap = {};
-    for (const [roomId, direction] of Object.entries(stored)) {
-      if (direction === "asc" || direction === "desc") sort[roomId] = direction;
+    for (const [roomId, mode] of Object.entries(stored)) {
+      if (isRackSortMode(mode)) sort[roomId] = mode;
     }
     return sort;
   } catch {
@@ -123,12 +133,14 @@ export function saveRackTreeSort(sort: RackSortMap): void {
   localStorage.setItem(RACK_SORT_KEY, JSON.stringify(sort));
 }
 
+/** Order Racks by name. "view" needs the room's grid placement and is resolved
+ *  by the caller through `sortRacksForElevation`, so it passes through here. */
 export function sortRackTopology<T extends { name: string }>(
   racks: T[],
-  direction?: ServerRoomSortDirection,
+  mode?: RackSortMode,
 ): T[] {
-  if (!direction) return racks;
-  const multiplier = direction === "asc" ? 1 : -1;
+  if (mode !== "asc" && mode !== "desc") return racks;
+  const multiplier = mode === "asc" ? 1 : -1;
   return [...racks].sort(
     (left, right) => multiplier * left.name.localeCompare(right.name, undefined, {
       numeric: true,

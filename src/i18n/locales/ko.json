@@ -1635,6 +1635,7 @@
       "sortAction": "정렬",
       "sortAscending": "오름차순",
       "sortDescending": "내림차순",
+      "sortViewOrder": "보기 순서",
       "placedDevices": "배치된 장치",
       "changeBackground": "배경 변경",
       "backgroundDefaultHint": "테마의 기본 배경을 사용합니다.",

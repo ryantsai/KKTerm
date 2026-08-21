@@ -1635,6 +1635,7 @@
       "sortAction": "Sắp xếp",
       "sortAscending": "Tăng dần",
       "sortDescending": "Giảm dần",
+      "sortViewOrder": "Thứ tự theo bố cục",
       "placedDevices": "Thiết bị đã đặt",
       "changeBackground": "Đổi hình nền",
       "backgroundDefaultHint": "Dùng hình nền mặc định của giao diện.",
