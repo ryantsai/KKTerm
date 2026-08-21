@@ -89,18 +89,27 @@ test("IT Ops PDF preserves non-ASCII labels as rendered text masks", () => {
   }
 });
 
-test("Server Room PDF uses the same natural Rack order as elevation view", () => {
+test("Server Room PDF reads in the same floor-grid order as the elevation view", () => {
   const roomRacks = [
     { ...rack, id: "C2", name: "C2", rackGroup: "C", sortOrder: 0 },
     { ...rack, id: "C1", name: "C1", rackGroup: "C", sortOrder: 1 },
     { ...rack, id: "A10", name: "A10", rackGroup: "A", sortOrder: 2 },
     { ...rack, id: "A2", name: "A2", rackGroup: "A", sortOrder: 3 },
   ];
+  // Positions deliberately disagree with the Rack names: the report follows
+  // where the cabinets stand in the room, top row first, left to right.
+  const placement = {
+    C2: { x: 1, y: 2 },
+    C1: { x: 0, y: 2 },
+    A10: { x: 1, y: 0 },
+    A2: { x: 0, y: 0 },
+  };
 
   const document = serverRoomPdfDocument({
     site,
     roomName: "Room A",
     racks: roomRacks,
+    placement,
     unassignedLabel: "Unassigned",
     labels,
     kindLabel: (kind) => kind,

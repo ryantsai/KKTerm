@@ -76,10 +76,10 @@ Replaces the **Host Group** entry in `CONTEXT.md`; adds the rest. Follows the
   Rack must belong to a room owned by the same Site. It also owns the durable
   2.5D floor finish edited through Server Room Properties. _Avoid_: zone, site object.
 - **Server Room View** — the drill-down view for one Server Room. It has
-  three layouts: rack elevations (default, optionally grouped by each Rack's
-  `rack_group` tag), a blueprint-style top-down floor plan, and a 2.5D
-  axonometric room. The floor plan and 2.5D room share one grid placement
-  (cell + facing per Rack), paint Racks in their cabinet shell finish (no
+  three layouts: rack elevations (default, one band per occupied floor row),
+  a blueprint-style top-down floor plan, and a 2.5D axonometric room. All
+  three project one grid placement (cell + facing per Rack); the two spatial
+  layouts additionally paint Racks in their cabinet shell finish (no
   status colouring) with compact utilisation/power tags, and hold
   **Room Objects**. _Avoid_: area view, region view.
 - **Room Object** — a non-rack fixture or structure on the Server Room floor
@@ -350,11 +350,13 @@ The visible IT Ops Module opens directly into the Site topology surface:
   `itops.racks.addServerRoomAction` for that Site.
 - **Site View** — selecting a Site shows Server Room cards.
 - **Server Room View** — selecting a Server Room shows its Racks in one of
-  three layouts: rack elevations (default, optionally grouped by each Rack's
-  `rack_group` tag), a blueprint-style top-down floor plan
-  (`ServerRoomFloorPlan.tsx`), or a 2.5D axonometric room
-  (`ServerRoomIsoView.tsx`). The two spatial layouts share one floor grid
-  (cell placement + facing, `roomIsoLayout.ts`), paint Racks in their shell
+  three layouts: rack elevations (default), a blueprint-style top-down floor
+  plan (`ServerRoomFloorPlan.tsx`), or a 2.5D axonometric room
+  (`ServerRoomIsoView.tsx`). All three read one floor grid
+  (cell placement + facing, `roomIsoLayout.ts`); the elevation projects it as
+  one band per occupied grid row, ordered left to right by grid column
+  (`roomElevationLayout.ts`), and Server Room PDF export reads in that same
+  band order. The two spatial layouts additionally paint Racks in their shell
   finish (no status colouring) with always-on utilisation/power tags
   (`roomFloorPlan.ts` metrics), and hold
   non-rack room objects with vertical stacking (`roomObjects.ts`). A Rack

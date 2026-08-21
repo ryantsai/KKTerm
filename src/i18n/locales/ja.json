@@ -1627,6 +1627,8 @@
       },
       "unassigned": "未割り当て",
       "ungrouped": "未グループ化",
+      "elevationRow": "列 {{index}}",
+      "elevationRowGroup": "列 {{index}} · {{group}}",
       "groupLabel": "グループ",
       "groupPlaceholder": "例: Web 層",
       "treeSearchPlaceholder": "ラックを検索…",

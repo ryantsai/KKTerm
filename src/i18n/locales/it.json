@@ -1627,6 +1627,8 @@
       },
       "unassigned": "Non assegnato",
       "ungrouped": "Non raggruppato",
+      "elevationRow": "Fila {{index}}",
+      "elevationRowGroup": "Fila {{index}} · {{group}}",
       "groupLabel": "Gruppo",
       "groupPlaceholder": "es. Livello web",
       "treeSearchPlaceholder": "Cerca rack…",

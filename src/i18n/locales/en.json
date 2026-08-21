@@ -1627,6 +1627,8 @@
       },
       "unassigned": "Unassigned",
       "ungrouped": "Ungrouped",
+      "elevationRow": "Row {{index}}",
+      "elevationRowGroup": "Row {{index}} · {{group}}",
       "groupLabel": "Group",
       "groupPlaceholder": "e.g. Web tier",
       "treeSearchPlaceholder": "Search racks…",
