@@ -1635,6 +1635,7 @@
       "sortAction": "Sortieren",
       "sortAscending": "Aufsteigend",
       "sortDescending": "Absteigend",
+      "sortViewOrder": "Ansichtsreihenfolge",
       "placedDevices": "Platzierte Geräte",
       "changeBackground": "Hintergrund ändern",
       "backgroundDefaultHint": "Verwendet den Standardhintergrund des Themes.",

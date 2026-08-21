@@ -1635,6 +1635,7 @@
       "sortAction": "Trier",
       "sortAscending": "Croissant",
       "sortDescending": "Décroissant",
+      "sortViewOrder": "Ordre de la vue",
       "placedDevices": "Appareils placés",
       "changeBackground": "Changer l'arrière-plan",
       "backgroundDefaultHint": "Utilise l'arrière-plan par défaut du thème.",

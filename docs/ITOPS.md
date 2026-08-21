@@ -829,14 +829,23 @@ icon button appears immediately left of the tree-wide collapse/expand controls.
 Its `itops.racks.sortAscending` and `itops.racks.sortDescending` native menu
 items naturally order only that Site's Server Room rows; the per-Site direction
 is a persisted tree-view preference and does not reorder the Site View canvas.
-Selecting an individual Server Room shows the same toolbar icon and naturally
-orders only that room's Rack children; its direction persists per Server Room
-and does not rearrange Rack placement in any spatial view. The virtual row's
+Selecting an individual Server Room shows the same toolbar icon over a
+three-choice menu: the two name directions, plus `itops.racks.sortViewOrder`,
+which lists that room's Rack children in the order Server Room View shows them
+— the elevation bands, top floor row first and left to right within a row,
+resolved from the same grid placement all three room layouts read. The chosen
+mode persists per Server Room in `kkterm.itopsRackTreeSort` alongside the two
+directions. Every mode is a tree-view preference only: none of them rearranges
+Rack placement in any layout, and `itops.racks.sortViewOrder` reads the
+placement rather than writing it, so a Rack moved in the floor plan or the
+2.5D view re-sorts the tree without a separate save. The virtual row's
 native context menu exposes
 `itops.racks.addServerRoomAction`, which opens the New Server Room dialog for
-that Site, followed by an `itops.racks.sortAction` submenu with the same two
-ordering choices. An individual Server Room's native menu likewise adds that
-submenu after `itops.racks.addRackAction` and before Delete/Properties.
+that Site, followed by an `itops.racks.sortAction` submenu with the two Server
+Room ordering choices (`itops.racks.sortViewOrder` is Rack-only, since Server
+Room cards have no room layout to follow). An individual Server Room's native
+menu likewise adds its three-choice submenu after `itops.racks.addRackAction`
+and before Delete/Properties.
 The live
 Batch Run view renders a per-host grid
 with status chips and **live streamed output** (each host auto-reveals its

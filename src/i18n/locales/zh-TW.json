@@ -1635,6 +1635,7 @@
       "sortAction": "排序",
       "sortAscending": "遞增",
       "sortDescending": "遞減",
+      "sortViewOrder": "檢視順序",
       "placedDevices": "已放置裝置",
       "changeBackground": "變更背景",
       "backgroundDefaultHint": "使用佈景主題的預設背景。",

@@ -1635,6 +1635,7 @@
       "sortAction": "เรียงลำดับ",
       "sortAscending": "จากน้อยไปมาก",
       "sortDescending": "จากมากไปน้อย",
+      "sortViewOrder": "ลำดับตามมุมมอง",
       "placedDevices": "อุปกรณ์ที่วางไว้",
       "changeBackground": "เปลี่ยนพื้นหลัง",
       "backgroundDefaultHint": "ใช้พื้นหลังเริ่มต้นของธีม",

@@ -66,7 +66,7 @@ import {
   type DrillPath,
   type ServerRoomGroup,
 } from "./rackTopology";
-import { resolveElevationRows } from "./roomElevationLayout";
+import { resolveElevationRows, sortRacksForElevation } from "./roomElevationLayout";
 import { resolveIsoLayout, sanitizeFacing, type Corner, type Facing } from "./roomIsoLayout";
 import { ItOpsBackground } from "./ItOpsBackground";
 import { ItOpsEmptyHint } from "./ItOpsEmptyHint";
@@ -110,6 +110,7 @@ import {
   sortRackTopology,
   type FreePlacementMap,
   type RackFacingMap,
+  type RackSortMode,
   type RoomViewMode,
   type ServerRoomSortDirection,
 } from "./siteTreeState";
@@ -765,10 +766,20 @@ export function SitesTab({
     return topologySortMenuItems((direction) => setServerRoomSortDirection(siteId, direction));
   }
 
+  function setRackSortMode(roomKey: string, mode: RackSortMode) {
+    setRackSort((current) => ({ ...current, [roomKey]: mode }));
+  }
+
   function rackSortMenuItems(roomKey: string): NativeContextMenuItem[] {
-    return topologySortMenuItems((direction) =>
-      setRackSort((current) => ({ ...current, [roomKey]: direction })),
-    );
+    return [
+      ...topologySortMenuItems((direction) => setRackSortMode(roomKey, direction)),
+      {
+        kind: "item",
+        label: t("itops.racks.sortViewOrder"),
+        iconSvg: nativeMenuIcons.layoutDashboard,
+        action: () => setRackSortMode(roomKey, "view"),
+      },
+    ];
   }
 
   function showTreeSortMenu(
@@ -1163,8 +1174,9 @@ export function SitesTab({
                             const mId = nodeId.serverRoom(site.id, room.key);
                             const mOpen = isExpanded(mId);
                             const roomRackSortKey = rackTreeSortKey(site.id, room);
-                            const sortedRoomRacks = sortRackTopology(
-                              room.racks,
+                            const sortedRoomRacks = orderRoomTreeRacks(
+                              site.id,
+                              room,
                               rackSort[roomRackSortKey],
                             );
                             return (
@@ -2690,6 +2702,22 @@ function RackDrill({
       ) : null}
     </div>
   );
+}
+
+// Order one Server Room's Racks for the navigator tree. "View Order" mirrors
+// Server Room View: the elevation bands, top floor row first and left to right
+// within a row, resolved from the same grid placement the room layouts read
+// (the legacy per-scope blob merged under the durable rack columns).
+function orderRoomTreeRacks(
+  siteId: string,
+  room: ServerRoomGroup,
+  mode: RackSortMode | undefined,
+): Rack[] {
+  if (mode !== "view") return sortRackTopology(room.racks, mode);
+  return sortRacksForElevation(room.racks, {
+    ...loadFreePlacement(roomIsoLayoutScope(siteId, room.key)),
+    ...durablePlacement(room.racks, "grid"),
+  });
 }
 
 // Fold the racks' durable placement columns into a FreePlacementMap.

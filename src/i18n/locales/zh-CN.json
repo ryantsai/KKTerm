@@ -1635,6 +1635,7 @@
       "sortAction": "排序",
       "sortAscending": "升序",
       "sortDescending": "降序",
+      "sortViewOrder": "视图顺序",
       "placedDevices": "已放置设备",
       "changeBackground": "更改背景",
       "backgroundDefaultHint": "使用主题的默认背景。",

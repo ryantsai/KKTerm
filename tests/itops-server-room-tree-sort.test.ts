@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
+  loadRackTreeSort,
+  saveRackTreeSort,
   sortRackTopology,
   sortServerRoomTopology,
 } from "../src/modules/itops/siteTreeState";
@@ -74,10 +76,72 @@ test("selected Server Room instances expose persisted Rack sorting in toolbar an
   assert.match(sitesTab, /sortItems: rackSortMenuItems\(roomRackSortKey\)/);
   assert.match(
     sitesTab,
-    /sortRackTopology\(\s*room\.racks,\s*rackSort\[roomRackSortKey\]/,
+    /orderRoomTreeRacks\(\s*site\.id,\s*room,\s*rackSort\[roomRackSortKey\]/,
   );
   assert.match(sitesTab, /sortedRoomRacks\.map\(\(rack\)/);
   assert.match(treeState, /kkterm\.itopsRackTreeSort/);
   assert.match(treeState, /export function loadRackTreeSort/);
   assert.match(treeState, /export function saveRackTreeSort/);
+});
+
+test("Rack tree sorting leaves View order for the caller to resolve", () => {
+  const racks = [
+    { id: "rack-10", name: "Rack 10" },
+    { id: "rack-a", name: "Alpha" },
+    { id: "rack-2", name: "Rack 2" },
+  ];
+
+  // "view" is not a name comparison: the tree resolves it through the room's
+  // grid placement, so this pass-through must not reorder anything.
+  const ordered = sortRackTopology(racks, "view");
+
+  assert.equal(ordered, racks);
+  assert.deepEqual(ordered.map((rack) => rack.name), ["Rack 10", "Alpha", "Rack 2"]);
+});
+
+test("Rack tree sort persistence accepts View order and rejects unknown modes", () => {
+  const store = new Map<string, string>();
+  const original = globalThis.localStorage;
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => void store.set(key, value),
+    },
+  });
+  try {
+    saveRackTreeSort({ "room-a": "view", "room-b": "desc" });
+    assert.deepEqual(loadRackTreeSort(), { "room-a": "view", "room-b": "desc" });
+
+    store.set(
+      "kkterm.itopsRackTreeSort",
+      JSON.stringify({ "room-a": "view", "room-b": "sideways", "room-c": 3 }),
+    );
+    assert.deepEqual(loadRackTreeSort(), { "room-a": "view" });
+  } finally {
+    if (original) {
+      Object.defineProperty(globalThis, "localStorage", {
+        configurable: true,
+        value: original,
+      });
+    } else {
+      Reflect.deleteProperty(globalThis, "localStorage");
+    }
+  }
+});
+
+test("Server Room Sort submenu offers View order beside the two directions", async () => {
+  const sitesTab = await readFile("src/modules/itops/SitesTab.tsx", "utf8");
+
+  assert.match(sitesTab, /itops\.racks\.sortViewOrder[\s\S]*?nativeMenuIcons\.layoutDashboard/);
+  assert.match(
+    sitesTab,
+    /function rackSortMenuItems[\s\S]*?topologySortMenuItems[\s\S]*?sortViewOrder[\s\S]*?setRackSortMode\(roomKey, "view"\)/,
+  );
+  // View order reads the same grid placement the room layouts do, so the tree
+  // and Server Room View cannot disagree.
+  assert.match(
+    sitesTab,
+    /function orderRoomTreeRacks[\s\S]*?sortRacksForElevation\([\s\S]*?loadFreePlacement\(roomIsoLayoutScope\(siteId, room\.key\)\)[\s\S]*?durablePlacement\(room\.racks, "grid"\)/,
+  );
 });
