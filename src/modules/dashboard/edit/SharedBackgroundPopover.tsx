@@ -148,17 +148,23 @@ export function SharedBackgroundPopover({
 
   return (
     <div ref={ref} className={["dw-bg-popover", className].filter(Boolean).join(" ")}>
-      <div className="dw-bg-popover-head">{t(titleKey)}</div>
+      <div className="dw-bg-popover-head">
+        <DIcon name="stack" size={15} />
+        <span>{t(titleKey)}</span>
+      </div>
 
       <div className="dw-bg-seg">
         <button className={mode === "preset" ? "active" : ""} onClick={() => setMode("preset")} type="button">
-          {t("dashboard.backgroundModePreset")}
+          <DIcon name="palette" size={13} />
+          <span>{t("dashboard.backgroundModePreset")}</span>
         </button>
         <button className={mode === "media" ? "active" : ""} onClick={() => setMode("media")} type="button">
-          {t("dashboard.backgroundModeMedia")}
+          <DIcon name="gallery" size={13} />
+          <span>{t("dashboard.backgroundModeMedia")}</span>
         </button>
         <button className={mode === "dynamic" ? "active" : ""} onClick={() => setMode("dynamic")} type="button">
-          {t("dashboard.backgroundModeDynamic")}
+          <DIcon name="bolt" size={13} />
+          <span>{t("dashboard.backgroundModeDynamic")}</span>
         </button>
       </div>
 
@@ -194,14 +200,6 @@ export function SharedBackgroundPopover({
               {!customGradientBackground && <DIcon name="plus" size={14} />}
             </button>
           </div>
-        )}
-
-        {mode === "preset" && customGradientOpen && customGradientBackground && (
-          <CustomGradientBuilder
-            stops={customGradientBackground.stops}
-            angle={customGradientBackground.angle}
-            onChange={applyCustomGradient}
-          />
         )}
 
         {mode === "dynamic" && (
@@ -303,6 +301,31 @@ export function SharedBackgroundPopover({
           </div>
         )}
       </div>
+
+      {mode === "preset" && customGradientOpen && customGradientBackground && (
+        <div
+          className="dw-bg-gradient-overlay"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setCustomGradientOpen(false);
+          }}
+        >
+          <div className="dw-bg-gradient-panel">
+            <button
+              className="dw-bg-gradient-close"
+              aria-label={t("common.close")}
+              onClick={() => setCustomGradientOpen(false)}
+              type="button"
+            >
+              <DIcon name="close" size={14} />
+            </button>
+            <CustomGradientBuilder
+              stops={customGradientBackground.stops}
+              angle={customGradientBackground.angle}
+              onChange={applyCustomGradient}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

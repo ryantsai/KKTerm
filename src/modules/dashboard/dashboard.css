@@ -3452,8 +3452,16 @@ button.dashboard-pill-dot:focus-visible {
 
 .dw-bg-popover-head {
   flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   font-weight: 650;
-  text-align: center;
+  color: var(--text-muted);
+}
+
+.dw-bg-popover-head svg {
+  color: var(--text-faint);
 }
 
 .dw-bg-popover-body {
@@ -3461,6 +3469,8 @@ button.dashboard-pill-dot:focus-visible {
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .dw-bg-seg {
@@ -3476,6 +3486,10 @@ button.dashboard-pill-dot:focus-visible {
 }
 
 .dw-bg-seg button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   min-width: 0;
   padding: 5px 4px;
   border: 0;
@@ -3483,10 +3497,23 @@ button.dashboard-pill-dot:focus-visible {
   background: transparent;
   color: var(--text-muted, var(--text));
   font-size: 12px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   cursor: pointer;
+}
+
+.dw-bg-seg button span {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.dw-bg-seg button svg {
+  flex: 0 0 auto;
+  color: var(--text-faint);
+}
+
+.dw-bg-seg button.active svg {
+  color: var(--accent);
 }
 
 .dw-bg-seg button.active {
@@ -3533,18 +3560,54 @@ button.dashboard-pill-dot:focus-visible {
   background: linear-gradient(135deg, #f87171, #fbbf24, #34d399, #60a5fa, #a78bfa);
 }
 
+.dw-bg-gradient-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  border-radius: var(--dashboard-radius-lg);
+}
+
+.dw-bg-gradient-panel {
+  position: relative;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  padding: 40px 16px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--dashboard-shadow-ambient);
+}
+
+.dw-bg-gradient-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.dw-bg-gradient-close:hover {
+  color: var(--text);
+  background: var(--surface-muted);
+}
+
 .dw-bg-gradient-builder {
   display: flex;
   flex-direction: column;
   gap: 10px;
   align-items: center;
-  width: max-content;
-  max-width: 100%;
-  margin: 6px auto 0;
-  padding: 12px;
-  background: var(--surface-muted);
-  border: 1px solid var(--border);
-  border-radius: 10px;
 }
 
 .dw-bg-gradient-angle {
@@ -3663,12 +3726,14 @@ button.dashboard-pill-dot:focus-visible {
 
 .dw-bg-image {
   display: flex;
+  flex: 1;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 10px;
   width: 100%;
   max-width: 360px;
-  margin: 24px auto 0;
+  margin: 0 auto;
   text-align: center;
 }
 
