@@ -12,6 +12,7 @@ import {
   type MouseEventHandler,
   type ReactNode,
 } from "react";
+import { asBackground } from "react-linear-gradient-picker";
 import { resolveBackgroundPreset } from "../dashboard/registry/backgroundPresets";
 import { DashboardDynamicBackground } from "../dashboard/registry/dynamicBackgrounds";
 import { loadBackgroundImage } from "../dashboard/state/persistence";
@@ -86,6 +87,13 @@ export function ItOpsBackgroundLayer({
     );
   } else if (background.kind === "dynamic") {
     layer = <DashboardDynamicBackground active={active} id={background.dynamic} />;
+  } else if (background.kind === "customGradient") {
+    layer = (
+      <div
+        className="itops-bg-fill"
+        style={{ background: asBackground({ angle: background.angle, stops: background.stops, type: "linear" }) }}
+      />
+    );
   } else if (background.kind === "image" && mediaDataUrl) {
     const style: CSSProperties = {
       backgroundImage: `url("${mediaDataUrl}")`,

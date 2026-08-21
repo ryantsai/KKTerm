@@ -425,11 +425,13 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
           {
             kind: "item" as const,
             label: t("common.open"),
+            iconSvg: nativeMenuIcons.scanLine,
             action: () => setViewerId(single.id),
           },
           {
             kind: "item" as const,
             label: t("screenshots.menu.openExternal"),
+            iconSvg: nativeMenuIcons.arrowUp,
             action: () => openExternal(single),
           },
           ...(single.mediaType === "image" ? [{

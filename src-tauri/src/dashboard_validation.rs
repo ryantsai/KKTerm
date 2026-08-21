@@ -683,6 +683,10 @@ pub const DYNAMIC_BACKGROUND_IDS: &[&str] = &[
     "animatedGradient",
     "prismGradient",
     "liquidChrome",
+    "windowRain",
+    "submergedSnellOcean",
+    "spectralCascadeOcean",
+    "blackHole",
 ];
 
 pub const BACKGROUND_FITS: &[&str] = &["fill", "fit", "stretch", "tile", "center"];
@@ -858,6 +862,34 @@ pub fn validate_dynamic_background(dynamic: &str) -> Result<(), ValidationError>
     } else {
         Err(ValidationError::InvalidBackground)
     }
+}
+
+fn is_valid_hex_color(value: &str) -> bool {
+    let bytes = value.as_bytes();
+    (bytes.len() == 4 || bytes.len() == 7)
+        && bytes[0] == b'#'
+        && bytes[1..].iter().all(|b| b.is_ascii_hexdigit())
+}
+
+pub fn validate_custom_gradient(
+    stops: &[crate::dashboard_storage::GradientColorStop],
+    angle: f64,
+) -> Result<(), ValidationError> {
+    if stops.len() < 2 || stops.len() > 8 {
+        return Err(ValidationError::InvalidBackground);
+    }
+    if !(0.0..=360.0).contains(&angle) {
+        return Err(ValidationError::InvalidBackground);
+    }
+    for stop in stops {
+        if !(0.0..=100.0).contains(&stop.offset) {
+            return Err(ValidationError::InvalidBackground);
+        }
+        if !is_valid_hex_color(&stop.color) {
+            return Err(ValidationError::InvalidBackground);
+        }
+    }
+    Ok(())
 }
 
 pub fn validate_dashboard_tab_color(color: &str) -> Result<(), ValidationError> {
@@ -2057,6 +2089,60 @@ mod tests {
     }
 
     #[test]
+    fn custom_gradient_accepts_two_or_more_hex_stops() {
+        use crate::dashboard_storage::GradientColorStop;
+        let stops = vec![
+            GradientColorStop { color: "#6366f1".into(), offset: 0.0 },
+            GradientColorStop { color: "#ec4899".into(), offset: 100.0 },
+        ];
+        assert!(validate_custom_gradient(&stops, 135.0).is_ok());
+    }
+
+    #[test]
+    fn custom_gradient_rejects_too_few_stops() {
+        use crate::dashboard_storage::GradientColorStop;
+        let stops = vec![GradientColorStop { color: "#6366f1".into(), offset: 0.0 }];
+        assert_eq!(
+            validate_custom_gradient(&stops, 135.0),
+            Err(ValidationError::InvalidBackground),
+        );
+    }
+
+    #[test]
+    fn custom_gradient_rejects_invalid_hex_color() {
+        use crate::dashboard_storage::GradientColorStop;
+        let stops = vec![
+            GradientColorStop { color: "not-a-color".into(), offset: 0.0 },
+            GradientColorStop { color: "#ec4899".into(), offset: 100.0 },
+        ];
+        assert_eq!(
+            validate_custom_gradient(&stops, 135.0),
+            Err(ValidationError::InvalidBackground),
+        );
+    }
+
+    #[test]
+    fn custom_gradient_rejects_out_of_range_offset_or_angle() {
+        use crate::dashboard_storage::GradientColorStop;
+        let valid_stops = vec![
+            GradientColorStop { color: "#6366f1".into(), offset: 0.0 },
+            GradientColorStop { color: "#ec4899".into(), offset: 100.0 },
+        ];
+        assert_eq!(
+            validate_custom_gradient(&valid_stops, 400.0),
+            Err(ValidationError::InvalidBackground),
+        );
+        let bad_offset_stops = vec![
+            GradientColorStop { color: "#6366f1".into(), offset: -1.0 },
+            GradientColorStop { color: "#ec4899".into(), offset: 100.0 },
+        ];
+        assert_eq!(
+            validate_custom_gradient(&bad_offset_stops, 135.0),
+            Err(ValidationError::InvalidBackground),
+        );
+    }
+
+    #[test]
     fn dashboard_tab_color_accepts_tab_color_presets() {
         assert!(validate_dashboard_tab_color("mist").is_ok());
         assert!(validate_dashboard_tab_color("midnight").is_ok());
@@ -2127,6 +2213,18 @@ mod tests {
             "animatedGradient",
             "prismGradient",
             "liquidChrome",
+        ] {
+            assert!(validate_dynamic_background(id).is_ok(), "{id}");
+        }
+    }
+
+    #[test]
+    fn dynamic_background_accepts_threejs_imports() {
+        for id in [
+            "windowRain",
+            "submergedSnellOcean",
+            "spectralCascadeOcean",
+            "blackHole",
         ] {
             assert!(validate_dynamic_background(id).is_ok(), "{id}");
         }

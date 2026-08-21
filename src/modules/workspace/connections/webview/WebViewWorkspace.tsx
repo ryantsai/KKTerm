@@ -1457,6 +1457,7 @@ export function WebViewWorkspace({
         {
           kind: "item",
           label: t("workspace.sendEntirePanelToAi"),
+          iconSvg: nativeMenuIcons.camera,
           action: () => void captureWebviewScreenshotForAssistant(),
         },
       ],

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
@@ -18,10 +19,6 @@ const implementationSource = await readFile(
 );
 const registrySource = await readFile(
   new URL("../src/modules/dashboard/registry/dynamicBackgrounds.tsx", import.meta.url),
-  "utf8",
-);
-const previewSource = await readFile(
-  new URL("../src/modules/dashboard/registry/dynamicBackgroundPreviewArt.tsx", import.meta.url),
   "utf8",
 );
 const validationSource = await readFile(
@@ -93,7 +90,7 @@ test("waters is registered everywhere a dynamic background must appear", () => {
     registrySource,
     /\{ id: "waters", labelKey: "dashboard\.dynamicBackgrounds\.waters", mood: "calm" \}/,
   );
-  assert.match(previewSource, /BUILDERS\.waters = \(id\) =>/);
+  assert.ok(existsSync(new URL("../public/dynamic-bg-thumbs/waters.webp", import.meta.url)));
   assert.match(validationSource, /"waters"/);
   assert.match(englishLocaleSource, /"waters": "Waters"/);
   assert.match(manualSource, /`waters`/);

@@ -25,6 +25,9 @@ const DARK_DYNAMIC_BACKGROUND_IDS = new Set([
   "prismGradient",
   "liquidChrome",
   "maelstrom",
+  "blackHole",
+  "windowRain",
+  "spectralCascadeOcean",
 ]);
 const DARK_BACKGROUND_PRESET_IDS = new Set([
   "graphite",
@@ -124,6 +127,23 @@ export function dashboardVisualContextForView(
       backgroundKind: "dynamic",
       backgroundTone: tone,
       backgroundId: background.dynamic,
+      requiresOpaqueTextSurface: tone === "mixed",
+    };
+  }
+
+  if (background.kind === "customGradient") {
+    const darkCount = background.stops.filter((stop) => isDarkCssColor(stop.color)).length;
+    const tone: DashboardBackgroundTone = background.stops.length === 0
+      ? "light"
+      : darkCount === background.stops.length
+        ? "dark"
+        : darkCount === 0
+          ? "light"
+          : "mixed";
+    return {
+      colorScheme: tone === "dark" ? "dark" : "light",
+      backgroundKind: "customGradient",
+      backgroundTone: tone,
       requiresOpaqueTextSurface: tone === "mixed",
     };
   }

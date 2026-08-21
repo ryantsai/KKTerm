@@ -22,6 +22,7 @@ import { useTranslation } from "react-i18next";
 import { DialogPortal } from "../../app/DialogPortal";
 import { RailTooltip } from "../../app/RailTooltip";
 import { showNativeContextMenu } from "../../lib/nativeContextMenu";
+import { nativeMenuIcons } from "../../lib/nativeMenuIcons";
 import { AiCodingUsageStatusBar } from "../dashboard/widgets/builtin/ai-coding-usage/AiCodingUsageStatusBar";
 import { InstallerStatusSummary } from "../installer/InstallerStatusSummary";
 import { invokeCommand, isTauriRuntime } from "../../lib/tauri";
@@ -447,11 +448,13 @@ function XServerStatusIcon() {
         {
           kind: "item",
           label: t("app.xServerRestart"),
+          iconSvg: nativeMenuIcons.rotateCcw,
           action: () => void restartXServer(),
         },
         {
           kind: "item",
           label: t("app.xServerStop"),
+          iconSvg: nativeMenuIcons.x,
           action: () => void stopXServer(),
         },
       ],

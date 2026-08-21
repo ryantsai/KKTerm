@@ -58,6 +58,10 @@ const expectedIds = [
   "closingPlasma",
   "prismGradient",
   "liquidChrome",
+  "windowRain",
+  "submergedSnellOcean",
+  "spectralCascadeOcean",
+  "blackHole",
 ] as const satisfies readonly DynamicBackgroundId[];
 
 if (DYNAMIC_BACKGROUNDS.length !== expectedIds.length) {

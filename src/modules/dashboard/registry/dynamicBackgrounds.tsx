@@ -13,6 +13,10 @@ import {
   WhitecapsBg,
 } from "./maelstromBackground";
 import { WatersBg } from "./watersBackground";
+import { WindowRainBg } from "./windowRainBackground";
+import { SubmergedSnellOceanBg } from "./submergedSnellOceanBackground";
+import { SpectralCascadeOceanBg } from "./spectralCascadeOceanBackground";
+import { BlackHoleBg } from "./blackHoleBackground";
 import {
   AnimatedGradientBg,
   ClosingPlasmaBg,
@@ -3879,6 +3883,10 @@ const DYNAMIC_BACKGROUND_COMPONENTS = {
   animatedGradient: AnimatedGradientBg,
   prismGradient: PrismGradientBg,
   liquidChrome: LiquidChromeBg,
+  windowRain: WindowRainBg,
+  submergedSnellOcean: SubmergedSnellOceanBg,
+  spectralCascadeOcean: SpectralCascadeOceanBg,
+  blackHole: BlackHoleBg,
 } satisfies Record<string, ComponentType>;
 
 export type DynamicBackgroundId = keyof typeof DYNAMIC_BACKGROUND_COMPONENTS;
@@ -3941,6 +3949,10 @@ export const DYNAMIC_BACKGROUNDS: readonly {
   { id: "confetti", labelKey: "dashboard.dynamicBackgrounds.confetti", mood: "erratic" },
   { id: "particleCursor", labelKey: "dashboard.dynamicBackgrounds.particleCursor", mood: "erratic" },
   { id: "liquidChrome", labelKey: "dashboard.dynamicBackgrounds.liquidChrome", mood: "erratic" },
+  { id: "windowRain", labelKey: "dashboard.dynamicBackgrounds.windowRain", mood: "calm" },
+  { id: "submergedSnellOcean", labelKey: "dashboard.dynamicBackgrounds.submergedSnellOcean", mood: "calm" },
+  { id: "spectralCascadeOcean", labelKey: "dashboard.dynamicBackgrounds.spectralCascadeOcean", mood: "erratic" },
+  { id: "blackHole", labelKey: "dashboard.dynamicBackgrounds.blackHole", mood: "spacey" },
 ];
 
 export function isDynamicBackgroundId(value: string): value is DynamicBackgroundId {

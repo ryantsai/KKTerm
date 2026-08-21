@@ -3,6 +3,7 @@
 // terminal background layer but uses file-browser-scoped CSS classes so the SFTP
 // surface stays independent of terminal styling.
 import { useEffect, useState, type CSSProperties, type JSX } from "react";
+import { asBackground } from "react-linear-gradient-picker";
 import { resolveBackgroundPreset } from "../../../dashboard/registry/backgroundPresets";
 import { DashboardDynamicBackground } from "../../../dashboard/registry/dynamicBackgrounds";
 import { loadBackgroundImage } from "../../../dashboard/state/persistence";
@@ -65,6 +66,13 @@ export function SftpBackgroundLayer({
     layer = <div className="sftp-bg-fill" style={{ background: resolveBackgroundPreset(background.preset).css }} />;
   } else if (background.kind === "dynamic") {
     layer = <DashboardDynamicBackground active={active} id={background.dynamic} />;
+  } else if (background.kind === "customGradient") {
+    layer = (
+      <div
+        className="sftp-bg-fill"
+        style={{ background: asBackground({ angle: background.angle, stops: background.stops, type: "linear" }) }}
+      />
+    );
   } else if (background.kind === "image" && mediaDataUrl) {
     const style: CSSProperties = {
       backgroundImage: `url("${mediaDataUrl}")`,

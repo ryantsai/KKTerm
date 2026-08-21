@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
 
@@ -39,10 +40,6 @@ const [animatedGradientSource, silkAuroraSource, closingPlasmaSource, liquidChro
     "utf8",
   ),
 ]);
-const previewSource = await readFile(
-  new URL("../src/modules/dashboard/registry/dynamicBackgroundPreviewArt.tsx", import.meta.url),
-  "utf8",
-);
 const validationSource = await readFile(
   new URL("../src-tauri/src/dashboard_validation.rs", import.meta.url),
   "utf8",
@@ -74,7 +71,10 @@ test("all Componentry hero backgrounds use the shared KKTerm background path", a
       registrySource,
       new RegExp(`\\{ id: "${background.id}", labelKey: "dashboard\\.dynamicBackgrounds\\.${background.id}"`),
     );
-    assert.match(previewSource, new RegExp(`BUILDERS\\.${background.id} = \\(id\\) =>`));
+    assert.ok(
+      existsSync(new URL(`../public/dynamic-bg-thumbs/${background.id}.webp`, import.meta.url)),
+      `${background.id} should have a captured static thumbnail`,
+    );
     assert.match(validationSource, new RegExp(`"${background.id}"`));
     assert.match(dashboardManual, new RegExp(`\\\`${background.id}\\\``));
     assert.match(readme, new RegExp(`\\\`${background.id}\\\``));

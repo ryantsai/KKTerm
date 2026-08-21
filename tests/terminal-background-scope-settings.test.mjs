@@ -18,14 +18,6 @@ const sharedBackgroundPopover = await readFile(
   new URL("../src/modules/dashboard/edit/SharedBackgroundPopover.tsx", import.meta.url),
   "utf8",
 );
-const dynamicBackgroundRegistry = await readFile(
-  new URL("../src/modules/dashboard/registry/dynamicBackgrounds.tsx", import.meta.url),
-  "utf8",
-);
-const dynamicBackgroundPreviewArt = await readFile(
-  new URL("../src/modules/dashboard/registry/dynamicBackgroundPreviewArt.tsx", import.meta.url),
-  "utf8",
-);
 const workspaceSettings = await readFile(
   new URL("../src/modules/settings/WorkspaceSettings.tsx", import.meta.url),
   "utf8",
@@ -110,43 +102,33 @@ test("terminal and Dashboard background pickers share the same component and dat
   assert.doesNotMatch(terminalBackgroundPopover, /DYNAMIC_BACKGROUNDS\.map/);
 });
 
-test("dynamic background live preview stages selection and animates only one tile", () => {
-  const previewDialog = sharedBackgroundPopover.slice(sharedBackgroundPopover.indexOf("function DynamicBackgroundPreviewDialog"));
-  assert.match(sharedBackgroundPopover, /backgroundLivePreview/);
-  assert.match(sharedBackgroundPopover, /DynamicBackgroundPreviewDialog/);
-  assert.match(sharedBackgroundPopover, /zClassName="dw-bg-preview-backdrop"/);
+test("dynamic background tab renders static thumbnails and swaps in a live canvas only on hover", () => {
   assert.match(sharedBackgroundPopover, /DYNAMIC_BACKGROUNDS\.map/);
-  assert.match(sharedBackgroundPopover, /DynamicBackgroundPreviewArt id=\{backgroundOption\.id\}/);
-  assert.match(dynamicBackgroundPreviewArt, /export function DynamicBackgroundPreviewArt/);
-  assert.match(dynamicBackgroundPreviewArt, /export function dynamicBackgroundPreviewSvg/);
-  assert.doesNotMatch(dynamicBackgroundRegistry, /dynamicBackgroundStaticPreviewStyle/);
-  assert.doesNotMatch(dynamicBackgroundRegistry, /STATIC_PREVIEW_STYLES/);
-  assert.match(previewDialog, /setDraft\(backgroundOption\.id\)/);
-  assert.match(previewDialog, /onApply\(draft\)/);
+  assert.match(sharedBackgroundPopover, /dw-bg-thumb-grid/);
   assert.match(
     sharedBackgroundPopover,
-    /onApply=\{\(dynamicId\) => \{\s*applyDynamic\(dynamicId\);\s*setLivePreviewOpen\(false\);\s*onClose\(\);/s,
-    "applying from the live preview should close the parent background picker",
+    /src=\{`\/dynamic-bg-thumbs\/\$\{backgroundOption\.id\}\.webp`\}/,
+    "every thumbnail card should default to a static captured image",
   );
   assert.match(
-    previewDialog,
-    /selectedTile \? \(\s*<DashboardDynamicBackground id=\{backgroundOption\.id\} active \/>/s,
-    "only the selected preview tile should mount an animated background",
+    sharedBackgroundPopover,
+    /isHovered && \(\s*<span className="dw-bg-thumb-live">\s*<DashboardDynamicBackground id=\{backgroundOption\.id\} active \/>/,
+    "the live animated background should mount only while its card is hovered",
   );
+  assert.match(sharedBackgroundPopover, /onMouseEnter=\{\(\) => setHoveredDynamicId\(backgroundOption\.id\)\}/);
+  assert.match(sharedBackgroundPopover, /onMouseLeave=\{\(\) => setHoveredDynamicId/);
+  assert.match(sharedBackgroundPopover, /onClick=\{\(\) => applyDynamic\(backgroundOption\.id\)\}/);
   assert.doesNotMatch(
-    previewDialog,
-    /applyDynamic\(backgroundOption\.id\)/,
-    "preview tiles should stage selection until OK applies it",
+    sharedBackgroundPopover,
+    /DynamicBackgroundPreviewDialog|backgroundLivePreview|DynamicBackgroundPreviewArt/,
+    "the old live-preview modal and procedural art should be fully removed",
   );
-  assert.doesNotMatch(sharedBackgroundPopover, /backgroundLivePreviewHint/);
   assert.match(dashboardCss, /\.dw-bg-popover\s*\{[\s\S]*z-index:\s*200;/);
-  assert.match(dashboardCss, /\.kk-dlg-backdrop\.dw-bg-preview-backdrop\s*\{[\s\S]*z-index:\s*220;/);
-  assert.match(dashboardCss, /\.dw-bg-preview-art\s*\{[\s\S]*pointer-events:\s*none;/);
-  assert.match(dashboardCss, /\.dw-bg-preview-frame \.dw-canvas-bg\s*\{[\s\S]*pointer-events:\s*none;/);
-  assert.match(dashboardCss, /@keyframes driftX\s*\{/);
-  assert.match(dashboardCss, /@keyframes sweep\s*\{/);
-  assert.match(dashboardCss, /@keyframes dwbg_blob\s*\{[\s\S]*translate\(14px,\s*-10px\) scale\(1\.18\)/);
-  assert.match(dashboardCss, /@keyframes dwbg_sway\s*\{[\s\S]*rotate\(-5deg\)[\s\S]*rotate\(5deg\)/);
+  assert.match(dashboardCss, /\.dw-bg-popover\s*\{[\s\S]*width:\s*840px;/);
+  assert.match(dashboardCss, /\.dw-bg-seg\s*\{[\s\S]*width:\s*70%;/);
+  assert.match(dashboardCss, /\.dw-bg-popover-body\s*\{[\s\S]*overflow-y:\s*auto;/);
+  assert.match(dashboardCss, /\.dw-bg-thumb-live\s*\{[\s\S]*--dw-canvas-padding-top:\s*0px;/);
+  assert.doesNotMatch(dashboardCss, /\.dw-bg-preview-|dw-bg-live-preview|dw-bg-dynamic-grid/);
 });
 
 test("docs make shared terminal background scope and datasource explicit", () => {

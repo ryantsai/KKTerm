@@ -24,12 +24,20 @@ pub struct DashboardView {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct GradientColorStop {
+    pub color: String,
+    pub offset: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum DashboardBackground {
     Preset { preset: String },
     Image { file: String, fit: String, dim: i64 },
     Video { file: String, fit: String, dim: i64 },
     Dynamic { dynamic: String },
+    CustomGradient { stops: Vec<GradientColorStop>, angle: f64 },
 }
 
 impl DashboardBackground {
@@ -46,6 +54,9 @@ impl DashboardBackground {
             }
             DashboardBackground::Dynamic { dynamic } => {
                 crate::dashboard_validation::validate_dynamic_background(dynamic)
+            }
+            DashboardBackground::CustomGradient { stops, angle } => {
+                crate::dashboard_validation::validate_custom_gradient(stops, *angle)
             }
         }
     }
@@ -508,7 +519,9 @@ fn collect_background_value(files: &mut HashSet<String>, background: &DashboardB
         DashboardBackground::Image { file, .. } | DashboardBackground::Video { file, .. } => {
             files.insert(file.clone());
         }
-        DashboardBackground::Preset { .. } | DashboardBackground::Dynamic { .. } => {}
+        DashboardBackground::Preset { .. }
+        | DashboardBackground::Dynamic { .. }
+        | DashboardBackground::CustomGradient { .. } => {}
     }
 }
 
@@ -1569,6 +1582,57 @@ mod tests {
         )
         .unwrap();
         assert_eq!(cleared.background, None);
+    }
+
+    #[test]
+    fn update_view_sets_and_rejects_custom_gradient_background() {
+        let conn = open_test_db();
+        create_view(&conn, "v1", "First", None).unwrap();
+
+        let gradient = DashboardBackground::CustomGradient {
+            stops: vec![
+                GradientColorStop { color: "#6366f1".into(), offset: 0.0 },
+                GradientColorStop { color: "#ec4899".into(), offset: 100.0 },
+            ],
+            angle: 135.0,
+        };
+        let updated = update_view(
+            &conn,
+            "v1",
+            &ViewPatch {
+                title: None,
+                grid_density: None,
+                sort_order: None,
+                background: Some(Some(gradient.clone())),
+                tab_color: None,
+            },
+        )
+        .unwrap();
+        assert_eq!(updated.background, Some(gradient.clone()));
+        assert_eq!(load_state(&conn).unwrap().views[0].background, Some(gradient));
+
+        let invalid = DashboardBackground::CustomGradient {
+            stops: vec![GradientColorStop { color: "#6366f1".into(), offset: 0.0 }],
+            angle: 135.0,
+        };
+        let err = update_view(
+            &conn,
+            "v1",
+            &ViewPatch {
+                title: None,
+                grid_density: None,
+                sort_order: None,
+                background: Some(Some(invalid)),
+                tab_color: None,
+            },
+        );
+        assert!(matches!(
+            err,
+            Err(DashboardStorageError::Validation {
+                kind: ValidationError::InvalidBackground,
+                ..
+            })
+        ));
     }
 
     #[test]

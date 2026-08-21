@@ -24,6 +24,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import { showNativeContextMenu } from "../../lib/nativeContextMenu";
+import { nativeMenuIcons } from "../../lib/nativeMenuIcons";
 import type { Rack, RackItem, RackItemStatus } from "../../types";
 import { rackFloorMetrics } from "./roomFloorPlan";
 import { RoomObjectIsoArtwork } from "./RoomObjectIsoReference";
@@ -861,6 +862,7 @@ export function ServerRoomIsoView({
         {
           kind: "item",
           label: t("itops.racks.changeBackground"),
+          iconSvg: nativeMenuIcons.image,
           action: onOpenBackground,
         },
       ],

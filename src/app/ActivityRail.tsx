@@ -392,11 +392,13 @@ export function ActivityRail({
         {
           kind: "item",
           label: t("workspace.editWorkspace"),
+          iconSvg: nativeMenuIcons.pencil,
           action: () => setWorkspaceToEdit(workspace),
         },
         {
           kind: "item",
           label: t("workspace.deleteWorkspace"),
+          iconSvg: nativeMenuIcons.trash,
           action: () => setWorkspaceToDelete(workspace),
         },
       ],

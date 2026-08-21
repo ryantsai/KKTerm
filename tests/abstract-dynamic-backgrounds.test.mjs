@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
@@ -18,10 +19,6 @@ const abstractBackgroundsSource = await readFile(
 );
 const registrySource = await readFile(
   new URL("../src/modules/dashboard/registry/dynamicBackgrounds.tsx", import.meta.url),
-  "utf8",
-);
-const previewArtSource = await readFile(
-  new URL("../src/modules/dashboard/registry/dynamicBackgroundPreviewArt.tsx", import.meta.url),
   "utf8",
 );
 const dashboardValidationSource = await readFile(
@@ -57,10 +54,9 @@ test("abstract dynamic backgrounds are available everywhere the picker needs the
       ),
       `${background.id} should be exposed in the shared background datasource`,
     );
-    assert.match(
-      previewArtSource,
-      new RegExp(`BUILDERS\\.${background.id} = \\(id\\) =>`),
-      `${background.id} should have static preview art for the preview dialog`,
+    assert.ok(
+      existsSync(new URL(`../public/dynamic-bg-thumbs/${background.id}.webp`, import.meta.url)),
+      `${background.id} should have a captured static thumbnail`,
     );
     assert.match(
       dashboardValidationSource,

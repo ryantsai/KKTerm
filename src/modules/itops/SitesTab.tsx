@@ -643,6 +643,7 @@ export function SitesTab({
       items.push({
         kind: "submenu",
         label: t("itops.racks.sortAction"),
+        iconSvg: nativeMenuIcons.chevronsUpDown,
         items: sortItems,
       });
       items.push({ kind: "separator" });
@@ -689,6 +690,7 @@ export function SitesTab({
         {
           kind: "submenu",
           label: t("itops.racks.sortAction"),
+          iconSvg: nativeMenuIcons.chevronsUpDown,
           items: serverRoomSortMenuItems(siteId),
         },
       ],
@@ -2115,6 +2117,7 @@ function RackDrill({
         {
           kind: "item",
           label: t("itops.racks.changeBackground"),
+          iconSvg: nativeMenuIcons.image,
           action: () => setBackgroundOpen(true),
         },
       ],

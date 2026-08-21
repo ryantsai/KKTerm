@@ -47,6 +47,7 @@ import { downscaleImageFile } from "./noteImages";
 import { noteHtmlToMarkdown, noteMarkdownFilename } from "./noteMarkdown";
 import { showNativeContextMenu } from "../../lib/nativeContextMenu";
 import type { NativeContextMenuItem } from "../../lib/nativeContextMenu";
+import { nativeMenuIcons } from "../../lib/nativeMenuIcons";
 
 const NOTE_EDITOR_SHEET_SIZE_KEY = "kkterm.notes.editorSheetSize.v1";
 const NOTE_EDITOR_SHEET_DEFAULT_WIDTH = 860;
@@ -943,12 +944,14 @@ export function NoteEditorSheet({
         {
           kind: "item",
           label: t("webview.openExternally"),
+          iconSvg: nativeMenuIcons.arrowUp,
           action: () => openNoteLink(href),
         },
         { kind: "separator" },
         {
           kind: "item",
           label: t("common.edit"),
+          iconSvg: nativeMenuIcons.pencil,
           action: editLink,
         },
       ];
@@ -976,28 +979,33 @@ export function NoteEditorSheet({
       {
         kind: "item",
         label: t("dashboard.notesAddTableRow"),
+        iconSvg: nativeMenuIcons.rowInsert,
         action: () => editor.chain().focus().addRowAfter().run(),
       },
       {
         kind: "item",
         label: t("dashboard.notesDeleteTableRow"),
+        iconSvg: nativeMenuIcons.x,
         action: () => editor.chain().focus().deleteRow().run(),
       },
       { kind: "separator" },
       {
         kind: "item",
         label: t("dashboard.notesAddTableColumn"),
+        iconSvg: nativeMenuIcons.columnInsert,
         action: () => editor.chain().focus().addColumnAfter().run(),
       },
       {
         kind: "item",
         label: t("dashboard.notesDeleteTableColumn"),
+        iconSvg: nativeMenuIcons.x,
         action: () => editor.chain().focus().deleteColumn().run(),
       },
       { kind: "separator" },
       {
         kind: "item",
         label: t("dashboard.notesDeleteTable"),
+        iconSvg: nativeMenuIcons.trash,
         action: () => editor.chain().focus().deleteTable().run(),
       },
     ];

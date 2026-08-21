@@ -3428,15 +3428,17 @@ button.dashboard-pill-dot:focus-visible {
   --dashboard-shadow-card:
     0 1px 0 rgb(20 30 60 / 4%),
     0 4px 14px -8px rgb(20 30 60 / 18%);
-  --dashboard-shadow-ambient: 0 24px 60px -28px rgb(20 30 60 / 30%);
+  --dashboard-shadow-ambient: 0 16px 40px -20px rgb(20 30 60 / 22%);
   --dashboard-radius-lg: 14px;
   position: fixed;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 200;
-  width: 320px;
-  padding: 14px;
+  width: 840px;
+  height: 620px;
+  padding: 16px;
+  overflow: hidden;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--dashboard-radius-lg);
@@ -3449,26 +3451,41 @@ button.dashboard-pill-dot:focus-visible {
 }
 
 .dw-bg-popover-head {
+  flex: 0 0 auto;
   font-weight: 650;
+  text-align: center;
+}
+
+.dw-bg-popover-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .dw-bg-seg {
-  display: flex;
-  flex-wrap: wrap;
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 3px;
+  width: 70%;
+  margin: 0 auto;
   padding: 3px;
   background: var(--surface-muted);
   border-radius: 8px;
 }
 
 .dw-bg-seg button {
-  flex: 1 1 calc(50% - 3px);
+  min-width: 0;
   padding: 5px 4px;
   border: 0;
   border-radius: 6px;
   background: transparent;
   color: var(--text-muted, var(--text));
   font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   cursor: pointer;
 }
 
@@ -3480,8 +3497,9 @@ button.dashboard-pill-dot:focus-visible {
 
 .dw-bg-preset-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 6px;
+  padding: 4px;
 }
 
 .dw-bg-preset-grid button {
@@ -3496,105 +3514,81 @@ button.dashboard-pill-dot:focus-visible {
   outline-offset: 1px;
 }
 
+.dw-bg-preset-grid .dw-bg-preset-default {
+  background:
+    linear-gradient(
+      135deg,
+      transparent calc(50% - 1px),
+      #dc2626 calc(50% - 1px),
+      #dc2626 calc(50% + 1px),
+      transparent calc(50% + 1px)
+    ),
+    var(--surface);
+}
+
+.dw-bg-preset-grid .dw-bg-preset-custom {
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  background: linear-gradient(135deg, #f87171, #fbbf24, #34d399, #60a5fa, #a78bfa);
+}
+
+.dw-bg-gradient-builder {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  width: max-content;
+  max-width: 100%;
+  margin: 6px auto 0;
+  padding: 12px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.dw-bg-gradient-angle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.dw-bg-gradient-angle input[type="range"] {
+  flex: 1;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.dw-bg-gradient-angle-value {
+  min-width: 34px;
+  text-align: right;
+  color: var(--text);
+}
+
 .dw-bg-dynamic {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.dw-bg-live-preview-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 30px;
-  padding: 6px 10px;
-  color: var(--text);
-  background: var(--surface-muted);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  cursor: pointer;
-  font: inherit;
-  font-size: 12px;
-}
-
-.dw-bg-live-preview-button:hover {
-  border-color: var(--border-strong);
-}
-
-.dw-bg-dynamic-grid {
+.dw-bg-thumb-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-}
-
-.dw-bg-dynamic-grid button {
-  min-width: 0;
-  min-height: 30px;
-  padding: 6px 8px;
-  overflow: hidden;
-  color: var(--text-muted);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  background: var(--surface-muted);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 12px;
-}
-
-.dw-bg-dynamic-grid button:hover {
-  color: var(--text);
-  border-color: var(--border-strong);
-}
-
-.dw-bg-dynamic-grid button.active {
-  color: var(--accent);
-  background: var(--accent-soft);
-  border-color: var(--accent);
-  font-weight: 650;
-}
-
-.dw-bg-image {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.dw-bg-image-actions {
-  display: flex;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
   gap: 8px;
+  padding: 2px;
 }
 
-.dw-bg-popover input[type="range"] {
-  width: 100%;
-  margin: 0;
-  accent-color: var(--accent);
-}
-
-.dw-bg-preview-dialog .kk-dlg-body {
-  overflow: auto;
-}
-
-.kk-dlg-backdrop.dw-bg-preview-backdrop {
-  z-index: 220;
-}
-
-.dw-bg-preview-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-  padding: 4px;
-}
-
-.dw-bg-preview-card {
+.dw-bg-thumb-card {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
   padding: 0;
   margin: 0;
-  color: var(--text);
+  color: var(--text-muted);
   text-align: left;
   background: transparent;
   border: 0;
@@ -3602,228 +3596,97 @@ button.dashboard-pill-dot:focus-visible {
   font: inherit;
 }
 
-.dw-bg-preview-frame {
+.dw-bg-thumb-frame {
   position: relative;
   display: block;
-  aspect-ratio: 16 / 10;
-  overflow: visible;
-  padding: 3px;
-  background: var(--surface);
-  border-radius: 12px;
-  box-shadow:
-    0 0 0 1px var(--border),
-    0 4px 12px -6px var(--shadow);
-}
-
-.dw-bg-preview-frame .dw-canvas-bg {
-  position: absolute;
-  inset: 3px;
+  aspect-ratio: 1;
   overflow: hidden;
-  border-radius: 9px;
-  pointer-events: none;
+  background: var(--surface-muted);
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px var(--border);
 }
 
-.dw-bg-preview-paused {
+.dw-bg-thumb-static {
   position: absolute;
-  inset: 3px;
-  overflow: hidden;
-  border-radius: 9px;
-}
-
-.dw-bg-preview-art {
-  position: absolute;
-  inset: 3px;
-  display: block;
-  overflow: hidden;
-  border-radius: 9px;
-  pointer-events: none;
-}
-
-.dw-bg-preview-art svg {
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
+  object-fit: cover;
+  pointer-events: none;
 }
 
-.dw-bg-preview-art .anim {
-  animation-play-state: paused !important;
-}
-
-.dw-bg-preview-card:hover .dw-bg-preview-art .anim {
-  animation-play-state: running !important;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .dw-bg-preview-card:hover .dw-bg-preview-art .anim {
-    animation-play-state: paused !important;
-  }
-}
-
-@keyframes dwbg_fallY {
-  to { transform: translateY(100px); }
-}
-
-@keyframes dwbg_riseY {
-  to { transform: translateY(-100px); }
-}
-
-@keyframes dwbg_driftX {
-  to { transform: translateX(160px); }
-}
-
-@keyframes dwbg_driftXr {
-  to { transform: translateX(-160px); }
-}
-
-@keyframes dwbg_twinkle {
-  0%, 100% { opacity: 0.25; }
-  50% { opacity: 1; }
-}
-
-@keyframes dwbg_breathe {
-  0%, 100% { opacity: 0.38; transform: scale(0.98); }
-  50% { opacity: 1; transform: scale(1.04); }
-}
-
-@keyframes dwbg_sway {
-  0%, 100% { transform: rotate(-5deg); }
-  50% { transform: rotate(5deg); }
-}
-
-@keyframes dwbg_scan {
-  to { transform: translateY(8px); }
-}
-
-@keyframes dwbg_burst {
-  0% { transform: scale(0.1); opacity: 0; }
-  12% { opacity: 1; }
-  70% { opacity: 0.9; }
-  100% { transform: scale(1); opacity: 0; }
-}
-
-@keyframes dwbg_flash {
-  0%, 92%, 100% { opacity: 0; }
-  94%, 97% { opacity: 1; }
-}
-
-@keyframes dwbg_blob {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(14px, -10px) scale(1.18); }
-}
-
-@keyframes dwbg_pulseR {
-  0% { transform: scale(0.2); opacity: 0.9; }
-  100% { transform: scale(1); opacity: 0; }
-}
-
-@keyframes dwbg_spin {
-  to { transform: rotate(360deg); }
-}
-
-@keyframes sweep {
-  to { transform: rotate(360deg); }
-}
-
-@keyframes dwbg_shoot {
-  0% { transform: translate(20px, 8px); opacity: 0; }
-  6% { opacity: 1; }
-  18% { transform: translate(120px, 42px); opacity: 0; }
-  100% { opacity: 0; }
-}
-
-@keyframes driftX {
-  to { transform: translateX(160px); }
-}
-
-.dw-bg-preview-art .anim.fall {
-  animation: dwbg_fallY var(--d, 6s) linear infinite;
-}
-
-.dw-bg-preview-art .anim.rise {
-  animation: dwbg_riseY var(--d, 7s) linear infinite;
-}
-
-.dw-bg-preview-art .anim.drift {
-  animation: dwbg_driftX var(--d, 26s) linear infinite;
-}
-
-.dw-bg-preview-art .anim.driftr {
-  animation: dwbg_driftXr var(--d, 22s) linear infinite;
-}
-
-.dw-bg-preview-art .anim.tw {
-  animation: dwbg_twinkle var(--d, 2.4s) ease-in-out infinite;
-}
-
-.dw-bg-preview-art .anim.br {
-  animation: dwbg_breathe var(--d, 4s) ease-in-out infinite;
-  transform-box: fill-box;
-  transform-origin: center;
-}
-
-.dw-bg-preview-art .anim.sway {
-  animation: dwbg_sway var(--d, 5s) ease-in-out infinite;
-  transform-box: fill-box;
-  transform-origin: bottom center;
-}
-
-.dw-bg-preview-art .anim.blob {
-  animation: dwbg_blob var(--d, 12s) ease-in-out infinite;
-  transform-box: fill-box;
-  transform-origin: center;
-}
-
-.dw-bg-preview-card:hover .dw-bg-preview-frame {
-  box-shadow:
-    0 0 0 1px var(--border-strong),
-    0 10px 22px -8px var(--shadow);
-}
-
-.dw-bg-preview-card.selected .dw-bg-preview-frame {
-  box-shadow:
-    0 0 0 2px var(--accent),
-    0 0 0 5px color-mix(in srgb, var(--accent) 22%, transparent),
-    0 8px 20px -8px var(--accent);
-}
-
-.dw-bg-preview-check {
+.dw-bg-thumb-live {
+  --dw-canvas-padding-top: 0px;
+  --dw-canvas-padding-x: 0px;
+  --dw-canvas-padding-bottom: 0px;
   position: absolute;
-  top: -7px;
-  right: -7px;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.dw-bg-thumb-check {
+  position: absolute;
+  top: 4px;
+  right: 4px;
   display: grid;
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   place-items: center;
   color: var(--surface);
   background: var(--accent);
   border-radius: 50%;
-  box-shadow: 0 2px 6px color-mix(in srgb, var(--accent) 45%, transparent), 0 0 0 2px var(--surface);
-  opacity: 0;
-  transform: scale(0.5);
-  transition: opacity 0.15s ease, transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 0 0 2px var(--surface);
   pointer-events: none;
 }
 
-.dw-bg-preview-card.selected .dw-bg-preview-check {
-  opacity: 1;
-  transform: scale(1);
+.dw-bg-thumb-card:hover .dw-bg-thumb-frame {
+  box-shadow: 0 0 0 1px var(--border-strong);
 }
 
-.dw-bg-preview-name {
+.dw-bg-thumb-card.active .dw-bg-thumb-frame {
+  box-shadow:
+    0 0 0 2px var(--accent),
+    0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.dw-bg-thumb-name {
   min-width: 0;
   overflow: hidden;
-  padding: 0 2px;
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 550;
+  padding: 0 1px;
+  font-size: 11px;
+  text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-@media (max-width: 760px) {
-  .dw-bg-preview-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+.dw-bg-image {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 360px;
+  margin: 24px auto 0;
+  text-align: center;
+}
+
+.dw-bg-image .dw-field {
+  width: 100%;
+  text-align: left;
+}
+
+.dw-bg-image-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.dw-bg-popover input[type="range"] {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--accent);
 }
 
 /* Notes widget: post-it style paper note. The Ambient preset hosts this with a

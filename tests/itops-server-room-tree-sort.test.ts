@@ -52,7 +52,7 @@ test("Server Rooms tree exposes the selected-row toolbar and native sort submenu
   );
   assert.match(
     sitesTab,
-    /kind: "submenu",\s*label: t\("itops\.racks\.sortAction"\),\s*items: serverRoomSortMenuItems\(siteId\)/,
+    /kind: "submenu",\s*label: t\("itops\.racks\.sortAction"\),\s*iconSvg: nativeMenuIcons\.chevronsUpDown,\s*items: serverRoomSortMenuItems\(siteId\)/,
   );
   assert.match(sitesTab, /itops\.racks\.sortAscending[\s\S]*?nativeMenuIcons\.arrowUp/);
   assert.match(sitesTab, /itops\.racks\.sortDescending[\s\S]*?nativeMenuIcons\.arrowDown/);

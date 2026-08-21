@@ -3,6 +3,7 @@ import { ScreenshotMenu } from "../../ScreenshotMenu";
 
 import { documentHasRdpBlockingOverlay } from "../../nativeOverlay";
 import { showNativeContextMenu } from "../../../../lib/nativeContextMenu";
+import { nativeMenuIcons } from "../../../../lib/nativeMenuIcons";
 import { Bot, Keyboard, Menu, Monitor, RotateCcw } from "../../../../lib/reicon";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useRef, useState } from "react";
@@ -879,6 +880,7 @@ export function RemoteDesktopWorkspace({
           {
             kind: "item",
             label: t("remoteDesktop.sendCtrlAltDelHint"),
+            iconSvg: nativeMenuIcons.keyboard,
             disabled: true,
             action: () => {},
           },
@@ -970,6 +972,7 @@ export function RemoteDesktopWorkspace({
           label: fullscreenBinding
             ? `${t("remoteDesktop.fullscreen.enter")}\t${displayShortcutBinding(fullscreenBinding)}`
             : t("remoteDesktop.fullscreen.enter"),
+          iconSvg: nativeMenuIcons.maximize,
           disabled: !sessionIdRef.current,
           action: openFullscreen,
         },
@@ -977,6 +980,7 @@ export function RemoteDesktopWorkspace({
         ...options.map((option) => ({
           kind: "item" as const,
           label: option.value === viewMode ? `✓ ${option.label}` : option.label,
+          iconSvg: VIEW_MODE_ICONS[option.value],
           disabled: option.value === viewMode,
           action: () => void saveViewMode(option.value),
         })),
@@ -2023,6 +2027,14 @@ function resolveRemoteDesktopViewMode(
   }
   return "fit";
 }
+
+const VIEW_MODE_ICONS: Record<RemoteDesktopViewMode, string> = {
+  fit: nativeMenuIcons.scan,
+  stretch: nativeMenuIcons.moveDiagonal,
+  actualSize: nativeMenuIcons.square,
+  fitWidth: nativeMenuIcons.moveHorizontal,
+  fitHeight: nativeMenuIcons.moveVertical,
+};
 
 function remoteDesktopViewModeOptions(t: TFunction) {
   return [

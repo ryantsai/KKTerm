@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
@@ -15,10 +16,6 @@ const implementationSource = await readFile(
 );
 const registrySource = await readFile(
   new URL("../src/modules/dashboard/registry/dynamicBackgrounds.tsx", import.meta.url),
-  "utf8",
-);
-const previewSource = await readFile(
-  new URL("../src/modules/dashboard/registry/dynamicBackgroundPreviewArt.tsx", import.meta.url),
   "utf8",
 );
 const validationSource = await readFile(
@@ -74,7 +71,7 @@ test("Misty Sea is available throughout the shared background pipeline", () => {
     registrySource,
     /\{ id: "mistySea", labelKey: "dashboard\.dynamicBackgrounds\.mistySea", mood: "calm" \}/,
   );
-  assert.match(previewSource, /BUILDERS\.mistySea = \(id\) =>/);
+  assert.ok(existsSync(new URL("../public/dynamic-bg-thumbs/mistySea.webp", import.meta.url)));
   assert.match(validationSource, /"mistySea"/);
   assert.match(englishLocaleSource, /"mistySea": "Misty Sea"/);
   assert.match(manualSource, /`mistySea`/);

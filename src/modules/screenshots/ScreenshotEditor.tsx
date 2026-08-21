@@ -43,6 +43,7 @@ import {
   showNativeContextMenu,
   type NativeContextMenuItem,
 } from "../../lib/nativeContextMenu";
+import { nativeMenuIcons } from "../../lib/nativeMenuIcons";
 import {
   invokeCommand,
   selectScreenshotSavePath,
@@ -1230,16 +1231,19 @@ export function ScreenshotEditor({
       {
         kind: "item",
         label: checkLabel(t("screenshots.editor.bold"), current.bold),
+        iconSvg: nativeMenuIcons.bold,
         action: () => apply({ bold: !current.bold }),
       },
       {
         kind: "item",
         label: checkLabel(t("screenshots.editor.italic"), current.italic),
+        iconSvg: nativeMenuIcons.italic,
         action: () => apply({ italic: !current.italic }),
       },
       {
         kind: "submenu",
         label: t("workspace.fileViewer.fontSize"),
+        iconSvg: nativeMenuIcons.fontSize,
         items: fontSizeChoices(current.size).map((size) => ({
           kind: "item" as const,
           label: checkLabel(String(size), size === current.size),
@@ -1249,6 +1253,7 @@ export function ScreenshotEditor({
       {
         kind: "submenu",
         label: t("workspace.fileViewer.font"),
+        iconSvg: nativeMenuIcons.fontFamily,
         items: TEXT_FONTS.map((font) => ({
           kind: "item" as const,
           label: checkLabel(t(TEXT_FONT_KEYS[font]), font === current.font),
@@ -1259,6 +1264,7 @@ export function ScreenshotEditor({
       {
         kind: "item",
         label: t("common.cut"),
+        iconSvg: nativeMenuIcons.scissors,
         action: () => {
           void writeToClipboard(current.text);
           remove();
@@ -1267,12 +1273,13 @@ export function ScreenshotEditor({
       {
         kind: "item",
         label: t("common.copy"),
+        iconSvg: nativeMenuIcons.copy,
         action: () => {
           void writeToClipboard(current.text);
         },
       },
       { kind: "separator" },
-      { kind: "item", label: t("common.delete"), action: remove },
+      { kind: "item", label: t("common.delete"), iconSvg: nativeMenuIcons.trash, action: remove },
     ];
   }
 
@@ -1320,7 +1327,7 @@ export function ScreenshotEditor({
           (patch) => updateAnnotationWithUndo(hit.id, (annotation) => ({ ...annotation, ...patch })),
           () => deleteAnnotation(hit.id),
         )
-      : [{ kind: "item", label: t("common.delete"), action: () => deleteAnnotation(hit.id) }];
+      : [{ kind: "item", label: t("common.delete"), iconSvg: nativeMenuIcons.trash, action: () => deleteAnnotation(hit.id) }];
     void showNativeContextMenu(items, { x: event.clientX, y: event.clientY });
   }
 

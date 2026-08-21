@@ -1,5 +1,6 @@
 import type { TFunction } from "i18next";
 import { showNativeContextMenu, type NativeContextMenuItem } from "../lib/nativeContextMenu";
+import { nativeMenuIcons } from "../lib/nativeMenuIcons";
 import { invokeCommand } from "../lib/tauri";
 import {
   formatShutdownTimerDuration,
@@ -37,6 +38,7 @@ export async function showShutdownTimerMenu({
         label: t("app.shutdownTimerAfter", {
           duration: formatShutdownTimerDuration(delayMinutes, language),
         }),
+        iconSvg: nativeMenuIcons.clock,
         action: () => {
           void invokeCommand("schedule_shutdown_timer", { delayMinutes }).catch(onError);
         },
@@ -49,6 +51,7 @@ export async function showShutdownTimerMenu({
     items.push({
       kind: "item",
       label: t("app.shutdownTimerCancel"),
+      iconSvg: nativeMenuIcons.x,
       action: () => {
         void invokeCommand("cancel_shutdown_timer").catch(onError);
       },

@@ -3,7 +3,9 @@ import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 import { useEffect, useMemo, type CSSProperties, type JSX, type MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
+import { asBackground } from "react-linear-gradient-picker";
 import { showNativeContextMenu } from "../../../lib/nativeContextMenu";
+import { nativeMenuIcons } from "../../../lib/nativeMenuIcons";
 import { resolveBackgroundPreset } from "../registry/backgroundPresets";
 import { clampDashboardGridY } from "../grid";
 import { DashboardDynamicBackground } from "../registry/dynamicBackgrounds";
@@ -96,10 +98,10 @@ export function DashboardCanvas({
     event.preventDefault();
     await showNativeContextMenu(
       [
-        { kind: "item", label: t("dashboard.addWidgetLabel"), action: onOpenCatalog },
-        { kind: "item", label: editMode ? t("dashboard.editDone") : t("dashboard.editLayout"), action: onToggleEditMode },
+        { kind: "item", label: t("dashboard.addWidgetLabel"), iconSvg: nativeMenuIcons.plus, action: onOpenCatalog },
+        { kind: "item", label: editMode ? t("dashboard.editDone") : t("dashboard.editLayout"), iconSvg: nativeMenuIcons.pencil, action: onToggleEditMode },
         { kind: "separator" },
-        { kind: "item", label: t("dashboard.changeBackground"), action: onOpenBackground },
+        { kind: "item", label: t("dashboard.changeBackground"), iconSvg: nativeMenuIcons.image, action: onOpenBackground },
       ],
       { x: event.clientX, y: event.clientY },
     );
@@ -129,6 +131,13 @@ export function DashboardCanvas({
   } else if (background?.kind === "dynamic") {
     backgroundLayer = (
       <DashboardDynamicBackground active={isViewActive} id={background.dynamic} />
+    );
+  } else if (background?.kind === "customGradient") {
+    backgroundLayer = (
+      <div
+        className="dw-canvas-bg"
+        style={{ background: asBackground({ angle: background.angle, stops: background.stops, type: "linear" }) }}
+      />
     );
   }
 

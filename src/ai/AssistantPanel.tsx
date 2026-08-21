@@ -35,6 +35,7 @@ import type {
 import { useTranslation } from "react-i18next";
 import { ariaChecked, menuButtonAria } from "../lib/aria";
 import { showNativeContextMenu } from "../lib/nativeContextMenu";
+import { nativeMenuIcons } from "../lib/nativeMenuIcons";
 import { invokeCommand, isTauriRuntime, openExternalUrl } from "../lib/tauri";
 import type {
   AgentContextUsage,
@@ -1719,6 +1720,7 @@ export function AssistantPanel({
         {
           kind: "item",
           label: t("common.copy"),
+          iconSvg: nativeMenuIcons.copy,
           action: () => {
             void writeToClipboard(selectedText);
           },
@@ -1739,6 +1741,7 @@ export function AssistantPanel({
         {
           kind: "item",
           label: t("common.copy"),
+          iconSvg: nativeMenuIcons.copy,
           disabled: !hasSelection,
           action: () => {
             const selectedText = textarea.value.slice(textarea.selectionStart, textarea.selectionEnd);
@@ -1751,6 +1754,7 @@ export function AssistantPanel({
         {
           kind: "item",
           label: t("common.cut"),
+          iconSvg: nativeMenuIcons.scissors,
           disabled: !hasSelection || textarea.disabled,
           action: () => {
             const selectedText = textarea.value.slice(textarea.selectionStart, textarea.selectionEnd);
@@ -1763,6 +1767,7 @@ export function AssistantPanel({
         {
           kind: "item",
           label: t("common.paste"),
+          iconSvg: nativeMenuIcons.clipboardPaste,
           disabled: textarea.disabled,
           action: () => {
             void readFromClipboard().then((text) => {

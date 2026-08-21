@@ -1,6 +1,7 @@
 // Renders a DashboardBackground behind image/PDF Document viewer stages and
 // exposes the same shared picker used by Dashboard, terminals, and File Explorer.
 import { useEffect, useState, type CSSProperties, type JSX } from "react";
+import { asBackground } from "react-linear-gradient-picker";
 import { SharedBackgroundPopover } from "../../../dashboard/edit/SharedBackgroundPopover";
 import { resolveBackgroundPreset } from "../../../dashboard/registry/backgroundPresets";
 import { DashboardDynamicBackground } from "../../../dashboard/registry/dynamicBackgrounds";
@@ -86,6 +87,13 @@ export function FileViewerBackgroundLayer({
     layer = <div className="fv-bg-fill" style={{ background: resolveBackgroundPreset(background.preset).css }} />;
   } else if (background.kind === "dynamic") {
     layer = <DashboardDynamicBackground active={active} id={background.dynamic} />;
+  } else if (background.kind === "customGradient") {
+    layer = (
+      <div
+        className="fv-bg-fill"
+        style={{ background: asBackground({ angle: background.angle, stops: background.stops, type: "linear" }) }}
+      />
+    );
   } else if (background.kind === "image" && mediaDataUrl) {
     const style: CSSProperties = {
       backgroundImage: `url("${mediaDataUrl}")`,

@@ -7,6 +7,7 @@ import type { CSSProperties, MouseEvent as ReactMouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { readFromClipboard, writeToClipboard } from "../../../../../lib/clipboard";
 import { showNativeContextMenu } from "../../../../../lib/nativeContextMenu";
+import { nativeMenuIcons } from "../../../../../lib/nativeMenuIcons";
 import type { BuiltInWidgetBodyProps } from "../../../registry/builtInRegistry";
 import { useDurableWidgetConfig } from "../../widgetLocalStorage";
 
@@ -516,6 +517,7 @@ export function NotesBody({ instance }: BuiltInWidgetBodyProps) {
         {
           kind: "item",
           label: t("common.cut"),
+          iconSvg: nativeMenuIcons.scissors,
           disabled: (!textArea && !markdownEditor) || !hasSelection,
           action: () => {
             if ((!textArea && !markdownEditor) || !selectedText) {
@@ -533,6 +535,7 @@ export function NotesBody({ instance }: BuiltInWidgetBodyProps) {
         {
           kind: "item",
           label: t("common.copy"),
+          iconSvg: nativeMenuIcons.copy,
           disabled: !hasSelection,
           action: () => {
             if (selectedText) {
@@ -543,6 +546,7 @@ export function NotesBody({ instance }: BuiltInWidgetBodyProps) {
         {
           kind: "item",
           label: t("common.paste"),
+          iconSvg: nativeMenuIcons.clipboardPaste,
           disabled: !textArea && !markdownEditor,
           action: () => {
             if (!textArea && !markdownEditor) {

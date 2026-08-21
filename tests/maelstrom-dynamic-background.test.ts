@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
@@ -49,10 +50,6 @@ const skySource = await readFile(
 );
 const registrySource = await readFile(
   new URL("../src/modules/dashboard/registry/dynamicBackgrounds.tsx", import.meta.url),
-  "utf8",
-);
-const previewSource = await readFile(
-  new URL("../src/modules/dashboard/registry/dynamicBackgroundPreviewArt.tsx", import.meta.url),
   "utf8",
 );
 const validationSource = await readFile(
@@ -135,18 +132,17 @@ test("Poseidon showcase scenes stay above the waterline", () => {
 
 test("all Poseidon scenes are registered, previewed, validated, and localized for Taiwan", () => {
   assert.match(registrySource, /maelstrom: MaelstromBg/);
-  assert.match(previewSource, /BUILDERS\.maelstrom = \(id\) =>/);
+  assert.ok(existsSync(new URL("../public/dynamic-bg-thumbs/maelstrom.webp", import.meta.url)));
   assert.match(validationSource, /"maelstrom"/);
   assert.match(zhTwLocaleSource, /"maelstrom": "波濤洶湧"/);
   assert.doesNotMatch(registrySource, /subsurfaceScatter/);
-  assert.doesNotMatch(previewSource, /subsurfaceScatter/);
   assert.doesNotMatch(validationSource, /subsurfaceScatter/);
   assert.doesNotMatch(zhTwLocaleSource, /subsurfaceScatter/);
 
   for (const id of newSceneIds) {
     assert.match(registrySource, new RegExp(`${id}: [A-Z][A-Za-z]+Bg`));
     assert.match(registrySource, new RegExp(`id: "${id}"`));
-    assert.match(previewSource, new RegExp(`BUILDERS\\.${id} = \\(id\\) =>`));
+    assert.ok(existsSync(new URL(`../public/dynamic-bg-thumbs/${id}.webp`, import.meta.url)));
     assert.match(validationSource, new RegExp(`"${id}"`));
     assert.match(zhTwLocaleSource, new RegExp(`"${id}":`));
   }

@@ -60,11 +60,17 @@ export type GridDensity = (typeof GRID_DENSITIES)[number];
 export const BACKGROUND_FITS = ["fill", "fit", "stretch", "tile", "center"] as const;
 export type BackgroundFit = (typeof BACKGROUND_FITS)[number];
 
+export interface GradientColorStop {
+  color: string;
+  offset: number;
+}
+
 export type DashboardBackground =
   | { kind: "preset"; preset: string }
   | { kind: "image"; file: string; fit: BackgroundFit; dim: number }
   | { kind: "video"; file: string; fit: BackgroundFit; dim: number }
-  | { kind: "dynamic"; dynamic: string };
+  | { kind: "dynamic"; dynamic: string }
+  | { kind: "customGradient"; stops: GradientColorStop[]; angle: number };
 
 export interface DashboardView {
   id: string;
