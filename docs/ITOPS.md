@@ -782,9 +782,10 @@ scrollable camera margin around its projected room. In either spatial view,
 drag blank floor with the left mouse button, drag with the middle button, or
 focus the room and use the arrow keys to pan. The target button below the zoom
 levels, or a middle-button click without dragging, resets the camera to center.
-When a side panel changes the available room width, the camera preserves the
-operator's pan relative to that center while the fitted scene is recomputed, so
-Racks do not drift outside the 2.5D clip box.
+When a side panel changes the available room width, the camera re-centers after
+the measured viewport resize while the fitted scene is recomputed, so a browser
+layout shift cannot leave Racks outside the 2.5D clip box. Manual pan is
+preserved when the scene changes without changing the visible viewport.
 While the 2.5D room is hovered or focused, entering Up, Up, Down, Down, Left,
 Right, Left, Right, B, A within three seconds triggers the decorative Server
 Room blackout: a lightning strike cuts the room lights, rack-top and floor 乖乖

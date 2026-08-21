@@ -22,7 +22,11 @@ import { ROOM_OBJECT_KINDS, type RoomObjectKind } from "./roomObjects";
 import { ROOM_ZOOM_LEVELS, sanitizeRoomZoom } from "./siteTreeState";
 import { RoomObjectPlanArtwork } from "./RoomObjectArtwork";
 import { RoomObjectIsoArtwork } from "./RoomObjectIsoReference";
-import { centerRoomViewport } from "./roomViewport";
+import {
+  centerRoomViewport,
+  preserveRoomPan,
+  type RoomViewportSize,
+} from "./roomViewport";
 import { IT_ACCENTS, ItIcon } from "./icons";
 
 /** Accent colour per object kind (乖乖 is green — it has a job to do). Fed to
@@ -240,24 +244,50 @@ export function useWheelZoom(
 export function useRoomPan(
   ref: RefObject<HTMLDivElement | null>,
   centerOffset: { left: number; top: number },
+  viewportSize: RoomViewportSize | null = null,
 ): void {
   const centerLeft = centerOffset.left;
   const centerTop = centerOffset.top;
+  const viewportWidth = viewportSize?.w ?? null;
+  const viewportHeight = viewportSize?.h ?? null;
   const previousCenterRef = useRef<{ left: number; top: number } | null>(null);
+  const previousViewportRef = useRef<RoomViewportSize | null | undefined>(undefined);
   useLayoutEffect(() => {
     const node = ref.current;
     if (!node) return;
     const previous = previousCenterRef.current;
-    if (previous) {
-      // Preserve the user's pan relative to the centered camera when a fitted
-      // scene changes size (for example, while the IT Ops tree is resized).
-      node.scrollLeft += centerLeft - previous.left;
-      node.scrollTop += centerTop - previous.top;
+    const previousViewport = previousViewportRef.current;
+    const viewportChanged =
+      previousViewport !== undefined &&
+      ((previousViewport === null) !== (viewportSize === null) ||
+        (previousViewport !== null &&
+          viewportSize !== null &&
+          (previousViewport.w !== viewportSize.w || previousViewport.h !== viewportSize.h)));
+    if (previous && !viewportChanged) {
+      // Preserve the user's pan relative to the centered camera when the
+      // fitted scene changes size without changing the visible viewport.
+      const nextScroll = preserveRoomPan(
+        { left: node.scrollLeft, top: node.scrollTop },
+        previous,
+        { left: centerLeft, top: centerTop },
+      );
+      node.scrollLeft = nextScroll.left;
+      node.scrollTop = nextScroll.top;
     } else {
+      // The browser can shift scrollLeft/scrollTop while a flex pane changes
+      // size. Re-center on measured viewport changes so that automatic layout
+      // movement is never mistaken for a user pan.
       centerRoomViewport(ref);
     }
-    previousCenterRef.current = { left: centerLeft, top: centerTop };
-  }, [ref, centerLeft, centerTop]);
+    // The first center operation may be clamped by the browser before the
+    // measured viewport exists. Use the resulting position as the baseline so
+    // the next measurement can recover the intended center without treating
+    // the initial layout error as user panning.
+    previousCenterRef.current = previous && !viewportChanged
+      ? { left: centerLeft, top: centerTop }
+      : { left: node.scrollLeft, top: node.scrollTop };
+    previousViewportRef.current = viewportSize;
+  }, [ref, centerLeft, centerTop, viewportSize, viewportWidth, viewportHeight]);
 
   useEffect(() => {
     const node = ref.current;

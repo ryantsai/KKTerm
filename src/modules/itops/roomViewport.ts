@@ -3,6 +3,11 @@ export interface RoomViewportSize {
   h: number;
 }
 
+export interface RoomScrollPosition {
+  left: number;
+  top: number;
+}
+
 export interface RoomPanFrame {
   w: number;
   h: number;
@@ -59,6 +64,19 @@ export function roomScrollCenter(
   return {
     left: Math.max(0, (content.w - viewport.w) / 2),
     top: Math.max(0, (content.h - viewport.h) / 2),
+  };
+}
+
+/** Move a scroll position with the camera's center while keeping any manual
+ *  pan offset from that center. */
+export function preserveRoomPan(
+  currentScroll: RoomScrollPosition,
+  previousCenter: RoomScrollPosition,
+  nextCenter: RoomScrollPosition,
+): RoomScrollPosition {
+  return {
+    left: currentScroll.left + nextCenter.left - previousCenter.left,
+    top: currentScroll.top + nextCenter.top - previousCenter.top,
   };
 }
 

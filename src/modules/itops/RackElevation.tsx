@@ -57,6 +57,7 @@ export function RackElevation({
   detailed,
   unitPx = U_PX,
   hideHeader = false,
+  centerHeader = false,
   editMode = false,
   reserveTopU = 0,
   showRackTop = true,
@@ -95,6 +96,8 @@ export function RackElevation({
   unitPx?: number;
   /** Rack View moves this identity/spec line into the drill toolbar. */
   hideHeader?: boolean;
+  /** Server Room elevations center the rack identity and status header. */
+  centerHeader?: boolean;
   editMode?: boolean;
   /** Always keep at least this much headroom (in U) above the cabinet so a
    *  rack-top 乖乖 has room and the rack doesn't shift when one is placed. */
@@ -327,7 +330,7 @@ export function RackElevation({
 
   return (
     <div
-      className={`rk${detailed ? " rk-detailed" : ""}${topClearanceU > 0 ? " has-top-item" : ""}${onToggleFace ? " has-face-toggle" : ""}${turning ? " face-turning" : ""}`}
+      className={`rk${detailed ? " rk-detailed" : ""}${centerHeader ? " rk-centered-header" : ""}${topClearanceU > 0 ? " has-top-item" : ""}${onToggleFace ? " has-face-toggle" : ""}${turning ? " face-turning" : ""}`}
       data-shell={cabShell}
       data-face={displayFace}
       data-rack-id={rack.id}

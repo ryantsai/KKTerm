@@ -188,7 +188,7 @@ export function ServerRoomFloorPlan({
     viewport ?? { w: sceneW, h: sceneH },
     { w: panFrame.w, h: panFrame.h },
   );
-  useRoomPan(scrollRef, panCenter);
+  useRoomPan(scrollRef, panCenter, viewport);
   const grid = { cols, rows, cells: layout.cells };
   const armed =
     tool != null || placeRackId != null || cloneRack != null || cloneObject != null;

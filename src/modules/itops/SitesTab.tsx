@@ -2194,6 +2194,7 @@ function RackDrill({
         }
         hostFor={hostForItem}
         reserveTopU={KUAIGUAI_TOP_CLEARANCE_U}
+        centerHeader
         editMode={editMode}
         placeSpec={roomPlacementDraft}
         onPlaceAt={(startU, slot) => {

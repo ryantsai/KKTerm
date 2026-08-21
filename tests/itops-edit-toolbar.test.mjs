@@ -39,9 +39,12 @@ test("Room elevation edit mode places devices through the shared picker column",
   assert.match(sites, /className="rk-room-layout"/);
   assert.match(sites, /function useNearestPlacementRack/);
   assert.match(sites, /roomPlaceRackId === r\.id && placeDevice/);
+  assert.match(sites, /<RackElevation[\s\S]*centerHeader/);
   assert.match(sites, /racks=\{serverRoom\.racks\}/);
   assert.match(sites, /racks=\{\[rack\]\}/);
   assert.match(rackElevation, /data-rack-id=\{rack\.id\}/);
+  assert.match(rackElevation, /rk-centered-header/);
+  assert.match(css, /\.rk\.rk-centered-header \.rk-head-txt/);
   assert.match(css, /\.itops-page \.rk-room-layout \{/);
 });
 
@@ -91,13 +94,13 @@ test("Spatial room views pan with the left button, zoom on wheel, and expose the
   for (const view of [floorPlan, isoView]) {
     assert.match(view, /useWheelZoom\(scrollRef/);
     assert.match(view, /roomPanFrame\(/);
-    assert.match(view, /roomScrollCenter\([\s\S]*?useRoomPan\(scrollRef, panCenter\)/);
+    assert.match(view, /roomScrollCenter\([\s\S]*?useRoomPan\(scrollRef, panCenter, viewport\)/);
     assert.match(view, /onResetCenter=\{\(\) => centerRoomViewport\(scrollRef\)\}/);
     assert.match(view, /loadRoomZoom\(/);
     assert.match(view, /saveRoomZoom\(/);
   }
-  assert.match(parts, /node\.scrollLeft \+= centerLeft - previous\.left/);
-  assert.match(parts, /node\.scrollTop \+= centerTop - previous\.top/);
+  assert.match(parts, /preserveRoomPan\(/);
+  assert.match(parts, /viewportWidth, viewportHeight/);
   assert.match(floorPlan, /roomPanFrame\([\s\S]*?false,/);
   assert.match(isoView, /isoViewHeightForWidth\(viewW, maxTop\)/);
 });

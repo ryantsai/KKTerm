@@ -2250,6 +2250,14 @@
   flex: 1 1 auto;
   min-width: 0;
 }
+.itops-page .rk.rk-centered-header .rk-head {
+  justify-content: center;
+}
+.itops-page .rk.rk-centered-header .rk-head-txt {
+  flex: 0 1 auto;
+  align-items: center;
+  text-align: center;
+}
 .itops-page .rk-name {
   font-size: 13px;
   font-weight: 660;

@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { isoViewHeightForWidth } from "../src/modules/itops/roomIsoLayout";
-import { roomPanFrame, roomScrollCenter } from "../src/modules/itops/roomViewport";
+import {
+  preserveRoomPan,
+  roomPanFrame,
+  roomScrollCenter,
+} from "../src/modules/itops/roomViewport";
 
 test("room pan frame keeps scroll range when the scene fits the viewport", () => {
   const frame = roomPanFrame(
@@ -52,6 +56,24 @@ test("room reset centers the scrollable content", () => {
   assert.deepEqual(
     roomScrollCenter({ w: 800, h: 600 }, { w: 700, h: 500 }),
     { left: 0, top: 0 },
+  );
+});
+
+test("room pan re-centers after a viewport resize while preserving manual offset", () => {
+  const previousCenter = { left: 224, top: 224 };
+  const resizedCenter = { left: 320, top: 320 };
+
+  assert.deepEqual(
+    preserveRoomPan(previousCenter, previousCenter, resizedCenter),
+    resizedCenter,
+  );
+  assert.deepEqual(
+    preserveRoomPan(
+      { left: previousCenter.left + 48, top: previousCenter.top - 32 },
+      previousCenter,
+      resizedCenter,
+    ),
+    { left: resizedCenter.left + 48, top: resizedCenter.top - 32 },
   );
 });
 

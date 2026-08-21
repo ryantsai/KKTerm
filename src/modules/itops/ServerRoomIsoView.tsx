@@ -532,7 +532,7 @@ export function ServerRoomIsoView({
     viewport ?? { w: sceneW, h: sceneH },
     { w: panFrame.w, h: panFrame.h },
   );
-  useRoomPan(scrollRef, panCenter);
+  useRoomPan(scrollRef, panCenter, viewport);
   const floorDiag = Math.max(viewW - 48, (viewH - Math.ceil(maxTop) - 84) / ISO_TILT_COS);
   const { floorCols, floorRows, offX, offY } = expandIsoFloorFrame(
     gridCols,
