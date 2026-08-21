@@ -3,6 +3,54 @@
 All notable changes to KKTerm are documented here.
 
 ## Direct Downloads
+* 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.4/kkterm-3000.0.4-windows-x64-setup.exe)
+* 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.4/kkterm-3000.0.4-windows-arm64-setup.exe)
+* 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.4/kkterm-3000.0.4-windows-x64-portable.zip)
+* 📦 [Portable for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.4/kkterm-3000.0.4-windows-arm64-portable.zip)
+
+## Highlights
+- **IT Ops:** Server Room **Elevation** now follows the same shared floor grid as other Server Room layouts (so the report and the view stop disagreeing—no more “close enough” cabinets).  
+- **Connections:** Fix **Serial** Panes going silent and make them more diagnosable. *(Issue #745 by lidewu; PR #749)*
+
+## New
+- **IT Ops:** Add a **View order** option to the **Server Room Rack** sort menu. *(PR #751)*  
+  - Racks can be ordered to match how the view shows them (elevation bands, then top-to-bottom, left-to-right within a band).
+
+## Improved
+- **IT Ops:** **Server Room Elevation** is now projected from the shared floor grid (read-only projection; editing still happens in the Floor Plan / 2.5D view).
+
+## Fixed
+- **Connections:** Stop **Serial Panes** from going silent, and make them diagnosable. *(#745 by lidewu; #749)*  
+  - Short bursts of output followed by no input should now behave properly, rather than leaving the Session “alive” but unusable.
+
+## Internal
+- Add Watermelon UI migration plan by @ryantsai in https://github.com/ryantsai/KKTerm/pull/748
+- (Internal IT Ops work) Project Server Room elevation from the shared floor grid by @ryantsai in https://github.com/ryantsai/KKTerm/pull/750
+- (Internal IT Ops work) Add View order to the Server Room Rack sort menu by @ryantsai in https://github.com/ryantsai/KKTerm/pull/751
+
+---
+
+## Highlights（重點）
+- **IT Ops：** Server Room 的 **Elevation（立面）** 現在會和其他 Server Room 版面一樣，依照同一份「共用樓板格線（shared floor grid）」來呈現（不再出現報表與畫面「彼此不太一樣」的櫃子）。  
+- **連線（Connections）：** 修正 **Serial（序列埠）Pane** 停止回應的問題，並提升可診斷性。*(Issue #745：lidewu；PR #749)*
+
+## New（新增）
+- **IT Ops：** 在 **Server Room Rack** 的排序選單中新增 **View order（依檢視順序）** 選項。*(PR #751)*  
+  - 讓 Racks 的順序對齊畫面顯示方式（先 elevation bands，再由上到下，且在同一個 band 內由左到右）。
+
+## Improved（改善）
+- **IT Ops：** **Server Room Elevation** 改為從共用 floor grid 投影而來（此為讀取投影；編輯仍在 Floor Plan / 2.5D 版面進行）。
+
+## Fixed（修正）
+- **連線（Connections）：** 修正 **Serial Panes** 變成「無聲」的狀況，並提升可診斷性。*(#745：lidewu；#749)*  
+  - 先短暫輸出、隨後無法再輸入的狀況，應會恢復正常；不再出現 Session 看似存在但實際上無法互動的情況。
+
+## Internal（內部）
+- 新增 Watermelon UI 遷移計畫：@ryantsai（https://github.com/ryantsai/KKTerm/pull/748）
+- （內部 IT Ops）共用 floor grid 投影 Server Room elevation：@ryantsai（https://github.com/ryantsai/KKTerm/pull/750）
+- （內部 IT Ops）在 Server Room Rack 排序選單新增 View order：@ryantsai（https://github.com/ryantsai/KKTerm/pull/751）
+
+## Direct Downloads
 * 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.3/kkterm-3000.0.3-windows-x64-setup.exe)
 * 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.3/kkterm-3000.0.3-windows-arm64-setup.exe)
 * 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.3/kkterm-3000.0.3-windows-x64-portable.zip)
