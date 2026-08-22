@@ -3316,6 +3316,7 @@ export function ConnectionSidebar({
         onDrop={handleTreePathsDrop}
         tabIndex={0}
       >
+        {/* Keyboard handling delegates to the sidebar's onKeyDown={handleTreeKeyDown}. */}
         {/* In "Hide Folders" mode the flat list below already includes these
             root connections (flattenConnections starts at the root), so render
             them here only in the normal/folder view to avoid duplicates. */}
