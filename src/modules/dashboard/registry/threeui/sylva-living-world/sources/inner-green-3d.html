@@ -1,0 +1,3449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sylva — Into the living world</title>
+<meta name="description" content="Restoring wild places through patient design, native planting, and a deeper kind of stewardship.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 24'%3E%3Crect width='22' height='24' fill='%234a4d44'/%3E%3Cpath fill='%23fff' d='M11 1.3c-2.1 0-3.95 1.2-4.75 2.95C3.95 4.55 2.3 6.25 2.3 8.35c0 2.3 1.9 4.2 4.3 4.2h8.8c2.4 0 4.3-1.9 4.3-4.2 0-2.1-1.65-3.8-4-4.1C14.95 2.5 13.1 1.3 11 1.3Z'/%3E%3Cpath fill='%23fff' d='M9.6 12.55h2.8v4.2c1.35.3 2.45 1.15 3.15 2.4-1.35.4-2.4.15-3.15-.4v4.15H9.6v-4.15c-.75.55-1.8.8-3.15.4.7-1.25 1.8-2.1 3.15-2.4v-4.2Z'/%3E%3C/svg%3E">
+<script>document.documentElement.className += " js";</script>
+<style>
+  @font-face{
+    font-family:'Lexend';
+    src:url('inner-green-assets/lexend-latin.woff2') format('woff2');
+    font-weight:100 900; font-style:normal; font-display:swap;
+    unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+  }
+
+  /* ── design unit: 1u === 1px on the 1600 × 880 reference frame ───────── */
+  :root{
+    --u: calc(100vw / 1600);
+
+    --ink:            #ffffff;
+    --ink-soft:       rgba(255,255,255,.62);
+    --ink-faint:      rgba(255,255,255,.44);
+    --rule:           rgba(255,255,255,.055);
+
+    --card:           #f2f3ef;
+    --card-ink:       #23261f;
+    --card-label:     #7c8177;
+
+    --ease: cubic-bezier(.22,.61,.36,1);
+    --ease-out: cubic-bezier(.16,1,.3,1);
+  }
+  @media (min-width:1900px){ :root{ --u: calc(1900px / 1600); } }
+
+  *,*::before,*::after{ box-sizing:border-box; margin:0; padding:0; }
+
+  html{ background:#383b34; }
+  body{
+    font-family:'Lexend',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    font-weight:300;
+    color:var(--ink);
+    background:#383b34;
+    overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+  }
+
+  /* ── hero shell ──────────────────────────────────────────────────────── */
+  .hero{
+    position:relative;
+    width:100%;
+    height:100svh;
+    min-height:calc(880 * var(--u));
+    overflow:hidden;
+    isolation:isolate;
+    /* the reference screen reads a near-flat #4a4d44 corner to corner —
+       all the modelling comes from the light pool the root sits in */
+    background:
+      radial-gradient(64% 52% at 27% 84%, rgba(232,238,222,.085) 0%, rgba(232,238,222,0) 72%),
+      radial-gradient(70% 60% at 92% 8%,  rgba(24,28,20,.10) 0%, rgba(24,28,20,0) 68%),
+      #4a4d44;
+  }
+  /* The floor of light the root stands in. Sampled off the reference: the
+     background climbs from 73 luma at the nav to ~128 at y 850, brightest
+     around the middle of the bottom edge. */
+  .hero::after{
+    content:'';
+    position:absolute; inset:0;
+    background:
+      radial-gradient(72% 44% at 50% 117%, rgba(238,243,231,.50) 0%, rgba(238,243,231,.21) 42%, rgba(238,243,231,.04) 72%, rgba(238,243,231,0) 88%),
+      linear-gradient(180deg, rgba(238,243,231,0) 54%, rgba(238,243,231,.03) 78%, rgba(238,243,231,.085) 100%);
+    pointer-events:none; z-index:0;
+  }
+
+  /* The whole composition lives on a centred 1600 × 880 stage.
+     Centred with margins rather than a transform on purpose: a transform would
+     open a stacking context and trap every child below #scene. */
+  .stage{
+    position:absolute; left:50%; top:50%;
+    margin-left:calc(-800 * var(--u));
+    margin-top:calc(-440 * var(--u));
+    width:calc(1600 * var(--u));
+    height:calc(880 * var(--u));
+  }
+
+  /* ── column guides (z 1) ─────────────────────────────────────────────── */
+  .guides{ position:absolute; inset:calc(-40 * var(--u)) 0; z-index:1; pointer-events:none; }
+  .guides i{
+    position:absolute; top:0; bottom:0; width:1px;
+    background:linear-gradient(180deg, rgba(255,255,255,0) 0%, var(--rule) 12%, var(--rule) 78%, rgba(255,255,255,0) 100%);
+  }
+
+  /* ── ghost wordmark (z 1) ────────────────────────────────────────────── */
+  .ghost{
+    position:absolute; z-index:1;
+    left:calc(6 * var(--u)); bottom:calc(-64 * var(--u));
+    font-size:calc(310 * var(--u));
+    line-height:.78;
+    font-weight:400;
+    letter-spacing:calc(30 * var(--u));
+    color:rgba(255,255,255,.055);
+    white-space:nowrap; user-select:none; pointer-events:none;
+  }
+
+  /* ── three.js canvas (z 3 — above card 1, below everything else) ─────── */
+  #scene{
+    position:absolute; inset:0; z-index:3;
+    width:100%; height:100%;
+    pointer-events:none;
+    opacity:0; transition:opacity .7s var(--ease);
+  }
+  .is-ready #scene{ opacity:1; }
+
+  /* ── nav: a floating dock (z 5) ──────────────────────────────────────
+     A centred capsule of pills that magnify as the pointer nears them, over
+     a rim highlight that tracks where the pointer is — the dock idiom from
+     ascii-page-transition, in this page's palette and unit system.
+     The wrapper does the centring so the capsule itself is free to carry the
+     pointer-parallax transform; putting both on one element means whichever
+     is written last wins and the dock jumps out of centre. */
+  .dock-wrap{
+    position:absolute; z-index:5;
+    top:calc(38 * var(--u)); left:0; right:0;
+    display:flex; justify-content:center;
+    pointer-events:none;
+  }
+  .dock{
+    pointer-events:auto;
+    display:flex; align-items:flex-start; gap:calc(3 * var(--u));
+    height:calc(46 * var(--u));
+    padding:calc(5 * var(--u));
+    border-radius:calc(14 * var(--u));
+    border:1px solid rgba(255,255,255,.11);
+    /* No backdrop-filter. It sits over a canvas that repaints every frame,
+       so the backdrop has to be re-sampled and re-blurred every frame too —
+       measured at ~20 fps off the whole page, and the radius made no
+       difference because the cost is the extra pass, not the blur. A
+       translucent panel with a lit top edge reads the same at this size. */
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,0) 42%),
+      rgba(34,40,31,.74);
+    box-shadow:0 calc(8 * var(--u)) calc(22 * var(--u)) rgba(10,14,8,.30),
+               inset 0 1px rgba(255,255,255,.06);
+    isolation:isolate;
+  }
+  /* Anchored at the top so growth runs downward, out of the headline's way —
+     a dock that grew from its centre would push into the nav's own row. */
+  .dock-item{
+    position:relative; z-index:6;
+    display:inline-flex; align-items:center; justify-content:center;
+    flex:none;
+    height:calc(36 * var(--u));
+    gap:calc(8 * var(--u));
+    padding:0 calc(13 * var(--u));
+    transform-origin:50% 0;
+    border:1px solid transparent;
+    border-radius:calc(10 * var(--u));
+    background:rgba(255,255,255,.04);
+    color:var(--ink-faint);
+    text-decoration:none; cursor:pointer;
+    font-family:inherit;
+    font-size:calc(11 * var(--u)); font-weight:500;
+    letter-spacing:calc(1.5 * var(--u)); text-transform:uppercase;
+    white-space:nowrap;
+    will-change:width,height,transform;
+    transition:color .18s var(--ease), border-color .2s var(--ease), background .2s var(--ease);
+  }
+  /* A magnified pill hangs below the capsule, so it needs to be its own
+     opaque tile — a translucent white wash at that size reads as a milky
+     rectangle stuck to the bar rather than as a key lifting off it. */
+  .dock-item[data-near="true"]{
+    z-index:7;
+    color:var(--ink);
+    border-color:rgba(255,255,255,.19);
+    background:rgba(31,37,28,.94);
+    box-shadow:0 calc(7 * var(--u)) calc(16 * var(--u)) rgba(10,14,8,.30);
+  }
+  .dock-item .glyph{
+    width:calc(14 * var(--u)); height:calc(14 * var(--u)); flex:none;
+    opacity:.66; transition:opacity .18s var(--ease);
+  }
+  .dock-item .glyph svg{
+    display:block; width:100%; height:100%;
+    fill:none; stroke:currentColor; stroke-width:1.25;
+    stroke-linecap:round; stroke-linejoin:round;
+  }
+  .dock-item[data-near="true"] .glyph{ opacity:1; }
+
+  /* the mark is the dock's anchor: a solid pale tile, the one opaque thing
+     in a bar made of glass */
+  .dock-mark{
+    width:calc(36 * var(--u)); padding:0;
+    background:#eef1e7; border-color:#eef1e7; color:#23261f;
+    overflow:hidden;
+  }
+  .dock-mark svg{ width:58%; height:58%; display:block; fill:currentColor; }
+  /* the near state paints .dock-item white, which on the pale mark tile
+     would be a white glyph on a white ground */
+  .dock-mark[data-near="true"]{ background:#fff; border-color:#fff; color:#1b1e18; }
+
+  /* the current section wears the cards' paper, so the nav and the cards
+     read as the same material */
+  .dock-item.is-active{
+    background:var(--card); border-color:var(--card); color:var(--card-ink);
+    box-shadow:0 calc(6 * var(--u)) calc(16 * var(--u)) rgba(12,17,9,.24);
+  }
+  .dock-item.is-active .glyph{ opacity:.8; }
+  .dock-item--enter{ color:var(--ink); background:rgba(255,255,255,.075); }
+
+  /* ── specular rim ────────────────────────────────────────────────────
+     A conic gradient masked down to the border, whose start angle points at
+     the pointer and whose opacity falls off with distance. It is the reason
+     the glass reads as a lit edge rather than as a flat translucent box. */
+  [data-spec]{ --spec-angle:2.4rad; --spec-bright:0; }
+  [data-spec]::after{
+    content:''; position:absolute; inset:-1px; z-index:5;
+    padding:1px; border-radius:inherit; pointer-events:none;
+    opacity:var(--spec-bright);
+    background:conic-gradient(from var(--spec-angle) at 50% 50%,
+      rgba(240,246,232,0) 0deg, rgba(240,246,232,.08) 14deg, rgba(240,246,232,.95) 28deg,
+      rgba(240,246,232,.16) 46deg, rgba(240,246,232,0) 68deg, rgba(240,246,232,0) 180deg,
+      rgba(240,246,232,.08) 194deg, rgba(240,246,232,.95) 208deg, rgba(240,246,232,.16) 226deg,
+      rgba(240,246,232,0) 248deg, rgba(240,246,232,0) 360deg);
+    -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+            mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor; mask-composite:exclude;
+  }
+  .dock{ position:relative; }
+
+  /* ── hero copy (z 4) ─────────────────────────────────────────────────── */
+  .headline{
+    position:absolute; z-index:4;
+    left:calc(46 * var(--u)); top:calc(202 * var(--u));
+    font-size:calc(63 * var(--u)); line-height:calc(65 * var(--u));
+    font-weight:300; letter-spacing:calc(-0.4 * var(--u));
+    color:var(--ink);
+  }
+  /* No overflow clip: cropping a 63u face to wipe it in cuts the descenders
+     of "Step" and "living" at the moment they land. The padding stays even
+     though the clip is gone — it set the two lines' metrics, and removing it
+     would shift line two. */
+  .headline span{ display:block; padding-bottom:.04em; }
+  .headline span i{ display:inline-block; font-style:normal; }
+
+  .lede{
+    position:absolute; z-index:4;
+    left:calc(520 * var(--u)); top:calc(196 * var(--u));
+    width:calc(208 * var(--u));
+    font-size:calc(16.5 * var(--u)); line-height:calc(22 * var(--u));
+    font-weight:300; color:var(--ink-soft);
+  }
+
+  /* ── Explore: the ThreeUI liquid-metal button ────────────────────
+     The scene is a self-contained WebGL2 document, mounted as a sandboxed
+     local iframe exactly as the React wrapper mounts it, so its five
+     programs, its pass order and its whole interaction model stay the
+     authored ones rather than being transcribed into this page.
+
+     Two nested elements, because both want clip-path. The outer one bounds
+     the iframe's hit area for good; the inner one carries the entrance wipe.
+     On a single element the .mask rule wins on specificity and .intro-done
+     then clears it altogether — which silently hands the whole 410 x 270
+     frame back to swallowing pointer events once the intro ends.
+
+     The frame has to be far larger than the button because the halo is
+     canvas too, and an iframe takes pointer events across its whole box —
+     that would kill the moss parting and the pollen trail over a hole in the
+     middle of the hero. Measured against the hero's own olive, the glow is
+     still perceptible (delta > 2/255) out to 138u either side, and from 58u
+     above the button centre to 134u below it; the extra reach downward is
+     the drop shadow rather than the bloom. The clip is cut to exactly that,
+     so nothing visible is lost and the dead zone is as small as the effect
+     allows. The scene centres its own stage, so centring the frame on where
+     the pill used to sit puts the button back in the same place. */
+  .pill-clip{
+    position:absolute; z-index:4;
+    left:calc(644 * var(--u)); top:calc(360 * var(--u));
+    width:calc(410 * var(--u)); height:calc(270 * var(--u));
+    margin:calc(-135 * var(--u)) 0 0 calc(-205 * var(--u));
+    clip-path:inset(calc(72 * var(--u)) calc(60 * var(--u))
+                    calc(26 * var(--u)) calc(60 * var(--u)) round calc(62 * var(--u)));
+  }
+  .pill{ position:absolute; inset:0; --mr:calc(150 * var(--u)); }
+  .pill iframe{
+    width:100%; height:100%; border:0; display:block;
+    background:transparent; color-scheme:normal;
+  }
+
+  /* ── play button (z 4) ───────────────────────────────────────────────
+     The same liquid-metal scene as Explore, with a square button — the
+     shader's sdPill rounds by half the height, so square renders as a circle
+     and the renderer needs no change. The ring and its hover stay in the
+     page, where they always were.
+
+     Three nested elements again: the outer bounds the iframe's hit area, the
+     inner carries the entrance, and they cannot share one because both want
+     clip-path. Halo measured as before — x +-92, y -67..+125 from the button
+     centre — and the clip is cut to that. */
+  .play-wrap{
+    position:absolute; z-index:4; pointer-events:none;
+    left:calc(187 * var(--u)); top:calc(431 * var(--u));
+    width:calc(170 * var(--u)); height:calc(170 * var(--u));
+  }
+  .play-wrap > *{ pointer-events:auto; }
+  .play-clip{
+    position:absolute; left:50%; top:50%;
+    width:calc(396 * var(--u)); height:calc(396 * var(--u));
+    margin:calc(-198 * var(--u)) 0 0 calc(-198 * var(--u));
+    clip-path:inset(calc(131 * var(--u)) calc(106 * var(--u))
+                    calc(73 * var(--u)) calc(106 * var(--u)) round calc(92 * var(--u)));
+  }
+  .play-glass{ position:absolute; inset:0; display:block; }
+  .play-glass iframe{
+    width:100%; height:100%; border:0; display:block;
+    background:transparent; color-scheme:normal;
+  }
+  /* fills .play-wrap, so it is concentric with the button by construction */
+  .play-ring{
+    position:absolute; inset:0; pointer-events:none;
+    border:1px solid rgba(255,255,255,.17); border-radius:50%;
+  }
+  .play-ring::after{
+    content:''; position:absolute; inset:calc(-1 * var(--u));
+    border:1px solid rgba(255,255,255,.32); border-radius:50%;
+    opacity:0; transform:scale(.86);
+    transition:opacity .7s var(--ease), transform .9s var(--ease-out);
+  }
+  /* The hover target now lives inside the frame, and the sandbox gives that
+     frame an opaque origin — so Chrome renders it out-of-process and the page
+     gets neither :hover nor a single pointer event over it. The ring is lit
+     from JS instead, off the last position the page did see. */
+  .play-wrap.is-near .play-ring::after{ opacity:1; transform:scale(1.06); }
+
+  /* ── stats (z 4) ─────────────────────────────────────────────────────── */
+  .stat{ position:absolute; z-index:4; display:flex; align-items:flex-start; gap:calc(9 * var(--u)); }
+  .stat--a{ left:calc(1250 * var(--u)); top:calc(216 * var(--u)); }
+  .stat--b{ left:calc(1346 * var(--u)); top:calc(326 * var(--u)); }
+  .stat .mark{ width:calc(32 * var(--u)); height:calc(32 * var(--u)); flex:none; margin-top:calc(2 * var(--u)); color:rgba(255,255,255,.34); }
+  .stat .mark svg{ width:100%; height:100%; display:block; }
+  .stat dt{ font-size:calc(13.5 * var(--u)); font-weight:300; color:var(--ink-soft); line-height:calc(19 * var(--u)); }
+  .stat dt, .stat dd{ text-shadow:0 calc(2 * var(--u)) calc(16 * var(--u)) rgba(10,14,8,.6); }
+  .stat .mark svg{ filter:drop-shadow(0 calc(2 * var(--u)) calc(10 * var(--u)) rgba(10,14,8,.6)); }
+  .stat dd{ font-size:calc(13.5 * var(--u)); font-weight:600; color:var(--ink); line-height:calc(21 * var(--u)); }
+
+  /* ── cards ───────────────────────────────────────────────────────────── */
+  .card{
+    position:absolute;
+    background:var(--card); border-radius:calc(46 * var(--u));
+    box-shadow:0 calc(30 * var(--u)) calc(70 * var(--u)) rgba(16,21,13,.30);
+    transition:box-shadow .8s var(--ease);
+  }
+  /* No z-index here on purpose. z-index:auto keeps the card out of its own
+     stacking context, so the body paints under #scene (the moss drapes over
+     its shoulder) while .knob, at z 4, still sits in front of the moss. */
+  .card--about{
+    left:calc(890 * var(--u)); top:calc(200 * var(--u));
+    width:calc(330 * var(--u)); height:calc(305 * var(--u));
+  }
+  .card--stove{
+    z-index:4; will-change:transform;
+    left:calc(1237 * var(--u)); top:calc(482 * var(--u));
+    width:calc(328 * var(--u)); height:calc(310 * var(--u));
+  }
+  .card .label{
+    position:absolute; left:calc(38 * var(--u));
+    font-size:calc(15.5 * var(--u)); font-weight:300; color:var(--card-label);
+  }
+  .card h2{
+    position:absolute; left:calc(38 * var(--u));
+    font-size:calc(26.2 * var(--u)); line-height:calc(27 * var(--u));
+    font-weight:400; letter-spacing:calc(-0.5 * var(--u)); color:var(--card-ink);
+  }
+  .card--about .label{ top:calc(152 * var(--u)); }
+  .card--about h2{ top:calc(177 * var(--u)); width:calc(142 * var(--u)); }
+  .card--stove .label{ top:calc(45 * var(--u)); }
+  .card--stove h2{ top:calc(70 * var(--u)); }
+  /* Both cards carry a plate. The Field Note reads downward — label, title,
+     then the photograph — so its window sits at the foot of the card; the
+     Ethos card reads the other way up, so its window is at the head and the
+     copy sits under it. Same frame, mirrored. */
+  .card figure{
+    position:absolute; left:calc(14 * var(--u)); right:calc(14 * var(--u));
+    border-radius:calc(34 * var(--u)); overflow:hidden;
+    isolation:isolate; background:#263025;
+  }
+  .card--stove figure{ bottom:calc(14 * var(--u)); height:calc(158 * var(--u)); }
+  .card--about figure{ top:calc(14 * var(--u)); height:calc(122 * var(--u)); }
+  /* The plate is its own depth plane. It travels against the card and the
+     moss, so the landscape feels like a small window rather than a
+     photograph glued to the surface. */
+  .portal-media{
+    position:absolute; inset:calc(-9 * var(--u)); z-index:1; display:block;
+    will-change:transform,clip-path;
+    transform:
+      perspective(900px)
+      translate3d(calc(var(--px,0) * -11px),calc(var(--py,0) * -7px),0)
+      rotateY(calc(var(--px,0) * -1.4deg))
+      rotateX(calc(var(--py,0) * .9deg));
+    transform-origin:50% 50%;
+  }
+  .portal-media img{
+    width:100%; height:100%; object-fit:cover; display:block;
+    transform:scale(1.08);
+    filter:saturate(.92) contrast(1.03);
+    transition:transform 1.25s var(--ease-out),filter .8s var(--ease);
+  }
+  .card:hover .portal-media img{ transform:scale(1.13); filter:saturate(1.04) contrast(1.04); }
+  .pixel-reveal{
+    position:absolute; inset:0; z-index:3; width:100%; height:100%;
+    pointer-events:none; opacity:0; mix-blend-mode:screen;
+  }
+  /* The white scan rides the clip edge, so its centre has to travel the
+     media element's box, not the figure's — .portal-media is overscanned by
+     9u on every side to give the parallax rotation somewhere to go. Offsetting
+     by that 9u in calc() rather than by a translate percentage keeps the
+     glow on the edge at every breakpoint, whatever size the plate is. */
+  .card figure::after{
+    content:''; position:absolute; z-index:2;
+    filter:blur(calc(2 * var(--u))); opacity:0; pointer-events:none;
+    top:0; bottom:0; width:26%; left:calc(-13% - 9 * var(--u));
+    background:linear-gradient(90deg,transparent,rgba(229,244,209,.2) 42%,rgba(252,255,246,.72) 54%,transparent);
+  }
+
+  .knob-float{
+    position:absolute; z-index:4; pointer-events:none;
+    left:calc(1142 * var(--u)); top:calc(427 * var(--u));
+    width:calc(58 * var(--u)); height:calc(58 * var(--u));
+  }
+  .knob-float > *{ pointer-events:auto; }
+  .knob--about{ left:0; top:0; }
+  .card .knob, .knob--about{
+    position:absolute; z-index:4; right:calc(20 * var(--u)); bottom:calc(20 * var(--u));
+    width:calc(58 * var(--u)); height:calc(58 * var(--u));
+    border:0; border-radius:50%; cursor:pointer;
+    background:#fbfcf8; display:grid; place-items:center;
+    box-shadow:0 calc(6 * var(--u)) calc(16 * var(--u)) rgba(16,21,13,.18);
+    transition:transform .5s var(--ease-out), background .4s var(--ease);
+  }
+  .knob--about{ right:auto; bottom:auto; width:calc(58 * var(--u)); height:calc(58 * var(--u)); }
+  .card--stove .knob{ width:calc(54 * var(--u)); height:calc(54 * var(--u)); right:calc(26 * var(--u)); bottom:calc(26 * var(--u)); }
+  .card .knob svg, .knob--about svg{ width:calc(19 * var(--u)); height:calc(19 * var(--u)); display:block; color:#3f453a; }
+  .card .knob:hover, .knob--about:hover{ transform:scale(1.1) rotate(8deg); background:#fff; }
+  .card:hover{ box-shadow:0 calc(38 * var(--u)) calc(84 * var(--u)) rgba(16,21,13,.36); }
+
+  /* ── scroll cue (z 4) ────────────────────────────────────────────────── */
+  .scroll{
+    position:absolute; z-index:4;
+    left:calc(846 * var(--u)); top:calc(690 * var(--u));
+    display:flex; align-items:center; gap:calc(12 * var(--u));
+    writing-mode:vertical-rl;
+    font-size:calc(11 * var(--u)); font-weight:400;
+    letter-spacing:calc(4.4 * var(--u));
+    color:rgba(255,255,255,.5);
+    text-transform:uppercase; text-decoration:none;
+  }
+  .scroll .track{ position:relative; width:1px; height:calc(56 * var(--u)); background:rgba(255,255,255,.18); overflow:hidden; }
+  .scroll .track::after{
+    content:''; position:absolute; inset:0 0 auto; height:40%;
+    background:rgba(255,255,255,.75);
+    animation:trickle 2.6s var(--ease) infinite;
+  }
+  @keyframes trickle{
+    0%   { transform:translateY(-105%); opacity:0; }
+    22%  { opacity:1; }
+    78%  { opacity:1; }
+    100% { transform:translateY(255%); opacity:0; }
+  }
+
+  /* ── entrance: everything is wiped in behind a mask ───────────────────
+     Transform is reserved for the pointer parallax, so the reveal is done
+     with clip-path. Once the intro has run, .intro-done drops the clip
+     entirely — a live clip-path would open a stacking context on the About
+     card and trap its knob under the moss. */
+  .js .mask{ clip-path:inset(100% 0 0 0 round var(--mr,0px)); }
+  .is-ready .mask{
+    clip-path:inset(0 0 0 0 round var(--mr,0px));
+    transition:clip-path 1.05s var(--ease-out) var(--d,0ms);
+  }
+  .js .mask-circle{ clip-path:circle(0% at 50% 50%); }
+  .is-ready .mask-circle{
+    clip-path:circle(76% at 50% 50%);
+    transition:clip-path 1.1s var(--ease-out) var(--d,0ms);
+  }
+  .js .fade{ opacity:0; }
+  .is-ready .fade{ opacity:1; transition:opacity 1.3s var(--ease) var(--d,0ms); }
+
+  .intro-done .mask, .intro-done .mask-circle{ clip-path:none; transition:none; }
+
+  .card{ --mr:calc(46 * var(--u)); }
+
+  /* the dock drops in tile by tile; the capsule itself only fades, because
+     a clip on it would cut the pills off as they magnify past its edge */
+  .js .dock{ opacity:0; }
+  .is-ready .dock{ opacity:1; transition:opacity .8s var(--ease) 80ms; }
+  .js .dock-item{ clip-path:inset(0 0 105% 0); }
+  .is-ready .dock-item{
+    clip-path:inset(0 0 -30% 0);
+    transition:clip-path .9s var(--ease-out) var(--d,0ms),
+               color .18s var(--ease), border-color .2s var(--ease), background .2s var(--ease);
+  }
+  .intro-done .dock-item{ clip-path:none; }
+
+  /* A short rise under a fade rather than a full-height wipe: with nothing
+     cropping it, a 105% travel would start line one sitting on top of line
+     two. .headline itself carries the pointer parallax, so the transform has
+     to go on the inner <i>. */
+  .js .headline span i{ opacity:0; transform:translateY(calc(16 * var(--u))); }
+  .is-ready .headline span i{
+    opacity:1; transform:none;
+    transition:opacity 1.05s var(--ease) var(--d,0ms),
+               transform 1.25s var(--ease-out) var(--d,0ms);
+  }
+
+  /* Each plate resolves like a low-bandwidth botanical transmission: a
+     stepped clip exposes the photograph while sampled pixel-dots gather along
+     the advancing edge (the dots themselves are painted by canvas).
+     Both plates scan across, the Ethos one a beat ahead of the Field Note. */
+  .js .portal-media{ clip-path:inset(0 100% 0 0 round calc(25 * var(--u))); }
+  .is-ready .card--about .portal-media{ animation:portal-cut 1.45s steps(12,end) .92s both; }
+  .is-ready .card--stove .portal-media{ animation:portal-cut 1.45s steps(12,end) 1.08s both; }
+  .is-ready .card--about figure::after{ animation:portal-scan 1.45s steps(12,end) .92s both; }
+  .is-ready .card--stove figure::after{ animation:portal-scan 1.45s steps(12,end) 1.08s both; }
+  .intro-done .portal-media{ clip-path:none; animation:none; }
+  @keyframes portal-cut{
+    from{ clip-path:inset(0 100% 0 0 round calc(25 * var(--u))); }
+    to{ clip-path:inset(0 0 0 0 round calc(25 * var(--u))); }
+  }
+  /* The glow travels by animating its own offset, not by a translate
+     percentage. A translate is a percentage of the glow's width, so the
+     distance it covers depends on the plate's proportions — it overshot by
+     a quarter of the card here and rode ahead of the edge the whole way.
+     In calc() the travel is exactly the media box: 100% of the plate plus
+     the 9u of overscan at each end, at every breakpoint. */
+  @keyframes portal-scan{
+    0%{ left:calc(-13% - 9 * var(--u)); opacity:0; }
+    10%{ opacity:.75; }
+    88%{ opacity:.55; }
+    100%{ left:calc(87% + 9 * var(--u)); opacity:0; }
+  }
+
+  /* No clip on the canvas: the root draws itself in behind the survey pulse,
+     and a CSS wipe on top of that would be two reveals fighting each other.
+     The fade is only here to cover the first compiled frame. */
+  .is-ready #scene{ transition:opacity .45s var(--ease); }
+
+  /* ── pointer parallax ────────────────────────────────────────────────
+     --px / --py are written on .hero once per frame (-1…1). Each layer
+     declares how far it rides (--pd, px at full deflection) and how much
+     it turns (--pr, degrees), which is what gives the plane its depth. */
+  .par{
+    transform:
+      perspective(1400px)
+      translate3d(calc(var(--px,0) * var(--pd,0) * -1px),
+                  calc(var(--py,0) * var(--pd,0) * -0.62px),
+                  0)
+      rotateY(calc(var(--px,0) * var(--pr,0) * 1deg))
+      rotateX(calc(var(--py,0) * var(--pr,0) * -0.7deg));
+  }
+  /* the floating knob turns about the About card's centre, not its own,
+     so it stays glued to the corner it belongs to */
+  .knob-float{ transform-origin:calc(-87 * var(--u)) calc(-74.5 * var(--u)); }
+  .card--about{ transform-origin:50% 50%; }
+
+  /* ── keyboard focus ──────────────────────────────────────────────────── */
+  a:focus-visible, button:focus-visible{
+    outline:2px solid rgba(255,255,255,.85);
+    outline-offset:calc(4 * var(--u));
+    border-radius:calc(6 * var(--u));
+  }
+  .card .knob:focus-visible, .knob--about:focus-visible, .play:focus-visible{ outline-color:rgba(28,34,22,.9); }
+
+  @media (prefers-reduced-motion:reduce){
+    .mask,.mask-circle,.fade,#scene,
+    .dock,.dock-item,
+    .headline span i{ opacity:1 !important; clip-path:none !important; transform:none !important; transition:none !important; }
+    .par{ transform:none !important; }
+    .portal-media{ clip-path:none !important; animation:none !important; transform:none !important; }
+    .pixel-reveal,.card figure::after{ display:none !important; }
+    .portal-media img{ transform:none !important; transition:none !important; }
+    .scroll .track::after{ animation:none; }
+    #scene{ transition:none; }
+  }
+
+  /* ── narrow screens: one column, the moss becomes a band between the
+        copy and the cards (760 design units wide) ───────────────────────── */
+  @media (max-width:900px){
+    :root{ --u: calc(100vw / 760); }
+    .hero{ height:auto; min-height:100svh; }
+    .stage{
+      position:relative; left:auto; top:auto; margin:0;
+      width:100%; height:calc(1625 * var(--u));
+    }
+    .hero::after{
+      background:
+        radial-gradient(90% 30% at 50% 74%, rgba(238,243,231,.40) 0%, rgba(238,243,231,.14) 46%, rgba(238,243,231,0) 82%),
+        linear-gradient(180deg, rgba(238,243,231,0) 62%, rgba(238,243,231,.05) 100%);
+    }
+    .guides i:nth-child(3){ display:none; }
+    .guides i:nth-child(1){ left:calc(253 * var(--u)) !important; }
+    .guides i:nth-child(2){ left:calc(506 * var(--u)) !important; }
+
+    /* one column: the labels come off and the dock keeps only its glyphs,
+       because at this scale the type would be four pixels tall */
+    /* Floored with max(), not left on the design unit alone: this breakpoint
+       runs from 900px down to 320px, so a pure --u dock is a 24px bar with
+       12px targets on a phone. The floor only bites at the small end. */
+    .dock-wrap{ top:calc(30 * var(--u)); }
+    .dock{
+      height:max(56px, calc(58 * var(--u)));
+      padding:max(6px, calc(6 * var(--u)));
+      gap:max(4px, calc(4 * var(--u)));
+      border-radius:max(17px, calc(18 * var(--u)));
+    }
+    .dock-item{
+      height:max(44px, calc(46 * var(--u)));
+      width:max(44px, calc(46 * var(--u)));
+      padding:0; border-radius:max(12px, calc(13 * var(--u)));
+    }
+    .dock-item span:not(.glyph){ display:none; }
+    .dock-item .glyph{ width:max(19px, calc(20 * var(--u))); height:max(19px, calc(20 * var(--u))); }
+    .dock-mark svg{ width:52%; height:52%; }
+    .knob-float{ left:calc(644 * var(--u)); top:calc(1218 * var(--u)); transform-origin:calc(-264 * var(--u)) calc(-43 * var(--u)); }
+    .headline{ left:calc(34 * var(--u)); top:calc(128 * var(--u)); font-size:calc(62 * var(--u)); line-height:calc(66 * var(--u)); }
+    .lede{ left:calc(34 * var(--u)); top:calc(288 * var(--u)); width:calc(400 * var(--u)); font-size:calc(19 * var(--u)); line-height:calc(27 * var(--u)); }
+    /* one column: the frame keeps its aspect, re-anchored to the left rail */
+    .pill-clip{
+      left:calc(34 * var(--u)); top:calc(430 * var(--u));
+      width:calc(506 * var(--u)); height:calc(334 * var(--u));
+      margin:calc(-167 * var(--u)) 0 0 calc(-79 * var(--u));
+      clip-path:inset(calc(93 * var(--u)) calc(74 * var(--u)) calc(1 * var(--u)) calc(74 * var(--u)) round calc(76 * var(--u)));
+    }
+    .play-wrap{ display:none; }
+
+    .stat{ gap:calc(11 * var(--u)); }
+    .stat .mark{ width:calc(36 * var(--u)); height:calc(36 * var(--u)); }
+    .stat dt{ font-size:calc(16 * var(--u)); line-height:calc(22 * var(--u)); }
+    .stat dd{ font-size:calc(16.5 * var(--u)); line-height:calc(24 * var(--u)); }
+    .stat--a{ left:calc(34 * var(--u));  top:calc(540 * var(--u)); }
+    .stat--b{ left:calc(396 * var(--u)); top:calc(540 * var(--u)); }
+
+    .card{ border-radius:calc(40 * var(--u)); }
+    .card--about{ left:calc(34 * var(--u)); top:calc(1050 * var(--u)); width:calc(692 * var(--u)); height:calc(250 * var(--u)); }
+    .card--about .label{ top:calc(96 * var(--u)); }
+    .card--about h2{ top:calc(124 * var(--u)); width:calc(400 * var(--u)); font-size:calc(32 * var(--u)); line-height:calc(36 * var(--u)); }
+    .card--stove{ left:calc(34 * var(--u)); top:calc(1324 * var(--u)); width:calc(692 * var(--u)); height:calc(268 * var(--u)); }
+    .card--stove h2{ font-size:calc(32 * var(--u)); }
+    /* one column: both plates become a thumbnail on the card's outer edge,
+       the Ethos one still anchored to the top */
+    .card--stove figure{ left:auto; right:calc(16 * var(--u)); bottom:calc(16 * var(--u)); width:calc(300 * var(--u)); height:calc(150 * var(--u)); }
+    .card--about figure{ left:auto; right:calc(16 * var(--u)); top:calc(16 * var(--u)); width:calc(224 * var(--u)); height:calc(218 * var(--u)); }
+    .card .knob{ right:calc(24 * var(--u)); bottom:calc(24 * var(--u)); }
+    .card--stove .knob{ right:calc(30 * var(--u)); bottom:calc(30 * var(--u)); }
+
+    .scroll{ left:calc(702 * var(--u)); top:calc(470 * var(--u)); }
+    .ghost{ font-size:calc(184 * var(--u)); letter-spacing:calc(14 * var(--u)); bottom:calc(660 * var(--u)); left:calc(-10 * var(--u)); }
+  }
+</style>
+</head>
+<body>
+
+<main class="hero" id="hero">
+  <canvas id="scene"></canvas>
+
+  <div class="dock-wrap">
+    <nav class="dock par-dock" style="--pd:5" data-spec aria-label="Primary">
+      <a class="dock-item dock-mark" data-dock data-spec data-burst href="#" style="--d:120ms" aria-label="Sylva — home">
+        <svg viewBox="0 0 22 24" aria-hidden="true">
+          <path d="M11 1.3c-2.1 0-3.95 1.2-4.75 2.95C3.95 4.55 2.3 6.25 2.3 8.35c0 2.3 1.9 4.2 4.3 4.2h8.8c2.4 0 4.3-1.9 4.3-4.2 0-2.1-1.65-3.8-4-4.1C14.95 2.5 13.1 1.3 11 1.3Z"/>
+          <path d="M9.6 12.55h2.8v4.2c1.35.3 2.45 1.15 3.15 2.4-1.35.4-2.4.15-3.15-.4v4.15H9.6v-4.15c-.75.55-1.8.8-3.15.4.7-1.25 1.8-2.1 3.15-2.4v-4.2Z"/>
+        </svg>
+      </a>
+      <a class="dock-item is-active" data-dock data-spec data-burst href="#" style="--d:180ms">
+        <span class="glyph" aria-hidden="true">
+          <svg viewBox="0 0 16 16"><path d="M8 14V9"/><path d="M8 9c0-2.4 1.7-4.3 4-4.3.2 2.6-1.6 4.6-4 4.3Z"/><path d="M8 10.5C7.9 8.4 6.4 6.8 4.4 6.8 4.3 8.9 5.9 10.6 8 10.5Z"/></svg>
+        </span>
+        <span>Grove</span>
+      </a>
+      <a class="dock-item" data-dock data-spec data-burst href="#" style="--d:230ms">
+        <span class="glyph" aria-hidden="true">
+          <svg viewBox="0 0 16 16"><path d="M1.6 12.4c2.4-3.4 4.3-5.1 5.7-5.1 2 0 3 3.6 5 3.6 1.1 0 1.9-.5 2.4-1.4"/><path d="M4.3 6.2C5.5 4.4 6.6 3.5 7.6 3.5c1.5 0 2.2 2.4 3.7 2.4"/></svg>
+        </span>
+        <span>Habitats</span>
+      </a>
+      <a class="dock-item" data-dock data-spec data-burst href="#" style="--d:280ms">
+        <span class="glyph" aria-hidden="true">
+          <svg viewBox="0 0 16 16"><path d="M4 2.4h5.3L12 5.1v8.5H4z"/><path d="M9.2 2.4V5h2.7"/><path d="M6 8.4h4M6 10.8h2.8"/></svg>
+        </span>
+        <span>Journal</span>
+      </a>
+      <a class="dock-item dock-item--enter" data-dock data-spec data-burst href="#" style="--d:330ms">
+        <span class="glyph" aria-hidden="true">
+          <svg viewBox="0 0 16 16"><path d="M6.6 2.5h5.1a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H6.6"/><path d="M2.6 8h6.6"/><path d="m7 5.6 2.4 2.4L7 10.4"/></svg>
+        </span>
+        <span>Enter</span>
+      </a>
+    </nav>
+  </div>
+
+  <div class="stage" id="stage">
+
+    <div class="guides fade" style="--d:900ms" aria-hidden="true">
+      <i style="left:calc(405 * var(--u))"></i>
+      <i style="left:calc(748 * var(--u))"></i>
+      <i style="left:calc(1091 * var(--u))"></i>
+    </div>
+
+    <div class="ghost fade" style="--d:1150ms" aria-hidden="true">SYLVA</div>
+
+    <!-- card 1 sits *behind* the canvas so the moss drapes over its shoulder -->
+    <article class="card card--about mask" style="--d:760ms; --pd:10; --pr:2.2">
+      <figure class="portal" data-delay="920">
+        <span class="portal-media"><img src="inner-green-assets/card-ethos.jpg" alt="A cushion of moss grown over lichen-crusted stones" loading="eager" decoding="async"></span>
+        <canvas class="pixel-reveal" aria-hidden="true"></canvas>
+      </figure>
+      <p class="label">Our Ethos</p>
+      <h2>Let the wild lead.</h2>
+    </article>
+
+    <!-- the About knob rides *outside* the card: the card has to stay a plain
+         painted box under #scene, so anything that must sit in front of the
+         moss lives here instead, sharing the card's parallax origin -->
+    <span class="knob-float" style="--pd:10; --pr:2.2">
+      <button class="knob knob--about mask-circle" style="--d:1100ms" aria-label="Read about Sylva">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 21v-7"/><path d="M12 14c0-3.3 2.4-6 5.5-6 .3 3.6-2.2 6.4-5.5 6Z"/>
+          <path d="M12 16c-.1-2.9-2.2-5.2-4.9-5.2C6.8 13.7 9 16 12 16Z"/>
+        </svg>
+      </button>
+    </span>
+
+    <h1 class="headline" style="--pd:18; --pr:1.2">
+      <span><i style="--d:260ms">Step into</i></span>
+      <span><i style="--d:360ms">the living world</i></span>
+    </h1>
+
+    <p class="lede mask" style="--d:480ms; --pd:14; --pr:1">We restore wild places through patient design, native planting, and a deeper kind of stewardship.</p>
+
+    <div class="pill-clip">
+      <div class="pill mask" style="--d:600ms; --pd:15; --pr:1.4">
+        <iframe title="Explore the work" src="inner-green-assets/liquid-metal-explore.html"
+                sandbox="allow-scripts" loading="eager" scrolling="no"></iframe>
+      </div>
+    </div>
+
+    <span class="play-wrap" style="--pd:20">
+      <span class="play-clip">
+        <span class="play-glass mask-circle" style="--d:900ms">
+          <iframe title="Play the film" src="inner-green-assets/liquid-metal-play.html"
+                  sandbox="allow-scripts" loading="eager" scrolling="no"></iframe>
+        </span>
+      </span>
+      <span class="play-ring mask-circle" style="--d:840ms" aria-hidden="true"></span>
+    </span>
+
+    <dl class="stat stat--a mask" style="--d:700ms; --pd:12">
+      <span class="mark" aria-hidden="true">
+        <svg viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round">
+          <circle cx="15" cy="15" r="10.5" stroke-dasharray="0.6 3.6"/>
+          <circle cx="15" cy="15" r="5.6" stroke-dasharray="0.6 3.2"/>
+          <circle cx="15" cy="15" r="1.1" fill="currentColor" stroke="none"/>
+        </svg>
+      </span>
+      <div><dt>Canopy restored</dt><dd>282 ha</dd></div>
+    </dl>
+
+    <dl class="stat stat--b mask" style="--d:770ms; --pd:13">
+      <span class="mark" aria-hidden="true">
+        <svg viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round">
+          <g id="rays">
+            <path d="M15 3.5v5"/><path d="M15 21.5v5"/><path d="M3.5 15h5"/><path d="M21.5 15h5"/>
+            <path d="M6.9 6.9l3.5 3.5"/><path d="M19.6 19.6l3.5 3.5"/><path d="M23.1 6.9l-3.5 3.5"/><path d="M10.4 19.6l-3.5 3.5"/>
+          </g>
+          <circle cx="15" cy="15" r="3.6"/>
+        </svg>
+      </span>
+      <div><dt>Native species</dt><dd>43 mapped</dd></div>
+    </dl>
+
+    <article class="card card--stove mask" style="--d:880ms; --pd:22; --pr:2.4">
+      <p class="label">Field Note 07</p>
+      <h2>After the Rain</h2>
+      <figure class="portal" data-delay="1080">
+        <span class="portal-media"><img src="inner-green-assets/card-ecostove.jpg" alt="Moss-covered boulders in a misty grove" loading="eager" decoding="async"></span>
+        <canvas class="pixel-reveal" aria-hidden="true"></canvas>
+      </figure>
+      <button class="knob" aria-label="Open field note: After the Rain">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 21v-7"/><path d="M12 14c0-3.3 2.4-6 5.5-6 .3 3.6-2.2 6.4-5.5 6Z"/>
+          <path d="M12 16c-.1-2.9-2.2-5.2-4.9-5.2C6.8 13.7 9 16 12 16Z"/>
+        </svg>
+      </button>
+    </article>
+
+    <a class="scroll mask" style="--d:1040ms; --pd:9" href="#">Discover<span class="track"></span></a>
+
+  </div>
+</main>
+
+<script src="inner-green-assets/three.min.js"></script>
+<script>
+/* ====================================================================== *
+ * The moss root is grown, not photographed.
+ *
+ * Everything the old build shipped as two transparent PNGs (4.6 MB) is now
+ * geometry: a tapered tube swept along a measured centreline, a second tube
+ * that loops over it to make the arch, a handful of recursive offshoots, and
+ * ~130 000 instanced blades of moss planted on whatever part of that surface
+ * faces the light. The silhouette landmarks — crest at 25% width, valley at
+ * 50%, apex at 73%, the hollow under it — are lifted straight off the
+ * original artwork's alpha channel, so the composition it was laid out
+ * against is unchanged.
+ *
+ * Being procedural also means the scene no longer needs a texture upload, so
+ * it now runs from file:// as well as it does from a server.
+ * ====================================================================== */
+(function () {
+  'use strict';
+
+  var REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ── pointer parallax ───────────────────────────────────────────────
+     Every layer that carries a --pd gets .par; the loop writes the eased
+     pointer position onto .hero once a frame and CSS does the rest, so this
+     works whether or not the WebGL scene came up.
+
+     The ghost wordmark and the column guides sit this one out on purpose:
+     they are the furthest plane, their travel would be a few pixels, and
+     promoting two near-full-stage boxes to composited layers cost more
+     frames than the effect was worth. */
+  var PARALLAX = '.dock,.headline,.lede,.pill,.play-wrap,' +
+                 '.stat--a,.stat--b,.card--about,.knob-float,.card--stove,.scroll';
+
+  var pointer = { x: 0, y: 0 }, smooth = { x: 0, y: 0 };
+  var heroEl = document.getElementById('hero');
+  var lastX = null, lastY = null;
+  var ticking = false, parOn = false;
+
+  /* one rAF for the whole page: it eases the pointer, publishes it, and
+     renders the GL scene if there is one */
+  function startTick() {
+    if (ticking) return;
+    ticking = true;
+    (function loop() { requestAnimationFrame(loop); tick(); })();
+  }
+
+  var lastTick = 0;
+  function tick() {
+    var now = performance.now();
+    var dtUI = lastTick ? Math.min((now - lastTick) / 1000, 0.05) : 0.016;
+    lastTick = now;
+    drawDock(dtUI);
+    drawSpec(dtUI);
+    aimMoved = false;
+    if (parOn) {
+      smooth.x += (pointer.x - smooth.x) * 0.055;
+      smooth.y += (pointer.y - smooth.y) * 0.055;
+      /* three decimals is finer than a pixel of travel, and rounding lets the
+         writes stop entirely once the pointer settles — no style invalidation
+         on an idle page */
+      var nx = Math.round(smooth.x * 1000) / 1000, ny = Math.round(smooth.y * 1000) / 1000;
+      if (nx !== lastX || ny !== lastY) {
+        lastX = nx; lastY = ny;
+        heroEl.style.setProperty('--px', nx);
+        heroEl.style.setProperty('--py', ny);
+      }
+    }
+    if (renderer && clock) renderFrame();
+  }
+
+  function startParallax() {
+    startTick();
+    if (REDUCED || parOn) return;
+    parOn = true;
+    var nodes = document.querySelectorAll(PARALLAX);
+    for (var i = 0; i < nodes.length; i++) nodes[i].classList.add('par');
+
+    window.addEventListener('pointermove', function (e) {
+      if (e.pointerType === 'touch') return;
+      pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+      pointer.y = (e.clientY / window.innerHeight) * 2 - 1;
+      /* the GL camera is framed on .hero, not on the window — on the narrow
+         layout the hero is the taller of the two, so the pointer has to be
+         put back into the canvas's own box or the moss parts in the wrong place */
+      var r = hero.getBoundingClientRect();
+      ndc.x =  ((e.clientX - r.left) / r.width) * 2 - 1;
+      ndc.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+      nearPlay(e.clientX, e.clientY);
+    }, { passive: true });
+
+    window.addEventListener('pointerleave', function () {
+      pointer.x = pointer.y = 0; ndc.x = 10;
+      if (playWrap) playWrap.classList.remove('is-near');
+    });
+  }
+
+  /* ── the play ring's hover ───────────────────────────────────────────
+     The button is inside a sandboxed iframe, and the sandbox denies it an
+     origin — so Chrome runs it out-of-process and the page receives neither
+     :hover nor a single pointer event while the cursor is over it. All the
+     page ever sees is the last sample on the way in, and the first on the way
+     out. Testing that against the frame's clip band lights the ring on the
+     approach and drops it on the way out, with no events in between needed.
+     The band is inflated a little because a quick flick can put its last
+     sample well short of the edge; erring early also just reads as the ring
+     anticipating the cursor. Geometry rather than elementFromPoint, so a
+     pointermove costs no layout. */
+  var playWrap = document.querySelector('.play-wrap');
+  var playClip = document.querySelector('.play-clip');
+  var playBand = null;
+
+  function measurePlayBand() {
+    if (!playClip) return;
+    var r = playClip.getBoundingClientRect();
+    if (!r.width) { playBand = null; return; }
+    /* the clip is inset(131 106 73 106) of a 396-unit square */
+    var k = r.width / 396, m = 40;
+    playBand = {
+      x0: r.left + 106 * k - m, x1: r.right - 106 * k + m,
+      y0: r.top + 131 * k - m,  y1: r.bottom - 73 * k + m
+    };
+  }
+  function nearPlay(x, y) {
+    if (!playWrap) return;
+    if (!playBand) measurePlayBand();
+    var b = playBand;
+    playWrap.classList.toggle('is-near',
+      !!b && x > b.x0 && x < b.x1 && y > b.y0 && y < b.y1);
+  }
+  window.addEventListener('resize', function () { playBand = null; });
+
+  var canvas   = document.getElementById('scene');
+  var hero     = document.getElementById('hero');
+  var stageEl  = document.getElementById('stage');
+  var NARROW   = window.matchMedia('(max-width: 900px)');
+
+  /* ── where the two roots sit on the 1600 × 880 reference frame ───────
+     Unchanged from the artwork build: the near root's box is the old
+     moss-arch.png's box, the far one is moss-ridge.png's, so every landmark
+     lands exactly where the layout was drawn around it. */
+  var ARCH   = { w: 1900, left: -180, top: 306, aspect: 2800 / 1377 };
+  var ARCH_N = { w: 1120, left: -290, top: 555, aspect: 2800 / 1377 };
+  var FAR    = { w: 1150, left:  -40, top: 320, aspect: 1600 /  757, z: -260 };
+  var FAR_N  = { w:  780, left: -110, top: 600, aspect: 1600 /  757, z: -260 };
+
+  var renderer, scene, camera;
+  var nearGroup, farGroup, motes, shadowMesh, glowMesh;
+  var W = 1, H = 1, DIST = 1400;
+  var poleTex = null;
+  var scanning = false, scanT = 0, scanMax = 3000;
+  var SCAN_DUR = 3.4;
+  var clock = null;
+  var readyStarted = false;
+
+  /* ── plate transmission ─────────────────────────────────────────────
+     Sample the actual photograph into a tiny grid and carry those colours
+     along the stepped clip edge. The canvas exists for this one entrance
+     only; after the reveal it stops painting and the live image takes over.
+
+     The dot front, the white scan and the CSS clip all have to sit on the
+     same line, which means reproducing the CSS progression exactly rather
+     than approximating it: floor(t * STEPS) / STEPS, linear — an eased
+     curve here put the dots a third of a plate ahead of the edge they are
+     supposed to be gathering on. The clip is applied to .portal-media,
+     which is overscanned past the figure by 9u so the parallax rotation has
+     somewhere to go, so the front has to be converted out of that box and
+     into the canvas's before it is painted. */
+  var CUT_STEPS = 12, CUT_MS = 1450;
+  var portalStarted = false;
+
+  function startPortalReveal() {
+    if (REDUCED || portalStarted) return;
+    portalStarted = true;
+    var figs = document.querySelectorAll('.portal');
+    for (var i = 0; i < figs.length; i++) revealPortal(figs[i]);
+  }
+
+  function revealPortal(fig) {
+    var img = fig.querySelector('img');
+    var canvasEl = fig.querySelector('.pixel-reveal');
+    var media = fig.querySelector('.portal-media');
+    if (!img || !canvasEl || !media) return;
+
+    var delay = parseFloat(fig.getAttribute('data-delay')) || 1080;
+
+    function launch() {
+      setTimeout(function () {
+        var box = canvasEl.getBoundingClientRect();
+        if (!box.width || !box.height) return;
+
+        var dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvasEl.width = Math.max(1, Math.round(box.width * dpr));
+        canvasEl.height = Math.max(1, Math.round(box.height * dpr));
+        var ctx = canvasEl.getContext('2d');
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        var cols = 52;
+        var rows = Math.max(18, Math.round(cols * box.height / box.width));
+
+        var sample = document.createElement('canvas');
+        sample.width = cols; sample.height = rows;
+        var sg = sample.getContext('2d', { willReadFrequently:true });
+        var rgba = null;
+        try {
+          sg.drawImage(img, 0, 0, cols, rows);
+          rgba = sg.getImageData(0, 0, cols, rows).data;
+        } catch (err) {
+          /* file:// can make canvas pixels unreadable; the reveal still runs
+             with the page's pale-moss transmission colour. */
+        }
+
+        /* layout offsets, not bounding rects — .portal-media carries a live
+           transform and its rect would drift with the pointer */
+        var over = -media.offsetLeft;
+        var span = media.offsetWidth;
+        var reach = box.width;
+
+        canvasEl.style.opacity = '1';
+        var startedAt = performance.now();
+
+        function paint(now) {
+          var t = Math.min(1, (now - startedAt) / CUT_MS);
+          var stepped = Math.floor(t * CUT_STEPS) / CUT_STEPS;
+          var front = (stepped * span - over) / reach;
+          var tailFade = t < .88 ? 1 : (1 - t) / .12;
+          ctx.clearRect(0, 0, box.width, box.height);
+
+          for (var y = 0; y < rows; y++) {
+            for (var x = 0; x < cols; x++) {
+              var an = (x + .5) / cols;
+              var delta = an - front;
+              /* symmetric about the front: an asymmetric band puts the
+                 pattern's centre of mass ahead of the edge it belongs to */
+              if (delta < -.16 || delta > .16) continue;
+
+              var band = 1 - Math.abs(delta) / .16;
+              var pulse = .68 + .32 * Math.sin(x * 2.71 + y * 1.93 + t * 26);
+              var alpha = Math.max(0, band * pulse * tailFade);
+              if (alpha < .08) continue;
+
+              var r = 220, g = 238, b = 202;
+              if (rgba) {
+                var q = (y * cols + x) * 4;
+                r = Math.min(255, rgba[q] * 1.18 + 20);
+                g = Math.min(255, rgba[q + 1] * 1.18 + 24);
+                b = Math.min(255, rgba[q + 2] * 1.12 + 14);
+              }
+
+              var px = (x + .5) * box.width / cols;
+              var py = (y + .5) * box.height / rows;
+              var jitter = (1 - band) * 5;
+              px += Math.sin(y * 3.17 + x) * jitter;
+              py += Math.cos(x * 2.41 - y) * jitter;
+              var radius = (.55 + band * 1.25) * Math.max(.75, reach / 300);
+
+              ctx.fillStyle = 'rgba(' + Math.round(r) + ',' + Math.round(g) + ',' + Math.round(b) + ',' + (alpha * .92) + ')';
+              ctx.beginPath();
+              ctx.arc(px, py, radius, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+
+          if (t < 1) requestAnimationFrame(paint);
+          else {
+            ctx.clearRect(0, 0, box.width, box.height);
+            canvasEl.style.opacity = '0';
+          }
+        }
+        requestAnimationFrame(paint);
+      }, delay);
+    }
+
+    if (img.complete && img.naturalWidth) launch();
+    else img.addEventListener('load', launch, { once:true });
+  }
+
+  /* ── the dock ────────────────────────────────────────────────────────
+     Proximity magnification over a rim highlight that points back at the
+     pointer. Both are springs, both run off the page's single rAF, and both
+     switch off for a coarse pointer — a dock that magnifies on touch just
+     reads as broken, because there is no hover to anticipate the tap.
+
+     Every layout read happens inside the frame, never in the pointer
+     handler: the items resize as they grow, so their rects have to be
+     re-read, and doing that per pointermove forces a synchronous layout
+     several times a frame. The handler only records where the pointer is. */
+  var DOCK = { root: null, items: [], on: false, live: false, key: false, dirty: false, u: 1 };
+  var SPEC = { items: [], on: false, dirty: false };
+  var aimX = 0, aimY = 0, aimSeen = false, aimMoved = false;
+
+  function fineHover() {
+    return !REDUCED && window.matchMedia('(hover:hover) and (pointer:fine)').matches;
+  }
+
+  function measureDock() {
+    if (!DOCK.root) return;
+    DOCK.on = fineHover();
+    DOCK.u = stageEl.getBoundingClientRect().width / (NARROW.matches ? 760 : 1600);
+    for (var i = 0; i < DOCK.items.length; i++) {
+      var st = DOCK.items[i];
+      st.el.style.width = st.el.style.height = st.el.style.transform = '';
+      st.el.dataset.near = 'false';
+      st.v = st.vel = st.target = 0;
+    }
+    for (i = 0; i < DOCK.items.length; i++) {
+      var r = DOCK.items[i].el.getBoundingClientRect();
+      DOCK.items[i].w = r.width;
+      DOCK.items[i].h = r.height;
+    }
+    DOCK.live = false;
+    DOCK.dirty = true;
+    aimMoved = aimSeen;
+  }
+
+  function dockRest() {
+    DOCK.live = false;
+    DOCK.dirty = true;
+    for (var i = 0; i < DOCK.items.length; i++) {
+      DOCK.items[i].target = 0;
+      DOCK.items[i].el.dataset.near = 'false';
+    }
+  }
+
+  function drawDock(dt) {
+    if (!DOCK.root || !DOCK.on) return;
+
+    /* Targets are only recomputed when the pointer actually MOVES.
+       Re-deriving them every frame from a stale position oscillates: the
+       capsule is centred, so a growing pill shifts the whole bar sideways,
+       which slides a different pill under a stationary cursor, which grows
+       instead, which shifts it back.
+       And whichever input moved last owns the dock, or the pointer's last
+       position re-targets over keyboard focus and focus never takes. */
+    if (aimSeen && aimMoved && !DOCK.key) {
+      var rr = DOCK.root.getBoundingClientRect();
+      /* the catch box reaches well below the bar, because that is where the
+         pills grow to and the pointer has to be able to follow them */
+      if (aimX > rr.left - 48 && aimX < rr.right + 48 && aimY > rr.top - 44 && aimY < rr.bottom + 104) {
+        for (var i = 0; i < DOCK.items.length; i++) {
+          var st = DOCK.items[i], r = st.el.getBoundingClientRect();
+          var prox = clamp01(1 - Math.abs(aimX - (r.left + r.width * 0.5)) / (128 * DOCK.u));
+          st.target = prox * prox * (3 - 2 * prox);
+          st.el.dataset.near = st.target > 0.08 ? 'true' : 'false';
+        }
+        DOCK.live = true;
+        DOCK.dirty = true;
+      } else if (DOCK.live) dockRest();
+    }
+
+    if (!DOCK.dirty) return;
+    var moving = false;
+    for (i = 0; i < DOCK.items.length; i++) {
+      st = DOCK.items[i];
+      st.vel += (st.target - st.v) * 190 * dt;
+      st.vel *= Math.exp(-23 * dt);
+      st.v += st.vel * dt;
+      if (Math.abs(st.target - st.v) < 0.001 && Math.abs(st.vel) < 0.004) { st.v = st.target; st.vel = 0; }
+      else moving = true;
+
+      var v = Math.min(Math.max(st.v, 0), 1.08);
+      var mark = st.el.classList.contains('dock-mark');
+      var ew = mark ? 14 * DOCK.u : Math.min(18 * DOCK.u, st.w * 0.24);
+      var eh = mark ? 14 * DOCK.u : 16 * DOCK.u;
+      st.el.style.width = (st.w + ew * v).toFixed(2) + 'px';
+      st.el.style.height = (st.h + eh * v).toFixed(2) + 'px';
+      st.el.style.transform = 'translateY(' + (v * 3.5 * DOCK.u).toFixed(2) + 'px)';
+    }
+    if (!moving) DOCK.dirty = false;
+  }
+
+  function drawSpec(dt) {
+    if (!SPEC.on) return;
+
+    if (aimSeen && aimMoved) {
+      for (var i = 0; i < SPEC.items.length; i++) {
+        var st = SPEC.items[i], r = st.el.getBoundingClientRect();
+        var cx = r.left + r.width * 0.5, cy = r.top + r.height * 0.5;
+        var dx = Math.max(r.left - aimX, 0, aimX - r.right);
+        var dy = Math.max(r.top - aimY, 0, aimY - r.bottom);
+        var d = Math.sqrt(dx * dx + dy * dy);
+        /* inside the box there is no direction to point at, so bias off the
+           corner and let the offset from centre steer it */
+        st.tAng = d === 0
+          ? Math.atan2(2 / Math.max(r.height, 1), -2 / Math.max(r.width, 1)) +
+            ((aimX - cx) / Math.max(r.width * 0.5, 1)) * 0.30 +
+            ((cy - aimY) / Math.max(r.height * 0.5, 1)) * 0.15
+          : Math.atan2(cy - aimY, aimX - cx);
+        var raw = clamp01(1 - d / (st.reach * DOCK.u));
+        st.tBr = Math.max(raw * raw * (3 - 2 * raw), st.focused ? 0.9 : 0);
+      }
+      SPEC.dirty = true;
+    }
+
+    if (!SPEC.dirty) return;
+    var moving = false;
+    for (i = 0; i < SPEC.items.length; i++) {
+      st = SPEC.items[i];
+      var diff = ((st.tAng - st.ang + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+      st.ang += diff * (1 - Math.exp(-dt * 8));
+      st.br += (st.tBr - st.br) * (1 - Math.exp(-dt * 9));
+      if (Math.abs(diff) < 0.001 && Math.abs(st.tBr - st.br) < 0.002) { st.ang = st.tAng; st.br = st.tBr; }
+      else moving = true;
+      st.el.style.setProperty('--spec-angle', st.ang.toFixed(4) + 'rad');
+      st.el.style.setProperty('--spec-bright', (clamp01(st.br) * 0.92).toFixed(3));
+    }
+    if (!moving) SPEC.dirty = false;
+  }
+
+  function initDock() {
+    var root = document.querySelector('.dock');
+    if (!root) return;
+    DOCK.root = root;
+    DOCK.items = [].map.call(root.querySelectorAll('[data-dock]'), function (el) {
+      return { el: el, w: 0, h: 0, v: 0, vel: 0, target: 0 };
+    });
+    SPEC.items = [].map.call(document.querySelectorAll('[data-spec]'), function (el) {
+      return { el: el, ang: 2.4, tAng: 2.4, br: 0, tBr: 0, focused: false,
+               reach: el.classList.contains('dock') ? 250 : 185 };
+    });
+    SPEC.on = fineHover();
+
+    measureDock();
+    /* the labels set the pill widths, so the base measure is wrong until the
+       real face has landed */
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(measureDock);
+    window.addEventListener('resize', measureDock);
+
+    window.addEventListener('pointermove', function (e) {
+      if (e.pointerType === 'touch') return;
+      aimX = e.clientX; aimY = e.clientY; aimSeen = true; aimMoved = true; DOCK.key = false;
+      DOCK.dirty = SPEC.dirty = true;
+    }, { passive: true });
+
+    window.addEventListener('pointerleave', function () {
+      aimSeen = false;
+      dockRest();
+      for (var i = 0; i < SPEC.items.length; i++) SPEC.items[i].tBr = SPEC.items[i].focused ? 0.9 : 0;
+      SPEC.dirty = true;
+    });
+
+    /* keyboard gets the same magnification, centred on the focused pill */
+    root.addEventListener('focusin', function (e) {
+      var item = e.target.closest('[data-dock]');
+      if (!item || !DOCK.on) return;
+      var idx = DOCK.items.map(function (st) { return st.el; }).indexOf(item);
+      DOCK.items.forEach(function (st, i) {
+        st.target = i === idx ? 1 : Math.abs(i - idx) === 1 ? 0.24 : 0;
+        st.el.dataset.near = st.target > 0.08 ? 'true' : 'false';
+      });
+      DOCK.live = false; DOCK.key = true; DOCK.dirty = true;
+    });
+    root.addEventListener('focusout', function () {
+      requestAnimationFrame(function () {
+        if (!root.contains(document.activeElement)) { DOCK.key = false; dockRest(); }
+      });
+    });
+    for (var i = 0; i < SPEC.items.length; i++) (function (st) {
+      st.el.addEventListener('focusin', function () { st.focused = true; SPEC.dirty = true; });
+      st.el.addEventListener('focusout', function () { st.focused = false; SPEC.dirty = true; });
+    })(SPEC.items[i]);
+
+    /* the current section moves with the click, and the pill throws a
+       handful of pollen — the page already has an emitter for that */
+    root.addEventListener('click', function (e) {
+      var item = e.target.closest('[data-dock]');
+      if (!item) return;
+      e.preventDefault();
+      if (!item.classList.contains('dock-mark')) {
+        for (var i = 0; i < DOCK.items.length; i++) DOCK.items[i].el.classList.remove('is-active');
+        item.classList.add('is-active');
+      }
+      burstAt(e.clientX, e.clientY);
+    });
+  }
+
+  function ready() {
+    if (readyStarted) return;
+    readyStarted = true;
+    /* The pre-intro styles come from .js on <html>, set while the head was
+       parsing, and this runs in the same task as the rest of the script — so
+       nothing has forced the browser to compute them yet. Without a recalc
+       here it computes once, sees the finished state, and every transition is
+       skipped. */
+    void document.body.offsetHeight;
+    document.body.classList.add('is-ready');
+    startParallax();
+    startPortalReveal();
+    initDock();
+    /* the wipes are done — drop the clips so nothing keeps a stacking
+       context alive (the About knob has to stay above the moss) */
+    setTimeout(function () { document.body.classList.add('intro-done'); }, REDUCED ? 0 : 2900);
+  }
+
+  /* pointer in NDC, read by the moss shaders through a plane raycast */
+  var ndc = { x: 10, y: 10 };
+
+  if (!window.THREE) { ready(); return; }
+
+  /* ================================================================== *
+   * deterministic noise — the same meadow grows on every reload
+   * ================================================================== */
+  var rng = (function () {
+    var a = 0x3f9a1c7b;
+    return function () {
+      a |= 0; a = (a + 0x6d2b79f5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  })();
+  function rand(lo, hi) { return lo + (hi - lo) * rng(); }
+  function sstep(a, b, x) { var t = Math.min(Math.max((x - a) / (b - a), 0), 1); return t * t * (3 - 2 * t); }
+  function clamp01(x) { return x < 0 ? 0 : (x > 1 ? 1 : x); }
+
+  /* integer hash, not sin(): the lattice is only ever queried at whole
+     coordinates, and Math.sin here cost more than everything else the
+     builder does put together */
+  function hash2(x, y) {
+    var n = Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263);
+    n = Math.imul(n ^ (n >>> 13), 1274126177);
+    return ((n ^ (n >>> 16)) >>> 0) / 4294967296;
+  }
+  function vnoise(x, y) {
+    var ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy;
+    var ux = fx * fx * (3 - 2 * fx), uy = fy * fy * (3 - 2 * fy);
+    var a = hash2(ix, iy), b = hash2(ix + 1, iy), c = hash2(ix, iy + 1), d = hash2(ix + 1, iy + 1);
+    var t = a + (b - a) * ux;
+    return t + ((c + (d - c) * ux) - t) * uy;
+  }
+  /* rotate each octave as well as scaling it, so the lattice never resolves */
+  function fbm2(x, y) {
+    var s = 0, amp = 0.5, nx, ny;
+    for (var i = 0; i < 4; i++) {
+      s += amp * vnoise(x, y);
+      nx = 0.80 * x + 0.60 * y; ny = -0.60 * x + 0.80 * y;
+      x = nx * 2.07 + 3.1; y = ny * 2.07 - 1.7; amp *= 0.5;
+    }
+    return s / 0.9375;                                   /* ~[0,1] */
+  }
+
+  /* ================================================================== *
+   * limbs — a tube swept along a measured centreline, its upper flank
+   * pushed out by however deep the moss lies there
+   * ================================================================== */
+  var UP = new THREE.Vector3(0, 1, 0);
+  var TAU = Math.PI * 2;
+  var BOXW = 10;                                          /* each root's box is 10 local units wide */
+
+  /* fractional artwork coords -> local space, origin at the box centre */
+  function makeP(aspect) {
+    var bh = BOXW / aspect;
+    return function (fx, fy, z) {
+      return new THREE.Vector3((fx - 0.5) * BOXW, (0.5 - fy) * bh, z || 0);
+    };
+  }
+
+  function transportFrames(curve, segs) {
+    var pts = [], tans = [], nrms = [], i;
+    for (i = 0; i <= segs; i++) {
+      pts.push(curve.getPointAt(i / segs));
+      tans.push(curve.getTangentAt(i / segs).normalize());
+    }
+    var ref = Math.abs(tans[0].y) < 0.9 ? UP : new THREE.Vector3(1, 0, 0);
+    nrms.push(new THREE.Vector3().crossVectors(tans[0], ref).normalize());
+    for (i = 1; i <= segs; i++) {
+      var axis = new THREE.Vector3().crossVectors(tans[i - 1], tans[i]);
+      var n = nrms[i - 1].clone();
+      if (axis.lengthSq() > 1e-12) {
+        axis.normalize();
+        n.applyAxisAngle(axis, Math.acos(Math.min(1, Math.max(-1, tans[i - 1].dot(tans[i])))));
+      }
+      nrms.push(n.normalize());
+    }
+    return { pts: pts, tans: tans, nrms: nrms };
+  }
+
+  /* How mossy a point on the bark is. Driven by how far the surface faces the
+     light rather than by the tube's own parameters — the arch turns through
+     the vertical, and any "up" defined on the cross-section goes degenerate
+     there. Two noise fields ride on top: a fine one that frays the moss line
+     so it never reads as a stripe, and a slow one that opens bald patches of
+     bare wood. Both are sampled in world space, so neighbouring limbs share
+     the same weather. */
+  function mossCap(p, n, steep) {
+    /* On a limb lying flat the camera-facing flank has to stay bark: the
+       reference's moss line sits ~25° above horizontal and everything below
+       it is pale wood. Weight n.z any harder than that and the cushion wraps
+       right around the limb.
+       On a limb standing UP there is no upward face at all — every
+       cross-section normal is horizontal — so the criterion has to roll over
+       to "faces the light", or the arch's legs come out bald. */
+    var upness = n.y + n.z * (0.10 + 0.42 * steep) - n.x * (0.05 + 0.45 * steep);
+    /* Two scales on the moss line. The fine one keeps it from reading as a
+       painted stripe; the coarse one is what makes moss send tongues down the
+       flank and lets bare wood push up through the cushion. */
+    var fray = fbm2(p.x * 2.30 + 4.4, p.z * 2.30 - p.y * 1.90) - 0.5;
+    var tongue = fbm2(p.x * 0.95 + 21.0, p.z * 0.95 - p.y * 0.80) - 0.5;
+    var patch = fbm2(p.x * 0.52 + 9.3, p.z * 0.52 + p.y * 0.44);
+    var c = sstep(0.16, 0.70, upness + fray * 0.40 + tongue * 0.52);
+    /* no floor under the patch term: the cushion has to go properly bald in
+       places or the bark never gets to be seen, and the bark is half of what
+       makes the root read as wood rather than topiary */
+    return c * sstep(0.10, 0.50, patch);
+  }
+  /* Lumpiness of the cushion itself. Moss is never a smooth offset — without
+     this the tube reads as an extruded pipe with a green stripe painted on
+     it, whatever the fur does on top. Two scales: broad cushions, and a
+     finer bobble inside them. */
+  function mossLump(p) {
+    return 0.66 + 0.48 * fbm2(p.x * 2.4 - 2.2, p.z * 2.4 + p.y * 2.0)
+                + 0.18 * fbm2(p.x * 7.3 + 5.1, p.z * 7.3 - p.y * 4.4) - 0.09;
+  }
+
+  /* A limb's thickness is read off the artwork, not invented: `rt` is the
+     half-height of the moss-plus-wood band measured column by column out of
+     the original PNG's alpha, in local units. Splitting it 0.52 bark / 0.88
+     cushion reproduces the reference's section — moss over roughly the top
+     45% of the band, bare wood under it. */
+  function table(vals) {
+    return function (t) {
+      var x = clamp01(t) * (vals.length - 1);
+      var i = Math.min(vals.length - 2, Math.floor(x));
+      return vals[i] + (vals[i + 1] - vals[i]) * (x - i);
+    };
+  }
+
+  function makeLimb(P, pts, opt) {
+    var v3 = pts.map(function (q) { return P(q[0], q[1], q[2]); });
+    var curve = new THREE.CatmullRomCurve3(v3, false, 'centripetal', 0.5);
+    var rw = opt.rw, moss = opt.moss;
+    if (opt.rt) {
+      var rt = table(opt.rt);
+      rw = function (t) { return rt(t) * 0.52 * knot(t, 0.05, 0.024); };
+      moss = function (t) { return rt(t) * 0.88; };
+    }
+    return {
+      curve: curve,
+      segs: opt.segs,
+      radial: opt.radial,
+      rw: rw,
+      moss: moss,
+      blade: opt.blade || function (t) { return moss(t) * 0.055 + 0.014; },
+      sink: opt.sink || 0,
+      vScale: opt.vScale,
+      fr: transportFrames(curve, opt.segs),
+      len: curve.getLength()
+    };
+  }
+
+  var _fp = new THREE.Vector3(), _ft = new THREE.Vector3(), _fn = new THREE.Vector3(), _fb = new THREE.Vector3();
+  function limbFrame(L, t) {
+    var f = clamp01(t) * L.segs;
+    var i = Math.min(L.segs - 1, Math.floor(f)), a = f - i;
+    _fp.copy(L.fr.pts[i]).lerp(L.fr.pts[i + 1], a);
+    /* Control points traced off the artwork sit on the MIDLINE of the
+       silhouette, but the silhouette is asymmetric — bare wood below, wood
+       plus cushion above. The tube's own axis is half a cushion lower. */
+    if (L.sink) _fp.y -= L.moss(t) * L.sink;
+    _ft.copy(L.fr.tans[i]).lerp(L.fr.tans[i + 1], a).normalize();
+    _fn.copy(L.fr.nrms[i]).lerp(L.fr.nrms[i + 1], a);
+    _fn.addScaledVector(_ft, -_fn.dot(_ft)).normalize();
+    _fb.crossVectors(_ft, _fn).normalize();
+  }
+
+  /* the finished surface: bark radius plus the moss cushion sitting on it */
+  function limbSurface(L, t, th, outP, outN) {
+    limbFrame(L, t);
+    var steep = Math.min(1, Math.abs(_ft.y) * 1.15);
+    var c = Math.cos(th), s = Math.sin(th);
+    outN.set(_fn.x * c + _fb.x * s, _fn.y * c + _fb.y * s, _fn.z * c + _fb.z * s).normalize();
+    var rw = L.rw(t);
+    outP.copy(_fp).addScaledVector(outN, rw);
+    var cap = mossCap(outP, outN, steep);
+    var d = rw + L.moss(t) * cap * mossLump(outP);
+    outP.copy(_fp).addScaledVector(outN, d);
+    return cap;
+  }
+
+  /* ---- mesh: build the (segs+1) × (radial+1) grid, then take the normal
+          from the grid itself so the displacement is lit, not the tube ---- */
+  function tessellate(L, bag) {
+    var S = L.segs, R = L.radial;
+    var base = bag.pos.length / 3;
+    var grid = new Float32Array((S + 1) * (R + 1) * 3);
+    var gnrm = new Float32Array((S + 1) * (R + 1) * 3);
+    var caps = new Float32Array((S + 1) * (R + 1));
+    var p = new THREE.Vector3(), n = new THREE.Vector3();
+    var i, j, k;
+
+    for (i = 0; i <= S; i++) {
+      for (j = 0; j <= R; j++) {
+        var cap = limbSurface(L, i / S, (j / R) * TAU, p, n);
+        k = (i * (R + 1) + j) * 3;
+        grid[k] = p.x; grid[k + 1] = p.y; grid[k + 2] = p.z;
+        caps[i * (R + 1) + j] = cap;
+      }
+    }
+
+    var a = new THREE.Vector3(), b = new THREE.Vector3(), du = new THREE.Vector3(), dv = new THREE.Vector3();
+    function get(i2, j2, out) {
+      i2 = Math.min(S, Math.max(0, i2));
+      j2 = (j2 + R) % R;                                  /* θ wraps — no seam in the normals */
+      var q = (i2 * (R + 1) + j2) * 3;
+      return out.set(grid[q], grid[q + 1], grid[q + 2]);
+    }
+
+    for (i = 0; i <= S; i++) {
+      for (j = 0; j <= R; j++) {
+        get(i + 1, j, a); get(i - 1, j, b); du.subVectors(a, b);
+        get(i, j + 1, a); get(i, j - 1, b); dv.subVectors(a, b);
+        n.crossVectors(dv, du);
+        if (n.lengthSq() < 1e-12) { limbSurface(L, i / S, (j / R) * TAU, p, n); } else n.normalize();
+        k = (i * (R + 1) + j) * 3;
+        bag.pos.push(grid[k], grid[k + 1], grid[k + 2]);
+        bag.nor.push(n.x, n.y, n.z);
+        /* u is a triangle wave so the bark noise mirrors instead of seaming */
+        bag.inf.push(1 - Math.abs(2 * (j / R) - 1), (i / S) * L.vScale, caps[i * (R + 1) + j]);
+        gnrm[k] = n.x; gnrm[k + 1] = n.y; gnrm[k + 2] = n.z;
+      }
+    }
+    for (i = 0; i < S; i++) for (j = 0; j < R; j++) {
+      var q0 = base + i * (R + 1) + j, q1 = q0 + R + 1;
+      bag.idx.push(q0, q1, q0 + 1, q1, q1 + 1, q0 + 1);
+    }
+    /* the fur is planted straight onto this, so hand it over */
+    L.grid = grid; L.gnrm = gnrm; L.gcaps = caps; L.S = S; L.R = R;
+  }
+
+  /* ---- blades: planted straight onto the shell grid the tessellator just
+          built. Rejection-sampling the surface function instead meant three
+          more evaluations of two fBm fields per accepted blade, which at this
+          density was 1.3 s of blocked main thread — right on top of the
+          entrance animation. Sampling the grid is O(1) per blade, and it also
+          guarantees the fur sits exactly on the surface that gets drawn.
+          Cells are drawn in proportion to area x moss, so density follows the
+          cushion rather than the tube's parameterisation. ---- */
+  function plantBlades(L, count, bag) {
+    var S = L.S, R = L.R, grid = L.grid, gn = L.gnrm, caps = L.gcaps;
+    if (!grid) return 0;
+    var cells = S * R, cdf = new Float64Array(cells), total = 0;
+    var ax, ay, az, bx, by, bz, cx, cy, cz, i, j, k;
+
+    for (i = 0; i < S; i++) for (j = 0; j < R; j++) {
+      var q00 = (i * (R + 1) + j) * 3, q10 = q00 + 3, q01 = ((i + 1) * (R + 1) + j) * 3;
+      ax = grid[q10] - grid[q00]; ay = grid[q10 + 1] - grid[q00 + 1]; az = grid[q10 + 2] - grid[q00 + 2];
+      bx = grid[q01] - grid[q00]; by = grid[q01 + 1] - grid[q00 + 1]; bz = grid[q01 + 2] - grid[q00 + 2];
+      cx = ay * bz - az * by; cy = az * bx - ax * bz; cz = ax * by - ay * bx;
+      var area = Math.sqrt(cx * cx + cy * cy + cz * cz);
+      var cap = 0.25 * (caps[i * (R + 1) + j] + caps[i * (R + 1) + j + 1] +
+                        caps[(i + 1) * (R + 1) + j] + caps[(i + 1) * (R + 1) + j + 1]);
+      total += area * cap * cap;
+      cdf[i * R + j] = total;
+    }
+    if (total <= 0) return 0;
+
+    var planted = 0;
+    for (var b = 0; b < count; b++) {
+      /* binary search the area-weighted cell distribution */
+      var target = rng() * total, lo = 0, hi = cells - 1;
+      while (lo < hi) { var mid = (lo + hi) >> 1; if (cdf[mid] < target) lo = mid + 1; else hi = mid; }
+      i = (lo / R) | 0; j = lo - i * R;
+      var u = rng(), v = rng();
+
+      var i0 = i * (R + 1) + j, i1 = i0 + 1, i2 = i0 + R + 1, i3 = i2 + 1;
+      var w0 = (1 - u) * (1 - v), w1 = u * (1 - v), w2 = (1 - u) * v, w3 = u * v;
+      var cap2 = caps[i0] * w0 + caps[i1] * w1 + caps[i2] * w2 + caps[i3] * w3;
+      if (cap2 < 0.05) continue;
+
+      var p0 = i0 * 3, p1 = i1 * 3, p2 = i2 * 3, p3 = i3 * 3;
+      var px = grid[p0] * w0 + grid[p1] * w1 + grid[p2] * w2 + grid[p3] * w3;
+      var py = grid[p0 + 1] * w0 + grid[p1 + 1] * w1 + grid[p2 + 1] * w2 + grid[p3 + 1] * w3;
+      var pz = grid[p0 + 2] * w0 + grid[p1 + 2] * w1 + grid[p2 + 2] * w2 + grid[p3 + 2] * w3;
+      /* the grid normal is the CUSHION's normal, lumps and all — standing the
+         fur on the smooth cross-section normal instead throws away every bump
+         the displacement just built */
+      var nx = gn[p0] * w0 + gn[p1] * w1 + gn[p2] * w2 + gn[p3] * w3;
+      var ny = gn[p0 + 1] * w0 + gn[p1 + 1] * w1 + gn[p2 + 1] * w2 + gn[p3 + 1] * w3;
+      var nz = gn[p0 + 2] * w0 + gn[p1 + 2] * w1 + gn[p2 + 2] * w2 + gn[p3 + 2] * w3;
+      var nl = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1;
+
+      bag.off.push(px, py, pz);
+      bag.nrm.push(nx / nl, ny / nl, nz / nl);
+      /* One blade in sixteen is a long hair. Uniform-length fur cuts a hard
+         edge against the background; the strays are what make the silhouette
+         read as moss rather than a hedge trimmed with shears. */
+      var stray = rng() < 0.06 ? rand(1.4, 1.9) : 1.0;
+      bag.rnd.push(
+        rng() * TAU,                                       /* yaw          */
+        L.blade((i + v) / S) * (0.45 + 0.60 * cap2) * (0.58 + 0.50 * rng()) * stray,
+        (rng() - 0.5) * 1.15,                              /* lean         */
+        rng()                                              /* per-blade tone */
+      );
+      /* two scales of clumping: broad cushions, and the tufts inside them */
+      bag.aux.push(fbm2(px * 0.85 + 17.0, pz * 0.85 - py * 0.7) * 0.62 +
+                   fbm2(px * 5.60 - 3.3, pz * 5.60 + py * 2.1) * 0.38);
+      planted++;
+    }
+    return planted;
+  }
+
+  /* ---- offshoots: a short recursive fork, two generations deep. The root
+          is a root, not a tree, so these stay stubby — they exist to break
+          the tube's silhouette, not to build a canopy. ---- */
+  function growOffshoot(list, start, dir, len, r0, gen) {
+    var side = new THREE.Vector3().crossVectors(dir, UP);
+    if (side.lengthSq() < 1e-6) side.set(1, 0, 0);
+    side.normalize();
+    var up = new THREE.Vector3().crossVectors(side, dir).normalize();
+    var bow = gen === 0 ? rand(0.10, 0.46) : rand(-0.34, 0.42);
+    var kink = rand(-0.26, 0.26);
+
+    function node(f, u2, k) {
+      return start.clone()
+        .addScaledVector(dir, len * f)
+        .addScaledVector(up, len * u2)
+        .addScaledVector(side, len * k);
+    }
+    var pts = [start.clone(), node(0.32, bow * 0.30, kink * 0.70), node(0.68, bow * 0.85, kink * 0.24), node(1.0, bow, kink * 0.44)];
+    var curve = new THREE.CatmullRomCurve3(pts, false, 'centripetal', 0.5);
+    var r1 = r0 * 0.52;
+    var L = {
+      curve: curve, segs: gen === 0 ? 16 : 11, radial: gen === 0 ? 9 : 7,
+      /* draw the last few percent down to a point: tubes are open-ended, and
+         a twig that simply stops shows a flat hollow cap hanging in the air */
+      rw: function (t) { return (r0 + (r1 - r0) * t) * (1 - 0.86 * sstep(0.90, 1.0, t)); },
+      moss: function (t) { return (r0 + (r1 - r0) * t) * 0.95 * (1 - 0.55 * t); },
+      blade: function (t) { return (r0 + (r1 - r0) * t) * 0.30 * (1 - 0.55 * t) + 0.035; },
+      vScale: len * 7.0
+    };
+    L.fr = transportFrames(curve, L.segs);
+    L.len = curve.getLength();
+    list.push(L);
+
+    if (gen >= 1) return;
+    var kids = Math.round(rand(1, 2));
+    for (var i = 0; i < kids; i++) {
+      var tt = 0.34 + (i / Math.max(kids, 1)) * 0.5 + rand(-0.06, 0.06);
+      var pt = curve.getPointAt(Math.min(tt, 0.98));
+      var tan = curve.getTangentAt(Math.min(tt, 0.98)).normalize();
+      var ax = new THREE.Vector3().crossVectors(tan, UP);
+      if (ax.lengthSq() < 1e-6) ax.set(1, 0, 0);
+      ax.normalize().applyAxisAngle(tan, rng() * TAU);
+      var kdir = tan.clone().applyAxisAngle(ax, rand(0.45, 1.05)).addScaledVector(UP, 0.16).normalize();
+      growOffshoot(list, pt, kdir, len * rand(0.50, 0.74), (r0 + (r1 - r0) * tt) * rand(0.58, 0.78), gen + 1);
+    }
+  }
+
+  /* ================================================================== *
+   * the two roots, traced off the artwork's alpha channel
+   * ================================================================== */
+  var knot = function (t, a, b) {
+    return 1 + a * Math.sin(t * 23.0 + 1.3) + b * Math.sin(t * 57.0 + 0.4) + b * 0.5 * Math.sin(t * 103.0 + 2.2);
+  };
+
+  function buildNearRoot() {
+    var P = makeP(ARCH.aspect);
+    var limbs = [];
+
+    /* the long snaking root: enters left low, crests at 25%, drops into the
+       valley at 50%, then runs out through the right edge */
+    limbs.push(makeLimb(P, [
+      [-0.075, 0.845, -0.62],
+      [ 0.000, 0.790, -0.38],
+      [ 0.107, 0.695,  0.04],
+      [ 0.196, 0.588,  0.28],
+      [ 0.250, 0.566,  0.34],
+      [ 0.304, 0.603,  0.22],
+      [ 0.411, 0.733, -0.10],
+      [ 0.500, 0.779, -0.28],
+      [ 0.585, 0.742, -0.05],
+      [ 0.696, 0.661,  0.20],
+      [ 0.750, 0.672,  0.14],
+      [ 0.850, 0.640, -0.08],
+      [ 0.930, 0.626, -0.30],
+      [ 1.030, 0.634, -0.55],
+      [ 1.090, 0.638, -0.70]
+    ], {
+      segs: 300, radial: 26, vScale: 30,
+      /* half-band, local units, sampled every 10% of the run */
+      rt: [0.575, 0.590, 0.630, 0.680, 0.695, 0.615, 0.580, 0.480, 0.550, 0.550, 0.520], sink: 0.5
+    }));
+
+    /* the arch: lifts off the root at 55%, crowns at 73% with a deep moss
+       cushion, then plants its leg through the root and off the bottom */
+    /* The arch is not one bent tube. Measured column by column, the crown is
+       0.88 units wide and 1.90 tall with a 0.86 × 0.94 eye punched under it —
+       that is two steep legs fused at the top, not a hoop. Built as two limbs
+       that interpenetrate at the peak, which is also how the reference reads:
+       different bark and a different moss line on each side. */
+    var legRw   = table([0.30, 0.28, 0.26, 0.25, 0.24, 0.23, 0.22]);
+    var legMoss = table([0.24, 0.24, 0.23, 0.22, 0.21, 0.20, 0.19]);
+    limbs.push(makeLimb(P, [
+      [0.532, 0.860,  0.20],
+      [0.572, 0.700,  0.28],
+      [0.612, 0.540,  0.34],
+      [0.652, 0.390,  0.33],
+      [0.690, 0.263,  0.26],
+      [0.722, 0.180,  0.15],
+      [0.752, 0.163,  0.02]
+    ], {
+      segs: 130, radial: 20, vScale: 22,
+      rw:   function (t) { return legRw(t) * knot(t, 0.05, 0.022); },
+      moss: legMoss
+    }));
+
+    var legR   = table([0.23, 0.25, 0.27, 0.30, 0.33, 0.36, 0.40]);
+    var legRm  = table([0.19, 0.20, 0.21, 0.22, 0.24, 0.25, 0.26]);
+    limbs.push(makeLimb(P, [
+      [0.706, 0.176, -0.02],
+      [0.740, 0.158,  0.02],
+      [0.772, 0.245, -0.08],
+      [0.797, 0.400, -0.18],
+      [0.816, 0.570, -0.22],
+      [0.836, 0.760, -0.18],
+      [0.858, 0.950, -0.08],
+      [0.888, 1.180,  0.04]
+    ], {
+      segs: 150, radial: 20, vScale: 22,
+      rw:   function (t) { return legR(t) * knot(t, 0.05, 0.022); },
+      moss: legRm
+    }));
+
+    return limbs;
+  }
+
+  function buildFarRoot() {
+    var P = makeP(FAR.aspect);
+    return [makeLimb(P, [
+      [-0.060, 0.880, -0.35],
+      [ 0.100, 0.762, -0.05],
+      [ 0.210, 0.698,  0.22],
+      [ 0.300, 0.570,  0.30],
+      [ 0.410, 0.467,  0.18],
+      [ 0.500, 0.500, -0.05],
+      [ 0.600, 0.622, -0.22],
+      [ 0.720, 0.748, -0.26],
+      [ 0.800, 0.788, -0.08],
+      [ 0.900, 0.660,  0.14],
+      [ 0.990, 0.454,  0.28]
+    ], {
+      segs: 220, radial: 20, vScale: 26,
+      rt: [0.760, 0.900, 0.900, 0.960, 0.925, 0.950, 1.020, 1.020, 0.990, 1.100, 1.300], sink: 0.5
+    })];
+  }
+
+  /* ================================================================== *
+   * shaders
+   * ================================================================== */
+  var LIGHT_GLSL = [
+    'uniform vec3 uKeyDir, uKeyCol, uFillDir, uFillCol, uAmbCol, uHazeCol;',
+    'uniform float uHaze, uFog, uMaskOn, uHazeLift;',
+    'uniform vec4 uMask;',
+    'vec3 litSurface(vec3 N, vec3 albedo, float ao){',
+    '  float k = max(dot(N, uKeyDir), 0.0);',
+    '  float f = max(dot(N, uFillDir), 0.0);',
+    '  float sky = 0.5 + 0.5 * N.y;',
+    '  return albedo * (uKeyCol * (0.09 + 1.05 * k) + uFillCol * (0.04 + 0.34 * f) + uAmbCol * (0.35 + 0.65 * sky)) * ao;',
+    '}',
+    /* Aerial perspective: the reference reads noticeably paler and less
+       saturated at the crown than down in the light pool, so lift toward the
+       lit-air tone as the form climbs.
+       Weighted by the surface's own luminance, because a flat mix puts a
+       floor under every shadow — that one change is the difference between
+       moss with 9-to-67 of tonal range and moss with 22-to-37. Distant
+       geometry gets uHazeLift near 1 and does lift its darks, which is what
+       air actually does at that range. */
+    'vec3 aerial(vec3 c, float h){',
+    '  float amt = clamp(uFog + uHaze * smoothstep(0.05, 0.95, h), 0.0, 1.0);',
+    '  float gain = smoothstep(0.003, 0.075, dot(c, vec3(0.30, 0.59, 0.11)));',
+    '  return mix(c, uHazeCol, amt * mix(uHazeLift, 1.0, gain));',
+    '}',
+    /* ── survey pulse ────────────────────────────────────────────────
+       A wavefront expands from one point on the left of the frame and the
+       root only exists behind it, so the branch is drawn in as the pulse
+       passes over it. `lag` holds the solid a beat behind the wireframe,
+       which is what makes the mesh read as a scan rather than as a wipe. The
+       front is wobbled by a couple of long sines so it never reads as a
+       clean circle sweeping the screen. */
+    'uniform vec3 uScanO;',
+    'uniform float uScanR, uScanOn;',
+    'bool unscanned(vec3 w, float lag){',
+    '  if (uScanOn < 0.5) return false;',
+    '  float wob = sin(w.y * 0.011 + w.x * 0.007) * 36.0 + sin(w.z * 0.021 + w.y * 0.013) * 17.0;',
+    '  return distance(w, uScanO) > uScanR - lag + wob;',
+    '}',
+    /* the far ridge has to dissolve before it reaches the cards, and into the
+       floor light below it — the same two masks the artwork build carried */
+    'float maskAt(vec3 lp, float boxH){',
+    '  if (uMaskOn < 0.5) return 1.0;',
+    '  float e = 1.0 - smoothstep(uMask.x, uMask.y, lp.x);',
+    '  float l = smoothstep(uMask.z, uMask.w, lp.y / boxH + 0.5);',
+    '  return clamp(e * l, 0.0, 1.0);',
+    '}'
+  ].join('\n');
+
+  var NOISE_GLSL = [
+    'vec2 hash22(vec2 p){',
+    '  p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));',
+    '  return -1.0 + 2.0 * fract(sin(p) * 43758.5453123);',
+    '}',
+    /* gradient noise, not value noise: value noise puts its extrema on the
+       lattice, which on a tube shows up as blobs in rows */
+    'float gnoise(vec2 p){',
+    '  vec2 i = floor(p), f = fract(p);',
+    '  vec2 u = f * f * (3.0 - 2.0 * f);',
+    '  return mix(mix(dot(hash22(i + vec2(0,0)), f - vec2(0,0)),',
+    '                 dot(hash22(i + vec2(1,0)), f - vec2(1,0)), u.x),',
+    '             mix(dot(hash22(i + vec2(0,1)), f - vec2(0,1)),',
+    '                 dot(hash22(i + vec2(1,1)), f - vec2(1,1)), u.x), u.y);',
+    '}',
+    'const mat2 ROT = mat2(0.80, 0.60, -0.60, 0.80);',
+    'float gfbm(vec2 p){ float a = 0.5, s = 0.0; for (int i = 0; i < 5; i++){ s += a * gnoise(p); p = ROT * p * 2.03; a *= 0.5; } return s; }',
+    'float ridged(vec2 p){ float a = 0.5, s = 0.0; for (int i = 0; i < 4; i++){ s += a * (1.0 - abs(gnoise(p) * 2.0)); p = ROT * p * 2.11; a *= 0.5; } return s; }'
+  ].join('\n');
+
+  var WIND_GLSL = [
+    'uniform float uTime;',
+    'uniform float uWind;',
+    'vec3 windOffset(vec3 p){',
+    '  float ph = p.x * 0.42 + p.y * 0.30 + p.z * 0.70;',
+    '  float a = 0.030 * uWind;',
+    '  return vec3((sin(uTime * 0.58 + ph) + 0.45 * sin(uTime * 1.37 + ph * 2.3)) * a,',
+    '              sin(uTime * 0.79 + ph * 1.7) * a * 0.42,',
+    '              sin(uTime * 0.51 + ph * 0.9) * a * 0.55);',
+    '}'
+  ].join('\n');
+
+  /* ---- bark + moss cushion ---- */
+  function barkMaterial(cfg) {
+    return new THREE.ShaderMaterial({
+      uniforms: cfg.uniforms,
+      extensions: { derivatives: true },
+      vertexShader: WIND_GLSL + [
+        'attribute vec3 inf;',
+        'varying vec3 vN; varying vec3 vW; varying vec3 vInf; varying float vH; varying vec3 vL;',
+        'uniform float uBoxH;',
+        'void main(){',
+        '  vInf = inf;',
+        '  vN = normalize(normal);',
+        '  vec3 p = position + windOffset(position) * (0.35 + 0.65 * inf.z);',
+        '  vL = p;',
+        '  vH = clamp(p.y / uBoxH + 0.5, 0.0, 1.0);',
+        '  vec4 wp = modelMatrix * vec4(p, 1.0);',
+        '  vW = wp.xyz;',
+        '  gl_Position = projectionMatrix * viewMatrix * wp;',
+        '}'
+      ].join('\n'),
+      fragmentShader: NOISE_GLSL + LIGHT_GLSL + [
+        'precision highp float;',
+        'uniform float uAlpha; uniform float uBoxH;',
+        'varying vec3 vN; varying vec3 vW; varying vec3 vInf; varying float vH; varying vec3 vL;',
+
+        /* Bark grain is strongly anisotropic — features run ten times longer
+           along the limb than around it, so squash the domain in v first. */
+        'vec2 barkDomain(vec2 uv){ return vec2(uv.x * 7.0, uv.y * 0.62); }',
+        'float barkHeight(vec2 uv){',
+        '  vec2 q = barkDomain(uv);',
+        '  vec2 w = vec2(gfbm(q * 0.5), gfbm(q * 0.5 + 9.1));',
+        '  vec2 p = q + w * 0.60;',                        /* meander the fissures */
+        '  float ridge = ridged(p);',
+        '  float plate = smoothstep(-0.25, 0.45, gfbm(q * 0.34));',
+        '  float crack = smoothstep(0.30, 0.86, ridged(p * 1.9 + 4.0));',
+        '  float fine  = gfbm(p * 5.5) * 0.5 + 0.5;',
+        '  return (ridge - 0.5) * 1.85 * mix(0.35, 1.0, plate) - crack * 0.42 + fine * 0.20;',
+        '}',
+        /* bump-map an unparametrised surface from screen-space derivatives */
+        'vec3 bumped(vec3 N, vec3 p, float h, float k){',
+        '  vec3 dpx = dFdx(p), dpy = dFdy(p);',
+        '  float dhx = dFdx(h) * k, dhy = dFdy(h) * k;',
+        '  vec3 r1 = cross(dpy, N), r2 = cross(N, dpx);',
+        '  float det = dot(dpx, r1);',
+        '  vec3 grad = sign(det) * (dhx * r1 + dhy * r2);',
+        '  return normalize(abs(det) * N - grad);',
+        '}',
+
+        'void main(){',
+        '  if (unscanned(vW, 520.0)) discard;',
+        '  vec2 uv = vInf.xy;',
+        '  float cap = vInf.z;',
+        '  float m = smoothstep(0.05, 0.42, cap);',
+        '  vec3 N = normalize(vN);',
+
+        '  float h = barkHeight(uv);',
+        '  N = bumped(N, vW, h, mix(0.26, 0.06, m));',
+
+        '  vec2 q = barkDomain(uv);',
+        '  float grain  = gfbm(q * 1.25) * 0.5 + 0.5;',
+        '  float mottle = gfbm(q * 0.28 + 21.0) * 0.5 + 0.5;',
+        '  float crack  = smoothstep(0.30, 0.86, ridged(q * 1.9 + 4.0));',
+
+        /* Old rain-forest wood: silvered grey where the light rakes it,
+           near-black in the splits, with a slow drift into damp umber. */
+        '  vec3 silver = mix(vec3(0.020, 0.019, 0.018), vec3(0.290, 0.283, 0.264), grain);',
+        '  vec3 umber  = mix(vec3(0.024, 0.019, 0.016), vec3(0.175, 0.140, 0.110), grain);',
+        '  vec3 wood   = mix(silver, umber, mottle * 0.78);',
+        '  wood *= 1.0 - 0.70 * crack;',
+
+        /* the cushion: two greens, mottled, darkest where it packs deepest */
+        '  float mo = gfbm(vec2(vW.x * 2.6, vW.z * 2.6 + vW.y * 1.9)) * 0.5 + 0.5;',
+        '  vec3 moss = mix(vec3(0.0204, 0.0311, 0.0050), vec3(0.0914, 0.1392, 0.0227), mo);',
+        '  moss *= 0.80 + 0.42 * cap;',
+
+        '  vec3 col = mix(wood, moss, m);',
+        /* a pale lichen crust where the wood shows and faces up */
+        '  float lich = smoothstep(0.56, 0.84, gfbm(q * 0.62 + 31.0) * 0.5 + 0.5);',
+        '  lich *= (1.0 - m) * smoothstep(-0.10, 0.70, N.y) * smoothstep(0.15, 0.50, h);',
+        '  col = mix(col, vec3(0.162, 0.176, 0.132), lich * 0.78);',
+
+        /* Contact shadow along the moss line. The cushion overhangs the bark
+           it sits on, and without this the two materials meet on a clean
+           edge that reads as a paint mask rather than as one thing growing
+           on another. */
+        '  float contact = smoothstep(0.0, 0.16, cap) * (1.0 - smoothstep(0.16, 0.60, cap));',
+        '  col *= 1.0 - 0.48 * contact;',
+        '  float ao = mix(0.30, 1.02, smoothstep(-0.40, 0.62, h)) * mix(1.0, 0.86, m);',
+        '  vec3 lit = litSurface(N, col, ao);',
+
+        '  vec3 V = normalize(cameraPosition - vW);',
+        '  lit += col * uAmbCol * pow(1.0 - max(dot(N, V), 0.0), 4.0) * 0.85;',
+        '  float spec = pow(max(dot(reflect(-uKeyDir, N), V), 0.0), 20.0);',
+        '  lit += uKeyCol * spec * 0.045 * (1.0 - m) * ao;',
+
+        '  float a = uAlpha * maskAt(vL, uBoxH);',
+        '  if (a < 0.004) discard;',
+        '  gl_FragColor = vec4(aerial(lit, vH), a);',
+        '  #include <tonemapping_fragment>',
+        '  #include <encodings_fragment>',
+        '}'
+      ].join('\n'),
+      transparent: cfg.transparent === true,
+      depthWrite: cfg.depthWrite !== false,
+      side: THREE.DoubleSide
+    });
+  }
+
+  /* ---- the fur ---- */
+  function grassMaterial(cfg) {
+    return new THREE.ShaderMaterial({
+      uniforms: cfg.uniforms,
+      side: THREE.DoubleSide,
+      transparent: cfg.transparent === true,
+      depthWrite: cfg.depthWrite !== false,
+      vertexShader: WIND_GLSL + [
+        'attribute vec3 offset;',
+        'attribute vec3 nrm;',
+        'attribute vec4 rnd;',
+        'attribute float aux;',
+        'uniform vec3 uMouse;',
+        'uniform float uMouseR;',
+        'uniform float uBoxH;',
+        'varying float vT; varying float vShade; varying float vDark;',
+        'varying float vTone; varying float vH; varying vec3 vN; varying vec3 vW; varying vec3 vL;',
+
+        'void main(){',
+        '  float t = uv.y; vT = t;',
+        '  float len = rnd.y;',
+
+        /* a local basis around the surface normal, rolled by the blade's yaw */
+        '  vec3 ref = abs(nrm.y) < 0.95 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);',
+        '  vec3 T0 = normalize(cross(nrm, ref));',
+        '  vec3 B0 = cross(nrm, T0);',
+        '  float ca = cos(rnd.x), sa = sin(rnd.x);',
+        '  vec3 widthDir = T0 * ca + B0 * sa;',
+        '  vec3 leanDir  = T0 * -sa + B0 * ca;',
+
+        '  float bend = t * t;',
+        '  float gust = (sin(uTime * 1.75 + offset.x * 1.6 + rnd.x) * 0.12',
+        '             +  sin(uTime * 0.85 + offset.x * 0.55) * 0.07) * uWind;',
+
+        '  vec3 world = offset + windOffset(offset)',
+        '             + nrm * (t * len)',
+        '             + widthDir * (position.x * len * 0.62)',
+        '             + leanDir * (rnd.z * 0.42 * len) * bend',
+        '             + (T0 * gust + B0 * gust * 0.6) * bend * len * 1.6;',
+
+        /* the cursor parts the fur: push tangentially, press down along n */
+        '  vec3 toB = offset - uMouse;',
+        '  float infl = smoothstep(uMouseR, 0.0, length(toB * vec3(1.0, 1.0, 0.30)));',
+        '  infl *= infl;',
+        '  vec3 push = toB - nrm * dot(toB, nrm);',
+        '  float pl = length(push);',
+        '  push = pl > 0.0001 ? push / pl : T0;',
+        /* Scaled by the blade's own length, not by a constant: a fixed push
+           is several times the height of a moss blade and combs the pile
+           into streaks instead of parting it. */
+        '  world += push * infl * bend * len * 2.2;',
+        '  world -= nrm * infl * bend * len * 1.0;',
+        '  vDark = infl;',
+
+        '  vShade = (0.66 + 0.34 * rnd.w) * (0.82 + 0.18 * sin(rnd.x * 2.0));',
+        '  vShade *= 0.46 + 0.54 * clamp(nrm.y * 0.5 + 0.62, 0.0, 1.0);',
+        '  vTone = smoothstep(0.16, 0.86, aux);',
+        '  vN = normalize(mix(nrm, normalize(leanDir * rnd.z + nrm), 0.35));',
+        '  vL = world;',
+        '  vH = clamp(world.y / uBoxH + 0.5, 0.0, 1.0);',
+        '  vec4 wp = modelMatrix * vec4(world, 1.0);',
+        '  vW = wp.xyz;',
+        '  gl_Position = projectionMatrix * viewMatrix * wp;',
+        '}'
+      ].join('\n'),
+      fragmentShader: LIGHT_GLSL + [
+        'precision highp float;',
+        'uniform float uAlpha; uniform float uBoxH;',
+        'varying float vT; varying float vShade; varying float vDark;',
+        'varying float vTone; varying float vH; varying vec3 vN; varying vec3 vW; varying vec3 vL;',
+        'void main(){',
+        '  if (unscanned(vW, 520.0)) discard;',
+        /* Linear-space colours; the output pass handles the sRGB transfer.
+           Channel ratios are solved backwards from the reference screen: its
+           moss sits at hue 77°, saturation 56%, value 23%, which is a good
+           deal more yellow and a good deal deeper than the green a shader
+           reaches for on its own. */
+        '  vec3 deep = vec3(0.0126, 0.0192, 0.0031);',
+        '  vec3 mid  = vec3(0.0488, 0.0744, 0.0121);',
+        '  vec3 tip  = vec3(0.1222, 0.1860, 0.0304);',
+        '  vec3 tipHi = vec3(0.2600, 0.3900, 0.0640);',
+        '  vec3 col = mix(deep, mid, smoothstep(0.0, 0.62, vT));',
+        '  col = mix(col, tip, smoothstep(0.38, 1.0, vT) * (0.35 + 0.65 * vTone));',
+        /* slow drifts of colour so the pile never reads as flat velvet */
+        '  col *= 0.62 + 0.72 * vTone;',
+        '  col *= vShade;',
+        '  col *= 1.0 - vDark * 0.55;',
+        '  vec3 N = normalize(vN);',
+        /* self-shadowing inside the pile: the deeper down a blade you look,
+           the less sky reaches it. Without this the fur reads as astroturf
+           however good the colours are. */
+        '  vec3 lit = litSurface(N, col, mix(0.40, 1.10, smoothstep(0.0, 0.88, vT)) * (0.70 + 0.52 * vTone));',
+        /* The sunlit crown is added AFTER the pile shading. Fold it into the
+           albedo instead and it comes back out at the same value as
+           everything else — which is exactly the flat 22-to-37 range the
+           render was stuck at. Only the last quarter of a blade is in the
+           open, and it is the whole top decile of the reference's histogram. */
+        '  lit += tipHi * smoothstep(0.68, 1.0, vT) * vTone',
+        '       * (0.30 + 0.70 * max(dot(N, uKeyDir), 0.0)) * 0.95;',
+        /* low sun burning through the blade */
+        '  vec3 V = normalize(cameraPosition - vW);',
+        '  lit += col * uKeyCol * pow(max(dot(V, -uKeyDir), 0.0), 2.2) * 0.55 * vT;',
+        '  float a = uAlpha * maskAt(vL, uBoxH);',
+        '  if (a < 0.004) discard;',
+        '  gl_FragColor = vec4(aerial(lit, vH), a);',
+        '  #include <tonemapping_fragment>',
+        '  #include <encodings_fragment>',
+        '}'
+      ].join('\n')
+    });
+  }
+
+  /* ---- ferns: the reference plants them at the ends and in the crooks ---- */
+  function fernGeometry() {
+    var pos = [], uv = [], idx = [];
+    var PAIRS = 13, SEG = 3;
+    function rachis(s, out) { out.set(0, s * (1.06 - 0.44 * s * s), 0.36 * s * s); return out; }
+    var a = new THREE.Vector3(), b = new THREE.Vector3();
+
+    for (var i = 1; i <= PAIRS; i++) {
+      var s = i / (PAIRS + 0.6);
+      rachis(s, a);
+      var pl = 0.36 * Math.pow(Math.sin(Math.PI * Math.pow(s, 0.62)), 0.75) * (1 - 0.18 * s);
+      for (var side = -1; side <= 1; side += 2) {
+        var base = pos.length / 3;
+        for (var k = 0; k <= SEG; k++) {
+          var f = k / SEG;
+          /* pinnae sweep forward and droop as they run out */
+          var w = 0.088 * pl * Math.pow(Math.sin(Math.PI * Math.min(f * 1.25, 1)), 0.7) * (1 - 0.35 * f);
+          rachis(s + f * pl * 0.34, b);
+          var x = side * f * pl;
+          var y = b.y - 0.22 * pl * f * f;
+          var z = b.z + 0.06 * pl * f;
+          pos.push(x, y - w, z, x, y + w, z);
+          uv.push(f, 0, f, 1);
+        }
+        for (var k2 = 0; k2 < SEG; k2++) {
+          var q = base + k2 * 2;
+          idx.push(q, q + 1, q + 2, q + 1, q + 3, q + 2);
+        }
+      }
+    }
+    /* the stipe */
+    var st = pos.length / 3;
+    for (var j = 0; j <= 8; j++) {
+      var s2 = j / 8;
+      rachis(s2, a);
+      pos.push(-0.011 * (1 - 0.6 * s2), a.y, a.z, 0.011 * (1 - 0.6 * s2), a.y, a.z);
+      uv.push(0.5, 0, 0.5, 1);
+    }
+    for (var j2 = 0; j2 < 8; j2++) {
+      var q2 = st + j2 * 2;
+      idx.push(q2, q2 + 1, q2 + 2, q2 + 1, q2 + 3, q2 + 2);
+    }
+
+    var g = new THREE.InstancedBufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    g.setIndex(idx);
+    var tmp = new THREE.BufferGeometry();
+    tmp.setAttribute('position', g.getAttribute('position'));
+    tmp.setIndex(idx); tmp.computeVertexNormals();
+    g.setAttribute('normal', tmp.getAttribute('normal'));
+    return g;
+  }
+
+  function fernMaterial(cfg) {
+    return new THREE.ShaderMaterial({
+      uniforms: cfg.uniforms,
+      side: THREE.DoubleSide,
+      vertexShader: WIND_GLSL + [
+        'attribute vec3 iPos;',
+        'attribute vec4 iQuat;',
+        'attribute vec2 iRnd;',
+        'uniform float uBoxH;',
+        'varying vec2 vUv; varying vec3 vN; varying vec3 vW; varying float vH; varying float vTint; varying vec3 vL;',
+        'vec3 qrot(vec4 q, vec3 v){ return v + 2.0 * cross(q.xyz, cross(q.xyz, v) + q.w * v); }',
+        'void main(){',
+        '  vUv = uv; vTint = iRnd.y;',
+        '  vec3 local = qrot(iQuat, position * iRnd.x);',
+        '  vN = normalize(qrot(iQuat, normal));',
+        /* the frond bows from its stipe, so the sway has to climb with the
+           vertex\'s own height up the rachis, not act on the whole instance */
+        '  float sway = sin(uTime * 1.15 + iRnd.y * 6.28) * 0.055 * uWind;',
+        '  local += vec3(sway, 0.0, sway * 0.45) * clamp(position.y, 0.0, 1.2) * iRnd.x;',
+        '  vec3 p = iPos + windOffset(iPos) + local;',
+        '  vL = p;',
+        '  vH = clamp(p.y / uBoxH + 0.5, 0.0, 1.0);',
+        '  vec4 wp = modelMatrix * vec4(p, 1.0);',
+        '  vW = wp.xyz;',
+        '  gl_Position = projectionMatrix * viewMatrix * wp;',
+        '}'
+      ].join('\n'),
+      fragmentShader: LIGHT_GLSL + [
+        'precision highp float;',
+        'uniform float uAlpha; uniform float uBoxH;',
+        'varying vec2 vUv; varying vec3 vN; varying vec3 vW; varying float vH; varying float vTint; varying vec3 vL;',
+        'void main(){',
+        '  if (unscanned(vW, 520.0)) discard;',
+        '  vec3 N = normalize(vN);',
+        '  if (!gl_FrontFacing) N = -N;',
+        '  vec3 V = normalize(cameraPosition - vW);',
+        '  vec3 base = mix(vec3(0.0270, 0.0450, 0.0099), vec3(0.0690, 0.1150, 0.0253), vTint);',
+        '  base *= 0.80 + 0.30 * smoothstep(0.0, 0.8, vUv.x);',
+        '  vec3 lit = litSurface(N, base, 0.9);',
+        /* fronds are thin — light comes through them */
+        '  lit += base * uKeyCol * pow(max(dot(V, -uKeyDir), 0.0), 2.0) * 1.05;',
+        '  float a = uAlpha * maskAt(vL, uBoxH);',
+        '  if (a < 0.004) discard;',
+        '  gl_FragColor = vec4(aerial(lit, vH), a);',
+        '  #include <tonemapping_fragment>',
+        '  #include <encodings_fragment>',
+        '}'
+      ].join('\n')
+    });
+  }
+
+  /* ---- the survey mesh ----
+          Ring-and-spar lines lifted straight off the shell grid: every Nth
+          cross-section, plus a handful of lines running the length of each
+          limb. Drawn with depthTest off so the whole cage shows through
+          itself, which is what makes it read as a scan of the branch rather
+          than as an outline drawn on it. Disposed once the pulse is past. */
+  var wireMeshes = [];
+
+  function buildWire(L, out) {
+    if (!L.grid) return;
+    var S = L.S, R = L.R, g = L.grid, i, j, a, b;
+    var ringEvery = Math.max(2, Math.round(S / 52));
+    var longEvery = Math.max(2, Math.round(R / 9));
+    for (i = 0; i <= S; i += ringEvery) {
+      for (j = 0; j < R; j++) {
+        a = (i * (R + 1) + j) * 3; b = a + 3;
+        out.push(g[a], g[a + 1], g[a + 2], g[b], g[b + 1], g[b + 2]);
+      }
+    }
+    for (j = 0; j < R; j += longEvery) {
+      for (i = 0; i < S; i++) {
+        a = (i * (R + 1) + j) * 3; b = ((i + 1) * (R + 1) + j) * 3;
+        out.push(g[a], g[a + 1], g[a + 2], g[b], g[b + 1], g[b + 2]);
+      }
+    }
+  }
+
+  function wireMaterial() {
+    return new THREE.ShaderMaterial({
+      uniforms: { uScanO: uScanO, uScanR: uScanR, uWire: uWire, uTime: uTime },
+      transparent: true, depthWrite: false, depthTest: false,
+      blending: THREE.AdditiveBlending,
+      vertexShader: [
+        'varying vec3 vW;',
+        'void main(){',
+        '  vec4 wp = modelMatrix * vec4(position, 1.0);',
+        '  vW = wp.xyz;',
+        '  gl_Position = projectionMatrix * viewMatrix * wp;',
+        '}'
+      ].join('\n'),
+      fragmentShader: [
+        'precision highp float;',
+        'uniform vec3 uScanO;',
+        'uniform float uScanR, uWire, uTime;',
+        'varying vec3 vW;',
+        'void main(){',
+        '  float d = distance(vW, uScanO);',
+        /* a bright ring exactly on the wavefront, over a dim cage that
+           lingers behind it and then fades out with uWire */
+        '  float rim   = exp(-pow((d - uScanR) / 135.0, 2.0));',
+        '  float trail = smoothstep(uScanR, uScanR - 950.0, d);',
+        '  float a = (rim * 1.60 + trail * 0.34) * uWire;',
+        '  if (a < 0.004) discard;',
+        /* survey ticks running out along the beam */
+        '  a *= 0.66 + 0.34 * sin(d * 0.045 - uTime * 7.0);',
+        '  vec3 col = mix(vec3(0.30, 0.72, 0.46), vec3(0.86, 1.00, 0.90), rim);',
+        '  gl_FragColor = vec4(col, clamp(a, 0.0, 1.0));',
+        '}'
+      ].join('\n')
+    });
+  }
+
+  /* ---- the tiny white flowers scattered through the moss ---- */
+  var flowerTex = null;
+  function makeFlowerTexture() {
+    if (flowerTex) return flowerTex;
+    /* A spray, not a bloom. One five-petal flower at this size renders as a
+       little asterisk; the reference's whites are clusters of florets, so
+       the texture carries the whole cluster and each instance is one spray. */
+    var c = document.createElement('canvas'); c.width = c.height = 64;
+    var g = c.getContext('2d');
+    var FLORETS = [
+      [32, 22, 7.4], [22, 33, 6.0], [42, 33, 6.2], [27, 44, 5.0],
+      [39, 45, 5.4], [32, 33, 4.4], [46, 22, 4.2], [18, 22, 4.0]
+    ];
+    for (var f = 0; f < FLORETS.length; f++) {
+      var cx = FLORETS[f][0], cy = FLORETS[f][1], r = FLORETS[f][2];
+      g.save(); g.translate(cx, cy); g.rotate(f * 1.31);
+      for (var p = 0; p < 5; p++) {
+        g.save(); g.rotate((p / 5) * TAU);
+        g.fillStyle = 'rgba(255,255,251,' + (0.72 + 0.28 * (r / 7.4)) + ')';
+        g.beginPath(); g.ellipse(0, -r * 0.55, r * 0.34, r * 0.55, 0, 0, TAU); g.fill();
+        g.restore();
+      }
+      g.fillStyle = '#f0e7bd';
+      g.beginPath(); g.arc(0, 0, r * 0.24, 0, TAU); g.fill();
+      g.restore();
+    }
+    flowerTex = new THREE.CanvasTexture(c);
+    if ('sRGBEncoding' in THREE) flowerTex.encoding = THREE.sRGBEncoding;
+    flowerTex.minFilter = THREE.LinearMipmapLinearFilter;
+    flowerTex.generateMipmaps = true;
+    return flowerTex;
+  }
+
+  function flowerMaterial(cfg) {
+    return new THREE.ShaderMaterial({
+      uniforms: cfg.uniforms,
+      transparent: true, depthWrite: false, side: THREE.DoubleSide,
+      vertexShader: WIND_GLSL + [
+        'attribute vec3 iPos;',
+        'attribute vec2 iRnd;',
+        'uniform float uBoxH;',
+        'varying vec2 vUv; varying float vH; varying vec3 vL; varying vec3 vW;',
+        'void main(){',
+        '  vUv = uv;',
+        '  vec3 p = iPos + windOffset(iPos) * 1.6;',
+        '  p += vec3(sin(uTime * 1.5 + iRnd.y * 6.28), 0.0, 0.0) * 0.020 * uWind;',
+        '  vL = p;',
+        '  vH = clamp(p.y / uBoxH + 0.5, 0.0, 1.0);',
+        /* Billboard: offset the quad in VIEW space so it always faces the lens.
+           The offset has to be converted out of the group\'s local scale first —
+           the modelView transform has already been applied to the anchor. */
+        '  vW = (modelMatrix * vec4(p, 1.0)).xyz;',
+        '  vec4 mv = modelViewMatrix * vec4(p, 1.0);',
+        '  float ws = length(modelMatrix[0].xyz);',
+        '  mv.xy += position.xy * iRnd.x * ws;',
+        '  gl_Position = projectionMatrix * mv;',
+        '}'
+      ].join('\n'),
+      fragmentShader: LIGHT_GLSL + [
+        'precision highp float;',
+        'uniform sampler2D uMap;',
+        'uniform float uAlpha; uniform float uBoxH;',
+        'varying vec2 vUv; varying float vH; varying vec3 vL; varying vec3 vW;',
+        'void main(){',
+        '  if (unscanned(vW, 520.0)) discard;',
+        '  vec4 t = texture2D(uMap, vUv);',
+        '  if (t.a < 0.14) discard;',
+        '  vec3 col = t.rgb * t.rgb * (uKeyCol * 0.62 + uAmbCol * 0.9);',
+        '  gl_FragColor = vec4(aerial(col, vH), t.a * uAlpha * maskAt(vL, uBoxH));',
+        '  #include <tonemapping_fragment>',
+        '  #include <encodings_fragment>',
+        '}'
+      ].join('\n')
+    });
+  }
+
+  /* ================================================================== *
+   * assembly
+   * ================================================================== */
+  var uTime  = { value: 0 };
+  var uWind  = { value: REDUCED ? 0.0 : 1.0 };
+  var uMouseNear = { value: new THREE.Vector3(9999, 9999, 9999) };
+  var uMouseFar  = { value: new THREE.Vector3(9999, 9999, 9999) };
+  /* the survey pulse — shared by every material so one write moves them all */
+  var uScanO  = { value: new THREE.Vector3(-900, -260, 240) };
+  var uScanR  = { value: 0 };
+  var uScanOn = { value: 0 };
+  var uWire   = { value: 0 };
+
+  var KEY  = new THREE.Vector3(-0.30, 0.92, 0.28).normalize();
+  var FILL = new THREE.Vector3( 0.12, -0.86, 0.50).normalize();
+
+  function lightUniforms(extra) {
+    var u = {
+      uTime: uTime, uWind: uWind,
+      uKeyDir:  { value: KEY.clone() },
+      uKeyCol:  { value: new THREE.Color(1.14, 1.06, 0.88) },
+      uFillDir: { value: FILL.clone() },
+      /* the pale pool on the floor of the hero, bouncing back up */
+      uFillCol: { value: new THREE.Color(0.78, 0.78, 0.62) },
+      uAmbCol:  { value: new THREE.Color(0.086, 0.090, 0.080) },
+      /* Aerial perspective goes toward LIT air, not toward the background:
+         the far ridge in the reference is paler than the page behind it, and
+         so are the near crowns. Keep the amount small on the near root or the
+         moss greys out (its saturation is the first thing to go). */
+      uHazeCol: { value: new THREE.Color(0.176, 0.195, 0.145) },
+      uHaze:    { value: 0.14 },
+      uHazeLift:{ value: 0.20 },
+      uFog:     { value: 0.0 },
+      uAlpha:   { value: 1.0 },
+      uBoxH:    { value: BOXW / ARCH.aspect },
+      uMask:    { value: new THREE.Vector4(0, 1, 0, 1) },
+      uMaskOn:  { value: 0 },
+      uScanO:   uScanO,
+      uScanR:   uScanR,
+      uScanOn:  uScanOn,
+      uMouse:   { value: uMouseNear.value },
+      uMouseR:  { value: 1.5 }
+    };
+    for (var k in extra) if (extra.hasOwnProperty(k)) u[k] = extra[k];
+    return u;
+  }
+
+  /* the blade: four rungs pinched to a point, instanced a hundred thousand times */
+  function bladeGeometry() {
+    var SEGS = 3, verts = [], uvs = [], idx = [], i;
+    for (i = 0; i <= SEGS; i++) {
+      var t = i / SEGS, w = 0.5 * (1 - t * t);
+      verts.push(-w, t, 0, w, t, 0);
+      uvs.push(0, t, 1, t);
+    }
+    verts[verts.length - 6] = 0; verts[verts.length - 3] = 0;
+    for (i = 0; i < SEGS; i++) {
+      var a = i * 2, b = a + 1, c = a + 2, d = a + 3;
+      idx.push(a, b, c, b, d, c);
+    }
+    var g = new THREE.InstancedBufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    g.setIndex(idx);
+    return g;
+  }
+
+  /* one root: bark shell + fur + ferns + flowers, all under a single group */
+  function assembleRoot(limbs, opt) {
+    var group = new THREE.Group();
+    var uni = lightUniforms({
+      uBoxH:   { value: BOXW / opt.aspect },
+      uHaze:   { value: opt.haze },
+      uFog:    { value: opt.fog },
+      uHazeCol:{ value: new THREE.Color().fromArray(opt.hazeCol || [0.176, 0.195, 0.145]) },
+      uHazeLift:{ value: opt.hazeLift === undefined ? 0.20 : opt.hazeLift },
+      uAlpha:  { value: opt.alpha },
+      uMask:   { value: new THREE.Vector4(opt.mask ? opt.mask[0] : 0, opt.mask ? opt.mask[1] : 1,
+                                          opt.mask ? opt.mask[2] : 0, opt.mask ? opt.mask[3] : 1) },
+      uMaskOn: { value: opt.mask ? 1 : 0 },
+      uMouse:  { value: opt.mouse.value },
+      uMouseR: { value: opt.mouseR }
+    });
+    var soft = !!opt.mask || opt.alpha < 1;
+
+    /* ---- shell ---- */
+    var bag = { pos: [], nor: [], inf: [], idx: [] };
+    for (var i = 0; i < limbs.length; i++) tessellate(limbs[i], bag);
+    var geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(bag.pos, 3));
+    geo.setAttribute('normal', new THREE.Float32BufferAttribute(bag.nor, 3));
+    geo.setAttribute('inf', new THREE.Float32BufferAttribute(bag.inf, 3));
+    geo.setIndex(bag.idx);
+    var shell = new THREE.Mesh(geo, barkMaterial({
+      uniforms: uni, transparent: soft, depthWrite: true
+    }));
+    shell.frustumCulled = false;
+    shell.renderOrder = opt.order;
+    group.add(shell);
+
+    /* ---- fur ---- */
+    var fur = { off: [], nrm: [], rnd: [], aux: [] };
+    var total = 0;
+    for (i = 0; i < limbs.length; i++) total += limbs[i].len;
+    for (i = 0; i < limbs.length; i++) {
+      plantBlades(limbs[i], Math.round(opt.blades * limbs[i].len / total), fur);
+    }
+    var bg = bladeGeometry();
+    bg.setAttribute('offset', new THREE.InstancedBufferAttribute(new Float32Array(fur.off), 3));
+    bg.setAttribute('nrm',    new THREE.InstancedBufferAttribute(new Float32Array(fur.nrm), 3));
+    bg.setAttribute('rnd',    new THREE.InstancedBufferAttribute(new Float32Array(fur.rnd), 4));
+    bg.setAttribute('aux',    new THREE.InstancedBufferAttribute(new Float32Array(fur.aux), 1));
+    bg.instanceCount = fur.off.length / 3;
+    var grass = new THREE.Mesh(bg, grassMaterial({
+      uniforms: uni, transparent: soft, depthWrite: true
+    }));
+    grass.frustumCulled = false;
+    grass.renderOrder = opt.order + 0.1;
+    group.add(grass);
+
+    /* ---- ferns and flowers, seated on the same surface as the fur.
+            Main limbs only: a fern on a twig that stands off the root reads
+            as a frond hanging in mid-air. ---- */
+    var host = limbs.slice(0, opt.mainLimbs || limbs.length);
+    /* A frond keeps its outline as it fades, while the cushion behind it
+       fades to a smooth gradient — so a fern planted in the ridge's dissolve
+       zone reads as one hanging in mid-air. Plant nothing out there. */
+    var plantMaxX = opt.mask ? opt.mask[0] + 0.25 : 1e9;
+    var fP = [], fQ = [], fR = [], wP = [], wR = [];
+    var p = new THREE.Vector3(), n = new THREE.Vector3();
+    var q = new THREE.Quaternion(), face = new THREE.Vector3();
+    var guard, k;
+
+    for (k = 0, guard = 0; k < opt.ferns && guard < opt.ferns * 60; guard++) {
+      var Lf = host[Math.floor(rng() * host.length)];
+      var t = rng(), th = rng() * TAU;
+      if (limbSurface(Lf, t, th, p, n) < 0.55) continue;
+      if (p.x > plantMaxX) continue;
+      if (n.y < 0.25) continue;
+      face.copy(n).addScaledVector(UP, 0.18)
+        .addScaledVector(new THREE.Vector3(rand(-0.62, 0.62), rand(-0.20, 0.05), rand(0.15, 0.75)), 1).normalize();
+      q.setFromUnitVectors(UP, face);
+      q.multiply(new THREE.Quaternion().setFromAxisAngle(UP, rng() * TAU));
+      fP.push(p.x, p.y, p.z);
+      fQ.push(q.x, q.y, q.z, q.w);
+      fR.push(rand(opt.fernSize[0], opt.fernSize[1]), rng());
+      k++;
+    }
+
+    for (k = 0, guard = 0; k < opt.flowers && guard < opt.flowers * 60; guard++) {
+      var Lw = host[Math.floor(rng() * host.length)];
+      /* clumps, not a sprinkle: pick a seed then jitter around it */
+      var t0 = rng(), th0 = rng() * TAU;
+      for (var c2 = 0; c2 < 9 && k < opt.flowers; c2++) {
+        var tt = clamp01(t0 + rand(-0.008, 0.008));
+        var tth = th0 + rand(-0.24, 0.24);
+        if (limbSurface(Lw, tt, tth, p, n) < 0.45 || p.x > plantMaxX) continue;
+        p.addScaledVector(n, rand(0.02, 0.16));
+        wP.push(p.x, p.y, p.z);
+        wR.push(rand(opt.flowerSize[0], opt.flowerSize[1]), rng());
+        k++;
+      }
+    }
+
+    if (fP.length) {
+      var fg = fernGeometry();
+      fg.setAttribute('iPos',  new THREE.InstancedBufferAttribute(new Float32Array(fP), 3));
+      fg.setAttribute('iQuat', new THREE.InstancedBufferAttribute(new Float32Array(fQ), 4));
+      fg.setAttribute('iRnd',  new THREE.InstancedBufferAttribute(new Float32Array(fR), 2));
+      fg.instanceCount = fP.length / 3;
+      var fern = new THREE.Mesh(fg, fernMaterial({ uniforms: uni }));
+      fern.frustumCulled = false;
+      fern.renderOrder = opt.order + 0.2;
+      group.add(fern);
+    }
+
+    if (wP.length) {
+      var wg = new THREE.InstancedBufferGeometry();
+      wg.setAttribute('position', new THREE.Float32BufferAttribute([-0.5,-0.5,0, 0.5,-0.5,0, 0.5,0.5,0, -0.5,0.5,0], 3));
+      wg.setAttribute('uv', new THREE.Float32BufferAttribute([0,0, 1,0, 1,1, 0,1], 2));
+      wg.setIndex([0,1,2, 0,2,3]);
+      wg.setAttribute('iPos', new THREE.InstancedBufferAttribute(new Float32Array(wP), 3));
+      wg.setAttribute('iRnd', new THREE.InstancedBufferAttribute(new Float32Array(wR), 2));
+      wg.instanceCount = wP.length / 3;
+      var fm = flowerMaterial({ uniforms: uni });
+      fm.uniforms.uMap = { value: makeFlowerTexture() };
+      var blooms = new THREE.Mesh(wg, fm);
+      blooms.frustumCulled = false;
+      blooms.renderOrder = opt.order + 0.3;
+      group.add(blooms);
+    }
+
+    if (opt.wire) {
+      var wpos = [];
+      for (i = 0; i < limbs.length; i++) buildWire(limbs[i], wpos);
+      if (wpos.length) {
+        var wgeo = new THREE.BufferGeometry();
+        wgeo.setAttribute('position', new THREE.Float32BufferAttribute(wpos, 3));
+        var wmesh = new THREE.LineSegments(wgeo, wireMaterial());
+        wmesh.frustumCulled = false;
+        wmesh.renderOrder = 8;
+        group.add(wmesh);
+        wireMeshes.push(wmesh);
+      }
+    }
+
+    /* the shell grids were scratch for the fur — ~0.7 MB of typed array per
+       root that nothing reads again */
+    for (i = 0; i < limbs.length; i++) { limbs[i].grid = limbs[i].gnrm = limbs[i].gcaps = null; }
+
+    group.userData = { uni: uni, blades: bg.instanceCount };
+    return group;
+  }
+
+  /* ── soft radial sprite ────────────────────────────────────────────── */
+  function radialTexture(size, stops) {
+    var c = document.createElement('canvas'); c.width = c.height = size;
+    var g = c.getContext('2d');
+    var grad = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+    stops.forEach(function (s) { grad.addColorStop(s[0], s[1]); });
+    g.fillStyle = grad; g.fillRect(0, 0, size, size);
+    var t = new THREE.CanvasTexture(c);
+    t.minFilter = THREE.LinearFilter;
+    if ('sRGBEncoding' in THREE) t.encoding = THREE.sRGBEncoding;
+    return t;
+  }
+
+  /* ================================================================== *
+   * build
+   * ================================================================== */
+  function build() {
+    var narrow = NARROW.matches;
+    var small = narrow || (window.innerWidth * window.innerHeight) < 620000;
+    var BLADES_NEAR = small ? 70000 : 190000;
+    var BLADES_FAR  = small ? 20000 :  60000;
+
+    var q = /[?&]blades=(\d+)/.exec(location.search);
+    if (q) { BLADES_NEAR = +q[1]; BLADES_FAR = Math.round(+q[1] * 0.21); }
+
+    renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: !small });
+    renderer.setClearColor(0x000000, 0);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, small ? 1.6 : 2));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.30;
+    if ('sRGBEncoding' in THREE) renderer.outputEncoding = THREE.sRGBEncoding;
+
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(40, 1, 10, 8000);
+    camera.position.set(0, 0, DIST);
+
+    /* ---- near root ---- */
+    var nearLimbs = buildNearRoot();
+    var mainCount = nearLimbs.length;
+    /* a scatter of stubby offshoots, so the tubes never read as hoses */
+    var hp = new THREE.Vector3(), hn = new THREE.Vector3();
+    var extra = [];
+    for (var i = 0; i < 14; i++) {
+      var r = rng();
+      var src = nearLimbs[r < 0.62 ? 0 : (r < 0.82 ? 1 : 2)];
+      var t = rand(0.04, 0.96), th = rng() * TAU;
+      limbSurface(src, t, th, hp, hn);
+      if (hn.y < -0.35) continue;
+      limbFrame(src, t);
+      var dir = hn.clone().multiplyScalar(rand(0.5, 1.2))
+        .addScaledVector(_ft, rand(-0.6, 1.5))
+        .addScaledVector(UP, rand(-0.5, 0.55)).normalize();
+      hp.addScaledVector(hn, -src.rw(t) * 0.55);
+      growOffshoot(extra, hp.clone(), dir, rand(0.28, 0.72), src.rw(t) * rand(0.22, 0.40), 0);
+    }
+    nearLimbs = nearLimbs.concat(extra);
+
+    nearGroup = assembleRoot(nearLimbs, {
+      aspect: ARCH.aspect, haze: 0.15, fog: 0.0, alpha: 1.0, order: 2,
+      blades: BLADES_NEAR, ferns: small ? 26 : 46, flowers: small ? 120 : 260,
+      fernSize: [0.22, 0.50], flowerSize: [0.055, 0.118], mainLimbs: mainCount, wire: true,
+      mouse: uMouseNear, mouseR: 1.20
+    });
+    scene.add(nearGroup);
+    if (!small) bf = buildButterfly(nearGroup, nearLimbs, nearGroup.userData.uni);
+
+    /* ---- far ridge: same builder, pushed back and washed into the air.
+            It dissolves before it reaches the cards (local x 0.5 → 4.0) and
+            into the floor light below it (lower 0/42% of its box) — the same
+            two masks the artwork build carried in its own shader. ---- */
+    farGroup = assembleRoot(buildFarRoot(), {
+      aspect: FAR.aspect, haze: 0.16, fog: 0.26, alpha: 1.0, order: 0,
+      /* dimmer air than the near root's: at 0.46 of the pale tone the ridge
+         lost its silhouette entirely and read as a smudge on the background */
+      hazeCol: [0.150, 0.164, 0.120], hazeLift: 0.92,
+      blades: BLADES_FAR, ferns: small ? 8 : 16, flowers: small ? 40 : 90,
+      fernSize: [0.26, 0.56], flowerSize: [0.034, 0.062],
+      mask: [0.4, 3.4, 0.0, 0.42], wire: true,
+      mouse: uMouseFar, mouseR: 1.4
+    });
+    scene.add(farGroup);
+
+    buildAmbient();
+    layout();
+    window.addEventListener('resize', layout);
+    clock = new THREE.Clock();
+
+    /* Hold the pulse for a page nobody is looking at: a background tab gets
+       no rAF, so the scan would never advance and the hero would still be
+       empty when it was finally opened. */
+    if (!REDUCED && !document.hidden) { uScanOn.value = 1; uScanR.value = 0; scanning = true; }
+
+    /* Paint once here rather than waiting on the loop. A tab that is opened
+       in the background never gets a rAF, so the hero would sit empty until
+       it was looked at — and the first frame is also the one the entrance
+       wipe is revealing. */
+    renderFrame();
+    startTick();
+  }
+
+  /* everything that needs no geometry — shadow, light pool, pollen */
+  function buildAmbient() {
+    var geo = new THREE.PlaneGeometry(1, 1, 1, 1);
+
+    shadowMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+      map: radialTexture(256, [[0, 'rgba(12,16,10,0.62)'], [0.45, 'rgba(12,16,10,0.26)'], [1, 'rgba(12,16,10,0)']]),
+      transparent: true, depthWrite: false, depthTest: false
+    }));
+    shadowMesh.renderOrder = 1;
+    shadowMesh.position.z = -70;
+    scene.add(shadowMesh);
+
+    glowMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+      map: radialTexture(256, [[0, 'rgba(226,236,212,0.30)'], [0.42, 'rgba(214,226,200,0.10)'], [1, 'rgba(214,226,200,0)']]),
+      transparent: true, depthWrite: false, depthTest: false,
+      blending: THREE.AdditiveBlending
+    }));
+    glowMesh.renderOrder = -1;
+    glowMesh.position.z = -320;
+    scene.add(glowMesh);
+
+    /* ---- drifting pollen --------------------------------------------
+       Enough of it to read as air rather than as a handful of sprites, which
+       means the drift has to leave the CPU: every mote is animated from
+       uTime in the vertex shader, so the per-frame cost is one uniform write
+       no matter how many there are. Sizes follow a power law — a few big
+       soft ones near the lens, a great many specks behind them — and they
+       depth-test against the moss so the ones behind the root are hidden. */
+    var COUNT = (NARROW.matches || (window.innerWidth * window.innerHeight) < 620000) ? 1500 : 4200;
+    var pos = new Float32Array(COUNT * 3);
+    var seed = new Float32Array(COUNT * 4);
+    for (var i = 0; i < COUNT; i++) {
+      pos[i * 3]     = (Math.random() - 0.5) * 3400;
+      pos[i * 3 + 1] = (Math.random() - 0.5) * 1500;
+      pos[i * 3 + 2] = -380 + Math.random() * 1000;
+      seed[i * 4]     = Math.random() * 6.283;                     /* phase   */
+      seed[i * 4 + 1] = 0.25 + Math.random() * 0.9;                /* speed   */
+      seed[i * 4 + 2] = 0.4 + Math.random() * 1.4;                 /* sway    */
+      seed[i * 4 + 3] = 0.70 + 1.05 * Math.pow(Math.random(), 2.2); /* size    */
+    }
+    var pg = new THREE.BufferGeometry();
+    pg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    pg.setAttribute('seed', new THREE.BufferAttribute(seed, 4));
+
+    poleTex = radialTexture(64, [[0, 'rgba(255,255,255,1)'], [0.35, 'rgba(236,244,224,0.5)'], [1, 'rgba(236,244,224,0)']]);
+    motes = new THREE.Points(pg, new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: uTime,
+        uMap: { value: poleTex },
+        uSize: { value: 9 },
+        uScale: { value: 440 }
+      },
+      transparent: true, depthWrite: false, depthTest: true,
+      blending: THREE.AdditiveBlending,
+      vertexShader: [
+        'attribute vec4 seed;',
+        'uniform float uTime, uSize, uScale;',
+        'varying float vFade;',
+        'void main(){',
+        '  float ph = seed.x, sp = seed.y, am = seed.z;',
+        '  vec3 p = position;',
+        '  p.x += sin(uTime * sp * 0.35 + ph) * 34.0 * am;',
+        /* one long rise, wrapped — the band fade hides the wrap */
+        '  float climb = mod(uTime * 11.0 * sp + ph * 60.0, 1500.0) - 750.0;',
+        '  p.y += climb;',
+        '  p.z += cos(uTime * sp * 0.28 + ph) * 24.0 * am;',
+        '  vec4 mv = modelViewMatrix * vec4(p, 1.0);',
+        '  gl_PointSize = uSize * seed.w * (uScale / max(-mv.z, 1.0));',
+        '  float edge = 1.0 - abs(climb) / 750.0;',
+        '  float twinkle = 0.55 + 0.45 * sin(uTime * (0.7 + sp * 1.6) + ph * 3.1);',
+        '  vFade = clamp(edge * 3.0, 0.0, 1.0) * twinkle;',
+        '  gl_Position = projectionMatrix * mv;',
+        '}'
+      ].join('\n'),
+      fragmentShader: [
+        'precision highp float;',
+        'uniform sampler2D uMap;',
+        'varying float vFade;',
+        'void main(){',
+        '  vec4 t = texture2D(uMap, gl_PointCoord);',
+        '  gl_FragColor = vec4(t.rgb, t.a * vFade * 0.52);',
+        '}'
+      ].join('\n')
+    }));
+    motes.frustumCulled = false;
+    motes.renderOrder = 6;
+    scene.add(motes);
+
+    buildCursorSpray();
+  }
+
+  /* ── the trail the pointer lifts off the moss ────────────────────────
+     Emission is by DISTANCE rather than by time, and spread along the
+     segment the pointer covered since the last frame: a fast sweep lays a
+     trail instead of stacking a clump where the cursor happened to land,
+     and a pointer that has stopped trickles instead of pumping.
+     Each grain carries its own origin, velocity and birth stamp, so the CPU
+     only writes when one is respawned out of the ring — the flight itself is
+     integrated in the vertex shader, same as the ambient pollen. */
+  var SPRAY_N = 620, SPRAY_LIFE = 1.6;
+  var spray = null, sprayPos, sprayVel, sprayBirth, sprayRnd;
+  var sprayHead = 0, sprayIdle = 0, sprayDirty = false;
+  var sprayPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -240);
+  var sprayAt = new THREE.Vector3(), sprayLast = new THREE.Vector3(9999, 0, 0);
+  var sprayStep = new THREE.Vector3();
+
+  function buildCursorSpray() {
+    if (REDUCED) return;
+    sprayPos = new Float32Array(SPRAY_N * 3);
+    sprayVel = new Float32Array(SPRAY_N * 3);
+    sprayBirth = new Float32Array(SPRAY_N);
+    sprayRnd = new Float32Array(SPRAY_N * 2);
+    for (var i = 0; i < SPRAY_N; i++) sprayBirth[i] = -999;
+
+    var g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(sprayPos, 3));
+    g.setAttribute('aVel', new THREE.BufferAttribute(sprayVel, 3));
+    g.setAttribute('aBirth', new THREE.BufferAttribute(sprayBirth, 1));
+    g.setAttribute('aRnd', new THREE.BufferAttribute(sprayRnd, 2));
+
+    spray = new THREE.Points(g, new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: uTime, uMap: { value: poleTex },
+        uSize: { value: 13 }, uScale: { value: 440 }, uLife: { value: SPRAY_LIFE }
+      },
+      transparent: true, depthWrite: false, depthTest: false,
+      blending: THREE.AdditiveBlending,
+      vertexShader: [
+        'attribute vec3 aVel;',
+        'attribute float aBirth;',
+        'attribute vec2 aRnd;',
+        'uniform float uTime, uSize, uScale, uLife;',
+        'varying float vA;',
+        'void main(){',
+        '  float age = uTime - aBirth;',
+        '  if (age < 0.0 || age > uLife) { vA = 0.0; gl_PointSize = 0.0; gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }',
+        '  float u = age / uLife;',
+        /* drag on the launch velocity, a slow lift, and a little wander */
+        '  vec3 p = position + aVel * age * (1.0 - 0.34 * u)',
+        '         + vec3(sin(aRnd.y * 6.28 + age * 2.6) * 22.0 * u, 46.0 * age, 0.0);',
+        '  vec4 mv = modelViewMatrix * vec4(p, 1.0);',
+        '  gl_PointSize = uSize * aRnd.x * (uScale / max(-mv.z, 1.0)) * (0.45 + 0.55 * (1.0 - u));',
+        '  vA = smoothstep(0.0, 0.09, u) * (1.0 - smoothstep(0.40, 1.0, u));',
+        '  gl_Position = projectionMatrix * mv;',
+        '}'
+      ].join('\n'),
+      fragmentShader: [
+        'precision highp float;',
+        'uniform sampler2D uMap;',
+        'varying float vA;',
+        'void main(){',
+        '  vec4 t = texture2D(uMap, gl_PointCoord);',
+        '  gl_FragColor = vec4(t.rgb, t.a * vA * 0.85);',
+        '}'
+      ].join('\n')
+    }));
+    spray.frustumCulled = false;
+    spray.renderOrder = 7;
+    scene.add(spray);
+  }
+
+  function spawnSpray(p, boost) {
+    var k = boost || 1;
+    var i = sprayHead; sprayHead = (sprayHead + 1) % SPRAY_N;
+    var o = i * 3;
+    sprayPos[o]     = p.x + rand(-15, 15) * k;
+    sprayPos[o + 1] = p.y + rand(-15, 15) * k;
+    sprayPos[o + 2] = p.z + rand(-45, 45);
+    sprayVel[o]     = rand(-38, 38) * k;
+    sprayVel[o + 1] = (rand(2, 64) + 22 * (k - 1)) * k;
+    sprayVel[o + 2] = rand(-26, 26) * k;
+    sprayBirth[i]   = uTime.value;
+    sprayRnd[i * 2]     = rand(0.50, 1.15);
+    sprayRnd[i * 2 + 1] = rng();
+    sprayDirty = true;
+  }
+
+  function flushSpray() {
+    if (!spray || !sprayDirty) return;
+    var at = spray.geometry.attributes;
+    at.position.needsUpdate = at.aVel.needsUpdate = at.aBirth.needsUpdate = at.aRnd.needsUpdate = true;
+    sprayDirty = false;
+  }
+
+  /* a pill that has been pressed throws a handful of pollen off itself —
+     the dock calls this, and it reuses the cursor emitter's pool */
+  var burstNdc = { x: 0, y: 0 }, burstAtV = new THREE.Vector3();
+  function burstAt(clientX, clientY) {
+    if (!spray || !camera || REDUCED) return;
+    var r = hero.getBoundingClientRect();
+    burstNdc.x =  ((clientX - r.left) / r.width) * 2 - 1;
+    burstNdc.y = -((clientY - r.top) / r.height) * 2 + 1;
+    raycaster.setFromCamera(burstNdc, camera);
+    if (!raycaster.ray.intersectPlane(sprayPlane, burstAtV)) return;
+    for (var i = 0; i < 52; i++) spawnSpray(burstAtV, 2.5);
+    flushSpray();
+  }
+
+  function emitSpray(dt) {
+    if (!spray) return;
+    if (!mouseLive || !raycaster.ray.intersectPlane(sprayPlane, sprayAt)) {
+      sprayLast.x = 9999;                       /* re-entering should not lay a streak */
+      return;
+    }
+    if (sprayLast.x > 9000) { sprayLast.copy(sprayAt); return; }
+
+    var d = sprayAt.distanceTo(sprayLast);
+    var n = Math.min(14, Math.floor(d / 7));
+    for (var k = 1; k <= n; k++) {
+      sprayStep.lerpVectors(sprayLast, sprayAt, k / n);
+      spawnSpray(sprayStep);
+    }
+    if (n > 0) { sprayLast.copy(sprayAt); sprayIdle = 0; }
+    else {
+      sprayIdle += dt;
+      if (sprayIdle > 0.055) { spawnSpray(sprayAt); sprayIdle = 0; }
+    }
+
+    flushSpray();
+  }
+
+  /* ── butterfly ───────────────────────────────────────────────────────
+     Lifted from sakura-branch-hero: the wings are modelled to their real
+     outline rather than alpha-cut from a texture, the scale pattern is baked
+     once into (span, chord) rather than evaluated per fragment, and the
+     flight is a cycle — cruise, approach, settle on a nominated perch with
+     the wings held open, take off, round again.
+
+     Two things are different here. The blue is a morpho's structural
+     colour; this one is a swallowtail's yellow-green, so the face and edge
+     hues are re-solved while the angle-dependence that makes it read as
+     diffraction rather than paint is kept. And it lives inside nearGroup, so
+     it is modelled in the root's own local units and rides the branch's
+     placement, scale and parallax for free — including the perch, which is
+     a point on the moss rather than on a blossom. */
+  var bf = null;
+
+  function wingGeometry(hind) {
+    var NS = 30, NU = 10, pos = [], uv = [], idx = [], i, j;
+    for (i = 0; i < NS; i++) {
+      var sp = i / (NS - 1), lead, chord, span;
+      if (!hind) {
+        span  = 0.95;
+        lead  = 0.10 + 0.32 * sp - 0.14 * sp * sp;
+        chord = (0.56 + 0.46 * sp) * Math.pow(Math.max(0, 1 - Math.pow(sp, 2.6)), 0.55);
+      } else {
+        span  = 0.78;
+        lead  = -0.06 - 0.26 * sp;
+        chord = (0.54 + 0.48 * sp) * Math.pow(Math.max(0, 1 - Math.pow(sp, 2.2)), 0.55);
+        chord *= 1 + 0.035 * Math.cos(sp * 22.0);
+      }
+      /* both pairs hinge on the thorax, so both roots have to be short or the
+         wing floats beside the body instead of growing out of it */
+      chord *= 0.26 + 0.74 * sstep(0, 0.32, sp);
+      chord = Math.max(chord, 0.014);
+      for (j = 0; j < NU; j++) {
+        var u = j / (NU - 1);
+        var cam = 0.030 * Math.sin(Math.PI * u) * (1 - 0.35 * sp);
+        pos.push(0.018 + sp * span, cam, lead - chord * u);
+        uv.push(sp, u);
+      }
+    }
+    for (i = 0; i < NS - 1; i++) for (j = 0; j < NU - 1; j++) {
+      var a = i * NU + j, b = a + NU;
+      idx.push(a, b, a + 1, b, b + 1, a + 1);
+    }
+    var g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    g.setIndex(idx); g.computeVertexNormals();
+    return g;
+  }
+
+  /* Baked once: the pattern is a pure function of (span, chord), so a dozen
+     noise octaves per fragment per frame was paying over and over for a
+     constant. R rows, G grain, B mottle, A shimmer. */
+  function wingTexture() {
+    var N = 256, cv = document.createElement('canvas'); cv.width = cv.height = N;
+    var ctx = cv.getContext('2d'), img = ctx.createImageData(N, N), d = img.data;
+    function h2(x, y) {
+      var a = Math.sin(x * 127.1 + y * 311.7) * 43758.5453123;
+      var b = Math.sin(x * 269.5 + y * 183.3) * 43758.5453123;
+      return [(a - Math.floor(a)) * 2 - 1, (b - Math.floor(b)) * 2 - 1];
+    }
+    function gn(x, y) {
+      var ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy;
+      var ux = fx * fx * (3 - 2 * fx), uy = fy * fy * (3 - 2 * fy);
+      var g00 = h2(ix, iy), g10 = h2(ix + 1, iy), g01 = h2(ix, iy + 1), g11 = h2(ix + 1, iy + 1);
+      var a = g00[0] * fx + g00[1] * fy, b = g10[0] * (fx - 1) + g10[1] * fy;
+      var c = g01[0] * fx + g01[1] * (fy - 1), e = g11[0] * (fx - 1) + g11[1] * (fy - 1);
+      var top = a + (b - a) * ux, bot = c + (e - c) * ux;
+      return top + (bot - top) * uy;
+    }
+    function fb(x, y, oct) {
+      var sum = 0, amp = 0.5;
+      for (var i = 0; i < oct; i++) {
+        sum += amp * gn(x, y);
+        var nx = 0.8 * x + 0.6 * y, ny = -0.6 * x + 0.8 * y;
+        x = nx * 2.03; y = ny * 2.03; amp *= 0.5;
+      }
+      return sum;
+    }
+    var b255 = function (v) { return Math.max(0, Math.min(255, Math.round((v * 0.5 + 0.5) * 255))); };
+    for (var yi = 0; yi < N; yi++) {
+      var u = yi / (N - 1);
+      for (var xi = 0; xi < N; xi++) {
+        var sp = xi / (N - 1), o = (yi * N + xi) * 4;
+        d[o]     = b255(fb(u * 70.0, sp * 16.0, 4));
+        d[o + 1] = b255(gn(u * 165.0, sp * 52.0));
+        d[o + 2] = b255(fb(sp * 4.5, u * 3.0, 3));
+        d[o + 3] = b255(fb(sp * 6.5 + 4.0, u * 4.5, 3));
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    var t = new THREE.CanvasTexture(cv);
+    t.flipY = false;
+    t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+    return t;
+  }
+
+  function wingMaterial(hind, bend, tex, uni) {
+    return new THREE.ShaderMaterial({
+      uniforms: {
+        uKeyDir: uni.uKeyDir, uKeyCol: uni.uKeyCol, uAmbCol: uni.uAmbCol,
+        uBend: bend, uHind: { value: hind ? 1 : 0 }, uTex: { value: tex }
+      },
+      side: THREE.DoubleSide,
+      extensions: { derivatives: true },
+      vertexShader: [
+        'uniform float uBend;',
+        'varying vec2 vUv; varying vec3 vN; varying vec3 vW;',
+        'void main(){',
+        '  vUv = uv;',
+        /* the tip lags the stroke — a rigid flapping plate reads as paper */
+        '  vec3 p = position;',
+        '  float s = uv.x;',
+        '  p.y += uBend * s * s;',
+        '  p.z += uBend * s * s * (uv.y - 0.45) * 0.35;',
+        '  vN = normalize(normalMatrix * normal);',
+        '  vec4 wp = modelMatrix * vec4(p, 1.0);',
+        '  vW = wp.xyz;',
+        '  gl_Position = projectionMatrix * viewMatrix * wp;',
+        '}'
+      ].join('\n'),
+      fragmentShader: [
+        'precision highp float;',
+        'uniform vec3 uKeyDir, uKeyCol, uAmbCol;',
+        'uniform float uHind;',
+        'uniform sampler2D uTex;',
+        'varying vec2 vUv; varying vec3 vN; varying vec3 vW;',
+        'void main(){',
+        '  float s = vUv.x, u = vUv.y;',
+        '  vec3 N = normalize(vN);',
+        '  if (!gl_FrontFacing) N = -N;',
+        '  vec3 V = normalize(cameraPosition - vW);',
+        /* Structural colour, not pigment: the hue swings with viewing angle —
+           a hot chartreuse square on, sliding to deep green at a glance.
+           Albedo runs past 1 on purpose; it is HDR into ACES. */
+        '  float facing = abs(dot(N, V));',
+        /* Kept well under 1: on the cherry bough this ran HDR into ACES on
+           purpose, but that scene was a sunset. Here the same numbers clip to
+           cream and the green never arrives. */
+        '  vec3 face = vec3(0.330, 0.560, 0.042);',
+        '  vec3 edge = vec3(0.062, 0.190, 0.014);',
+        '  vec3 wing = mix(edge, face, pow(facing, 0.65));',
+        '  wing *= 0.62 + 0.72 * smoothstep(0.02, 0.46, s) * (1.0 - 0.34 * smoothstep(0.45, 1.0, u));',
+        /* scales lie in overlapping rows running out from the base */
+        '  vec4 tx = texture2D(uTex, vUv);',
+        '  float rows = tx.r, grain = tx.g, mottle = tx.b, shim = tx.a;',
+        '  wing *= 0.78 + 0.44 * mottle;',
+        /* the hue swings green to yellow across the disc rather than merely
+           brightening — that swing is what reads as diffraction */
+        '  wing = mix(wing * vec3(0.46, 1.14, 0.30), wing * vec3(1.34, 1.06, 0.16), shim);',
+        '  vec3 dark  = vec3(0.030, 0.026, 0.014);',
+        '  vec3 cream = vec3(0.520, 0.500, 0.290);',
+        '  vec3 amber = vec3(0.400, 0.270, 0.045);',
+        /* the wide sooty border down the whole distal edge */
+        '  float border = max(smoothstep(0.60, 0.74, s), smoothstep(0.78, 0.94, u));',
+        '  vec3 c = mix(wing, dark, border);',
+        /* veins: pale tan over the wing, lost inside the border */
+        '  float vp = pow(u, 0.72) * 5.2 + s * 0.55 + (mottle - 0.5) * 0.22;',
+        '  float vk = abs(fract(vp) - 0.5) * 2.0;',
+        '  float aa = fwidth(vp) * 2.0 + 0.045;',
+        '  float vw = 0.050 * (1.0 - 0.42 * s);',
+        '  float vein = 1.0 - smoothstep(vw, vw + aa, vk);',
+        '  c = mix(c, vec3(0.430, 0.400, 0.180), vein * 0.26 * (1.0 - border * 0.85));',
+        /* lunules set into the border: cream on the forewing, amber behind */
+        '  float lunBand = exp(-pow((border - 0.58) / 0.20, 2.0));',
+        '  float edgeT = u * 0.62 + s * 0.58;',
+        '  float lun = exp(-pow((fract(edgeT * 7.0) - 0.5) * 4.2, 2.0));',
+        '  c = mix(c, mix(cream, amber, uHind), border * lunBand * lun * 0.90);',
+        /* the big apical blazes, forewing only */
+        '  float ap1 = exp(-pow((s - 0.86) / 0.085, 2.0)) * exp(-pow((u - 0.15) / 0.100, 2.0));',
+        '  float ap2 = exp(-pow((s - 0.66) / 0.070, 2.0)) * exp(-pow((u - 0.07) / 0.075, 2.0));',
+        '  c = mix(c, cream, (1.0 - uHind) * clamp(ap1 + ap2 * 0.75, 0.0, 1.0) * 0.42);',
+        '  c *= 0.88 + 0.25 * rows;',
+        '  c *= 0.935 + 0.13 * grain;',
+        /* the very edge is a fringe of loose scales, paler and duller */
+        '  float rim = clamp(smoothstep(0.93, 1.0, s) + smoothstep(0.955, 1.0, u), 0.0, 1.0);',
+        '  c = mix(c, vec3(0.230, 0.215, 0.150), rim * 0.55);',
+        '  float wrap = dot(N, uKeyDir) * 0.5 + 0.5;',
+        '  vec3 lit = c * (uKeyCol * (0.34 + 1.05 * wrap) + uAmbCol * (0.5 + 0.5 * N.y) * 1.5);',
+        /* light burning through the membrane from behind */
+        '  float back = pow(max(dot(V, -uKeyDir), 0.0), 2.4);',
+        '  lit += mix(vec3(0.86, 0.78, 0.20), vec3(0.34, 0.60, 0.12), border) * back * 0.42;',
+        '  float sheen = pow(max(dot(reflect(-uKeyDir, N), V), 0.0), 26.0);',
+        '  lit += vec3(0.86, 0.96, 0.52) * sheen * 0.34 * (1.0 - border);',
+        '  gl_FragColor = vec4(lit, 1.0);',
+        '  #include <tonemapping_fragment>',
+        '  #include <encodings_fragment>',
+        '}'
+      ].join('\n')
+    });
+  }
+
+  function buildButterfly(host, limbs, uni) {
+    var group = new THREE.Group();
+    var bend = { fore: { value: 0 }, hind: { value: 0 } };
+    var tex = wingTexture();
+    var foreG = wingGeometry(false), hindG = wingGeometry(true);
+    var foreM = wingMaterial(false, bend.fore, tex, uni), hindM = wingMaterial(true, bend.hind, tex, uni);
+
+    var wR1 = new THREE.Mesh(foreG, foreM), wL1 = new THREE.Mesh(foreG, foreM);
+    var wR2 = new THREE.Mesh(hindG, hindM), wL2 = new THREE.Mesh(hindG, hindM);
+    wL1.scale.x = -1; wL2.scale.x = -1;
+    wR1.position.set(0.012, 0.012, 0); wL1.position.copy(wR1.position);
+    wR2.position.set(0.010, 0.000, 0); wL2.position.copy(wR2.position);
+    group.add(wR1, wL1, wR2, wL2);
+
+    /* ---- body ---- */
+    var bodyMat = new THREE.ShaderMaterial({
+      uniforms: { uKeyDir: uni.uKeyDir, uKeyCol: uni.uKeyCol, uAmbCol: uni.uAmbCol },
+      vertexShader: [
+        'varying vec3 vN; varying vec3 vW; varying vec3 vP;',
+        'void main(){',
+        '  vN = normalize(normalMatrix * normal); vP = position;',
+        '  vec4 wp = modelMatrix * vec4(position, 1.0); vW = wp.xyz;',
+        '  gl_Position = projectionMatrix * viewMatrix * wp;',
+        '}'
+      ].join('\n'),
+      fragmentShader: NOISE_GLSL + [
+        'precision highp float;',
+        'uniform vec3 uKeyDir, uKeyCol, uAmbCol;',
+        'varying vec3 vN; varying vec3 vW; varying vec3 vP;',
+        'void main(){',
+        '  vec3 N = normalize(vN);',
+        /* the thorax is furred, the abdomen banded */
+        '  float band = 0.5 + 0.5 * sin(vP.z * 150.0);',
+        '  float furry = smoothstep(-0.02, 0.10, vP.z);',
+        '  vec3 base = mix(vec3(0.020, 0.019, 0.011), vec3(0.070, 0.064, 0.030), band * (1.0 - furry * 0.5));',
+        '  float fleck = smoothstep(0.86, 0.99, sin(vP.z * 120.0) * sin(atan(vP.y, vP.x) * 7.0) * 0.5 + 0.5);',
+        '  base = mix(base, vec3(0.46, 0.44, 0.24), fleck * 0.75);',
+        '  float fur = gfbm(vec2(atan(vP.y, vP.x) * 9.0, vP.z * 70.0)) * 0.5 + 0.5;',
+        '  base *= mix(1.0, 0.62 + 0.85 * fur, furry);',
+        '  float d = max(dot(N, uKeyDir), 0.0);',
+        '  vec3 col = base * (uKeyCol * (0.24 + 1.35 * d) + uAmbCol * (0.5 + 0.5 * N.y) * 1.8);',
+        '  vec3 V = normalize(cameraPosition - vW);',
+        '  col += uKeyCol * pow(max(dot(reflect(-uKeyDir, N), V), 0.0), 22.0) * 0.05;',
+        '  gl_FragColor = vec4(col, 1.0);',
+        '  #include <tonemapping_fragment>',
+        '  #include <encodings_fragment>',
+        '}'
+      ].join('\n')
+    });
+
+    (function () {
+      var N = 30, R = 9, pos = [], idx = [], i, j;
+      for (i = 0; i <= N; i++) {
+        var a = i / N;
+        var r = 0.014 + 0.026 * Math.sin(Math.PI * Math.pow(a, 0.80));
+        r += 0.020 * Math.exp(-Math.pow((a - 0.70) / 0.14, 2));
+        r += 0.013 * Math.exp(-Math.pow((a - 0.97) / 0.05, 2));
+        var z = -0.55 + a * 0.72;
+        for (j = 0; j <= R; j++) {
+          var th = (j / R) * TAU;
+          pos.push(Math.cos(th) * r, Math.sin(th) * r * 0.90, z);
+        }
+      }
+      for (i = 0; i < N; i++) for (j = 0; j < R; j++) {
+        var q = i * (R + 1) + j, w = q + R + 1;
+        idx.push(q, w, q + 1, w, w + 1, q + 1);
+      }
+      var g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      g.setIndex(idx); g.computeVertexNormals();
+      group.add(new THREE.Mesh(g, bodyMat));
+
+      /* tegulae — the scaled shoulder pads that weld wing to thorax */
+      [1, -1].forEach(function (sx) {
+        var teg = new THREE.Mesh(new THREE.SphereGeometry(0.052, 12, 9), bodyMat);
+        teg.position.set(0.030 * sx, 0.026, 0.020);
+        teg.scale.set(1.15, 0.62, 1.5);
+        teg.rotation.z = -0.35 * sx;
+        group.add(teg);
+      });
+
+      /* antennae: thin, swept back, clubbed at the tip */
+      var antMat = new THREE.MeshBasicMaterial({ color: 0x171208 });
+      [1, -1].forEach(function (sx) {
+        var c = new THREE.QuadraticBezierCurve3(
+          new THREE.Vector3(0.010 * sx, 0.020, 0.150),
+          new THREE.Vector3(0.062 * sx, 0.075, 0.300),
+          new THREE.Vector3(0.105 * sx, 0.110, 0.430));
+        group.add(new THREE.Mesh(new THREE.TubeGeometry(c, 12, 0.0042, 5, false), antMat));
+        var club = new THREE.Mesh(new THREE.SphereGeometry(0.013, 8, 6), antMat);
+        club.position.copy(c.getPointAt(1)); club.scale.z = 1.9;
+        group.add(club);
+      });
+    })();
+
+    /* a good deal smaller than it was on the cherry bough — that scene framed
+       one branch, this one frames a whole root */
+    group.scale.setScalar(0.205);
+    group.renderOrder = 5;
+    group.traverse(function (o) { o.frustumCulled = false; });
+    host.add(group);
+
+    /* ---- the perch: the top of the root's crest ---- */
+    var L = limbs[0];
+    var pp = new THREE.Vector3(), pn = new THREE.Vector3();
+    var probeP = new THREE.Vector3(), probeN = new THREE.Vector3();
+    var perchT = 0.29, bestY = -2, perchTh = 0;
+    for (var i = 0; i < 64; i++) {
+      var th = i / 64 * TAU;
+      limbSurface(L, perchT, th, probeP, probeN);
+      /* the top, but turned a little toward the lens so open wings show */
+      var score = probeN.y + probeN.z * 0.42;
+      if (score > bestY) { bestY = score; perchTh = th; pp.copy(probeP); pn.copy(probeN); }
+    }
+    var perch = pp.clone().addScaledVector(pn, 0.16);   /* clear of the moss pile */
+
+    var st = {
+      pos: perch.clone().add(new THREE.Vector3(-1.0, 1.1, 0.5)),
+      vel: new THREE.Vector3(0.5, 0, 0),
+      acc: new THREE.Vector3(),
+      tgt: new THREE.Vector3(),
+      mode: 'cruise', timer: 4.0, settle: 0, bank: 0, flap: 0
+    };
+    /* Local units, and the frame's left edge is at x = -4: a butterfly that
+       wanders off the side or drops behind the moss may as well not be there,
+       so the box is cut to the air directly above the crest. */
+    var BOX = { x0: perch.x - 1.5, x1: perch.x + 2.1, y0: perch.y - 0.10, y1: perch.y + 1.35,
+                z0: perch.z - 0.25, z1: perch.z + 0.95 };
+
+    function pickTarget() {
+      st.tgt.set(rand(BOX.x0 + 0.3, BOX.x1 - 0.3), rand(perch.y + 0.35, BOX.y1 - 0.2), rand(BOX.z0 + 0.2, BOX.z1 - 0.15));
+    }
+    pickTarget();
+
+    /* display pose: dorsal surface square to the camera, head up — the whole
+       point of the landing is that the open wings are seen */
+    var landQ = new THREE.Quaternion();
+    (function () {
+      var camLocal = new THREE.Vector3(0, 0, DIST);
+      host.worldToLocal(camLocal);
+      var dorsal = camLocal.sub(perch).normalize();
+      var fwd = new THREE.Vector3(0, 1, 0).addScaledVector(dorsal, -dorsal.y).normalize();
+      var right = new THREE.Vector3().crossVectors(dorsal, fwd).normalize();
+      landQ.setFromRotationMatrix(new THREE.Matrix4().makeBasis(right, dorsal, fwd));
+      landQ.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -0.10));
+      landQ.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 0.14));
+    })();
+
+    /* The pointer is already carried into this group's local space every
+       frame for the moss (uMouseNear), so the butterfly can read the same
+       value — no extra raycast, and it is in the units it flies in. */
+    var SPOOK_R = 0.62;                 /* about one and a half wingspans */
+    var spook = 0, toM = new THREE.Vector3(), away = new THREE.Vector3(0, 1, 0);
+    var tmp = new THREE.Vector3(), prevVel = new THREE.Vector3();
+    var vRight = new THREE.Vector3(), vUp = new THREE.Vector3(), vFwd = new THREE.Vector3();
+    var basis = new THREE.Matrix4(), flightQ = new THREE.Quaternion(), qTmp = new THREE.Quaternion();
+    var AX_X = new THREE.Vector3(1, 0, 0), AX_Z = new THREE.Vector3(0, 0, 1);
+
+    function contain(out) {
+      var k = 2.2, m = 0.30;
+      if (st.pos.x < BOX.x0 + m) out.x += k * (BOX.x0 + m - st.pos.x);
+      if (st.pos.x > BOX.x1 - m) out.x -= k * (st.pos.x - BOX.x1 + m);
+      if (st.pos.y < BOX.y0 + m) out.y += k * (BOX.y0 + m - st.pos.y);
+      if (st.pos.y > BOX.y1 - m) out.y -= k * (st.pos.y - BOX.y1 + m);
+      if (st.pos.z < BOX.z0 + m) out.z += k * (BOX.z0 + m - st.pos.z);
+      if (st.pos.z > BOX.z1 - m) out.z -= k * (st.pos.z - BOX.z1 + m);
+    }
+
+    return function update(dt, t) {
+      /* ---- how close is the cursor, and from where ----
+         z is weighted down because the pointer is resolved on one plane and
+         the butterfly is not on it; what matters is whether the cursor is
+         over the animal on screen. */
+      var m = uMouseNear.value, near = 0;
+      if (m.x < 999) {
+        toM.set(m.x - st.pos.x, m.y - st.pos.y, (m.z - st.pos.z) * 0.30);
+        near = clamp01(1 - toM.length() / SPOOK_R);
+        near *= near;
+      }
+      /* snaps on, lets go slowly — a startled insect does not calm instantly */
+      spook += (near - spook) * (1 - Math.pow(near > spook ? 1e-7 : 0.22, dt));
+
+      st.timer -= dt;
+      if (st.mode === 'cruise') { if (st.timer <= 0) { st.mode = 'approach'; st.timer = 14; } }
+      else if (st.mode === 'approach') { if (st.pos.distanceTo(perch) < 0.12 || st.timer <= 0) { st.mode = 'landed'; st.timer = rand(7.0, 10.0); } }
+      else if (st.mode === 'landed') {
+        /* the whole point of a perched insect is that it will not stay put */
+        if (st.timer <= 0 || spook > 0.30) {
+          st.mode = 'takeoff'; st.timer = 2.2;
+          if (spook > 0.30) {
+            /* leave in the opposite direction, not back across the cursor */
+            away.copy(st.pos).sub(m).setZ(0).normalize();
+            st.tgt.set(
+              Math.min(BOX.x1 - 0.3, Math.max(BOX.x0 + 0.3, st.pos.x + away.x * 1.5)),
+              Math.min(BOX.y1 - 0.2, perch.y + 0.9),
+              Math.min(BOX.z1 - 0.15, Math.max(BOX.z0 + 0.2, st.pos.z + 0.4)));
+          }
+        }
+      }
+      else if (st.mode === 'takeoff') { if (st.timer <= 0) { st.mode = 'cruise'; st.timer = rand(5.0, 8.5); pickTarget(); } }
+
+      var landing = st.mode === 'landed';
+      st.settle += ((landing ? 1 : 0) - st.settle) * Math.min(1, dt * (landing ? 3.4 : 4.5));
+      st.settle = Math.min(st.settle, 1 - spook);
+
+      /* quick asymmetric stroke in flight, a slow display at rest */
+      var beat = 8.6 + Math.sin(t * 0.7) * 0.9 + (0.34 - (8.6 + Math.sin(t * 0.7) * 0.9)) * st.settle;
+      beat *= 1 + spook * 1.15;
+      st.flap += dt * beat * TAU;
+      var raw = Math.sin(st.flap);
+      var shaped = (raw < 0 ? -1 : 1) * Math.pow(Math.abs(raw), 0.72);
+      /* resting wings flare open as the cursor closes — the flick a butterfly
+         gives just before it goes */
+      var flyPhi = 20 + 48 * shaped, restPhi = 15 + 7 * shaped + spook * 30;
+      var phi = (flyPhi + (restPhi - flyPhi) * st.settle) * Math.PI / 180;
+      var flapVel = Math.cos(st.flap) * beat;
+
+      wR1.rotation.z = phi;  wL1.rotation.z = -phi;
+      wR2.rotation.z = phi * 0.95 - 0.03;
+      wL2.rotation.z = -(phi * 0.95 - 0.03);
+      bend.fore.value = -flapVel * 0.010;
+      bend.hind.value = -flapVel * 0.013;
+
+      var goal = st.mode === 'approach' ? perch : st.tgt;
+      tmp.copy(goal).sub(st.pos);
+      var dist = tmp.length();
+      var speed = Math.min(1.5, 0.22 + dist * 1.1);
+      var desired = tmp.normalize().multiplyScalar(speed);
+
+      /* butterflies do not fly straight lines — but fade the wander out on
+         final approach or it circles the perch forever without touching it */
+      var wander = st.mode === 'approach' ? Math.min(1, dist * 0.8) : 1;
+      desired.x += (Math.sin(t * 3.1) + 0.6 * Math.sin(t * 7.7 + 1.1)) * 0.20 * wander;
+      desired.y += (Math.sin(t * 1.9 + 1.7) + 0.55 * Math.sin(t * 4.6)) * 0.40 * wander;
+      desired.z += Math.sin(t * 2.7 + 3.4) * 0.24 * wander;
+      if (st.mode === 'takeoff') { desired.y += 0.7; desired.z += 0.35; }
+      /* and in the air it simply keeps its distance */
+      if (spook > 0.002) {
+        away.copy(st.pos).sub(m); away.z *= 0.30;
+        if (away.lengthSq() > 1e-6) desired.addScaledVector(away.normalize(), spook * 2.3);
+      }
+      contain(desired);
+
+      prevVel.copy(st.vel);
+      st.vel.lerp(desired, 1 - Math.pow(0.03, dt));
+      st.acc.copy(st.vel).sub(prevVel).divideScalar(Math.max(dt, 1e-4));
+      st.pos.addScaledVector(st.vel, dt);
+      if (st.settle > 0.001) {
+        st.pos.lerp(perch, Math.min(1, dt * 6.0 * st.settle));
+        st.vel.multiplyScalar(1 - Math.min(1, dt * 6.0 * st.settle));
+      }
+
+      vFwd.copy(st.vel);
+      if (vFwd.lengthSq() < 1e-6) vFwd.set(0, 0, 1);
+      vFwd.normalize();
+      vRight.crossVectors(vFwd, UP);
+      if (vRight.lengthSq() < 1e-6) vRight.set(1, 0, 0);
+      vRight.normalize();
+      vUp.crossVectors(vRight, vFwd).normalize();
+
+      var lateral = vRight.dot(st.acc);
+      st.bank += (Math.max(-1.15, Math.min(1.15, -lateral * 0.40)) - st.bank) * Math.min(1, dt * 5.0);
+
+      basis.makeBasis(vRight, vUp, vFwd);
+      flightQ.setFromRotationMatrix(basis);
+      qTmp.setFromAxisAngle(AX_Z, st.bank + Math.sin(t * 0.83) * 0.30 + Math.sin(st.flap) * 0.05
+                                  + Math.sin(t * 21.0) * spook * 0.16);
+      flightQ.multiply(qTmp);
+      qTmp.setFromAxisAngle(AX_X, Math.sin(st.flap) * 0.10 - 0.06);
+      flightQ.multiply(qTmp);
+
+      group.quaternion.copy(flightQ).slerp(landQ, st.settle);
+      group.position.copy(st.pos);
+      group.position.y += Math.sin(st.flap - 0.9) * 0.022 * (1 - st.settle);
+    };
+  }
+
+  /* ── size the scene in stage-pixel space ─────────────────────────────
+     At a 1600 px viewport one world unit is one CSS pixel at z = 0, so the
+     root can be pinned to the same stage coordinates the copy is laid out
+     on. Each root is modelled in its own 10-unit-wide box and scaled into
+     place around a pinned landmark, exactly as the artwork was. */
+  function layout() {
+    W = hero.clientWidth; H = hero.clientHeight;
+    renderer.setSize(W, H, false);
+    camera.fov = 2 * Math.atan((H / 2) / DIST) * 180 / Math.PI;
+    camera.aspect = W / H;
+    camera.updateProjectionMatrix();
+
+    var narrow = NARROW.matches;
+    var s = stageEl.getBoundingClientRect();
+    var h = hero.getBoundingClientRect();
+    var u = s.width / (narrow ? 760 : 1600);
+    var ox = s.left - h.left, oy = s.top - h.top;
+    function wx(px) { return ox + px * u - W / 2; }
+    function wy(py) { return H / 2 - (oy + py * u); }
+
+    var A = narrow ? ARCH_N : ARCH, F = narrow ? FAR_N : FAR;
+    /* wider than the stage: grow the roots to cover, pinned at a landmark */
+    var cover = Math.max(1, W / s.width);
+
+    function place(group, box, pinFx, pinFy, z) {
+      var boxH = box.w / box.aspect;
+      var scale = box.w * u * cover / BOXW;
+      var k = (DIST - z) / DIST;                          /* undo the perspective shrink */
+      var lx = (pinFx - 0.5) * BOXW, ly = (0.5 - pinFy) * (BOXW / box.aspect);
+      var px = wx(box.left + pinFx * box.w), py = wy(box.top + pinFy * boxH);
+      group.scale.setScalar(scale * k);
+      group.position.set((px - lx * scale) * k, (py - ly * scale) * k, z);
+      return { x: px, y: py, s: scale, boxH: boxH * u * cover };
+    }
+
+    /* the near root pins at the arch's apex; the far one at its crest */
+    place(nearGroup, A, 0.732, 0.06, 0);
+    place(farGroup,  F, 0.410, 0.32, F.z);
+
+    var aw = A.w * u * cover, ah = aw / A.aspect;
+    var cx = wx(A.left + 0.5 * A.w), cy = wy(A.top + 0.5 * (A.w / A.aspect));
+
+    shadowMesh.scale.set(aw * 1.02, ah * 0.72, 1);
+    shadowMesh.position.set(cx, cy - ah * 0.40, -70);
+
+    glowMesh.scale.set(aw * 1.15, ah * 1.5, 1);
+    glowMesh.position.set(cx - aw * 0.06, cy - ah * 0.18, -320);
+
+    /* mimic three's own sizeAttenuation: gl_PointSize = size * (scale / -z)
+       with scale = half the drawing buffer height */
+    /* The pulse leaves from the low left of the frame, in front of the root,
+       and has to reach the far corner — resolved here because both depend on
+       where layout() has just put everything. */
+    nearGroup.updateMatrixWorld(true);
+    uScanO.value.set(-5.2, -0.9, 1.8);
+    nearGroup.localToWorld(uScanO.value);
+    scanMax = Math.hypot(W, H) * 1.3 + 900;
+
+    motes.material.uniforms.uSize.value = Math.max(5, 9 * u);
+    var half = renderer.getDrawingBufferSize(new THREE.Vector2()).y * 0.5;
+    motes.material.uniforms.uScale.value = half;
+    if (spray) {
+      spray.material.uniforms.uScale.value = half;
+      spray.material.uniforms.uSize.value = Math.max(7, 13 * u);
+    }
+  }
+
+  /* ── cursor → the plane the root stands in, in each root's own space ── */
+  var raycaster = new THREE.Raycaster();
+  var crownPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+  var hitWorld = new THREE.Vector3();
+  var tmpLocal = new THREE.Vector3();
+  var mouseLive = false;
+
+  function updateMouse(dt) {
+    if (ndc.x > 2 || REDUCED) { mouseLive = false; }
+    else {
+      raycaster.setFromCamera(ndc, camera);
+      mouseLive = !!raycaster.ray.intersectPlane(crownPlane, hitWorld);
+    }
+    [[nearGroup, uMouseNear], [farGroup, uMouseFar]].forEach(function (pair) {
+      var g = pair[0], u2 = pair[1];
+      if (!g) return;
+      if (!mouseLive) { u2.value.set(9999, 9999, 9999); return; }
+      tmpLocal.copy(hitWorld);
+      g.worldToLocal(tmpLocal);
+      if (u2.value.x > 999) u2.value.copy(tmpLocal);
+      else u2.value.lerp(tmpLocal, 1 - Math.pow(0.0002, dt));
+    });
+  }
+
+  /* ── frame ─────────────────────────────────────────────────────────── */
+  var frames = 0;
+  function renderFrame() {
+    var dt = Math.min(clock.getDelta(), 0.05);
+    if (!REDUCED) uTime.value += dt;
+
+    camera.position.x = -smooth.x * 26;
+    camera.position.y =  smooth.y * 16;
+    camera.lookAt(camera.position.x * 0.42, camera.position.y * 0.42, 0);
+
+    if (!REDUCED) {
+      nearGroup.rotation.y = smooth.x * 0.055;
+      nearGroup.rotation.x = smooth.y * 0.026;
+      nearGroup.rotation.z = Math.sin(uTime.value * 0.22) * 0.0022;
+      farGroup.rotation.y  = smooth.x * 0.030;
+    }
+
+    if (scanning) {
+      scanT += dt / SCAN_DUR;
+      var e = Math.min(1, scanT);
+      uScanR.value = (1 - Math.pow(1 - e, 1.35)) * scanMax;
+      /* the cage snaps on, rides the front, then burns off behind it */
+      uWire.value = Math.min(1, e / 0.06) * (1 - sstep(0.72, 1.0, e));
+      if (e >= 1) {
+        scanning = false;
+        uScanOn.value = 0;
+        uWire.value = 0;
+        for (var wi = 0; wi < wireMeshes.length; wi++) {
+          var wm = wireMeshes[wi];
+          if (wm.parent) wm.parent.remove(wm);
+          wm.geometry.dispose(); wm.material.dispose();
+        }
+        wireMeshes.length = 0;
+      }
+    }
+
+    if (bf && !REDUCED) bf(dt, uTime.value);
+
+    updateMouse(dt);
+    emitSpray(dt);
+
+    renderer.render(scene, camera);
+    if (++frames === 2) window.__ready = true;
+  }
+
+  /* ── boot ──────────────────────────────────────────────────────────── */
+  /* Kick the entrance off first. Growing the roots and compiling the
+     shaders costs a few hundred ms of main thread, and doing that before
+     the first wipe paints leaves the whole intro frozen on its opening
+     frame — so hand the browser two frames to start animating. */
+  ready();
+  requestAnimationFrame(function () { requestAnimationFrame(function () {
+    try { build(); }
+    catch (err) { console.error(err); }
+  }); });
+
+  /* never leave the page invisible if something stalls */
+  setTimeout(ready, 4000);
+})();
+</script>
+</body>
+</html>

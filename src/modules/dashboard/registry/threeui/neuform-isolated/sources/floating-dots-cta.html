@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Component Preview</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      height: 100%;
+      overflow: auto;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #ffffff;
+      color: #000000;
+    }
+    .component-wrapper {
+      width: 100%;
+      height: 100%;
+      padding: 0;
+      box-sizing: border-box;
+      overflow: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="component-wrapper">
+    <html><head></head><body><button type="button" class="button">
+  <div class="points_wrapper">
+    <i class="point"></i>
+    <i class="point"></i>
+    <i class="point"></i>
+    <i class="point"></i>
+    <i class="point"></i>
+    <i class="point"></i>
+    <i class="point"></i>
+    <i class="point"></i>
+    <i class="point"></i>
+    <i class="point"></i>
+  </div>
+
+  <span class="inner">
+    Sign Up
+    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5">
+      <path d="M5 12h14"></path>
+      <path d="m12 5 7 7-7 7"></path>
+    </svg>
+  </span>
+  <style>
+    .button {
+      cursor: pointer;
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      transition: all 0.25s ease;
+      background: radial-gradient(65.28% 65.28% at 50% 100%,
+          rgba(34, 211, 238, 0.8) 0%,
+          rgba(34, 211, 238, 0) 100%),
+        linear-gradient(0deg, #2563eb, #2563eb);
+      border-radius: 0.75rem;
+      border: none;
+      outline: none;
+      padding: 12px 18px;
+      min-height: 48px;
+      min-width: 102px;
+    }
+  
+    .button::before,
+    .button::after {
+      content: "";
+      position: absolute;
+      transition: all 0.5s ease-in-out;
+      z-index: 0;
+    }
+  
+    .button::before {
+      inset: 1px;
+      background: linear-gradient(177.95deg,
+          rgba(255, 255, 255, 0.19) 0%,
+          rgba(255, 255, 255, 0) 100%);
+      border-radius: calc(0.75rem - 1px);
+    }
+  
+    .button::after {
+      inset: 2px;
+      background: radial-gradient(65.28% 65.28% at 50% 100%,
+          rgba(34, 211, 238, 0.8) 0%,
+          rgba(34, 211, 238, 0) 100%),
+        linear-gradient(0deg, #2563eb, #2563eb);
+      border-radius: calc(0.75rem - 2px);
+    }
+  
+    .button:active {
+      transform: scale(0.95);
+    }
+  
+    .points_wrapper {
+      overflow: hidden;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      position: absolute;
+      z-index: 1;
+    }
+  
+    .points_wrapper .point {
+      bottom: -10px;
+      position: absolute;
+      animation: floating-points infinite ease-in-out;
+      pointer-events: none;
+      width: 2px;
+      height: 2px;
+      background-color: #fff;
+      border-radius: 9999px;
+    }
+  
+    @keyframes floating-points {
+      0% {
+        transform: translateY(0);
+      }
+  
+      85% {
+        opacity: 0;
+      }
+  
+      100% {
+        transform: translateY(-55px);
+        opacity: 0;
+      }
+    }
+  
+    .points_wrapper .point:nth-child(1) {
+      left: 10%;
+      opacity: 1;
+      animation-duration: 2.35s;
+      animation-delay: 0.2s;
+    }
+  
+    .points_wrapper .point:nth-child(2) {
+      left: 30%;
+      opacity: 0.7;
+      animation-duration: 2.5s;
+      animation-delay: 0.5s;
+    }
+  
+    .points_wrapper .point:nth-child(3) {
+      left: 25%;
+      opacity: 0.8;
+      animation-duration: 2.2s;
+      animation-delay: 0.1s;
+    }
+  
+    .points_wrapper .point:nth-child(4) {
+      left: 44%;
+      opacity: 0.6;
+      animation-duration: 2.05s;
+    }
+  
+    .points_wrapper .point:nth-child(5) {
+      left: 50%;
+      opacity: 1;
+      animation-duration: 1.9s;
+    }
+  
+    .points_wrapper .point:nth-child(6) {
+      left: 75%;
+      opacity: 0.5;
+      animation-duration: 1.5s;
+      animation-delay: 1.5s;
+    }
+  
+    .points_wrapper .point:nth-child(7) {
+      left: 88%;
+      opacity: 0.9;
+      animation-duration: 2.2s;
+      animation-delay: 0.2s;
+    }
+  
+    .points_wrapper .point:nth-child(8) {
+      left: 58%;
+      opacity: 0.8;
+      animation-duration: 2.25s;
+      animation-delay: 0.2s;
+    }
+  
+    .points_wrapper .point:nth-child(9) {
+      left: 98%;
+      opacity: 0.6;
+      animation-duration: 2.6s;
+      animation-delay: 0.1s;
+    }
+  
+    .points_wrapper .point:nth-child(10) {
+      left: 65%;
+      opacity: 1;
+      animation-duration: 2.5s;
+      animation-delay: 0.2s;
+    }
+  
+    .inner {
+      z-index: 2;
+      gap: 6px;
+      position: relative;
+      width: 100%;
+      color: white;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 500;
+      line-height: 1.5;
+      transition: color 0.2s ease-in-out;
+    }
+  
+    .inner svg.icon {
+      width: 18px;
+      height: 18px;
+      transition: transform 0.3s ease;
+      stroke: white;
+      fill: none;
+    }
+  
+    .button:hover svg.icon {
+      transform: translateX(2px);
+    }
+  
+    .button:hover svg.icon path {
+      animation: dash 0.8s linear forwards;
+    }
+  
+    @keyframes dash {
+      0% {
+        stroke-dasharray: 0, 20;
+        stroke-dashoffset: 0;
+      }
+  
+      50% {
+        stroke-dasharray: 10, 10;
+        stroke-dashoffset: -5;
+      }
+  
+      100% {
+        stroke-dasharray: 20, 0;
+        stroke-dashoffset: -10;
+      }
+    }
+  </style>
+</button></body></html>
+  </div>
+  
+    <script>
+      (function() {
+        function checkAndCenter() {
+          // Use double requestAnimationFrame to ensure DOM is fully painted and layout is stable
+          requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+              const wrapper = document.querySelector('.component-wrapper');
+              if (!wrapper) return;
+              
+              // Get all child elements
+              const children = Array.from(wrapper.children);
+              if (children.length === 0) return;
+              
+              // Temporarily override wrapper styles to shrink-wrap for measurement
+              // Set inline styles to shrink-wrap (inline styles override CSS)
+              wrapper.style.display = 'inline-block';
+              wrapper.style.width = 'auto';
+              wrapper.style.height = 'auto';
+              wrapper.style.overflow = 'visible';
+              wrapper.style.boxSizing = 'content-box';
+              
+              // Force multiple reflows to ensure styles are fully applied
+              void wrapper.offsetHeight;
+              void wrapper.offsetWidth;
+              void wrapper.offsetHeight;
+              
+              // Measure the wrapper's content size
+              const contentWidth = wrapper.offsetWidth;
+              const contentHeight = wrapper.offsetHeight;
+              
+              // Restore original styles by removing inline styles we added
+              wrapper.style.removeProperty('display');
+              wrapper.style.removeProperty('width');
+              wrapper.style.removeProperty('height');
+              wrapper.style.removeProperty('overflow');
+              wrapper.style.removeProperty('box-sizing');
+              
+              // If content is less than 500x500, center it
+              if (contentWidth > 0 && contentHeight > 0 && contentWidth < 500 && contentHeight < 500) {
+                wrapper.style.display = 'flex';
+                wrapper.style.alignItems = 'center';
+                wrapper.style.justifyContent = 'center';
+              }
+            });
+          });
+        }
+        
+        // Check immediately and after delays to ensure content is rendered and styled
+        function runChecks() {
+          checkAndCenter();
+          setTimeout(checkAndCenter, 50);
+          setTimeout(checkAndCenter, 150);
+          setTimeout(checkAndCenter, 300);
+          setTimeout(checkAndCenter, 500);
+          setTimeout(checkAndCenter, 1000);
+        }
+        
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', runChecks);
+        } else {
+          runChecks();
+        }
+        
+        // Also check when images or other resources load
+        window.addEventListener('load', () => {
+          setTimeout(checkAndCenter, 100);
+          setTimeout(checkAndCenter, 300);
+        });
+        
+        // Use ResizeObserver to detect size changes
+        if (window.ResizeObserver) {
+          setTimeout(() => {
+            const wrapper = document.querySelector('.component-wrapper');
+            if (wrapper) {
+              const observer = new ResizeObserver(() => {
+                setTimeout(checkAndCenter, 50);
+              });
+              observer.observe(wrapper);
+            }
+          }, 500);
+        }
+      })();
+    </script>
+  
+</body>
+</html>

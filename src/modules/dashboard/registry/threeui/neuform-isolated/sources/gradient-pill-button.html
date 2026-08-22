@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Component Preview</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      height: 100%;
+      overflow: auto;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #ffffff;
+      color: #000000;
+    }
+    .component-wrapper {
+      width: 100%;
+      height: 100%;
+      padding: 0;
+      box-sizing: border-box;
+      overflow: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="component-wrapper">
+    <html><head></head><body><button class="hover:bg-slate-50 hover:text-slate- transition-all flex text-sm font-medium text-slate-600 bg-gradient-to-b from-black/10 via-black/20 to-black/10 rounded-full pt-3 pr-6 pb-3 pl-6 shadow-[0px_0px_0px_1px_rgba(0,0,0,0.06),0px_1px_1px_-0.5px_rgba(0,0,0,0.06),0px_3px_3px_-1.5px_rgba(0,0,0,0.06),_0px_6px_6px_-3px_rgba(0,0,0,0.06),0px_12px_12px_-6px_rgba(0,0,0,0.06),0px_24px_24px_-12px_rgba(0,0,0,0.06)] gap-x-2 gap-y-2 items-center" style="box-shadow: 0 18px 35px rgba(31, 41, 55, 0.25), 0 0 0 1px rgba(209, 213, 219, 0.3);                  color: #e5e7eb; position: relative; --border-gradient: linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(0, 0, 0, 0.4), rgba(255, 255, 255, 0.8)); --border-radius-before: 9999px">
+
+  <span class="text-sm font-medium text-black/60 tracking-tight">
+    Demo Lesson
+  </span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-[16px] h-[16px]" data-lucide="arrow-right" data-icon-set="lucide" data-icon-replaced="true" style="color: rgb(229, 231, 235); width: 16px; height: 16px;"><path d="M5 12h14" class=""></path><path d="m12 5 7 7-7 7"></path></svg>
+  <style id="border-gradient-shared-style">
+  [style*="--border-gradient"]::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    padding: 1px;
+    border-radius: var(--border-radius-before, inherit);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    background: var(--border-gradient);
+    pointer-events: none;
+  }</style>
+</button></body></html>
+  </div>
+  
+    <script>
+      (function() {
+        function checkAndCenter() {
+          // Use double requestAnimationFrame to ensure DOM is fully painted and layout is stable
+          requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+              const wrapper = document.querySelector('.component-wrapper');
+              if (!wrapper) return;
+              
+              // Get all child elements
+              const children = Array.from(wrapper.children);
+              if (children.length === 0) return;
+              
+              // Temporarily override wrapper styles to shrink-wrap for measurement
+              // Set inline styles to shrink-wrap (inline styles override CSS)
+              wrapper.style.display = 'inline-block';
+              wrapper.style.width = 'auto';
+              wrapper.style.height = 'auto';
+              wrapper.style.overflow = 'visible';
+              wrapper.style.boxSizing = 'content-box';
+              
+              // Force multiple reflows to ensure styles are fully applied
+              void wrapper.offsetHeight;
+              void wrapper.offsetWidth;
+              void wrapper.offsetHeight;
+              
+              // Measure the wrapper's content size
+              const contentWidth = wrapper.offsetWidth;
+              const contentHeight = wrapper.offsetHeight;
+              
+              // Restore original styles by removing inline styles we added
+              wrapper.style.removeProperty('display');
+              wrapper.style.removeProperty('width');
+              wrapper.style.removeProperty('height');
+              wrapper.style.removeProperty('overflow');
+              wrapper.style.removeProperty('box-sizing');
+              
+              // If content is less than 500x500, center it
+              if (contentWidth > 0 && contentHeight > 0 && contentWidth < 500 && contentHeight < 500) {
+                wrapper.style.display = 'flex';
+                wrapper.style.alignItems = 'center';
+                wrapper.style.justifyContent = 'center';
+              }
+            });
+          });
+        }
+        
+        // Check immediately and after delays to ensure content is rendered and styled
+        function runChecks() {
+          checkAndCenter();
+          setTimeout(checkAndCenter, 50);
+          setTimeout(checkAndCenter, 150);
+          setTimeout(checkAndCenter, 300);
+          setTimeout(checkAndCenter, 500);
+          setTimeout(checkAndCenter, 1000);
+        }
+        
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', runChecks);
+        } else {
+          runChecks();
+        }
+        
+        // Also check when images or other resources load
+        window.addEventListener('load', () => {
+          setTimeout(checkAndCenter, 100);
+          setTimeout(checkAndCenter, 300);
+        });
+        
+        // Use ResizeObserver to detect size changes
+        if (window.ResizeObserver) {
+          setTimeout(() => {
+            const wrapper = document.querySelector('.component-wrapper');
+            if (wrapper) {
+              const observer = new ResizeObserver(() => {
+                setTimeout(checkAndCenter, 50);
+              });
+              observer.observe(wrapper);
+            }
+          }, 500);
+        }
+      })();
+    </script>
+  
+</body>
+</html>

@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Glassblown neon</title>
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: transparent;
+    }
+    #board {
+      position: relative;
+      width: min(100%, 1040px);
+      aspect-ratio: 16 / 9;
+      margin: 0 auto;
+      background: transparent;
+      border: 0;
+      box-shadow: none;
+    }
+    #neon {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    h1 {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="board">
+    <canvas id="neon" aria-hidden="true"></canvas>
+    <h1>Glass blown</h1>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      var board = document.getElementById('board');
+      var cv = document.getElementById('neon');
+      if (!board || !cv || !cv.getContext) return;
+      var ctx = cv.getContext('2d');
+      if (!ctx) return;
+
+      var reduce = false;
+      try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+
+      var P = Math.PI;
+      var GLYPHS = {
+        G: { w: 0.88, sub: [
+          { c: [['M', 0.7946, 0.2320], ['E', 0.44, 0.50, 0.42, 0.50, -0.18 * P, -1.87 * P, 1], ['Q', 0.902, 0.606, 0.860, 0.492], ['L', 0.470, 0.492]] }
+        ]},
+        L: { w: 0.60, sub: [
+          { c: [['M', 0.09, 0.00], ['L', 0.09, 0.66], ['R', 0.09, 1.00, 0.60, 1.00, 0.20], ['L', 0.575, 1.00]] }
+        ]},
+        A: { w: 0.90, sub: [
+          { c: [['M', 0.040, 1.00], ['R', 0.450, 0.00, 0.860, 1.00, 0.105], ['L', 0.860, 1.00]] },
+          { c: [['M', 0.174, 0.665], ['L', 0.726, 0.665]] }
+        ]},
+        S: { w: 0.74, sub: [
+          { c: [['M', 0.5880, 0.0478], ['E', 0.40, 0.25, 0.32, 0.25, -0.30 * P, 0.50 * P, 1], ['E', 0.40, 0.75, 0.32, 0.25, -0.50 * P, 0.86 * P, 0]] }
+        ]},
+        B: { w: 0.74, sub: [
+          { c: [['M', 0.09, 0.00], ['L', 0.09, 1.00]] },
+          { c: [['M', 0.09, 0.00], ['L', 0.28, 0.00], ['E', 0.28, 0.25, 0.34, 0.25, -0.50 * P, 0.50 * P, 0], ['L', 0.09, 0.50]] },
+          { c: [['M', 0.09, 0.50], ['L', 0.30, 0.50], ['E', 0.30, 0.75, 0.38, 0.25, -0.50 * P, 0.50 * P, 0], ['L', 0.09, 1.00]] }
+        ]},
+        O: { w: 0.90, sub: [
+          { closed: 1, c: [['M', 0.46, 0.00], ['E', 0.46, 0.50, 0.42, 0.50, -0.50 * P, 1.50 * P, 0]] }
+        ]},
+        W: { w: 1.09, sub: [
+          { c: [['M', 0.030, 0.00], ['R', 0.240, 1.00, 0.545, 0.30, 0.070], ['R', 0.545, 0.30, 0.850, 1.00, 0.070], ['R', 0.850, 1.00, 1.060, 0.00, 0.070], ['L', 1.060, 0.00]] }
+        ]},
+        N: { w: 0.88, sub: [
+          { c: [['M', 0.08, 1.00], ['R', 0.08, 0.00, 0.84, 1.00, 0.075], ['R', 0.84, 1.00, 0.84, 0.00, 0.075], ['L', 0.84, 0.00]] }
+        ]}
+      };
+
+      var LINES = ['GLASS', 'BLOWN'];
+      var MINGAP = 0.17, LINEGAP = 0.46;
+      var FLICK = { line: 1, i: 3 };
+      var ELECTRODES = [
+        { line: 0, i: 0, p: [0.7946, 0.2320], a: -0.95 },
+        { line: 0, i: 4, p: [0.1100, 0.8560], a: 2.45 },
+        { line: 1, i: 0, p: [0.0900, 1.0000], a: 2.60 },
+        { line: 1, i: 4, p: [0.8400, 0.0000], a: -1.45 }
+      ];
+
+      function mk(w, h) {
+        var c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(w));
+        c.height = Math.max(1, Math.round(h));
+        return c;
+      }
+      function emit(x, sp, ox, oy, s) {
+        var cs = sp.c;
+        for (var i = 0; i < cs.length; i++) {
+          var c = cs[i], k = c[0];
+          if (k === 'M') x.moveTo(ox + c[1] * s, oy + c[2] * s);
+          else if (k === 'L') x.lineTo(ox + c[1] * s, oy + c[2] * s);
+          else if (k === 'Q') x.quadraticCurveTo(ox + c[1] * s, oy + c[2] * s, ox + c[3] * s, oy + c[4] * s);
+          else if (k === 'R') x.arcTo(ox + c[1] * s, oy + c[2] * s, ox + c[3] * s, oy + c[4] * s, c[5] * s);
+          else if (k === 'E') x.ellipse(ox + c[1] * s, oy + c[2] * s, c[3] * s, c[4] * s, 0, c[5], c[6], !!c[7]);
+        }
+      }
+      function trace(x, items) {
+        x.beginPath();
+        for (var i = 0; i < items.length; i++) {
+          var it = items[i], sub = it.g.sub;
+          for (var j = 0; j < sub.length; j++) emit(x, sub[j], it.ox, it.oy, it.s);
+        }
+      }
+      function endsOf(sp) {
+        if (sp.closed) return [];
+        var a = sp.c[0], last = sp.c[sp.c.length - 1], b = null;
+        if (last[0] === 'L' || last[0] === 'M') b = [last[1], last[2]];
+        else if (last[0] === 'Q') b = [last[3], last[4]];
+        else if (last[0] === 'E') b = [last[1] + last[3] * Math.cos(last[6]), last[2] + last[4] * Math.sin(last[6])];
+        var out = [[a[1], a[2]]];
+        if (b) out.push(b);
+        return out;
+      }
+      function scaleItems(items, k) {
+        return items.map(function (it) { return { g: it.g, ox: it.ox * k, oy: it.oy * k, s: it.s * k }; });
+      }
+
+      function strokePass(x, items, w, blur, col, alpha, additive) {
+        x.save();
+        x.lineCap = 'round'; x.lineJoin = 'round';
+        if (blur > 0.25) { try { x.filter = 'blur(' + blur.toFixed(2) + 'px)'; } catch (e) {} }
+        if (additive !== false) x.globalCompositeOperation = 'lighter';
+        x.globalAlpha = (alpha == null) ? 1 : alpha;
+        x.lineWidth = w; x.strokeStyle = col;
+        trace(x, items); x.stroke();
+        x.restore();
+      }
+
+      var SPILL_S = 0.34, BLOOM_S = 0.5;
+
+      function buildSpill(items, cap, W, H) {
+        var c = mk(W * SPILL_S, H * SPILL_S), x = c.getContext('2d');
+        var it = scaleItems(items, SPILL_S), k = cap * SPILL_S;
+        strokePass(x, it, k * 0.62, k * 0.30, 'rgba(255,22,118,1)', 0.115);
+        strokePass(x, it, k * 0.42, k * 0.11, 'rgba(255,40,140,1)', 0.20);
+        return c;
+      }
+      function buildBloom(items, tube, W, H) {
+        var c = mk(W * BLOOM_S, H * BLOOM_S), x = c.getContext('2d');
+        var it = scaleItems(items, BLOOM_S), t = tube * BLOOM_S;
+        strokePass(x, it, t * 2.60, t * 1.75, 'rgba(255,40,146,1)', 0.30);
+        strokePass(x, it, t * 1.34, t * 0.58, 'rgba(255,100,188,1)', 0.48);
+        return c;
+      }
+      function paintCore(x, items, tube) {
+        strokePass(x, items, tube * 0.88, tube * 0.10, '#ff2a96', 1);
+        strokePass(x, items, tube * 0.54, tube * 0.06, '#ff8ed2', 1);
+        strokePass(x, items, tube * 0.24, tube * 0.035, '#fff4fb', 1);
+      }
+      function buildSpec(items, tube, W, H) {
+        var c = mk(W, H), x = c.getContext('2d');
+        x.save();
+        x.translate(-tube * 0.02, -tube * 0.25);
+        x.lineCap = 'round'; x.lineJoin = 'round';
+        x.lineWidth = tube * 0.17; x.strokeStyle = 'rgba(255,240,250,.52)';
+        try { x.filter = 'blur(' + (tube * 0.11).toFixed(2) + 'px)'; } catch (e) {}
+        trace(x, items); x.stroke();
+        x.restore();
+        x.globalCompositeOperation = 'destination-in';
+        x.lineCap = 'round'; x.lineJoin = 'round';
+        x.lineWidth = tube * 0.66; x.strokeStyle = '#fff';
+        trace(x, items); x.stroke();
+        return c;
+      }
+
+      function tips(x, items, tube) {
+        x.save();
+        x.globalCompositeOperation = 'source-over';
+        for (var i = 0; i < items.length; i++) {
+          var it = items[i], sub = it.g.sub;
+          for (var j = 0; j < sub.length; j++) {
+            var e = endsOf(sub[j]);
+            for (var m = 0; m < e.length; m++) {
+              var px = it.ox + e[m][0] * it.s, py = it.oy + e[m][1] * it.s;
+              x.beginPath(); x.arc(px, py, tube * 0.47, 0, P * 2);
+              x.fillStyle = '#33101f'; x.fill();
+              x.beginPath(); x.arc(px, py, tube * 0.47, 0, P * 2);
+              x.lineWidth = 1; x.strokeStyle = 'rgba(255,150,205,.20)'; x.stroke();
+              x.beginPath(); x.arc(px - tube * 0.06, py - tube * 0.10, tube * 0.20, 0, P * 2);
+              x.fillStyle = 'rgba(255,205,235,.14)'; x.fill();
+            }
+          }
+        }
+        x.restore();
+      }
+
+      function electrodes(x, list, tube) {
+        x.save();
+        for (var i = 0; i < list.length; i++) {
+          var e = list[i], cx = e.x, cy = e.y, a = e.a;
+          var sx = cx + Math.cos(a) * tube * 1.55, sy = cy + Math.sin(a) * tube * 1.55;
+          x.beginPath(); x.moveTo(cx, cy); x.lineTo(sx, sy);
+          x.lineCap = 'round'; x.lineWidth = tube * 0.46; x.strokeStyle = '#120a10'; x.stroke();
+          x.beginPath(); x.arc(sx, sy, tube * 0.40, 0, P * 2);
+          x.fillStyle = '#0b0509'; x.fill();
+          x.beginPath(); x.arc(cx, cy, tube * 0.80, 0, P * 2);
+          x.fillStyle = '#180a12'; x.fill();
+          x.beginPath(); x.arc(cx, cy, tube * 0.80, 0, P * 2);
+          x.lineWidth = 1.4; x.strokeStyle = 'rgba(214,120,164,.30)'; x.stroke();
+          var g = x.createRadialGradient(cx, cy, 0, cx, cy, tube * 1.25);
+          g.addColorStop(0, 'rgba(255,226,244,.95)');
+          g.addColorStop(0.24, 'rgba(255,90,180,.62)');
+          g.addColorStop(1, 'rgba(255,50,150,0)');
+          x.globalCompositeOperation = 'lighter';
+          x.beginPath(); x.arc(cx, cy, tube * 1.25, 0, P * 2);
+          x.fillStyle = g; x.fill();
+          x.globalCompositeOperation = 'source-over';
+        }
+        x.restore();
+      }
+
+      var W = 0, H = 0, cap = 0, tube = 0;
+      var BASE = null, WLIT = null, dirty = { x: 0, y: 0, w: 0, h: 0 };
+
+      function layout() {
+        var lines = [], maxW = 0, i, j;
+        for (i = 0; i < LINES.length; i++) {
+          var s = LINES[i], sum = 0, gl = [];
+          for (j = 0; j < s.length; j++) { var g = GLYPHS[s[j]]; gl.push(g); sum += g.w; }
+          lines.push({ gl: gl, sum: sum });
+          maxW = Math.max(maxW, sum + (gl.length - 1) * MINGAP);
+        }
+        var blockW = maxW, blockH = 2 + LINEGAP;
+        cap = Math.min((W - W * 0.12) / blockW, (H - H * 0.18) / blockH);
+        cap = Math.max(10, cap);
+        tube = cap * 0.105;
+        var x0 = (W - blockW * cap) / 2;
+        var y0 = (H - blockH * cap) * 0.48;
+
+        var items = [], flick = null, elec = [];
+        for (i = 0; i < lines.length; i++) {
+          var L = lines[i];
+          var gap = (blockW - L.sum) / (L.gl.length - 1);
+          var pen = x0, top = y0 + i * (1 + LINEGAP) * cap;
+          for (j = 0; j < L.gl.length; j++) {
+            var it = { g: L.gl[j], ox: pen, oy: top, s: cap, line: i, i: j };
+            items.push(it);
+            if (i === FLICK.line && j === FLICK.i) flick = it;
+            for (var e = 0; e < ELECTRODES.length; e++) {
+              var E = ELECTRODES[e];
+              if (E.line === i && E.i === j) elec.push({ x: pen + E.p[0] * cap, y: top + E.p[1] * cap, a: E.a });
+            }
+            pen += L.gl[j].w * cap + gap;
+          }
+        }
+        return { items: items, flick: flick, elec: elec };
+      }
+
+      function bake() {
+        var L = layout();
+        var items = L.items, flick = L.flick;
+        var steady = items.filter(function (it) { return it !== flick; });
+        var one = flick ? [flick] : [];
+
+        var base = mk(W, H), b = base.getContext('2d');
+        b.clearRect(0, 0, W, H);
+        b.globalCompositeOperation = 'lighter';
+        b.drawImage(buildSpill(steady, cap, W, H), 0, 0, W, H);
+        b.drawImage(buildBloom(steady, tube, W, H), 0, 0, W, H);
+        b.globalCompositeOperation = 'source-over';
+
+        var tl = mk(W, H), t = tl.getContext('2d');
+        strokePass(t, items, tube, 0, '#3d162a', 1, false);
+        strokePass(t, items, tube * 0.70, 0, '#280c1a', 1, false);
+        paintCore(t, steady, tube);
+        t.globalCompositeOperation = 'lighter';
+        t.drawImage(buildSpec(items, tube, W, H), 0, 0);
+        t.globalCompositeOperation = 'source-over';
+        tips(t, items, tube);
+        electrodes(t, L.elec, tube);
+        b.drawImage(tl, 0, 0);
+        BASE = base;
+
+        var lit = mk(W, H), w = lit.getContext('2d');
+        if (one.length) {
+          w.globalCompositeOperation = 'lighter';
+          w.drawImage(buildSpill(one, cap, W, H), 0, 0, W, H);
+          w.drawImage(buildBloom(one, tube, W, H), 0, 0, W, H);
+          w.globalCompositeOperation = 'source-over';
+          paintCore(w, one, tube);
+          w.globalCompositeOperation = 'destination-out';
+          var sub = one[0].g.sub;
+          for (var j = 0; j < sub.length; j++) {
+            var e = endsOf(sub[j]);
+            for (var m = 0; m < e.length; m++) {
+              w.beginPath();
+              w.arc(one[0].ox + e[m][0] * one[0].s, one[0].oy + e[m][1] * one[0].s, tube * 0.47, 0, P * 2);
+              w.fill();
+            }
+          }
+          w.globalCompositeOperation = 'source-over';
+          var pad = cap * 1.35;
+          var bx = one[0].ox - pad, by = one[0].oy - pad;
+          var bw2 = one[0].g.w * cap + pad * 2, bh2 = cap + pad * 2;
+          dirty.x = Math.max(0, Math.floor(bx));
+          dirty.y = Math.max(0, Math.floor(by));
+          dirty.w = Math.min(W - dirty.x, Math.ceil(bw2));
+          dirty.h = Math.min(H - dirty.y, Math.ceil(bh2));
+        } else {
+          dirty = { x: 0, y: 0, w: 0, h: 0 };
+        }
+        WLIT = lit;
+      }
+
+      function compose(f) {
+        if (!BASE) return;
+        if (dirty.w > 0 && composed) {
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = 1;
+          ctx.clearRect(dirty.x, dirty.y, dirty.w, dirty.h);
+          ctx.drawImage(BASE, dirty.x, dirty.y, dirty.w, dirty.h, dirty.x, dirty.y, dirty.w, dirty.h);
+          if (f > 0.002) {
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.globalAlpha = f;
+            ctx.drawImage(WLIT, dirty.x, dirty.y, dirty.w, dirty.h, dirty.x, dirty.y, dirty.w, dirty.h);
+          }
+        } else {
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = 1;
+          ctx.clearRect(0, 0, W, H);
+          ctx.drawImage(BASE, 0, 0);
+          if (f > 0.002 && WLIT) {
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.globalAlpha = f;
+            ctx.drawImage(WLIT, 0, 0);
+          }
+          composed = true;
+        }
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 1;
+        lastF = f;
+      }
+      var composed = false, lastF = -1;
+
+      var fseed = 0x1981;
+      function frnd() { fseed = (fseed * 1103515245 + 12345) >>> 0; return fseed / 4294967296; }
+      var ev = null, clock = 0;
+
+      function nextEvent(after) {
+        var segs = [], n = 1 + (frnd() < 0.42 ? 1 : 0);
+        for (var i = 0; i < n; i++) {
+          segs.push({ d: 0.20 + frnd() * 0.26, v: 0.22 + frnd() * 0.40 });
+          segs.push({ d: 0.24 + frnd() * 0.34, v: 1 });
+        }
+        var total = 0;
+        for (var j = 0; j < segs.length; j++) total += segs[j].d;
+        return { t0: after + 5.6 + frnd() * 7.2, dur: total, segs: segs };
+      }
+      function level(t) {
+        if (!ev) ev = nextEvent(4.2);
+        while (t > ev.t0 + ev.dur) ev = nextEvent(ev.t0 + ev.dur);
+        if (t < ev.t0) return 1;
+        var u = t - ev.t0, prev = 1;
+        for (var i = 0; i < ev.segs.length; i++) {
+          var s = ev.segs[i];
+          if (u < s.d) {
+            var p = u / s.d;
+            p = p * p * (3 - 2 * p);
+            return prev + (s.v - prev) * p;
+          }
+          u -= s.d; prev = s.v;
+        }
+        return 1;
+      }
+
+      function resize() {
+        var w = Math.round(board.clientWidth), h = Math.round(board.clientHeight);
+        if (!w || !h) return false;
+        if (w === W && h === H) return false;
+        W = w; H = h;
+        cv.width = W; cv.height = H;
+        bake();
+        composed = false;
+        compose(reduce ? 1 : level(clock));
+        return true;
+      }
+
+      var raf = 0, last = 0, visible = true, shown = true;
+      function stop() { if (raf) { cancelAnimationFrame(raf); raf = 0; } }
+      function tick(now) {
+        raf = requestAnimationFrame(tick);
+        var dt = last ? Math.min(0.05, (now - last) / 1000) : 0;
+        last = now;
+        clock += dt;
+        var f = level(clock);
+        if (Math.abs(f - lastF) > 0.008) compose(f);
+      }
+      function start() {
+        if (reduce || raf || !visible || !shown) return;
+        last = 0;
+        raf = requestAnimationFrame(tick);
+      }
+
+      if (!resize()) {
+        requestAnimationFrame(function () { resize(); });
+      }
+
+      var rt = 0;
+      window.addEventListener('resize', function () {
+        clearTimeout(rt);
+        rt = setTimeout(function () { if (resize()) {} }, 180);
+      });
+
+      document.addEventListener('visibilitychange', function () {
+        shown = !document.hidden;
+        if (shown) start(); else stop();
+      });
+
+      if ('IntersectionObserver' in window) {
+        var io = new IntersectionObserver(function (es) {
+          visible = es[0].isIntersecting;
+          if (visible) start(); else stop();
+        }, { threshold: 0.01 });
+        io.observe(board);
+      } else {
+        start();
+      }
+      if (!reduce) start();
+    })();
+  </script>
+</body>
+</html>

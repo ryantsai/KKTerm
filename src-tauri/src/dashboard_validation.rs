@@ -687,6 +687,34 @@ pub const DYNAMIC_BACKGROUND_IDS: &[&str] = &[
     "submergedSnellOcean",
     "spectralCascadeOcean",
     "blackHole",
+    "predictiveArc",
+    "liquidForm",
+    "energyOrb",
+    "noiseFlow",
+    "streamConvergence",
+    "bellField",
+    "flowField",
+    "condensation",
+    "generativeTree",
+    "ribbonField",
+    "particleOrb",
+    "cloudField",
+    "voidField",
+    "recursiveErosion",
+    "quanteraTradingBackground",
+    "halftoneFlow",
+    "constellationField",
+    "particleDrift",
+    "particleNetwork",
+    "amberHalftone",
+    "matrixField",
+    "gatewayFlow",
+    "connectivityGraph",
+    "interfaceLines",
+    "defenseLines",
+    "topoField",
+    "sylvaLivingWorld",
+    "templeNight",
 ];
 
 pub const BACKGROUND_FITS: &[&str] = &["fill", "fit", "stretch", "tile", "center"];
@@ -2225,8 +2253,55 @@ mod tests {
             "submergedSnellOcean",
             "spectralCascadeOcean",
             "blackHole",
+            "sylvaLivingWorld",
+            "templeNight",
         ] {
             assert!(validate_dynamic_background(id).is_ok(), "{id}");
+        }
+    }
+
+    #[test]
+    fn dynamic_background_accepts_threeui_background_imports() {
+        for id in [
+            "predictiveArc",
+            "liquidForm",
+            "energyOrb",
+            "noiseFlow",
+            "streamConvergence",
+            "bellField",
+            "flowField",
+            "condensation",
+            "generativeTree",
+            "ribbonField",
+            "particleOrb",
+            "cloudField",
+            "voidField",
+            "recursiveErosion",
+            "quanteraTradingBackground",
+            "halftoneFlow",
+            "constellationField",
+            "particleDrift",
+            "particleNetwork",
+            "amberHalftone",
+            "matrixField",
+            "gatewayFlow",
+            "connectivityGraph",
+            "interfaceLines",
+            "defenseLines",
+            "topoField",
+        ] {
+            assert!(validate_dynamic_background(id).is_ok(), "{id}");
+        }
+    }
+
+    #[test]
+    fn dynamic_background_rejects_excluded_threeui_backgrounds() {
+        for id in ["crt", "sparkBadge", "hypnoticLoops", "elements", "portalField"] {
+            assert_eq!(
+                validate_dynamic_background(id),
+                Err(ValidationError::InvalidBackground),
+                "{id}",
+            );
         }
     }
 

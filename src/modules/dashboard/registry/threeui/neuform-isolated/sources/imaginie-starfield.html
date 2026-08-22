@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Imaginie — Stay close to your imagination.</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Iconify Icons -->
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&amp;display=swap" rel="stylesheet">
+  <style>
+    .font-serif {
+      font-family: 'Playfair Display', Georgia, serif;
+    }
+    .font-sans {
+      font-family: 'Inter', sans-serif;
+    }
+    /* Smooth custom animations */
+    .word-span {
+      display: inline-block;
+      opacity: 0;
+      transform: translateY(12px) translateZ(0);
+      filter: blur(4px);
+      transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .word-span.visible {
+      opacity: 1;
+      transform: translateY(0) translateZ(0);
+      filter: blur(0);
+    }
+    /* Holographic button glow */
+    .holo-btn {
+      position: relative;
+      background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(240,220,205,0.9) 50%, rgba(220,240,255,0.9) 100%);
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+      transition: all 0.4s ease;
+    }
+    .holo-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 0 30px rgba(255, 220, 180, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    }
+  </style>
+</head>
+<body class="bg-[#030303] text-[#f4f4f6] font-sans antialiased overflow-x-hidden min-h-screen flex flex-col justify-between" style="background-image: radial-gradient(circle at 10% 20%, rgba(15, 11, 28, 0.6) 0%, rgba(3, 3, 3, 1) 80%);">
+
+  <!-- Interactive Background Canvas (WebGL/Nebula simulation) -->
+  <canvas id="ambient-starfield" class="absolute inset-0 pointer-events-none z-0" style="opacity: 0.45;"></canvas>
+
+  <!-- Header Navigation -->
+  <header class="relative z-50 w-full max-w-7xl mx-auto px-6 md:px-12 py-6 flex items-center justify-between">
+    <div class="flex items-center gap-12">
+      <!-- Logo -->
+      <a href="#" class="text-xl font-semibold tracking-tight text-white hover:opacity-90 transition-opacity">
+        Imaginie
+      </a>
+      <!-- Nav Links -->
+      <nav class="hidden md:flex items-center gap-8">
+        <a href="#" class="text-[13px] text-[#9a9a9f] hover:text-white transition-colors duration-200">How it works</a>
+        <a href="#" class="text-[13px] text-[#9a9a9f] hover:text-white transition-colors duration-200">Features</a>
+        <a href="#" class="text-[13px] text-[#9a9a9f] hover:text-white transition-colors duration-200">Pricing</a>
+      </nav>
+    </div>
+    <!-- Log In CTA -->
+    <div>
+      <a href="#" class="px-5 py-2 text-[13px] font-medium text-white bg-[#ffffff0a] border border-[#ffffff10] rounded-full hover:bg-[#ffffff15] transition-all duration-300">
+        Log in
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Hero Workspace Section -->
+  <main class="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center my-auto py-8">
+    
+    <!-- Left Copy Column -->
+    <div class="lg:col-span-5 flex flex-col space-y-8 text-left max-w-xl lg:max-w-none">
+      
+      <!-- High-fidelity Headline (Letter/Word animated) -->
+      <h1 id="hero-title" class="text-5xl md:text-6xl lg:text-[64px] font-serif leading-[1.08] tracking-tight text-white py-1">
+        Stay close to your imagination.
+      </h1>
+
+      <!-- Description Subhead -->
+      <p id="hero-desc" class="text-[14px] md:text-[15px] text-[#94949a] leading-relaxed max-w-[430px] opacity-0 translate-y-4 transition-all duration-1000 ease-out delay-500">
+        Where ideas begin as sparks and emerge as living experiences through the power of AI. We transform what doesn't exist yet into something unforgettable.
+      </p>
+
+      <!-- Action Buttons -->
+      <div id="hero-actions" class="flex flex-wrap items-center gap-4 pt-2 opacity-0 translate-y-4 transition-all duration-1000 ease-out delay-700">
+        <a href="#" class="px-5 py-3 text-[13px] font-medium text-white bg-[#0e0e11] border border-[#ffffff12] rounded-full hover:bg-[#16161b] hover:border-[#ffffff1c] transition-all duration-300 flex items-center gap-2">
+          See how it works
+        </a>
+        <a href="#" class="holo-btn px-6 py-3 text-[13px] font-semibold text-[#0d0a12] rounded-full flex items-center gap-1.5 transition-transform duration-300">
+          Begin the journey
+          <iconify-icon icon="solar:arrow-right-linear" class="text-base font-semibold" style="stroke-width: 2;"></iconify-icon>
+        </a>
+      </div>
+
+      <!-- Social Proof / Creators Indicator -->
+      <div id="hero-proof" class="flex items-center gap-3.5 pt-8 opacity-0 translate-y-4 transition-all duration-1000 ease-out delay-900">
+        <!-- Avatars Stack -->
+        <div class="flex -space-x-3.5">
+          <img class="w-7 h-7 rounded-full border border-black object-cover filter brightness-95" src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/2f563338-39fa-47ea-9761-658d4f3f84db_1600w.jpg" alt="Creator">
+          <img class="w-7 h-7 rounded-full border border-black object-cover filter brightness-95" src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/4f5668c5-fc4a-44e0-bc5e-a664189d3c31_1600w.jpg" alt="Creator">
+          <img class="w-7 h-7 rounded-full border border-black object-cover filter brightness-95" src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/eca707cc-a5b7-439a-b4fd-247f6106c2e1_1600w.jpg" alt="Creator">
+          <img class="w-7 h-7 rounded-full border border-black object-cover filter brightness-95" src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/77415a2e-dcbc-4748-a29d-fced4821881a_1600w.jpg" alt="Creator">
+        </div>
+        <!-- Copy text -->
+        <p class="text-[12px] text-[#86868b] tracking-normal">
+          Used by <span class="text-white font-medium">12,000+</span> builders, creators, and professionals
+        </p>
+      </div>
+
+    </div>
+
+    <!-- Right Artistic Cosmic Portal Column -->
+    <div class="lg:col-span-7 flex justify-center lg:justify-end relative w-full h-[480px] md:h-[620px] lg:h-[680px]">
+      
+      <!-- Outer glowing bronze border frame (Portal Container) -->
+      <div class="relative w-full max-w-[500px] h-full rounded-t-[180px] rounded-b-[40px] p-[5px] bg-gradient-to-tr from-[#1b120f] via-[#a3704c] to-[#e6c29e] shadow-[0_0_80px_rgba(163,112,76,0.15)] overflow-hidden flex items-center justify-center transition-transform duration-700 hover:scale-[1.01]">
+        
+        <!-- Inner shadow & ambient overlay wrapper -->
+        <div class="relative w-full h-full rounded-t-[176px] rounded-b-[36px] overflow-hidden bg-black flex items-center justify-center">
+          
+          <!-- Background Cosmic Dust Image (Aura Asset) -->
+          <video src="https://wypspaektjjiccarxrgy.supabase.co/storage/v1/object/public/generated-page-media/302e86e0-80d8-4ba5-82e8-004220675655/2026-05-20/1779252781481-eabde810-981e-4ee8-a143-4bee829a788c.mp4" poster="https://wypspaektjjiccarxrgy.supabase.co/storage/v1/object/public/generated-page-media/302e86e0-80d8-4ba5-82e8-004220675655/2026-05-20/1779245193658-07a4020a-dced-499d-ac91-36b6037f907e.png" data-neuform-generated-video="true" data-neuform-video-preset="loop-in-view" muted="" playsinline="" preload="metadata" loop="" aria-label="Cosmic Window" class="absolute inset-0 w-full h-full object-cover opacity-85 mix-blend-lighten filter brightness-110 saturate-[1.1]"></video>
+
+          <!-- Interactive Star/Nebula Field Canvas inside the window -->
+          <canvas id="portal-stars" class="absolute inset-0 w-full h-full z-10 mix-blend-screen pointer-events-none"></canvas>
+
+          <!-- Cosmic Horizon Layer Glow -->
+          <div class="absolute bottom-0 inset-x-0 h-48 bg-gradient-to-t from-[#0e0c15] via-transparent to-transparent z-20"></div>
+
+          <!-- Futuristic Figure Silhouette sitting in deep observation -->
+          <div class="absolute bottom-12 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center">
+            
+            <!-- Glow around head / focal aura -->
+            <div class="absolute -top-3 w-10 h-10 rounded-full bg-orange-400 opacity-40 blur-md animate-pulse"></div>
+            <div class="absolute -top-1 w-6 h-6 rounded-full bg-yellow-100 opacity-60 blur-sm"></div>
+
+            <!-- Sleek SVG silhouette (Person in circular ergonomic egg-chair) -->
+            <svg class="w-24 h-24 text-black filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.9)]" viewBox="0 0 100 100" fill="currentColor">
+              <!-- Pod / Chair -->
+              <path d="M50,15 C30,15 20,30 20,55 C20,75 32,85 50,85 C68,85 80,75 80,55 C80,30 70,15 50,15 Z" fill="#060608"></path>
+              <!-- Inner Cushion Cutout -->
+              <path d="M50,22 C35,22 26,33 26,55 C26,70 34,78 50,78 C66,78 74,70 74,55 C74,33 65,22 50,22 Z" fill="#010102"></path>
+              <!-- Person Silhouette inside -->
+              <!-- Torso & Arms -->
+              <path d="M46,68 L54,68 L54,58 L52,50 L48,50 L46,58 Z" fill="#08080c"></path>
+              <!-- Head -->
+              <circle cx="50" cy="45" r="4.5" fill="#08080c"></circle>
+              <!-- Glow back rim on seat -->
+              <path d="M26,55 C26,62 30,70 38,74" stroke="#e6c29e" stroke-width="1" fill="none" opacity="0.4"></path>
+              <path d="M74,55 C74,62 70,70 62,74" stroke="#a3704c" stroke-width="1" fill="none" opacity="0.3"></path>
+            </svg>
+
+          </div>
+
+          <!-- Glass reflection light glare on the screen -->
+          <div class="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/10 pointer-events-none z-20" style="mix-blend-mode: overlay;"></div>
+
+        </div>
+      </div>
+
+      <!-- Left Bottom soft dark gradient blend for natural shadow -->
+      <div class="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-[#030303] to-transparent z-40 pointer-events-none"></div>
+
+    </div>
+
+  </main>
+
+  <!-- Fine Footer Branding -->
+  <footer class="relative z-50 w-full max-w-7xl mx-auto px-6 md:px-12 py-8 flex flex-col md:flex-row items-center justify-between border-t border-[#ffffff05] text-[11px] text-[#636366] gap-4">
+    <div class="flex items-center gap-1.5">
+      <span>© 2026 Imaginie Inc. All rights reserved.</span>
+    </div>
+    <div class="flex items-center gap-6">
+      <a href="#" class="hover:text-white transition-colors duration-200">Terms of Service</a>
+      <a href="#" class="hover:text-white transition-colors duration-200">Privacy Policy</a>
+      <a href="#" class="hover:text-white transition-colors duration-200">System Status</a>
+    </div>
+  </footer>
+
+  <!-- Script for Animations & Live Cosmic Canvas Simulation (WebGL Quality 2D Context) -->
+  <script>
+    // 1. Text Animation: Splitting the header words cleanly and fading in one by one.
+    const title = document.getElementById('hero-title');
+    const titleText = title.textContent.trim();
+    title.innerHTML = '';
+    
+    // Split text into words safely
+    const words = titleText.split(/\s+/);
+    words.forEach((word, index) => {
+      const span = document.createElement('span');
+      span.className = 'word-span';
+      span.innerHTML = word + '&nbsp;';
+      span.style.transitionDelay = `${index * 80}ms`;
+      title.appendChild(span);
+    });
+
+    // Trigger animations when content loaded
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        const spans = document.querySelectorAll('.word-span');
+        spans.forEach(span => span.classList.add('visible'));
+      }, 100);
+
+      setTimeout(() => {
+        document.getElementById('hero-desc').style.opacity = '1';
+        document.getElementById('hero-desc').style.transform = 'translateY(0)';
+      }, 400);
+
+      setTimeout(() => {
+        document.getElementById('hero-actions').style.opacity = '1';
+        document.getElementById('hero-actions').style.transform = 'translateY(0)';
+      }, 650);
+
+      setTimeout(() => {
+        document.getElementById('hero-proof').style.opacity = '1';
+        document.getElementById('hero-proof').style.transform = 'translateY(0)';
+      }, 850);
+    });
+
+    // 2. Interactive Starfield Canvas inside the Portal Frame
+    const portalCanvas = document.getElementById('portal-stars');
+    const ctxPortal = portalCanvas.getContext('2d');
+    
+    let stars = [];
+    let portalWidth = 0;
+    let portalHeight = 0;
+
+    function resizePortalCanvas() {
+      const rect = portalCanvas.getBoundingClientRect();
+      portalWidth = rect.width;
+      portalHeight = rect.height;
+      portalCanvas.width = portalWidth;
+      portalCanvas.height = portalHeight;
+      initStars();
+    }
+
+    function initStars() {
+      stars = [];
+      const count = 45;
+      for (let i = 0; i < count; i++) {
+        stars.push({
+          x: Math.random() * portalWidth,
+          y: Math.random() * portalHeight,
+          radius: Math.random() * 1.5 + 0.5,
+          color: getRandomColor(),
+          speed: Math.random() * 0.15 + 0.05,
+          angle: Math.random() * Math.PI * 2,
+          pulse: Math.random() * 0.02
+        });
+      }
+    }
+
+    function getRandomColor() {
+      const colors = [
+        'rgba(230, 194, 158, ', // Bronze/gold matches frame
+        'rgba(244, 244, 246, ', // Pure soft white
+        'rgba(173, 140, 255, ', // Purple starlight
+        'rgba(135, 206, 250, '  // Cool space blue
+      ];
+      return colors[Math.floor(Math.random() * colors.length)];
+    }
+
+    function drawStars() {
+      ctxPortal.clearRect(0, 0, portalWidth, portalHeight);
+      
+      stars.forEach(s => {
+        // Drift movement
+        s.x += Math.cos(s.angle) * s.speed;
+        s.y += Math.sin(s.angle) * s.speed;
+        
+        // Bounce bounds inside space window
+        if (s.x < 0 || s.x > portalWidth) s.angle = Math.PI - s.angle;
+        if (s.y < 0 || s.y > portalHeight) s.angle = -s.angle;
+
+        // Sparkle fade
+        s.speed += (Math.random() - 0.5) * 0.01;
+        s.speed = Math.max(0.02, Math.min(s.speed, 0.25));
+
+        // Pulsing glow alpha
+        const alpha = 0.3 + Math.abs(Math.sin(Date.now() * s.pulse)) * 0.7;
+        ctxPortal.beginPath();
+        ctxPortal.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+        ctxPortal.fillStyle = s.color + alpha + ')';
+        ctxPortal.shadowBlur = s.radius * 4;
+        ctxPortal.shadowColor = s.color + '0.8)';
+        ctxPortal.fill();
+      });
+
+      requestAnimationFrame(drawStars);
+    }
+
+    // 3. Ambient Starfield on Page Background
+    const ambientCanvas = document.getElementById('ambient-starfield');
+    const ctxAmbient = ambientCanvas.getContext('2d');
+    let ambientStars = [];
+
+    function resizeAmbientCanvas() {
+      ambientCanvas.width = window.innerWidth;
+      ambientCanvas.height = window.innerHeight;
+      initAmbientStars();
+    }
+
+    function initAmbientStars() {
+      ambientStars = [];
+      const count = 70;
+      for (let i = 0; i < count; i++) {
+        ambientStars.push({
+          x: Math.random() * ambientCanvas.width,
+          y: Math.random() * ambientCanvas.height,
+          size: Math.random() * 0.8 + 0.2,
+          opacity: Math.random() * 0.6 + 0.1,
+          drift: Math.random() * 0.02 + 0.01
+        });
+      }
+    }
+
+    function drawAmbientStars() {
+      ctxAmbient.clearRect(0, 0, ambientCanvas.width, ambientCanvas.height);
+      ambientStars.forEach(s => {
+        s.y -= s.drift;
+        if (s.y < 0) s.y = ambientCanvas.height;
+        ctxAmbient.fillStyle = `rgba(255, 255, 255, ${s.opacity})`;
+        ctxAmbient.fillRect(s.x, s.y, s.size, s.size);
+      });
+      requestAnimationFrame(drawAmbientStars);
+    }
+
+    window.addEventListener('resize', () => {
+      resizePortalCanvas();
+      resizeAmbientCanvas();
+    });
+
+    // Initial setups
+    resizePortalCanvas();
+    resizeAmbientCanvas();
+    drawStars();
+    drawAmbientStars();
+  </script>
+
+<script data-neuform-video-controller="true">
+(function () {
+  function playVideo(video) {
+    var promise = video.play();
+    if (promise && typeof promise.catch === "function") {
+      promise.catch(function () {});
+    }
+  }
+  function setupVideo(video) {
+    if (video.__neuformVideoReady === true) return;
+    video.__neuformVideoReady = true;
+    video.muted = true;
+    video.playsInline = true;
+    var preset = video.dataset.neuformVideoPreset || "loop-in-view";
+    if (preset === "hover") {
+      video.addEventListener("mouseenter", function () { playVideo(video); });
+      video.addEventListener("mouseleave", function () {
+        video.pause();
+        video.currentTime = 0;
+      });
+      return;
+    }
+    if (!("IntersectionObserver" in window)) {
+      playVideo(video);
+      return;
+    }
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          if (preset === "play-once" && video.__neuformVideoPlayed === true) return;
+          playVideo(video);
+        } else {
+          video.pause();
+        }
+      });
+    }, { threshold: 0.35 });
+    if (preset === "play-once") {
+      video.addEventListener("ended", function () {
+        video.__neuformVideoPlayed = true;
+      }, { once: true });
+    }
+    observer.observe(video);
+  }
+  function setupVideos() {
+    document.querySelectorAll("video[data-neuform-video-preset]").forEach(setupVideo);
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", setupVideos);
+  } else {
+    setupVideos();
+  }
+})();</script></body></html>

@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Julian Vance — Digital Craftsman</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Newsreader:ital,opsz,wght@1,6..72,300;1,6..72,400&display=swap" rel="stylesheet">
+</head>
+<body class="bg-[#09090b] text-white antialiased bg-fixed" style="font-family:'Inter',ui-sans-serif,system-ui,sans-serif;">
+
+  <!-- WebGL Nebula Background -->
+  <canvas id="bg-canvas" class="fixed inset-0 w-full h-full pointer-events-none" style="z-index:0;"></canvas>
+
+  <!-- Grain overlay -->
+  <div class="fixed inset-0 pointer-events-none" style="z-index:1; opacity:0.08; mix-blend-mode:overlay; background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22%3E%3Cfilter id=%22n%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.8%22 numOctaves=%224%22/%3E%3C/filter%3E%3Crect width=%22200%22 height=%22200%22 filter=%22url(%23n)%22/%3E%3C/svg%3E');"></div>
+
+  <!-- Soft readability vignette -->
+  <div class="fixed inset-0 pointer-events-none" style="z-index:1; background:radial-gradient(ellipse at 50% 50%, transparent 55%, rgba(9,9,11,0.65) 100%);"></div>
+
+  <!-- Page -->
+  <main class="relative flex flex-col justify-between" style="z-index:10; min-height:140vh;">
+
+    <!-- Header containing Nav, CTA, Tagline, and Subheading -->
+    <header class="px-6 sm:px-12 pt-8 sm:pt-10 flex flex-col gap-10 sm:gap-14">
+      
+      <!-- Header Navigation & CTA -->
+      <div class="flex items-center justify-between w-full">
+        <nav aria-label="Primary navigation" class="flex items-center gap-5 sm:gap-8 text-xs sm:text-sm font-medium uppercase tracking-widest text-neutral-300">
+          <span class="inline-flex overflow-hidden"><a href="#" class="header-word inline-block will-change-transform hover:text-indigo-400 transition-colors" style="transition-duration:150ms;">Work</a></span>
+          <span class="inline-flex overflow-hidden"><a href="#" class="header-word inline-block will-change-transform hover:text-indigo-400 transition-colors" style="transition-duration:150ms;">Experiments</a></span>
+          <span class="inline-flex overflow-hidden"><a href="#" class="header-word inline-block will-change-transform hover:text-indigo-400 transition-colors" style="transition-duration:150ms;">Journal</a></span>
+        </nav>
+
+        <div class="inline-flex overflow-hidden rounded-full p-[1px] bg-gradient-to-r from-indigo-500/40 via-purple-500/40 to-indigo-500/40 shadow-[0px_0px_0px_1px_rgba(0,0,0,0.06),0px_1px_1px_-0.5px_rgba(0,0,0,0.06),0px_3px_3px_-1.5px_rgba(0,0,0,0.06),_0px_6px_6px_-3px_rgba(0,0,0,0.06),0px_12px_12px_-6px_rgba(0,0,0,0.06),0px_24px_24px_-12px_rgba(0,0,0,0.06)] header-word will-change-transform">
+          <a href="#" class="px-4 py-1.5 sm:px-5 sm:py-2 rounded-full bg-gradient-to-b from-[#2a2a2e] to-[#09090b] shadow-[inset_0_1px_1px_rgba(255,255,255,0.15),inset_0_-1px_1px_rgba(0,0,0,0.6)] text-xs sm:text-sm font-medium text-white hover:from-[#323236] hover:to-[#121216] transition-colors flex items-center gap-1.5 sm:gap-2 drop-shadow-sm">
+            Start Project
+            <iconify-icon icon="solar:arrow-right-up-linear" width="16" height="16" stroke-width="1.5"></iconify-icon>
+          </a>
+        </div>
+      </div>
+
+      <!-- Tagline & Subheading -->
+      <div class="flex flex-col gap-3">
+        <p id="tagline-container" class="text-xs sm:text-sm font-light text-neutral-200 leading-relaxed max-w-xs">
+          <span class="inline-flex overflow-hidden pb-0.5 -mb-0.5"><span class="tagline-word inline-block will-change-transform">Creative</span></span>
+          <span class="inline-flex overflow-hidden pb-0.5 -mb-0.5"><span class="tagline-word inline-block will-change-transform">developer,</span></span>
+          <br>
+          <em style="font-family:'Newsreader',serif;" class="italic">
+            <span class="inline-flex overflow-hidden pb-0.5 -mb-0.5"><span class="tagline-word inline-block will-change-transform">crafting</span></span>
+            <span class="inline-flex overflow-hidden pb-0.5 -mb-0.5"><span class="tagline-word inline-block will-change-transform">digital</span></span>
+            <span class="inline-flex overflow-hidden pb-0.5 -mb-0.5"><span class="tagline-word inline-block will-change-transform">spaces</span></span>
+            <span class="inline-flex overflow-hidden pb-0.5 -mb-0.5"><span class="tagline-word inline-block will-change-transform">with</span></span>
+            <span class="inline-flex overflow-hidden pb-0.5 -mb-0.5"><span class="tagline-word inline-block will-change-transform">intent,</span></span>
+          </em>
+          <br>
+          <span class="inline-flex overflow-hidden pb-0.5 -mb-0.5"><span class="tagline-word inline-block will-change-transform">merging</span></span>
+          <span class="inline-flex overflow-hidden pb-0.5 -mb-0.5"><span class="tagline-word inline-block will-change-transform">form</span></span>
+          <span class="inline-flex overflow-hidden pb-0.5 -mb-0.5"><span class="tagline-word inline-block will-change-transform">and</span></span>
+          <span class="inline-flex overflow-hidden pb-0.5 -mb-0.5"><span class="tagline-word inline-block will-change-transform">function.</span></span>
+        </p>
+
+        <p id="subheading-container" class="text-xs sm:text-sm font-light text-neutral-400 leading-relaxed max-w-sm mt-2">
+          <span class="inline-flex overflow-hidden pb-0.5 -mb-0.5"><span class="subheading-word inline-block will-change-transform">Specializing</span></span>
+          <span class="inline-flex overflow-hidden pb-0.5 -mb-0.5"><span class="subheading-word inline-block will-change-transform">in</span></span>
+          <span class="inline-flex overflow-hidden pb-0.5 -mb-0.5"><span class="subheading-word inline-block will-change-transform">kinetic</span></span>
+          <span class="inline-flex overflow-hidden pb-0.5 -mb-0.5"><span class="subheading-word inline-block will-change-transform">interfaces</span></span>
+          <span class="inline-flex overflow-hidden pb-0.5 -mb-0.5"><span class="subheading-word inline-block will-change-transform">and</span></span>
+          <span class="inline-flex overflow-hidden pb-0.5 -mb-0.5"><span class="subheading-word inline-block will-change-transform">highly</span></span>
+          <span class="inline-flex overflow-hidden pb-0.5 -mb-0.5"><span class="subheading-word inline-block will-change-transform">interactive</span></span>
+          <span class="inline-flex overflow-hidden pb-0.5 -mb-0.5"><span class="subheading-word inline-block will-change-transform">web</span></span>
+          <span class="inline-flex overflow-hidden pb-0.5 -mb-0.5"><span class="subheading-word inline-block will-change-transform">experiences.</span></span>
+        </p>
+      </div>
+    </header>
+
+    <!-- Giant name -->
+    <section aria-label="Introduction" class="flex-1 flex items-end sm:items-center">
+      <h1 class="w-full flex flex-col lg:flex-row lg:items-baseline lg:justify-between px-6 sm:px-12 gap-2 lg:gap-8 select-none tracking-tight">
+        <span class="block overflow-hidden pb-2 lg:pb-6">
+          <span id="name-first" class="block font-normal text-neutral-100 will-change-transform" style="font-size:clamp(4rem,16vw,15rem); line-height:0.95;">Julian</span>
+        </span>
+        <span class="block overflow-visible">
+          <span class="block overflow-hidden pb-4 lg:pb-8 -mb-4 lg:-mb-8">
+            <span id="name-last" class="block italic pr-2 will-change-transform" style="font-family:'Newsreader',serif; font-weight:300; font-size:clamp(4.25rem,17vw,16rem); line-height:0.95; background:linear-gradient(100deg,#818cf8 0%,#c084fc 45%,#e2e8f0 80%); -webkit-background-clip:text; background-clip:text; color:transparent;">Vance<span style="background:linear-gradient(100deg,#cbd5e1,#f1f5f9); -webkit-background-clip:text; background-clip:text; color:transparent;">.</span></span>
+          </span>
+        </span>
+      </h1>
+    </section>
+
+    <!-- Bottom bar with Gradient Border -->
+    <footer class="relative before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent">
+      <div class="flex flex-col sm:flex-row items-center sm:items-center justify-between px-6 sm:px-12 py-5 sm:py-6 gap-4 sm:gap-0">
+
+        <div class="flex items-center gap-2 text-xs sm:text-sm font-medium uppercase" style="letter-spacing:0.1em;">
+          <span class="inline-flex overflow-hidden"><iconify-icon icon="solar:arrow-right-linear" width="16" height="16" aria-hidden="true" class="footer-word block will-change-transform"></iconify-icon></span>
+          <span class="inline-flex overflow-hidden"><span class="footer-word inline-block will-change-transform">V8.0</span></span>
+        </div>
+
+        <nav aria-label="Social links" class="flex items-center gap-4 sm:gap-6 text-xs sm:text-sm font-medium uppercase text-neutral-200" style="letter-spacing:0.1em;">
+          <a href="#" class="hover:text-indigo-400 transition-colors inline-flex overflow-hidden" style="transition-duration:150ms;">
+            <span class="footer-word inline-block will-change-transform">Github</span>
+          </a>
+          <span class="text-neutral-600 font-light inline-flex overflow-hidden">
+            <span class="footer-word inline-block will-change-transform">/</span>
+          </span>
+          <a href="#" class="hover:text-indigo-400 transition-colors inline-flex overflow-hidden" style="transition-duration:150ms;">
+            <span class="footer-word inline-block will-change-transform">Twitter</span>
+          </a>
+          <span class="text-neutral-600 font-light inline-flex overflow-hidden">
+            <span class="footer-word inline-block will-change-transform">/</span>
+          </span>
+          <a href="#" class="hover:text-indigo-400 transition-colors inline-flex overflow-hidden" style="transition-duration:150ms;">
+            <span class="footer-word inline-block will-change-transform">LinkedIn</span>
+          </a>
+        </nav>
+
+        <nav aria-label="Secondary links" class="flex items-center gap-5 sm:gap-8 text-xs sm:text-sm font-medium uppercase" style="letter-spacing:0.1em;">
+          <a href="#" class="hover:text-indigo-400 transition-colors inline-flex overflow-hidden" style="transition-duration:150ms;">
+            <span class="footer-word inline-block will-change-transform">Home</span>
+          </a>
+          <a href="#" class="hover:text-indigo-400 transition-colors inline-flex overflow-hidden" style="transition-duration:150ms;">
+            <span class="footer-word inline-block will-change-transform">Archive</span>
+          </a>
+          <a href="#" class="hover:text-indigo-400 transition-colors inline-flex overflow-hidden" style="transition-duration:150ms;">
+            <span class="footer-word inline-block will-change-transform">Contact</span>
+          </a>
+        </nav>
+
+      </div>
+    </footer>
+  </main>
+
+  <script>
+    // ---------- WebGL indigo nebula background ----------
+    (function () {
+      const canvas = document.getElementById('bg-canvas');
+      const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: false });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+      const uniforms = {
+        u_time: { value: 0 },
+        u_resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+        u_mouse: { value: new THREE.Vector2(0.5, 0.5) }
+      };
+
+      const fragmentShader = `
+        precision highp float;
+        uniform float u_time;
+        uniform vec2 u_resolution;
+        uniform vec2 u_mouse;
+
+        vec3 mod289(vec3 x){return x - floor(x*(1.0/289.0))*289.0;}
+        vec2 mod289(vec2 x){return x - floor(x*(1.0/289.0))*289.0;}
+        vec3 permute(vec3 x){return mod289(((x*34.0)+1.0)*x);}
+        float snoise(vec2 v){
+          const vec4 C = vec4(0.211324865405187,0.366025403784439,-0.577350269189626,0.024390243902439);
+          vec2 i = floor(v + dot(v, C.yy));
+          vec2 x0 = v - i + dot(i, C.xx);
+          vec2 i1 = (x0.x > x0.y) ? vec2(1.0,0.0) : vec2(0.0,1.0);
+          vec4 x12 = x0.xyxy + C.xxzz;
+          x12.xy -= i1;
+          i = mod289(i);
+          vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0)) + i.x + vec3(0.0, i1.x, 1.0));
+          vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
+          m = m*m; m = m*m;
+          vec3 x = 2.0 * fract(p * C.www) - 1.0;
+          vec3 h = abs(x) - 0.5;
+          vec3 ox = floor(x + 0.5);
+          vec3 a0 = x - ox;
+          m *= 1.79284291400159 - 0.85373472095314 * (a0*a0 + h*h);
+          vec3 g;
+          g.x = a0.x * x0.x + h.x * x0.y;
+          g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+          return 130.0 * dot(m, g);
+        }
+        float fbm(vec2 p){
+          float v = 0.0; float a = 0.55;
+          for(int i=0;i<4;i++){ v += a*snoise(p); p *= 2.05; a *= 0.5; }
+          return v;
+        }
+
+        void main(){
+          vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+          vec2 p = uv;
+          p.x *= u_resolution.x / u_resolution.y;
+
+          float t = u_time * 0.05;
+          vec2 drift = (u_mouse - 0.5) * 0.12;
+
+          // warp coordinates for fluid motion
+          vec2 st = p * 0.85 + drift;
+          st += vec2(fbm(st + t), fbm(st - t)) * 0.35;
+
+          vec3 col = vec3(0.005, 0.005, 0.012); // deep zinc base
+
+          // main indigo mass, weighted to the right / upper-right
+          vec2 c1 = vec2(u_resolution.x / u_resolution.y * 0.62, 0.85) + drift;
+          float d1 = length(p - c1);
+          float n1 = fbm(st * 1.4 + t * 2.0);
+          float mass = smoothstep(1.15, 0.05, d1 + n1 * 0.32);
+
+          // vertical sweeping tongue of light
+          float tongue = smoothstep(0.55, 0.02, abs(p.x - (u_resolution.x/u_resolution.y*0.58) - n1*0.22)) * smoothstep(1.2, 0.1, abs(uv.y - 0.55));
+
+          // secondary far-right glow
+          vec2 c2 = vec2(u_resolution.x / u_resolution.y * 1.05, 0.5);
+          float d2 = length(p - c2);
+          float mass2 = smoothstep(0.9, 0.0, d2 + fbm(st*1.1 - t)*0.25);
+
+          vec3 deepIndigo = vec3(0.05, 0.02, 0.15);
+          vec3 purple = vec3(0.2, 0.1, 0.6);
+          vec3 hotViolet = vec3(0.5, 0.3, 1.0);
+
+          col = mix(col, deepIndigo, clamp(mass*0.9 + mass2*0.7, 0.0, 1.0));
+          col = mix(col, purple, clamp(mass*mass*1.1 + mass2*0.55, 0.0, 1.0));
+          col += hotViolet * tongue * mass * 0.85;
+
+          // breathing pulse
+          float pulse = 0.92 + 0.08 * sin(u_time * 0.4);
+          col *= pulse;
+
+          // vignette
+          float vig = smoothstep(1.6, 0.35, length(uv - vec2(0.45, 0.5)));
+          col *= mix(0.55, 1.0, vig);
+
+          // keep left side dark for the sans name
+          col *= mix(0.35, 1.0, smoothstep(0.0, 0.55, uv.x));
+
+          gl_FragColor = vec4(col, 1.0);
+        }
+      `;
+
+      const material = new THREE.ShaderMaterial({
+        uniforms: uniforms,
+        vertexShader: 'void main(){ gl_Position = vec4(position, 1.0); }',
+        fragmentShader: fragmentShader
+      });
+
+      scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
+
+      const mouseTarget = { x: 0.5, y: 0.5 };
+      window.addEventListener('pointermove', function (e) {
+        mouseTarget.x = e.clientX / window.innerWidth;
+        mouseTarget.y = 1.0 - e.clientY / window.innerHeight;
+      });
+
+      window.addEventListener('resize', function () {
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        uniforms.u_resolution.value.set(window.innerWidth, window.innerHeight);
+      });
+
+      const clock = new THREE.Clock();
+      (function animate() {
+        requestAnimationFrame(animate);
+        uniforms.u_time.value = clock.getElapsedTime();
+        uniforms.u_mouse.value.x += (mouseTarget.x - uniforms.u_mouse.value.x) * 0.03;
+        uniforms.u_mouse.value.y += (mouseTarget.y - uniforms.u_mouse.value.y) * 0.03;
+        renderer.render(scene, camera);
+      })();
+    })();
+
+    // ---------- GSAP entrance choreography & ScrollTrigger ----------
+    (function () {
+      gsap.registerPlugin(ScrollTrigger);
+
+      gsap.set('#name-first, #name-last', { yPercent: 110 });
+      gsap.set('.header-word, .tagline-word, .subheading-word, .footer-word', { yPercent: 110 });
+
+      const tl = gsap.timeline({ defaults: { ease: 'power4.out' } });
+
+      // Header Navigation and CTA reveal immediately on load, followed by the Name
+      tl.to('.header-word', { yPercent: 0, duration: 1.0, stagger: 0.04 }, 0.1)
+        .to('#name-first', { yPercent: 0, duration: 1.4 }, 0.2)
+        .to('#name-last', { yPercent: 0, duration: 1.4 }, 0.38);
+
+      // Masked staggered word reveal on scroll (Tagline)
+      gsap.to('.tagline-word', {
+        scrollTrigger: {
+          trigger: '#tagline-container',
+          start: 'top 95%'
+        },
+        yPercent: 0,
+        duration: 1.0,
+        stagger: 0.04,
+        ease: 'power4.out'
+      });
+
+      // Masked staggered word reveal on scroll (Subheading)
+      gsap.to('.subheading-word', {
+        scrollTrigger: {
+          trigger: '#subheading-container',
+          start: 'top 95%'
+        },
+        yPercent: 0,
+        duration: 1.0,
+        stagger: 0.03,
+        ease: 'power4.out'
+      });
+
+      // Masked staggered word reveal on scroll (Footer)
+      gsap.to('.footer-word', {
+        scrollTrigger: {
+          trigger: 'footer',
+          start: 'top 95%'
+        },
+        yPercent: 0,
+        duration: 0.9,
+        stagger: 0.03,
+        ease: 'power4.out'
+      });
+    })();
+  </script>
+</body>
+</html>

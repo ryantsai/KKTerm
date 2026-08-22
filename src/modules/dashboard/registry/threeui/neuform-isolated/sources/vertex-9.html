@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vertex 9 Global Data</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&amp;display=swap" rel="stylesheet">
+</head>
+<body style="font-family: 'Inter', sans-serif; background-color: #0E100F; margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1rem;" class="antialiased selection:bg-white/20 text-white">
+
+    <!-- Border Gradient Wrapper -->
+    <div class="relative w-full max-w-[1440px] p-[1px] rounded-sm" style="background: linear-gradient(145deg, rgba(200,185,160,0.2) 0%, rgba(200,185,160,0.02) 40%, rgba(255,255,255,0) 100%);">
+        
+        <!-- Main Container -->
+        <div class="relative w-full bg-[#0E100F] grid grid-cols-1 lg:grid-cols-3 min-h-[90vh] lg:min-h-[850px] border overflow-hidden border-white/5">
+            
+            <!-- Global Subtle Grain/Texture Overlay -->
+            <div class="absolute inset-0 pointer-events-none z-40 mix-blend-overlay opacity-30" style="background-image: repeating-linear-gradient(45deg, rgba(200,185,160,0.05) 0px, rgba(200,185,160,0.05) 1px, transparent 1px, transparent 12px);"></div>
+
+            <!-- Corner Accents -->
+            <div class="absolute -top-[1px] -left-[1px] w-5 h-5 border-t border-l border-[#C8B9A0]/40 z-50 pointer-events-none"></div>
+            <div class="absolute -top-[1px] -right-[1px] w-5 h-5 border-t border-r border-[#C8B9A0]/40 z-50 pointer-events-none"></div>
+            <div class="absolute -bottom-[1px] -left-[1px] w-5 h-5 border-b border-l border-[#C8B9A0]/40 z-50 pointer-events-none"></div>
+            <div class="absolute -bottom-[1px] -right-[1px] w-5 h-5 border-b border-r border-[#C8B9A0]/40 z-50 pointer-events-none"></div>
+
+            <!-- Panel 1: Elegant Cream -->
+            <div class="relative p-8 lg:p-12 flex flex-col justify-between overflow-hidden" style="background-color: #F4F1EB;">
+                <div class="relative z-10">
+                    <h1 class="text-3xl lg:text-4xl tracking-tight font-normal uppercase text-[#1C1F1D] leading-[1.15] mask-reveal pr-4">
+                        REDEFINING THE SCALE OF MODERN CLOUD COMPUTING
+                    </h1>
+                    <div class="mt-8 flex items-start gap-3 text-[#1C1F1D]/80">
+                        <iconify-icon icon="solar:monitor-linear" style="stroke-width: 1.5;" class="text-lg mt-0.5"></iconify-icon>
+                        <p class="text-sm font-light max-w-[240px] leading-relaxed">
+                            A network designed to elevate your stack, offering 99.99% uptime and 24/7 unwavering security.
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Geometric Motif Grid -->
+                <div id="motif-container" class="grid grid-cols-4 gap-6 mt-24 text-[#C8B9A0] opacity-40">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Panel 2: Ambient Dark Canvas -->
+            <div class="relative min-h-[450px] lg:min-h-full border-y lg:border-y-0 lg:border-x border-[#C8B9A0]/10" style="background-color: #121413;">
+                <!-- WebGL Canvas for flowing water/silk effect -->
+                <div id="webgl-canvas" class="absolute inset-0 w-full h-full"></div>
+                
+                <!-- Inner Depth Shadows -->
+                <div class="absolute inset-0 pointer-events-none" style="box-shadow: inset 0 0 120px rgba(14, 16, 15, 0.9);"></div>
+                
+                <!-- Center Emblem -->
+                <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-20 mix-blend-plus-lighter">
+                    <svg viewBox="0 0 100 100" class="w-28 h-28 text-[#D1C5B4] fill-current drop-shadow-[0_0_20px_rgba(200,185,160,0.15)]">
+                        <path d="M50 5 L95 50 L50 95 L5 50 Z" fill="none" stroke="currentColor" stroke-width="2"></path>
+                        <path d="M50 20 L80 50 L50 80 L20 50 Z" class="opacity-40"></path>
+                        <circle cx="50" cy="50" r="6"></circle>
+                    </svg>
+                </div>
+                
+                <!-- Bottom Indicator -->
+                <div class="absolute bottom-8 left-8 text-[#D1C5B4]/50 flex items-center gap-3 z-20">
+                     <iconify-icon icon="solar:shield-check-line-duotone" style="stroke-width: 1.5;" class="text-base"></iconify-icon>
+                     <span class="text-xs tracking-widest uppercase font-light">Tier-4 Datacenters</span>
+                </div>
+            </div>
+
+            <!-- Panel 3: Warm Sand -->
+            <div class="relative p-8 lg:p-12 flex flex-col justify-between" style="background-color: #B5AFA2;">
+                <div>
+                    <div class="flex items-start gap-4 text-[#1C1F1D]">
+                        <svg viewBox="0 0 100 100" class="w-8 h-8 flex-shrink-0 fill-current mt-1">
+                            <path d="M50 5 L95 50 L50 95 L5 50 Z" fill="none" stroke="currentColor" stroke-width="4"></path>
+                            <circle cx="50" cy="50" r="15" class="opacity-60"></circle>
+                        </svg>
+                        <h2 class="text-3xl lg:text-4xl tracking-tight font-normal uppercase leading-[1.15] mask-reveal">
+                            SCALABLE SYSTEMS WITH SUB-MILLISECOND DETAIL
+                        </h2>
+                    </div>
+                    <p class="mt-8 text-sm text-[#1C1F1D]/80 font-light max-w-[240px] leading-relaxed">
+                        Every element of our 300-node clusters is crafted to process 50 petabytes without a single fault.
+                    </p>
+                </div>
+                
+                <div class="mt-24 text-[#1C1F1D]">
+                    <p class="text-xs mb-5 font-normal uppercase tracking-widest text-[#1C1F1D]/70 flex items-center gap-2">
+                        <iconify-icon icon="solar:database-linear" style="stroke-width: 1.5;" class="text-base"></iconify-icon>
+                        Analytics, storage, and computing
+                    </p>
+                    <h3 class="text-3xl lg:text-4xl tracking-tight font-normal uppercase leading-[1.15] mask-reveal">
+                        AN ENGINE OF GROWTH ACROSS 12 GLOBAL REGIONS
+                    </h3>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 1. Generate SVG Motif Grid for Panel 1
+            const motifContainer = document.getElementById('motif-container');
+            const svgMarkup = `
+                <svg viewBox="0 0 100 100" class="w-full aspect-square fill-current">
+                    <polygon points="50,15 65,40 90,50 65,60 50,85 35,60 10,50 35,40" />
+                    <circle cx="50" cy="50" r="8" class="opacity-30" />
+                </svg>
+            `;
+            // Add 12 instances for a 4x3 grid look
+            for(let i=0; i<12; i++) {
+                motifContainer.innerHTML += svgMarkup;
+            }
+
+            // 2. GSAP Masked Reveal for Elegant Typography
+            gsap.registerPlugin(ScrollTrigger);
+            const revealElements = document.querySelectorAll('.mask-reveal');
+            
+            revealElements.forEach(el => {
+                const text = el.innerText;
+                el.innerHTML = '';
+                const words = text.split(' ');
+                
+                words.forEach(word => {
+                    if(word.trim() === '') return;
+                    
+                    const outer = document.createElement('span');
+                    outer.className = 'inline-block overflow-hidden align-bottom mr-[0.25em] pb-1';
+                    
+                    const inner = document.createElement('span');
+                    inner.className = 'inline-block translate-y-[110%] will-change-transform';
+                    inner.innerText = word;
+                    
+                    outer.appendChild(inner);
+                    el.appendChild(outer);
+                });
+
+                gsap.to(el.querySelectorAll('span > span'), {
+                    y: '0%',
+                    duration: 1.4,
+                    ease: 'power3.out',
+                    stagger: 0.05,
+                    scrollTrigger: {
+                        trigger: el,
+                        start: 'top 95%'
+                    }
+                });
+            });
+
+            // 3. Three.js Gentle Flowing Silk/Water Animation
+            function initThree() {
+                const container = document.getElementById('webgl-canvas');
+                if(!container || typeof THREE === 'undefined') return;
+
+                const scene = new THREE.Scene();
+                const camera = new THREE.PerspectiveCamera(55, container.clientWidth / container.clientHeight, 0.1, 100);
+                camera.position.set(0, -2, 9);
+
+                const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+                renderer.setSize(container.clientWidth, container.clientHeight);
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                container.appendChild(renderer.domElement);
+
+                const group = new THREE.Group();
+                scene.add(group);
+
+                const numLines = 60;
+                const pointsPerLine = 100;
+                
+                // Elegant warm neutrals
+                const colorStart = new THREE.Color('#D1C5B4'); 
+                const colorEnd = new THREE.Color('#7A7B76');
+
+                for (let i = 0; i < numLines; i++) {
+                    const points = [];
+                    const xPos = (i - numLines / 2) * 0.22;
+                    for (let j = 0; j < pointsPerLine; j++) {
+                        const yPos = (j - pointsPerLine / 2) * 0.2;
+                        points.push(new THREE.Vector3(xPos, yPos, 0));
+                    }
+                    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                    
+                    const color = new THREE.Color().lerpColors(colorStart, colorEnd, i / numLines);
+
+                    const material = new THREE.LineBasicMaterial({
+                        color: color,
+                        transparent: true,
+                        opacity: 0.1 + (Math.random() * 0.25),
+                        blending: THREE.AdditiveBlending
+                    });
+                    
+                    const line = new THREE.Line(geometry, material);
+                    group.add(line);
+                }
+
+                // Tilt to create a flowing plane
+                group.rotation.x = Math.PI / 3;
+                group.rotation.z = -Math.PI / 8;
+
+                const clock = new THREE.Clock();
+
+                function animate() {
+                    requestAnimationFrame(animate);
+                    const time = clock.getElapsedTime() * 0.4; // Slower, more relaxed pace
+
+                    group.children.forEach((line, i) => {
+                        const positions = line.geometry.attributes.position.array;
+                        for (let j = 0; j < pointsPerLine; j++) {
+                            const idx = j * 3;
+                            const x = positions[idx];
+                            const y = positions[idx + 1];
+                            
+                            // Smooth, rolling, gentle waves reminiscent of water or silk
+                            const wave1 = Math.sin(y * 1.2 + time + x * 0.8) * 0.8;
+                            const wave2 = Math.cos(x * 1.5 - time * 0.8 + y * 0.5) * 0.6;
+                            
+                            positions[idx + 2] = wave1 + wave2;
+                        }
+                        line.geometry.attributes.position.needsUpdate = true;
+                    });
+
+                    renderer.render(scene, camera);
+                }
+                animate();
+
+                window.addEventListener('resize', () => {
+                    if(container) {
+                        camera.aspect = container.clientWidth / container.clientHeight;
+                        camera.updateProjectionMatrix();
+                        renderer.setSize(container.clientWidth, container.clientHeight);
+                    }
+                });
+            }
+            
+            initThree();
+        });
+    </script>
+
+</body></html>

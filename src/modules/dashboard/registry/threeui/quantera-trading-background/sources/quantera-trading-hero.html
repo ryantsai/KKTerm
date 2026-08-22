@@ -1,0 +1,1191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Quantera — Trade Without a Clock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600&display=block" rel="stylesheet">
+<style>
+:root{
+  --green:#5EFB7E;
+  --green-deep:#38D95F;
+  --ink:#F2F6F2;
+  --muted:rgba(233,241,233,.62);
+  --pad: 36px;   /* fixed gutter — the layout does not scale with the viewport */
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:#000;
+  color:var(--ink);
+  font-family:'Inter Tight',system-ui,sans-serif;
+  font-weight:400;
+  overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+#gl{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:0}
+
+.ui{position:fixed;inset:0;z-index:2;pointer-events:none}
+.ui > *{pointer-events:auto}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+
+/* Reveal animates the standalone `translate` property so it composes with any
+   `transform` an element already needs (e.g. the centred hero rows). */
+.rv{opacity:0;translate:0 10px;
+    transition:opacity .85s cubic-bezier(.22,.61,.36,1), translate .85s cubic-bezier(.22,.61,.36,1)}
+.rv.in{opacity:1;translate:none}
+
+/* ---------------- nav ---------------- */
+.nav{
+  position:absolute;left:var(--pad);right:var(--pad);top:38px;
+  height:40px;
+  display:flex;align-items:center;gap:20px;
+}
+.brand{display:flex;align-items:center;gap:4px;flex:none}
+.brand .mark{
+  width:30px;height:30px;
+  border-radius:9px;
+  background:linear-gradient(150deg,#8DFFA6 0%,#5EFB7E 45%,#37DC5E 100%);
+  display:grid;place-items:center;position:relative;
+  box-shadow:0 0 22px rgba(94,251,126,.42);
+}
+.brand .mark svg{width:70%;height:70%;display:block}
+.brand .word{
+  font-size:22.5px;font-weight:500;letter-spacing:-.035em;
+  line-height:1;color:#fff;margin-left:-1px;
+}
+
+.menu{display:flex;align-items:center;gap:0;flex:none;margin-left:12px}
+.menu a{
+  font-size:13.5px;letter-spacing:-.005em;color:rgba(238,245,238,.80);
+  padding:8px 10px;border-radius:999px;
+  display:flex;align-items:center;gap:6px;white-space:nowrap;
+  transition:color .25s, background .25s;
+}
+.menu a:hover{color:#fff;background:rgba(255,255,255,.05)}
+.menu a.active{
+  color:#fff;background:rgba(255,255,255,.085);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);
+}
+.menu a.active svg{width:17px;height:17px}
+.menu .login{
+  margin-left:8px;
+  padding:10px 17px;
+  border-radius:999px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.22);
+  color:#fff;
+}
+.menu .login:hover{background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px rgba(255,255,255,.36)}
+
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:10px;flex:none}
+.lang{
+  display:flex;align-items:center;gap:7px;
+  font-size:14.5px;color:rgba(238,245,238,.80);
+  padding:9px 14px;border-radius:999px;
+  transition:background .25s,color .25s;
+}
+.lang:hover{background:rgba(255,255,255,.05);color:#fff}
+.lang svg{width:15px;height:15px;opacity:.85}
+.lang .chev{width:11px;height:11px;opacity:.7}
+
+.btn-primary{
+  display:flex;align-items:center;gap:8px;
+  background:#fff;color:#0B0D0B;border-radius:999px;
+  padding:4px 4px 4px 13px;
+  height:40px;
+  font-size:14px;font-weight:500;letter-spacing:-.011em;white-space:nowrap;
+  box-shadow:0 2px 26px rgba(255,255,255,.13);
+  transition:transform .3s cubic-bezier(.22,.61,.36,1), box-shadow .3s;
+}
+.btn-primary:hover{transform:translateY(-1px);
+  box-shadow:0 4px 34px rgba(255,255,255,.22)}
+.btn-primary .chip{
+  width:32px;height:32px;border-radius:11px;
+  background:linear-gradient(160deg,#7BFF97,#4CEE72);
+  display:grid;place-items:center;flex:none;
+  box-shadow:0 0 18px rgba(94,251,126,.55);
+}
+.btn-primary .chip svg{width:15px;height:15px}
+
+.btn-ghost{
+  display:flex;align-items:center;justify-content:center;
+  height:40px;padding:0 22px;border-radius:999px;
+  font-size:14px;font-weight:400;letter-spacing:-.008em;white-space:nowrap;
+  color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.28);
+  background:rgba(10,14,10,.28);backdrop-filter:blur(8px);
+  transition:background .25s, box-shadow .25s;
+}
+.btn-ghost:hover{background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1px rgba(255,255,255,.45)}
+
+/* ---------------- hero ----------------
+   Children sit at the exact y offsets measured off the reference frame,
+   expressed relative to the viewport's vertical centre (design y - 440). */
+.hero{position:absolute;left:0;right:0;top:50%;height:0}
+.hero > *{
+  position:absolute;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;justify-content:center;text-align:center;
+}
+.eyebrow{
+  top:-176px;
+  gap:9px;
+  font-size:14.5px;letter-spacing:-.012em;color:rgba(240,248,240,.90);
+  height:28px;white-space:nowrap;
+  text-shadow:0 0 18px rgba(190,255,200,.30);
+}
+.eyebrow .chip{
+  display:flex;align-items:center;gap:5px;
+  padding:4px 7px 4px 4px;
+  border-radius:9px;background:rgba(255,255,255,.07);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.05);
+}
+.eyebrow .chip .g{
+  width:17px;height:17px;border-radius:6px;
+  background:linear-gradient(155deg,#7BFF97,#3FE066);display:grid;place-items:center;flex:none;
+  box-shadow:0 0 12px rgba(94,251,126,.6);
+}
+.eyebrow .chip .g svg{width:72%;height:72%}
+
+/* headline: laid out by CSS, painted by WebGL (text stays selectable).
+   `top` is set from JS so the cap-top lands on the reference baseline grid. */
+.headline{
+  display:block;
+  font-size:74px;
+  font-weight:400;
+  line-height:.951;
+  letter-spacing:-.026em;
+  color:transparent;
+  white-space:nowrap;
+  user-select:text;
+}
+.headline .ln{display:block}
+.headline .w{display:inline-block}
+
+.features{
+  top:37px;
+  gap:13px;
+  font-size:10.5px;letter-spacing:-.004em;color:rgba(238,246,238,.88);
+  white-space:nowrap;
+}
+.features .f{display:flex;align-items:center;gap:5px;white-space:nowrap}
+.features svg{width:12px;height:12px;flex:none;
+  filter:drop-shadow(0 0 7px rgba(94,251,126,.75))}
+.features .lab{color:var(--green);text-shadow:0 0 12px rgba(94,251,126,.6)}
+.features sup{font-size:.62em;vertical-align:super;letter-spacing:0}
+
+.cta{top:82px;gap:6px}
+
+/* ---------------- footer ---------------- */
+.follow{
+  position:absolute;left:var(--pad);bottom:37px;
+  display:flex;align-items:center;gap:9px;
+  font-size:12px;font-weight:500;color:rgba(240,246,240,.95);
+}
+.follow .socials{display:flex;align-items:center;gap:6px}
+.follow a{
+  width:21px;height:21px;border-radius:50%;
+  background:#fff;display:grid;place-items:center;
+  transition:transform .25s cubic-bezier(.22,.61,.36,1), background .25s;
+}
+.follow a:hover{transform:translateY(-2px);background:var(--green)}
+.follow a svg{width:11px;height:11px;display:block}
+
+.scroll{
+  position:absolute;right:var(--pad);bottom:41px;
+  display:flex;align-items:center;gap:6px;
+  font-size:13px;color:rgba(236,244,236,.55);letter-spacing:-.004em;
+}
+.scroll b{font-weight:500;color:var(--green);text-shadow:0 0 12px rgba(94,251,126,.5)}
+.scroll svg{width:12px;height:12px;
+  animation:bob 2.1s cubic-bezier(.45,0,.55,1) infinite}
+@keyframes bob{0%,100%{transform:translateY(0);opacity:.55}50%{transform:translateY(30%);opacity:1}}
+
+/* The shot is a desktop hero; below these widths the nav simply cannot hold
+   eight links, so it collapses to the brand + primary actions. */
+@media (max-width:1150px){
+  .menu a:not(.active):not(.login){display:none}
+}
+@media (max-width:900px){
+  .menu{display:none}
+  .lang{display:none}
+}
+/* Below the design width the type keeps its size — the hero reflows instead
+   of shrinking, so nothing is ever a scaled-down screenshot of itself. */
+@media (max-width:860px){
+  .hero{top:50%;height:auto;transform:translateY(-50%);
+        display:flex;flex-direction:column;align-items:center;gap:22px;padding:0 24px}
+  .hero > *{position:static;transform:none;top:auto;left:auto}
+  .headline{white-space:normal;text-align:center}
+  .features{flex-wrap:wrap;justify-content:center;row-gap:9px}
+}
+@media (max-width:780px){
+  .scroll{display:none}
+  .follow{left:50%;transform:translateX(-50%);bottom:22px}
+}
+@media (max-width:560px){
+  .nav-right .btn-ghost{display:none}
+  .features{gap:10px}
+}
+
+@media (prefers-reduced-motion: reduce){
+  .rv{transition:none}
+  .scroll svg{animation:none}
+}
+</style>
+</head>
+<body>
+
+<canvas id="gl"></canvas>
+
+<div class="ui">
+
+  <!-- ===================== NAV ===================== -->
+  <nav class="nav">
+    <a class="brand rv" href="#" data-rv="0">
+      <span class="mark">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path fill-rule="evenodd" clip-rule="evenodd"
+                d="M11.3 2.6a9.0 9.0 0 1 1 0 18.0 9.0 9.0 0 0 1 0-18.0Zm0 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z"
+                fill="#06210C"/>
+          <path d="M13.4 14.0 20.4 20.2 18.2 22.7 11.2 16.5 13.4 14.0Z" fill="#06210C"/>
+        </svg>
+      </span>
+      <span class="word">uantera</span>
+    </a>
+
+    <div class="menu">
+      <a class="active rv" href="#" data-rv="1">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="1.6" y="1.6" width="20.8" height="20.8" rx="6.4" fill="#5EFB7E" fill-opacity=".16" stroke="#5EFB7E" stroke-width="1.5"/>
+          <circle cx="12" cy="12" r="2.5" fill="#5EFB7E"/>
+          <ellipse cx="12" cy="12" rx="7.4" ry="3.4" stroke="#5EFB7E" stroke-width="1.3" transform="rotate(-35 12 12)"/>
+          <ellipse cx="12" cy="12" rx="7.4" ry="3.4" stroke="#5EFB7E" stroke-width="1.3" transform="rotate(35 12 12)"/>
+        </svg>Overview</a>
+      <a class="rv" href="#" data-rv="2">The Method</a>
+      <a class="rv" href="#" data-rv="3">Accounts</a>
+      <a class="rv" href="#" data-rv="4">Payouts</a>
+      <a class="rv" href="#" data-rv="5">Journal</a>
+      <a class="rv" href="#" data-rv="6">Affiliates</a>
+      <a class="login rv" href="#" data-rv="7">Sign in / Join</a>
+    </div>
+
+    <div class="nav-right">
+      <a class="lang rv" href="#" data-rv="8">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+          <circle cx="12" cy="12" r="9.2"/><ellipse cx="12" cy="12" rx="4" ry="9.2"/>
+          <path d="M3 9.2h18M3 14.8h18"/>
+        </svg>
+        English
+        <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
+          <path d="m5 8.5 7 7 7-7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </a>
+      <a class="btn-primary rv" href="#" data-rv="9">
+        Start evaluation
+        <span class="chip">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#06210C" stroke-width="2.6" aria-hidden="true">
+            <path d="M4 12h15M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+      </a>
+      <a class="btn-ghost rv" href="#" data-rv="10">Demo desk</a>
+    </div>
+  </nav>
+
+  <!-- ===================== HERO ===================== -->
+  <div class="hero">
+    <div class="eyebrow rv" data-rv="11">
+      <span>Our Desk, Your</span>
+      <span class="chip">
+        <span class="g">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="3" fill="#06210C"/>
+            <ellipse cx="12" cy="12" rx="9" ry="4.2" stroke="#06210C" stroke-width="1.7" transform="rotate(-35 12 12)"/>
+            <ellipse cx="12" cy="12" rx="9" ry="4.2" stroke="#06210C" stroke-width="1.7" transform="rotate(35 12 12)"/>
+          </svg>
+        </span>
+        Upside
+      </span>
+    </div>
+
+    <h1 class="headline" id="headline"><span class="ln"><span class="w">Trade</span> <span class="w">Without</span> <span class="w">a</span> <span class="w">Clock</span></span><span class="ln"><span class="w">Keep</span> <span class="w">what</span> <span class="w">you</span> <span class="w">earn</span></span></h1>
+
+    <div class="features rv" data-rv="12">
+      <span class="f">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#5EFB7E" stroke-width="1.7" aria-hidden="true">
+          <path d="M9.5 2.8h5M10.6 2.8v6.1L5.4 18.4c-.9 1.6.2 3.6 2.1 3.6h8.9c1.9 0 3-2 2.1-3.6l-5.2-9.5V2.8"
+                stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M7.2 15.2h9.6" stroke-linecap="round"/>
+        </svg>
+        <span><span class="lab">Vector<sup>™</sup></span> Native terminal</span>
+      </span>
+      <span class="f">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#5EFB7E" stroke-width="1.7" aria-hidden="true">
+          <rect x="2.6" y="2.6" width="18.8" height="18.8" rx="5.6"/>
+          <path d="m7.6 13.4 3 3 5.8-8.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>Same-day payouts</span>
+      </span>
+      <span class="f">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#5EFB7E" stroke-width="1.7" aria-hidden="true">
+          <circle cx="12" cy="12" r="9.3"/><path d="M12 6.6V12l3.6 2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>No deadline evaluation</span>
+      </span>
+      <span class="f">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#5EFB7E" stroke-width="1.7" aria-hidden="true">
+          <circle cx="12" cy="12" r="9.3"/><path d="M12 6.4v11.2" stroke-linecap="round"/>
+          <path d="M9.1 8.6h5.8M9.1 15.4h5.8" stroke-linecap="round"/>
+        </svg>
+        <span>Scaling to $2M</span>
+      </span>
+    </div>
+
+    <div class="cta rv" data-rv="13">
+      <a class="btn-primary" href="#">
+        Start evaluation
+        <span class="chip">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#06210C" stroke-width="2.6" aria-hidden="true">
+            <path d="M4 12h15M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+      </a>
+      <a class="btn-ghost" href="#">Demo desk</a>
+    </div>
+  </div>
+
+  <!-- ===================== FOOTER ===================== -->
+  <div class="follow rv" data-rv="14">
+    <span>Follow Us</span>
+    <span class="socials">
+      <a href="#" aria-label="Discord"><svg viewBox="0 0 24 24" fill="#0B0D0B" aria-hidden="true"><path d="M19.6 5.6A16 16 0 0 0 15.7 4.4l-.25.5a12 12 0 0 1 3.35 1.6 13.6 13.6 0 0 0-11.6 0 12 12 0 0 1 3.35-1.6L10.3 4.4a16 16 0 0 0-3.9 1.2C3.9 9.3 3.2 12.9 3.5 16.4a16.1 16.1 0 0 0 4.9 2.5l.98-1.6a10.4 10.4 0 0 1-1.6-.8l.4-.3a11.5 11.5 0 0 0 9.6 0l.4.3c-.5.3-1 .58-1.6.8l.98 1.6a16 16 0 0 0 4.9-2.5c.36-4-.76-7.6-2.86-10.8ZM9.3 14.2c-.94 0-1.72-.87-1.72-1.94s.76-1.95 1.72-1.95c.97 0 1.74.88 1.72 1.95 0 1.07-.76 1.94-1.72 1.94Zm5.4 0c-.94 0-1.72-.87-1.72-1.94s.77-1.95 1.72-1.95c.97 0 1.74.88 1.72 1.95 0 1.07-.75 1.94-1.72 1.94Z"/></svg></a>
+      <a href="#" aria-label="Facebook"><svg viewBox="0 0 24 24" fill="#0B0D0B" aria-hidden="true"><path d="M13.6 22v-8.2h2.75l.41-3.2h-3.16V8.55c0-.92.26-1.55 1.58-1.55h1.69V4.14c-.29-.04-1.3-.13-2.47-.13-2.44 0-4.11 1.49-4.11 4.23v2.36H7.5v3.2h2.79V22h3.31Z"/></svg></a>
+      <a href="#" aria-label="X"><svg viewBox="0 0 24 24" fill="#0B0D0B" aria-hidden="true"><path d="M17.2 3h3.3l-7.2 8.24L21.8 21h-6.63l-5.2-6.8L4.03 21H.72l7.7-8.8L.5 3h6.8l4.7 6.22L17.2 3Zm-1.16 16h1.83L6.05 4.9H4.08L16.04 19Z"/></svg></a>
+      <a href="#" aria-label="TikTok"><svg viewBox="0 0 24 24" fill="#0B0D0B" aria-hidden="true"><path d="M16.2 2h-3.1v13.1a2.6 2.6 0 1 1-2.2-2.57V9.4a5.7 5.7 0 1 0 5.3 5.68V8.9a6.6 6.6 0 0 0 3.9 1.27V7.06a3.75 3.75 0 0 1-3.9-3.6V2Z"/></svg></a>
+      <a href="#" aria-label="Telegram"><svg viewBox="0 0 24 24" fill="#0B0D0B" aria-hidden="true"><path d="M21.6 4.3 2.9 11.5c-1.1.44-1.1 1.08-.2 1.35l4.8 1.5 1.84 5.62c.22.6.11.85.75.85.49 0 .7-.22.98-.49l2.36-2.3 4.9 3.63c.9.5 1.55.24 1.78-.84l3.2-15.1c.33-1.32-.5-1.92-1.7-1.42ZM7.9 13.9l10.6-6.7c.53-.32 1-.15.6.2l-9.07 8.2-.35 3.77-1.78-5.47Z"/></svg></a>
+    </span>
+  </div>
+
+  <div class="scroll rv" data-rv="15">
+    <span><b>Scroll</b> to begin</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path d="M12 4v15M6 13.5l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+}}
+</script>
+
+<script>
+/* keep startup failures visible instead of silently swallowed */
+window.__err = [];
+addEventListener('error', e => { window.__err.push(String(e.message || e.error)); });
+addEventListener('unhandledrejection', e => {
+  const r = e.reason; window.__err.push('REJECT: ' + ((r && (r.stack || r.message)) || r));
+  console.error('[quantera]', r);
+});
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass }     from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass }     from 'three/addons/postprocessing/OutputPass.js';
+
+/* ============================================================
+   design constants — authored against the 1440 x 880 reference
+   ============================================================ */
+const DW = 1440, DH = 880;
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* The layout is authored at a fixed scale: type and spacing never track the
+   viewport. K stays 1 and only exists so the WebGL layers share the same unit
+   system as the CSS. */
+const K = 1;
+let W = 0, H = 0, DPR = 1;
+
+function setScale(){
+  const d = document.documentElement;
+  W = d.clientWidth  || innerWidth  || 0;
+  H = d.clientHeight || innerHeight || 0;
+}
+setScale();
+
+/* ============================================================
+   renderer / scene / ortho camera in CSS-pixel space (y up)
+   ============================================================ */
+const canvas = document.getElementById('gl');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:false, alpha:false, powerPreference:'high-performance' });
+renderer.setClearColor(0x000000, 1);
+DPR = Math.min(devicePixelRatio || 1, 1.75);
+renderer.setPixelRatio(DPR);
+renderer.setSize(W, H, false);
+
+const scene  = new THREE.Scene();
+const camera = new THREE.OrthographicCamera(0, W, H, 0, -1000, 1000);
+const Y = y => H - y;                        // DOM y  ->  scene y
+
+/* ============================================================
+   1. background : slate + volumetric shafts (full-screen shader)
+   ============================================================ */
+const bgUniforms = {
+  uRes:     { value: new THREE.Vector2(W, H) },
+  uTime:    { value: 0 },
+  uIntro:   { value: 0 },
+  uPointer: { value: new THREE.Vector2(0, 0) },
+};
+
+const NOISE_GLSL = /* glsl */`
+float hash21(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+float vnoise(vec2 p){
+  vec2 i = floor(p), f = fract(p);
+  vec2 u = f*f*(3.0 - 2.0*f);
+  float a = hash21(i), b = hash21(i + vec2(1,0)), c = hash21(i + vec2(0,1)), d = hash21(i + vec2(1,1));
+  return mix(mix(a,b,u.x), mix(c,d,u.x), u.y);
+}
+float fbm(vec2 p){
+  float v = 0.0, a = 0.5;
+  for(int i = 0; i < 4; i++){ v += a * vnoise(p); p *= 2.03; a *= 0.5; }
+  return v;
+}`;
+
+const bgMat = new THREE.ShaderMaterial({
+  uniforms: bgUniforms,
+  depthWrite:false, depthTest:false,
+  vertexShader:`varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
+  fragmentShader:`
+precision highp float;
+varying vec2 vUv;
+uniform vec2  uRes;
+uniform float uTime, uIntro;
+uniform vec2  uPointer;
+${NOISE_GLSL}
+
+void main(){
+  vec2 uv = vUv;                                  // 0..1, y up
+  float asp = uRes.x / uRes.y;
+  vec2  s   = vec2((uv.x - 0.5) * asp, 1.0 - uv.y);   // x centred (height units), y 0=top
+
+  /* ---- slate base ------------------------------------------------ */
+  vec3 col = vec3(0.064, 0.065, 0.067);
+
+  float smudge = fbm(vec2(uv.x * 2.6, (1.0 - uv.y) * 1.9) + 11.3);
+  col += vec3(0.020, 0.023, 0.020) * (smudge - 0.46);
+  float smudge2 = fbm(vec2(uv.x * 7.0, (1.0 - uv.y) * 5.2) + 41.0);
+  col += vec3(0.011, 0.013, 0.011) * (smudge2 - 0.5);
+
+  /* ---- volumetric shafts ----------------------------------------- */
+  vec2  src = vec2(-0.050 * asp + uPointer.x * 0.012, -0.34);
+  vec2  d   = s - src;
+  float dist = length(d);
+  float ang  = atan(d.x, d.y);                    // 0 = straight down
+
+  /* The fan swings slowly, individual shafts drift sideways across it, and each
+     octave travels at its own rate — so the light reads as moving air rather
+     than a static gradient. */
+  float tt    = uTime;
+  float swing = sin(tt * 0.100) * 0.050 + sin(tt * 0.043 + 1.7) * 0.026;
+  float aSw   = ang + swing;
+
+  float sh = 0.0;
+  sh += 0.66 * fbm(vec2(aSw *  4.2 + 12.0 + tt * 0.042, dist * 0.95 - tt * 0.052));
+  sh += 0.22 * fbm(vec2(aSw *  9.0 +  3.5 - tt * 0.069, dist * 1.60 - tt * 0.081));
+  sh += 0.09 * fbm(vec2(aSw * 19.0 + 27.0 + tt * 0.121, dist * 2.60 - tt * 0.118));
+  sh = smoothstep(0.14, 1.02, sh);
+
+  float spread = 0.46 + 0.040 * sin(tt * 0.077 + 0.6);
+  float cone   = exp(-(aSw * aSw) / (2.0 * spread * spread));
+  float fall   = smoothstep(1.55, 0.08, dist);
+  float rays   = sh * cone * fall;
+
+  float core  = cone * exp(-dist * 1.40) * 0.70;
+  float pulse = 0.90 + 0.10 * sin(tt * 0.205) + 0.05 * sin(tt * 0.517 + 2.1);
+  float beam  = (rays * 0.58 + core) * pulse;
+  beam *= uIntro;
+
+  vec3 lightCol = vec3(0.72, 1.0, 0.68);
+  col += lightCol * beam * 0.335;
+
+  /* ---- broad chalk-dust haze filling the upper room --------------- */
+  float haze = smoothstep(0.92, 0.02, 1.0 - uv.y)
+             * (0.55 + 0.45 * fbm(vec2(uv.x * 2.1 + uTime * 0.011, (1.0 - uv.y) * 1.4 - uTime * 0.008) + 5.0));
+  col += vec3(0.082, 0.104, 0.083) * haze * 0.30 * uIntro;
+
+  /* ---- side wall bounce: a soft column on each flank, right-heavy - */
+  float wallL = exp(-pow((uv.x - 0.035) / 0.115, 2.0));
+  float wallR = exp(-pow((uv.x - 0.965) / 0.130, 2.0));
+  float wallV = smoothstep(0.02, 0.34, 1.0 - uv.y) * smoothstep(1.05, 0.60, 1.0 - uv.y);
+  col += vec3(0.50, 0.62, 0.52) * (wallL * 0.040 + wallR * 0.105) * wallV * uIntro;
+
+  /* ---- warm pocket behind the CTA -------------------------------- */
+  vec2  wp = s - vec2(0.02, 0.55);
+  float warm = exp(-dot(wp, wp) * 13.0);
+  col += vec3(0.085, 0.072, 0.026) * warm * 0.60 * uIntro;
+
+  /* ---- thin light lines hugging the very edges of the frame ------- */
+  float ec = exp(-pow((uv.x - 0.004) / 0.014, 2.0)) + exp(-pow((uv.x - 0.988) / 0.014, 2.0));
+  ec *= smoothstep(0.03, 0.26, 1.0 - uv.y) * smoothstep(1.02, 0.72, 1.0 - uv.y);
+  col += vec3(0.42, 0.62, 0.44) * ec * 0.075 * uIntro;
+
+  /* ---- vignette --------------------------------------------------- */
+  vec2 v = (uv - 0.5) * vec2(asp * 0.46, 1.0);
+  float vig = 1.0 - dot(v, v) * 0.72;
+  vig = clamp(vig, 0.0, 1.0);
+  col *= pow(vig, 1.15);
+  col *= smoothstep(-0.13, 0.07, 1.0 - uv.y);      // darker top edge
+  col *= smoothstep(-0.14, 0.05, uv.y);            // darker bottom edge
+
+  /* ---- grain ------------------------------------------------------ */
+  float g = hash21(gl_FragCoord.xy * 0.7 + fract(uTime) * 311.0);
+  col += (g - 0.5) * 0.017;
+
+  /* authored in sRGB; the pipeline works in linear and OutputPass re-encodes */
+  gl_FragColor = vec4(pow(max(col, 0.0), vec3(2.2)), 1.0);
+}`
+});
+const bgQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), bgMat);
+bgQuad.frustumCulled = false;
+bgQuad.renderOrder = -10;
+scene.add(bgQuad);
+
+/* ============================================================
+   2. chalk equations  (canvas textures on parallaxing planes)
+   ============================================================ */
+const EQ_FONT = "'Inter Tight', system-ui, sans-serif";
+
+/* design-space positions: centre x/y, size, rotation (deg), opacity, depth */
+const EQUATIONS = [
+  { kind:'text', txt:'(9+14)', cx: 272, cy: 320, size: 30, rot: -1.5, op: .21, z: .55 },
+  { kind:'text', txt:'–22+7', cx: 285, cy: 481, size: 38, rot: -9, op: .25, z: .80 },
+  { kind:'text', txt:'5x',      cx: 200, cy: 536, size: 37, rot: -8, op: .23, z: .95 },
+  { kind:'box',  txt:'31', cx: 264, cy: 606, size: 31, box: 72, rot: 18, op: .19, z: .70 },
+  { kind:'box',  txt:'18', cx:1243, cy: 370, size: 27, box: 56, rot: 27, op: .20, z: .60 },
+  { kind:'text', txt:'23+4–9', cx:1184, cy: 520, size: 42, op: .25, rot: -1, z: .85 },
+  { kind:'text', txt:'–6', cx:1044, cy: 600, size: 32, rot: -2, op: .19, z: 1.0 },
+  { kind:'sqrt', num:'7x8', den:'4', cx:1290, cy: 648, size: 47, op: .20, rot: 0, z: .75 },
+];
+
+function chalkCanvas(draw, w, h, ss){
+  const c = document.createElement('canvas');
+  c.width  = Math.ceil(w * ss);
+  c.height = Math.ceil(h * ss);
+  const x = c.getContext('2d');
+  x.scale(ss, ss);
+  draw(x, w, h);
+  const tex = new THREE.CanvasTexture(c);
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  tex.needsUpdate = true;
+  return tex;
+}
+
+const chalkMatProto = {
+  transparent:true, depthWrite:false, depthTest:false,
+  blending: THREE.NormalBlending, premultipliedAlpha: true,
+};
+
+const chalkVert = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`;
+const chalkFrag = `
+precision highp float;
+varying vec2 vUv;
+uniform sampler2D uMap;
+uniform float uOpacity, uTime, uSeed, uReveal;
+${NOISE_GLSL}
+void main(){
+  vec4 t = texture2D(uMap, vUv);
+  if(t.a < 0.002) discard;
+
+  /* chalk tooth: erode the stroke with two noise scales */
+  float n1 = vnoise(vUv * vec2(140.0, 90.0) + uSeed);
+  float n2 = fbm(vUv * vec2(46.0, 30.0) + uSeed * 3.1);
+  float tooth = 0.40 + 0.78 * n1 * n2 * 1.55;
+  tooth = clamp(tooth, 0.0, 1.25);
+
+  float a = t.a * tooth * uOpacity * uReveal;
+
+  /* slate-dust colour, faintly green where the light lands */
+  vec3 col = mix(vec3(0.80, 0.86, 0.80), vec3(0.72, 0.95, 0.76), 0.35 + 0.25 * n2);
+  col = pow(col, vec3(2.2));                       /* sRGB -> linear */
+  gl_FragColor = vec4(col * a, a);
+}`;
+
+const chalkGroup = new THREE.Group();
+scene.add(chalkGroup);
+const chalkItems = [];
+
+function buildChalk(){
+  for(const it of chalkItems){
+    chalkGroup.remove(it.mesh);
+    it.mesh.geometry.dispose();
+    it.mesh.material.uniforms.uMap.value.dispose();
+    it.mesh.material.dispose();
+  }
+  chalkItems.length = 0;
+
+  const ss = Math.min(3, DPR * 2);
+
+  EQUATIONS.forEach((e, i) => {
+    const S  = e.size * K;
+    const pad = S * 1.15;
+    let w, h, draw;
+
+    if(e.kind === 'text'){
+      const m = measureText(e.txt, S);
+      w = m + pad * 2; h = S * 2.0;
+      draw = (x, cw, ch) => {
+        strokeStyle(x, S);
+        x.fillText(e.txt, cw / 2, ch / 2);
+      };
+    } else if(e.kind === 'box'){
+      const B = e.box * K;
+      w = h = B * 1.55 + pad;
+      draw = (x, cw, ch) => {
+        strokeStyle(x, S);
+        x.save();
+        x.translate(cw / 2, ch / 2);
+        x.lineWidth   = Math.max(1.1, 1.55 * K);
+        x.strokeStyle = 'rgba(255,255,255,.95)';
+        x.lineJoin = 'round';
+        chalkSquare(x, -B / 2, -B / 2, B, B);
+        x.restore();
+        x.fillText(e.txt, cw / 2, ch / 2);
+      };
+    } else { /* sqrt */
+      const nW = measureText(e.num, S), dW = measureText(e.den, S);
+      const barW = Math.max(nW, dW) * 1.18;
+      w = barW + S * 1.7 + pad; h = S * 3.9;
+      draw = (x, cw, ch) => {
+        strokeStyle(x, S);
+        const lw = Math.max(1.1, 1.5 * K);
+        x.lineWidth = lw; x.strokeStyle = 'rgba(255,255,255,.92)';
+        x.lineCap = 'round'; x.lineJoin = 'round';
+        const left = (cw - barW) / 2 + S * 0.55;
+        const topY = ch * 0.14;
+        /* radical */
+        x.beginPath();
+        x.moveTo(left - S * 0.95, topY + S * 0.75);
+        x.lineTo(left - S * 0.62, topY + S * 0.62);
+        x.lineTo(left - S * 0.24, ch * 0.94);
+        x.lineTo(left - S * 0.02, topY);
+        x.lineTo(left + barW, topY);
+        x.stroke();
+        /* fraction */
+        x.fillText(e.num, left + barW / 2, topY + S * 0.90);
+        x.beginPath();
+        x.moveTo(left + barW * 0.06, topY + S * 1.45);
+        x.lineTo(left + barW * 0.92, topY + S * 1.45);
+        x.stroke();
+        x.fillText(e.den, left + barW / 2, topY + S * 2.05);
+      };
+    }
+
+    const tex = chalkCanvas(draw, w, h, ss);
+    const mat = new THREE.ShaderMaterial({
+      ...chalkMatProto,
+      vertexShader: chalkVert, fragmentShader: chalkFrag,
+      uniforms:{
+        uMap:{ value: tex }, uOpacity:{ value: e.op },
+        uTime:{ value: 0 }, uSeed:{ value: i * 17.13 }, uReveal:{ value: 0 },
+      }
+    });
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
+    mesh.rotation.z = -(e.rot || 0) * Math.PI / 180;
+    mesh.renderOrder = 1;
+    chalkGroup.add(mesh);
+    chalkItems.push({ mesh, e, i });
+  });
+  layoutChalk();
+}
+
+function measureText(txt, S){
+  const c = document.createElement('canvas').getContext('2d');
+  c.font = `400 ${S}px ${EQ_FONT}`;
+  c.letterSpacing = `${(-0.01 * S).toFixed(2)}px`;
+  return c.measureText(txt).width;
+}
+function strokeStyle(x, S){
+  x.filter = `blur(${(S * 0.024).toFixed(2)}px)`;
+  x.font = `400 ${S}px ${EQ_FONT}`;
+  x.letterSpacing = `${(-0.01 * S).toFixed(2)}px`;
+  x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillStyle = 'rgba(255,255,255,.95)';
+}
+function chalkSquare(x, X, Yy, w, h){
+  x.beginPath(); x.moveTo(X, Yy); x.lineTo(X + w, Yy);
+  x.lineTo(X + w, Yy + h); x.lineTo(X, Yy + h); x.closePath(); x.stroke();
+}
+
+function layoutChalk(){
+  const cx = W / 2, cy = H / 2;
+  chalkItems.forEach(({ mesh, e }) => {
+    const x = cx + (e.cx - DW / 2) * K;
+    const y = cy + (e.cy - DH / 2) * K;
+    mesh.position.set(x, Y(y), -2);
+  });
+}
+
+/* ============================================================
+   3. sparkle particles
+   ============================================================ */
+let points = null;
+function buildParticles(){
+  if(points){ scene.remove(points); points.geometry.dispose(); points.material.dispose(); }
+  const N = 42;
+  const pos  = new Float32Array(N * 3);
+  const seed = new Float32Array(N);
+  const scl  = new Float32Array(N);
+  /* deterministic scatter so screenshots are comparable across runs */
+  let s0 = 20240613;
+  const rnd = () => (s0 = (s0 * 1664525 + 1013904223) >>> 0) / 4294967296;
+  for(let i = 0; i < N; i++){
+    /* biased toward the lit centre column, thinning outward */
+    const t = rnd();
+    const gx = (rnd() * 2 - 1);
+    const bias = Math.sign(gx) * Math.pow(Math.abs(gx), 2.3);
+    pos[i*3+0] = W * (0.5 + bias * 0.40);
+    pos[i*3+1] = H * (0.18 + Math.pow(rnd(), 0.75) * 0.68);
+    pos[i*3+2] = -1;
+    seed[i] = rnd() * 100;
+    scl[i]  = 0.18 + Math.pow(rnd(), 2.6) * 1.0 + (t > .90 ? 0.75 : 0);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('aSeed',    new THREE.BufferAttribute(seed, 1));
+  g.setAttribute('aScale',   new THREE.BufferAttribute(scl, 1));
+
+  const mat = new THREE.ShaderMaterial({
+    transparent:true, depthWrite:false, depthTest:false,
+    blending: THREE.AdditiveBlending, premultipliedAlpha: true,
+    uniforms:{ uTime:{ value:0 }, uK:{ value:K }, uReveal:{ value:0 }, uDpr:{ value:DPR },
+               uBand:{ value:new THREE.Vector2(H * 0.08, H * 0.90) } },
+    vertexShader:`
+      attribute float aSeed, aScale;
+      uniform float uTime, uK, uReveal, uDpr;
+      uniform vec2  uBand;                 /* .x = band bottom, .y = band height */
+      varying float vTw; varying float vBig;
+      void main(){
+        vec3 p = position;
+        float s = aSeed;
+
+        /* dust rising through the shaft: each mote climbs at its own rate and
+           wraps back to the bottom, fading in and out at the band edges */
+        float rise = 7.0 + fract(s * 7.31) * 19.0;
+        float u    = fract((position.y - uBand.x + uTime * rise + s * 613.0) / uBand.y);
+        p.y = uBand.x + u * uBand.y;
+
+        /* lateral sway — two periods so the drift never looks metronomic */
+        p.x += sin(uTime * 0.21 + s * 1.7) * 15.0 * uK
+             + sin(uTime * 0.068 + s * 4.1) * 9.0 * uK;
+
+        vec4 mv = modelViewMatrix * vec4(p, 1.0);
+        gl_Position = projectionMatrix * mv;
+
+        float tw   = 0.42 + 0.58 * pow(0.5 + 0.5 * sin(uTime * (0.7 + fract(s) * 1.5) + s * 6.2), 2.4);
+        float edge = smoothstep(0.0, 0.09, u) * smoothstep(1.0, 0.88, u);
+        vTw  = tw * edge * uReveal;
+        vBig = aScale;
+        gl_PointSize = (1.9 + aScale * 3.0) * uK * uDpr;
+        gl_PointSize *= (0.78 + 0.4 * tw);
+      }`,
+    fragmentShader:`
+      precision highp float;
+      varying float vTw; varying float vBig;
+      void main(){
+        vec2 q = gl_PointCoord - 0.5;
+        float r = length(q);
+        float core = exp(-r * r * 46.0);
+        float halo = exp(-r * r * 8.0) * 0.30;
+        /* faint 4-point flare on the larger motes */
+        float cross = (exp(-abs(q.x) * 46.0) + exp(-abs(q.y) * 46.0)) * exp(-r * r * 16.0);
+        float a = (core + halo + cross * 0.13 * smoothstep(0.9, 1.8, vBig)) * vTw * 0.46;
+        if(a < 0.004) discard;
+        vec3 col = mix(vec3(0.86, 1.0, 0.90), vec3(1.0), 0.55);
+        gl_FragColor = vec4(col * a, a);
+      }`
+  });
+  points = new THREE.Points(g, mat);
+  points.renderOrder = 3;
+  scene.add(points);
+}
+
+/* ============================================================
+   4. headline — CSS drives layout, WebGL paints the glow
+   ============================================================ */
+const headlineEl = document.getElementById('headline');
+const wordEls = [...headlineEl.querySelectorAll('.w')];
+const wordMeshes = [];
+const headGroup = new THREE.Group();
+scene.add(headGroup);
+
+/* white -> mint ramp measured across the reference headline */
+const GRAD = [
+  [0.00, '#FFFFFF'],
+  [0.26, '#FAFFF7'],
+  [0.46, '#E8FDDC'],
+  [0.62, '#C9F8CE'],
+  [0.78, '#A2F0B4'],
+  [1.00, '#6FE595'],
+];
+
+const headVert = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`;
+const headFrag = `
+precision highp float;
+varying vec2 vUv;
+uniform sampler2D uSharp, uBlur;
+uniform float uProg;      /* 0 -> 1 reveal */
+uniform float uGlow;
+void main(){
+  vec4 sharp = texture2D(uSharp, vUv);
+  vec4 blur  = texture2D(uBlur,  vUv);
+  float f = smoothstep(0.0, 1.0, uProg);
+  vec4 t = mix(blur, sharp, f);
+  float a = t.a * uProg;
+  if(a < 0.003) discard;
+  vec3 c = t.rgb / max(t.a, 0.001);
+  c = pow(c, vec3(2.2));                           /* sRGB -> linear */
+  /* an arriving word is dim and soft, then lifts to full — it must never
+     out-shine the settled headline, or bloom turns it into a white blob */
+  gl_FragColor = vec4(c * a * uGlow, a);
+}`;
+
+/* Both the sharp and the blurred plate must share one canvas geometry —
+   they are sampled with the same UVs and cross-faded in the shader. */
+function wordPlate(el, geom, blurPx, blockLeft, blockW){
+  const { fs, ls, weight, padX, padY, w, h, baseline, ss } = geom;
+  const r = el.getBoundingClientRect();
+
+  const c = document.createElement('canvas');
+  c.width = Math.round(w * ss); c.height = Math.round(h * ss);
+  const x = c.getContext('2d');
+  x.scale(ss, ss);
+  x.font = `${weight} ${fs}px 'Inter Tight', system-ui, sans-serif`;
+  x.letterSpacing = `${ls}px`;
+  x.textBaseline = 'alphabetic';
+  x.textAlign = 'left';
+
+  /* one gradient spans the whole headline block; each word shows its slice */
+  const g = x.createLinearGradient(blockLeft - r.left + padX, 0,
+                                   blockLeft - r.left + blockW + padX, 0);
+  for(const [s, col] of GRAD) g.addColorStop(s, col);
+  x.fillStyle = g;
+  if(blurPx > 0) x.filter = `blur(${blurPx}px)`;
+  x.fillText(el.textContent, padX, baseline);
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return tex;
+}
+
+function wordGeometry(el){
+  const cs = getComputedStyle(headlineEl);
+  const fs = parseFloat(cs.fontSize);
+  const ls = parseFloat(cs.letterSpacing) || 0;
+  const weight = cs.fontWeight;
+  const r = el.getBoundingClientRect();
+
+  const probe = document.createElement('canvas').getContext('2d');
+  probe.font = `${weight} ${fs}px 'Inter Tight', system-ui, sans-serif`;
+  const pm = probe.measureText('Hg');
+  const asc = pm.fontBoundingBoxAscent, desc = pm.fontBoundingBoxDescent;
+
+  /* CSS inline layout: half-leading above the font box, then the ascent */
+  const halfLeading = (r.height - (asc + desc)) / 2;
+
+  const blurPx = Math.max(4, 9 * K);
+  const padX = fs * 0.34 + blurPx * 2.6;
+  const padY = fs * 0.34 + blurPx * 2.6;
+  return {
+    fs, ls, weight, padX, padY, blurPx,
+    w: Math.round(r.width + padX * 2),
+    h: Math.round(r.height + padY * 2),
+    baseline: padY + halfLeading + asc,
+    /* integer supersample: a fractional one resamples the glyph edges into
+       visible stair-steps once bloom exaggerates them */
+    ss: DPR <= 1.25 ? 2 : 3,
+    rect: r,
+  };
+}
+
+/* Put the headline's cap-top on the reference grid (design y = 313.8),
+   solved from live font metrics so it survives any font-loading variance. */
+const HEAD_CAP_TOP = 313.8;
+function placeHeadline(){
+  const cs = getComputedStyle(headlineEl);
+  const fs = parseFloat(cs.fontSize);
+  const lh = parseFloat(cs.lineHeight);
+  const p = document.createElement('canvas').getContext('2d');
+  p.font = `${cs.fontWeight} ${fs}px 'Inter Tight', system-ui, sans-serif`;
+  const m = p.measureText('H');
+  const asc = m.fontBoundingBoxAscent, desc = m.fontBoundingBoxDescent;
+  const cap = m.actualBoundingBoxAscent;
+  const halfLeading = (lh - (asc + desc)) / 2;
+  const capTopInBox = halfLeading + asc - cap;      // box top -> cap top
+  headlineEl.style.top = ((HEAD_CAP_TOP - DH / 2) * K - capTopInBox) + 'px';
+}
+
+function buildHeadline(){
+  placeHeadline();
+  for(const m of wordMeshes){
+    headGroup.remove(m.mesh);
+    m.mesh.geometry.dispose();
+    m.mesh.material.uniforms.uSharp.value.dispose();
+    m.mesh.material.uniforms.uBlur.value.dispose();
+    m.mesh.material.dispose();
+  }
+  wordMeshes.length = 0;
+
+  const hb = headlineEl.getBoundingClientRect();
+  const lines = [...headlineEl.querySelectorAll('.ln')];
+  let blockLeft = Infinity, blockRight = -Infinity;
+  for(const ln of lines){
+    const r = ln.getBoundingClientRect();
+    blockLeft = Math.min(blockLeft, r.left);
+    blockRight = Math.max(blockRight, r.right);
+  }
+  const blockW = blockRight - blockLeft;
+
+  wordEls.forEach((el, i) => {
+    const geom  = wordGeometry(el);
+    const sharp = wordPlate(el, geom, 0,            blockLeft, blockW);
+    const blur  = wordPlate(el, geom, geom.blurPx,  blockLeft, blockW);
+    const mat = new THREE.ShaderMaterial({
+      transparent:true, depthWrite:false, depthTest:false,
+      blending: THREE.NormalBlending, premultipliedAlpha: true,
+      vertexShader: headVert, fragmentShader: headFrag,
+      uniforms:{
+        uSharp:{ value: sharp }, uBlur:{ value: blur },
+        uProg:{ value: 0 }, uGlow:{ value: 1 },
+      }
+    });
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(geom.w, geom.h), mat);
+    /* snap to whole pixels so the plate samples land on the screen grid */
+    mesh.position.set(Math.round(geom.rect.left - geom.padX) + geom.w / 2,
+                      Y(Math.round(geom.rect.top - geom.padY) + geom.h / 2), 2);
+    mesh.renderOrder = 5;
+    headGroup.add(mesh);
+    wordMeshes.push({ mesh, mat, i });
+  });
+}
+
+/* ============================================================
+   5. post — real bloom is what sells the neon headline
+   ============================================================ */
+let composer, bloom;
+function buildComposer(){
+  if(composer) composer.dispose();
+  composer = new EffectComposer(renderer);
+  composer.setPixelRatio(DPR);
+  composer.setSize(W, H);
+  composer.addPass(new RenderPass(scene, camera));
+  bloom = new UnrealBloomPass(new THREE.Vector2(W, H), 0.185, 0.52, 0.74);
+  composer.addPass(bloom);
+  composer.addPass(new OutputPass());
+}
+
+/* ============================================================
+   6. timeline
+   ============================================================ */
+const T = {
+  beam:   [0.08, 1.10],
+  words:  { start: 0.28, stagger: 0.145, dur: 0.42 },
+  chalk:  { start: 1.05, stagger: 0.095, dur: 1.05 },
+  spark:  [0.75, 2.2],
+};
+const REVEAL_AT = [
+  /*0 brand*/0.26, 0.36, 0.42, 0.48, 0.54, 0.60, 0.66, 0.72,
+  /*8 lang*/0.78, 0.84, 0.90,
+  /*11 eyebrow*/0.52, /*12 features*/1.40, /*13 cta*/1.24,
+  /*14 follow*/1.58, /*15 scroll*/0.45,
+];
+
+const clock = new THREE.Clock();
+let elapsed = 0, started = false;
+
+function scheduleReveals(){
+  const q = new URLSearchParams(location.search).get('t');
+  document.querySelectorAll('.rv').forEach(el => {
+    const i = +el.dataset.rv;
+    const at = (REVEAL_AT[i] ?? 1.5) * 1000;
+    if(q !== null){                       /* deterministic harness mode */
+      el.style.transition = 'none';
+      if(parseFloat(q) >= at / 1000) el.classList.add('in');
+      return;
+    }
+    setTimeout(() => el.classList.add('in'), reduce ? 0 : at);
+  });
+}
+
+const ease = t => t <= 0 ? 0 : t >= 1 ? 1 : 1 - Math.pow(1 - t, 3);
+
+/* ============================================================
+   7. resize / build
+   ============================================================ */
+function rebuild(){
+  setScale();
+  if(W < 2 || H < 2) return;
+  renderer.setPixelRatio(DPR);
+  renderer.setSize(W, H, false);
+  camera.left = 0; camera.right = W; camera.top = H; camera.bottom = 0;
+  camera.updateProjectionMatrix();
+  bgUniforms.uRes.value.set(W, H);
+  buildComposer();
+  buildChalk();
+  buildParticles();
+  buildHeadline();
+}
+
+let resizeT;
+const scheduleRebuild = () => { clearTimeout(resizeT); resizeT = setTimeout(rebuild, 140); };
+addEventListener('resize', scheduleRebuild);
+
+/* A ResizeObserver also fires for viewport changes a backgrounded tab never
+   reports through `resize`, so the canvas can't get stuck at a stale size. */
+new ResizeObserver(() => {
+  const d = document.documentElement;
+  if(d.clientWidth !== W || d.clientHeight !== H) scheduleRebuild();
+}).observe(document.documentElement);
+
+/* pointer parallax */
+const ptr = { x:0, y:0, tx:0, ty:0 };
+addEventListener('pointermove', e => {
+  ptr.tx = (e.clientX / W) * 2 - 1;
+  ptr.ty = (e.clientY / H) * 2 - 1;
+}, { passive:true });
+
+/* ============================================================
+   8. loop  (+ simple adaptive-resolution governor)
+   ============================================================ */
+let frames = 0, acc = 0, governed = false;
+
+/* deterministic driver: ?t=<seconds> paints one settled frame and stops.
+   Used by the verification harness (and works in a background tab). */
+const QT = new URLSearchParams(location.search).get('t');
+const STATIC_T = QT === null ? null : parseFloat(QT);
+
+function drawOnce(){
+  bgUniforms.uTime.value  = elapsed;
+  bgUniforms.uPointer.value.set(ptr.x, ptr.y);
+  bgUniforms.uIntro.value = reduce ? 1 : ease((elapsed - T.beam[0]) / (T.beam[1] - T.beam[0]));
+
+  /* headline word reveal */
+  for(const w of wordMeshes){
+    const t0 = T.words.start + w.i * T.words.stagger;
+    const p = reduce ? 1 : ease((elapsed - t0) / T.words.dur);
+    w.mat.uniforms.uProg.value = p;
+    w.mat.uniforms.uGlow.value = reduce ? 1 : 0.26 + 0.74 * p;
+  }
+
+  /* chalk reveal + parallax */
+  chalkItems.forEach(({ mesh, e, i }) => {
+    const t0 = T.chalk.start + i * T.chalk.stagger;
+    mesh.material.uniforms.uReveal.value = reduce ? 1 : ease((elapsed - t0) / T.chalk.dur);
+    mesh.material.uniforms.uTime.value = elapsed;
+    const dx = ptr.x * 15 * e.z * K, dy = ptr.y * 11 * e.z * K;
+    const bx = Math.sin(elapsed * 0.10 + i * 1.9) * 5.0 * e.z * K;
+    const by = Math.cos(elapsed * 0.085 + i * 2.4) * 4.0 * e.z * K;
+    const cx = W / 2 + (e.cx - DW / 2) * K;
+    const cy = H / 2 + (e.cy - DH / 2) * K;
+    mesh.position.x = cx + dx + bx;
+    mesh.position.y = Y(cy + dy + by);
+  });
+
+  if(points){
+    points.material.uniforms.uTime.value = elapsed;
+    points.material.uniforms.uBand.value.set(H * 0.08, H * 0.90);
+    points.material.uniforms.uReveal.value =
+      reduce ? 1 : ease((elapsed - T.spark[0]) / (T.spark[1] - T.spark[0]));
+    points.position.x = ptr.x * 20 * K;
+    points.position.y = -ptr.y * 14 * K;
+  }
+
+  headGroup.position.x = ptr.x * 5 * K;
+  headGroup.position.y = -ptr.y * 3.5 * K;
+
+  composer.render();
+}
+
+function frame(){
+  if(STATIC_T === null) requestAnimationFrame(frame);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  elapsed = STATIC_T === null ? elapsed + dt : STATIC_T;
+
+  if(STATIC_T === null){
+    ptr.x += (ptr.tx - ptr.x) * Math.min(1, dt * 3.2);
+    ptr.y += (ptr.ty - ptr.y) * Math.min(1, dt * 3.2);
+  } else { ptr.x = 0; ptr.y = 0; }
+
+  drawOnce();
+
+  /* governor: if we are clearly below 50fps after warm-up, drop resolution once */
+  frames++; acc += dt;
+  if(!governed && acc > 2.5){
+    const fps = frames / acc;
+    if(fps < 46 && DPR > 1){
+      DPR = Math.max(1, DPR * 0.72);
+      renderer.setPixelRatio(DPR);
+      composer.setPixelRatio(DPR);
+      composer.setSize(W, H);
+      governed = true;
+    } else if(acc > 5) governed = true;
+    frames = 0; acc = 0;
+  }
+}
+
+/* ============================================================
+   boot
+   ============================================================ */
+async function boot(){
+  try { await document.fonts.ready; } catch(e){}
+  /* rAF is frozen in a background tab — never let boot hang on it */
+  await new Promise(r => { let done = false;
+    const go = () => { if(!done){ done = true; r(); } };
+    requestAnimationFrame(go); setTimeout(go, 60);
+  });
+  /* a tab that loads while hidden can briefly report no layout at all —
+     wait for real dimensions rather than guessing at them */
+  for(let i = 0; i < 60; i++){
+    setScale();
+    if(W > 1 && H > 1) break;
+    await new Promise(r => setTimeout(r, 50));
+  }
+  try { rebuild(); } catch(e){ window.__err.push('rebuild: ' + (e.stack || e.message)); throw e; }
+  scheduleReveals();
+  clock.start();
+  frame();
+  document.body.dataset.ready = '1';
+}
+boot();
+
+/* dev hook — lets the verification harness drive/inspect the scene */
+window.__fx = {
+  get t(){ return elapsed; },
+  set t(v){ elapsed = v; },
+  THREE, renderer, scene, camera, composer: () => composer, bloom: () => bloom,
+  wordMeshes, chalkItems, get points(){ return points; },
+  bgUniforms, rebuild,
+  renderAt(t){ elapsed = t; ptr.x = ptr.y = 0; drawOnce(); },
+  info: () => ({
+    calls: renderer.info.render.calls,
+    tris: renderer.info.render.triangles,
+    children: scene.children.length,
+    words: wordMeshes.length,
+    chalk: chalkItems.length,
+    wordProg: wordMeshes.map(w => +w.mat.uniforms.uProg.value.toFixed(2)),
+    intro: +bgUniforms.uIntro.value.toFixed(3),
+    dpr: DPR, W, H, K,
+    ctxLost: renderer.getContext().isContextLost(),
+  }),
+};
+</script>
+</body>
+</html>

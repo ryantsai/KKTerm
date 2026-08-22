@@ -1,11 +1,11 @@
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { asBackground } from "react-linear-gradient-picker";
 import { DIcon } from "../../../app/ui/dialog";
 import { isTauriRuntime, openExternalUrl } from "../../../lib/tauri";
 import { BACKGROUND_PRESETS } from "../registry/backgroundPresets";
-import { DashboardDynamicBackground, DYNAMIC_BACKGROUNDS } from "../registry/dynamicBackgrounds";
+import { DYNAMIC_BACKGROUNDS } from "../registry/dynamicBackgrounds";
 import { importBackgroundImage } from "../state/persistence";
 import { BACKGROUND_FITS, type BackgroundFit, type DashboardBackground, type GradientColorStop } from "../types";
 import { CustomGradientBuilder } from "./CustomGradientBuilder";
@@ -13,6 +13,13 @@ import { CustomGradientBuilder } from "./CustomGradientBuilder";
 type Mode = "preset" | "media" | "dynamic";
 type MediaBackground = Extract<DashboardBackground, { kind: "image" | "video" }>;
 type CustomGradientBackground = Extract<DashboardBackground, { kind: "customGradient" }>;
+type PopoverOffset = { x: number; y: number };
+type PopoverDrag = {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  startOffset: PopoverOffset;
+};
 
 const DEFAULT_GRADIENT_STOPS: GradientColorStop[] = [
   { color: "#6366f1", offset: 0 },
@@ -60,12 +67,47 @@ export function SharedBackgroundPopover({
 }: SharedBackgroundPopoverProps) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement | null>(null);
+  const dragRef = useRef<PopoverDrag | null>(null);
   const [mode, setMode] = useState<Mode>(modeOf(background));
   const [importError, setImportError] = useState("");
-  const [hoveredDynamicId, setHoveredDynamicId] = useState<string | null>(null);
+  const [popoverOffset, setPopoverOffset] = useState<PopoverOffset>({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
   const [customGradientOpen, setCustomGradientOpen] = useState(false);
   const mediaBackground = isMediaBackground(background) ? background : null;
   const customGradientBackground = background?.kind === "customGradient" ? background : null;
+
+  function onHeaderPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.button !== 0) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      startOffset: popoverOffset,
+    };
+    setIsDragging(true);
+    event.preventDefault();
+  }
+
+  function onHeaderPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    setPopoverOffset({
+      x: drag.startOffset.x + event.clientX - drag.startX,
+      y: drag.startOffset.y + event.clientY - drag.startY,
+    });
+    event.preventDefault();
+  }
+
+  function onHeaderPointerEnd(event: ReactPointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    dragRef.current = null;
+    setIsDragging(false);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }
 
   useEffect(() => {
     function onDoc(event: MouseEvent) {
@@ -147,8 +189,21 @@ export function SharedBackgroundPopover({
   }
 
   return (
-    <div ref={ref} className={["dw-bg-popover", className].filter(Boolean).join(" ")}>
-      <div className="dw-bg-popover-head">
+    <div
+      ref={ref}
+      className={["dw-bg-popover", className].filter(Boolean).join(" ")}
+      style={{
+        "--dw-bg-popover-offset-x": `${popoverOffset.x}px`,
+        "--dw-bg-popover-offset-y": `${popoverOffset.y}px`,
+      } as CSSProperties}
+    >
+      <div
+        className={"dw-bg-popover-head" + (isDragging ? " is-dragging" : "")}
+        onPointerDown={onHeaderPointerDown}
+        onPointerMove={onHeaderPointerMove}
+        onPointerUp={onHeaderPointerEnd}
+        onPointerCancel={onHeaderPointerEnd}
+      >
         <DIcon name="stack" size={15} />
         <span>{t(titleKey)}</span>
       </div>
@@ -207,14 +262,11 @@ export function SharedBackgroundPopover({
             <div className="dw-bg-thumb-grid">
               {DYNAMIC_BACKGROUNDS.map((backgroundOption) => {
                 const isActive = background?.kind === "dynamic" && background.dynamic === backgroundOption.id;
-                const isHovered = hoveredDynamicId === backgroundOption.id;
                 return (
                   <button
                     key={backgroundOption.id}
                     className={"dw-bg-thumb-card" + (isActive ? " active" : "")}
                     onClick={() => applyDynamic(backgroundOption.id)}
-                    onMouseEnter={() => setHoveredDynamicId(backgroundOption.id)}
-                    onMouseLeave={() => setHoveredDynamicId((current) => (current === backgroundOption.id ? null : current))}
                     type="button"
                     title={t(backgroundOption.labelKey)}
                   >
@@ -224,12 +276,10 @@ export function SharedBackgroundPopover({
                         src={`/dynamic-bg-thumbs/${backgroundOption.id}.webp`}
                         alt=""
                         loading="lazy"
+                        onError={(event) => {
+                          event.currentTarget.style.display = "none";
+                        }}
                       />
-                      {isHovered && (
-                        <span className="dw-bg-thumb-live">
-                          <DashboardDynamicBackground id={backgroundOption.id} active />
-                        </span>
-                      )}
                       {isActive && (
                         <span className="dw-bg-thumb-check">
                           <DIcon name="check" size={11} />

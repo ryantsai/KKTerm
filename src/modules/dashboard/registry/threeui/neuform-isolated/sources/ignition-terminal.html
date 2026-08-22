@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ignition Button</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+<script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="h-screen w-screen flex items-center justify-center overflow-hidden text-stone-800 bg-[#f4f1ea] selection:bg-[#d43d17] selection:text-white" style="font-family: 'Inter', sans-serif;">
+
+  <!-- Ambient WebGL Background -->
+  <canvas id="bg-gl" class="absolute inset-0 w-full h-full -z-10 block pointer-events-none" aria-hidden="true"></canvas>
+
+  <main class="relative z-10 flex flex-col items-center text-center w-full max-w-md px-6">
+    
+    <!-- Company Header -->
+    <div class="mb-16 overflow-hidden">
+      <div class="reveal-element text-sm font-normal tracking-tight text-stone-700 opacity-0 translate-y-full">
+        AETHER SYSTEMS
+      </div>
+    </div>
+
+    <!-- Component Area -->
+    <div class="mb-8 stagger-word text-xs font-mono tracking-[0.3em] uppercase text-[#d43d17] font-normal">
+      SYS 07 / IGNITE
+    </div>
+
+    <div class="intro-wrapper opacity-0 scale-[0.55] blur-[8px]">
+      <button id="btn" type="button" class="group relative block w-[264px] h-[78px] border-0 p-[7px] rounded-[24px] cursor-pointer outline-none transition-all duration-300 ease-[cubic-bezier(.34,1.4,.5,1)] hover:-translate-y-[2px] active:translate-y-[1px] active:scale-[0.985] focus-visible:outline-2 focus-visible:outline-[#d43d17] focus-visible:outline-offset-[5px] bg-[linear-gradient(180deg,#3c3f46_0%,#15171b_55%,#2a2d33_100%)] shadow-[0_26px_52px_rgba(15,12,10,.35),0_3px_10px_rgba(0,0,0,.35),inset_0_1px_0_rgba(255,255,255,.14)] hover:shadow-[0_32px_64px_rgba(160,60,12,.3),0_4px_12px_rgba(0,0,0,.4),inset_0_1px_0_rgba(255,255,255,.16)]">
+        <span class="relative block w-full h-full rounded-[17px] overflow-hidden bg-[#06050a] flex items-center justify-center shadow-[inset_0_2px_8px_rgba(0,0,0,.9)]">
+          <canvas id="gl" class="absolute inset-0 w-full h-full block" aria-hidden="true"></canvas>
+          <span class="relative z-10 pointer-events-none font-medium text-sm tracking-[0.34em] indent-[0.34em] text-[#fdf6ee]" style="text-shadow: 0 0 14px rgba(255, 170, 100, .55), 0 1px 6px rgba(0, 0, 0, .9);">LAUNCH</span>
+        </span>
+      </button>
+    </div>
+
+    <div class="mt-8 stagger-word text-xs text-stone-500 tracking-wide font-light leading-relaxed max-w-[280px]">
+      Hover to prime the core accelerator, click to execute initialization.
+    </div>
+
+  </main>
+
+  <script>
+    // --- GSAP Animations ---
+    gsap.registerPlugin(ScrollTrigger);
+
+    // Prepare text for masked staggered reveal
+    document.querySelectorAll('.stagger-word').forEach(el => {
+      const words = el.innerText.trim().split(' ');
+      el.innerHTML = words.map(w => `<span class="inline-block overflow-hidden align-top"><span class="reveal-word inline-block translate-y-full opacity-0">${w}&nbsp;</span></span>`).join('');
+    });
+
+    const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+
+    // Header reveal
+    tl.to(".reveal-element", {
+      y: "0%",
+      opacity: 1,
+      duration: 1,
+      ease: "expo.out"
+    }, "+=0.2");
+
+    // Masked staggered word reveal
+    tl.to(".reveal-word", {
+      y: "0%",
+      opacity: 1,
+      duration: 0.8,
+      stagger: 0.04,
+      ease: "power4.out"
+    }, "-=0.6");
+
+    // Intro Button Sequence
+    tl.to(".intro-wrapper", {
+      scale: 1.05,
+      opacity: 1,
+      duration: 0.8,
+      ease: "back.out(1.5)",
+      onUpdate: function() {
+        let progress = this.progress();
+        let blurAmount = Math.max(0, 8 * (1 - progress * 1.5));
+        gsap.set(".intro-wrapper", { filter: `blur(${blurAmount}px)` });
+      }
+    }, "-=0.8");
+
+    tl.to(".intro-wrapper", {
+      scale: 1,
+      duration: 0.4,
+      ease: "power2.out"
+    });
+
+    // Subtle Ambient Parallax
+    document.addEventListener("mousemove", (e) => {
+      const x = (e.clientX / window.innerWidth - 0.5) * 12;
+      const y = (e.clientY / window.innerHeight - 0.5) * 12;
+      gsap.to(".intro-wrapper", {
+        x: x,
+        y: y,
+        duration: 2,
+        ease: "power2.out"
+      });
+    });
+
+
+    // --- Ambient Background WebGL ---
+    (function() {
+      var canvas = document.getElementById('bg-gl');
+      var gl = canvas.getContext('webgl');
+      if (!gl) return;
+
+      var VS = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
+      var FS = `
+        precision highp float;
+        uniform vec2 u_res;
+        uniform float u_time;
+        float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123);}
+        float noise(vec2 p){
+          vec2 i=floor(p), f=fract(p);
+          vec2 u=f*f*(3.0-2.0*f);
+          return mix(mix(hash(i),hash(i+vec2(1.,0.)),u.x),
+                     mix(hash(i+vec2(0.,1.)),hash(i+vec2(1.,1.)),u.x),u.y);
+        }
+        void main(){
+          vec2 uv = gl_FragCoord.xy / u_res;
+          float n = noise(uv * 2.5 + vec2(u_time * 0.015, u_time * 0.025));
+          n += noise(uv * 5.0 - vec2(u_time * 0.01, u_time * 0.02)) * 0.5;
+          // Soft ambient cream tones
+          vec3 col1 = vec3(0.957, 0.945, 0.918);
+          vec3 col2 = vec3(0.925, 0.910, 0.880);
+          vec3 finalCol = mix(col1, col2, n * 0.6 + 0.2);
+          gl_FragColor = vec4(finalCol, 1.0);
+        }
+      `;
+
+      function compile(type, src) {
+        var s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        return s;
+      }
+      var prog = gl.createProgram();
+      gl.attachShader(prog, compile(gl.VERTEX_SHADER, VS));
+      gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FS));
+      gl.linkProgram(prog);
+      gl.useProgram(prog);
+
+      var buf = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+      var locP = gl.getAttribLocation(prog, 'p');
+      gl.enableVertexAttribArray(locP);
+      gl.vertexAttribPointer(locP, 2, gl.FLOAT, false, 0, 0);
+
+      var uRes = gl.getUniformLocation(prog, 'u_res');
+      var uTime = gl.getUniformLocation(prog, 'u_time');
+
+      function resize() {
+        var dpr = Math.min(window.devicePixelRatio || 1, 2);
+        var w = window.innerWidth * dpr;
+        var h = window.innerHeight * dpr;
+        if (canvas.width !== w || canvas.height !== h) {
+          canvas.width = w;
+          canvas.height = h;
+          gl.viewport(0, 0, w, h);
+        }
+      }
+      window.addEventListener('resize', resize);
+      resize();
+
+      function frame(now) {
+        resize();
+        gl.uniform2f(uRes, canvas.width, canvas.height);
+        gl.uniform1f(uTime, now / 1000);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    })();
+
+
+    // --- Portal Button WebGL ---
+    (function () {
+      var btn = document.getElementById('btn');
+      var canvas = document.getElementById('gl');
+      var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var gl = canvas.getContext('webgl');
+      if (!gl) { document.body.classList.add('nogl'); return; }
+
+      var VS = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
+      var FS = [
+        'precision highp float;',
+        'uniform vec2 u_res;',
+        'uniform float u_time;',
+        'uniform float u_warp;',
+        'uniform float u_flash;',
+        'float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123);}',
+        'float noise(vec2 p){',
+        '  vec2 i=floor(p), f=fract(p);',
+        '  vec2 u=f*f*(3.0-2.0*f);',
+        '  return mix(mix(hash(i),hash(i+vec2(1.,0.)),u.x),',
+        '             mix(hash(i+vec2(0.,1.)),hash(i+vec2(1.,1.)),u.x),u.y);',
+        '}',
+        'float fbm(vec2 p){',
+        '  float v=0.0; float a=0.5;',
+        '  for(int i=0;i<4;i++){ v+=a*noise(p); p=p*2.07+vec2(13.1,5.7); a*=0.5; }',
+        '  return v;',
+        '}',
+        'void main(){',
+        '  vec2 sc = gl_FragCoord.xy / u_res;',
+        '  vec2 uv = (gl_FragCoord.xy - 0.5 * u_res) / u_res.y;',
+        '  float r = length(uv);',
+        '  float rr = max(r, 0.08);',
+        '  float a = atan(uv.y, uv.x);',
+        '  float t = u_time;',
+        '  vec3 col = vec3(0.012, 0.011, 0.014);',
+        '  float hz = fbm(uv * 2.6 + vec2(t * 0.35, 1.7));',
+        '  col += vec3(0.13, 0.06, 0.032) * hz * (0.7 + 0.6 * u_warp);',
+        '  for (int i = 0; i < 3; i++) {',
+        '    float fi = float(i);',
+        '    float ringN = 26.0 + fi * 9.0;',
+        '    vec2 sp = vec2((a / 6.28318 + 0.5) * ringN,',
+        '                   (0.3 + fi * 0.22) / rr + t * (2.0 + fi * 1.2));',
+        '    vec2 cell = floor(sp);',
+        '    vec2 f = fract(sp);',
+        '    float h = hash(cell + fi * 17.31);',
+        '    float on = step(0.68, h);',
+        '    vec2 c = vec2(0.2 + 0.6 * hash(cell + 4.7), 0.5);',
+        '    vec2 dlt = f - c;',
+        '    float sy = mix(130.0, 8.0, u_warp);',
+        '    float star = on * exp(-(dlt.x * dlt.x * 150.0 + dlt.y * dlt.y * sy));',
+        '    float tw = 0.7 + 0.3 * sin(h * 81.0 + t * 9.0);',
+        '    tw = mix(tw, 1.0, u_warp);',
+        '    vec3 sCol = mix(vec3(1.0, 0.94, 0.85), vec3(1.0, 0.6, 0.33), step(0.9, h));',
+        '    float fade = smoothstep(0.02, 0.25, r);',
+        '    col += sCol * star * tw * fade * (1.1 + 0.7 * u_warp);',
+        '  }',
+        '  col += vec3(1.0, 0.8, 0.58) * u_warp * 0.32 * exp(-r * 4.0);',
+        '  vec2 e = sc * (1.0 - sc);',
+        '  col *= 0.3 + 0.7 * pow(e.x * e.y * 16.0, 0.3);',
+        '  col = mix(col, vec3(1.0, 0.97, 0.92), clamp(u_flash, 0.0, 1.0));',
+        '  gl_FragColor = vec4(col, 1.0);',
+        '}'
+      ].join('\n');
+
+      function compile(type, src) {
+        var s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+          console.error('shader compile failed:', gl.getShaderInfoLog(s));
+        }
+        return s;
+      }
+      var prog = gl.createProgram();
+      gl.attachShader(prog, compile(gl.VERTEX_SHADER, VS));
+      gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FS));
+      gl.linkProgram(prog);
+      gl.useProgram(prog);
+
+      var buf = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+      var locP = gl.getAttribLocation(prog, 'p');
+      gl.enableVertexAttribArray(locP);
+      gl.vertexAttribPointer(locP, 2, gl.FLOAT, false, 0, 0);
+
+      var uRes = gl.getUniformLocation(prog, 'u_res');
+      var uTime = gl.getUniformLocation(prog, 'u_time');
+      var uWarp = gl.getUniformLocation(prog, 'u_warp');
+      var uFlash = gl.getUniformLocation(prog, 'u_flash');
+
+      function resize() {
+        var dpr = Math.min(window.devicePixelRatio || 1, 2);
+        var w = Math.max(1, Math.round(canvas.clientWidth * dpr));
+        var h = Math.max(1, Math.round(canvas.clientHeight * dpr));
+        if (canvas.width !== w || canvas.height !== h) {
+          canvas.width = w;
+          canvas.height = h;
+          gl.viewport(0, 0, w, h);
+        }
+      }
+      window.addEventListener('resize', resize);
+      resize();
+
+      var warp = 0, warpTarget = 0, flash = 0, z = 0;
+      var last = performance.now();
+
+      btn.addEventListener('mouseenter', function () { warpTarget = 1; });
+      btn.addEventListener('mouseleave', function () { warpTarget = 0; });
+      btn.addEventListener('focus', function () { warpTarget = 1; });
+      btn.addEventListener('blur', function () { warpTarget = 0; });
+      btn.addEventListener('click', function () {
+        flash = 1;
+        warp = 0;
+        z = 0;
+      });
+
+      function frame(now) {
+        var dt = Math.min(0.05, (now - last) / 1000);
+        last = now;
+        warp += (warpTarget - warp) * Math.min(1, dt * 2.6);
+        flash *= Math.exp(-4.5 * dt);
+        z += dt * (0.05 + warp * 1.35);
+        resize();
+        gl.uniform2f(uRes, canvas.width, canvas.height);
+        gl.uniform1f(uTime, reduced ? 4.0 : z);
+        gl.uniform1f(uWarp, warp);
+        gl.uniform1f(uFlash, flash);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
+</html>

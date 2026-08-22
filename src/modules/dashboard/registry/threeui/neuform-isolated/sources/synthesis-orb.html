@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Synthesis - Autonomous Systems</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Iconify -->
+    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Playfair+Display:wght@400;600&amp;family=Space+Mono:wght@400;700&amp;display=swap" rel="stylesheet">
+</head>
+<body class="bg-black text-white min-h-screen flex flex-col items-center justify-center p-6 md:p-12 font-['Inter'] antialiased overflow-x-hidden selection:bg-white/30 selection:text-white" style="background-color: #030303;">
+
+    <!-- Global Noise Overlay -->
+    <div class="fixed inset-0 pointer-events-none z-[100] opacity-[0.15] mix-blend-overlay" style="background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.8%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E');"></div>
+
+    <main class="w-full max-w-[900px] mx-auto flex flex-col items-center gap-16">
+        
+        <!-- Cards Container -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12 w-full place-items-center">
+
+            <!-- Card 1 (Left Reference) -->
+            <div class="obs-animate relative w-full max-w-[340px] aspect-[9/19] rounded-[2rem] p-[1px] group transition-transform duration-1000 ease-out opacity-0 translate-y-8 blur-sm" style="background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.02) 40%, rgba(0,0,0,0) 100%);">
+                <!-- Inner Container -->
+                <div class="relative z-10 w-full h-full bg-[#0a0a0a] rounded-[calc(2rem-1px)] flex flex-col overflow-hidden pt-8 pb-10 px-8 justify-between shadow-[inset_0_0_80px_rgba(0,0,0,0.8)]">
+                    
+                    <!-- Header -->
+                    <div class="flex justify-between items-center w-full relative z-20">
+                        <span class="font-['Space_Mono'] text-[9px] uppercase tracking-[0.2em] text-white/70">Nexus Team</span>
+                        <div class="flex items-center gap-1.5 opacity-70">
+                            <iconify-icon icon="solar:cpu-linear" width="12" height="12"></iconify-icon>
+                            <span class="font-['Space_Mono'] text-[9px] uppercase tracking-[0.2em]">By Synthesis</span>
+                        </div>
+                    </div>
+
+                    <!-- Title Area -->
+                    <div class="relative z-20 flex flex-col items-center mt-12 mb-auto">
+                        <h1 class="font-['Playfair_Display'] text-3xl tracking-[0.15em] text-white uppercase text-center" style="text-shadow: 0 0 20px rgba(255,255,255,0.3);">
+                            Synthesis
+                        </h1>
+                        <!-- Dissolve Pixels -->
+                        <div id="pixel-dissolve" class="flex flex-wrap justify-center gap-[1px] w-[80%] mt-2 opacity-60"></div>
+                    </div>
+
+                    <!-- Canvas Orb Animation -->
+                    <canvas id="orbCanvas" class="absolute inset-0 w-full h-[60%] top-[25%] z-0 pointer-events-none mix-blend-screen opacity-90" style="filter: drop-shadow(0 0 30px rgba(255,255,255,0.2));"></canvas>
+
+                    <!-- Subtle Hand overlay behind orb to match reference -->
+                    <div class="absolute bottom-[25%] left-[-20%] w-[140%] h-[40%] z-0 pointer-events-none opacity-40 mix-blend-screen" style="background-image: url('https://wypspaektjjiccarxrgy.supabase.co/storage/v1/object/public/generated-page-media/302e86e0-80d8-4ba5-82e8-004220675655/2026-05-20/1779252373608-52b8a9e5-d6a8-4510-8c9e-7ac4cc9acdb1.png'); background-size: cover; background-position: center bottom; filter: grayscale(1) contrast(3) brightness(0.5) blur(2px); mask-image: linear-gradient(to top, transparent, black 40%, transparent 100%); -webkit-mask-image: linear-gradient(to top, transparent, black 40%, transparent 100%);"></div>
+
+                    <!-- Footer -->
+                    <div class="relative z-20 flex flex-col gap-3 mt-auto">
+                        <h2 class="font-['Space_Mono'] text-[11px] font-bold tracking-[0.15em] uppercase text-white/90">
+                            Synthesis Neural Swarms
+                        </h2>
+                        <p class="word-animate font-['Space_Mono'] text-[8px] leading-[1.8] text-white/40 uppercase tracking-[0.05em] text-justify">
+                            In our recent analytical models, we discovered profound structural anomalies within the verified dataset, indicating that legacy benchmarks are entirely obsolete for evaluating current generation autonomous entities.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 2 (Right Reference) -->
+            <div class="obs-animate relative w-full max-w-[340px] aspect-[9/19] rounded-[2rem] p-[1px] group transition-transform duration-1000 ease-out delay-200 opacity-0 translate-y-8 blur-sm" style="background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.02) 40%, rgba(0,0,0,0) 100%);">
+                <!-- Inner Container -->
+                <div class="relative z-10 w-full h-full bg-[#0a0a0a] rounded-[calc(2rem-1px)] flex flex-col overflow-hidden pt-8 pb-10 px-8 items-center shadow-[inset_0_0_80px_rgba(0,0,0,0.8)]">
+                    
+                    <!-- Header -->
+                    <div class="flex justify-between items-center w-full relative z-20">
+                        <span class="font-['Space_Mono'] text-[9px] uppercase tracking-[0.2em] text-white/70">Nexus Team</span>
+                        <div class="flex items-center gap-1.5 opacity-70">
+                            <iconify-icon icon="solar:cpu-linear" width="12" height="12"></iconify-icon>
+                            <span class="font-['Space_Mono'] text-[9px] uppercase tracking-[0.2em]">By Synthesis</span>
+                        </div>
+                    </div>
+
+                    <!-- Title Area -->
+                    <div class="relative z-20 flex flex-col items-center mt-12 w-full">
+                        <!-- Custom SVG Logo -->
+                        <svg width="120" height="24" viewBox="0 0 120 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="mb-3 opacity-90">
+                            <path d="M20 20C20 12 35 12 60 12C85 12 100 12 100 20" stroke="white" stroke-width="1.5" stroke-linecap="round"></path>
+                            <path d="M30 4C30 8 40 12 60 12C80 12 90 8 90 4" stroke="white" stroke-width="1.5" stroke-linecap="round"></path>
+                            <path d="M40 16C40 14 48 12 60 12C72 12 80 14 80 16" stroke="white" stroke-width="1.5" stroke-linecap="round"></path>
+                            <path d="M50 8C50 10 54 12 60 12C66 12 70 10 70 8" stroke="white" stroke-width="1.5" stroke-linecap="round"></path>
+                        </svg>
+                        
+                        <h1 class="font-['Space_Mono'] font-bold text-[28px] tracking-tight text-white uppercase mt-2">
+                            Synthesis
+                        </h1>
+                        <span class="font-['Space_Mono'] text-[10px] tracking-[0.2em] text-white/50 mt-4">
+                            EST. 2026
+                        </span>
+                    </div>
+
+                    <!-- Halftone Stylized Image -->
+                    <div class="absolute inset-0 top-[30%] z-0 pointer-events-none overflow-hidden mask-fade">
+                        <!-- Base Image -->
+                        <div class="absolute inset-[-10%] w-[120%] h-[120%] opacity-80" style="background-image: url('https://wypspaektjjiccarxrgy.supabase.co/storage/v1/object/public/generated-page-media/302e86e0-80d8-4ba5-82e8-004220675655/2026-05-20/1779252397131-15cf585b-725a-4a7b-92e1-0eb229e98c69.png'); 
+                                    background-size: cover; 
+                                    background-position: center 20%; 
+                                    filter: grayscale(1) contrast(4) brightness(0.6);">
+                        </div>
+                        
+                        <!-- Dither/Halftone Pattern Overlay -->
+                        <div class="absolute inset-0 mix-blend-multiply opacity-90" style="background-image: radial-gradient(circle at center, #ffffff 0.5px, transparent 1px); 
+                                    background-size: 3px 3px;">
+                        </div>
+                        
+                        <!-- Scanline Overlay -->
+                        <div class="absolute inset-0 opacity-30 mix-blend-overlay" style="background-image: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.8) 50%);
+                                    background-size: 100% 4px;">
+                        </div>
+
+                        <!-- Glitch shift layer -->
+                        <div class="absolute inset-[-10%] w-[120%] h-[120%] opacity-30 mix-blend-screen translate-x-[3px]" style="background-image:none; background-size: cover; background-position: center 20%; filter: grayscale(1) contrast(4) brightness(0.5); overflow:hidden; isolation:isolate"><video src="https://wypspaektjjiccarxrgy.supabase.co/storage/v1/object/public/generated-page-media/302e86e0-80d8-4ba5-82e8-004220675655/2026-05-20/1779252518557-fe1e9d3d-3205-4f1e-894b-7d0febc4d045.mp4" poster="https://wypspaektjjiccarxrgy.supabase.co/storage/v1/object/public/generated-page-media/302e86e0-80d8-4ba5-82e8-004220675655/2026-05-20/1779252423170-89677f7c-f5e8-4145-936d-b4561e04c593.png" data-neuform-generated-video="true" data-neuform-video-preset="loop-in-view" muted="" playsinline="" preload="metadata" loop="" data-neuform-generated-video-bg="true" autoplay="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;z-index:0;max-width:none"></video>
+                        </div>
+                    </div>
+                    
+                    <!-- Gradient Mask for fading image at bottom -->
+                    <div class="absolute inset-0 top-[50%] z-10 pointer-events-none" style="background: linear-gradient(to bottom, transparent 0%, #0a0a0a 100%);"></div>
+
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Dynamic CTA Button -->
+        <div class="obs-animate opacity-0 translate-y-4 blur-sm transition-all duration-1000 delay-500 ease-out mt-8">
+            <button class="group relative px-10 py-4 bg-transparent rounded-full overflow-hidden flex items-center gap-3 cursor-pointer">
+                <!-- Border Gradient -->
+                <div class="absolute inset-0 rounded-full p-[1px] bg-gradient-to-r from-white/10 via-white/40 to-white/10 transition-opacity duration-500 group-hover:opacity-100 opacity-60">
+                    <div class="w-full h-full bg-black/50 backdrop-blur-md rounded-full"></div>
+                </div>
+                <!-- Flare Effect -->
+                <div class="absolute top-0 left-[-100%] w-1/2 h-full bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[30deg] transition-transform duration-1000 group-hover:translate-x-[300%] ease-in-out pointer-events-none"></div>
+                
+                <span class="relative z-10 font-['Space_Mono'] text-[11px] font-bold tracking-[0.2em] uppercase text-white transition-colors group-hover:text-white">Initialize Sequence</span>
+                <iconify-icon icon="solar:arrow-right-linear" width="16" height="16" class="relative z-10 text-white/70 transition-transform duration-300 group-hover:translate-x-1 group-hover:text-white"></iconify-icon>
+            </button>
+        </div>
+
+    </main>
+
+    <script>
+        // 1. Pixel Dissolve Generator for Card 1
+        const pixelContainer = document.getElementById('pixel-dissolve');
+        for (let i = 0; i < 40; i++) {
+            const pixel = document.createElement('div');
+            // Random sizes: mostly 1x1, some 2x2 or 3x1
+            const w = Math.random() > 0.8 ? 2 : (Math.random() > 0.9 ? 3 : 1);
+            const h = Math.random() > 0.8 ? 2 : 1;
+            
+            pixel.style.width = `${w * 2}px`;
+            pixel.style.height = `${h * 2}px`;
+            pixel.style.backgroundColor = 'white';
+            
+            // Randomize starting opacity and layout offset
+            const initialOpacity = Math.random() * 0.8;
+            pixel.style.opacity = initialOpacity;
+            pixel.style.margin = `${Math.random() * 2}px ${Math.random() * 3}px`;
+            
+            // Subtle inline animation styling using transition
+            pixel.style.transition = 'opacity 1s ease-in-out';
+            
+            pixelContainer.appendChild(pixel);
+
+            // Animate twinkle randomly
+            setInterval(() => {
+                pixel.style.opacity = Math.random() * 0.8 + 0.1;
+            }, 1000 + Math.random() * 2000);
+        }
+
+        // 2. Word-by-Word setup
+        document.querySelectorAll('.word-animate').forEach(el => {
+            const text = el.innerText;
+            const words = text.split(/\s+/);
+            el.innerHTML = words.map((word, i) => {
+                // Return span with inline starting styles for the animation
+                return `<span class="inline-block opacity-0 blur-[4px]" style="transform: translateY(6px); transition: opacity 0.6s ease-out, transform 0.6s ease-out, filter 0.6s ease-out; transition-delay: ${i * 25}ms">${word}&nbsp;</span>`;
+            }).join('');
+        });
+
+        // 3. Intersection Observer for trigger animations
+        const observerOptions = {
+            root: null,
+            rootMargin: '0px',
+            threshold: 0.2
+        };
+
+        const observer = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    // Handle main fade/slide/blur in classes
+                    if(entry.target.classList.contains('obs-animate')){
+                        entry.target.style.opacity = '1';
+                        entry.target.style.transform = 'translateY(0)';
+                        entry.target.style.filter = 'blur(0)';
+                    }
+                    
+                    // Trigger word-by-word children
+                    const spans = entry.target.querySelectorAll('.word-animate span');
+                    if (spans.length > 0) {
+                        // Delay word animation slightly after card appears
+                        setTimeout(() => {
+                            spans.forEach(span => {
+                                span.style.opacity = '1';
+                                span.style.transform = 'translateY(0)';
+                                span.style.filter = 'blur(0)';
+                            });
+                        }, 400);
+                    }
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.obs-animate, .word-animate').forEach(el => {
+            observer.observe(el);
+        });
+
+        // 4. WebGL/Canvas simulated 3D Particle Orb
+        const canvas = document.getElementById('orbCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let width, height;
+        let particles = [];
+        const numParticles = 800; // Dense enough to look like the reference
+
+        function resize() {
+            const rect = canvas.getBoundingClientRect();
+            // Use device pixel ratio for sharper particles
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            width = canvas.width;
+            height = canvas.height;
+            ctx.scale(dpr, dpr);
+            width /= dpr;
+            height /= dpr;
+            initParticles();
+        }
+
+        function initParticles() {
+            particles = [];
+            const radius = Math.min(width, height) * 0.35;
+            
+            for (let i = 0; i < numParticles; i++) {
+                // Math for spherical distribution
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos((Math.random() * 2) - 1);
+                
+                // Add noise to radius to make it fuzzy/grainy instead of a perfect sphere
+                const r = radius + (Math.random() * radius * 0.4 - radius * 0.2);
+
+                const x = r * Math.sin(phi) * Math.cos(theta);
+                const y = r * Math.sin(phi) * Math.sin(theta);
+                const z = r * Math.cos(phi);
+
+                particles.push({
+                    x, y, z,
+                    originalX: x, originalY: y, originalZ: z,
+                    size: Math.random() * 1.5 + 0.5,
+                    phase: Math.random() * Math.PI * 2
+                });
+            }
+        }
+
+        let time = 0;
+        function animateCanvas() {
+            ctx.clearRect(0, 0, width, height);
+            
+            time += 0.005;
+
+            // Center of canvas
+            const cx = width / 2;
+            const cy = height / 2;
+
+            // Rotation matrices
+            const rotY = time * 0.5;
+            const rotX = time * 0.3;
+
+            const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
+            const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+
+            // Sort particles by Z for basic depth rendering (far first)
+            particles.sort((a, b) => b.z - a.z);
+
+            particles.forEach(p => {
+                // Add jitter (glitch/noise effect)
+                const jitter = Math.sin(time * 10 + p.phase) * 2;
+                
+                let x = p.originalX + jitter;
+                let y = p.originalY;
+                let z = p.originalZ;
+
+                // Rotate Y
+                let tempX = x * cosY - z * sinY;
+                let tempZ = z * cosY + x * sinY;
+                x = tempX;
+                z = tempZ;
+
+                // Rotate X
+                let tempY = y * cosX - z * sinX;
+                tempZ = z * cosX + y * sinX;
+                y = tempY;
+                z = tempZ;
+
+                // Simple 3D projection
+                const fov = 300;
+                const zOffset = 400;
+                const scale = fov / (fov + z + zOffset);
+
+                const projX = x * scale + cx;
+                const projY = y * scale + cy;
+
+                // Size scales with depth
+                const pSize = p.size * scale;
+
+                // Alpha scales with depth, closer = brighter
+                const alpha = Math.max(0.1, Math.min(0.9, (z + 200) / 400));
+                
+                // Draw particle (mimicking halftone dots/noise)
+                ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+                ctx.fillRect(projX, projY, pSize, pSize);
+            });
+
+            requestAnimationFrame(animateCanvas);
+        }
+
+        window.addEventListener('resize', resize);
+        // Initialize canvas
+        setTimeout(() => {
+            resize();
+            animateCanvas();
+        }, 100);
+
+    </script>
+
+<script data-neuform-video-controller="true">
+(function () {
+  function playVideo(video) {
+    var promise = video.play();
+    if (promise && typeof promise.catch === "function") {
+      promise.catch(function () {});
+    }
+  }
+  function setupVideo(video) {
+    if (video.__neuformVideoReady === true) return;
+    video.__neuformVideoReady = true;
+    video.muted = true;
+    video.playsInline = true;
+    var preset = video.dataset.neuformVideoPreset || "loop-in-view";
+    if (preset === "hover") {
+      video.addEventListener("mouseenter", function () { playVideo(video); });
+      video.addEventListener("mouseleave", function () {
+        video.pause();
+        video.currentTime = 0;
+      });
+      return;
+    }
+    if (!("IntersectionObserver" in window)) {
+      playVideo(video);
+      return;
+    }
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          if (preset === "play-once" && video.__neuformVideoPlayed === true) return;
+          playVideo(video);
+        } else {
+          video.pause();
+        }
+      });
+    }, { threshold: 0.35 });
+    if (preset === "play-once") {
+      video.addEventListener("ended", function () {
+        video.__neuformVideoPlayed = true;
+      }, { once: true });
+    }
+    observer.observe(video);
+  }
+  function setupVideos() {
+    document.querySelectorAll("video[data-neuform-video-preset]").forEach(setupVideo);
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", setupVideos);
+  } else {
+    setupVideos();
+  }
+})();</script></body></html>

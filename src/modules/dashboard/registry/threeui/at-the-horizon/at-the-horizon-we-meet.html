@@ -1,0 +1,786 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>At the Horizon, We Meet</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#000;overflow:hidden}
+  canvas{position:fixed;inset:0;width:100%;height:100%;display:block;background:#000}
+</style>
+</head>
+<body>
+<canvas id="view"></canvas>
+<script>
+"use strict";
+/* ============================================================
+   "At the Horizon, We Meet"
+   A procedural recreation: a static grayscale plate is composed
+   from a traced flow field + traced silhouettes, then rendered
+   every frame through an animated white-noise threshold dither.
+   ============================================================ */
+
+/* ---- traced data ------------------------------------------ */
+const ANG_B64  = "///////////u19PS0tHQ0M/OztTV1NLRzrR4bWpoZWFdVU1LUE9IQj9BQT48PkZNVFpiZFlKRktPTUlFRUpJQ///////////7tbT0tHQz87Ozc3U0MjGu5h1bm1tbGllYV1ZWFhTTEdFRkRBPT9GTVRaX15WUlVYV1RRT09QTEf//////////+7W0tHQz87Nzc3PGlJcZWhoamtsbm9ua2djX15bVE5LS0lGQTw+RU5VWFlXV1ldX1xaWFhXVFRW///////////t1dHQz87Nzc7P1DxOVVpeYmZoam5xcG1qZ2NfWVBMS0xKQzw6PEVPVFFRU1dbX2FfXFtbW15laf//////////7NPQzs3Nzc7Q0vlFTFJXW19hY2VqbWlmZWViW1FKSElKRj86Oj1FTEpJTFBVWl5hX11cXWFlZWT//////////+XRz83Nzs/R1O44RktPVFhbWllcYF1VUlVaWFFLR0dJSUQ/PDw+QkFBREhOU1dbXF1fYWNiX1tX///////////wzs7MzdHb7hY1P0RITVFWVlRUWFlRS0lLUFFOS0pMT0xHQj8+Pjw7PUBFSlBVWFpdYWNiXFRNS////////////9/N2wodKTA0ODxBRUpPVFZYXF9cVlBNT1FRUVNVVlRQSkVCQDw5ODk8QEZNU1haXWBgW1NLR0X////////////8BCEmKSwuMTU4PUJIUFddYWRkYl9bV1ZWV1tdXVpWU05JRUE7ODY1NjxESlBWWlxcWVRQS0hH////////////Bx4gJCYoKi0wNDlBSFJcY2ZmZmVkYV5dXmBhYV9cWFVSTkpEPTg0MjQ9REdMU1ZWVVRTUU5MTP///////////xIdHiEjJScpKzA4QEdRW2JlZmZmZGFgYWNkY2FgXVpYV1RPR0A6NTM5P0JFSE1PUVJTVFJPTk///////////wQhHh0eICIjJSgvOT9ETVZcYWNlY2BcXGBjZGNiYV9dW1pXUUlCPDg7Pj9AQ0ZJTE9RU1RTUE5O/////////wAmLCEdHB0eICMoMDk+QkhPU1ZbXltXVVdcYWNkZWVlYV1aWFNLREA/QUFAQENFR0pOUVRVU1FRU////////wEpODEoIR4dHR8jKzU7PkFGSUlLUlVST09TW2FlaGpramRdWlhUTklHRkVEQ0RERUZKT1RZW15kb3n///////8eNzA0MSklIiIjKjM7P0FESUtJS1BQTk1RW2RoaWttbm1nX1taV1NPTUtKS0xKSEdJTldgaG52en1+//////8DKzMsMTQyLywrLTQ+Q0VGSU1OTU5QT1BVX2drbGxtb3Fwa2RgX11bV1RTVVZUUE1OVF9pbXB1eXp7e/Ly8vLyAB4sKSwxNDU1NTc+RUlKSUdKTU5PUFJWXWRoa21tbnFzc3FsaGRhX11cXFxbWFZYXWVqbG5wdXh5eHi6urq7vMsXJSYoLDA0ODo8QUdJS0dCREpNTE5TWV5hZGhqamxwdXh3c21pZWRjYmBfXVtcX2NmaGttcHR3dnNwwcHCw8bQFCAjJCcqLjM4PUFERklGQEFHSUhJT1VYWFldYmVpb3V6e3dxbWppaGZjYWBeXV5gY2ZpbG9xcGlgXMTExsfKzA8cICEjJCcrMjo/QkRISENDRUVDRElNTEpMUltiZ250eHh1cW5tbGtpZ2ZjXlpaXF9kaWtrZVxVUU/Gx8jJy8sGFxweHyAhJCw0Oj5DSElGREREQ0RJTElHR0xUXmZrbm5tbGtrbG1samlmX1ZTVFdbYWNgWlZTUU9NyMjKy8zN/xEVFxkbHCAnLzU6QUlLSERDQ0VLUlJNR0dKU2BoaGdmZmZoam1vbmpnXlJLSk1SVldUU1NTVFNRT8nKy8zNzvgLDhASFBcdJCsyOD9ITElDQkRKVFlXUUtMUl5qbGhjYGFkaGxvcnFrYVNKSEpRWlhUU1NUVVdZXGDLy8zNzs/xBgcICg0SGSEpMTg/RktJRENIUltcWVVTV19obm1mXVhZYWlucnZ2cGZdW2Nwd2xeV1VXWl5laWpszM3Oz8/P6AECAwUIDBQdJzE5QEhOUExLUVpgX1tYWV5kaWxoX1dTWWVsb3N2dnJubnaAhX1uYVtbYGZrbm5tbs3Oz8/Pz938/f4BBAkRGygyOkJMUlRVVlpgYV5YVllfZWhmX1lWV19oa25ydHRxb3R7f312bGNfYGdsbm1tbW/Oz8/Pz8/U9/r7/QIHEB4tNTxFTFFUVllbXVxWUlNZYGVnY11aWVthZ2lqbGxsaWpub25ramdiXl9mamtqamttz8/Pz8/P0O33+Pr+BRMpMzg/R0xOUFJTU1JQTlBWXWJlZWBcW1tdYWRlY2BfYGJkZWNgX19dWVhaX2RlZGVnaM/Pz8/Pz9Hp9vb3+gMfNDg8Q0lLS0pKSUtMTE5TW2FiY2BbWVpdYWRlZGJgYGJjZGRiYF1ZV1VVWFxeXl5fYmTPz8/Pz8/c9/z39fT6HjM6QkhKSUhFQkNJT1BSVlxgXltWUVNaYGVmZmZmZmZkY2FjZWRfW1hXWVxeXVxcXmFjz8/Pzs7V7v3//v3z5+4GMEhMSkdHRD9BSlJUVVdYV1NPSktUXWJlZ2doaWlnZGBeYGVnY19fZWppYl1cXF1fYs/Pzs7R4vj+AAAF/uTZ19xJTUlISEZAQElSVVVUUU5MS0xRWF5iZWdoaWloZmNgXmBlaGdpbnR0bmVfXFxcX2LPzs7Q1+38/wAAAvzk08/Nx4BKSUpHQUBJUVRUUk9NTk9RVFhdYmRmaWppZ2dlZGRna2trbXF0c25nYV1cXV9gzs7P0t7z/P8AAPvw4M/LycnJvk5LR0RHUVZWVVRSUlJTU1VYXWFhY2ZoaGdoaWttbWtqa25wcnFtaWRiY2NhXtLQ0dTj9fz/AAD259zMyMnKy8dpTEhMU1pcWlhWV1dWVVZXWl5eXF1gYWJjZmlramdmaGxvcXFwb3BxcW9pYl4R3dfa5/X7/gEB8eHYysnLzs7KilNTWFxfXltZWFlZV1ZXWlxcWVZWWFpbXGBlZmRhYmdscHFxcnV4d3RuZmBc/ezk5OXo6/IGD/Xd1MvQ1dna2KFdYGJjYl9ZVVZWVVRVWFtcWldVVFVVV1ldYmNhXmBmbXBxc3V2dHBqY15ZVpKawNzVyriddVY87dft9vn7/P8fX2NjYl9aU09QUE9RU1daW1lYVlVUVFZZXWJiX15gZ25ydHd3dG9pYVtXU1GVl5q9vqiZinxtXWnoCQsLDA0QIFddW1lXU05MTU1NTlFTVlVTVFVUVFVYXmJkY2BfYmhvc3Z4d3NuaWJcVlFOl5mn7viWhoR+dn3G0fkFBQYGCCJJUVNSUU1JSUpJSUtMTEtLS05TVFRXXWJlZmVjYmVpbXB0d3dzb2tlXVRMSpibwvr667aVk67R0M3h/f/+/gQwRkxSU1FMR0VEQkJFRkRDRUdLUlZXWV1iZWZmZGRkY2VqcHV2c29pYVdQTEuan+L8+ejNye/13NXS0hAD+/gFO0ZLUVRTTkdBOjY3Oz4/QURITlVXVlVZX2NlZWRhXVxfZWxxcmxjXVhUUVJWnKz5/ffjz9Dx9trW1a9ZQw71A0BITFBTUk5HPDEuLzM6PkFFS1JVVFBPU1pfYWFgXVlZXGNpaWJaVlZXVlZaYJMvBPnw28/S6+/M0NSNX1pMAfQ+S01QUVBLQTIpKCowOD1BR01SUlBKSU9WWl1fYGBhY2hraGFaVFNUV1peYGF4S+zg3NHN0eLasr7Jf2FdWSjlHk1QUVFORjQlISQoLjY8Q0hKTE1KRUZOVVhaXmJobnFxbmZbU09QVFxlZmNgjZWprbnFyc7Xwqeno3ZkYFs04exPVVVUTzwfFhkfJSszPERGQkBAPz9ETFJWWV1kbXJzcmxgU0pJUFxpbWplYZWampegs7/Iy7KjmYl8bmVgDOMBWVpYV1IwCggRGiAlLjlDRD01NDc7QklNUldaYWhtb21mWUtESFhob25rZ2SKj4+OlJqdqbCkm5KOkI6FgK3gV1tbWllVJ/f6BhEXHCc1P0E6MjA1PURGSU9VV1pfY2VlY1hJRU5hbXJyb21ugYWGhoqKh4iTlpCMjI6Ni4eDcV1cXFtaXGXf6/gECxMiMDo8ODM0PUZIR0hQVVZWWV1hYmFbUExSX3J8f4GDg3+BgoGDhIKDio6Jh4iIiIeDfnRgXV1dYW6BmLzp+QIOIC84PDs6P0lOTUlITlRWVVhbXl9eWlJIQEFigIaKjIp/gYCAgYKBgYeKhoSFhYSEgX15aGFhZXF+g4WLzfUAECU3QERBQUZNUlBJRkpUWVlZWlxcW1hQRTw5SnqFiYuJf4CAf4CBgYGGiIWDhISDgoB8e3NrbXZ/goOCg6oCESU4RUtLR0VJT1RTTEpSXmFeXFxdXV1bVEpBOz9tg4eKiICAgH9/goaJiYiGhIODgoF/fH2Bfn5/gIGCgX5nPz1DSE1QUE1MUFleXFdZY2hnZGJiY2JiX1lRSURLb4GFh4Z/fXp7hpmckoqGhoiFgoGBgIWYm4WAfXx/g4F+cVlRUFBTVldWWWBmaGdobXBvbGlpampoaGVfWVVZbXyAgYCB6x4lOpuvqJeKhIOFhaftnYiMl5mIgX9+hIWCgHlqYV9fY2hqbG9wcHJ2e39/enVzdXZ3dnRybmxvd31/f399fusBGF+Jnq2jjYF/gIP7+KB6eHp+hpCNh4mHg4GAfnx9gIWIiouJgn6Ag4eKioiGh4eHiYqHhIKCgoGBgH9+foDg5LN/goaSoqGJfH6f9uF5dXh8gYeRmpGKh4OChImMjpCTlJSUk46Jh4aHioyMjpCOjI2OjImHhIGAgH99fYCD0MSWgoGChImRmI6JgYh9dnZ6gIaJiIeGhIN/f4SJjI2Qk5WUlJKOiYaEhYeJi46QjomHh4eGg4KAf399e3yAhJaXiIOCgoKCgYGCgoB9eXh5fYOIiYaEhIOCfnyBhoiJi46RkY+NioaFhYaJi4yOj4yHhISFhIKBgYF/e3l7f4N9fX6BgoF+fHt8foCBfXp6e36DhoaFhISDgX18gISFhoaHiImJiIeFhoiKi4uJiYiFgoKFhoSBgIGBfnp5e3+BfHp6fHx9e3p7fX5/gH16e3x+gIOEhISEgX58fICDg4OCgYKEhIaGhoaIi4qHhYOAf3+AhYeEf3+AgX57fH1+f3t5eXl5eXp8gYKAf398enp7fX+Bg4SFhIF8e3x/gYCAf36AgYOFhoWEhYeGhIKAfX1+foKFhIB/gYB+fn5+fX56eXp6eXh1dYWPiYN9enl4eXt+gYOGh4aBe3p7fn9+fn19f4CBhYaEgYCAgYGAfnx9fn1/goN/gIF+fX6Afn1+eXp7e3p3b2iAmpKGfHh5d3V3e4CDiIqHgHp5en1/fn18fX5+gIWFgX99fH5/f317fH19foGCfn9/fHt+gYGAgw==";      /* 64x64 hair-flow orientation */
+const DENS_B64 = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEEAQEFFBEDBg0DAAIHCgoGBQIDBQMDBQoLAwEDAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIDAwMIEQ4HCQsEAAMICgcDAgMDBQQEBw0KBAIEAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAgMEBQgMDQoIDAsDAAIKCgQCAwMDBQYJDQ0IAwIDAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQEBAgQGBwYHDA0LBwcKDgcBAAIKCwQDAwICBwwPDAYCAQEDAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAQMGBwkJCAcICwkFAwQLDgUBAAIIDQUDAgACCg4JBAEAAAIDAQAAAQMAAAAAAAAAAAAAAAAAAAAAAAAAAAABAwYGBQUEAgECBQUBAQQMDQQAAQIGDQcDAQACDA4FAQAAAQICAQEDBAYJAAAAAAAAAAAAAAAAAAAAAAAAAAACBQcDAQMDAgIDBQUCAggOCwMBAQIFDQkDAAACCw0DAAAAAQMCAwQFBQQGCwAAAAAAAAAAAAAAAAAAAAAAAAACBwYBAQMFAwMDBQUDBwsOCAIBAgIHDQkDAAABCQ0DAAAAAQQFBQUEAgIFCgQAAAAAAAAAAAAAAAAAAAAAAAABCAUBAQUGAwMFBgUHCwwKBQICAgYNDQgDAAABBwwGAQAAAQUHBQMBAQIHCgUCAAAAAAAAAAAAAAAAAAAAAAAABgcBAwgHBQYICQkLDQsGAwMECA0QCwUBAAABBwwHAgAAAQYHAwEAAQYMCgQCAwAAAAAAAAAAAAAAAAAAAAAAAwcCBAoHBgkLCwoJCwYDBQkPEQ8JBQIAAAACBwsHAwAAAQUGAgABBAoMBwIBAgEAAAAAAAAAAAAAAAAAAAAAAQcDBAwHBQkKCQcEBQYGCw8PCwcDAQAAAAEECQkGBAEAAQUFAQABBgwJAgECAQAAAAAAAAAAAAAAAAAAAAAAAAQGAwwIBgsKBQMDBQcGCw0KBQIBAAAAAQQICgcFBAEAAQUFAQADCAsFAQICAQAAAAAAAAAAAAAAAAAAAAAAAAEHBgsJBgsJAwIGBQUGCQsHAgAAAQIEBQcIBgYFBAEAAQUGAQEECQoEAgEBAAAAAAAAAAAA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AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==";     /* 64x64 luminance density     */
+const FACE_POLY = [[284.2,523],[285.8,523],[288.6,525],[289.6,529],[292.3,532.2],[297.2,533],[306.8,531.2],[309,532.7],[308.8,537.2],[307.1,540.5],[301.1,546.8],[294.2,552.4],[289.8,558],[288.4,566],[288.6,572.4],[290.2,575.2],[292.6,576.9],[296.3,578],[304.1,577.1],[310.6,573.6],[316.5,567.9],[319.6,567],[322.1,571],[323.8,578.9],[326.4,585.4],[328.2,587],[332.6,587.6],[334.7,589.4],[341.2,590],[352.5,586.4],[381.4,566.3],[384,565],[385.8,565.7],[386.2,568.6],[384.9,572.7],[380.8,577.6],[360.7,589.5],[344.8,596.6],[342.5,601.2],[342,609.5],[343.2,613.8],[345,616.4],[348,618],[354.5,617.5],[359.8,615.2],[363.5,612.4],[374.5,609.8],[380.8,605],[387.9,597.2],[390.4,596],[391.3,600],[391.2,614.6],[392,616.4],[397.4,618.8],[399.5,623.4],[403.8,627.5],[406.6,640.1],[411.5,642.6],[414.8,650],[416.5,651.2],[424.5,653.1],[426.4,654.8],[430.1,663.2],[436.7,666],[447.3,665.2],[449.6,664.4],[451.2,661.9],[452,657.2],[451.2,652.3],[450,650.7],[444,648.8],[442,647],[443.4,643.4],[446.2,641],[451.1,639.6],[456.8,639.6],[461.2,640.9],[462.6,643],[464.8,643.8],[482.7,644.1],[485.4,645],[486.8,646.6],[483,652.4],[465.3,668.7],[454.6,680.4],[452,685.2],[450.2,694],[443.9,704.8],[443.6,710.8],[446.9,715],[450,716],[456.4,715.7],[466.4,712.4],[469.3,714.7],[469.4,718.4],[464.6,722.5],[444.2,730],[441.4,732.9],[440,737.8],[441,742.7],[445.2,745.4],[452,747.1],[453.8,751.7],[456.3,753.2],[459,757],[470,758.3],[473,759.6],[472.1,761.7],[463.4,768.5],[461,773.8],[461,776.2],[463,780.3],[470.6,783.1],[471.8,784.4],[472,786.9],[469.8,788.8],[461.8,792.4],[455.2,797.8],[450.9,809.5],[443.4,817.3],[435.4,822.6],[425.6,825.6],[423.4,827.8],[420,836.1],[418,847.6],[417,863.5],[418.3,867.8],[420.4,870.6],[423.9,872.4],[427.1,872.6],[432.9,874.7],[435.7,880.2],[437.1,881.3],[446,883.2],[449,888],[448.8,897.7],[450,903.8],[451.6,905.4],[456.3,906.7],[457,908.4],[442.3,928.1],[440.1,937.5],[431.4,949.7],[427.4,963],[420.9,969],[412.8,974],[407.8,980.2],[405.6,985.7],[403.6,987.8],[398.2,990.4],[386.1,992.4],[377.6,991.6],[366.7,987],[357.6,980.2],[354.8,977],[353,973.6],[352.2,967.3],[349.8,963.2],[348.7,949],[346.6,941.2],[339,930.3],[332.2,922.8],[326,918.6],[321.4,917.7],[316.8,915.2],[312,909],[313.6,903.6],[316.1,901.2],[327.9,899.4],[330.4,898.2],[331.7,894.8],[332,889.8],[329.6,887.2],[326,885.3],[307.7,882.1],[300,879.2],[297.2,872.7],[292.4,847.9],[288.7,839.3],[284.6,834.8],[260.8,821.8],[254.8,816.8],[254.2,815.2],[253.4,797.9],[254.3,784],[256.8,776.6],[260,775.3],[263,771.6],[266.5,759.2],[271.9,745.5],[274.6,729.9],[276.1,706.3],[275.2,697.6],[272.9,692.8],[252.7,665.6],[250,661.2],[246.2,650],[245,637.4],[247.2,625.3],[246.8,571.6],[247.8,567.2],[248.4,555.3],[251,547.8],[254.6,545.5],[259,545],[262.8,543.2],[268.8,534.1],[275,528.2]];      /* profile silhouette, 1280-space */
+const FIG_POLY  = [[161.8,732],[164.1,749.1],[166.4,756.2],[172.6,760.9],[173.3,764.3],[175.4,767.4],[191.4,772.6],[193.8,774.8],[197.4,784],[200,785.8],[204.1,787],[213.2,786.2],[222.5,783],[235.6,773.4],[237.4,771.6],[240.3,765.5],[242.6,750.4],[243.4,749.6],[244.5,752.7],[244.4,761.1],[242.5,770.1],[240.8,773.6],[237.2,777.3],[219.3,790.2],[208.1,796.2],[204.8,805.2],[184.6,807.8],[178.6,810.8],[177.8,813.2],[177.2,830.4],[178.2,835.4],[180.6,837.8],[176.8,840.2],[174.8,849.1],[175,873.9],[176.2,882.8],[177.3,885.2],[177.6,892.5],[177,900.8],[174.6,907.5],[174,914.9],[174.6,934.6],[177.4,942.6],[175.2,968.7],[170.4,991.6],[169.8,1003.1],[168.4,1010.7],[168.4,1045.7],[171.2,1063.9],[173.7,1072],[177.4,1076.8],[187.3,1081.9],[192.8,1086.6],[183.3,1087.6],[177,1090.1],[175.2,1092.4],[173.2,1098.6],[170.8,1087.8],[153.9,1086.6],[151.8,1085.8],[151,1083.4],[152.6,1079.4],[154.6,1064.4],[155.3,1024.9],[158.1,989.8],[158.6,970.5],[157.5,948],[155.2,938.1],[153.4,920.4],[154,905.6],[156.4,896.9],[157,889.1],[155.5,861.7],[155.5,831.7],[154.1,824.3],[150,817.4],[153.2,810.1],[153.8,793.3],[153.2,788.2],[146.3,785.3],[143.2,777],[138.8,773.8],[134.6,772.4],[136.2,770.8],[145.2,767.8],[146.4,766.1],[147,762.4],[148.6,760.5],[156.2,758.8]];       /* standing figure silhouette     */
+
+/* ---- artwork constants (1280 x 1280 artwork space) --------- */
+const S        = 1280;
+const HORIZON  = 1005;   /* far shore / water boundary  */
+const WATERL   = 1086;   /* where objects touch the water */
+const STARX    = 160, STARY = 773;
+const HT_PITCH = 1280/1440*4;   /* halftone dot pitch, measured */
+const FPS      = 25;
+const DRIFT    = 3.6;    /* grain drift, artwork px per frame */
+const DRIFTMAX = 8.0;    /* encoding range of the baked drift field */
+const COH      = 0.97;   /* share of the grain that travels vs re-rolls */
+const STRETCH  = 2.6;    /* dash length as a multiple of the per-frame drift */
+const GWIDTH   = 2.0;    /* dash width, artwork px */
+const LIFE     = 3.4;    /* frames a dash keeps its value */
+const BLEND    = 1.0;   /* how much a dash reads the plate as one piece */
+
+/* ---- helpers ----------------------------------------------- */
+function b64bytes(s){const b=atob(s),a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return a;}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+
+/* value-noise texture (periodic, cheap to sample) */
+const NT=256, NTM=NT-1;
+const NOISE=(function(){const r=mulberry32(9187341),a=new Float32Array(NT*NT);for(let i=0;i<NT*NT;i++)a[i]=r();return a;})();
+function vnoise(x,y){
+  const xi=Math.floor(x),yi=Math.floor(y),xf=x-xi,yf=y-yi;
+  const u=xf*xf*(3-2*xf),v=yf*yf*(3-2*yf);
+  const i0=xi&NTM,j0=yi&NTM,i1=(xi+1)&NTM,j1=(yi+1)&NTM;
+  const a=NOISE[j0*NT+i0],b=NOISE[j0*NT+i1],c=NOISE[j1*NT+i0],d=NOISE[j1*NT+i1];
+  return (a+(b-a)*u)+((c+(d-c)*u)-(a+(b-a)*u))*v;
+}
+function fbm(x,y,oct){let v=0,amp=.5,f=1;for(let i=0;i<(oct||3);i++){v+=amp*vnoise(x*f+i*37.3,y*f+i*61.7);f*=2;amp*=.5;}return v;}
+
+/* ---- decode traced fields ---------------------------------- */
+const N=64;
+const _ang=b64bytes(ANG_B64), _den=b64bytes(DENS_B64);
+const FC=new Float32Array(N*N), FS=new Float32Array(N*N), FD=new Float32Array(N*N);
+let DMAX=0;
+for(let i=0;i<N*N;i++){
+  const a=_ang[i]/255*Math.PI-Math.PI/2;
+  FC[i]=Math.cos(2*a); FS[i]=Math.sin(2*a); FD[i]=_den[i]/632;   /* 0.95: dashes spill a little past the filament */
+  if(FD[i]>DMAX)DMAX=FD[i];
+}
+function fsample(arr,x,y){
+  let fx=x/S*N-0.5, fy=y/S*N-0.5;
+  fx=clamp(fx,0,N-1); fy=clamp(fy,0,N-1);
+  const i0=fx|0,j0=fy|0,i1=Math.min(i0+1,N-1),j1=Math.min(j0+1,N-1);
+  const tx=fx-i0,ty=fy-j0;
+  const a=arr[j0*N+i0],b=arr[j0*N+i1],c=arr[j1*N+i0],d=arr[j1*N+i1];
+  return (a+(b-a)*tx)+(((c+(d-c)*tx))-(a+(b-a)*tx))*ty;
+}
+const flowAngle=(x,y)=>Math.atan2(fsample(FS,x,y),fsample(FC,x,y))*0.5;
+const density  =(x,y)=>fsample(FD,x,y);
+
+/* ---- smooth closed path from a traced polygon -------------- */
+function smoothPath(pts){
+  const p=new Path2D(), n=pts.length;
+  let mx=(pts[n-1][0]+pts[0][0])/2, my=(pts[n-1][1]+pts[0][1])/2;
+  p.moveTo(mx,my);
+  for(let i=0;i<n;i++){
+    const c=pts[i], nx=pts[(i+1)%n];
+    p.quadraticCurveTo(c[0],c[1],(c[0]+nx[0])/2,(c[1]+nx[1])/2);
+  }
+  p.closePath();
+  return p;
+}
+const FACE_PATH = smoothPath(FACE_POLY);
+const FIG_PATH  = smoothPath(FIG_POLY);
+
+/* ---- hair strands ------------------------------------------ */
+function buildStrands(){
+  const rnd=mulberry32(20260715), out=[];
+  const LOCKS=62, STEP=2.6, MAXS=520;
+  let guard=0;
+  while(guard<2000000){
+    guard++;
+    if(out.length>=LOCKS*7) break;
+    const sx=rnd()*S, sy=rnd()*(WATERL+4);
+    const d=density(sx,sy);
+    if(d<0.0025) continue;
+    if(rnd()>Math.max(0.15,Math.pow(d/DMAX,0.45))) continue;
+    /* one guide streamline per lock; a constant angular bias keeps
+       neighbouring locks from collapsing onto the same attractor */
+    const jit=rnd()*997.0, wig=0.05+rnd()*0.16, bias=(rnd()-0.5)*0.115;
+    const cb=Math.cos(bias), sb=Math.sin(bias);
+    const arms=[[],[]];
+    for(let dir=0;dir<2;dir++){
+      let x=sx,y=sy; const sgn=dir?-1:1, a=arms[dir];
+      for(let s=0;s<MAXS;s++){
+        a.push(x,y);
+        const th=flowAngle(x,y);
+        let dx=Math.cos(th),dy=Math.sin(th);
+        if(dx<0){dx=-dx;dy=-dy;}
+        const ax=dx*cb-dy*sb, ay=dx*sb+dy*cb;
+        const w=(fbm(x*0.0055+jit,y*0.0055+jit,3)-0.5)*wig;
+        const ct=Math.cos(w),st=Math.sin(w);
+        x+=(ax*ct-ay*st)*STEP*sgn; y+=(ax*st+ay*ct)*STEP*sgn;
+        if(x<-40||x>S+40||y<-70||y>WATERL+22) break;
+        if(density(x,y)<0.0010) break;
+      }
+    }
+    const back=arms[1], fwd=arms[0], g=[];
+    for(let i=back.length-2;i>=0;i-=2) g.push(back[i],back[i+1]);
+    for(let i=2;i<fwd.length;i+=2) g.push(fwd[i],fwd[i+1]);
+    const gn=g.length>>1;
+    if(gn<12) continue;
+    /* precompute the guide normal so the lock's filaments stay parallel */
+    const nxs=new Float32Array(gn), nys=new Float32Array(gn);
+    for(let i=0;i<gn;i++){
+      const a=Math.max(0,i-1), b=Math.min(gn-1,i+1);
+      const tx=g[b*2]-g[a*2], ty=g[b*2+1]-g[a*2+1];
+      const L=Math.hypot(tx,ty)||1;
+      nxs[i]=-ty/L; nys[i]=tx/L;
+    }
+    /* fan the guide into a lock of near-parallel filaments */
+    const m=3+(rnd()*9|0), spread=2.6+rnd()*4.2, drift=(rnd()-0.5)*0.02;
+    for(let f=0;f<m;f++){
+      const base=(f-(m-1)/2)*spread+(rnd()-0.5)*1.6;
+      const ph=rnd()*99, amp=0.30+rnd()*0.85;
+      const pts=new Float64Array(gn*2);
+      for(let i=0;i<gn;i++){
+        const o=base*(1+amp*(fbm(i*0.035+ph,ph*0.7,2)-0.5))+drift*i;
+        pts[i*2]  =g[i*2]  +nxs[i]*o;
+        pts[i*2+1]=g[i*2+1]+nys[i]*o;
+      }
+      out.push({p:pts, k:0.25+rnd()*rnd()*2.9, w:1.05+rnd()*1.15, seed:rnd()*600});
+    }
+  }
+  return out;
+}
+
+/* filaments rooted on the scalp: the dense radiating mane that
+   frames the head in the source image                          */
+function buildRoots(){
+  const rnd=mulberry32(4471903), out=[], P=FACE_POLY, n=P.length;
+  const cx=372, cy=772;
+  for(let k=0;k<n;k++){
+    const a=P[k], b=P[(k+1)%n];
+    const ex=b[0]-a[0], ey=b[1]-a[1], L=Math.hypot(ex,ey);
+    if(L<0.001) continue;
+    const steps=Math.max(1,Math.round(L/1.1));
+    let nx=-ey/L, ny=ex/L;
+    const mx=(a[0]+b[0])/2, my=(a[1]+b[1])/2;
+    if((mx-cx)*nx+(my-cy)*ny<0){nx=-nx;ny=-ny;}
+    if(nx<0.10 && ny>-0.20) continue;                 /* face side */
+    for(let t=0;t<steps;t++){
+      const f=(t+rnd())/steps;
+      let x=a[0]+ex*f-nx*6, y=a[1]+ey*f-ny*6;
+      const len=45+Math.pow(rnd(),1.6)*430, MS=Math.round(len/2.4);
+      const jit=rnd()*997, wig=0.05+rnd()*0.20, bias=(rnd()-0.5)*0.16;
+      const cb=Math.cos(bias), sb=Math.sin(bias);
+      const pts=[];
+      for(let s2=0;s2<MS;s2++){
+        pts.push(x,y);
+        const th=flowAngle(x,y);
+        let dx=Math.cos(th),dy=Math.sin(th);
+        if(dx<0){dx=-dx;dy=-dy;}
+        const ax=dx*cb-dy*sb, ay=dx*sb+dy*cb;
+        const w=(fbm(x*0.006+jit,y*0.006+jit,3)-0.5)*wig;
+        const ct=Math.cos(w),st=Math.sin(w);
+        x+=(ax*ct-ay*st)*2.4; y+=(ax*st+ay*ct)*2.4;
+        if(x<-40||x>S+40||y<-70||y>WATERL+22) break;
+      }
+      if(pts.length<10) continue;
+      out.push({p:pts, k:0.28+rnd()*rnd()*2.0, w:0.75+rnd()*0.75, seed:rnd()*600, root:1});
+    }
+  }
+  return out;
+}
+
+function strokeTangents(ctx,strands){
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  const CH=5;
+  for(const st of strands){
+    const p=st.p, n=p.length>>1;
+    for(let i=0;i<n-1;i+=CH){
+      const j=Math.min(i+CH,n-1);
+      let tx=p[j*2]-p[i*2], ty=p[j*2+1]-p[i*2+1];
+      const L=Math.hypot(tx,ty)||1; tx/=L; ty/=L;
+      if(tx<0){tx=-tx;ty=-ty;}
+      ctx.beginPath(); ctx.moveTo(p[i*2],p[i*2+1]);
+      for(let t=i+1;t<=j;t++) ctx.lineTo(p[t*2],p[t*2+1]);
+      ctx.lineWidth=Math.max(2.6,st.w*2.2);
+      ctx.strokeStyle='rgb('+Math.round((tx*0.5+0.5)*255)+','+Math.round((ty*0.5+0.5)*255)+',255)';
+      ctx.stroke();
+    }
+  }
+}
+
+function strokeStrands(ctx,strands,style){
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  const CH=5;
+  for(let si=0;si<strands.length;si++){
+    const st=strands[si], p=st.p, n=p.length>>1;
+    if(style.every && (si%style.every)) continue;
+    for(let i=0;i<n-1;i+=CH){
+      const j=Math.min(i+CH,n-1), m=(i+j)>>1;
+      const mx=p[m*2], my=p[m*2+1];
+      let a=density(mx,my)/DMAX;
+      a=Math.pow(clamp(a,0,1),0.45)*st.k;
+      /* filaments read as bright dashes with dark gaps, not even lines */
+      const gg=clamp((fbm(mx*0.045+st.seed,my*0.045,3)-0.34)*2.6,0,1);
+      a*= 0.62+1.25*gg;
+      if(style.zone && !st.root){
+        /* long filaments thin out near the scalp so the rooted
+           mane carries the tone budget there */
+        const ex=(mx-380)/300, ey=(my-762)/370;
+        const r=Math.sqrt(ex*ex+ey*ey);
+        a*= 0.10+0.90*clamp((r-0.5)/0.8,0,1);
+      }
+      if(st.root){                       /* ease in from the scalp */
+        const f=i/n;
+        a*=0.32+0.68*clamp(f*3.2,0,1);
+        a*=clamp((1-f)*2.6,0.12,1);
+      }
+      if(style.fade) a*=style.fade(mx,my);
+      a*= style.gain;
+      if(a<0.003) continue;
+      ctx.beginPath();
+      ctx.moveTo(p[i*2],p[i*2+1]);
+      for(let t=i+1;t<=j;t++) ctx.lineTo(p[t*2],p[t*2+1]);
+      ctx.lineWidth=st.w*style.wmul;
+      ctx.strokeStyle=style.color+Math.min(a,1).toFixed(3)+')';
+      ctx.stroke();
+    }
+  }
+}
+
+/* ---- star -------------------------------------------------- */
+const SPIKES=[
+  [-88,196,1.1],[ 92,250,1.2],[180,118,1.3],[  3,100,1.3],
+  [-47,122,2.1],[-33,102,1.9],[-62, 98,1.9],[-20, 72,1.4],[-72, 70,1.4],
+  [ 25,112,2.1],[ 42,110,2.0],[ 60, 78,1.5],[ 12, 58,1.3],[ 74, 54,1.2],
+  [-160,112,2.1],[-145,110,2.0],[-128,94,1.7],[-172,68,1.3],[-110,53,1.2],
+  [ 118, 98,1.7],[ 135,114,2.0],[ 152,106,2.0],[ 105,57,1.2],[ 166,57,1.2]
+];
+function drawStar(ctx){
+  ctx.save(); ctx.globalCompositeOperation='lighter';
+  let g=ctx.createRadialGradient(STARX,STARY,0,STARX,STARY,44);
+  g.addColorStop(0,'rgba(255,255,255,0.10)');
+  g.addColorStop(0.12,'rgba(255,255,255,0.050)');
+  g.addColorStop(0.42,'rgba(255,255,255,0.007)');
+  g.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(STARX,STARY,44,0,7); ctx.fill();
+  for(const[deg,len,w] of SPIKES){
+    const a=deg*Math.PI/180;
+    ctx.save(); ctx.translate(STARX,STARY); ctx.rotate(a);
+    const lg=ctx.createLinearGradient(0,0,len,0);
+    lg.addColorStop(0,'rgba(255,255,255,1)');
+    lg.addColorStop(0.07,'rgba(255,255,255,0.62)');
+    lg.addColorStop(0.34,'rgba(255,255,255,0.20)');
+    lg.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle=lg;
+    ctx.beginPath(); ctx.moveTo(0,-w); ctx.lineTo(len,0); ctx.lineTo(0,w); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+  g=ctx.createRadialGradient(STARX,STARY,0,STARX,STARY,22);
+  g.addColorStop(0,'rgba(255,255,255,1)');
+  g.addColorStop(0.30,'rgba(255,255,255,0.95)');
+  g.addColorStop(0.62,'rgba(255,255,255,0.45)');
+  g.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(STARX,STARY,22,0,7); ctx.fill();
+  ctx.restore();
+}
+
+/* ---- face detail strokes ----------------------------------- */
+function drawFaceDetail(ctx){
+  ctx.save();
+  ctx.clip(FACE_PATH);
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  const blob=(x,y,rx,ry,rot,a)=>{
+    ctx.save(); ctx.translate(x,y); ctx.rotate(rot); ctx.scale(rx,ry);
+    const g=ctx.createRadialGradient(0,0,0,0,0,1);
+    g.addColorStop(0,'rgba(0,0,0,'+a+')');
+    g.addColorStop(0.55,'rgba(0,0,0,'+(a*0.55)+')');
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(0,0,1,0,7); ctx.fill(); ctx.restore();
+  };
+  const line=(pts,w,a)=>{
+    ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]);
+    for(let i=1;i<pts.length-1;i++){
+      const c=pts[i],n=pts[i+1];
+      ctx.quadraticCurveTo(c[0],c[1],(c[0]+n[0])/2,(c[1]+n[1])/2);
+    }
+    ctx.lineTo(pts[pts.length-1][0],pts[pts.length-1][1]);
+    ctx.lineWidth=w; ctx.strokeStyle='rgba(0,0,0,'+a+')'; ctx.stroke();
+  };
+  /* eye socket, brow shelf */
+  blob(332,717,60,27,-0.20,0.92);
+  line([[266,706],[302,698],[346,690],[398,672],[452,646]],6,0.58);
+  line([[292,726],[314,718],[338,722],[352,733]],5,0.80);
+  line([[298,740],[320,742],[342,739]],3,0.26);
+  /* nose: side shadow, base, nostril */
+  blob(300,796,40,44,0.0,0.20);
+  line([[262,810],[278,820],[289,831],[274,836]],4,0.66);
+  blob(292,842,28,11,0.15,0.55);
+  /* mouth */
+  line([[272,861],[300,866],[330,868],[352,861]],4,0.72);
+  blob(312,890,32,10,0.05,0.34);
+  /* chin + jaw */
+  blob(322,918,46,16,0.06,0.20);
+  blob(404,966,74,22,0.22,0.26);
+  /* cheek hollow */
+  blob(374,826,70,56,0.0,0.20);
+  ctx.restore();
+}
+
+/* ======================================================== */
+const view=document.getElementById('view');
+const gl=view.getContext('webgl',{antialias:false,alpha:false,preserveDrawingBuffer:true})
+       ||view.getContext('experimental-webgl',{antialias:false,alpha:false,preserveDrawingBuffer:true});
+const fallback = !gl ? view.getContext('2d') : null;
+const base=document.createElement('canvas');
+const bctx=base.getContext('2d',{willReadFrequently:true});
+const mask=document.createElement('canvas');
+const mctx=mask.getContext('2d',{willReadFrequently:true});
+const hairCv=document.createElement('canvas');
+const hctx=hairCv.getContext('2d',{willReadFrequently:true});
+const dirCv=document.createElement('canvas');
+const dctx=dirCv.getContext('2d',{willReadFrequently:true});
+
+let UNIT=1, BW=0, BH=0, OX=0, OY=0, tex=null, prog=null, uni={};
+const STRANDS=buildStrands().concat(buildRoots());
+
+/* ---------- build the static grayscale plate --------------- */
+function buildPlate(){
+  base.width=BW; base.height=BH;
+  mask.width=BW; mask.height=BH;
+  hairCv.width=BW; hairCv.height=BH;
+  dirCv.width=BW; dirCv.height=BH;
+  const c=bctx;
+  c.setTransform(1,0,0,1,0,0);
+  c.fillStyle='#000'; c.fillRect(0,0,BW,BH);
+  c.save(); c.translate(OX,OY);
+
+  /* hair, rendered to its own layer then tone-matched to the
+     traced density field so filaments can stay high-contrast    */
+  hctx.setTransform(1,0,0,1,0,0);
+  hctx.clearRect(0,0,BW,BH);
+  hctx.fillStyle='#000'; hctx.fillRect(0,0,BW,BH);
+  hctx.save(); hctx.translate(OX,OY);
+  hctx.globalCompositeOperation='lighter';
+  strokeStrands(hctx,STRANDS,{gain:0.55,wmul:1.0,zone:1,color:'rgba(255,255,255,'});
+  hctx.restore();
+  dctx.setTransform(1,0,0,1,0,0);
+  dctx.fillStyle='#000'; dctx.fillRect(0,0,BW,BH);
+  dctx.save(); dctx.translate(OX,OY);
+  strokeTangents(dctx,STRANDS);
+  dctx.restore();
+  normaliseHair(); normaliseHair(); normaliseHair();
+  c.globalCompositeOperation='lighter';
+  c.setTransform(1,0,0,1,0,0);
+  c.drawImage(hairCv,0,0);
+  c.translate(OX,OY);
+
+  /* face */
+  c.globalCompositeOperation='source-over';
+  const fg=c.createLinearGradient(240,0,500,0);
+  fg.addColorStop(0,'rgba(98,98,98,1)');
+  fg.addColorStop(0.30,'rgba(95,95,95,1)');
+  fg.addColorStop(0.58,'rgba(84,84,84,0.66)');
+  fg.addColorStop(0.80,'rgba(70,70,70,0.16)');
+  fg.addColorStop(1,'rgba(62,62,62,0)');
+  c.fillStyle=fg; c.fill(FACE_PATH);
+  /* the crown is hair, not skin: erase the top of the fill */
+  const cg=c.createLinearGradient(0,505,0,700);
+  cg.addColorStop(0,'rgba(0,0,0,1)');
+  cg.addColorStop(0.62,'rgba(0,0,0,0.92)');
+  cg.addColorStop(1,'rgba(0,0,0,0)');
+  c.save(); c.globalCompositeOperation='destination-out';
+  c.fillStyle=cg; c.fill(FACE_PATH); c.restore();
+  /* bright rim along the profile */
+  c.save(); c.clip(FACE_PATH);
+  const rg=c.createLinearGradient(250,0,430,0);
+  rg.addColorStop(0,'rgba(255,255,255,0.62)');
+  rg.addColorStop(0.55,'rgba(255,255,255,0.42)');
+  rg.addColorStop(1,'rgba(255,255,255,0)');
+  c.lineWidth=3.2; c.strokeStyle=rg; c.stroke(FACE_PATH);
+  c.restore();
+
+  /* strands crossing the face: bright on the crown, dark on the skin */
+  c.save(); c.clip(FACE_PATH);
+  c.globalCompositeOperation='lighter';
+  strokeStrands(c,STRANDS,{gain:0.30,wmul:0.72,color:'rgba(255,255,255,',
+    fade:(x,y)=>clamp((x-296)/90,0,1)*clamp((y-596)/70,0,1)});
+  c.globalCompositeOperation='source-over';
+  strokeStrands(c,STRANDS,{gain:0.36,wmul:1.35,color:'rgba(0,0,0,',every:2,
+    fade:(x,y)=>clamp((y-628)/120,0,1)*clamp((404-x)/80,0,1)});
+  c.restore();
+  drawFaceDetail(c);
+
+  /* figure */
+  c.globalCompositeOperation='source-over';
+  c.fillStyle='rgb(88,88,88)'; c.fill(FIG_PATH);
+  c.save(); c.clip(FIG_PATH);
+  c.strokeStyle='rgba(0,0,0,0.75)'; c.lineWidth=2.2; c.lineCap='round';
+  c.beginPath(); c.moveTo(163,946); c.quadraticCurveTo(164,1010,163,1074); c.stroke();
+  c.strokeStyle='rgba(0,0,0,0.45)'; c.lineWidth=3.0;
+  c.beginPath(); c.moveTo(178,800); c.quadraticCurveTo(170,832,176,864); c.stroke();
+  c.restore();
+
+  /* star on top */
+  drawStar(c);
+  c.restore();
+
+  /* skin mask for the halftone screen */
+  mctx.setTransform(1,0,0,1,0,0);
+  mctx.fillStyle='#000'; mctx.fillRect(0,0,BW,BH);
+  mctx.save(); mctx.translate(OX,OY);
+  const mg=mctx.createLinearGradient(240,0,500,0);
+  mg.addColorStop(0,'rgba(255,255,255,1)');
+  mg.addColorStop(0.30,'rgba(255,255,255,1)');
+  mg.addColorStop(0.58,'rgba(255,255,255,0.66)');
+  mg.addColorStop(0.80,'rgba(255,255,255,0.16)');
+  mg.addColorStop(1,'rgba(255,255,255,0)');
+  mctx.fillStyle=mg; mctx.fill(FACE_PATH);
+  const cm=mctx.createLinearGradient(0,505,0,700);
+  cm.addColorStop(0,'rgba(0,0,0,1)');
+  cm.addColorStop(0.62,'rgba(0,0,0,0.92)');
+  cm.addColorStop(1,'rgba(0,0,0,0)');
+  mctx.save(); mctx.globalCompositeOperation='destination-out';
+  mctx.fillStyle=cm; mctx.fill(FACE_PATH); mctx.restore();
+  mctx.fillStyle='#fff'; mctx.fill(FIG_PATH);
+  mctx.restore();
+
+  pixelPass();
+}
+
+/* ---------- tone-match the hair layer to the traced field --- */
+function normaliseHair(){
+  const img=hctx.getImageData(0,0,BW,BH), D=img.data;
+  const sum=new Float64Array(N*N), cnt=new Float64Array(N*N);
+  const inv=N/S;
+  for(let y=0;y<BH;y++){
+    const ay=y-OY; if(ay<0||ay>=S) continue;
+    const j=Math.min(N-1,(ay*inv)|0);
+    for(let x=0;x<BW;x++){
+      const ax=x-OX; if(ax<0||ax>=S) continue;
+      const i=Math.min(N-1,(ax*inv)|0);
+      sum[j*N+i]+=D[(y*BW+x)<<2]; cnt[j*N+i]++;
+    }
+  }
+  const gainF=new Float32Array(N*N);
+  for(let k=0;k<N*N;k++){
+    const mine=cnt[k]?sum[k]/cnt[k]/255:0;
+    gainF[k]=clamp(FD[k]/(mine+1e-4),0.12,6.0);
+  }
+  for(let y=0;y<BH;y++){
+    const ay=y-OY;
+    for(let x=0;x<BW;x++){
+      const i=(y*BW+x)<<2;
+      const v=D[i]; if(!v) continue;
+      const g=fsample(gainF,clamp(x-OX,0,S-1),clamp(ay,0,S-1));
+      const nv=v*g;
+      D[i]=D[i+1]=D[i+2]=nv>255?255:nv;
+    }
+  }
+  hctx.putImageData(img,0,0);
+}
+
+/* ---------- per-pixel: halftone, shore, water -------------- */
+function pixelPass(){
+  const img=bctx.getImageData(0,0,BW,BH), D=img.data;
+  const M=mctx.getImageData(0,0,BW,BH).data;
+  const T=dctx.getImageData(0,0,BW,BH).data;
+  const kx=2*Math.PI/HT_PITCH;
+
+  /* dot screen over skin: a square lattice at the measured pitch,
+     dot area following the local tone, phase-locked to the dither grid */
+  const HTQ=HT_PITCH*0.25;
+  for(let y=0;y<BH;y++){
+    const ay=y-OY+HTQ;
+    for(let x=0;x<BW;x++){
+      const i=(y*BW+x)<<2;
+      const m=M[i]/255;
+      if(m<=0.004) continue;
+      const ax=x-OX+HTQ;
+      let v=D[i]/255;
+      v*=1+m*0.52*(fbm(ax*0.032,ay*0.032,3)-0.5);
+      const px=ax/HT_PITCH, py=ay/HT_PITCH;
+      const fx=px-Math.round(px), fy=py-Math.round(py);
+      const d=Math.sqrt(fx*fx+fy*fy)*2;
+      const r=Math.sqrt(clamp(v,0,1))*1.12;
+      const dot=clamp((r-d)/0.38+0.5,0,1);
+      v=clamp(v+m*0.66*(dot-v),0,1);
+      D[i]=D[i+1]=D[i+2]=v*255;
+    }
+  }
+
+  /* far shore band + horizon glint */
+  const y0=Math.round(OY+HORIZON-78), y1=Math.round(OY+HORIZON);
+  for(let y=y0;y<=y1+1;y++){
+    if(y<0||y>=BH) continue;
+    const ay=y-OY, t=(ay-(HORIZON-78))/78;
+    for(let x=0;x<BW;x++){
+      const ax=x-OX;
+      const lat=clamp(1.30-Math.abs(ax-300)/560,0.0,1);
+      let n=fbm(ax*0.30,ay*0.85,3);
+      let v=Math.pow(Math.max(0,n-0.44),1.5)*2.9*(0.18+0.90*t)*lat*0.125;
+      if(ay>HORIZON-5) v+= (0.05+0.30*Math.pow(fbm(ax*0.09,7.3,3),1.6))*lat*Math.max(0,1-Math.abs(ay-(HORIZON-2))/3.2)*0.34;
+      if(v<=0) continue;
+      const i=(y*BW+x)<<2;
+      const nv=Math.min(255,D[i]+v*255);
+      D[i]=D[i+1]=D[i+2]=nv;
+    }
+  }
+
+  /* water: the scene mirrored about the contact line, then sliced
+     into perspective ripple dashes                                  */
+  const RC=0.95, wl=OY+WATERL;
+  for(let y=Math.round(wl);y<BH;y++){
+    const dep=y-wl;
+    const ys=wl-dep*RC;
+    const yw=Math.pow(dep+2,0.56)*2.15;
+    const fade=0.38+0.95*clamp(dep/320,0,1);
+    for(let x=0;x<BW;x++){
+      const hard=clamp((dep-6)/130,0,1);
+      const ph=fbm(x*0.0060,yw*0.09,3)*8.0+fbm(x*0.030,yw*0.22+17.0,2)*3.4
+              +fbm(x*0.095,yw*0.55+91.0,2)*2.2;
+      const w1=Math.sin(yw*4.70+ph);
+      const w2=Math.sin(yw*1.85+fbm(x*0.0021,yw*0.05+40.0,2)*7.0+1.7);
+      /* near the contact the surface is a near-mirror sliced by wave
+         crests; further out it breaks into drawn-out speckle          */
+      const crest=clamp((w1*0.58+w2*0.44)+0.80,0,1.3);
+      const speck=clamp(Math.pow(fbm(x*0.030,yw*2.30+31.0,3),1.05)*3.4-1.02,0,1.2)
+                 *(0.32+0.95*fbm(x*0.010,yw*0.70+77.0,2));
+      let rip=crest*(1-hard)+speck*hard*0.26;
+      if(rip<=0.006) continue;
+      const dx=(fbm(x*0.0085,yw*0.16+11.0,2)-0.5)*22.0;
+      const dy=(fbm(x*0.0120,yw*0.26+53.0,2)-0.5)*9.0;
+      const sy=Math.round(ys+dy);
+      if(sy<0||sy>=BH) continue;
+      let v=0, nsm=0;
+      for(let k=-2;k<=2;k++){
+        const sx=Math.round(x+dx+k*1.6);
+        if(sx<0||sx>=BW) continue;
+        v+=D[(sy*BW+sx)<<2]; nsm++;
+      }
+      if(!nsm) continue;
+      v=v/nsm/255;
+      if(v>0.40) v=0.40+(v-0.40)*0.30;   /* water never mirrors a highlight */
+      /* the surface also catches its own light, far from any reflection */
+      v+=0.22*Math.pow(clamp((dep-52)/240,0,1),1.35)
+           *(0.35+1.05*fbm(x*0.0075,yw*0.14+5.0,2));
+      const i=(y*BW+x)<<2;
+      const nv=D[i]+v*rip*fade*2.3*255;
+      D[i]=D[i+1]=D[i+2]=nv>255?255:nv;
+    }
+  }
+  /* the shelf of distant water above the contact line stays almost dark */
+  for(let y=Math.round(OY+HORIZON)+2;y<Math.round(wl);y++){
+    const ay=y-OY, t=(ay-HORIZON)/(WATERL-HORIZON);
+    for(let x=0;x<BW;x++){
+      const g=Math.pow(fbm(x*0.16,ay*0.75+9.0,3),4.5)*3.0*(0.15+0.85*t);
+      if(g<=0.004) continue;
+      const i=(y*BW+x)<<2;
+      const nv=D[i]+g*7;
+      D[i]=D[i+1]=D[i+2]=nv>255?255:nv;
+    }
+  }
+  /* G,B carry the per-pixel drift the grain is advected along:
+     outward through the hair, level across the water, nearly still
+     on skin — measured off the source, ~3.5 artwork px per frame  */
+  for(let y=0;y<BH;y++){
+    const ay=y-OY;
+    for(let x=0;x<BW;x++){
+      const i=(y*BW+x)<<2;
+      const ax=x-OX;
+      let fx,fy;
+      if(T[i+2]>150){                                 /* on a filament */
+        fx=T[i]/255*2-1; fy=T[i+1]/255*2-1;
+        const L=Math.hypot(fx,fy)||1; fx/=L; fy/=L;
+      }else{
+        const th=flowAngle(clamp(ax,0,S-1),clamp(ay,0,S-1));
+        fx=Math.cos(th); fy=Math.sin(th);
+        if(fx<0){fx=-fx;fy=-fy;}
+      }
+      let sp=DRIFT;
+      if(ay>HORIZON) sp*=0.55;                       /* water runs slower */
+      sp*=1-0.72*(M[i]/255);                         /* skin barely moves */
+      D[i+1]=clamp(fx*sp/DRIFTMAX*0.5+0.5,0,1)*255;
+      D[i+2]=clamp(fy*sp/DRIFTMAX*0.5+0.5,0,1)*255;
+    }
+  }
+  bctx.putImageData(img,0,0);
+}
+
+/* ---------- gl dither ------------------------------------- */
+const VS=`attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}`;
+/* the plate is thresholded against fresh noise every frame on a grid
+   of DCELL artwork pixels — the cell size measured off the source     */
+const FS_=`precision highp float;
+uniform sampler2D uBase;uniform vec2 uSize;
+uniform vec2 uTrans;
+uniform float uUnit,uSeed,uTime,uDriftMax,uCoh,uStretch,uWidth,uLife,uBlend;
+const float DGRAIN=1280.0/1440.0;
+float hash(vec3 p){p=fract(p*vec3(443.8975,441.4232,437.1951));p+=dot(p,p.yzx+19.19);return fract((p.x+p.y)*p.z);}
+void main(){
+  float DCELL=max(DGRAIN,1.0/uUnit);
+  vec2 fc=gl_FragCoord.xy-uTrans;
+  if(fc.x<0.0||fc.y<0.0||fc.x>=uSize.x*uUnit||fc.y>=uSize.y*uUnit){
+    gl_FragColor=vec4(0.0,0.0,0.0,1.0); return;   /* outside the plate */
+  }
+  vec2 cell=floor(fc/(uUnit*DCELL));
+  vec2 c=(cell+0.5)*DCELL, o=vec2(0.30*DCELL);
+  float v=0.25*(texture2D(uBase,vec2(c.x-o.x,uSize.y-c.y+o.y)/uSize).r
+               +texture2D(uBase,vec2(c.x+o.x,uSize.y-c.y+o.y)/uSize).r
+               +texture2D(uBase,vec2(c.x-o.x,uSize.y-c.y-o.y)/uSize).r
+               +texture2D(uBase,vec2(c.x+o.x,uSize.y-c.y-o.y)/uSize).r);
+
+  /* The grain is neither isotropic nor still. The threshold field is
+     quantised into cells stretched along the local drift, so a lit cell
+     reads as a dash lying down the strand, and the field slides along
+     its own axis — which makes advection a pure 1-D translation and
+     sidesteps the shear a 2-D flow map accumulates. A dash is thresholded
+     against the plate sampled along its own length from its own centre,
+     so it lights as one piece; cells that are not travelling fall back to
+     per-pixel noise, which is what fills the space between the dashes. */
+  vec2 ap=vec2(c.x,uSize.y-c.y);                    /* artwork px, y down */
+  vec2 dr=(texture2D(uBase,ap/uSize).gb*2.0-1.0)*uDriftMax;
+  /* the cell axes must be piecewise constant: dotting a ~1000px position
+     with a smoothly varying direction turns a 0.002 wobble into a whole
+     cell of jitter, which shatters every dash into single pixels        */
+  float sp=floor(length(dr)*3.0+0.5)/3.0;
+  float aa=floor(atan(dr.y,dr.x)*11.5+0.5)/11.5;
+  vec2 tg=vec2(cos(aa),sin(aa)), pp=vec2(-tg.y,tg.x);
+  float len=max(2.0,sp*uStretch), wid=uWidth;
+  vec2 sc=floor(vec2((dot(ap,tg)-uTime*sp)/len, dot(ap,pp)/wid));
+  float ep=floor(uTime/uLife+hash(vec3(sc,3.0)));   /* staggered rebirth */
+
+  float n;
+  float coh=uCoh*clamp((sp-1.2)/1.6,0.0,1.0);   /* skin keeps its dot screen */
+  if(hash(vec3(sc+vec2(37.3,91.7),ep*2.7+5.0))<coh){
+    vec2 ctr=tg*((sc.x+0.5)*len+uTime*sp)+pp*((sc.y+0.5)*wid);
+    vec2 st=tg*len;
+    float vd=0.2*(texture2D(uBase,(ctr-st*0.40)/uSize).r
+                 +texture2D(uBase,(ctr-st*0.20)/uSize).r
+                 +texture2D(uBase, ctr          /uSize).r
+                 +texture2D(uBase,(ctr+st*0.20)/uSize).r
+                 +texture2D(uBase,(ctr+st*0.40)/uSize).r);
+    v=mix(v,vd,uBlend);
+    n=hash(vec3(sc,ep*1.9+17.0));
+  }else{
+    n=hash(vec3(cell,uSeed));
+  }
+  gl_FragColor=vec4(vec3(v>n&&v>0.0?1.0:0.0),1.0);
+}`;
+function sh(t,s){const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);
+  if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))console.error(gl.getShaderInfoLog(o));return o;}
+function initGL(){
+  prog=gl.createProgram();
+  gl.attachShader(prog,sh(gl.VERTEX_SHADER,VS));
+  gl.attachShader(prog,sh(gl.FRAGMENT_SHADER,FS_));
+  gl.linkProgram(prog); gl.useProgram(prog);
+  const b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+  const loc=gl.getAttribLocation(prog,'p');
+  gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+  uni.base=gl.getUniformLocation(prog,'uBase');
+  uni.size=gl.getUniformLocation(prog,'uSize');
+  uni.unit=gl.getUniformLocation(prog,'uUnit');
+  uni.trans=gl.getUniformLocation(prog,'uTrans');
+  uni.seed=gl.getUniformLocation(prog,'uSeed');
+  uni.time=gl.getUniformLocation(prog,'uTime');
+  gl.uniform1f(gl.getUniformLocation(prog,'uDriftMax'),DRIFTMAX);
+  gl.uniform1f(gl.getUniformLocation(prog,'uCoh'),COH);
+  gl.uniform1f(gl.getUniformLocation(prog,'uStretch'),STRETCH);
+  gl.uniform1f(gl.getUniformLocation(prog,'uWidth'),GWIDTH);
+  gl.uniform1f(gl.getUniformLocation(prog,'uLife'),LIFE);
+  gl.uniform1f(gl.getUniformLocation(prog,'uBlend'),BLEND);
+  tex=gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D,tex);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+  gl.uniform1i(uni.base,0);
+}
+function upload(){
+  gl.bindTexture(gl.TEXTURE_2D,tex);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,base);
+}
+
+/* ---------- layout ------------------------------------------
+   Two halves. fitCanvas only matches the drawing buffer to the window
+   and re-centres the plate at a single uniform scale — it runs on every
+   resize event, so the picture is never stretched to fit a stale buffer.
+   Rebuilding the plate is the expensive half and stays debounced.      */
+function fitCanvas(){
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  const W=Math.max(1,Math.round(innerWidth*dpr)), H=Math.max(1,Math.round(innerHeight*dpr));
+  if(!W||!H) return;
+  if(view.width!==W||view.height!==H){ view.width=W; view.height=H; }
+  const u=Math.min(W,H)/S;                       /* the square stays square */
+  if(!gl){
+    fallback.fillStyle='#000'; fallback.fillRect(0,0,W,H);
+    fallback.imageSmoothingEnabled=true;
+    fallback.drawImage(base,Math.round((W-BW*u)/2),Math.round((H-BH*u)/2),BW*u,BH*u);
+    return;
+  }
+  gl.viewport(0,0,W,H);
+  gl.uniform1f(uni.unit,u);
+  gl.uniform2f(uni.trans,(W-BW*u)/2,(H-BH*u)/2);
+  draw();
+}
+function rebuild(){
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  const W=Math.max(1,Math.round(innerWidth*dpr)), H=Math.max(1,Math.round(innerHeight*dpr));
+  if(!W||!H) return;
+  let unit=Math.min(W,H)/S;
+  let bw=Math.ceil(W/unit), bh=Math.ceil(H/unit);
+  const MAXPX=4.6e6;
+  if(bw*bh>MAXPX){const k=Math.sqrt(bw*bh/MAXPX);unit*=k;bw=Math.ceil(W/unit);bh=Math.ceil(H/unit);}
+  UNIT=unit; BW=bw; BH=bh;
+  OX=Math.round((BW-S)/2); OY=Math.round((BH-S)/2);
+  buildPlate();
+  if(gl){ upload(); gl.uniform2f(uni.size,BW,BH); }
+  fitCanvas();
+}
+
+let last=0, seed=0;
+function draw(){
+  if(!gl) return;
+  seed++;
+  gl.uniform1f(uni.seed,(seed%4096)*0.7913+0.5);
+  gl.uniform1f(uni.time,seed%8192);
+  gl.drawArrays(gl.TRIANGLES,0,3);
+}
+function frame(t){
+  requestAnimationFrame(frame);
+  if(innerWidth!==lastW||innerHeight!==lastH) relayout();  /* neither the
+      resize event nor a ResizeObserver fires reliably in every host, and a
+      drawing buffer that lags the element is exactly what stretches it */
+  if(REDUCED||t-last<1000/FPS) return;
+  last=t; draw();
+}
+/* the grain flickers hard; hold a single frame when motion is unwelcome */
+const REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
+let rt=0, lastW=innerWidth, lastH=innerHeight;
+if(gl) initGL();
+rebuild();
+requestAnimationFrame(frame);
+
+function relayout(){
+  const w=innerWidth, h=innerHeight;
+  if(!w||!h||(w===lastW&&h===lastH)) return;
+  lastW=w; lastH=h;
+  fitCanvas();                 /* immediate: never let the buffer go stale */
+  clearTimeout(rt);
+  rt=setTimeout(rebuild,180);  /* deferred: re-render the plate at the new size */
+}
+addEventListener('resize',relayout);
+if(window.ResizeObserver) new ResizeObserver(relayout).observe(document.documentElement);
+
+window.__ready=true;
+</script>
+</body>
+</html>

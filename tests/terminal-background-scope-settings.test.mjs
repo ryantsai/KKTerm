@@ -102,7 +102,7 @@ test("terminal and Dashboard background pickers share the same component and dat
   assert.doesNotMatch(terminalBackgroundPopover, /DYNAMIC_BACKGROUNDS\.map/);
 });
 
-test("dynamic background tab renders static thumbnails and swaps in a live canvas only on hover", () => {
+test("dynamic background tab uses static thumbnails and supports transient header dragging", () => {
   assert.match(sharedBackgroundPopover, /DYNAMIC_BACKGROUNDS\.map/);
   assert.match(sharedBackgroundPopover, /dw-bg-thumb-grid/);
   assert.match(
@@ -110,14 +110,17 @@ test("dynamic background tab renders static thumbnails and swaps in a live canva
     /src=\{`\/dynamic-bg-thumbs\/\$\{backgroundOption\.id\}\.webp`\}/,
     "every thumbnail card should default to a static captured image",
   );
-  assert.match(
-    sharedBackgroundPopover,
-    /isHovered && \(\s*<span className="dw-bg-thumb-live">\s*<DashboardDynamicBackground id=\{backgroundOption\.id\} active \/>/,
-    "the live animated background should mount only while its card is hovered",
-  );
-  assert.match(sharedBackgroundPopover, /onMouseEnter=\{\(\) => setHoveredDynamicId\(backgroundOption\.id\)\}/);
-  assert.match(sharedBackgroundPopover, /onMouseLeave=\{\(\) => setHoveredDynamicId/);
   assert.match(sharedBackgroundPopover, /onClick=\{\(\) => applyDynamic\(backgroundOption\.id\)\}/);
+  assert.doesNotMatch(
+    sharedBackgroundPopover,
+    /DashboardDynamicBackground|hoveredDynamicId|isHovered|onMouseEnter|onMouseLeave|dw-bg-thumb-live/,
+    "thumbnail hover should not mount or track a live renderer",
+  );
+  assert.match(sharedBackgroundPopover, /popoverOffset/);
+  assert.match(sharedBackgroundPopover, /onPointerDown=\{onHeaderPointerDown\}/);
+  assert.match(sharedBackgroundPopover, /onPointerMove=\{onHeaderPointerMove\}/);
+  assert.match(sharedBackgroundPopover, /onPointerUp=\{onHeaderPointerEnd\}/);
+  assert.match(sharedBackgroundPopover, /onPointerCancel=\{onHeaderPointerEnd\}/);
   assert.doesNotMatch(
     sharedBackgroundPopover,
     /DynamicBackgroundPreviewDialog|backgroundLivePreview|DynamicBackgroundPreviewArt/,
@@ -125,9 +128,15 @@ test("dynamic background tab renders static thumbnails and swaps in a live canva
   );
   assert.match(dashboardCss, /\.dw-bg-popover\s*\{[\s\S]*z-index:\s*200;/);
   assert.match(dashboardCss, /\.dw-bg-popover\s*\{[\s\S]*width:\s*840px;/);
+  assert.match(
+    dashboardCss,
+    /\.dw-bg-popover\s*\{[\s\S]*transform:\s*translate\([\s\S]*var\(--dw-bg-popover-offset-x[\s\S]*var\(--dw-bg-popover-offset-y/,
+  );
+  assert.match(dashboardCss, /\.dw-bg-popover-head\s*\{[\s\S]*cursor:\s*grab;/);
+  assert.match(dashboardCss, /\.dw-bg-popover-head\.is-dragging\s*\{[\s\S]*cursor:\s*grabbing;/);
   assert.match(dashboardCss, /\.dw-bg-seg\s*\{[\s\S]*width:\s*70%;/);
   assert.match(dashboardCss, /\.dw-bg-popover-body\s*\{[\s\S]*overflow-y:\s*auto;/);
-  assert.match(dashboardCss, /\.dw-bg-thumb-live\s*\{[\s\S]*--dw-canvas-padding-top:\s*0px;/);
+  assert.doesNotMatch(dashboardCss, /\.dw-bg-thumb-live/);
   assert.doesNotMatch(dashboardCss, /\.dw-bg-preview-|dw-bg-live-preview|dw-bg-dynamic-grid/);
 });
 

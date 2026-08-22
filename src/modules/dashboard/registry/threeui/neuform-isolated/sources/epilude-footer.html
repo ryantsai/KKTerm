@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Epilude — Footer</title>
+<style>
+  :root {
+    --olive-400: #a9a9ac;
+    --olive-500: #7a7a7d;
+    --olive-950: #0c0c0d;
+    --white: #fff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--olive-950);
+    color: var(--white);
+    min-height: 100%;
+  }
+  body {
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+  a { color: inherit; text-decoration: none; }
+  ul { list-style: none; }
+  h3 { font-size: inherit; font-weight: 400; }
+
+  footer {
+    background: var(--olive-950);
+    color: var(--white);
+    padding-top: 4rem;
+  }
+  .inner { padding: 4rem 0 2rem; }
+  .wrap {
+    width: 100%;
+    max-width: 42rem;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+  .cols {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem;
+    font-size: .875rem;
+    line-height: 1.75rem;
+  }
+  .cols h3 { color: var(--white); }
+  .cols ul {
+    margin-top: .5rem;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+  }
+  .cols a { color: var(--olive-400); }
+  .cols a:hover { color: #d7d7d9; }
+
+  .storm-wrap {
+    margin-top: 4rem;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .storm {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    aspect-ratio: 8.541554959785524;
+  }
+  .storm canvas { display: block; width: 100%; height: 100%; }
+
+  .legal {
+    margin-top: 1.5rem;
+    font-size: .875rem;
+    line-height: 1.75rem;
+    color: var(--olive-500);
+  }
+  .legal-row {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+  .legal-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .75rem;
+    text-align: center;
+  }
+  .legal nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: .25rem 1rem;
+    color: var(--olive-400);
+  }
+  .legal nav a:hover { color: #d7d7d9; }
+
+  @media (min-width: 640px) {
+    .legal-row {
+      flex-direction: row;
+      justify-content: space-between;
+    }
+    .legal-left {
+      flex-direction: row;
+      align-items: center;
+      gap: 1rem;
+      text-align: left;
+    }
+    .legal nav { justify-content: flex-start; }
+  }
+  @media (min-width: 768px) {
+    .wrap { max-width: 48rem; }
+    .cols { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  }
+  @media (min-width: 1024px) {
+    .wrap { max-width: 80rem; padding: 0 2.5rem; }
+  }
+</style>
+</head>
+<body>
+<footer id="footer">
+  <div class="inner">
+    <div class="wrap">
+      <nav class="cols" aria-label="Footer">
+        <div>
+          <h3>Product</h3>
+          <ul>
+            <li><a href="https://app.epilude.com">Download</a></li>
+            <li><a href="https://www.epilude.com/features/ai-smart-edits">AI Smart Edits</a></li>
+            <li><a href="https://www.epilude.com/features/tone-match">Tone Match</a></li>
+            <li><a href="https://www.epilude.com/features/vocabulary">Vocabulary</a></li>
+            <li><a href="https://www.epilude.com/features/shortcuts">Shortcuts</a></li>
+            <li><a href="https://www.epilude.com/features/actions">Actions</a></li>
+            <li><a href="https://www.epilude.com/features/privacy">Local Mode</a></li>
+            <li><a href="https://www.epilude.com/features/meetings">Meeting Notes</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Solutions</h3>
+          <ul>
+            <li><a href="https://www.epilude.com/leaders">For Leaders</a></li>
+            <li><a href="https://www.epilude.com/lawyers">For Lawyers</a></li>
+            <li><a href="https://www.epilude.com/creators">For Content Creators</a></li>
+            <li><a href="https://www.epilude.com/developers">For Developers</a></li>
+            <li><a href="https://www.epilude.com/sales">For Sales</a></li>
+            <li><a href="https://www.epilude.com/students">For Students</a></li>
+            <li><a href="https://www.epilude.com/customer-support">For Customer Support</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Compare</h3>
+          <ul>
+            <li><a href="https://www.epilude.com/best-dictation-app-for-mac">Best dictation app for Mac</a></li>
+            <li><a href="https://www.epilude.com/compare/wispr-flow">Epilude vs Wispr Flow</a></li>
+            <li><a href="https://www.epilude.com/compare/superwhisper">Epilude vs Superwhisper</a></li>
+            <li><a href="https://www.epilude.com/compare/macwhisper">Epilude vs MacWhisper</a></li>
+            <li><a href="https://www.epilude.com/compare/aqua-voice">Epilude vs Aqua Voice</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Resources</h3>
+          <ul>
+            <li><a href="https://www.epilude.com/pricing">Pricing</a></li>
+            <li><a href="https://www.epilude.com/news">News</a></li>
+            <li><a href="https://www.epilude.com/help">Help Center</a></li>
+            <li><a href="https://www.epilude.com/help/changelog">Changelog</a></li>
+            <li><a href="https://www.epilude.com/trust">Trust &amp; Security</a></li>
+          </ul>
+        </div>
+      </nav>
+    </div>
+
+    <div class="wrap storm-wrap" aria-hidden="true">
+      <div class="storm" id="storm">
+        <canvas id="storm-canvas"></canvas>
+      </div>
+    </div>
+
+    <div class="wrap legal">
+      <div class="legal-row">
+        <div class="legal-left">
+          <p>© 2026 Epilude. All rights reserved.</p>
+          <nav aria-label="Legal">
+            <a href="https://www.epilude.com/terms">Terms</a>
+            <a href="https://www.epilude.com/privacy">Privacy</a>
+            <a href="https://www.epilude.com/cookie-policy">Cookies</a>
+            <a href="https://www.epilude.com/refund">Refund</a>
+          </nav>
+        </div>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var WORDMARK =
+    '<svg width="3186" height="373" viewBox="0 0 3186 373" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M442.967 0.00610352H769.252L702.801 372.082H376.459L442.967 0.00610352ZM367.675 0.00610352H417.869L351.361 372.082H301.168L367.675 0.00610352ZM225.878 372.08L292.388 0.00708008H254.739L188.232 372.082H150.589L217.094 0.00610352H336.306L269.799 372.081L280.255 372.082H200.781L225.878 372.08ZM141.804 0.00610352H173.176L106.666 372.082H75.2949L141.804 0.00610352ZM66.2705 0.00610352H91.6074L25.1006 372.082H0L66.2705 0.00610352Z" fill="#F4F4F0"/>' +
+    '<path d="M2797.67 372.078L2863.05 0H3185.69L3171.87 76.5417H2935.34L2923.11 144.047H3144.23L3130.94 220.057H2909.82L2896.54 295.536H3133.6L3120.31 372.078H2797.67Z" fill="#F4F4F0"/>' +
+    '<path d="M2385.62 372.078L2451 0H2630.66C2740.69 0 2795.97 46.244 2795.97 138.732C2795.97 155.21 2794.38 172.75 2790.66 191.886C2769.39 314.14 2699.23 372.078 2570.07 372.078H2385.62ZM2484.49 295.004H2580.7C2656.18 295.004 2692.85 263.112 2706.67 186.039C2709.33 173.282 2709.86 161.056 2709.86 150.957C2709.86 99.3979 2682.22 77.0733 2619.5 77.0733H2523.29L2484.49 295.004Z" fill="#F4F4F0"/>' +
+    '<path d="M2154.34 372.112C2045.37 372.112 1990.62 333.807 1990.62 243.445C1990.62 228.03 1991.68 212.084 1994.87 194.543L2028.89 0H2114.47L2079.92 197.733C2077.26 209.958 2076.2 220.589 2076.2 230.688C2076.2 280.653 2103.84 295.039 2162.31 295.039C2232.47 295.039 2268.62 271.085 2281.9 197.733L2316.45 0H2402.03L2366.95 200.39C2345.69 322.113 2274.99 372.112 2154.34 372.112Z" fill="#F4F4F0"/>' +
+    '<path d="M1641.99 372.078L1707.36 0H1792.94L1740.85 295.004H1961.97L1948.68 372.078H1641.99Z" fill="#F4F4F0"/>' +
+    '<path d="M1498.82 372.078L1564.2 0H1649.78L1584.4 372.078H1498.82Z" fill="#F4F4F0"/>' +
+    '<path d="M1113.77 372.078L1179.15 0H1403.99C1477.87 0 1510.83 30.8293 1510.83 91.4249C1510.83 103.119 1509.77 116.407 1507.11 130.227C1492.76 209.958 1453.96 248.761 1365.72 248.761H1221.14L1199.35 372.078H1113.77ZM1234.43 172.75H1362.53C1397.08 172.75 1416.75 156.804 1422.59 123.849C1423.13 119.065 1423.66 114.813 1423.66 111.092C1423.66 87.1725 1408.77 76.0102 1379.54 76.0102H1251.44L1234.43 172.75Z" fill="#F4F4F0"/>' +
+    '<path d="M746.362 372.078L811.742 0H1134.39L1120.57 76.5417H884.031L871.806 144.047H1092.93L1079.64 220.057H858.517L845.229 295.536H1082.3L1069.01 372.078H746.362Z" fill="#F4F4F0"/>' +
+    "</svg>";
+
+  var PALETTE = [[255, 255, 255], [226, 232, 240], [191, 205, 225]];
+  var FORMATS = ["dot", "dot", "square"];
+  var SIZE_SMALL = [1.4, 2.8];
+  var SIZE_BIG = [3, 4.2];
+  var BIG_CHANCE = 0.07;
+  var GAP = 6;
+  var SPEED = 2;
+  var SEED = 1337;
+  var GAMMA = 0.8;
+  var DUR = 8;
+  var TAU = Math.PI * 2;
+
+  function noise(x, y, t) {
+    var a = x + 0.7 * Math.sin(1.2 * y + t);
+    var r = y + 0.7 * Math.cos(1.1 * x - t);
+    return (Math.sin(1.3 * a + 0.6 * t) + Math.cos(1.5 * r - 0.5 * t) + Math.sin((a + r) * 0.9 + 0.3 * t)) / 3;
+  }
+
+  function snowfall(p, t, n) {
+    var swirl = n.swirl ? n.swirl * noise(3 * p.nx, 3 * p.ny, 0.5 * t) : 0;
+    var sway = (n.sway || 0) * Math.sin(0.8 * t + p.offset * TAU + 4 * p.ny) + swirl;
+    var i = n.axis === "x" ? p.nx : p.ny;
+    var l = n.axis === "x" ? p.ny : p.nx;
+    var o = i * n.freq - t * n.fall + p.offset * n.freq + sway + (n.wind || 0) * l;
+    var s = o - Math.floor(o);
+    return s < n.trail ? 1 - s / n.trail : 0;
+  }
+
+  function squall(p, t) {
+    var band = 0.35 + 0.65 * Math.pow(0.5 + 0.5 * Math.sin(3 * p.nx - 0.5 * t), 2);
+    var flake = snowfall(p, t, { fall: 0.26, freq: 5, trail: 0.4, sway: 0.14, wind: 0.8 });
+    return {
+      a: 0.04 + 0.95 * band * Math.pow(flake, 1.8),
+      p: 0.7 * p.offset
+    };
+  }
+
+  function lerpRGB(a, b, t) {
+    return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+  }
+
+  function mixPalette(p) {
+    var e = Math.max(0, Math.min(1, p)) * (PALETTE.length - 1);
+    var r = Math.floor(e);
+    var s = e - r;
+    return lerpRGB(PALETTE[r], PALETTE[Math.min(PALETTE.length - 1, r + 1)], s);
+  }
+
+  var canvas = document.getElementById("storm-canvas");
+  var host = document.getElementById("storm");
+  var ctx = canvas.getContext("2d");
+  var particles = [];
+  var maskImg = null;
+  var maskReady = false;
+  var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var playing = !reduced;
+  var tNow = 0;
+  var t0 = performance.now();
+  var raf = 0;
+  var visible = true;
+
+  function lcg(seed) {
+    var e = seed >>> 0;
+    return function () {
+      e = (1664525 * e + 0x3c6ef35f) >>> 0;
+      return e / 0xffffffff;
+    };
+  }
+
+  function makeMask(w, h) {
+    if (!maskImg || !maskReady || !maskImg.width || !maskImg.height) return null;
+    var off = document.createElement("canvas");
+    off.width = w;
+    off.height = h;
+    var g = off.getContext("2d");
+    if (!g) return null;
+    var scale = Math.min(w / maskImg.width, h / maskImg.height);
+    var dw = maskImg.width * scale;
+    var dh = maskImg.height * scale;
+    g.drawImage(maskImg, (w - dw) / 2, (h - dh) / 2, dw, dh);
+    var data;
+    try { data = g.getImageData(0, 0, w, h).data; }
+    catch (e) { return null; }
+    return function (x, y) {
+      var ix = Math.min(w - 1, Math.max(0, Math.round(x)));
+      var iy = Math.min(h - 1, Math.max(0, Math.round(y)));
+      var i = (iy * w + ix) * 4;
+      var lum = (0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]) / 255;
+      return Math.pow(lum * (data[i + 3] / 255), GAMMA);
+    };
+  }
+
+  function rebuild() {
+    var w = host.clientWidth;
+    var h = host.clientHeight;
+    if (!w || !h) return;
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.max(1, Math.floor(w * dpr));
+    canvas.height = Math.max(1, Math.floor(h * dpr));
+    canvas.style.width = w + "px";
+    canvas.style.height = h + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    var sample = makeMask(w, h);
+    var rand = lcg(SEED);
+    var cols = Math.ceil(w / GAP);
+    var rows = Math.ceil(h / GAP);
+    var ox = (w - (cols - 1) * GAP) / 2;
+    var oy = (h - (rows - 1) * GAP) / 2;
+    var cx = (cols - 1) / 2;
+    var cy = (rows - 1) / 2;
+    var maxd = Math.hypot(cx, cy) || 1;
+    particles = [];
+    for (var y = 0; y < rows; y++) {
+      for (var x = 0; x < cols; x++) {
+        var format = FORMATS[Math.floor(rand() * FORMATS.length)];
+        var range = rand() < BIG_CHANCE ? SIZE_BIG : SIZE_SMALL;
+        var size = range[0] + rand() * (range[1] - range[0]);
+        var px = ox + x * GAP;
+        var py = oy + y * GAP;
+        particles.push({
+          cx: px,
+          cy: py,
+          nx: cols > 1 ? x / (cols - 1) : 0.5,
+          ny: rows > 1 ? y / (rows - 1) : 0.5,
+          dist: Math.hypot(x - cx, y - cy) / maxd,
+          format: format,
+          size: size,
+          phase: rand() * Math.PI * 2,
+          speed: 0.6 + 2.6 * rand(),
+          offset: rand(),
+          mask: sample ? sample(px, py) : 1
+        });
+      }
+    }
+  }
+
+  function drawParticle(p, t) {
+    var field = squall(p, t);
+    var alpha = field.a;
+    var rgb = mixPalette(field.p);
+    alpha = Math.max(0, Math.min(1, alpha));
+    if (p.mask < 1) alpha = p.mask * (0.3 + 0.7 * alpha);
+    if (alpha <= 0.005) return;
+    ctx.fillStyle = "rgba(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + "," + alpha + ")";
+    var hx = p.cx, hy = p.cy, d = p.size, r = d / 2;
+    if (p.format === "square") ctx.fillRect(hx - r, hy - r, d, d);
+    else {
+      ctx.beginPath();
+      ctx.arc(hx, hy, r, 0, TAU);
+      ctx.fill();
+    }
+  }
+
+  function render(t) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (var i = 0; i < particles.length; i++) drawParticle(particles[i], t);
+  }
+
+  function apply(t) {
+    tNow = ((t % DUR) + DUR) % DUR;
+    render(tNow * SPEED);
+  }
+
+  function tick(now) {
+    if (playing && visible) {
+      tNow = ((now - t0) / 1000) % DUR;
+      render(tNow * SPEED);
+    }
+    raf = requestAnimationFrame(tick);
+  }
+
+  function play() {
+    playing = true;
+    t0 = performance.now() - tNow * 1000;
+  }
+
+  function pause() {
+    playing = false;
+  }
+
+  var img = new Image();
+  img.onload = function () {
+    maskImg = img;
+    maskReady = true;
+    rebuild();
+    apply(tNow);
+  };
+  img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(WORDMARK);
+
+  rebuild();
+  apply(0);
+  raf = requestAnimationFrame(tick);
+
+  window.addEventListener("resize", function () {
+    rebuild();
+    apply(tNow);
+  });
+
+  if (typeof ResizeObserver !== "undefined") {
+    var lastW = host.clientWidth, lastH = host.clientHeight;
+    new ResizeObserver(function () {
+      if (host.clientWidth !== lastW || host.clientHeight !== lastH) {
+        lastW = host.clientWidth;
+        lastH = host.clientHeight;
+        rebuild();
+        apply(tNow);
+      }
+    }).observe(host);
+  }
+
+  if (typeof IntersectionObserver !== "undefined") {
+    new IntersectionObserver(function (entries) {
+      var on = entries[0] && entries[0].isIntersecting;
+      if (on === visible) return;
+      visible = !!on;
+      if (visible) t0 = performance.now() - tNow * 1000;
+    }, { rootMargin: "120px" }).observe(canvas);
+  }
+
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden && playing) t0 = performance.now() - tNow * 1000;
+  });
+
+  window.__DUR = DUR;
+  window.__seek = function (t) { pause(); apply(t); };
+  window.__play = play;
+  window.__pause = pause;
+  window.__time = function () { return tNow; };
+})();
+</script>
+</body>
+</html>

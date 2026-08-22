@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aura UI Builder</title>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&amp;display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Iconify -->
+    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+    
+    <!-- GSAP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<link id="all-fonts-link-font-geist" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&amp;display=swap"><style id="all-fonts-style-font-geist">.font-geist { font-family: 'Geist', sans-serif !important; }</style></head>
+<body class="antialiased min-h-screen flex flex-col relative overflow-x-hidden bg-[#030305] text-white selection:bg-[#2640D9]/40 selection:text-white" style="font-family: 'Inter', sans-serif;">
+
+    <!-- WebGL Background Canvas Layer -->
+    <canvas id="bg-canvas" class="fixed inset-0 z-0 pointer-events-none w-full h-full"></canvas>
+    
+    <!-- Texture Layer: Grain Overlay -->
+    <div class="fixed inset-0 z-0 pointer-events-none opacity-[0.08]" style="mix-blend-mode: overlay; background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E');"></div>
+    
+    <!-- Texture Layer: Blueprint Grid -->
+    <div class="fixed inset-0 z-0 pointer-events-none opacity-20" style="background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 12px);"></div>
+
+    <!-- Navigation -->
+    <nav class="w-full flex items-center justify-between py-6 px-8 relative z-10">
+        <div class="flex items-center gap-8">
+            <a href="#" class="flex items-center gap-2 text-[#EDEDED] font-normal font-geist">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M0 0H16V8H8L16 16H0V0Z" fill="white"></path>
+                </svg>
+                Aura
+            </a>
+            <div class="hidden md:flex items-center gap-6 text-sm text-[#A3A3A3] font-light">
+                <a href="#" class="hover:text-[#EDEDED] transition-colors font-geist">Product</a>
+                <a href="#" class="hover:text-[#EDEDED] transition-colors font-geist">Integrations</a>
+                <a href="#" class="hover:text-[#EDEDED] transition-colors font-geist">Resources</a>
+                <a href="#" class="hover:text-[#EDEDED] transition-colors font-geist">Enterprise</a>
+                <a href="#" class="hover:text-[#EDEDED] transition-colors font-geist">Pricing</a>
+            </div>
+        </div>
+        <div>
+            <div class="w-8 h-8 rounded-full bg-[#2640D9] flex items-center justify-center text-xs text-white font-normal shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.2),0px_1px_0px_0px_rgba(25,28,33,0.04),0px_0px_0px_1px_rgba(25,28,33,0.12)] font-geist">
+                AL
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow flex flex-col items-center pt-24 px-4 relative z-10 w-full max-w-[1400px] mx-auto">
+        
+        <!-- Hero Text -->
+        <div class="text-center mb-12 max-w-2xl">
+            <h1 id="hero-title" class="text-5xl md:text-6xl font-normal tracking-tight leading-tight mb-4 flex flex-col items-center justify-center">
+                <div class="flex flex-wrap justify-center gap-[0.25em]">
+                    <span class="inline-block overflow-hidden align-bottom text-white"><span class="reveal-text inline-block translate-y-full font-geist font-light tracking-tighter">The</span></span>
+                    <span class="inline-block overflow-hidden align-bottom text-white"><span class="reveal-text inline-block translate-y-full font-geist font-light tracking-tighter">intelligent</span></span>
+                    <span class="inline-block overflow-hidden align-bottom text-white"><span class="reveal-text inline-block translate-y-full font-geist font-light tracking-tighter">design</span></span>
+                    <span class="inline-block overflow-hidden align-bottom text-white"><span class="reveal-text inline-block translate-y-full font-geist font-light tracking-tighter">system</span></span>
+                </div>
+                <div class="flex flex-wrap justify-center gap-[0.25em] text-[#A3A3A3]">
+                    <span class="inline-block overflow-hidden align-bottom"><span class="reveal-text inline-block translate-y-full font-geist font-light tracking-tighter">for</span></span>
+                    <span class="inline-block overflow-hidden align-bottom"><span class="reveal-text inline-block translate-y-full font-geist font-light tracking-tighter">industry-leading</span></span>
+                    <span class="inline-block overflow-hidden align-bottom"><span class="reveal-text inline-block translate-y-full font-geist font-light tracking-tighter">creators</span></span>
+                </div>
+            </h1>
+            <p class="text-lg text-[#A3A3A3] font-light opacity-0 font-geist" id="hero-subtitle">
+                Architect and scale beautiful digital experiences with absolute control.
+            </p>
+        </div>
+
+        <!-- Glowing Prompt Box -->
+        <div class="w-full max-w-3xl relative mb-8 group" id="prompt-container">
+            <!-- Atmospheric Glow -->
+            <div class="absolute -inset-1 bg-gradient-to-r from-[#2640D9] via-[#6633E6] to-[#2640D9] rounded-2xl blur-2xl opacity-50 group-hover:opacity-70 transition-opacity duration-700"></div>
+            
+            <!-- Premium Surface with Border Gradient -->
+            <div class="relative p-[1px] rounded-[18px] bg-gradient-to-b from-[#6633E6] via-[#2640D9] to-[#030305] shadow-[0_2.8px_2.2px_rgba(0,_0,_0,_0.034),_0_6.7px_5.3px_rgba(0,_0,_0,_0.048),_0_12.5px_10px_rgba(0,_0,_0,_0.06),_0_22.3px_17.9px_rgba(0,_0,_0,_0.072),_0_41.8px_33.4px_rgba(0,_0,_0,_0.086),_0_100px_80px_rgba(0,_0,_0,_0.12)]">
+                
+                <div class="bg-gradient-to-b from-[#0A0A14] to-[#030305] rounded-[17px] flex flex-col overflow-hidden" style="box-shadow: inset 0 2px 10px rgba(102,51,230,0.1), inset 0 -4px 10px rgba(0,0,0,0.8);">
+                    
+                    <textarea class="w-full bg-transparent text-[#EDEDED] placeholder:text-[#A3A3A3]/50 p-6 min-h-[140px] resize-none outline-none text-lg font-light" placeholder="Create a minimalist dashboard for a next-gen crypto wallet..."></textarea>
+
+                    <div class="flex items-center justify-between px-4 py-3 border-t border-[#2640D9]/30 bg-[#030305]/80 backdrop-blur-sm">
+                        
+                        <button class="flex items-center gap-2 text-sm text-[#A3A3A3] hover:text-white transition-colors px-2 py-1 rounded-md hover:bg-white/5 font-light font-geist">
+                            Model v4
+                            <iconify-icon icon="solar:alt-arrow-down-linear" width="16" height="16" stroke-width="1.5"></iconify-icon>
+                        </button>
+
+                        <button class="w-8 h-8 rounded-full bg-[#2640D9] flex items-center justify-center text-white hover:bg-[#3B54E6] transition-colors shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.2),0px_1px_0px_0px_rgba(25,28,33,0.04),0px_0px_0px_1px_rgba(25,28,33,0.12)]">
+                            <iconify-icon icon="solar:arrow-up-linear" width="18" height="18" stroke-width="1.5"></iconify-icon>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Suggestion Pills -->
+        <div class="flex flex-wrap justify-center gap-3 mb-16 opacity-0" id="suggestion-pills">
+            <button class="px-4 py-2 rounded-full border border-[#262626] bg-[#161616]/50 text-sm text-[#A3A3A3] hover:text-white hover:border-[#A3A3A3]/50 transition-all backdrop-blur-md font-light font-geist">Build a SaaS landing page</button>
+            <button class="px-4 py-2 rounded-full border border-[#262626] bg-[#161616]/50 text-sm text-[#A3A3A3] hover:text-white hover:border-[#A3A3A3]/50 transition-all backdrop-blur-md font-light font-geist">Draft a mobile app UI</button>
+            <button class="px-4 py-2 rounded-full border border-[#262626] bg-[#161616]/50 text-sm text-[#A3A3A3] hover:text-white hover:border-[#A3A3A3]/50 transition-all backdrop-blur-md font-light font-geist">Design a newsletter template</button>
+            <button class="px-4 py-2 rounded-full border border-[#262626] bg-[#161616]/50 text-sm text-[#A3A3A3] hover:text-white hover:border-[#A3A3A3]/50 transition-all backdrop-blur-md font-light font-geist">Write API documentation</button>
+        </div>
+
+        <a href="#mock-app" class="flex items-center gap-2 text-sm text-[#A3A3A3] hover:text-white transition-colors mb-12 opacity-0 font-light font-geist" id="explore-link">
+            Explore the builder
+            <iconify-icon icon="solar:arrow-down-linear" width="16" height="16" stroke-width="1.5"></iconify-icon>
+        </a>
+
+        <!-- Mock App Interface -->
+        <div id="mock-app" class="w-full mt-8 rounded-t-2xl overflow-hidden flex flex-col shadow-[0_2.8px_2.2px_rgba(0,_0,_0,_0.034),_0_6.7px_5.3px_rgba(0,_0,_0,_0.048),_0_12.5px_10px_rgba(0,_0,_0,_0.06),_0_22.3px_17.9px_rgba(0,_0,_0,_0.072),_0_41.8px_33.4px_rgba(0,_0,_0,_0.086),_0_100px_80px_rgba(0,_0,_0,_0.12)] min-h-[600px] opacity-0 translate-y-12 bg-gradient-to-b from-[#161616cc] to-[#0c0c0ce6] backdrop-blur-[12px] border-t border-t-white/10 border-x border-x-white/5 border-b border-b-black/50" style="box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.05);">
+            
+            <header class="h-14 border-b border-[#262626] flex items-center justify-between px-4 bg-[#111111]">
+                <div class="flex items-center gap-2">
+                    <button class="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm text-white font-light bg-gradient-to-b from-[#262626] to-[#161616] border-t border-t-[#3a3a3a] border-b border-b-black border-x border-x-[#222] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_1px_2px_rgba(0,0,0,0.5)] transition-all duration-100 active:bg-[#111] active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)] active:border-t-[#111] font-geist">
+                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M0 0H16V8H8L16 16H0V0Z" fill="currentColor"></path>
+                        </svg>
+                        Environment
+                        <iconify-icon icon="solar:alt-arrow-down-linear" width="14" height="14" stroke-width="1.5" class="text-[#A3A3A3]"></iconify-icon>
+                    </button>
+                    <div class="w-[1px] h-4 bg-[#262626] mx-2"></div>
+                    <div class="flex items-center gap-1">
+                        <button class="w-8 h-8 flex items-center justify-center text-[#A3A3A3] hover:text-white hover:bg-[#161616] rounded-md transition-colors"><iconify-icon icon="solar:add-circle-linear" width="20" height="20" stroke-width="1.5"></iconify-icon></button>
+                        <button class="w-8 h-8 flex items-center justify-center text-[#A3A3A3] hover:text-white hover:bg-[#161616] rounded-md transition-colors"><iconify-icon icon="solar:maximize-square-linear" width="20" height="20" stroke-width="1.5"></iconify-icon></button>
+                        <button class="w-8 h-8 flex items-center justify-center text-[#A3A3A3] hover:text-white hover:bg-[#161616] rounded-md transition-colors"><iconify-icon icon="solar:text-square-linear" width="20" height="20" stroke-width="1.5"></iconify-icon></button>
+                        <button class="w-8 h-8 flex items-center justify-center text-[#A3A3A3] hover:text-white hover:bg-[#161616] rounded-md transition-colors"><iconify-icon icon="solar:pen-linear" width="20" height="20" stroke-width="1.5"></iconify-icon></button>
+                    </div>
+                </div>
+
+                <div class="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 text-sm text-[#A3A3A3] font-light">
+                    <span class="text-white font-geist">Draft</span>
+                    <span class="font-geist">·</span>
+                    <span class="flex items-center gap-1 bg-[#222] px-2 py-0.5 rounded text-xs font-geist"><iconify-icon icon="solar:link-linear" width="12" height="12" stroke-width="1.5"></iconify-icon> main</span>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center -space-x-2 mr-2">
+                        <img src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/2f563338-39fa-47ea-9761-658d4f3f84db_1600w.jpg" alt="User" class="w-7 h-7 rounded-full border border-[#111] object-cover">
+                        <img src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/4f5668c5-fc4a-44e0-bc5e-a664189d3c31_1600w.jpg" alt="User" class="w-7 h-7 rounded-full border border-[#111] object-cover">
+                        <div class="w-7 h-7 rounded-full border border-[#111] bg-[#222] flex items-center justify-center text-xs text-[#A3A3A3] z-10 font-light font-geist">+12</div>
+                    </div>
+                    <button class="w-8 h-8 flex items-center justify-center text-[#A3A3A3] bg-[#222] rounded-md hover:text-white transition-colors shadow-[0px_0px_0px_1px_rgba(0,0,0,0.06),0px_1px_1px_-0.5px_rgba(0,0,0,0.06),0px_3px_3px_-1.5px_rgba(0,0,0,0.06),_0px_6px_6px_-3px_rgba(0,0,0,0.06),0px_12px_12px_-6px_rgba(0,0,0,0.06),0px_24px_24px_-12px_rgba(0,0,0,0.06)]"><iconify-icon icon="solar:play-linear" width="16" height="16" stroke-width="1.5"></iconify-icon></button>
+                    <button class="px-3 py-1.5 rounded-md text-sm text-white font-light bg-gradient-to-b from-[#262626] to-[#161616] border-t border-t-[#3a3a3a] border-b border-b-black border-x border-x-[#222] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_1px_2px_rgba(0,0,0,0.5)] transition-all duration-100 active:bg-[#111] active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)] active:border-t-[#111] font-geist">Export</button>
+                    <button class="px-4 py-1.5 rounded-md bg-[#2640D9] hover:bg-[#3B54E6] text-sm text-white font-normal shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.2),0px_1px_0px_0px_rgba(25,28,33,0.04),0px_0px_0px_1px_rgba(25,28,33,0.12)] transition-colors font-geist">Publish</button>
+                </div>
+            </header>
+
+            <div class="flex-grow flex bg-[#0A0A0A]">
+                <aside class="w-64 border-r border-[#262626] flex flex-col bg-[#111111]">
+                    <div class="flex items-center p-2 border-b border-[#262626] text-xs font-light">
+                        <button class="px-3 py-1.5 bg-[#222] text-white rounded shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_1px_0px_0px_rgba(25,28,33,0.02),0px_0px_0px_1px_rgba(25,28,33,0.08)] font-geist">Pages</button>
+                        <button class="px-3 py-1.5 text-[#A3A3A3] hover:text-white font-geist">Layers</button>
+                        <button class="px-3 py-1.5 text-[#A3A3A3] hover:text-white font-geist">Assets</button>
+                    </div>
+                    <div class="p-3">
+                        <div class="relative bg-[#0a0a0a] shadow-[inset_0_2px_4px_rgba(0,0,0,0.5),inset_0_0_0_1px_#222] rounded-md flex items-center px-3 py-1.5 mb-4">
+                            <iconify-icon icon="solar:magnifer-linear" width="14" height="14" stroke-width="1.5" class="text-[#A3A3A3] absolute"></iconify-icon>
+                            <input type="text" placeholder="Search..." class="bg-transparent w-full pl-6 text-sm text-white placeholder:text-[#A3A3A3] outline-none font-light">
+                        </div>
+                        
+                        <div class="flex items-center justify-between text-xs font-normal text-white mb-2 px-1 font-geist">
+                            Pages
+                            <button class="text-[#A3A3A3] hover:text-white"><iconify-icon icon="solar:add-square-linear" width="14" height="14" stroke-width="1.5"></iconify-icon></button>
+                        </div>
+                        
+                        <div class="space-y-0.5">
+                            <div class="flex items-center gap-2 px-2 py-1.5 bg-[#222] rounded-md text-sm text-white cursor-pointer shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_1px_0px_0px_rgba(25,28,33,0.02),0px_0px_0px_1px_rgba(25,28,33,0.08)] font-light font-geist">
+                                <iconify-icon icon="solar:home-2-linear" width="16" height="16" stroke-width="1.5" class="text-[#A3A3A3]"></iconify-icon>
+                                Home
+                            </div>
+                            <div class="flex items-center gap-2 px-2 py-1.5 text-sm text-[#A3A3A3] hover:text-white cursor-pointer font-light font-geist">
+                                <iconify-icon icon="solar:alt-arrow-down-linear" width="12" height="12" stroke-width="1.5"></iconify-icon>
+                                <iconify-icon icon="solar:document-linear" width="16" height="16" stroke-width="1.5"></iconify-icon>
+                                /components
+                            </div>
+                            <div class="flex items-center gap-2 px-2 py-1.5 pl-8 text-sm text-[#A3A3A3] hover:text-white cursor-pointer font-light font-geist">
+                                <iconify-icon icon="solar:database-linear" width="16" height="16" stroke-width="1.5"></iconify-icon>
+                                Active Projects
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+
+                <div class="flex-grow flex flex-col items-center p-8 overflow-hidden relative">
+                    <div class="w-full max-w-4xl flex items-center justify-between bg-[#161616] border border-[#262626] rounded-t-lg px-4 py-2 border-b-0 shadow-[0px_0px_0px_1px_rgba(0,0,0,0.06),0px_1px_1px_-0.5px_rgba(0,0,0,0.06),0px_3px_3px_-1.5px_rgba(0,0,0,0.06)] bg-gradient-to-b from-[#262626] to-[#161616] border-t-[#3a3a3a] border-x-[#222]">
+                        <div class="flex items-center gap-2 text-xs text-[#A3A3A3] font-light">
+                            <iconify-icon icon="solar:monitor-linear" width="14" height="14" stroke-width="1.5"></iconify-icon>
+                            <span class="text-white font-geist">Desktop</span>
+                            <span class="font-geist">1440</span>
+                        </div>
+                        <button class="w-6 h-6 flex items-center justify-center text-[#A3A3A3] hover:text-white bg-[#222] rounded shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_1px_0px_0px_rgba(25,28,33,0.02),0px_0px_0px_1px_rgba(25,28,33,0.08)]"><iconify-icon icon="solar:add-linear" width="14" height="14" stroke-width="1.5"></iconify-icon></button>
+                    </div>
+
+                    <div class="w-full max-w-4xl flex-grow border border-t-0 border-[#262626] bg-black relative overflow-hidden flex flex-col">
+                        <div class="flex items-center justify-between p-6">
+                            <div class="text-white font-normal text-sm tracking-tight font-geist">Aura™</div>
+                            <div class="flex gap-6 text-xs text-[#A3A3A3] font-light">
+                                <span class="hover:text-white cursor-pointer font-geist">Product</span>
+                                <span class="hover:text-white cursor-pointer font-geist">Services</span>
+                                <span class="hover:text-white cursor-pointer font-geist">About</span>
+                                <span class="hover:text-white cursor-pointer font-geist">Help</span>
+                            </div>
+                            <div class="text-xs text-white border-b border-white pb-0.5 cursor-pointer font-light font-geist">Contact</div>
+                        </div>
+
+                        <div class="flex-grow flex items-center justify-center relative">
+                            <h2 class="text-[12vw] leading-none text-white absolute bottom-0 translate-y-1/4 font-geist font-light tracking-tighter">AURA</h2>
+                        </div>
+                    </div>
+                </div>
+
+                <aside class="w-80 border-l border-[#262626] flex flex-col bg-[#111111]">
+                    <div class="flex items-center p-2 border-b border-[#262626] text-xs font-light">
+                        <button class="px-3 py-1.5 bg-[#222] text-white rounded shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.1),0px_1px_0px_0px_rgba(25,28,33,0.02),0px_0px_0px_1px_rgba(25,28,33,0.08)] font-geist">Copilot</button>
+                        <button class="px-3 py-1.5 text-[#A3A3A3] hover:text-white font-geist">Properties</button>
+                    </div>
+                    
+                    <div class="p-4 space-y-4">
+                        <div class="flex items-center gap-2">
+                            <div class="flex-grow flex items-center justify-between px-3 py-2 rounded-md cursor-pointer text-sm text-white shadow-[0px_0px_0px_1px_rgba(0,0,0,0.06),0px_1px_1px_-0.5px_rgba(0,0,0,0.06),0px_3px_3px_-1.5px_rgba(0,0,0,0.06)] bg-gradient-to-b from-[#262626] to-[#161616] border-t border-t-[#3a3a3a] border-b border-b-black border-x border-x-[#222] font-light font-geist">
+                                Add Navigation Bar
+                                <iconify-icon icon="solar:alt-arrow-down-linear" width="14" height="14" stroke-width="1.5" class="text-[#A3A3A3]"></iconify-icon>
+                            </div>
+                            <button class="w-9 h-9 flex items-center justify-center rounded-md text-[#A3A3A3] hover:text-white shadow-[0px_0px_0px_1px_rgba(0,0,0,0.06),0px_1px_1px_-0.5px_rgba(0,0,0,0.06),0px_3px_3px_-1.5px_rgba(0,0,0,0.06)] bg-gradient-to-b from-[#262626] to-[#161616] border-t border-t-[#3a3a3a] border-b border-b-black border-x border-x-[#222]"><iconify-icon icon="solar:add-linear" width="16" height="16" stroke-width="1.5"></iconify-icon></button>
+                        </div>
+
+                        <div class="bg-[#1A1A1A] rounded-xl border border-[#262626] p-4 flex flex-col gap-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),_0_2.8px_2.2px_rgba(0,_0,_0,_0.034),_0_6.7px_5.3px_rgba(0,_0,_0,_0.048)]">
+                            <p class="text-sm text-[#EDEDED] leading-relaxed font-light font-geist">
+                                Generate an animated hero section and craft a short tagline for Aura.
+                            </p>
+                            
+                            <div class="flex items-center justify-between mt-2">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-10 h-10 rounded bg-[#222] border border-[#262626] overflow-hidden">
+                                        <img src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/4734259a-bad7-422f-981e-ce01e79184f2_1600w.jpg" class="w-full h-full object-cover opacity-80 mix-blend-luminosity hover:mix-blend-normal transition-all" alt="thumb">
+                                    </div>
+                                    <div class="w-10 h-10 rounded bg-[#222] border border-[#262626] overflow-hidden">
+                                        <img src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/e534354d-c5f2-4399-a1d9-2f50338e8c47_1600w.jpg" class="w-full h-full object-cover opacity-80 mix-blend-luminosity hover:mix-blend-normal transition-all" alt="thumb">
+                                    </div>
+                                    <div class="w-10 h-10 rounded bg-[#222] border border-[#262626] overflow-hidden">
+                                        <img src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/d14dc069-558a-4c51-8aad-5cc237f9b61d_1600w.jpg" class="w-full h-full object-cover opacity-80 mix-blend-luminosity hover:mix-blend-normal transition-all" alt="thumb">
+                                    </div>
+                                </div>
+                                <button class="w-7 h-7 flex items-center justify-center rounded-full bg-[#2A2A2A] text-[#A3A3A3] hover:text-white transition-colors">
+                                    <iconify-icon icon="solar:reply-outline" width="14" height="14" stroke-width="1.5"></iconify-icon>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // GSAP Animations with ScrollTrigger for masked reveal
+        document.addEventListener("DOMContentLoaded", () => {
+            gsap.registerPlugin(ScrollTrigger);
+
+            const tl = gsap.timeline({
+                scrollTrigger: {
+                    trigger: '#hero-title',
+                    start: 'top 85%'
+                }
+            });
+
+            tl.to('.reveal-text', {
+                y: '0%',
+                duration: 1,
+                ease: 'power4.out',
+                stagger: 0.05
+            });
+
+            tl.to('#hero-subtitle', {
+                opacity: 1,
+                duration: 0.8,
+                ease: 'power2.out'
+            }, "-=0.6");
+
+            tl.fromTo('#prompt-container', 
+                { opacity: 0, scale: 0.95, y: 20 },
+                { opacity: 1, scale: 1, y: 0, duration: 1, ease: 'back.out(1.2)' },
+                "-=0.4"
+            );
+
+            tl.to('#suggestion-pills', {
+                opacity: 1,
+                duration: 0.5
+            }, "-=0.2");
+            
+            tl.fromTo('#suggestion-pills button',
+                { opacity: 0, y: 10 },
+                { opacity: 1, y: 0, duration: 0.4, stagger: 0.1, ease: 'power2.out' },
+                "-=0.5"
+            );
+
+            tl.to('#explore-link', {
+                opacity: 1,
+                duration: 0.5
+            }, "-=0.2");
+
+            gsap.to('#mock-app', {
+                scrollTrigger: {
+                    trigger: '#mock-app',
+                    start: 'top 85%',
+                    end: 'top 50%',
+                    scrub: 1,
+                },
+                opacity: 1,
+                y: 0,
+                duration: 1,
+                ease: 'power3.out'
+            });
+        });
+
+        // WebGL Dynamic Fluid Fragment Shader Background
+        const canvas = document.querySelector('#bg-canvas');
+        const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: false });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+        const scene = new THREE.Scene();
+
+        const geometry = new THREE.PlaneGeometry(2, 2);
+
+        const vertexShader = `
+            void main() {
+                gl_Position = vec4(position, 1.0);
+            }
+        `;
+
+        const fragmentShader = `
+            uniform float u_time;
+            uniform vec2 u_resolution;
+
+            // Compact 2D Simplex Noise
+            vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+            vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+            vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
+            
+            float snoise(vec2 v) {
+                const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);
+                vec2 i  = floor(v + dot(v, C.yy));
+                vec2 x0 = v -   i + dot(i, C.xx);
+                vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+                vec4 x12 = x0.xyxy + C.xxzz;
+                x12.xy -= i1;
+                i = mod289(i);
+                vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0)) + i.x + vec3(0.0, i1.x, 1.0));
+                vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
+                m = m*m;
+                m = m*m;
+                vec3 x = 2.0 * fract(p * C.www) - 1.0;
+                vec3 h = abs(x) - 0.5;
+                vec3 ox = floor(x + 0.5);
+                vec3 a0 = x - ox;
+                m *= 1.79284291400159 - 0.85373472095314 * (a0*a0 + h*h);
+                vec3 g;
+                g.x  = a0.x  * x0.x  + h.x  * x0.y;
+                g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+                return 130.0 * dot(m, g);
+            }
+
+            void main() {
+                vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+                uv.x *= u_resolution.x / u_resolution.y;
+
+                vec3 baseColor = vec3(0.012, 0.012, 0.02);
+                vec2 st = uv * 0.7;
+                st += vec2(snoise(st + u_time * 0.05), snoise(st - u_time * 0.05)) * 0.3;
+
+                float beam = smoothstep(0.1, 0.8, snoise(vec2(st.x + st.y * 1.5 - u_time * 0.15, u_time * 0.02)));
+                vec3 glow = mix(vec3(0.15, 0.25, 0.85), vec3(0.4, 0.2, 0.9), snoise(uv * 1.5 + u_time * 0.1) * 0.5 + 0.5);
+
+                gl_FragColor = vec4(baseColor + (glow * beam * 0.7), 1.0);
+            }
+        `;
+
+        const uniforms = {
+            u_time: { value: 0.0 },
+            u_resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }
+        };
+
+        const material = new THREE.ShaderMaterial({
+            vertexShader: vertexShader,
+            fragmentShader: fragmentShader,
+            uniforms: uniforms
+        });
+
+        const mesh = new THREE.Mesh(geometry, material);
+        scene.add(mesh);
+
+        const clock = new THREE.Clock();
+        function animate() {
+            uniforms.u_time.value = clock.getElapsedTime();
+            renderer.render(scene, camera);
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            uniforms.u_resolution.value.set(window.innerWidth, window.innerHeight);
+        });
+    </script>
+
+</body></html>

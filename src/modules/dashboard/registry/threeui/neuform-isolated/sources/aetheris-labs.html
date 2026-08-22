@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Aetheris Labs</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital@1&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+</head>
+<body class="bg-[#020208] text-white h-[100dvh] w-screen overflow-hidden font-['Inter'] relative flex flex-col justify-between selection:bg-[#00d2ff]/30 select-none antialiased" style="font-family: 'Inter', sans-serif;">
+    
+    <!-- Ambient Background WebGL -->
+    <canvas id="bg-gl" class="absolute inset-0 w-full h-full z-0 opacity-0 transition-opacity duration-1000 ease-in" aria-hidden="true"></canvas>
+    
+    <!-- Vignette / Gradient Overlay -->
+    <div class="absolute inset-0 z-0 pointer-events-none" style="background: radial-gradient(circle at 50% 50%, transparent 0%, #020208 100%); mix-blend-mode: multiply;"></div>
+
+    <!-- Navigation -->
+    <nav class="relative z-10 w-full px-8 py-6 flex justify-between items-center gs-fade">
+        <div class="font-['Playfair_Display'] italic text-xl tracking-tight text-[#e2f1ff]">Aetheris.</div>
+        
+        <!-- Premium Gradient Border Pill -->
+        <div style="padding: 1px; background: linear-gradient(180deg, rgba(226,241,255,0.15) 0%, rgba(226,241,255,0) 100%); border-radius: 9999px;">
+            <div class="bg-[#080a14]/80 backdrop-blur-md rounded-full px-4 py-1.5 flex items-center gap-2" style="box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.05);">
+                <div class="w-1.5 h-1.5 rounded-full bg-[#00d2ff]" style="animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;"></div>
+                <span class="text-xs font-normal text-[#e2f1ff]/60 tracking-widest uppercase">Drive Engaged</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="relative z-10 flex-1 flex flex-col items-center justify-center text-center px-4">
+        
+        <div class="gs-fade font-mono text-xs tracking-[0.3em] text-[#00d2ff] uppercase mb-8" style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;">
+            SYS 09 / Cosmic Void
+        </div>
+
+        <!-- Masked Reveal Title -->
+        <h1 class="text-5xl md:text-7xl font-medium tracking-tighter text-[#e2f1ff] mb-14 flex flex-col items-center gap-1 md:gap-3 drop-shadow-2xl">
+            <div class="overflow-hidden pb-2"><span class="block translate-y-full gs-word">Access</span></div>
+            <div class="overflow-hidden pb-2"><span class="block translate-y-full gs-word text-white/90">The Cosmos.</span></div>
+        </h1>
+
+        <div class="gs-scale-up">
+            <!-- Quantum Aether Button -->
+            <button id="btn" type="button" class="group relative flex items-center justify-center w-[250px] h-[70px] border-0 p-0 rounded-2xl overflow-hidden cursor-pointer bg-[#050b1a] outline-none transition-all duration-[220ms] ease-[cubic-bezier(0.34,1.4,0.5,1)] hover:-translate-y-[2px] active:translate-y-[1px] active:scale-[0.985] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00d2ff] focus-visible:outline-offset-[5px]" style="box-shadow: 0 24px 48px rgba(4, 98, 126, 0.2), 0 3px 10px rgba(2, 6, 20, 0.35);">
+                <canvas id="gl" class="absolute inset-0 w-full h-full block group-[.nogl]:hidden" aria-hidden="true"></canvas>
+                <div class="absolute inset-0 hidden group-[.nogl]:block" style="background: radial-gradient(130% 170% at 50% 118%, #61d3ff 0%, #33a7ff 24%, #084c8e 56%, #050a19 88%);"></div>
+                <span class="relative z-10 pointer-events-none font-semibold text-sm tracking-[.26em] indent-[.26em] text-[#e2f1ff]" style="text-shadow: 0 1px 12px rgba(0, 16, 40, .85);">AETHER DRIVE</span>
+            </button>
+        </div>
+
+        <p class="gs-fade text-sm text-[#e2f1ff]/40 tracking-wide mt-10 max-w-sm" style="line-height: 1.6;">
+            Hover to accelerate the drive, press to initiate hyper jump.
+        </p>
+    </main>
+
+    <!-- Footer -->
+    <footer class="relative z-10 w-full px-8 py-6 flex flex-col md:flex-row justify-between items-center gap-4 gs-fade text-xs text-[#e2f1ff]/30 tracking-wider">
+        <span>© 2025 Aetheris Labs</span>
+        <div class="flex items-center gap-6">
+            <a href="#" class="hover:text-[#e2f1ff]/70 transition-colors flex items-center gap-1.5">
+                <iconify-icon icon="solar:document-text-linear" stroke-width="1.5" class="text-sm"></iconify-icon>
+                Terms
+            </a>
+            <a href="#" class="hover:text-[#e2f1ff]/70 transition-colors flex items-center gap-1.5">
+                <iconify-icon icon="solar:lock-keyhole-linear" stroke-width="1.5" class="text-sm"></iconify-icon>
+                Privacy
+            </a>
+        </div>
+    </footer>
+
+    <!-- GSAP Animations -->
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            gsap.set(".gs-word", { y: "100%" });
+            gsap.set(".gs-fade", { opacity: 0, y: 15 });
+            gsap.set(".gs-scale-up", { opacity: 0, scale: 0.85, y: 20 });
+
+            const tl = gsap.timeline({ defaults: { ease: "power4.out" } });
+
+            // Reveal words
+            tl.to(".gs-word", {
+                y: "0%",
+                duration: 1.2,
+                stagger: 0.15,
+                delay: 0.2
+            })
+            // Fade in nav and tag
+            .to(".gs-fade", {
+                opacity: 1,
+                y: 0,
+                duration: 1,
+                stagger: 0.1
+            }, "-=0.8")
+            // Pop in the button
+            .to(".gs-scale-up", {
+                opacity: 1,
+                scale: 1,
+                y: 0,
+                duration: 1.2,
+                ease: "back.out(1.2)"
+            }, "-=0.6");
+
+            // Fade in ambient background
+            document.getElementById('bg-gl').style.opacity = '0.45';
+        });
+    </script>
+
+    <!-- WebGL Ambient Cosmic Background -->
+    <script>
+    (function () {
+        var canvas = document.getElementById('bg-gl');
+        var gl = canvas.getContext('webgl');
+        if (!gl) return;
+
+        var VS = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
+        var FS = [
+            'precision highp float;',
+            'uniform vec2 u_res;',
+            'uniform float u_time;',
+            'float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123);}',
+            'float noise(vec2 p){',
+            '  vec2 i=floor(p), f=fract(p);',
+            '  vec2 u=f*f*(3.0-2.0*f);',
+            '  return mix(mix(hash(i),hash(i+vec2(1.,0.)),u.x),',
+            '             mix(hash(i+vec2(0.,1.)),hash(i+vec2(1.,1.)),u.x),u.y);',
+            '}',
+            'float fbm(vec2 p){',
+            '  float v=0.0; float a=0.5;',
+            '  for(int i=0;i<5;i++){ v+=a*noise(p); p=p*2.02+vec2(17.3,9.1); a*=0.5; }',
+            '  return v;',
+            '}',
+            'void main(){',
+            '  vec2 uv = gl_FragCoord.xy / u_res;',
+            '  vec2 p = uv * vec2(u_res.x/u_res.y, 1.0) * 1.5;',
+            '  float t = u_time * 0.12;',
+            '  vec2 q = vec2(fbm(p + vec2(0.0, t*0.28)), fbm(p + vec2(4.1, t*0.23)));',
+            '  vec2 r = vec2(fbm(p + 1.5*q + vec2(2.1, 7.2) + t*0.1),',
+            '                fbm(p + 1.4*q + vec2(5.3, 3.1) + t*0.07));',
+            '  float v = fbm(p + 1.9*r);',
+            '  float m = v*1.3;',
+            '  vec3 c1 = vec3(0.002, 0.004, 0.015);',
+            '  vec3 c2 = vec3(0.006, 0.018, 0.05);',
+            '  vec3 c3 = vec3(0.02, 0.07, 0.18);',
+            '  vec3 col = mix(c1, c2, smoothstep(0.1, 0.6, m));',
+            '  col = mix(col, c3, smoothstep(0.6, 1.0, m));',
+            '  float vein = exp(-abs(q.x - q.y) * 5.0);',
+            '  col += c3 * vein * 0.12;',
+            '  gl_FragColor = vec4(col, 1.0);',
+            '}'
+        ].join('\n');
+
+        function compile(type, src) {
+            var s = gl.createShader(type);
+            gl.shaderSource(s, src);
+            gl.compileShader(s);
+            return s;
+        }
+        var prog = gl.createProgram();
+        gl.attachShader(prog, compile(gl.VERTEX_SHADER, VS));
+        gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FS));
+        gl.linkProgram(prog);
+        gl.useProgram(prog);
+
+        var buf = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+        var locP = gl.getAttribLocation(prog, 'p');
+        gl.enableVertexAttribArray(locP);
+        gl.vertexAttribPointer(locP, 2, gl.FLOAT, false, 0, 0);
+
+        var uRes = gl.getUniformLocation(prog, 'u_res');
+        var uTime = gl.getUniformLocation(prog, 'u_time');
+
+        function resize() {
+            var w = canvas.clientWidth;
+            var h = canvas.clientHeight;
+            if (canvas.width !== w || canvas.height !== h) {
+                canvas.width = w;
+                canvas.height = h;
+                gl.viewport(0, 0, w, h);
+            }
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function frame(now) {
+            resize();
+            gl.uniform2f(uRes, canvas.width, canvas.height);
+            gl.uniform1f(uTime, now / 1000);
+            gl.drawArrays(gl.TRIANGLES, 0, 3);
+            requestAnimationFrame(frame);
+        }
+        requestAnimationFrame(frame);
+    })();
+    </script>
+
+    <!-- WebGL Aether Engine Button -->
+    <script>
+    (function () {
+        var btn = document.getElementById('btn');
+        var canvas = document.getElementById('gl');
+        var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        var gl = canvas.getContext('webgl');
+        if (!gl) { btn.classList.add('nogl'); return; }
+
+        var hoverStyles = "0 30px 60px rgba(0, 150, 220, 0.35), 0 4px 12px rgba(2, 6, 20, 0.4)";
+        var defaultStyles = "0 24px 48px rgba(4, 98, 126, 0.2), 0 3px 10px rgba(2, 6, 20, 0.35)";
+        
+        btn.addEventListener('mouseenter', () => { if(!reduced) btn.style.boxShadow = hoverStyles; });
+        btn.addEventListener('mouseleave', () => { if(!reduced) btn.style.boxShadow = defaultStyles; });
+        btn.addEventListener('focus', () => { if(!reduced) btn.style.boxShadow = hoverStyles; });
+        btn.addEventListener('blur', () => { if(!reduced) btn.style.boxShadow = defaultStyles; });
+
+        var VS = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
+        var FS = [
+            'precision highp float;',
+            'uniform vec2 u_res;',
+            'uniform float u_time;',
+            'uniform float u_heat;',
+            'uniform float u_flash;',
+            'float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123);}',
+            'float noise(vec2 p){',
+            '  vec2 i=floor(p), f=fract(p);',
+            '  vec2 u=f*f*(3.0-2.0*f);',
+            '  return mix(mix(hash(i),hash(i+vec2(1.,0.)),u.x),',
+            '             mix(hash(i+vec2(0.,1.)),hash(i+vec2(1.,1.)),u.x),u.y);',
+            '}',
+            'float fbm(vec2 p){',
+            '  float v=0.0; float a=0.5;',
+            '  for(int i=0;i<5;i++){ v+=a*noise(p); p=p*2.02+vec2(17.3,9.1); a*=0.5; }',
+            '  return v;',
+            '}',
+            'void main(){',
+            '  vec2 uv = gl_FragCoord.xy / u_res;',
+            '  vec2 p = uv * vec2(u_res.x/u_res.y, 1.0) * 2.1;',
+            '  float t = u_time;',
+            '  float heat = u_heat + u_flash * 1.3;',
+            '  vec2 q = vec2(fbm(p + vec2(0.0, t*0.32)), fbm(p + vec2(5.2, t*0.27)));',
+            '  vec2 r = vec2(fbm(p + 1.7*q + vec2(1.7, 9.2) + t*0.12),',
+            '                fbm(p + 1.6*q + vec2(8.3, 2.8) + t*0.09));',
+            '  float v = fbm(p + 2.1*r);',
+            '  float m = v*1.4 + heat*0.22;',
+            '  vec3 c1 = vec3(0.004, 0.008, 0.035);',
+            '  vec3 c2 = vec3(0.04, 0.08, 0.35);',
+            '  vec3 c3 = vec3(0.0, 0.6, 1.0);',
+            '  vec3 c4 = vec3(0.7, 0.9, 1.0);',
+            '  vec3 col = mix(c1, c2, smoothstep(0.2, 0.52, m));',
+            '  col = mix(col, c3, smoothstep(0.52, 0.8, m));',
+            '  col = mix(col, c4, smoothstep(0.82, 1.02, m));',
+            '  float vein = exp(-abs(q.x - q.y) * 9.0);',
+            '  col += c3 * vein * (0.12 + heat * 0.25);',
+            '  vec2 e = uv * (1.0 - uv);',
+            '  float vig = pow(e.x * e.y * 16.0, 0.28);',
+            '  col *= mix(0.5, 1.0, vig);',
+            '  col *= 0.78 + heat * 0.5;',
+            '  col += vec3(0.82, 0.94, 1.0) * u_flash * 0.4 * (0.3 + v);',
+            '  gl_FragColor = vec4(col, 1.0);',
+            '}'
+        ].join('\n');
+
+        function compile(type, src) {
+            var s = gl.createShader(type);
+            gl.shaderSource(s, src);
+            gl.compileShader(s);
+            return s;
+        }
+        var prog = gl.createProgram();
+        gl.attachShader(prog, compile(gl.VERTEX_SHADER, VS));
+        gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FS));
+        gl.linkProgram(prog);
+        gl.useProgram(prog);
+
+        var buf = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+        var locP = gl.getAttribLocation(prog, 'p');
+        gl.enableVertexAttribArray(locP);
+        gl.vertexAttribPointer(locP, 2, gl.FLOAT, false, 0, 0);
+
+        var uRes = gl.getUniformLocation(prog, 'u_res');
+        var uTime = gl.getUniformLocation(prog, 'u_time');
+        var uHeat = gl.getUniformLocation(prog, 'u_heat');
+        var uFlash = gl.getUniformLocation(prog, 'u_flash');
+
+        function resize() {
+            var dpr = Math.min(window.devicePixelRatio || 1, 2);
+            var w = Math.max(1, Math.round(canvas.clientWidth * dpr));
+            var h = Math.max(1, Math.round(canvas.clientHeight * dpr));
+            if (canvas.width !== w || canvas.height !== h) {
+                canvas.width = w;
+                canvas.height = h;
+                gl.viewport(0, 0, w, h);
+            }
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        var heat = 0, heatTarget = 0, erupt = 0;
+        var churn = 0;
+        var last = performance.now();
+
+        btn.addEventListener('mouseenter', function () { heatTarget = 1; });
+        btn.addEventListener('mouseleave', function () { heatTarget = 0; });
+        btn.addEventListener('focus', function () { heatTarget = 1; });
+        btn.addEventListener('blur', function () { heatTarget = 0; });
+        btn.addEventListener('mousedown', function () { erupt = 1; });
+        btn.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') erupt = 1;
+        });
+
+        function frame(now) {
+            var dt = Math.min(0.05, (now - last) / 1000);
+            last = now;
+            heat += (heatTarget - heat) * Math.min(1, dt * 6);
+            erupt *= Math.exp(-3.2 * dt);
+            churn += dt * (0.35 + heat * 1.1 + erupt * 2.2);
+            resize();
+            gl.uniform2f(uRes, canvas.width, canvas.height);
+            gl.uniform1f(uTime, reduced ? 6.0 : churn);
+            gl.uniform1f(uHeat, heat);
+            gl.uniform1f(uFlash, erupt);
+            gl.drawArrays(gl.TRIANGLES, 0, 3);
+            requestAnimationFrame(frame);
+        }
+        requestAnimationFrame(frame);
+    })();
+    </script>
+</body>
+</html>

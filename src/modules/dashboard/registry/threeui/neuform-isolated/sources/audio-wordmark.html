@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Supreme Radio — Graphic Identity</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:#000;overflow:hidden}
+  body{font-family:"Helvetica Neue",Helvetica,Arial,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;-webkit-font-smoothing:antialiased}
+  #stage{
+    position:fixed;left:50%;top:50%;width:1080px;height:1350px;
+    transform:translate(-50%,-50%);transform-origin:center;
+    background:#000;overflow:hidden;color:#E8EEE9;
+  }
+  .scene{position:absolute;inset:0;opacity:0;pointer-events:none;will-change:opacity}
+  .scene.on{pointer-events:auto}
+  canvas#viz{position:absolute;inset:0}
+  .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:2}
+  .sr{
+    font-weight:800;font-size:54px;letter-spacing:-.045em;line-height:1;
+    display:flex;align-items:center;gap:14px;white-space:nowrap;
+  }
+  .sr .word{display:flex;align-items:baseline;gap:12px}
+  .icons{display:flex;align-items:center;gap:10px;margin-left:4px}
+  .icons svg{display:block}
+
+  #reelWrap{position:absolute;left:50%;top:50%;width:860px;height:860px;margin:-430px 0 0 -430px}
+  #reel{width:860px;height:860px;transform-origin:430px 430px;will-change:transform}
+
+  .lock{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0}
+  .lock .top-icons{display:flex;gap:18px;margin-bottom:36px}
+  .cat{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:15px;letter-spacing:.18em;margin-bottom:18px;font-weight:500}
+  .bpm{
+    font-weight:900;font-size:210px;letter-spacing:-.06em;line-height:.82;
+    transform:scaleX(.78);font-stretch:condensed;position:relative;
+    color:#E3EDE5;
+  }
+  .bpm sup{font-size:28px;position:absolute;right:-28px;top:18px;transform:scaleX(1.28);font-weight:700}
+  .meta{
+    margin-top:28px;text-align:center;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+    font-size:15px;letter-spacing:.12em;line-height:1.7;font-weight:500;
+  }
+  .marks{display:flex;align-items:flex-end;justify-content:center;gap:54px;margin-top:64px}
+  .jp{margin-top:48px;font-size:18px;letter-spacing:.12em;font-weight:500}
+
+  .venn-wrap{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .venn{position:relative;width:560px;height:340px;margin:8px 0 28px}
+  .ring{
+    position:absolute;top:10px;width:320px;height:320px;border-radius:50%;
+    border:7px solid #EA3927;box-sizing:border-box;
+  }
+  .ring.l{left:0}
+  .ring.r{right:0}
+  .letters{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:0;pointer-events:none}
+  .letters span{
+    width:186px;text-align:center;font-weight:800;font-size:92px;letter-spacing:-.04em;color:#E8EEE9;
+  }
+  .foot{text-align:center}
+  .foot .sr2{font-weight:800;font-size:52px;letter-spacing:-.045em;margin-bottom:18px}
+  .foot .sub{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:13px;letter-spacing:.22em;color:#c9d4cc;line-height:1.7}
+  .ww{margin-top:36px}
+
+  .grain{
+    position:absolute;inset:0;pointer-events:none;z-index:8;opacity:.045;mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <svg width="0" height="0" style="position:absolute">
+    <defs>
+      <g id="i3">
+        <path d="M3 3.2h18.5a1.6 1.6 0 0 1 0 3.2H6.4v4.2h13.2a1.6 1.6 0 0 1 0 3.2H6.4v4.2h15.1a1.6 1.6 0 0 1 0 3.2H3.2A1.6 1.6 0 0 1 1.6 19V4.8A1.6 1.6 0 0 1 3.2 3.2Z" fill="currentColor"/>
+      </g>
+      <g id="iP">
+        <circle cx="12" cy="12" r="10.2" fill="none" stroke="currentColor" stroke-width="1.6"/>
+        <text x="12" y="16.2" text-anchor="middle" font-size="12" font-weight="700" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" fill="currentColor">P</text>
+      </g>
+      <g id="iG">
+        <circle cx="12" cy="12" r="10.2" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <ellipse cx="12" cy="12" rx="4.2" ry="10.2" fill="none" stroke="currentColor" stroke-width="1.3"/>
+        <path d="M2 12h20M4.2 7.2h15.6M4.2 16.8h15.6" fill="none" stroke="currentColor" stroke-width="1.2"/>
+      </g>
+      <g id="i1">
+        <circle cx="12" cy="12" r="10.4" fill="currentColor"/>
+        <text x="12" y="16.4" text-anchor="middle" font-size="12" font-weight="800" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" fill="#000">1</text>
+      </g>
+    </defs>
+  </svg>
+
+  <section class="scene" id="s1">
+    <canvas id="viz" width="1080" height="1350"></canvas>
+    <div class="overlay">
+      <div class="sr" id="sr1">
+        <span class="word">supreme radio</span>
+        <span class="icons">
+          <svg width="22" height="22" viewBox="0 0 24 24"><use href="#i3"/></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24"><use href="#iP"/></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24"><use href="#iG"/></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24"><use href="#i1"/></svg>
+        </span>
+      </div>
+    </div>
+  </section>
+
+  <section class="scene" id="s2">
+    <div id="reelWrap">
+      <svg id="reel" viewBox="-430 -430 860 860">
+        <defs>
+          <mask id="rmask">
+            <circle r="418" fill="#fff"/>
+            <circle r="82" fill="#000"/>
+            <g id="win">
+              <path fill="#000" d="M-48 -148
+                C -48 -168 -28 -176 0 -176
+                C 28 -176 48 -168 48 -148
+                L 70 -312
+                C 70 -342 38 -358 0 -358
+                C -38 -358 -70 -342 -70 -312 Z"/>
+            </g>
+            <use href="#win" transform="rotate(120)"/>
+            <use href="#win" transform="rotate(240)"/>
+            <circle cx="0" cy="-178" r="10" fill="#000"/>
+            <circle cx="154" cy="89" r="10" fill="#000"/>
+            <circle cx="-154" cy="89" r="10" fill="#000"/>
+          </mask>
+        </defs>
+        <circle r="418" fill="#E3EDE5" mask="url(#rmask)"/>
+        <g fill="#000">
+          <rect x="-9" y="-98" width="18" height="16" rx="3"/>
+          <rect x="-9" y="-98" width="18" height="16" rx="3" transform="rotate(120)"/>
+          <rect x="-9" y="-98" width="18" height="16" rx="3" transform="rotate(240)"/>
+        </g>
+        <g fill="#000" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" text-anchor="middle">
+          <g transform="translate(0,-250)">
+            <g fill="none" stroke="#000" stroke-width="1.6">
+              <circle r="22"/>
+              <circle cx="16" r="22"/>
+            </g>
+            <text y="5" font-size="9" font-weight="800" fill="#000">BPM</text>
+            <text y="38" font-size="8" font-weight="700" letter-spacing="1.6">WORLDWIDE</text>
+            <text y="78" font-size="28" font-weight="800" letter-spacing="-1.2">supreme radio</text>
+            <text y="102" font-size="9" font-weight="500">©2023 bpm supreme</text>
+            <text y="124" font-size="13" font-weight="700" fill="#EA3927" font-family="Hiragino Sans, Yu Gothic, sans-serif">毎週の音楽</text>
+          </g>
+          <g transform="translate(-210,210)" text-anchor="start">
+            <text font-size="11" font-weight="500">Catalogue No.</text>
+            <text y="22" font-size="15" font-weight="800">℗BPM154—LP2023</text>
+            <g transform="translate(0,42)" fill="#EA3927">
+              <use href="#i3" transform="scale(.9)"/>
+              <use href="#iP" transform="translate(28,0) scale(.9)"/>
+              <use href="#iG" transform="translate(56,0) scale(.9)"/>
+              <use href="#i1" transform="translate(84,0) scale(.9)"/>
+            </g>
+          </g>
+          <g transform="translate(168,188)" text-anchor="start">
+            <g fill="#000" transform="scale(1.35)"><use href="#i3"/></g>
+            <text y="48" font-size="12" font-weight="500">Episode No.</text>
+            <text y="108" font-size="72" font-weight="800" letter-spacing="-2">154</text>
+          </g>
+        </g>
+      </svg>
+    </div>
+  </section>
+
+  <section class="scene" id="s3">
+    <div class="lock" id="lock">
+      <div class="top-icons">
+        <svg width="26" height="26" viewBox="0 0 24 24"><use href="#i3"/></svg>
+        <svg width="26" height="26" viewBox="0 0 24 24"><use href="#iP"/></svg>
+        <svg width="26" height="26" viewBox="0 0 24 24"><use href="#iG"/></svg>
+        <svg width="26" height="26" viewBox="0 0 24 24"><use href="#i1"/></svg>
+      </div>
+      <div class="cat">CATALOGUE SR/1.0</div>
+      <div class="bpm">BPM<sup>®</sup></div>
+      <div class="meta">HERE FOR THE MUSIC.<br>LOS ANGELES, CALIFORNIA<br>WWW.BPMMUSIC.IO<br>WORLDWIDE © 2023<br>MADE IN USA</div>
+      <div class="marks">
+        <svg width="120" height="78" viewBox="0 0 120 78">
+          <g fill="none" stroke="#E3EDE5" stroke-width="1.7">
+            <circle cx="48" cy="28" r="26"/>
+            <circle cx="72" cy="28" r="26"/>
+            <ellipse cx="60" cy="28" rx="10" ry="26"/>
+          </g>
+          <text x="60" y="32" text-anchor="middle" fill="#E3EDE5" font-size="11" font-weight="800" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">BPM</text>
+          <text x="60" y="72" text-anchor="middle" fill="#E3EDE5" font-size="9" font-weight="700" letter-spacing="2.2" font-family="ui-monospace, Menlo, monospace">WORLDWIDE</text>
+        </svg>
+        <svg width="44" height="44" viewBox="0 0 24 24"><use href="#i3"/></svg>
+        <svg width="148" height="64" viewBox="0 0 148 64">
+          <rect x="1" y="1" width="146" height="50" rx="6" fill="none" stroke="#E3EDE5" stroke-width="1.6"/>
+          <g transform="translate(10,8)" fill="#E3EDE5"><use href="#i3"/></g>
+          <g transform="translate(38,8)" fill="#E3EDE5"><use href="#iP"/></g>
+          <g transform="translate(108,6)" fill="#E3EDE5" stroke="#E3EDE5"><use href="#iG"/></g>
+          <rect x="10" y="34" width="72" height="14" rx="2" fill="#E3EDE5"/>
+          <text x="46" y="45" text-anchor="middle" font-size="9" font-weight="700" fill="#000" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">bpm radio</text>
+          <text x="142" y="12" font-size="10" fill="#E3EDE5">®</text>
+        </svg>
+      </div>
+      <div class="jp">毎週の音楽</div>
+    </div>
+  </section>
+
+  <section class="scene" id="s4">
+    <div class="venn-wrap">
+      <div class="top-icons" style="display:flex;gap:18px;margin-bottom:28px">
+        <svg width="24" height="24" viewBox="0 0 24 24"><use href="#i3"/></svg>
+        <svg width="24" height="24" viewBox="0 0 24 24"><use href="#iP"/></svg>
+        <svg width="24" height="24" viewBox="0 0 24 24"><use href="#iG"/></svg>
+        <svg width="24" height="24" viewBox="0 0 24 24"><use href="#i1"/></svg>
+      </div>
+      <div class="venn">
+        <div class="ring l" id="ringL"></div>
+        <div class="ring r" id="ringR"></div>
+        <div class="letters" id="bpmLetters"><span>B</span><span>P</span><span>M</span></div>
+      </div>
+      <div class="foot">
+        <div class="sr2" id="sr2">supreme radio</div>
+        <div class="sub">ANALOGOUS SOUNDS<br>SR/1.0</div>
+        <svg class="ww" width="110" height="70" viewBox="0 0 120 78">
+          <g fill="none" stroke="#E3EDE5" stroke-width="1.7">
+            <circle cx="48" cy="28" r="26"/>
+            <circle cx="72" cy="28" r="26"/>
+            <ellipse cx="60" cy="28" rx="10" ry="26"/>
+          </g>
+          <text x="60" y="32" text-anchor="middle" fill="#E3EDE5" font-size="11" font-weight="800" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">BPM</text>
+          <text x="60" y="72" text-anchor="middle" fill="#E3EDE5" font-size="9" font-weight="700" letter-spacing="2.2" font-family="ui-monospace, Menlo, monospace">WORLDWIDE</text>
+        </svg>
+      </div>
+    </div>
+  </section>
+  <div class="grain"></div>
+</div>
+<script>
+(function(){
+  var DUR = 20;
+  var HOLD = 4.7;
+  var FADE = 0.3;
+  var stage = document.getElementById("stage");
+  var scenes = [document.getElementById("s1"), document.getElementById("s2"), document.getElementById("s3"), document.getElementById("s4")];
+  var canvas = document.getElementById("viz");
+  var ctx = canvas.getContext("2d");
+  var reel = document.getElementById("reel");
+  var lock = document.getElementById("lock");
+  var ringL = document.getElementById("ringL");
+  var ringR = document.getElementById("ringR");
+  var letters = document.getElementById("bpmLetters");
+  var sr1 = document.getElementById("sr1");
+  var sr2 = document.getElementById("sr2");
+
+  function sat(x){ return x<0?0:x>1?1:x; }
+  function lerp(a,b,t){ return a+(b-a)*t; }
+  function easeOut(t){ t=sat(t); return 1-Math.pow(1-t,3); }
+  function easeInOut(t){ t=sat(t); return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2; }
+  function backOut(t){ t=sat(t); var c1=1.70158,c3=c1+1; return 1+c3*Math.pow(t-1,3)+c1*Math.pow(t-1,2); }
+
+  function fit(){
+    var s = Math.min(innerWidth/1080, innerHeight/1350);
+    stage.style.transform = "translate(-50%,-50%) scale("+s+")";
+  }
+
+  function drawViz(t){
+    var w=1080,h=1350;
+    ctx.clearRect(0,0,w,h);
+    ctx.fillStyle="#000";
+    ctx.fillRect(0,0,w,h);
+    var cx=540, cy=675, r=156, gap=148;
+    drawBars(cx-gap, cy, r, t, false);
+    drawBars(cx+gap, cy, r, t+1.7, true);
+  }
+
+  function drawBars(cx, cy, r, t, inverse){
+    var n = inverse ? 16 : 22;
+    var pitch = (r*2) / n;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI*2);
+    ctx.clip();
+    if (inverse){
+      ctx.fillStyle="#EA3927";
+      ctx.fill();
+      ctx.globalCompositeOperation="destination-out";
+      ctx.fillStyle="#000";
+    } else {
+      ctx.fillStyle="#EA3927";
+    }
+    for (var i=0;i<n;i++){
+      var x = -r + (i+0.5)*pitch;
+      var maxH = Math.sqrt(Math.max(0, r*r - x*x)) * 2;
+      if (maxH < 6) continue;
+      var pulse = 0.78 + 0.22*Math.sin(t*6.4 + i*0.62)*Math.sin(t*2.4 + i*0.17);
+      var hh = inverse ? maxH : maxH;
+      var bw = (inverse ? pitch*0.38 : pitch*0.62) * (inverse ? 1 : pulse);
+      var px = cx + x - bw/2;
+      var py = cy - hh/2;
+      roundRect(px, py, Math.max(2,bw), hh, Math.min(bw, hh)*0.45);
+      ctx.fill();
+    }
+    ctx.restore();
+    ctx.globalCompositeOperation="source-over";
+  }
+
+  function roundRect(x,y,w,h,r){
+    r=Math.min(r,w/2,h/2);
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+  }
+
+  function sceneAt(t){
+    var slot = HOLD + FADE;
+    var i = Math.floor(t / slot) % 4;
+    var local = t - i*slot;
+    var fadeOut = sat((local - HOLD)/FADE);
+    var fadeIn = local < FADE ? sat(local/FADE) : 1;
+    return {i:i, local:local, fadeIn:fadeIn, fadeOut:fadeOut, op: fadeIn*(1-fadeOut)};
+  }
+
+  function apply(t){
+    t = ((t % DUR)+DUR)%DUR;
+    var s = sceneAt(t);
+    for (var k=0;k<4;k++){
+      scenes[k].style.opacity = k===s.i ? String(s.op) : "0";
+      scenes[k].classList.toggle("on", k===s.i && s.op>0.02);
+    }
+    var lt = s.local;
+
+    if (s.i===0){
+      drawViz(t);
+      var p = easeOut(sat(lt/0.7));
+      sr1.style.opacity = String(p);
+      sr1.style.letterSpacing = lerp(0.18, -0.045, p) + "em";
+    }
+    if (s.i===1){
+      reel.style.transform = "rotate(" + (lt*36) + "deg)";
+    }
+    if (s.i===2){
+      var kids = lock.children;
+      for (var k=0;k<kids.length;k++){
+        var u = easeOut(sat((lt - k*0.09)/0.45));
+        kids[k].style.opacity = String(u);
+        kids[k].style.transform = "translateY(" + ((1-u)*14) + "px)";
+      }
+    }
+    if (s.i===3){
+      var u = easeInOut(sat(lt/0.9));
+      ringL.style.transform = "translateX(" + lerp(-70,0,u) + "px)";
+      ringR.style.transform = "translateX(" + lerp(70,0,u) + "px)";
+      var lp = backOut(sat((lt-0.45)/0.5));
+      letters.style.opacity = String(lp);
+      letters.style.transform = "scale(" + lerp(0.72,1,lp) + ")";
+      var tp = easeOut(sat((lt-0.7)/0.5));
+      sr2.style.opacity = String(tp);
+      sr2.style.letterSpacing = lerp(0.22, -0.045, tp) + "em";
+    }
+  }
+
+  var tNow=0, playing=true, t0=performance.now();
+  var params=new URLSearchParams(location.search);
+  if (params.has("t")){ tNow=parseFloat(params.get("t"))||0; playing=false; }
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches){ playing=false; tNow=16.2; }
+
+  function frame(now){
+    if (playing && !document.hidden){
+      tNow = ((now-t0)/1000) % DUR;
+      apply(tNow);
+    }
+    requestAnimationFrame(frame);
+  }
+  window.addEventListener("resize", fit);
+  document.addEventListener("visibilitychange", function(){
+    if (!document.hidden && playing) t0=performance.now()-tNow*1000;
+  });
+  fit(); apply(tNow); requestAnimationFrame(frame);
+
+  window.__DUR = DUR;
+  window.__seek = function(t){ tNow=((t%DUR)+DUR)%DUR; playing=false; apply(tNow); };
+  window.__play = function(){ t0=performance.now()-tNow*1000; playing=true; };
+  window.__pause = function(){ playing=false; };
+  window.__time = function(){ return tNow; };
+})();
+</script>
+</body>
+</html>

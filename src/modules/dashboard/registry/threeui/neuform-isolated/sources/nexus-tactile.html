@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>N E X U S &mdash; Tactile Fluidics</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+</head>
+<body class="bg-[#02040a] text-neutral-200 h-screen w-screen overflow-hidden font-['Inter',sans-serif] selection:bg-[#06b6d4] selection:text-black relative">
+
+    <!-- Ambient WebGL Background -->
+    <canvas id="bg-canvas" class="absolute inset-0 w-full h-full block pointer-events-none z-0 opacity-0" aria-hidden="true"></canvas>
+
+    <!-- Top Navigation / Logo -->
+    <header class="absolute top-0 left-0 w-full p-6 sm:p-10 z-20 flex justify-between items-center opacity-0 nav-reveal">
+        <div class="font-light text-sm tracking-[0.4em] uppercase text-neutral-400">
+            N E X U S
+        </div>
+        <div class="flex gap-4">
+            <div class="w-2 h-2 rounded-full bg-[#06b6d4] animate-pulse" style="animation-duration: 3s;"></div>
+        </div>
+    </header>
+
+    <!-- Main Content Layer -->
+    <main class="content-layer relative z-10 w-full h-full flex flex-col items-center justify-center px-4">
+        
+        <div class="tag font-mono text-xs tracking-[0.3em] uppercase text-[#06b6d4] mb-8 sm:mb-12 opacity-0 transform translate-y-4">
+            System 07 / Viscosity
+        </div>
+
+        <h1 class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl tracking-tight font-normal text-neutral-100 flex flex-wrap justify-center gap-x-3 gap-y-2 max-w-4xl text-center mb-6 overflow-hidden">
+            <span class="overflow-hidden inline-block"><span class="reveal-word inline-block translate-y-full will-change-transform">Viscous</span></span>
+            <span class="overflow-hidden inline-block"><span class="reveal-word inline-block translate-y-full will-change-transform text-neutral-400">Fields.</span></span>
+            <span class="overflow-hidden inline-block"><span class="reveal-word inline-block translate-y-full will-change-transform">Reengineered.</span></span>
+        </h1>
+
+        <p class="subhead text-sm sm:text-base text-neutral-400 font-light tracking-wide max-w-md text-center mb-12 sm:mb-16 opacity-0 transform translate-y-4">
+            Delve into high-fidelity tactile feedback arrays. Engineered for continuous adaptive state manipulation.
+        </p>
+
+        <!-- CTA Component -->
+        <div class="intro opacity-0 transform translate-y-[-20px] scale-95 will-change-transform">
+            <!-- Subtle Cyan Gradient Border Wrapper -->
+            <div class="p-[1px] rounded-[19px] bg-gradient-to-b from-cyan-500/30 via-neutral-800/20 to-cyan-950/40 shadow-2xl">
+                <button class="relative flex items-center justify-center w-[250px] h-[70px] border-0 p-0 rounded-[18px] overflow-hidden cursor-pointer bg-[#050b11] transition-all duration-300 ease-out shadow-[0_22px_44px_rgba(4,24,36,0.35),0_3px_9px_rgba(5,10,15,0.4),inset_0_0_0_1px_rgba(255,255,255,0.05)] hover:-translate-y-[2px] hover:shadow-[0_28px_56px_rgba(6,182,212,0.25),0_4px_11px_rgba(5,10,15,0.45)] active:translate-y-[1px] active:scale-[0.985] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#06b6d4] focus-visible:outline-offset-[5px]" id="btn" type="button">
+                    <canvas id="gl" aria-hidden="true" class="absolute inset-0 w-full h-full block"></canvas>
+                    <span class="relative z-10 pointer-events-none font-normal text-sm tracking-[0.3em] indent-[0.3em] text-[#e0faff] drop-shadow-[0_1px_10px_rgba(0,18,25,0.85)] flex items-center gap-2">
+                        SURGE
+                        <iconify-icon icon="solar:arrow-right-linear" width="18" height="18" stroke-width="1.5" class="ml-1 opacity-80"></iconify-icon>
+                    </span>
+                </button>
+            </div>
+        </div>
+
+        <p class="note font-light text-xs text-neutral-500 tracking-wide mt-8 sm:mt-10 opacity-0 transform translate-y-4">
+            Sweep the cursor to generate turbulence, click to discharge.
+        </p>
+    </main>
+
+    <script>
+        // --------------------------------------------------------
+        // GSAP Animations & Parallax
+        // --------------------------------------------------------
+        document.addEventListener("DOMContentLoaded", () => {
+            const tl = gsap.timeline();
+
+            // Background Fade In
+            tl.to("#bg-canvas", { opacity: 1, duration: 2, ease: "power2.inOut" }, 0);
+            
+            // Nav Reveal
+            tl.to(".nav-reveal", { opacity: 1, duration: 1, ease: "power2.out" }, 0.5);
+
+            // Tag Reveal
+            tl.to(".tag", { y: 0, opacity: 1, duration: 0.8, ease: "power3.out" }, 0.8);
+
+            // Masked Word Stagger
+            tl.to(".reveal-word", {
+                y: "0%",
+                duration: 1,
+                stagger: 0.12,
+                ease: "power4.out"
+            }, 0.9);
+
+            // Subhead Reveal
+            tl.to(".subhead", { y: 0, opacity: 1, duration: 0.8, ease: "power3.out" }, 1.4);
+
+            // Button Drop/Bounce Effect (Replicating CSS Keyframes)
+            tl.to(".intro", {
+                y: 0,
+                scale: 1,
+                opacity: 1,
+                duration: 1.2,
+                ease: "elastic.out(1, 0.6)"
+            }, 1.6);
+
+            // Note Reveal
+            tl.to(".note", { y: 0, opacity: 1, duration: 0.8, ease: "power3.out" }, 1.8);
+
+            // Subtle Mouse Parallax
+            document.addEventListener("mousemove", (e) => {
+                const x = (e.clientX / window.innerWidth - 0.5) * 15;
+                const y = (e.clientY / window.innerHeight - 0.5) * 15;
+                
+                gsap.to(".content-layer", {
+                    x: x,
+                    y: y,
+                    duration: 1.5,
+                    ease: "power2.out",
+                    overwrite: "auto"
+                });
+            });
+        });
+
+        // --------------------------------------------------------
+        // Ambient Background WebGL
+        // --------------------------------------------------------
+        (function initAmbientBG() {
+            const canvas = document.getElementById('bg-canvas');
+            const gl = canvas.getContext('webgl');
+            if (!gl) return;
+
+            const vs = 'attribute vec2 p; void main() { gl_Position = vec4(p, 0.0, 1.0); }';
+            const fs = `
+                precision mediump float;
+                uniform vec2 u_res;
+                uniform float u_time;
+
+                float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }
+                float noise(vec2 p) {
+                    vec2 i = floor(p);
+                    vec2 f = fract(p);
+                    vec2 u = f * f * (3.0 - 2.0 * f);
+                    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+                               mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
+                }
+                float fbm(vec2 p) {
+                    float v = 0.0, a = 0.5;
+                    for (int i = 0; i < 4; i++) { v += a * noise(p); p = p * 2.0; a *= 0.5; }
+                    return v;
+                }
+
+                void main() {
+                    vec2 uv = gl_FragCoord.xy / u_res;
+                    uv.x *= u_res.x / u_res.y;
+                    
+                    float t = u_time * 0.15;
+                    
+                    // Slow moving dark liquid
+                    vec2 q = vec2(fbm(uv + t), fbm(uv + vec2(1.0) + t));
+                    vec2 r = vec2(fbm(uv + 1.0*q + vec2(1.7, 9.2) + 0.15*t),
+                                  fbm(uv + 1.0*q + vec2(8.3, 2.8) + 0.126*t));
+                    
+                    float f = fbm(uv + r);
+                    
+                    // Core dark colors, subtle icy/cyan hints replacing fiery shades
+                    vec3 col = mix(vec3(0.01, 0.02, 0.03), vec3(0.01, 0.04, 0.07), f);
+                    col = mix(col, vec3(0.02, 0.07, 0.12), clamp(length(q) * 0.5, 0.0, 1.0));
+                    
+                    // Vignette
+                    vec2 e = gl_FragCoord.xy / u_res * (1.0 - gl_FragCoord.xy / u_res);
+                    col *= 0.5 + 0.5 * pow(e.x * e.y * 15.0, 0.3);
+                    
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `;
+
+            function compile(type, src) {
+                const s = gl.createShader(type);
+                gl.shaderSource(s, src);
+                gl.compileShader(s);
+                return s;
+            }
+
+            const prog = gl.createProgram();
+            gl.attachShader(prog, compile(gl.VERTEX_SHADER, vs));
+            gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, fs));
+            gl.linkProgram(prog);
+            gl.useProgram(prog);
+
+            const buf = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+            
+            const locP = gl.getAttribLocation(prog, 'p');
+            gl.enableVertexAttribArray(locP);
+            gl.vertexAttribPointer(locP, 2, gl.FLOAT, false, 0, 0);
+
+            const uRes = gl.getUniformLocation(prog, 'u_res');
+            const uTime = gl.getUniformLocation(prog, 'u_time');
+
+            function resize() {
+                const dpr = Math.min(window.devicePixelRatio || 1, 2);
+                canvas.width = window.innerWidth * dpr;
+                canvas.height = window.innerHeight * dpr;
+                gl.viewport(0, 0, canvas.width, canvas.height);
+            }
+            window.addEventListener('resize', resize);
+            resize();
+
+            const start = performance.now();
+            function render(now) {
+                gl.uniform2f(uRes, canvas.width, canvas.height);
+                gl.uniform1f(uTime, (now - start) / 1000);
+                gl.drawArrays(gl.TRIANGLES, 0, 3);
+                requestAnimationFrame(render);
+            }
+            requestAnimationFrame(render);
+        })();
+
+        // --------------------------------------------------------
+        // Interactive Liquid Button WebGL (from reference)
+        // --------------------------------------------------------
+        (function initButtonWebGL() {
+            var btn = document.getElementById('btn');
+            var canvas = document.getElementById('gl');
+            var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            var gl = canvas.getContext('webgl');
+            
+            if (!gl) { 
+                btn.style.background = 'linear-gradient(to top, #0284c7 0%, #06b6d4 52%, #a5f3fc 55%, #050b11 56%)';
+                canvas.style.display = 'none';
+                return; 
+            }
+
+            var VS = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
+            var FS = [
+                'precision highp float;',
+                'uniform vec2 u_res;',
+                'uniform float u_time;',
+                'uniform float u_level;',
+                'uniform float u_tilt;',
+                'uniform float u_slosh;',
+                'float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123);}',
+                'float noise(vec2 p){',
+                '  vec2 i=floor(p), f=fract(p);',
+                '  vec2 u=f*f*(3.0-2.0*f);',
+                '  return mix(mix(hash(i),hash(i+vec2(1.,0.)),u.x),',
+                '             mix(hash(i+vec2(0.,1.)),hash(i+vec2(1.,1.)),u.x),u.y);',
+                '}',
+                'float fbm(vec2 p){',
+                '  float v=0.0; float a=0.5;',
+                '  for(int i=0;i<4;i++){ v+=a*noise(p); p=p*2.04+vec2(11.3,7.1); a*=0.5; }',
+                '  return v;',
+                '}',
+                'void main(){',
+                '  vec2 uv = gl_FragCoord.xy / u_res;',
+                '  float ar = u_res.x / u_res.y;',
+                '  float x = uv.x * ar;',
+                '  float t = u_time;',
+                '  float amp = 0.012 + u_slosh * 0.045;',
+                '  float surf = u_level',
+                '    + u_tilt * (uv.x - 0.5) * 0.34',
+                '    + amp * sin(x * 5.1 + t * 4.6)',
+                '    + amp * 0.62 * sin(x * 9.7 + t * (-6.8) + 1.7)',
+                '    + amp * 0.38 * sin(x * 14.3 + t * 8.9 + 4.2);',
+                '  float d = surf - uv.y;',
+                '  vec3 col = mix(vec3(0.03, 0.06, 0.1), vec3(0.05, 0.09, 0.15), uv.y);',
+                '  col += vec3(0.02, 0.05, 0.1) * pow(max(0.0, 1.0 - abs(uv.y - 0.88) * 6.0), 2.0);',
+                '  float inside = smoothstep(0.0, 0.012, d);',
+                '  float depth = clamp(d / max(u_level, 0.001), 0.0, 1.0);',
+                '  vec3 liq = mix(vec3(0.0, 0.9, 1.0), vec3(0.02, 0.15, 0.45), depth);',
+                '  float caust = fbm(vec2(x * 4.2, (uv.y + t * 0.14) * 4.2));',
+                '  liq *= 0.8 + 0.42 * caust;',
+                '  liq += vec3(0.02, 0.25, 0.35) * pow(max(0.0, d * 3.0), 1.5) * u_slosh;',
+                '  col = mix(col, liq, inside);',
+                '  col += vec3(0.4, 0.9, 1.0) * exp(-abs(d) * 80.0) * 0.85;',
+                '  col += vec3(0.8, 0.98, 1.0) * exp(-abs(d) * 220.0) * 0.5;',
+                '  vec2 e = uv * (1.0 - uv);',
+                '  col *= 0.55 + 0.45 * pow(e.x * e.y * 16.0, 0.22);',
+                '  gl_FragColor = vec4(col, 1.0);',
+                '}'
+            ].join('\n');
+
+            function compile(type, src) {
+                var s = gl.createShader(type);
+                gl.shaderSource(s, src);
+                gl.compileShader(s);
+                return s;
+            }
+            
+            var prog = gl.createProgram();
+            gl.attachShader(prog, compile(gl.VERTEX_SHADER, VS));
+            gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FS));
+            gl.linkProgram(prog);
+            gl.useProgram(prog);
+
+            var buf = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+            var locP = gl.getAttribLocation(prog, 'p');
+            gl.enableVertexAttribArray(locP);
+            gl.vertexAttribPointer(locP, 2, gl.FLOAT, false, 0, 0);
+
+            var uRes = gl.getUniformLocation(prog, 'u_res');
+            var uTime = gl.getUniformLocation(prog, 'u_time');
+            var uLevel = gl.getUniformLocation(prog, 'u_level');
+            var uTilt = gl.getUniformLocation(prog, 'u_tilt');
+            var uSlosh = gl.getUniformLocation(prog, 'u_slosh');
+
+            function resize() {
+                var dpr = Math.min(window.devicePixelRatio || 1, 2);
+                var w = Math.max(1, Math.round(canvas.clientWidth * dpr));
+                var h = Math.max(1, Math.round(canvas.clientHeight * dpr));
+                if (canvas.width !== w || canvas.height !== h) {
+                    canvas.width = w;
+                    canvas.height = h;
+                    gl.viewport(0, 0, w, h);
+                }
+            }
+            window.addEventListener('resize', resize);
+            resize();
+
+            var BASE = 0.56;
+            var level = BASE, gulp = 0;
+            var slosh = 0.4, tilt = 0, tiltTarget = 0;
+            var lastX = null;
+            var last = performance.now();
+
+            btn.addEventListener('mousemove', function (e) {
+                var rect = btn.getBoundingClientRect();
+                var x = (e.clientX - rect.left) / Math.max(1, rect.width);
+                if (lastX !== null) {
+                    slosh = Math.min(1.4, slosh + Math.abs(x - lastX) * 2.6);
+                }
+                lastX = x;
+                tiltTarget = Math.max(-1, Math.min(1, (x - 0.5) * 2));
+            });
+            btn.addEventListener('mouseleave', function () { lastX = null; tiltTarget = 0; });
+            btn.addEventListener('focus', function () { slosh = Math.min(1.4, slosh + 0.5); });
+            btn.addEventListener('click', function () {
+                gulp = 1;
+                slosh = Math.min(1.4, slosh + 0.7);
+            });
+
+            function frame(now) {
+                var dt = Math.min(0.05, (now - last) / 1000);
+                last = now;
+                slosh *= Math.exp(-1.5 * dt);
+                gulp *= Math.exp(-1.1 * dt);
+                tilt += (tiltTarget - tilt) * Math.min(1, dt * 5);
+                var levelTarget = BASE - 0.36 * gulp;
+                level += (levelTarget - level) * Math.min(1, dt * 5.5);
+                
+                resize();
+                gl.uniform2f(uRes, canvas.width, canvas.height);
+                gl.uniform1f(uTime, reduced ? 2.0 : now / 1000);
+                gl.uniform1f(uLevel, level);
+                gl.uniform1f(uTilt, tilt);
+                gl.uniform1f(uSlosh, reduced ? 0.25 : slosh);
+                gl.drawArrays(gl.TRIANGLES, 0, 3);
+                requestAnimationFrame(frame);
+            }
+            requestAnimationFrame(frame);
+        })();
+    </script>
+</body>
+</html>

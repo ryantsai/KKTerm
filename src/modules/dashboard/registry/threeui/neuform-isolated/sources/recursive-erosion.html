@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Recursive Erosion — Particle Sphere Motion Study</title>
+<meta name="description" content="Self-contained 4-second looping WebGL study: a particle sphere morphs and erodes recursively while glowing trails crawl across its surface.">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden;background:transparent}
+  body{display:grid;place-items:center}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  #stage{position:relative;width:100%;height:100%;background:transparent;overflow:hidden;--u:1px}
+  #gl,#fx{position:absolute;inset:0;width:100%;height:100%;display:block}
+  #fx{pointer-events:none;mix-blend-mode:screen;opacity:.4}
+  /* faint scanlines only — the study paints no background of its own */
+  #vig{position:absolute;inset:0;pointer-events:none;
+       background:repeating-linear-gradient(180deg,rgba(255,255,255,.014) 0 1px,rgba(0,0,0,0) 1px 3px)}
+  /* --u is one reference pixel of the 1080-square master, set on resize */
+  #badge{position:absolute;right:calc(46 * var(--u));bottom:calc(45 * var(--u));pointer-events:none;
+         font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"DejaVu Sans Mono",monospace;
+         font-size:calc(15 * var(--u));line-height:calc(16.8 * var(--u));
+         letter-spacing:calc(1 * var(--u));white-space:nowrap;text-align:left}
+  #badge b{display:block;font-weight:400;color:#f6dccd;
+           text-shadow:calc(-1.3 * var(--u)) 0 rgba(226,64,80,.55),
+                       calc(1.3 * var(--u)) 0 rgba(60,120,255,.5)}
+  #badge b i{font-style:normal;color:#e6845f;margin-right:calc(5 * var(--u));
+             text-shadow:calc(-1.1 * var(--u)) 0 rgba(226,64,80,.4),
+                         calc(1.1 * var(--u)) 0 rgba(70,130,255,.45)}
+</style>
+</head>
+<body>
+<p class="sr">A four-second looping study of a generative particle sphere: a lattice of small orange dots over a transparent backdrop, its surface crumpling and eroding into holes while bright glowing trails crawl over it, each dot fringed with red and blue chromatic aberration.</p>
+<div id="stage">
+  <canvas id="gl"></canvas>
+  <canvas id="fx"></canvas>
+  <div id="vig"></div>
+  <div id="badge">
+    <b><i>//</i>W.O.R.M.</b>
+    <b><i>//</i>WORLDS OF</b>
+    <b><i>//</i>RECURSIVE</b>
+    <b><i>//</i>MOTION</b>
+  </div>
+</div>
+<script>
+(function(){
+  "use strict";
+  var DUR=3.99;                 /* reference loop length */
+  var N=2500;                   /* lattice points */
+  var WORMS=7, TAIL=14, WN=WORMS*TAIL;
+
+  var stage=document.getElementById('stage');
+  var cv=document.getElementById('gl'), fx=document.getElementById('fx');
+  var gl=cv.getContext('webgl',{alpha:true,antialias:false,premultipliedAlpha:true,preserveDrawingBuffer:true});
+  var fc=fx.getContext('2d');
+
+  /* ------------------------------------------------------------------ *
+     shaders
+   * ------------------------------------------------------------------ */
+  var NOISE=[
+  'vec3 mod289(vec3 x){return x-floor(x*(1.0/289.0))*289.0;}',
+  'vec4 mod289(vec4 x){return x-floor(x*(1.0/289.0))*289.0;}',
+  'vec4 permute(vec4 x){return mod289(((x*34.0)+1.0)*x);}',
+  'vec4 taylorInvSqrt(vec4 r){return 1.79284291400159-0.85373472095314*r;}',
+  'float snoise(vec3 v){',
+  '  const vec2 C=vec2(1.0/6.0,1.0/3.0); const vec4 D=vec4(0.0,0.5,1.0,2.0);',
+  '  vec3 i=floor(v+dot(v,C.yyy)); vec3 x0=v-i+dot(i,C.xxx);',
+  '  vec3 g=step(x0.yzx,x0.xyz); vec3 l=1.0-g; vec3 i1=min(g.xyz,l.zxy); vec3 i2=max(g.xyz,l.zxy);',
+  '  vec3 x1=x0-i1+C.xxx; vec3 x2=x0-i2+C.yyy; vec3 x3=x0-D.yyy;',
+  '  i=mod289(i);',
+  '  vec4 p=permute(permute(permute(i.z+vec4(0.0,i1.z,i2.z,1.0))+i.y+vec4(0.0,i1.y,i2.y,1.0))+i.x+vec4(0.0,i1.x,i2.x,1.0));',
+  '  float n_=0.142857142857; vec3 ns=n_*D.wyz-D.xzx;',
+  '  vec4 j=p-49.0*floor(p*ns.z*ns.z);',
+  '  vec4 x_=floor(j*ns.z); vec4 y_=floor(j-7.0*x_);',
+  '  vec4 x=x_*ns.x+ns.yyyy; vec4 y=y_*ns.x+ns.yyyy; vec4 h=1.0-abs(x)-abs(y);',
+  '  vec4 b0=vec4(x.xy,y.xy); vec4 b1=vec4(x.zw,y.zw);',
+  '  vec4 s0=floor(b0)*2.0+1.0; vec4 s1=floor(b1)*2.0+1.0; vec4 sh=-step(h,vec4(0.0));',
+  '  vec4 a0=b0.xzyw+s0.xzyw*sh.xxyy; vec4 a1=b1.xzyw+s1.xzyw*sh.zzww;',
+  '  vec3 p0=vec3(a0.xy,h.x); vec3 p1=vec3(a0.zw,h.y); vec3 p2=vec3(a1.xy,h.z); vec3 p3=vec3(a1.zw,h.w);',
+  '  vec4 norm=taylorInvSqrt(vec4(dot(p0,p0),dot(p1,p1),dot(p2,p2),dot(p3,p3)));',
+  '  p0*=norm.x; p1*=norm.y; p2*=norm.z; p3*=norm.w;',
+  '  vec4 m=max(0.6-vec4(dot(x0,x0),dot(x1,x1),dot(x2,x2),dot(x3,x3)),0.0); m=m*m;',
+  '  return 42.0*dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));',
+  '}'].join('\n');
+
+  var VS=[
+  'precision highp float;',
+  'attribute vec3 a_dir;',
+  'attribute vec2 a_rand;',
+  'uniform mat3 u_rot;',
+  'uniform float u_th, u_px, u_pass, u_thr, u_trail;',
+  'uniform vec2 u_off, u_scale;',
+  'uniform vec4 u_worm['+WN+'];',
+  'varying vec3 v_col;',
+  'varying float v_a, v_ca, v_k;',
+  NOISE,
+  'void main(){',
+  '  vec3 dir=a_dir;',
+  '  vec2 c=vec2(cos(u_th),sin(u_th));',
+  /* every noise lookup rides a closed circular path, so the morph is exactly periodic */
+  '  float n1=snoise(dir*1.30+vec3(c*0.95,0.0));',
+  '  float n2=snoise(dir*2.70+vec3(0.0,c*0.80));',
+  '  float n3=snoise(dir*5.60+vec3(c.y*0.62,0.0,c.x*0.62));',
+  '  float ridge=1.0-abs(n2);',
+  '  float disp=0.54*n1+0.44*(ridge-0.5)+0.20*n3;',
+  '  float R=1.0+0.305*disp;',
+  /* recursive erosion: two scales of noise chew holes through the shell */
+  '  float e=0.66*snoise(dir*1.45+vec3(c*1.30,0.4))+0.34*snoise(dir*3.10+vec3(0.3,c*1.05));',
+  '  float alive=smoothstep(u_thr-0.05,u_thr+0.06,e+0.5);',
+  '  vec3 n=u_rot*dir;',
+  '  vec3 p=u_rot*(dir*R);',
+  '  float persp=1.0/(1.0-0.14*p.z);',
+  '  float face=smoothstep(-0.10,0.06,n.z);',
+  /* glowing trails crawling over the shell: the rope carries its own dense
+     particles, the lattice underneath only picks up a soft halo from them */
+  '  float boost=0.0;',
+  '  if(u_trail>0.5){',
+  '    boost=a_rand.x*1.5;',
+  '  }else{',
+  '    for(int i=0;i<'+WN+';i++){',
+  '      vec3 d=dir-u_worm[i].xyz;',
+  '      boost+=u_worm[i].w*exp(-dot(d,d)*260.0);',
+  '    }',
+  '    boost=min(boost,1.5);',
+  '  }',
+  '  float live=(u_trail>0.5?1.0:max(alive,min(1.0,boost*0.9)))*face;',
+  '  float sz=u_px*persp*(u_trail>0.5',
+  '    ?(0.72+0.55*a_rand.y)*(1.0+boost*1.50)',
+  '    :(0.78+0.50*a_rand.y)*(1.0+boost*1.2));',
+  '  vec3 cDim=vec3(0.94,0.33,0.05);',
+  '  vec3 cMid=vec3(1.00,0.56,0.16);',
+  '  vec3 cHot=vec3(1.00,0.71,0.31);',
+  '  vec3 col=mix(cDim,cMid,a_rand.x*a_rand.x);',
+  '  if(u_trail>0.5) col=mix(cMid,cHot,clamp(boost,0.0,1.0));',
+  '  else col=mix(col,cHot,clamp(boost*1.1,0.0,1.0));',
+  '  float rim=1.0+0.12*pow(1.0-abs(n.z),4.0);',
+  '  float a=(u_trail>0.5',
+  '    ?(0.52+0.20*a_rand.y)*clamp(boost,0.0,1.22)',
+  '    :(0.92+0.28*a_rand.y)*(0.85+0.60*min(boost,1.2)))*rim*live;',
+  '  if(u_pass>0.5){',
+  '    sz*=4.6; a*=0.115*smoothstep(0.15,0.70,boost);',
+  '  }',
+  '  v_col=col; v_a=a;',
+  '  v_k=(u_pass>0.5)?3.0:(u_trail>0.5?0.0:2.1);',
+  '  v_ca=(u_pass>0.5)?0.0:(u_trail>0.5?0.02:clamp(2.0/max(sz,3.0),0.015,0.055));',
+  '  gl_PointSize=(a<0.004)?0.0:clamp(sz,0.0,140.0);',
+  '  gl_Position=vec4(p.xy*persp*u_scale+u_off,0.0,1.0);',
+  '}'].join('\n');
+
+  var FS=[
+  'precision mediump float;',
+  'varying vec3 v_col;',
+  'varying float v_a, v_ca, v_k;',
+  'float sp(vec2 c,float k){float d=length(c)*2.0;',
+  '  if(k<0.5) return 1.0-smoothstep(0.42,1.0,d);',
+  '  return pow(max(0.0,1.0-d),k);}',
+  'void main(){',
+  '  vec2 q=gl_PointCoord-0.5;',
+  '  float k=v_k;',
+  '  vec2 o=vec2(v_ca,v_ca*0.35);',
+  /* per-dot chromatic aberration: the reference dots carry a red/blue fringe */
+  '  float aR=sp(q+o,k), aG=sp(q,k), aB=sp(q-o,k);',
+  '  vec3 c=vec3(v_col.r*aR,v_col.g*aG,v_col.b*aB)*v_a;',
+  /* premultiplied coverage, so the dots composite over whatever sits behind the
+     canvas instead of over a painted background */
+  '  float cov=clamp(max(max(aR,aG),aB)*v_a,0.0,1.0);',
+  '  gl_FragColor=vec4(min(c,vec3(1.0)),cov);',
+  '}'].join('\n');
+
+  function sh(type,src){
+    var s=gl.createShader(type);
+    gl.shaderSource(s,src); gl.compileShader(s);
+    if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+    return s;
+  }
+  var prog=gl.createProgram();
+  gl.attachShader(prog,sh(gl.VERTEX_SHADER,VS));
+  gl.attachShader(prog,sh(gl.FRAGMENT_SHADER,FS));
+  gl.linkProgram(prog);
+  if(!gl.getProgramParameter(prog,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+  gl.useProgram(prog);
+
+  /* ------------------------------------------------------------------ *
+     geometry — fibonacci sphere, the lattice reads as spiral rows
+   * ------------------------------------------------------------------ */
+  function rng(s){var a=s>>>0;return function(){a+=0x6D2B79F5;var t=a;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296}}
+  var R0=rng(20260812);
+  var dirs=new Float32Array(N*3), rnds=new Float32Array(N*2);
+  var GA=Math.PI*(3-Math.sqrt(5)), SP=Math.sqrt(4*Math.PI/N);
+  for(var i=0;i<N;i++){
+    var y=1-(i+0.5)/N*2, r=Math.sqrt(Math.max(0,1-y*y)), th=GA*i;
+    /* a touch of jitter keeps the grain even without reading as spiral arms */
+    var jx=(R0()*2-1)*SP*0.08, jy=(R0()*2-1)*SP*0.08, jz=(R0()*2-1)*SP*0.08;
+    var vx=Math.cos(th)*r+jx, vy=y+jy, vz=Math.sin(th)*r+jz;
+    var il=1/Math.hypot(vx,vy,vz);
+    dirs[i*3]=vx*il; dirs[i*3+1]=vy*il; dirs[i*3+2]=vz*il;
+    rnds[i*2]=R0(); rnds[i*2+1]=R0();
+  }
+  var A={dir:gl.getAttribLocation(prog,'a_dir'),rand:gl.getAttribLocation(prog,'a_rand')};
+  gl.enableVertexAttribArray(A.dir); gl.enableVertexAttribArray(A.rand);
+  function stat(data){
+    var b=gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER,b);
+    gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);
+    return b;
+  }
+  var bDir=stat(dirs), bRand=stat(rnds);
+  function bindShell(){
+    gl.bindBuffer(gl.ARRAY_BUFFER,bDir);  gl.vertexAttribPointer(A.dir,3,gl.FLOAT,false,0,0);
+    gl.bindBuffer(gl.ARRAY_BUFFER,bRand); gl.vertexAttribPointer(A.rand,2,gl.FLOAT,false,0,0);
+  }
+
+  var U={};
+  ['u_rot','u_th','u_scale','u_px','u_pass','u_thr','u_off','u_worm','u_trail'].forEach(function(k){
+    U[k]=gl.getUniformLocation(prog,k);
+  });
+
+  /* ------------------------------------------------------------------ *
+     worms — each rides a tilted great circle, so the loop stays seamless
+   * ------------------------------------------------------------------ */
+  var W=[];
+  for(i=0;i<WORMS;i++){
+    /* each path circles a cap centred on the viewer-facing side, so a steady
+       handful of ropes is always on screen instead of swinging out of sight */
+    var cz=0.06+R0()*0.86, ca0=R0()*6.283, cr=Math.sqrt(Math.max(0,1-cz*cz));
+    var c=[Math.cos(ca0)*cr,Math.sin(ca0)*cr,cz];
+    var t0=Math.abs(c[1])<0.85?[0,1,0]:[1,0,0];
+    var d=t0[0]*c[0]+t0[1]*c[1]+t0[2]*c[2];
+    var u=[t0[0]-c[0]*d,t0[1]-c[1]*d,t0[2]-c[2]*d];
+    var lu=Math.hypot(u[0],u[1],u[2]); u=[u[0]/lu,u[1]/lu,u[2]/lu];
+    var v=[c[1]*u[2]-c[2]*u[1],c[2]*u[0]-c[0]*u[2],c[0]*u[1]-c[1]*u[0]];
+    var rho=0.46+R0()*0.42, sr=Math.sin(rho), crho=Math.cos(rho);
+    W.push({c:c,u:u,v:v,sr:sr,cr:crho,m:1+Math.floor(R0()*2),ph:R0()*6.283,
+            str:0.90+R0()*0.28,arc:(0.78+R0()*0.34)/sr,fl:R0()*6.283});
+  }
+  /* a point on worm k's path at angle ang, written into out[] */
+  function onPath(w,ang,out){
+    var ca=Math.cos(ang), sa=Math.sin(ang);
+    out[0]=w.c[0]*w.cr+(w.u[0]*ca+w.v[0]*sa)*w.sr;
+    out[1]=w.c[1]*w.cr+(w.u[1]*ca+w.v[1]*sa)*w.sr;
+    out[2]=w.c[2]*w.cr+(w.u[2]*ca+w.v[2]*sa)*w.sr;
+  }
+  var tmpA=[0,0,0], tmpB=[0,0,0];
+  var wormPos=new Float32Array(WN*4);
+  function worms(th){
+    for(var k=0;k<WORMS;k++){
+      var w=W[k], head=th*w.m+w.ph;
+      var flick=0.76+0.24*Math.sin(th*2.0+w.fl);
+      for(var j=0;j<TAIL;j++){
+        var o=(k*TAIL+j);
+        onPath(w,head-j*(w.arc/TAIL),tmpA);
+        wormPos[o*4]=tmpA[0]; wormPos[o*4+1]=tmpA[1]; wormPos[o*4+2]=tmpA[2];
+        wormPos[o*4+3]=w.str*flick*(0.42+0.58*Math.pow(1-j/TAIL,0.7))*(0.80+0.20*Math.sin(j*1.7+head*2.0));
+      }
+    }
+  }
+
+  /* the rope itself: pearls strung along each path, finer than the lattice */
+  var PEARL=34, TN=WORMS*PEARL, TSTRIDE=5;
+  var pearls=new Float32Array(TN*TSTRIDE), pearlSeed=new Float32Array(TN);
+  for(i=0;i<TN;i++) pearlSeed[i]=R0();
+  var bTrail=gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER,bTrail);
+  gl.bufferData(gl.ARRAY_BUFFER,pearls.byteLength,gl.DYNAMIC_DRAW);
+  function bindTrail(){
+    gl.bindBuffer(gl.ARRAY_BUFFER,bTrail);
+    gl.vertexAttribPointer(A.dir,3,gl.FLOAT,false,TSTRIDE*4,0);
+    gl.vertexAttribPointer(A.rand,2,gl.FLOAT,false,TSTRIDE*4,12);
+  }
+  function rope(th){
+    for(var k=0;k<WORMS;k++){
+      var w=W[k], head=th*w.m+w.ph;
+      var flick=0.86+0.14*Math.sin(th*2.0+w.fl);
+      var pstep=w.arc/PEARL;
+      for(var j=0;j<PEARL;j++){
+        var ang=head-j*pstep;
+        var o=(k*PEARL+j), b=o*TSTRIDE, u=j/PEARL;
+        /* a small wobble in the path angle keeps the rope from reading as a
+           perfect arc without kinking it */
+        var wob=0.055*Math.sin(j*0.42+head*2.0+w.fl)+0.030*Math.sin(j*0.17-head);
+        onPath(w,ang+wob,tmpB);
+        pearls[b]=tmpB[0]; pearls[b+1]=tmpB[1]; pearls[b+2]=tmpB[2];
+        /* long even ridge that only fades at the far end, beaded along the way */
+        pearls[b+3]=w.str*flick*(0.34+0.66*Math.pow(1-u,0.55))
+                    *(0.74+0.26*Math.sin(j*1.15+head*2.0+w.fl));
+        pearls[b+4]=pearlSeed[o];
+      }
+    }
+    gl.bindBuffer(gl.ARRAY_BUFFER,bTrail);
+    gl.bufferSubData(gl.ARRAY_BUFFER,0,pearls);
+  }
+
+  /* gentle tumble, periodic over the loop */
+  function rot(th){
+    var ax=0.22*Math.sin(th)+0.06*Math.sin(th*2+1.1);
+    var ay=0.30*Math.sin(th+2.2)+0.08*Math.cos(th*2);
+    var az=0.10*Math.cos(th+0.6);
+    var cx=Math.cos(ax),sx=Math.sin(ax),cy=Math.cos(ay),sy=Math.sin(ay),cz=Math.cos(az),sz=Math.sin(az);
+    /* Rz * Ry * Rx, column-major for WebGL */
+    var m00=cz*cy, m01=cz*sy*sx-sz*cx, m02=cz*sy*cx+sz*sx;
+    var m10=sz*cy, m11=sz*sy*sx+cz*cx, m12=sz*sy*cx-cz*sx;
+    var m20=-sy,   m21=cy*sx,          m22=cy*cx;
+    return new Float32Array([m00,m10,m20, m01,m11,m21, m02,m12,m22]);
+  }
+
+  /* ------------------------------------------------------------------ *
+     grain overlay
+   * ------------------------------------------------------------------ */
+  var TILES=[];
+  (function(){
+    for(var t=0;t<5;t++){
+      var c=document.createElement('canvas'); c.width=c.height=170;
+      var g=c.getContext('2d'), im=g.createImageData(170,170), d=im.data;
+      for(var i=0;i<d.length;i+=4){
+        var v=R0(), n=v*v*255;
+        d[i]=n; d[i+1]=n*0.74; d[i+2]=n*0.52; d[i+3]=255;
+      }
+      g.putImageData(im,0,0); TILES.push(c);
+    }
+  })();
+  var pats=null;
+  function grain(frame){
+    if(!fx.width) return;
+    if(!pats) pats=TILES.map(function(t){return fc.createPattern(t,'repeat')});
+    fc.setTransform(1,0,0,1,0,0);
+    fc.clearRect(0,0,fx.width,fx.height);
+    fc.globalAlpha=0.11;
+    fc.fillStyle=pats[frame%pats.length];
+    fc.setTransform(1,0,0,1,(frame*37)%170,(frame*61)%170);
+    fc.fillRect(-170,-170,fx.width+340,fx.height+340);
+    fc.setTransform(1,0,0,1,0,0);
+  }
+
+  /* ------------------------------------------------------------------ *
+     render
+   * ------------------------------------------------------------------ */
+  var DPR=1, size=0, VW=0, VH=0, aspX=1, aspY=1;
+  function resize(){
+    var w=stage.clientWidth||600, h=stage.clientHeight||600;
+    DPR=Math.min(window.devicePixelRatio||1,2);
+    VW=Math.max(1,Math.round(w*DPR)); VH=Math.max(1,Math.round(h*DPR));
+    if(cv.width!==VW||cv.height!==VH){
+      cv.width=fx.width=VW; cv.height=fx.height=VH;
+      pats=null;
+    }
+    /* the sphere is measured against the short edge, so it stays round and
+       centred in any container aspect */
+    size=Math.min(VW,VH);
+    aspX=VW>VH?VH/VW:1; aspY=VH>VW?VW/VH:1;
+    stage.style.setProperty('--u',(Math.min(w,h)/1080)+'px');
+    gl.viewport(0,0,VW,VH);
+  }
+
+  var frameNo=0;
+  function render(t){
+    var th=2*Math.PI*(t/DUR);
+    worms(th); rope(th);
+    gl.clearColor(0,0,0,0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.disable(gl.DEPTH_TEST);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
+    gl.uniformMatrix3fv(U.u_rot,false,rot(th));
+    gl.uniform1f(U.u_th,th);
+    gl.uniform2f(U.u_scale,0.672*aspX,0.672*aspY);
+    gl.uniform1f(U.u_px,Math.max(1.0,size/1080*8.0));
+    gl.uniform1f(U.u_thr,0.19+0.04*Math.sin(th*2+0.8));
+    gl.uniform2f(U.u_off,0.006*Math.sin(th+1.0),-0.012*Math.cos(th));
+    gl.uniform4fv(U.u_worm,wormPos);
+
+    bindShell();
+    gl.uniform1f(U.u_trail,0);
+    gl.uniform1f(U.u_pass,0);
+    gl.drawArrays(gl.POINTS,0,N);
+
+    bindTrail();
+    gl.uniform1f(U.u_trail,1);
+    gl.uniform1f(U.u_pass,1);              /* bloom under the rope */
+    gl.drawArrays(gl.POINTS,0,TN);
+    gl.uniform1f(U.u_pass,0);
+    gl.drawArrays(gl.POINTS,0,TN);
+    grain(frameNo++);
+  }
+
+  /* ------------------------------------------------------------------ *
+     driver
+   * ------------------------------------------------------------------ */
+  var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var start=null, raf=0, playing=!reduce, held=false, at=0;
+  function seek(x){at=((x%DUR)+DUR)%DUR;frameNo=Math.round(at*30);render(at);return at}
+  function play(){if(playing&&raf)return;playing=true;start=performance.now()-at*1000;if(!raf)raf=requestAnimationFrame(tick)}
+  function pause(){playing=false;if(raf){cancelAnimationFrame(raf);raf=0}}
+  function tick(now){
+    if(!playing){raf=0;return}
+    raf=requestAnimationFrame(tick);
+    if(start===null)start=now;
+    at=((now-start)/1000)%DUR;
+    render(at);
+  }
+  resize();
+  window.addEventListener('resize',function(){resize();render(at)});
+  if(reduce){ seek(1.2) } else {
+    raf=requestAnimationFrame(tick);
+    document.addEventListener('visibilitychange',function(){
+      if(document.hidden){ if(playing){held=true;pause()} }
+      else if(held){ held=false; play() }
+    });
+  }
+  window.__DUR=DUR;
+  window.__seek=function(x){pause();return seek(x)};
+  window.__play=play; window.__pause=pause; window.__time=function(){return at};
+})();
+</script>
+</body>
+</html>

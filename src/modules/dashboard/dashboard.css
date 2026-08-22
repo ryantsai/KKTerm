@@ -1050,6 +1050,42 @@ button.dashboard-pill-dot:focus-visible {
   height: 100%;
 }
 
+.dw-dynamic-bg-layer .threeui-background,
+.dw-dynamic-bg-layer .at-the-horizon,
+.dw-dynamic-bg-layer .temple-night-scene {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  isolation: isolate;
+  pointer-events: none !important;
+}
+
+.dw-dynamic-bg-layer .threeui-background *,
+.dw-dynamic-bg-layer .at-the-horizon *,
+.dw-dynamic-bg-layer .temple-night-scene * {
+  pointer-events: none !important;
+}
+
+.dw-dynamic-bg-layer .threeui-background > canvas,
+.dw-dynamic-bg-layer .threeui-background > iframe,
+.dw-dynamic-bg-layer .at-the-horizon__frame,
+.dw-dynamic-bg-layer .temple-night-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.dw-dynamic-bg-layer > iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
 .componentry-background-host,
 .componentry-background-root {
   position: absolute;
@@ -3433,7 +3469,10 @@ button.dashboard-pill-dot:focus-visible {
   position: fixed;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translate(
+    calc(-50% + var(--dw-bg-popover-offset-x, 0px)),
+    calc(-50% + var(--dw-bg-popover-offset-y, 0px))
+  );
   z-index: 200;
   width: 840px;
   height: 620px;
@@ -3458,6 +3497,13 @@ button.dashboard-pill-dot:focus-visible {
   gap: 7px;
   font-weight: 650;
   color: var(--text-muted);
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.dw-bg-popover-head.is-dragging {
+  cursor: grabbing;
 }
 
 .dw-bg-popover-head svg {
@@ -3677,16 +3723,6 @@ button.dashboard-pill-dot:focus-visible {
   height: 100%;
   object-fit: cover;
   pointer-events: none;
-}
-
-.dw-bg-thumb-live {
-  --dw-canvas-padding-top: 0px;
-  --dw-canvas-padding-x: 0px;
-  --dw-canvas-padding-bottom: 0px;
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  border-radius: inherit;
 }
 
 .dw-bg-thumb-check {

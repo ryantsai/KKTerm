@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vanguard Labs — Dimensional Architecture</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+</head>
+<body class="bg-[#050505] text-gray-100 font-sans antialiased overflow-hidden selection:bg-cyan-500/20 selection:text-cyan-100" style="font-family: 'Inter', sans-serif;">
+
+    <!-- WebGL Canvas Container -->
+    <canvas id="webgl-canvas" class="fixed inset-0 w-full h-full pointer-events-none z-[-30]"></canvas>
+
+    <!-- Technical Grid Overlay (Dark Mode) -->
+    <div class="fixed inset-0 w-full h-full pointer-events-none z-[-20] opacity-[0.06]" style="background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.8) 0, rgba(255,255,255,0.8) 1px, transparent 1px, transparent 56px);"></div>
+
+    <!-- Cinematic Grain Overlay (Dark Mode) -->
+    <div class="fixed inset-0 w-full h-full pointer-events-none z-[-10] mix-blend-overlay opacity-[0.15]" style="background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.85%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E');"></div>
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full z-50 px-6 py-6 flex justify-between items-center bg-[#050505]/40 backdrop-blur-lg border-b border-white/5 gsap-reveal">
+        <a href="#" class="text-sm font-light tracking-wide text-gray-200 hover:text-white transition-colors duration-300 flex items-center gap-3">
+            <span class="w-1.5 h-1.5 rounded-full bg-[#00FFCC] shadow-[0_0_12px_#00FFCC]"></span>
+            Vanguard Labs
+        </a>
+        
+        <div class="hidden md:flex gap-8 text-sm font-extralight text-gray-400">
+            <a href="#" class="hover:text-cyan-400 transition-colors duration-300">Framework</a>
+            <a href="#" class="hover:text-cyan-400 transition-colors duration-300">Architecture</a>
+            <a href="#" class="hover:text-cyan-400 transition-colors duration-300">Modules</a>
+            <a href="#" class="hover:text-cyan-400 transition-colors duration-300">Transmission</a>
+        </div>
+
+        <button class="md:hidden text-gray-400 hover:text-white transition-colors" aria-label="Menu">
+            <iconify-icon icon="solar:hamburger-menu-linear" class="text-2xl" stroke-width="1.5"></iconify-icon>
+        </button>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="relative h-screen flex flex-col justify-center px-6 md:px-12 lg:px-24 z-10 pointer-events-none">
+        <div class="max-w-2xl pointer-events-auto">
+            
+            <div class="overflow-hidden mb-6 flex items-center gap-3">
+                <span class="relative inline-flex items-center px-3 py-1.5 text-xs font-light text-cyan-300 gsap-reveal-text group z-0">
+                    <span class="absolute inset-0 rounded-full bg-gradient-to-r from-cyan-500/20 to-purple-500/20 -z-20"></span>
+                    <span class="absolute inset-[1px] rounded-full bg-[#0A0A0A]/90 -z-10 backdrop-blur-sm"></span>
+                    <iconify-icon icon="solar:augmented-reality-linear" class="mr-2 text-sm" stroke-width="1.5"></iconify-icon>
+                    Dimensional Core v4.5
+                </span>
+            </div>
+            
+            <h1 class="text-5xl md:text-6xl lg:text-7xl font-light tracking-tight leading-tight text-white mb-8">
+                <span class="inline-block overflow-hidden align-top pb-1"><span class="inline-block masked-word font-semibold">Immersive</span></span>
+                <span class="inline-block overflow-hidden align-top pb-1"><span class="inline-block masked-word font-semibold">environments,</span></span>
+                <br class="hidden md:block">
+                <span class="inline-block overflow-hidden align-top pb-1"><span class="inline-block masked-word font-semibold">engineered</span></span>
+                <span class="inline-block overflow-hidden align-top pb-1"><span class="inline-block masked-word font-semibold">with</span></span>
+                <br class="hidden md:block">
+                <span class="inline-block overflow-hidden align-top pb-1">
+                    <span class="inline-block masked-word text-transparent bg-clip-text font-semibold" style="background-image: linear-gradient(120deg, #F3F4F6, #9CA3AF); -webkit-background-clip: text;">absolute</span>
+                </span>
+                <span class="inline-block overflow-hidden align-top pb-1">
+                    <span class="inline-block masked-word text-transparent bg-clip-text font-semibold" style="background-image: linear-gradient(120deg, #00FFCC, #7000FF); -webkit-background-clip: text;">precision.</span>
+                </span>
+            </h1>
+
+            <p class="text-sm md:text-base text-gray-400 max-w-md font-extralight leading-relaxed mb-10 gsap-reveal-text">
+                We build boundary-pushing, physics-enabled digital topologies that merge advanced WebGL with sleek brutalism, crafting the next frontier of immersive computing.
+            </p>
+
+            <div class="flex flex-col sm:flex-row gap-5 gsap-reveal-text">
+                <a href="#" class="inline-flex items-center justify-center px-6 py-3 text-sm font-medium text-[#050505] bg-white rounded-full hover:bg-gray-200 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 group shadow-[0_0_20px_rgba(255,255,255,0.15)]">
+                    Initialize Directory
+                    <iconify-icon icon="solar:arrow-right-linear" class="ml-2 text-lg group-hover:translate-x-1 transition-transform" stroke-width="1.5"></iconify-icon>
+                </a>
+                <a href="#" class="group relative inline-flex items-center justify-center px-6 py-3 text-sm font-light text-gray-300 rounded-full transition-all duration-300 hover:scale-[1.02] hover:text-white active:scale-[0.98] z-0">
+                    <span class="absolute inset-0 rounded-full bg-gradient-to-br from-gray-800 via-gray-700 to-gray-900 group-hover:from-gray-700 group-hover:via-gray-600 group-hover:to-gray-800 transition-colors -z-20"></span>
+                    <span class="absolute inset-[1px] rounded-full bg-[#050505]/80 backdrop-blur-md -z-10"></span>
+                    Launch Environment
+                </a>
+            </div>
+        </div>
+    </main>
+
+    <!-- UI Controls & Indicators -->
+    <div class="absolute bottom-0 w-full px-6 py-8 flex justify-between items-end z-10 pointer-events-none gsap-reveal">
+        <div class="flex flex-col gap-2">
+            <div class="text-xs text-gray-500 font-light tracking-widest uppercase">
+                Vector // <span id="coord-display" class="text-cyan-400/80 font-medium tracking-wider">0.0000, 0.0000</span>
+            </div>
+            
+            <!-- Custom Theme Toggle -->
+            <div class="flex items-center gap-4 mt-5 pointer-events-auto group cursor-pointer" id="theme-toggle" role="switch" aria-checked="false">
+                <span class="text-xs font-light text-gray-500 uppercase tracking-widest group-hover:text-gray-300 transition-colors">Void</span>
+                <div class="w-10 h-5 rounded-full bg-gray-800 border border-gray-700 relative transition-all duration-300 flex items-center p-0.5 group-hover:border-gray-500 shadow-inner" id="toggle-track">
+                    <div class="w-3.5 h-3.5 rounded-full bg-cyan-400 transform transition-transform duration-300 translate-x-0 shadow-[0_0_8px_#00FFCC]" id="toggle-thumb"></div>
+                </div>
+                <span class="text-xs font-light text-gray-500 uppercase tracking-widest group-hover:text-gray-300 transition-colors">Aurora</span>
+            </div>
+        </div>
+
+        <div class="flex flex-col items-center gap-4">
+            <span class="text-xs text-gray-500 uppercase tracking-widest font-light" style="writing-mode: vertical-rl;">Descend</span>
+            <div class="w-[1px] h-14 bg-gray-800 relative overflow-hidden">
+                <div class="scroll-line absolute top-0 left-0 w-full h-full bg-gradient-to-b from-transparent via-cyan-400 to-transparent"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Dark WebGL Architecture ---
+        const initWebGL = () => {
+            const canvas = document.getElementById('webgl-canvas');
+            if (!canvas) return;
+
+            const renderer = new THREE.WebGLRenderer({ 
+                canvas, 
+                alpha: true, 
+                antialias: false 
+            });
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.z = 12;
+
+            const uniforms = {
+                u_time: { value: 0 },
+                u_resolution: { value: new THREE.Vector2() },
+                u_color1: { value: new THREE.Color(0.0, 0.8, 0.7) }, // Cyan
+                u_color2: { value: new THREE.Color(0.4, 0.0, 0.9) }  // Deep Purple
+            };
+
+            const snoiseLogic = `
+                vec3 permute(vec3 x) { return mod(((x*34.0)+1.0)*x, 289.0); }
+                float snoise(vec2 v){
+                    const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);
+                    vec2 i  = floor(v + dot(v, C.yy) );
+                    vec2 x0 = v -   i + dot(i, C.xx);
+                    vec2 i1;
+                    i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+                    vec4 x12 = x0.xyxy + C.xxzz;
+                    x12.xy -= i1;
+                    i = mod(i, 289.0);
+                    vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 )) + i.x + vec3(0.0, i1.x, 1.0 ));
+                    vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
+                    m = m*m ; m = m*m ;
+                    vec3 x = 2.0 * fract(p * C.www) - 1.0;
+                    vec3 h = abs(x) - 0.5;
+                    vec3 ox = floor(x + 0.5);
+                    vec3 a0 = x - ox;
+                    m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );
+                    vec3 g;
+                    g.x  = a0.x  * x0.x  + h.x  * x0.y;
+                    g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+                    return 130.0 * dot(m, g);
+                }
+            `;
+
+            // --- Dark Background Shader Plane ---
+            const bgMaterial = new THREE.ShaderMaterial({
+                vertexShader: `void main() { gl_Position = vec4(position, 1.0); }`,
+                fragmentShader: `
+                    uniform float u_time;
+                    uniform vec2 u_resolution;
+                    uniform vec3 u_color1;
+                    uniform vec3 u_color2;
+                    ${snoiseLogic}
+                    void main() {
+                        vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+                        uv.x *= u_resolution.x / u_resolution.y;
+
+                        vec3 baseColor = vec3(0.02, 0.02, 0.03);
+                        vec2 st = uv * 0.5;
+                        st += vec2(snoise(st + u_time * 0.04), snoise(st - u_time * 0.04)) * 0.4;
+
+                        float beam = smoothstep(0.2, 0.9, snoise(vec2(st.x + st.y * 2.0 - u_time * 0.1, u_time * 0.03)));
+                        vec3 glow = mix(u_color1, u_color2, snoise(uv * 2.0 + u_time * 0.15) * 0.5 + 0.5);
+
+                        float dist = distance(gl_FragCoord.xy / u_resolution.xy, vec2(0.5));
+                        float vignette = smoothstep(1.5, 0.1, dist);
+                        
+                        vec3 edgeColor = vec3(0.01, 0.01, 0.015);
+                        vec3 colorGlow = mix(baseColor, glow, beam * 0.6);
+
+                        gl_FragColor = vec4(mix(edgeColor, colorGlow, vignette), 1.0);
+                    }
+                `,
+                uniforms,
+                depthWrite: false,
+                depthTest: false
+            });
+
+            const bgMesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), bgMaterial);
+            bgMesh.position.z = -15;
+            scene.add(bgMesh);
+
+            // --- Dark Glass Sphere Shader ---
+            const glassMaterial = new THREE.ShaderMaterial({
+                vertexShader: `
+                    varying vec3 vNormal;
+                    void main() {
+                        vNormal = normalize(normalMatrix * normal);
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform float u_time;
+                    uniform vec2 u_resolution;
+                    uniform vec3 u_color1;
+                    uniform vec3 u_color2;
+                    varying vec3 vNormal;
+                    ${snoiseLogic}
+                    void main() {
+                        vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+                        uv += vNormal.xy * 0.2; 
+                        uv.x *= u_resolution.x / u_resolution.y;
+
+                        vec3 baseColor = vec3(0.04, 0.04, 0.06);
+                        vec2 st = uv * 0.6;
+                        st += vec2(snoise(st + u_time * 0.06), snoise(st - u_time * 0.06)) * 0.35;
+
+                        float beam = smoothstep(0.1, 0.9, snoise(vec2(st.x + st.y * 1.8 - u_time * 0.12, u_time * 0.02)));
+                        vec3 glow = mix(u_color1, u_color2, snoise(uv * 1.8 + u_time * 0.12) * 0.5 + 0.5);
+
+                        float fresnel = dot(vec3(0.0, 0.0, 1.0), vNormal);
+                        fresnel = clamp(1.0 - fresnel, 0.0, 1.0);
+                        fresnel = pow(fresnel, 2.5);
+
+                        vec3 finalColor = mix(baseColor, glow, clamp((beam * 0.5) + (fresnel * 0.8), 0.0, 1.0));
+                        gl_FragColor = vec4(finalColor, 0.95);
+                    }
+                `,
+                uniforms,
+                transparent: true
+            });
+
+            const sphereGeo = new THREE.SphereGeometry(1, 64, 64);
+            const spheres = [];
+
+            // Remixed Coordinates and scales
+            const sphereData = [
+                { scale: 4.2, x: 6.5, y: -1.2, z: -1.5, speed: 0.002 },   
+                { scale: 1.8, x: -6.0, y: -4.0, z: 2.5, speed: 0.004 },  
+                { scale: 1.1, x: -4.5, y: 4.2, z: -2.0, speed: 0.005 },  
+                { scale: 0.75, x: 3.0, y: 5.5, z: 4.0, speed: 0.008 }      
+            ];
+
+            sphereData.forEach(data => {
+                const mesh = new THREE.Mesh(sphereGeo, glassMaterial);
+                mesh.scale.set(data.scale, data.scale, data.scale);
+                mesh.position.set(data.x, data.y, data.z);
+                scene.add(mesh);
+                spheres.push({
+                    mesh,
+                    baseY: data.y,
+                    speed: data.speed,
+                    offset: Math.random() * Math.PI * 2
+                });
+            });
+
+            // --- Viewport Dynamics ---
+            let mouseX = 0, mouseY = 0;
+            const windowHalfX = window.innerWidth / 2;
+            const windowHalfY = window.innerHeight / 2;
+            const coordDisplay = document.getElementById('coord-display');
+
+            document.addEventListener('mousemove', (event) => {
+                mouseX = (event.clientX - windowHalfX);
+                mouseY = (event.clientY - windowHalfY);
+                if(coordDisplay) {
+                    // Updating coordinates display format
+                    coordDisplay.innerText = `${(event.clientX / window.innerWidth).toFixed(4)}, ${(event.clientY / window.innerHeight).toFixed(4)}`;
+                }
+            });
+
+            const resize = () => {
+                const width = window.innerWidth;
+                const height = window.innerHeight;
+                renderer.setSize(width, height);
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+
+                const dist = camera.position.z - bgMesh.position.z;
+                const vFov = camera.fov * Math.PI / 180;
+                const planeHeight = 2 * Math.tan(vFov / 2) * dist;
+                bgMesh.scale.set(planeHeight * camera.aspect / 2, planeHeight / 2, 1);
+                
+                uniforms.u_resolution.value.set(width, height);
+            };
+
+            window.addEventListener('resize', resize);
+            resize();
+
+            let isAurora = false;
+            const themeToggle = document.getElementById('theme-toggle');
+            
+            themeToggle.addEventListener('click', () => {
+                isAurora = !isAurora;
+                themeToggle.setAttribute('aria-checked', isAurora.toString());
+                const thumb = document.getElementById('toggle-thumb');
+                
+                if(isAurora) {
+                    thumb.style.transform = 'translateX(20px)';
+                    thumb.style.backgroundColor = '#FF007F'; // Neon Pink
+                    thumb.style.boxShadow = '0 0 8px #FF007F';
+                    gsap.to(uniforms.u_color1.value, { r: 1.0, g: 0.0, b: 0.5, duration: 1.5 });
+                    gsap.to(uniforms.u_color2.value, { r: 1.0, g: 0.3, b: 0.0, duration: 1.5 });
+                } else {
+                    thumb.style.transform = 'translateX(0px)';
+                    thumb.style.backgroundColor = '#00FFCC'; // Cyan
+                    thumb.style.boxShadow = '0 0 8px #00FFCC';
+                    gsap.to(uniforms.u_color1.value, { r: 0.0, g: 0.8, b: 0.7, duration: 1.5 });
+                    gsap.to(uniforms.u_color2.value, { r: 0.4, g: 0.0, b: 0.9, duration: 1.5 });
+                }
+            });
+
+            const clock = new THREE.Clock();
+            const animate = () => {
+                requestAnimationFrame(animate);
+                const time = clock.getElapsedTime();
+                
+                uniforms.u_time.value = time;
+
+                camera.position.x += (mouseX * 0.005 - camera.position.x) * 0.05;
+                camera.position.y += (-mouseY * 0.005 - camera.position.y) * 0.05;
+                camera.lookAt(scene.position);
+
+                spheres.forEach(s => {
+                    s.mesh.position.y = s.baseY + Math.sin(time * s.speed * 120 + s.offset) * 0.5;
+                    s.mesh.rotation.x = time * s.speed * 18;
+                    s.mesh.rotation.y = time * s.speed * 24;
+                });
+
+                renderer.render(scene, camera);
+            };
+
+            animate();
+        };
+
+        const initUI = () => {
+            gsap.registerPlugin(ScrollTrigger);
+
+            const tl = gsap.timeline({ 
+                scrollTrigger: {
+                    trigger: "main",
+                    start: "top 80%",
+                },
+                defaults: { ease: "power3.out" } 
+            });
+
+            gsap.set('.gsap-reveal-text', { y: 24, opacity: 0 });
+            gsap.set('.gsap-reveal', { opacity: 0 });
+            gsap.set('.masked-word', { y: "110%" });
+
+            tl.to('.gsap-reveal', { opacity: 1, duration: 1.2, delay: 0.2 })
+              .to('.gsap-reveal-text', { y: 0, opacity: 1, duration: 1.0, stagger: 0.12 }, "-=1.0")
+              .to('.masked-word', { y: "0%", duration: 1.0, stagger: 0.05 }, "-=0.8");
+
+            gsap.to('.scroll-line', {
+                yPercent: 150,
+                opacity: 0,
+                repeat: -1,
+                duration: 2.2,
+                ease: "power2.inOut",
+                onRepeat: function() { gsap.set(this.targets()[0], { yPercent: -100, opacity: 1 }); }
+            });
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initWebGL();
+            initUI();
+        });
+    </script>
+
+</body>
+</html>

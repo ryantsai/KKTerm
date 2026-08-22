@@ -62,6 +62,34 @@ const expectedIds = [
   "submergedSnellOcean",
   "spectralCascadeOcean",
   "blackHole",
+  "predictiveArc",
+  "liquidForm",
+  "energyOrb",
+  "noiseFlow",
+  "streamConvergence",
+  "bellField",
+  "flowField",
+  "condensation",
+  "generativeTree",
+  "ribbonField",
+  "particleOrb",
+  "cloudField",
+  "voidField",
+  "recursiveErosion",
+  "quanteraTradingBackground",
+  "halftoneFlow",
+  "constellationField",
+  "particleDrift",
+  "particleNetwork",
+  "amberHalftone",
+  "matrixField",
+  "gatewayFlow",
+  "connectivityGraph",
+  "interfaceLines",
+  "defenseLines",
+  "topoField",
+  "sylvaLivingWorld",
+  "templeNight",
 ] as const satisfies readonly DynamicBackgroundId[];
 
 if (DYNAMIC_BACKGROUNDS.length !== expectedIds.length) {
@@ -71,6 +99,12 @@ if (DYNAMIC_BACKGROUNDS.length !== expectedIds.length) {
 for (const id of expectedIds) {
   if (!isDynamicBackgroundId(id)) {
     throw new Error(`Dynamic Dashboard background id should be accepted: ${id}`);
+  }
+}
+
+for (const id of ["crt", "sparkBadge", "hypnoticLoops", "elements", "portalField"]) {
+  if (isDynamicBackgroundId(id)) {
+    throw new Error(`Excluded ThreeUI background id should not be accepted: ${id}`);
   }
 }
 

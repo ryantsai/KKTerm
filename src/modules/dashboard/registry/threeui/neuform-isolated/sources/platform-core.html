@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en" class="antialiased selection:bg-cyan-500/30 selection:text-cyan-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logic Core</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="bg-[#050505] text-zinc-300 min-h-screen flex items-center justify-center font-['Inter',sans-serif] overflow-x-hidden m-0 p-0" style="background-color: #050505;">
+
+    <!-- Faint Ambient Grid Background -->
+    <div class="fixed inset-0 pointer-events-none flex justify-center items-center overflow-hidden z-0" style="opacity: 0.04;">
+        <svg class="absolute w-[200vw] h-[200vh]" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <pattern id="bg-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                    <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#ffffff" stroke-width="1"/>
+                </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#bg-grid)" />
+        </svg>
+    </div>
+
+    <!-- Main Content Layout -->
+    <main class="relative z-10 w-full max-w-5xl mx-auto p-6 md:p-12 flex flex-col md:flex-row gap-6 lg:gap-8 items-stretch justify-center pt-24 pb-24">
+        
+        <!-- Left Card: Visual Interface (Design) -->
+        <article class="flex-1 rounded-[24px] bg-gradient-to-b from-white/10 to-transparent p-[1px] shadow-[0px_0px_0px_1px_rgba(0,0,0,0.06),0px_1px_1px_-0.5px_rgba(0,0,0,0.06),0px_3px_3px_-1.5px_rgba(0,0,0,0.06),_0px_6px_6px_-3px_rgba(0,0,0,0.06),0px_12px_12px_-6px_rgba(0,0,0,0.06),0px_24px_24px_-12px_rgba(0,0,0,0.06)] group/card">
+            <div class="bg-[#0A0A0A] rounded-[23px] overflow-hidden flex flex-col h-full w-full">
+                
+                <!-- Visual Area -->
+                <div class="relative w-full h-64 sm:h-72 border-b border-white/5 flex items-center justify-center overflow-hidden bg-[#0A0A0A]" id="svg-container">
+                    
+                    <!-- SVG Interactive Scene -->
+                    <svg width="100%" height="100%" viewBox="0 0 400 300" class="absolute inset-0 pointer-events-none">
+                        <!-- Orbiting Rings -->
+                        <g class="origin-center" style="transform-origin: 200px 150px;">
+                            <circle cx="200" cy="150" r="130" fill="none" stroke="#ffffff" stroke-width="1" stroke-opacity="0.03" stroke-dasharray="4 4" id="ring-outer"/>
+                            <circle cx="200" cy="150" r="90" fill="none" stroke="#ffffff" stroke-width="1" stroke-opacity="0.05" />
+                            <circle cx="200" cy="150" r="50" fill="none" stroke="#ffffff" stroke-width="1" stroke-opacity="0.08" />
+                        </g>
+
+                        <!-- Central Bounding Box -->
+                        <rect x="140" y="120" width="120" height="60" fill="none" stroke="#4F46E5" stroke-width="1" stroke-opacity="0.8" stroke-dasharray="2 2"/>
+                        <rect x="138" y="118" width="4" height="4" fill="#4F46E5" />
+                        <rect x="258" y="118" width="4" height="4" fill="#4F46E5" />
+                        <rect x="138" y="178" width="4" height="4" fill="#4F46E5" />
+                        <rect x="258" y="178" width="4" height="4" fill="#4F46E5" />
+
+                        <!-- Animated SVG Cursors -->
+                        <g id="cursor-alex" style="transform: translate(110px, 90px);">
+                            <g>
+                                <animateTransform attributeName="transform" type="translate" values="0,0; 0,-6; 0,0" dur="2s" repeatCount="indefinite" />
+                                <path d="M0,0 L12,12 L5,12 L0,18 Z" fill="#F97316" />
+                                <rect x="10" y="-8" width="42" height="18" rx="9" fill="#F97316" />
+                                <text x="31" y="4" font-family="sans-serif" font-size="9" font-weight="500" fill="white" text-anchor="middle" style="letter-spacing: 0.5px;">Alex</text>
+                            </g>
+                        </g>
+
+                        <g id="cursor-sam" style="transform: translate(130px, 200px);">
+                            <g>
+                                <animateTransform attributeName="transform" type="translate" values="0,0; 0,-6; 0,0" dur="2.5s" repeatCount="indefinite" />
+                                <path d="M0,0 L12,12 L5,12 L0,18 Z" fill="#EC4899" transform="rotate(-30)" />
+                                <rect x="12" y="8" width="40" height="18" rx="9" fill="#EC4899" />
+                                <text x="32" y="20" font-family="sans-serif" font-size="9" font-weight="500" fill="white" text-anchor="middle" style="letter-spacing: 0.5px;">Sam</text>
+                            </g>
+                        </g>
+
+                        <g id="cursor-me" style="transform: translate(270px, 180px);">
+                            <g>
+                                <animateTransform attributeName="transform" type="translate" values="0,0; 0,-6; 0,0" dur="2.2s" repeatCount="indefinite" />
+                                <path d="M0,0 L12,12 L5,12 L0,18 Z" fill="#10B981" transform="rotate(-70)" />
+                                <rect x="-4" y="14" width="34" height="18" rx="9" fill="#10B981" />
+                                <text x="13" y="26" font-family="sans-serif" font-size="9" font-weight="500" fill="white" text-anchor="middle" style="letter-spacing: 0.5px;">Me</text>
+                            </g>
+                        </g>
+                    </svg>
+
+                    <!-- Avatar Nodes -->
+                    <div class="absolute w-5 h-5 rounded-full bg-zinc-800 border border-white/10 overflow-hidden shadow-sm" style="top: 25%; left: 30%;">
+                        <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=64&q=80" class="w-full h-full object-cover" alt="Avatar">
+                    </div>
+                    <div class="absolute w-6 h-6 rounded-full bg-zinc-800 border border-white/10 overflow-hidden shadow-sm" style="top: 60%; right: 20%;">
+                        <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=64&q=80" class="w-full h-full object-cover" alt="Avatar">
+                    </div>
+                    <div class="absolute w-5 h-5 rounded-full bg-zinc-800 border border-white/10 overflow-hidden shadow-sm" style="bottom: 20%; left: 20%;">
+                        <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=64&q=80" class="w-full h-full object-cover" alt="Avatar">
+                    </div>
+                </div>
+
+                <!-- Text Content -->
+                <div class="p-6 md:p-8 flex-1 flex flex-col justify-start">
+                    <h2 class="text-xl tracking-tight font-medium text-zinc-100 mb-3 animate-text">Visual Interface</h2>
+                    <p class="text-sm text-zinc-400 leading-relaxed animate-text">Construct dynamic layouts using our intuitive node-based system. Collaborate in real-time with your team across unified environments.</p>
+                </div>
+            </div>
+        </article>
+
+        <!-- Right Card: Core Logic (Develop / ThreeJS) -->
+        <article class="flex-1 rounded-[24px] bg-gradient-to-b from-white/10 to-transparent p-[1px] shadow-[0px_0px_0px_1px_rgba(0,0,0,0.06),0px_1px_1px_-0.5px_rgba(0,0,0,0.06),0px_3px_3px_-1.5px_rgba(0,0,0,0.06),_0px_6px_6px_-3px_rgba(0,0,0,0.06),0px_12px_12px_-6px_rgba(0,0,0,0.06),0px_24px_24px_-12px_rgba(0,0,0,0.06)] group/card">
+            <div class="bg-[#0A0A0A] rounded-[23px] overflow-hidden flex flex-col h-full w-full">
+                
+                <!-- Visual Area -->
+                <div class="relative w-full h-64 sm:h-72 border-b border-white/5 bg-[#050505] overflow-hidden">
+                    
+                    <!-- ThreeJS Canvas Container -->
+                    <div id="three-canvas-container" class="absolute inset-0"></div>
+
+                    <!-- Overlay Terminal Icon -->
+                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+                        <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-[#0F0F0F]/90 backdrop-blur-md border border-white/10 flex items-center justify-center" style="box-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.05);">
+                            <div class="text-cyan-400 font-mono text-2xl sm:text-3xl font-light tracking-widest flex items-center gap-1">
+                                <span>></span><span id="terminal-cursor" class="block w-3 sm:w-4 h-[2px] bg-cyan-400 mt-2" style="transition: opacity 0.2s;"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Text Content -->
+                <div class="p-6 md:p-8 flex-1 flex flex-col justify-start relative">
+                    <div class="flex items-center gap-2 mb-3">
+                        <h2 class="text-xl tracking-tight font-medium text-zinc-100 animate-text">Core Logic</h2>
+                        <iconify-icon icon="solar:code-circle-linear" style="stroke-width: 1.5;" class="text-zinc-500 text-lg opacity-0 animate-text-icon"></iconify-icon>
+                    </div>
+                    <p class="text-sm text-zinc-400 leading-relaxed animate-text">Access the underlying isometric data structures directly. Deploy scalable microservices instantly via our high-performance runtime.</p>
+                </div>
+            </div>
+        </article>
+
+    </main>
+
+    <!-- Application Logic -->
+    <script type="module">
+        import * as THREE from 'https://cdn.skypack.dev/three@0.136.0';
+
+        // --- 1. ThreeJS Isometric Terminal-Modernism Scene ---
+        const initThreeJS = () => {
+            const container = document.getElementById('three-canvas-container');
+            if (!container) return;
+
+            const scene = new THREE.Scene();
+            
+            // Isometric Orthographic Camera Configuration
+            const aspect = container.clientWidth / container.clientHeight;
+            const d = 12; // Camera frustum size
+            const camera = new THREE.OrthographicCamera(-d * aspect, d * aspect, d, -d, 1, 1000);
+            camera.position.set(20, 20, 20); // Isometric angle
+            camera.lookAt(0, 0, 0);
+
+            const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            const group = new THREE.Group();
+            scene.add(group);
+
+            // Material Definitions
+            const basePlatformMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9, metalness: 0.1 });
+            const coreEmissiveMat = new THREE.MeshStandardMaterial({ color: 0x00E5FF, emissive: 0x00E5FF, emissiveIntensity: 0.5, roughness: 0.2 });
+            const wireframeMat = new THREE.LineBasicMaterial({ color: 0x333333, transparent: true, opacity: 0.4 });
+
+            // Geometry Build: Base Platform
+            const platformGeo = new THREE.BoxGeometry(16, 0.5, 16);
+            const platform = new THREE.Mesh(platformGeo, basePlatformMat);
+            platform.position.y = -2;
+            group.add(platform);
+
+            const platformEdges = new THREE.LineSegments(new THREE.EdgesGeometry(platformGeo), wireframeMat);
+            platform.add(platformEdges);
+
+            // Geometry Build: Central Logic Core
+            const coreGeo = new THREE.BoxGeometry(2, 4, 2);
+            const core = new THREE.Mesh(coreGeo, coreEmissiveMat);
+            core.position.y = 0.25;
+            group.add(core);
+
+            // Geometry Build: Orbiting Data Nodes
+            const nodes = [];
+            const nodeCount = 12;
+            for(let i = 0; i < nodeCount; i++) {
+                const isAccent = Math.random() > 0.7;
+                const nodeMat = isAccent ? coreEmissiveMat : new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8 });
+                const size = 0.4 + Math.random() * 0.4;
+                const nodeGeo = new THREE.BoxGeometry(size, size, size);
+                const node = new THREE.Mesh(nodeGeo, nodeMat);
+                
+                const angle = (i / nodeCount) * Math.PI * 2;
+                const radius = 4 + Math.random() * 4;
+                
+                node.position.set(Math.cos(angle) * radius, -1 + Math.random() * 4, Math.sin(angle) * radius);
+                
+                // Add tiny wireframe to nodes for technical look
+                node.add(new THREE.LineSegments(new THREE.EdgesGeometry(nodeGeo), new THREE.LineBasicMaterial({ color: 0x555555, transparent: true, opacity: 0.3 })));
+
+                node.userData = { 
+                    angle, 
+                    radius, 
+                    speed: 0.005 + Math.random() * 0.015, 
+                    yBase: node.position.y,
+                    yOffset: Math.random() * Math.PI * 2 
+                };
+                group.add(node);
+                nodes.push({ mesh: node, isAccent });
+            }
+
+            // Lighting Setup
+            scene.add(new THREE.AmbientLight(0xffffff, 0.3));
+            
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+            dirLight.position.set(10, 20, 5);
+            scene.add(dirLight);
+            
+            const pointLight = new THREE.PointLight(0x00E5FF, 1.5, 25);
+            pointLight.position.set(0, 1, 0);
+            scene.add(pointLight);
+
+            // Animation Loop
+            let time = 0;
+            const animate3D = () => {
+                requestAnimationFrame(animate3D);
+                time += 0.016;
+
+                // Subtle environmental drift
+                group.rotation.y = Math.sin(time * 0.1) * 0.15;
+                group.position.y = Math.sin(time * 0.5) * 0.2;
+
+                // Emissive pulsing logic
+                const pulse = (Math.sin(time * 2.5) + 1) * 0.5;
+                coreEmissiveMat.emissiveIntensity = 0.4 + pulse * 0.6;
+                pointLight.intensity = 1.0 + pulse * 1.5;
+
+                // Node orbital mechanics
+                nodes.forEach(nodeObj => {
+                    const data = nodeObj.mesh.userData;
+                    data.angle += data.speed;
+                    nodeObj.mesh.position.x = Math.cos(data.angle) * data.radius;
+                    nodeObj.mesh.position.z = Math.sin(data.angle) * data.radius;
+                    nodeObj.mesh.position.y = data.yBase + Math.sin(time * 1.5 + data.yOffset) * 0.5;
+                    nodeObj.mesh.rotation.x += 0.01;
+                    nodeObj.mesh.rotation.y += 0.02;
+                });
+
+                renderer.render(scene, camera);
+            };
+            animate3D();
+
+            // Responsive Handling
+            window.addEventListener('resize', () => {
+                if(!container) return;
+                const newAspect = container.clientWidth / container.clientHeight;
+                camera.left = -d * newAspect;
+                camera.right = d * newAspect;
+                camera.top = d;
+                camera.bottom = -d;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            });
+        };
+
+        // --- 2. 2D SVG & DOM Animations ---
+        
+        // Terminal Cursor Blink
+        const terminalCursor = document.getElementById('terminal-cursor');
+        setInterval(() => {
+            if(terminalCursor) {
+                terminalCursor.style.opacity = terminalCursor.style.opacity === '0' ? '1' : '0';
+            }
+        }, 500);
+
+        // SVG Cursor Organic Float
+        const cursorAlex = document.getElementById('cursor-alex');
+        const cursorSam = document.getElementById('cursor-sam');
+        const cursorMe = document.getElementById('cursor-me');
+        const outerRing = document.getElementById('ring-outer');
+        let svgTime = 0;
+
+        const animateSVG = () => {
+            svgTime += 0.015;
+            
+            // Organic cursor movement formulas
+            if(cursorAlex) cursorAlex.setAttribute('transform', `translate(${110 + Math.sin(svgTime * 1.2) * 6}, ${90 + Math.cos(svgTime * 0.8) * 6})`);
+            if(cursorSam) cursorSam.setAttribute('transform', `translate(${130 + Math.cos(svgTime * 0.9) * 5}, ${200 + Math.sin(svgTime * 1.1) * 5})`);
+            if(cursorMe) cursorMe.setAttribute('transform', `translate(${270 + Math.sin(svgTime * 1.5) * 4}, ${180 + Math.cos(svgTime * 1.3) * 7})`);
+            
+            // Subtle ring rotation
+            if(outerRing) outerRing.style.transform = `rotate(${svgTime * 5}deg)`;
+
+            requestAnimationFrame(animateSVG);
+        };
+
+        // --- 3. Staggered Word-by-Word Scroll Reveal ---
+        const initTextAnimations = () => {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        // Reveal spans
+                        const spans = entry.target.querySelectorAll('span');
+                        spans.forEach(span => {
+                            span.style.opacity = '1';
+                            span.style.transform = 'translateY(0) scale(1)';
+                            span.style.filter = 'blur(0px)';
+                        });
+                        
+                        // Handle potential icon siblings
+                        const icon = entry.target.parentElement?.querySelector('iconify-icon');
+                        if(icon) {
+                            setTimeout(() => {
+                                icon.style.transition = 'all 0.8s cubic-bezier(0.16, 1, 0.3, 1)';
+                                icon.style.opacity = '1';
+                                icon.style.transform = 'translateY(0) scale(1)';
+                            }, 300);
+                        }
+
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.1, rootMargin: "0px 0px -50px 0px" });
+
+            document.querySelectorAll('.animate-text').forEach(el => {
+                const text = el.textContent;
+                el.innerHTML = ''; // Clear original text
+                const words = text.split(' ');
+                
+                words.forEach((word, index) => {
+                    const span = document.createElement('span');
+                    span.textContent = word + ' '; // Re-add space
+                    
+                    // Initial hidden state applied inline to respect constraints
+                    span.style.opacity = '0';
+                    span.style.transform = 'translateY(12px) scale(0.98)';
+                    span.style.filter = 'blur(4px)';
+                    span.style.display = 'inline-block';
+                    span.style.whiteSpace = 'pre-wrap';
+                    
+                    // Complex transition physics
+                    span.style.transition = 'opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1), filter 0.7s cubic-bezier(0.16, 1, 0.3, 1)';
+                    span.style.transitionDelay = `${index * 35}ms`;
+                    
+                    el.appendChild(span);
+                });
+
+                // Initial setup for sibling icons
+                const icon = el.parentElement?.querySelector('iconify-icon');
+                if(icon) {
+                    icon.style.opacity = '0';
+                    icon.style.transform = 'translateY(10px) scale(0.8)';
+                }
+
+                observer.observe(el);
+            });
+        };
+
+        // Bootstrap
+        window.addEventListener('DOMContentLoaded', () => {
+            initThreeJS();
+            animateSVG();
+            initTextAnimations();
+        });
+
+    </script>
+</body>
+</html>

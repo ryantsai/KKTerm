@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AEONIX — Compute scaled in the void</title>
+    
+    <!-- Fonts: Thinner weights as requested (Syncopate 600 instead of 700, Space Grotesk 400/500/600, Inter 400/500) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Space+Grotesk:wght@400;500;600&family=Syncopate:wght@400;600&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        display: ['Space Grotesk', 'sans-serif'],
+                        brand: ['Syncopate', 'sans-serif'],
+                    },
+                    colors: {
+                        ink: '#080503',
+                        ash: { DEFAULT: '#d2c3b4', dim: '#8c7d6f', faint: '#5d5249' },
+                        ember: { DEFAULT: '#ff5a1e', hot: '#ff8a3a', gold: '#ffcf86' },
+                        crimson: '#c11d12',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Iconify -->
+    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+</head>
+<body class="bg-ink font-sans text-ash overflow-hidden relative h-screen w-screen selection:bg-ember/30 selection:text-white">
+
+    <!-- Deep Forge Ground Layer -->
+    <div class="ground fixed inset-0 z-0 pointer-events-none" 
+         style="background: radial-gradient(60% 60% at 60% 47%, rgba(255,80,24,0.30) 0%, rgba(200,40,12,0.10) 30%, rgba(8,5,3,0) 58%), radial-gradient(120% 90% at 14% 116%, rgba(255,90,26,0.22) 0%, rgba(8,5,3,0) 52%), radial-gradient(140% 130% at 50% 50%, rgba(20,10,6,0) 38%, rgba(4,2,1,0.74) 100%), linear-gradient(180deg,#0b0604 0%,#080403 100%);">
+    </div>
+
+    <!-- Aura Asset Image Layer -->
+    <div class="fixed inset-0 z-[1] pointer-events-none opacity-[0.12] mix-blend-screen bg-cover bg-center" 
+         style="background-image: url('https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/fa51902b-c2a4-4c33-a96e-a8f1ef67edc6_3840w.jpg');">
+    </div>
+
+    <!-- Breathing Core Overlay -->
+    <div class="core fixed z-[1] left-[50%] lg:left-[60%] top-[38%] lg:top-[47%] w-[50vmax] lg:w-[34vmax] h-[50vmax] lg:h-[34vmax] -translate-x-1/2 -translate-y-1/2 pointer-events-none mix-blend-screen will-change-transform"
+         style="background: radial-gradient(circle,rgba(255,150,70,0.42) 0%,rgba(255,70,20,0.16) 28%,rgba(190,30,10,0.05) 48%,rgba(8,5,3,0) 66%);">
+    </div>
+
+    <!-- Rotating Ember Ring -->
+    <div class="ring fixed z-[1] left-[50%] lg:left-[60%] top-[38%] lg:top-[47%] w-[45vmax] lg:w-[30vmax] h-[45vmax] lg:h-[30vmax] -translate-x-1/2 -translate-y-1/2 pointer-events-none mix-blend-screen rounded-full will-change-transform opacity-0"
+         style="background: conic-gradient(from 0deg,rgba(255,120,40,0) 0deg,rgba(255,140,55,0.18) 60deg,rgba(255,90,30,0) 130deg,rgba(255,150,70,0.12) 220deg,rgba(255,90,30,0) 300deg,rgba(255,120,40,0) 360deg); -webkit-mask: radial-gradient(circle,transparent 60%,#000 61%,#000 70%,transparent 72%); mask: radial-gradient(circle,transparent 60%,#000 61%,#000 70%,transparent 72%);">
+    </div>
+
+    <!-- WebGL Canvas for Particle Storm -->
+    <canvas id="gl" class="fixed inset-0 z-[2] w-full h-full block pointer-events-none mix-blend-screen"></canvas>
+
+    <!-- Grain Texture Overlay -->
+    <div class="grain fixed inset-0 z-[3] pointer-events-none opacity-5"
+         style="background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E&quot;);">
+    </div>
+
+    <!-- Readability Scrim -->
+    <div class="scrim fixed inset-0 z-[3] pointer-events-none bg-gradient-to-b lg:bg-gradient-to-r from-ink/90 lg:from-ink/85 via-ink/40 lg:via-ink/55 to-ink/65 lg:to-transparent"
+         style="background: linear-gradient(100deg,rgba(6,3,2,0.86) 0%,rgba(6,3,2,0.55) 28%,rgba(6,3,2,0) 56%);">
+    </div>
+
+    <!-- Frame Ticks (Crosshairs) -->
+    <span class="frame-tick absolute z-[4] w-3.5 h-3.5 border border-ember/20 pointer-events-none opacity-0 top-[18px] left-[18px] border-r-0 border-b-0"></span>
+    <span class="frame-tick absolute z-[4] w-3.5 h-3.5 border border-ember/20 pointer-events-none opacity-0 top-[18px] right-[18px] border-l-0 border-b-0"></span>
+    <span class="frame-tick absolute z-[4] w-3.5 h-3.5 border border-ember/20 pointer-events-none opacity-0 bottom-[18px] left-[18px] border-r-0 border-t-0"></span>
+    <span class="frame-tick absolute z-[4] w-3.5 h-3.5 border border-ember/20 pointer-events-none opacity-0 bottom-[18px] right-[18px] border-l-0 border-t-0"></span>
+
+    <!-- Floating HUD Readout -->
+    <div class="coretemp hidden lg:block fixed z-[4] right-[clamp(20px,9vw,140px)] top-[clamp(96px,21vh,200px)] text-right pointer-events-none opacity-0">
+        <div class="k font-display text-[10px] tracking-[0.28em] uppercase text-ash-faint mb-1.5 flex items-center gap-2 justify-end">
+            <span class="pip w-1.5 h-1.5 rounded-full bg-ember-hot" style="box-shadow: 0 0 10px 1px #ff5a1e;"></span>
+            Core temp
+        </div>
+        <div class="v font-brand font-semibold text-[clamp(26px,3vw,40px)] leading-[0.9] text-[#fff2e2] tracking-[0.01em]">
+            <span data-count="82" data-dec="0">0</span><small class="font-display text-[0.42em] text-ember-hot tracking-[0.06em] ml-1 font-medium">°C</small>
+        </div>
+    </div>
+
+    <!-- Main UI Shell -->
+    <div class="shell relative z-[4] h-dvh h-screen flex flex-col w-full max-w-[1320px] mx-auto px-5 lg:px-[52px]">
+        
+        <!-- Navigation -->
+        <nav class="pt-[clamp(20px,3.2vh,30px)]">
+            <div class="nav-row flex items-center justify-between gap-5">
+                <div class="brand flex items-center opacity-0">
+                    <span class="wordmark font-brand font-semibold text-[15px] lg:text-[18px] tracking-[0.24em] lg:tracking-[0.30em] text-[#fff4e8] uppercase pl-[0.04em]">Aeonix</span>
+                </div>
+                <div class="nav-links hidden lg:flex items-center gap-[30px]">
+                    <a href="#" class="text-[12.5px] tracking-[0.02em] text-ash-dim hover:text-[#fff1e2] relative transition-colors duration-300 opacity-0 after:absolute after:left-0 after:-bottom-1.5 after:h-px after:w-0 after:bg-ember-hot after:transition-all hover:after:w-full">Platform</a>
+                    <a href="#" class="text-[12.5px] tracking-[0.02em] text-ash-dim hover:text-[#fff1e2] relative transition-colors duration-300 opacity-0 after:absolute after:left-0 after:-bottom-1.5 after:h-px after:w-0 after:bg-ember-hot after:transition-all hover:after:w-full">Infrastructure</a>
+                    <a href="#" class="text-[12.5px] tracking-[0.02em] text-ash-dim hover:text-[#fff1e2] relative transition-colors duration-300 opacity-0 after:absolute after:left-0 after:-bottom-1.5 after:h-px after:w-0 after:bg-ember-hot after:transition-all hover:after:w-full">Models</a>
+                    <a href="#" class="text-[12.5px] tracking-[0.02em] text-ash-dim hover:text-[#fff1e2] relative transition-colors duration-300 opacity-0 after:absolute after:left-0 after:-bottom-1.5 after:h-px after:w-0 after:bg-ember-hot after:transition-all hover:after:w-full">Security</a>
+                    <a href="#" class="text-[12.5px] tracking-[0.02em] text-ash-dim hover:text-[#fff1e2] relative transition-colors duration-300 opacity-0 after:absolute after:left-0 after:-bottom-1.5 after:h-px after:w-0 after:bg-ember-hot after:transition-all hover:after:w-full">Contact</a>
+                </div>
+                <a href="#" class="nav-cta inline-flex items-center gap-[9px] text-[12.5px] font-medium tracking-[0.02em] text-[#1a0a04] px-[17px] py-2.5 rounded-full whitespace-nowrap opacity-0 transition-all duration-300 hover:-translate-y-[1px]"
+                   style="background: linear-gradient(180deg,#ffcf86,#ff7a2a); box-shadow: 0 4px 22px -6px rgba(255,100,40,0.7);">
+                    <b class="w-1.5 h-1.5 rounded-full bg-[#3a1202] inline-block"></b>Deploy cluster
+                </a>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex items-end pb-5 lg:pb-[clamp(28px,5vh,58px)] min-h-0">
+            <div class="grid w-full grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto] gap-6 lg:gap-[clamp(28px,5vw,72px)] items-end">
+                
+                <div class="lead max-w-[780px]">
+                    <div class="eyebrow flex items-center gap-3.5 mb-[clamp(18px,3vh,30px)]">
+                        <span class="rule h-px w-0" style="background: linear-gradient(90deg, #ff5a1e, rgba(255,120,50,0));"></span>
+                        <span class="tag font-display text-[11px] tracking-[0.3em] uppercase text-ember-hot whitespace-nowrap opacity-0">Hyperscale Compute</span>
+                        <span class="ver text-[11px] tracking-[0.18em] text-ash-faint opacity-0">/ cluster v2.4</span>
+                    </div>
+                    
+                    <h1 class="font-display font-medium text-[clamp(34px,12vw,52px)] lg:text-[clamp(40px,7.4vw,100px)] leading-[0.95] tracking-tight text-[#fff6ec] text-balance">
+                        <span class="block">
+                            <span class="inline-block overflow-hidden"><span class="word-reveal inline-block will-change-transform pr-2 lg:pr-3">Compute</span></span>
+                            <span class="inline-block overflow-hidden"><span class="word-reveal inline-block will-change-transform">scaled</span></span>
+                        </span>
+                        <span class="block">
+                            <span class="inline-block overflow-hidden"><span class="word-reveal inline-block will-change-transform pr-2 lg:pr-3">in</span></span>
+                            <span class="inline-block overflow-hidden"><span class="word-reveal inline-block will-change-transform pr-2 lg:pr-3">the</span></span>
+                            <span class="inline-block overflow-hidden"><span class="word-reveal inline-block will-change-transform grad bg-clip-text text-transparent" style="background-image: linear-gradient(96deg,#ff7a2a 0%,#ffcf86 46%,#ff4d18 100%);">void.</span></span>
+                        </span>
+                    </h1>
+                    
+                    <p class="sub mt-[clamp(14px,3vh,26px)] max-w-[500px] text-[clamp(14px,1.15vw,16px)] leading-[1.62] text-ash-dim opacity-0">
+                        <b class="text-[#ead9c8] font-medium">Aeonix</b> orchestrates the hyperscale infrastructure where neural networks are 
+                        trained, deployed, and monitored under controlled precision. Distributed compute, 
+                        live latency mapping, and parameter tuning traced down to the tensor.
+                    </p>
+                    
+                    <div class="actions flex items-center gap-4 mt-[clamp(18px,3.6vh,36px)] flex-wrap">
+                        <a href="#" class="btn btn-prime inline-flex items-center gap-2.5 rounded-full px-6 py-[13px] text-[13.5px] font-medium tracking-[0.01em] text-[#1a0a04] transition-all duration-300 hover:-translate-y-0.5 group"
+                           style="background: linear-gradient(180deg,#ffcf86,#ff7322); box-shadow: 0 8px 30px -8px rgba(255,100,40,0.65);">
+                            Start a cluster
+                            <iconify-icon icon="solar:arrow-right-linear" class="text-lg transition-transform duration-300 group-hover:translate-x-1" style="stroke-width: 1.5;"></iconify-icon>
+                        </a>
+                        
+                        <!-- Gradient Border Treatment -->
+                        <div class="relative p-[1px] rounded-full bg-gradient-to-b from-ember/40 to-transparent group hover:from-ember/70 transition-colors duration-300 opacity-0 btn-ghost-wrap">
+                            <a href="#" class="btn btn-ghost flex items-center gap-2.5 rounded-full px-6 py-[13px] text-[13.5px] font-medium tracking-[0.01em] text-ash bg-ink transition-colors duration-300 hover:text-[#fff1e2]">
+                                Model registry
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <aside class="rail relative w-full lg:w-[236px] flex flex-col grid grid-cols-2 lg:flex gap-x-[18px] gap-y-1.5 lg:gap-0 lg:pl-[22px] pt-[18px] lg:pt-0">
+                    <!-- Gradient Border Treatments -->
+                    <div class="absolute left-0 top-0 bottom-0 w-[1px] bg-gradient-to-b from-white/20 via-white/5 to-transparent hidden lg:block"></div>
+                    <div class="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-white/20 via-white/5 to-transparent lg:hidden"></div>
+                    
+                    <div class="rail-head col-span-2 lg:col-span-1 flex items-center gap-2 mb-0.5 lg:mb-[18px] opacity-0">
+                        <span class="dot w-1.5 h-1.5 rounded-full bg-ember-hot" style="box-shadow: 0 0 9px 1px #ff5a1e;"></span>
+                        <span class="lbl font-display text-[10.5px] tracking-[0.26em] uppercase text-ash-faint">Cluster telemetry</span>
+                    </div>
+                    
+                    <div class="metric py-2 lg:py-[13px] border-b-0 lg:border-b border-white/5 opacity-0">
+                        <div class="k text-[10.5px] tracking-[0.16em] uppercase text-ash-faint mb-1.5">Peak latency</div>
+                        <div class="v font-display text-[25px] font-medium text-[#fff2e2] leading-none flex items-baseline gap-1">
+                            <span data-count="12" data-dec="0">0</span><small class="text-[12px] text-ember-hot font-medium tracking-[0.02em]">ms</small>
+                        </div>
+                    </div>
+                    
+                    <div class="metric py-2 lg:py-[13px] border-b-0 lg:border-b border-white/5 opacity-0">
+                        <div class="k text-[10.5px] tracking-[0.16em] uppercase text-ash-faint mb-1.5">Daily requests</div>
+                        <div class="v font-display text-[25px] font-medium text-[#fff2e2] leading-none flex items-baseline gap-1">
+                            <span data-count="4.2" data-dec="1">0.0</span><small class="text-[12px] text-ember-hot font-medium tracking-[0.02em]">B</small>
+                        </div>
+                    </div>
+                    
+                    <div class="metric py-2 lg:py-[13px] border-b-0 lg:border-b border-white/5 opacity-0">
+                        <div class="k text-[10.5px] tracking-[0.16em] uppercase text-ash-faint mb-1.5">Active nodes</div>
+                        <div class="v font-display text-[25px] font-medium text-[#fff2e2] leading-none flex items-baseline gap-1">
+                            <span data-count="1024" data-dec="0">0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="metric py-2 lg:py-[13px] opacity-0">
+                        <div class="k text-[10.5px] tracking-[0.16em] uppercase text-ash-faint mb-1.5">Uptime</div>
+                        <div class="v font-display text-[25px] font-medium text-[#fff2e2] leading-none flex items-baseline gap-1">
+                            <span data-count="99.99" data-dec="2">0.00</span><small class="text-[12px] text-ember-hot font-medium tracking-[0.02em]">%</small>
+                        </div>
+                    </div>
+                    
+                    <div class="meter hidden lg:block mt-[18px] opacity-0 col-span-2">
+                        <div class="mlbl flex justify-between text-[10px] tracking-[0.14em] uppercase text-ash-faint mb-2">
+                            <span>Compute load</span><span>stable</span>
+                        </div>
+                        <div class="bars flex gap-[3px] h-[30px] items-end" id="bars">
+                            <!-- Bars injected by JS -->
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </main>
+
+        <!-- Footer Status -->
+        <footer class="pb-[clamp(16px,2.6vh,24px)]">
+            <div class="status relative flex items-center justify-between gap-[18px] pt-[14px] opacity-0">
+                <!-- Gradient Border Treatment -->
+                <div class="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-white/20 via-white/5 to-transparent"></div>
+                
+                <div class="left flex items-center gap-5 flex-wrap">
+                    <span class="pill flex items-center gap-2 text-[11px] tracking-[0.04em] text-ash-dim">
+                        <span class="gd w-1.5 h-1.5 rounded-full bg-[#ffb347]" style="box-shadow: 0 0 8px 1px rgba(255,150,60,0.7);"></span>
+                        All clusters nominal
+                    </span>
+                    <span class="pill flex items-center gap-2 text-[11px] tracking-[0.04em] text-ash-dim">
+                        3 regions · edge + hyperscale
+                    </span>
+                </div>
+                <div class="right hidden md:block font-display text-[11px] tracking-[0.18em] uppercase text-ash-faint whitespace-nowrap">
+                    Trained by data, proven by scale
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+    
+    <script>
+        const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        gsap.registerPlugin(ScrollTrigger);
+
+        /* ============ EMBER STORM VORTEX (WebGL / Three.js) ============ */
+        (function(){
+            const canvas = document.getElementById('gl');
+            if(!window.THREE) return;
+            const RES = 0.5;
+            let renderer;
+            try{
+                renderer = new THREE.WebGLRenderer({canvas, antialias:false, alpha:true, powerPreference:'high-performance'});
+            }catch(e){ return; }
+            renderer.setPixelRatio(1);
+            renderer.setClearColor(0x000000, 0);
+
+            const scene = new THREE.Scene();
+            const camera = new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+
+            const COUNT = 12000;
+            const seeds = new Float32Array(COUNT);
+            const angs  = new Float32Array(COUNT);
+            const rads  = new Float32Array(COUNT);
+            for(let i=0;i<COUNT;i++){
+                seeds[i] = Math.random();
+                angs[i]  = Math.random()*Math.PI*2.0;
+                rads[i]  = Math.sqrt(Math.random());
+            }
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(COUNT*3), 3));
+            geo.setAttribute('aSeed', new THREE.BufferAttribute(seeds, 1));
+            geo.setAttribute('aAng',  new THREE.BufferAttribute(angs, 1));
+            geo.setAttribute('aRad',  new THREE.BufferAttribute(rads, 1));
+
+            const uniforms = {
+                uTime:   { value: 0 },
+                uScale:  { value: 1 },
+                uAspect: { value: 1.6 },
+            };
+
+            const mat = new THREE.ShaderMaterial({
+                uniforms,
+                transparent:true,
+                depthTest:false,
+                depthWrite:false,
+                blending:THREE.AdditiveBlending,
+                vertexShader:`
+                    attribute float aSeed;
+                    attribute float aAng;
+                    attribute float aRad;
+                    uniform float uTime;
+                    uniform float uScale;
+                    uniform float uAspect;
+                    varying float vHeat;
+                    varying float vFlick;
+                    varying float vCore;
+                    float hash(float n){ return fract(sin(n*12.9898)*43758.5453); }
+                    void main(){
+                        float life = hash(aSeed*7.31);
+                        float u = fract(uTime*(0.045 + life*0.06) + aSeed);
+                        float rmax = 0.58 + aRad*0.48;
+                        float r = max(rmax*(1.0 - u*0.82), 0.018);
+                        float omega = (0.55 + life*0.55) / (r*0.9 + 0.12);
+                        float spiral = (rmax - r)*5.2;
+                        float theta = aAng + uTime*omega*0.34 + spiral;
+                        float t1 = sin(theta*3.0 + aSeed*10.0 + uTime*0.8);
+                        float t2 = sin(r*9.0 - uTime*1.1 + aSeed*4.0);
+                        r += t1*0.022 + t2*0.016;
+                        float cx = 0.20, cy = 0.06;
+                        float x = cx + (cos(theta)*r)/uAspect;
+                        float y = cy + sin(theta)*r;
+                        y += u*0.11 + sin(uTime*5.0 + aSeed*30.0)*0.006;
+                        x += sin(uTime*3.3 + aSeed*22.0)*0.004/uAspect;
+
+                        vCore  = 1.0 - smoothstep(0.0, 0.17, r);
+                        vHeat  = clamp(pow(1.0-u, 1.3) * (0.5 + 0.5*(1.0-r)), 0.0, 1.0);
+                        vFlick = 0.55 + 0.45*sin(uTime*9.0 + aSeed*40.0);
+                        float sz = (0.7 + hash(aSeed*12.3)*2.7) * (0.45 + vHeat*1.55 + vCore*1.4);
+                        gl_Position = vec4(x, y, 0.0, 1.0);
+                        gl_PointSize = sz * uScale;
+                    }
+                `,
+                fragmentShader:`
+                    precision mediump float;
+                    varying float vHeat;
+                    varying float vFlick;
+                    varying float vCore;
+                    void main(){
+                        vec2 p = gl_PointCoord*2.0 - 1.0;
+                        float d = dot(p,p);
+                        if(d>1.0) discard;
+                        float core = (1.0-d); core *= core;
+                        vec3 crimson = vec3(0.72,0.10,0.03);
+                        vec3 amber   = vec3(1.0,0.55,0.12);
+                        vec3 white   = vec3(1.0,0.93,0.78);
+                        vec3 c = mix(crimson, amber, vHeat);
+                        c = mix(c, white, vCore*0.85);
+                        float a = core*(0.28 + 0.85*vHeat)*vFlick + core*vCore*0.55;
+                        gl_FragColor = vec4(c*(1.0 + vHeat*0.5 + vCore*0.7), a);
+                    }
+                `
+            });
+
+            const points = new THREE.Points(geo, mat);
+            points.frustumCulled = false;
+            scene.add(points);
+
+            function resize(){
+                const w = window.innerWidth, h = window.innerHeight;
+                renderer.setSize(Math.round(w*RES), Math.round(h*RES), false);
+                canvas.style.width = w+'px';
+                canvas.style.height = h+'px';
+                uniforms.uAspect.value = Math.max(0.6, w/h);
+                uniforms.uScale.value = Math.max(0.6, (h*RES)/900);
+            }
+            resize();
+            window.addEventListener('resize', resize);
+
+            let raf=0, running=true, last=performance.now();
+            function frame(now){
+                if(!running) return;
+                const dt = Math.min(0.05,(now-last)/1000); last=now;
+                uniforms.uTime.value += dt;
+                renderer.render(scene,camera);
+                raf=requestAnimationFrame(frame);
+            }
+            if(REDUCED){
+                uniforms.uTime.value = 9.1;
+                renderer.render(scene,camera);
+            } else {
+                raf=requestAnimationFrame(frame);
+            }
+            document.addEventListener('visibilitychange',()=>{
+                if(document.hidden){ running=false; cancelAnimationFrame(raf); }
+                else if(!REDUCED){ running=true; last=performance.now(); raf=requestAnimationFrame(frame); }
+            });
+        })();
+
+        /* ============ LIVING COMPUTATIONAL-LOAD METER ============ */
+        (function(){
+            const host = document.getElementById('bars');
+            if(!host) return;
+            const N=22, bars=[];
+            for(let i=0;i<N;i++){ 
+                const b=document.createElement('i'); 
+                b.className = "flex-1 rounded-sm opacity-85 origin-bottom";
+                b.style.background = "linear-gradient(180deg, #ffcf86, #c11d12)";
+                b.style.transform = "scaleY(0.3)";
+                host.appendChild(b); 
+                bars.push(b); 
+            }
+            if(REDUCED){ bars.forEach((b,i)=>b.style.transform='scaleY('+(0.35+Math.abs(Math.sin(i*0.7))*0.55).toFixed(2)+')'); return; }
+            let t=0, acc=0, prev=performance.now();
+            function tick(now){
+                acc += now-prev; prev=now;
+                if(acc>=110){
+                    acc=0; t+=0.18;
+                    for(let i=0;i<N;i++){
+                        const v = 0.30 + 0.55*Math.abs(Math.sin(t + i*0.55) * Math.cos(t*0.6 - i*0.3));
+                        bars[i].style.transform = 'scaleY('+v.toFixed(2)+')';
+                    }
+                }
+                requestAnimationFrame(tick);
+            }
+            requestAnimationFrame(tick);
+        })();
+
+        /* ============ COUNT-UP TELEMETRY ============ */
+        function runCounters(){
+            document.querySelectorAll('[data-count]').forEach(el=>{
+                const target=parseFloat(el.dataset.count), dec=parseInt(el.dataset.dec||'0');
+                if(REDUCED){ el.textContent=target.toFixed(dec); return; }
+                const t0=performance.now(), dur=1500;
+                function step(t){
+                    const p=Math.min(1,(t-t0)/dur);
+                    const e=1-Math.pow(1-p,3);
+                    el.textContent=(target*e).toFixed(dec);
+                    if(p<1) requestAnimationFrame(step);
+                }
+                requestAnimationFrame(step);
+            });
+        }
+
+        /* ============ ENTRANCE CHOREOGRAPHY ============ */
+        (function(){
+            if(REDUCED || !window.gsap){
+                document.querySelectorAll('.brand,.nav-links a,.nav-cta,.eyebrow .tag,.eyebrow .ver,.sub,.rail-head,.metric,.meter,.status,.frame-tick,.coretemp,.ring,.btn-prime,.btn-ghost-wrap')
+                    .forEach(e=>{e.style.opacity=1; e.style.transform='none'});
+                document.querySelectorAll('.word-reveal').forEach(e=>e.style.transform='none');
+                document.querySelector('.eyebrow .rule').style.width='34px';
+                runCounters();
+                return;
+            }
+            
+            const tl = gsap.timeline({defaults:{ease:'power3.out'}});
+            tl.to('.frame-tick',{opacity:1,duration:.4,stagger:.05},0);
+            tl.fromTo('.brand',{y:-12,opacity:0},{y:0,opacity:1,duration:.6},.1);
+            
+            // Masked staggered word reveal hooked to ScrollTrigger
+            gsap.fromTo('.word-reveal', 
+                {yPercent:115},
+                {yPercent:0, duration:.9, ease:'power4.out', stagger:.08, scrollTrigger: { trigger: 'h1', start: "top 95%" }}
+            );
+            
+            tl.to('.eyebrow .rule',{width:34,duration:.5},.3)
+              .fromTo('.eyebrow .tag',{x:-10,opacity:0},{x:0,opacity:1,duration:.45},.42)
+              .to('.eyebrow .ver',{opacity:1,duration:.45},.55);
+              
+            tl.fromTo('.nav-links a',{y:-8,opacity:0},{y:0,opacity:1,duration:.5,stagger:.06},.45)
+              .fromTo('.nav-cta',{scale:.8,opacity:0},{scale:1,opacity:1,duration:.5,ease:'back.out(2)'},.5);
+              
+            tl.to('.ring',{opacity:1,duration:1.0},.4);
+            tl.fromTo('.coretemp',{opacity:0,x:18},{opacity:1,x:0,duration:.7},.6);
+            tl.fromTo('.sub',{opacity:0,y:14,filter:'blur(6px)'},{opacity:1,y:0,filter:'blur(0px)',duration:.7},.72);
+            
+            tl.fromTo(['.btn-prime','.btn-ghost-wrap'],{opacity:0,y:16},{opacity:1,y:0,duration:.55,stagger:.09},.84);
+            
+            tl.to('.rail-head',{opacity:1,duration:.45},.55)
+              .fromTo('.metric',{x:18,opacity:0},{x:0,opacity:1,duration:.5,stagger:.09,onStart:runCounters},.62)
+              .to('.meter',{opacity:1,duration:.45},1.0);
+              
+            tl.fromTo('.status',{y:10,opacity:0},{y:0,opacity:1,duration:.55},.95);
+
+            // Ambient breathing animations
+            gsap.to('.core',{filter:'brightness(1.35)',duration:2.4,repeat:-1,yoyo:true,ease:'sine.inOut'});
+            gsap.to('.ring',{rotation:360,duration:46,repeat:-1,ease:'none',transformOrigin:'50% 50%'});
+            gsap.to('.rail-head .dot',{opacity:.35,duration:.9,repeat:-1,yoyo:true,ease:'sine.inOut'});
+            gsap.to('.coretemp .pip',{opacity:.3,duration:.7,repeat:-1,yoyo:true,ease:'sine.inOut'});
+        })();
+    </script>
+</body>
+</html>

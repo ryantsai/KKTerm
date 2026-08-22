@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Uploading — glowing border microinteraction</title>
+<style>
+  :root{ color-scheme: dark; }
+  html,body{ margin:0; height:100%; background:#1d1d1d; }
+  body{
+    display:flex; align-items:center; justify-content:center;
+    overflow:hidden; -webkit-font-smoothing:antialiased;
+  }
+  #stage{
+    position:relative;
+    width:min(100vw,100svh); height:min(100vw,100svh);
+    background:#1d1d1d;
+  }
+  #c{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="c"></canvas></div>
+<script>
+(function(){
+  'use strict';
+
+  /* ---------- reference frame: everything authored in a 2048px square ---------- */
+  var REF = 2048;
+  var CX = 1024 - 22, CY = 1024 + 11.5;   /* button centre in the source recording */
+  var PW = 976, PH = 345, PR = 100;       /* plate */
+  var GAP = 50;                            /* plate edge -> track centre */
+  var TW = PW + 2*GAP, TH = PH + 2*GAP, TR = PR + GAP;
+  var TRACK_W = 13, CORE_W = 14, GLOW_W = 12;
+
+  var DUR = 2.70;                          /* one lap of the trace = one loop */
+  var TAIL = 0.389;                        /* comet length, in laps */
+  var SHIM_OFF = 0.898;                    /* lap phase where the text sweep turns at the left */
+  var TXT_W = 778, TXT_CAP = 120, TXT_BASE = 1093;
+  var FONT = '300 100px -apple-system, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Inter, system-ui, "Segoe UI", Roboto, sans-serif';
+
+  var cv = document.getElementById('c'), ctx = cv.getContext('2d');
+  var gl = document.createElement('canvas'), gx = gl.getContext('2d');   /* comet, glow tint */
+  var co = document.createElement('canvas'), cox = co.getContext('2d');  /* comet, core tint */
+  var S = 0, k = 1, dpr = 1;
+  var canFilter = (function(){ var t=document.createElement('canvas').getContext('2d'); t.filter='blur(2px)'; return t.filter!=='none'; })();
+
+  /* ---------- geometry: rounded rect sampled by arc length ---------- */
+  function rrPath(c, cx, cy, w, h, r){
+    var x = cx - w/2, y = cy - h/2;
+    c.beginPath();
+    c.moveTo(x+r, y);
+    c.lineTo(x+w-r, y);   c.arcTo(x+w, y,     x+w, y+r,     r);
+    c.lineTo(x+w, y+h-r); c.arcTo(x+w, y+h,   x+w-r, y+h,   r);
+    c.lineTo(x+r, y+h);   c.arcTo(x,   y+h,   x,   y+h-r,   r);
+    c.lineTo(x, y+r);     c.arcTo(x,   y,     x+r, y,       r);
+    c.closePath();
+  }
+
+  /* point on the track outline at arc length s, starting at the top-left corner
+     tangent point and running clockwise */
+  var SW = TW - 2*TR, SH = TH - 2*TR, ARC = Math.PI*TR/2;
+  var PERIM = 2*SW + 2*SH + 4*ARC;
+  var L = CX - TW/2, T = CY - TH/2, R = CX + TW/2, B = CY + TH/2;
+  function ptAt(s){
+    s = s - Math.floor(s/PERIM)*PERIM;
+    var a;
+    if(s < SW)  return [L+TR+s, T];
+    s -= SW;
+    if(s < ARC){ a = s/TR; return [R-TR+TR*Math.sin(a), T+TR-TR*Math.cos(a)]; }
+    s -= ARC;
+    if(s < SH)  return [R, T+TR+s];
+    s -= SH;
+    if(s < ARC){ a = s/TR; return [R-TR+TR*Math.cos(a), B-TR+TR*Math.sin(a)]; }
+    s -= ARC;
+    if(s < SW)  return [R-TR-s, B];
+    s -= SW;
+    if(s < ARC){ a = s/TR; return [L+TR-TR*Math.sin(a), B-TR+TR*Math.cos(a)]; }
+    s -= ARC;
+    if(s < SH)  return [L, B-TR-s];
+    s -= SH;
+    a = s/TR; return [L+TR-TR*Math.cos(a), T+TR-TR*Math.sin(a)];
+  }
+
+  /* brightness along the comet, sampled off the source clip every 0.0139 lap:
+     a hot head, a flat core, then a long uneven fade */
+  var TAPER = [1.16,1.09,1.03,1.00,1.02,1.00,1.00,1.00,1.00,0.98,0.97,0.94,0.91,0.89,
+               0.84,0.77,0.74,0.65,0.61,0.52,0.43,0.40,0.27,0.23,0.17,0.12,0.075,0.02,0];
+  var TSTEP = TAIL/(TAPER.length-1);
+  function taper(u){                        /* u = laps behind the head */
+    if(u < 0 || u >= TAIL) return 0;
+    var f = u/TSTEP, i = Math.floor(f);
+    return TAPER[i] + (TAPER[i+1]-TAPER[i])*(f-i);
+  }
+
+  /* ---------- sizing ---------- */
+  function resize(){
+    var st = document.getElementById('stage');
+    S = st.clientWidth || 1;
+    dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    cv.width = gl.width = co.width = Math.round(S*dpr);
+    cv.height = gl.height = co.height = Math.round(S*dpr);
+    k = S*dpr/REF;
+    fitText();
+    render(now);
+  }
+
+  /* ---------- text: fit cap-height and total width to the recording ---------- */
+  var glyphs = [], fontPx = 169, tracking = 0, textX = 0;
+  function fitText(){
+    var word = 'Uploading', n = word.length, probe = 200;
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.font = FONT.replace('100px', probe+'px');
+    var cap = ctx.measureText('U').actualBoundingBoxAscent || probe*0.7;
+    fontPx = probe * (TXT_CAP*k) / cap;                 /* cap height matches the source */
+    ctx.font = FONT.replace('100px', fontPx+'px');
+    glyphs = [];
+    var advSum = 0, m;
+    for(var i=0;i<n;i++){
+      m = ctx.measureText(word[i]);
+      glyphs.push({ch:word[i], w:m.width});
+      if(i < n-1) advSum += m.width;
+    }
+    /* the source was measured as ink extents, so lay out to ink, not to advances */
+    var lead = ctx.measureText(word[0]).actualBoundingBoxLeft;
+    var trail = ctx.measureText(word[n-1]).actualBoundingBoxRight;
+    tracking = (TXT_W*k - trail - lead - advSum) / (n-1);
+    textX = (CX + 4)*k - TXT_W*k/2 + lead;
+  }
+
+  /* ---------- painting ---------- */
+  /* the comet is painted opaque into its own layer, then added over the scene, so
+     overlapping segments never double-blend */
+  function paintComet(c, head, col, hot, width){
+    c.setTransform(1,0,0,1,0,0);
+    c.clearRect(0,0,c.canvas.width,c.canvas.height);
+    c.lineCap = 'round';
+    c.lineWidth = width*k;
+    var step = 6;                                   /* ref px per segment */
+    var n = Math.ceil(TAIL*PERIM/step);
+    for(var i=n;i>=1;i--){
+      var s1 = head - i*step, s0 = head - (i-1)*step;
+      var a = taper((i*step)/PERIM);
+      if(a <= 0.002) continue;
+      var f = Math.min(a, 1.30), x = Math.max(0, f-1);
+      var r = Math.round(Math.min(255, col[0]*f + hot[0]*x));
+      var g = Math.round(Math.min(255, col[1]*f + hot[1]*x));
+      var b = Math.round(Math.min(255, col[2]*f + hot[2]*x));
+      var p1 = ptAt(s1), mid = ptAt((s1+s0)/2), p0 = ptAt(s0);
+      c.strokeStyle = 'rgb('+r+','+g+','+b+')';
+      c.beginPath();
+      c.moveTo(p1[0]*k, p1[1]*k);
+      c.lineTo(mid[0]*k, mid[1]*k);
+      c.lineTo(p0[0]*k, p0[1]*k);
+      c.stroke();
+    }
+  }
+
+  function plate(c){
+    var x = CX - PW/2, y = CY - PH/2;
+    var grd = c.createLinearGradient(0, y*k, 0, (y+PH)*k);
+    grd.addColorStop(0, '#2e3242');
+    grd.addColorStop(0.55, '#2b2f3c');
+    grd.addColorStop(1, '#272c36');
+    rrPath(c, CX*k, CY*k, PW*k, PH*k, PR*k);
+    c.fillStyle = grd;
+    c.fill();
+
+    /* neumorphic edges: a hairline of white light just inside the top, a cool
+       bounce just inside the bottom */
+    c.lineWidth = 5*k;
+    var hg = c.createLinearGradient(0, y*k, 0, (y+PH)*k);
+    hg.addColorStop(0,    'rgba(226,233,255,0.125)');
+    hg.addColorStop(0.10, 'rgba(226,233,255,0)');
+    hg.addColorStop(0.90, 'rgba(80,100,255,0)');
+    hg.addColorStop(1,    'rgba(80,100,255,0.22)');
+    rrPath(c, CX*k, CY*k, (PW-13)*k, (PH-13)*k, (PR-6.5)*k);
+    c.strokeStyle = hg;
+    c.stroke();
+  }
+
+  function label(c, ph){
+    /* shimmer: a soft band ping-pongs across the word, twice per lap */
+    var q = ph - SHIM_OFF; q -= Math.floor(q);
+    var u = q < 0.5 ? q/0.5 : (1-q)/0.5;
+    var x0 = textX, w = TXT_W*k;
+    var bc = x0 + w*(-0.2375 + 1.475*u);   /* sweeps clear of both ends before turning */
+    var bw = w*0.22;
+    var g = c.createLinearGradient(bc-bw, 0, bc+bw, 0);
+    g.addColorStop(0,    'rgb(83,92,135)');
+    g.addColorStop(0.30, 'rgb(97,106,150)');
+    g.addColorStop(0.5,  'rgb(133,141,189)');
+    g.addColorStop(0.70, 'rgb(97,106,150)');
+    g.addColorStop(1,    'rgb(83,92,135)');
+    c.fillStyle = g;
+    c.strokeStyle = g;
+    c.font = FONT.replace('100px', fontPx+'px');
+    c.textBaseline = 'alphabetic';
+    var x = textX;
+    for(var i=0;i<glyphs.length;i++){
+      if(glyphs[i].ch === 'g') doubleStoreyG(c);
+      else{
+        /* the source face sits between Light and Regular, so nudge the stems out */
+        c.fillText(glyphs[i].ch, x, TXT_BASE*k);
+        c.lineWidth = 1.9*k;
+        c.strokeText(glyphs[i].ch, x, TXT_BASE*k);
+      }
+      x += glyphs[i].w + tracking;
+    }
+  }
+
+  /* the source sets a double-storey g, which no system face here carries, so it is
+     drawn as a monoline: upper bowl, ear, link, lower loop */
+  function doubleStoreyG(c){
+    c.save();
+    c.lineWidth = 11.5*k;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(1327*k, 1050*k); c.lineTo(1319*k, 1084*k);              /* link down the left */
+    c.stroke();
+    c.beginPath();
+    c.ellipse(1351.5*k, 1035*k, 30*k, 21*k, 0, 0, Math.PI*2);        /* bowl */
+    c.stroke();
+    c.beginPath();
+    c.ellipse(1353*k, 1100*k, 35*k, 16*k, 0, 0, Math.PI*2);          /* descending loop */
+    c.stroke();
+    c.beginPath();
+    c.moveTo(1352*k, 1011*k);                                        /* ear */
+    c.quadraticCurveTo(1382*k, 1003*k, 1390*k, 1017*k);
+    c.stroke();
+    c.restore();
+  }
+
+  function render(t){
+    if(!S) return;
+    var ph = (t/DUR) % 1; if(ph < 0) ph += 1;
+    var head = ph*PERIM;
+
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.filter = 'none';
+    ctx.fillStyle = '#1d1d1d';
+    ctx.fillRect(0,0,cv.width,cv.height);
+
+    /* the faint track the light runs on */
+    rrPath(ctx, CX*k, CY*k, TW*k, TH*k, TR*k);
+    ctx.lineWidth = TRACK_W*k;
+    ctx.strokeStyle = 'rgba(120,140,255,0.048)';
+    ctx.stroke();
+
+    /* the travelling light: a blue bloom under a pale core */
+    paintComet(gx,  head, [95,125,242], [50,70,120], GLOW_W);
+    paintComet(cox, head, [82,90,110],  [70,60,40],  CORE_W);
+    ctx.globalCompositeOperation = 'lighter';
+    if(canFilter){
+      ctx.filter = 'blur('+(28*k)+'px)'; ctx.globalAlpha = 0.62; ctx.drawImage(gl,0,0);
+      ctx.filter = 'blur('+(8*k)+'px)';  ctx.globalAlpha = 0.45; ctx.drawImage(gl,0,0);
+      ctx.filter = 'blur('+(1.8*k)+'px)';ctx.globalAlpha = 1;    ctx.drawImage(co,0,0);
+      ctx.filter = 'none';
+    }else{
+      ctx.shadowColor = 'rgba(88,122,255,0.9)';
+      ctx.shadowBlur = 26*k; ctx.globalAlpha = 0.7; ctx.drawImage(gl,0,0);
+      ctx.shadowBlur = 8*k;  ctx.globalAlpha = 0.8; ctx.drawImage(gl,0,0);
+      ctx.shadowBlur = 0;    ctx.globalAlpha = 1;   ctx.drawImage(co,0,0);
+    }
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+
+    /* the button sits over the light, so the inner half of the glow is hidden */
+    plate(ctx);
+    label(ctx, ph);
+  }
+
+  /* ---------- clock ---------- */
+  var now = 0, playing = true, last = null;
+  function frame(ts){
+    if(playing){
+      if(last != null) now = (now + (ts-last)/1000) % DUR;
+      last = ts;
+      render(now);
+    }else last = ts;
+    requestAnimationFrame(frame);
+  }
+
+  window.__DUR = DUR;
+  window.__seek = function(t){ playing = false; now = ((t % DUR) + DUR) % DUR; render(now); };
+  window.__play = function(){ playing = true; last = null; };
+  window.__pause = function(){ playing = false; };
+  window.__time = function(){ return now; };
+
+  window.addEventListener('resize', resize);
+  if(window.ResizeObserver) new ResizeObserver(resize).observe(document.getElementById('stage'));
+  if(document.fonts && document.fonts.ready) document.fonts.ready.then(function(){ fitText(); render(now); });
+  resize();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

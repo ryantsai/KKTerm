@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Component Preview</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      height: 100%;
+      overflow: auto;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #000000;
+      color: #ffffff;
+    }
+    .component-wrapper {
+      width: 100%;
+      height: 100%;
+      padding: 0;
+      box-sizing: border-box;
+      overflow: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="component-wrapper">
+    <html lang="en"><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Tailwind (CDN build is fine for quick paste) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Optional font to match the original -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&amp;display=swap" rel="stylesheet">
+
+
+
+  <style>
+    /* ---------- Core styles that Tailwind can’t express (pseudo-elements, keyframes, multi-shadows) ---------- */
+    .btn-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+
+    .btn {
+      --border-radius: 24px;
+      --padding: 4px;
+      --transition: 0.4s;
+      --button-color: #101010;
+      --highlight-color-hue: 210deg;
+      /* Change this hue to recolor the glow */
+
+      user-select: none;
+      display: flex;
+      justify-content: center;
+
+      background-color: var(--button-color);
+
+      /* Complex layered shadows */
+      box-shadow:
+        inset 0px 1px 1px rgba(255, 255, 255, 0.2),
+        inset 0px 2px 2px rgba(255, 255, 255, 0.15),
+        inset 0px 4px 4px rgba(255, 255, 255, 0.1),
+        inset 0px 8px 8px rgba(255, 255, 255, 0.05),
+        inset 0px 16px 16px rgba(255, 255, 255, 0.05),
+        0px -1px 1px rgba(0, 0, 0, 0.02),
+        0px -2px 2px rgba(0, 0, 0, 0.03),
+        0px -4px 4px rgba(0, 0, 0, 0.05),
+        0px -8px 8px rgba(0, 0, 0, 0.06),
+        0px -16px 16px rgba(0, 0, 0, 0.08);
+
+      border: solid 1px #ffffff22;
+      border-radius: var(--border-radius);
+      cursor: pointer;
+
+      transition:
+        box-shadow var(--transition),
+        border var(--transition),
+        background-color var(--transition);
+    }
+
+    .btn::before {
+      content: "";
+      position: absolute;
+      top: calc(0px - var(--padding));
+      left: calc(0px - var(--padding));
+      width: calc(100% + var(--padding) * 2);
+      height: calc(100% + var(--padding) * 2);
+      border-radius: calc(var(--border-radius) + var(--padding));
+      pointer-events: none;
+      background-image: linear-gradient(0deg, #0004, #000a);
+      z-index: -1;
+      transition:
+        box-shadow var(--transition),
+        filter var(--transition);
+      box-shadow:
+        0 -8px 8px -6px #0000 inset,
+        0 -16px 16px -8px #00000000 inset,
+        1px 1px 1px #fff2,
+        2px 2px 2px #fff1,
+        -1px -1px 1px #0002,
+        -2px -2px 2px #0001;
+    }
+
+    .btn::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      background-image: linear-gradient(0deg,
+          #fff,
+          hsl(var(--highlight-color-hue), 100%, 70%),
+          hsla(var(--highlight-color-hue), 100%, 70%, 50%),
+          8%,
+          transparent);
+      background-position: 0 0;
+      opacity: 0;
+      transition: opacity var(--transition), filter var(--transition);
+    }
+
+    .btn-letter {
+      position: relative;
+      display: inline-block;
+      color: #ffffff55;
+      animation: letter-anim 2s ease-in-out infinite;
+      transition: color var(--transition), text-shadow var(--transition), opacity var(--transition);
+    }
+
+    @keyframes letter-anim {
+      50% {
+        text-shadow: 0 0 3px #ffffff88;
+        color: #fff;
+      }
+    }
+
+    .btn-svg {
+      flex-grow: 1;
+      height: 24px;
+      margin-right: 0.5rem;
+      fill: #e8e8e8;
+      animation: flicker 2s linear infinite;
+      animation-delay: 0.5s;
+      filter: drop-shadow(0 0 2px #ffffff99);
+      transition: fill var(--transition), filter var(--transition), opacity var(--transition);
+    }
+
+    @keyframes flicker {
+      50% {
+        opacity: 0.3;
+      }
+    }
+
+    .txt-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      min-width: 6.4em;
+    }
+
+    .txt-1,
+    .txt-2 {
+      position: absolute;
+      word-spacing: -1em;
+    }
+
+    .txt-1 {
+      animation: appear-anim 1s ease-in-out forwards;
+    }
+
+    .txt-2 {
+      opacity: 0;
+    }
+
+    @keyframes appear-anim {
+      0% {
+        opacity: 0;
+      }
+
+      100% {
+        opacity: 1;
+      }
+    }
+
+    .btn:focus .txt-1,
+    .btn:focus-visible .txt-1 {
+      animation: opacity-anim 0.3s ease-in-out forwards;
+      animation-delay: 1s;
+    }
+
+    .btn:focus .txt-2,
+    .btn:focus-visible .txt-2 {
+      animation: opacity-anim 0.3s ease-in-out reverse forwards;
+      animation-delay: 1s;
+    }
+
+    @keyframes opacity-anim {
+      0% {
+        opacity: 1;
+      }
+
+      100% {
+        opacity: 0;
+      }
+    }
+
+    .btn:focus .btn-letter,
+    .btn:focus-visible .btn-letter {
+      animation:
+        focused-letter-anim 1s ease-in-out forwards,
+        letter-anim 1.2s ease-in-out infinite;
+      animation-delay: 0s, 1s;
+    }
+
+    @keyframes focused-letter-anim {
+
+      0%,
+      100% {
+        filter: blur(0px);
+      }
+
+      50% {
+        transform: scale(2);
+        filter: blur(10px) brightness(150%) drop-shadow(-36px 12px 12px hsl(var(--highlight-color-hue), 100%, 70%));
+      }
+    }
+
+    .btn:focus .btn-svg,
+    .btn:focus-visible .btn-svg {
+      animation-duration: 1.2s;
+      animation-delay: 0.2s;
+    }
+
+    .btn:focus::before,
+    .btn:focus-visible::before {
+      box-shadow:
+        0 -8px 12px -6px #fff3 inset,
+        0 -16px 16px -8px hsla(var(--highlight-color-hue), 100%, 70%, 20%) inset,
+        1px 1px 1px #fff3,
+        2px 2px 2px #fff1,
+        -1px -1px 1px #0002,
+        -2px -2px 2px #0001;
+    }
+
+    .btn:focus::after,
+    .btn:focus-visible::after {
+      opacity: 0.6;
+      -webkit-mask-image: linear-gradient(0deg, #fff, transparent);
+      mask-image: linear-gradient(0deg, #fff, transparent);
+      filter: brightness(100%);
+    }
+
+    /* Staggered delays for each letter */
+    .btn-letter:nth-child(1),
+    .btn:focus .btn-letter:nth-child(1),
+    .btn:focus-visible .btn-letter:nth-child(1) {
+      animation-delay: 0s;
+    }
+
+    .btn-letter:nth-child(2),
+    .btn:focus .btn-letter:nth-child(2),
+    .btn:focus-visible .btn-letter:nth-child(2) {
+      animation-delay: 0.08s;
+    }
+
+    .btn-letter:nth-child(3),
+    .btn:focus .btn-letter:nth-child(3),
+    .btn:focus-visible .btn-letter:nth-child(3) {
+      animation-delay: 0.16s;
+    }
+
+    .btn-letter:nth-child(4),
+    .btn:focus .btn-letter:nth-child(4),
+    .btn:focus-visible .btn-letter:nth-child(4) {
+      animation-delay: 0.24s;
+    }
+
+    .btn-letter:nth-child(5),
+    .btn:focus .btn-letter:nth-child(5),
+    .btn:focus-visible .btn-letter:nth-child(5) {
+      animation-delay: 0.32s;
+    }
+
+    .btn-letter:nth-child(6),
+    .btn:focus .btn-letter:nth-child(6),
+    .btn:focus-visible .btn-letter:nth-child(6) {
+      animation-delay: 0.40s;
+    }
+
+    .btn-letter:nth-child(7),
+    .btn:focus .btn-letter:nth-child(7),
+    .btn:focus-visible .btn-letter:nth-child(7) {
+      animation-delay: 0.48s;
+    }
+
+    .btn-letter:nth-child(8),
+    .btn:focus .btn-letter:nth-child(8),
+    .btn:focus-visible .btn-letter:nth-child(8) {
+      animation-delay: 0.56s;
+    }
+
+    .btn-letter:nth-child(9),
+    .btn:focus .btn-letter:nth-child(9),
+    .btn:focus-visible .btn-letter:nth-child(9) {
+      animation-delay: 0.64s;
+    }
+
+    .btn-letter:nth-child(10),
+    .btn:focus .btn-letter:nth-child(10),
+    .btn:focus-visible .btn-letter:nth-child(10) {
+      animation-delay: 0.72s;
+    }
+
+    .btn-letter:nth-child(11),
+    .btn:focus .btn-letter:nth-child(11),
+    .btn:focus-visible .btn-letter:nth-child(11) {
+      animation-delay: 0.80s;
+    }
+
+    .btn-letter:nth-child(12),
+    .btn:focus .btn-letter:nth-child(12),
+    .btn:focus-visible .btn-letter:nth-child(12) {
+      animation-delay: 0.88s;
+    }
+
+    .btn-letter:nth-child(13),
+    .btn:focus .btn-letter:nth-child(13),
+    .btn:focus-visible .btn-letter:nth-child(13) {
+      animation-delay: 0.96s;
+    }
+
+    /* Active state */
+    .btn:active {
+      border: solid 1px hsla(var(--highlight-color-hue), 100%, 80%, 0.7);
+      background-color: hsla(var(--highlight-color-hue), 50%, 20%, 0.5);
+    }
+
+    .btn:active::before {
+      box-shadow:
+        0 -8px 12px -6px #fffa inset,
+        0 -16px 16px -8px hsla(var(--highlight-color-hue), 100%, 70%, 0.8) inset,
+        1px 1px 1px #fff4,
+        2px 2px 2px #fff2,
+        -1px -1px 1px #0002,
+        -2px -2px 2px #0001;
+    }
+
+    .btn:active::after {
+      opacity: 1;
+      -webkit-mask-image: linear-gradient(0deg, #fff, transparent);
+      mask-image: linear-gradient(0deg, #fff, transparent);
+      filter: brightness(200%);
+    }
+
+    .btn:active .btn-letter {
+      text-shadow: 0 0 1px hsla(var(--highlight-color-hue), 100%, 90%, 0.9);
+      animation: none;
+    }
+
+    /* Hover state */
+    .btn:hover {
+      border: solid 1px hsla(var(--highlight-color-hue), 100%, 80%, 0.4);
+    }
+
+    .btn:hover::before {
+      box-shadow:
+        0 -8px 8px -6px #fffa inset,
+        0 -16px 16px -8px hsla(var(--highlight-color-hue), 100%, 70%, 0.3) inset,
+        1px 1px 1px #fff2,
+        2px 2px 2px #fff1,
+        -1px -1px 1px #0002,
+        -2px -2px 2px #0001;
+    }
+
+    .btn:hover::after {
+      opacity: 1;
+      -webkit-mask-image: linear-gradient(0deg, #fff, transparent);
+      mask-image: linear-gradient(0deg, #fff, transparent);
+    }
+
+    .btn:hover .btn-svg {
+      fill: #fff;
+      filter:
+        drop-shadow(0 0 3px hsl(var(--highlight-color-hue), 100%, 70%)) drop-shadow(0 -4px 6px #0009);
+      animation: none;
+    }
+  </style>
+</head>
+
+
+
+<!-- Button -->
+<body><div class="btn-wrapper">
+  <button class="btn px-3 py-2 md:px-4 md:py-2 focus:outline-none" type="button" aria-label="Generate" title="Generate">
+        <svg class="btn-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z">
+          </path>
+        </svg>
+
+        <div class="txt-wrapper">
+          <div class="txt-1">
+            <span class="btn-letter">G</span>
+            <span class="btn-letter">e</span>
+            <span class="btn-letter">n</span>
+            <span class="btn-letter">e</span>
+            <span class="btn-letter">r</span>
+            <span class="btn-letter">a</span>
+            <span class="btn-letter">t</span>
+            <span class="btn-letter">e</span>
+          </div>
+          <div class="txt-2">
+            <span class="btn-letter">G</span>
+            <span class="btn-letter">e</span>
+            <span class="btn-letter">n</span>
+            <span class="btn-letter">e</span>
+            <span class="btn-letter">r</span>
+            <span class="btn-letter">a</span>
+            <span class="btn-letter">t</span>
+            <span class="btn-letter">i</span>
+            <span class="btn-letter">n</span>
+            <span class="btn-letter">g</span>
+          </div>
+        </div>
+      </button>
+</div>
+
+
+
+
+
+</body></html>
+  </div>
+  
+    <script>
+      (function() {
+        function checkAndCenter() {
+          // Use double requestAnimationFrame to ensure DOM is fully painted and layout is stable
+          requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+              const wrapper = document.querySelector('.component-wrapper');
+              if (!wrapper) return;
+              
+              // Get all child elements
+              const children = Array.from(wrapper.children);
+              if (children.length === 0) return;
+              
+              // Temporarily override wrapper styles to shrink-wrap for measurement
+              // Set inline styles to shrink-wrap (inline styles override CSS)
+              wrapper.style.display = 'inline-block';
+              wrapper.style.width = 'auto';
+              wrapper.style.height = 'auto';
+              wrapper.style.overflow = 'visible';
+              wrapper.style.boxSizing = 'content-box';
+              
+              // Force multiple reflows to ensure styles are fully applied
+              void wrapper.offsetHeight;
+              void wrapper.offsetWidth;
+              void wrapper.offsetHeight;
+              
+              // Measure the wrapper's content size
+              const contentWidth = wrapper.offsetWidth;
+              const contentHeight = wrapper.offsetHeight;
+              
+              // Restore original styles by removing inline styles we added
+              wrapper.style.removeProperty('display');
+              wrapper.style.removeProperty('width');
+              wrapper.style.removeProperty('height');
+              wrapper.style.removeProperty('overflow');
+              wrapper.style.removeProperty('box-sizing');
+              
+              // If content is less than 500x500, center it
+              if (contentWidth > 0 && contentHeight > 0 && contentWidth < 500 && contentHeight < 500) {
+                wrapper.style.display = 'flex';
+                wrapper.style.alignItems = 'center';
+                wrapper.style.justifyContent = 'center';
+              }
+            });
+          });
+        }
+        
+        // Check immediately and after delays to ensure content is rendered and styled
+        function runChecks() {
+          checkAndCenter();
+          setTimeout(checkAndCenter, 50);
+          setTimeout(checkAndCenter, 150);
+          setTimeout(checkAndCenter, 300);
+          setTimeout(checkAndCenter, 500);
+          setTimeout(checkAndCenter, 1000);
+        }
+        
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', runChecks);
+        } else {
+          runChecks();
+        }
+        
+        // Also check when images or other resources load
+        window.addEventListener('load', () => {
+          setTimeout(checkAndCenter, 100);
+          setTimeout(checkAndCenter, 300);
+        });
+        
+        // Use ResizeObserver to detect size changes
+        if (window.ResizeObserver) {
+          setTimeout(() => {
+            const wrapper = document.querySelector('.component-wrapper');
+            if (wrapper) {
+              const observer = new ResizeObserver(() => {
+                setTimeout(checkAndCenter, 50);
+              });
+              observer.observe(wrapper);
+            }
+          }, 500);
+        }
+      })();
+    </script>
+  
+</body>
+</html>
