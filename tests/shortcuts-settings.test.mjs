@@ -48,7 +48,13 @@ test("keymap ships predefined defaults for common actions and leaves splits unbo
     assert.match(keymapSource, bound);
   }
   // Split-pane actions ship unbound for user customization.
-  for (const unbound of ["splitRight", "splitLeft", "splitDown", "splitUp"]) {
+  for (const unbound of [
+    "reconnectActiveSession",
+    "splitRight",
+    "splitLeft",
+    "splitDown",
+    "splitUp",
+  ]) {
     assert.match(
       keymapSource,
       new RegExp(`id: "${unbound}"[\\s\\S]*?defaultBinding: null`),

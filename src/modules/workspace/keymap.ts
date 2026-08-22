@@ -37,6 +37,7 @@ export type WorkspaceShortcutActionId =
   | "zoomIn"
   | "zoomOut"
   | "zoomReset"
+  | "reconnectActiveSession"
   | "splitRight"
   | "splitLeft"
   | "splitDown"
@@ -79,6 +80,7 @@ export const WORKSPACE_SHORTCUT_ACTIONS: readonly WorkspaceShortcutAction[] = [
   { id: "zoomIn", scope: "terminal", labelKey: "settings.shortcutZoomIn", defaultBinding: "Ctrl+=" },
   { id: "zoomOut", scope: "terminal", labelKey: "settings.shortcutZoomOut", defaultBinding: "Ctrl+-" },
   { id: "zoomReset", scope: "terminal", labelKey: "settings.shortcutZoomReset", defaultBinding: "Ctrl+0" },
+  { id: "reconnectActiveSession", scope: "terminal", labelKey: "settings.shortcutReconnectActiveSession", defaultBinding: null },
   { id: "splitRight", scope: "terminal", labelKey: "terminal.splitRight", defaultBinding: null },
   { id: "splitLeft", scope: "terminal", labelKey: "terminal.splitLeft", defaultBinding: null },
   { id: "splitDown", scope: "terminal", labelKey: "terminal.splitDown", defaultBinding: null },

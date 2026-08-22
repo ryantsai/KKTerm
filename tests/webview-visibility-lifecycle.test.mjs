@@ -26,10 +26,19 @@ test("F5 reload is blocked in the main shell but remains available to focused UR
 
   assert.ok(urlSessionStartup, "URL WebView startup should exist");
   assert.match(backend, /SUPPRESS_SHELL_F5_RELOAD_SCRIPT/);
-  assert.match(backend, /AcceleratorKeyPressedEventHandler/);
-  assert.match(backend, /COREWEBVIEW2_KEY_EVENT_KIND_KEY_DOWN/);
-  assert.match(backend, /VK_F5/);
-  assert.match(backend, /args\.SetHandled\(true\)/);
+  assert.match(backend, /event\.preventDefault\(\)/);
+  assert.doesNotMatch(
+    backend.match(/SUPPRESS_SHELL_F5_RELOAD_SCRIPT:[\s\S]*?"#;/)?.[0] ?? "",
+    /stopImmediatePropagation/,
+    "the reload guard must let the Connection Tree and xterm receive F5",
+  );
+  assert.match(backend, /ICoreWebView2Settings3/);
+  assert.match(backend, /SetAreBrowserAcceleratorKeysEnabled\(false\)/);
+  assert.doesNotMatch(
+    backend,
+    /AcceleratorKeyPressedEventHandler|args\.SetHandled\(true\)/,
+    "the native layer must not consume F5 before the focused frontend surface receives it",
+  );
   assert.match(lib, /\.initialization_script_for_all_frames\(webview::SUPPRESS_SHELL_F5_RELOAD_SCRIPT\)/);
   assert.match(lib, /webview::configure_shell_refresh_shortcut\(&main_webview\)/);
   assert.doesNotMatch(urlSessionStartup, /SUPPRESS_SHELL_F5_RELOAD_SCRIPT/);

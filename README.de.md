@@ -5,15 +5,15 @@
 <h1 align="center">KKTerm</h1>
 
 <p align="center">
-  <strong>Ein einziges natives Windows-Fenster für Terminals, SSH, SFTP, RDP/VNC und ein Dashboard — plus eine KI, die dir auf Zuruf deine eigenen kleinen Tools baut.</strong>
+  <strong>Eine plattformübergreifende Desktop-Arbeitsumgebung für Terminals, SSH/SFTP, RDP/VNC, Dateien, Web, IT Ops und einen genehmigungspflichtigen KI-Assistenten.</strong>
 </p>
 
 <p align="center">
-  <em>Weil deine Taskleiste nicht wie ein Spielautomat in Las Vegas aussehen sollte.</em>
+  <em>Deine Taskleiste muss nicht wie ein Spielautomaten-Casino in Las Vegas aussehen.</em>
 </p>
 
 <p align="center">
-  <sub>Benannt nach <strong>乖乖 (Kuāi Kuāi)</strong>, dem grünen Kokos-Snack, den taiwanische Sysadmins auf Server legen, damit sie sich benehmen. Wir hoffen, diese App verdient sich ihren Platz im Rack.</sub>
+  <sub>Der Name kommt von <strong>乖乖 (Kuāi Kuāi)</strong>, dem grünen Kokosnuss-Snack, den taiwanische Systemadministratoren auf Server stellen, damit sie sich benehmen.</sub>
 </p>
 
 <p align="center">
@@ -34,14 +34,14 @@
     <img src="https://img.shields.io/github/issues/ryantsai/KKTerm?style=for-the-badge&logo=github&color=2ea043" alt="Open issues" />
   </a>
   <a href="https://github.com/ryantsai/KKTerm/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/ryantsai/KKTerm?style=for-the-badge&color=blue" alt="MIT License" />
+    <img src="https://img.shields.io/badge/license-MIT%20%2B%20Commons%20Clause-blue?style=for-the-badge" alt="MIT-Lizenz mit Commons Clause" />
   </a>
   <a href="https://github.com/sponsors/ryantsai">
     <img src="https://img.shields.io/badge/Sponsor-%E2%9D%A4-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="KKTerm auf GitHub unterstützen" />
   </a>
   <br />
-  <img src="https://img.shields.io/badge/cross%E2%80%91platform-desktop-0078D6?style=flat-square" alt="Cross-platform desktop" />
-  <img src="https://img.shields.io/badge/local--first-no%20telemetry-success?style=flat-square" alt="Local-first" />
+  <img src="https://img.shields.io/badge/cross%E2%80%91platform-desktop-0078D6?style=flat-square" alt="Plattformübergreifender Desktop" />
+  <img src="https://img.shields.io/badge/local--first-no%20telemetry-success?style=flat-square" alt="Lokal zuerst, keine Telemetrie" />
   <br />
   <sub>
     <a href="README.md">English</a> ·
@@ -63,210 +63,65 @@
 
 ---
 
-## Der Pitch in 45 Sekunden
+## Warum „KKTerm“?
 
-KKTerm vereint lokale Terminals, SSH/SFTP, FTP/FTPS, Telnet, serielle Verbindungen, RDP/VNC, eingebettete Webseiten, lokale Dateien und Dokumente in einem Desktop-Arbeitsbereich. Tabs können verschiedene Pane-Typen mischen, damit Terminal, Dateibrowser und Remote-Bildschirm für eine Aufgabe zusammenbleiben.
-
-Es läuft unter Windows, macOS und Linux, speichert lokal und nutzt keine Telemetrie. Freigabepflichtige KI, anpassbare Dashboard-Widgets, Workspaces, IT Ops und der Windows Install Helper sind integriert.
-
----
-
-## Warum „KKTerm"?
-
-Geh in irgendein taiwanisches Rechenzentrum und schau oben auf die Racks. Vorbei an TSMC-Fabs, Leitständen der Taipei-Metro, Serverhallen der Cathay-Bank, Vermittlungstechnik von Chunghwa Telecom — du wirst ein kleines grünes Tütchen 乖乖 (Kuāi Kuāi) entdecken, einen Mais-Snack mit Kokosgeschmack aus den 1960ern.
-
-**KKTerm** ist **Kuai Kuai Term** — ein Admin-Workspace, der dasselbe anstrebt wie der Snack: still neben deinen wichtigen Maschinen zu sitzen und ihnen zu helfen, sich zu benehmen. Local-first. Keine Telemetrie. KI mit Freigabe. Die langweilige, verlässliche Sorte Software.
-
-Ein echtes Tütchen Kuai Kuai mit dem Installer auszuliefern, haben wir noch nicht geschafft. Das ist ein Punkt für v2.
-
----
-
-## In Bewegung sehen
-
-<p align="center">
-  <a href="https://github.com/ryantsai/KKTerm">
-    <img
-      src="docs/assets/demo.gif"
-      alt="KKTerm demo"
-      width="720"
-    />
-  </a>
-</p>
-
-<p align="center"><sub><em>(Das Demo-GIF. Ein Bild sagt mehr als tausend Aufzählungspunkte, und uns gehen die Aufzählungspunkte aus.)</em></sub></p>
-
----
+KKTerm steht für **Kuai Kuai Term** — eine Anspielung auf das grüne 乖乖, das taiwanische Systemadministratoren auf Server stellen, damit wichtige Maschinen ruhig, zuverlässig und brav laufen.
 
 ## Ein Fenster, jede Verbindung
 
-| Du wolltest… | KKTerm macht's |
+KKTerm vereint lokale Shells, SSH/SFTP, FTP/FTPS, Telnet, serielle Verbindungen, RDP/VNC, URL-Verbindungen, den lokalen Datei-Explorer und den Dokument-Viewer in einer Desktop-Arbeitsumgebung. Ein Tab kann verschiedene Pane-Typen mischen, damit Terminal, Dateibrowser, Weboberfläche und Remote-Bildschirm zusammenbleiben.
+
+| Bedarf | KKTerm |
 | --- | --- |
-| Eine lokale PowerShell / cmd / WSL-Shell öffnen | Lokale Terminals, nebeneinander |
-| Per SSH auf einen Server | SSH mit Schlüsseln, Agent, Passwörtern, Jump-Hosts und Port-Forwarding |
-| Dateien auf diesem Server durchsehen | SFTP aus der SSH-Verbindung — Zweispalten-Ansicht, zum Übertragen ziehen |
-| FTP zu einem NAS von 2012 | FTP / FTPS im selben Datei-Browser |
-| Telnet zu uralter Technik | Ja, Telnet ist auch drin |
-| Mit einem seriellen Port reden | Serielle Verbindungen — COM-Port und Baudrate wählen |
-| Per Remote auf eine Windows-Kiste | Das echte Microsoft-Remotedesktop, gleich eingebaut |
-| VNC auf einen Pi | VNC, direkt in den Workspace gerendert |
-| Die Weboberfläche des Routers öffnen | Ein eingebetteter Browser-Tab mit gespeicherten Logins |
-| Die eigene Platte durchsehen | Ein lokales File-Explorer-Pane, dieselbe Zweispalten-Hülle wie SFTP |
-| Ein Log, CSV, Bild oder PDF öffnen | Ein eingebauter Document-Viewer mit echtem Tail-Follow-Log-Modus |
-| Die CPU des Hosts beobachten | Eine Live-Statusleiste und ein Dashboard, das du selbst baust |
-
-Dieselbe App. Dasselbe Fenster. Dieselben Hotkeys. Dasselbe, hoffentlich nicht augenfeindliche, Theme.
+| Lokale Shells | PowerShell, cmd und WSL |
+| Fernzugriff | SSH, Telnet, seriell, RDP und VNC |
+| Dateien und Web | SFTP, FTP/FTPS, lokale Dateien und eingebettete URL-Verbindungen |
+| Dokumente | Logs mit fortlaufender Verfolgung, Text, CSV, Bilder und PDFs |
 
 <p align="center">
-  <img src="docs/assets/screenshots/connections-grid.png" alt="Ein einzelner Tab mit SSH, SFTP und einer eingebetteten Web-UI nebeneinander" width="720" />
+  <img src="docs/assets/screenshots/connections-grid.png" alt="Gemischte SSH-, SFTP-, Terminal-, URL- und RDP-Panes in einem KKTerm-Tab" width="720" />
 </p>
 
----
+## Für die Arbeit rund ums Terminal
 
-## Warum Leute es den ganzen Tag offen lassen
-
-### Kleiner Download, Blitzstart
-
-KKTerm soll sich wie ein Werkzeug anfühlen, nicht wie eine Plattform. Aktuelle Desktop-Builds liegen unter 20 MB, installieren schnell und starten so flott, dass sich das Öffnen deines Admin-Workspace nicht wie das Starten eines zweiten Betriebssystems anfühlt.
-
-### Multi-Pane-Grids, gemischt wie du arbeitest
-
-Ein Tab kann ein Grid aus Panes enthalten, und diese Panes müssen nicht dieselbe Art haben. Lege SSH neben SFTP, eine lokale PowerShell unter eine RDP Session, VNC neben das Web-UI des Routers oder einen Dateibrowser neben das Terminal, das gerade Dateien verschiebt.
+- **Workspace** — gemischte Tabs und Panes, benannte Workspaces, tmux-Wiederverbindung, Connection Notes, Git Browser und File Compare.
+- **KI-Assistent** — genehmigungspflichtige Werkzeuge für Sessions, Dashboard, IT Ops und Custom Modules sowie Anhänge, Senden an das Terminal, MCP und wiederverwendbare Assistant Skills.
+- **Dashboard** — wechselbare Views mit verschiebbaren und skalierbaren integrierten oder KI-erstellten Widgets, App Launcher, Live-Connection-Panels, Notes, Nutzungsanzeigen und Werkzeugen.
+- **IT Ops** — Site-Topologie mit Server Rooms und Racks (Elevation, Grundriss und 2.5D-Ansicht), Host-Inventar und Verbindungsscans, wiederverwendbare Script-/Playbook-Tasks, Batch Runs über SSH/WinRM/PsExec, IPAM, VLANs, Network Maps, Verlauf und PDF/CSV-Export.
+- **Screenshots** — Bereich, Fenster oder gesamten Desktop aufnehmen, in einer lokalen Bibliothek oder der Zwischenablage speichern, stapelweise skalieren/konvertieren und mit Zuschnitt, Formen, Text und Mosaik annotieren.
+- **Custom Modules** — isolierte `.kkmod`-Pakete über Settings installieren, deklarierte Berechtigungen prüfen, Rail-Ziele hinzufügen sowie Updates, Rollback, Speicher und Deinstallation verwalten. Das Repository enthält unter anderem Integrationen für Excalidraw, BentoPDF, OpenFlowKit und TiddlyWiki.
+- **Install Helper (Windows)** — Tools sowie unterstützte lokale Web-Apps und Dienste suchen, installieren, aktualisieren und deinstallieren, ohne KKTerm zu verlassen.
 
 <p align="center">
-  <img src="docs/assets/screenshots/multi-pane.png" alt="Ein Tab, geteilt in vier Panes verschiedener Verbindungsarten" width="720" />
+  <img src="docs/assets/screenshots/itops.png" alt="IT Ops Server-Room-Elevations mit Rack-Geräten und Zustandsanzeigen" width="720" />
 </p>
 
-### Ein KI-Assistent, der deine Terminals für dich steuert
+## Deine Arbeitsumgebung, dein Stil
 
-Die meisten „KI im Terminal"-Demos hören beim Chat auf. Der Assistent von KKTerm arbeitet *in* deiner Session: Du gibst ihm Kontext aus dem, was schon auf dem Bildschirm ist, und er handelt an den Maschinen, mit denen du verbunden bist — mit einem Menschen in der Freigabeschleife.
+Dashboard-Views, Terminal-Connections, der Dokument-Viewer und IT-Ops-Drilldown-Views verwenden denselben Hintergrundwähler. Zur Auswahl stehen Farb- und Verlaufsvorlagen, lokale Bilder und Videos sowie **84 integrierte dynamische Hintergründe** — von Ozean und Wetter über WebGL-Szenen und Weltraum bis zu Netzwerk- und abstrakten Grafiken. Verborgene oder vollständig außerhalb des Bildschirms liegende Szenen pausieren und geben ihre Render-Ressourcen frei. Farbthemen, Terminal-Optik, eigene Schriften und Hintergründe pro Connection ergänzen die Anpassung.
 
 <p align="center">
-  <img src="docs/assets/screenshots/ai-assistant.png" alt="Das Panel des KI-Assistenten mit den Schaltern für Tool-Zugriff und Freigabemodus" width="720" />
+  <img src="docs/assets/screenshots/backgrounds.png" alt="KKTerms Auswahl dynamischer Hintergründe" width="720" />
 </p>
 
-### Ein Dashboard, das nicht so tut, als wäre es Grafana
-
-Das Dashboard ist ein Raster aus Widgets, die man zieht und in der Größe ändert. Es ist nicht für Petabyte-Observability — es ist für „ich will einen Knopf, der meine fünf Lieblings-Apps startet, und ein Panel, das die Uptime meines SSH-Hosts zeigt, *neben* meinem Chat".
-
-Dashboard-Ansichten bieten 45 in KKTerm integrierte animierte Hintergründe. Neu hinzugekommen sind acht prozedurale WebGL-Szenen: `heroGeometric`, `ditherPrismHero`, `webglLiquid`, `silkAurora`, `closingPlasma`, `animatedGradient`, `prismGradient` und `liquidChrome`. Derselbe Hintergrundwähler steht auch für Terminal-Verbindungen, den Dokumentbetrachter und IT-Ops-Detailansichten bereit; ausgeblendete oder nicht sichtbare Szenen stoppen das Rendering und geben ihre WebGL-Ressourcen frei.
+## KKTerm in Aktion
 
 <p align="center">
-  <img src="docs/assets/screenshots/ai-widgets.png" alt="Ein Dashboard-Raster voller KI-erstellter Widgets" width="720" />
+  <img src="docs/assets/demo.gif" alt="KKTerm-Demo" width="720" />
 </p>
 
-### IT Ops für Standorte, Hosts und wiederholbare Arbeit
+## KKTerm herunterladen
 
-Das **IT-Ops**-Modul gruppiert Verbindungen in Standorte, bildet Serverräume und Racks ab, verwaltet Hosts und führt wiederverwendbare Aufgaben auf ausgewählten Rechnern aus. Batch-Läufe speichern Ergebnisse pro Host; Automatisierungen verbinden Auslöser und Bedingungen mit Benachrichtigungen, Webhooks oder Aufgaben.
+Lade die [neueste Version](https://github.com/ryantsai/KKTerm/releases/latest) für Windows, macOS oder Linux herunter. Windows bietet ein Setup-Programm sowie portable ZIPs für x64/ARM64. Entpacke ein portables ZIP in einen lokal beschreibbaren Ordner oder auf ein Wechsellaufwerk, nicht in eine Netzwerkfreigabe. Prüfe vor dem Start die danebenliegende `.sha256`-Datei.
 
-<p align="center">
-  <img src="docs/assets/screenshots/itops.png" alt="Die IT-Ops-Serverraumansicht mit sechs bestückten Racks und Host-Statusanzeigen" width="720" />
-</p>
+Für einen Build aus dem Quellcode lies zuerst [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
-### Screenshots aufnehmen, organisieren und kommentieren
+## Beitragen, unterstützen und Dokumentation
 
-Das **Screenshots**-Modul erfasst einen Bereich, ein Fenster oder den gesamten Desktop in einer lokalen Bibliothek, in der Zwischenablage oder in beidem. Aufnahmen lassen sich sortieren und gruppieren, stapelweise skalieren oder konvertieren und im integrierten Editor zuschneiden, freihändig markieren oder mit Pfeilen, Formen, Text und Mosaik-Unkenntlichmachung versehen. Globale Tastenkürzel und das Systemleistenmenü halten die Aufnahme jederzeit nur einen Tastendruck entfernt.
+Beiträge und Fehlerberichte sind willkommen. Siehe [`CONTRIBUTING.md`](CONTRIBUTING.md), das [Benutzerhandbuch](docs/manual/INDEX.md), die [Architektur](docs/ARCHITECTURE.md), den [Dashboard-Leitfaden](docs/DASHBOARD.md), den [IT-Ops-Leitfaden](docs/ITOPS.md) und die [Custom-Module-Host-API](docs/KKMOD_HOST_API_V2.md).
 
-<p align="center">
-  <img src="docs/assets/screenshots/screenshots-module.png" alt="Das Screenshots-Modul mit Aufnahmefunktionen und Vorschaubibliothek" width="720" />
-</p>
-
-### Deine KI-Agenten am Leben halten
-
-Das ist die zweite Funktion, in die sich Leute verlieben. KKTerms SSH-Terminals können dich direkt in eine **benannte tmux-Session** auf dem entfernten Host setzen, die ein Wiederverbinden übersteht.
-
-<p align="center">
-  <img src="docs/assets/screenshots/tmux-reattach.png" alt="Ein SSH-Pane, das sich nach einer Wiederverbindung erneut an eine benannte tmux-Session anhängt" width="720" />
-</p>
-
-### Mit Workspaces deine Welten trennen
-
-Das Homelab, der Hauptjob und die Server dieses einen Kunden gehören nicht in dieselbe Liste. **Workspaces** sind benannte, isolierte Container von Connections, zwischen denen du über das Activity Rail umschaltest. Das Umschalten re-skopiert nur den Verbindungsbaum — deine offenen Sessions, das Dashboard und die Einstellungen bleiben, wo sie sind — also kostet ein Kontextwechsel einen Klick, keinen Neustart.
-
-<p align="center">
-  <img src="docs/assets/screenshots/workspaces.png" alt="Der Workspace-Umschalter im Activity Rail" width="720" />
-</p>
-
-### Mach's dir schön: Farbthemen
-
-Hintergründe sind der Spaß; **Farbthemen** sind das, worauf du den ganzen Tag tatsächlich starrst. KKTerm bringt **sechsundzwanzig** Farbschemata mit, die die ganze App-Oberfläche neu einkleiden — Activity Rail, Verbindungsbaum, Tabs, Dialoge — mit einer Live-Mini-Vorschau für jedes unter Einstellungen ▸ Darstellung.
-
-<p align="center">
-  <img src="docs/assets/screenshots/color-themes.png" alt="Das Raster der Farbschemata in den Einstellungen mit Live-Vorschauen" width="720" />
-</p>
-
-### Install Helper (nur Windows)
-
-Eine frische Windows-Maschine fürs Entwickeln einzurichten heißt sonst zehn Browser-Tabs und viel „Weiter, Weiter, Fertig". Der **Install Helper** ist ein eingebauter Katalog, der die Tools, die du sonst von Hand jagst, findet, installiert, aktualisiert und deinstalliert — ohne KKTerm zu verlassen.
-
-<p align="center">
-  <img src="docs/assets/screenshots/install-helper.png" alt="Der Install-Helper-Katalog mit installierten und verfügbaren Tools" width="720" />
-</p>
-
----
-
-## Was KKTerm nicht ist
-
-Eine kurze Liste, denn Ehrlichkeit verdient Vertrauen:
-
-- **Kein Cloud-Produkt.** Keine Synchronisierung, keine Team-Konten, keine SaaS-Stufe. Wenn du je einen Dialog „Bei KKTerm anmelden" siehst, ist etwas katastrophal schiefgelaufen.
-- **Tut nicht so, als wären alle Betriebssysteme identisch.** KKTerm veröffentlicht Builds für Windows, macOS und Linux, hält plattformspezifische Funktionen aber klar und ehrlich gekennzeichnet.
-- **Kein autonomer KI-Agent.** Der Assistent schlägt vor; der Mensch entscheidet. `Allow All` ist eine Wahl, die du triffst, kein Standard.
-- **Kein Grafana-/Datadog-Ersatz.** Das Dashboard ist für persönliche Kontroll-Oberflächen, nicht für Observability über 10.000 Hosts.
-- **Keine Kubernetes-IDE.** Es ist ein Terminal-zentrierter Admin-Workspace. Bitte verlang nicht, dass es ein Helm-Chart rendert.
-
-Falls einer dieser Punkte *früher* ein K.-o.-Kriterium war — fair genug, dann sehen wir uns in v2.
-
----
-
-## KKTerm holen
-
-**[Lad die neueste KKTerm-Version herunter](https://github.com/ryantsai/KKTerm/releases/latest)**, wähl das Paket für deine Plattform aus und starte es. Windows-Installer sind derzeit **unsigniert** — Release-Signierung steht auf der Roadmap, also kann dich dein Virenscanner bis dahin streng anschauen. Das ist normal.
-
-Aus dem Quellcode bauen oder mitmachen? Alles, was du brauchst, steht in [`CONTRIBUTING.md`](CONTRIBUTING.md).
-
----
-
-## Roadmap (Kurzfassung)
-
-- Feinschliff für plattformübergreifende Releases
-- Feinschliff für Release-Signierung
-- Mehr Dateiübertragungs-Power (Fortsetzen, Ordner-Sync, Archivieren/Entpacken)
-- Reichere Zwischenablage- und Geräte-Freigabe fürs Remotedesktop
-- Mehr eingebaute Dashboard-Widgets
-- Mehr IT-Ops-Automatisierungsfunktionen
-
-Vollständige, häufig aktualisierte Version: [`docs/ROADMAP.md`](docs/ROADMAP.md).
-
----
-
-## Sponsoring
-
-KKTerm wird von einer einzigen Person entwickelt und betreut. Wenn es dir nützlich ist, ist jede Unterstützung willkommen und hilft mir, es weiter zu verbessern.
-
-[![KKTerm auf GitHub unterstützen](https://img.shields.io/badge/Sponsor%20on%20GitHub-%E2%9D%A4-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white)](https://github.com/sponsors/ryantsai)
-
----
-
-## Mitwirken
-
-Über eine helfende Hand würden wir uns sehr freuen. Ehrlich. Auch Kleinigkeiten zählen.
-
-Komplettes Setup, Projektstruktur und PR-Checkliste stehen in [`CONTRIBUTING.md`](CONTRIBUTING.md). Auf der Suche nach einem Einstieg? Filtere offene Issues nach [`good first issue`](https://github.com/ryantsai/KKTerm/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) oder [`help wanted`](https://github.com/ryantsai/KKTerm/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22).
-
----
-
-## Projektdokumente
-
-- [Produktkontext](CONTEXT.md) — die Fachsprache, an die du dich halten solltest
-- [Architektur](docs/ARCHITECTURE.md) — Modul-Karte, wohin mit neuem Code
-- [Benutzerhandbuch](docs/manual/INDEX.md) — ein Rundgang Funktion für Funktion
-- [Roadmap](docs/ROADMAP.md)
-- [Dashboard-Architektur](docs/DASHBOARD.md)
-- [Eingebauter MCP-Server](docs/MCP.md)
-- [KI-Provider-Leitfaden](docs/AI_PROVIDERS.md)
-
----
+Wenn KKTerm nützlich ist, kannst du das [Projekt unterstützen](https://github.com/sponsors/ryantsai).
 
 ## Lizenz
 
-MIT. Siehe [LICENSE](LICENSE). Nutz es, fork es, liefer es aus, pack es in ein Homelab, das sonst niemand findet — das ist der Deal.
+Der KKTerm-Quellcode steht unter MIT mit Commons Clause. Vendored Crates, Custom Modules, Schriften und Icon-Pakete unterliegen weiterhin ihren jeweiligen Lizenzen; Details stehen in [`LICENSE`](LICENSE) und den Hinweisen ihrer Verzeichnisse.

@@ -3295,6 +3295,7 @@
     "shortcutZoomIn": "增加字型大小",
     "shortcutZoomOut": "減少字型大小",
     "shortcutZoomReset": "重設字型大小",
+    "shortcutReconnectActiveSession": "重新連線使用中的工作階段",
     "shortcutNotSet": "未設定",
     "shortcutPressKeys": "請按下按鍵組合…",
     "shortcutConflict": "此快速鍵已由 {{action}} 使用。",

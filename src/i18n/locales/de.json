@@ -3295,6 +3295,7 @@
     "shortcutZoomIn": "Schriftgröße vergrößern",
     "shortcutZoomOut": "Schriftgröße verkleinern",
     "shortcutZoomReset": "Schriftgröße zurücksetzen",
+    "shortcutReconnectActiveSession": "Aktive Sitzung erneut verbinden",
     "shortcutNotSet": "Nicht festgelegt",
     "shortcutPressKeys": "Tastenkombination drücken …",
     "shortcutConflict": "Dieses Tastenkürzel wird bereits von {{action}} verwendet.",

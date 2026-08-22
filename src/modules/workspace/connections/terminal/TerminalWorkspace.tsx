@@ -2183,6 +2183,13 @@ function TerminalPaneView({
           event.preventDefault();
           shortcutHandlersRef.current.onFontChange("reset");
           return false;
+        case "reconnectActiveSession":
+          if (!isReconnectableTerminal) {
+            return true;
+          }
+          event.preventDefault();
+          setReconnectGeneration((generation) => generation + 1);
+          return false;
         case "splitRight":
         case "splitLeft":
         case "splitDown":
@@ -3349,6 +3356,17 @@ function TerminalPaneView({
           >
             <Bot size={13} />
           </button>
+          {isReconnectableTerminal && terminalConnectionState === "disconnected" ? (
+            <button
+              aria-label={t("connections.reconnect")}
+              className="terminal-pane-action"
+              onClick={() => setReconnectGeneration((generation) => generation + 1)}
+              title={t("connections.reconnect")}
+              type="button"
+            >
+              <RefreshCw size={13} />
+            </button>
+          ) : null}
           <div className="terminal-menu-wrapper" ref={actionsMenuRef}>
             <button
               className="terminal-pane-action"
@@ -3368,7 +3386,7 @@ function TerminalPaneView({
                 ref={actionsMenuPortalRef}
                 role="menu"
               >
-                {isReconnectableTerminal && terminalConnectionState === "disconnected" ? (
+                {isReconnectableTerminal ? (
                   <button
                     className="terminal-menu-item"
                     onClick={() => {

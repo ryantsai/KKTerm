@@ -3295,6 +3295,7 @@
     "shortcutZoomIn": "Aumenta la dimensione del carattere",
     "shortcutZoomOut": "Riduci la dimensione del carattere",
     "shortcutZoomReset": "Reimposta la dimensione del carattere",
+    "shortcutReconnectActiveSession": "Riconnetti la sessione attiva",
     "shortcutNotSet": "Non impostata",
     "shortcutPressKeys": "Premi una combinazione di tasti…",
     "shortcutConflict": "Questa scorciatoia è già usata da {{action}}.",

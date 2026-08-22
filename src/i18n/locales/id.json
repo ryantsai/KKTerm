@@ -3295,6 +3295,7 @@
     "shortcutZoomIn": "Perbesar ukuran font",
     "shortcutZoomOut": "Perkecil ukuran font",
     "shortcutZoomReset": "Atur ulang ukuran font",
+    "shortcutReconnectActiveSession": "Sambungkan ulang Sesi aktif",
     "shortcutNotSet": "Belum diatur",
     "shortcutPressKeys": "Tekan kombinasi tombol…",
     "shortcutConflict": "Pintasan ini sudah digunakan oleh {{action}}.",

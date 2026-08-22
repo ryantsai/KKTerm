@@ -3295,6 +3295,7 @@
     "shortcutZoomIn": "フォントサイズを大きく",
     "shortcutZoomOut": "フォントサイズを小さく",
     "shortcutZoomReset": "フォントサイズをリセット",
+    "shortcutReconnectActiveSession": "アクティブなセッションを再接続",
     "shortcutNotSet": "未設定",
     "shortcutPressKeys": "キーの組み合わせを押してください…",
     "shortcutConflict": "このショートカットは{{action}}で既に使用されています。",

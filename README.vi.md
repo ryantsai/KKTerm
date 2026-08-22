@@ -5,19 +5,19 @@
 <h1 align="center">KKTerm</h1>
 
 <p align="center">
-  <strong>Một cửa sổ Windows native duy nhất cho terminal, SSH, SFTP, RDP/VNC và một dashboard — cộng thêm một AI dựng cho bạn những công cụ nhỏ của riêng bạn theo yêu cầu.</strong>
+  <strong>Không gian làm việc desktop đa nền tảng cho terminal, SSH/SFTP, RDP/VNC, tệp, web, IT Ops và trợ lý AI có bước phê duyệt.</strong>
 </p>
 
 <p align="center">
-  <em>Vì thanh tác vụ của bạn không nên trông như một cái máy đánh bạc ở Las Vegas.</em>
+  <em>Vì thanh tác vụ của bạn không nên trông như một máy đánh bạc ở Las Vegas.</em>
 </p>
 
 <p align="center">
-  <sub>Đặt tên theo <strong>乖乖 (Kuāi Kuāi)</strong>, món snack bắp vị dừa màu xanh mà các sysadmin Đài Loan đặt lên server để chúng ngoan ngoãn. Mong rằng app này cũng giành được chỗ của nó trên rack.</sub>
+  <sub>Tên gọi bắt nguồn từ <strong>乖乖 (Kuāi Kuāi)</strong>, món bánh ngô vị dừa màu xanh mà quản trị viên hệ thống Đài Loan đặt trên máy chủ để chúng hoạt động ngoan ngoãn.</sub>
 </p>
 
 <p align="center">
-  <strong><a href="https://github.com/ryantsai/KKTerm/releases/latest">Tải bản phát hành KKTerm mới nhất</a></strong>
+  <strong><a href="https://github.com/ryantsai/KKTerm/releases/latest">Tải bản KKTerm mới nhất</a></strong>
 </p>
 
 <p align="center">
@@ -34,14 +34,14 @@
     <img src="https://img.shields.io/github/issues/ryantsai/KKTerm?style=for-the-badge&logo=github&color=2ea043" alt="Open issues" />
   </a>
   <a href="https://github.com/ryantsai/KKTerm/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/ryantsai/KKTerm?style=for-the-badge&color=blue" alt="MIT License" />
+    <img src="https://img.shields.io/badge/license-MIT%20%2B%20Commons%20Clause-blue?style=for-the-badge" alt="Giấy phép MIT kèm Commons Clause" />
   </a>
   <a href="https://github.com/sponsors/ryantsai">
-    <img src="https://img.shields.io/badge/Sponsor-%E2%9D%A4-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="Tài trợ KKTerm trên GitHub" />
+    <img src="https://img.shields.io/badge/Sponsor-%E2%9D%A4-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="Ủng hộ KKTerm trên GitHub" />
   </a>
   <br />
-  <img src="https://img.shields.io/badge/cross%E2%80%91platform-desktop-0078D6?style=flat-square" alt="Cross-platform desktop" />
-  <img src="https://img.shields.io/badge/local--first-no%20telemetry-success?style=flat-square" alt="Local-first" />
+  <img src="https://img.shields.io/badge/cross%E2%80%91platform-desktop-0078D6?style=flat-square" alt="Desktop đa nền tảng" />
+  <img src="https://img.shields.io/badge/local--first-no%20telemetry-success?style=flat-square" alt="Ưu tiên cục bộ, không telemetry" />
   <br />
   <sub>
     <a href="README.md">English</a> ·
@@ -63,210 +63,65 @@
 
 ---
 
-## Lời chào trong 45 giây
-
-KKTerm đưa terminal cục bộ, SSH/SFTP, FTP/FTPS, Telnet, cổng serial, RDP/VNC, trang web nhúng, tệp cục bộ và tài liệu vào cùng một workspace desktop. Một Tab có thể kết hợp nhiều loại Pane để terminal, trình duyệt tệp và màn hình từ xa của cùng một công việc luôn nằm cạnh nhau.
-
-Ứng dụng chạy trên Windows, macOS và Linux, lưu dữ liệu cục bộ và không dùng telemetry. AI có bước phê duyệt, widget Dashboard tùy chỉnh, Workspace, IT Ops và Install Helper cho Windows đều được tích hợp.
-
----
-
 ## Vì sao là "KKTerm"?
 
-Bước vào bất kỳ trung tâm dữ liệu nào ở Đài Loan và nhìn lên đỉnh các rack. Vượt qua các fab của TSMC, phòng điều khiển Metro Đài Bắc, phòng máy chủ của ngân hàng Cathay, thiết bị chuyển mạch của Chunghwa Telecom — bạn sẽ thấy một túi nhỏ màu xanh 乖乖 (Kuāi Kuāi), món snack bắp vị dừa từ thập niên 1960.
-
-**KKTerm** là **Kuai Kuai Term** — một không gian quản trị mong làm đúng công việc của món snack: ngồi lặng lẽ bên cạnh các cỗ máy quan trọng của bạn và giúp chúng cư xử đàng hoàng. Local-first. Không telemetry. AI phải được phê duyệt. Loại phần mềm buồn tẻ mà đáng tin cậy.
-
-Tụi mình vẫn chưa thể kèm một túi Kuai Kuai thật vào bộ cài. Đó là việc của v2.
-
----
-
-## Xem nó chuyển động
-
-<p align="center">
-  <a href="https://github.com/ryantsai/KKTerm">
-    <img
-      src="docs/assets/demo.gif"
-      alt="KKTerm demo"
-      width="720"
-    />
-  </a>
-</p>
-
-<p align="center"><sub><em>(GIF demo. Một bức ảnh đáng giá nghìn gạch đầu dòng, mà tụi mình thì hết gạch đầu dòng rồi.)</em></sub></p>
-
----
+KKTerm là viết tắt của **Kuai Kuai Term**, lấy cảm hứng từ gói 乖乖 màu xanh mà quản trị viên hệ thống Đài Loan đặt trên máy chủ để những máy quan trọng luôn hoạt động yên ổn, đáng tin cậy và ngoan ngoãn.
 
 ## Một cửa sổ, mọi kết nối
 
-| Bạn muốn… | KKTerm làm được |
+KKTerm đưa shell cục bộ, SSH/SFTP, FTP/FTPS, Telnet, kết nối serial, RDP/VNC, kết nối URL, File Explorer cục bộ và trình xem tài liệu vào cùng một không gian làm việc desktop. Một Tab có thể trộn nhiều loại Pane, để terminal, trình duyệt tệp, giao diện web và màn hình từ xa của cùng một công việc ở cạnh nhau.
+
+| Nhu cầu | KKTerm |
 | --- | --- |
-| Mở shell cục bộ PowerShell / cmd / WSL | Terminal cục bộ, kề nhau |
-| SSH vào một server | SSH với khóa, agent, mật khẩu, jump host và port forwarding |
-| Duyệt tệp trên server đó | SFTP từ kết nối SSH — hai khung, kéo để truyền |
-| FTP đến một NAS từ 2012 | FTP / FTPS trong cùng trình duyệt tệp |
-| Telnet đến thiết bị cổ lỗ | Đúng, Telnet cũng có trong đó |
-| Nói chuyện với cổng serial | Kết nối serial — chọn cổng COM và baud |
-| Remote vào một máy Windows | Remote Desktop Microsoft xịn, tích hợp sẵn |
-| VNC vào một con Pi | VNC, render thẳng vào không gian làm việc |
-| Mở giao diện web của router | Một tab trình duyệt nhúng với thông tin đăng nhập đã lưu |
-| Duyệt ổ đĩa của chính bạn | Một pane File Explorer cục bộ, cùng lớp vỏ hai khung như SFTP |
-| Mở một log, CSV, ảnh hoặc PDF | Một trình xem Document tích hợp với chế độ log tail-follow đúng nghĩa |
-| Theo dõi CPU của host | Một thanh trạng thái thời gian thực và một dashboard bạn tự dựng |
-
-Cùng một app. Cùng một cửa sổ. Cùng phím tắt. Cùng một theme, mong là không làm mắt bạn chảy máu.
+| Shell cục bộ | PowerShell, cmd và WSL |
+| Truy cập từ xa | SSH, Telnet, serial, RDP và VNC |
+| Tệp và web | SFTP, FTP/FTPS, tệp cục bộ và kết nối URL nhúng |
+| Tài liệu | log theo dõi liên tục, văn bản, CSV, hình ảnh và PDF |
 
 <p align="center">
-  <img src="docs/assets/screenshots/connections-grid.png" alt="Một Tab duy nhất chứa SSH, SFTP và một Web UI nhúng kề nhau" width="720" />
+  <img src="docs/assets/screenshots/connections-grid.png" alt="Các Pane SSH, SFTP, terminal, URL và RDP trong một Tab KKTerm" width="720" />
 </p>
 
----
+## Cho cả những việc quanh terminal
 
-## Vì sao người ta để mở nó cả ngày
-
-### Tải xuống nhỏ, khởi động nhanh như chớp
-
-KKTerm được xây để có cảm giác như một tiện ích, không phải một nền tảng. Các bản desktop hiện tại dưới 20 MB, cài nhanh và khởi động đủ nhanh để việc mở workspace quản trị không giống như đang bật thêm một hệ điều hành thứ hai.
-
-### Lưới nhiều Pane, trộn đúng cách bạn làm việc
-
-Một Tab có thể chứa một lưới Panes, và các Panes đó không cần cùng loại. Đặt SSH cạnh SFTP, PowerShell cục bộ dưới một RDP Session, VNC cạnh Web UI của router, hoặc trình duyệt tệp cạnh terminal đang chuyển tệp.
+- **Workspace** — trộn Tab và Pane, Workspace có tên, tmux reattach, Connection Notes, Git Browser và File Compare.
+- **Trợ lý AI** — công cụ có phê duyệt cho Session, Dashboard, IT Ops và Custom Modules, cùng tệp đính kèm, gửi lệnh vào terminal, MCP và Assistant Skills có thể tái sử dụng.
+- **Dashboard** — các View có thể chuyển đổi với Widget tích hợp hoặc do AI tạo, có thể kéo và đổi kích thước. Bao gồm App Launcher, bảng Connection trực tiếp, Notes, đồng hồ đo mức sử dụng và các công cụ tiện ích.
+- **IT Ops** — topology Site → Server Room → Rack (elevation, floor plan và chế độ xem 2.5D), inventory Host và quét kết nối, Task Script/Playbook có thể dùng lại, Batch Run qua SSH/WinRM/PsExec, IPAM, VLAN, Network Map, lịch sử chạy và xuất PDF/CSV.
+- **Screenshots** — chụp vùng, cửa sổ hoặc toàn bộ desktop; lưu vào thư viện cục bộ hoặc clipboard; đổi kích thước/chuyển đổi theo lô; và chú thích bằng cắt, hình dạng, văn bản và mosaic.
+- **Custom Modules** — cài các gói `.kkmod` cô lập từ Settings, xem quyền đã khai báo, thêm đích vào Activity Rail và quản lý cập nhật, rollback, lưu trữ và gỡ cài đặt. Kho mã nguồn có các tích hợp như Excalidraw, BentoPDF, OpenFlowKit và TiddlyWiki.
+- **Install Helper (Windows)** — tìm, cài đặt, cập nhật và gỡ cài đặt công cụ, ứng dụng web cục bộ và dịch vụ được hỗ trợ mà không cần rời KKTerm.
 
 <p align="center">
-  <img src="docs/assets/screenshots/multi-pane.png" alt="Một Tab chia thành bốn pane với các loại kết nối khác nhau" width="720" />
+  <img src="docs/assets/screenshots/itops.png" alt="Rack elevation của IT Ops với chỉ báo trạng thái thiết bị" width="720" />
 </p>
 
-### Một trợ lý AI điều khiển các terminal thay bạn
+## Tùy biến theo cách của bạn
 
-Phần lớn các demo "AI trong terminal" dừng ở chat. Trợ lý của KKTerm làm việc *bên trong* phiên của bạn: bạn trao cho nó ngữ cảnh từ những gì đã có sẵn trên màn hình, và nó ra tay trên những máy bạn đang kết nối — với một con người luôn ở trong vòng phê duyệt.
+Dashboard View, Connection của terminal, trình xem tài liệu và drill view của IT Ops dùng chung một bộ chọn nền. Chọn màu và gradient, hình ảnh và video cục bộ, hoặc **84 nền động tích hợp** với chủ đề đại dương, thời tiết, cảnh WebGL, không gian, đồ họa mạng và chuyển động trừu tượng. Các cảnh bị ẩn hoặc nằm ngoài màn hình sẽ tạm dừng và giải phóng tài nguyên kết xuất. Theme màu, giao diện terminal, font tùy chỉnh và nền theo từng Connection giúp hoàn thiện không gian làm việc.
 
 <p align="center">
-  <img src="docs/assets/screenshots/ai-assistant.png" alt="Bảng trợ lý AI với các công tắc truy cập công cụ và chế độ phê duyệt" width="720" />
+  <img src="docs/assets/screenshots/backgrounds.png" alt="Bộ chọn nền động của KKTerm" width="720" />
 </p>
 
-### Một dashboard không giả vờ làm Grafana
-
-Dashboard là một lưới widget mà bạn kéo và đổi kích thước. Nó không dành cho observability quy mô petabyte — nó dành cho "tôi muốn một nút mở năm app yêu thích và một bảng hiện uptime của host SSH, *bên cạnh* khung chat của tôi".
-
-Dashboard View có 45 hình nền động tích hợp sẵn trong KKTerm. Tám hình nền mới nhất là các cảnh WebGL được tạo theo thủ tục: `heroGeometric`, `ditherPrismHero`, `webglLiquid`, `silkAurora`, `closingPlasma`, `animatedGradient`, `prismGradient` và `liquidChrome`. Cùng một bộ chọn hình nền cũng dùng được cho Terminal Connection, Document viewer và các chế độ xem chi tiết của IT Ops; cảnh bị ẩn hoặc nằm ngoài màn hình sẽ dừng kết xuất và giải phóng tài nguyên WebGL.
+## Xem KKTerm hoạt động
 
 <p align="center">
-  <img src="docs/assets/screenshots/ai-widgets.png" alt="Một lưới dashboard đầy widget do AI tạo" width="720" />
+  <img src="docs/assets/demo.gif" alt="Bản demo KKTerm" width="720" />
 </p>
-
-### IT Ops cho Site, Host và công việc lặp lại
-
-Module **IT Ops** nhóm Connection thành Site, mô phỏng Server Room và Rack, quản lý Host và chạy Task có thể tái sử dụng trên các máy đã chọn. Batch Run lưu kết quả theo từng Host, còn Automation nối điều kiện kích hoạt với thông báo, webhook hoặc Task.
-
-<p align="center">
-  <img src="docs/assets/screenshots/itops.png" alt="Chế độ xem mặt trước Server Room của IT Ops với sáu Rack chứa thiết bị và chỉ báo trạng thái Host" width="720" />
-</p>
-
-### Chụp, sắp xếp và chú thích ảnh chụp màn hình
-
-Module **Screenshots** chụp một vùng, một cửa sổ hoặc toàn bộ desktop vào thư viện cục bộ, clipboard hoặc cả hai. Bạn có thể sắp xếp và nhóm ảnh, đổi kích thước hoặc định dạng hàng loạt, rồi mở bất kỳ ảnh nào trong trình chỉnh sửa tích hợp để cắt, vẽ tự do, thêm mũi tên, hình khối và chữ, hoặc che thông tin bằng hiệu ứng mosaic. Phím tắt toàn cục và menu khay hệ thống giúp bạn bắt đầu chụp chỉ với một tổ hợp phím.
-
-<p align="center">
-  <img src="docs/assets/screenshots/screenshots-module.png" alt="Module Screenshots với các nút chụp và thư viện ảnh thu nhỏ" width="720" />
-</p>
-
-### Giữ cho các agent AI của bạn sống
-
-Đây là tính năng thứ hai khiến người ta mê. Terminal SSH của KKTerm có thể thả bạn thẳng vào một **phiên tmux có tên** trên host từ xa, sống sót qua việc kết nối lại.
-
-<p align="center">
-  <img src="docs/assets/screenshots/tmux-reattach.png" alt="Một pane SSH gắn lại vào một phiên tmux có tên sau khi kết nối lại" width="720" />
-</p>
-
-### Tách biệt các thế giới của bạn bằng Workspaces
-
-Homelab, công việc chính và đám server của khách hàng kia không thuộc về cùng một danh sách. **Workspaces** là các hộp chứa Connections có tên, biệt lập, mà bạn chuyển đổi từ Activity Rail. Chuyển đổi chỉ định lại phạm vi cho cây kết nối — các Sessions đang mở, Dashboard và Cài đặt của bạn vẫn nguyên chỗ — nên đổi ngữ cảnh tốn một cú nhấp, không phải khởi động lại.
-
-<p align="center">
-  <img src="docs/assets/screenshots/workspaces.png" alt="Bộ chuyển workspace trong activity rail" width="720" />
-</p>
-
-### Khoác áo theo ý bạn: chủ đề màu
-
-Hình nền là phần vui; **chủ đề màu** mới là thứ bạn thực sự nhìn cả ngày. KKTerm mang theo **hai mươi sáu** bộ phối màu khoác lại toàn bộ giao diện ứng dụng — Activity Rail, cây kết nối, tab, hộp thoại — kèm bản xem trước thu nhỏ trực tiếp cho từng bộ trong Cài đặt ▸ Giao diện.
-
-<p align="center">
-  <img src="docs/assets/screenshots/color-themes.png" alt="Lưới bộ phối màu trong Cài đặt với bản xem trước trực tiếp" width="720" />
-</p>
-
-### Install Helper (chỉ Windows)
-
-Thiết lập một máy Windows mới để làm dev thường có nghĩa là mười tab trình duyệt và rất nhiều "tiếp theo, tiếp theo, hoàn tất". **Install Helper** là một danh mục tích hợp tìm, cài, cập nhật và gỡ các công cụ mà nếu không bạn phải tự lùng bằng tay — ngay trong KKTerm.
-
-<p align="center">
-  <img src="docs/assets/screenshots/install-helper.png" alt="Danh mục Install Helper với các công cụ đã cài và có thể cài" width="720" />
-</p>
-
----
-
-## KKTerm không phải là gì
-
-Một danh sách ngắn, vì sự trung thực đổi lấy niềm tin:
-
-- **Không phải sản phẩm đám mây.** Không đồng bộ, không tài khoản nhóm, không gói SaaS. Nếu một ngày bạn thấy hộp thoại "Đăng nhập vào KKTerm", thì có gì đó đã sai một cách thảm họa.
-- **Không giả vờ mọi hệ điều hành đều giống nhau.** KKTerm phát hành bản Windows, macOS và Linux, nhưng vẫn ghi rõ các tính năng riêng của từng nền tảng.
-- **Không phải agent AI tự hành.** Trợ lý đề xuất; con người quyết định. `Allow All` là lựa chọn bạn đưa ra, không phải mặc định.
-- **Không phải bản thay thế Grafana / Datadog.** Dashboard dành cho các bề mặt điều khiển cá nhân, không phải observability cho 10.000 host.
-- **Không phải IDE Kubernetes.** Đây là một không gian quản trị lấy terminal làm trung tâm. Xin đừng bắt nó render một Helm chart.
-
-Nếu một trong số đó *từng* là yếu tố quyết định — cũng phải thôi, hẹn gặp ở v2.
-
----
 
 ## Tải KKTerm
 
-**[Tải bản phát hành KKTerm mới nhất](https://github.com/ryantsai/KKTerm/releases/latest)**, chọn gói dành cho nền tảng của bạn rồi mở nó. Bộ cài Windows hiện **chưa được ký** — việc ký bản phát hành nằm trong roadmap, nên đến lúc đó phần mềm diệt virus của bạn có thể nhìn bạn nghiêm khắc. Đó là chuyện bình thường.
+Tải [bản phát hành mới nhất](https://github.com/ryantsai/KKTerm/releases/latest) cho Windows, macOS hoặc Linux. Windows có trình cài đặt và ZIP portable x64/ARM64; giải nén ZIP portable vào thư mục cục bộ có quyền ghi hoặc ổ đĩa rời, không chạy từ thư mục chia sẻ mạng. Hãy kiểm tra tệp `.sha256` đi kèm trước khi chạy gói cài đặt.
 
-Muốn build từ mã nguồn hay đóng góp? Mọi thứ bạn cần đều nằm trong [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Nếu muốn build từ mã nguồn, hãy bắt đầu với [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
----
+## Đóng góp, ủng hộ và tài liệu
 
-## Roadmap (bản ngắn)
+Hoan nghênh đóng góp và báo lỗi. Xem [`CONTRIBUTING.md`](CONTRIBUTING.md), [sổ tay vận hành](docs/manual/INDEX.md), [kiến trúc](docs/ARCHITECTURE.md), [hướng dẫn Dashboard](docs/DASHBOARD.md), [hướng dẫn IT Ops](docs/ITOPS.md) và [Custom Module Host API](docs/KKMOD_HOST_API_V2.md).
 
-- Hoàn thiện bản phát hành đa nền tảng
-- Hoàn thiện chữ ký bản phát hành
-- Truyền tệp mạnh hơn (tiếp tục, đồng bộ thư mục, nén/giải nén)
-- Chia sẻ clipboard và thiết bị Remote Desktop phong phú hơn
-- Thêm widget dashboard có sẵn
-- Thêm chức năng tự động hóa IT Ops
-
-Bản đầy đủ và cập nhật thường xuyên: [`docs/ROADMAP.md`](docs/ROADMAP.md).
-
----
-
-## Tài trợ
-
-KKTerm do một người phát triển và duy trì. Nếu bạn thấy ứng dụng hữu ích, mọi sự hỗ trợ đều được trân trọng và giúp tôi tiếp tục cải thiện nó.
-
-[![Tài trợ KKTerm trên GitHub](https://img.shields.io/badge/Sponsor%20on%20GitHub-%E2%9D%A4-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white)](https://github.com/sponsors/ryantsai)
-
----
-
-## Đóng góp
-
-Tụi mình rất mong có người chung tay. Thật đấy. Việc nhỏ cũng quan trọng.
-
-Toàn bộ thiết lập, cấu trúc dự án và checklist PR nằm trong [`CONTRIBUTING.md`](CONTRIBUTING.md). Đang tìm điểm khởi đầu? Lọc các issue đang mở theo [`good first issue`](https://github.com/ryantsai/KKTerm/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) hoặc [`help wanted`](https://github.com/ryantsai/KKTerm/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22).
-
----
-
-## Tài liệu dự án
-
-- [Bối cảnh sản phẩm](CONTEXT.md) — ngôn ngữ miền bạn nên tuân theo
-- [Kiến trúc](docs/ARCHITECTURE.md) — bản đồ module, đặt mã mới ở đâu
-- [Sổ tay người dùng](docs/manual/INDEX.md) — đi qua từng tính năng một
-- [Roadmap](docs/ROADMAP.md)
-- [Kiến trúc Dashboard](docs/DASHBOARD.md)
-- [Server MCP tích hợp](docs/MCP.md)
-- [Hướng dẫn nhà cung cấp AI](docs/AI_PROVIDERS.md)
-
----
+Nếu KKTerm hữu ích, bạn có thể [ủng hộ dự án](https://github.com/sponsors/ryantsai).
 
 ## Giấy phép
 
-MIT. Xem [LICENSE](LICENSE). Dùng nó, fork nó, phát hành nó, đặt nó vào một homelab không ai khác tìm ra — đó là giao kèo.
+Mã nguồn KKTerm dùng MIT kèm Commons Clause. Crate vendored, Custom Modules, font và gói biểu tượng vẫn tuân theo giấy phép riêng; xem [`LICENSE`](LICENSE) và các tệp thông báo trong từng thư mục.

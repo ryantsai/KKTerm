@@ -3295,6 +3295,7 @@
     "shortcutZoomIn": "เพิ่มขนาดตัวอักษร",
     "shortcutZoomOut": "ลดขนาดตัวอักษร",
     "shortcutZoomReset": "รีเซ็ตขนาดตัวอักษร",
+    "shortcutReconnectActiveSession": "เชื่อมต่อเซสชันที่ใช้งานอยู่อีกครั้ง",
     "shortcutNotSet": "ยังไม่ได้ตั้งค่า",
     "shortcutPressKeys": "กดชุดแป้นพิมพ์…",
     "shortcutConflict": "ปุ่มลัดนี้ถูกใช้โดย {{action}} แล้ว",

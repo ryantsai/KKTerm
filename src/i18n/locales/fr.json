@@ -3295,6 +3295,7 @@
     "shortcutZoomIn": "Augmenter la taille de police",
     "shortcutZoomOut": "Réduire la taille de police",
     "shortcutZoomReset": "Réinitialiser la taille de police",
+    "shortcutReconnectActiveSession": "Reconnecter la session active",
     "shortcutNotSet": "Non défini",
     "shortcutPressKeys": "Appuyez sur une combinaison de touches…",
     "shortcutConflict": "Ce raccourci est déjà utilisé par {{action}}.",

@@ -218,6 +218,13 @@
   user-select: none;
 }
 
+.tree-list:focus,
+.tree-list:focus-visible,
+.tree-list button:focus,
+.tree-list button:focus-visible {
+  outline: 0;
+}
+
 .tree-group {
   padding-left: var(--tree-level-indent, 0);
   margin-bottom: 6px;

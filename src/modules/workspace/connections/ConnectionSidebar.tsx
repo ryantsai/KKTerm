@@ -2314,8 +2314,11 @@ export function ConnectionSidebar({
     const isPinned = generalSettings.pinnedConnectionIds.includes(menu.connection.id);
     const isConnected = (activeSessionCounts[menu.connection.id] ?? 0) > 0;
     const hasOpenTerminalPane =
-      (menu.connection.type === "ssh" || menu.connection.type === "telnet") &&
+      (menu.connection.type === "ssh" ||
+        menu.connection.type === "telnet" ||
+        menu.connection.type === "serial") &&
       tabs.some((tab) =>
+        tab.kind === "terminal" &&
         tab.panes.some((pane) => pane.connection?.id === menu.connection.id),
       );
     const canAddToPane = supportsAddConnectionToTab(tabs.find((tab) => tab.id === activeTabId));
@@ -2484,7 +2487,7 @@ export function ConnectionSidebar({
     }
   }
 
-  // Connection Tree keyboard shortcuts: F2 renames and Delete removes the
+  // Connection Tree keyboard shortcuts: F2 renames, F5 reconnects, and Delete removes the
   // connection whose row currently has focus (falling back to the selected
   // connection). F2 stays the cross-platform rename key (Enter keeps opening
   // the focused row). For delete, the Delete/forward-delete key works
@@ -2494,20 +2497,30 @@ export function ConnectionSidebar({
   // a terminal or text field can never remove a connection. Child Connection
   // Tabs and folders keep their existing context-menu flows.
   function handleTreeKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
-    if (event.defaultPrevented) {
-      return;
-    }
     const isRename = event.key === "F2";
+    const isReconnect = event.key === "F5";
     const isDelete =
       event.key === "Delete" || (isMacPlatform() && event.key === "Backspace");
-    if (!isRename && !isDelete) {
+    // The app-shell reload guard prevents F5's browser default in the capture
+    // phase. It deliberately leaves propagation intact so the focused Tree can
+    // still own this app shortcut.
+    if (event.defaultPrevented && !isReconnect) {
+      return;
+    }
+    if (!isRename && !isReconnect && !isDelete) {
+      return;
+    }
+    const target = event.target as HTMLElement;
+    // F5 belongs to the whole Connection Tree pane. Keep destructive/rename
+    // keys scoped to the scrolling Tree itself so a focused header action
+    // cannot rename or delete the selected Connection.
+    if (!isReconnect && !target.closest(".tree-list")) {
       return;
     }
     if (event.repeat) {
       event.preventDefault();
       return;
     }
-    const target = event.target as HTMLElement;
     // Never hijack typing in the rename input, search field, or any editable.
     if (target.closest("input, textarea, [contenteditable='true']")) {
       return;
@@ -2532,6 +2545,21 @@ export function ConnectionSidebar({
       setPendingFolderDraft(null);
       setTreeError("");
       setInlineRenameTarget({ kind: "connection", id: connection.id });
+    } else if (isReconnect) {
+      const isReconnectable =
+        connection.type === "ssh" ||
+        connection.type === "telnet" ||
+        connection.type === "serial";
+      const hasOpenTerminalPane = tabs.some(
+        (tab) =>
+          tab.kind === "terminal" &&
+          tab.panes.some((pane) => pane.connection?.id === connection.id),
+      );
+      if (isReconnectable && hasOpenTerminalPane) {
+        requestTerminalConnectionReconnect(connection.id);
+      } else {
+        handleOpenConnection(connection);
+      }
     } else {
       void requestDeleteTarget({ kind: "connection", connection });
     }
@@ -3113,7 +3141,11 @@ export function ConnectionSidebar({
   }
 
   return (
-    <aside className="connection-sidebar" data-tutorial-id="connections.panel">
+    <aside
+      className="connection-sidebar"
+      data-tutorial-id="connections.panel"
+      onKeyDown={handleTreeKeyDown}
+    >
       <ModuleHeader className="sidebar-header" onDoubleClick={handleHeaderDoubleClick}>
         <ModuleHeaderLead className="sidebar-title">
           <ModuleIconTile className={workspaceHeaderTileClassName} module="workspace">
@@ -3282,7 +3314,7 @@ export function ConnectionSidebar({
         onDragOver={handleTreePathsDragOver}
         onDragLeave={handleTreePathsDragLeave}
         onDrop={handleTreePathsDrop}
-        onKeyDown={handleTreeKeyDown}
+        tabIndex={0}
       >
         {/* In "Hide Folders" mode the flat list below already includes these
             root connections (flattenConnections starts at the root), so render

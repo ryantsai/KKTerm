@@ -3295,6 +3295,7 @@
     "shortcutZoomIn": "增大字体大小",
     "shortcutZoomOut": "减小字体大小",
     "shortcutZoomReset": "重置字体大小",
+    "shortcutReconnectActiveSession": "重新连接活动会话",
     "shortcutNotSet": "未设置",
     "shortcutPressKeys": "请按下按键组合…",
     "shortcutConflict": "此快捷键已被{{action}}使用。",

@@ -3295,6 +3295,7 @@
     "shortcutZoomIn": "글꼴 크기 키우기",
     "shortcutZoomOut": "글꼴 크기 줄이기",
     "shortcutZoomReset": "글꼴 크기 재설정",
+    "shortcutReconnectActiveSession": "활성 세션 다시 연결",
     "shortcutNotSet": "설정 안 됨",
     "shortcutPressKeys": "키 조합을 누르세요…",
     "shortcutConflict": "이 단축키는 이미 {{action}}에서 사용 중입니다.",

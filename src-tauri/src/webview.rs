@@ -48,14 +48,14 @@ pub(crate) const WRY_DEFAULT_WEBVIEW2_ARGS: &str =
     "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection";
 
 /// Prevent the browser engine's F5 accelerator from reloading the main app
-/// shell. A shell reload destroys frontend-owned live Session chrome while
-/// native URL overlay windows can remain alive. URL overlays intentionally do
-/// not install this guard, so F5 reloads the page when its surface has focus.
+/// shell without blocking the focused frontend surface from handling the key.
+/// A shell reload destroys frontend-owned live Session chrome while native URL
+/// overlay windows can remain alive. URL overlays intentionally do not install
+/// this guard, so F5 reloads the page when its surface has focus.
 pub(crate) const SUPPRESS_SHELL_F5_RELOAD_SCRIPT: &str = r#"
 window.addEventListener("keydown", (event) => {
   if (event.key === "F5") {
     event.preventDefault();
-    event.stopImmediatePropagation();
   }
 }, true);
 "#;
@@ -1655,11 +1655,8 @@ fn configure_certificate_error_handling(
 
 #[cfg(windows)]
 pub(crate) fn configure_shell_refresh_shortcut(webview: &WebviewWindow) -> Result<(), String> {
-    use webview2_com::{
-        AcceleratorKeyPressedEventHandler,
-        Microsoft::Web::WebView2::Win32::COREWEBVIEW2_KEY_EVENT_KIND_KEY_DOWN,
-    };
-    use windows::Win32::UI::Input::KeyboardAndMouse::VK_F5;
+    use webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2Settings3;
+    use windows_core::Interface;
 
     let setup_error = Arc::new(Mutex::new(None::<String>));
     let setup_error_for_callback = Arc::clone(&setup_error);
@@ -1668,26 +1665,16 @@ pub(crate) fn configure_shell_refresh_shortcut(webview: &WebviewWindow) -> Resul
         .with_webview(move |platform_webview| {
             let result = (|| -> Result<(), String> {
                 unsafe {
-                    let controller = platform_webview.controller();
-                    let handler = AcceleratorKeyPressedEventHandler::create(Box::new(
-                        move |_sender, args| {
-                            if let Some(args) = args {
-                                let mut event_kind = COREWEBVIEW2_KEY_EVENT_KIND_KEY_DOWN;
-                                let mut virtual_key = 0;
-                                args.KeyEventKind(&mut event_kind)?;
-                                args.VirtualKey(&mut virtual_key)?;
-                                if event_kind == COREWEBVIEW2_KEY_EVENT_KIND_KEY_DOWN
-                                    && virtual_key == VK_F5.0 as u32
-                                {
-                                    args.SetHandled(true)?;
-                                }
-                            }
-                            Ok(())
-                        },
-                    ));
-                    let mut token = 0;
-                    controller
-                        .add_AcceleratorKeyPressed(&handler, &mut token)
+                    let webview2 = platform_webview
+                        .controller()
+                        .CoreWebView2()
+                        .map_err(|error| error.to_string())?;
+                    let settings = webview2.Settings().map_err(|error| error.to_string())?;
+                    let settings3 = settings
+                        .cast::<ICoreWebView2Settings3>()
+                        .map_err(|error| error.to_string())?;
+                    settings3
+                        .SetAreBrowserAcceleratorKeysEnabled(false)
                         .map_err(|error| error.to_string())?;
                 }
                 Ok::<(), String>(())
@@ -1698,12 +1685,12 @@ pub(crate) fn configure_shell_refresh_shortcut(webview: &WebviewWindow) -> Resul
                 }
             }
         })
-        .map_err(|error| format!("failed to access WebView2 for F5 suppression: {error}"))?;
+        .map_err(|error| format!("failed to access WebView2 browser accelerator settings: {error}"))?;
 
     if let Ok(mut setup_error) = setup_error.lock() {
         if let Some(error) = setup_error.take() {
             return Err(format!(
-                "failed to suppress WebView2 F5 browser reload: {error}"
+                "failed to disable WebView2 browser accelerators: {error}"
             ));
         }
     }

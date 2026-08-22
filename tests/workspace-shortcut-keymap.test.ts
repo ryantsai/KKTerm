@@ -168,8 +168,9 @@ test("overrides rebind and unbind actions", () => {
   );
 });
 
-test("split actions ship unbound by default", () => {
+test("reconnect and split actions ship unbound by default", () => {
   const bindings = effectiveWorkspaceShortcutBindings({});
+  assert.equal(bindings.get("reconnectActiveSession"), null);
   assert.equal(bindings.get("splitRight"), null);
   assert.equal(bindings.get("splitLeft"), null);
 });

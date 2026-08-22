@@ -3295,6 +3295,7 @@
     "shortcutZoomIn": "Tăng cỡ chữ",
     "shortcutZoomOut": "Giảm cỡ chữ",
     "shortcutZoomReset": "Đặt lại cỡ chữ",
+    "shortcutReconnectActiveSession": "Kết nối lại Phiên đang hoạt động",
     "shortcutNotSet": "Chưa đặt",
     "shortcutPressKeys": "Nhấn một tổ hợp phím…",
     "shortcutConflict": "Phím tắt này đã được {{action}} sử dụng.",

@@ -43,3 +43,16 @@ test("double-click open mode still selects Connection Tree rows on single click"
     "selected rows should be visibly highlighted like active rows",
   );
 });
+
+test("Connection Tree focus does not draw browser selection borders", async () => {
+  const cssSource = await readFile(
+    new URL("../src/modules/workspace/connections/connections.css", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    cssSource,
+    /\.tree-list:focus,[\s\S]*?\.tree-list button:focus-visible \{[\s\S]*?outline: 0;/,
+    "the focusable Tree surface and its item buttons should suppress browser outlines",
+  );
+});

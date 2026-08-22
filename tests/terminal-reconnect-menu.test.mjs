@@ -27,13 +27,14 @@ const [terminalSource, sidebarSource, sidebarStateSource, sessionsSource, sshSou
     readFile(new URL("../src-tauri/src/telnet.rs", import.meta.url), "utf8"),
   ]);
 
-test("SSH and Telnet hamburger menus only expose Reconnect after disconnection", () => {
+test("reconnectable terminal menus always expose Pane-scoped Reconnect", () => {
   const actionsMenu = terminalSource.match(
     /className="terminal-menu terminal-actions-menu terminal-actions-menu-portal"[\s\S]*?document\.body,/,
   )?.[0] ?? "";
 
   assert.ok(actionsMenu, "terminal actions menu should be discoverable");
-  assert.match(actionsMenu, /isReconnectableTerminal && terminalConnectionState === "disconnected"/);
+  assert.match(actionsMenu, /isReconnectableTerminal \? \(/);
+  assert.doesNotMatch(actionsMenu, /terminalConnectionState === "disconnected"/);
   assert.match(actionsMenu, /<RefreshCw size=\{13\} \/>[\s\S]*?"connections\.reconnect"/);
   assert.doesNotMatch(actionsMenu, /"connections\.closeConnection"/);
   assert.ok(
@@ -42,10 +43,24 @@ test("SSH and Telnet hamburger menus only expose Reconnect after disconnection",
   );
 });
 
-test("open SSH and Telnet Connections expose Reconnect in the native tree menu", () => {
+test("disconnected terminal Panes promote Reconnect to a visible toolbar button", () => {
+  assert.match(
+    terminalSource,
+    /isReconnectableTerminal && terminalConnectionState === "disconnected" \? \([\s\S]*?aria-label=\{t\("connections\.reconnect"\)\}[\s\S]*?setReconnectGeneration\(\(generation\) => generation \+ 1\)/,
+  );
+});
+
+test("the configurable reconnect shortcut is Pane-scoped and remains safe for local shells", () => {
+  assert.match(
+    terminalSource,
+    /case "reconnectActiveSession":[\s\S]*?if \(!isReconnectableTerminal\) \{[\s\S]*?return true;[\s\S]*?setReconnectGeneration\(\(generation\) => generation \+ 1\)/,
+  );
+});
+
+test("open SSH, Telnet, and Serial Connections expose Reconnect in the native tree menu", () => {
   assert.match(
     sidebarSource,
-    /const hasOpenTerminalPane =[\s\S]*?menu\.connection\.type === "ssh"[\s\S]*?menu\.connection\.type === "telnet"[\s\S]*?tab\.panes\.some/,
+    /const hasOpenTerminalPane =[\s\S]*?menu\.connection\.type === "ssh"[\s\S]*?menu\.connection\.type === "telnet"[\s\S]*?menu\.connection\.type === "serial"[\s\S]*?tab\.kind === "terminal"[\s\S]*?tab\.panes\.some/,
   );
   assert.match(
     sidebarSource,
@@ -53,6 +68,45 @@ test("open SSH and Telnet Connections expose Reconnect in the native tree menu",
   );
   assert.match(sidebarStateSource, /RECONNECT_TERMINAL_CONNECTION_EVENT/);
   assert.match(terminalSource, /setReconnectGeneration\(\(generation\) => generation \+ 1\)/);
+});
+
+test("F5 reconnects the selected tree Connection without becoming a terminal shortcut", () => {
+  const sidebarOpening = sidebarSource.match(
+    /<aside[\s\S]*?className="connection-sidebar"[\s\S]*?>/,
+  )?.[0] ?? "";
+  const treeListOpening = sidebarSource.match(
+    /<div\s+ref=\{treeListRef\}[\s\S]*?data-tree-drop-kind="root"[\s\S]*?>/,
+  )?.[0] ?? "";
+
+  assert.match(
+    sidebarSource,
+    /const isReconnect = event\.key === "F5";[\s\S]*?requestTerminalConnectionReconnect\(connection\.id\)/,
+  );
+  assert.match(
+    sidebarSource,
+    /const isReconnect = event\.key === "F5";[\s\S]*?if \(event\.defaultPrevented && !isReconnect\)/,
+    "the shell reload guard marks F5 prevented before React sees it, so the focused Tree must still handle it",
+  );
+  assert.match(
+    sidebarOpening,
+    /onKeyDown=\{handleTreeKeyDown\}/,
+    "F5 should bubble from any focused non-editable control in the Connection Tree pane",
+  );
+  assert.match(
+    treeListOpening,
+    /tabIndex=\{0\}/,
+    "the blank Connection Tree list surface should be keyboard-focusable",
+  );
+  assert.match(
+    sidebarSource,
+    /if \(!isReconnect && !target\.closest\("\.tree-list"\)\)/,
+    "rename and delete must remain scoped to the scrolling Tree",
+  );
+  assert.doesNotMatch(
+    treeListOpening,
+    /onKeyDown=/,
+    "the inner list should not own a duplicate keyboard handler",
+  );
 });
 
 test("native SSH and Telnet workers report ended Sessions to the frontend", () => {

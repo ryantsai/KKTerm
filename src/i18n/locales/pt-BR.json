@@ -3295,6 +3295,7 @@
     "shortcutZoomIn": "Aumentar o tamanho da fonte",
     "shortcutZoomOut": "Diminuir o tamanho da fonte",
     "shortcutZoomReset": "Redefinir o tamanho da fonte",
+    "shortcutReconnectActiveSession": "Reconectar sessão ativa",
     "shortcutNotSet": "Não definido",
     "shortcutPressKeys": "Pressione uma combinação de teclas…",
     "shortcutConflict": "Este atalho já é usado por {{action}}.",

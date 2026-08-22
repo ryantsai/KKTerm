@@ -1,18 +1,11 @@
 # README screenshots
 
-Drop the feature screenshots referenced by the top-level `README.md` here.
-Each file name below maps to a README screenshot (PNG, ~720px wide recommended).
+These are the feature screenshots referenced by the localized top-level
+READMEs. Keep them beside this file; PNGs around 720px wide work well in the
+repository view.
 
 | File | Section |
 | --- | --- |
-| `connections-grid.png` | One Window, Every Connection — mixed-pane grid |
-| `multi-pane.png` | Multi-pane grids |
-| `ai-assistant.png` | AI assistant that builds tools |
-| `ai-widgets.png` | AI-created dashboard widgets |
-| `backgrounds.png` | Animated dashboard backgrounds |
-| `screenshots-module.png` | Screenshots Module capture controls and thumbnail library |
-| `tmux-reattach.png` | Keep remote AI agents alive |
-| `usage-meter.png` | AI usage meter |
-| `file-viewer.png` | File Explorer & Document viewer |
-| `workspaces.png` | Workspaces |
-| `mcp-server.png` | Built-in MCP server |
+| `connections-grid.png` | One window, every connection — mixed-pane workspace |
+| `itops.png` | IT Ops Server Room and Rack topology |
+| `backgrounds.png` | Shared dynamic background picker |

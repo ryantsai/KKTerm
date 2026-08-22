@@ -3295,6 +3295,7 @@
     "shortcutZoomIn": "Increase font size",
     "shortcutZoomOut": "Decrease font size",
     "shortcutZoomReset": "Reset font size",
+    "shortcutReconnectActiveSession": "Reconnect active Session",
     "shortcutNotSet": "Not set",
     "shortcutPressKeys": "Press a key combination…",
     "shortcutConflict": "This shortcut is already used by {{action}}.",
