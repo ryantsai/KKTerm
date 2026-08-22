@@ -15,6 +15,12 @@ export const REQUIRED_PLATFORMS = [
   "linux-x86_64",
 ];
 
+export const TAURI_UPDATER_PLATFORMS = [
+  "darwin-aarch64",
+  "darwin-x86_64",
+  "linux-x86_64",
+];
+
 export function missingRequiredPlatforms(manifest) {
   return REQUIRED_PLATFORMS.filter((platform) => !manifest.platforms[platform]);
 }
@@ -55,6 +61,10 @@ export function buildReleaseManifest(release, baseUrl) {
       platforms[`windows-${arch}`] = {
         url: assetUrl(installer),
         checksum_url: assetUrl(checksum),
+        // Legacy macOS/Linux builds read this combined manifest. Tauri's
+        // static schema requires a signature string on every platform entry,
+        // even though it verifies only the selected Darwin/Linux target.
+        signature: "",
       };
     }
 
@@ -64,6 +74,7 @@ export function buildReleaseManifest(release, baseUrl) {
       platforms[`windows-${arch}-portable`] = {
         url: assetUrl(portable),
         checksum_url: assetUrl(portableChecksum),
+        signature: "",
       };
     }
   }
@@ -94,6 +105,26 @@ export function buildReleaseManifest(release, baseUrl) {
     notes: (release.body ?? "").trim(),
     pub_date: release.published_at,
     release_url: release.html_url,
+    platforms,
+  };
+}
+
+export function buildTauriReleaseManifest(manifest) {
+  const platforms = {};
+  for (const target of TAURI_UPDATER_PLATFORMS) {
+    const platform = manifest.platforms[target];
+    if (!platform || typeof platform.signature !== "string" || !platform.signature.trim()) {
+      throw new Error(`Missing Tauri updater signature for ${target}`);
+    }
+    platforms[target] = {
+      url: platform.url,
+      signature: platform.signature,
+    };
+  }
+  return {
+    version: manifest.version,
+    notes: manifest.notes,
+    pub_date: manifest.pub_date,
     platforms,
   };
 }

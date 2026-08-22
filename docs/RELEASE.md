@@ -12,7 +12,7 @@ KKTerm is local-first by default.
 - Durable Connection metadata is stored in local SQLite.
 - Secrets such as passwords, passphrases, and AI API keys are stored in the OS keychain.
 - Update checks are enabled by default and contact KKTerm release metadata only. This is separate from telemetry: KKTerm does not send analytics, crash reports, terminal contents, Connection data, or secrets as part of update checking. When a newer non-draft, non-prerelease release is available, KKTerm prompts the user; it does not install anything without an explicit click.
-- Packaged builds normally check `https://kkterm.ryantsai.com/releases/latest.json`, served by the app-owned Cloudflare release mirror, and retain GitHub Releases as fallback. These requests contain no Connection, Session, Tab, terminal, credential, or analytics data.
+- Packaged Windows builds normally check `https://kkterm.ryantsai.com/releases/latest.json`; macOS and Linux check the signed-only Tauri manifest at `https://kkterm.ryantsai.com/releases/latest-tauri.json`. Both are served by the app-owned Cloudflare release mirror, and GitHub Releases remains the fallback. These requests contain no Connection, Session, Tab, terminal, credential, or analytics data.
 
 ## Diagnostics Bundle Flow
 
@@ -138,7 +138,7 @@ npm run release:github
 
 ### Cloudflare release mirror
 
-GitHub Releases is canonical, while `kkterm.ryantsai.com` provides resilient update metadata and downloads from the private `kkterm-releases` R2 bucket. The `mirror-release.yml` workflow downloads the complete selected GitHub Release, verifies published SHA-256 pairs, mirrors recognized assets under `releases/v<version>/`, and uploads `releases/latest.json` last. It is safe to rerun for the same tag.
+GitHub Releases is canonical, while `kkterm.ryantsai.com` provides resilient update metadata and downloads from the private `kkterm-releases` R2 bucket. The `mirror-release.yml` workflow downloads the complete selected GitHub Release, verifies published SHA-256 pairs, mirrors recognized assets under `releases/v<version>/`, and uploads the combined `releases/latest.json` plus signed-only `releases/latest-tauri.json` manifests last. The combined manifest retains empty schema-only `signature` strings on its Windows entries so legacy macOS/Linux builds can deserialize it before selecting and verifying their genuinely signed platform entry. It is safe to rerun for the same tag.
 
 The repository requires `CLOUDFLARE_ACCOUNT_ID` and a scoped `CLOUDFLARE_API_TOKEN` GitHub Actions secret with permission to write the dedicated R2 bucket. Never commit either value or copy Wrangler's local OAuth credentials into Actions.
 

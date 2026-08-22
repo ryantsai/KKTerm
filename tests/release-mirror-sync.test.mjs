@@ -56,6 +56,8 @@ test("uploads immutable assets before version and stable manifests", () => {
       key: "releases/v0.1.93/kkterm-0.1.93-windows-x64-portable.zip.sha256",
     },
     { name: "release-manifest.json", key: "releases/v0.1.93/latest.json" },
+    { name: "tauri-release-manifest.json", key: "releases/v0.1.93/latest-tauri.json" },
     { name: "release-manifest.json", key: "releases/latest.json" },
+    { name: "tauri-release-manifest.json", key: "releases/latest-tauri.json" },
   ]);
 });

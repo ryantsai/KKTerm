@@ -7,6 +7,7 @@ import { pathToFileURL } from "node:url";
 
 import {
   buildReleaseManifest,
+  buildTauriReleaseManifest,
   missingRequiredPlatforms,
   recognizedReleaseAssets,
   versionFromTag,
@@ -47,7 +48,9 @@ export function buildUploadPlan(release) {
   }));
   uploads.push(
     { name: "release-manifest.json", key: `releases/v${version}/latest.json` },
+    { name: "tauri-release-manifest.json", key: `releases/v${version}/latest-tauri.json` },
     { name: "release-manifest.json", key: "releases/latest.json" },
+    { name: "tauri-release-manifest.json", key: "releases/latest-tauri.json" },
   );
   return uploads;
 }
@@ -107,8 +110,8 @@ async function materializeSignatures(manifest, directory) {
   }
 }
 
-async function verifyPublicManifest(manifest) {
-  const response = await fetch(`${PUBLIC_BASE_URL}/releases/latest.json`, { cache: "no-store" });
+async function verifyPublicManifest(path, manifest) {
+  const response = await fetch(`${PUBLIC_BASE_URL}/releases/${path}`, { cache: "no-store" });
   if (!response.ok) throw new Error(`Public manifest returned ${response.status}`);
   const publicManifest = await response.json();
   if (publicManifest.version !== manifest.version) throw new Error("Public manifest version mismatch");
@@ -165,18 +168,28 @@ export async function main(argv = process.argv.slice(2)) {
       return;
     }
     await materializeSignatures(manifest, directory);
+    const tauriManifest = buildTauriReleaseManifest(manifest);
     const manifestPath = join(directory, "release-manifest.json");
+    const tauriManifestPath = join(directory, "tauri-release-manifest.json");
     await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+    await writeFile(tauriManifestPath, `${JSON.stringify(tauriManifest, null, 2)}\n`, "utf8");
 
     for (const upload of plan) {
-      const filePath = upload.name === "release-manifest.json" ? manifestPath : join(directory, upload.name);
+      const filePath = upload.name === "release-manifest.json"
+        ? manifestPath
+        : upload.name === "tauri-release-manifest.json"
+          ? tauriManifestPath
+          : join(directory, upload.name);
       const wrangler = wranglerInvocation();
       run(wrangler.command, [...wrangler.args,
         "r2", "object", "put", `${BUCKET}/${upload.key}`,
         "--remote", "--file", filePath, "--content-type", contentType(upload.name),
       ]);
     }
-    if (!options.skipPublicVerify) await verifyPublicManifest(manifest);
+    if (!options.skipPublicVerify) {
+      await verifyPublicManifest("latest.json", manifest);
+      await verifyPublicManifest("latest-tauri.json", tauriManifest);
+    }
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
