@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
+import { withThreeUiFrameContextMenuBridge } from "../threeUiFrameBridge";
 import generativeTreeSource from "./generative-tree.html?raw";
 
 export type GenerativeTreeProps = {
@@ -64,7 +65,7 @@ html, body, canvas { width: 100%; height: 100%; margin: 0; overflow: hidden; bac
 })();
 </script>`;
 
-  return generativeTreeSource
+  return withThreeUiFrameContextMenuBridge(generativeTreeSource
     .replace(/<script[^>]+cloudflareinsights\.com[^>]*><\/script>/gi, "")
     .replace("</head>", `${focusStyles}${controls}</head>`)
     .replace("const PARTICLE_COUNT = 50;", `const PARTICLE_COUNT = ${particleCount};`)
@@ -97,7 +98,7 @@ html, body, canvas { width: 100%; height: 100%; margin: 0; overflow: hidden; bac
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(startTreeWhenSized);`,
-    );
+    ));
 }
 
 export function GenerativeTree({

@@ -1,5 +1,6 @@
 import { useMemo, type CSSProperties } from "react";
 
+import { withThreeUiFrameContextMenuBridge } from "../threeUiFrameBridge";
 import aetherisLabsSource from "./sources/aetheris-labs.html?raw";
 import audioWordmarkSource from "./sources/audio-wordmark.html?raw";
 import dotBorderButtonSource from "./sources/dot-border-button.html?raw";
@@ -633,9 +634,9 @@ ${introWordmarkStyle}
   window.addEventListener('load', isolate, { once: true });
 })();
 </script>`;
-  return source
+  return withThreeUiFrameContextMenuBridge(source
     .replace(/<\/head>/i, `${focusStyle}</head>`)
-    .replace(/<\/body>/i, `${focusScript}</body>`);
+    .replace(/<\/body>/i, `${focusScript}</body>`));
 }
 
 function NeuformIsolatedEffect({

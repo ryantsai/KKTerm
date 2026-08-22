@@ -58,6 +58,11 @@ import {
   WebGLLiquidBg,
 } from "./componentryBackgrounds";
 import {
+  isThreeUiFrameContextMenuMessage,
+  THREE_UI_FRAME_CONTEXT_MENU_MESSAGE,
+  THREE_UI_FRAME_CONTEXT_MENU_SOURCE,
+} from "./threeui/threeUiFrameBridge";
+import {
   DashboardAnimationGate,
   useDashboardAnimationActive,
   useElementOnScreen,
@@ -4052,6 +4057,43 @@ export function getDashboardDynamicBackgroundHostClassName() {
 export function DashboardDynamicBackground({ id, active }: { id: string; active: boolean }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const onScreen = useElementOnScreen(hostRef);
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (!isThreeUiFrameContextMenuMessage(event.data)) return;
+      if (event.data.source !== THREE_UI_FRAME_CONTEXT_MENU_SOURCE
+        || event.data.type !== THREE_UI_FRAME_CONTEXT_MENU_MESSAGE) return;
+      const host = hostRef.current;
+      if (!host || !event.source) return;
+      const frame = Array.from(host.querySelectorAll("iframe")).find(
+        (candidate) => candidate.contentWindow === event.source,
+      );
+      if (!frame) return;
+
+      const rect = frame.getBoundingClientRect();
+      const target = (
+        (host.closest(".terminal-pane") as HTMLElement | null)?.querySelector<HTMLElement>(".xterm-host")
+        ?? host.closest(".dw-canvas-host")
+        ?? host.closest(".itops-bg-host")
+        ?? host.parentElement
+      );
+      if (!target) return;
+
+      target.dispatchEvent(new MouseEvent("contextmenu", {
+        bubbles: true,
+        cancelable: true,
+        view: window,
+        clientX: rect.left + event.data.clientX,
+        clientY: rect.top + event.data.clientY,
+        button: event.data.button,
+        shiftKey: event.data.shiftKey,
+      }));
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
+
   if (!isDynamicBackgroundId(id)) return null;
   const Component = DYNAMIC_BACKGROUND_COMPONENTS[id];
   return (

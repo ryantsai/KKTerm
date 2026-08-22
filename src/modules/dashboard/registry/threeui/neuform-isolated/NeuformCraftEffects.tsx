@@ -1,5 +1,6 @@
 import { useMemo, type CSSProperties } from "react";
 
+import { withThreeUiFrameContextMenuBridge } from "../threeUiFrameBridge";
 import emberStormSource from "./sources/aeonix-ember-storm.html?raw";
 import fluidSource from "./sources/aura-ui-fluid.html?raw";
 import neonSource from "./sources/glassblown-neon.html?raw";
@@ -208,9 +209,9 @@ ${presentationStyle}
     : definition.presentation === "woven-cloth-label"
       ? wovenClothLabelSource(definition.source)
       : definition.source;
-  return presentedSource
+  return withThreeUiFrameContextMenuBridge(presentedSource
     .replace(/<\/head>/i, `${focusStyle}</head>`)
-    .replace(/<\/body>/i, `${focusScript}</body>`);
+    .replace(/<\/body>/i, `${focusScript}</body>`));
 }
 
 function NeuformCraftEffect({

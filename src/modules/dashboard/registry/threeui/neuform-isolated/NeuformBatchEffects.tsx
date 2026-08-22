@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
+import { withThreeUiFrameContextMenuBridge } from "../threeUiFrameBridge";
 import constellationFieldSource from "./sources/constellation-field.html?raw";
 import particleDriftSource from "./sources/particle-drift.html?raw";
 import particleNetworkSource from "./sources/particle-network.html?raw";
@@ -799,9 +800,9 @@ ${definition.focusCss ?? ""}
   window.addEventListener('load', isolate, { once: true });
 })();
 </script>`;
-  return patchedSource
+  return withThreeUiFrameContextMenuBridge(patchedSource
     .replace(/<head([^>]*)>/i, `<head$1>${controlScript}${focusStyle}`)
-    .replace(/<\/body>/i, `${focusScript}</body>`);
+    .replace(/<\/body>/i, `${focusScript}</body>`));
 }
 
 function NeuformBatchEffect({

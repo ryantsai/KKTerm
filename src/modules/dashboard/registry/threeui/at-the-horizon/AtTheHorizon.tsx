@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
+import { withThreeUiFrameContextMenuBridge } from "../threeUiFrameBridge";
 import horizonSource from "./at-the-horizon-we-meet.html?raw";
 
 export type AtTheHorizonProps = {
@@ -44,7 +45,7 @@ export function AtTheHorizon({ className = "" }: AtTheHorizonProps) {
         <iframe
           className={`at-the-horizon__frame${ready ? " is-ready" : ""}`}
           title="At the Horizon, We Meet"
-          srcDoc={horizonSource}
+          srcDoc={withThreeUiFrameContextMenuBridge(horizonSource)}
           sandbox="allow-scripts"
           loading="eager"
           onLoad={() => setReady(true)}

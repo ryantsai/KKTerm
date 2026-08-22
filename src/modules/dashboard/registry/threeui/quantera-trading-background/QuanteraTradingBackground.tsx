@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
+import { withThreeUiFrameContextMenuBridge } from "../threeUiFrameBridge";
 import quanteraTradingSource from "./sources/quantera-trading-hero.html?raw";
 
 export type QuanteraTradingBackgroundProps = {
@@ -51,7 +52,7 @@ function buildBackgroundDocument(reducedMotion: boolean) {
     );
   }
 
-  return documentSource;
+  return withThreeUiFrameContextMenuBridge(documentSource);
 }
 
 export function QuanteraTradingBackground({

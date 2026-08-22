@@ -68,6 +68,9 @@ export function SharedBackgroundPopover({
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<PopoverDrag | null>(null);
+  const popoverOffsetRef = useRef<PopoverOffset>({ x: 0, y: 0 });
+  const pendingPopoverOffsetRef = useRef<PopoverOffset | null>(null);
+  const dragFrameRef = useRef<number | null>(null);
   const [mode, setMode] = useState<Mode>(modeOf(background));
   const [importError, setImportError] = useState("");
   const [popoverOffset, setPopoverOffset] = useState<PopoverOffset>({ x: 0, y: 0 });
@@ -76,6 +79,33 @@ export function SharedBackgroundPopover({
   const mediaBackground = isMediaBackground(background) ? background : null;
   const customGradientBackground = background?.kind === "customGradient" ? background : null;
 
+  function applyPendingPopoverOffset() {
+    const next = pendingPopoverOffsetRef.current;
+    if (!next) return;
+    pendingPopoverOffsetRef.current = null;
+    popoverOffsetRef.current = next;
+    ref.current?.style.setProperty("--dw-bg-popover-offset-x", `${next.x}px`);
+    ref.current?.style.setProperty("--dw-bg-popover-offset-y", `${next.y}px`);
+  }
+
+  function schedulePopoverOffset(next: PopoverOffset) {
+    pendingPopoverOffsetRef.current = next;
+    if (dragFrameRef.current !== null) return;
+    dragFrameRef.current = requestAnimationFrame(() => {
+      dragFrameRef.current = null;
+      applyPendingPopoverOffset();
+    });
+  }
+
+  function commitPopoverOffset() {
+    if (dragFrameRef.current !== null) {
+      cancelAnimationFrame(dragFrameRef.current);
+      dragFrameRef.current = null;
+    }
+    applyPendingPopoverOffset();
+    setPopoverOffset(popoverOffsetRef.current);
+  }
+
   function onHeaderPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
     if (event.button !== 0) return;
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -83,7 +113,7 @@ export function SharedBackgroundPopover({
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
-      startOffset: popoverOffset,
+      startOffset: popoverOffsetRef.current,
     };
     setIsDragging(true);
     event.preventDefault();
@@ -92,7 +122,7 @@ export function SharedBackgroundPopover({
   function onHeaderPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
-    setPopoverOffset({
+    schedulePopoverOffset({
       x: drag.startOffset.x + event.clientX - drag.startX,
       y: drag.startOffset.y + event.clientY - drag.startY,
     });
@@ -102,12 +132,19 @@ export function SharedBackgroundPopover({
   function onHeaderPointerEnd(event: ReactPointerEvent<HTMLDivElement>) {
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
+    commitPopoverOffset();
     dragRef.current = null;
     setIsDragging(false);
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
   }
+
+  useEffect(() => () => {
+    if (dragFrameRef.current !== null) cancelAnimationFrame(dragFrameRef.current);
+    dragFrameRef.current = null;
+    pendingPopoverOffsetRef.current = null;
+  }, []);
 
   useEffect(() => {
     function onDoc(event: MouseEvent) {
@@ -203,6 +240,7 @@ export function SharedBackgroundPopover({
         onPointerMove={onHeaderPointerMove}
         onPointerUp={onHeaderPointerEnd}
         onPointerCancel={onHeaderPointerEnd}
+        onLostPointerCapture={onHeaderPointerEnd}
       >
         <DIcon name="stack" size={15} />
         <span>{t(titleKey)}</span>

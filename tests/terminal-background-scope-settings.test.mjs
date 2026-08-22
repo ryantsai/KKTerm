@@ -18,6 +18,19 @@ const sharedBackgroundPopover = await readFile(
   new URL("../src/modules/dashboard/edit/SharedBackgroundPopover.tsx", import.meta.url),
   "utf8",
 );
+const dynamicBackgrounds = await readFile(
+  new URL("../src/modules/dashboard/registry/dynamicBackgrounds.tsx", import.meta.url),
+  "utf8",
+);
+const iframeBackgroundSources = await Promise.all([
+  "../src/modules/dashboard/registry/threeui/at-the-horizon/AtTheHorizon.tsx",
+  "../src/modules/dashboard/registry/threeui/elements/GenerativeTree.tsx",
+  "../src/modules/dashboard/registry/threeui/neuform-isolated/NeuformBatchEffects.tsx",
+  "../src/modules/dashboard/registry/threeui/neuform-isolated/NeuformCraftEffects.tsx",
+  "../src/modules/dashboard/registry/threeui/neuform-isolated/NeuformIsolatedEffects.tsx",
+  "../src/modules/dashboard/registry/threeui/quantera-trading-background/QuanteraTradingBackground.tsx",
+  "../src/modules/dashboard/registry/threeui/sylva-living-world/SylvaLivingWorldScene.tsx",
+].map((path) => readFile(new URL(path, import.meta.url), "utf8")));
 const workspaceSettings = await readFile(
   new URL("../src/modules/settings/WorkspaceSettings.tsx", import.meta.url),
   "utf8",
@@ -138,6 +151,21 @@ test("dynamic background tab uses static thumbnails and supports transient heade
   assert.match(dashboardCss, /\.dw-bg-popover-body\s*\{[\s\S]*overflow-y:\s*auto;/);
   assert.doesNotMatch(dashboardCss, /\.dw-bg-thumb-live/);
   assert.doesNotMatch(dashboardCss, /\.dw-bg-preview-|dw-bg-live-preview|dw-bg-dynamic-grid/);
+});
+
+test("iframe-backed dynamic backgrounds relay context menus to their owning surface", () => {
+  assert.match(dynamicBackgrounds, /THREE_UI_FRAME_CONTEXT_MENU_MESSAGE/);
+  assert.match(dynamicBackgrounds, /contentWindow === event\.source/);
+  assert.match(dynamicBackgrounds, /new MouseEvent\("contextmenu"/);
+  for (const source of iframeBackgroundSources) {
+    assert.match(source, /withThreeUiFrameContextMenuBridge/);
+  }
+});
+
+test("background picker coalesces drag repaints outside React state updates", () => {
+  assert.match(sharedBackgroundPopover, /popoverOffsetRef/);
+  assert.match(sharedBackgroundPopover, /requestAnimationFrame/);
+  assert.match(sharedBackgroundPopover, /onLostPointerCapture=\{onHeaderPointerEnd\}/);
 });
 
 test("docs make shared terminal background scope and datasource explicit", () => {
