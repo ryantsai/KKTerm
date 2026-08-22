@@ -28,6 +28,9 @@ dist-ssr
 # Generated package outputs
 /target/
 
+# Private Microsoft Store operations (kept in the sibling KKTerm-store-ops repo)
+/store/
+
 # Rust build outputs
 /src-tauri/target
 /src-tauri/binaries
