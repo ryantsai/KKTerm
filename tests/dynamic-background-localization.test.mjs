@@ -14,6 +14,10 @@ const localizedDynamicBackgroundKeys = [
   "waveField",
   "openOceanBlue",
   "tropicalGreen",
+  "windowRain",
+  "submergedSnellOcean",
+  "spectralCascadeOcean",
+  "blackHole",
 ];
 
 async function readLocale(fileName) {
