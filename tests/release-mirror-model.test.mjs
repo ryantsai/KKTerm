@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   buildReleaseManifest,
+  buildTauriReleaseManifest,
   missingRequiredPlatforms,
   recognizedReleaseAssets,
   versionFromTag,
@@ -68,14 +69,23 @@ test("builds a Windows-only manifest without incomplete staggered platforms", ()
         url: "https://kkterm.ryantsai.com/releases/v0.1.93/kkterm-0.1.93-windows-x64-setup.exe",
         checksum_url:
           "https://kkterm.ryantsai.com/releases/v0.1.93/kkterm-0.1.93-windows-x64-setup.exe.sha256",
+        signature: "",
       },
       "windows-x64-portable": {
         url: "https://kkterm.ryantsai.com/releases/v0.1.93/kkterm-0.1.93-windows-x64-portable.zip",
         checksum_url:
           "https://kkterm.ryantsai.com/releases/v0.1.93/kkterm-0.1.93-windows-x64-portable.zip.sha256",
+        signature: "",
       },
     },
   });
+});
+
+test("keeps the combined manifest parseable by legacy Tauri updater builds", () => {
+  const manifest = buildReleaseManifest(release, "https://kkterm.ryantsai.com");
+  for (const platform of Object.values(manifest.platforms)) {
+    assert.equal(typeof platform.signature, "string");
+  }
 });
 
 test("adds signed staggered macOS and Linux updater entries", () => {
@@ -132,6 +142,36 @@ test("reports no missing platforms once macOS and Linux stagger in", () => {
     "https://kkterm.ryantsai.com",
   );
   assert.deepEqual(missingRequiredPlatforms(manifest), []);
+});
+
+test("builds a Tauri manifest containing only signed macOS and Linux platforms", () => {
+  const manifest = {
+    version: "0.1.93",
+    notes: "Release notes",
+    pub_date: "2026-06-19T00:00:00Z",
+    release_url: "https://github.com/ryantsai/KKTerm/releases/tag/v0.1.93",
+    platforms: {
+      "windows-x64": { url: "https://example.com/app.exe", checksum_url: "https://example.com/app.exe.sha256" },
+      "darwin-aarch64": { url: "https://example.com/app.tar.gz", signature: "mac-signature" },
+      "darwin-x86_64": { url: "https://example.com/app.tar.gz", signature: "mac-signature" },
+      "linux-x86_64": { url: "https://example.com/app.AppImage", signature: "linux-signature" },
+    },
+  };
+
+  assert.deepEqual(buildTauriReleaseManifest(manifest), {
+    version: "0.1.93",
+    notes: "Release notes",
+    pub_date: "2026-06-19T00:00:00Z",
+    platforms: {
+      "darwin-aarch64": { url: "https://example.com/app.tar.gz", signature: "mac-signature" },
+      "darwin-x86_64": { url: "https://example.com/app.tar.gz", signature: "mac-signature" },
+      "linux-x86_64": { url: "https://example.com/app.AppImage", signature: "linux-signature" },
+    },
+  });
+  assert.throws(
+    () => buildTauriReleaseManifest({ ...manifest, platforms: { ...manifest.platforms, "linux-x86_64": { url: "https://example.com/app.AppImage" } } }),
+    /signature.*linux-x86_64/i,
+  );
 });
 
 test("rejects draft, prerelease, and malformed release tags", () => {

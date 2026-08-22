@@ -11,6 +11,7 @@ import {
 
 test("maps only safe public release paths to private R2 keys", () => {
   assert.equal(parseReleaseObjectPath("/releases/latest.json"), "releases/latest.json");
+  assert.equal(parseReleaseObjectPath("/releases/latest-tauri.json"), "releases/latest-tauri.json");
   assert.equal(
     parseReleaseObjectPath("/releases/v0.1.93/kkterm-0.1.93-windows-x64-setup.exe"),
     "releases/v0.1.93/kkterm-0.1.93-windows-x64-setup.exe",
@@ -27,10 +28,12 @@ test("uses partial-content status only for an explicit Range request", () => {
 
 test("assigns metadata and installer response headers", () => {
   assert.equal(contentTypeForKey("releases/latest.json"), "application/json; charset=utf-8");
+  assert.equal(contentTypeForKey("releases/latest-tauri.json"), "application/json; charset=utf-8");
   assert.equal(contentTypeForKey("releases/v0.1.93/app.exe"), "application/vnd.microsoft.portable-executable");
   assert.equal(contentTypeForKey("releases/v0.1.93/app.zip"), "application/zip");
   assert.equal(contentTypeForKey("releases/v0.1.93/app.sha256"), "text/plain; charset=utf-8");
   assert.equal(cacheControlForKey("releases/latest.json"), "public, max-age=300, must-revalidate");
+  assert.equal(cacheControlForKey("releases/latest-tauri.json"), "public, max-age=300, must-revalidate");
   assert.equal(cacheControlForKey("releases/v0.1.93/app.exe"), "public, max-age=31536000, immutable");
 });
 

@@ -96,7 +96,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEI0MTBCNDM2NDU3QTUwNDUKUldSRlVIcEZOclFRdFAvNStXMk1qSnh0QVQ1YjhDMEpZV0dRbnFHV2UyQTA5NjZoWDZqZjRZK2YK",
       "endpoints": [
-        "https://kkterm.ryantsai.com/releases/latest.json",
+        "https://kkterm.ryantsai.com/releases/latest-tauri.json",
         "https://github.com/ryantsai/KKTerm/releases/latest/download/latest.json"
       ]
     }

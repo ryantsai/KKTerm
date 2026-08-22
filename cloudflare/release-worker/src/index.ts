@@ -33,7 +33,7 @@ export default {
     headers.set("access-control-allow-origin", "*");
     headers.set("content-type", contentTypeForKey(key));
     headers.set("x-content-type-options", "nosniff");
-    if (key !== "releases/latest.json") {
+    if (key !== "releases/latest.json" && key !== "releases/latest-tauri.json") {
       headers.set("content-disposition", `attachment; filename="${key.split("/").at(-1)}"`);
     }
 

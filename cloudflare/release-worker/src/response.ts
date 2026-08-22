@@ -1,7 +1,9 @@
 const VERSIONED_RELEASE_PATH = /^\/releases\/v\d+\.\d+\.\d+\/([^/]+)$/;
 
 export function parseReleaseObjectPath(pathname: string) {
-  if (pathname === "/releases/latest.json") return "releases/latest.json";
+  if (pathname === "/releases/latest.json" || pathname === "/releases/latest-tauri.json") {
+    return pathname.slice(1);
+  }
   const match = VERSIONED_RELEASE_PATH.exec(pathname);
   if (!match || !/^[A-Za-z0-9._-]+$/.test(match[1])) return null;
   return pathname.slice(1);
@@ -17,7 +19,7 @@ export function contentTypeForKey(key: string) {
 }
 
 export function cacheControlForKey(key: string) {
-  return key === "releases/latest.json"
+  return key === "releases/latest.json" || key === "releases/latest-tauri.json"
     ? "public, max-age=300, must-revalidate"
     : "public, max-age=31536000, immutable";
 }
