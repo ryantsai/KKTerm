@@ -1,0 +1,43 @@
+pageType: twoColumn
+background:
+  type: solid
+  color: "$paper"
+notes: >-
+  Alignment is cheap at the start and expensive later. Before the kickoff, two
+  engineers and a designer can each believe the project is about something
+  different. This kickoff forces one shared answer to three questions: what are
+  we building, for whom, and what does done look like. Check: ask anyone in the
+  room — they should answer those three questions in one breath. If they can't,
+  the plan isn't aligned yet.
+elements:
+  - elementId: t
+    elementType: text
+    bounds: [46, 36, 840, 46]
+    content:
+      style: "$title"
+      wrap: false
+      text: "Why we align before we build"
+  - elementId: lh
+    elementType: text
+    bounds: [66, 194, 384, 29]
+    content:
+      style: "$heading"
+      text: "Skip alignment"
+  - elementId: lb
+    elementType: text
+    bounds: [66, 235, 384, 192]
+    content:
+      style: "$body"
+      text: "Rework — teams chase different goals.\nChurn — the same call gets reopened.\nDrift — scope grows ten directions."
+  - elementId: rh
+    elementType: text
+    bounds: [508, 194, 384, 29]
+    content:
+      style: "$heading"
+      text: "Align first"
+  - elementId: rb
+    elementType: text
+    bounds: [508, 235, 384, 192]
+    content:
+      style: "$body"
+      text: "Decisions stick once, then get reused.\nWork moves — handoffs have owners.\nTrust holds — people count on the plan.\nCheck — what, for whom, and done."

@@ -1,0 +1,36 @@
+version: v2
+title: AI-Assisted Project Kickoff
+size: [960, 540]
+theme:
+  colors:
+    paper: "#F7F4EE"
+    ink: "#172033"
+    muted: "#5F5950"
+    sky: "#0EA5E9"
+    orange: "#F26A3D"
+  textStyles:
+    title:
+      fontFamily: "Calibri Light"
+      fontSize: 29
+      color: "$ink"
+      bold: true
+    heading:
+      fontFamily: "Calibri Light"
+      fontSize: 21
+      color: "$ink"
+      bold: true
+    body:
+      fontFamily: "Calibri Light"
+      fontSize: 17
+      color: "$ink"
+    small:
+      fontFamily: "Calibri Light"
+      fontSize: 18
+      color: "$ink"
+      bold: true
+pages:
+  - pages/01-cover.page
+  - pages/02-alignment.page
+  - pages/03-workflow.page
+  - pages/04-roles.page
+  - pages/05-actions.page

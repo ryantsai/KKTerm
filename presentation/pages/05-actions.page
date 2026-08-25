@@ -1,0 +1,43 @@
+pageType: twoColumn
+background:
+  type: solid
+  color: "$paper"
+notes: >-
+  Assign each action to a person and a date before the meeting ends — leave
+  nothing as "someone should". The AI assistant posts the follow-up list to the
+  team channel with owners and dates. At the Friday check-in, compare reality
+  to the plan: what moved, what blocked, what changed. The kickoff is only
+  finished when the plan is the single source of truth. The check: by Friday,
+  each action has a visible owner and a date.
+elements:
+  - elementId: t
+    elementType: text
+    bounds: [46, 36, 840, 46]
+    content:
+      style: "$title"
+      wrap: false
+      text: "Five actions this week"
+  - elementId: lh
+    elementType: text
+    bounds: [66, 194, 384, 29]
+    content:
+      style: "$heading"
+      text: "Before Friday"
+  - elementId: lb
+    elementType: text
+    bounds: [66, 235, 384, 192]
+    content:
+      style: "$body"
+      text: "Post the plan — Facilitator, today\nConfirm workstream + dates — owners\nBook the 15-min check-in — Facilitator\nDraft milestone tasks — Eng + Design\nReview the plan as a team — Friday"
+  - elementId: rh
+    elementType: text
+    bounds: [508, 194, 384, 29]
+    content:
+      style: "$heading"
+      text: "Done looks like"
+  - elementId: rb
+    elementType: text
+    bounds: [508, 235, 384, 192]
+    content:
+      style: "$body"
+      text: "Anyone can state the problem, their ownership, and the first milestone.\nThe plan lives in one place — the team channel.\nThe check-in moves the work forward; the kickoff is finished."

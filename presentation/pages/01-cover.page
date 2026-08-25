@@ -1,0 +1,71 @@
+pageType: metrics
+background:
+  type: solid
+  color: "$paper"
+notes: >-
+  Purpose of this kickoff: in about thirty minutes, a cross-functional team
+  turns a rough idea into a one-page plan everyone can act on. Four steps, one
+  owner per decision, and five concrete actions this week. The AI assistant
+  drafts, summarizes, and tracks so the humans can decide. Why now: every
+  project starts as a guess; this method turns the guess into a plan the team
+  owns together.
+elements:
+  - elementId: t
+    elementType: text
+    bounds: [46, 36, 840, 46]
+    content:
+      style: "$title"
+      wrap: false
+      text: "AI-Assisted Project Kickoff"
+  - elementId: m1
+    elementType: text
+    bounds: [61, 204, 176, 55]
+    content:
+      style: "$title"
+      fontSize: 34
+      text: "30"
+  - elementId: l1
+    elementType: text
+    bounds: [61, 276, 176, 36]
+    content:
+      style: "$small"
+      text: "Kickoff minutes"
+  - elementId: m2
+    elementType: text
+    bounds: [282, 204, 176, 55]
+    content:
+      style: "$title"
+      fontSize: 34
+      text: "4"
+  - elementId: l2
+    elementType: text
+    bounds: [282, 276, 176, 36]
+    content:
+      style: "$small"
+      text: "Workflow steps"
+  - elementId: m3
+    elementType: text
+    bounds: [502, 204, 176, 55]
+    content:
+      style: "$title"
+      fontSize: 34
+      text: "1"
+  - elementId: l3
+    elementType: text
+    bounds: [502, 276, 176, 36]
+    content:
+      style: "$small"
+      text: "Shared plan"
+  - elementId: m4
+    elementType: text
+    bounds: [723, 204, 176, 55]
+    content:
+      style: "$title"
+      fontSize: 34
+      text: "5"
+  - elementId: l4
+    elementType: text
+    bounds: [723, 276, 176, 36]
+    content:
+      style: "$small"
+      text: "Actions this week"

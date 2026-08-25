@@ -31,7 +31,7 @@ pub fn latest_version(recipe: &Recipe) -> LatestVersionResult {
         Provider::WslDistro { .. } => Ok(None),
         Provider::Bundle { .. } => Ok(None),
     };
-    let result = if let Some(url) = official_cli_latest_url(&recipe.id) {
+    let result = if let Some(url) = official_cli_latest_url(&recipe.id, provider) {
         official_cli_latest(&recipe.id, url).or_else(|official_error| {
             provider_latest().map_err(|provider_error| {
                 format!("{official_error}; provider fallback also failed: {provider_error}")
@@ -111,10 +111,24 @@ fn latest_provider_for_recipe(recipe: &Recipe) -> &Provider {
             return provider;
         }
     }
+    if official_cli_latest_pointer_url(&recipe.id).is_some()
+        && let Some(provider @ Provider::DownloadInstaller { .. }) =
+            recipe.download_provider.as_ref()
+        && detect_one(recipe).install_provider.as_deref() == Some("downloadInstaller")
+    {
+        return provider;
+    }
     &recipe.provider
 }
 
-fn official_cli_latest_url(tool_id: &str) -> Option<&'static str> {
+fn official_cli_latest_url(tool_id: &str, provider: &Provider) -> Option<&'static str> {
+    if !matches!(provider, Provider::DownloadInstaller { .. }) {
+        return None;
+    }
+    official_cli_latest_pointer_url(tool_id)
+}
+
+fn official_cli_latest_pointer_url(tool_id: &str) -> Option<&'static str> {
     match tool_id {
         "kimi-code-cli" => Some("https://code.kimi.com/kimi-code/latest"),
         "grok-build" => Some("https://x.ai/cli/stable"),
@@ -523,6 +537,25 @@ mod tests {
         );
         assert_eq!(official_cli_version_pointer("not-a-version\n"), None);
         assert_eq!(official_cli_version_pointer("0.2.103<script>\n"), None);
+    }
+
+    #[test]
+    fn grok_latest_channel_matches_the_selected_install_provider() {
+        let winget = Provider::Winget {
+            id: "xAI.GrokBuild".into(),
+        };
+        let official_script = Provider::DownloadInstaller {
+            url: "https://x.ai/cli/install.ps1".into(),
+            file_name: "grok-build-install.ps1".into(),
+            arm64_url: None,
+            arm64_file_name: None,
+        };
+
+        assert_eq!(official_cli_latest_url("grok-build", &winget), None);
+        assert_eq!(
+            official_cli_latest_url("grok-build", &official_script),
+            Some("https://x.ai/cli/stable")
+        );
     }
 
     #[test]

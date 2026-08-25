@@ -1,0 +1,45 @@
+pageType: table
+background:
+  type: solid
+  color: "$paper"
+notes: >-
+  Read the table left to right: for every deliverable in the plan, one person
+  owns it. Owners decide; everyone else gives input. If two names appear next
+  to one deliverable, the kickoff is not finished — pick one. The AI assistant
+  is a tool, not a decision-maker: it drafts, summarizes, and tracks so the
+  humans can focus on the judgment calls. The check: point at any line in the
+  plan and the owner raises their hand.
+elements:
+  - elementId: t
+    elementType: text
+    bounds: [46, 36, 840, 46]
+    content:
+      style: "$title"
+      wrap: false
+      text: "Every deliverable has an owner"
+  - elementId: tb
+    elementType: table
+    bounds: [46, 168, 868, 312]
+    columnWidths: [0.22, 0.42, 0.36]
+    rows:
+      - - text: "Role"
+        - text: "Owns the decision"
+        - text: "Brings to the kickoff"
+      - - text: "Facilitator"
+        - text: "The agenda and the output"
+        - text: "A one-page plan, captured live"
+      - - text: "Product Owner"
+        - text: "What we build — and what we don't"
+        - text: "Problem statement + success metric"
+      - - text: "Engineering Lead"
+        - text: "How it's built, and how long"
+        - text: "Effort estimates + risks"
+      - - text: "Design Lead"
+        - text: "What users experience"
+        - text: "Flows, prototypes, open questions"
+      - - text: "AI assistant"
+        - text: "Drafting, summarizing, tracking"
+        - text: "Raw inputs + the follow-up list"
+      - - text: "Everyone"
+        - text: "Their own workstream"
+        - text: "Commitment to dates, honest status"
