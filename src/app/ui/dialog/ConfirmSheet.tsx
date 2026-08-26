@@ -38,6 +38,7 @@ export function ConfirmSheet({
   onCancel,
   ariaLabel,
   zClassName,
+  autoFocusConfirm = false,
 }: {
   tone?: ConfirmTone;
   icon?: DialogIconName;
@@ -55,6 +56,8 @@ export function ConfirmSheet({
   ariaLabel?: string;
   /** Stacked-dialog escape (e.g. "kk-qc-subdialog") when opened above another dialog. */
   zClassName?: string;
+  /** Move focus to the confirm action when this prompt is safe to accept with Enter. */
+  autoFocusConfirm?: boolean;
 }) {
   const { t } = useTranslation();
   const glyph = icon ?? TONE_ICON[tone];
@@ -63,12 +66,19 @@ export function ConfirmSheet({
       <Sheet
         width={width}
         ariaLabel={ariaLabel ?? (typeof title === "string" ? title : undefined)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            event.stopPropagation();
+            onCancel();
+          }
+        }}
         footer={
           <Actions
             extraLeft={extraLeft}
             cancel={<Btn onClick={onCancel}>{cancelLabel ?? t("common.cancel")}</Btn>}
             primary={
-              <Btn kind={TONE_BUTTON[tone]} icon={confirmIcon} onClick={onConfirm}>
+              <Btn autoFocus={autoFocusConfirm} kind={TONE_BUTTON[tone]} icon={confirmIcon} onClick={onConfirm}>
                 {confirmLabel}
               </Btn>
             }

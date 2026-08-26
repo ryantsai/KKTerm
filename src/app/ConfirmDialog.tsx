@@ -1,6 +1,7 @@
 import { ConfirmSheet, type DialogIconName } from "./ui/dialog";
 
 export function ConfirmDialog({
+  autoFocusConfirm,
   cancelLabel,
   confirmIcon,
   confirmLabel,
@@ -11,6 +12,7 @@ export function ConfirmDialog({
   title,
   tone = "default",
 }: {
+  autoFocusConfirm?: boolean;
   cancelLabel?: string;
   /** Override the confirm-button glyph. Defaults to a trash icon for danger. */
   confirmIcon?: DialogIconName;
@@ -25,6 +27,7 @@ export function ConfirmDialog({
 }) {
   return (
     <ConfirmSheet
+      autoFocusConfirm={autoFocusConfirm}
       tone={tone === "danger" ? "danger" : "info"}
       icon={icon}
       title={title}
