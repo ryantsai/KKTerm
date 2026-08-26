@@ -75,6 +75,26 @@ test("multiline paste confirmation returns focus to the terminal after the dialo
   assert.match(resolver, /window\.requestAnimationFrame\(focus\)/);
 });
 
+test("multiline paste confirmation takes focus and supports Enter and Escape", async () => {
+  const workspaceSource = await readFile(
+    new URL("../src/modules/workspace/connections/terminal/TerminalWorkspace.tsx", import.meta.url),
+    "utf8",
+  );
+  const confirmSheetSource = await readFile(
+    new URL("../src/app/ui/dialog/ConfirmSheet.tsx", import.meta.url),
+    "utf8",
+  );
+
+  const confirmation =
+    workspaceSource.match(/multilinePasteConfirmationOpen \? \(([\s\S]*?)\n      \) : null/)?.[1] ?? "";
+  assert.match(confirmation, /<ConfirmDialog[\s\S]*?autoFocusConfirm/);
+  assert.match(confirmSheetSource, /<Btn autoFocus=\{autoFocusConfirm\}/);
+  assert.match(confirmSheetSource, /event\.key === "Escape"/);
+  assert.match(confirmSheetSource, /event\.preventDefault\(\)/);
+  assert.match(confirmSheetSource, /event\.stopPropagation\(\)/);
+  assert.match(confirmSheetSource, /onCancel\(\)/);
+});
+
 test("clipboard execCommand fallback restores focus after copying", async () => {
   const clipboardSource = await readFile(new URL("../src/lib/clipboard.ts", import.meta.url), "utf8");
 

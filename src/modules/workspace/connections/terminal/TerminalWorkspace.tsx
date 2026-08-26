@@ -3833,6 +3833,7 @@ function TerminalPaneView({
       ) : null}
       {multilinePasteConfirmationOpen ? (
         <ConfirmDialog
+          autoFocusConfirm
           confirmIcon="copy"
           confirmLabel={t("common.paste")}
           icon="copy"

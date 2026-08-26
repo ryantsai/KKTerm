@@ -7,6 +7,7 @@ import {
   useContext,
   useState,
   type CSSProperties,
+  type KeyboardEventHandler,
   type ReactNode,
   type Ref,
 } from "react";
@@ -109,6 +110,7 @@ export function Sheet({
   className = "",
   ariaLabel,
   closeAriaLabel,
+  onKeyDown,
 }: {
   width?: number;
   height?: number;
@@ -123,6 +125,7 @@ export function Sheet({
   className?: string;
   ariaLabel?: string;
   closeAriaLabel?: string;
+  onKeyDown?: KeyboardEventHandler<HTMLDivElement>;
 }) {
   const hasHead = Boolean(eyebrow || title || sub || onClose);
   return (
@@ -132,6 +135,7 @@ export function Sheet({
       role="dialog"
       aria-modal="true"
       aria-label={ariaLabel ?? (typeof title === "string" ? title : undefined)}
+      onKeyDown={onKeyDown}
     >
       {hasHead && (
         <div className={`kk-dlg-head${rule ? " with-rule" : ""}`}>
@@ -287,6 +291,7 @@ export function Btn({
   onClick,
   type = "button",
   disabled,
+  autoFocus,
   className = "",
 }: {
   kind?: ButtonKind;
@@ -297,12 +302,14 @@ export function Btn({
   onClick?: () => void;
   type?: "button" | "submit";
   disabled?: boolean;
+  autoFocus?: boolean;
   className?: string;
 }) {
   return (
     <button
       type={type}
       disabled={disabled}
+      autoFocus={autoFocus}
       onClick={onClick}
       className={`kk-btn${kind ? ` ${kind}` : ""}${sm ? " sm" : ""}${wide ? " wide" : ""} ${className}`.trim()}
     >
