@@ -42,10 +42,12 @@ const SSH_COMMAND_TIMEOUT: Duration = Duration::from_secs(8);
 // (russh equivalent of OpenSSH ServerAliveInterval/ServerAliveCountMax). An
 // active session resets this timer on received data, so it adds no traffic.
 const SSH_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(30);
-// Tear down a dead link after this many unanswered keepalives. With a 30s
-// interval that is a ~2.5 min detection window — tight enough to recover an
-// idle freeze quickly, loose enough to ride out a brief network blip.
-const SSH_KEEPALIVE_MAX_MISSED: usize = 4;
+// Keep sending keepalives without imposing an app-side missed-reply limit.
+// russh counts any interval with no inbound packet as a missed reply, so a
+// server or SSH proxy that ignores the keepalive global request can otherwise
+// make a healthy, quiet terminal disconnect on a fixed timer. Socket errors,
+// remote EOF/Close, and explicit closes still end the Session normally.
+const SSH_KEEPALIVE_MAX_MISSED: usize = 0;
 // On session teardown the worker drains live port-forward tasks so their SSH
 // channels close while the tokio runtime is still running (russh closes
 // channels from a `Drop` that calls `tokio::spawn`, which panics once the
@@ -3347,18 +3349,14 @@ mod tests {
     }
 
     #[test]
-    fn native_ssh_client_sends_keepalives_to_detect_dead_idle_links() {
+    fn native_ssh_client_sends_non_expiring_keepalives_for_idle_terminal_sessions() {
         let config = native_ssh_client_config(true, false);
 
-        // Without keepalives an idle session behind a NAT/firewall freezes:
-        // the link dies silently, input is swallowed, yet the session never
-        // observes EOF/Close so it keeps reporting as connected.
+        // Keepalives preserve NAT/firewall state, but an SSH server or proxy
+        // may ignore the global request. Missing replies alone must not impose
+        // an app-side idle timeout on an otherwise healthy terminal Session.
         assert_eq!(config.keepalive_interval, Some(SSH_KEEPALIVE_INTERVAL));
-        assert!(
-            config.keepalive_max > 0,
-            "a dead link must be torn down after a bounded number of missed keepalives"
-        );
-        assert_eq!(config.keepalive_max, SSH_KEEPALIVE_MAX_MISSED);
+        assert_eq!(config.keepalive_max, 0);
     }
 
     #[test]

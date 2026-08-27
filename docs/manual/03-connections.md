@@ -133,6 +133,12 @@ unlock resumes the original Save automatically. Cancel leaves the form and the
 existing Connection data unchanged; the backend lock message is not shown as a
 Connection form-validation error.
 
+Native SSH Sessions have no application-side idle timeout. KKTerm sends periodic
+SSH keepalives to preserve network state, but a server or proxy that does not
+answer those keepalive requests does not cause an otherwise-live, quiet Session
+to disconnect on a fixed timer. A socket error, remote close, or explicit user
+close still ends the Session normally.
+
 Local terminal Add/Edit Connection uses the `connections.shell` tabbed selector for the local shell choice and still stores the selected `localShell` value on the Connection. On macOS, a bare local shell (for example the default `/bin/zsh` or the Fish preset) starts with a login flag so it reads the same login startup files as the system Terminal — `~/.zprofile`, including Homebrew's `brew shellenv` — and therefore sees the same PATH, such as `/opt/homebrew/bin` for Homebrew-installed CLIs; a custom shell command line that already carries its own arguments is launched exactly as written.
 
 RDP Add/Edit Connection can inherit its administrative-session and local-resource choices from Settings or override them for that Connection. `settings.rdpAdministrativeSession` remains off by default and requests a server administration session; it does not elevate the selected account. Redirection also remains off by default. On Windows, enabling it initially redirects all local drives and `settings.rdpChooseDrives` opens a Sheet for choosing all drives or a selected subset; a temporarily unavailable saved drive remains visible and selected through `settings.rdpUnavailableDrive`. On macOS and Linux, `settings.rdpAddFolder` can add multiple folders, each exposed by IronRDP as a separate redirected drive; the Windows drive selector is not shown.
