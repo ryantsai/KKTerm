@@ -25,6 +25,7 @@
     "dialog:allow-message",
     "dialog:allow-open",
     "dialog:allow-save",
+    "drag:default",
     "fs:allow-exists",
     "fs:allow-read-file",
     "fs:allow-stat",

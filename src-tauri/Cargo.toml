@@ -98,6 +98,8 @@ oxc_span = "0.143"
 oxc_ast = "0.143"
 oxc_ast_visit = "0.143"
 tauri-plugin-single-instance = "2"
+tauri-plugin-drag = "2.1.1"
+arboard = { version = "3.6.1", default-features = false, features = ["image-data", "wayland-data-control"] }
 
 # Network admin tools - AV-friendly choices.
 # MVP scope: DNS, ping, port scan/check, WoL, interfaces, WHOIS. SNMP + traceroute deferred.
@@ -168,7 +170,6 @@ sysinfo = "0.39"
 zbus = "5"
 
 [target.'cfg(not(target_os = "windows"))'.dependencies]
-arboard = { version = "3.6.1", default-features = false, features = ["image-data", "wayland-data-control"] }
 tempfile = "3.27.0"
 # Unix ICMP via surge-ping (raw sockets - Unix users typically have CAP_NET_RAW or root).
 # Windows uses winping instead (see Windows target block above).

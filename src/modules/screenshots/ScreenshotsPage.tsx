@@ -58,6 +58,7 @@ import {
 import { ScreenshotEditor } from "./ScreenshotEditor";
 import { VideoDependencyDialog } from "./VideoDependencyDialog";
 import type { ScreenshotGroupBy } from "./libraryModel";
+import { screenshotDragItems, startScreenshotDrag } from "./nativeScreenshotDrag";
 import {
   useScreenshotsStore,
   type ScreenshotSortBy,
@@ -305,6 +306,15 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
     } catch (error) {
       notifyError(error);
     }
+  }
+
+  function dragScreenshot(screenshot: StoredScreenshot) {
+    const items = screenshotDragItems(screenshots, screenshot, selectedIds);
+    if (!selectedIds.has(screenshot.id)) {
+      setSelectedIds(new Set([screenshot.id]));
+      selectionAnchorRef.current = screenshot.id;
+    }
+    void startScreenshotDrag(items, screenshot).catch(notifyError);
   }
 
   function openExternal(screenshot: StoredScreenshot) {
@@ -761,6 +771,7 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
               onSelect={handleSelect}
               onOpen={(screenshot) => setViewerId(screenshot.id)}
               onItemMenu={openItemMenu}
+              onItemDragStart={dragScreenshot}
             />
             {hasMore ? (
               <div className="screenshots-load-more">

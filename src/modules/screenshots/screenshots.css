@@ -536,6 +536,11 @@
   object-fit: contain;
 }
 
+.screenshots-card img,
+.screenshots-detail-thumb img {
+  -webkit-user-drag: none;
+}
+
 .screenshots-media-badge {
   position: absolute;
   left: 7px;
