@@ -806,6 +806,7 @@ export interface StoredScreenshot {
   path: string;
   fileName: string;
   thumbnailDataUrl: string;
+  thumbnailPath: string | null;
   hasDraft: boolean;
   width: number;
   height: number;

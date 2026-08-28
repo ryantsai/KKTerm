@@ -57,6 +57,7 @@ export function LibraryView({
   onSelect,
   onOpen,
   onItemMenu,
+  onItemDragStart,
 }: {
   screenshots: StoredScreenshot[];
   viewMode: ScreenshotsViewMode;
@@ -69,6 +70,7 @@ export function LibraryView({
   ) => void;
   onOpen: (screenshot: StoredScreenshot) => void;
   onItemMenu: (screenshot: StoredScreenshot, x: number, y: number) => void;
+  onItemDragStart: (screenshot: StoredScreenshot) => void;
 }) {
   const { t } = useTranslation();
   const groups = groupScreenshots(screenshots, groupBy);
@@ -132,10 +134,20 @@ export function LibraryView({
                   onDoubleClick={() => onOpen(screenshot)}
                   onKeyDown={(event) => handleKeyDown(event, screenshot)}
                   onContextMenu={(event) => handleContextMenu(event, screenshot)}
+                  draggable
+                  onDragStart={(event) => {
+                    event.preventDefault();
+                    onItemDragStart(screenshot);
+                  }}
                 >
                   <td className="screenshots-details__thumb-col">
                     <span className="screenshots-detail-thumb">
-                      <img alt="" src={screenshot.thumbnailDataUrl} loading="lazy" />
+                      <img
+                        alt=""
+                        src={screenshot.thumbnailDataUrl}
+                        loading="lazy"
+                        draggable={false}
+                      />
                       {screenshot.mediaType === "video" ? (
                         <span className="screenshots-media-badge">{screenshot.format.toUpperCase()}</span>
                       ) : null}
@@ -193,12 +205,18 @@ export function LibraryView({
                   onClick={(event) => onSelect(screenshot, index, modifiers(event))}
                   onDoubleClick={() => onOpen(screenshot)}
                   onContextMenu={(event) => handleContextMenu(event, screenshot)}
+                  draggable
+                  onDragStart={(event) => {
+                    event.preventDefault();
+                    onItemDragStart(screenshot);
+                  }}
                 >
                   <span className="screenshots-card__frame">
                     <img
                       alt={screenshot.fileName}
                       src={screenshot.thumbnailDataUrl}
                       loading="lazy"
+                      draggable={false}
                     />
                     {screenshot.mediaType === "video" ? (
                       <span className="screenshots-media-badge">{screenshot.format.toUpperCase()}</span>

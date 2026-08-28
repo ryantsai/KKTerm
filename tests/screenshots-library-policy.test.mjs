@@ -55,6 +55,38 @@ test("capture delay and selection-based batch actions stay connected", async () 
   assert.match(tauri, /save_edited_screenshot:/);
 });
 
+test("screenshot library drags original files and uses compatible native image clipboards", async () => {
+  const [page, library, drag, tauri, backend, cargo, capability, appBackend] = await Promise.all([
+    read("src/modules/screenshots/ScreenshotsPage.tsx"),
+    read("src/modules/screenshots/LibraryView.tsx"),
+    read("src/modules/screenshots/nativeScreenshotDrag.ts"),
+    read("src/lib/tauri.ts"),
+    read("src-tauri/src/screenshot.rs"),
+    read("src-tauri/Cargo.toml"),
+    read("src-tauri/capabilities/default.json"),
+    read("src-tauri/src/lib.rs"),
+  ]);
+
+  assert.match(library, /onItemDragStart/);
+  assert.equal((library.match(/event\.preventDefault\(\);\s*onItemDragStart\(screenshot\)/g) ?? []).length, 2);
+  assert.equal((library.match(/draggable=\{false\}/g) ?? []).length, 2);
+  assert.match(page, /screenshotDragItems\(screenshots, screenshot, selectedIds\)/);
+  assert.match(page, /startScreenshotDrag\(items, screenshot\)/);
+  assert.match(drag, /selectedIds\.has\(lead\.id\)/);
+  assert.match(drag, /screenshots\.filter\(\(screenshot\) => selectedIds\.has\(screenshot\.id\)\)/);
+  assert.match(drag, /item: items\.map\(\(item\) => item\.path\)/);
+  assert.match(drag, /mode: "copy"/);
+  assert.match(drag, /lead\.thumbnailPath/);
+  assert.match(tauri, /thumbnailPath: string \| null/);
+  assert.match(backend, /thumbnail_path: Option<String>/);
+  assert.match(backend, /arboard::ImageData/);
+  assert.doesNotMatch(backend, /SetClipboardData\(CF_DIB/);
+  assert.match(cargo, /arboard = \{ version = "3\.6\.1"/);
+  assert.match(cargo, /tauri-plugin-drag = "2\.1\.1"/);
+  assert.match(capability, /"drag:default"/);
+  assert.match(appBackend, /plugin\(tauri_plugin_drag::init\(\)\)/);
+});
+
 test("unified screenshot dialog follows the Sheet contract and bounds image zoom", async () => {
   const [editor, page, styles, backend, bridge, saveAsIcon] = await Promise.all([
     read("src/modules/screenshots/ScreenshotEditor.tsx"),

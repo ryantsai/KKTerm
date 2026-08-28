@@ -39,6 +39,7 @@ pub struct StoredScreenshot {
     path: String,
     file_name: String,
     thumbnail_data_url: String,
+    thumbnail_path: Option<String>,
     has_draft: bool,
     width: u32,
     height: u32,
@@ -728,10 +729,9 @@ pub fn capture_interactive_region_to_library(
     )
 }
 
-#[cfg(not(target_os = "windows"))]
 fn write_rgba_to_clipboard(rgba: &[u8], width: u32, height: u32) -> Result<(), String> {
     let expected = width as usize * height as usize * 4;
-    if rgba.len() < expected {
+    if width == 0 || height == 0 || rgba.len() < expected {
         return Err("captured screenshot image data is incomplete".to_string());
     }
     let mut clipboard = arboard::Clipboard::new()
@@ -2181,6 +2181,14 @@ fn stored_screenshot_from_path(
     } else {
         ensure_thumbnail_data_url(screenshots_folder, &path, &file_name)?
     };
+    let thumbnail_path = screenshots_folder
+        .join(THUMBS_DIR_NAME)
+        .join(format!("{file_name}.thumb.jpg"));
+    let thumbnail_path = thumbnail_path
+        .is_file()
+        .then(|| thumbnail_path.canonicalize().ok())
+        .flatten()
+        .map(|path| path.to_string_lossy().to_string());
     let has_draft = media_type == "image" && screenshot_draft_path(screenshots_folder, &id).is_file();
 
     Ok(StoredScreenshot {
@@ -2188,6 +2196,7 @@ fn stored_screenshot_from_path(
         path: path.to_string_lossy().to_string(),
         file_name,
         thumbnail_data_url,
+        thumbnail_path,
         has_draft,
         width,
         height,
@@ -2594,18 +2603,13 @@ mod platform {
     use image::{ColorType, ImageEncoder, codecs::jpeg::JpegEncoder};
     use windows_sys::Win32::UI::Input::KeyboardAndMouse::{ReleaseCapture, SetCapture, VK_ESCAPE};
     use windows_sys::Win32::{
-        Foundation::{GlobalFree, HANDLE, HWND, LPARAM, LRESULT, RECT, WPARAM},
+        Foundation::{HWND, LPARAM, LRESULT, RECT, WPARAM},
         Graphics::Gdi::{
             AC_SRC_OVER, AlphaBlend, BI_RGB, BITMAPINFO, BITMAPINFOHEADER, BLENDFUNCTION,
             BeginPaint, BitBlt, CAPTUREBLT, CreateCompatibleBitmap, CreateCompatibleDC,
             CreateDIBSection, CreateSolidBrush, DIB_RGB_COLORS, DeleteDC, DeleteObject, EndPaint,
             FillRect, FrameRect, GdiFlush, GetDC, GetDIBits, HBITMAP, HBRUSH, HDC, HGDIOBJ,
             InvalidateRect, PAINTSTRUCT, ReleaseDC, SRCCOPY, SelectObject, SetDIBitsToDevice,
-        },
-        System::{
-            DataExchange::{CloseClipboard, EmptyClipboard, OpenClipboard, SetClipboardData},
-            Memory::{GMEM_MOVEABLE, GlobalAlloc, GlobalLock, GlobalUnlock},
-            Ole::CF_DIB,
         },
         UI::{
             Controls::{
@@ -2762,7 +2766,16 @@ mod platform {
     }
 
     pub fn copy_dib_to_clipboard(owner_hwnd: HWND, dib: &[u8]) -> Result<(), String> {
-        unsafe { write_dib_to_clipboard(owner_hwnd, dib) }
+        let _ = owner_hwnd;
+        let header_size = mem::size_of::<BITMAPINFOHEADER>();
+        if dib.len() < header_size {
+            return Err("captured screenshot image data is incomplete".to_string());
+        }
+        let header = unsafe { &*(dib.as_ptr() as *const BITMAPINFOHEADER) };
+        let width = header.biWidth.unsigned_abs();
+        let height = header.biHeight.unsigned_abs();
+        let rgba = dib_to_rgba(dib, width, height)?;
+        super::write_rgba_to_clipboard(&rgba, width, height)
     }
 
     pub fn write_rgba_to_clipboard(
@@ -2771,29 +2784,8 @@ mod platform {
         width: u32,
         height: u32,
     ) -> Result<(), String> {
-        let expected = width as usize * height as usize * 4;
-        if width == 0 || height == 0 || rgba.len() < expected {
-            return Err("stitched screenshot image data is incomplete".to_string());
-        }
-        let header_size = mem::size_of::<BITMAPINFOHEADER>();
-        let mut dib = vec![0u8; header_size + expected];
-        unsafe {
-            let header = dib.as_mut_ptr() as *mut BITMAPINFOHEADER;
-            (*header).biSize = header_size as u32;
-            (*header).biWidth = width as i32;
-            (*header).biHeight = -(height as i32);
-            (*header).biPlanes = 1;
-            (*header).biBitCount = 32;
-            (*header).biCompression = BI_RGB;
-            (*header).biSizeImage = expected as u32;
-        }
-        for (source, target) in rgba[..expected]
-            .chunks_exact(4)
-            .zip(dib[header_size..].chunks_exact_mut(4))
-        {
-            target.copy_from_slice(&[source[2], source[1], source[0], source[3]]);
-        }
-        unsafe { write_dib_to_clipboard(owner_hwnd, &dib) }
+        let _ = owner_hwnd;
+        super::write_rgba_to_clipboard(rgba, width, height)
     }
 
     pub fn capture_screen_rect_to_dib(
@@ -3091,6 +3083,20 @@ mod platform {
         Ok(rgb)
     }
 
+    fn dib_to_rgba(dib: &[u8], width: u32, height: u32) -> Result<Vec<u8>, String> {
+        let header_size = mem::size_of::<BITMAPINFOHEADER>();
+        let expected_len = header_size + width as usize * height as usize * 4;
+        if width == 0 || height == 0 || dib.len() < expected_len {
+            return Err("captured screenshot image data is incomplete".to_string());
+        }
+
+        let mut rgba = Vec::with_capacity(width as usize * height as usize * 4);
+        for bgra in dib[header_size..expected_len].chunks_exact(4) {
+            rgba.extend_from_slice(&[bgra[2], bgra[1], bgra[0], 0xFF]);
+        }
+        Ok(rgba)
+    }
+
     unsafe fn bitmap_to_dib(
         screen_dc: HDC,
         bitmap: HBITMAP,
@@ -3128,42 +3134,6 @@ mod platform {
             }
 
             Ok(dib)
-        }
-    }
-
-    unsafe fn write_dib_to_clipboard(owner: HWND, dib: &[u8]) -> Result<(), String> {
-        unsafe {
-            let handle = GlobalAlloc(GMEM_MOVEABLE, dib.len());
-            if handle.is_null() {
-                return Err("failed to allocate clipboard image memory".to_string());
-            }
-
-            let target = GlobalLock(handle);
-            if target.is_null() {
-                let _ = GlobalFree(handle);
-                return Err("failed to lock clipboard image memory".to_string());
-            }
-            ptr::copy_nonoverlapping(dib.as_ptr(), target as *mut u8, dib.len());
-            let _ = GlobalUnlock(handle);
-
-            if OpenClipboard(owner) == 0 {
-                let _ = GlobalFree(handle);
-                return Err("failed to open clipboard".to_string());
-            }
-            let clipboard = ClipboardGuard;
-
-            if EmptyClipboard() == 0 {
-                let _ = GlobalFree(handle);
-                return Err("failed to clear clipboard".to_string());
-            }
-            if SetClipboardData(CF_DIB as u32, handle as HANDLE).is_null() {
-                let _ = GlobalFree(handle);
-                return Err("failed to write screenshot to clipboard".to_string());
-            }
-
-            mem::forget(clipboard);
-            let _ = CloseClipboard();
-            Ok(())
         }
     }
 
@@ -3683,15 +3653,6 @@ mod platform {
         }
     }
 
-    struct ClipboardGuard;
-
-    impl Drop for ClipboardGuard {
-        fn drop(&mut self) {
-            unsafe {
-                let _ = CloseClipboard();
-            }
-        }
-    }
 }
 
 #[cfg(test)]
