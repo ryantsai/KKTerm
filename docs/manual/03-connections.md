@@ -133,11 +133,11 @@ unlock resumes the original Save automatically. Cancel leaves the form and the
 existing Connection data unchanged; the backend lock message is not shown as a
 Connection form-validation error.
 
-Native SSH Sessions have no application-side idle timeout. KKTerm sends periodic
-SSH keepalives to preserve network state, but a server or proxy that does not
-answer those keepalive requests does not cause an otherwise-live, quiet Session
-to disconnect on a fixed timer. A socket error, remote close, or explicit user
-close still ends the Session normally.
+Native SSH Sessions have no application-side idle timeout. After 30 seconds
+without an inbound SSH packet, KKTerm sends a reply-requested keepalive. Either
+success or failure is a valid peer response. If no inbound SSH packet arrives
+for four further intervals, KKTerm treats the network path as dead rather than
+leaving a Session displayed as connected while input is silently lost.
 
 Local terminal Add/Edit Connection uses the `connections.shell` tabbed selector for the local shell choice and still stores the selected `localShell` value on the Connection. On macOS, a bare local shell (for example the default `/bin/zsh` or the Fish preset) starts with a login flag so it reads the same login startup files as the system Terminal — `~/.zprofile`, including Homebrew's `brew shellenv` — and therefore sees the same PATH, such as `/opt/homebrew/bin` for Homebrew-installed CLIs; a custom shell command line that already carries its own arguments is launched exactly as written.
 

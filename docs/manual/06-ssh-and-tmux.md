@@ -39,7 +39,9 @@ The Add SSH Connection dialog's footer-left `connections.importSshConfig` action
 
 ## Idle behaviour
 
-A live SSH Session has **no app-side idle timeout**. Quiet and unfocused Sessions stay connected until the remote, network, or an explicit user close ends them.
+A live SSH Session has **no app-side idle timeout**. Quiet and unfocused Sessions stay connected while the peer remains reachable. After 30 seconds without an inbound SSH packet, KKTerm sends a reply-requested keepalive; either success or failure proves the peer is alive. Four further intervals without any inbound SSH packet end the dead Session so a blackholed connection cannot keep swallowing input while shown as connected.
+
+For troubleshooting, enable `settings.advancedDebugging`, reproduce the disconnect without closing KKTerm, then use `settings.openLogFolder` and inspect `ssh.debug.log`. The `connection.start` record contains the KKTerm version, SSH client identification, effective keepalive interval, and miss limit. A transport end records `connection.disconnected.error` with a stable `errorKind` such as `keepalive_timeout`, `io`, or `disconnect`, plus the original `russh` error text. The log omits passwords, passphrases, typed input, and terminal contents, but can contain hostnames, usernames, proxy endpoints, and Session ids, so review it before sharing.
 
 For tmux-enabled SSH Sessions, an unexpected channel close may silently attempt a small bounded reattach to the same Pane tmux id. New Pane tmux ids are drawn directly from the active locale's `ai.tmuxSessionLabels` pool, so the actual remote tmux session name is localized. The Pane tmux id lives in frontend workspace storage; it is not durable Connection model state.
 

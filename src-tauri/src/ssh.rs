@@ -42,12 +42,12 @@ const SSH_COMMAND_TIMEOUT: Duration = Duration::from_secs(8);
 // (russh equivalent of OpenSSH ServerAliveInterval/ServerAliveCountMax). An
 // active session resets this timer on received data, so it adds no traffic.
 const SSH_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(30);
-// Keep sending keepalives without imposing an app-side missed-reply limit.
-// russh counts any interval with no inbound packet as a missed reply, so a
-// server or SSH proxy that ignores the keepalive global request can otherwise
-// make a healthy, quiet terminal disconnect on a fixed timer. Socket errors,
-// remote EOF/Close, and explicit closes still end the Session normally.
-const SSH_KEEPALIVE_MAX_MISSED: usize = 0;
+// Tear down a dead link after this many intervals without any inbound SSH
+// packet. russh requests a reply to each keepalive and treats either
+// REQUEST_SUCCESS or REQUEST_FAILURE (plus any other inbound packet) as proof
+// that the peer is alive. Keep this bounded so a silently blackholed TCP path
+// cannot remain green forever while swallowing terminal input.
+const SSH_KEEPALIVE_MAX_MISSED: usize = 4;
 // On session teardown the worker drains live port-forward tasks so their SSH
 // channels close while the tokio runtime is still running (russh closes
 // channels from a `Drop` that calls `tokio::spawn`, which panics once the
@@ -57,6 +57,17 @@ const SSH_FORWARD_SHUTDOWN_GRACE: Duration = Duration::from_secs(3);
 
 fn ssh_debug(event: &str, payload: Value) {
     crate::logging::ssh_debug(event, &payload);
+}
+
+fn ssh_disconnect_error_kind(error: &russh::Error) -> &'static str {
+    match error {
+        russh::Error::KeepaliveTimeout => "keepalive_timeout",
+        russh::Error::InactivityTimeout => "inactivity_timeout",
+        russh::Error::ConnectionTimeout => "connection_timeout",
+        russh::Error::IO(_) => "io",
+        russh::Error::Disconnect | russh::Error::HUP => "disconnect",
+        _ => "other",
+    }
 }
 
 fn socks_proxy_endpoint_for_log(value: &str) -> Option<String> {
@@ -517,6 +528,7 @@ impl client::Handler for VerifyingClient {
                         json!({
                             "host": host,
                             "port": port,
+                            "errorKind": ssh_disconnect_error_kind(&error),
                             "error": error.to_string(),
                         }),
                     );
@@ -1930,6 +1942,8 @@ async fn connect_verified_client_with_prompt(
     ssh_debug(
         "connection.start",
         json!({
+            "appVersion": env!("CARGO_PKG_VERSION"),
+            "sshClientId": format!("{:?}", config.client_id),
             "host": host,
             "port": request.port,
             "user": user,
@@ -3349,14 +3363,30 @@ mod tests {
     }
 
     #[test]
-    fn native_ssh_client_sends_non_expiring_keepalives_for_idle_terminal_sessions() {
+    fn native_ssh_client_uses_bounded_keepalives_to_detect_dead_links() {
         let config = native_ssh_client_config(true, false);
 
-        // Keepalives preserve NAT/firewall state, but an SSH server or proxy
-        // may ignore the global request. Missing replies alone must not impose
-        // an app-side idle timeout on an otherwise healthy terminal Session.
+        // A live SSH peer answers a reply-requested global request with either
+        // REQUEST_SUCCESS or REQUEST_FAILURE. A bounded miss count ensures a
+        // blackholed TCP path eventually becomes a disconnected Session.
         assert_eq!(config.keepalive_interval, Some(SSH_KEEPALIVE_INTERVAL));
-        assert_eq!(config.keepalive_max, 0);
+        assert!(config.keepalive_max > 0);
+        assert_eq!(config.keepalive_max, SSH_KEEPALIVE_MAX_MISSED);
+    }
+
+    #[test]
+    fn ssh_disconnect_errors_have_stable_diagnostic_kinds() {
+        assert_eq!(
+            ssh_disconnect_error_kind(&russh::Error::KeepaliveTimeout),
+            "keepalive_timeout"
+        );
+        assert_eq!(
+            ssh_disconnect_error_kind(&russh::Error::IO(std::io::Error::new(
+                std::io::ErrorKind::UnexpectedEof,
+                "early eof",
+            ))),
+            "io"
+        );
     }
 
     #[test]
