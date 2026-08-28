@@ -3,6 +3,44 @@
 All notable changes to KKTerm are documented here.
 
 ## Direct Downloads
+* 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.7/kkterm-3000.0.7-windows-x64-setup.exe)
+* 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.7/kkterm-3000.0.7-windows-arm64-setup.exe)
+* 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.7/kkterm-3000.0.7-windows-x64-portable.zip)
+* 📦 [Portable for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.7/kkterm-3000.0.7-windows-arm64-portable.zip)
+
+## Highlights
+- Cleaner terminal paste confirmation keyboard focus (no more “tabbing into the void”).
+- Prevent false SSH idle disconnects for more stable Connection behavior.
+- Improve screenshot export and clipboard compatibility.
+
+## Improved
+- **Terminal:** Fix keyboard access for multiline paste confirmation in the terminal.
+
+## Fixed
+- **SSH:** Prevent false SSH idle disconnects by disabling keepalive miss limit.
+- **Screenshots:** Export original files and improve clipboard compatibility.
+
+## Internal
+- Refactor code structure for improved readability and maintainability.
+
+---
+
+## 精選重點
+- 修正終端機多行貼上確認的鍵盤焦點（不再出現「Tab 往虛空走去」的狀況）。
+- 避免 SSH 連線因誤判閒置而中斷，讓 Connection 更穩定。
+- 改進截圖匯出與剪貼簿相容性。
+
+## 改善
+- **終端機：** 修正多行貼上確認的鍵盤存取。
+
+## 修正
+- **SSH：** 停用 keepalive miss limit 以防止錯誤的 SSH 閒置斷線。
+- **截圖：** 匯出原始檔案並改善剪貼簿相容性。
+
+## 內部
+- 重構程式碼結構以提升可讀性與可維護性。
+
+## Direct Downloads
 * 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.6/kkterm-3000.0.6-windows-x64-setup.exe)
 * 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.6/kkterm-3000.0.6-windows-arm64-setup.exe)
 * 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.6/kkterm-3000.0.6-windows-x64-portable.zip)
