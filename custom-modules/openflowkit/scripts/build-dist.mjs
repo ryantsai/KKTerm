@@ -13,6 +13,10 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  findRootAbsolutePackagedAssetUrls,
+  rewriteRootAbsolutePackagedAssetUrls,
+} from "./asset-paths.mjs";
 
 const moduleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const srcRoot = process.argv[2] || process.env.OPENFLOWKIT_SRC;
@@ -90,6 +94,32 @@ html = html.replace(/<script[^>]*type="application\/ld\+json"[^>]*>[\s\S]*?<\/sc
 
 fs.writeFileSync(indexPath, html, "utf8");
 
+// Vite preserves public-directory URLs embedded in JavaScript as root-absolute
+// strings. Under the kkmodule protocol those URLs escape the package route, so
+// rewrite only references whose target is present in this package.
+const browserTextFiles = [];
+function collectBrowserTextFiles(directory) {
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const full = path.join(directory, entry.name);
+    if (entry.isDirectory()) collectBrowserTextFiles(full);
+    else if (/\.(?:css|html|js)$/i.test(entry.name)) browserTextFiles.push(full);
+  }
+}
+collectBrowserTextFiles(distDir);
+
+function isPackagedAsset(url) {
+  const relative = url.slice(1).split(/[?#]/)[0];
+  return fs.existsSync(path.join(distDir, relative));
+}
+
+let rewrittenAssetUrls = 0;
+for (const file of browserTextFiles) {
+  const source = fs.readFileSync(file, "utf8");
+  rewrittenAssetUrls += findRootAbsolutePackagedAssetUrls(source, isPackagedAsset).length;
+  const rewritten = rewriteRootAbsolutePackagedAssetUrls(source, isPackagedAsset);
+  if (rewritten !== source) fs.writeFileSync(file, rewritten, "utf8");
+}
+
 // --- Verify -----------------------------------------------------------------
 
 const problems = [];
@@ -121,6 +151,12 @@ for (const file of fs.readdirSync(path.join(distDir, "assets"))) {
 }
 if (!hostAiSeen) problems.push("KKTerm host-AI adapter is missing from the bundle");
 if (fs.existsSync(path.join(distDir, "sw.js"))) problems.push("sw.js was not dropped");
+for (const file of browserTextFiles) {
+  const source = fs.readFileSync(file, "utf8");
+  for (const url of findRootAbsolutePackagedAssetUrls(source, isPackagedAsset)) {
+    problems.push(`${path.relative(distDir, file)} contains root-absolute packaged asset: ${url}`);
+  }
+}
 for (const dirent of fs.readdirSync(distDir, { recursive: true })) {
   if (typeof dirent === "string" && /fonts\.googleapis\.com/.test(dirent)) {
     problems.push("remote font reference survived");
@@ -152,3 +188,4 @@ function measure(dir) {
 const { count, bytes } = measure(distDir);
 console.log(`\ndist/ ok — ${count} files, ${(bytes / 1024 / 1024).toFixed(2)} MiB`);
 console.log(`externalised ${externalised.length} inline script(s)`);
+console.log(`rewrote ${rewrittenAssetUrls} root-absolute packaged asset URL(s)`);

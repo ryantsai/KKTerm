@@ -12,14 +12,17 @@ function moduleLocale(hostLocale?: string): string {
   return SUPPORTED_LOCALES.has(base) ? base : 'en';
 }
 
-function applyContext(context: HostContext): void {
+async function applyContext(context: HostContext): Promise<void> {
   const theme = context.theme === 'dark' ? 'dark' : 'light';
   localStorage.setItem('openflowkit-theme', theme);
   document.documentElement.setAttribute('data-theme', theme);
-  void i18n.changeLanguage(moduleLocale(context.locale));
+  await i18n.changeLanguage(moduleLocale(context.locale));
 }
 
-export function initializeKKTermRuntime(): void {
-  applyContext(window.KKTerm.context);
-  window.KKTerm.on('contextChanged', (detail) => applyContext(detail as HostContext));
+export async function initializeKKTermRuntime(): Promise<void> {
+  const context = await window.KKTerm.getContext();
+  await applyContext(context);
+  window.KKTerm.on('contextChanged', (detail) => {
+    void applyContext(detail as HostContext);
+  });
 }

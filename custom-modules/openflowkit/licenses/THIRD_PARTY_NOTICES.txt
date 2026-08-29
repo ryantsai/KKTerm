@@ -12,7 +12,7 @@ by, the OpenFlowKit project or its authors.
 
 Homepage: https://openflowkit.com
 Source:   https://github.com/Vrun-design/openflowkit
-Version:  upstream commit b8faef1071d162a36c83baeba5e1f36fe7475ac9
+Version:  upstream commit 0d6a7fc4b5bd9c7d7fc8bb5f1e995e691473da5e
 License:  MIT -- full text in licenses/LICENSE
 Copyright (c) 2026 Varun
 
@@ -101,17 +101,13 @@ Copyright (c) 2026 KKTerm
      src/kktermRuntime.ts
      src/index.tsx
 
-     The Module applies the injected host context, listens for context changes,
-     and calls host.ready after local-first persistence finishes. zh-TW falls
-     back to English because this upstream checkout does not bundle a distinct
-     Taiwan locale; it is never mapped to the bundled Simplified Chinese text.
+     The Module awaits a fresh host context before rendering, listens for
+     context changes, removes Module-owned language selectors, and calls
+     host.ready after local-first persistence finishes. zh-TW falls back to
+     English because this upstream checkout does not bundle a distinct Taiwan
+     locale; it is never mapped to the bundled Simplified Chinese text.
 
   d) Remote Google Fonts import removed.
-     src/index.css
-
-     The package keeps its bundled fonts and makes no runtime font request.
-
-  c) Remote Google Fonts import removed.
      src/index.css
 
      The stylesheet began with an @import of Roboto, Outfit, Playfair Display
@@ -121,9 +117,17 @@ Copyright (c) 2026 KKTerm
      used are bundled locally and declared via @font-face, so rendering is
      unchanged.
 
-  d) PWA and public-site artefacts dropped.
+  e) PWA and public-site artefacts dropped.
      sw.js, manifest.webmanifest, sitemap.xml, robots.txt, canonical/og/twitter
      meta tags, and the ld+json site metadata block.
+
+  f) Root-absolute packaged asset URLs made package-relative.
+     dist/assets/*.js
+
+     Vite preserves public-directory references such as `/favicon.svg` and
+     `/flags/us.svg` in compiled JavaScript. The KKTerm finalizer rewrites only
+     URLs whose targets exist in the package so logos and language flags stay
+     inside the isolated Module route.
 
 
 -------------------------------------------------------------------------------

@@ -19,6 +19,7 @@ declare global {
       readonly apiVersion: number;
       readonly context: { theme: string; locale: string };
       ready(): Promise<boolean>;
+      getContext(): Promise<{ theme: string; locale: string }>;
       on(event: string, listener: (detail: unknown) => void): () => boolean;
       ai: {
         open(request: HostAiRequest): Promise<HostAiOpened>;
