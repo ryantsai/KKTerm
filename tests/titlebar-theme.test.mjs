@@ -237,6 +237,24 @@ test("custom titlebar matches the native Windows title height", async () => {
   );
 });
 
+test("custom titlebar buttons never render a focus selection highlight", async () => {
+  const appCssSource = await readFile(
+    new URL("../src/app/app.css", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    appCssSource,
+    /\.app-titlebar button:focus\s*,\s*\.app-titlebar button:focus-visible\s*\{[^}]*outline:\s*none;/s,
+    "all custom titlebar buttons should suppress WebView focus outlines",
+  );
+  assert.doesNotMatch(
+    appCssSource,
+    /\.app-titlebar-open-path-button:focus-visible\s*\{[^}]*outline:/s,
+    "the titlebar file button must not restore its own focus ring",
+  );
+});
+
 test("custom titlebar controls stay anchored to the visible viewport", async () => {
   const appCssSource = await readFile(
     new URL("../src/app/app.css", import.meta.url),

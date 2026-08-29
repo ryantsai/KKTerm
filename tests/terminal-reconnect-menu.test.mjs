@@ -115,6 +115,19 @@ test("native SSH and Telnet workers report ended Sessions to the frontend", () =
   assert.match(telnetSource, /emit_terminal_session_ended\(&app, &reader_session_id\)/);
   assert.match(
     terminalSource,
-    /listen<TerminalSessionEnded>\("terminal-session-ended"[\s\S]*?setTerminalConnectionState\("disconnected"\)/,
+    /listen<TerminalSessionEnded>\("terminal-session-ended"[\s\S]*?updateTerminalConnectionState\("disconnected"\)/,
+  );
+});
+
+test("input reconnects an authoritatively disconnected SSH Session once", () => {
+  assert.match(
+    terminalSource,
+    /const terminalConnectionStateRef = useRef[\s\S]*?function updateTerminalConnectionState[\s\S]*?terminalConnectionStateRef\.current = state;[\s\S]*?setTerminalConnectionState\(state\)/,
+    "the long-lived xterm input callback needs an imperative view of Session state",
+  );
+  assert.match(
+    terminalSource,
+    /const dataDisposable = terminal\.onData\(\(data\) => \{[\s\S]*?connection\.type === "ssh"[\s\S]*?terminalConnectionStateRef\.current === "disconnected"[\s\S]*?updateTerminalConnectionState\("connecting"\)[\s\S]*?setReconnectGeneration\(\(generation\) => generation \+ 1\)[\s\S]*?return;/,
+    "the first SSH input after an authoritative disconnect should reconnect instead of writing to the dead Session",
   );
 });

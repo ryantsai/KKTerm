@@ -95,15 +95,14 @@
   -webkit-app-region: no-drag;
 }
 
-.app-titlebar-open-path-button:hover,
-.app-titlebar-open-path-button:focus-visible {
+.app-titlebar-open-path-button:hover {
   background: var(--titlebar-hover-bg);
   opacity: 0.88;
 }
 
-.app-titlebar-open-path-button:focus-visible {
-  outline: 1px solid var(--ring);
-  outline-offset: 1px;
+.app-titlebar button:focus,
+.app-titlebar button:focus-visible {
+  outline: none;
 }
 
 .app-titlebar-controls {

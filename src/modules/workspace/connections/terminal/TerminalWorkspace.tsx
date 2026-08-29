@@ -1694,6 +1694,7 @@ function TerminalPaneView({
   const [terminalConnectionState, setTerminalConnectionState] = useState<
     "connecting" | "connected" | "disconnected"
   >("connecting");
+  const terminalConnectionStateRef = useRef<"connecting" | "connected" | "disconnected">("connecting");
   const [reconnectGeneration, setReconnectGeneration] = useState(0);
   const [backgroundPopoverOpen, setBackgroundPopoverOpen] = useState(false);
   const [hasTerminalSelection, setHasTerminalSelection] = useState(false);
@@ -1710,6 +1711,11 @@ function TerminalPaneView({
     input: string;
   } | null>(null);
   const quickSelectOverlayRef = useRef<HTMLDivElement | null>(null);
+
+  function updateTerminalConnectionState(state: "connecting" | "connected" | "disconnected") {
+    terminalConnectionStateRef.current = state;
+    setTerminalConnectionState(state);
+  }
 
   function updateTerminalSelection(selection: string) {
     selectedTerminalTextRef.current = selection;
@@ -2245,7 +2251,7 @@ function TerminalPaneView({
     let sessionEnded = false;
     let removeOutputListener: (() => void) | undefined;
     let removeEndedListener: (() => void) | undefined;
-    setTerminalConnectionState(sessionStarted ? "connected" : "connecting");
+    updateTerminalConnectionState(sessionStarted ? "connected" : "connecting");
     const writeInputToSession = (data: string) => {
       const sessionId = sessionIdRef.current;
       if (!sessionId) {
@@ -2257,6 +2263,18 @@ function TerminalPaneView({
     };
     registerPaneInputWriter(pane.id, writeInputToSession);
     const dataDisposable = terminal.onData((data) => {
+      if (
+        connection.type === "ssh" &&
+        terminalConnectionStateRef.current === "disconnected"
+      ) {
+        // The ended event is authoritative: consume the first input instead of
+        // writing it to a dead Session, and let the normal Pane reconnect path
+        // create a fresh SSH Session. Mark it connecting immediately so a burst
+        // of input cannot start multiple reconnects before React rerenders.
+        updateTerminalConnectionState("connecting");
+        setReconnectGeneration((generation) => generation + 1);
+        return;
+      }
       // Read sync state at keystroke time so the broadcast toggle takes effect
       // without re-running this session effect. When on, the same gated input is
       // mirrored to every other open terminal pane.
@@ -2403,7 +2421,7 @@ function TerminalPaneView({
             return;
           }
           sessionEnded = true;
-          setTerminalConnectionState("disconnected");
+          updateTerminalConnectionState("disconnected");
           if (sessionStarted && trackConnectionSession) {
             sessionStarted = false;
             markConnectionSessionEnded(connection.id);
@@ -2529,7 +2547,7 @@ function TerminalPaneView({
           return;
         }
         sessionStarted = true;
-        setTerminalConnectionState("connected");
+        updateTerminalConnectionState("connected");
         if (trackConnectionSession) {
           markConnectionSessionStarted(connection.id);
         }
@@ -2603,7 +2621,7 @@ function TerminalPaneView({
         }
         void maybeAutoDetectOsIcon(connection, result.sessionId);
       } catch (error) {
-        setTerminalConnectionState("disconnected");
+        updateTerminalConnectionState("disconnected");
         terminal.writeln("");
         terminal.writeln(t("terminal.failedToStartDetail", { message: String(error) }));
       }
