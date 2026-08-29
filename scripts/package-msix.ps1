@@ -285,15 +285,38 @@ function Get-WindowsKitTool {
     throw "Windows SDK found, but $ToolName was not located under '$KitRoot'. Install the 'Windows SDK Signing Tools for Desktop Apps' component."
 }
 
+function Find-WebView2RuntimeRoot {
+    param([string]$ExtractedRoot)
+
+    if (Test-Path -LiteralPath (Join-Path $ExtractedRoot "msedgewebview2.exe") -PathType Leaf) {
+        return $ExtractedRoot
+    }
+
+    # Current Fixed Version CABs contain one top-level directory named after
+    # the archive instead of placing the runtime files at the extraction root.
+    $NestedRuntimeRoots = @(
+        Get-ChildItem -LiteralPath $ExtractedRoot -Directory -ErrorAction SilentlyContinue |
+            Where-Object {
+                Test-Path -LiteralPath (Join-Path $_.FullName "msedgewebview2.exe") -PathType Leaf
+            }
+    )
+    if ($NestedRuntimeRoots.Count -eq 1) {
+        return $NestedRuntimeRoots[0].FullName
+    }
+
+    return $null
+}
+
 function Resolve-WebView2Runtime {
     # Returns the extracted Fixed Version runtime folder to embed.
     if ($WebView2RuntimePath) {
         $RuntimeRoot = [System.IO.Path]::GetFullPath($WebView2RuntimePath)
-        if (-not (Test-Path -LiteralPath (Join-Path $RuntimeRoot "msedgewebview2.exe"))) {
+        $ResolvedRuntimeRoot = Find-WebView2RuntimeRoot $RuntimeRoot
+        if (-not $ResolvedRuntimeRoot) {
             throw "The -WebView2RuntimePath folder does not contain msedgewebview2.exe: $RuntimeRoot"
         }
-        Write-Host "==> Using pre-extracted WebView2 runtime: $RuntimeRoot"
-        return $RuntimeRoot
+        Write-Host "==> Using pre-extracted WebView2 runtime: $ResolvedRuntimeRoot"
+        return $ResolvedRuntimeRoot
     }
 
     if (-not $WebView2CabUrl) {
@@ -325,9 +348,10 @@ the WebView2 Fixed Version runtime, but no runtime was provided. Either:
     }
 
     $CacheRoot = Join-Path $env:LOCALAPPDATA "KKTerm\msix-webview2-cache\$CabArch\$RuntimeVersion"
-    if (Test-Path -LiteralPath (Join-Path $CacheRoot "msedgewebview2.exe")) {
-        Write-Host "==> Using cached WebView2 runtime $($RuntimeVersion): $CacheRoot"
-        return $CacheRoot
+    $CachedRuntimeRoot = Find-WebView2RuntimeRoot $CacheRoot
+    if ($CachedRuntimeRoot) {
+        Write-Host "==> Using cached WebView2 runtime $($RuntimeVersion): $CachedRuntimeRoot"
+        return $CachedRuntimeRoot
     }
 
     Write-Host "==> Downloading WebView2 Fixed Version runtime $RuntimeVersion ($CabArch)..."
@@ -342,12 +366,13 @@ the WebView2 Fixed Version runtime, but no runtime was provided. Either:
     if ($LASTEXITCODE -ne 0) {
         throw "expand.exe failed for $($CabPath):`n$($ExpandResult -join "`n")"
     }
-    if (-not (Test-Path -LiteralPath (Join-Path $CacheRoot "msedgewebview2.exe"))) {
+    $ExtractedRuntimeRoot = Find-WebView2RuntimeRoot $CacheRoot
+    if (-not $ExtractedRuntimeRoot) {
         throw "The extracted WebView2 runtime under $CacheRoot does not contain msedgewebview2.exe."
     }
 
-    Write-Host "==> WebView2 runtime cached at $CacheRoot"
-    return $CacheRoot
+    Write-Host "==> WebView2 runtime cached at $ExtractedRuntimeRoot"
+    return $ExtractedRuntimeRoot
 }
 
 function ConvertTo-XmlEscaped {
