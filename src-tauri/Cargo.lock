@@ -4301,6 +4301,7 @@ dependencies = [
  "keyring-core",
  "lazy_static",
  "lettre",
+ "libc",
  "mime_guess",
  "objc2",
  "objc2-app-kit",

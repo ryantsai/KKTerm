@@ -97,7 +97,16 @@ test("A Serial reader survives a transient zero-byte read", () => {
 });
 
 test("Serial drops the mojibake the speed switch leaves in the receive queue", () => {
-  // macOS applies the termios struct at 9600 before the IOSSIOSPEED ioctl, so
+  // Non-standard macOS rates apply termios at 9600 before IOSSIOSPEED, so
   // anything arriving in that window is sampled at the wrong rate (#745).
   assert.match(serialTransport, /port\.discard_input_buffer\(\)/);
+});
+
+test("macOS native baud rates bypass IOSSIOSPEED", () => {
+  // screen, Chromium, picocom, and node-serialport configure standard macOS
+  // rates through termios. serial2's unconditional IOSSIOSPEED path can report
+  // 115200 while a USB-serial driver still samples at the wrong rate (#756).
+  assert.match(serialTransport, /is_macos_standard_baud_rate\(speed\)/);
+  assert.match(serialTransport, /libc::tcsetattr\([\s\S]*?libc::TCSANOW/);
+  assert.match(serialTransport, /else \{[\s\S]*?port\.set_configuration\(&settings\)\?/);
 });
