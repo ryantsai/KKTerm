@@ -205,6 +205,70 @@ fn validate_serial_line(line: &str, macos: bool) -> Result<&str, String> {
     Ok(line)
 }
 
+#[cfg(target_os = "macos")]
+fn is_macos_standard_baud_rate(speed: u32) -> bool {
+    matches!(
+        speed,
+        50 | 75
+            | 110
+            | 134
+            | 150
+            | 200
+            | 300
+            | 600
+            | 1200
+            | 1800
+            | 2400
+            | 4800
+            | 7200
+            | 9600
+            | 14400
+            | 19200
+            | 28800
+            | 38400
+            | 57600
+            | 76800
+            | 115200
+            | 230400
+    )
+}
+
+#[cfg(target_os = "macos")]
+fn open_serial_port(line: &str, speed: u32) -> std::io::Result<SerialPort> {
+    use serial2::KeepSettings;
+    use std::os::fd::AsRawFd;
+
+    let mut port = SerialPort::open(line, KeepSettings)?;
+    let mut settings = port.get_configuration()?;
+    settings.set_raw();
+    settings.set_baud_rate(speed)?;
+
+    if is_macos_standard_baud_rate(speed) {
+        // Standard macOS rates must use their native termios constants. `serial2`
+        // otherwise routes every speed through IOSSIOSPEED, first applying 9600
+        // with tcsetattr. Some USB-serial drivers report the requested value after
+        // that sequence but still sample the wire at the wrong rate (issue #756).
+        // screen, Chromium, picocom, and node-serialport all reserve IOSSIOSPEED
+        // for rates that do not have a standard termios constant.
+        let result =
+            unsafe { libc::tcsetattr(port.as_raw_fd(), libc::TCSANOW, settings.as_termios()) };
+        if result != 0 {
+            return Err(std::io::Error::last_os_error());
+        }
+    } else {
+        // Keep arbitrary-rate support: IOSSIOSPEED is the macOS API for values
+        // that cannot be represented by a native termios baud constant.
+        port.set_configuration(&settings)?;
+    }
+
+    Ok(port)
+}
+
+#[cfg(not(target_os = "macos"))]
+fn open_serial_port(line: &str, speed: u32) -> std::io::Result<SerialPort> {
+    SerialPort::open(line, speed)
+}
+
 pub fn start_native_terminal(
     app: AppHandle,
     request: NativeSerialTerminalRequest,
@@ -224,7 +288,7 @@ pub fn start_native_terminal(
         }),
     );
 
-    let mut port = SerialPort::open(line, request.speed).map_err(|error| {
+    let mut port = open_serial_port(line, request.speed).map_err(|error| {
         serial_debug(
             "serial.open_failed",
             json!({
@@ -241,12 +305,11 @@ pub fn start_native_terminal(
         .map_err(|error| format!("failed to configure serial write timeout: {error}"))?;
     let _ = port.set_dtr(true);
     let _ = port.set_rts(true);
-    // Applying the line settings can itself leave bytes in the receive queue. On
-    // macOS `serial2` has to write the termios struct at 9600 first and only then
-    // switch to the requested speed with the IOSSIOSPEED ioctl, so whatever the
-    // device sends during that window is sampled at the wrong rate. Reading it
-    // back painted the Pane with a burst of mojibake before the first real byte
-    // (issue #745); drop it instead of showing it.
+    // Applying the line settings can itself leave bytes in the receive queue. For
+    // a non-standard macOS rate, `serial2` has to write the termios struct at 9600
+    // first and only then switch with IOSSIOSPEED, so bytes sent during that window
+    // are sampled at the wrong rate. Reading them back painted the Pane with a
+    // burst of mojibake before the first real byte (issue #745); drop them instead.
     let _ = port.discard_input_buffer();
 
     let applied = AppliedSerialSettings::read_from(&port);
@@ -350,6 +413,17 @@ pub fn start_native_terminal(
 mod tests {
     use super::{normalize_available_serial_ports, serial_framing_summary, validate_serial_line};
 
+    #[cfg(target_os = "macos")]
+    use super::is_macos_standard_baud_rate;
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_uses_termios_for_native_baud_rates() {
+        assert!(is_macos_standard_baud_rate(115200));
+        assert!(is_macos_standard_baud_rate(230400));
+        assert!(!is_macos_standard_baud_rate(250000));
+    }
+
     #[test]
     fn macos_serial_line_rejects_dial_in_devices() {
         assert_eq!(
@@ -358,7 +432,10 @@ mod tests {
         );
         assert!(validate_serial_line("/dev/tty.usbserial-A", true).is_err());
         // PTY-backed virtual ports have no dial-in twin to prefer.
-        assert_eq!(validate_serial_line("/dev/ttys004", true), Ok("/dev/ttys004"));
+        assert_eq!(
+            validate_serial_line("/dev/ttys004", true),
+            Ok("/dev/ttys004")
+        );
     }
 
     #[test]

@@ -62,7 +62,7 @@ russh = { version = "=0.62.5", default-features = false, features = ["des", "fla
 russh-sftp = "2.4.0"
 suppaftp = { version = "10.0.0", default-features = false, features = ["tokio", "tokio-async-native-tls", "deprecated"] }
 async-native-tls = { version = "0.6", default-features = false, features = ["runtime-tokio"] }
-serial2 = "0.2.37"
+serial2 = { version = "0.2.37", features = ["unix"] }
 tokio = { version = "1.52.3", features = ["io-std", "io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
 url = "2"
 scraper = "0.27"
@@ -124,6 +124,7 @@ xcap = { version = "0.9", default-features = false, features = ["image", "wgc"] 
 [target.'cfg(target_os = "macos")'.dependencies]
 apple-native-keyring-store = { version = "1.0.0", features = ["keychain"] }
 security-framework = "3.7.0"
+libc = "0.2"
 # Host monitoring (Status Bar CPU/RAM/Network + detailed Dashboard counters).
 # Shared with Linux (see the Linux target block); the Windows path uses
 # hand-rolled Win32 calls in performance.rs.
