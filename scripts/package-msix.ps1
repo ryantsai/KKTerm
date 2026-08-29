@@ -11,24 +11,16 @@
       1. Builds kkterm.exe + the kkterm-cli sidecar (or reuses an existing
          build with -SkipBuild).
       2. Stages the package layout: executable, sidecar, manual, assistant
-         skills, tile assets, the AppxManifest.xml, and - by default - an
-         embedded WebView2 Fixed Version runtime.
+         skills, tile assets, and the AppxManifest.xml. Windows 11 supplies
+         the Evergreen WebView2 Runtime used by the package.
       3. Packs the layout into an MSIX with MakeAppx.exe from the Windows SDK.
       4. Optionally signs with SignTool for sideload testing and can install
          the package on the local machine with -InstallPackage.
 
-    Why the WebView2 runtime is embedded: the Microsoft Store requires apps to
-    be self-contained, so the package cannot download/install the Evergreen
-    runtime at install time. The script therefore embeds the official Fixed
-    Version runtime under a `WebView2Runtime` folder and
-    src-tauri/src/main.rs points WEBVIEW2_BROWSER_EXECUTABLE_FOLDER at it when
-    the folder exists (wry creates the WebView2 environment with a null browser
-    folder, so the WebView2 loader honors that environment variable). See
-    https://learn.microsoft.com/microsoft-edge/webview2/concepts/distribution.
-
-    Fixed Version binaries are over 250 MB; the MSIX will be that much larger
-    than the NSIS installer. The runtime is cached under
-    %LOCALAPPDATA%\KKTerm\msix-webview2-cache between runs.
+    The package targets Windows 11 and uses its shared, automatically updated
+    Evergreen WebView2 Runtime. A Fixed Version runtime can still be embedded
+    explicitly with -WebView2CabUrl or -WebView2RuntimePath for constrained
+    offline deployments. See https://learn.microsoft.com/microsoft-edge/webview2/concepts/distribution.
 
     Microsoft Store notes:
       - The Identity Name and Publisher must be the values Partner Center gives
@@ -65,7 +57,7 @@
     <package.json version>.0, e.g. 3000.0.1.0.
 
 .PARAMETER MinWindowsVersion
-    TargetDeviceFamily MinVersion. Default: 10.0.17763.0 (Tauri v2 minimum).
+    TargetDeviceFamily MinVersion. Default: 10.0.22000.0 (Windows 11).
 
 .PARAMETER WebView2CabUrl
     URL of the official Microsoft.WebView2.FixedVersionRuntime.<version>.<arch>.cab
@@ -78,9 +70,9 @@
     msedgewebview2.exe). Skips the download; used directly without caching.
 
 .PARAMETER SkipWebView2
-    Do not embed the WebView2 runtime. The package then depends on the machine's
-    Evergreen runtime, which is fine for local sideload testing but may fail
-    Microsoft Store certification.
+    Do not embed a Fixed Version runtime even if one is provided. The package
+    uses the Evergreen runtime included with Windows 11. This is the default
+    behavior when no Fixed Version runtime is provided.
 
 .PARAMETER CertificatePath
     Optional .pfx used to sign the MSIX (sideload testing). The certificate
@@ -97,11 +89,12 @@
     Reuse the existing `tauri build --no-bundle` output instead of rebuilding.
 
 .EXAMPLE
-    # Local sideload test build (no WebView2 embedding, unsigned)
-    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-msix.ps1 -SkipWebView2
+    # Windows 11 Store build using Evergreen WebView2
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-msix.ps1 `
+        -PackageName <PartnerCenterReservedName> -Publisher <CN=PartnerCenterValue>
 
 .EXAMPLE
-    # Microsoft Store submission build with embedded WebView2
+    # Optional offline build with embedded Fixed Version WebView2
     powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-msix.ps1 `
         -PackageName <PartnerCenterReservedName> -Publisher <CN=PartnerCenterValue> `
         -WebView2CabUrl "https://.../Microsoft.WebView2.FixedVersionRuntime.<version>.x64.cab"
@@ -116,7 +109,7 @@ param(
     [string]$DisplayName = "KKTerm",
     [string]$Description = "Local-first administration workspace.",
     [string]$MsixVersion = "",
-    [string]$MinWindowsVersion = "10.0.17763.0",
+    [string]$MinWindowsVersion = "10.0.22000.0",
     [string]$MaxWindowsVersionTested = "10.0.26100.0",
     [string]$WebView2CabUrl = "",
     [string]$WebView2RuntimePath = "",
@@ -321,15 +314,13 @@ function Resolve-WebView2Runtime {
 
     if (-not $WebView2CabUrl) {
         throw @"
-The Microsoft Store requires a self-contained package, so the MSIX build embeds
-the WebView2 Fixed Version runtime, but no runtime was provided. Either:
+Fixed Version WebView2 embedding was requested, but no runtime was provided.
+Either:
 
   - pass -WebView2CabUrl with the "Get the Link" URL for the Fixed Version
     <arch> package from https://developer.microsoft.com/microsoft-edge/webview2/
     (URL ends in Microsoft.WebView2.FixedVersionRuntime.<version>.$Arch.cab), or
-  - pass -WebView2RuntimePath pointing at an already-extracted runtime folder, or
-  - pass -SkipWebView2 to build a package that relies on the machine's Evergreen
-    runtime (sideload testing only; likely to fail Store certification).
+  - pass -WebView2RuntimePath pointing at an already-extracted runtime folder.
 "@
     }
 
@@ -459,11 +450,14 @@ try {
     }
 
     $WebView2Runtime = $null
-    if (-not $SkipWebView2) {
+    if (-not $SkipWebView2 -and ($WebView2CabUrl -or $WebView2RuntimePath)) {
         $WebView2Runtime = Resolve-WebView2Runtime
     }
+    elseif (-not $WebView2RuntimePath -and -not $WebView2CabUrl) {
+        Write-Host "==> Using the Windows 11 Evergreen WebView2 runtime"
+    }
     else {
-        Write-Warning "Building without an embedded WebView2 runtime. This package needs an Evergreen WebView2 runtime on the target machine and may fail Store certification."
+        Write-Host "==> Ignoring the provided Fixed Version runtime because -SkipWebView2 was specified"
     }
 
     Write-Host "==> Staging MSIX layout: $LayoutDir"

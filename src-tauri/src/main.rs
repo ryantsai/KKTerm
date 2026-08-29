@@ -37,12 +37,11 @@ fn apply_linux_gpu_workarounds() {
     }
 }
 
-/// MSIX (Microsoft Store) packages embed a WebView2 Fixed Version runtime in a
-/// sibling `WebView2Runtime` folder (see scripts/package-msix.ps1). wry creates
-/// the WebView2 environment with a null browser folder, so the WebView2 loader
-/// honors the WEBVIEW2_BROWSER_EXECUTABLE_FOLDER environment variable. Point it
-/// at the embedded runtime before the first WebView2 environment is created;
-/// other install modes have no such folder, so nothing changes for them.
+/// Offline packages can optionally embed a WebView2 Fixed Version runtime in a
+/// sibling `WebView2Runtime` folder (see scripts/package-msix.ps1). Store MSIX
+/// packages use the Evergreen runtime included with Windows 11. When the
+/// optional folder exists, point the loader at it before the first WebView2
+/// environment is created; other install modes remain on Evergreen.
 #[cfg(target_os = "windows")]
 fn apply_embedded_webview2_runtime() {
     if std::env::var_os("WEBVIEW2_BROWSER_EXECUTABLE_FOLDER").is_some() {
