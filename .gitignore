@@ -49,6 +49,7 @@ dist-ssr
 /.playwright-mcp
 /tmp
 /promo
+/presentation/
 .tmp
 docs/superpowers/specs
 docs/superpowers/plans
