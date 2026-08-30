@@ -36,8 +36,8 @@
   <a href="https://github.com/ryantsai/KKTerm/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-MIT%20%2B%20Commons%20Clause-blue?style=for-the-badge" alt="Giấy phép MIT kèm Commons Clause" />
   </a>
-  <a href="https://github.com/sponsors/ryantsai">
-    <img src="https://img.shields.io/badge/Sponsor-%E2%9D%A4-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="Ủng hộ KKTerm trên GitHub" />
+  <a href="https://buymeacoffee.com/ryantsai">
+    <img src="https://img.shields.io/badge/Buy_Me_a_Coffee-%E2%98%95-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Mời tôi một ly cà phê" />
   </a>
   <br />
   <img src="https://img.shields.io/badge/cross%E2%80%91platform-desktop-0078D6?style=flat-square" alt="Desktop đa nền tảng" />
@@ -120,7 +120,7 @@ Nếu muốn build từ mã nguồn, hãy bắt đầu với [`CONTRIBUTING.md`]
 
 Hoan nghênh đóng góp và báo lỗi. Xem [`CONTRIBUTING.md`](CONTRIBUTING.md), [sổ tay vận hành](docs/manual/INDEX.md), [kiến trúc](docs/ARCHITECTURE.md), [hướng dẫn Dashboard](docs/DASHBOARD.md), [hướng dẫn IT Ops](docs/ITOPS.md) và [Custom Module Host API](docs/KKMOD_HOST_API_V2.md).
 
-Nếu KKTerm hữu ích, bạn có thể [ủng hộ dự án](https://github.com/sponsors/ryantsai).
+Nếu KKTerm hữu ích, bạn có thể [mời tôi một ly cà phê](https://buymeacoffee.com/ryantsai).
 
 ## Giấy phép
 

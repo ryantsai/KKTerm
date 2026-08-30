@@ -36,8 +36,8 @@
   <a href="https://github.com/ryantsai/KKTerm/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-MIT%20%2B%20Commons%20Clause-blue?style=for-the-badge" alt="MIT License with Commons Clause" />
   </a>
-  <a href="https://github.com/sponsors/ryantsai">
-    <img src="https://img.shields.io/badge/Sponsor-%E2%9D%A4-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="GitHub에서 KKTerm 후원" />
+  <a href="https://buymeacoffee.com/ryantsai">
+    <img src="https://img.shields.io/badge/Buy_Me_a_Coffee-%E2%98%95-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="커피 한 잔 사주기" />
   </a>
   <br />
   <img src="https://img.shields.io/badge/cross%E2%80%91platform-desktop-0078D6?style=flat-square" alt="크로스 플랫폼 데스크톱" />
@@ -120,7 +120,7 @@ Dashboard View, 터미널 Connection, 문서 뷰어, IT Ops drill view는 하나
 
 기여와 버그 신고를 환영합니다. [`CONTRIBUTING.md`](CONTRIBUTING.md), [사용 설명서](docs/manual/INDEX.md), [아키텍처](docs/ARCHITECTURE.md), [Dashboard 가이드](docs/DASHBOARD.md), [IT Ops 가이드](docs/ITOPS.md), [Custom Module Host API](docs/KKMOD_HOST_API_V2.md)를 참고하세요.
 
-KKTerm이 유용하다면 [프로젝트를 후원](https://github.com/sponsors/ryantsai)할 수 있습니다.
+KKTerm이 유용하다면 [커피 한 잔 사주세요](https://buymeacoffee.com/ryantsai).
 
 ## 라이선스
 

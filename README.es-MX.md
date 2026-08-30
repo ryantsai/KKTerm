@@ -36,8 +36,8 @@
   <a href="https://github.com/ryantsai/KKTerm/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-MIT%20%2B%20Commons%20Clause-blue?style=for-the-badge" alt="Licencia MIT con Commons Clause" />
   </a>
-  <a href="https://github.com/sponsors/ryantsai">
-    <img src="https://img.shields.io/badge/Sponsor-%E2%9D%A4-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="Patrocinar KKTerm en GitHub" />
+  <a href="https://buymeacoffee.com/ryantsai">
+    <img src="https://img.shields.io/badge/Buy_Me_a_Coffee-%E2%98%95-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Invítame a un café" />
   </a>
   <br />
   <img src="https://img.shields.io/badge/cross%E2%80%91platform-desktop-0078D6?style=flat-square" alt="Escritorio multiplataforma" />
@@ -120,7 +120,7 @@ Para compilar desde el código fuente, empieza por [`CONTRIBUTING.md`](CONTRIBUT
 
 Las contribuciones y los reportes de errores son bienvenidos. Consulta [`CONTRIBUTING.md`](CONTRIBUTING.md), el [manual de operaciones](docs/manual/INDEX.md), la [arquitectura](docs/ARCHITECTURE.md), la [guía de Dashboard](docs/DASHBOARD.md), la [guía de IT Ops](docs/ITOPS.md) y la [API de host de Custom Modules](docs/KKMOD_HOST_API_V2.md).
 
-Si KKTerm te resulta útil, puedes [patrocinar el proyecto](https://github.com/sponsors/ryantsai).
+Si KKTerm te resulta útil, puedes [invitarme a un café](https://buymeacoffee.com/ryantsai).
 
 ## Licencia
 

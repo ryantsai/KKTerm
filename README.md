@@ -36,8 +36,8 @@
   <a href="https://github.com/ryantsai/KKTerm/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-MIT%20%2B%20Commons%20Clause-blue?style=for-the-badge" alt="MIT License with Commons Clause" />
   </a>
-  <a href="https://github.com/sponsors/ryantsai">
-    <img src="https://img.shields.io/badge/Sponsor-%E2%9D%A4-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="Sponsor KKTerm on GitHub" />
+  <a href="https://buymeacoffee.com/ryantsai">
+    <img src="https://img.shields.io/badge/Buy_Me_a_Coffee-%E2%98%95-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy me a coffee" />
   </a>
   <br />
   <img src="https://img.shields.io/badge/cross%E2%80%91platform-desktop-0078D6?style=flat-square" alt="Cross-platform desktop" />
@@ -126,7 +126,7 @@ To build from source, start with [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 Contributions and bug reports are welcome. See [`CONTRIBUTING.md`](CONTRIBUTING.md), then browse the [operation manual](docs/manual/INDEX.md), [architecture](docs/ARCHITECTURE.md), [Dashboard guide](docs/DASHBOARD.md), [IT Ops guide](docs/ITOPS.md), and [Custom Module host API](docs/KKMOD_HOST_API_V2.md).
 
-If KKTerm is useful, you can [sponsor the project](https://github.com/sponsors/ryantsai).
+If KKTerm is useful, you can [buy me a coffee](https://buymeacoffee.com/ryantsai).
 
 ## License
 

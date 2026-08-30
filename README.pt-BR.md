@@ -36,8 +36,8 @@
   <a href="https://github.com/ryantsai/KKTerm/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-MIT%20%2B%20Commons%20Clause-blue?style=for-the-badge" alt="Licença MIT com Commons Clause" />
   </a>
-  <a href="https://github.com/sponsors/ryantsai">
-    <img src="https://img.shields.io/badge/Sponsor-%E2%9D%A4-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="Apoie o KKTerm no GitHub" />
+  <a href="https://buymeacoffee.com/ryantsai">
+    <img src="https://img.shields.io/badge/Buy_Me_a_Coffee-%E2%98%95-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Pague-me um café" />
   </a>
   <br />
   <img src="https://img.shields.io/badge/cross%E2%80%91platform-desktop-0078D6?style=flat-square" alt="Desktop multiplataforma" />
@@ -120,7 +120,7 @@ Para compilar a partir do código-fonte, comece por [`CONTRIBUTING.md`](CONTRIBU
 
 Contribuições e relatos de bugs são bem-vindos. Consulte [`CONTRIBUTING.md`](CONTRIBUTING.md), o [manual de operação](docs/manual/INDEX.md), a [arquitetura](docs/ARCHITECTURE.md), o [guia do Dashboard](docs/DASHBOARD.md), o [guia de IT Ops](docs/ITOPS.md) e a [API do host de Custom Modules](docs/KKMOD_HOST_API_V2.md).
 
-Se o KKTerm for útil para você, pode [apoiar o projeto](https://github.com/sponsors/ryantsai).
+Se o KKTerm for útil para você, pode [me pagar um café](https://buymeacoffee.com/ryantsai).
 
 ## Licença
 

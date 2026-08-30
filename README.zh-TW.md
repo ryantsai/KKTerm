@@ -36,8 +36,8 @@
   <a href="https://github.com/ryantsai/KKTerm/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-MIT%20%2B%20Commons%20Clause-blue?style=for-the-badge" alt="MIT License with Commons Clause" />
   </a>
-  <a href="https://github.com/sponsors/ryantsai">
-    <img src="https://img.shields.io/badge/Sponsor-%E2%9D%A4-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="在 GitHub 上贊助 KKTerm" />
+  <a href="https://buymeacoffee.com/ryantsai">
+    <img src="https://img.shields.io/badge/Buy_Me_a_Coffee-%E2%98%95-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="請我喝杯咖啡" />
   </a>
   <br />
   <img src="https://img.shields.io/badge/cross%E2%80%91platform-desktop-0078D6?style=flat-square" alt="跨平台桌面應用程式" />
@@ -120,7 +120,7 @@ Dashboard View、終端機 Connection、文件檢視器與 IT Ops drill view 共
 
 歡迎貢獻程式碼與回報問題。請參閱 [`CONTRIBUTING.md`](CONTRIBUTING.md)，再瀏覽[操作手冊](docs/manual/INDEX.md)、[架構文件](docs/ARCHITECTURE.md)、[Dashboard 指南](docs/DASHBOARD.md)、[IT Ops 指南](docs/ITOPS.md) 與 [Custom Module Host API](docs/KKMOD_HOST_API_V2.md)。
 
-如果 KKTerm 對你有幫助，也可以在 GitHub 上[贊助專案](https://github.com/sponsors/ryantsai)。
+如果 KKTerm 對你有幫助，也可以[請我喝杯咖啡](https://buymeacoffee.com/ryantsai)。
 
 ## 授權
 

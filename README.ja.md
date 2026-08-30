@@ -36,8 +36,8 @@
   <a href="https://github.com/ryantsai/KKTerm/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-MIT%20%2B%20Commons%20Clause-blue?style=for-the-badge" alt="MIT License with Commons Clause" />
   </a>
-  <a href="https://github.com/sponsors/ryantsai">
-    <img src="https://img.shields.io/badge/Sponsor-%E2%9D%A4-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="GitHub で KKTerm を支援" />
+  <a href="https://buymeacoffee.com/ryantsai">
+    <img src="https://img.shields.io/badge/Buy_Me_a_Coffee-%E2%98%95-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="コーヒーをごちそうする" />
   </a>
   <br />
   <img src="https://img.shields.io/badge/cross%E2%80%91platform-desktop-0078D6?style=flat-square" alt="クロスプラットフォームデスクトップ" />
@@ -120,7 +120,7 @@ Dashboard View、ターミナル Connection、ドキュメントビューアー�
 
 コントリビューションと不具合報告を歓迎します。 [`CONTRIBUTING.md`](CONTRIBUTING.md)、[操作マニュアル](docs/manual/INDEX.md)、[アーキテクチャ](docs/ARCHITECTURE.md)、[Dashboard ガイド](docs/DASHBOARD.md)、[IT Ops ガイド](docs/ITOPS.md)、[Custom Module Host API](docs/KKMOD_HOST_API_V2.md) を参照してください。
 
-KKTerm が役に立ったら、[プロジェクトを支援](https://github.com/sponsors/ryantsai)できます。
+KKTerm が役に立ったら、[コーヒーをごちそういただけます](https://buymeacoffee.com/ryantsai)。
 
 ## ライセンス
 
