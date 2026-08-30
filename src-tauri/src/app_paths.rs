@@ -113,6 +113,7 @@ pub struct AppPaths {
 pub struct AppModeInfo {
     mode: AppMode,
     data_dir: String,
+    updates_managed_by_microsoft_store: bool,
 }
 
 impl AppPaths {
@@ -190,8 +191,23 @@ impl AppPaths {
         AppModeInfo {
             mode: self.mode,
             data_dir: self.data_dir.display().to_string(),
+            updates_managed_by_microsoft_store: updates_managed_by_microsoft_store(),
         }
     }
+}
+
+#[cfg(target_os = "windows")]
+fn updates_managed_by_microsoft_store() -> bool {
+    use windows::ApplicationModel::{Package, PackageSignatureKind};
+
+    Package::Current()
+        .and_then(|package| package.SignatureKind())
+        .is_ok_and(|signature_kind| signature_kind == PackageSignatureKind::Store)
+}
+
+#[cfg(not(target_os = "windows"))]
+fn updates_managed_by_microsoft_store() -> bool {
+    false
 }
 
 #[tauri::command]
@@ -488,6 +504,12 @@ mod tests {
         assert!(!launch.is_portable());
         assert!(!root.join("data").exists());
         fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn unpackaged_test_process_keeps_app_owned_updates() {
+        assert!(!updates_managed_by_microsoft_store());
     }
 
     // Forced portable mode is rejected on non-Windows targets, so this

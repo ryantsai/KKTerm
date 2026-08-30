@@ -100,6 +100,9 @@ export async function checkForAppUpdate(): Promise<AppUpdate | null> {
   }
 
   const appMode = await invokeCommand("get_app_mode");
+  if (appMode.updatesManagedByMicrosoftStore) {
+    return null;
+  }
   const strategy = appUpdateInstallStrategy(
     currentPlatform(),
     appMode.mode === "portable",

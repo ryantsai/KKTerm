@@ -1736,7 +1736,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     ? { [tabWorkspaceId(initialTabs[0])]: initialTabs[0].id }
     : {},
   workspaces: [],
-  appModeInfo: { mode: "installed", dataDir: "" },
+  appModeInfo: {
+    mode: "installed",
+    dataDir: "",
+    updatesManagedByMicrosoftStore: false,
+  },
   generalSettings: defaultGeneralSettings,
   credentialSettings: defaultCredentialSettings,
   dashboardSettings: defaultDashboardSettings,

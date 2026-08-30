@@ -82,6 +82,52 @@ test("startup update checks are throttled for 24 hours", async () => {
   );
 });
 
+test("Microsoft Store releases delegate update checks entirely to the Store", async () => {
+  const { shouldRunStartupUpdateCheck } = await importTypeScriptModule(
+    new URL("../src/lib/appUpdatesModel.ts", import.meta.url),
+  );
+  const [appPathsSource, appUpdatesSource, promptSource, settingsSource, appSource] =
+    await Promise.all([
+      readFile(new URL("../src-tauri/src/app_paths.rs", import.meta.url), "utf8"),
+      readFile(new URL("../src/lib/appUpdates.ts", import.meta.url), "utf8"),
+      readFile(new URL("../src/app/AppUpdatePrompt.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../src/modules/settings/GeneralSettings.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../src/App.tsx", import.meta.url), "utf8"),
+    ]);
+
+  assert.equal(
+    shouldRunStartupUpdateCheck({
+      autoUpdateChecksEnabled: true,
+      hasCheckedThisLaunch: false,
+      isTauriRuntime: true,
+      updatesManagedByMicrosoftStore: true,
+    }),
+    false,
+  );
+  assert.match(appPathsSource, /PackageSignatureKind::Store/);
+  assert.match(appPathsSource, /updates_managed_by_microsoft_store/);
+  assert.match(
+    appUpdatesSource,
+    /if \(appMode\.updatesManagedByMicrosoftStore\) \{\s*return null;/,
+    "the update service must return before fetching release metadata",
+  );
+  assert.match(
+    promptSource,
+    /shouldRunStartupUpdateCheck\(\{[\s\S]*?updatesManagedByMicrosoftStore,/,
+    "the startup prompt must pass Store-management state into its gate",
+  );
+  assert.match(
+    settingsSource,
+    /\{!updatesManagedByMicrosoftStore \? \(\s*<fieldset className="settings-subsection settings-fieldset">/,
+    "Store releases must omit the app-owned Software Updates controls",
+  );
+  assert.match(
+    appSource,
+    /settingsReady=\{appModeReady\s*&&\s*generalSettingsReady\}/,
+    "startup checks must wait until Store-management status is known",
+  );
+});
+
 test("Cloudflare release manifest selects a verified Windows installer pair", async () => {
   const { parseCloudflareReleaseManifest, selectManifestWindowsInstaller } =
     await importTypeScriptModule(new URL("../src/lib/appUpdatesModel.ts", import.meta.url));

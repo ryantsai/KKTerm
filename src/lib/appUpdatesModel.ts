@@ -2,18 +2,26 @@ export function shouldRunStartupUpdateCheck({
   autoUpdateChecksEnabled,
   hasCheckedThisLaunch,
   isTauriRuntime,
+  updatesManagedByMicrosoftStore,
   lastCheckedAt = null,
   now = Date.now(),
 }: {
   autoUpdateChecksEnabled: boolean;
   hasCheckedThisLaunch: boolean;
   isTauriRuntime: boolean;
+  updatesManagedByMicrosoftStore: boolean;
   lastCheckedAt?: number | null;
   now?: number;
 }) {
   const intervalElapsed =
     lastCheckedAt === null || now - lastCheckedAt >= STARTUP_UPDATE_CHECK_INTERVAL_MS;
-  return isTauriRuntime && autoUpdateChecksEnabled && !hasCheckedThisLaunch && intervalElapsed;
+  return (
+    isTauriRuntime &&
+    !updatesManagedByMicrosoftStore &&
+    autoUpdateChecksEnabled &&
+    !hasCheckedThisLaunch &&
+    intervalElapsed
+  );
 }
 
 export const STARTUP_UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1_000;

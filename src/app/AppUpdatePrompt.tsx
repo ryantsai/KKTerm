@@ -29,6 +29,9 @@ export function AppUpdatePrompt({
   const autoUpdateChecksEnabled = useWorkspaceStore(
     (state) => state.generalSettings.autoUpdateChecksEnabled,
   );
+  const updatesManagedByMicrosoftStore = useWorkspaceStore(
+    (state) => state.appModeInfo.updatesManagedByMicrosoftStore,
+  );
   const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
   const showStatusBarProgress = useWorkspaceStore((state) => state.showStatusBarProgress);
   const updateStatusBarProgress = useWorkspaceStore((state) => state.updateStatusBarProgress);
@@ -39,6 +42,10 @@ export function AppUpdatePrompt({
   const startupCheckedRef = useRef(false);
 
   async function runUpdateCheck(source: "startup" | "manual") {
+    if (updatesManagedByMicrosoftStore) {
+      return;
+    }
+
     if (!isTauriRuntime()) {
       if (source === "manual") {
         showStatusBarNotice(t("settings.updateChecksRequireRuntime"), {
@@ -92,6 +99,7 @@ export function AppUpdatePrompt({
         autoUpdateChecksEnabled,
         hasCheckedThisLaunch: startupCheckedRef.current,
         isTauriRuntime: isTauriRuntime(),
+        updatesManagedByMicrosoftStore,
         lastCheckedAt: readLastUpdateCheckAt(),
       })
     ) {
@@ -107,12 +115,12 @@ export function AppUpdatePrompt({
       }
       await runUpdateCheck("startup");
     })();
-    // runUpdateCheck is recreated each render; gate the startup check on settings readiness only.
+    // runUpdateCheck is recreated each render; gate startup on stable settings/runtime state only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoUpdateChecksEnabled, settingsReady]);
+  }, [autoUpdateChecksEnabled, settingsReady, updatesManagedByMicrosoftStore]);
 
   useEffect(() => {
-    if (!settingsReady || !isTauriRuntime()) {
+    if (!settingsReady || updatesManagedByMicrosoftStore || !isTauriRuntime()) {
       return;
     }
     void invokeCommand("take_portable_update_error")
@@ -124,9 +132,12 @@ export function AppUpdatePrompt({
         }
       })
       .catch(() => undefined);
-  }, [settingsReady, showStatusBarNotice, t]);
+  }, [settingsReady, showStatusBarNotice, t, updatesManagedByMicrosoftStore]);
 
   useEffect(() => {
+    if (!settingsReady || updatesManagedByMicrosoftStore) {
+      return;
+    }
     const handleManualCheck = () => void runUpdateCheck("manual");
     window.addEventListener(CHECK_FOR_APP_UPDATES_EVENT, handleManualCheck);
     return () => {

@@ -152,6 +152,9 @@ export function GeneralSettings() {
     useState<SupportedLanguage>(detectLanguage);
   const generalSettings = useWorkspaceStore((state) => state.generalSettings);
   const portableMode = useWorkspaceStore((state) => state.appModeInfo.mode === "portable");
+  const updatesManagedByMicrosoftStore = useWorkspaceStore(
+    (state) => state.appModeInfo.updatesManagedByMicrosoftStore,
+  );
   const setGeneralSettings = useWorkspaceStore(
     (state) => state.setGeneralSettings,
   );
@@ -427,39 +430,41 @@ export function GeneralSettings() {
         title={t("settings.generalDefaults")}
       />
 
-      <fieldset className="settings-subsection settings-fieldset">
-        <legend>{t("settings.softwareUpdates")}</legend>
-        <div className="settings-summary-grid compact app-update-summary-grid">
-          <SettingsSummary label={t("settings.version")} value={ABOUT_PRODUCT.version} />
-          <div className="settings-summary-item app-update-check-row">
-            <span>{t("settings.updates")}</span>
-            <strong>{lastCheckedLabel}</strong>
-            <div className="app-update-check-controls">
-              <label className="settings-toggle-row app-update-auto-checks">
-                <span>
-                  <strong>{t("settings.autoUpdateChecks")}</strong>
-                </span>
-                <ToggleSwitch
-                  checked={draft.autoUpdateChecksEnabled}
-                  onChange={(checked) =>
-                    setDraft((s) => ({ ...s, autoUpdateChecksEnabled: checked }))
+      {!updatesManagedByMicrosoftStore ? (
+        <fieldset className="settings-subsection settings-fieldset">
+          <legend>{t("settings.softwareUpdates")}</legend>
+          <div className="settings-summary-grid compact app-update-summary-grid">
+            <SettingsSummary label={t("settings.version")} value={ABOUT_PRODUCT.version} />
+            <div className="settings-summary-item app-update-check-row">
+              <span>{t("settings.updates")}</span>
+              <strong>{lastCheckedLabel}</strong>
+              <div className="app-update-check-controls">
+                <label className="settings-toggle-row app-update-auto-checks">
+                  <span>
+                    <strong>{t("settings.autoUpdateChecks")}</strong>
+                  </span>
+                  <ToggleSwitch
+                    checked={draft.autoUpdateChecksEnabled}
+                    onChange={(checked) =>
+                      setDraft((s) => ({ ...s, autoUpdateChecksEnabled: checked }))
+                    }
+                  />
+                </label>
+                <button
+                  className="secondary-button"
+                  onClick={() =>
+                    window.dispatchEvent(new CustomEvent(CHECK_FOR_APP_UPDATES_EVENT))
                   }
-                />
-              </label>
-              <button
-                className="secondary-button"
-                onClick={() =>
-                  window.dispatchEvent(new CustomEvent(CHECK_FOR_APP_UPDATES_EVENT))
-                }
-                type="button"
-              >
-                <RefreshCw size={16} />
-                {t("settings.checkForUpdates")}
-              </button>
+                  type="button"
+                >
+                  <RefreshCw size={16} />
+                  {t("settings.checkForUpdates")}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      </fieldset>
+        </fieldset>
+      ) : null}
 
       <div className="form-grid general-settings-grid">
         <label data-tutorial-id="settings.language">

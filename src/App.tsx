@@ -927,7 +927,10 @@ function App() {
           installerActive={visibleBasePage === "installer"}
         />
       ) : null}
-      <AppUpdatePrompt key="app-update-prompt" settingsReady={generalSettingsReady} />
+      <AppUpdatePrompt
+        key="app-update-prompt"
+        settingsReady={appModeReady && generalSettingsReady}
+      />
       </div>
     </div>
   );
