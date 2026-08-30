@@ -2485,6 +2485,7 @@
       "monospace": "Monoespaçada",
       "bold": "Negrito",
       "italic": "Itálico",
+      "copyElement": "Copiar elemento",
       "resizeDialog": "Redimensionar editor de captura",
       "unsavedTitle": "Salvar edições da captura?",
       "unsavedMessage": "Suas anotações serão perdidas se você continuar sem salvar.",

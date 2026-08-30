@@ -2485,6 +2485,7 @@
       "monospace": "Monospace",
       "bold": "Bold",
       "italic": "Italic",
+      "copyElement": "Copy element",
       "resizeDialog": "Resize screenshot editor",
       "unsavedTitle": "Save screenshot edits?",
       "unsavedMessage": "Your annotations will be lost if you continue without saving.",

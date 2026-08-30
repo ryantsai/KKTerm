@@ -2485,6 +2485,7 @@
       "monospace": "Monospace",
       "bold": "Tebal",
       "italic": "Miring",
+      "copyElement": "Salin elemen",
       "resizeDialog": "Ubah ukuran editor tangkapan layar",
       "unsavedTitle": "Simpan editan tangkapan layar?",
       "unsavedMessage": "Anotasi akan hilang jika Anda melanjutkan tanpa menyimpan.",

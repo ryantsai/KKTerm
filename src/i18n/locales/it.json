@@ -2485,6 +2485,7 @@
       "monospace": "Monospaziato",
       "bold": "Grassetto",
       "italic": "Corsivo",
+      "copyElement": "Copia elemento",
       "resizeDialog": "Ridimensiona editor screenshot",
       "unsavedTitle": "Salvare le modifiche allo screenshot?",
       "unsavedMessage": "Le annotazioni andranno perse se continui senza salvare.",

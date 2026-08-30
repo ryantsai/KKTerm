@@ -105,6 +105,12 @@ test("unified screenshot dialog follows the Sheet contract and bounds image zoom
   assert.match(editor, /type FreehandAnnotation = [\s\S]*?kind: "pencil"[\s\S]*?points: Point\[\]/);
   assert.match(editor, /type EditorSnapshot = \{ annotations: Annotation\[\]; cropRect: Rect \| null \}/);
   assert.match(editor, /function drawFreehand\(/);
+  assert.match(editor, /const COPY_OFFSET_CSS_PX = 12/);
+  assert.match(editor, /function copyAnnotation\(annotation: Annotation, canvas: HTMLCanvasElement\)/);
+  assert.match(editor, /translateAnnotation\(annotation, offset, offset\)/);
+  assert.match(editor, /applyAnnotations\(\[\.\.\.before, copy\]\)/);
+  assert.match(editor, /setSelectedId\(copy\.id\)/);
+  assert.match(editor, /screenshots\.editor\.copyElement/);
   assert.match(editor, /tool === "pencil"[\s\S]*?freehandRef\.current/);
   assert.match(editor, /function applyCrop\(/);
   assert.match(editor, /cropRectRef\.current/);

@@ -2485,6 +2485,7 @@
       "monospace": "等寬",
       "bold": "粗體",
       "italic": "斜體",
+      "copyElement": "複製元素",
       "resizeDialog": "調整螢幕截圖編輯器大小",
       "unsavedTitle": "儲存螢幕截圖編輯內容？",
       "unsavedMessage": "繼續而不儲存將會失去註解。",

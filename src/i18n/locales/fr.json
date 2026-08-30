@@ -2485,6 +2485,7 @@
       "monospace": "Chasse fixe",
       "bold": "Gras",
       "italic": "Italique",
+      "copyElement": "Copier l’élément",
       "resizeDialog": "Redimensionner l'éditeur de capture",
       "unsavedTitle": "Enregistrer les modifications ?",
       "unsavedMessage": "Vos annotations seront perdues si vous continuez sans enregistrer.",

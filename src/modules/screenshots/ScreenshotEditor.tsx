@@ -120,6 +120,7 @@ const FIT_PADDING = 18;
 const TEXT_LINE_HEIGHT = 1.25;
 const UNDO_LIMIT = 50;
 const DRAFT_AUTOSAVE_DELAY_MS = 300;
+const COPY_OFFSET_CSS_PX = 12;
 const EDITOR_TOOLS: Array<{
   id: EditorTool;
   icon: typeof ArrowRight;
@@ -1083,6 +1084,22 @@ export function ScreenshotEditor({
     setSelectedId((current) => (current === id ? null : current));
   }
 
+  function copyAnnotation(annotation: Annotation, canvas: HTMLCanvasElement) {
+    const before = annotationsRef.current;
+    if (!before.some((candidate) => candidate.id === annotation.id)) {
+      return;
+    }
+    const offset = COPY_OFFSET_CSS_PX
+      * (canvas.width / Math.max(1, canvas.getBoundingClientRect().width));
+    const copy = {
+      ...translateAnnotation(annotation, offset, offset),
+      id: idRef.current++,
+    };
+    pushUndo(before);
+    applyAnnotations([...before, copy]);
+    setSelectedId(copy.id);
+  }
+
   function applyColor(next: string) {
     setColor(next);
     const draft = editingRef.current;
@@ -1226,6 +1243,7 @@ export function ScreenshotEditor({
     current: { text: string; bold: boolean; italic: boolean; size: number; font: TextFont },
     apply: (patch: Partial<Pick<TextDraft, "bold" | "italic" | "size" | "font">>) => void,
     remove: () => void,
+    copyElement?: () => void,
   ): NativeContextMenuItem[] {
     return [
       {
@@ -1278,6 +1296,14 @@ export function ScreenshotEditor({
           void writeToClipboard(current.text);
         },
       },
+      ...(copyElement
+        ? [{
+            kind: "item" as const,
+            label: t("screenshots.editor.copyElement"),
+            iconSvg: nativeMenuIcons.copy,
+            action: copyElement,
+          }]
+        : []),
       { kind: "separator" },
       { kind: "item", label: t("common.delete"), iconSvg: nativeMenuIcons.trash, action: remove },
     ];
@@ -1326,8 +1352,17 @@ export function ScreenshotEditor({
           hit,
           (patch) => updateAnnotationWithUndo(hit.id, (annotation) => ({ ...annotation, ...patch })),
           () => deleteAnnotation(hit.id),
+          () => copyAnnotation(hit, canvas),
         )
-      : [{ kind: "item", label: t("common.delete"), iconSvg: nativeMenuIcons.trash, action: () => deleteAnnotation(hit.id) }];
+      : [
+          {
+            kind: "item",
+            label: t("screenshots.editor.copyElement"),
+            iconSvg: nativeMenuIcons.copy,
+            action: () => copyAnnotation(hit, canvas),
+          },
+          { kind: "item", label: t("common.delete"), iconSvg: nativeMenuIcons.trash, action: () => deleteAnnotation(hit.id) },
+        ];
     void showNativeContextMenu(items, { x: event.clientX, y: event.clientY });
   }
 

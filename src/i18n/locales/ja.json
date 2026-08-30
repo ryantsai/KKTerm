@@ -2485,6 +2485,7 @@
       "monospace": "等幅",
       "bold": "太字",
       "italic": "斜体",
+      "copyElement": "要素をコピー",
       "resizeDialog": "スクリーンショットエディターのサイズを変更",
       "unsavedTitle": "スクリーンショットの編集を保存しますか？",
       "unsavedMessage": "保存せずに続行すると、注釈は失われます。",

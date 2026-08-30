@@ -2485,6 +2485,7 @@
       "monospace": "고정폭",
       "bold": "굵게",
       "italic": "기울임꼴",
+      "copyElement": "요소 복사",
       "resizeDialog": "스크린샷 편집기 크기 조절",
       "unsavedTitle": "스크린샷 편집 내용을 저장할까요?",
       "unsavedMessage": "저장하지 않고 계속하면 주석이 손실됩니다.",

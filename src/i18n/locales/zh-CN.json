@@ -2485,6 +2485,7 @@
       "monospace": "等宽",
       "bold": "粗体",
       "italic": "斜体",
+      "copyElement": "复制元素",
       "resizeDialog": "调整截图编辑器大小",
       "unsavedTitle": "保存截图编辑内容？",
       "unsavedMessage": "如果继续而不保存，注释将会丢失。",
