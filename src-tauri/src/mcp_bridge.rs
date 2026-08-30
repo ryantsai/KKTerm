@@ -158,6 +158,9 @@ pub fn start_if_enabled(
     enabled: bool,
     allow_all_dangerous: bool,
 ) {
+    #[cfg(target_os = "macos")]
+    let app_data_dir = crate::app_group::shared_container_dir().unwrap_or(app_data_dir);
+
     let info_path = bridge_info_path(&app_data_dir);
     // Always clear stale info so external clients see "not running" until we
     // succeed in opening a new pipe.

@@ -42,6 +42,9 @@ use portable_marker::PORTABLE_MARKER_FILENAME;
 mod bundle_identifier;
 use bundle_identifier::BUNDLE_IDENTIFIER;
 
+#[path = "../app_group.rs"]
+mod app_group;
+
 const BRIDGE_INFO_FILENAME: &str = "mcp-bridge.json";
 const SERVER_NAME: &str = "kkterm-cli";
 const SERVER_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -295,6 +298,18 @@ fn bridge_info_path() -> Option<PathBuf> {
     let exe_dir = std::env::current_exe()
         .ok()
         .and_then(|path| path.parent().map(std::path::Path::to_path_buf));
+
+    if let Some(exe_dir) = exe_dir.as_ref()
+        && exe_dir.join(PORTABLE_MARKER_FILENAME).is_file()
+    {
+        return Some(exe_dir.join("data").join(BRIDGE_INFO_FILENAME));
+    }
+
+    #[cfg(target_os = "macos")]
+    if let Some(shared_dir) = app_group::shared_container_dir() {
+        return Some(shared_dir.join(BRIDGE_INFO_FILENAME));
+    }
+
     bridge_info_path_for(exe_dir.as_deref(), app_data_dir())
 }
 
