@@ -2,6 +2,7 @@ import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { asBackground } from "react-linear-gradient-picker";
+import { DialogPortal } from "../../../app/DialogPortal";
 import { DIcon } from "../../../app/ui/dialog";
 import { isTauriRuntime, openExternalUrl } from "../../../lib/tauri";
 import { BACKGROUND_PRESETS } from "../registry/backgroundPresets";
@@ -225,7 +226,7 @@ export function SharedBackgroundPopover({
     }
   }
 
-  return (
+  const popover = (
     <div
       ref={ref}
       className={["dw-bg-popover", className].filter(Boolean).join(" ")}
@@ -416,4 +417,6 @@ export function SharedBackgroundPopover({
       )}
     </div>
   );
+
+  return <DialogPortal>{popover}</DialogPortal>;
 }

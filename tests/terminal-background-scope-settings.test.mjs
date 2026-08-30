@@ -130,6 +130,11 @@ test("dynamic background tab uses static thumbnails and supports transient heade
     "thumbnail hover should not mount or track a live renderer",
   );
   assert.match(sharedBackgroundPopover, /popoverOffset/);
+  assert.match(
+    sharedBackgroundPopover,
+    /<DialogPortal>\{popover\}<\/DialogPortal>/,
+    "the fixed background picker should portal to the app window instead of being clipped by its owning Pane",
+  );
   assert.match(sharedBackgroundPopover, /onPointerDown=\{onHeaderPointerDown\}/);
   assert.match(sharedBackgroundPopover, /onPointerMove=\{onHeaderPointerMove\}/);
   assert.match(sharedBackgroundPopover, /onPointerUp=\{onHeaderPointerEnd\}/);
