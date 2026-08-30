@@ -38,6 +38,10 @@
     "trayExit": "結束",
     "fileMenu": "檔案",
     "openFile": "開啟…",
+    "storeTrialExpiredTitle": "感謝您試用 KKTerm",
+    "storeTrialExpiredMessage": "7 天試用期已結束。如果 KKTerm 對您有所幫助，透過 Microsoft Store 購買即可支持後續開發。感謝您的考慮。",
+    "storePurchaseAction": "支持 KKTerm",
+    "storePurchaseOpenFailed": "無法開啟 Microsoft Store：{{message}}",
     "titlebar": {
       "minimize": "最小化",
       "maximize": "最大化",

@@ -25,6 +25,10 @@ Tutorial targets: `app.activityRailWorkspace`, `app.activityRailNewWorkspace`, `
 
 Non-Workspace pages (Dashboard and Settings) stay inset from the 48 px rail so its hover tooltips keep working while those pages are active. Workspace-native child surfaces may overlap the rail tooltip layer, so the native tooltip bridge is the supported rail-label path in the desktop runtime.
 
+## Microsoft Store trial
+
+The Microsoft Store build checks its Store-issued app license once on a background worker at each launch. A purchased license is accepted immediately; only a trial license has its activity and UTC expiration evaluated. The worker exits after that single result, with no periodic or license-change checks. Other Windows builds, portable mode, macOS, and Linux do not run this check. If the 7-day trial has ended, the app-owned `app.storeTrialExpiredTitle` dialog politely invites the user to support continued development with `app.storeTrialExpiredMessage`; `app.storePurchaseAction` opens KKTerm's Microsoft Store listing, while `common.close` dismisses the prompt until the next launch. A Store communication failure does not infer expiry or block the app. If the listing cannot be opened, `app.storePurchaseOpenFailed` appears through the Status Bar notice surface.
+
 ## Connections Panel (left, inside Workspace Module)
 
 Resizable. Collapsed/expanded state persists across launches. See [03-connections.md](03-connections.md) for the tree itself. When `settings.hideTopTabButtons` is enabled, this panel also becomes the primary Tab navigator by showing Child Connection Tabs under parent Connections.

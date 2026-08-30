@@ -7,6 +7,7 @@ commands.allow = [
   "app_bootstrap",
   "take_launch_paths",
   "get_app_mode",
+  "get_store_trial_expired",
   "create_portable_copy",
   "launch_portable_copy",
   "is_debug_build",

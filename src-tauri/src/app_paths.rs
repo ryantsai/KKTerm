@@ -197,7 +197,7 @@ impl AppPaths {
 }
 
 #[cfg(target_os = "windows")]
-fn updates_managed_by_platform_store() -> bool {
+pub(crate) fn updates_managed_by_platform_store() -> bool {
     use windows::ApplicationModel::{Package, PackageSignatureKind};
 
     Package::Current()
@@ -206,7 +206,7 @@ fn updates_managed_by_platform_store() -> bool {
 }
 
 #[cfg(target_os = "macos")]
-fn updates_managed_by_platform_store() -> bool {
+pub(crate) fn updates_managed_by_platform_store() -> bool {
     std::env::current_exe().is_ok_and(|exe_path| mac_app_store_receipt_exists(&exe_path))
 }
 
@@ -222,7 +222,7 @@ fn mac_app_store_receipt_exists(exe_path: &Path) -> bool {
 }
 
 #[cfg(not(any(target_os = "windows", target_os = "macos")))]
-fn updates_managed_by_platform_store() -> bool {
+pub(crate) fn updates_managed_by_platform_store() -> bool {
     false
 }
 

@@ -38,6 +38,10 @@
     "trayExit": "Quitter",
     "fileMenu": "Fichier",
     "openFile": "Ouvrir…",
+    "storeTrialExpiredTitle": "Merci d’avoir essayé KKTerm",
+    "storeTrialExpiredMessage": "Votre essai de 7 jours est terminé. Si KKTerm vous a été utile, l’acheter sur le Microsoft Store est un moyen simple de soutenir la poursuite de son développement. Merci d’y penser.",
+    "storePurchaseAction": "Soutenir KKTerm",
+    "storePurchaseOpenFailed": "Impossible d’ouvrir le Microsoft Store : {{message}}",
     "titlebar": {
       "minimize": "Réduire",
       "maximize": "Agrandir",

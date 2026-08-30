@@ -38,6 +38,10 @@
     "trayExit": "Thoát",
     "fileMenu": "Tệp",
     "openFile": "Mở…",
+    "storeTrialExpiredTitle": "Cảm ơn bạn đã dùng thử KKTerm",
+    "storeTrialExpiredMessage": "Thời gian dùng thử 7 ngày của bạn đã kết thúc. Nếu KKTerm hữu ích với bạn, mua ứng dụng từ Microsoft Store là một cách đơn giản để hỗ trợ quá trình phát triển lâu dài. Cảm ơn bạn đã cân nhắc.",
+    "storePurchaseAction": "Ủng hộ KKTerm",
+    "storePurchaseOpenFailed": "Không thể mở Microsoft Store: {{message}}",
     "titlebar": {
       "minimize": "Thu nhỏ",
       "maximize": "Phóng to",

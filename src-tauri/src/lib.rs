@@ -60,6 +60,7 @@ mod ssh;
 mod ssh_config;
 mod ssh_keys;
 mod storage;
+mod store_license;
 mod system_theme;
 mod system_cleaner;
 mod system_cleaner_recipes;
@@ -4610,7 +4611,9 @@ pub fn run() {
     // KKTerm does not consume device events; `Always` filters them all and Tao
     // removes its Raw Input registration on Windows.
     let builder = builder.device_event_filter(tauri::DeviceEventFilter::Always);
-    let builder = builder.manage(launch_path_state);
+    let builder = builder
+        .manage(launch_path_state)
+        .manage(store_license::StoreLicenseState::default());
 
     configure_macos_updater(builder)
         .register_uri_scheme_protocol("kkmodule", custom_modules::protocol_response)
@@ -4709,6 +4712,7 @@ pub fn run() {
                     .build()
                     .map_err(|error| setup_error(error.to_string()))?;
             }
+            store_license::start(app.handle().clone());
 
             let main_window_settings = storage.main_window_settings().map_err(setup_error)?;
             if !app.state::<app_paths::AppPaths>().is_portable() {
@@ -4948,6 +4952,7 @@ pub fn run() {
             app_bootstrap,
             launch_paths::take_launch_paths,
             app_paths::get_app_mode,
+            store_license::get_store_trial_expired,
             portable_creator::create_portable_copy,
             portable_creator::launch_portable_copy,
             is_debug_build,

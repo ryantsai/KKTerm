@@ -1964,6 +1964,10 @@ type CommandMap = {
     args: undefined;
     result: AppModeInfo;
   };
+  get_store_trial_expired: {
+    args: undefined;
+    result: boolean | null;
+  };
   create_portable_copy: {
     args: { request: { destination: string; segments: string[] } };
     result: CreatedPortableCopy;

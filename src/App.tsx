@@ -17,6 +17,7 @@ import {
 } from "./app/appNavigationPersistence";
 import { AppUpdatePrompt } from "./app/AppUpdatePrompt";
 import { PortableOnboardingDialog } from "./app/PortableOnboardingDialog";
+import { StoreLicensePrompt } from "./app/StoreLicensePrompt";
 import { useLaunchPathBridge } from "./app/launchPathBridge";
 import { pushSystemFileMenu } from "./app/systemFileMenu";
 import { TitleBar } from "./app/TitleBar";
@@ -930,6 +931,10 @@ function App() {
       <AppUpdatePrompt
         key="app-update-prompt"
         settingsReady={appModeReady && generalSettingsReady}
+      />
+      <StoreLicensePrompt
+        key="store-license-prompt"
+        enabled={appModeReady && appModeInfo.updatesManagedByPlatformStore}
       />
       </div>
     </div>
