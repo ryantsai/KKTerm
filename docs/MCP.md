@@ -550,8 +550,10 @@ in the same PR:
 ## Client setup examples
 
 Use the `kkterm-cli` binary path in your MCP client settings. The release build
-lives next to the KKTerm executable: `kkterm-cli.exe` beside `kkterm.exe` on
-Windows, and `kkterm-cli` beside the app binary on macOS/Linux. MCP clients may
+lives next to the KKTerm executable on Windows and Linux. The Mac App Store
+build packages it as the separately provisioned sandbox helper
+`KKTerm.app/Contents/Helpers/KKTermCLI.app/Contents/MacOS/kkterm-cli`; other
+macOS builds keep it beside the app binary. MCP clients may
 continue launching it with no arguments because their piped stdin starts stdio
 server mode. Interactive no-argument use displays English command-line help;
 `mcp` and `serve` explicitly start server mode, and `help`, `-h`, `--help`,
@@ -602,8 +604,8 @@ to be running.
 On Windows, macOS, and Linux, Settings → AI Assistant → Built-in MCP Server
 includes a "Show config" action. The config dialog opens only from that action;
 changing either MCP toggle never opens it. It contains JSON and TOML snippets
-whose `command` is the resolved `kkterm-cli` path beside the running KKTerm
-executable. Its setup table shows
+whose `command` is the resolved `kkterm-cli` path for the running KKTerm build.
+Its setup table shows
 copyable command examples for clients that support CLI MCP registration and
 config paths for clients that require manual editing.
 Debug builds write built-in and remote MCP request/response records to

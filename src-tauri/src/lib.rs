@@ -1,5 +1,6 @@
 mod ai;
 mod ai_coding_usage;
+mod app_group;
 mod app_launcher;
 mod app_paths;
 mod app_tray;
@@ -1412,6 +1413,20 @@ fn get_built_in_mcp_command_path() -> Result<String, String> {
     } else {
         "kkterm-cli"
     };
+
+    #[cfg(target_os = "macos")]
+    if let Some(contents_dir) = exe_folder.parent() {
+        let helper_cli = contents_dir
+            .join("Helpers")
+            .join("KKTermCLI.app")
+            .join("Contents")
+            .join("MacOS")
+            .join(cli_name);
+        if helper_cli.is_file() {
+            return Ok(helper_cli.to_string_lossy().into_owned());
+        }
+    }
+
     Ok(exe_folder.join(cli_name).to_string_lossy().into_owned())
 }
 
