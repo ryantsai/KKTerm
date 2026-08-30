@@ -82,7 +82,7 @@ test("startup update checks are throttled for 24 hours", async () => {
   );
 });
 
-test("Microsoft Store releases delegate update checks entirely to the Store", async () => {
+test("platform Store releases delegate update checks entirely to the Store", async () => {
   const { shouldRunStartupUpdateCheck } = await importTypeScriptModule(
     new URL("../src/lib/appUpdatesModel.ts", import.meta.url),
   );
@@ -100,25 +100,26 @@ test("Microsoft Store releases delegate update checks entirely to the Store", as
       autoUpdateChecksEnabled: true,
       hasCheckedThisLaunch: false,
       isTauriRuntime: true,
-      updatesManagedByMicrosoftStore: true,
+      updatesManagedByPlatformStore: true,
     }),
     false,
   );
   assert.match(appPathsSource, /PackageSignatureKind::Store/);
-  assert.match(appPathsSource, /updates_managed_by_microsoft_store/);
+  assert.match(appPathsSource, /_MASReceipt/);
+  assert.match(appPathsSource, /updates_managed_by_platform_store/);
   assert.match(
     appUpdatesSource,
-    /if \(appMode\.updatesManagedByMicrosoftStore\) \{\s*return null;/,
+    /if \(appMode\.updatesManagedByPlatformStore\) \{\s*return null;/,
     "the update service must return before fetching release metadata",
   );
   assert.match(
     promptSource,
-    /shouldRunStartupUpdateCheck\(\{[\s\S]*?updatesManagedByMicrosoftStore,/,
+    /shouldRunStartupUpdateCheck\(\{[\s\S]*?updatesManagedByPlatformStore,/,
     "the startup prompt must pass Store-management state into its gate",
   );
   assert.match(
     settingsSource,
-    /\{!updatesManagedByMicrosoftStore \? \(\s*<fieldset className="settings-subsection settings-fieldset">/,
+    /\{!updatesManagedByPlatformStore \? \(\s*<fieldset className="settings-subsection settings-fieldset">/,
     "Store releases must omit the app-owned Software Updates controls",
   );
   assert.match(

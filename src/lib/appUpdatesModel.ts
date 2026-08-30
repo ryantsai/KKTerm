@@ -2,14 +2,14 @@ export function shouldRunStartupUpdateCheck({
   autoUpdateChecksEnabled,
   hasCheckedThisLaunch,
   isTauriRuntime,
-  updatesManagedByMicrosoftStore,
+  updatesManagedByPlatformStore,
   lastCheckedAt = null,
   now = Date.now(),
 }: {
   autoUpdateChecksEnabled: boolean;
   hasCheckedThisLaunch: boolean;
   isTauriRuntime: boolean;
-  updatesManagedByMicrosoftStore: boolean;
+  updatesManagedByPlatformStore: boolean;
   lastCheckedAt?: number | null;
   now?: number;
 }) {
@@ -17,7 +17,7 @@ export function shouldRunStartupUpdateCheck({
     lastCheckedAt === null || now - lastCheckedAt >= STARTUP_UPDATE_CHECK_INTERVAL_MS;
   return (
     isTauriRuntime &&
-    !updatesManagedByMicrosoftStore &&
+    !updatesManagedByPlatformStore &&
     autoUpdateChecksEnabled &&
     !hasCheckedThisLaunch &&
     intervalElapsed

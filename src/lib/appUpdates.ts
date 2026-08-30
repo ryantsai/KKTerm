@@ -100,7 +100,7 @@ export async function checkForAppUpdate(): Promise<AppUpdate | null> {
   }
 
   const appMode = await invokeCommand("get_app_mode");
-  if (appMode.updatesManagedByMicrosoftStore) {
+  if (appMode.updatesManagedByPlatformStore) {
     return null;
   }
   const strategy = appUpdateInstallStrategy(

@@ -51,7 +51,7 @@ export type ConnectionStatus = "connected" | "idle" | "offline";
 export interface AppModeInfo {
   mode: "installed" | "portable";
   dataDir: string;
-  updatesManagedByMicrosoftStore: boolean;
+  updatesManagedByPlatformStore: boolean;
 }
 export interface CreatedPortableCopy {
   destination: string;

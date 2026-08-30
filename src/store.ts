@@ -1739,7 +1739,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   appModeInfo: {
     mode: "installed",
     dataDir: "",
-    updatesManagedByMicrosoftStore: false,
+    updatesManagedByPlatformStore: false,
   },
   generalSettings: defaultGeneralSettings,
   credentialSettings: defaultCredentialSettings,

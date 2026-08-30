@@ -152,8 +152,8 @@ export function GeneralSettings() {
     useState<SupportedLanguage>(detectLanguage);
   const generalSettings = useWorkspaceStore((state) => state.generalSettings);
   const portableMode = useWorkspaceStore((state) => state.appModeInfo.mode === "portable");
-  const updatesManagedByMicrosoftStore = useWorkspaceStore(
-    (state) => state.appModeInfo.updatesManagedByMicrosoftStore,
+  const updatesManagedByPlatformStore = useWorkspaceStore(
+    (state) => state.appModeInfo.updatesManagedByPlatformStore,
   );
   const setGeneralSettings = useWorkspaceStore(
     (state) => state.setGeneralSettings,
@@ -430,7 +430,7 @@ export function GeneralSettings() {
         title={t("settings.generalDefaults")}
       />
 
-      {!updatesManagedByMicrosoftStore ? (
+      {!updatesManagedByPlatformStore ? (
         <fieldset className="settings-subsection settings-fieldset">
           <legend>{t("settings.softwareUpdates")}</legend>
           <div className="settings-summary-grid compact app-update-summary-grid">

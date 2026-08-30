@@ -113,7 +113,7 @@ pub struct AppPaths {
 pub struct AppModeInfo {
     mode: AppMode,
     data_dir: String,
-    updates_managed_by_microsoft_store: bool,
+    updates_managed_by_platform_store: bool,
 }
 
 impl AppPaths {
@@ -191,13 +191,13 @@ impl AppPaths {
         AppModeInfo {
             mode: self.mode,
             data_dir: self.data_dir.display().to_string(),
-            updates_managed_by_microsoft_store: updates_managed_by_microsoft_store(),
+            updates_managed_by_platform_store: updates_managed_by_platform_store(),
         }
     }
 }
 
 #[cfg(target_os = "windows")]
-fn updates_managed_by_microsoft_store() -> bool {
+fn updates_managed_by_platform_store() -> bool {
     use windows::ApplicationModel::{Package, PackageSignatureKind};
 
     Package::Current()
@@ -205,8 +205,24 @@ fn updates_managed_by_microsoft_store() -> bool {
         .is_ok_and(|signature_kind| signature_kind == PackageSignatureKind::Store)
 }
 
-#[cfg(not(target_os = "windows"))]
-fn updates_managed_by_microsoft_store() -> bool {
+#[cfg(target_os = "macos")]
+fn updates_managed_by_platform_store() -> bool {
+    std::env::current_exe().is_ok_and(|exe_path| mac_app_store_receipt_exists(&exe_path))
+}
+
+#[cfg(target_os = "macos")]
+fn mac_app_store_receipt_exists(exe_path: &Path) -> bool {
+    exe_path
+        .parent()
+        .and_then(Path::parent)
+        .is_some_and(|contents_dir| {
+            contents_dir.file_name().is_some_and(|name| name == "Contents")
+                && contents_dir.join("_MASReceipt").join("receipt").is_file()
+        })
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+fn updates_managed_by_platform_store() -> bool {
     false
 }
 
@@ -509,7 +525,21 @@ mod tests {
     #[cfg(target_os = "windows")]
     #[test]
     fn unpackaged_test_process_keeps_app_owned_updates() {
-        assert!(!updates_managed_by_microsoft_store());
+        assert!(!updates_managed_by_platform_store());
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn mac_app_store_receipt_marks_updates_as_store_managed() {
+        let (root_exe, root) = temp_executable("mac-app-store-receipt");
+        let contents = root.join("KKTerm.app").join("Contents");
+        let exe = contents.join("MacOS").join("KKTerm");
+        fs::create_dir_all(contents.join("_MASReceipt")).unwrap();
+        fs::write(contents.join("_MASReceipt").join("receipt"), []).unwrap();
+
+        assert!(mac_app_store_receipt_exists(&exe));
+        assert!(!mac_app_store_receipt_exists(&root_exe));
+        fs::remove_dir_all(root).unwrap();
     }
 
     // Forced portable mode is rejected on non-Windows targets, so this
