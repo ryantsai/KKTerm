@@ -11,13 +11,13 @@
 <meta property="og:type" content="website" />
 <meta property="og:title" content="KKTerm — One window for every connection you own" />
 <meta property="og:description" content="Terminal, SSH, SFTP, RDP/VNC, and a dashboard in one native desktop window. Local-first. No telemetry. An AI assistant that builds you tools on request." />
-<meta property="og:image" content="/assets/og-cover.png" />
+<meta property="og:image" content="/assets/media/kkterm-maelstrom-terminal-poster.jpg" />
 <meta name="twitter:card" content="summary_large_image" />
 
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Fira+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&amp;family=Fira+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body>
@@ -65,6 +65,7 @@
       <a href="#connections">Features</a>
       <a href="#ai">AI Assistant</a>
       <a href="#dashboard">Dashboard</a>
+      <a href="#operations">Operations</a>
       <a href="#download">Download</a>
       <a href="https://github.com/ryantsai/KKTerm" class="nav-icon-link" aria-label="KKTerm on GitHub" target="_blank" rel="noopener">
         <svg class="icon" aria-hidden="true"><use href="#i-github"/></svg>
@@ -85,6 +86,7 @@
     <a href="#connections">Features</a>
     <a href="#ai">AI Assistant</a>
     <a href="#dashboard">Dashboard</a>
+    <a href="#operations">Operations</a>
     <a href="#not">Honest limits</a>
     <a href="#download">Download</a>
     <a href="https://github.com/ryantsai/KKTerm" target="_blank" rel="noopener">GitHub</a>
@@ -122,15 +124,12 @@
       </div>
 
       <div class="hero-visual reveal">
-        <!-- PLACEHOLDER: hero product shot / short looping capture.
-             Recommended: docs/assets/demo.gif (already in the repo) resized to ~1600x1000,
-             or a fresh screen capture of a Tab with 3-4 mixed panes (SSH + SFTP + Dashboard). -->
-        <div class="placeholder placeholder-hero" role="img" aria-label="Placeholder for KKTerm product screenshot or demo animation">
-          <span class="placeholder-tag">// preview</span>
-          <svg class="icon icon-xl" aria-hidden="true"><use href="#i-image"/></svg>
-          <p><strong>Product demo goes here</strong></p>
-          <p class="placeholder-hint">Suggested: docs/assets/demo.gif &middot; 1600×1000</p>
-        </div>
+        <figure class="product-shot hero-demo">
+          <video autoplay muted loop playsinline preload="metadata" poster="/assets/media/kkterm-maelstrom-terminal-poster.jpg" aria-label="KKTerm demo terminal running over the animated Maelstrom ocean background">
+            <source src="/assets/media/kkterm-maelstrom-terminal.mp4" type="video/mp4" />
+          </video>
+          <figcaption><span class="live-dot" aria-hidden="true"></span>Real KKTerm capture · Maelstrom terminal background</figcaption>
+        </figure>
       </div>
     </div>
   </section>
@@ -174,12 +173,7 @@
       </div>
 
       <figure class="feature-media reveal">
-        <!-- PLACEHOLDER: recommended docs/assets/screenshots/connections-grid.png (already exists) -->
-        <div class="placeholder placeholder-wide" role="img" aria-label="Placeholder for a screenshot of a Tab holding SSH, SFTP, and an embedded web UI side by side">
-          <span class="placeholder-tag">// screenshot</span>
-          <svg class="icon icon-xl" aria-hidden="true"><use href="#i-image"/></svg>
-          <p class="placeholder-hint">connections-grid.png &middot; 1400×900</p>
-        </div>
+        <img class="product-shot product-shot-wide" src="/assets/screenshots/connections-grid.png" alt="KKTerm Tab with SSH terminals, SFTP, and a web interface arranged in one grid" width="1920" height="1044" loading="lazy" decoding="async" />
       </figure>
     </div>
   </section>
@@ -202,12 +196,7 @@
         </ul>
       </div>
       <figure class="feature-media reveal">
-        <!-- PLACEHOLDER: recommended docs/assets/screenshots/ai-assistant.png (already exists) -->
-        <div class="placeholder" role="img" aria-label="Placeholder for a screenshot of the AI Assistant panel with tool-access and approval-mode toggles">
-          <span class="placeholder-tag">// screenshot</span>
-          <svg class="icon icon-xl" aria-hidden="true"><use href="#i-image"/></svg>
-          <p class="placeholder-hint">ai-assistant.png &middot; 1000×760</p>
-        </div>
+        <img class="product-shot" src="/assets/screenshots/ai-assistant.png" alt="KKTerm AI Assistant beside a live terminal with approval and tool controls" width="1920" height="1044" loading="lazy" decoding="async" />
       </figure>
     </div>
   </section>
@@ -227,12 +216,7 @@
         <p>Drag, resize, re-color. Delete one with a right-click when the magic wears off.</p>
       </div>
       <figure class="feature-media reveal">
-        <!-- PLACEHOLDER: recommended docs/assets/screenshots/ai-widgets.png (already exists) -->
-        <div class="placeholder" role="img" aria-label="Placeholder for a screenshot of a dashboard grid of AI-created widgets">
-          <span class="placeholder-tag">// screenshot</span>
-          <svg class="icon icon-xl" aria-hidden="true"><use href="#i-image"/></svg>
-          <p class="placeholder-hint">ai-widgets.png &middot; 1000×760</p>
-        </div>
+        <img class="product-shot" src="/assets/screenshots/ai-widgets.png" alt="KKTerm Dashboard with a grid of AI-created widgets" width="1920" height="1044" loading="lazy" decoding="async" />
       </figure>
     </div>
   </section>
@@ -251,13 +235,7 @@
         <p>Local PowerShell panes get the same trick on Windows through <strong>psmux</strong>, the native tmux clone.</p>
       </div>
       <figure class="feature-media reveal">
-        <!-- PLACEHOLDER: recommended docs/assets/screenshots/tmux-reattach.png (already exists);
-             a short screen-recording of a disconnect/reconnect would communicate this feature even better. -->
-        <div class="placeholder" role="img" aria-label="Placeholder for a screenshot or clip of an SSH pane re-attaching to a named tmux session after a reconnect">
-          <span class="placeholder-tag">// screenshot / clip</span>
-          <svg class="icon icon-xl" aria-hidden="true"><use href="#i-image"/></svg>
-          <p class="placeholder-hint">tmux-reattach.png or short screen capture &middot; 1000×760</p>
-        </div>
+        <img class="product-shot" src="/assets/screenshots/tmux-reattach.png" alt="SSH terminal Panes re-attached to named tmux sessions in KKTerm" width="1944" height="1071" loading="lazy" decoding="async" />
       </figure>
     </div>
   </section>
@@ -276,18 +254,48 @@
         <p>Inside a Workspace, a Tab can hold a grid of mixed Panes: SSH next to SFTP, a local shell below an RDP session, VNC beside a file browser.</p>
       </div>
       <figure class="feature-media reveal">
-        <!-- PLACEHOLDER: recommended docs/assets/screenshots/workspaces.png and/or multi-pane.png (both already exist) -->
-        <div class="placeholder" role="img" aria-label="Placeholder for a screenshot of the workspace switcher and a multi-pane grid">
-          <span class="placeholder-tag">// screenshot</span>
-          <svg class="icon icon-xl" aria-hidden="true"><use href="#i-image"/></svg>
-          <p class="placeholder-hint">workspaces.png / multi-pane.png &middot; 1000×760</p>
-        </div>
+        <img class="product-shot" src="/assets/screenshots/multi-pane.png" alt="A KKTerm Workspace Tab split into multiple terminal Panes" width="1920" height="1044" loading="lazy" decoding="async" />
       </figure>
     </div>
   </section>
 
+  <!-- OPERATIONS MODULES -->
+  <section class="section section-alt" id="operations">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="eyebrow"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-activity"/></svg>Beyond the terminal</p>
+        <h2>Operate the fleet, capture the evidence</h2>
+        <p class="section-sub">The same local workspace also covers repeatable IT work and the screenshots or recordings that explain what happened.</p>
+      </div>
+      <div class="grid grid-2 operations-grid">
+        <article class="module-showcase reveal">
+          <img class="product-shot" src="/assets/screenshots/itops.png" alt="KKTerm IT Ops Module showing site inventory and infrastructure topology" width="2756" height="2028" loading="lazy" decoding="async" />
+          <div class="module-showcase-copy">
+            <p class="eyebrow">IT Ops</p>
+            <h3>Sites, racks, tasks, and batch runs</h3>
+            <p>Model rooms and racks, bind Connections to Hosts, scan endpoints, and fan out reusable tasks over SSH with saved run reports.</p>
+          </div>
+        </article>
+        <article class="module-showcase reveal">
+          <img class="product-shot" src="/assets/screenshots/screenshots-module.png" alt="KKTerm Screenshots Module with a capture library and editor" width="1303" height="768" loading="lazy" decoding="async" />
+          <div class="module-showcase-copy">
+            <p class="eyebrow">Screenshots</p>
+            <h3>Capture, annotate, record, and trim</h3>
+            <p>Grab a region, window, or full screen; organize the library; annotate images; and record silent MP4, WebM, or GIF clips with FFmpeg.</p>
+          </div>
+        </article>
+      </div>
+      <div class="grid grid-4 capability-grid reveal">
+        <div class="conn-card"><svg class="icon" aria-hidden="true"><use href="#i-layers"/></svg><h3>Git &amp; Compare</h3><p>Inspect history, stage changes, and compare text, folders, hex, or images without leaving the app.</p></div>
+        <div class="conn-card"><svg class="icon" aria-hidden="true"><use href="#i-grid"/></svg><h3>Custom Modules</h3><p>Install optional <code>.kkmod</code> tools that add isolated destinations to the Activity Rail.</p></div>
+        <div class="conn-card"><svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg><h3>Local secrets &amp; backups</h3><p>Keep durable data in SQLite, passwords in the OS keychain, and export selective or full backups.</p></div>
+        <div class="conn-card"><svg class="icon" aria-hidden="true"><use href="#i-globe"/></svg><h3>14 interface languages</h3><p>Run the full app in English, Traditional Chinese, Japanese, Korean, and ten more locales.</p></div>
+      </div>
+    </div>
+  </section>
+
   <!-- CUSTOMIZE: themes + backgrounds -->
-  <section class="section section-alt" id="customize">
+  <section class="section" id="customize">
     <div class="container">
       <div class="section-head reveal">
         <p class="eyebrow"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-palette"/></svg>Dress it up</p>
@@ -299,20 +307,10 @@
       </div>
       <div class="grid grid-2 reveal">
         <figure class="feature-media">
-          <!-- PLACEHOLDER: recommended docs/assets/screenshots/color-themes.png (already exists) -->
-          <div class="placeholder" role="img" aria-label="Placeholder for a screenshot of the color-scheme grid in Settings">
-            <span class="placeholder-tag">// screenshot</span>
-            <svg class="icon icon-xl" aria-hidden="true"><use href="#i-image"/></svg>
-            <p class="placeholder-hint">color-themes.png &middot; 760×560</p>
-          </div>
+          <img class="product-shot product-shot-tall" src="/assets/screenshots/color-themes.png" alt="KKTerm Settings showing the color scheme gallery" width="1617" height="1699" loading="lazy" decoding="async" />
         </figure>
         <figure class="feature-media">
-          <!-- PLACEHOLDER: recommended docs/assets/screenshots/backgrounds.png (already exists) -->
-          <div class="placeholder" role="img" aria-label="Placeholder for a screenshot of several animated dashboard backgrounds side by side">
-            <span class="placeholder-tag">// screenshot</span>
-            <svg class="icon icon-xl" aria-hidden="true"><use href="#i-image"/></svg>
-            <p class="placeholder-hint">backgrounds.png &middot; 760×560</p>
-          </div>
+          <img class="product-shot product-shot-tall" src="/assets/screenshots/backgrounds.png" alt="KKTerm background picker with animated Dashboard and terminal backgrounds" width="1178" height="1758" loading="lazy" decoding="async" />
         </figure>
       </div>
     </div>
@@ -332,12 +330,7 @@
         <p class="muted-note">macOS and Linux already have package managers you love, so this one stays a Windows-only convenience.</p>
       </div>
       <figure class="feature-media reveal">
-        <!-- PLACEHOLDER: recommended docs/assets/screenshots/install-helper.png (already exists) -->
-        <div class="placeholder" role="img" aria-label="Placeholder for a screenshot of the Install Helper catalog with installed and available tools">
-          <span class="placeholder-tag">// screenshot</span>
-          <svg class="icon icon-xl" aria-hidden="true"><use href="#i-image"/></svg>
-          <p class="placeholder-hint">install-helper.png &middot; 1000×760</p>
-        </div>
+        <img class="product-shot" src="/assets/screenshots/install-helper.png" alt="KKTerm Install Helper catalog with installed and available developer tools" width="2001" height="1376" loading="lazy" decoding="async" />
       </figure>
     </div>
   </section>

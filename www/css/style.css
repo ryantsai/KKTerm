@@ -312,46 +312,57 @@ h1 {
   }
 }
 
-/* ---------- Placeholders (screenshots / animations) ---------- */
-.placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  text-align: center;
-  aspect-ratio: 4 / 3;
-  border: 1.5px dashed var(--border);
-  border-radius: var(--radius-lg);
-  background:
-    repeating-linear-gradient(45deg, var(--surface) 0 2px, transparent 2px 14px),
-    var(--surface-alt);
-  color: var(--text-faint);
-  padding: var(--space-4);
-  position: relative;
-}
-.placeholder-tag {
-  position: absolute;
-  top: var(--space-3);
-  left: var(--space-3);
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  color: var(--accent-strong);
-  background: var(--surface-2);
-  border: 1px solid var(--border-soft);
-  padding: 2px 8px;
-  border-radius: 6px;
-}
-.placeholder p { color: var(--text-muted); font-size: 0.95rem; }
-.placeholder-hint {
-  font-family: var(--font-mono);
-  font-size: 0.8rem !important;
-  color: var(--text-faint) !important;
-}
-.placeholder-hero { aspect-ratio: 16 / 10; }
-.placeholder-wide { aspect-ratio: 16 / 9; }
-
+/* ---------- Product media ---------- */
 .feature-media { margin: 0; }
+.product-shot {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+}
+.product-shot-wide { aspect-ratio: 16 / 9; object-fit: cover; }
+.product-shot-tall { aspect-ratio: 4 / 3; object-fit: cover; object-position: top; }
+.hero-demo {
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+}
+.hero-demo video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+}
+.hero-demo figcaption {
+  position: absolute;
+  left: var(--space-3);
+  bottom: var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(5, 9, 20, 0.78);
+  color: #eef6ff;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  backdrop-filter: blur(10px);
+}
+.live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px rgba(139, 207, 76, 0.16);
+}
 
 /* ---------- Proof strip ---------- */
 .proof { padding-block: var(--space-4); border-block: 1px solid var(--border-soft); }
@@ -424,6 +435,35 @@ h1 {
 }
 
 .muted-note { color: var(--text-faint) !important; font-size: 0.9rem; }
+
+.operations-grid { align-items: stretch; }
+.module-showcase {
+  overflow: hidden;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.module-showcase .product-shot {
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  object-position: top;
+  border: 0;
+  border-bottom: 1px solid var(--border-soft);
+  border-radius: 0;
+  box-shadow: none;
+}
+.module-showcase-copy { padding: var(--space-4); }
+.module-showcase-copy h3 { margin: var(--space-1) 0 var(--space-2); font-size: 1.2rem; }
+.module-showcase-copy p:last-child { color: var(--text-muted); }
+.capability-grid { margin-top: var(--space-5); }
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-demo video { display: none; }
+  .hero-demo {
+    aspect-ratio: 16 / 10;
+    background: url("/assets/media/kkterm-maelstrom-terminal-poster.jpg") center / cover no-repeat;
+  }
+}
 
 .not-grid { margin-top: var(--space-2); }
 .not-card {
