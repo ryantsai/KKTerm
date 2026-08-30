@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://kkterm.ryantsai.com/sitemap.xml

@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Privacy Policy — KKTerm</title>
+<meta name="description" content="How KKTerm handles local data, remote connections, AI providers, updates, support requests, retention, deletion, and privacy choices." />
+<meta name="theme-color" content="#0b1220" />
+<meta name="robots" content="index,follow" />
+<link rel="canonical" href="https://kkterm.ryantsai.com/privacy.html" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Fira+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+
+<header class="site-header policy-site-header">
+  <div class="container header-inner">
+    <a class="brand" href="/">
+      <img src="/assets/logo.png" alt="" width="32" height="32" class="brand-mark" />
+      <span class="brand-name">KKTerm</span>
+    </a>
+    <a class="btn btn-ghost btn-sm" href="/support.html">Support</a>
+    <a class="btn btn-primary btn-sm" href="/">Home</a>
+  </div>
+</header>
+
+<main id="main" class="policy-main">
+  <article class="container policy-shell">
+    <a class="policy-back" href="/">← Back to KKTerm</a>
+    <header class="policy-header">
+      <p class="eyebrow">Privacy</p>
+      <h1>KKTerm Privacy Policy</h1>
+      <p class="policy-lead">This policy explains what KKTerm stores on your device, when information leaves your device, which third parties may receive it, and the controls available to you.</p>
+      <p class="policy-meta">Effective and last updated: August 30, 2026</p>
+    </header>
+
+    <div class="policy-summary">
+      <strong>Short version</strong>
+      <p>KKTerm is local-first. The project does not operate accounts, advertising, behavioral analytics, or in-app telemetry, and it does not sell personal data. Information leaves your Mac only when needed for a feature you choose—such as connecting to your servers, using a selected AI provider, opening a website, checking for updates, or contacting support.</p>
+    </div>
+
+    <div class="policy-content">
+      <section>
+        <h2>1. Scope and operator</h2>
+        <p>This policy applies to the official KKTerm desktop application and <a href="https://kkterm.ryantsai.com/">kkterm.ryantsai.com</a>, maintained by Ryan Tsai and the KKTerm open-source project. It does not replace the policies of remote systems, AI providers, websites, package sources, Custom Modules, or other services you choose to use through KKTerm.</p>
+        <p>Questions or privacy requests can be emailed to <a href="mailto:publish@ryantsai.com">publish@ryantsai.com</a>. Do not include passwords, private keys, access tokens, terminal contents, or unredacted diagnostic files.</p>
+      </section>
+
+      <section>
+        <h2>2. Information stored locally</h2>
+        <p>KKTerm stores the information required to provide its desktop features on your Mac. Depending on the features you use, this may include:</p>
+        <ul>
+          <li>Saved Connections, Workspaces, folders, Dashboard layouts, IT Ops inventory, notes, preferences, histories, and other app configuration.</li>
+          <li>Hostnames, IP addresses, usernames, ports, commands, scripts, file paths, and remote-session settings that you enter.</li>
+          <li>Passwords, passphrases, and AI API keys in the configured secure credential backend, such as the macOS Keychain. KKTerm references SSH private-key files by path rather than copying their contents into its database.</li>
+          <li>Files you deliberately save, export, download, capture, annotate, or back up.</li>
+          <li>Local diagnostic logs. Release builds produce expanded AI debug logs only when Advanced Debugging is enabled; those logs may contain prompts, attachments, tool payloads, terminal context, or generated source and should be treated as sensitive.</li>
+        </ul>
+        <p>This local information is not automatically uploaded to the KKTerm project.</p>
+      </section>
+
+      <section>
+        <h2>3. When information leaves your device</h2>
+
+        <h3>Connections and remote operations</h3>
+        <p>When you open a Connection or run an operation, KKTerm sends the information required by the selected protocol directly to the endpoint you configured. This can include network addresses, usernames, authentication material, commands, terminal input, files, and other session content. The operator of that endpoint determines how it logs, uses, and retains the information.</p>
+
+        <h3>AI providers and local AI tools</h3>
+        <p>AI features are optional. When you invoke an AI provider, KKTerm may send that provider the prompt and any context, attachments, screenshots, terminal content, file content, or tool results you deliberately include or authorize. A local CLI may itself communicate with its vendor according to that tool's configuration. KKTerm's approval controls govern app tool execution; they do not change an AI provider's privacy practices or retention rules. Review the selected provider's policy before sending sensitive content.</p>
+
+        <h3>Websites, downloads, and Custom Modules</h3>
+        <p>Embedded URL Connections and links communicate with the websites you open. Downloads, package catalogs, and installed Custom Modules may communicate with their listed sources or services when you direct them to do so. Those third parties can receive standard network information and any content you submit to them.</p>
+
+        <h3>Updates and release downloads</h3>
+        <p>KKTerm may request release metadata or downloads from KKTerm's Cloudflare-hosted release service or GitHub. These requests expose ordinary HTTP information such as IP address, user agent, request path, and time to the hosting provider. This information is used for delivery, reliability, abuse prevention, and security—not for advertising or cross-service tracking.</p>
+
+        <h3>Support and community</h3>
+        <p>If you open a GitHub issue, discussion, or other support request, GitHub and the people who can view that submission receive the information you choose to post. Public submissions are public. GitHub's terms and privacy policy govern its handling of account and submission data.</p>
+      </section>
+
+      <section>
+        <h2>4. Website data</h2>
+        <p>The KKTerm website does not run developer-operated behavioral analytics or advertising scripts and does not intentionally set marketing cookies. Cloudflare hosts the site and processes standard request and security information. The site also requests font files from Google Fonts, which allows Google to receive ordinary request metadata such as your IP address and browser information. Those providers process information under their own terms and privacy policies.</p>
+      </section>
+
+      <section>
+        <h2>5. No sale, advertising, or tracking</h2>
+        <p>KKTerm does not sell or rent personal data. The official app contains no advertising SDK and does not combine app activity with third-party data for targeted advertising. The project does not operate a user-account service or collect in-app usage analytics.</p>
+      </section>
+
+      <section>
+        <h2>6. Third-party safeguards</h2>
+        <p>Service providers used to operate KKTerm-controlled infrastructure are limited to providing functions such as hosting, delivery, reliability, and security, and are expected to handle information under their applicable contractual and privacy safeguards. User-selected remote systems, AI providers, websites, CLIs, and Custom Modules are not controlled by KKTerm; their separate policies apply, and you should use only providers whose protections meet your needs.</p>
+      </section>
+
+      <section>
+        <h2>7. Retention and deletion</h2>
+        <ul>
+          <li><strong>Local app data:</strong> remains on your Mac until you delete it in KKTerm, remove the relevant files or credentials, reset the app, or uninstall it. Exports and backups remain wherever you placed them until you delete them.</li>
+          <li><strong>KKTerm-operated services:</strong> standard hosting and security records are retained according to operational settings and the hosting provider's policies, then deleted or aggregated.</li>
+          <li><strong>Third-party services:</strong> remote systems, AI providers, websites, GitHub, and module services retain information according to their own policies and your account settings.</li>
+        </ul>
+        <p>Because KKTerm does not maintain a cloud account or upload its local database to the project, the project normally has no copy of your local app data to delete.</p>
+      </section>
+
+      <section id="choices">
+        <h2>8. Your privacy choices</h2>
+        <ul>
+          <li>Do not configure or invoke an external AI provider; remove its API key from KKTerm and the macOS Keychain when no longer needed.</li>
+          <li>Review prompts, attachments, context, and requested app-tool actions before approving them.</li>
+          <li>Choose which remote endpoints, websites, downloads, and Custom Modules to use and revoke their credentials directly when appropriate.</li>
+          <li>Delete saved Connections, histories, notes, captures, exports, backups, logs, and other local data using KKTerm or Finder.</li>
+          <li>Use the privacy and deletion controls supplied by each third-party provider for information it received.</li>
+        </ul>
+        <p>For questions about information held by KKTerm-controlled services, contact support. A request may require enough detail to locate the relevant record, but you should never send a password, secret key, or access token.</p>
+      </section>
+
+      <section>
+        <h2>9. Security</h2>
+        <p>KKTerm uses platform credential storage where available, permission-gated AI tools, local-first storage, and transport security provided by the protocols and services you select. No system is completely secure. Keep KKTerm and your operating system current, verify remote hosts and downloads, protect local backups, and use appropriate access controls on every managed system.</p>
+      </section>
+
+      <section>
+        <h2>10. Children</h2>
+        <p>KKTerm is a professional infrastructure and development tool and is not directed to children under 13. The project does not knowingly operate accounts for or collect personal information from children.</p>
+      </section>
+
+      <section>
+        <h2>11. Changes to this policy</h2>
+        <p>This policy may change as KKTerm's features or service providers change. The effective date above will be updated, and material changes will be published at this URL. Continued use after a change is subject to the updated policy.</p>
+      </section>
+
+      <section>
+        <h2>12. Contact</h2>
+        <p>Email <a href="mailto:publish@ryantsai.com">publish@ryantsai.com</a> or use the <a href="/support.html">KKTerm support page</a>. For a security-sensitive report, provide only a non-sensitive summary initially so a private handling path can be arranged.</p>
+        <div class="policy-actions">
+          <a class="btn btn-primary" href="mailto:publish@ryantsai.com">Email support</a>
+          <a class="btn btn-ghost" href="/legal.html">Legal notices</a>
+        </div>
+      </section>
+    </div>
+  </article>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer-bottom">
+    <p>&copy; <span id="year"></span> KKTerm.</p>
+    <p><a href="/privacy.html">Privacy</a> · <a href="/support.html">Support</a> · <a href="/legal.html">Legal</a></p>
+  </div>
+</footer>
+<script src="/js/main.js"></script>
+</body>
+</html>
