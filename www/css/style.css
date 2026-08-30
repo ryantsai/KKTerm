@@ -318,13 +318,12 @@ h1 {
   display: block;
   width: 100%;
   height: auto;
+  object-fit: contain;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--surface);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
 }
-.product-shot-wide { aspect-ratio: 16 / 9; object-fit: cover; }
-.product-shot-tall { aspect-ratio: 4 / 3; object-fit: cover; object-position: top; }
 .hero-demo {
   position: relative;
   margin: 0;
@@ -337,8 +336,7 @@ h1 {
 .hero-demo video {
   display: block;
   width: 100%;
-  aspect-ratio: 16 / 10;
-  object-fit: cover;
+  height: auto;
 }
 .hero-demo figcaption {
   position: absolute;
@@ -444,9 +442,6 @@ h1 {
   background: var(--surface);
 }
 .module-showcase .product-shot {
-  aspect-ratio: 16 / 10;
-  object-fit: cover;
-  object-position: top;
   border: 0;
   border-bottom: 1px solid var(--border-soft);
   border-radius: 0;
@@ -456,14 +451,6 @@ h1 {
 .module-showcase-copy h3 { margin: var(--space-1) 0 var(--space-2); font-size: 1.2rem; }
 .module-showcase-copy p:last-child { color: var(--text-muted); }
 .capability-grid { margin-top: var(--space-5); }
-
-@media (prefers-reduced-motion: reduce) {
-  .hero-demo video { display: none; }
-  .hero-demo {
-    aspect-ratio: 16 / 10;
-    background: url("/assets/media/kkterm-maelstrom-terminal-poster.jpg") center / cover no-repeat;
-  }
-}
 
 .not-grid { margin-top: var(--space-2); }
 .not-card {
