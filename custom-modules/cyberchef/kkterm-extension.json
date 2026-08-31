@@ -1,7 +1,7 @@
 {
   "id": "com.kkterm.cyberchef",
   "name": "CyberChef",
-  "version": "11.3.0",
+  "version": "11.3.1",
   "publisher": "KKTerm",
   "summary": "An unofficial, local-only CyberChef integration for KKTerm API v2.",
   "apiVersion": 2,

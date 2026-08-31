@@ -44,6 +44,7 @@ test("CyberChef adaptation remains offline and compatible with the KKMod CSP", a
   assert.match(adaptation, /ShowOnMap/);
   assert.match(adaptation, /worker-loader!/);
   assert.match(adaptation, /workerBlobURL: false/);
+  assert.match(adaptation, /theme control is removed from the KKTerm build/);
   assert.match(adaptation, /256 \* 1024 \* 1024/);
   assert.match(adaptation, /dompurify = "3\.4\.14"/);
   assert.match(adaptation, /jimp = "1\.6\.1"/);
@@ -59,4 +60,5 @@ test("CyberChef adaptation remains offline and compatible with the KKMod CSP", a
   assert.match(finalizer, /eval call survived/);
   assert.match(finalizer, /blob-backed Worker construction survived/);
   assert.match(finalizer, /disabled network operation survived/);
+  assert.match(finalizer, /removed theme control still has an event listener/);
 });

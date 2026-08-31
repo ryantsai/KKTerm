@@ -151,6 +151,9 @@ for (const marker of ["HTTP request", "DNS over HTTPS", "tile.openstreetmap.org"
     if (combinedJavaScript.includes(marker)) problems.push(`disabled network operation survived: ${marker}`);
 }
 if (!combinedJavaScript.includes("KKTerm host API v2 is unavailable.")) problems.push("KKTerm adapter marker is missing");
+if (/getElementById\(["']theme["']\)\s*\.addEventListener/.test(combinedJavaScript)) {
+    problems.push("removed theme control still has an event listener");
+}
 if (/\bwindow\.(?:alert|confirm|prompt)\s*\(/.test(combinedJavaScript)) {
     problems.push("browser-native alert/confirm/prompt survived");
 }

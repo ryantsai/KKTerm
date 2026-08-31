@@ -205,6 +205,15 @@ await replaceOnce(
     '        const themeSelect = document.getElementById("theme");\n        if (!themeSelect) return;\n        let themeOption'
 );
 
+const managerPath = resolve(sourceRoot, "src/web/Manager.mjs");
+await replaceOnce(
+    managerPath,
+    '        document.getElementById("theme").addEventListener("change", this.options.themeChange.bind(this.options));',
+    `        // The theme control is removed from the KKTerm build; host context owns the theme.
+        const themeSelect = document.getElementById("theme");
+        if (themeSelect) themeSelect.addEventListener("change", this.options.themeChange.bind(this.options));`
+);
+
 const appPath = resolve(sourceRoot, "src/web/App.mjs");
 await replaceOnce(
     appPath,
