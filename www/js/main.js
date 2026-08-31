@@ -23,6 +23,13 @@
   const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const revealEls = document.querySelectorAll(".reveal");
 
+  if (prefersReducedMotion) {
+    document.querySelectorAll("video[autoplay]").forEach((video) => {
+      video.pause();
+      video.removeAttribute("autoplay");
+    });
+  }
+
   if (prefersReducedMotion || !("IntersectionObserver" in window)) {
     revealEls.forEach((el) => el.classList.add("is-visible"));
   } else {
