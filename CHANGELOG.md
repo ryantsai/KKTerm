@@ -3,6 +3,72 @@
 All notable changes to KKTerm are documented here.
 
 ## Direct Downloads
+* 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.8/kkterm-3000.0.8-windows-x64-setup.exe)
+* 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.8/kkterm-3000.0.8-windows-arm64-setup.exe)
+* 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.8/kkterm-3000.0.8-windows-x64-portable.zip)
+* 📦 [Portable for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.8/kkterm-3000.0.8-windows-arm64-portable.zip)
+
+## Highlights
+- SSH Session handling and terminal connection state management improvements (including an SSH key-handling tweak).  
+- Microsoft Store trial licensing now checks at app launch and prompts when the trial expires.  
+- Screenshot editor gains “copy element” functionality.  
+
+## New
+- Microsoft Store trial license check + “trial expired” prompt flow.  
+- Screenshot editor: **Copy element** in the screenshots editor.
+
+## Improved
+- Background picker updated to use **DialogPortal** for better layout/visibility.  
+- Dashboard/Background-related docs and settings localization updated for automatic backup folder.  
+- Better SSH Session connection-state management across reconnection flows.  
+- CyberChef custom module adaptation and packaging finalization scripts (KKTerm compatibility).
+
+## Fixed
+- SSH client: adjusted server key handling for the SSH Connection (PR: `8c8bee2` short SHA: `8c8bee2`).  
+- (CI/docs) Tests execution path updated to use repository root (PR: `8c8bee2` short SHA: `8c8bee2`).  
+
+## Internal
+- Dependency updates and related build/tooling adjustments (`8c8bee2` short SHA: `8c8bee2`).  
+- Added Node.js version files: `.node-version` and `.nvmrc` (`8c8bee2` short SHA: `8c8bee2`).  
+- Various localization file cleanup/updates.  
+- Packaging/tooling: WebView2 runtime resolution/caching logic updates (`a3d9868`, `df0b89b`).  
+- Dependency adaptation scripts + third-party notices generation for bundled modules.  
+- Updated OpenFlowKit to 0.2.1 and improved asset URL handling (`7a0c6b2` short SHA: `7a0c6b2`).  
+- Add macOS support for standard baud rates in serial (`42e11c9` short SHA: `42e11c9`).  
+- Refactors for readability/maintainability (e.g., `8bf3517` short SHA: `8bf3517`).  
+
+---
+
+## Highlights（繁體中文）
+- 改進 **SSH Session** 與終端機連線狀態管理（包含一次 SSH 金鑰處理調整）。  
+- Microsoft Store 試用授權：啟動時自動檢查，並在試用到期時顯示提示。  
+- 截圖編輯器新增「**複製元素**」功能。  
+
+## New（新增）
+- Microsoft Store 試用授權檢查 + 「試用到期」提示流程。  
+- 截圖編輯器：在截圖編輯器中加入 **Copy element（複製元素）**。
+
+## Improved（改進）
+- 背景選擇器改用 **DialogPortal**，提升版面與顯示可見性。  
+- 與自動備份資料夾相關的文件與設定在多語系中更新。  
+- 改善 SSH Session 的連線狀態管理與重新連線流程。  
+- CyberChef 自訂模組：針對 KKTerm 相容性的相依調整與打包流程腳本。
+
+## Fixed（修正）
+- SSH client：調整伺服器金鑰處理方式，改善 SSH 連線（PR：`8c8bee2` short SHA：`8c8bee2`）。  
+- （CI/文件）測試執行路徑調整為使用程式庫根目錄（PR：`8c8bee2` short SHA：`8c8bee2`）。  
+
+## Internal（內部）
+- 相依套件更新與相關建置/工具調整（`8c8bee2` short SHA：`8c8bee2`）。  
+- 新增 Node.js 版本檔案：`.node-version` 與 `.nvmrc`（`8c8bee2` short SHA：`8c8bee2`）。  
+- 多語系檔案清理/更新。  
+- 打包/工具：WebView2 runtime 解析與快取邏輯更新（`a3d9868`、`df0b89b`）。  
+- 打包模組的相依調整腳本與第三方聲明產生。  
+- OpenFlowKit 更新到 0.2.1，並改善資產 URL 處理（`7a0c6b2` short SHA：`7a0c6b2`）。  
+- Serial：新增 macOS 對標準波特率支援（`42e11c9` short SHA：`42e11c9`）。  
+- 可讀性/可維護性重構（例如 `8bf3517` short SHA：`8bf3517`）。
+
+## Direct Downloads
 * 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.7/kkterm-3000.0.7-windows-x64-setup.exe)
 * 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.7/kkterm-3000.0.7-windows-arm64-setup.exe)
 * 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.7/kkterm-3000.0.7-windows-x64-portable.zip)

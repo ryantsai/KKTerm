@@ -1,7 +1,7 @@
 {
   "name": "kkterm",
   "private": true,
-  "version": "3000.0.7",
+  "version": "3000.0.8",
   "license": "SEE LICENSE IN LICENSE",
   "type": "module",
   "engines": {
