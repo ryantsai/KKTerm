@@ -24,20 +24,20 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = ["tray-icon", "image-png", "protocol-asset", "macos-proxy"] }
 tauri-plugin-opener = "2"
-anyhow = "1.0.102"
+anyhow = "1.0.104"
 rusqlite = { version = "0.40", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 reqwest = { version = "0.13", default-features = false, features = ["json", "rustls", "stream", "form", "blocking", "socks"] }
 sha2 = "0.11"
-ed25519-dalek = "2"
+ed25519-dalek = "3"
 semver = "1"
 mime_guess = "2"
 aes-gcm = "0.11"
-argon2 = "0.5.3"
+argon2 = "0.6.0"
 # Do not enable default features here: github-copilot-sdk defaults to bundling
 # the Copilot CLI, which bloats the KKTerm installer by embedding a large binary.
-github-copilot-sdk = { version = "1.0.6", default-features = false }
+github-copilot-sdk = { version = "1.0.11", default-features = false }
 rand = "0.10"
 base64 = "0.23"
 # Document Connection text decoding: encoding_rs is the standard (Firefox) decoder
@@ -54,16 +54,13 @@ webp = { version = "=0.3.1", default-features = false }
 ttf-parser = "0.25"
 portable-pty = "0.9.0"
 keyring-core = "1.0.0"
-# 0.62.5 includes the stabilized RustCrypto/Dalek dependency line and upstream
-# panic/security fixes. It does NOT fix the compression.rs compress_into
-# truncation that corrupts the
-# stream when zlib output exceeds input+10 bytes (incompressible SFTP uploads).
-russh = { version = "=0.62.5", default-features = false, features = ["des", "flate2", "ring", "rsa"] }
+# Exact pin keeps the SSH transport and its RustCrypto line reproducible.
+russh = { version = "=0.63.1", default-features = false, features = ["des", "flate2", "ring", "rsa"] }
 russh-sftp = "2.4.0"
-suppaftp = { version = "10.0.0", default-features = false, features = ["tokio", "tokio-async-native-tls", "deprecated"] }
+suppaftp = { version = "11.0.0", default-features = false, features = ["tokio", "tokio-async-native-tls", "deprecated"] }
 async-native-tls = { version = "0.6", default-features = false, features = ["runtime-tokio"] }
-serial2 = { version = "0.2.37", features = ["unix"] }
-tokio = { version = "1.52.3", features = ["io-std", "io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
+serial2 = { version = "0.2.38", features = ["unix"] }
+tokio = { version = "1.53.1", features = ["io-std", "io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
 url = "2"
 scraper = "0.27"
 tauri-plugin-dialog = "2"
@@ -78,7 +75,7 @@ zip = "8"
 # crate shares KKTerm's existing zip 8 / quick-xml 0.41 / encoding_rs tree.
 calamine = { version = "0.36", default-features = false }
 futures = "0.3"
-rayon = "1.11"
+rayon = "1.12"
 filedescriptor = "0.8.3"
 lazy_static = "1.5.0"
 shared_library = "0.1.9"
@@ -92,11 +89,11 @@ winrm-rs = { version = "1.1.2", default-features = false }
 # AST-based validation of AI-authored script widget source. oxc is ~3x faster
 # than swc on the parse-only path and ships a stable visitor API for
 # IdentifierReference walks. Used by validate_script_body_json_detailed.
-oxc_allocator = "0.143"
-oxc_parser = "0.143"
-oxc_span = "0.143"
-oxc_ast = "0.143"
-oxc_ast_visit = "0.143"
+oxc_allocator = "0.147"
+oxc_parser = "0.147"
+oxc_span = "0.147"
+oxc_ast = "0.147"
+oxc_ast_visit = "0.147"
 tauri-plugin-single-instance = "2"
 tauri-plugin-drag = "2.1.1"
 arboard = { version = "3.6.1", default-features = false, features = ["image-data", "wayland-data-control"] }
@@ -122,7 +119,7 @@ webview2-com = "=0.38.2"
 xcap = { version = "0.9", default-features = false, features = ["image", "wgc"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-apple-native-keyring-store = { version = "1.0.0", features = ["keychain"] }
+apple-native-keyring-store = { version = "1.0.2", features = ["keychain"] }
 security-framework = "3.7.0"
 libc = "0.2"
 # Host monitoring (Status Bar CPU/RAM/Network + detailed Dashboard counters).
@@ -215,7 +212,9 @@ xcap = { version = "0.9", default-features = false, features = ["image"] }
 [target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
 # App Launcher: real themed icons on Linux/BSD. The GLib/GIO/gdk-pixbuf bindings
 # are already pulled in transitively by Tauri's GTK stack, so they add no bundle
-# weight here; freedesktop-icons is a small pure-Rust XDG icon-theme resolver.
+# weight here. Keep them on Tauri/Wry's gtk-rs 0.18 type line until that stack
+# moves; newer bindings would add a parallel wrapper/sys dependency graph.
+# freedesktop-icons is a small pure-Rust XDG icon-theme resolver.
 glib = "0.18"
 gio = "0.18"
 gdk-pixbuf = "0.18"
@@ -237,7 +236,7 @@ opt-level = "s"
 opt-level = 1
 
 [patch.crates-io]
-# Temporary downstream application of Devolutions/IronRDP#1363 so russh 0.62.5
+# Temporary downstream application of Devolutions/IronRDP#1363 so russh 0.63.1
 # and the macOS/Linux IronRDP client share one RustCrypto/Dalek line. IronRDP
 # 0.17 still pins picky 7.0.0-rc.25, whose prerelease crypto dependencies
 # conflict with KKTerm's stable aes-gcm 0.11 dependency. Remove these patches

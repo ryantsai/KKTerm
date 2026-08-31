@@ -70,7 +70,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24.20.0
           cache: npm
 
       - uses: dtolnay/rust-toolchain@1.97.1
@@ -138,7 +138,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24.20.0
           cache: npm
 
       - uses: dtolnay/rust-toolchain@1.97.1
@@ -195,7 +195,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24.20.0
           cache: npm
 
       - uses: dtolnay/rust-toolchain@1.97.1

@@ -396,12 +396,15 @@ impl client::Handler for VerifyingClient {
 
     async fn check_server_key(
         &mut self,
-        server_public_key: &russh::keys::ssh_key::PublicKey,
+        server_key: &russh::keys::PublicKeyOrCertificate,
     ) -> Result<bool, Self::Error> {
+        // Preserve KKTerm's pinned-key TOFU model when the server presents an
+        // OpenSSH host certificate by checking its embedded public key.
+        let server_public_key = server_key.public_key();
         match host_key_status(
             &self.host,
             self.port,
-            server_public_key,
+            &server_public_key,
             &self.known_hosts_path,
         ) {
             Ok(HostKeyTrustStatus::Trusted) => Ok(true),
@@ -412,7 +415,7 @@ impl client::Handler for VerifyingClient {
                         "SSH host key for {}:{} is not trusted yet ({})",
                         self.host,
                         self.port,
-                        host_key_fingerprint(server_public_key)
+                        host_key_fingerprint(&server_public_key)
                     ),
                 );
                 Ok(false)
@@ -425,7 +428,7 @@ impl client::Handler for VerifyingClient {
                         self.host,
                         self.port,
                         line,
-                        host_key_fingerprint(server_public_key)
+                        host_key_fingerprint(&server_public_key)
                     ),
                 );
                 Ok(false)
@@ -548,10 +551,10 @@ impl client::Handler for InspectingClient {
 
     async fn check_server_key(
         &mut self,
-        server_public_key: &russh::keys::ssh_key::PublicKey,
+        server_key: &russh::keys::PublicKeyOrCertificate,
     ) -> Result<bool, Self::Error> {
         if let Ok(mut captured_key) = self.server_public_key.lock() {
-            *captured_key = Some(server_public_key.clone());
+            *captured_key = Some(server_key.public_key());
         }
         Ok(true)
     }

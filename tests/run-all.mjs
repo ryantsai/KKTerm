@@ -14,6 +14,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
+const repoRoot = dirname(here);
 
 const QUARANTINE = new Set([]);
 
@@ -38,7 +39,7 @@ if (skipped.length > 0) {
 
 const child = spawn(
   process.execPath,
-  ["--import", "tsx", "--test", ...active.map((name) => join(here, name))],
-  { stdio: "inherit" },
+  ["--import", "tsx", "--test", ...active.map((name) => join("tests", name))],
+  { cwd: repoRoot, stdio: "inherit" },
 );
 child.on("exit", (code) => process.exit(code ?? 1));
