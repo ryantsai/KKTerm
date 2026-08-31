@@ -25,6 +25,7 @@ export const initialTabs: WorkspaceTab[] = [];
 
 export const defaultGeneralSettings: GeneralSettings = {
   autoBackupEnabled: true,
+  autoBackupFolder: null,
   autoUpdateChecksEnabled: true,
   showConnectedConnectionsInRail: true,
   showWorkspaceOnRail: true,

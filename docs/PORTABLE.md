@@ -77,7 +77,7 @@ KKTerm/
     cache/                   KKTerm-owned portable cache
     logs/
     webview/                 WebView2 user data folder (localStorage, overlay partitions)
-    backups/                 startup/manual .kkbackup ZIPs
+    backups/                 default startup/safety database-backup ZIPs
     diagnostics/
     terminal-recordings/
     ssh_known_hosts
@@ -90,8 +90,10 @@ Design rules:
   runtime (section 3). This keeps CI, signing, and the update matrix sane.
 - **`data/` is the only location for KKTerm-owned mutable state.** The app
   directory contains the binaries, bundled resources, and marker. Explicit
-  host integrations remain the documented exception. This makes "back up the
-  portable folder" a complete copy of KKTerm-owned portable state.
+  user-selected output destinations (including a custom automatic-backup
+  folder) and host integrations remain the documented exceptions. This makes
+  "back up the portable folder" a complete copy of KKTerm-owned portable state;
+  external backup copies are recovery artifacts, not live state.
 - The marker ships inside the ZIP, so extraction alone activates portable
   mode — no launch flags and no first-run mode-selection dialog.
 - The ZIP never contains `data/`; extracting a newer ZIP over the portable

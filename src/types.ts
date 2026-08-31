@@ -1119,6 +1119,7 @@ export type NetworkMapAnimationMode = "onHover" | "always";
 
 export interface GeneralSettings {
   autoBackupEnabled: boolean;
+  autoBackupFolder?: string | null;
   autoUpdateChecksEnabled: boolean;
   showConnectedConnectionsInRail: boolean;
   showWorkspaceOnRail: boolean;

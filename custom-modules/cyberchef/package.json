@@ -1,0 +1,12 @@
+{
+  "name": "@kkterm/cyberchef-module",
+  "version": "11.3.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "adapt": "node scripts/apply-adaptation.mjs",
+    "adapt:dependencies": "node scripts/apply-dependency-adaptation.mjs",
+    "finalize": "node scripts/finalize-dist.mjs",
+    "generate:notices": "node scripts/generate-third-party-notices.mjs"
+  }
+}

@@ -2,7 +2,7 @@
 
 ## AI grep hints
 
-- Keys: `settings.exportSettings`, `settings.importSettings`, `settings.importBackupFileHint`, `settings.fullBackupImport`, `settings.fullBackupCustomModulesWarning`, `settings.includeCredentials`, `settings.includeCredentialsWarning`, `settings.importPassphrase`, `settings.importEncryptedStorePassword`, `settings.importEncryptedStorePasswordHint`, `settings.importActionAdd`, `settings.importActionReplace`, `settings.segment_workspacesConnections`, `settings.segment_dashboards`, `settings.segment_itops`, `settings.segment_assistant`, `settings.segment_settings`, `settings.resetAllSettings`, `settings.resetAllSettingsConfirm`, `settings.resetAllSettingsComplete`, `settings.sectionCredentials`, `settings.credentialStorage`, `settings.credentialStorageFilePortable`, `settings.portableCredentialStorageOsWarning`, `settings.credentialsStored`, `settings.deleteCredential`
+- Keys: `settings.autoBackup`, `settings.autoBackupFolder`, `settings.autoBackupFolderHint`, `settings.autoBackupFolderDefault`, `settings.autoBackupFolderBrowse`, `settings.exportSettings`, `settings.importSettings`, `settings.importBackupFileHint`, `settings.fullBackupImport`, `settings.fullBackupCustomModulesWarning`, `settings.includeCredentials`, `settings.includeCredentialsWarning`, `settings.importPassphrase`, `settings.importEncryptedStorePassword`, `settings.importEncryptedStorePasswordHint`, `settings.importActionAdd`, `settings.importActionReplace`, `settings.segment_workspacesConnections`, `settings.segment_dashboards`, `settings.segment_itops`, `settings.segment_assistant`, `settings.segment_settings`, `settings.resetAllSettings`, `settings.resetAllSettingsConfirm`, `settings.resetAllSettingsComplete`, `settings.sectionCredentials`, `settings.credentialStorage`, `settings.credentialStorageFilePortable`, `settings.portableCredentialStorageOsWarning`, `settings.credentialsStored`, `settings.deleteCredential`
 - Topics: SQLite store, OS keychain, encrypted SQLite secret store, Custom Module exclusion from database backups, settings Import/Export `.kkbackup`, background database-backup ZIP snapshots, import / restore, reset all, where my data lives
 - Synonyms: "where is my data", "back up settings", "restore", "factory reset", "uninstall", "API key storage", "export connections without passwords", "share connections", "selective backup"
 
@@ -47,7 +47,14 @@ It creates a backup only when no successful automatic or explicit database
 backup has been recorded during the preceding 24 hours. The worker starts after
 the launch-critical path so Tauri setup and the frontend's initial SQLite reads
 do not wait for snapshot or compression work. Backups older than seven days are
-removed after a successful automatic backup.
+removed after a successful automatic backup. Settings → General → Settings data
+lets the user choose an optional absolute destination folder. Automatic backups
+and the safety database backups created before imports share that destination;
+leaving it blank uses the app-owned `backups` folder beside SQLite. A configured
+folder must still exist when the backup runs. If it is unavailable, the backup
+fails and is retried on a later launch instead of silently falling back to a
+different location. Retention in a custom folder deletes only KKTerm-managed
+`kkterm-<timestamp>-<serial>.zip` files, never unrelated ZIPs.
 
 Automatic backups must **not** run from app-window close.
 
@@ -87,7 +94,7 @@ The secret storage selector (`settings.credentialStorage`) controls which backen
 
 Uninstalling KKTerm removes the executable. The SQLite database and credential backend entries persist unless the user deletes them explicitly. Reinstalling reuses the same SQLite database file from the same user profile location.
 
-When the uninstaller is asked to delete app data, the automatic database-backup ZIPs are not wiped with the rest of the app data: the uninstaller first moves the `backups` folder to `%APPDATA%\KKTerm\backups` (adding a numeric suffix such as `backups-2` if that folder already exists) and tells the user where the backups were kept, so periodic snapshots stay recoverable after a mistaken deletion.
+When the uninstaller is asked to delete app data, the automatic database-backup ZIPs in the app-owned default location are not wiped with the rest of the app data: the uninstaller first moves the `backups` folder to `%APPDATA%\KKTerm\backups` (adding a numeric suffix such as `backups-2` if that folder already exists) and tells the user where the backups were kept, so periodic snapshots stay recoverable after a mistaken deletion. A user-selected custom backup folder is already outside app data and is left untouched.
 
 Portable mode has no uninstaller. Deleting its folder removes its KKTerm-owned data, but machine-owned effects from explicit integrations remain: OS-keychain entries, external MCP client configuration, Install Helper tools, managed web apps, and Windows services are not removed with the folder.
 

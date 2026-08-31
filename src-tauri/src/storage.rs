@@ -728,6 +728,8 @@ pub struct Storage {
 #[serde(rename_all = "camelCase")]
 pub struct GeneralSettings {
     auto_backup_enabled: bool,
+    #[serde(default)]
+    auto_backup_folder: Option<String>,
     #[serde(default = "default_auto_update_checks_enabled")]
     auto_update_checks_enabled: bool,
     #[serde(default = "default_show_connected_connections_in_rail")]
@@ -2322,20 +2324,19 @@ impl Storage {
         {
             return Ok(None);
         }
-        let backup = self.backup_database()?;
-        self.delete_old_backups()?;
+        let backup_dir = self.backup_dir()?;
+        let backup = self.backup_database_in(&backup_dir)?;
+        self.delete_old_backups(&backup_dir)?;
         Ok(Some(backup))
     }
 
     pub fn backup_database(&self) -> Result<DatabaseBackupInfo, String> {
         let backup_dir = self.backup_dir()?;
-        fs::create_dir_all(&backup_dir).map_err(|error| {
-            format!(
-                "failed to create backup directory {}: {error}",
-                backup_dir.display()
-            )
-        })?;
-        let path = self.next_backup_path(&backup_dir)?;
+        self.backup_database_in(&backup_dir)
+    }
+
+    fn backup_database_in(&self, backup_dir: &Path) -> Result<DatabaseBackupInfo, String> {
+        let path = self.next_backup_path(backup_dir)?;
         self.write_database_zip(&path, "backup", true)?;
         let created_at = OffsetDateTime::now_utc()
             .format(&Rfc3339)
@@ -3579,11 +3580,55 @@ impl Storage {
     }
 
     fn backup_dir(&self) -> Result<PathBuf, String> {
+        if let Some(folder) = self.general_settings()?.auto_backup_folder {
+            let path = PathBuf::from(folder);
+            let metadata = fs::metadata(&path).map_err(|error| {
+                format!(
+                    "failed to access configured backup directory {}: {error}",
+                    path.display()
+                )
+            })?;
+            if !metadata.is_dir() {
+                return Err(format!(
+                    "configured backup destination is not a directory: {}",
+                    path.display()
+                ));
+            }
+            let canonical_path = fs::canonicalize(&path).map_err(|error| {
+                format!(
+                    "failed to resolve configured backup directory {}: {error}",
+                    path.display()
+                )
+            })?;
+            for content_root in [
+                self.assistant_chat_threads_dir(),
+                self.system_cleaner_history_dir(),
+                self.note_images_dir(),
+            ] {
+                if let Ok(canonical_root) = fs::canonicalize(content_root)
+                    && canonical_path.starts_with(&canonical_root)
+                {
+                    return Err(format!(
+                        "configured backup destination must not be inside {}",
+                        canonical_root.display()
+                    ));
+                }
+            }
+            return Ok(path);
+        }
+
         let parent = self
             .db_path
             .parent()
             .ok_or_else(|| "database path must include a parent directory".to_string())?;
-        Ok(parent.join("backups"))
+        let path = parent.join("backups");
+        fs::create_dir_all(&path).map_err(|error| {
+            format!(
+                "failed to create backup directory {}: {error}",
+                path.display()
+            )
+        })?;
+        Ok(path)
     }
 
     fn next_backup_path(&self, backup_dir: &Path) -> Result<PathBuf, String> {
@@ -3601,8 +3646,7 @@ impl Storage {
         ))
     }
 
-    fn delete_old_backups(&self) -> Result<(), String> {
-        let backup_dir = self.backup_dir()?;
+    fn delete_old_backups(&self, backup_dir: &Path) -> Result<(), String> {
         let cutoff = SystemTime::now()
             .checked_sub(Duration::from_secs(7 * 24 * 60 * 60))
             .unwrap_or(SystemTime::UNIX_EPOCH);
@@ -3621,13 +3665,12 @@ impl Storage {
             let entry =
                 entry.map_err(|error| format!("failed to inspect backup entry: {error}"))?;
             let path = entry.path();
-            if path.extension().and_then(|extension| extension.to_str()) != Some("zip") {
+            if !is_managed_backup_path(&path) {
                 continue;
             }
-            let metadata = entry
-                .metadata()
+            let metadata = fs::symlink_metadata(&path)
                 .map_err(|error| format!("failed to inspect backup {}: {error}", path.display()))?;
-            if metadata.modified().unwrap_or(SystemTime::now()) < cutoff {
+            if metadata.is_file() && metadata.modified().unwrap_or(SystemTime::now()) < cutoff {
                 remove_file_if_exists(&path)?;
             }
         }
@@ -4048,6 +4091,28 @@ fn timestamp_for_filename() -> String {
                 .map(|duration| duration.as_secs().to_string())
                 .unwrap_or_else(|_| "0".to_string())
         })
+}
+
+fn is_managed_backup_path(path: &Path) -> bool {
+    let Some(filename) = path.file_name().and_then(|value| value.to_str()) else {
+        return false;
+    };
+    let Some(stem) = filename
+        .strip_prefix("kkterm-")
+        .and_then(|value| value.strip_suffix(".zip"))
+    else {
+        return false;
+    };
+    let Some((timestamp, serial)) = stem.rsplit_once('-') else {
+        return false;
+    };
+    !timestamp.is_empty()
+        && timestamp
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || byte == b'-')
+        && timestamp.bytes().any(|byte| byte.is_ascii_digit())
+        && serial.len() == 3
+        && serial.bytes().all(|byte| byte.is_ascii_digit())
 }
 
 fn automatic_backup_is_due(last_backup_at: Option<&str>, now: OffsetDateTime) -> bool {
@@ -6574,6 +6639,7 @@ fn default_installer_default_provider() -> String {
 fn default_general_settings() -> GeneralSettings {
     GeneralSettings {
         auto_backup_enabled: true,
+        auto_backup_folder: None,
         auto_update_checks_enabled: default_auto_update_checks_enabled(),
         show_connected_connections_in_rail: true,
         show_workspace_on_rail: default_show_workspace_on_rail(),
@@ -7309,6 +7375,18 @@ fn default_ai_api_mode() -> String {
 }
 
 fn validate_general_settings(mut settings: GeneralSettings) -> Result<GeneralSettings, String> {
+    settings.auto_backup_folder = settings
+        .auto_backup_folder
+        .map(|folder| folder.trim().to_string())
+        .filter(|folder| !folder.is_empty());
+    if let Some(folder) = settings.auto_backup_folder.as_deref() {
+        if folder.chars().any(char::is_control) {
+            return Err("Auto backup folder must not contain control characters".to_string());
+        }
+        if !Path::new(folder).is_absolute() {
+            return Err("Auto backup folder must be an absolute path".to_string());
+        }
+    }
     settings.pinned_connection_ids = unique_non_empty_strings(settings.pinned_connection_ids);
     settings.status_bar_monitor_interval_seconds =
         match settings.status_bar_monitor_interval_seconds {

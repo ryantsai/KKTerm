@@ -3646,11 +3646,13 @@ fn general_settings_round_trip_through_settings_table() {
     assert_eq!(defaults.status_bar_monitor_interval_seconds, 5);
     assert!(!defaults.advanced_debugging_enabled);
     assert!(!defaults.rdp_webview_stability);
+    assert!(defaults.auto_backup_folder.is_none());
     assert!(defaults.last_backup_at.is_none());
 
     let updated = storage
         .update_general_settings(GeneralSettings {
             auto_backup_enabled: false,
+            auto_backup_folder: None,
             auto_update_checks_enabled: false,
             show_connected_connections_in_rail: true,
             show_workspace_on_rail: false,
@@ -4057,6 +4059,7 @@ fn database_backup_import_restores_settings_and_connections() {
     storage
         .update_general_settings(GeneralSettings {
             auto_backup_enabled: false,
+            auto_backup_folder: None,
             auto_update_checks_enabled: true,
             show_connected_connections_in_rail: true,
             show_workspace_on_rail: false,
@@ -4106,6 +4109,7 @@ fn database_backup_import_restores_settings_and_connections() {
     storage
         .update_general_settings(GeneralSettings {
             auto_backup_enabled: true,
+            auto_backup_folder: None,
             auto_update_checks_enabled: true,
             show_connected_connections_in_rail: false,
             show_workspace_on_rail: true,
@@ -4240,6 +4244,98 @@ fn database_backup_zip_is_serialized_and_importable() {
 
     assert_eq!(imported.connection_tree.connections.len(), 1);
     assert_eq!(imported.connection_tree.connections[0].id, connection.id);
+}
+
+#[test]
+fn database_backup_uses_configured_destination() {
+    let db_path = temp_db_path("database-backup-custom-destination");
+    let destination = db_path
+        .parent()
+        .expect("database path has a parent")
+        .join("selected-backups");
+    fs::create_dir_all(&destination).expect("custom backup destination is created");
+    let storage = Storage::open(db_path).expect("storage opens");
+    let mut settings = storage.general_settings().expect("general settings load");
+    settings.auto_backup_folder = Some(format!("  {}  ", destination.display()));
+    let saved = storage
+        .update_general_settings(settings)
+        .expect("custom backup destination is saved");
+
+    assert_eq!(
+        saved.auto_backup_folder.as_deref(),
+        Some(destination.to_string_lossy().as_ref())
+    );
+
+    let backup = storage.backup_database().expect("database backup succeeds");
+    assert_eq!(
+        Path::new(&backup.path).parent(),
+        Some(destination.as_path())
+    );
+}
+
+#[test]
+fn automatic_backup_retention_recognizes_only_managed_backup_names() {
+    assert!(is_managed_backup_path(Path::new(
+        "kkterm-20260831-010203-001.zip"
+    )));
+    assert!(is_managed_backup_path(Path::new(
+        "kkterm-1756600000-999.zip"
+    )));
+    assert!(!is_managed_backup_path(Path::new("unrelated-20260831.zip")));
+    assert!(!is_managed_backup_path(Path::new(
+        "kkterm-not-a-timestamp-001.zip"
+    )));
+    assert!(!is_managed_backup_path(Path::new(
+        "kkterm-20260831-010203-01.zip"
+    )));
+}
+
+#[test]
+fn automatic_backup_retention_leaves_unrelated_zips_in_custom_destination() {
+    let db_path = temp_db_path("automatic-backup-custom-retention");
+    let destination = db_path
+        .parent()
+        .expect("database path has a parent")
+        .join("selected-backups");
+    fs::create_dir_all(&destination).expect("custom backup destination is created");
+    let managed = destination.join("kkterm-20200101-000000-001.zip");
+    let unrelated = destination.join("unrelated.zip");
+    fs::write(&managed, b"old managed backup").expect("managed fixture is written");
+    fs::write(&unrelated, b"unrelated archive").expect("unrelated fixture is written");
+    let old_modified = SystemTime::now()
+        .checked_sub(Duration::from_secs(8 * 24 * 60 * 60))
+        .expect("old modification time is representable");
+    let old_times = fs::FileTimes::new().set_modified(old_modified);
+    File::options()
+        .write(true)
+        .open(&managed)
+        .expect("managed fixture opens")
+        .set_times(old_times)
+        .expect("managed fixture timestamp is set");
+    File::options()
+        .write(true)
+        .open(&unrelated)
+        .expect("unrelated fixture opens")
+        .set_times(old_times)
+        .expect("unrelated fixture timestamp is set");
+
+    let storage = Storage::open(db_path).expect("storage opens");
+    let mut settings = storage.general_settings().expect("general settings load");
+    settings.auto_backup_folder = Some(destination.to_string_lossy().into_owned());
+    storage
+        .update_general_settings(settings)
+        .expect("custom backup destination is saved");
+    let backup = storage
+        .backup_if_enabled_for_startup()
+        .expect("automatic backup succeeds")
+        .expect("automatic backup is due");
+
+    assert_eq!(
+        Path::new(&backup.path).parent(),
+        Some(destination.as_path())
+    );
+    assert!(!managed.exists(), "managed backup should be expired");
+    assert!(unrelated.exists(), "unrelated ZIP must not be removed");
 }
 
 #[test]

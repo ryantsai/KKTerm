@@ -47,7 +47,9 @@ import {
   invokeCommand,
   isTauriRuntime,
   openFilesystemPath,
+  selectAutoBackupFolder,
 } from "../../lib/tauri";
+import { technicalInputProps } from "../../lib/inputBehavior";
 import {
   isWindowsPlatform,
   supportsInstallerHelper,
@@ -212,9 +214,13 @@ export function GeneralSettings() {
 
   async function handleSave() {
     try {
+      const request = {
+        ...draft,
+        autoBackupFolder: draft.autoBackupFolder?.trim() || undefined,
+      };
       const saved = isTauriRuntime()
-        ? await invokeCommand("update_general_settings", { request: draft })
-        : draft;
+        ? await invokeCommand("update_general_settings", { request })
+        : request;
       setGeneralSettings(saved);
       setDraft(saved);
       await switchLanguage(currentLanguage);
@@ -230,6 +236,23 @@ export function GeneralSettings() {
       await openFilesystemPath(path);
     } catch (openError) {
       showStatusBarNotice(openError instanceof Error ? openError.message : String(openError), { tone: "error" });
+    }
+  }
+
+  async function handleBrowseAutoBackupFolder() {
+    try {
+      const selection = await selectAutoBackupFolder({
+        defaultPath: draft.autoBackupFolder || undefined,
+        title: t("settings.autoBackupFolderBrowse"),
+      });
+      if (selection) {
+        setDraft((settings) => ({ ...settings, autoBackupFolder: selection }));
+      }
+    } catch (browseError) {
+      showStatusBarNotice(
+        browseError instanceof Error ? browseError.message : String(browseError),
+        { tone: "error" },
+      );
     }
   }
 
@@ -674,6 +697,31 @@ export function GeneralSettings() {
               <strong>{t("settings.autoBackup")}</strong>
               <small>{t("settings.autoBackupHint")}</small>
             </span>
+          </label>
+        </div>
+        <div className="form-grid one-column settings-merged-block">
+          <label>
+            <span>{t("settings.autoBackupFolder")}</span>
+            <small>{t("settings.autoBackupFolderHint")}</small>
+            <div className="input-with-button">
+              <input
+                {...technicalInputProps}
+                onChange={(event) => {
+                  const autoBackupFolder = event.currentTarget.value;
+                  setDraft((settings) => ({ ...settings, autoBackupFolder }));
+                }}
+                placeholder={t("settings.autoBackupFolderDefault")}
+                value={draft.autoBackupFolder ?? ""}
+              />
+              <button
+                className="secondary-button"
+                onClick={() => void handleBrowseAutoBackupFolder()}
+                type="button"
+              >
+                <FolderOpen size={16} />
+                {t("settings.autoBackupFolderBrowse")}
+              </button>
+            </div>
           </label>
         </div>
         <div

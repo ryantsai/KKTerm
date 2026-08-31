@@ -1,0 +1,35 @@
+{
+  "id": "com.kkterm.cyberchef",
+  "name": "CyberChef",
+  "version": "11.3.0",
+  "publisher": "KKTerm",
+  "summary": "An unofficial, local-only CyberChef integration for KKTerm API v2.",
+  "apiVersion": 2,
+  "homepage": "https://gchq.github.io/CyberChef/",
+  "license": {
+    "name": "Apache-2.0",
+    "file": "licenses/LICENSE",
+    "noticesFile": "licenses/THIRD_PARTY_NOTICES.txt"
+  },
+  "permissions": {
+    "browserStorage": true,
+    "openExternal": true,
+    "clipboard": true,
+    "hostUi": true,
+    "files": {
+      "open": true,
+      "save": true,
+      "extensions": []
+    }
+  },
+  "modules": [
+    {
+      "id": "cyberchef",
+      "title": "CyberChef",
+      "icon": "dist/icon.svg",
+      "entrypoint": "dist/index.html",
+      "railVisible": true,
+      "routing": "static"
+    }
+  ]
+}

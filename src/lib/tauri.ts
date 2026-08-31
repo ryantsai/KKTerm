@@ -5031,6 +5031,22 @@ export async function selectScreenshotFolder(options: {
   return typeof selectedPath === "string" ? selectedPath : null;
 }
 
+export async function selectAutoBackupFolder(options: {
+  defaultPath?: string;
+  title: string;
+}) {
+  if (!isTauriRuntime()) {
+    return null;
+  }
+  const selectedPath = await openDialog({
+    defaultPath: options.defaultPath,
+    directory: true,
+    multiple: false,
+    title: options.title,
+  });
+  return typeof selectedPath === "string" ? selectedPath : null;
+}
+
 export async function selectUrlDownloadFolder(options: {
   defaultPath?: string;
   title: string;
