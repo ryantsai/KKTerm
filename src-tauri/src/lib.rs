@@ -334,8 +334,14 @@ fn open_filesystem_path(app: tauri::AppHandle, path: String) -> Result<(), Strin
     if is_windows_executable_path(&canonical_path) {
         return open_windows_executable_path(&requested_path);
     }
+
+    #[cfg(target_os = "macos")]
+    let open_with = canonical_path.is_dir().then_some("Finder");
+    #[cfg(not(target_os = "macos"))]
+    let open_with = None::<&str>;
+
     app.opener()
-        .open_path(canonical_path.to_string_lossy(), None::<&str>)
+        .open_path(canonical_path.to_string_lossy(), open_with)
         .map_err(|error| {
             format!(
                 "failed to open filesystem path {}: {error}",

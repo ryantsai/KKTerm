@@ -16,6 +16,18 @@ test("Settings data actions expose only selective Import and Export buttons", as
   assert.doesNotMatch(actionsBlock, /settings\.selectiveImport/);
 });
 
+test("Settings backup-folder Browse matches the Settings data action height", async () => {
+  const css = await readFile(
+    new URL("../src/modules/settings/settings.css", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    css,
+    /\.input-with-button \.toolbar-button,\s*\.input-with-button \.secondary-button,[\s\S]*?height:\s*36px;/,
+  );
+});
+
 test("Selective data dialogs preserve backend segments behind five UI groups", async () => {
   const exportDialog = await readFile(
     new URL("../src/modules/settings/SelectiveExportDialog.tsx", import.meta.url),

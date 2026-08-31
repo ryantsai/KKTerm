@@ -2807,6 +2807,7 @@ input.settings-credential-search {
 }
 
 .input-with-button .toolbar-button,
+.input-with-button .secondary-button,
 .settings-data-actions .secondary-button,
 .settings-list-actions .secondary-button,
 .settings-reset-layout .toolbar-button {

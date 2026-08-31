@@ -29,8 +29,13 @@ test("local file browser opens filesystem paths through the typed Tauri command"
   );
   assert.match(
     rustSource,
-    /fn open_filesystem_path\(app: tauri::AppHandle, path: String\) -> Result<\(\), String>[\s\S]*canonicalize\(\)[\s\S]*\.open_path\(canonical_path\.to_string_lossy\(\), None::<&str>\)/,
+    /fn open_filesystem_path\(app: tauri::AppHandle, path: String\) -> Result<\(\), String>[\s\S]*canonicalize\(\)[\s\S]*\.open_path\(canonical_path\.to_string_lossy\(\), open_with\)/,
     "the backend opener should canonicalize and open non-executable filesystem paths",
+  );
+  assert.match(
+    rustSource,
+    /#\[cfg\(target_os = "macos"\)\][\s\S]*canonical_path\.is_dir\(\)\.then_some\("Finder"\)/,
+    "macOS directories should open explicitly with Finder so .app-suffixed data folders are not launched as applications",
   );
   assert.match(
     rustSource,
