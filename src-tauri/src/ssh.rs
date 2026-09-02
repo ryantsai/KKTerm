@@ -560,6 +560,70 @@ impl client::Handler for InspectingClient {
     }
 }
 
+enum NativeSshConnectAttemptError {
+    Socks(String),
+    Ssh(russh::Error),
+}
+
+impl NativeSshConnectAttemptError {
+    fn is_kex_init(&self) -> bool {
+        matches!(self, Self::Ssh(russh::Error::KexInit))
+    }
+
+    fn into_message(self, ssh_prefix: &str) -> String {
+        match self {
+            Self::Socks(error) => error,
+            Self::Ssh(error) => format!("{ssh_prefix}: {error}"),
+        }
+    }
+}
+
+async fn connect_native_ssh_client<H>(
+    config: Arc<client::Config>,
+    host: &str,
+    port: u16,
+    socks_proxy: Option<&str>,
+    handler: H,
+    log_socks: bool,
+) -> Result<client::Handle<H>, NativeSshConnectAttemptError>
+where
+    H: client::Handler<Error = russh::Error> + Send + 'static,
+{
+    match socks_proxy {
+        Some(proxy) => {
+            if log_socks {
+                ssh_debug(
+                    "connection.socks.connect_begin",
+                    json!({
+                        "host": host,
+                        "port": port,
+                        "socksProxyEndpoint": socks_proxy_endpoint_for_log(proxy),
+                    }),
+                );
+            }
+            let stream = crate::socks::connect_via_socks5(proxy, host, port)
+                .await
+                .map_err(NativeSshConnectAttemptError::Socks)?;
+            if log_socks {
+                ssh_debug(
+                    "connection.socks.connect_ok",
+                    json!({
+                        "host": host,
+                        "port": port,
+                        "socksProxyEndpoint": socks_proxy_endpoint_for_log(proxy),
+                    }),
+                );
+            }
+            client::connect_stream(config, stream, handler)
+                .await
+                .map_err(NativeSshConnectAttemptError::Ssh)
+        }
+        None => client::connect(config, (host, port), handler)
+            .await
+            .map_err(NativeSshConnectAttemptError::Ssh),
+    }
+}
+
 pub fn can_start_native_terminal(
     key_path: Option<&str>,
     password: Option<&str>,
@@ -723,20 +787,54 @@ pub fn inspect_host_key(
             ),
             ..Default::default()
         });
-        let capture = Arc::clone(&server_public_key);
         with_ssh_startup_timeout("inspecting SSH host key", async {
-            let inspecting = InspectingClient {
-                server_public_key: capture,
-            };
-            let session = match socks_proxy.as_deref() {
-                Some(proxy) => {
-                    let stream =
-                        crate::socks::connect_via_socks5(proxy, host.as_str(), port).await?;
-                    client::connect_stream(config, stream, inspecting).await
+            let primary = connect_native_ssh_client(
+                config,
+                host.as_str(),
+                port,
+                socks_proxy.as_deref(),
+                InspectingClient {
+                    server_public_key: Arc::clone(&server_public_key),
+                },
+                false,
+            )
+            .await;
+            let session = match primary {
+                Ok(session) => session,
+                Err(error) if error.is_kex_init() => {
+                    ssh_debug(
+                        "connection.kex.group_exchange_retry",
+                        json!({
+                            "host": host,
+                            "port": port,
+                            "phase": "host_key_inspection",
+                        }),
+                    );
+                    let fallback_config = Arc::new(client::Config {
+                        inactivity_timeout: Some(SSH_STARTUP_TIMEOUT),
+                        preferred: native_ssh_preferred_algorithms_without_group_exchange(
+                            false,
+                            request.ssh_old_protocols.unwrap_or(false),
+                        ),
+                        ..Default::default()
+                    });
+                    connect_native_ssh_client(
+                        fallback_config,
+                        host.as_str(),
+                        port,
+                        socks_proxy.as_deref(),
+                        InspectingClient {
+                            server_public_key: Arc::clone(&server_public_key),
+                        },
+                        false,
+                    )
+                    .await
+                    .map_err(|error| error.into_message("failed to inspect SSH host key"))?
                 }
-                None => client::connect(config, (host.as_str(), port), inspecting).await,
-            }
-            .map_err(|error| format!("failed to inspect SSH host key: {error}"))?;
+                Err(error) => {
+                    return Err(error.into_message("failed to inspect SSH host key"));
+                }
+            };
             let _ = session
                 .disconnect(Disconnect::ByApplication, "host key inspected", "en")
                 .await;
@@ -1930,7 +2028,7 @@ async fn connect_verified_client_with_prompt(
         return Err("user is required for native SSH sessions".to_string());
     }
 
-    let auth = normalize_native_ssh_auth(request.auth)?;
+    let auth = normalize_native_ssh_auth(request.auth.clone())?;
     let config = Arc::new(native_ssh_client_config(
         request.compression,
         request.old_protocols,
@@ -1957,45 +2055,68 @@ async fn connect_verified_client_with_prompt(
             "keepaliveMaxMissed": SSH_KEEPALIVE_MAX_MISSED,
         }),
     );
-    let verifying = VerifyingClient {
+    let verifying = || VerifyingClient {
         host: host.to_string(),
         port: request.port,
-        known_hosts_path: request.known_hosts_path,
+        known_hosts_path: request.known_hosts_path.clone(),
         rejection: Arc::clone(&host_key_rejection),
-        x11_forwarding: request.x11_forwarding,
-        remote_forward_targets: request.remote_forward_targets,
-        bridge_tasks: request.bridge_tasks,
+        x11_forwarding: request.x11_forwarding.clone(),
+        remote_forward_targets: request.remote_forward_targets.clone(),
+        bridge_tasks: request.bridge_tasks.clone(),
     };
     let mut session = with_ssh_startup_timeout("connecting to SSH server", async {
-        match socks_proxy.as_deref() {
-            Some(proxy) => {
+        let primary = connect_native_ssh_client(
+            config,
+            host,
+            request.port,
+            socks_proxy.as_deref(),
+            verifying(),
+            true,
+        )
+        .await;
+        match primary {
+            Ok(session) => Ok(session),
+            Err(error) if error.is_kex_init() => {
                 ssh_debug(
-                    "connection.socks.connect_begin",
+                    "connection.kex.group_exchange_retry",
                     json!({
                         "host": host,
                         "port": request.port,
-                        "socksProxyEndpoint": socks_proxy_endpoint_for_log(proxy),
+                        "phase": "session_connect",
                     }),
                 );
-                let stream = crate::socks::connect_via_socks5(proxy, host, request.port).await?;
-                ssh_debug(
-                    "connection.socks.connect_ok",
-                    json!({
-                        "host": host,
-                        "port": request.port,
-                        "socksProxyEndpoint": socks_proxy_endpoint_for_log(proxy),
-                    }),
-                );
-                client::connect_stream(config, stream, verifying)
-                    .await
-                    .map_err(|error| format!("failed to connect to SSH server: {error}"))
-            }
-            None => client::connect(config, (host, request.port), verifying)
+                let fallback_config = Arc::new(client::Config {
+                    preferred: native_ssh_preferred_algorithms_without_group_exchange(
+                        request.compression,
+                        request.old_protocols,
+                    ),
+                    ..native_ssh_client_config(request.compression, request.old_protocols)
+                });
+                connect_native_ssh_client(
+                    fallback_config,
+                    host,
+                    request.port,
+                    socks_proxy.as_deref(),
+                    verifying(),
+                    true,
+                )
                 .await
                 .map_err(|error| {
-                    remembered_rejection(&host_key_rejection)
-                        .unwrap_or_else(|| format!("failed to connect to SSH server: {error}"))
-                }),
+                    if socks_proxy.is_none() {
+                        remembered_rejection(&host_key_rejection).unwrap_or_else(|| {
+                            error.into_message("failed to connect to SSH server")
+                        })
+                    } else {
+                        error.into_message("failed to connect to SSH server")
+                    }
+                })
+            }
+            Err(error) => Err(if socks_proxy.is_none() {
+                remembered_rejection(&host_key_rejection)
+                    .unwrap_or_else(|| error.into_message("failed to connect to SSH server"))
+            } else {
+                error.into_message("failed to connect to SSH server")
+            }),
         }
     })
     .await?;
@@ -2548,6 +2669,29 @@ fn native_ssh_preferred_algorithms(compression: bool, old_protocols: bool) -> ru
         }
         preferred.mac = std::borrow::Cow::Owned(mac);
     }
+    preferred
+}
+
+fn native_ssh_preferred_algorithms_without_group_exchange(
+    compression: bool,
+    old_protocols: bool,
+) -> russh::Preferred {
+    // Compatibility retry for embedded servers that advertise dynamic GEX but
+    // fail after it is selected. Keep every fixed-group method (including
+    // group14-sha256) and do not add algorithms outside the Connection's
+    // existing modern/legacy policy.
+    let mut preferred = native_ssh_preferred_algorithms(compression, old_protocols);
+    preferred.kex = std::borrow::Cow::Owned(
+        preferred
+            .kex
+            .iter()
+            .filter(|name| {
+                name.as_ref() != russh::kex::DH_GEX_SHA256.as_ref()
+                    && name.as_ref() != russh::kex::DH_GEX_SHA1.as_ref()
+            })
+            .cloned()
+            .collect(),
+    );
     preferred
 }
 
@@ -3260,6 +3404,28 @@ mod tests {
     use super::*;
     use std::{env, fs, io::Write, process::Command, time::SystemTime};
 
+    struct UndersizedGexServer;
+
+    impl russh::server::Handler for UndersizedGexServer {
+        type Error = russh::Error;
+
+        async fn auth_password(
+            &mut self,
+            _user: &str,
+            _password: &str,
+        ) -> Result<russh::server::Auth, Self::Error> {
+            Ok(russh::server::Auth::Accept)
+        }
+
+        fn lookup_dh_gex_group(
+            &mut self,
+            _gex_params: &russh::client::GexParams,
+        ) -> impl Future<Output = Result<Option<russh::kex::dh::groups::DhGroup>, Self::Error>> + Send
+        {
+            async { Ok(Some(russh::kex::dh::groups::DH_GROUP14.clone())) }
+        }
+    }
+
     #[test]
     fn unencrypted_key_ignores_an_extra_passphrase() {
         let path = temporary_ssh_key_path("unencrypted");
@@ -3435,6 +3601,120 @@ mod tests {
     }
 
     #[test]
+    fn ssh_connections_retry_without_group_exchange_after_kex_init_failure() {
+        let listener = std::net::TcpListener::bind(("127.0.0.1", 0)).expect("bind test SSH");
+        listener
+            .set_nonblocking(true)
+            .expect("make test SSH listener nonblocking");
+        let port = listener.local_addr().expect("test SSH address").port();
+        let accepted = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let server_accepted = Arc::clone(&accepted);
+
+        let mut server_config = russh::server::Config::default();
+        server_config.keys.push(
+            russh::keys::ssh_key::PrivateKey::random(
+                &mut rand::rng(),
+                russh::keys::ssh_key::Algorithm::Ed25519,
+            )
+            .expect("generate test SSH host key"),
+        );
+        server_config.preferred = russh::Preferred {
+            kex: std::borrow::Cow::Borrowed(&[
+                russh::kex::DH_GEX_SHA256,
+                russh::kex::DH_G14_SHA256,
+            ]),
+            ..russh::Preferred::DEFAULT
+        };
+        let server_config = Arc::new(server_config);
+
+        let server = std::thread::spawn(move || {
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("create test SSH runtime");
+            runtime.block_on(async move {
+                let listener =
+                    tokio::net::TcpListener::from_std(listener).expect("adopt test SSH listener");
+                for _ in 0..4 {
+                    let Ok(Ok((socket, _))) =
+                        tokio::time::timeout(Duration::from_secs(3), listener.accept()).await
+                    else {
+                        break;
+                    };
+                    server_accepted.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                    if let Ok(session) = russh::server::run_stream(
+                        Arc::clone(&server_config),
+                        socket,
+                        UndersizedGexServer,
+                    )
+                    .await
+                    {
+                        let _ = tokio::time::timeout(Duration::from_secs(3), session).await;
+                    }
+                }
+            });
+        });
+
+        let known_hosts_path = temporary_ssh_key_path("undersized-gex-known-hosts");
+        let result = inspect_host_key(
+            known_hosts_path.clone(),
+            InspectSshHostKeyRequest {
+                host: "127.0.0.1".to_string(),
+                port: Some(port),
+                ssh_socks_proxy: None,
+                ssh_socks_proxy_username: None,
+                ssh_socks_proxy_secret_owner_id: None,
+                ssh_old_protocols: None,
+            },
+        );
+        let preview = result.expect("fixed-group retry inspects the host key");
+
+        assert_eq!(preview.port, port);
+        trust_host_key(
+            known_hosts_path.clone(),
+            TrustSshHostKeyRequest {
+                host: "127.0.0.1".to_string(),
+                port: Some(port),
+                public_key: preview.public_key,
+                replace: false,
+            },
+        )
+        .expect("trust the test SSH host key");
+
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("create test SSH client runtime");
+        let session = runtime
+            .block_on(connect_verified_client(NativeSshConnectionRequest {
+                host: "127.0.0.1".to_string(),
+                user: "test".to_string(),
+                port,
+                auth: NativeSshAuth::Password {
+                    password: Some("secret".to_string()),
+                },
+                known_hosts_path: known_hosts_path.clone(),
+                x11_forwarding: None,
+                socks_proxy: None,
+                compression: false,
+                old_protocols: false,
+                remote_forward_targets: None,
+                bridge_tasks: None,
+            }))
+            .expect("fixed-group retry connects and authenticates");
+        runtime.block_on(async {
+            session
+                .disconnect(Disconnect::ByApplication, "test complete", "en")
+                .await
+                .expect("disconnect test SSH session");
+        });
+
+        server.join().expect("test SSH server exits");
+        assert_eq!(accepted.load(std::sync::atomic::Ordering::SeqCst), 4);
+        let _ = fs::remove_file(known_hosts_path);
+    }
+
+    #[test]
     fn old_protocols_are_not_advertised_by_default() {
         let config = native_ssh_client_config(true, false);
         let kex_order: Vec<&str> = config
@@ -3466,6 +3746,27 @@ mod tests {
             .map(|name| name.as_ref())
             .collect();
         assert!(!mac_order.contains(&"hmac-sha1"));
+    }
+
+    #[test]
+    fn kex_init_retry_removes_only_dynamic_group_exchange_methods() {
+        let modern = native_ssh_preferred_algorithms_without_group_exchange(true, false);
+        let modern_order: Vec<&str> = modern.kex.iter().map(|name| name.as_ref()).collect();
+
+        assert!(!modern_order.contains(&"diffie-hellman-group-exchange-sha256"));
+        assert!(!modern_order.contains(&"diffie-hellman-group-exchange-sha1"));
+        assert!(modern_order.contains(&"diffie-hellman-group14-sha256"));
+        assert!(modern_order.contains(&"diffie-hellman-group16-sha512"));
+        assert!(!modern_order.contains(&"diffie-hellman-group14-sha1"));
+        assert!(!modern_order.contains(&"diffie-hellman-group1-sha1"));
+
+        let legacy = native_ssh_preferred_algorithms_without_group_exchange(true, true);
+        let legacy_order: Vec<&str> = legacy.kex.iter().map(|name| name.as_ref()).collect();
+
+        assert!(!legacy_order.contains(&"diffie-hellman-group-exchange-sha256"));
+        assert!(!legacy_order.contains(&"diffie-hellman-group-exchange-sha1"));
+        assert!(legacy_order.contains(&"diffie-hellman-group14-sha1"));
+        assert!(legacy_order.contains(&"diffie-hellman-group1-sha1"));
     }
 
     #[test]
