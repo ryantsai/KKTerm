@@ -3,6 +3,64 @@
 All notable changes to KKTerm are documented here.
 
 ## Direct Downloads
+* 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.9/kkterm-3000.0.9-windows-x64-setup.exe)
+* 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.9/kkterm-3000.0.9-windows-arm64-setup.exe)
+* 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.9/kkterm-3000.0.9-windows-x64-portable.zip)
+* 📦 [Portable for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.9/kkterm-3000.0.9-windows-arm64-portable.zip)
+
+## Highlights
+
+- **Native SSH Connection retries**: improve reliability for SSH Connections (including when using tmux), with updates to the SSH manual and architecture docs. *(#29dd100)*
+- **Better filesystem path opening on macOS**: updated path-opening behavior and related tests. *(#a95cd33)*
+- **CyberChef module update**: CyberChef version updated to **11.3.1**, with theme control handling adjustments. *(#2bc6b35)*
+
+## New
+
+- Native SSH connection retries (implemented at the Connection layer). *(29dd100)*
+
+## Improved
+
+- Enhanced filesystem path opening for **macOS**. *(a95cd33)*
+- Updated CyberChef integration to **11.3.1** and adjusted theme control handling. *(2bc6b35)*
+
+## Fixed
+
+- —  
+
+## Internal
+
+- Updated SSH docs/tests and implementation details supporting native SSH retries. *(29dd100)*
+- Updated settings and filesystem path opener tests for macOS behavior. *(a95cd33)*
+- Updated CyberChef custom module package/config and compatibility test coverage. *(2bc6b35)*
+
+---
+
+## 重點摘要
+
+- **原生 SSH 連線重試（Connection retries）**：提升 SSH Connection 的可靠性（包含搭配 tmux 時的情境），並更新 SSH 說明與架構文件。*(#29dd100)*
+- **macOS 檔案路徑開啟更順**：調整 macOS 上的路徑開啟行為，並更新相關測試。*(#a95cd33)*
+- **CyberChef 模組更新**：CyberChef 版本更新為 **11.3.1**，並調整主題控制（theme control）處理方式。*(#2bc6b35)*
+
+## 新增
+
+- 原生 SSH 連線重試（實作於 Connection 層）。*(29dd100)*
+
+## 改善
+
+- 強化 **macOS** 的檔案路徑開啟能力。*(a95cd33)*
+- 更新 CyberChef 整合到 **11.3.1**，並調整主題控制處理。*(2bc6b35)*
+
+## 修正
+
+- —  
+
+## 內部
+
+- 更新支援原生 SSH 重試的 SSH 文件與實作細節。*(29dd100)*
+- 更新設定與檔案路徑開啟器的 macOS 行為測試。*(a95cd33)*
+- 更新 CyberChef 自訂模組的套件/設定與相容性測試。*(2bc6b35)*
+
+## Direct Downloads
 * 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.8/kkterm-3000.0.8-windows-x64-setup.exe)
 * 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.8/kkterm-3000.0.8-windows-arm64-setup.exe)
 * 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.8/kkterm-3000.0.8-windows-x64-portable.zip)
