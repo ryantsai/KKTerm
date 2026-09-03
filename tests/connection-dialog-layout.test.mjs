@@ -35,3 +35,21 @@ assert.match(
   /justify-self:\s*end;/,
   "the psmux toggle switch should sit flush with the right edge of its control column"
 );
+
+const advancedGridRule = connectionStyles.match(/\.connection-advanced-grid\s*\{(?<body>[^}]*)\}/s);
+assert.ok(advancedGridRule, "RDP advanced options should define their nested grid");
+assert.match(
+  advancedGridRule.groups.body,
+  /grid-template-columns:\s*minmax\(0,\s*1fr\);/,
+  "RDP advanced options should use full-width rows inside the narrow options panel",
+);
+
+const advancedToggleRule = connectionStyles.match(
+  /\.connection-specific-options-panel\s+\.connection-advanced-grid\s+\.connection-session-toggle:has\(\.option-glyph\)\s*\{(?<body>[^}]*)\}/s,
+);
+assert.ok(advancedToggleRule, "RDP advanced toggles should override the panel's select-sized control column");
+assert.match(
+  advancedToggleRule.groups.body,
+  /grid-template-columns:\s*auto\s+minmax\(0,\s*1fr\)\s+auto;/,
+  "RDP advanced switches should reserve only their own width so CJK labels do not collapse",
+);

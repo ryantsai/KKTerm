@@ -1696,8 +1696,7 @@ fieldset.connection-specific-options > legend {
 
 .connection-advanced-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  column-gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
   row-gap: 2px;
   padding: 6px 12px 10px;
   border-top: 1px solid var(--hairline);
@@ -2063,6 +2062,11 @@ fieldset.connection-specific-options > legend {
 .connection-specific-options-panel .connection-session-toggle:has(.option-glyph) {
   grid-template-columns: auto minmax(0, 1fr) minmax(120px, 168px);
   column-gap: 13px;
+}
+
+/* Advanced toggles need only a switch-width column, leaving room for localized labels. */
+.connection-specific-options-panel .connection-advanced-grid .connection-session-toggle:has(.option-glyph) {
+  grid-template-columns: auto minmax(0, 1fr) auto;
 }
 
 .connection-specific-options-panel .connection-session-toggle:has(.option-glyph) > input[type="checkbox"],
