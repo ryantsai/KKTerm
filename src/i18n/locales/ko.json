@@ -43,6 +43,8 @@
     "storePurchaseAction": "KKTerm 지원하기",
     "storePurchaseOpenFailed": "Microsoft Store를 열 수 없습니다: {{message}}",
     "titlebar": {
+      "appName": "KKTerm",
+      "appNameVersion": "KKTerm v{{version}}",
       "minimize": "최소화",
       "maximize": "최대화",
       "restore": "복원",

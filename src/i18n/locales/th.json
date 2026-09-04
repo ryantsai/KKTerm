@@ -43,6 +43,8 @@
     "storePurchaseAction": "สนับสนุน KKTerm",
     "storePurchaseOpenFailed": "ไม่สามารถเปิด Microsoft Store ได้: {{message}}",
     "titlebar": {
+      "appName": "KKTerm",
+      "appNameVersion": "KKTerm v{{version}}",
       "minimize": "ย่อ",
       "maximize": "ขยาย",
       "restore": "คืนค่า",

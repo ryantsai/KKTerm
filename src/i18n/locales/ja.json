@@ -43,6 +43,8 @@
     "storePurchaseAction": "KKTerm を応援する",
     "storePurchaseOpenFailed": "Microsoft Store を開けませんでした: {{message}}",
     "titlebar": {
+      "appName": "KKTerm",
+      "appNameVersion": "KKTerm v{{version}}",
       "minimize": "最小化",
       "maximize": "最大化",
       "restore": "元に戻す",

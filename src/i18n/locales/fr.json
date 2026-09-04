@@ -43,6 +43,8 @@
     "storePurchaseAction": "Soutenir KKTerm",
     "storePurchaseOpenFailed": "Impossible d’ouvrir le Microsoft Store : {{message}}",
     "titlebar": {
+      "appName": "KKTerm",
+      "appNameVersion": "KKTerm v{{version}}",
       "minimize": "Réduire",
       "maximize": "Agrandir",
       "restore": "Restaurer",

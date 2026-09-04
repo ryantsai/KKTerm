@@ -43,6 +43,8 @@
     "storePurchaseAction": "Dukung KKTerm",
     "storePurchaseOpenFailed": "Tidak dapat membuka Microsoft Store: {{message}}",
     "titlebar": {
+      "appName": "KKTerm",
+      "appNameVersion": "KKTerm v{{version}}",
       "minimize": "Minimalkan",
       "maximize": "Maksimalkan",
       "restore": "Pulihkan",

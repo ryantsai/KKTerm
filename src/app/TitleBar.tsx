@@ -152,7 +152,10 @@ export function TitleBar({
     void closeMainWindow();
   }
 
-  const titleText = version ? `KKTerm v${version}` : "KKTerm";
+  const appName = t("app.titlebar.appName");
+  const titleText = version
+    ? t("app.titlebar.appNameVersion", { version })
+    : appName;
 
   return (
     <div
@@ -162,17 +165,44 @@ export function TitleBar({
       data-tauri-drag-region
     >
       <div className="app-titlebar-label" data-tauri-drag-region>
-        <img
-          className="app-titlebar-icon"
-          src={appIconUrl}
-          alt=""
-          aria-hidden="true"
-          draggable={false}
-          data-tauri-drag-region
-        />
-        <span className="app-titlebar-title" data-tauri-drag-region>
-          {titleText}
-        </span>
+        <div className="app-titlebar-brand" data-tauri-drag-region>
+          <img
+            className="app-titlebar-icon"
+            src={appIconUrl}
+            alt=""
+            aria-hidden="true"
+            draggable={false}
+            data-tauri-drag-region
+          />
+          <span className="app-titlebar-title" data-tauri-drag-region>
+            <span className="sr-only" data-tauri-drag-region>
+              {titleText}
+            </span>
+            <span
+              className="app-titlebar-title-compact"
+              aria-hidden="true"
+              data-tauri-drag-region
+            >
+              {appName}
+            </span>
+            <span
+              className="app-titlebar-title-full"
+              aria-hidden="true"
+              data-tauri-drag-region
+            >
+              {Array.from(titleText).map((character, index) => (
+                <span
+                  key={index}
+                  className="app-titlebar-title-char"
+                  style={{ animationDelay: `${index * 0.05}s` }}
+                  data-tauri-drag-region
+                >
+                  {character}
+                </span>
+              ))}
+            </span>
+          </span>
+        </div>
         {activePage === "workspace" && showWorkspaceOpenMenu && isWindowsPlatform() ? (
           <button
             aria-label={t("app.openFile")}

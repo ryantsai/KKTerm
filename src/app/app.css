@@ -56,6 +56,13 @@
   -webkit-app-region: drag;
 }
 
+.app-titlebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .app-titlebar-icon {
   width: 16px;
   height: 16px;
@@ -74,6 +81,56 @@
   overflow: hidden;
   text-overflow: ellipsis;
   opacity: 0.82;
+}
+
+.app-titlebar-title-full {
+  display: none;
+}
+
+.app-titlebar-title-char {
+  display: inline-block;
+  white-space: pre;
+}
+
+.app-titlebar-brand:hover .app-titlebar-title {
+  opacity: 1;
+}
+
+.app-titlebar-brand:hover .app-titlebar-title-compact {
+  display: none;
+}
+
+.app-titlebar-brand:hover .app-titlebar-title-full {
+  display: inline;
+}
+
+.app-titlebar-brand:hover .app-titlebar-title-char {
+  animation: titlebar-color-shift 1s both;
+}
+
+@keyframes titlebar-color-shift {
+  0% {
+    color: var(--titlebar-text);
+    opacity: 0;
+  }
+  33% {
+    color: var(--green);
+    opacity: 1;
+  }
+  66% {
+    color: var(--notice-info);
+    opacity: 1;
+  }
+  100% {
+    color: var(--titlebar-text);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-titlebar-brand:hover .app-titlebar-title-char {
+    animation: none;
+  }
 }
 
 .app-titlebar-open-path-button {

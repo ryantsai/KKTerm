@@ -43,6 +43,8 @@
     "storePurchaseAction": "Ủng hộ KKTerm",
     "storePurchaseOpenFailed": "Không thể mở Microsoft Store: {{message}}",
     "titlebar": {
+      "appName": "KKTerm",
+      "appNameVersion": "KKTerm v{{version}}",
       "minimize": "Thu nhỏ",
       "maximize": "Phóng to",
       "restore": "Khôi phục",
