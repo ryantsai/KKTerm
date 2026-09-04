@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { FolderOpen, Palette, RefreshCw, RotateCcw } from "../../lib/reicon";
 import { useTranslation } from "react-i18next";
 import {
@@ -29,6 +29,7 @@ function appSystemFontCssValue(family: string) {
 
 export function AppearanceSettings({ onResetLayout }: { onResetLayout: () => void }) {
   const { t } = useTranslation();
+  const fontFamilyId = useId();
   const appearanceSettings = useWorkspaceStore((state) => state.appearanceSettings);
   const setAppearanceSettings = useWorkspaceStore((state) => state.setAppearanceSettings);
   const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
@@ -159,7 +160,7 @@ export function AppearanceSettings({ onResetLayout }: { onResetLayout: () => voi
           <p className="field-hint">{t("settings.typographyHint")}</p>
         </div>
         <div className="form-grid appearance-font-grid">
-          <label data-tutorial-id="settings.appUiFontFamily">
+          <label data-tutorial-id="settings.appUiFontFamily" htmlFor={fontFamilyId}>
             <span>{t("settings.appUiFontFamily")}</span>
             <div className="input-with-button font-input-with-button">
               <button
@@ -173,6 +174,8 @@ export function AppearanceSettings({ onResetLayout }: { onResetLayout: () => voi
                 <RefreshCw className={refreshingFonts ? "spin" : undefined} size={15} />
               </button>
               <select
+                id={fontFamilyId}
+                aria-label={t("settings.appUiFontFamily")}
                 onChange={(event) => {
                   const selectedValue = event.currentTarget.value;
                   setDraft((s) => {

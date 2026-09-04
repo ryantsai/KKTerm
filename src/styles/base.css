@@ -168,6 +168,17 @@ h2 {
   font-size: 13px;
 }
 
+.search-box:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@media (forced-colors: active) {
+  :focus-visible {
+    outline: 2px solid Highlight !important;
+  }
+}
+
 
 .toolbar-button {
   --button-shadow-color: var(--border-strong);

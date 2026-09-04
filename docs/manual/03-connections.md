@@ -12,6 +12,13 @@
 
 ## Connection kinds
 
+The `connections.newConnectionTitle`, `connections.quickConnect`, and
+`connections.connectionProperties` dialogs move keyboard focus into the form.
+Tab and Shift+Tab stay inside the dialog; Escape uses `connections.cancel` and
+returns focus to the opening control. The nested `settings.sshKeyEmailDialogTitle`
+dialog follows the same behavior and cannot be dismissed while key generation
+is running.
+
 | Kind | i18n label | Notes |
 |------|------------|-------|
 | Local terminal | `connections.localShell` | Local PTY (ConPTY/`portable_pty`). |

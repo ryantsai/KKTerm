@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<!-- Run npm run dev, then open /tests/dialog-focus.browser.html. Exercises the
+     real React/DOM lifecycle in Strict Mode without adding a DOM emulator. -->
+<head><meta charset="utf-8"><title>Dialog focus regression</title></head>
+<body><div id="root"></div><pre role="status" id="results"></pre><script type="module">
+import React from "react";
+import { createRoot } from "react-dom/client";
+import { flushSync } from "react-dom";
+import i18next from "i18next";
+import { initReactI18next } from "react-i18next";
+import { ConfirmSheet } from "/src/app/ui/dialog/ConfirmSheet.tsx";
+import { DialogConventionProvider } from "/src/app/ui/dialog/Sheet.tsx";
+await i18next.use(initReactI18next).init({ lng: "en", resources: { en: { translation: {} } } });
+function Review({ autoFocusConfirm }) {
+  const [open, setOpen] = React.useState(false);
+  return React.createElement(React.Fragment, null,
+    React.createElement("button", { onClick: () => setOpen(true) }, "Open confirmation"),
+    open && React.createElement(ConfirmSheet, {
+      title: "Focus verification", confirmLabel: "Confirm", cancelLabel: "Cancel",
+      autoFocusConfirm,
+      onConfirm: () => setOpen(false), onCancel: () => setOpen(false),
+    }),
+  );
+}
+const root = createRoot(document.getElementById("root"));
+const results = document.getElementById("results");
+function check(condition, message) {
+  results.textContent += `${condition ? "PASS" : "FAIL"}: ${message}\n`;
+  if (!condition) throw new Error(message);
+}
+function press(key, shiftKey = false) {
+  flushSync(() => document.activeElement.dispatchEvent(new KeyboardEvent("keydown", {
+    key, shiftKey, bubbles: true, cancelable: true,
+  })));
+}
+for (const autoFocusConfirm of [false, true]) {
+  flushSync(() => root.render(React.createElement(React.StrictMode, null,
+    React.createElement(DialogConventionProvider, { value: "windows" },
+      React.createElement(Review, { key: String(autoFocusConfirm), autoFocusConfirm })),
+  )));
+  const opener = document.querySelector("#root button");
+  opener.focus();
+  flushSync(() => opener.click());
+  const dialog = document.querySelector('[role="dialog"]');
+  const [confirm, cancel] = dialog.querySelectorAll("button");
+  check(document.activeElement === (autoFocusConfirm ? confirm : cancel),
+    `Strict Mode preserves ${autoFocusConfirm ? "explicit Confirm" : "default Cancel"} focus`);
+  cancel.focus();
+  press("Tab");
+  check(document.activeElement === confirm, "Tab wraps inside the dialog");
+  press("Tab", true);
+  check(document.activeElement === cancel, "Shift+Tab wraps inside the dialog");
+  press("Escape");
+  check(!document.querySelector('[role="dialog"]') && document.activeElement === opener,
+    "Escape dismisses and restores the opener");
+}
+</script></body></html>

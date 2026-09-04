@@ -15,6 +15,9 @@ import { createPortal } from "react-dom";
 import { technicalInputProps } from "../../../lib/inputBehavior";
 import { isMacPlatform } from "../../../lib/platform";
 import { DIcon, type DialogIconName } from "./icons";
+import { useDialogFocus } from "./useDialogFocus";
+
+const DialogDismissContext = createContext<(() => void) | undefined>(undefined);
 
 /* --------------------- UI convention (mac / windows) ------------------- */
 // macOS:        [ auxiliary … ]   spacer   Cancel   Primary
@@ -90,7 +93,9 @@ export function DialogShell({
         }
       }}
     >
-      {children}
+      <DialogDismissContext.Provider value={onBackdrop}>
+        {children}
+      </DialogDismissContext.Provider>
     </div>,
     document.body,
   );
@@ -128,8 +133,12 @@ export function Sheet({
   onKeyDown?: KeyboardEventHandler<HTMLDivElement>;
 }) {
   const hasHead = Boolean(eyebrow || title || sub || onClose);
+  const dismissDialog = useContext(DialogDismissContext);
+  const dialogRef = useDialogFocus<HTMLDivElement>(onClose ?? dismissDialog);
   return (
     <div
+      ref={dialogRef}
+      tabIndex={-1}
       className={`kk-dlg ${className}`.trim()}
       style={{ width, height, maxHeight: "100%" }}
       role="dialog"

@@ -1,4 +1,5 @@
 import { ConnectionGlyph, connectionSubtitle, connectionTypeSubtitle } from "./ConnectionGlyph";
+import { useDialogFocus } from "../../../app/ui/dialog/useDialogFocus";
 import { ConnectionIconBackgroundPicker } from "./ConnectionIconBackgroundPicker";
 import { ConnectionIconPicker } from "./ConnectionIconPicker";
 import { ConnectionIcon, connectionIconSrcForConnection } from "./ConnectionIcon";
@@ -4518,6 +4519,7 @@ function ConnectionDialog({
   onSubmit: (request: ConnectionDialogRequest) => void | Promise<void>;
 }) {
   const { i18n, t } = useTranslation();
+  const dialogRef = useDialogFocus<HTMLFormElement>(onCancel);
   const terminalSettings = useWorkspaceStore((state) => state.terminalSettings);
   const urlSettings = useWorkspaceStore((state) => state.urlSettings);
   const connectionType = initialConnection?.type ?? initialConnectionType ?? "";
@@ -5389,6 +5391,11 @@ function ConnectionDialog({
     <div className="dialog-backdrop connection-dialog-backdrop" role="presentation">
       <form
         className={usesTwoColumnOptions ? "connection-dialog connection-dialog-wide" : "connection-dialog"}
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t(mode === "edit" ? "connections.connectionProperties" : mode === "save" ? "connections.newConnectionTitle" : "connections.quickConnect")}
+        tabIndex={-1}
         onSubmit={handleSubmit}
       >
         <header
@@ -5545,6 +5552,9 @@ function ConnectionSshKeyEmailDialog({
   const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
   const canSubmit = Boolean(email.trim()) && passphrase === passphraseConfirm && !isGenerating;
+  const dialogRef = useDialogFocus<HTMLFormElement>(() => {
+    if (!isGenerating) onCancel();
+  });
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -5565,6 +5575,8 @@ function ConnectionSshKeyEmailDialog({
         aria-label={t("settings.sshKeyEmailDialogTitle")}
         aria-modal="true"
         className="connection-dialog ssh-key-email-dialog"
+        ref={dialogRef}
+        tabIndex={-1}
         onSubmit={handleSubmit}
         role="dialog"
       >

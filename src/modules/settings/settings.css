@@ -1834,7 +1834,7 @@
 
 .settings-nav-item.active {
   color: #ffffff;
-  background: var(--accent);
+  background: var(--sel);
 }
 
 .settings-content {
@@ -2450,6 +2450,216 @@ input.settings-credential-search {
   margin: 8px 0;
 }
 
+.settings-saved-credentials {
+  gap: 12px;
+  padding-block: 12px;
+}
+
+.settings-saved-credentials .settings-credential-manager-header {
+  flex-wrap: wrap;
+}
+
+.settings-saved-credentials h3 {
+  padding: 0;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.settings-saved-credentials .settings-credential-manager-actions {
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  margin-inline-start: auto;
+}
+
+.settings-saved-credentials .settings-credential-manager-actions button {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  white-space: normal;
+}
+
+.settings-saved-credentials :is(.field-hint, .settings-credential-search) {
+  margin: 0;
+}
+
+.settings-saved-credentials .field-hint {
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.settings-saved-credential-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.settings-saved-credential-item {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto 32px;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+  min-height: 64px;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.settings-saved-credential-item.is-selected {
+  background: var(--sel-soft);
+}
+
+.settings-saved-credential-icon,
+.settings-saved-credential-list label.settings-saved-credential-select {
+  display: grid;
+  grid-template-columns: 1fr;
+  place-items: center;
+  width: 32px;
+  min-height: 32px;
+  padding: 0;
+  color: var(--text-muted);
+  background: var(--surface-muted);
+  border: 0;
+  border-radius: 8px;
+}
+
+.settings-saved-credential-list label.settings-saved-credential-select {
+  background: transparent;
+  cursor: pointer;
+}
+
+.settings-saved-credential-list .settings-saved-credential-select input[type="checkbox"] {
+  grid-column: auto;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--accent);
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.settings-saved-credential-list .settings-saved-credential-item .settings-saved-credential-name {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 3px;
+  align-content: center;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0;
+  color: var(--text);
+  font: inherit;
+  line-height: 1.35;
+  text-align: start;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.settings-saved-credential-name > strong {
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.settings-saved-credentials .settings-saved-credential-list .settings-saved-credential-name > :is(span, small) {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+
+.settings-saved-credentials .settings-saved-credential-list .settings-saved-credential-name > small {
+  color: var(--red);
+}
+
+.settings-saved-credential-count {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  min-height: 32px;
+  padding: 4px 8px;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  background: var(--surface-muted);
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.settings-saved-credential-item .settings-icon-danger-button {
+  color: var(--text-muted);
+  background: transparent;
+  border-color: transparent;
+}
+
+.settings-saved-credentials :is(button, input[type="checkbox"]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .settings-saved-credential-item:not(.is-selected):hover {
+    background: var(--hover);
+  }
+
+  button.settings-saved-credential-name:hover strong {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .settings-saved-credential-count:hover {
+    color: var(--text);
+    background: var(--press);
+  }
+
+  .settings-saved-credential-item .settings-icon-danger-button:hover {
+    color: var(--red);
+    background: color-mix(in srgb, var(--red) 10%, transparent);
+    border-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .settings-saved-credentials .settings-credential-manager-actions button,
+  .settings-saved-credential-count {
+    transition: scale 150ms ease-out;
+  }
+
+  .settings-saved-credentials .settings-credential-manager-actions button:active:not(:disabled),
+  .settings-saved-credential-count:active {
+    scale: 0.96;
+  }
+}
+
+@media (pointer: coarse) {
+  .settings-saved-credential-item {
+    grid-template-columns: 44px minmax(0, 1fr) auto 44px;
+    gap: 8px;
+  }
+
+  .settings-saved-credential-list label.settings-saved-credential-select,
+  .settings-saved-credential-item .settings-icon-danger-button {
+    width: 44px;
+    min-height: 44px;
+  }
+
+  .settings-saved-credential-count,
+  .settings-saved-credentials .settings-credential-manager-actions button {
+    min-height: 44px;
+  }
+}
+
 .settings-saved-credential-grid {
   min-width: 0;
   margin-top: 4px;
@@ -2520,8 +2730,7 @@ input.settings-credential-search {
   gap: 2px;
 }
 
-.settings-credential-name-button,
-.settings-credential-count-button {
+.settings-credential-name-button {
   width: max-content;
   max-width: 100%;
   padding: 0;
@@ -2542,34 +2751,13 @@ input.settings-credential-search {
   text-underline-offset: 2px;
 }
 
-.settings-credential-name-button:focus-visible,
-.settings-credential-count-button:focus-visible {
+.settings-credential-name-button:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 3px;
 }
 
 .settings-saved-credential-grid-cell.is-name small {
   color: var(--red);
-}
-
-.settings-saved-credential-grid-cell.is-select {
-  justify-content: center;
-}
-
-.settings-credential-count-button {
-  min-width: 30px;
-  padding: 4px 8px;
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 650;
-  text-align: center;
-  background: var(--surface-muted);
-  border-radius: 999px;
-}
-
-.settings-credential-count-button:hover {
-  color: var(--accent);
-  background: var(--accent-soft);
 }
 
 .settings-saved-credential-grid-actions {
@@ -4080,7 +4268,9 @@ input.settings-credential-search {
 
 .settings-search-box input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--ring), var(--control-shadow);
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  box-shadow: var(--ring), var(--control-shadow);
 }
 
 .settings-search-clear {

@@ -2374,6 +2374,7 @@ export function AssistantPanel({
         ) : null}
         <textarea
           ref={composerTextareaRef}
+          aria-label={t("ai.composerPlaceholder")}
           onCompositionEnd={handleComposerCompositionEnd}
           onCompositionStart={handleComposerCompositionStart}
           onKeyDown={handleComposerKeyDown}

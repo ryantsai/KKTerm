@@ -757,6 +757,8 @@ The `"match-os"` color scheme is a selector setting, not a separate CSS token bl
 | `--border` | `border-color` of containers | Container borders, separators |
 | `--border-strong` | `border-color` of emphasized containers | Active borders, panel resize handles |
 | `--accent` | `color` / `background` of primary actions | Buttons, links, active indicators |
+| `--accent-text` | `color` of accent text | Readable Workspace links; distinct from accent fills in Dark |
+| `--focus` | `outline-color` | Keyboard focus indicator color; `--ring` remains a complete box shadow |
 | `--accent-soft` | `background` of accent tints | Accent-tinted backgrounds, selection highlights |
 | `--green` | `color` of success states | Success badges, connection status |
 | `--green-soft` | `background` of green tints | Success-tinted backgrounds |

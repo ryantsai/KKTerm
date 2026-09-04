@@ -76,7 +76,7 @@ export function ConfirmSheet({
         footer={
           <Actions
             extraLeft={extraLeft}
-            cancel={<Btn onClick={onCancel}>{cancelLabel ?? t("common.cancel")}</Btn>}
+            cancel={<Btn autoFocus={!autoFocusConfirm} onClick={onCancel}>{cancelLabel ?? t("common.cancel")}</Btn>}
             primary={
               <Btn autoFocus={autoFocusConfirm} kind={TONE_BUTTON[tone]} icon={confirmIcon} onClick={onConfirm}>
                 {confirmLabel}

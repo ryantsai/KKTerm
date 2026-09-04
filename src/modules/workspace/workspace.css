@@ -113,7 +113,7 @@
 }
 
 .tab-open-path-button:focus-visible {
-  outline: 1px solid var(--ring);
+  outline: 2px solid var(--focus);
   outline-offset: -2px;
 }
 
@@ -298,7 +298,7 @@
   gap: 7px;
   min-width: 0;
   padding: 4px 2px;
-  color: var(--accent);
+  color: var(--accent-text);
   background: transparent;
   border: 0;
   border-radius: 5px;
@@ -309,12 +309,12 @@
 }
 
 .empty-workspace-connection-link:hover {
-  color: var(--accent-press);
+  color: var(--accent-text);
   background: var(--hover);
 }
 
 .empty-workspace-connection-link:focus-visible {
-  outline: 2px solid var(--ring);
+  outline: 2px solid var(--focus);
   outline-offset: 1px;
 }
 

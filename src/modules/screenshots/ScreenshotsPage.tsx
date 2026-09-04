@@ -581,91 +581,6 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
             : t("screenshots.totalCount", { count: total })}
         </span>
         <ModuleHeaderSpacer />
-        <div
-          className="screenshots-segmented"
-          role="tablist"
-          data-tutorial-id="screenshots.viewSwitch"
-        >
-          <button
-            type="button"
-            className={viewMode === "thumbnails" ? "active" : ""}
-            onClick={() => changeViewMode("thumbnails")}
-            title={t("screenshots.view.thumbnails")}
-            aria-label={t("screenshots.view.thumbnails")}
-            aria-selected={viewMode === "thumbnails"}
-          >
-            <LayoutGrid size={15} strokeWidth={1.9} />
-          </button>
-          <button
-            type="button"
-            className={viewMode === "details" ? "active" : ""}
-            onClick={() => changeViewMode("details")}
-            title={t("screenshots.view.details")}
-            aria-label={t("screenshots.view.details")}
-            aria-selected={viewMode === "details"}
-          >
-            <Rows3 size={15} strokeWidth={1.9} />
-          </button>
-        </div>
-        <label className="screenshots-toolbar-select">
-          <span>{t("screenshots.sort.label")}</span>
-          <select
-            value={sortBy}
-            onChange={(event) => changeSortBy(event.currentTarget.value as ScreenshotSortBy)}
-          >
-            <option value="name">{t("screenshots.details.name")}</option>
-            <option value="date">{t("screenshots.sort.date")}</option>
-            <option value="type">{t("screenshots.details.type")}</option>
-          </select>
-        </label>
-        <button
-          type="button"
-          className="screenshots-icon-button"
-          title={directionLabel}
-          aria-label={directionLabel}
-          onClick={toggleSortDirection}
-        >
-          {sortDirection === "asc"
-            ? <ArrowUp size={14} aria-hidden="true" />
-            : <ArrowDown size={14} aria-hidden="true" />}
-        </button>
-        <label className="screenshots-toolbar-select">
-          <span>{t("screenshots.group.label")}</span>
-          <select
-            value={groupBy}
-            onChange={(event) => changeGroupBy(event.currentTarget.value as ScreenshotGroupBy)}
-          >
-            <option value="none">{t("screenshots.group.none")}</option>
-            <option value="name">{t("screenshots.details.name")}</option>
-            <option value="date">{t("screenshots.sort.date")}</option>
-            <option value="type">{t("screenshots.details.type")}</option>
-            <option value="size">{t("screenshots.details.size")}</option>
-            <option value="dateCreated">{t("screenshots.group.dateCreated")}</option>
-            <option value="dateModified">{t("screenshots.group.dateModified")}</option>
-            <option value="dateTaken">{t("screenshots.group.dateTaken")}</option>
-            <option value="dimensions">{t("screenshots.details.dimensions")}</option>
-          </select>
-        </label>
-        <button
-          type="button"
-          className="screenshots-icon-button"
-          title={t("common.refresh")}
-          aria-label={t("common.refresh")}
-          onClick={() => void refresh()}
-          disabled={loading || !runtimeAvailable}
-        >
-          <RefreshCw size={14} strokeWidth={1.9} aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          className="screenshots-icon-button"
-          title={t("screenshots.openFolder")}
-          aria-label={t("screenshots.openFolder")}
-          onClick={() => invokeCommand("open_screenshots_folder", undefined).catch(notifyError)}
-          disabled={!runtimeAvailable}
-        >
-          <FolderOpen size={14} strokeWidth={1.9} aria-hidden="true" />
-        </button>
         <label className="screenshots-delay-select" title={t("screenshots.delay.label")}>
           <Clock size={14} aria-hidden="true" />
           <select
@@ -714,6 +629,8 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
           type="button"
           className="screenshots-button"
           data-tutorial-id="screenshots.captureWindow"
+          aria-label={t("screenshots.captureWindow")}
+          title={t("screenshots.captureWindow")}
           onClick={() => void capture("window")}
           disabled={captureInFlight || videoBusy || Boolean(recording) || !runtimeAvailable}
         >
@@ -724,6 +641,8 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
           type="button"
           className="screenshots-button"
           data-tutorial-id="screenshots.captureFullscreen"
+          aria-label={t("screenshots.captureFullscreen")}
+          title={t("screenshots.captureFullscreen")}
           onClick={() => void capture("fullscreen")}
           disabled={captureInFlight || videoBusy || Boolean(recording) || !runtimeAvailable}
         >
@@ -734,6 +653,8 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
           type="button"
           className="screenshots-button primary"
           data-tutorial-id="screenshots.captureRegion"
+          aria-label={t("screenshots.captureRegion")}
+          title={t("screenshots.captureRegion")}
           onClick={() => void capture("region")}
           disabled={captureInFlight || videoBusy || Boolean(recording) || !runtimeAvailable}
         >
@@ -741,6 +662,95 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
           <span className="screenshots-capture-label">{t("screenshots.captureRegion")}</span>
         </button>
       </ModuleHeader>
+      <div className="screenshots-library-toolbar">
+        <div
+          className="screenshots-segmented"
+          role="tablist"
+          data-tutorial-id="screenshots.viewSwitch"
+        >
+          <button
+            type="button"
+            className={viewMode === "thumbnails" ? "active" : ""}
+            onClick={() => changeViewMode("thumbnails")}
+            title={t("screenshots.view.thumbnails")}
+            aria-label={t("screenshots.view.thumbnails")}
+            aria-selected={viewMode === "thumbnails"}
+          >
+            <LayoutGrid size={15} strokeWidth={1.9} />
+          </button>
+          <button
+            type="button"
+            className={viewMode === "details" ? "active" : ""}
+            onClick={() => changeViewMode("details")}
+            title={t("screenshots.view.details")}
+            aria-label={t("screenshots.view.details")}
+            aria-selected={viewMode === "details"}
+          >
+            <Rows3 size={15} strokeWidth={1.9} />
+          </button>
+        </div>
+        <label className="screenshots-toolbar-select">
+          <span>{t("screenshots.sort.label")}</span>
+          <select
+            value={sortBy}
+            aria-label={t("screenshots.sort.label")}
+            onChange={(event) => changeSortBy(event.currentTarget.value as ScreenshotSortBy)}
+          >
+            <option value="name">{t("screenshots.details.name")}</option>
+            <option value="date">{t("screenshots.sort.date")}</option>
+            <option value="type">{t("screenshots.details.type")}</option>
+          </select>
+        </label>
+        <button
+          type="button"
+          className="screenshots-icon-button"
+          title={directionLabel}
+          aria-label={directionLabel}
+          onClick={toggleSortDirection}
+        >
+          {sortDirection === "asc"
+            ? <ArrowUp size={14} aria-hidden="true" />
+            : <ArrowDown size={14} aria-hidden="true" />}
+        </button>
+        <label className="screenshots-toolbar-select">
+          <span>{t("screenshots.group.label")}</span>
+          <select
+            value={groupBy}
+            aria-label={t("screenshots.group.label")}
+            onChange={(event) => changeGroupBy(event.currentTarget.value as ScreenshotGroupBy)}
+          >
+            <option value="none">{t("screenshots.group.none")}</option>
+            <option value="name">{t("screenshots.details.name")}</option>
+            <option value="date">{t("screenshots.sort.date")}</option>
+            <option value="type">{t("screenshots.details.type")}</option>
+            <option value="size">{t("screenshots.details.size")}</option>
+            <option value="dateCreated">{t("screenshots.group.dateCreated")}</option>
+            <option value="dateModified">{t("screenshots.group.dateModified")}</option>
+            <option value="dateTaken">{t("screenshots.group.dateTaken")}</option>
+            <option value="dimensions">{t("screenshots.details.dimensions")}</option>
+          </select>
+        </label>
+        <button
+          type="button"
+          className="screenshots-icon-button"
+          title={t("common.refresh")}
+          aria-label={t("common.refresh")}
+          onClick={() => void refresh()}
+          disabled={loading || !runtimeAvailable}
+        >
+          <RefreshCw size={14} strokeWidth={1.9} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          className="screenshots-icon-button"
+          title={t("screenshots.openFolder")}
+          aria-label={t("screenshots.openFolder")}
+          onClick={() => invokeCommand("open_screenshots_folder", undefined).catch(notifyError)}
+          disabled={!runtimeAvailable}
+        >
+          <FolderOpen size={14} strokeWidth={1.9} aria-hidden="true" />
+        </button>
+      </div>
       <div
         className="screenshots-content"
         onMouseDown={(event) => {

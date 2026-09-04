@@ -467,6 +467,7 @@ export function GeneralSettings() {
                     <strong>{t("settings.autoUpdateChecks")}</strong>
                   </span>
                   <ToggleSwitch
+                    ariaLabel={t("settings.autoUpdateChecks")}
                     checked={draft.autoUpdateChecksEnabled}
                     onChange={(checked) =>
                       setDraft((s) => ({ ...s, autoUpdateChecksEnabled: checked }))
@@ -550,6 +551,7 @@ export function GeneralSettings() {
                 <strong>{t(labelKey)}</strong>
               </span>
               <ToggleSwitch
+                ariaLabel={t(labelKey)}
                 checked={draft[setting]}
                 disabled={isLastVisibleModule}
                 onChange={(checked) =>
@@ -564,6 +566,7 @@ export function GeneralSettings() {
               <strong>{t("settings.sectionDontSleep")}</strong>
             </span>
             <ToggleSwitch
+              ariaLabel={t("settings.sectionDontSleep")}
               checked={draft.showDontSleepOnRail}
               onChange={(checked) =>
                 setDraft((state) => ({ ...state, showDontSleepOnRail: checked }))
@@ -586,6 +589,7 @@ export function GeneralSettings() {
             {windowsPlatform && !portableMode ? (
               <label className="settings-toggle-row">
                 <ToggleSwitch
+                  ariaLabel={t("settings.autoStartWithWindows")}
                   checked={draft.autoStartWithWindows}
                   onChange={(checked) =>
                     setDraft((s) => ({ ...s, autoStartWithWindows: checked }))
@@ -600,6 +604,7 @@ export function GeneralSettings() {
             {minimizeToTraySupported ? (
               <label className="settings-toggle-row">
                 <ToggleSwitch
+                  ariaLabel={t("settings.minimizeToTray")}
                   checked={draft.minimizeToTray}
                   onChange={(checked) =>
                     setDraft((s) => ({ ...s, minimizeToTray: checked }))
@@ -626,6 +631,7 @@ export function GeneralSettings() {
         <div className="settings-toggle-list">
           <label className="settings-toggle-row">
             <ToggleSwitch
+              ariaLabel={t("settings.statusBarVisible")}
               checked={draft.statusBarEnabled}
               onChange={(checked) =>
                 setDraft((state) => ({ ...state, statusBarEnabled: checked }))
@@ -638,6 +644,7 @@ export function GeneralSettings() {
           </label>
           <label className="settings-toggle-row">
             <ToggleSwitch
+              ariaLabel={t("settings.statusBarMonitor")}
               checked={draft.statusBarMonitorEnabled}
               onChange={(checked) =>
                 setDraft((s) => ({ ...s, statusBarMonitorEnabled: checked }))
@@ -688,6 +695,7 @@ export function GeneralSettings() {
         <div className="settings-toggle-list">
           <label className="settings-toggle-row">
             <ToggleSwitch
+              ariaLabel={t("settings.autoBackup")}
               checked={draft.autoBackupEnabled}
               onChange={(checked) =>
                 setDraft((s) => ({ ...s, autoBackupEnabled: checked }))
@@ -809,6 +817,7 @@ export function GeneralSettings() {
                 {t("settings.openLogFolder")}
               </button>
               <ToggleSwitch
+                ariaLabel={t("settings.advancedDebugging")}
                 checked={draft.advancedDebuggingEnabled}
                 onChange={(checked) =>
                   setDraft((s) => ({ ...s, advancedDebuggingEnabled: checked }))
@@ -819,6 +828,7 @@ export function GeneralSettings() {
           {windowsPlatform ? (
             <label className="settings-toggle-row">
               <ToggleSwitch
+                ariaLabel={t("settings.rdpWebviewStability")}
                 checked={draft.rdpWebviewStability}
                 onChange={(checked) =>
                   setDraft((s) => ({ ...s, rdpWebviewStability: checked }))

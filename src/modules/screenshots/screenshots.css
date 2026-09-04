@@ -2,6 +2,7 @@
    placement, header button treatment, and data-active visibility gate. */
 
 .screenshots-page {
+  container-type: inline-size;
   position: relative;
   grid-column: 2 / 5;
   grid-row: 1;
@@ -23,6 +24,19 @@
 
 .screenshots-module-header {
   gap: 7px;
+  flex-wrap: wrap;
+  padding-block: 8px;
+}
+
+.screenshots-library-toolbar {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  background: var(--chrome);
+  border-bottom: 1px solid var(--border);
 }
 
 .screenshots-count {
@@ -35,15 +49,16 @@
   flex: 0 0 auto;
 }
 
-.screenshots-module-header button:focus-visible {
-  outline: 2px solid var(--accent);
+.screenshots-module-header button:focus-visible,
+.screenshots-library-toolbar button:focus-visible {
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
 .screenshots-toolbar-select:focus-within,
 .screenshots-delay-select:focus-within {
-  border-color: var(--border-strong);
-  box-shadow: inset 0 0 0 1px var(--border-strong);
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
 .screenshots-icon-button {
@@ -1113,23 +1128,22 @@
   box-shadow: var(--ring);
 }
 
-@media (max-width: 1200px) {
-  .screenshots-count,
-  .screenshots-toolbar-select > span {
+@container (max-width: 800px) {
+  .screenshots-count {
     display: none;
   }
 
-  .screenshots-button:not(.primary) {
+  .screenshots-module-header .screenshots-button:not(.primary) {
     padding-inline: 8px;
   }
 }
 
-@media (max-width: 1000px) {
+@container (max-width: 650px) {
   .screenshots-capture-label {
     display: none;
   }
 
-  .screenshots-button {
+  .screenshots-module-header .screenshots-button[data-tutorial-id] {
     width: 28px;
     justify-content: center;
     padding-inline: 0;

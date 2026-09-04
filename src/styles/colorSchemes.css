@@ -32,7 +32,7 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* Default scheme — the Apple/Finder design-language light palette. */
+  /* Default scheme — the Apple/Finder palette with accessible text contrast. */
   --app-bg: #ececed;
   --chrome: #f6f6f7;
   --chrome-strong: #ffffff;
@@ -43,11 +43,13 @@
   --terminal-border: #243344;
   --terminal-fg: #d8e1ef;
   --text: #1d1d1f;
-  --text-muted: #6e6e73;
-  --text-faint: #97979d;
+  --text-muted: #606066;
+  --text-faint: #6a6a70;
   --border: #d6d6db;
   --border-strong: #c5c5cb;
-  --accent: #0a84ff;
+  --accent: #0068d0;
+  --accent-text: var(--accent);
+  --focus: var(--accent-text);
   --accent-soft: #e6f0ff;
   /* Install Helper category-rail tints (scheme-independent; defined once
      here and inherited by every color scheme). */
@@ -71,12 +73,12 @@
   --notice-success: var(--green);
   --notice-warning: var(--amber);
   --notice-error: var(--red);
-  /* design-language surface tokens (exact reference light values) */
+  /* design-language surface tokens */
   --hover: rgba(0, 0, 0, 0.05);
   --press: rgba(0, 0, 0, 0.09);
   --hairline: #e6e6e9;
   --accent-press: #0060df;
-  --sel: #0a84ff;
+  --sel: var(--accent);
   --sel-soft: #e6f0ff;
   --folder-top: #79c0ff;
   --folder-bot: #2e92f5;
@@ -132,7 +134,7 @@
 }
 
 [data-color-scheme="dark"] {
-  /* Dark scheme — the Apple/Finder design-language dark palette. */
+  /* Dark scheme — the Apple/Finder palette with accessible text contrast. */
   --app-bg: #1c1c1e;
   --chrome: #2c2c2e;
   --chrome-strong: #2e2e30;
@@ -140,10 +142,11 @@
   --surface-muted: #232325;
   --text: #f5f5f7;
   --text-muted: #a1a1a6;
-  --text-faint: #6d6d72;
+  --text-faint: #95959b;
   --border: #4a4a4e;
   --border-strong: #5a5a5e;
   --accent: #0a84ff;
+  --accent-text: #409cff;
   --accent-soft: #18334f;
   --green-soft: #0d3326;
   --amber-soft: #33270d;
@@ -154,7 +157,7 @@
   --notice-success: var(--green);
   --notice-warning: var(--amber);
   --notice-error: var(--red);
-  /* design-language surface tokens (exact reference dark values) */
+  /* design-language surface tokens */
   --hover: rgba(255, 255, 255, 0.07);
   --press: rgba(255, 255, 255, 0.12);
   --hairline: #38383a;

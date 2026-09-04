@@ -2347,7 +2347,7 @@
 }
 .itops-page .rk-cabinet-flip:focus-visible,
 .rack-mount-face-segmented button:focus-visible {
-  outline: 2px solid var(--ring);
+  outline: 2px solid var(--focus);
   outline-offset: 1px;
 }
 
@@ -3963,7 +3963,7 @@
 }
 
 .itops-page .it-empty-hint button:focus-visible {
-  outline: 2px solid var(--ring);
+  outline: 2px solid var(--focus);
   outline-offset: 1px;
 }
 
@@ -8989,7 +8989,7 @@
   color: var(--blue);
 }
 .nm-node-deep-links:focus-visible {
-  outline: 2px solid var(--ring);
+  outline: 2px solid var(--focus);
   outline-offset: 1px;
 }
 @container network-map-node (min-width: 240px) {
@@ -9205,7 +9205,7 @@
   color: var(--text);
 }
 .itops-page .nm-note-format-button:focus-visible {
-  outline: 2px solid var(--ring);
+  outline: 2px solid var(--focus);
   outline-offset: 1px;
 }
 .itops-page .nm-note-format-button.bold {
@@ -9469,7 +9469,7 @@
 }
 .itops-page .nm-geomap-editor-preview:active { cursor: grabbing; }
 .itops-page .nm-geomap-editor-preview:focus-visible {
-  outline: 2px solid var(--ring);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 .itops-page .nm-geomap-editor-image {
@@ -9517,7 +9517,7 @@
   color: var(--text);
 }
 .itops-page .nm-geomap-reset:focus-visible {
-  outline: 2px solid var(--ring);
+  outline: 2px solid var(--focus);
   outline-offset: 1px;
 }
 .itops-page .nm-choice-grid {
@@ -9600,7 +9600,7 @@
   background: var(--accent-soft);
 }
 .itops-page .nm-icon-picker button:focus-visible {
-  outline: 2px solid var(--ring);
+  outline: 2px solid var(--focus);
   outline-offset: 1px;
 }
 .itops-page .nm-shape-picker {
@@ -9641,7 +9641,7 @@
   color: var(--text);
 }
 .itops-page .nm-shape-picker button:focus-visible {
-  outline: 2px solid var(--ring);
+  outline: 2px solid var(--focus);
   outline-offset: 1px;
 }
 .itops-page .nm-shape-picker-glyph {
@@ -9810,7 +9810,7 @@
   cursor: default;
 }
 .itops-page .nm-deep-link-action:focus-visible {
-  outline: 2px solid var(--ring);
+  outline: 2px solid var(--focus);
   outline-offset: 1px;
 }
 .itops-page .nm-member-count {
@@ -9835,7 +9835,7 @@
   color: var(--text);
 }
 .itops-page .nm-member-count:active { background: var(--press); transform: translateY(1px); }
-.itops-page .nm-member-count:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.itops-page .nm-member-count:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .itops-page .nm-member-count-icon {
   display: inline-flex;
   width: 30px;

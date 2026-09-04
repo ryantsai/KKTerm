@@ -29,6 +29,12 @@ navigation, tabs, segmented controls, menu rows, swatches, and title-bar chrome
 shadowless; those controls communicate selection or navigation rather than
 elevation.
 
+Use `--accent-text` for accent-colored text and `--sel` for selected navigation
+with white text. Default and Dark keep these readable independently of decorative
+accent colors. `--focus` is a color for `outline`; `--ring` is a complete
+`box-shadow` value, never an outline color or the color portion of another shadow.
+Retain a visible outline in forced-colors mode, where box shadows are suppressed.
+
 Design-language surface tokens (added for this language): `--hover`, `--press`,
 `--hairline`, `--accent-press`, `--sel`, `--sel-soft`, `--folder-top`,
 `--folder-bot`, `--doc-fill`, `--doc-stroke`, `--ring`. Exact values are authored
@@ -105,6 +111,14 @@ layer rules.** Existing legacy dialogs use the shared
 - `Btn` (`kind`: `""` | `primary` | `danger` | `ghost`) and `Actions`.
 - `ConnTile` + `Swatches` — connection identity tile and accent swatches.
 - `DIcon` — the shared SF-Symbols-ish glyph set (`src/app/ui/dialog/icons.tsx`).
+
+`Sheet` uses `useDialogFocus` to focus its first available control, wrap Tab and
+Shift+Tab within the top dialog, and restore the opener on dismissal. Explicit
+autofocus takes precedence; `ConfirmSheet` defaults to its cancel action unless
+`autoFocusConfirm` is requested. Escape uses the existing `onClose` or shell
+`onBackdrop` callback unless the child already handled the key. Legacy Connection
+forms use the same hook with their existing cancel callback. The hook does not
+alter native overlay visibility or make portaled Status Bar notices inert.
 
 `Sheet` supplies the private design-token bridge used by all of these
 primitives. When a primitive is intentionally rendered on a custom non-`Sheet`

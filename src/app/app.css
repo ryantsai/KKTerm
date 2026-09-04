@@ -157,9 +157,9 @@
   opacity: 0.88;
 }
 
-.app-titlebar button:focus,
 .app-titlebar button:focus-visible {
-  outline: none;
+  outline: 2px solid var(--titlebar-text);
+  outline-offset: -3px;
 }
 
 .app-titlebar-controls {

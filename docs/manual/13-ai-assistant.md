@@ -24,6 +24,9 @@ Chat history uses a compatibility-aware split store. Threads created by older ve
 
 ## Composer
 
+The composer has a persistent accessible name from `ai.composerPlaceholder`,
+including while it contains text or shows an intent-specific placeholder.
+
 Default placeholder `ai.composerPlaceholder`. An unmodified Enter sends the prompt, while Ctrl+Enter inserts a line break. Enter used to confirm an IME candidate stays in the composer and does not send the prompt, including when macOS WebKit reports `compositionend` immediately before that Enter keydown. Send `ai.sendMessage` / `ai.send`. Stop in-flight `ai.stopMessage`; Stop also cancels the backend agent run, so no further provider calls or tool executions happen after it. Cancelling an ACP-backed CLI turn does not start the one-shot fallback, and one-shot fallback processes honor the same cancellation and response timeout. The one-shot fallback only runs when ACP fails before the prompt turn starts; once an ACP turn is underway, an error surfaces in the chat instead of silently re-running the request. Copy `ai.copy` / `ai.copyMessage`. Highlighted Assistant Panel text can also be copied from the right-click native context menu item `common.copy`. Code label `ai.code`. Show-less / more `ai.showLess` / `ai.more`.
 
 Assistant responses wrap to the available panel width. Wide code blocks remain contained within the response and scroll horizontally inside the code block instead of clipping the surrounding response text.
