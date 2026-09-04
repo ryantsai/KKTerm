@@ -29,5 +29,5 @@ export const opencodeProvider: AiProviderDefinition = {
     { id: "mimo-v2.5", label: "MiMo-V2.5", supportsImageInput: false },
   ],
   settingsFields: HOSTED_PROVIDER_SETTINGS_FIELDS,
-  capabilities: ["chat", "streaming", "toolCalling", "mcpReady", "openAiCompatible"],
+  capabilities: ["chat", "imageInput", "streaming", "toolCalling", "mcpReady", "openAiCompatible"],
 };

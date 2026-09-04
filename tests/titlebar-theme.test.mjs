@@ -64,6 +64,35 @@ test("custom titlebar is always rendered by the frontend shell", async () => {
   assert.doesNotMatch(appCssSource, /app-root--no-titlebar/);
 });
 
+test("custom titlebar hover preserves UI font inheritance and kerning", async () => {
+  const appCssSource = await readFile(
+    new URL("../src/app/app.css", import.meta.url),
+    "utf8",
+  );
+  const characterRule = appCssSource.match(
+    /\.app-titlebar-title-char\s*\{(?<body>[^}]*)\}/s,
+  );
+
+  assert.ok(characterRule?.groups?.body, "animated title character CSS should exist");
+  assert.match(
+    characterRule.groups.body,
+    /\bdisplay:\s*inline;/,
+    "animated letters must remain inline so hover preserves the UI font's kerning",
+  );
+  for (const rule of appCssSource.matchAll(/\.app-titlebar-title[^{}]*\{([^}]*)\}/g)) {
+    assert.doesNotMatch(
+      rule[1],
+      /\bfont(?:-family)?\s*:/,
+      "normal and animated title text should inherit the selected App UI font",
+    );
+  }
+  assert.match(
+    appCssSource,
+    /\.app-titlebar-brand:hover\s+\.app-titlebar-title-char\s*\{[^}]*animation:\s*titlebar-color-shift\s+1s\s+both;/s,
+    "preserving typography should keep the existing color animation",
+  );
+});
+
 test("custom titlebar panel buttons match module scope", async () => {
   const [appSource, titleBarSource] = await Promise.all([
     readFile(new URL("../src/App.tsx", import.meta.url), "utf8"),

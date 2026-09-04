@@ -1673,6 +1673,87 @@ fn current_multimodal_model_families_accept_image_input() {
     assert!(supports_image_input("grok", "grok-4.6"));
     assert!(supports_image_input("ollama", "qwen3.6"));
     assert!(!supports_image_input("ollama", "qwen3:latest"));
+    assert!(supports_image_input("ollama", "qwen3.8:27b"));
+    assert!(supports_image_input("openrouter", "qwen/qwen3.8-max"));
+    assert!(!supports_image_input("openrouter", "qwen/qwen3.8-2.4t-a95b"));
+    assert!(supports_image_input("ollama-cloud", "minimax-m3"));
+    assert!(!supports_image_input("ollama-cloud", "minimax-m2.7"));
+    assert!(!supports_image_input("zai", "glm-5.3"));
+    assert!(!supports_image_input("deepseek", "deepseek-v4-flash"));
+    assert!(!supports_image_input("openrouter", "deepseek/deepseek-v4-pro"));
+}
+
+#[test]
+fn curated_model_messages_keep_images_and_large_context_history() {
+    for (provider, model) in [
+        ("zai", "glm-5.3-flash"),
+        ("openrouter", "z-ai/glm-5.3-flash"),
+        ("opencode", "glm-5.3-flash"),
+        ("deepseek", "deepseek-v4-flash-vision-exp"),
+        ("openrouter", "deepseek/deepseek-v4-flash-vision-exp"),
+        ("opencode", "deepseek-v4-flash-vision-exp"),
+    ] {
+        let earlier_turn = "earlier context ".repeat(60_000);
+        let result = build_agent_messages_for_provider_with_usage(
+            provider,
+            model,
+            "What is visible?".to_string(),
+            "Workspace".to_string(),
+            None,
+            "high".to_string(),
+            None,
+            None,
+            None,
+            supports_image_input(provider, model),
+            Some(AgentScreenshotContext {
+                source_label: "Workspace screenshot".to_string(),
+                data_url: "data:image/png;base64,abcd".to_string(),
+            }),
+            vec![],
+            vec![AgentChatMessage {
+                role: "user".to_string(),
+                content: earlier_turn.clone(),
+                reasoning_content: None,
+                tool_calls: Vec::new(),
+            }],
+            None,
+            None,
+            vec![],
+            false,
+            vec![],
+            0,
+            false,
+        );
+
+        assert_eq!(result.usage.context_limit_tokens, 1_000_000, "{provider}/{model}");
+        assert_eq!(result.usage.omitted_messages, 0, "{provider}/{model}");
+        assert!(
+            result.messages.iter().any(|message| text_content(message) == earlier_turn.trim()),
+            "{provider}/{model}: earlier context must survive request normalization",
+        );
+        let request = serde_json::to_value(result.messages.last().expect("user request"))
+            .expect("request serializes");
+        assert_eq!(request["content"][1]["type"], "image_url", "{provider}/{model}");
+        assert_eq!(request["content"][1]["image_url"]["url"], "data:image/png;base64,abcd");
+    }
+}
+
+#[test]
+fn curated_model_context_limits_respect_hosted_and_local_variants() {
+    for (provider, model, limit) in [
+        ("openrouter", "qwen/qwen3.8-max", 1_000_000),
+        ("openrouter", "qwen/qwen3.8-flash", 1_000_000),
+        ("opencode", "mimo-v2.5-pro", 1_050_000),
+        ("ollama-cloud", "minimax-m3", 512_000),
+        ("openrouter", "minimax/minimax-m3", 1_000_000),
+        ("nvidia", "nvidia/nemotron-3.5-lightning-30b-a3b", 1_000_000),
+        ("openrouter", "nvidia/nemotron-3.5-lightning", 262_144),
+    ] {
+        assert_eq!(model_context_limit_tokens(provider, model), (limit, false), "{provider}/{model}");
+    }
+    assert_eq!(model_context_limit_tokens("ollama", "qwen3.8"), (16_000, true));
+    assert_eq!(model_context_limit_tokens("ollama", "nemotron-3.5-lightning"), (16_000, true));
+    assert_eq!(model_context_limit_tokens("opencode", "longcat-2.0"), (1_000_000, true));
 }
 
 #[test]

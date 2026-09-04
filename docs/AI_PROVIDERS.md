@@ -177,6 +177,40 @@ Provider labels, API-key labels, and model labels in provider definitions are
 currently treated as provider/product names. Any new explanatory user-facing text
 outside those names must go through i18n.
 
+### Model catalog review — 2026-09-04
+
+The review below covers every registered provider. Model IDs come from official
+documentation or public provider catalogs; no authenticated inference requests
+were made. Existing defaults remain unchanged. Recommendations are chat/tool
+models compatible with the provider's current KKTerm transport. Account,
+deployment, and proxy configuration still determine actual access.
+
+| Provider | Review result | Official sources |
+| --- | --- | --- |
+| OpenAI | Keep GPT-5.6 Luna, Terra, and Sol. GPT-6 Astra is announced, but the docs say general API access is coming in the following days; do not curate it yet. | [OpenAI model catalog](https://developers.openai.com/api/docs/models), [Astra availability](https://developers.openai.com/api/docs/models/gpt-6-astra) |
+| Anthropic | Add `claude-fable-5-1` (Claude Fable 5.1). | [Models overview](https://platform.claude.com/docs/en/models/overview) |
+| Cursor | Keep Auto; exact CLI IDs are account-dependent and should come from `agent models`. | [CLI model discovery](https://cursor.com/changelog/cli-jan-08-2026) |
+| OpenRouter | Add Fable 5.1, Gemini 3.8 Flash / 3.5 Flash-Lite, GLM-5.3 / Flash, DeepSeek V4 Flash Vision Exp, Qwen3.8 Max / Flash, Nemotron 3.5 Lightning, and MiMo-V2.5 Pro; promote MiniMax M3. Use OpenRouter's dotted `anthropic/claude-fable-5.1` ID. | [Live model catalog](https://openrouter.ai/api/v1/models) |
+| Z.ai | Add `glm-5.3` and multimodal `glm-5.3-flash`. | [GLM-5.3](https://docs.z.ai/guides/llm/glm-5.3), [GLM-5.3 Flash](https://docs.z.ai/guides/vlm/glm-5.3-flash) |
+| Moonshot AI | Kimi K3 and K2.7 Code / High-Speed are already current. | [Kimi quickstart and current models](https://platform.kimi.ai/docs/overview) |
+| DeepSeek | Add `deepseek-v4-flash-vision-exp`; Flash and Pro remain the current text model aliases. The vision entry is explicitly experimental. | [Model details](https://api-docs.deepseek.com/quick_start/pricing/) |
+| Gemini | Add `gemini-3.8-flash` and `gemini-3.5-flash-lite`. | [Gemini model catalog](https://ai.google.dev/gemini-api/docs/models) |
+| Grok | Grok 4.6 is already the current flagship. | [Grok model catalog](https://docs.x.ai/developers/models) |
+| Azure OpenAI | GPT-5.6 is already current; Azure has no documented Astra deployment in this review. | [Azure model availability](https://learn.microsoft.com/en-us/azure/foundry/foundry-models/concepts/models-sold-directly-by-azure) |
+| LiteLLM | Add `anthropic/claude-fable-5-1` and `gemini/gemini-3.8-flash` as proxy configuration examples; a proxy may expose different deployment aliases. | [Provider model metadata](https://github.com/BerriAI/litellm/blob/main/model_prices_and_context_window.json), [Anthropic routing](https://docs.litellm.ai/docs/providers/anthropic) |
+| GitHub Copilot | Add Fable 5.1, Opus 5, Gemini 3.8 Flash, and Kimi K3. Preserve the refreshed account catalog as the availability filter. Copilot uses `claude-fable-5.1`. | [Supported models](https://docs.github.com/en/copilot/reference/ai-models/supported-models), [Fable 5.1 rollout](https://github.blog/changelog/2026-09-01-claude-fable-5-1-generally-available-in-github-copilot/), [Gemini 3.8 rollout](https://github.blog/changelog/2026-09-03-gemini-3-8-flash-is-now-available-in-github-copilot/) |
+| Ollama | Add local Qwen3.8 and Nemotron 3.5 Lightning. Keep conservative context budgeting because the local daemon's configured context can be smaller than a model's maximum. | [Qwen3.8](https://ollama.com/library/qwen3.8), [Nemotron 3.5 Lightning](https://ollama.com/library/nemotron-3.5-lightning) |
+| Ollama Cloud | Add GLM-5.3 / Flash, Kimi K3 / K2.7 Code, MiniMax M3, and the published DeepSeek `:0731` / `:0813` IDs. Demote the unlisted `deepseek-v4-pro` and `qwen3-coder:480b` suggestions. | [Live cloud catalog](https://ollama.com/api/tags), [GLM vision support](https://ollama.com/library/glm-5.3-flash), [MiniMax M3 hosted limit](https://ollama.com/library/minimax-m3) |
+| NVIDIA | Add Nemotron 3.5 Lightning and DeepSeek V4 Flash 0731 / Pro 0813. Correct Nano's ID to `nvidia/nemotron-nano-3-30b-a3b` and demote the unlisted Nano VL suggestion. | [Live model catalog](https://integrate.api.nvidia.com/v1/models), [Lightning model card](https://build.nvidia.com/nvidia/nemotron-3.5-lightning-30b-a3b/modelcard) |
+| OpenCode Go | Add GLM-5.3 / Flash, Kimi K2.7 Code, DeepSeek V4 Flash Vision Exp, LongCat-2.0, and MiMo-V2.5 Pro. The documented Go endpoints for Qwen3.8 / MiniMax M3 use Messages; GPT-5.6 Luna / Grok 4.6 / Muse Spark use Responses. Those additions need a transport change before curation in KKTerm's Chat Completions adapter. | [Go model endpoints](https://opencode.ai/docs/go/), [Live Go catalog](https://opencode.ai/zen/go/v1/models) |
+| OpenAI Compatible | Add Fable 5.1 and Gemini 3.8 Flash as configurable gateway examples. Actual model IDs depend on the gateway. | [Claude API IDs](https://platform.claude.com/docs/en/models/overview), [Gemini API IDs](https://ai.google.dev/gemini-api/docs/models) |
+
+New multimodal recommendations must pass the backend image-input gate as well as
+the frontend catalog flag. Keep text-only DeepSeek V4 and GLM-5.3 distinct from
+their vision variants. Context budgeting uses the hosted limit when it differs:
+MiniMax M3 is 512K on Ollama Cloud, and Nemotron 3.5 Lightning is 256K on
+OpenRouter versus NVIDIA's documented 1M maximum.
+
 ## Persisted settings and secrets
 
 Provider metadata stored in SQLite is non-secret. API keys remain in the OS

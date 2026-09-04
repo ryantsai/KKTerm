@@ -8192,7 +8192,7 @@ fn model_context_limit_tokens(provider_kind: &str, model: &str) -> (usize, bool)
     if model.starts_with("grok-") || provider == "grok" {
         return (128_000, true);
     }
-    if model.starts_with("glm-5.2") {
+    if model.starts_with("glm-5.2") || model.starts_with("glm-5.3") {
         return (1_000_000, false);
     }
     if model.starts_with("glm-") || provider == "zai" {
@@ -8204,8 +8204,24 @@ fn model_context_limit_tokens(provider_kind: &str, model: &str) -> (usize, bool)
     if model.starts_with("kimi-") || provider == "moonshot" {
         return (256_000, false);
     }
+    if matches!(model, "qwen3.8-max" | "qwen3.8-flash") {
+        return (1_000_000, false);
+    }
+    if model.starts_with("mimo-v2.5") {
+        return (1_050_000, false);
+    }
+    if model == "longcat-2.0" {
+        return (1_000_000, true);
+    }
+    if model == "minimax-m3" {
+        return (if provider == "ollama-cloud" { 512_000 } else { 1_000_000 }, false);
+    }
     if provider == "ollama" {
         return (16_000, true);
+    }
+    if model.starts_with("nemotron-3.5-lightning") {
+        // NVIDIA advertises 1M; OpenRouter's hosted catalog currently caps this at 256K.
+        return (if provider == "nvidia" { 1_000_000 } else { 262_144 }, false);
     }
     if matches!(
         provider.as_str(),
@@ -8841,7 +8857,25 @@ fn supports_image_input(provider_kind: &str, model: &str) -> bool {
         .next()
         .unwrap_or(normalized_model.as_str());
 
-    if provider_kind == "deepseek" || provider_kind == "nvidia" {
+    if provider_kind == "nvidia" {
+        return false;
+    }
+
+    let base_model = unprefixed_model.split(':').next().unwrap_or(unprefixed_model);
+    if matches!(
+        base_model,
+        "deepseek-v4-flash-vision-exp"
+            | "glm-5.3-flash"
+            | "qwen3.8"
+            | "qwen3.8-27b"
+            | "qwen3.8-max"
+            | "qwen3.8-flash"
+            | "minimax-m3"
+    ) {
+        return true;
+    }
+
+    if provider_kind == "deepseek" {
         return false;
     }
 

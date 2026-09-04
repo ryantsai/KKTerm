@@ -15,6 +15,9 @@ const IMAGE_INPUT_MODEL_PATTERNS = [
   /^minicpm-v(?::|[-.]|$)/,
   /^qwen\d*(?:[._-]?vl|vl)(?::|[-.]|$)/,
   /^qwen3\.[56](?::|[-.]|$)/,
+  /^qwen3\.8(?:-(?:27b|max|flash))?(?::|$)/,
+  /^glm-5\.3-flash(?::|$)/,
+  /^minimax-m3(?::|$)/,
   /^kimi(?:[._-]?vl|[-_]k)(?::|[-.]|$)/,
   /llama[-_/]3\.2[-_/]\d+b[-_/]vision/,
   /llama[-_/]4[-_/]maverick/,
@@ -58,6 +61,11 @@ export function modelSupportsImageInput(
     return directOption.supportsImageInput;
   }
 
+  const unprefixedModel = stripProviderPrefix(normalizedModel);
+  if (unprefixedModel.split(":")[0] === "deepseek-v4-flash-vision-exp") {
+    return true;
+  }
+
   if (provider.kind === "deepseek") {
     return false;
   }
@@ -66,7 +74,6 @@ export function modelSupportsImageInput(
     return true;
   }
 
-  const unprefixedModel = stripProviderPrefix(normalizedModel);
   if (matchesAny(normalizedModel, TEXT_ONLY_MODEL_PATTERNS) || matchesAny(unprefixedModel, TEXT_ONLY_MODEL_PATTERNS)) {
     return false;
   }

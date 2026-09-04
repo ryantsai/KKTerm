@@ -21,5 +21,5 @@ export const deepSeekProvider: AiProviderDefinition = {
     { id: "deepseek-reasoner", label: "DeepSeek Reasoner", note: "Legacy reasoning alias", supportsImageInput: false },
   ],
   settingsFields: HOSTED_PROVIDER_SETTINGS_FIELDS,
-  capabilities: ["chat", "streaming", "toolCalling", "openAiCompatible"],
+  capabilities: ["chat", "imageInput", "streaming", "toolCalling", "openAiCompatible"],
 };
