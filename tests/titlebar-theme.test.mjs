@@ -266,7 +266,7 @@ test("custom titlebar matches the native Windows title height", async () => {
   );
 });
 
-test("custom titlebar buttons never render a focus selection highlight", async () => {
+test("custom titlebar buttons expose a keyboard focus indicator", async () => {
   const appCssSource = await readFile(
     new URL("../src/app/app.css", import.meta.url),
     "utf8",
@@ -274,13 +274,18 @@ test("custom titlebar buttons never render a focus selection highlight", async (
 
   assert.match(
     appCssSource,
-    /\.app-titlebar button:focus\s*,\s*\.app-titlebar button:focus-visible\s*\{[^}]*outline:\s*none;/s,
-    "all custom titlebar buttons should suppress WebView focus outlines",
+    /\.app-titlebar button:focus-visible\s*\{[^}]*outline:\s*2px solid var\(--titlebar-text\);[^}]*outline-offset:\s*-3px;/s,
+    "all custom titlebar buttons should expose a shared keyboard focus indicator",
+  );
+  assert.doesNotMatch(
+    appCssSource,
+    /\.app-titlebar button:focus\s*\{[^}]*outline:\s*none;/s,
+    "custom titlebar buttons should not suppress focus indicators for keyboard users",
   );
   assert.doesNotMatch(
     appCssSource,
     /\.app-titlebar-open-path-button:focus-visible\s*\{[^}]*outline:/s,
-    "the titlebar file button must not restore its own focus ring",
+    "the titlebar file button should use the shared focus indicator",
   );
 });
 
