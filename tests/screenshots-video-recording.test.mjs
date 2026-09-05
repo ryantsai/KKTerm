@@ -19,6 +19,30 @@ const storage = fs.readFileSync("src-tauri/src/storage.rs", "utf8");
 const catalog = fs.readFileSync("installer/catalog.v1.json", "utf8");
 const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
 
+test("the detached recording controller can query and control the recorder through its own ACL", () => {
+  const label = backend.match(/const CONTROLS_WINDOW_LABEL: &str = "([^"]+)"/)?.[1];
+  assert.ok(label);
+  const capabilities = fs.readdirSync("src-tauri/capabilities")
+    .filter((file) => file.endsWith(".json"))
+    .map((file) => JSON.parse(fs.readFileSync(`src-tauri/capabilities/${file}`, "utf8")))
+    .filter((capability) => capability.windows?.includes(label));
+  assert.ok(capabilities.length, `${label} needs its own capability`);
+  const grants = capabilities.flatMap((capability) => capability.permissions);
+  assert.ok(grants.includes("core:window:allow-start-dragging"));
+  assert.ok(!grants.includes("main-commands"), "the controller must not inherit all main-window commands");
+  const permissions = fs.readdirSync("src-tauri/permissions")
+    .filter((file) => file.endsWith(".toml"))
+    .flatMap((file) => fs.readFileSync(`src-tauri/permissions/${file}`, "utf8").split("[[permission]]"));
+  const allowed = permissions.filter((permission) =>
+    grants.includes(permission.match(/identifier\s*=\s*"([^"]+)"/)?.[1]))
+    .flatMap((permission) => [...(permission.match(/commands\.allow\s*=\s*\[([^\]]*)\]/s)?.[1] ?? "")
+      .matchAll(/"([^"]+)"/g)].map((match) => match[1]));
+  const commands = [...controls.matchAll(/"((?:video_recording_status|(?:pause|resume|stop)_video_recording))"/g)]
+    .map((match) => match[1]);
+  assert.equal(new Set(commands).size, 4);
+  for (const command of commands) assert.ok(allowed.includes(command), `${label} cannot invoke ${command}`);
+});
+
 test("Screenshots places Image/Video immediately after capture delay", () => {
   const delay = page.indexOf('title={t("screenshots.delay.label")}');
   const media = page.indexOf('title={t("screenshots.mediaType")}');

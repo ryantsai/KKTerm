@@ -1,0 +1,9 @@
+[[permission]]
+identifier = "video-recording-controls-commands"
+description = "Allows the detached recording controller to query, pause, resume, and stop the active recording."
+commands.allow = [
+  "video_recording_status",
+  "pause_video_recording",
+  "resume_video_recording",
+  "stop_video_recording",
+]

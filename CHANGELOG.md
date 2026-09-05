@@ -3,6 +3,68 @@
 All notable changes to KKTerm are documented here.
 
 ## Direct Downloads
+* 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.10/kkterm-3000.0.10-windows-x64-setup.exe)
+* 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.10/kkterm-3000.0.10-windows-arm64-setup.exe)
+* 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.10/kkterm-3000.0.10-windows-x64-portable.zip)
+* 📦 [Portable for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.10/kkterm-3000.0.10-windows-arm64-portable.zip)
+
+## Highlights
+- v3000.0.10 improves keyboard accessibility across the app’s title bar, dialogs, settings, screenshots module, and more—because the only thing that should be “locked” is your workflow, not your focus.  
+- AI Assistant experience is enhanced with better model support, including updated recommendations/context limits and improved image input handling.  
+- Title bar now displays the app name and version.
+
+## New
+- Added app name and version display to the title bar.
+
+## Improved
+- Updated custom title bar button focus behavior to enhance keyboard accessibility.
+- Enhanced AI model support and UI:
+  - Updated AI model recommendations and context limits (including new models like Claude Fable 5.1, Gemini 3.8 Flash, and others).
+  - Improved image input support for various AI models to maintain compatibility with new providers/models.
+- Enhanced accessibility and styling across settings and workspace modules:
+  - Improved focus styles for buttons and select elements in the Screenshots module.
+  - Added accessibility improvements for AppearanceSettings and GeneralSettings.
+  - Introduced a `useDialogFocus` hook to manage focus within dialogs for better keyboard navigation.
+- Enhanced RDP advanced options layout to improve localization support.
+
+## Fixed
+
+## Internal
+- Updated title bar theme tests.
+- Added/updated tests for AI model image input and context limits.
+- Added tests for dialog focus and interface contrast compliance.
+- Misc UI/accessibility refactors and documentation updates supporting the above changes.
+
+---
+
+## 亮點（Highlights）
+- v3000.0.10 強化全程鍵盤可用性，涵蓋應用程式標題列、對話框、設定、截圖模組等多處——畢竟真正該「鎖住」的只有你的工作流程，不該是你的焦點。  
+- AI 助手體驗也有提升：包含更新模型支援（建議/上下文限制）與更好的影像輸入處理。  
+- 標題列新增顯示應用程式名稱與版本資訊。
+
+## 新增（New）
+- 在標題列新增應用程式名稱與版本顯示。
+
+## 改善（Improved）
+- 更新自訂標題列按鈕的焦點行為，以提升鍵盤可及性。
+- 強化 AI 模型支援與介面：
+  - 更新 AI 模型建議與上下文限制（包含例如 Claude Fable 5.1、Gemini 3.8 Flash 等新模型）。
+  - 改善各種 AI 模型的影像輸入支援，以維持對新供應商/模型的相容性。
+- 強化設定與工作區模組的無障礙與樣式：
+  - 改善「截圖模組（Screenshots）」中按鈕與選擇元件的焦點樣式。
+  - 在 AppearanceSettings 與 GeneralSettings 增加無障礙改進。
+  - 新增 `useDialogFocus` hook，用於管理對話框內的焦點，讓鍵盤導覽更順暢。
+- 改善 RDP 進階選項版面，以支援在本地化方面的需求。
+
+## 修正（Fixed）
+
+## Internal
+- 更新標題列主題相關測試。
+- 新增/更新 AI 模型影像輸入與上下文限制的測試。
+- 新增對話框焦點與介面對比度符合性測試。
+- 進行支援上述變更的 UI/無障礙重構與文件更新。
+
+## Direct Downloads
 * 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.9/kkterm-3000.0.9-windows-x64-setup.exe)
 * 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.9/kkterm-3000.0.9-windows-arm64-setup.exe)
 * 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.9/kkterm-3000.0.9-windows-x64-portable.zip)

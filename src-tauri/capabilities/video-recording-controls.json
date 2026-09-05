@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "video-recording-controls",
+  "description": "Capability for the detached video recording controller",
+  "windows": ["video-recording-controls"],
+  "permissions": [
+    "video-recording-controls-commands",
+    "core:default",
+    "core:window:allow-start-dragging"
+  ]
+}
