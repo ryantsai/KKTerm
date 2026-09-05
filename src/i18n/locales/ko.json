@@ -2764,7 +2764,7 @@
     "screenshotsVideoFormatWebm": "WebM (VP9)",
     "screenshotsVideoFormatGif": "애니메이션 GIF",
     "screenshotsQuality": "품질",
-    "screenshotsQualityHint": "JPEG는 손실이 있는 이미지 품질을 사용합니다. PNG는 무손실을 유지하며 이 값을 압축 노력으로 사용합니다.",
+    "screenshotsQualityHint": "품질은 JPEG에만 적용됩니다. PNG는 항상 최대 무손실 압축을 사용하므로 저장에 시간이 더 걸릴 수 있습니다.",
     "screenshotsBorder": "스크린샷 테두리",
     "screenshotsBorderHint": "새 캡처의 이미지 가장자리 안쪽에 테두리를 자동으로 그립니다.",
     "screenshotsBorderEnabled": "캡처 후 테두리 자동 추가",

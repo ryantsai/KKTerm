@@ -2764,7 +2764,7 @@
     "screenshotsVideoFormatWebm": "WebM (VP9)",
     "screenshotsVideoFormatGif": "動態 GIF",
     "screenshotsQuality": "品質",
-    "screenshotsQualityHint": "JPEG 使用有損壓縮。PNG 維持無損，並使用此數值控制壓縮程度。",
+    "screenshotsQualityHint": "品質僅適用於 JPEG。PNG 一律使用最高程度的無損壓縮；儲存可能需要較長時間。",
     "screenshotsBorder": "螢幕截圖框線",
     "screenshotsBorderHint": "自動在新擷取影像邊緣內側繪製框線。",
     "screenshotsBorderEnabled": "擷取後自動加上框線",

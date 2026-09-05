@@ -2764,7 +2764,7 @@
     "screenshotsVideoFormatWebm": "WebM (VP9)",
     "screenshotsVideoFormatGif": "Animated GIF",
     "screenshotsQuality": "Quality",
-    "screenshotsQualityHint": "JPEG uses lossy image quality. PNG stays lossless and uses this value as compression effort.",
+    "screenshotsQualityHint": "Quality applies to JPEG only. PNG always uses maximum lossless compression; saving may take longer.",
     "screenshotsBorder": "Screenshot border",
     "screenshotsBorderHint": "Automatically frame new captures with a border drawn inside the image edges.",
     "screenshotsBorderEnabled": "Auto add border after capture",

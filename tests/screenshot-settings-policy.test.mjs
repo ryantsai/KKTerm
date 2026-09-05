@@ -25,7 +25,7 @@ test("screenshot settings share shortcut rows and clear bindings without toggles
   assert.match(rows, /\[enabledKey\]: value\.trim\(\)\.length > 0/);
 });
 
-test("screenshot settings expose capture delivery and universal quality", async () => {
+test("screenshot settings expose capture delivery and JPEG-only quality", async () => {
   const [settings, draft, backend] = await Promise.all([
     read("src/modules/settings/ScreenshotsSettings.tsx"),
     read("src/modules/settings/screenshotSettingsDraft.ts"),
@@ -37,6 +37,7 @@ test("screenshot settings expose capture delivery and universal quality", async 
   assert.match(settings, /value=\"clipboard\"/);
   assert.match(settings, /value=\"both\"/);
   assert.match(settings, /type=\"range\"[\s\S]*draft\?\.quality/);
+  assert.match(settings, /disabled=\{draft\?\.format !== "jpeg"\}/);
   assert.match(draft, /captureMode: "both"/);
   assert.match(backend, /fn default_screenshot_capture_mode\(\)[\s\S]*"both"\.to_string\(\)/);
 });
@@ -77,7 +78,7 @@ test("capture delivery returns optional library data and clipboard state", async
   assert.match(backend, /pub struct ScreenshotCaptureResult/);
   assert.match(backend, /let copy_to_clipboard = options\.capture_mode != "folder"/);
   assert.match(backend, /let save_to_folder = options\.capture_mode != "clipboard"/);
-  assert.match(backend, /dib_to_png_bytes_with_quality/);
+  assert.match(backend, /dib_to_png_bytes/);
   assert.match(bridge, /result\.storedScreenshot/);
   assert.match(bridge, /screenshots\.captureSavedAndCopied/);
   assert.match(bridge, /screenshots\.captureCopied/);

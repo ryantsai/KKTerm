@@ -2764,7 +2764,7 @@
     "screenshotsVideoFormatWebm": "WebM (VP9)",
     "screenshotsVideoFormatGif": "GIF động",
     "screenshotsQuality": "Chất lượng",
-    "screenshotsQualityHint": "JPEG sử dụng chất lượng hình ảnh bị mất. PNG không mất dữ liệu và sử dụng giá trị này làm nỗ lực nén.",
+    "screenshotsQualityHint": "Chất lượng chỉ áp dụng cho JPEG. PNG luôn dùng mức nén không mất dữ liệu tối đa; việc lưu có thể mất nhiều thời gian hơn.",
     "screenshotsBorder": "Viền ảnh chụp màn hình",
     "screenshotsBorderHint": "Tự động đóng khung ảnh chụp mới bằng viền vẽ phía trong mép ảnh.",
     "screenshotsBorderEnabled": "Tự động thêm viền sau khi chụp",

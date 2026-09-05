@@ -273,6 +273,7 @@ export function ScreenshotsSettings() {
                 min={1}
                 max={100}
                 type="range"
+                disabled={draft?.format !== "jpeg"}
                 value={draft?.quality ?? 90}
                 onChange={(event) => {
                   const parsed = Number.parseInt(event.currentTarget.value, 10);

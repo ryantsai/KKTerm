@@ -2764,7 +2764,7 @@
     "screenshotsVideoFormatWebm": "WebM (VP9)",
     "screenshotsVideoFormatGif": "GIF animé",
     "screenshotsQuality": "Qualité",
-    "screenshotsQualityHint": "JPEG utilise une qualité d'image avec perte. PNG reste sans perte et utilise cette valeur comme effort de compression.",
+    "screenshotsQualityHint": "La qualité concerne uniquement le JPEG. Le PNG utilise toujours la compression sans perte maximale ; l’enregistrement peut prendre plus de temps.",
     "screenshotsBorder": "Bordure des captures",
     "screenshotsBorderHint": "Encadre automatiquement les nouvelles captures avec une bordure dessinée à l'intérieur des bords de l'image.",
     "screenshotsBorderEnabled": "Ajouter automatiquement une bordure après la capture",

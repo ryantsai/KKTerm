@@ -2764,7 +2764,7 @@
     "screenshotsVideoFormatWebm": "WebM (VP9)",
     "screenshotsVideoFormatGif": "动态 GIF",
     "screenshotsQuality": "质量",
-    "screenshotsQualityHint": "JPEG 使用有损图像质量。 PNG 保持无损并使用该值作为压缩效果。",
+    "screenshotsQualityHint": "质量仅适用于 JPEG。PNG 始终使用最大无损压缩；保存可能需要更长时间。",
     "screenshotsBorder": "截图边框",
     "screenshotsBorderHint": "自动为新截图在图像边缘内侧绘制边框。",
     "screenshotsBorderEnabled": "截图后自动添加边框",

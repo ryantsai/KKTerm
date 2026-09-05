@@ -2032,7 +2032,7 @@ fn save_dib_to_library(
         )
     } else {
         (
-            platform::dib_to_png_bytes_with_quality(dib, width, height, options.quality)?,
+            platform::dib_to_png_bytes(dib, width, height)?,
             "png",
         )
     };
@@ -2358,14 +2358,9 @@ fn write_dynamic_image(
         }
         _ => {
             let rgba = image.to_rgba8();
-            image::codecs::png::PngEncoder::new(&mut bytes)
-                .write_image(
-                    rgba.as_raw(),
-                    rgba.width(),
-                    rgba.height(),
-                    ColorType::Rgba8.into(),
-                )
-                .map_err(|error| format!("failed to encode PNG screenshot: {error}"))?;
+            bytes = encode_optimized_png(
+                rgba.as_raw(), rgba.width(), rgba.height(), ColorType::Rgba8,
+            )?;
         }
     }
     fs::write(path, bytes).map_err(|error| format!("failed to save screenshot: {error}"))
@@ -2373,6 +2368,30 @@ fn write_dynamic_image(
 
 fn gif_speed_for_quality(quality: u8) -> i32 {
     30 - (i32::from(quality.clamp(1, 100)) - 1) * 29 / 99
+}
+
+// Shared by native captures and every PNG editor/resize/conversion output.
+// Keep this on the screenshot command worker: exhaustive filtering and Zopfli
+// deliberately trade encoding time for smaller files, never pixel fidelity.
+fn encode_optimized_png(
+    pixels: &[u8],
+    width: u32,
+    height: u32,
+    color: image::ColorType,
+) -> Result<Vec<u8>, String> {
+    use image::{ImageEncoder, codecs::png::{CompressionType, FilterType, PngEncoder}};
+
+    let mut original = Vec::new();
+    PngEncoder::new_with_quality(&mut original, CompressionType::Best, FilterType::Adaptive)
+        .write_image(pixels, width, height, color.into())
+        .map_err(|error| format!("failed to encode PNG screenshot: {error}"))?;
+    let mut options = oxipng::Options::max_compression();
+    options.deflater = oxipng::Deflater::Zopfli(Default::default());
+    // Preserve even the RGB values beneath fully transparent pixels.
+    options.optimize_alpha = false;
+    let optimized = oxipng::optimize_from_memory(&original, &options)
+        .map_err(|error| format!("failed to optimize PNG screenshot: {error}"))?;
+    Ok(if optimized.len() < original.len() { optimized } else { original })
 }
 
 fn output_extension(format: &str) -> &'static str {
@@ -3042,25 +3061,13 @@ mod platform {
         Ok(jpeg)
     }
 
-    pub fn dib_to_png_bytes_with_quality(
+    pub fn dib_to_png_bytes(
         dib: &[u8],
         width: u32,
         height: u32,
-        quality: u8,
     ) -> Result<Vec<u8>, String> {
-        use image::codecs::png::{CompressionType, FilterType, PngEncoder};
-
         let rgb = dib_to_rgb(dib, width, height)?;
-        let mut png = Vec::new();
-        let compression_level = 1 + ((quality.clamp(1, 100) as u16 - 1) * 8 / 99) as u8;
-        PngEncoder::new_with_quality(
-            &mut png,
-            CompressionType::Level(compression_level),
-            FilterType::Adaptive,
-        )
-        .write_image(&rgb, width, height, ColorType::Rgb8.into())
-        .map_err(|error| format!("failed to encode PNG: {error}"))?;
-        Ok(png)
+        super::encode_optimized_png(&rgb, width, height, ColorType::Rgb8)
     }
 
     // GDI/DXGI captures leave the DIB alpha channel undefined (often zero), so
@@ -3658,6 +3665,62 @@ mod platform {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn optimized_png_preserves_pixels_and_never_grows() {
+        use image::{ColorType, ImageEncoder};
+
+        for color in [ColorType::Rgb8, ColorType::Rgba8] {
+            for patterned in [false, true] {
+                let channels = color.channel_count() as usize;
+                let mut pixels = Vec::new();
+                for i in 0..32 * 24 {
+                    let rgb = if patterned {
+                        [(i * 17) as u8, (i / 3) as u8, (i * 47) as u8]
+                    } else {
+                        [24, 48, 96]
+                    };
+                    pixels.extend_from_slice(&rgb);
+                    if channels == 4 {
+                        // Includes invisible RGB, partial alpha, and opaque pixels.
+                        pixels.push([0, 128, 255][i % 3]);
+                    }
+                }
+                let mut baseline = Vec::new();
+                image::codecs::png::PngEncoder::new_with_quality(
+                    &mut baseline,
+                    image::codecs::png::CompressionType::Best,
+                    image::codecs::png::FilterType::Adaptive,
+                ).write_image(&pixels, 32, 24, color.into()).unwrap();
+                let optimized = encode_optimized_png(&pixels, 32, 24, color).unwrap();
+                assert!(optimized.len() <= baseline.len());
+                let decoded = image::load_from_memory(&optimized).unwrap();
+                assert_eq!((decoded.width(), decoded.height()), (32, 24));
+                let actual = if channels == 4 {
+                    decoded.to_rgba8().into_raw()
+                } else {
+                    decoded.to_rgb8().into_raw()
+                };
+                assert_eq!(actual, pixels);
+                if !patterned {
+                    assert!(optimized.len() < baseline.len());
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn png_output_ignores_lossy_quality_setting() {
+        let folder = tempfile::tempdir().unwrap();
+        let image = image::DynamicImage::ImageRgba8(image::RgbaImage::from_pixel(
+            16, 16, image::Rgba([12, 34, 56, 128]),
+        ));
+        let low = folder.path().join("low.png");
+        let high = folder.path().join("high.png");
+        write_dynamic_image(&image, &low, "png", 1).unwrap();
+        write_dynamic_image(&image, &high, "png", 100).unwrap();
+        assert_eq!(fs::read(low).unwrap(), fs::read(high).unwrap());
+    }
 
     #[test]
     fn app_window_kind_maps_labels() {

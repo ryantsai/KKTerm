@@ -2764,7 +2764,7 @@
     "screenshotsVideoFormatWebm": "WebM (VP9)",
     "screenshotsVideoFormatGif": "アニメーション GIF",
     "screenshotsQuality": "品質",
-    "screenshotsQualityHint": "JPEG は非可逆画質を使用します。 PNG はロスレスを維持し、この値を圧縮作業として使用します。",
+    "screenshotsQualityHint": "画質はJPEGにのみ適用されます。PNGは常に最大の可逆圧縮を使用するため、保存に時間がかかる場合があります。",
     "screenshotsBorder": "スクリーンショットの枠線",
     "screenshotsBorderHint": "新しいキャプチャの画像内側に枠線を自動的に描画します。",
     "screenshotsBorderEnabled": "キャプチャ後に枠線を自動追加",

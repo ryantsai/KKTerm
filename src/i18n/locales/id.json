@@ -2764,7 +2764,7 @@
     "screenshotsVideoFormatWebm": "WebM (VP9)",
     "screenshotsVideoFormatGif": "GIF animasi",
     "screenshotsQuality": "Kualitas",
-    "screenshotsQualityHint": "JPEG menggunakan kualitas gambar yang lossy. PNG tetap lossless dan menggunakan nilai ini sebagai upaya kompresi.",
+    "screenshotsQualityHint": "Kualitas hanya berlaku untuk JPEG. PNG selalu menggunakan kompresi lossless maksimum; penyimpanan mungkin memerlukan waktu lebih lama.",
     "screenshotsBorder": "Bingkai tangkapan layar",
     "screenshotsBorderHint": "Secara otomatis membingkai tangkapan baru dengan bingkai yang digambar di sisi dalam tepi gambar.",
     "screenshotsBorderEnabled": "Tambahkan bingkai otomatis setelah tangkapan",

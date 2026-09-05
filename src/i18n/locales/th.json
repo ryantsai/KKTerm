@@ -2764,7 +2764,7 @@
     "screenshotsVideoFormatWebm": "WebM (VP9)",
     "screenshotsVideoFormatGif": "GIF แบบเคลื่อนไหว",
     "screenshotsQuality": "คุณภาพ",
-    "screenshotsQualityHint": "JPEG ใช้คุณภาพของภาพที่สูญเสียไป PNG คงความสูญเสียและใช้ค่านี้เป็นความพยายามในการบีบอัด",
+    "screenshotsQualityHint": "คุณภาพใช้กับ JPEG เท่านั้น PNG ใช้การบีบอัดแบบไม่สูญเสียข้อมูลสูงสุดเสมอ การบันทึกอาจใช้เวลานานขึ้น",
     "screenshotsBorder": "กรอบภาพหน้าจอ",
     "screenshotsBorderHint": "ใส่กรอบให้ภาพที่จับใหม่โดยวาดกรอบด้านในขอบภาพโดยอัตโนมัติ",
     "screenshotsBorderEnabled": "เพิ่มกรอบอัตโนมัติหลังจับภาพ",
