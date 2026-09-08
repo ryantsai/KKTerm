@@ -2497,14 +2497,14 @@
       "unsavedMessage": "คำอธิบายประกอบจะสูญหายหากดำเนินการต่อโดยไม่บันทึก",
       "dontSave": "ไม่บันทึก"
     },
-    "optimizingPngs": "กำลังปรับขนาดไฟล์ภาพ PNG ให้เหมาะสม…",
-    "optimizedPngs": "ปรับขนาดไฟล์ PNG ให้เหมาะสมเสร็จแล้ว",
+    "optimizingPngs": "กำลังปรับการบีบอัดภาพ PNG ให้เหมาะสม…",
+    "optimizedPngs": "ปรับการบีบอัด PNG ให้เหมาะสมเสร็จแล้ว",
     "menu": {
       "openExternal": "เปิดด้วยแอปเริ่มต้น",
       "copy": "คัดลอกรูปภาพ",
       "reveal": "แสดงในโฟลเดอร์",
       "rename": "เปลี่ยนชื่อ",
-      "optimizePng": "ปรับขนาดไฟล์ PNG ให้เหมาะสม",
+      "optimizePng": "ปรับการบีบอัด PNG ให้เหมาะสม",
       "optimizePngOverwrite": "เขียนทับต้นฉบับ",
       "optimizePngCopy": "บันทึกสำเนาใหม่"
     },
@@ -2769,7 +2769,7 @@
     "screenshotsVideoFormatWebm": "WebM (VP9)",
     "screenshotsVideoFormatGif": "GIF แบบเคลื่อนไหว",
     "screenshotsQuality": "คุณภาพ",
-    "screenshotsQualityHint": "คุณภาพมีผลกับ JPEG เท่านั้น PNG ใช้การบีบอัดแบบไม่สูญเสียข้อมูลที่รวดเร็ว หากต้องการไฟล์ PNG ที่เล็กลง ให้ใช้คำสั่งปรับขนาดไฟล์ PNG ให้เหมาะสมในเมนูคลิกขวาของภาพหน้าจอ",
+    "screenshotsQualityHint": "คุณภาพมีผลกับ JPEG เท่านั้น PNG ใช้การบีบอัดแบบไม่สูญเสียข้อมูลที่รวดเร็ว หากต้องการไฟล์ PNG ที่เล็กลง ให้ใช้คำสั่ง “ปรับการบีบอัด PNG ให้เหมาะสม” ในเมนูคลิกขวาของภาพหน้าจอ",
     "screenshotsBorder": "กรอบภาพหน้าจอ",
     "screenshotsBorderHint": "ใส่กรอบให้ภาพที่จับใหม่โดยวาดกรอบด้านในขอบภาพโดยอัตโนมัติ",
     "screenshotsBorderEnabled": "เพิ่มกรอบอัตโนมัติหลังจับภาพ",
