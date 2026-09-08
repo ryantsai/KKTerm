@@ -2497,11 +2497,16 @@
       "unsavedMessage": "Anotasi akan hilang jika Anda melanjutkan tanpa menyimpan.",
       "dontSave": "Jangan simpan"
     },
+    "optimizingPngs": "Mengoptimalkan gambar PNG…",
+    "optimizedPngs": "Optimalisasi PNG selesai.",
     "menu": {
       "openExternal": "Buka di aplikasi bawaan",
       "copy": "Salin gambar",
       "reveal": "Tampilkan di folder",
-      "rename": "Ubah nama"
+      "rename": "Ubah nama",
+      "optimizePng": "Optimalkan PNG",
+      "optimizePngOverwrite": "Timpa berkas asli",
+      "optimizePngCopy": "Simpan salinan baru"
     },
     "kind": {
       "region": "Area",
@@ -2764,7 +2769,7 @@
     "screenshotsVideoFormatWebm": "WebM (VP9)",
     "screenshotsVideoFormatGif": "GIF animasi",
     "screenshotsQuality": "Kualitas",
-    "screenshotsQualityHint": "Kualitas hanya berlaku untuk JPEG. PNG selalu menggunakan kompresi lossless maksimum; penyimpanan mungkin memerlukan waktu lebih lama.",
+    "screenshotsQualityHint": "Kualitas hanya berlaku untuk JPEG. PNG menggunakan kompresi cepat tanpa kehilangan kualitas. Untuk berkas PNG yang lebih kecil, gunakan Optimalkan PNG di menu konteks Tangkapan Layar.",
     "screenshotsBorder": "Bingkai tangkapan layar",
     "screenshotsBorderHint": "Secara otomatis membingkai tangkapan baru dengan bingkai yang digambar di sisi dalam tepi gambar.",
     "screenshotsBorderEnabled": "Tambahkan bingkai otomatis setelah tangkapan",

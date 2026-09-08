@@ -22,6 +22,14 @@ export function screenshotFileType(screenshot: StoredScreenshot) {
   return extension === "JPG" || extension === "JPEG" ? "JPEG" : extension || "—";
 }
 
+export function canOptimizePngs(
+  screenshots: readonly Pick<StoredScreenshot, "fileName" | "mediaType">[],
+) {
+  return screenshots.length > 0 && screenshots.every(
+    (screenshot) => screenshot.mediaType === "image" && /\.png$/i.test(screenshot.fileName),
+  );
+}
+
 function dateLabel(value: number | null) {
   if (!value) {
     return "—";

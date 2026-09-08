@@ -47,6 +47,7 @@ encoding_rs = "0.8"
 chardetng = "1"
 regex = "1"
 image = { version = "0.25", default-features = false, features = ["gif", "jpeg", "png", "webp"] }
+tempfile = "3.27.0"
 webp = { version = "=0.3.1", default-features = false }
 # System font enumeration: parse the `name` table of installed font files to
 # list available families cross-platform, without pulling native fontconfig /
@@ -171,7 +172,6 @@ sysinfo = "0.39"
 zbus = "5"
 
 [target.'cfg(not(target_os = "windows"))'.dependencies]
-tempfile = "3.27.0"
 # Unix ICMP via surge-ping (raw sockets - Unix users typically have CAP_NET_RAW or root).
 # Windows uses winping instead (see Windows target block above).
 surge-ping = "0.9"

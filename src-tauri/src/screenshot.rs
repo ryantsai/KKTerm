@@ -1940,6 +1940,80 @@ pub fn convert_library_screenshots(
     Ok(created)
 }
 
+/// Explicit, potentially slow optimization of the saved PNG, never editor drafts.
+/// Work on the original bytes to preserve PNG metadata and higher bit depths.
+pub fn optimize_library_screenshot_png(
+    id: String,
+    folder_path: String,
+    save_as_copy: bool,
+) -> Result<StoredScreenshot, String> {
+    let folder = ensure_screenshots_folder(&folder_path)?;
+    let original = {
+        let _guard = crate::SCREENSHOT_COMMAND_LOCK.lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let path = screenshot_path_from_id(&folder, &id)?;
+        if image_format_for_path(&path) != Some("png") {
+            return Err("PNG optimization requires a PNG image".to_string());
+        }
+        fs::read(&path).map_err(|error| format!("failed to read PNG screenshot: {error}"))?
+    };
+    if image::guess_format(&original).ok() != Some(image::ImageFormat::Png) {
+        return Err("PNG optimization requires a PNG image".to_string());
+    }
+    let mut options = oxipng::Options::max_compression();
+    options.deflater = oxipng::Deflater::Zopfli(Default::default());
+    // Preserve even the RGB values beneath fully transparent pixels.
+    options.optimize_alpha = false;
+    let optimized = oxipng::optimize_from_memory(&original, &options)
+        .map_err(|error| format!("failed to optimize PNG screenshot: {error}"))?;
+    publish_optimized_png(&folder, &id, &original, &optimized, save_as_copy)
+}
+
+fn publish_optimized_png(
+    folder: &Path,
+    id: &str,
+    original: &[u8],
+    optimized: &[u8],
+    save_as_copy: bool,
+) -> Result<StoredScreenshot, String> {
+    use std::io::Write;
+
+    let _guard = crate::SCREENSHOT_COMMAND_LOCK.lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let path = screenshot_path_from_id(folder, id)?;
+    if !save_as_copy && fs::read(&path)
+        .map_err(|error| format!("failed to recheck PNG screenshot: {error}"))? != original
+    {
+        return Err("screenshot changed during optimization; retry with the current image".to_string());
+    }
+    let target = if save_as_copy {
+        unique_library_output_path(folder, &path, "optimized", "png")
+    } else {
+        path.clone()
+    };
+    // A no-gain overwrite is write-free and keeps the original timestamp.
+    if save_as_copy || optimized.len() < original.len() {
+        let bytes = if optimized.len() < original.len() { optimized } else { original };
+        let mut temp = tempfile::NamedTempFile::new_in(folder)
+            .map_err(|error| format!("failed to create PNG temporary file: {error}"))?;
+        temp.write_all(bytes)
+            .map_err(|error| format!("failed to write optimized PNG: {error}"))?;
+        temp.as_file().sync_all()
+            .map_err(|error| format!("failed to flush optimized PNG: {error}"))?;
+        if !save_as_copy {
+            let permissions = fs::metadata(&path)
+                .map_err(|error| format!("failed to read PNG permissions: {error}"))?.permissions();
+            temp.as_file().set_permissions(permissions)
+                .map_err(|error| format!("failed to preserve PNG permissions: {error}"))?;
+            temp.persist(&target)
+        } else {
+            temp.persist_noclobber(&target)
+        }.map_err(|error| format!("failed to save optimized PNG: {error}"))?;
+    }
+    // Pixel data is unchanged: retain the cached thumbnail and editor draft.
+    stored_screenshot_from_path(&folder, target)
+}
+
 pub fn save_edited_library_screenshot(
     request: SaveEditedScreenshotRequest,
     folder_path: String,
@@ -2358,7 +2432,7 @@ fn write_dynamic_image(
         }
         _ => {
             let rgba = image.to_rgba8();
-            bytes = encode_optimized_png(
+            bytes = encode_png(
                 rgba.as_raw(), rgba.width(), rgba.height(), ColorType::Rgba8,
             )?;
         }
@@ -2371,9 +2445,8 @@ fn gif_speed_for_quality(quality: u8) -> i32 {
 }
 
 // Shared by native captures and every PNG editor/resize/conversion output.
-// Keep this on the screenshot command worker: exhaustive filtering and Zopfli
-// deliberately trade encoding time for smaller files, never pixel fidelity.
-fn encode_optimized_png(
+// Keep routine saves fast and lossless; expensive optimization is explicit.
+fn encode_png(
     pixels: &[u8],
     width: u32,
     height: u32,
@@ -2381,17 +2454,11 @@ fn encode_optimized_png(
 ) -> Result<Vec<u8>, String> {
     use image::{ImageEncoder, codecs::png::{CompressionType, FilterType, PngEncoder}};
 
-    let mut original = Vec::new();
-    PngEncoder::new_with_quality(&mut original, CompressionType::Best, FilterType::Adaptive)
+    let mut bytes = Vec::new();
+    PngEncoder::new_with_quality(&mut bytes, CompressionType::Fast, FilterType::Adaptive)
         .write_image(pixels, width, height, color.into())
         .map_err(|error| format!("failed to encode PNG screenshot: {error}"))?;
-    let mut options = oxipng::Options::max_compression();
-    options.deflater = oxipng::Deflater::Zopfli(Default::default());
-    // Preserve even the RGB values beneath fully transparent pixels.
-    options.optimize_alpha = false;
-    let optimized = oxipng::optimize_from_memory(&original, &options)
-        .map_err(|error| format!("failed to optimize PNG screenshot: {error}"))?;
-    Ok(if optimized.len() < original.len() { optimized } else { original })
+    Ok(bytes)
 }
 
 fn output_extension(format: &str) -> &'static str {
@@ -3067,7 +3134,7 @@ mod platform {
         height: u32,
     ) -> Result<Vec<u8>, String> {
         let rgb = dib_to_rgb(dib, width, height)?;
-        super::encode_optimized_png(&rgb, width, height, ColorType::Rgb8)
+        super::encode_png(&rgb, width, height, ColorType::Rgb8)
     }
 
     // GDI/DXGI captures leave the DIB alpha channel undefined (often zero), so
@@ -3667,8 +3734,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn optimized_png_preserves_pixels_and_never_grows() {
-        use image::{ColorType, ImageEncoder};
+    fn fast_png_preserves_pixels_and_transparency() {
+        use image::ColorType;
 
         for color in [ColorType::Rgb8, ColorType::Rgba8] {
             for patterned in [false, true] {
@@ -3686,15 +3753,8 @@ mod tests {
                         pixels.push([0, 128, 255][i % 3]);
                     }
                 }
-                let mut baseline = Vec::new();
-                image::codecs::png::PngEncoder::new_with_quality(
-                    &mut baseline,
-                    image::codecs::png::CompressionType::Best,
-                    image::codecs::png::FilterType::Adaptive,
-                ).write_image(&pixels, 32, 24, color.into()).unwrap();
-                let optimized = encode_optimized_png(&pixels, 32, 24, color).unwrap();
-                assert!(optimized.len() <= baseline.len());
-                let decoded = image::load_from_memory(&optimized).unwrap();
+                let encoded = encode_png(&pixels, 32, 24, color).unwrap();
+                let decoded = image::load_from_memory(&encoded).unwrap();
                 assert_eq!((decoded.width(), decoded.height()), (32, 24));
                 let actual = if channels == 4 {
                     decoded.to_rgba8().into_raw()
@@ -3702,9 +3762,6 @@ mod tests {
                     decoded.to_rgb8().into_raw()
                 };
                 assert_eq!(actual, pixels);
-                if !patterned {
-                    assert!(optimized.len() < baseline.len());
-                }
             }
         }
     }
@@ -3720,6 +3777,69 @@ mod tests {
         write_dynamic_image(&image, &low, "png", 1).unwrap();
         write_dynamic_image(&image, &high, "png", 100).unwrap();
         assert_eq!(fs::read(low).unwrap(), fs::read(high).unwrap());
+    }
+
+    #[test]
+    fn explicit_png_optimization_preserves_source_draft_and_pixels() {
+        let folder = tempfile::tempdir().unwrap();
+        let id = "KKTerm-region-1720000000000.PNG";
+        let mut pixels = Vec::new();
+        for i in 0..32 * 24 {
+            pixels.extend_from_slice(&[24, 48, 96, [0, 128, 255][i % 3]]);
+        }
+        let original = encode_png(&pixels, 32, 24, image::ColorType::Rgba8).unwrap();
+        fs::write(folder.path().join(id), &original).unwrap();
+        let draft_path = screenshot_draft_path(folder.path(), id);
+        fs::create_dir_all(draft_path.parent().unwrap()).unwrap();
+        fs::write(&draft_path, "draft unchanged").unwrap();
+        let folder_path = folder.path().to_string_lossy().into_owned();
+        let copy = optimize_library_screenshot_png(id.to_string(), folder_path.clone(), true).unwrap();
+        let bytes = fs::read(&copy.path).unwrap();
+        assert!(bytes.len() <= original.len());
+        let decoded = image::load_from_memory(&bytes).unwrap().to_rgba8();
+        assert_eq!(decoded.dimensions(), (32, 24));
+        assert_eq!(decoded.into_raw(), pixels);
+        assert_eq!(fs::read(folder.path().join(id)).unwrap(), original);
+        assert_eq!(fs::read_to_string(draft_path).unwrap(), "draft unchanged");
+        assert!(!copy.has_draft);
+        assert_eq!(copy.taken_at, Some(1720000000000));
+        let second = optimize_library_screenshot_png(id.to_string(), folder_path.clone(), true).unwrap();
+        assert_ne!(copy.id, second.id);
+        assert_eq!(fs::read(copy.path).unwrap(), bytes);
+        let overwritten = optimize_library_screenshot_png(id.to_string(), folder_path, false).unwrap();
+        assert_eq!(overwritten.id, id);
+        assert!(overwritten.has_draft);
+        assert_eq!(fs::read(overwritten.path).unwrap(), bytes);
+    }
+
+    #[test]
+    fn png_optimization_rejects_non_png_and_traversal() {
+        let folder = tempfile::tempdir().unwrap();
+        let folder_path = folder.path().to_string_lossy().into_owned();
+        let image = image::DynamicImage::new_rgb8(2, 2);
+        write_dynamic_image(&image, &folder.path().join("photo.jpg"), "jpeg", 90).unwrap();
+        fs::copy(folder.path().join("photo.jpg"), folder.path().join("fake.png")).unwrap();
+        fs::write(folder.path().join("broken.png"), b"\x89PNG\r\n\x1a\n").unwrap();
+        for id in ["photo.jpg", "fake.png", "broken.png", "../outside.png", "missing.png"] {
+            assert!(optimize_library_screenshot_png(id.to_string(), folder_path.clone(), false).is_err());
+        }
+        assert_eq!(fs::read_dir(folder.path()).unwrap().count(), 3);
+    }
+
+    #[test]
+    fn png_optimization_overwrite_rejects_changed_source_and_skips_no_gain() {
+        let folder = tempfile::tempdir().unwrap();
+        let id = "capture.png";
+        let path = folder.path().join(id);
+        let original = encode_png(&[12, 34, 56], 1, 1, image::ColorType::Rgb8).unwrap();
+        fs::write(&path, &original).unwrap();
+        let modified = fs::metadata(&path).unwrap().modified().unwrap();
+        publish_optimized_png(folder.path(), id, &original, &original, false).unwrap();
+        assert_eq!(fs::metadata(&path).unwrap().modified().unwrap(), modified);
+        let changed = encode_png(&[65, 43, 21], 1, 1, image::ColorType::Rgb8).unwrap();
+        fs::write(&path, &changed).unwrap();
+        assert!(publish_optimized_png(folder.path(), id, &original, &original, false).is_err());
+        assert_eq!(fs::read(path).unwrap(), changed);
     }
 
     #[test]

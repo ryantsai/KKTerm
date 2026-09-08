@@ -2311,6 +2311,21 @@ async fn convert_screenshots(
 }
 
 #[tauri::command]
+async fn optimize_screenshot_png(
+    app: tauri::AppHandle,
+    id: String,
+    save_as_copy: bool,
+) -> Result<screenshot::StoredScreenshot, String> {
+    // The helper locks only source reads and publication, leaving capture free
+    // during optional, expensive compression.
+    run_blocking_command("PNG screenshot optimization", move || {
+        let settings = app.state::<storage::Storage>().screenshot_settings()?;
+        screenshot::optimize_library_screenshot_png(id, settings.folder_path().to_string(), save_as_copy)
+    })
+    .await
+}
+
+#[tauri::command]
 async fn save_edited_screenshot(
     app: tauri::AppHandle,
     request: screenshot::SaveEditedScreenshotRequest,
@@ -5175,6 +5190,7 @@ pub fn run() {
             delete_screenshots,
             resize_screenshots,
             convert_screenshots,
+            optimize_screenshot_png,
             save_edited_screenshot,
             read_screenshot_draft,
             save_screenshot_draft,

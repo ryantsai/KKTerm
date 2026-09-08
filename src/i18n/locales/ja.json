@@ -2497,11 +2497,16 @@
       "unsavedMessage": "保存せずに続行すると、注釈は失われます。",
       "dontSave": "保存しない"
     },
+    "optimizingPngs": "PNG画像を最適化中…",
+    "optimizedPngs": "PNGの最適化が完了しました。",
     "menu": {
       "openExternal": "既定のアプリで開く",
       "copy": "画像をコピー",
       "reveal": "フォルダーに表示",
-      "rename": "名前を変更"
+      "rename": "名前を変更",
+      "optimizePng": "PNGを最適化",
+      "optimizePngOverwrite": "元のファイルを上書き",
+      "optimizePngCopy": "新しいコピーを保存"
     },
     "kind": {
       "region": "範囲",
@@ -2764,7 +2769,7 @@
     "screenshotsVideoFormatWebm": "WebM (VP9)",
     "screenshotsVideoFormatGif": "アニメーション GIF",
     "screenshotsQuality": "品質",
-    "screenshotsQualityHint": "画質はJPEGにのみ適用されます。PNGは常に最大の可逆圧縮を使用するため、保存に時間がかかる場合があります。",
+    "screenshotsQualityHint": "画質設定はJPEGにのみ適用されます。PNGには高速の可逆圧縮を使用します。PNGのファイルサイズを小さくするには、スクリーンショットのコンテキストメニューから「PNGを最適化」を選択してください。",
     "screenshotsBorder": "スクリーンショットの枠線",
     "screenshotsBorderHint": "新しいキャプチャの画像内側に枠線を自動的に描画します。",
     "screenshotsBorderEnabled": "キャプチャ後に枠線を自動追加",

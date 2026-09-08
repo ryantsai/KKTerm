@@ -2497,11 +2497,16 @@
       "unsavedMessage": "如果继续而不保存，注释将会丢失。",
       "dontSave": "不保存"
     },
+    "optimizingPngs": "正在优化 PNG 图像…",
+    "optimizedPngs": "PNG 优化已完成。",
     "menu": {
       "openExternal": "用默认应用打开",
       "copy": "复制图片",
       "reveal": "在文件夹中显示",
-      "rename": "重命名"
+      "rename": "重命名",
+      "optimizePng": "优化 PNG",
+      "optimizePngOverwrite": "覆盖原文件",
+      "optimizePngCopy": "保存新副本"
     },
     "kind": {
       "region": "区域",
@@ -2764,7 +2769,7 @@
     "screenshotsVideoFormatWebm": "WebM (VP9)",
     "screenshotsVideoFormatGif": "动态 GIF",
     "screenshotsQuality": "质量",
-    "screenshotsQualityHint": "质量仅适用于 JPEG。PNG 始终使用最大无损压缩；保存可能需要更长时间。",
+    "screenshotsQualityHint": "质量仅适用于 JPEG。PNG 使用快速无损压缩。要减小 PNG 文件大小，请在截图右键菜单中选择“优化 PNG”。",
     "screenshotsBorder": "截图边框",
     "screenshotsBorderHint": "自动为新截图在图像边缘内侧绘制边框。",
     "screenshotsBorderEnabled": "截图后自动添加边框",

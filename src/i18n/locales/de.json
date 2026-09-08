@@ -2497,11 +2497,16 @@
       "unsavedMessage": "Ihre Anmerkungen gehen verloren, wenn Sie ohne Speichern fortfahren.",
       "dontSave": "Nicht speichern"
     },
+    "optimizingPngs": "PNG-Bilder werden optimiert…",
+    "optimizedPngs": "PNG-Optimierung abgeschlossen.",
     "menu": {
       "openExternal": "In Standard-App öffnen",
       "copy": "Bild kopieren",
       "reveal": "Im Ordner anzeigen",
-      "rename": "Umbenennen"
+      "rename": "Umbenennen",
+      "optimizePng": "PNG optimieren",
+      "optimizePngOverwrite": "Original überschreiben",
+      "optimizePngCopy": "Neue Kopie speichern"
     },
     "kind": {
       "region": "Bereich",
@@ -2764,7 +2769,7 @@
     "screenshotsVideoFormatWebm": "WebM (VP9)",
     "screenshotsVideoFormatGif": "Animiertes GIF",
     "screenshotsQuality": "Qualität",
-    "screenshotsQualityHint": "Qualität gilt nur für JPEG. PNG verwendet immer die maximale verlustfreie Komprimierung; das Speichern kann länger dauern.",
+    "screenshotsQualityHint": "Die Qualität gilt nur für JPEG. PNG verwendet schnelle verlustfreie Komprimierung. Für kleinere PNG-Dateien wählen Sie „PNG optimieren“ im Kontextmenü von Screenshots.",
     "screenshotsBorder": "Screenshot-Rahmen",
     "screenshotsBorderHint": "Neue Aufnahmen automatisch mit einem innen liegenden Rahmen versehen.",
     "screenshotsBorderEnabled": "Rahmen nach der Aufnahme automatisch hinzufügen",

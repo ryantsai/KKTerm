@@ -57,7 +57,7 @@ import {
 } from "./ScreenshotBatchDialogs";
 import { ScreenshotEditor } from "./ScreenshotEditor";
 import { VideoDependencyDialog } from "./VideoDependencyDialog";
-import type { ScreenshotGroupBy } from "./libraryModel";
+import { canOptimizePngs, type ScreenshotGroupBy } from "./libraryModel";
 import { screenshotDragItems, startScreenshotDrag } from "./nativeScreenshotDrag";
 import {
   useScreenshotsStore,
@@ -168,6 +168,7 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
   const [deleteTargets, setDeleteTargets] = useState<StoredScreenshot[]>([]);
   const [resizeTargets, setResizeTargets] = useState<StoredScreenshot[]>([]);
   const [convertTargets, setConvertTargets] = useState<StoredScreenshot[]>([]);
+  const optimizingRef = useRef(false);
 
   useEffect(() => {
     if (!active || !isTauriRuntime()) {
@@ -419,6 +420,32 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
     });
   }
 
+  async function optimizePngs(targets: StoredScreenshot[], saveAsCopy: boolean) {
+    if (optimizingRef.current || !canOptimizePngs(targets)) {
+      return;
+    }
+    optimizingRef.current = true;
+    const status = useWorkspaceStore.getState();
+    const progressId = status.showStatusBarProgress(t("screenshots.optimizingPngs"), { progress: 0 });
+    try {
+      for (const [index, target] of targets.entries()) {
+        const updated = await invokeCommand("optimize_screenshot_png", { id: target.id, saveAsCopy });
+        if (saveAsCopy) {
+          useScreenshotsStore.getState().prepend(updated);
+        } else {
+          useScreenshotsStore.getState().replace(target.id, updated);
+        }
+        status.updateStatusBarProgress(progressId, (index + 1) * 100 / targets.length);
+      }
+      showStatusBarNotice(t("screenshots.optimizedPngs"), { tone: "success" });
+    } catch (error) {
+      notifyError(error);
+    } finally {
+      status.clearStatusBarNotice(progressId);
+      optimizingRef.current = false;
+    }
+  }
+
   function openItemMenu(screenshot: StoredScreenshot, x: number, y: number) {
     const targets = selectedIds.has(screenshot.id) && selectedScreenshots.length > 0
       ? selectedScreenshots
@@ -475,8 +502,26 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
           label: t("screenshots.batch.convert", { count: targets.length }),
           iconSvg: nativeMenuIcons.saveAs,
           action: () => setConvertTargets(targets),
-        } as const,
-        { kind: "separator" as const }] : []),
+        } as const] : []),
+        ...(canOptimizePngs(targets) ? [{
+          kind: "submenu" as const,
+          label: t("screenshots.menu.optimizePng"),
+          iconSvg: nativeMenuIcons.saveAs,
+          disabled: optimizingRef.current,
+          items: [
+            {
+              kind: "item" as const,
+              label: t("screenshots.menu.optimizePngOverwrite"),
+              action: () => void optimizePngs(targets, false),
+            },
+            {
+              kind: "item" as const,
+              label: t("screenshots.menu.optimizePngCopy"),
+              action: () => void optimizePngs(targets, true),
+            },
+          ],
+        }] : []),
+        ...(imageTargets ? [{ kind: "separator" as const }] : []),
         {
           kind: "item",
           label: targets.length === 1

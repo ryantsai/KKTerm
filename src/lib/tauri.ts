@@ -2609,6 +2609,10 @@ type CommandMap = {
     };
     result: StoredScreenshot[];
   };
+  optimize_screenshot_png: {
+    args: { id: string; saveAsCopy: boolean };
+    result: StoredScreenshot;
+  };
   save_edited_screenshot: {
     args: { request: { id: string; dataUrl: string; saveAsCopy: boolean } };
     result: StoredScreenshot;

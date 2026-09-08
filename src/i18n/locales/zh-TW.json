@@ -2497,11 +2497,16 @@
       "unsavedMessage": "繼續而不儲存將會失去註解。",
       "dontSave": "不儲存"
     },
+    "optimizingPngs": "正在最佳化 PNG 影像…",
+    "optimizedPngs": "PNG 最佳化已完成。",
     "menu": {
       "openExternal": "以預設應用程式開啟",
       "copy": "複製影像",
       "reveal": "在資料夾中顯示",
-      "rename": "重新命名"
+      "rename": "重新命名",
+      "optimizePng": "最佳化 PNG",
+      "optimizePngOverwrite": "覆寫原始檔案",
+      "optimizePngCopy": "儲存新副本"
     },
     "kind": {
       "region": "區域",
@@ -2764,7 +2769,7 @@
     "screenshotsVideoFormatWebm": "WebM (VP9)",
     "screenshotsVideoFormatGif": "動態 GIF",
     "screenshotsQuality": "品質",
-    "screenshotsQualityHint": "品質僅適用於 JPEG。PNG 一律使用最高程度的無損壓縮；儲存可能需要較長時間。",
+    "screenshotsQualityHint": "品質僅適用於 JPEG。PNG 使用快速無損壓縮。若要縮小 PNG 檔案，請在擷圖的右鍵選單中選擇「最佳化 PNG」。",
     "screenshotsBorder": "螢幕截圖框線",
     "screenshotsBorderHint": "自動在新擷取影像邊緣內側繪製框線。",
     "screenshotsBorderEnabled": "擷取後自動加上框線",

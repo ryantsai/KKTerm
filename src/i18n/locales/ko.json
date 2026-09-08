@@ -2497,11 +2497,16 @@
       "unsavedMessage": "저장하지 않고 계속하면 주석이 손실됩니다.",
       "dontSave": "저장 안 함"
     },
+    "optimizingPngs": "PNG 이미지 최적화 중…",
+    "optimizedPngs": "PNG 최적화가 완료되었습니다.",
     "menu": {
       "openExternal": "기본 앱에서 열기",
       "copy": "이미지 복사",
       "reveal": "폴더에서 보기",
-      "rename": "이름 바꾸기"
+      "rename": "이름 바꾸기",
+      "optimizePng": "PNG 최적화",
+      "optimizePngOverwrite": "원본 덮어쓰기",
+      "optimizePngCopy": "새 복사본 저장"
     },
     "kind": {
       "region": "영역",
@@ -2764,7 +2769,7 @@
     "screenshotsVideoFormatWebm": "WebM (VP9)",
     "screenshotsVideoFormatGif": "애니메이션 GIF",
     "screenshotsQuality": "품질",
-    "screenshotsQualityHint": "품질은 JPEG에만 적용됩니다. PNG는 항상 최대 무손실 압축을 사용하므로 저장에 시간이 더 걸릴 수 있습니다.",
+    "screenshotsQualityHint": "품질은 JPEG에만 적용됩니다. PNG는 빠른 무손실 압축을 사용합니다. PNG 파일 크기를 줄이려면 스크린샷의 상황에 맞는 메뉴에서 PNG 최적화를 사용하세요.",
     "screenshotsBorder": "스크린샷 테두리",
     "screenshotsBorderHint": "새 캡처의 이미지 가장자리 안쪽에 테두리를 자동으로 그립니다.",
     "screenshotsBorderEnabled": "캡처 후 테두리 자동 추가",

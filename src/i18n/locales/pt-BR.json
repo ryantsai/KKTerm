@@ -2497,11 +2497,16 @@
       "unsavedMessage": "Suas anotações serão perdidas se você continuar sem salvar.",
       "dontSave": "Não salvar"
     },
+    "optimizingPngs": "Otimizando imagens PNG…",
+    "optimizedPngs": "Otimização de PNG concluída.",
     "menu": {
       "openExternal": "Abrir no aplicativo padrão",
       "copy": "Copiar imagem",
       "reveal": "Mostrar na pasta",
-      "rename": "Renomear"
+      "rename": "Renomear",
+      "optimizePng": "Otimizar PNG",
+      "optimizePngOverwrite": "Sobrescrever original",
+      "optimizePngCopy": "Salvar nova cópia"
     },
     "kind": {
       "region": "Região",
@@ -2764,7 +2769,7 @@
     "screenshotsVideoFormatWebm": "WebM (VP9)",
     "screenshotsVideoFormatGif": "GIF animado",
     "screenshotsQuality": "Qualidade",
-    "screenshotsQualityHint": "A qualidade se aplica apenas ao JPEG. PNG sempre usa a compressão máxima sem perdas; salvar pode levar mais tempo.",
+    "screenshotsQualityHint": "A qualidade se aplica apenas a JPEG. PNG usa compressão rápida sem perdas. Para arquivos PNG menores, use Otimizar PNG no menu de contexto de Capturas de tela.",
     "screenshotsBorder": "Borda das capturas",
     "screenshotsBorderHint": "Emoldura automaticamente as novas capturas com uma borda desenhada na parte interna das bordas da imagem.",
     "screenshotsBorderEnabled": "Adicionar borda automaticamente após a captura",

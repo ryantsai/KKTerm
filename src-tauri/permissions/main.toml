@@ -214,6 +214,7 @@ commands.allow = [
   "delete_screenshots",
   "resize_screenshots",
   "convert_screenshots",
+  "optimize_screenshot_png",
   "save_edited_screenshot",
   "read_screenshot_draft",
   "save_screenshot_draft",

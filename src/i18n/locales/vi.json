@@ -2497,11 +2497,16 @@
       "unsavedMessage": "Chú thích sẽ bị mất nếu bạn tiếp tục mà không lưu.",
       "dontSave": "Không lưu"
     },
+    "optimizingPngs": "Đang tối ưu ảnh PNG…",
+    "optimizedPngs": "Đã hoàn tất tối ưu PNG.",
     "menu": {
       "openExternal": "Mở bằng ứng dụng mặc định",
       "copy": "Sao chép hình ảnh",
       "reveal": "Hiển thị trong thư mục",
-      "rename": "Đổi tên"
+      "rename": "Đổi tên",
+      "optimizePng": "Tối ưu PNG",
+      "optimizePngOverwrite": "Ghi đè bản gốc",
+      "optimizePngCopy": "Lưu bản sao mới"
     },
     "kind": {
       "region": "Vùng chọn",
@@ -2764,7 +2769,7 @@
     "screenshotsVideoFormatWebm": "WebM (VP9)",
     "screenshotsVideoFormatGif": "GIF động",
     "screenshotsQuality": "Chất lượng",
-    "screenshotsQualityHint": "Chất lượng chỉ áp dụng cho JPEG. PNG luôn dùng mức nén không mất dữ liệu tối đa; việc lưu có thể mất nhiều thời gian hơn.",
+    "screenshotsQualityHint": "Chất lượng chỉ áp dụng cho JPEG. PNG dùng nén nhanh không mất dữ liệu. Để giảm kích thước tệp PNG, hãy dùng Tối ưu PNG trong menu ngữ cảnh của Ảnh chụp màn hình.",
     "screenshotsBorder": "Viền ảnh chụp màn hình",
     "screenshotsBorderHint": "Tự động đóng khung ảnh chụp mới bằng viền vẽ phía trong mép ảnh.",
     "screenshotsBorderEnabled": "Tự động thêm viền sau khi chụp",
