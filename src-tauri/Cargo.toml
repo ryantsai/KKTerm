@@ -8,6 +8,9 @@ edition = "2024"
 rust-version = "1.97.1"
 default-run = "kkterm"
 
+[features]
+mac-app-store = []
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
@@ -146,6 +149,8 @@ objc2-app-kit = { version = "0.3", default-features = false, features = [
     # Native macOS text paste for the IronRDP canvas. WKWebView may deliver
     # Command+V without exposing usable ClipboardEvent data.
     "NSPasteboard",
+    "NSOpenPanel",
+    "NSSavePanel",
 ] }
 objc2-foundation = { version = "0.3", default-features = false, features = [
     "std",
@@ -155,6 +160,8 @@ objc2-foundation = { version = "0.3", default-features = false, features = [
     "NSGeometry",
     "NSFileManager",
     "NSURL",
+    "NSArray",
+    "NSError",
 ] }
 
 [target.'cfg(all(target_os = "windows", any(target_arch = "x86", target_arch = "x86_64")))'.dependencies]

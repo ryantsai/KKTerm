@@ -824,6 +824,7 @@
     }
   },
   "appLauncher": {
+    "grantAccess": "Permitir acesso ao arquivo ou à pasta",
     "title": "Lançador de apps",
     "subtitle": "Adicione apps locais, atalhos, scripts e arquivos para iniciá-los rapidamente de um widget do painel.",
     "entriesLabel": "Aplicativos fixados",
@@ -2524,6 +2525,8 @@
     }
   },
   "settings": {
+    "urlDownloadFolderStoreDefault": "Escolher no primeiro download",
+    "urlDownloadFolderStoreHint": "Escolha uma pasta no primeiro download. O KKTerm mantém o acesso para os próximos downloads.",
     "title": "Configurações",
     "workspace": "Área de trabalho",
     "sectionsNav": "Seções de configurações",

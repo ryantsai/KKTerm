@@ -824,6 +824,7 @@
     }
   },
   "appLauncher": {
+    "grantAccess": "파일 또는 폴더 접근 허용",
     "title": "앱 런처",
     "subtitle": "대시보드 위젯에서 빠르게 실행할 로컬 앱, 바로가기, 스크립트 및 파일을 추가하세요.",
     "entriesLabel": "고정된 애플리케이션",
@@ -2524,6 +2525,8 @@
     }
   },
   "settings": {
+    "urlDownloadFolderStoreDefault": "첫 다운로드 시 선택",
+    "urlDownloadFolderStoreHint": "처음 다운로드할 때 폴더를 선택하세요. KKTerm은 이후 다운로드를 위해 접근 권한을 기억합니다.",
     "title": "설정",
     "workspace": "워크스페이스",
     "sectionsNav": "설정 섹션",

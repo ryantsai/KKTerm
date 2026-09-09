@@ -71,6 +71,7 @@ commands.allow = [
   "change_encrypted_file_secret_store_password",
   "dashboard_report_widget_health",
   "prepare_app_launcher_entry",
+  "app_store_file_access",
   "launch_app_launcher_entry",
   "import_settings_database",
   "export_settings_database",

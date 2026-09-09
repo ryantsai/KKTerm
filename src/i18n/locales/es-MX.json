@@ -824,6 +824,7 @@
     }
   },
   "appLauncher": {
+    "grantAccess": "Permitir acceso al archivo o a la carpeta",
     "title": "Lanzador de apps",
     "subtitle": "Agrega apps locales, accesos directos, scripts y archivos para iniciarlos rápido desde un widget del tablero.",
     "entriesLabel": "Aplicaciones ancladas",
@@ -2524,6 +2525,8 @@
     }
   },
   "settings": {
+    "urlDownloadFolderStoreDefault": "Seleccionar en la primera descarga",
+    "urlDownloadFolderStoreHint": "Selecciona una carpeta al descargar por primera vez. KKTerm recuerda el acceso para futuras descargas.",
     "title": "Configuración",
     "workspace": "Espacio de trabajo",
     "sectionsNav": "Secciones de configuración",

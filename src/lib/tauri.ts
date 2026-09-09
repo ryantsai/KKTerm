@@ -883,6 +883,7 @@ export interface StartWebviewSessionRequest {
   dataPartition?: string;
   userAgent?: string;
   downloadFolder?: string;
+  downloadFolderTitle?: string;
   proxyUrl?: string;
   ignoreCertificateErrors?: boolean;
   x: number;
@@ -1959,6 +1960,10 @@ type CommandMap = {
   get_general_settings: {
     args: undefined;
     result: GeneralSettings;
+  };
+  app_store_file_access: {
+    args: { request: { action: "select" | "authorize" | "drop"; path?: string; directory?: boolean; title: string } };
+    result: string[];
   };
   get_app_mode: {
     args: undefined;
@@ -4497,6 +4502,12 @@ export async function selectAppLauncherFile(options: {
   if (!isTauriRuntime()) {
     return null;
   }
+  if (await isMacAppStoreBuild()) {
+    const paths = await invokeCommand("app_store_file_access", { request: {
+      action: "select", title: options.title, directory: options.kind === "app" ? undefined : false,
+    } });
+    return paths[0] ?? null;
+  }
 
   // Native pickers grey out everything that does not match a filter, so the
   // extension list must be platform-specific. macOS apps are `.app` bundles
@@ -4565,6 +4576,12 @@ export async function selectAppLauncherFolder(options: {
 }) {
   if (!isTauriRuntime()) {
     return null;
+  }
+  if (await isMacAppStoreBuild()) {
+    const paths = await invokeCommand("app_store_file_access", { request: {
+      action: "select", title: options.title, directory: true,
+    } });
+    return paths[0] ?? null;
   }
 
   const selectedPath = await openDialog({
@@ -5058,6 +5075,13 @@ export async function selectUrlDownloadFolder(options: {
   if (!isTauriRuntime()) {
     return null;
   }
+  if (await isMacAppStoreBuild()) {
+    const paths = await invokeCommand("app_store_file_access", { request: {
+      action: "select", title: options.title, directory: true,
+      path: options.defaultPath,
+    } });
+    return paths[0] ?? null;
+  }
   const selectedPath = await openDialog({
     defaultPath: options.defaultPath,
     directory: true,
@@ -5080,4 +5104,20 @@ export async function openExternalUrl(url: string) {
     return;
   }
   await openUrl(url);
+}
+
+let macAppStoreBuildPromise: Promise<boolean> | undefined;
+export function isMacAppStoreBuild(): Promise<boolean> {
+  if (!isTauriRuntime() || !isMacPlatform()) return Promise.resolve(false);
+  return macAppStoreBuildPromise ??= invokeCommand("get_app_mode", undefined)
+    .then((mode) => mode.macAppStoreBuild === true)
+    .catch((error: unknown) => { macAppStoreBuildPromise = undefined; throw error; });
+}
+
+export async function authorizeAppStorePath(path: string, directory?: boolean): Promise<string | null> {
+  if (!await isMacAppStoreBuild()) return path;
+  const paths = await invokeCommand("app_store_file_access", { request: {
+    action: "authorize", path, directory, title: i18next.t("appLauncher.grantAccess"),
+  } });
+  return paths[0] ?? null;
 }

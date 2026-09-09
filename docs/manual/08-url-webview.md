@@ -135,3 +135,12 @@ The webview API does not expose portable byte counts, so the native menu reports
 ## Screenshot target label
 
 For [14-screenshots.md](14-screenshots.md): `webview.screenshotTarget`.
+
+## Mac App Store downloads
+
+The Mac App Store build asks for a download folder on the first download when
+no usable saved permission exists (`settings.urlDownloadFolder`). It remembers
+the permission across app restarts using a security-scoped bookmark. Canceling
+selection cancels the download. The standard macOS build continues to use the
+configured destination or system Downloads folder. See [15-settings.md](15-settings.md)
+for `settings.urlDownloadFolderStoreHint` and destination selection.

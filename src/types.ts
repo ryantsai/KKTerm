@@ -52,6 +52,7 @@ export interface AppModeInfo {
   mode: "installed" | "portable";
   dataDir: string;
   updatesManagedByPlatformStore: boolean;
+  macAppStoreBuild?: boolean;
 }
 export interface CreatedPortableCopy {
   destination: string;

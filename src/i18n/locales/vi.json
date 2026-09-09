@@ -824,6 +824,7 @@
     }
   },
   "appLauncher": {
+    "grantAccess": "Cho phép truy cập tệp hoặc thư mục",
     "title": "Trình Khởi chạy Ứng dụng",
     "subtitle": "Thêm ứng dụng cục bộ, lối tắt, tập lệnh và tệp để khởi chạy nhanh từ tiện ích Bảng điều khiển.",
     "entriesLabel": "Ứng dụng đã ghim",
@@ -2524,6 +2525,8 @@
     }
   },
   "settings": {
+    "urlDownloadFolderStoreDefault": "Chọn khi tải xuống lần đầu",
+    "urlDownloadFolderStoreHint": "Chọn thư mục khi tải xuống lần đầu. KKTerm ghi nhớ quyền truy cập cho các lần tải xuống tiếp theo.",
     "title": "Settings",
     "workspace": "Workspace",
     "sectionsNav": "Settings sections",

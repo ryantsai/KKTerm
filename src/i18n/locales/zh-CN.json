@@ -824,6 +824,7 @@
     }
   },
   "appLauncher": {
+    "grantAccess": "允许访问文件或文件夹",
     "title": "应用启动器",
     "subtitle": "添加本地应用、快捷方式、脚本和文件，以便从仪表板小部件快速启动。",
     "entriesLabel": "已固定的应用程序",
@@ -2524,6 +2525,8 @@
     }
   },
   "settings": {
+    "urlDownloadFolderStoreDefault": "首次下载时选择",
+    "urlDownloadFolderStoreHint": "首次下载时选择文件夹。KKTerm 会记住访问权限，以便后续下载使用。",
     "title": "设置",
     "workspace": "工作区",
     "sectionsNav": "设置区段",

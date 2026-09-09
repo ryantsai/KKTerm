@@ -1,4 +1,4 @@
-import { invokeCommand, isTauriRuntime } from "../../../../../lib/tauri";
+import { invokeCommand, isTauriRuntime, authorizeAppStorePath } from "../../../../../lib/tauri";
 import type {
   AppLauncherEntry,
   AppLauncherLaunchMode,
@@ -75,16 +75,22 @@ export async function launchAppLauncherEntry(
   mode: AppLauncherLaunchMode,
 ) {
   if (!isTauriRuntime()) {
-    return;
+    return true;
   }
+  const path = await authorizeAppStorePath(entry.path);
+  if (!path) return false;
+  const workingDirectory = entry.workingDirectory
+    ? await authorizeAppStorePath(entry.workingDirectory, true) : null;
+  if (entry.workingDirectory && !workingDirectory) return false;
   await invokeCommand("launch_app_launcher_entry", {
     request: {
-      path: entry.path,
+      path,
       arguments: entry.arguments ?? null,
-      workingDirectory: entry.workingDirectory ?? null,
+      workingDirectory,
       mode,
     },
   });
+  return true;
 }
 
 export function isRunnablePath(path: string) {

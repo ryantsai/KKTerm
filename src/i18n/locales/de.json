@@ -824,6 +824,7 @@
     }
   },
   "appLauncher": {
+    "grantAccess": "Datei- oder Ordnerzugriff erlauben",
     "title": "App-Starter",
     "subtitle": "Fügen Sie lokale Apps, Verknüpfungen, Skripte und Dateien für den schnellen Start aus einem Dashboard-Widget hinzu.",
     "entriesLabel": "Angeheftete Anwendungen",
@@ -2524,6 +2525,8 @@
     }
   },
   "settings": {
+    "urlDownloadFolderStoreDefault": "Beim ersten Download auswählen",
+    "urlDownloadFolderStoreHint": "Wähle beim ersten Download einen Ordner. KKTerm merkt sich den Zugriff für spätere Downloads.",
     "title": "Einstellungen",
     "workspace": "Arbeitsbereich",
     "sectionsNav": "Einstellungsbereiche",

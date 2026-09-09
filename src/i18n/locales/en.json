@@ -824,6 +824,7 @@
     }
   },
   "appLauncher": {
+    "grantAccess": "Allow file or folder access",
     "title": "App Launcher",
     "subtitle": "Add local apps, shortcuts, scripts, and files for quick launch from a Dashboard widget.",
     "entriesLabel": "Pinned applications",
@@ -2524,6 +2525,8 @@
     }
   },
   "settings": {
+    "urlDownloadFolderStoreDefault": "Choose on first download",
+    "urlDownloadFolderStoreHint": "Choose a folder on the first download. KKTerm remembers access for later downloads.",
     "title": "Settings",
     "workspace": "Workspace",
     "sectionsNav": "Settings sections",

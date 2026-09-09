@@ -3,6 +3,7 @@ mod ai_coding_usage;
 mod app_group;
 mod app_launcher;
 mod app_paths;
+mod app_store_files;
 mod app_tray;
 mod app_updates;
 mod assistant_skills;
@@ -976,9 +977,10 @@ fn dashboard_report_widget_health(
 
 #[tauri::command]
 fn prepare_app_launcher_entry(
+    app: tauri::AppHandle,
     request: app_launcher::PrepareAppLauncherEntryRequest,
 ) -> app_launcher::PreparedAppLauncherEntry {
-    app_launcher::prepare_entry(request)
+    app_launcher::prepare_entry(&app, request)
 }
 
 #[tauri::command]
@@ -4562,9 +4564,11 @@ fn is_remote_session() -> bool {
 
 #[cfg(target_os = "macos")]
 fn configure_macos_updater<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
-    builder
-        .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
+    let builder = builder.plugin(tauri_plugin_process::init());
+    #[cfg(feature = "mac-app-store")]
+    return builder;
+    #[cfg(not(feature = "mac-app-store"))]
+    builder.plugin(tauri_plugin_updater::Builder::new().build())
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -4973,6 +4977,7 @@ pub fn run() {
             app_bootstrap,
             launch_paths::take_launch_paths,
             app_paths::get_app_mode,
+            app_store_files::app_store_file_access,
             store_license::get_store_trial_expired,
             portable_creator::create_portable_copy,
             portable_creator::launch_portable_copy,

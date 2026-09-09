@@ -20,6 +20,7 @@
     "package:msix": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-msix.ps1",
     "package:msix:arm64": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-msix.ps1 -Arch arm64",
     "package:macos": "zsh scripts/package-macos.sh",
+    "package:macos:app-store": "zsh scripts/package-macos-app-store.sh",
     "package:linux": "bash scripts/package-linux.sh",
     "package:custom-module-fixture": "node scripts/package-custom-module-fixture.mjs",
     "publish:custom-module": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/publish-custom-module.ps1",

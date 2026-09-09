@@ -824,6 +824,7 @@
     }
   },
   "appLauncher": {
+    "grantAccess": "允許存取檔案或資料夾",
     "title": "應用程式啟動器",
     "subtitle": "新增本機應用程式、捷徑、指令碼和檔案，以便從儀表板小工具快速啟動。",
     "entriesLabel": "已釘選的應用程式",
@@ -2524,6 +2525,8 @@
     }
   },
   "settings": {
+    "urlDownloadFolderStoreDefault": "首次下載時選擇",
+    "urlDownloadFolderStoreHint": "首次下載時選擇資料夾。KKTerm 會保留存取權限，供後續下載使用。",
     "title": "設定",
     "workspace": "工作區",
     "sectionsNav": "設定區段",

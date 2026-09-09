@@ -444,6 +444,7 @@ pub struct StartWebviewSessionRequest {
     proxy_url: Option<String>,
     user_agent: Option<String>,
     download_folder: Option<String>,
+    download_folder_title: Option<String>,
     #[serde(default)]
     ignore_certificate_errors: bool,
     x: f64,
@@ -619,6 +620,7 @@ impl WebviewSessionManager {
             proxy_url,
             user_agent,
             download_folder,
+            download_folder_title,
             ignore_certificate_errors,
             x: initial_x,
             y: initial_y,
@@ -643,6 +645,7 @@ impl WebviewSessionManager {
             .as_deref()
             .is_some_and(|value| !value.trim().is_empty());
         let download_folder = resolve_download_folder(app, download_folder)?;
+        let _download_folder_title = download_folder_title.unwrap_or_default();
         logging::url_connection_debug(
             "backend.session.start.request",
             &json!({
@@ -703,6 +706,8 @@ impl WebviewSessionManager {
         let download_app = app.clone();
         let download_session_id = session_id.clone();
         let download_destination_folder = download_folder.clone();
+        #[cfg(all(target_os = "macos", feature = "mac-app-store"))]
+        let download_grants = Mutex::new(HashMap::<String, (usize, Vec<crate::app_store_files::Access>)>::new());
         let new_window_app = app.clone();
         let new_window_session_id = session_id.clone();
         let defer_initial_navigation =
@@ -778,6 +783,29 @@ impl WebviewSessionManager {
             .on_download(move |_webview, event| {
                 let payload = match event {
                     DownloadEvent::Requested { url, destination } => {
+                        #[cfg(all(target_os = "macos", feature = "mac-app-store"))]
+                        let access = match crate::app_store_files::download_access(
+                            &download_app, &download_destination_folder, &_download_folder_title,
+                        ) {
+                            Ok(Some(access)) => access,
+                            Ok(None) => return false,
+                            Err(_) => {
+                                let _ = download_app.emit("webview-download", WebviewDownloadPayload {
+                                    session_id: download_session_id.clone(), url: url.to_string(),
+                                    status: "finished", path: None, success: Some(false),
+                                });
+                                return false;
+                            }
+                        };
+                        #[cfg(all(target_os = "macos", feature = "mac-app-store"))]
+                        let download_destination_folder = access.path.clone();
+                        #[cfg(all(target_os = "macos", feature = "mac-app-store"))]
+                        {
+                            let mut grants = download_grants.lock().unwrap_or_else(|error| error.into_inner());
+                            let active = grants.entry(url.to_string()).or_default();
+                            active.0 += 1;
+                            active.1.push(access);
+                        }
                         let selected_destination = available_download_path(
                             &download_destination_folder,
                             destination.file_name(),
@@ -791,12 +819,24 @@ impl WebviewSessionManager {
                             success: None,
                         }
                     }
-                    DownloadEvent::Finished { url, path, success } => WebviewDownloadPayload {
-                        session_id: download_session_id.clone(),
-                        url: url.to_string(),
-                        status: "finished",
-                        path: path.map(|path| path.display().to_string()),
-                        success: Some(success),
+                    DownloadEvent::Finished { url, path, success } => {
+                        #[cfg(all(target_os = "macos", feature = "mac-app-store"))]
+                        {
+                            let mut grants = download_grants.lock().unwrap_or_else(|error| error.into_inner());
+                            if let Some(active) = grants.get_mut(url.as_str()) {
+                                active.0 -= 1;
+                                // macOS completion has no path/ID. Keep every scope
+                                // until all concurrent downloads of this URL finish.
+                                if active.0 == 0 { grants.remove(url.as_str()); }
+                            }
+                        }
+                        WebviewDownloadPayload {
+                            session_id: download_session_id.clone(),
+                            url: url.to_string(),
+                            status: "finished",
+                            path: path.map(|path| path.display().to_string()),
+                            success: Some(success),
+                        }
                     },
                     _ => WebviewDownloadPayload {
                         session_id: download_session_id.clone(),
@@ -2184,10 +2224,17 @@ fn resolve_partition(data_partition: Option<String>) -> String {
         .unwrap_or_else(|| DEFAULT_PARTITION.to_string())
 }
 
-fn resolve_download_folder(
-    app: &AppHandle,
+fn resolve_download_folder<R: tauri::Runtime>(
+    app: &AppHandle<R>,
     configured_folder: Option<String>,
 ) -> Result<PathBuf, String> {
+    if crate::app_store_files::ENABLED {
+        let folder = configured_folder.map(|value| value.trim().to_owned()).unwrap_or_default();
+        if !folder.is_empty() && !Path::new(&folder).is_absolute() {
+            return Err("URL download folder must be an absolute path".into());
+        }
+        return Ok(PathBuf::from(folder));
+    }
     let folder = match configured_folder
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty())
@@ -2271,6 +2318,21 @@ fn context_menu_agent(token: &str) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(all(target_os = "macos", feature = "mac-app-store"))]
+    #[test]
+    fn store_download_startup_does_not_create_or_access_the_destination() {
+        let app = tauri::test::mock_app();
+        let root = tempfile::tempdir().unwrap();
+        let folder = root.path().join("not-yet-authorized");
+        assert_eq!(
+            resolve_download_folder(app.handle(), Some(folder.to_string_lossy().into_owned())).unwrap(),
+            folder,
+        );
+        assert!(!folder.exists());
+        assert_eq!(resolve_download_folder(app.handle(), None).unwrap(), PathBuf::new());
+        assert!(resolve_download_folder(app.handle(), Some("relative/path".into())).is_err());
+    }
 
     #[test]
     fn proxy_urls_accept_http_https_and_socks5_endpoints() {

@@ -824,6 +824,7 @@
     }
   },
   "appLauncher": {
+    "grantAccess": "Consenti accesso a file o cartella",
     "title": "Avvio applicazioni",
     "subtitle": "Aggiungi app locali, collegamenti, script e file per l'avvio rapido da un widget Dashboard.",
     "entriesLabel": "Applicazioni fissate",
@@ -2524,6 +2525,8 @@
     }
   },
   "settings": {
+    "urlDownloadFolderStoreDefault": "Scegli al primo download",
+    "urlDownloadFolderStoreHint": "Scegli una cartella al primo download. KKTerm conserva l’accesso per i download successivi.",
     "title": "Impostazioni",
     "workspace": "Spazio di lavoro",
     "sectionsNav": "Sezioni impostazioni",

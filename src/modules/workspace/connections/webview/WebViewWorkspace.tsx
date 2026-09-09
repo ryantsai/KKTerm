@@ -694,6 +694,7 @@ export function WebViewWorkspace({
           dataPartition,
           userAgent,
           downloadFolder: urlSettings.downloadFolder?.trim() || undefined,
+          downloadFolderTitle: t("settings.urlDownloadFolder"),
           proxyUrl,
           ignoreCertificateErrors,
           ...bounds,

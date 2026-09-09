@@ -39,8 +39,17 @@ pub struct LaunchAppLauncherEntryRequest {
     mode: AppLauncherLaunchMode,
 }
 
-pub fn prepare_entry(request: PrepareAppLauncherEntryRequest) -> PreparedAppLauncherEntry {
+pub fn prepare_entry(
+    _app: &tauri::AppHandle,
+    request: PrepareAppLauncherEntryRequest,
+) -> PreparedAppLauncherEntry {
     let path = request.path.trim().to_string();
+    #[cfg(all(target_os = "macos", feature = "mac-app-store"))]
+    let access = crate::app_store_files::restore(_app, &path).ok();
+    #[cfg(all(target_os = "macos", feature = "mac-app-store"))]
+    let path = access.as_ref()
+        .map(|access| access.path.to_string_lossy().into_owned())
+        .unwrap_or(path);
     let metadata = std::fs::metadata(&path).ok();
     let exists = metadata.is_some();
     let file_kind = match metadata.as_ref() {
@@ -70,12 +79,30 @@ pub fn launch_entry(
     app: tauri::AppHandle,
     request: LaunchAppLauncherEntryRequest,
 ) -> Result<(), String> {
+    #[cfg(all(target_os = "macos", feature = "mac-app-store"))]
+    let _access = crate::app_store_files::restore(&app, &request.path)?;
+    #[cfg(all(target_os = "macos", feature = "mac-app-store"))]
+    let _working_access = request.working_directory.as_deref()
+        .filter(|path| !path.trim().is_empty())
+        .map(|path| crate::app_store_files::restore(&app, path)).transpose()?;
+    #[cfg(all(target_os = "macos", feature = "mac-app-store"))]
+    let request = LaunchAppLauncherEntryRequest {
+        path: _access.path.to_string_lossy().into_owned(),
+        working_directory: _working_access.as_ref().map(|access| access.path.to_string_lossy().into_owned()),
+        ..request
+    };
     let plan = plan_launch_with_options(
         &request.path,
         request.arguments.as_deref(),
         request.working_directory.as_deref(),
         request.mode,
     )?;
+    #[cfg(all(target_os = "macos", feature = "mac-app-store"))]
+    if plan.operation.is_none() && plan.parameters.is_none() && plan.working_directory.is_none() {
+        // Pass the scoped NSURL directly to Launch Services. A spawned `open`
+        // helper does not preserve the original system-provided URL object.
+        return _access.open(request.mode == AppLauncherLaunchMode::OpenFolder);
+    }
     launch_plan(app, plan)
 }
 

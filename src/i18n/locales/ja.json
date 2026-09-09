@@ -824,6 +824,7 @@
     }
   },
   "appLauncher": {
+    "grantAccess": "ファイルまたはフォルダーへのアクセスを許可",
     "title": "アプリランチャー",
     "subtitle": "ローカルアプリ、ショートカット、スクリプト、ファイルを追加して、ダッシュボードウィジェットから素早く起動します。",
     "entriesLabel": "ピン留めされたアプリケーション",
@@ -2524,6 +2525,8 @@
     }
   },
   "settings": {
+    "urlDownloadFolderStoreDefault": "初回ダウンロード時に選択",
+    "urlDownloadFolderStoreHint": "初回のダウンロード時にフォルダーを選択してください。KKTerm は以降のダウンロードでもアクセス権を保持します。",
     "title": "設定",
     "workspace": "ワークスペース",
     "sectionsNav": "設定セクション",

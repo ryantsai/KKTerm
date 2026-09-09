@@ -114,6 +114,7 @@ pub struct AppModeInfo {
     mode: AppMode,
     data_dir: String,
     updates_managed_by_platform_store: bool,
+    mac_app_store_build: bool,
 }
 
 impl AppPaths {
@@ -192,6 +193,7 @@ impl AppPaths {
             mode: self.mode,
             data_dir: self.data_dir.display().to_string(),
             updates_managed_by_platform_store: updates_managed_by_platform_store(),
+            mac_app_store_build: crate::app_store_files::ENABLED,
         }
     }
 }
@@ -207,7 +209,8 @@ pub(crate) fn updates_managed_by_platform_store() -> bool {
 
 #[cfg(target_os = "macos")]
 pub(crate) fn updates_managed_by_platform_store() -> bool {
-    std::env::current_exe().is_ok_and(|exe_path| mac_app_store_receipt_exists(&exe_path))
+    crate::app_store_files::ENABLED
+        || std::env::current_exe().is_ok_and(|exe_path| mac_app_store_receipt_exists(&exe_path))
 }
 
 #[cfg(target_os = "macos")]

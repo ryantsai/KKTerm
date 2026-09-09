@@ -20,6 +20,33 @@ Windows, macOS, and Linux are supported desktop release targets. Platform-specif
 
 Every layout adjustment must be evaluated for all three desktop rendering targets: Windows WebView2, macOS WKWebView, and Linux WebKitGTK. Prefer standards-based shared CSS and layouts that behave consistently across all three engines. When identical behavior is not practical and a documented tradeoff is required, use this product priority order: **Windows first, macOS second, Linux third**. That priority decides among unavoidable tradeoffs; it does not permit silently breaking a lower-priority target. Isolate necessary differences behind explicit platform or capability checks, document the reason, and verify each available target in its real Tauri runtime.
 
+## Mac App Store file access
+
+`mac-app-store` is an opt-in Cargo feature restricted to macOS. The dedicated
+`tauri.appstore.conf.json` overlays the normal macOS configuration and selects
+its own sandbox entitlements; `npm run package:macos:app-store` is the separate
+packaging entry point. `get_app_mode.macAppStoreBuild` exposes that compiled
+choice to React. Receipt detection continues to identify store-managed updates,
+but never enables sandbox file behavior in a direct-download binary.
+
+`app_store_files.rs` owns native NSURL selection/drop ingestion, atomic
+security-scoped bookmark persistence under `sandbox-bookmarks/` in app data,
+and balanced resource-access lifetimes. This directory is machine-local and is
+excluded from settings/database exports. No SQLite schema or seed changes are
+needed; current-version startup performs no bookmark reconciliation or writes.
+Launcher grants are restored for metadata and launching; paths imported or
+entered manually are only selection hints. The Store-only launcher DOM drop
+handler reads NSURL objects from the native drag pasteboard without changing
+the main window's shared drag-drop configuration. A native picker recovers a
+missing grant. Native pickers remain outside the DOM overlay registry.
+
+Store URL Sessions do not touch their download destination at startup. On an
+actual download, the callback restores a grant or displays a native folder
+picker, cancels when the picker is canceled, and holds access through completion.
+The empty-setting default grant is remembered separately from explicit folder
+settings. Other builds retain system-Downloads behavior. See
+`docs/MAC_APP_STORE.md` for packaging and signed-runtime acceptance checks.
+
 ## Major Source Areas
 
 ### App Shell

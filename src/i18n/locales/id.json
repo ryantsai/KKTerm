@@ -824,6 +824,7 @@
     }
   },
   "appLauncher": {
+    "grantAccess": "Izinkan akses file atau folder",
     "title": "Peluncur Aplikasi",
     "subtitle": "Tambahkan aplikasi lokal, pintasan, skrip, dan file untuk peluncuran cepat dari widget Dasbor.",
     "entriesLabel": "Aplikasi tersemat",
@@ -2524,6 +2525,8 @@
     }
   },
   "settings": {
+    "urlDownloadFolderStoreDefault": "Pilih saat unduhan pertama",
+    "urlDownloadFolderStoreHint": "Pilih folder saat unduhan pertama. KKTerm mengingat akses untuk unduhan berikutnya.",
     "title": "Pengaturan",
     "workspace": "Ruang kerja",
     "sectionsNav": "Bagian pengaturan",

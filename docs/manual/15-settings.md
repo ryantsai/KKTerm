@@ -430,3 +430,14 @@ Manual app update checks live in General -> `settings.softwareUpdates`, not Abou
 - Config dialog behavior: opens only when the user activates `settings.builtInMcpShowConfig`; changing either MCP toggle never opens the dialog. It shows copyable JSON (`mcpServers.kkterm`) and TOML (`[mcp_servers.kkterm]`) snippets for stdio MCP clients using the resolved `kkterm-cli` path for the running build (`kkterm-cli.exe` beside the app on Windows; a separately provisioned helper app in Mac App Store builds). The setup table shows localized Agent/Method/Project/Global headings. Codex and Claude Code rows include documented CLI commands where supported; VS Code/GitHub Copilot, Antigravity, and OpenCode rows use `settings.builtInMcpConfigMethodManualEdit` and list config locations.
 - Purpose: enable/disable the local built-in MCP server surface and control whether built-in MCP tools with a `dangerous` namespace segment, such as `kkterm.workspace.sessions.dangerous.send_input`, `kkterm.workspace.workspaces.dangerous.delete`, `kkterm.workspace.quick_commands.dangerous.create`, `kkterm.screenshots.dangerous.capture_fullscreen`, or `kkterm.system_cleaner.cleanup.dangerous.execute`, require confirmation prompts or run in allow-all mode. Terminal input is dangerous because submitted text can execute commands; Workspace deletion is dangerous because it cascades through that Workspace's saved Connections and folders; screenshot capture/read tools are dangerous because they can expose sensitive visible content; System Cleaner dangerous tools can request elevation, uninstall software, or permanently delete files.
 - Debug logging: debug builds write built-in and remote MCP request/response records to `mcp.debug.log` beside `kkterm.log`; release builds write the same MCP log when `settings.advancedDebugging` is enabled. Built-in MCP logging redacts terminal send input, terminal buffer reads, Dashboard widget source/body JSON, screenshot and thumbnail data URLs, and secret-looking argument fields before writing debug records.
+
+### Mac App Store download destinations
+
+For the Mac App Store build only, `settings.urlDownloadFolderStoreHint` and
+`settings.urlDownloadFolderStoreDefault` replace the system-Downloads guidance.
+Leaving the download folder blank asks for a folder on the first actual download;
+Downloads is only a picker suggestion. KKTerm remembers the selected permission
+across restarts. `settings.urlDownloadFolderBrowse` changes the configured folder
+through a native picker. Saving a typed path requires native authorization when
+no valid bookmark exists. Canceling selection cancels that download without
+writing to a fallback folder. Other distribution builds keep the existing default.

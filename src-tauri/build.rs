@@ -4,6 +4,10 @@ const DEFAULT_CUSTOM_MODULE_CATALOG_URL: &str =
     "https://modules.kkterm.ryantsai.com/catalog/v2/catalog.json";
 
 fn main() {
+    if std::env::var_os("CARGO_FEATURE_MAC_APP_STORE").is_some() {
+        assert_eq!(std::env::var("CARGO_CFG_TARGET_OS").as_deref(), Ok("macos"),
+            "mac-app-store is only supported on macOS");
+    }
     println!("cargo:rerun-if-changed=../.env");
     let _ = dotenvy::from_path("../.env");
     println!("cargo:rerun-if-env-changed=KKTERM_CUSTOM_MODULE_CATALOG_PUBLIC_KEY");

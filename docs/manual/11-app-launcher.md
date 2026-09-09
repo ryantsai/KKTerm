@@ -69,3 +69,19 @@ Launch lifecycle status:
 ## Pin to Activity Rail
 
 Pinning an entry (`appLauncher.pinToRail`) places its icon in the Activity Rail's Connection Rail group (`app.connectionRail`) alongside pinned Connections — see [02-app-layout.md](02-app-layout.md). Unpinning is reversible without destroying the entry.
+
+## Mac App Store folder access
+
+Only the Mac App Store build requires persistent sandbox grants. `appLauncher.addFolder`
+uses the native folder picker. Dropping a Finder folder onto the App Launcher also
+adds it and remembers access using a security-scoped bookmark. If the drag source
+cannot transfer usable access, `appLauncher.grantAccess` opens a native picker;
+canceling skips that item. Multiple dropped items are handled individually.
+
+Typed paths, imported entries, and entries whose permissions can no longer be
+restored use `appLauncher.grantAccess` when saved or launched. The selected path
+is the target used by that action. Existing bookmarks are resolved without a dialog,
+including after quitting and reopening KKTerm. Unavailable volumes may require
+reconnecting and selecting the folder again. Bookmarks stay on this Mac and are
+not included in Settings exports. Direct-download macOS, Windows, and Linux
+builds retain their existing file-access behavior.

@@ -22,7 +22,7 @@ import type {
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { LegacyDialogActions } from "../../../../../app/ui/dialog";
-import { selectAppLauncherFile, selectAppLauncherFolder, isTauriRuntime } from "../../../../../lib/tauri";
+import { selectAppLauncherFile, selectAppLauncherFolder, isTauriRuntime, invokeCommand, authorizeAppStorePath } from "../../../../../lib/tauri";
 import { isWindowsPlatform } from "../../../../../lib/platform";
 import { useWorkspaceStore } from "../../../../../store";
 import { useDashboardStore } from "../../../state/dashboardStore";
@@ -106,6 +106,7 @@ export function AppLauncherWidget({ instance }: { instance: DashboardWidgetInsta
   const [dialogDraft, setDialogDraft] = useState<EntryDraft | null>(null);
   const [addMenuState, setAddMenuState] = useState<AddMenuState | null>(null);
   const [isDropTarget, setIsDropTarget] = useState(false);
+  const macAppStoreBuild = useWorkspaceStore((state) => state.appModeInfo.macAppStoreBuild === true);
   const [draggedEntryId, setDraggedEntryId] = useState<string | null>(null);
   const [reorderTarget, setReorderTarget] = useState<ReorderTarget | null>(null);
   const draggedEntryIdRef = useRef<string | null>(null);
@@ -323,11 +324,19 @@ export function AppLauncherWidget({ instance }: { instance: DashboardWidgetInsta
   }
 
   async function saveDraft(draft: EntryDraft) {
+    let authorizedPath: string | null;
+    try {
+      authorizedPath = await authorizeAppStorePath(draft.path.trim());
+    } catch (error) {
+      showStatusBarNotice(t("appLauncher.selectError", { message: errorMessage(error) }), { tone: "error" });
+      return;
+    }
+    if (!authorizedPath) return;
     const now = new Date().toISOString();
     const nextEntry: AppLauncherEntry = {
       id: draft.id,
       name: draft.name.trim(),
-      path: draft.path.trim(),
+      path: authorizedPath,
       arguments: optionalText(draft.arguments),
       workingDirectory: optionalText(draft.workingDirectory),
       iconDataUrl: optionalText(draft.iconDataUrl),
@@ -512,7 +521,12 @@ export function AppLauncherWidget({ instance }: { instance: DashboardWidgetInsta
   }
 
   function handleBrowserDragOver(event: DragEvent<HTMLDivElement>) {
-    if (draggedEntryId || isTauriRuntime() || !hasBrowserDropPayload(event)) {
+    // During dragover WebKit protects file contents; inspect types so Finder
+    // folder drops are accepted before the drop event exposes the payload.
+    const hasPayload = macAppStoreBuild
+      ? Array.from(event.dataTransfer.types).includes("Files")
+      : hasBrowserDropPayload(event);
+    if (draggedEntryId || (isTauriRuntime() && !macAppStoreBuild) || !hasPayload) {
       return;
     }
     event.preventDefault();
@@ -521,11 +535,20 @@ export function AppLauncherWidget({ instance }: { instance: DashboardWidgetInsta
   }
 
   function handleBrowserDrop(event: DragEvent<HTMLDivElement>) {
-    if (draggedEntryId || isTauriRuntime()) {
+    if (draggedEntryId || (isTauriRuntime() && !macAppStoreBuild)) {
       return;
     }
     event.preventDefault();
     setIsDropTarget(false);
+    if (macAppStoreBuild) {
+      if (!Array.from(event.dataTransfer.types).includes("Files")) return;
+      void invokeCommand("app_store_file_access", { request: { action: "drop", title: t("appLauncher.grantAccess") } })
+        .then(saveDroppedPaths)
+        .catch((error: unknown) => showStatusBarNotice(
+          t("appLauncher.selectError", { message: errorMessage(error) }), { tone: "error" },
+        ));
+      return;
+    }
     const paths = pathsFromBrowserDrop(event);
     void saveDroppedPaths(paths);
   }
@@ -583,7 +606,7 @@ export function AppLauncherWidget({ instance }: { instance: DashboardWidgetInsta
       return;
     }
     try {
-      await launchAppLauncherEntry(entry, mode);
+      if (!await launchAppLauncherEntry(entry, mode)) return;
       showStatusBarNotice(t("appLauncher.launchStatus", { name: entry.name }), {
         tone: "success",
       });

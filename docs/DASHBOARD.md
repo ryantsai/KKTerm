@@ -388,3 +388,11 @@ All new strings route through `t()` in the `dashboard.*` namespace. English (`sr
 - **Settings** (`src/modules/settings/`) — adds a Dashboard section for cross-widget app preferences.
 - **Activity Rail** (`src/app/ActivityRail.tsx`) — Dashboard is a peer top-level entry alongside Workspace. App Launcher is intentionally not a rail entry.
 - **Status Bar** (`src/modules/workspace/StatusBar.tsx`) — receives transient dashboard status messages via `showStatusBarNotice` for layout-save failures and similar feedback.
+
+### Mac App Store launcher grants
+
+Only the `mac-app-store` build routes App Launcher file/folder drops through
+`app_store_file_access`, preserving native NSURL grants as security-scoped
+bookmarks. Native selection is the fallback when a drop cannot transfer access.
+Widget settings continue to contain paths and entry metadata only; bookmarks
+are machine-local app-shell data. See `docs/ARCHITECTURE.md` and manual chapter 11.

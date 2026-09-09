@@ -1,7 +1,7 @@
 import { Globe, Trash2 } from "../../lib/reicon";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { invokeCommand, isTauriRuntime, selectUrlDownloadFolder } from "../../lib/tauri";
+import { invokeCommand, isTauriRuntime, selectUrlDownloadFolder, authorizeAppStorePath } from "../../lib/tauri";
 import { technicalInputProps } from "../../lib/inputBehavior";
 import { useWorkspaceStore } from "../../store";
 import type { UrlCredentialSummary, UrlDataPartitionSummary } from "../../types";
@@ -12,6 +12,7 @@ import { COMMON_URL_USER_AGENTS } from "../workspace/connections/webview/urlUser
 
 export function UrlSettings() {
   const { t } = useTranslation();
+  const macAppStoreBuild = useWorkspaceStore((state) => state.appModeInfo.macAppStoreBuild === true);
   const urlSettings = useWorkspaceStore((state) => state.urlSettings);
   const setUrlSettings = useWorkspaceStore((state) => state.setUrlSettings);
   const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
@@ -66,6 +67,11 @@ export function UrlSettings() {
         defaultUserAgent: draft.defaultUserAgent?.trim() || undefined,
         downloadFolder: draft.downloadFolder?.trim() || undefined,
       };
+      if (request.downloadFolder) {
+        const path = await authorizeAppStorePath(request.downloadFolder, true);
+        if (!path) return;
+        request.downloadFolder = path;
+      }
       const saved = isTauriRuntime() ? await invokeCommand("update_url_settings", { request }) : request;
       setUrlSettings(saved);
       setDraft(saved);
@@ -113,7 +119,7 @@ export function UrlSettings() {
       <fieldset className="settings-subsection settings-fieldset">
         <legend>{t("settings.urlDownloadFolder")}</legend>
         <div>
-          <p className="field-hint">{t("settings.urlDownloadFolderHint")}</p>
+          <p className="field-hint">{t(macAppStoreBuild ? "settings.urlDownloadFolderStoreHint" : "settings.urlDownloadFolderHint")}</p>
         </div>
         <div className="form-grid one-column">
           <label>
@@ -125,7 +131,7 @@ export function UrlSettings() {
                   const downloadFolder = event.currentTarget.value;
                   setDraft((settings) => ({ ...settings, downloadFolder }));
                 }}
-                placeholder={t("settings.urlDownloadFolderSystemDefault")}
+                placeholder={t(macAppStoreBuild ? "settings.urlDownloadFolderStoreDefault" : "settings.urlDownloadFolderSystemDefault")}
                 value={draft.downloadFolder ?? ""}
               />
               <button

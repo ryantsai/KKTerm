@@ -824,6 +824,7 @@
     }
   },
   "appLauncher": {
+    "grantAccess": "Autoriser l’accès au fichier ou dossier",
     "title": "Lanceur d'applications",
     "subtitle": "Ajoutez des applications locales, raccourcis, scripts et fichiers pour un lancement rapide depuis un widget du tableau de bord.",
     "entriesLabel": "Applications épinglées",
@@ -2524,6 +2525,8 @@
     }
   },
   "settings": {
+    "urlDownloadFolderStoreDefault": "Choisir au premier téléchargement",
+    "urlDownloadFolderStoreHint": "Choisissez un dossier lors du premier téléchargement. KKTerm conserve l’accès pour les téléchargements suivants.",
     "title": "Paramètres",
     "workspace": "Espace de travail",
     "sectionsNav": "Sections des paramètres",
