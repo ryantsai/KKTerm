@@ -699,7 +699,7 @@ pub fn start_native_terminal(
     let (control_tx, control_rx) = mpsc::unbounded_channel();
     let (worker_tx, worker_rx) = mpsc::unbounded_channel();
     let (ready_tx, ready_rx) = std_mpsc::sync_channel(1);
-    let returns_before_ready = matches!(request.auth, NativeSshAuth::Password { password: None });
+    let returns_before_ready = terminal_auth_needs_input(&request.auth);
     let session_id = request.session_id.clone();
     let worker = thread::spawn(move || {
         let result = run_native_terminal_thread(
@@ -1476,7 +1476,7 @@ async fn run_native_terminal_once(
         ))
     };
 
-    let startup_result = if matches!(request.auth, NativeSshAuth::Password { password: None }) {
+    let startup_result = if terminal_auth_needs_input(&request.auth) {
         startup.await
     } else {
         tokio::time::timeout(startup_timeout, startup)
@@ -2807,6 +2807,28 @@ async fn authenticate_native_ssh(
     Ok(())
 }
 
+// Interactive authentication must publish its input handle before waiting for
+// readiness, and must not count human typing time against the startup deadline.
+// Keep ready timing and X11 status for keys that already decrypt successfully.
+fn terminal_auth_needs_input(auth: &NativeSshAuth) -> bool {
+    match auth {
+        NativeSshAuth::Password { password: None } => true,
+        NativeSshAuth::KeyFile { key_path, passphrase } => {
+            let result = load_secret_key(key_path, passphrase.as_deref()).or_else(|error| {
+                if passphrase.is_some() {
+                    load_secret_key(key_path, None)
+                } else {
+                    Err(error)
+                }
+            });
+            result.is_err_and(|error| {
+                should_prompt_for_key_passphrase(&error.to_string(), passphrase.is_some())
+            })
+        }
+        _ => false,
+    }
+}
+
 fn should_prompt_for_key_passphrase(error: &str, had_saved_passphrase: bool) -> bool {
     let normalized = error.to_lowercase();
     had_saved_passphrase || normalized.contains("encrypt") || normalized.contains("decrypt")
@@ -3432,6 +3454,12 @@ mod tests {
         generate_test_ssh_key(&path, "");
 
         assert!(load_secret_key(&path, Some("unused-passphrase")).is_ok());
+        for passphrase in [None, Some("unused-passphrase")] {
+            assert!(!terminal_auth_needs_input(&NativeSshAuth::KeyFile {
+                key_path: path.to_string_lossy().into_owned(),
+                passphrase: passphrase.map(str::to_string),
+            }));
+        }
 
         let _ = fs::remove_file(&path);
         let _ = fs::remove_file(format!("{}.pub", path.display()));
@@ -3450,6 +3478,18 @@ mod tests {
         let wrong = load_secret_key(&path, Some("wrong-passphrase"))
             .expect_err("wrong passphrase cannot decrypt key");
         assert!(should_prompt_for_key_passphrase(&wrong.to_string(), true));
+
+        for passphrase in [None, Some("wrong-passphrase")] {
+            assert!(terminal_auth_needs_input(&NativeSshAuth::KeyFile {
+                key_path: path.to_string_lossy().into_owned(),
+                passphrase: passphrase.map(str::to_string),
+            }));
+        }
+        assert!(!terminal_auth_needs_input(&NativeSshAuth::KeyFile {
+            key_path: path.to_string_lossy().into_owned(),
+            passphrase: Some("correct-passphrase".to_string()),
+        }));
+        assert!(load_secret_key(&path, Some("correct-passphrase")).is_ok());
 
         let _ = fs::remove_file(&path);
         let _ = fs::remove_file(format!("{}.pub", path.display()));
