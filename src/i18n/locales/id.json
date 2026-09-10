@@ -4519,6 +4519,11 @@
     "notificationWithTitle": "Notifikasi dari {{name}}: {{title}} — {{message}}"
   },
   "sftp": {
+    "minimize": "Minimalkan",
+    "backgroundTransferring": "Transfer file untuk {{host}} berjalan di latar belakang; buka kembali penjelajah file untuk melihat progres.",
+    "backgroundAttention": "Transfer file untuk {{host}} memerlukan perhatian; buka kembali penjelajah file untuk melanjutkan.",
+    "backgroundFinished": "Transfer file untuk {{host}} telah berakhir; buka kembali penjelajah file untuk meninjau hasilnya.",
+    "backgroundFailed": "Transfer file untuk {{host}} gagal; buka kembali penjelajah file untuk meninjau hasilnya.",
     "connecting": "Menghubungkan",
     "verifyingHost": "Memverifikasi host",
     "connected": "Terhubung",

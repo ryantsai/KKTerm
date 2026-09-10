@@ -1,6 +1,7 @@
 import { confirmTrustedSshHostKey, connectionToolbarTitle, resolveSshOldProtocols, resolveSshSocksProxyRequest, uniqueRuntimeId, usesNativeSshHostKeyVerification } from "../utils";
+import { EMPTY_POPUP_PROGRESS, nextSftpPopupProgress, type SftpPopupActivity } from "./sftpPopupActivity";
 
-import { AlertTriangle, ChevronsUpDown, X } from "../../../../lib/reicon";
+import { AlertTriangle, ChevronsUpDown, Minus, X } from "../../../../lib/reicon";
 import { Actions, Btn, DIcon, DialogShell, Field, Sheet, TextInput } from "../../../../app/ui/dialog";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -170,6 +171,8 @@ export function SftpWorkspace({
   commands: commandsProp,
   inline = false,
   onClose,
+  onMinimize,
+  onPopupActivityChange,
   protocolSourceConnection,
   initialRemotePath,
 }: {
@@ -180,6 +183,8 @@ export function SftpWorkspace({
   // browser as ephemeral so per-pane view options are not persisted.
   inline?: boolean;
   onClose?: () => void;
+  onMinimize?: () => void;
+  onPopupActivityChange?: (activity: SftpPopupActivity) => void;
   protocolSourceConnection?: Connection;
   // Preferred remote start directory (e.g. the SSH session's current working
   // directory when the browser opens from a terminal pane).
@@ -288,6 +293,47 @@ export function SftpWorkspace({
   const transferConflictResolverRef = useRef<
     ((decision: TransferConflictDecision) => void) | null
   >(null);
+  const pendingTransfers = transfers.some((transfer) => transfer.state === "queued" || transfer.state === "active") || Boolean(transferConflict);
+  const needsAttention = Boolean(transferConflict || passwordPrompt || ftpNoticeDialog);
+  const showOverlays = !onMinimize || isActive;
+  const previousActivityRef = useRef(EMPTY_POPUP_PROGRESS);
+
+  useEffect(() => {
+    onPopupActivityChange?.({ pending: pendingTransfers, needsAttention });
+  }, [onPopupActivityChange, pendingTransfers, needsAttention]);
+
+  useEffect(() => {
+    const { progress, notice } = nextSftpPopupProgress(previousActivityRef.current, transfers, needsAttention, Boolean(transferConflict));
+    if (onMinimize && !isActive) {
+      const host = tab.connection?.name ?? tab.title;
+      if (notice === "attention") {
+        showStatusBarNotice(t("sftp.backgroundAttention", { host }), { tone: "warning" });
+      } else if (notice === "failed") {
+        showStatusBarNotice(t("sftp.backgroundFailed", { host }), { tone: "error" });
+      } else if (notice === "finished") {
+        showStatusBarNotice(t("sftp.backgroundFinished", { host }), { tone: "info" });
+      }
+    }
+    previousActivityRef.current = progress;
+  }, [isActive, needsAttention, onMinimize, showStatusBarNotice, t, tab.connection?.name, tab.title, transferConflict, transfers]);
+
+  // Escape belongs only to the visible popup. Nested dialogs and editable
+  // controls retain their own dismissal/cancel behavior.
+  useEffect(() => {
+    if (!onMinimize || !onClose || !isActive) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented || event.isComposing) return;
+      if (needsAttention || propertiesState || newRemoteFolderOpen || deleteRequest || protocolMenuOpen) return;
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      if (target?.closest('input, textarea, [contenteditable="true"], [role="menu"], [role="listbox"]')) return;
+      if (target && !workspaceRef.current?.contains(target) && target.closest('[role="dialog"], .kk-dlg-backdrop, .status-popup')) return;
+      event.preventDefault();
+      if (pendingTransfers) onMinimize();
+      else onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [deleteRequest, isActive, needsAttention, newRemoteFolderOpen, onClose, onMinimize, pendingTransfers, propertiesState, protocolMenuOpen]);
   const overwriteAllConflictsRef = useRef<Record<TransferDirection, boolean>>({
     upload: false,
     download: false,
@@ -2424,11 +2470,12 @@ export function SftpWorkspace({
           {onClose ? (
             <button
               className="sftp-bar-close"
-              aria-label={t("common.close")}
-              onClick={onClose}
+              aria-label={t(onMinimize && pendingTransfers ? "sftp.minimize" : "common.close")}
+              title={t(onMinimize && pendingTransfers ? "sftp.minimize" : "common.close")}
+              onClick={onMinimize && pendingTransfers ? onMinimize : onClose}
               type="button"
             >
-              <X size={16} />
+              {onMinimize && pendingTransfers ? <Minus size={16} /> : <X size={16} />}
             </button>
           ) : null}
         </span>
@@ -2558,27 +2605,27 @@ export function SftpWorkspace({
           onCancel={(transfer) => void handleCancelTransfer(transfer)}
         />
       ) : null}
-      {propertiesState ? (
+      {showOverlays && propertiesState ? (
         <SftpPropertiesPopup
           properties={propertiesState}
           onClose={() => setPropertiesState(null)}
           onSave={(request) => void handleUpdateRemoteProperties(request)}
         />
       ) : null}
-      {newRemoteFolderOpen ? (
+      {showOverlays && newRemoteFolderOpen ? (
         <NewRemoteFolderDialog
           onCancel={() => setNewRemoteFolderOpen(false)}
           onCreate={(name) => void handleConfirmCreateRemoteFolder(name)}
         />
       ) : null}
-      {deleteRequest ? (
+      {showOverlays && deleteRequest ? (
         <ConfirmRemoteDeleteDialog
           request={deleteRequest}
           onCancel={() => setDeleteRequest(null)}
           onConfirm={() => void handleConfirmDeletePath()}
         />
       ) : null}
-      {passwordPrompt && connection ? (
+      {showOverlays && passwordPrompt && connection ? (
         <PasswordPromptDialog
           connection={connection}
           message={passwordPrompt.message}
@@ -2586,13 +2633,13 @@ export function SftpWorkspace({
           onSubmit={(password) => completePasswordPrompt(password)}
         />
       ) : null}
-      {ftpNoticeDialog ? (
+      {showOverlays && ftpNoticeDialog ? (
         <FtpNoticeDialog
           notice={ftpNoticeDialog}
           onClose={() => setFtpNoticeDialog(null)}
         />
       ) : null}
-      {transferConflict ? (
+      {showOverlays && transferConflict ? (
         <TransferConflictDialog
           conflict={transferConflict}
           onDecision={resolveTransferConflict}

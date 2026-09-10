@@ -2,89 +2,32 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("SSH pane toolbar SFTP button opens an in-place popup instead of a workspace Tab", async () => {
-  const terminalSource = await readFile(
-    new URL("../src/modules/workspace/connections/terminal/TerminalWorkspace.tsx", import.meta.url),
-    "utf8",
-  );
-
-  assert.match(
-    terminalSource,
-    /const SftpWorkspace = lazy\(\(\) =>\s*import\("\.\.\/sftp\/SftpWorkspace"\)/,
-    "the terminal toolbar popup should reuse the (lazily loaded) SFTP/FTP workspace surface",
-  );
-  assert.match(
-    terminalSource,
-    /const \[sftpDialogConnection,\s*setSftpDialogConnection\] = useState<Connection \| null>\(null\);/,
-    "the SFTP toolbar action should own dialog state inside TerminalWorkspace",
-  );
-  assert.match(
-    terminalSource,
-    /onOpenSftp=\{openSftpDialog\}/,
-    "clicking the SSH toolbar SFTP action should open the popup through TerminalWorkspace, not dispatch to a tab opener",
-  );
-  assert.match(
-    terminalSource,
-    /sftpFocusRestorePaneIdRef/,
-    "the SFTP popup should remember the originating terminal pane for focus restore",
-  );
-  assert.match(
-    terminalSource,
-    /<SftpWorkspace\s+isActive=\{true\}\s+tab=\{sftpDialogTab\}/,
-    "the popup should render the normal SFTP workspace in the dialog",
-  );
-  assert.doesNotMatch(
-    terminalSource,
-    /const openSftpBrowser = useWorkspaceStore\(\(state\) => state\.openSftpBrowser\);/,
-    "the SSH toolbar SFTP action should not create or activate a workspace tab",
-  );
+test("SSH pane toolbar owns a persistent popup per Pane instead of a workspace Tab", async () => {
+  const terminal = await readFile(new URL("../src/modules/workspace/connections/terminal/TerminalWorkspace.tsx", import.meta.url), "utf8");
+  const popup = await readFile(new URL("../src/modules/workspace/connections/terminal/SftpToolbarPopup.tsx", import.meta.url), "utf8");
+  assert.match(terminal, /<SftpToolbarPopups panes=\{tab.panes\} tabId=\{tab.id\} isActive=\{isActive\}/);
+  assert.match(popup, /const SftpWorkspace = lazy/);
+  assert.match(popup, /id: `dialog-\$\{tabId\}-\$\{paneId\}-sftp`/);
+  assert.match(popup, /if \(browsers.some\([\s\S]*?minimized: browser.paneId !== paneId[\s\S]*?return;/, "restoring must reuse the mounted browser before resolving another start path");
+  assert.match(popup, /setBrowsers\(\(current\) => minimize[\s\S]*?minimized: true[\s\S]*?current.filter\(\(browser\) => browser.paneId !== paneId\)/, "only a real close should drop the browser and its Session");
+  assert.match(popup, /getPaneRenderer\(paneId\)\?\.focus\(\)/);
+  assert.match(popup, /<SftpWorkspace\s+isActive=\{visible\}\s+tab=\{browser.tab\}/);
+  assert.doesNotMatch(popup, /openSftpBrowser|closeSession|cancelTransfer/);
 });
 
 test("SSH pane toolbar SFTP popup prefers tmux pane current path before OSC cwd fallback", async () => {
-  const terminalSource = await readFile(
-    new URL("../src/modules/workspace/connections/terminal/TerminalWorkspace.tsx", import.meta.url),
-    "utf8",
-  );
-  const tauriSource = await readFile(new URL("../src/lib/tauri.ts", import.meta.url), "utf8");
-
-  assert.match(
-    terminalSource,
-    /async function resolveSftpDialogInitialRemotePath\(connection: Connection, pane: WorkspacePane \| undefined\)[\s\S]*?invokeCommand\("tmux_current_path",[\s\S]*?tmuxSessionId: pane\.tmuxSessionId,[\s\S]*?return tmuxPath\.trim\(\);[\s\S]*?return isRemoteInitialDirectory\(pane\.cwd\) \? pane\.cwd\.trim\(\) : undefined;/,
-    "the SFTP popup should ask tmux for pane_current_path before falling back to the terminal cwd",
-  );
-  assert.match(
-    terminalSource,
-    /const requestId = sftpOpenRequestIdRef\.current \+ 1;[\s\S]*?const initialRemotePath = await resolveSftpDialogInitialRemotePath\(connection, pane\);[\s\S]*?setSftpDialogInitialRemotePath\(initialRemotePath\);[\s\S]*?setSftpDialogConnection\(connection\);/,
-    "the popup should resolve the remote start path before mounting SftpWorkspace",
-  );
-  assert.match(
-    tauriSource,
-    /tmux_current_path:\s*\{[\s\S]*?tmuxSessionId: string;[\s\S]*?result: string;/,
-    "the typed Tauri command map should expose the tmux current-path probe",
-  );
+  const terminal = await readFile(new URL("../src/modules/workspace/connections/terminal/TerminalWorkspace.tsx", import.meta.url), "utf8");
+  const popup = await readFile(new URL("../src/modules/workspace/connections/terminal/SftpToolbarPopup.tsx", import.meta.url), "utf8");
+  assert.match(terminal, /async function resolveSftpDialogInitialRemotePath[\s\S]*?invokeCommand\("tmux_current_path",[\s\S]*?return tmuxPath\.trim\(\);[\s\S]*?return isRemoteInitialDirectory\(pane\.cwd\) \? pane\.cwd\.trim\(\) : undefined;/);
+  assert.match(popup, /const initialRemotePath = await resolveInitialRemotePath\(\);[\s\S]*?requestId !== openRequestIdRef.current[\s\S]*?setBrowsers\(/);
 });
 
-test("SSH pane toolbar SFTP action is icon-only with a native SFTP tooltip", async () => {
-  const terminalSource = await readFile(
-    new URL("../src/modules/workspace/connections/terminal/TerminalWorkspace.tsx", import.meta.url),
-    "utf8",
-  );
-
-  assert.match(
-    terminalSource,
-    /import \{[^}]*Folder[^}]*\} from "\.\.\/\.\.\/\.\.\/\.\.\/lib\/reicon";/,
-    "the SSH toolbar SFTP action should use the folder icon",
-  );
-  assert.match(
-    terminalSource,
-    /title=\{t\("terminal\.sftp"\)\}[\s\S]*?<Folder size=\{13\} \/>/,
-    "the native browser tooltip should read SFTP while the button body stays icon-only",
-  );
-  assert.doesNotMatch(
-    terminalSource,
-    /<Folder size=\{13\} \/>\s*<span>\{t\("terminal\.sftp"\)\}<\/span>/,
-    "the SSH toolbar should not render visible SFTP text beside the folder icon",
-  );
+test("SSH toolbar SFTP action retains its tutorial target and icon-only tooltip", async () => {
+  const popup = await readFile(new URL("../src/modules/workspace/connections/terminal/SftpToolbarPopup.tsx", import.meta.url), "utf8");
+  assert.match(popup, /data-tutorial-id="terminal.openSftp"/);
+  assert.match(popup, /title=\{tooltip\}[\s\S]*?<Folder size=\{13\} \/>/);
+  assert.match(popup, /: t\("terminal.sftp"\)/);
+  assert.match(popup, /data-transfer-state=\{backgroundActivity\}/);
 });
 
 test("SFTP popup uses the selected app color scheme outside the app shell", async () => {

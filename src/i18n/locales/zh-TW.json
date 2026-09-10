@@ -4519,6 +4519,11 @@
     "notificationWithTitle": "來自 {{name}} 的通知：{{title}} — {{message}}"
   },
   "sftp": {
+    "minimize": "最小化",
+    "backgroundTransferring": "{{host}} 的檔案傳輸正在背景執行，重新開啟檔案瀏覽器以查看進度。",
+    "backgroundAttention": "{{host}} 的檔案傳輸需要您處理，請重新開啟檔案瀏覽器以繼續。",
+    "backgroundFinished": "{{host}} 的檔案傳輸已結束，重新開啟檔案瀏覽器以查看結果。",
+    "backgroundFailed": "{{host}} 的一項檔案傳輸失敗，重新開啟檔案瀏覽器以查看結果。",
     "connecting": "正在連線",
     "verifyingHost": "正在驗證主機",
     "connected": "已連線",

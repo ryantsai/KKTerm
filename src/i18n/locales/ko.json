@@ -4519,6 +4519,11 @@
     "notificationWithTitle": "{{name}}의 알림: {{title}} — {{message}}"
   },
   "sftp": {
+    "minimize": "최소화",
+    "backgroundTransferring": "{{host}}의 파일 전송이 백그라운드에서 진행 중입니다. 파일 브라우저를 다시 열어 진행 상황을 확인하세요.",
+    "backgroundAttention": "{{host}}의 파일 전송에 조치가 필요합니다. 계속하려면 파일 브라우저를 다시 여세요.",
+    "backgroundFinished": "{{host}}의 파일 전송이 종료되었습니다. 파일 브라우저를 다시 열어 결과를 확인하세요.",
+    "backgroundFailed": "{{host}}의 파일 전송이 실패했습니다. 파일 브라우저를 다시 열어 결과를 확인하세요.",
     "connecting": "연결 중",
     "verifyingHost": "호스트 확인 중",
     "connected": "연결됨",
