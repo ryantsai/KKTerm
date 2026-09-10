@@ -4519,6 +4519,11 @@
     "notificationWithTitle": "Notificación de {{name}}: {{title}} — {{message}}"
   },
   "sftp": {
+    "minimize": "Minimizar",
+    "backgroundTransferring": "Las transferencias de archivos de {{host}} siguen en segundo plano; abre de nuevo el explorador de archivos para consultar el avance.",
+    "backgroundAttention": "Las transferencias de archivos de {{host}} necesitan tu atención; abre de nuevo el explorador de archivos para continuar.",
+    "backgroundFinished": "Las transferencias de archivos de {{host}} terminaron; abre de nuevo el explorador de archivos para revisar los resultados.",
+    "backgroundFailed": "Falló una transferencia de archivos de {{host}}; abre de nuevo el explorador de archivos para revisar los resultados.",
     "connecting": "Conectando",
     "verifyingHost": "Verificando host",
     "connected": "Conectado",
