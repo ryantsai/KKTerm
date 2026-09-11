@@ -2494,6 +2494,7 @@
       "italic": "Cursiva",
       "copyElement": "Duplicar elemento",
       "resizeDialog": "Cambiar el tamaño del editor de capturas",
+      "cursorPosition": "X {{x}}, Y {{y}}",
       "unsavedTitle": "¿Guardar los cambios de la captura?",
       "unsavedMessage": "Las anotaciones se perderán si continúa sin guardar.",
       "dontSave": "No guardar"

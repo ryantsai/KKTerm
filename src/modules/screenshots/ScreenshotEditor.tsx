@@ -55,7 +55,7 @@ import {
 import { useWorkspaceStore } from "../../store";
 import { workspaceShortcutFromKeyboardEvent } from "../workspace/keymap";
 import { formatScreenshotBytes } from "./LibraryView";
-import { cropImagePlacement, fitImageDimensions } from "./editorSizing";
+import { cropImagePlacement, cursorImagePoint, fitImageDimensions } from "./editorSizing";
 
 type EditorTool = "pan" | "select" | "pencil" | "arrow" | "rectangle" | "ellipse" | "text" | "mosaic" | "crop";
 type ShapeKind = "arrow" | "rectangle" | "ellipse";
@@ -738,6 +738,7 @@ export function ScreenshotEditor({
   const [textSize, setTextSize] = useState(32);
   const [canvasSize, setCanvasSize] = useState({ width: screenshot.width, height: screenshot.height });
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
+  const [cursorPoint, setCursorPoint] = useState<Point | null>(null);
   const [editorSize, setEditorSize] = useState(initialEditorSize);
   const [zoom, setZoom] = useState<ZoomLevel>("fit");
   const [ready, setReady] = useState(false);
@@ -895,6 +896,7 @@ export function ScreenshotEditor({
     drawingRef.current = null;
     cropDragRef.current = null;
     setCropDraft(null);
+    setCursorPoint(null);
     freehandRef.current = null;
     moveDragRef.current = null;
     handleDragRef.current = null;
@@ -1441,7 +1443,26 @@ export function ScreenshotEditor({
     drawingRef.current = { start: point };
   }
 
+  // The footer readout reports image pixels, not on-screen pixels, so the
+  // coordinate stays at its 1x position when the view is zoomed in or out.
+  function trackCursor(event: ReactPointerEvent<HTMLCanvasElement>) {
+    const canvas = event.currentTarget;
+    const rect = canvas.getBoundingClientRect();
+    const point = cursorImagePoint(
+      event.clientX - rect.left,
+      event.clientY - rect.top,
+      rect.width,
+      rect.height,
+      canvas.width,
+      canvas.height,
+    );
+    setCursorPoint((current) => (
+      current && current.x === point.x && current.y === point.y ? current : point
+    ));
+  }
+
   function pointerMove(event: ReactPointerEvent<HTMLCanvasElement>) {
+    trackCursor(event);
     if (tool === "crop") {
       return;
     }
@@ -1961,9 +1982,16 @@ export function ScreenshotEditor({
         footer={
           <Actions
             extraLeft={
-              <span className="screenshots-editor__footer-meta">
-                {canvasSize.width}×{canvasSize.height} · {formatScreenshotBytes(screenshot.fileSizeBytes)}
-              </span>
+              <>
+                <span className="screenshots-editor__footer-meta">
+                  {canvasSize.width}×{canvasSize.height} · {formatScreenshotBytes(screenshot.fileSizeBytes)}
+                </span>
+                {cursorPoint ? (
+                  <span className="screenshots-editor__footer-cursor">
+                    {t("screenshots.editor.cursorPosition", { x: cursorPoint.x, y: cursorPoint.y })}
+                  </span>
+                ) : null}
+              </>
             }
           />
         }
@@ -2255,6 +2283,7 @@ export function ScreenshotEditor({
                   onPointerMove={pointerMove}
                   onPointerUp={pointerUp}
                   onPointerCancel={pointerCancel}
+                  onPointerLeave={() => setCursorPoint(null)}
                   onDoubleClick={canvasDoubleClick}
                   onContextMenu={canvasContextMenu}
                 />

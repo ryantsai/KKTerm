@@ -866,6 +866,15 @@
   white-space: nowrap;
 }
 
+.screenshots-editor__footer-cursor {
+  position: absolute;
+  right: 14px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .screenshots-editor .kk-dlg-foot {
   position: relative;
   min-height: 38px;

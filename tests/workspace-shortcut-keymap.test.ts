@@ -88,10 +88,18 @@ test("remote desktop full screen uses a native platform convention by default", 
 });
 
 test("Windows ignores stored overrides for the ActiveX full-screen shortcut", () => {
+  // Pin the platform: the rule is Windows-only, so a host-detected platform
+  // would make this assertion depend on the machine running the suite.
   const bindings = effectiveWorkspaceShortcutBindings({
     remoteFullscreen: "Ctrl+Alt+PageDown",
-  });
+  }, "windows");
   assert.equal(bindings.get("remoteFullscreen"), "Ctrl+Alt+Pause");
+  // macOS and Linux stay configurable, so the same override applies there.
+  assert.equal(
+    effectiveWorkspaceShortcutBindings({ remoteFullscreen: "Ctrl+Alt+PageDown" }, "macos")
+      .get("remoteFullscreen"),
+    "Ctrl+Alt+PageDown",
+  );
 });
 
 test("bindingFromKeyboardEvent ignores bare keys and lone modifiers", () => {

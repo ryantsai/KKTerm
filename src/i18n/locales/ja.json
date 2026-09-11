@@ -2494,6 +2494,7 @@
       "italic": "斜体",
       "copyElement": "要素を複製",
       "resizeDialog": "スクリーンショットエディターのサイズを変更",
+      "cursorPosition": "X {{x}}, Y {{y}}",
       "unsavedTitle": "スクリーンショットの編集を保存しますか？",
       "unsavedMessage": "保存せずに続行すると、注釈は失われます。",
       "dontSave": "保存しない"

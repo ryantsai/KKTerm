@@ -2494,6 +2494,7 @@
       "italic": "Corsivo",
       "copyElement": "Duplica elemento",
       "resizeDialog": "Ridimensiona editor screenshot",
+      "cursorPosition": "X {{x}}, Y {{y}}",
       "unsavedTitle": "Salvare le modifiche allo screenshot?",
       "unsavedMessage": "Le annotazioni andranno perse se continui senza salvare.",
       "dontSave": "Non salvare"

@@ -213,15 +213,16 @@ function normalizeBindingKey(key: string): string {
  */
 export function effectiveWorkspaceShortcutBindings(
   overrides: WorkspaceShortcutOverrides | undefined,
+  platform: RuntimePlatform = currentPlatform(),
 ): Map<WorkspaceShortcutActionId, string | null> {
   const bindings = new Map<WorkspaceShortcutActionId, string | null>();
   for (const action of WORKSPACE_SHORTCUT_ACTIONS) {
     const override = overrides?.[action.id];
     bindings.set(
       action.id,
-      override !== undefined && !workspaceShortcutIsFixed(action)
+      override !== undefined && !workspaceShortcutIsFixed(action, platform)
         ? override
-        : defaultWorkspaceShortcutBinding(action),
+        : defaultWorkspaceShortcutBinding(action, platform),
     );
   }
   return bindings;

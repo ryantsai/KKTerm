@@ -31,3 +31,21 @@ export function cropImagePlacement(crop: ImageRect, imageWidth: number, imageHei
     destination: { x: left - crop.x, y: top - crop.y, width, height },
   };
 }
+
+// Pointer position translated into the image's own pixel space, so the editor
+// cursor readout stays at 1x image coordinates at every zoom level.
+export function cursorImagePoint(
+  offsetX: number,
+  offsetY: number,
+  displayedWidth: number,
+  displayedHeight: number,
+  imageWidth: number,
+  imageHeight: number,
+) {
+  const x = Math.floor((offsetX / Math.max(1, displayedWidth)) * imageWidth);
+  const y = Math.floor((offsetY / Math.max(1, displayedHeight)) * imageHeight);
+  return {
+    x: Math.min(imageWidth - 1, Math.max(0, x)),
+    y: Math.min(imageHeight - 1, Math.max(0, y)),
+  };
+}

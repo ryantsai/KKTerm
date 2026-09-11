@@ -2494,6 +2494,7 @@
       "italic": "기울임꼴",
       "copyElement": "요소 복제",
       "resizeDialog": "스크린샷 편집기 크기 조절",
+      "cursorPosition": "X {{x}}, Y {{y}}",
       "unsavedTitle": "스크린샷 편집 내용을 저장할까요?",
       "unsavedMessage": "저장하지 않고 계속하면 주석이 손실됩니다.",
       "dontSave": "저장 안 함"

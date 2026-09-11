@@ -2494,6 +2494,7 @@
       "italic": "Kursiv",
       "copyElement": "Element duplizieren",
       "resizeDialog": "Screenshot-Editor skalieren",
+      "cursorPosition": "X {{x}}, Y {{y}}",
       "unsavedTitle": "Screenshot-Änderungen speichern?",
       "unsavedMessage": "Ihre Anmerkungen gehen verloren, wenn Sie ohne Speichern fortfahren.",
       "dontSave": "Nicht speichern"

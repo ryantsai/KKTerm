@@ -2494,6 +2494,7 @@
       "italic": "Italic",
       "copyElement": "Copy element",
       "resizeDialog": "Resize screenshot editor",
+      "cursorPosition": "X {{x}}, Y {{y}}",
       "unsavedTitle": "Save screenshot edits?",
       "unsavedMessage": "Your annotations will be lost if you continue without saving.",
       "dontSave": "Don't save"

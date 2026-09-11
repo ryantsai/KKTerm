@@ -2494,6 +2494,7 @@
       "italic": "Miring",
       "copyElement": "Duplikasikan elemen",
       "resizeDialog": "Ubah ukuran editor tangkapan layar",
+      "cursorPosition": "X {{x}}, Y {{y}}",
       "unsavedTitle": "Simpan editan tangkapan layar?",
       "unsavedMessage": "Anotasi akan hilang jika Anda melanjutkan tanpa menyimpan.",
       "dontSave": "Jangan simpan"
