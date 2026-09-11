@@ -38,6 +38,17 @@ pub async fn app_store_file_access(
     }
 }
 
+/// Re-open the stored security-scoped grant for `path` and hold it open for the
+/// rest of the process, so a path the user picked once still resolves after a
+/// relaunch. Outside Mac App Store builds a configured path needs no grant, so
+/// this does nothing and callers can invoke it unconditionally.
+pub fn activate_path(app: &tauri::AppHandle, path: &str) {
+    #[cfg(all(target_os = "macos", feature = "mac-app-store"))]
+    native::activate(app, path);
+    #[cfg(not(all(target_os = "macos", feature = "mac-app-store")))]
+    let _ = (app, path);
+}
+
 #[cfg(all(target_os = "macos", feature = "mac-app-store"))]
 pub use native::*;
 
@@ -52,9 +63,11 @@ mod native {
     };
     use sha2::{Digest, Sha256};
     use std::{
+        collections::HashSet,
         fs,
         io::Write,
         path::{Path, PathBuf},
+        sync::{Mutex, OnceLock},
     };
     use tauri::AppHandle;
 
@@ -239,6 +252,36 @@ mod native {
                 Ok(paths)
             }
             _ => Err("Unknown file access action".into()),
+        }
+    }
+
+    // A grant is process-wide, so the first successful restore of a path is kept
+    // open for the app's lifetime instead of being resolved again on every use.
+    fn activated() -> &'static Mutex<HashSet<String>> {
+        static ACTIVATED: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
+        ACTIVATED.get_or_init(|| Mutex::new(HashSet::new()))
+    }
+
+    pub fn activate(app: &AppHandle, path: &str) {
+        let path = path.trim();
+        if path.is_empty() {
+            return;
+        }
+        let Ok(mut activated) = activated().lock() else {
+            return;
+        };
+        if !activated.insert(path.to_owned()) {
+            return;
+        }
+        match restore(app, path) {
+            // Deliberately not dropped: `Access::drop` stops the security-scoped
+            // access that the configured path depends on for the whole session.
+            Ok(access) => std::mem::forget(access),
+            // No stored grant yet (or it no longer resolves). The next explicit
+            // pick re-creates one; nothing here should fail a caller.
+            Err(_) => {
+                activated.remove(path);
+            }
         }
     }
 

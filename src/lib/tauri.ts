@@ -4597,37 +4597,53 @@ export async function selectAppLauncherFolder(options: {
   return typeof selectedPath === "string" ? selectedPath : null;
 }
 
+// Mac App Store builds run inside the App Sandbox, where a path is only a hint
+// unless it carries a security-scoped grant. The system dialog grants access for
+// the current session only, so a path saved in Settings or on a Connection stops
+// resolving after a relaunch. Route every selector whose result is persisted
+// through the App Store panel instead, which stores a grant alongside the path;
+// other builds keep the normal Tauri dialog.
+async function selectPersistentPath(options: {
+  title: string;
+  directory: boolean;
+  defaultPath?: string;
+  filters?: WidgetFilePickFilter[];
+}): Promise<string | null> {
+  if (!isTauriRuntime()) {
+    return null;
+  }
+  if (await isMacAppStoreBuild()) {
+    const paths = await invokeCommand("app_store_file_access", { request: {
+      action: "select",
+      title: options.title,
+      directory: options.directory,
+      path: options.defaultPath,
+    } });
+    return paths[0] ?? null;
+  }
+  const selectedPath = await openDialog({
+    defaultPath: options.defaultPath,
+    directory: options.directory,
+    multiple: false,
+    title: options.title,
+    ...(options.filters ? { filters: options.filters } : {}),
+  });
+  return typeof selectedPath === "string" ? selectedPath : null;
+}
+
 export async function selectRdpSharedFolder(options: {
   defaultPath?: string;
   title: string;
 }) {
-  if (!isTauriRuntime()) {
-    return null;
-  }
-
-  const selectedPath = await openDialog({
-    defaultPath: options.defaultPath,
-    directory: true,
-    multiple: false,
-    title: options.title,
-  });
-
-  return typeof selectedPath === "string" ? selectedPath : null;
+  return selectPersistentPath({ ...options, directory: true });
 }
 
 export async function selectKeyFile(defaultPath?: string) {
-  if (!isTauriRuntime()) {
-    return null;
-  }
-
-  const selectedPath = await openDialog({
+  return selectPersistentPath({
     defaultPath,
     directory: false,
-    multiple: false,
     title: i18next.t("terminal.selectKeyFile"),
   });
-
-  return typeof selectedPath === "string" ? selectedPath : null;
 }
 
 export async function selectAndReadSshConfigFile(): Promise<{ path: string; content: string } | null> {
@@ -4663,18 +4679,7 @@ export async function selectAndReadSshConfigFile(): Promise<{ path: string; cont
 }
 
 export async function selectFileViewPath(options: { title: string; defaultPath?: string }) {
-  if (!isTauriRuntime()) {
-    return null;
-  }
-
-  const selectedPath = await openDialog({
-    defaultPath: options.defaultPath,
-    directory: false,
-    multiple: false,
-    title: options.title,
-  });
-
-  return typeof selectedPath === "string" ? selectedPath : null;
+  return selectPersistentPath({ ...options, directory: false });
 }
 
 export async function saveTextFile(defaultFilename: string, contents: string) {
@@ -5044,32 +5049,14 @@ export async function selectScreenshotFolder(options: {
   defaultPath?: string;
   title: string;
 }) {
-  if (!isTauriRuntime()) {
-    return null;
-  }
-  const selectedPath = await openDialog({
-    defaultPath: options.defaultPath,
-    directory: true,
-    multiple: false,
-    title: options.title,
-  });
-  return typeof selectedPath === "string" ? selectedPath : null;
+  return selectPersistentPath({ ...options, directory: true });
 }
 
 export async function selectAutoBackupFolder(options: {
   defaultPath?: string;
   title: string;
 }) {
-  if (!isTauriRuntime()) {
-    return null;
-  }
-  const selectedPath = await openDialog({
-    defaultPath: options.defaultPath,
-    directory: true,
-    multiple: false,
-    title: options.title,
-  });
-  return typeof selectedPath === "string" ? selectedPath : null;
+  return selectPersistentPath({ ...options, directory: true });
 }
 
 export async function selectUrlDownloadFolder(options: {

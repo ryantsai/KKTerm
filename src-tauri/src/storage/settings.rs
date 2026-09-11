@@ -499,6 +499,44 @@ impl Storage {
         Ok(settings)
     }
 
+    /// Absolute local paths the user pointed Settings or a saved Connection at.
+    /// The Mac App Store build re-opens a security-scoped grant for each one at
+    /// startup, which is what makes a stored path usable after a relaunch; other
+    /// builds never call this.
+    pub fn configured_local_paths(&self) -> Result<Vec<String>, String> {
+        let mut paths = Vec::new();
+        let mut push = |value: Option<String>| {
+            if let Some(value) = value.map(|value| value.trim().to_string())
+                && !value.is_empty()
+                && !paths.contains(&value)
+            {
+                paths.push(value);
+            }
+        };
+
+        push(Some(self.screenshot_settings()?.folder_path));
+        push(self.general_settings()?.auto_backup_folder);
+        push(self.appearance_settings()?.custom_font_path);
+        let ssh = self.ssh_settings()?;
+        push(ssh.default_key_path);
+        push(ssh.x_server_path);
+
+        // Saved SSH Connections keep their key beside the Connection, so the key
+        // file needs its own grant before the next connect attempt reads it.
+        let connection = self.lock()?;
+        let mut statement = connection
+            .prepare("SELECT key_path FROM connections WHERE key_path IS NOT NULL AND key_path <> ''")
+            .map_err(|error| error.to_string())?;
+        let rows = statement
+            .query_map([], |row| row.get::<_, String>(0))
+            .map_err(|error| error.to_string())?;
+        for row in rows {
+            push(Some(row.map_err(|error| error.to_string())?));
+        }
+
+        Ok(paths)
+    }
+
     pub fn ai_provider_settings(&self) -> Result<AiProviderSettings, String> {
         let connection = self.lock()?;
         let value = connection

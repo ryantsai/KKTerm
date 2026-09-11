@@ -60,6 +60,14 @@ impl ShutdownTimerManager {
     }
 
     pub fn schedule(&self, delay_minutes: u64) -> Result<ShutdownTimerStatus, String> {
+        // The sandboxed Mac App Store build cannot rely on the System Events
+        // Apple event that powers macOS shutdown: it needs an automation
+        // entitlement the App Store build does not carry. The Settings UI hides
+        // the timer there; refuse here too so no other caller can arm a timer
+        // that would never fire.
+        if crate::app_store_files::ENABLED {
+            return Err("the shutdown timer is unavailable in the Mac App Store build".to_string());
+        }
         validate_delay(delay_minutes)?;
         let now_ms = unix_time_ms()?;
         let scheduled_for_unix_ms = now_ms

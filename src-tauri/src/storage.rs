@@ -7141,6 +7141,21 @@ pub(crate) fn default_screenshot_folder_path() -> String {
         return path;
     }
 
+    // The Mac App Store build runs sandboxed, where `$HOME` is the app container
+    // and `~/Pictures` is denied outright, so default inside the container. Users
+    // can still point the Screenshots Module at a real folder; picking it through
+    // the App Store file panel stores the grant that survives a relaunch.
+    #[cfg(all(target_os = "macos", feature = "mac-app-store"))]
+    if let Some(home) = std::env::var_os("HOME") {
+        return PathBuf::from(home)
+            .join("Library")
+            .join("Application Support")
+            .join(crate::bundle_identifier::BUNDLE_IDENTIFIER)
+            .join("Screenshots")
+            .to_string_lossy()
+            .to_string();
+    }
+
     std::env::var("USERPROFILE")
         .or_else(|_| std::env::var("HOME"))
         .map(|home| {

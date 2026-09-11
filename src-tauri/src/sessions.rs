@@ -1511,6 +1511,12 @@ impl SessionManager {
         mut request: StartTerminalSessionRequest,
     ) -> Result<TerminalSessionStarted, String> {
         resolve_terminal_socks_proxy(secrets, &mut request)?;
+        // A Connection created before this launch carries only a key-file path.
+        // Sandboxed Mac App Store builds need its stored grant re-opened before
+        // `load_secret_key` reads it; no-op in every other build.
+        if let Some(key_path) = request.key_path.as_deref() {
+            crate::app_store_files::activate_path(&app, key_path);
+        }
         let session_id = request
             .session_id
             .clone()

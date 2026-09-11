@@ -1,7 +1,7 @@
 import type { TFunction } from "i18next";
 import { showNativeContextMenu, type NativeContextMenuItem } from "../lib/nativeContextMenu";
 import { nativeMenuIcons } from "../lib/nativeMenuIcons";
-import { invokeCommand } from "../lib/tauri";
+import { invokeCommand, isMacAppStoreBuild } from "../lib/tauri";
 import {
   formatShutdownTimerDuration,
   shutdownTimerDelaysMinutes,
@@ -23,6 +23,13 @@ export async function showShutdownTimerMenu({
   position,
   t,
 }: ShutdownTimerMenuOptions) {
+  // macOS shutdown goes through a System Events Apple event, which the
+  // sandboxed Mac App Store build has no automation entitlement to send, so the
+  // timer could never fire there. Offer no menu at all rather than a control
+  // that silently does nothing; the backend refuses to arm one as well.
+  if (await isMacAppStoreBuild()) {
+    return;
+  }
   let status: ShutdownTimerStatus | null;
   try {
     status = await invokeCommand("get_shutdown_timer_status");

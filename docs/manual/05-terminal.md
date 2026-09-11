@@ -189,3 +189,19 @@ Tutorial targets: `terminal.openSftp`, `terminal.copySelection`, `terminal.sendT
 ## Connect / target labels
 
 Generic placeholders used in error / status surfaces: `terminal.connectLabel`, `terminal.targetLabel`.
+
+## Mac App Store local shell
+
+Local shell Sessions in the Mac App Store build inherit the App Sandbox from
+KKTerm itself, so the shell is confined the same way the app is. This is a
+platform restriction with no in-app setting; direct-download macOS builds,
+Windows, and Linux run local shells unconfined as before.
+
+Inside such a Session, `$HOME` is the app container rather than the real home
+folder, so the user's `~/.zshrc`, `~/.ssh`, and project directories are not
+readable, and `/etc/paths` and `/etc/zprofile` cannot be read to build the login
+PATH. Tools installed under `/opt/homebrew` or `/usr/local` cannot be executed.
+Commands that stay inside the container, and every remote SSH Session, work
+normally — remote shells run on the remote host and are not affected.
+
+Use the direct-download macOS build for unconfined local shell work.

@@ -630,6 +630,14 @@ file, bearer-token auth, tool surface, and safety gate are identical:
   format compatibility). The socket is bound *before* the descriptor is written,
   so a client that reads the descriptor can always connect.
 
+In the sandboxed Mac App Store build, `<app_data_dir>` is inside the app
+container, so the socket and descriptor live under
+`~/Library/Containers/com.kkterm.app/Data/`. A client that is itself sandboxed
+(and not in KKTerm's app group) cannot read another app's container and so
+cannot reach the bridge; unsandboxed clients connect normally. This is an App
+Sandbox rule with no in-app workaround. Direct-download macOS builds put the
+socket in the ordinary app-data directory and are reachable by any local client.
+
 On every supported OS, `kkterm-cli` answers `initialize` / `tools/list` locally
 (so clients can introspect even when KKTerm is not running) and forwards
 `tools/call` to the live app. When the app is not running or the built-in MCP

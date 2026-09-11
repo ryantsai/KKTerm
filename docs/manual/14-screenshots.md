@@ -102,3 +102,30 @@ Pane Region and Entire Window/Panel captures follow `settings.screenshotsCapture
 RDP captures use a dedicated typed Tauri command that asks the OS for the visible RDP host bitmap, because the native HWND behind RDP cannot be composited into a normal DOM screenshot. URL Connections use the standard capture path; while `workspace.selectRegion` is active, the URL overlay WebView2 is hidden behind a captured placeholder so the Region controls stay above it. Do not generalise the RDP screenshot code path to other surfaces — see [09-remote-desktop.md](09-remote-desktop.md).
 
 On macOS, RDP renders through the IronRDP canvas path, so RDP and VNC screenshots are cropped from the mounted remote-desktop canvas instead of using the Windows-only OS capture command.
+
+## Mac App Store capture behavior
+
+The Mac App Store build runs inside the App Sandbox, which changes two things in
+this Module. Every other distribution build keeps the behavior described above.
+
+The default `settings.screenshotsFolder` is a folder inside the app container
+rather than `~/Pictures/Screenshots`, because the sandbox denies the Pictures
+folder outright. `screenshots.openFolder` and `screenshots.menu.reveal` still
+open it in Finder. Pointing the setting at a real folder works through
+`settings.screenshotsBrowse`, which uses the native picker so the grant is
+remembered across restarts; a path typed or imported without that picker is only
+a hint and is not readable after the next launch.
+
+Video recording is not offered: `screenshots.mediaType` with its
+`screenshots.mediaImage` / `screenshots.mediaVideo` choices, and the
+`settings.screenshotsVideoFormat` setting, are hidden, because
+FFmpeg installs into Homebrew or `/usr/local`, both outside the container, and
+macOS has no Install Helper to manage a private copy. Image capture, the
+library, batch actions, and the editor are unaffected.
+
+Capture itself requires the macOS Screen Recording permission as usual. A Mac
+that previously ran a direct-download KKTerm build holds a Privacy & Security
+entry recorded against that build's signature; the App Store build cannot match
+it and re-prompts even though the toggle looks enabled. Removing KKTerm from
+Privacy & Security → Screen Recording with the **−** button and approving once
+more re-creates the entry against the App Store signature.

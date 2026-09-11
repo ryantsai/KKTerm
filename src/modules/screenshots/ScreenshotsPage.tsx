@@ -26,6 +26,7 @@ import {
   ModuleIconTile,
 } from "../../app/ModuleHeader";
 import { ScreenshotsModuleIcon } from "../../app/moduleIdentityIcons";
+import { useMacAppStoreBuild } from "../../lib/macAppStoreBuild";
 import {
   Actions,
   Btn,
@@ -154,6 +155,13 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
   const [groupBy, setGroupBy] = useState<ScreenshotGroupBy>(readGroupBy);
   const [captureDelay, setCaptureDelay] = useState(readCaptureDelay);
   const [mediaKind, setMediaKind] = useState<"image" | "video">("image");
+  // Video recording needs FFmpeg, which the sandboxed Mac App Store build can
+  // never reach: Homebrew and /usr/local are outside the container and there is
+  // no Install Helper on macOS to manage a private copy. Hide the media picker
+  // there instead of offering a mode that always fails. Screenshot capture is
+  // unaffected, and every other build keeps video recording.
+  const macAppStoreBuild = useMacAppStoreBuild();
+  const videoRecordingSupported = !macAppStoreBuild;
   const [dependencyDialogOpen, setDependencyDialogOpen] = useState(false);
   const [recording, setRecording] = useState<VideoRecordingSession | null>(null);
   const [completedRecording, setCompletedRecording] = useState<CompletedVideoRecording | null>(null);
@@ -643,6 +651,7 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
             ))}
           </select>
         </label>
+        {videoRecordingSupported ? (
         <label
           className="screenshots-delay-select screenshots-media-select"
           title={t("screenshots.mediaType")}
@@ -659,6 +668,7 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
             <option value="video">{t("screenshots.mediaVideo")}</option>
           </select>
         </label>
+        ) : null}
         {recording ? (
           <button
             type="button"

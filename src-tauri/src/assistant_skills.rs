@@ -214,12 +214,20 @@ fn bundled_skill_roots(app: &AppHandle) -> Vec<PathBuf> {
         }
     }
 
-    let source_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .map(|path| path.join("assistant-skills"));
-    if let Some(root) = source_root.filter(|path| path.is_dir()) {
-        if !roots.iter().any(|existing| existing == &root) {
-            roots.push(root);
+    // Debug builds run from the repo, where the bundled resources may not exist
+    // yet, so fall back to the checked-in source folder. Never do this in a
+    // release build: the baked-in build-machine path is outside the macOS App
+    // Sandbox container, where the sandbox allows stat but denies read_dir, so
+    // the fallback turns every assistant call into an EPERM failure.
+    #[cfg(debug_assertions)]
+    {
+        let source_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .map(|path| path.join("assistant-skills"));
+        if let Some(root) = source_root.filter(|path| path.is_dir()) {
+            if !roots.iter().any(|existing| existing == &root) {
+                roots.push(root);
+            }
         }
     }
     roots

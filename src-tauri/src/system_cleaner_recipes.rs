@@ -1244,11 +1244,26 @@ mod tests {
         assert!(!wildcard_match("*.log", "notes.txt"));
     }
 
+    // `is_protected` matches on path components, and only Windows treats `\` as a
+    // separator: elsewhere these literals are a single component that matches
+    // nothing. CI runs `cargo test` on Windows, so this stayed green there while
+    // failing every local macOS and Linux run. Keep the Windows literals under a
+    // Windows gate and assert the same protection with native paths below.
+    #[cfg(target_os = "windows")]
     #[test]
     fn protected_credentials_are_never_cleanable() {
         assert!(is_protected(Path::new(r"C:\Users\tester\.ssh\config")));
         assert!(is_protected(Path::new(
             r"C:\Users\tester\AppData\Local\Browser\Login Data"
+        )));
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    #[test]
+    fn protected_credentials_are_never_cleanable() {
+        assert!(is_protected(Path::new("/home/tester/.ssh/config")));
+        assert!(is_protected(Path::new(
+            "/home/tester/.config/Browser/Login Data"
         )));
     }
 

@@ -431,6 +431,24 @@ Manual app update checks live in General -> `settings.softwareUpdates`, not Abou
 - Purpose: enable/disable the local built-in MCP server surface and control whether built-in MCP tools with a `dangerous` namespace segment, such as `kkterm.workspace.sessions.dangerous.send_input`, `kkterm.workspace.workspaces.dangerous.delete`, `kkterm.workspace.quick_commands.dangerous.create`, `kkterm.screenshots.dangerous.capture_fullscreen`, or `kkterm.system_cleaner.cleanup.dangerous.execute`, require confirmation prompts or run in allow-all mode. Terminal input is dangerous because submitted text can execute commands; Workspace deletion is dangerous because it cascades through that Workspace's saved Connections and folders; screenshot capture/read tools are dangerous because they can expose sensitive visible content; System Cleaner dangerous tools can request elevation, uninstall software, or permanently delete files.
 - Debug logging: debug builds write built-in and remote MCP request/response records to `mcp.debug.log` beside `kkterm.log`; release builds write the same MCP log when `settings.advancedDebugging` is enabled. Built-in MCP logging redacts terminal send input, terminal buffer reads, Dashboard widget source/body JSON, screenshot and thumbnail data URLs, and secret-looking argument fields before writing debug records.
 
+### Mac App Store path settings
+
+The Mac App Store build stores a security-scoped grant beside every path the user
+picks, because the App Sandbox treats a bare path string as a hint with no
+access. Settings controls whose value is kept and reused later therefore select
+through a native panel rather than accepting a typed path alone:
+`settings.screenshotsBrowse` for the screenshots folder, `settings.autoBackupFolderBrowse` for the backup destination, the SSH key file, the RDP shared folder, and the
+file-view path. KKTerm re-opens these grants on every launch, so a folder chosen
+once keeps working after quitting and reopening.
+
+A path typed or imported without going through the panel stays usable as a
+picker suggestion but is not readable; selecting it once through the panel makes
+it work. Moving or renaming a granted folder is followed automatically;
+disconnecting an external volume may require selecting the folder again. Grants
+live under the app-data `sandbox-bookmarks/` directory, stay on this Mac, and are
+excluded from Settings exports and backups. Other distribution builds accept
+typed paths directly and never show these grant prompts.
+
 ### Mac App Store download destinations
 
 For the Mac App Store build only, `settings.urlDownloadFolderStoreHint` and

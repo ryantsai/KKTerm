@@ -1398,7 +1398,7 @@ pub fn list_local_directory(
 }
 
 pub fn list_local_places() -> Result<LocalPlacesListing, String> {
-    let home = default_local_directory();
+    let home = home_directory();
     let home_label = home
         .file_name()
         .map(|name| name.to_string_lossy().to_string())
@@ -1419,7 +1419,7 @@ pub fn list_local_places() -> Result<LocalPlacesListing, String> {
         ("Pictures", "pictures"),
     ] {
         let candidate = home.join(folder);
-        if candidate.is_dir() {
+        if is_listable_place(&candidate) {
             common.push(LocalPlace {
                 id: folder.to_lowercase(),
                 label: folder.to_string(),
@@ -1434,6 +1434,19 @@ pub fn list_local_places() -> Result<LocalPlacesListing, String> {
         common,
         drives: list_local_drives(),
     })
+}
+
+// `$HOME/Desktop`, `Downloads`, and `Pictures` exist inside a sandboxed Mac App
+// Store container as symlinks to the real folders, and the sandbox answers
+// `is_dir()` for them while denying every read. Confirm the pane could actually
+// list a place before offering it; other builds keep the cheap existence check.
+fn is_listable_place(path: &Path) -> bool {
+    #[cfg(all(target_os = "macos", feature = "mac-app-store"))]
+    {
+        return fs::read_dir(path).is_ok();
+    }
+    #[cfg(not(all(target_os = "macos", feature = "mac-app-store")))]
+    path.is_dir()
 }
 
 fn list_local_drives() -> Vec<LocalDrivePlace> {
@@ -3128,11 +3141,31 @@ fn is_windows_drive_root(path: &Path) -> bool {
     )
 }
 
-fn default_local_directory() -> PathBuf {
+/// The user's home directory, which the Places sidebar anchors its entries to.
+/// Under the Mac App Store sandbox this is the app container, not the real home.
+fn home_directory() -> PathBuf {
     std::env::var_os("USERPROFILE")
         .or_else(|| std::env::var_os("HOME"))
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("."))
+}
+
+/// Where the local pane opens when a Connection names no starting directory.
+fn default_local_directory() -> PathBuf {
+    let home = home_directory();
+    // Sandboxed Mac App Store builds see the app container as `$HOME`, whose
+    // root mixes `Library` with symlinks to folders the sandbox denies. The
+    // container's own Documents folder is the one branch that is always
+    // readable and writable, so open the pane there instead. The Places sidebar
+    // still anchors to the container root via `home_directory`.
+    #[cfg(all(target_os = "macos", feature = "mac-app-store"))]
+    {
+        let documents = home.join("Documents");
+        if fs::create_dir_all(&documents).is_ok() {
+            return documents;
+        }
+    }
+    home
 }
 
 fn display_local_path(path: &Path) -> String {

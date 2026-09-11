@@ -4849,6 +4849,22 @@ pub fn run() {
                 eprintln!("failed to register remote desktop full-screen shortcut: {error}");
             }
             app.manage(storage);
+            // Mac App Store builds run sandboxed, where a path saved in Settings
+            // or on a Connection is only a hint until its security-scoped grant
+            // is re-opened. Do that once per launch, before any feature reads
+            // one. No-op in every other build.
+            if app_store_files::ENABLED {
+                match app.state::<storage::Storage>().configured_local_paths() {
+                    Ok(paths) => {
+                        for path in paths {
+                            app_store_files::activate_path(app.handle(), &path);
+                        }
+                    }
+                    Err(error) => {
+                        eprintln!("failed to read configured local paths: {error}");
+                    }
+                }
+            }
             app.manage(performance::PerformanceMonitor::new());
             app.manage(pc_info::PcInfoCache::new());
             app.manage(power_manager);

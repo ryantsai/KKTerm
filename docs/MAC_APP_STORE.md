@@ -37,6 +37,51 @@ cargo check --manifest-path src-tauri/Cargo.toml --features mac-app-store
 
 This compilation alone does not sign or sandbox the executable.
 
+## Sandbox behavior differences
+
+The App Sandbox rewrites `$HOME` to the app container and denies the real home
+folder, `~/Pictures`, `~/Downloads`, `~/Desktop`, `/etc`, `/tmp`, and Homebrew
+prefixes. Child processes inherit the sandbox, so a spawned shell or helper is
+confined exactly as the app is. These were measured against a binary signed with
+`Entitlements.appstore.plist`, not inferred. Everything below is gated on
+`app_store_files::ENABLED` (Rust) or `isMacAppStoreBuild()` / `useMacAppStoreBuild()`
+(frontend); no other build changes behavior.
+
+- **Stored path grants.** A path in Settings or on a Connection is only a hint
+  until its security-scoped bookmark is re-opened. `Storage::configured_local_paths`
+  collects them and startup calls `app_store_files::activate_path` for each, which
+  keeps the grant open for the process. `sessions.rs` additionally activates a
+  Connection's `key_path` before `load_secret_key` reads it, so SSH key auth
+  survives a relaunch. Every selector whose result is persisted routes through
+  `selectPersistentPath` in `src/lib/tauri.ts`.
+- **Screenshots folder.** `default_screenshot_folder_path` returns a folder inside
+  the container instead of `~/Pictures/Screenshots`, which the sandbox denies.
+- **SFTP local pane.** `default_local_directory` starts in the container's
+  Documents folder, and `is_listable_place` hides Places entries the sandbox
+  cannot read (the container's Desktop/Downloads/Pictures symlinks answer
+  `is_dir()` but deny every read).
+- **Video recording.** `resolve_ffmpeg` returns `None`: Homebrew and `/usr/local`
+  are unreachable and macOS has no Install Helper. The Screenshots Module hides
+  the media picker and the video-format setting.
+- **Shutdown timer.** `ShutdownTimerManager::schedule` refuses, and the schedule
+  menu is not offered. macOS shutdown needs a System Events Apple event, which
+  requires `com.apple.security.automation.apple-events`; the Store build does not
+  carry it, and a shutdown feature invites App Review scrutiny.
+- **Local shell Sessions.** Confined by inheritance, with no workaround: the
+  user's dotfiles, `/etc/paths`, and Homebrew tools are unreadable. Documented in
+  manual chapter 5.
+- **Built-in MCP bridge.** The socket lives in the container, so a sandboxed
+  external client cannot reach it. Unsandboxed clients are unaffected. See
+  `docs/MCP.md`.
+- **ICMP ping.** Raw ICMP sockets are denied; `net/ping.rs` already falls back to
+  a TCP reachability probe and reports `mode: "tcp"`. Datagram ICMP is permitted,
+  so a future `sock_type_hint` change could restore true ping.
+- **Screen Recording TCC.** A Mac that previously ran a direct-download build
+  holds a Privacy & Security entry recorded against that build's Developer ID
+  requirement. The Store build cannot match it and re-prompts forever even though
+  the toggle appears enabled. Removing the entry with **−** and re-approving fixes
+  it; `tccutil reset ScreenCapture com.kkterm.app` does the same from a terminal.
+
 ## Signed desktop acceptance checks
 
 Use a clean test installation of the signed, sandboxed Store variant. A normal
@@ -59,8 +104,25 @@ development build or standalone browser preview does not prove sandbox access.
    that selection. Test simultaneous downloads and unavailable destinations.
 7. Repeat launcher and download basics with the ordinary macOS build. It must
    retain its existing behavior and never request Store bookmark authorization.
+8. Connect an SSH Connection using a key file chosen through the picker. Quit,
+   reopen, and connect again without re-selecting the key.
+9. Capture a screenshot with the default folder and confirm it is written and
+   listed. Point the folder at a real folder via `settings.screenshotsBrowse`,
+   capture, quit, reopen, and capture again without another prompt.
+10. Open an SFTP or Local Files Connection and confirm the local pane opens in a
+    readable folder and that no Places entry errors when clicked.
+11. Confirm the Screenshots Module shows no media-type picker and Settings shows
+    no video-format control, and that right-clicking Don't Sleep opens no
+    schedule menu.
+12. Repeat 8-11 on the ordinary macOS build: video recording, the shutdown
+    schedule menu, `~/Pictures/Screenshots`, and the real home folder in the SFTP
+    local pane must all behave exactly as before.
 
 Bookmarks are stored atomically under the app-data `sandbox-bookmarks/` directory,
-outside SQLite and Settings exports. Existing paths remain usable as picker hints;
-there is no schema migration, startup scan, or seed reconciliation. See manual
-chapters 8, 11, and 15 for the corresponding user-facing behavior.
+outside SQLite and Settings exports. Existing paths remain usable as picker hints,
+and there is no schema migration or seed reconciliation. Startup does re-open the
+grants for already-configured paths (`Storage::configured_local_paths` feeding
+`app_store_files::activate_path`); that is a read-only pass over existing settings
+and Connection rows, writes nothing, and is skipped entirely in other builds. See
+manual chapters 2, 5, 7, 8, 11, 14, and 15 for the corresponding user-facing
+behavior.

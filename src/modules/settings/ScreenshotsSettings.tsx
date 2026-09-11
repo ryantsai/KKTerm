@@ -1,9 +1,10 @@
-import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { ScreenshotsModuleIcon } from "../../app/moduleIdentityIcons";
 import { technicalInputProps } from "../../lib/inputBehavior";
+import { useMacAppStoreBuild } from "../../lib/macAppStoreBuild";
 import { isWindowsPlatform } from "../../lib/platform";
+import { selectScreenshotFolder } from "../../lib/tauri";
 import { useWorkspaceStore } from "../../store";
 import { SettingsSectionHeader, useSettingsSaveRegistration } from "./shared";
 import { ToggleSwitch } from "./ToggleSwitch";
@@ -15,6 +16,9 @@ import {
 
 export function ScreenshotsSettings() {
   const { t } = useTranslation();
+  // Video recording is hidden in the sandboxed Mac App Store build (no reachable
+  // FFmpeg), so its output-format setting has nothing to act on there.
+  const macAppStoreBuild = useMacAppStoreBuild();
   const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
   const saved = useScreenshotSettingsDraft((state) => state.saved);
   const draft = useScreenshotSettingsDraft((state) => state.draft);
@@ -42,8 +46,14 @@ export function ScreenshotsSettings() {
 
   async function browseFolder() {
     try {
-      const selection = await openDialog({ directory: true, multiple: false });
-      if (typeof selection === "string" && selection) {
+      // Goes through the shared selector so the Mac App Store build picks the
+      // folder with the panel that stores a lasting grant; other builds get the
+      // same native dialog as before.
+      const selection = await selectScreenshotFolder({
+        defaultPath: draft?.folderPath?.trim() || undefined,
+        title: t("settings.screenshotsFolder"),
+      });
+      if (selection) {
         update({ folderPath: selection });
       }
     } catch (error) {
@@ -103,6 +113,7 @@ export function ScreenshotsSettings() {
         </div>
       </fieldset>
 
+      {macAppStoreBuild ? null : (
       <fieldset className="settings-subsection settings-fieldset">
         <legend>{t("settings.screenshotsVideoFormat")}</legend>
         <div>
@@ -125,6 +136,7 @@ export function ScreenshotsSettings() {
           </label>
         </div>
       </fieldset>
+      )}
 
       <fieldset className="settings-subsection settings-fieldset">
         <legend>{t("settings.screenshotsCaptureMode")}</legend>

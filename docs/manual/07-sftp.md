@@ -159,3 +159,20 @@ Open via the context menu's Get Info (`sftp.getInfo`). Dialog `sftp.sftpProperti
 - Save: `sftp.save`.
 
 Item-kind labels for selection and properties: `sftp.folder`, `sftp.file`, `sftp.symlink`. Generic delete-button label: `sftp.deleteLabel`. Transfer labels in summaries: `sftp.transfer`, `sftp.transferUpload`, `sftp.transferDownload`. External file fallthrough indicator: `sftp.extFile`.
+
+## Mac App Store local pane
+
+The Mac App Store build runs inside the App Sandbox, which confines the local
+side of the file browser. Other distribution builds are unaffected.
+
+`$HOME` resolves to the app container rather than the real home folder, so the
+local pane starts in the container's own Documents folder instead of the user's
+home. The Places sidebar lists only locations the sandbox can actually open:
+Desktop, Downloads, and Pictures appear inside the container as links to the real
+folders, but the sandbox denies reading them, so they are omitted rather than
+offered as entries that fail when clicked.
+
+Reaching a real folder requires granting it once through a native picker, after
+which the grant is remembered across restarts. Transfers into a granted folder
+behave normally. This affects only the local pane; remote SFTP/FTP browsing,
+transfers, compare, and chmod/chown are unchanged.

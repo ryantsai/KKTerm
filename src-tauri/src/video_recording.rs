@@ -177,6 +177,16 @@ fn resolve_binary(name: &str) -> Option<(String, &'static str)> {
 }
 
 fn resolve_ffmpeg() -> Option<(String, &'static str)> {
+    // The sandboxed Mac App Store build cannot reach `/opt/homebrew` or
+    // `/usr/local`, and has no Install Helper to manage a private copy, so no
+    // FFmpeg is reachable there at all. Report it missing instead of probing
+    // paths that always fail; the Screenshots Module hides video recording for
+    // this build. Every other build keeps the full search.
+    #[cfg(all(target_os = "macos", feature = "mac-app-store"))]
+    {
+        return None;
+    }
+    #[cfg(not(all(target_os = "macos", feature = "mac-app-store")))]
     resolve_binary("ffmpeg")
 }
 
