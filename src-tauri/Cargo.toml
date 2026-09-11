@@ -258,6 +258,7 @@ sspi = { path = "vendor/sspi-rs-russh-061" }
 ironrdp-connector = { path = "vendor/ironrdp-russh-061/crates/ironrdp-connector" }
 
 [dev-dependencies]
+tokio = { version = "1.53.1", features = ["test-util"] }
 tempfile = "3.27.0"
 # Enables tauri::test::mock_app() so unit tests can build an AppHandle.
 tauri = { version = "2", features = ["test"] }

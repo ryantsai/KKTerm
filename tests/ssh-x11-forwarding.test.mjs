@@ -42,12 +42,12 @@ test("remote X11 forwarding rejection keeps SSH shell open and reports rejected 
   );
   assert.match(
     sshSource,
-    /match channel\s+\.request_x11[\s\S]*?\.await\s*\{\s*Ok\(\(\)\) => NativeSshX11ForwardingStatus::Enabled,\s*Err\(error\) => \{/s,
-    "X11 request failure should be handled locally instead of aborting shell startup",
+    /Some\(request_x11_forwarding\(&mut channel, &mut startup_messages\)\.await\?\)/,
+    "startup should wait for the actual server reply before reporting X11 status",
   );
   assert.match(
     sshSource,
-    /eprintln!\("SSH X11 forwarding request rejected: \{error\}"\);\s*NativeSshX11ForwardingStatus::Rejected/s,
+    /Some\(ChannelMsg::Failure\) => return Ok\(NativeSshX11ForwardingStatus::Rejected\)/,
     "X11 request rejection should be reported as rejected",
   );
   assert.match(
@@ -62,9 +62,12 @@ test("remote X11 forwarding rejection keeps SSH shell open and reports rejected 
   );
   assert.match(
     terminalSource,
-    /updateOpenTerminalPaneX11ForwardingStatus\(\s*tabId,\s*pane\.id,\s*result\.x11ForwardingStatus \?\? x11ForwardingStatus,\s*\)/s,
+    /startupState\.started\(result, x11ForwardingStatus\)/,
     "frontend should store rejected X11 status from startup result for the Pane toolbar",
   );
+  assert.match(sshSource, /app\.emit\("terminal-session-ready", NativeSshTerminalReady/);
+  assert.match(terminalSource, /listen<TerminalSessionStarted>\("terminal-session-ready"/);
+  assert.match(terminalSource, /removeReadyListener\?\.\(\)/);
 });
 
 test("SSH terminal toolbar shows separate X server forwarding state", async () => {

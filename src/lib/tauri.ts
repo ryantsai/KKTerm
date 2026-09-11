@@ -197,6 +197,8 @@ export interface StartTerminalSessionRequest {
   textEncoding?: string;
 }
 
+// Also emitted as terminal-session-ready after native SSH authentication and
+// channel setup, including when the start command returned before a prompt.
 export interface TerminalSessionStarted {
   sessionId: string;
   terminalReadyMs?: number;

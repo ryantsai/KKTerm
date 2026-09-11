@@ -1,5 +1,6 @@
 import { confirmTrustedSshHostKey, connectionPasswordOwnerId, connectionToolbarTitle, localShellOptionsForPlatform, resolveAvailableLocalShell, resolveSshCompression, resolveSshOldProtocols, resolveSshSocksProxyRequest, uniqueRuntimeId, usesNativeSshHostKeyVerification } from "../utils";
 import { resolveLocalShellForLaunch } from "./pwshPreflight";
+import { createTerminalStartupState } from "./terminalStartupState";
 import { ConfirmDialog } from "../../../../app/ConfirmDialog";
 import { readFromClipboard, writeToClipboard } from "../../../../lib/clipboard";
 import { CUSTOM_FONTS_LOADED_EVENT } from "../../../../lib/customFonts";
@@ -16,7 +17,7 @@ import { useTranslation } from "react-i18next";
 import i18next from "../../../../i18n/config";
 import { ariaInvalid, dialogButtonAria, menuButtonAria } from "../../../../lib/aria";
 import { fileBrowserCommandsFor } from "../../../../lib/fileBrowserCommands";
-import { focusCurrentWebview, invokeCommand, isTauriRuntime, logUiDebug, openExternalUrl, saveTextFile, type TerminalOutput, type TerminalRecordingInfo, type TerminalSessionEnded, type TmuxSession } from "../../../../lib/tauri";
+import { focusCurrentWebview, invokeCommand, isTauriRuntime, logUiDebug, openExternalUrl, saveTextFile, type TerminalOutput, type TerminalRecordingInfo, type TerminalSessionEnded, type TerminalSessionStarted, type TmuxSession } from "../../../../lib/tauri";
 import { markOsIconAutoDetectDone, osIconIdForDetection, osIconRefForId, shouldAutoDetectOsIcon } from "../../../../lib/osIcons";
 import {
   notifyConnectionTreeInvalidated,
@@ -2249,8 +2250,12 @@ function TerminalPaneView({
     let preservingRuntime = false;
     let sessionStarted = preservedRuntime?.sessionStarted ?? false;
     let sessionEnded = false;
+    const startupState = createTerminalStartupState(requestedSessionId, (status) => {
+      updateOpenTerminalPaneX11ForwardingStatus(tabId, pane.id, status);
+    });
     let removeOutputListener: (() => void) | undefined;
     let removeEndedListener: (() => void) | undefined;
+    let removeReadyListener: (() => void) | undefined;
     updateTerminalConnectionState(sessionStarted ? "connected" : "connecting");
     const writeInputToSession = (data: string) => {
       const sessionId = sessionIdRef.current;
@@ -2380,7 +2385,7 @@ function TerminalPaneView({
     });
 
     void (async () => {
-      const [unlistenOutput, unlistenEnded] = await Promise.all([
+      const [unlistenOutput, unlistenEnded, unlistenReady] = await Promise.all([
         listen<TerminalOutput>("terminal-output", (event) => {
           if (event.payload.sessionId !== sessionIdRef.current) {
             return;
@@ -2421,20 +2426,27 @@ function TerminalPaneView({
             return;
           }
           sessionEnded = true;
+          startupState.end();
           updateTerminalConnectionState("disconnected");
           if (sessionStarted && trackConnectionSession) {
             sessionStarted = false;
             markConnectionSessionEnded(connection.id);
           }
         }),
+        listen<TerminalSessionStarted>("terminal-session-ready", (event) => {
+          if (disposed || sessionEnded || event.payload.sessionId !== sessionIdRef.current) return;
+          startupState.ready(event.payload);
+        }),
       ]);
       if (disposed) {
         unlistenOutput();
         unlistenEnded();
+        unlistenReady();
         return;
       }
       removeOutputListener = unlistenOutput;
       removeEndedListener = unlistenEnded;
+      removeReadyListener = unlistenReady;
 
       if (preservedRuntime) {
         scheduleFitAndResizeTerminal();
@@ -2573,11 +2585,7 @@ function TerminalPaneView({
           }
         }
         if (connection.type === "ssh") {
-          updateOpenTerminalPaneX11ForwardingStatus(
-            tabId,
-            pane.id,
-            result.x11ForwardingStatus ?? x11ForwardingStatus,
-          );
+          startupState.started(result, x11ForwardingStatus);
           void startEnabledSshPortForwardings(
             connection.sshPortForwardings ?? [],
             (forwarding) => invokeCommand("start_ssh_port_forward", {
@@ -2652,6 +2660,8 @@ function TerminalPaneView({
       notificationDisposable.dispose();
       removeOutputListener?.();
       removeEndedListener?.();
+      startupState.end();
+      removeReadyListener?.();
       const sessionId = sessionIdRef.current;
       preservingRuntime = Boolean(sessionId && shouldPreservePaneRuntimeOnUnmount(pane.id));
       if (sessionId && preservingRuntime) {
