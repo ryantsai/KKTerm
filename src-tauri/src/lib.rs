@@ -4926,14 +4926,20 @@ pub fn run() {
                             "resized:{}x{}",
                             size.width, size.height
                         ));
-                        if !window.is_maximized().unwrap_or(false) {
-                            window_tracker.update_normal_size(*size);
-                        }
-                        if let Some(storage) = window.try_state::<storage::Storage>() {
-                            if let Err(error) =
-                                persist_main_window_state(window, &storage, &window_tracker)
-                            {
-                                eprintln!("failed to persist main window state: {error}");
+                        // Minimizing delivers `Resized(0x0)`, and tao clears its
+                        // MAXIMIZED flag before dispatching it, so both branches
+                        // below would otherwise overwrite the restore geometry
+                        // with the minimized placeholder and `maximized: false`.
+                        if !window.is_minimized().unwrap_or(false) {
+                            if !window.is_maximized().unwrap_or(false) {
+                                window_tracker.update_normal_size(*size);
+                            }
+                            if let Some(storage) = window.try_state::<storage::Storage>() {
+                                if let Err(error) =
+                                    persist_main_window_state(window, &storage, &window_tracker)
+                                {
+                                    eprintln!("failed to persist main window state: {error}");
+                                }
                             }
                         }
                         app_tray::hide_minimized_window_if_enabled(window);
