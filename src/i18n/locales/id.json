@@ -2495,6 +2495,9 @@
       "copyElement": "Duplikasikan elemen",
       "resizeDialog": "Ubah ukuran editor tangkapan layar",
       "cursorPosition": "X {{x}}, Y {{y}}",
+      "copyCursorPosition": "Salin posisi kursor",
+      "cursorPositionCopied": "Posisi kursor disalin ke papan klip.",
+      "zoom": "Zoom",
       "unsavedTitle": "Simpan editan tangkapan layar?",
       "unsavedMessage": "Anotasi akan hilang jika Anda melanjutkan tanpa menyimpan.",
       "dontSave": "Jangan simpan"

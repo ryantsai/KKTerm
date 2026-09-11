@@ -116,6 +116,9 @@ type TextDraft = {
 type SelectionHandle = "nw" | "ne" | "sw" | "se" | "start" | "end";
 
 const ZOOM_STEPS = [25, 50, 75, 100, 125, 150, 200] as const;
+// Wheel travel that makes up one zoom step. A mouse notch clears it at once;
+// a trackpad's many small deltas accumulate instead of racing up the ladder.
+const ZOOM_WHEEL_STEP_DELTA = 60;
 const FIT_PADDING = 18;
 const TEXT_LINE_HEIGHT = 1.25;
 const UNDO_LIMIT = 50;
@@ -217,6 +220,15 @@ const TEXT_FONT_KEYS: Record<TextFont, string> = {
   serif: "screenshots.editor.serif",
   monospace: "screenshots.editor.monospace",
 };
+
+// Toolbar buttons, the wheel, and the context menu share one zoom ladder;
+// "fit" enters it at 100%.
+function steppedZoom(current: ZoomLevel, direction: -1 | 1) {
+  const base = current === "fit" ? 100 : current;
+  const exactIndex = ZOOM_STEPS.findIndex((value) => value === base);
+  const index = exactIndex >= 0 ? exactIndex : ZOOM_STEPS.indexOf(100);
+  return ZOOM_STEPS[Math.max(0, Math.min(ZOOM_STEPS.length - 1, index + direction))];
+}
 
 function canvasPoint(canvas: HTMLCanvasElement, clientX: number, clientY: number): Point {
   const rect = canvas.getBoundingClientRect();
@@ -680,6 +692,7 @@ export function ScreenshotEditor({
 }) {
   const { t } = useTranslation();
   const shortcutOverrides = useWorkspaceStore((state) => state.generalSettings.workspaceShortcuts);
+  const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const baseRef = useRef<HTMLCanvasElement | null>(null);
   const workspaceRef = useRef<HTMLDivElement | null>(null);
@@ -998,6 +1011,34 @@ export function ScreenshotEditor({
     return () => observer.disconnect();
   }, []);
 
+  // The wheel steps the zoom instead of scrolling the stage; the Pan tool and
+  // the scrollbars still move a zoomed image. React registers `onWheel`
+  // passively, so cancelling the scroll needs a native non-passive listener.
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) {
+      return;
+    }
+    let travelled = 0;
+    const onWheel = (event: WheelEvent) => {
+      if (event.deltaY === 0) {
+        return;
+      }
+      event.preventDefault();
+      // Line-mode wheels report a handful of lines where pixel-mode wheels
+      // report a notch's worth of pixels.
+      const delta = event.deltaMode === 0 ? event.deltaY : event.deltaY * 16;
+      travelled = Math.sign(travelled) === Math.sign(delta) ? travelled + delta : delta;
+      if (Math.abs(travelled) < ZOOM_WHEEL_STEP_DELTA) {
+        return;
+      }
+      travelled = 0;
+      setZoom((current) => steppedZoom(current, delta < 0 ? 1 : -1));
+    };
+    stage.addEventListener("wheel", onWheel, { passive: false });
+    return () => stage.removeEventListener("wheel", onWheel);
+  }, []);
+
   useEffect(() => {
     if (ready) {
       renderCanvas();
@@ -1311,6 +1352,91 @@ export function ScreenshotEditor({
     ];
   }
 
+  function editorMenuItems(): NativeContextMenuItem[] {
+    return [
+      {
+        kind: "submenu",
+        label: t("screenshots.editor.zoom"),
+        iconSvg: nativeMenuIcons.maximize,
+        items: [
+          {
+            kind: "item",
+            label: t("workspace.fileViewer.zoomIn"),
+            disabled: zoom === ZOOM_STEPS[ZOOM_STEPS.length - 1],
+            action: () => stepZoom(1),
+          },
+          {
+            kind: "item",
+            label: t("workspace.fileViewer.zoomOut"),
+            disabled: zoom === ZOOM_STEPS[0],
+            action: () => stepZoom(-1),
+          },
+          { kind: "separator" },
+          {
+            kind: "item",
+            label: checkLabel(t("workspace.fileViewer.fit"), zoom === "fit"),
+            action: () => setZoom("fit"),
+          },
+          ...ZOOM_STEPS.map((level) => ({
+            kind: "item" as const,
+            label: checkLabel(`${level}%`, zoom === level),
+            action: () => setZoom(level),
+          })),
+        ],
+      },
+      { kind: "separator" },
+      {
+        kind: "item",
+        label: t("screenshots.editor.undo"),
+        iconSvg: nativeMenuIcons.rotateCcw,
+        disabled: !undoCount,
+        action: undo,
+      },
+      { kind: "separator" },
+      {
+        kind: "item",
+        label: t("screenshots.menu.copy"),
+        iconSvg: nativeMenuIcons.copy,
+        action: copyEditedImage,
+      },
+      {
+        kind: "item",
+        label: t("common.save"),
+        iconSvg: nativeMenuIcons.save,
+        disabled: !dirty,
+        action: () => void save(),
+      },
+      {
+        kind: "item",
+        label: t("screenshots.editor.saveAs"),
+        iconSvg: nativeMenuIcons.saveAs,
+        action: () => void saveAs(),
+      },
+      ...(onOpenExternal || onReveal ? [{ kind: "separator" as const }] : []),
+      ...(onOpenExternal ? [{
+        kind: "item" as const,
+        label: t("screenshots.menu.openExternal"),
+        iconSvg: nativeMenuIcons.arrowUp,
+        action: onOpenExternal,
+      }] : []),
+      ...(onReveal ? [{
+        kind: "item" as const,
+        label: t("screenshots.menu.reveal"),
+        iconSvg: nativeMenuIcons.folderOpen,
+        action: onReveal,
+      }] : []),
+      ...(onDelete ? [
+        { kind: "separator" as const },
+        {
+          kind: "item" as const,
+          label: t("common.delete"),
+          iconSvg: nativeMenuIcons.trash,
+          action: onDelete,
+        },
+      ] : []),
+    ];
+  }
+
   function editingContextMenu(event: ReactMouseEvent<HTMLTextAreaElement>) {
     event.preventDefault();
     const draft = editingRef.current;
@@ -1334,18 +1460,21 @@ export function ScreenshotEditor({
 
   function canvasContextMenu(event: ReactMouseEvent<HTMLCanvasElement>) {
     event.preventDefault();
-    if (!ready || saving || editingRef.current || tool !== "select") {
+    if (!ready || saving || editingRef.current) {
       return;
     }
     const canvas = event.currentTarget;
-    const context = canvas.getContext("2d");
-    if (!context) {
-      return;
-    }
-    const point = canvasPoint(canvas, event.clientX, event.clientY);
-    const tolerance = 8 * (canvas.width / Math.max(1, canvas.getBoundingClientRect().width));
-    const hit = hitTest(context, annotationsRef.current, point, tolerance);
+    const context = tool === "select" ? canvas.getContext("2d") : null;
+    const hit = context
+      ? hitTest(
+        context,
+        annotationsRef.current,
+        canvasPoint(canvas, event.clientX, event.clientY),
+        8 * (canvas.width / Math.max(1, canvas.getBoundingClientRect().width)),
+      )
+      : null;
     if (!hit) {
+      void showNativeContextMenu(editorMenuItems(), { x: event.clientX, y: event.clientY });
       return;
     }
     setSelectedId(hit.id);
@@ -1369,11 +1498,7 @@ export function ScreenshotEditor({
   }
 
   function stepZoom(direction: -1 | 1) {
-    const current = zoom === "fit" ? 100 : zoom;
-    const exactIndex = ZOOM_STEPS.findIndex((value) => value === current);
-    const index = exactIndex >= 0 ? exactIndex : ZOOM_STEPS.indexOf(100);
-    const nextIndex = Math.max(0, Math.min(ZOOM_STEPS.length - 1, index + direction));
-    setZoom(ZOOM_STEPS[nextIndex]);
+    setZoom((current) => steppedZoom(current, direction));
   }
 
   function pointerDown(event: ReactPointerEvent<HTMLCanvasElement>) {
@@ -1761,6 +1886,20 @@ export function ScreenshotEditor({
     onCopyEdited(exportComposite().toDataURL("image/png"));
   }
 
+  async function copyCursorPosition() {
+    if (!cursorPoint) {
+      return;
+    }
+    try {
+      await writeToClipboard(`${cursorPoint.x}, ${cursorPoint.y}`);
+      showStatusBarNotice(t("screenshots.editor.cursorPositionCopied"), { tone: "success" });
+      // Hand focus back to the stage so the editor keyboard shortcuts keep working.
+      workspaceRef.current?.focus();
+    } catch (error) {
+      onError(error);
+    }
+  }
+
   async function saveAs() {
     if (!canvasRef.current || !ready || saving) {
       return;
@@ -1987,9 +2126,14 @@ export function ScreenshotEditor({
                   {canvasSize.width}×{canvasSize.height} · {formatScreenshotBytes(screenshot.fileSizeBytes)}
                 </span>
                 {cursorPoint ? (
-                  <span className="screenshots-editor__footer-cursor">
+                  <button
+                    type="button"
+                    className="screenshots-editor__footer-cursor"
+                    title={t("screenshots.editor.copyCursorPosition")}
+                    onClick={() => void copyCursorPosition()}
+                  >
                     {t("screenshots.editor.cursorPosition", { x: cursorPoint.x, y: cursorPoint.y })}
-                  </span>
+                  </button>
                 ) : null}
               </>
             }
@@ -2260,6 +2404,14 @@ export function ScreenshotEditor({
             onPointerMove={cropPointerMove}
             onPointerUp={cropPointerUp}
             onPointerCancel={cropPointerCancel}
+            onContextMenu={(event) => {
+              // The canvas and the in-place text box handle their own menus.
+              if (event.defaultPrevented || !ready || saving || editingRef.current) {
+                return;
+              }
+              event.preventDefault();
+              void showNativeContextMenu(editorMenuItems(), { x: event.clientX, y: event.clientY });
+            }}
           >
             <div
               className={`screenshots-editor__canvas-wrap${zoom === "fit" ? " is-fit" : ""}`}
@@ -2283,7 +2435,6 @@ export function ScreenshotEditor({
                   onPointerMove={pointerMove}
                   onPointerUp={pointerUp}
                   onPointerCancel={pointerCancel}
-                  onPointerLeave={() => setCursorPoint(null)}
                   onDoubleClick={canvasDoubleClick}
                   onContextMenu={canvasContextMenu}
                 />

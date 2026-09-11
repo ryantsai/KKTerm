@@ -2495,6 +2495,9 @@
       "copyElement": "Nhân bản phần tử",
       "resizeDialog": "Đổi kích thước trình sửa ảnh chụp màn hình",
       "cursorPosition": "X {{x}}, Y {{y}}",
+      "copyCursorPosition": "Sao chép vị trí con trỏ",
+      "cursorPositionCopied": "Đã sao chép vị trí con trỏ vào bảng tạm.",
+      "zoom": "Thu phóng",
       "unsavedTitle": "Lưu chỉnh sửa ảnh chụp màn hình?",
       "unsavedMessage": "Chú thích sẽ bị mất nếu bạn tiếp tục mà không lưu.",
       "dontSave": "Không lưu"

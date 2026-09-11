@@ -2495,6 +2495,9 @@
       "copyElement": "Duplica elemento",
       "resizeDialog": "Ridimensiona editor screenshot",
       "cursorPosition": "X {{x}}, Y {{y}}",
+      "copyCursorPosition": "Copia posizione cursore",
+      "cursorPositionCopied": "Posizione del cursore copiata negli appunti.",
+      "zoom": "Zoom",
       "unsavedTitle": "Salvare le modifiche allo screenshot?",
       "unsavedMessage": "Le annotazioni andranno perse se continui senza salvare.",
       "dontSave": "Non salvare"

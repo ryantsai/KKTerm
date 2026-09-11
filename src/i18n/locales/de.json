@@ -2495,6 +2495,9 @@
       "copyElement": "Element duplizieren",
       "resizeDialog": "Screenshot-Editor skalieren",
       "cursorPosition": "X {{x}}, Y {{y}}",
+      "copyCursorPosition": "Cursorposition kopieren",
+      "cursorPositionCopied": "Cursorposition in die Zwischenablage kopiert.",
+      "zoom": "Zoom",
       "unsavedTitle": "Screenshot-Änderungen speichern?",
       "unsavedMessage": "Ihre Anmerkungen gehen verloren, wenn Sie ohne Speichern fortfahren.",
       "dontSave": "Nicht speichern"

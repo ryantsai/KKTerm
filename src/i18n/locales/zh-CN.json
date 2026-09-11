@@ -2495,6 +2495,9 @@
       "copyElement": "复制元素",
       "resizeDialog": "调整截图编辑器大小",
       "cursorPosition": "X {{x}}, Y {{y}}",
+      "copyCursorPosition": "复制光标位置",
+      "cursorPositionCopied": "光标位置已复制到剪贴板。",
+      "zoom": "缩放",
       "unsavedTitle": "保存截图编辑内容？",
       "unsavedMessage": "如果继续而不保存，注释将会丢失。",
       "dontSave": "不保存"

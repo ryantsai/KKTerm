@@ -2495,6 +2495,9 @@
       "copyElement": "複製元素",
       "resizeDialog": "調整螢幕截圖編輯器大小",
       "cursorPosition": "X {{x}}, Y {{y}}",
+      "copyCursorPosition": "複製游標位置",
+      "cursorPositionCopied": "已將游標位置複製到剪貼簿。",
+      "zoom": "縮放",
       "unsavedTitle": "儲存螢幕截圖編輯內容？",
       "unsavedMessage": "繼續而不儲存將會失去註解。",
       "dontSave": "不儲存"

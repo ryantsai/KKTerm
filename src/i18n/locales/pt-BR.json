@@ -2495,6 +2495,9 @@
       "copyElement": "Duplicar elemento",
       "resizeDialog": "Redimensionar editor de captura",
       "cursorPosition": "X {{x}}, Y {{y}}",
+      "copyCursorPosition": "Copiar a posição do cursor",
+      "cursorPositionCopied": "Posição do cursor copiada para a área de transferência.",
+      "zoom": "Zoom",
       "unsavedTitle": "Salvar edições da captura?",
       "unsavedMessage": "Suas anotações serão perdidas se você continuar sem salvar.",
       "dontSave": "Não salvar"

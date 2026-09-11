@@ -868,11 +868,28 @@
 
 .screenshots-editor__footer-cursor {
   position: absolute;
-  right: 14px;
+  right: 8px;
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
   color: var(--text-muted);
+  font-family: inherit;
   font-size: 11px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  cursor: pointer;
+}
+
+.screenshots-editor__footer-cursor:hover {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.screenshots-editor__footer-cursor:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
 .screenshots-editor .kk-dlg-foot {
