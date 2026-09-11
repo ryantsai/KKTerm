@@ -10,7 +10,8 @@ use russh::{
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::{
-    collections::HashMap,
+    cell::Cell,
+    collections::{HashMap, VecDeque},
     future::Future,
     net::{Ipv4Addr, Ipv6Addr, SocketAddr, TcpListener as StdTcpListener},
     path::PathBuf,
@@ -20,11 +21,12 @@ use std::{
     thread::{self, JoinHandle},
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter};
+use tokio_util::sync::CancellationToken;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt, copy_bidirectional},
     net::{TcpListener, TcpStream},
-    sync::{mpsc, oneshot},
+    sync::{mpsc, oneshot, Notify},
     task::JoinSet,
 };
 
@@ -116,15 +118,39 @@ pub fn transport_plan() -> SshTransportPlan {
 pub struct NativeSshTerminal {
     session_id: String,
     control: mpsc::UnboundedSender<SshTerminalControl>,
+    cancel_startup: CancellationToken,
     worker_tx: mpsc::UnboundedSender<NativeSshWorkerMsg>,
     worker: Option<JoinHandle<()>>,
-    terminal_ready_ms: u128,
+    terminal_ready_ms: Option<u128>,
     x11_forwarding_status: Option<NativeSshX11ForwardingStatus>,
 }
 
 impl NativeSshTerminal {
-    pub fn terminal_ready_ms(&self) -> u128 {
+    pub fn terminal_ready_ms(&self) -> Option<u128> {
         self.terminal_ready_ms
+    }
+
+    fn wait_until_ready(
+        mut self,
+        ready_rx: std_mpsc::Receiver<Result<NativeSshReadyResult, String>>,
+        timeout: Duration,
+    ) -> Result<Self, String> {
+        let error = match ready_rx.recv_timeout(timeout) {
+            Ok(Ok((terminal_ready_ms, x11_forwarding_status))) => {
+                self.terminal_ready_ms = Some(terminal_ready_ms);
+                self.x11_forwarding_status = x11_forwarding_status;
+                return Ok(self);
+            }
+            Ok(Err(error)) => error,
+            Err(_) => "timed out while starting native SSH session".to_string(),
+        };
+        // Readiness may race the timeout. Close also reaches the established
+        // terminal loop, which no longer observes the startup cancellation token.
+        // A late success followed by an error must not block on the ready channel
+        // while close waits for the worker to exit.
+        drop(ready_rx);
+        self.close();
+        Err(error)
     }
 
     pub fn x11_forwarding_status(&self) -> Option<NativeSshX11ForwardingStatus> {
@@ -269,7 +295,7 @@ pub struct NativeSshX11Forwarding {
     pub display: u16,
 }
 
-#[derive(Clone, Copy, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum NativeSshX11ForwardingStatus {
     Enabled,
@@ -277,6 +303,76 @@ pub enum NativeSshX11ForwardingStatus {
 }
 
 type NativeSshReadyResult = (u128, Option<NativeSshX11ForwardingStatus>);
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct NativeSshTerminalReady {
+    session_id: String,
+    terminal_ready_ms: u128,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    x11_forwarding_status: Option<NativeSshX11ForwardingStatus>,
+}
+
+// One machine-work budget per startup/resume attempt. Only terminal prompt
+// input pauses it; keepalives and completed network stages never reset it.
+struct SshStartupBudget {
+    remaining: Cell<Duration>,
+    running_since: Cell<Option<tokio::time::Instant>>,
+    changed: Notify,
+}
+
+impl SshStartupBudget {
+    fn new(timeout: Duration) -> Self {
+        Self {
+            remaining: Cell::new(timeout),
+            running_since: Cell::new(Some(tokio::time::Instant::now())),
+            changed: Notify::new(),
+        }
+    }
+
+    async fn wait_for_input<T>(&self, input: impl Future<Output = T>) -> T {
+        if let Some(started) = self.running_since.take() {
+            self.remaining.set(self.remaining.get().saturating_sub(started.elapsed()));
+        }
+        self.changed.notify_one();
+        let result = input.await;
+        self.running_since.set(Some(tokio::time::Instant::now()));
+        self.changed.notify_one();
+        result
+    }
+
+    async fn expired(&self) {
+        loop {
+            if let Some(started) = self.running_since.get() {
+                tokio::select! {
+                    _ = self.changed.notified() => {},
+                    _ = tokio::time::sleep_until(started + self.remaining.get()) => {
+                        // A prompt may have paused/resumed while this timer was
+                        // pending. Never expire from its obsolete deadline.
+                        if self.running_since.get() == Some(started) {
+                            return;
+                        }
+                    },
+                }
+            } else {
+                self.changed.notified().await;
+            }
+        }
+    }
+}
+
+async fn run_terminal_startup<T>(
+    startup: impl Future<Output = Result<T, String>>,
+    budget: &SshStartupBudget,
+    cancel: &CancellationToken,
+) -> Result<Option<T>, String> {
+    tokio::select! {
+        biased;
+        _ = cancel.cancelled() => Ok(None),
+        _ = budget.expired() => Err("timed out while starting native SSH session".to_string()),
+        result = startup => result.map(Some),
+    }
+}
 
 #[derive(Clone)]
 pub(crate) struct NativeSshConnectionRequest {
@@ -699,7 +795,9 @@ pub fn start_native_terminal(
     let (control_tx, control_rx) = mpsc::unbounded_channel();
     let (worker_tx, worker_rx) = mpsc::unbounded_channel();
     let (ready_tx, ready_rx) = std_mpsc::sync_channel(1);
-    let returns_before_ready = matches!(request.auth, NativeSshAuth::Password { password: None });
+    let returns_before_ready = terminal_auth_needs_input(&request.auth);
+    let cancel_startup = CancellationToken::new();
+    let worker_cancel = cancel_startup.clone();
     let session_id = request.session_id.clone();
     let worker = thread::spawn(move || {
         let result = run_native_terminal_thread(
@@ -708,6 +806,7 @@ pub fn start_native_terminal(
             control_rx,
             worker_rx,
             ready_tx,
+            worker_cancel,
         );
         if let Err(error) = result {
             ssh_debug(
@@ -726,33 +825,19 @@ pub fn start_native_terminal(
         crate::sessions::emit_terminal_session_ended(&app, &request.session_id);
     });
 
+    let terminal = NativeSshTerminal {
+        session_id,
+        control: control_tx,
+        cancel_startup,
+        worker_tx,
+        worker: Some(worker),
+        terminal_ready_ms: None,
+        x11_forwarding_status: None,
+    };
     if returns_before_ready {
-        return Ok(NativeSshTerminal {
-            session_id,
-            control: control_tx,
-            worker_tx,
-            worker: Some(worker),
-            terminal_ready_ms: 0,
-            x11_forwarding_status: None,
-        });
-    }
-
-    match ready_rx
-        .recv_timeout(Duration::from_secs(15))
-        .map_err(|_| "timed out while starting native SSH session".to_string())?
-    {
-        Ok((terminal_ready_ms, x11_forwarding_status)) => Ok(NativeSshTerminal {
-            session_id,
-            control: control_tx,
-            worker_tx,
-            worker: Some(worker),
-            terminal_ready_ms,
-            x11_forwarding_status,
-        }),
-        Err(error) => {
-            let _ = worker.join();
-            Err(error)
-        }
+        Ok(terminal)
+    } else {
+        terminal.wait_until_ready(ready_rx, SSH_STARTUP_TIMEOUT)
     }
 }
 
@@ -1147,6 +1232,7 @@ impl NativeSshTerminal {
             }),
         );
         let _ = self.control.send(SshTerminalControl::Close);
+        self.cancel_startup.cancel();
         if let Some(worker) = self.worker.take() {
             let _ = worker.join();
         }
@@ -1159,6 +1245,7 @@ fn run_native_terminal_thread(
     control_rx: mpsc::UnboundedReceiver<SshTerminalControl>,
     worker_rx: mpsc::UnboundedReceiver<NativeSshWorkerMsg>,
     ready_tx: std_mpsc::SyncSender<Result<NativeSshReadyResult, String>>,
+    cancel_startup: CancellationToken,
 ) -> Result<(), String> {
     let session_id = request.session_id.clone();
     let startup_error_tx = ready_tx.clone();
@@ -1179,7 +1266,7 @@ fn run_native_terminal_thread(
         let local = tokio::task::LocalSet::new();
         local.block_on(
             &runtime,
-            run_native_terminal(app, request, control_rx, worker_rx, ready_tx),
+            run_native_terminal(app, request, control_rx, worker_rx, ready_tx, cancel_startup),
         )
     }));
 
@@ -1219,6 +1306,7 @@ async fn run_native_terminal(
     mut control_rx: mpsc::UnboundedReceiver<SshTerminalControl>,
     mut worker_rx: mpsc::UnboundedReceiver<NativeSshWorkerMsg>,
     ready_tx: std_mpsc::SyncSender<Result<NativeSshReadyResult, String>>,
+    cancel_startup: CancellationToken,
 ) -> Result<(), String> {
     let current_request = request;
     let mut ready_tx = Some(ready_tx);
@@ -1247,6 +1335,7 @@ async fn run_native_terminal(
             &mut worker_rx,
             ready_tx.take(),
             timeout,
+            &cancel_startup,
         )
         .await;
 
@@ -1341,7 +1430,29 @@ async fn run_native_terminal(
         }
 
         resume_attempts += 1;
-        tokio::time::sleep(SSH_TMUX_RESUME_DELAY).await;
+        tokio::select! {
+            _ = cancel_startup.cancelled() => return Ok(()),
+            _ = tokio::time::sleep(SSH_TMUX_RESUME_DELAY) => {},
+        }
+    }
+}
+
+async fn request_x11_forwarding(
+    channel: &mut Channel<Msg>,
+    pending: &mut VecDeque<ChannelMsg>,
+) -> Result<NativeSshX11ForwardingStatus, String> {
+    // russh's request_x11 only enqueues the request. Its actual server reply
+    // arrives on the channel; no other startup request asks for a reply.
+    channel.request_x11(
+        SSH_X11_REQUEST_WANT_REPLY, false, "MIT-MAGIC-COOKIE-1", x11_auth_cookie(), 0,
+    ).await.map_err(|error| error.to_string())?;
+    loop {
+        match channel.wait().await {
+            Some(ChannelMsg::Success) => return Ok(NativeSshX11ForwardingStatus::Enabled),
+            Some(ChannelMsg::Failure) => return Ok(NativeSshX11ForwardingStatus::Rejected),
+            Some(ChannelMsg::Close | ChannelMsg::Eof) | None => return Err(russh::Error::Disconnect.to_string()),
+            Some(message) => pending.push_back(message),
+        }
     }
 }
 
@@ -1352,7 +1463,10 @@ async fn run_native_terminal_once(
     worker_rx: &mut mpsc::UnboundedReceiver<NativeSshWorkerMsg>,
     ready_tx: Option<std_mpsc::SyncSender<Result<NativeSshReadyResult, String>>>,
     startup_timeout: Duration,
+    cancel_startup: &CancellationToken,
 ) -> Result<TerminalRunOutcome, String> {
+    let budget = SshStartupBudget::new(startup_timeout);
+    let mut startup_messages = VecDeque::new();
     let remote_forward_targets = RemoteForwardTargets::default();
     let bridge_tasks: SshBridgeTasks = Arc::new(std::sync::Mutex::new(JoinSet::new()));
     let startup = async {
@@ -1370,6 +1484,7 @@ async fn run_native_terminal_once(
             app,
             session_id: &request.session_id,
             control_rx,
+            startup_budget: &budget,
         };
         let session = connect_verified_client_with_prompt(
             NativeSshConnectionRequest {
@@ -1390,7 +1505,7 @@ async fn run_native_terminal_once(
         .await?;
 
         let ready_start = Instant::now();
-        let channel = session
+        let mut channel = session
             .channel_open_session()
             .await
             .map_err(|error| format!("failed to open SSH terminal channel: {error}"))?;
@@ -1423,23 +1538,7 @@ async fn run_native_terminal_once(
             }),
         );
         let x11_forwarding_status = if request.x11_forwarding.is_some() {
-            let status = match channel
-                .request_x11(
-                    SSH_X11_REQUEST_WANT_REPLY,
-                    false,
-                    "MIT-MAGIC-COOKIE-1",
-                    x11_auth_cookie(),
-                    0,
-                )
-                .await
-            {
-                Ok(()) => NativeSshX11ForwardingStatus::Enabled,
-                Err(error) => {
-                    eprintln!("SSH X11 forwarding request rejected: {error}");
-                    NativeSshX11ForwardingStatus::Rejected
-                }
-            };
-            Some(status)
+            Some(request_x11_forwarding(&mut channel, &mut startup_messages).await?)
         } else {
             None
         };
@@ -1476,14 +1575,11 @@ async fn run_native_terminal_once(
         ))
     };
 
-    let startup_result = if matches!(request.auth, NativeSshAuth::Password { password: None }) {
-        startup.await
-    } else {
-        tokio::time::timeout(startup_timeout, startup)
-            .await
-            .map_err(|_| "timed out while starting native SSH session".to_string())?
+    let Some((session, mut channel, terminal_ready_ms, x11_forwarding_status)) =
+        run_terminal_startup(startup, &budget, cancel_startup).await?
+    else {
+        return Ok(TerminalRunOutcome::Closed);
     };
-    let (session, mut channel, terminal_ready_ms, x11_forwarding_status) = startup_result?;
     // Share the authenticated Session so background probes can open their own
     // exec channels without a second connection. `client::Handle` is not Clone,
     // so an Rc provides the shared, read-only access the local probe tasks need.
@@ -1499,6 +1595,11 @@ async fn run_native_terminal_once(
     if let Some(ready_tx) = ready_tx {
         let _ = ready_tx.send(Ok((terminal_ready_ms, x11_forwarding_status)));
     }
+    let _ = app.emit("terminal-session-ready", NativeSshTerminalReady {
+        session_id: request.session_id.clone(),
+        terminal_ready_ms,
+        x11_forwarding_status,
+    });
     ssh_debug(
         "terminal.ready",
         json!({
@@ -1709,7 +1810,12 @@ async fn run_native_terminal_once(
                     None => {}
                 }
             }
-            message = channel.wait() => {
+            message = async {
+                match startup_messages.pop_front() {
+                    Some(message) => Some(message),
+                    None => channel.wait().await,
+                }
+            } => {
                 match message {
                     Some(ChannelMsg::Data { data }) | Some(ChannelMsg::ExtendedData { data, .. }) => {
                         ssh_debug(
@@ -2006,6 +2112,7 @@ struct TerminalAuthPrompt<'a> {
     app: &'a AppHandle,
     session_id: &'a str,
     control_rx: &'a mut mpsc::UnboundedReceiver<SshTerminalControl>,
+    startup_budget: &'a SshStartupBudget,
 }
 
 pub(crate) async fn connect_verified_client(
@@ -2807,6 +2914,28 @@ async fn authenticate_native_ssh(
     Ok(())
 }
 
+// Interactive authentication must publish its input handle before waiting for
+// readiness. The startup budget pauses separately while a prompt reads input.
+// Keep ready timing and X11 status for keys that already decrypt successfully.
+fn terminal_auth_needs_input(auth: &NativeSshAuth) -> bool {
+    match auth {
+        NativeSshAuth::Password { password: None } => true,
+        NativeSshAuth::KeyFile { key_path, passphrase } => {
+            let result = load_secret_key(key_path, passphrase.as_deref()).or_else(|error| {
+                if passphrase.is_some() {
+                    load_secret_key(key_path, None)
+                } else {
+                    Err(error)
+                }
+            });
+            result.is_err_and(|error| {
+                should_prompt_for_key_passphrase(&error.to_string(), passphrase.is_some())
+            })
+        }
+        _ => false,
+    }
+}
+
 fn should_prompt_for_key_passphrase(error: &str, had_saved_passphrase: bool) -> bool {
     let normalized = error.to_lowercase();
     had_saved_passphrase || normalized.contains("encrypt") || normalized.contains("decrypt")
@@ -2873,41 +3002,41 @@ async fn read_terminal_prompt(
     echo: bool,
 ) -> Result<String, String> {
     emit_terminal_output(prompt.app, prompt.session_id, label.to_string());
+    prompt.startup_budget.wait_for_input(read_terminal_prompt_input(
+        prompt.control_rx,
+        echo,
+        |text| emit_terminal_output(prompt.app, prompt.session_id, text.to_string()),
+    )).await
+}
+
+async fn read_terminal_prompt_input(
+    control_rx: &mut mpsc::UnboundedReceiver<SshTerminalControl>,
+    echo: bool,
+    output: impl Fn(&str),
+) -> Result<String, String> {
     let mut input = Vec::new();
-    while let Some(control) = prompt.control_rx.recv().await {
+    while let Some(control) = control_rx.recv().await {
         match control {
             SshTerminalControl::Input(data) => {
                 for byte in data {
                     match byte {
                         b'\r' | b'\n' => {
-                            emit_terminal_output(prompt.app, prompt.session_id, "\r\n".to_string());
+                            output("\r\n");
                             return Ok(String::from_utf8_lossy(&input).into_owned());
                         }
                         0x03 => {
-                            emit_terminal_output(
-                                prompt.app,
-                                prompt.session_id,
-                                "^C\r\n".to_string(),
-                            );
+                            output("^C\r\n");
                             return Err("SSH password prompt was cancelled".to_string());
                         }
                         0x08 | 0x7f => {
                             if input.pop().is_some() && echo {
-                                emit_terminal_output(
-                                    prompt.app,
-                                    prompt.session_id,
-                                    "\x08 \x08".to_string(),
-                                );
+                                output("\x08 \x08");
                             }
                         }
                         _ => {
                             input.push(byte);
                             if echo {
-                                emit_terminal_output(
-                                    prompt.app,
-                                    prompt.session_id,
-                                    String::from_utf8_lossy(&[byte]).into_owned(),
-                                );
+                                output(&String::from_utf8_lossy(&[byte]));
                             }
                         }
                     }
@@ -3400,6 +3529,10 @@ async fn wait_for_substring(
 }
 
 #[cfg(test)]
+#[path = "ssh_startup_tests.rs"]
+mod startup_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use std::{env, fs, io::Write, process::Command, time::SystemTime};
@@ -3432,6 +3565,12 @@ mod tests {
         generate_test_ssh_key(&path, "");
 
         assert!(load_secret_key(&path, Some("unused-passphrase")).is_ok());
+        for passphrase in [None, Some("unused-passphrase")] {
+            assert!(!terminal_auth_needs_input(&NativeSshAuth::KeyFile {
+                key_path: path.to_string_lossy().into_owned(),
+                passphrase: passphrase.map(str::to_string),
+            }));
+        }
 
         let _ = fs::remove_file(&path);
         let _ = fs::remove_file(format!("{}.pub", path.display()));
@@ -3450,6 +3589,18 @@ mod tests {
         let wrong = load_secret_key(&path, Some("wrong-passphrase"))
             .expect_err("wrong passphrase cannot decrypt key");
         assert!(should_prompt_for_key_passphrase(&wrong.to_string(), true));
+
+        for passphrase in [None, Some("wrong-passphrase")] {
+            assert!(terminal_auth_needs_input(&NativeSshAuth::KeyFile {
+                key_path: path.to_string_lossy().into_owned(),
+                passphrase: passphrase.map(str::to_string),
+            }));
+        }
+        assert!(!terminal_auth_needs_input(&NativeSshAuth::KeyFile {
+            key_path: path.to_string_lossy().into_owned(),
+            passphrase: Some("correct-passphrase".to_string()),
+        }));
+        assert!(load_secret_key(&path, Some("correct-passphrase")).is_ok());
 
         let _ = fs::remove_file(&path);
         let _ = fs::remove_file(format!("{}.pub", path.display()));

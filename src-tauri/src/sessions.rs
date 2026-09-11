@@ -295,6 +295,7 @@ pub struct LaunchElevatedTerminalRequest {
 #[serde(rename_all = "camelCase")]
 pub struct TerminalSessionStarted {
     session_id: String,
+    startup_pending: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     terminal_ready_ms: Option<u128>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1563,6 +1564,7 @@ impl SessionManager {
                 );
             return Ok(TerminalSessionStarted {
                 session_id,
+                startup_pending: false,
                 terminal_ready_ms: None,
                 x11_forwarding_status: None,
             });
@@ -1601,6 +1603,7 @@ impl SessionManager {
                 );
             return Ok(TerminalSessionStarted {
                 session_id,
+                startup_pending: false,
                 terminal_ready_ms: None,
                 x11_forwarding_status: None,
             });
@@ -1651,7 +1654,8 @@ impl SessionManager {
                         );
                     return Ok(TerminalSessionStarted {
                         session_id,
-                        terminal_ready_ms: Some(terminal_ready_ms),
+                        startup_pending: terminal_ready_ms.is_none(),
+                        terminal_ready_ms,
                         x11_forwarding_status,
                     });
                 }
@@ -1720,6 +1724,7 @@ impl SessionManager {
             });
             return Ok(TerminalSessionStarted {
                 session_id,
+                startup_pending: false,
                 terminal_ready_ms: None,
                 x11_forwarding_status: None,
             });
@@ -1792,6 +1797,7 @@ impl SessionManager {
 
         Ok(TerminalSessionStarted {
             session_id,
+            startup_pending: false,
             terminal_ready_ms: None,
             x11_forwarding_status: None,
         })
