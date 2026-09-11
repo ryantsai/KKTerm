@@ -93,7 +93,7 @@ fn close_joins_worker_while_startup_is_waiting_for_input_auth_or_channel() {
             cancel_startup: cancel,
             worker_tx,
             worker: Some(worker),
-            terminal_ready_ms: 0,
+            terminal_ready_ms: None,
             x11_forwarding_status: None,
         };
         let (closed_tx, closed_rx) = std_mpsc::sync_channel(1);
@@ -106,6 +106,87 @@ fn close_joins_worker_while_startup_is_waiting_for_input_auth_or_channel() {
             .expect("close must not wait for the startup deadline");
         closer.join().unwrap();
     }
+}
+
+#[test]
+fn readiness_timeout_closes_a_worker_that_has_finished_startup() {
+    let cancel_startup = CancellationToken::new();
+    let worker_cancel = cancel_startup.clone();
+    let (control, mut control_rx) = mpsc::unbounded_channel();
+    let rescue_control = control.clone();
+    let (worker_tx, _worker_rx) = mpsc::unbounded_channel();
+    let (ready_tx, ready_rx) = std_mpsc::sync_channel(1);
+    let (started_tx, started_rx) = std_mpsc::sync_channel(1);
+    let (late_ready_tx, late_ready_rx) = std_mpsc::sync_channel(1);
+    let worker = thread::spawn(move || {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+                let budget = SshStartupBudget::new(SSH_STARTUP_TIMEOUT);
+                assert_eq!(
+                    run_terminal_startup(async { Ok::<_, String>(()) }, &budget, &worker_cancel)
+                        .await.unwrap(),
+                    Some(()),
+                );
+                started_tx.send(()).unwrap();
+                // Force readiness publication to race the caller's timeout,
+                // after startup has stopped observing the cancellation token.
+                tokio::time::timeout(Duration::from_secs(3), worker_cancel.cancelled())
+                    .await.expect("startup timeout must cancel the worker");
+                late_ready_tx.send(ready_tx.send(Ok((0, None))).is_err()).unwrap();
+                assert!(matches!(
+                    tokio::time::timeout(Duration::from_secs(3), control_rx.recv()).await,
+                    Ok(Some(SshTerminalControl::Close)),
+                ));
+            });
+    });
+    started_rx.recv_timeout(Duration::from_secs(1)).unwrap();
+    let terminal = NativeSshTerminal {
+        session_id: "ready-timeout-race".into(),
+        control,
+        cancel_startup,
+        worker_tx,
+        worker: Some(worker),
+        terminal_ready_ms: None,
+        x11_forwarding_status: None,
+    };
+    let (finished_tx, finished_rx) = std_mpsc::sync_channel(1);
+    let waiter = thread::spawn(move || {
+        let error = terminal.wait_until_ready(ready_rx, Duration::ZERO).err();
+        finished_tx.send(error).unwrap();
+    });
+    let result = finished_rx.recv_timeout(Duration::from_secs(1));
+    // Release a regressed implementation before failing, so the test never hangs.
+    if result.is_err() {
+        let _ = rescue_control.send(SshTerminalControl::Close);
+    }
+    waiter.join().unwrap();
+    assert!(result.expect("timeout cleanup must finish promptly").unwrap().contains("timed out"));
+    assert!(late_ready_rx.recv().unwrap(), "late readiness/error notifications must not fill a receiver retained during join");
+}
+
+#[test]
+fn zero_millisecond_readiness_is_distinct_from_pending_authentication() {
+    let (control, _control_rx) = mpsc::unbounded_channel();
+    let (worker_tx, _worker_rx) = mpsc::unbounded_channel();
+    let terminal = NativeSshTerminal {
+        session_id: "ready-zero".into(),
+        control,
+        cancel_startup: CancellationToken::new(),
+        worker_tx,
+        worker: None,
+        terminal_ready_ms: None,
+        x11_forwarding_status: None,
+    };
+    assert_eq!(terminal.terminal_ready_ms(), None);
+    let (ready_tx, ready_rx) = std_mpsc::sync_channel(1);
+    ready_tx.send(Ok((0, Some(NativeSshX11ForwardingStatus::Rejected)))).unwrap();
+    let terminal = terminal.wait_until_ready(ready_rx, Duration::ZERO).ok().unwrap();
+    assert_eq!(terminal.terminal_ready_ms(), Some(0));
+    assert_eq!(terminal.x11_forwarding_status(), Some(NativeSshX11ForwardingStatus::Rejected));
+    terminal.close();
 }
 
 #[derive(Default)]

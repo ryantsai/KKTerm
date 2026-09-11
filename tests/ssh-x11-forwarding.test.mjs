@@ -67,7 +67,7 @@ test("remote X11 forwarding rejection keeps SSH shell open and reports rejected 
   );
   assert.match(sshSource, /app\.emit\("terminal-session-ready", NativeSshTerminalReady/);
   assert.match(terminalSource, /listen<TerminalSessionStarted>\("terminal-session-ready"/);
-  assert.match(terminalSource, /removeReadyListener\?\.\(\)/);
+  assert.match(terminalSource, /readyListener\.then\(\(unlisten\) => unlisten\(\)\)/);
 });
 
 test("SSH terminal toolbar shows separate X server forwarding state", async () => {

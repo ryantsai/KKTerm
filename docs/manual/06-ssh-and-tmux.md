@@ -33,6 +33,8 @@ Add/Edit Connection places `connections.keyPassphraseOptional` directly below th
 
 While the private-key passphrase prompt is active, type the passphrase in the terminal Pane and press Enter. Input is hidden, and time spent entering it does not count against the SSH startup deadline. After Enter, authentication and shell setup remain bounded by the remaining startup deadline; closing the Tab cancels a stalled startup without waiting for the server. A wrong entry ends the attempt with a key-decryption error; use the Pane reconnect action to try again. Ctrl+C cancels the prompt. Prompt input is used only for that Session and does not replace the saved `connections.keyPassphraseOptional` secret.
 
+For native SSH Sessions, startup scripts and saved enabled mappings in `terminal.sshPortForwardingTitle` wait until authentication and shell setup finish. Waiting at a password or key-passphrase prompt does not send startup-script text into the prompt or consume a saved mapping's startup timeout. Moving the Pane while authentication is pending preserves that wait, and completing login runs its pending startup actions once.
+
 With `settings.xServerManaged`, the terminal's X11 indicator updates after SSH startup to reflect the server's actual forwarding reply, including when login required interactive passphrase input. A rejected X11 request leaves the shell usable and updates the indicator to the rejected state.
 
 ## Old protocol compatibility

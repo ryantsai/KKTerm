@@ -121,13 +121,36 @@ pub struct NativeSshTerminal {
     cancel_startup: CancellationToken,
     worker_tx: mpsc::UnboundedSender<NativeSshWorkerMsg>,
     worker: Option<JoinHandle<()>>,
-    terminal_ready_ms: u128,
+    terminal_ready_ms: Option<u128>,
     x11_forwarding_status: Option<NativeSshX11ForwardingStatus>,
 }
 
 impl NativeSshTerminal {
-    pub fn terminal_ready_ms(&self) -> u128 {
+    pub fn terminal_ready_ms(&self) -> Option<u128> {
         self.terminal_ready_ms
+    }
+
+    fn wait_until_ready(
+        mut self,
+        ready_rx: std_mpsc::Receiver<Result<NativeSshReadyResult, String>>,
+        timeout: Duration,
+    ) -> Result<Self, String> {
+        let error = match ready_rx.recv_timeout(timeout) {
+            Ok(Ok((terminal_ready_ms, x11_forwarding_status))) => {
+                self.terminal_ready_ms = Some(terminal_ready_ms);
+                self.x11_forwarding_status = x11_forwarding_status;
+                return Ok(self);
+            }
+            Ok(Err(error)) => error,
+            Err(_) => "timed out while starting native SSH session".to_string(),
+        };
+        // Readiness may race the timeout. Close also reaches the established
+        // terminal loop, which no longer observes the startup cancellation token.
+        // A late success followed by an error must not block on the ready channel
+        // while close waits for the worker to exit.
+        drop(ready_rx);
+        self.close();
+        Err(error)
     }
 
     pub fn x11_forwarding_status(&self) -> Option<NativeSshX11ForwardingStatus> {
@@ -802,40 +825,19 @@ pub fn start_native_terminal(
         crate::sessions::emit_terminal_session_ended(&app, &request.session_id);
     });
 
-    if returns_before_ready {
-        return Ok(NativeSshTerminal {
-            session_id,
-            control: control_tx,
-            cancel_startup,
-            worker_tx,
-            worker: Some(worker),
-            terminal_ready_ms: 0,
-            x11_forwarding_status: None,
-        });
-    }
-
-    let ready = match ready_rx.recv_timeout(Duration::from_secs(15)) {
-        Ok(ready) => ready,
-        Err(_) => {
-            cancel_startup.cancel();
-            let _ = worker.join();
-            return Err("timed out while starting native SSH session".to_string());
-        }
+    let terminal = NativeSshTerminal {
+        session_id,
+        control: control_tx,
+        cancel_startup,
+        worker_tx,
+        worker: Some(worker),
+        terminal_ready_ms: None,
+        x11_forwarding_status: None,
     };
-    match ready {
-        Ok((terminal_ready_ms, x11_forwarding_status)) => Ok(NativeSshTerminal {
-            session_id,
-            control: control_tx,
-            cancel_startup,
-            worker_tx,
-            worker: Some(worker),
-            terminal_ready_ms,
-            x11_forwarding_status,
-        }),
-        Err(error) => {
-            let _ = worker.join();
-            Err(error)
-        }
+    if returns_before_ready {
+        Ok(terminal)
+    } else {
+        terminal.wait_until_ready(ready_rx, SSH_STARTUP_TIMEOUT)
     }
 }
 

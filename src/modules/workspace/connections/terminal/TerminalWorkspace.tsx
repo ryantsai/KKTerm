@@ -2250,12 +2250,20 @@ function TerminalPaneView({
     let preservingRuntime = false;
     let sessionStarted = preservedRuntime?.sessionStarted ?? false;
     let sessionEnded = false;
-    const startupState = createTerminalStartupState(requestedSessionId, (status) => {
-      updateOpenTerminalPaneX11ForwardingStatus(tabId, pane.id, status);
+    const updateStartupX11 = (status: NonNullable<TerminalPane["x11ForwardingStatus"]>) => {
+      if (connection.type === "ssh") updateOpenTerminalPaneX11ForwardingStatus(tabId, pane.id, status);
+    };
+    const startupState = preservedRuntime?.startupState ?? createTerminalStartupState(requestedSessionId, updateStartupX11);
+    startupState.attach(updateStartupX11);
+    // Keep this Session listener during a Pane move so readiness cannot be lost
+    // between the old renderer's cleanup and the new renderer's subscription.
+    const readyListener = preservedRuntime?.readyListener ?? listen<TerminalSessionStarted>("terminal-session-ready", (event) => {
+      startupState.ready(event.payload);
     });
+    const sshStartupInput = sshStartupInputFor(connection);
+    const sshUsesTmux = connectionUsesTmux(connection, sshSettings.defaultUseTmuxSessions) && Boolean(pane.tmuxSessionId);
     let removeOutputListener: (() => void) | undefined;
     let removeEndedListener: (() => void) | undefined;
-    let removeReadyListener: (() => void) | undefined;
     updateTerminalConnectionState(sessionStarted ? "connected" : "connecting");
     const writeInputToSession = (data: string) => {
       const sessionId = sessionIdRef.current;
@@ -2267,6 +2275,52 @@ function TerminalPaneView({
       });
     };
     registerPaneInputWriter(pane.id, writeInputToSession);
+
+    const finishSshStartup = async () => {
+      const result = await startupState.waitUntilReady();
+      if (!result || disposed || sessionEnded || !startupState.claimPostLoginActions()) return;
+      if (!sessionStarted) {
+        sessionStarted = true;
+        updateTerminalConnectionState("connected");
+        if (trackConnectionSession) markConnectionSessionStarted(connection.id);
+      }
+      void startEnabledSshPortForwardings(
+        connection.sshPortForwardings ?? [],
+        (forwarding) => invokeCommand("start_ssh_port_forward", {
+          request: {
+            ...tmuxConnectionRequest(connection),
+            forwardId: forwarding.id,
+            mode: forwarding.mode,
+            bind: forwarding.bind,
+            listenPort: forwarding.listenPort,
+            destHost: forwarding.destHost,
+            destPort: forwarding.destPort,
+            remotePort: forwarding.destPort,
+            sessionId: result.sessionId,
+          },
+        }),
+      ).then((failures) => {
+        if (disposed || sessionEnded) return;
+        setOpenTerminalPaneSshForwardFailures(
+          tabId,
+          pane.id,
+          failures.map((failure) => failure.forwarding.id),
+        );
+        if (failures.length > 0) {
+          const reason = failures[0].reason;
+          showStatusBarNotice(t("terminal.sshPortForwardStartupFailed", {
+            message: reason instanceof Error ? reason.message : String(reason),
+          }), { tone: "warning" });
+        }
+      });
+      if (sshStartupInput && !sshUsesTmux) {
+        // Only shell input belongs here; passphrases use the input handle above.
+        // tmux scripts still wait for the authoritative created/attached marker.
+        writeInputToSession(sshStartupInput);
+      }
+      void maybeAutoDetectOsIcon(connection, result.sessionId);
+    };
+
     const dataDisposable = terminal.onData((data) => {
       if (
         connection.type === "ssh" &&
@@ -2385,7 +2439,7 @@ function TerminalPaneView({
     });
 
     void (async () => {
-      const [unlistenOutput, unlistenEnded, unlistenReady] = await Promise.all([
+      const [unlistenOutput, unlistenEnded] = await Promise.all([
         listen<TerminalOutput>("terminal-output", (event) => {
           if (event.payload.sessionId !== sessionIdRef.current) {
             return;
@@ -2433,22 +2487,18 @@ function TerminalPaneView({
             markConnectionSessionEnded(connection.id);
           }
         }),
-        listen<TerminalSessionStarted>("terminal-session-ready", (event) => {
-          if (disposed || sessionEnded || event.payload.sessionId !== sessionIdRef.current) return;
-          startupState.ready(event.payload);
-        }),
+        readyListener,
       ]);
       if (disposed) {
         unlistenOutput();
         unlistenEnded();
-        unlistenReady();
         return;
       }
       removeOutputListener = unlistenOutput;
       removeEndedListener = unlistenEnded;
-      removeReadyListener = unlistenReady;
 
       if (preservedRuntime) {
+        if (connection.type === "ssh") void finishSshStartup();
         scheduleFitAndResizeTerminal();
         return;
       }
@@ -2485,15 +2535,11 @@ function TerminalPaneView({
         }
         const localStartup = localStartupFor(connection, shell);
         // Arm tmux startup-script replay before the session starts so the output
-        // listener never misses an early session-state marker. Non-tmux SSH injects
-        // directly after start (no session to reuse), so it leaves the refs disarmed.
-        const sshStartupInput = sshStartupInputFor(connection);
+        // listener never misses an early session-state marker. Non-tmux SSH waits
+        // for readiness before injecting, so it leaves the refs disarmed.
         // The remote tmux command (and its session-state markers) only runs when a
         // tmux session id is present; otherwise the backend falls back to a plain
         // shell, which we treat like non-tmux SSH and inject into directly.
-        const sshUsesTmux =
-          connectionUsesTmux(connection, sshSettings.defaultUseTmuxSessions) &&
-          Boolean(pane.tmuxSessionId);
         sshStartupInjectedRef.current = false;
         sshStartupMarkerTailRef.current = "";
         sshStartupPendingInputRef.current = sshStartupInput && sshUsesTmux ? sshStartupInput : "";
@@ -2534,6 +2580,7 @@ function TerminalPaneView({
             textEncoding: normalizeTerminalEncoding(pane.textEncoding),
           },
         });
+        if (connection.type === "ssh") startupState.started(result, x11ForwardingStatus);
         if (disposed) {
           if (!preservingRuntime) {
             void invokeCommand("close_terminal_session", { sessionId: result.sessionId });
@@ -2585,50 +2632,14 @@ function TerminalPaneView({
           }
         }
         if (connection.type === "ssh") {
-          startupState.started(result, x11ForwardingStatus);
-          void startEnabledSshPortForwardings(
-            connection.sshPortForwardings ?? [],
-            (forwarding) => invokeCommand("start_ssh_port_forward", {
-              request: {
-                ...tmuxConnectionRequest(connection),
-                forwardId: forwarding.id,
-                mode: forwarding.mode,
-                bind: forwarding.bind,
-                listenPort: forwarding.listenPort,
-                destHost: forwarding.destHost,
-                destPort: forwarding.destPort,
-                remotePort: forwarding.destPort,
-                sessionId: result.sessionId,
-              },
-            }),
-          ).then((failures) => {
-            if (disposed) {
-              return;
-            }
-            setOpenTerminalPaneSshForwardFailures(
-              tabId,
-              pane.id,
-              failures.map((failure) => failure.forwarding.id),
-            );
-            if (failures.length > 0) {
-              const reason = failures[0].reason;
-              showStatusBarNotice(t("terminal.sshPortForwardStartupFailed", {
-                message: reason instanceof Error ? reason.message : String(reason),
-              }), { tone: "warning" });
-            }
-          });
+          void finishSshStartup();
         }
         if (localStartup.startupInput) {
           writeInputToSession(localStartup.startupInput);
         }
-        if (sshStartupInput && !sshUsesTmux) {
-          // Non-tmux SSH lands directly in the remote shell, so there is no session to
-          // reuse — replay the script on every connect, like the local shell does.
-          // (tmux replay is handled by the session-state marker in the output listener.)
-          writeInputToSession(sshStartupInput);
-        }
-        void maybeAutoDetectOsIcon(connection, result.sessionId);
       } catch (error) {
+        startupState.end();
+        if (disposed) return;
         updateTerminalConnectionState("disconnected");
         terminal.writeln("");
         terminal.writeln(t("terminal.failedToStartDetail", { message: String(error) }));
@@ -2660,18 +2671,21 @@ function TerminalPaneView({
       notificationDisposable.dispose();
       removeOutputListener?.();
       removeEndedListener?.();
-      startupState.end();
-      removeReadyListener?.();
       const sessionId = sessionIdRef.current;
       preservingRuntime = Boolean(sessionId && shouldPreservePaneRuntimeOnUnmount(pane.id));
       if (sessionId && preservingRuntime) {
+        startupState.detach();
         preserveTerminalPaneRuntime(pane.id, {
           bufferText: terminal.getBufferText(),
           sessionId,
           sessionStarted,
+          startupState,
+          readyListener,
         });
-      } else if (sessionId) {
-        void invokeCommand("close_terminal_session", { sessionId });
+      } else {
+        startupState.end();
+        void readyListener.then((unlisten) => unlisten());
+        if (sessionId) void invokeCommand("close_terminal_session", { sessionId });
       }
       if (sessionStarted && !preservingRuntime && trackConnectionSession) {
         markConnectionSessionEnded(connection.id);
