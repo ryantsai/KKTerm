@@ -1,4 +1,5 @@
 import type { TerminalRenderer } from "./connections/terminal/renderer";
+import type { TerminalStartupState } from "./connections/terminal/terminalStartupState";
 
 const renderers = new Map<string, TerminalRenderer>();
 const inputWriters = new Map<string, (data: string) => void>();
@@ -13,6 +14,8 @@ export type PreservedTerminalPaneRuntime = {
   bufferText: string;
   sessionId: string;
   sessionStarted: boolean;
+  startupState: TerminalStartupState;
+  readyListener: Promise<() => void>;
 };
 
 export type RemoteDesktopController = {

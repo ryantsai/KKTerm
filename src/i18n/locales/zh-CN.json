@@ -2494,6 +2494,10 @@
       "italic": "斜体",
       "copyElement": "复制元素",
       "resizeDialog": "调整截图编辑器大小",
+      "cursorPosition": "X {{x}}, Y {{y}}",
+      "copyCursorPosition": "复制光标位置",
+      "cursorPositionCopied": "光标位置已复制到剪贴板。",
+      "zoom": "缩放",
       "unsavedTitle": "保存截图编辑内容？",
       "unsavedMessage": "如果继续而不保存，注释将会丢失。",
       "dontSave": "不保存"
@@ -4519,6 +4523,11 @@
     "notificationWithTitle": "来自 {{name}} 的通知：{{title}} — {{message}}"
   },
   "sftp": {
+    "minimize": "最小化",
+    "backgroundTransferring": "{{host}} 的文件正在后台传输，重新打开文件浏览器以查看进度。",
+    "backgroundAttention": "{{host}} 的文件传输需要处理，请重新打开文件浏览器以继续。",
+    "backgroundFinished": "{{host}} 的文件传输已结束，重新打开文件浏览器以查看结果。",
+    "backgroundFailed": "{{host}} 的一项文件传输失败，重新打开文件浏览器以查看结果。",
     "connecting": "正在连接",
     "verifyingHost": "正在验证主机",
     "connected": "已连接",

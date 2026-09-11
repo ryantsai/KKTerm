@@ -2494,6 +2494,10 @@
       "italic": "Miring",
       "copyElement": "Duplikasikan elemen",
       "resizeDialog": "Ubah ukuran editor tangkapan layar",
+      "cursorPosition": "X {{x}}, Y {{y}}",
+      "copyCursorPosition": "Salin posisi kursor",
+      "cursorPositionCopied": "Posisi kursor disalin ke papan klip.",
+      "zoom": "Zoom",
       "unsavedTitle": "Simpan editan tangkapan layar?",
       "unsavedMessage": "Anotasi akan hilang jika Anda melanjutkan tanpa menyimpan.",
       "dontSave": "Jangan simpan"
@@ -4519,6 +4523,11 @@
     "notificationWithTitle": "Notifikasi dari {{name}}: {{title}} — {{message}}"
   },
   "sftp": {
+    "minimize": "Minimalkan",
+    "backgroundTransferring": "Transfer file untuk {{host}} berjalan di latar belakang; buka kembali penjelajah file untuk melihat progres.",
+    "backgroundAttention": "Transfer file untuk {{host}} memerlukan perhatian; buka kembali penjelajah file untuk melanjutkan.",
+    "backgroundFinished": "Transfer file untuk {{host}} telah berakhir; buka kembali penjelajah file untuk meninjau hasilnya.",
+    "backgroundFailed": "Transfer file untuk {{host}} gagal; buka kembali penjelajah file untuk meninjau hasilnya.",
     "connecting": "Menghubungkan",
     "verifyingHost": "Memverifikasi host",
     "connected": "Terhubung",

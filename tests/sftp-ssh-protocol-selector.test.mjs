@@ -5,7 +5,7 @@ import test from "node:test";
 test("SSH toolbar SFTP popup exposes a runtime protocol selector", async () => {
   const [terminalSource, workspaceSource, stylesSource, manualSource] = await Promise.all([
     readFile(
-      new URL("../src/modules/workspace/connections/terminal/TerminalWorkspace.tsx", import.meta.url),
+      new URL("../src/modules/workspace/connections/terminal/SftpToolbarPopup.tsx", import.meta.url),
       "utf8",
     ),
     readFile(
@@ -18,7 +18,7 @@ test("SSH toolbar SFTP popup exposes a runtime protocol selector", async () => {
 
   assert.match(
     terminalSource,
-    /protocolSourceConnection=\{sftpDialogConnection \?\? undefined\}/,
+    /protocolSourceConnection=\{browser.tab.connection\}/,
     "the popup should pass its SSH source Connection to the file browser surface",
   );
   assert.match(

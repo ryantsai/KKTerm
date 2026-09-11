@@ -2494,6 +2494,10 @@
       "italic": "In nghiêng",
       "copyElement": "Nhân bản phần tử",
       "resizeDialog": "Đổi kích thước trình sửa ảnh chụp màn hình",
+      "cursorPosition": "X {{x}}, Y {{y}}",
+      "copyCursorPosition": "Sao chép vị trí con trỏ",
+      "cursorPositionCopied": "Đã sao chép vị trí con trỏ vào bảng tạm.",
+      "zoom": "Thu phóng",
       "unsavedTitle": "Lưu chỉnh sửa ảnh chụp màn hình?",
       "unsavedMessage": "Chú thích sẽ bị mất nếu bạn tiếp tục mà không lưu.",
       "dontSave": "Không lưu"
@@ -4519,6 +4523,11 @@
     "notificationWithTitle": "Thông báo từ {{name}}: {{title}} — {{message}}"
   },
   "sftp": {
+    "minimize": "Thu nhỏ",
+    "backgroundTransferring": "Các lượt truyền tệp của {{host}} đang chạy trong nền; mở lại trình duyệt tệp để xem tiến độ.",
+    "backgroundAttention": "Các lượt truyền tệp của {{host}} cần được xử lý; mở lại trình duyệt tệp để tiếp tục.",
+    "backgroundFinished": "Các lượt truyền tệp của {{host}} đã kết thúc; mở lại trình duyệt tệp để xem kết quả.",
+    "backgroundFailed": "Một lượt truyền tệp của {{host}} đã thất bại; mở lại trình duyệt tệp để xem kết quả.",
     "connecting": "Connecting",
     "verifyingHost": "Verifying host",
     "connected": "Connected",

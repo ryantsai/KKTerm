@@ -2494,6 +2494,10 @@
       "italic": "Kursiv",
       "copyElement": "Element duplizieren",
       "resizeDialog": "Screenshot-Editor skalieren",
+      "cursorPosition": "X {{x}}, Y {{y}}",
+      "copyCursorPosition": "Cursorposition kopieren",
+      "cursorPositionCopied": "Cursorposition in die Zwischenablage kopiert.",
+      "zoom": "Zoom",
       "unsavedTitle": "Screenshot-Änderungen speichern?",
       "unsavedMessage": "Ihre Anmerkungen gehen verloren, wenn Sie ohne Speichern fortfahren.",
       "dontSave": "Nicht speichern"
@@ -4519,6 +4523,11 @@
     "notificationWithTitle": "Benachrichtigung von {{name}}: {{title}} — {{message}}"
   },
   "sftp": {
+    "minimize": "Minimieren",
+    "backgroundTransferring": "Dateiübertragungen für {{host}} laufen im Hintergrund; öffnen Sie den Dateibrowser erneut, um den Fortschritt anzuzeigen.",
+    "backgroundAttention": "Dateiübertragungen für {{host}} erfordern Ihre Aufmerksamkeit; öffnen Sie den Dateibrowser erneut, um fortzufahren.",
+    "backgroundFinished": "Dateiübertragungen für {{host}} sind beendet; öffnen Sie den Dateibrowser erneut, um die Ergebnisse zu prüfen.",
+    "backgroundFailed": "Eine Dateiübertragung für {{host}} ist fehlgeschlagen; öffnen Sie den Dateibrowser erneut, um die Ergebnisse zu prüfen.",
     "connecting": "Verbinde",
     "verifyingHost": "Host überprüfen",
     "connected": "Verbunden",

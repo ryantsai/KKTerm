@@ -1,12 +1,13 @@
 import { confirmTrustedSshHostKey, connectionPasswordOwnerId, connectionToolbarTitle, localShellOptionsForPlatform, resolveAvailableLocalShell, resolveSshCompression, resolveSshOldProtocols, resolveSshSocksProxyRequest, uniqueRuntimeId, usesNativeSshHostKeyVerification } from "../utils";
 import { resolveLocalShellForLaunch } from "./pwshPreflight";
+import { createTerminalStartupState } from "./terminalStartupState";
 import { ConfirmDialog } from "../../../../app/ConfirmDialog";
 import { readFromClipboard, writeToClipboard } from "../../../../lib/clipboard";
 import { CUSTOM_FONTS_LOADED_EVENT } from "../../../../lib/customFonts";
 import { ScreenshotMenu } from "../../ScreenshotMenu";
 
 import { ConnectionGlyph } from "../ConnectionGlyph";
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bot, Braces, Check, FileText, Folder, FolderOpen, Mouse, ChevronRight, Circle, Copy, Menu, Monitor, Network, Palette, PanelBottom, Pencil, Radio, RefreshCw, Scan, Search, SplitSquareHorizontal, Square, Type, X } from "../../../../lib/reicon";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bot, Braces, Check, FileText, FolderOpen, Mouse, ChevronRight, Circle, Copy, Menu, Monitor, Network, Palette, PanelBottom, Pencil, Radio, RefreshCw, Scan, Search, SplitSquareHorizontal, Square, Type, X } from "../../../../lib/reicon";
 import { SaveAsIcon } from "../../../../app/ui/SaveAsIcon";
 import { listen } from "@tauri-apps/api/event";
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -16,7 +17,7 @@ import { useTranslation } from "react-i18next";
 import i18next from "../../../../i18n/config";
 import { ariaInvalid, dialogButtonAria, menuButtonAria } from "../../../../lib/aria";
 import { fileBrowserCommandsFor } from "../../../../lib/fileBrowserCommands";
-import { focusCurrentWebview, invokeCommand, isTauriRuntime, logUiDebug, openExternalUrl, saveTextFile, type TerminalOutput, type TerminalRecordingInfo, type TerminalSessionEnded, type TmuxSession } from "../../../../lib/tauri";
+import { focusCurrentWebview, invokeCommand, isTauriRuntime, logUiDebug, openExternalUrl, saveTextFile, type TerminalOutput, type TerminalRecordingInfo, type TerminalSessionEnded, type TerminalSessionStarted, type TmuxSession } from "../../../../lib/tauri";
 import { markOsIconAutoDetectDone, osIconIdForDetection, osIconRefForId, shouldAutoDetectOsIcon } from "../../../../lib/osIcons";
 import {
   notifyConnectionTreeInvalidated,
@@ -49,6 +50,7 @@ import {
 } from "../../paneRegistry";
 import type { Connection, LayoutNode, SplitDirection, TerminalPane, WorkspacePane, WorkspaceTab } from "../../../../types";
 import { TERMINAL_ENCODING_OPTIONS, normalizeTerminalEncoding } from "./terminalEncoding";
+import { SftpToolbarButton, SftpToolbarPopups } from "./SftpToolbarPopup";
 import { QuickCommandBar } from "./QuickCommandBar";
 import { TerminalBackgroundLayer, TerminalBackgroundPopover } from "./TerminalBackgroundPopover";
 import { SshPortForwardingDialog, hasEnabledSshPortForwardings } from "./SshPortForwardingDialog";
@@ -161,14 +163,10 @@ export function TerminalWorkspace({
   const usePaneTerminalBackgrounds =
     generalSettings.separateSplitTerminalBackgrounds &&
     tab.panes.filter(isTerminalPane).length > 1;
-  const [sftpDialogConnection, setSftpDialogConnection] = useState<Connection | null>(null);
-  const [sftpDialogInitialRemotePath, setSftpDialogInitialRemotePath] = useState<string | undefined>(undefined);
   const [sshPortForwardingDialogConnection, setSshPortForwardingDialogConnection] = useState<Connection | null>(null);
   const [sshPortForwardingDialogSessionId, setSshPortForwardingDialogSessionId] = useState<string | null>(null);
   const [sshPortForwardingDialogPaneId, setSshPortForwardingDialogPaneId] = useState<string | null>(null);
   const setOpenTerminalPaneSshForwardFailures = useWorkspaceStore((state) => state.setOpenTerminalPaneSshForwardFailures);
-  const sftpFocusRestorePaneIdRef = useRef<string | null>(null);
-  const sftpOpenRequestIdRef = useRef(0);
   const sshPortForwardingFocusRestorePaneIdRef = useRef<string | null>(null);
   const { t } = useTranslation();
   const defaultFontSize = defaultTerminalSettings.fontSize;
@@ -199,66 +197,10 @@ export function TerminalWorkspace({
   const workspaceTerminalBackground = usePaneTerminalBackgrounds
     ? null
     : (sharedTerminalBackgroundOwnerPane?.connection?.terminalBackground ?? null);
-  const sftpDialogTab = useMemo<WorkspaceTab | null>(() => {
-    if (!sftpDialogConnection) {
-      return null;
-    }
-
-    return {
-      id: `dialog-${tab.id}-${sftpDialogConnection.id}-sftp`,
-      title: `${sftpDialogConnection.name} SFTP`,
-      toolbarTitle: connectionToolbarTitle(sftpDialogConnection),
-      subtitle: `${sftpDialogConnection.user}@${sftpDialogConnection.host}`,
-      kind: "sftp",
-      panes: [],
-      connection: sftpDialogConnection,
-    };
-  }, [sftpDialogConnection, tab.id]);
-
-  useEffect(() => {
-    if (!sftpDialogConnection) {
-      return;
-    }
-
-    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") {
-        closeSftpDialog();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-    // Bind Escape only while a dialog is open; closeSftpDialog is recreated each render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sftpDialogConnection]);
-
   function focusTerminalPaneAfterDialogClose(paneId: string) {
     const focus = () => getPaneRenderer(paneId)?.focus();
     queueMicrotask(focus);
     window.requestAnimationFrame(focus);
-  }
-
-  function closeSftpDialog() {
-    const restorePaneId = sftpFocusRestorePaneIdRef.current;
-    sftpFocusRestorePaneIdRef.current = null;
-    sftpOpenRequestIdRef.current += 1;
-    setSftpDialogConnection(null);
-    if (restorePaneId) {
-      focusTerminalPaneAfterDialogClose(restorePaneId);
-    }
-  }
-
-  async function openSftpDialog(connection: Connection, paneId: string) {
-    const requestId = sftpOpenRequestIdRef.current + 1;
-    sftpOpenRequestIdRef.current = requestId;
-    sftpFocusRestorePaneIdRef.current = paneId === focusedPaneId ? paneId : null;
-    const pane = tab.panes.find((candidate) => candidate.id === paneId);
-    const initialRemotePath = await resolveSftpDialogInitialRemotePath(connection, pane);
-    if (sftpOpenRequestIdRef.current !== requestId) {
-      return;
-    }
-    setSftpDialogInitialRemotePath(initialRemotePath);
-    setSftpDialogConnection(connection);
   }
 
   function closeSshPortForwardingDialog() {
@@ -527,97 +469,74 @@ export function TerminalWorkspace({
   }
 
   return (
-    <section
-      className={[
-        "terminal-workspace",
-        isActive ? "active" : "",
-        isSingleEmbeddedPane ? "terminal-workspace-embedded-only" : "",
-        maximizedPaneId ? "terminal-workspace-pane-maximized" : "",
-        quickCommandBarVisible ? "quick-command-bar-visible" : "",
-        workspaceTerminalBackground ? "terminal-workspace-has-background" : "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
-    >
-      <TerminalBackgroundLayer active={isActive} background={workspaceTerminalBackground} />
-      <div className="terminal-grid">
-        {layout ? (
-          <TerminalLayoutView
-            isActive={isActive}
-            tabId={tab.id}
-            layout={layout}
-            panes={tab.panes}
-            focusedPaneId={focusedPaneId}
-            maximizedPaneId={maximizedPaneId}
-            canCloseSinglePane={canCloseSinglePane}
-            onCloseSinglePane={onClose}
-            onFocusPane={(paneId) => setFocusedPane(tab.id, paneId)}
-            canSplit={canSplit}
-            sharedTerminalBackground={workspaceTerminalBackground}
-            sharedTerminalBackgroundOwnerPane={sharedTerminalBackgroundOwnerPane}
-            usePaneTerminalBackgrounds={usePaneTerminalBackgrounds}
-            onFontChange={handleFontChange}
-            onOpenAssistant={onOpenAssistant}
-            onOpenSftp={openSftpDialog}
-            onOpenSshPortForwarding={openSshPortForwardingDialog}
-            onSaveBuffer={(paneId) => void handleSaveBuffer(paneId)}
-            showSftpButton={showSftpButton}
-            onSplit={handleSplit}
-            quickCommandBarVisible={quickCommandBarVisible}
-            onToggleQuickCommandBar={() => setQuickCommandBarVisible(tab.id, !quickCommandBarVisible)}
-            trackConnectionSession={trackConnectionSession}
-          />
-        ) : null}
-      </div>
-      {quickCommandBarVisible ? <QuickCommandBar tab={tab} /> : null}
-      {sftpDialogTab ? createPortal(
-        <div className="dialog-backdrop connection-dialog-backdrop sftp-popup-dialog-backdrop" role="presentation">
-          <section
-            aria-label={t("terminal.openSftp")}
-            aria-modal="true"
-            className="connection-dialog sftp-popup-dialog"
-            role="dialog"
-          >
-            <div className="sftp-popup-dialog-body">
-              <Suspense fallback={null}>
-                <SftpWorkspace
-                  isActive={true}
-                  tab={sftpDialogTab}
-                  inline
-                  onClose={closeSftpDialog}
-                  protocolSourceConnection={sftpDialogConnection ?? undefined}
-                  initialRemotePath={sftpDialogInitialRemotePath}
-                />
-              </Suspense>
-            </div>
-          </section>
-        </div>,
-        document.body,
-      ) : null}
-      {sshPortForwardingDialogConnection ? createPortal(
-        <SshPortForwardingDialog
-          connection={sshPortForwardingDialogConnection}
-          sessionId={sshPortForwardingDialogSessionId}
-          failedForwardIds={
-            tab.panes.find((pane): pane is TerminalPane =>
-              isTerminalPane(pane) && pane.id === sshPortForwardingDialogPaneId,
-            )?.sshPortForwardFailures ?? []
-          }
-          onForwardFailuresChange={(failedForwardIds) => {
-            if (sshPortForwardingDialogPaneId) {
-              setOpenTerminalPaneSshForwardFailures(tab.id, sshPortForwardingDialogPaneId, failedForwardIds);
+    <SftpToolbarPopups panes={tab.panes} tabId={tab.id} isActive={isActive}>
+      <section
+        className={[
+          "terminal-workspace",
+          isActive ? "active" : "",
+          isSingleEmbeddedPane ? "terminal-workspace-embedded-only" : "",
+          maximizedPaneId ? "terminal-workspace-pane-maximized" : "",
+          quickCommandBarVisible ? "quick-command-bar-visible" : "",
+          workspaceTerminalBackground ? "terminal-workspace-has-background" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        <TerminalBackgroundLayer active={isActive} background={workspaceTerminalBackground} />
+        <div className="terminal-grid">
+          {layout ? (
+            <TerminalLayoutView
+              isActive={isActive}
+              tabId={tab.id}
+              layout={layout}
+              panes={tab.panes}
+              focusedPaneId={focusedPaneId}
+              maximizedPaneId={maximizedPaneId}
+              canCloseSinglePane={canCloseSinglePane}
+              onCloseSinglePane={onClose}
+              onFocusPane={(paneId) => setFocusedPane(tab.id, paneId)}
+              canSplit={canSplit}
+              sharedTerminalBackground={workspaceTerminalBackground}
+              sharedTerminalBackgroundOwnerPane={sharedTerminalBackgroundOwnerPane}
+              usePaneTerminalBackgrounds={usePaneTerminalBackgrounds}
+              onFontChange={handleFontChange}
+              onOpenAssistant={onOpenAssistant}
+              onOpenSshPortForwarding={openSshPortForwardingDialog}
+              onSaveBuffer={(paneId) => void handleSaveBuffer(paneId)}
+              showSftpButton={showSftpButton}
+              onSplit={handleSplit}
+              quickCommandBarVisible={quickCommandBarVisible}
+              onToggleQuickCommandBar={() => setQuickCommandBarVisible(tab.id, !quickCommandBarVisible)}
+              trackConnectionSession={trackConnectionSession}
+            />
+          ) : null}
+        </div>
+        {quickCommandBarVisible ? <QuickCommandBar tab={tab} /> : null}
+        {sshPortForwardingDialogConnection ? createPortal(
+          <SshPortForwardingDialog
+            connection={sshPortForwardingDialogConnection}
+            sessionId={sshPortForwardingDialogSessionId}
+            failedForwardIds={
+              tab.panes.find((pane): pane is TerminalPane =>
+                isTerminalPane(pane) && pane.id === sshPortForwardingDialogPaneId,
+              )?.sshPortForwardFailures ?? []
             }
-          }}
-          onClose={closeSshPortForwardingDialog}
-          onConnectionUpdated={(updatedConnection) => {
-            refreshOpenConnectionMetadata(updatedConnection);
-            notifyConnectionTreeInvalidated();
-            setSshPortForwardingDialogConnection(updatedConnection);
-          }}
-        />,
-        document.body,
-      ) : null}
-    </section>
+            onForwardFailuresChange={(failedForwardIds) => {
+              if (sshPortForwardingDialogPaneId) {
+                setOpenTerminalPaneSshForwardFailures(tab.id, sshPortForwardingDialogPaneId, failedForwardIds);
+              }
+            }}
+            onClose={closeSshPortForwardingDialog}
+            onConnectionUpdated={(updatedConnection) => {
+              refreshOpenConnectionMetadata(updatedConnection);
+              notifyConnectionTreeInvalidated();
+              setSshPortForwardingDialogConnection(updatedConnection);
+            }}
+          />,
+          document.body,
+        ) : null}
+      </section>
+    </SftpToolbarPopups>
   );
 }
 
@@ -637,7 +556,6 @@ function TerminalLayoutView({
   usePaneTerminalBackgrounds,
   onFontChange,
   onOpenAssistant,
-  onOpenSftp,
   onOpenSshPortForwarding,
   onSaveBuffer,
   showSftpButton,
@@ -661,7 +579,6 @@ function TerminalLayoutView({
   usePaneTerminalBackgrounds: boolean;
   onFontChange: (delta: number | "reset") => void;
   onOpenAssistant: () => void;
-  onOpenSftp: (connection: Connection, paneId: string) => void;
   onOpenSshPortForwarding: (connection: Connection, paneId: string, sessionId: string | null) => void;
   onSaveBuffer: (paneId: string) => void;
   showSftpButton: boolean;
@@ -704,7 +621,6 @@ function TerminalLayoutView({
             sharedTerminalBackgroundOwnerPane={sharedTerminalBackgroundOwnerPane}
             usePaneTerminalBackgrounds={usePaneTerminalBackgrounds}
             onOpenAssistant={onOpenAssistant}
-            onOpenSftp={onOpenSftp}
             onOpenSshPortForwarding={onOpenSshPortForwarding}
             onSaveBuffer={onSaveBuffer}
             showSftpButton={showSftpButton}
@@ -755,7 +671,6 @@ function TerminalLayoutView({
           usePaneTerminalBackgrounds={usePaneTerminalBackgrounds}
           onFontChange={onFontChange}
           onOpenAssistant={onOpenAssistant}
-          onOpenSftp={onOpenSftp}
           onOpenSshPortForwarding={onOpenSshPortForwarding}
           onSaveBuffer={onSaveBuffer}
           showSftpButton={showSftpButton}
@@ -1616,7 +1531,6 @@ function TerminalPaneView({
   sharedTerminalBackgroundOwnerPane,
   usePaneTerminalBackgrounds,
   onOpenAssistant,
-  onOpenSftp,
   onOpenSshPortForwarding,
   onSaveBuffer,
   showSftpButton,
@@ -1638,7 +1552,6 @@ function TerminalPaneView({
   sharedTerminalBackgroundOwnerPane: TerminalPane | undefined;
   usePaneTerminalBackgrounds: boolean;
   onOpenAssistant: () => void;
-  onOpenSftp: (connection: Connection, paneId: string) => void;
   onOpenSshPortForwarding: (connection: Connection, paneId: string, sessionId: string | null) => void;
   onSaveBuffer: (paneId: string) => void;
   showSftpButton: boolean;
@@ -2249,6 +2162,18 @@ function TerminalPaneView({
     let preservingRuntime = false;
     let sessionStarted = preservedRuntime?.sessionStarted ?? false;
     let sessionEnded = false;
+    const updateStartupX11 = (status: NonNullable<TerminalPane["x11ForwardingStatus"]>) => {
+      if (connection.type === "ssh") updateOpenTerminalPaneX11ForwardingStatus(tabId, pane.id, status);
+    };
+    const startupState = preservedRuntime?.startupState ?? createTerminalStartupState(requestedSessionId, updateStartupX11);
+    startupState.attach(updateStartupX11);
+    // Keep this Session listener during a Pane move so readiness cannot be lost
+    // between the old renderer's cleanup and the new renderer's subscription.
+    const readyListener = preservedRuntime?.readyListener ?? listen<TerminalSessionStarted>("terminal-session-ready", (event) => {
+      startupState.ready(event.payload);
+    });
+    const sshStartupInput = sshStartupInputFor(connection);
+    const sshUsesTmux = connectionUsesTmux(connection, sshSettings.defaultUseTmuxSessions) && Boolean(pane.tmuxSessionId);
     let removeOutputListener: (() => void) | undefined;
     let removeEndedListener: (() => void) | undefined;
     updateTerminalConnectionState(sessionStarted ? "connected" : "connecting");
@@ -2262,6 +2187,52 @@ function TerminalPaneView({
       });
     };
     registerPaneInputWriter(pane.id, writeInputToSession);
+
+    const finishSshStartup = async () => {
+      const result = await startupState.waitUntilReady();
+      if (!result || disposed || sessionEnded || !startupState.claimPostLoginActions()) return;
+      if (!sessionStarted) {
+        sessionStarted = true;
+        updateTerminalConnectionState("connected");
+        if (trackConnectionSession) markConnectionSessionStarted(connection.id);
+      }
+      void startEnabledSshPortForwardings(
+        connection.sshPortForwardings ?? [],
+        (forwarding) => invokeCommand("start_ssh_port_forward", {
+          request: {
+            ...tmuxConnectionRequest(connection),
+            forwardId: forwarding.id,
+            mode: forwarding.mode,
+            bind: forwarding.bind,
+            listenPort: forwarding.listenPort,
+            destHost: forwarding.destHost,
+            destPort: forwarding.destPort,
+            remotePort: forwarding.destPort,
+            sessionId: result.sessionId,
+          },
+        }),
+      ).then((failures) => {
+        if (disposed || sessionEnded) return;
+        setOpenTerminalPaneSshForwardFailures(
+          tabId,
+          pane.id,
+          failures.map((failure) => failure.forwarding.id),
+        );
+        if (failures.length > 0) {
+          const reason = failures[0].reason;
+          showStatusBarNotice(t("terminal.sshPortForwardStartupFailed", {
+            message: reason instanceof Error ? reason.message : String(reason),
+          }), { tone: "warning" });
+        }
+      });
+      if (sshStartupInput && !sshUsesTmux) {
+        // Only shell input belongs here; passphrases use the input handle above.
+        // tmux scripts still wait for the authoritative created/attached marker.
+        writeInputToSession(sshStartupInput);
+      }
+      void maybeAutoDetectOsIcon(connection, result.sessionId);
+    };
+
     const dataDisposable = terminal.onData((data) => {
       if (
         connection.type === "ssh" &&
@@ -2421,12 +2392,14 @@ function TerminalPaneView({
             return;
           }
           sessionEnded = true;
+          startupState.end();
           updateTerminalConnectionState("disconnected");
           if (sessionStarted && trackConnectionSession) {
             sessionStarted = false;
             markConnectionSessionEnded(connection.id);
           }
         }),
+        readyListener,
       ]);
       if (disposed) {
         unlistenOutput();
@@ -2437,6 +2410,7 @@ function TerminalPaneView({
       removeEndedListener = unlistenEnded;
 
       if (preservedRuntime) {
+        if (connection.type === "ssh") void finishSshStartup();
         scheduleFitAndResizeTerminal();
         return;
       }
@@ -2473,15 +2447,11 @@ function TerminalPaneView({
         }
         const localStartup = localStartupFor(connection, shell);
         // Arm tmux startup-script replay before the session starts so the output
-        // listener never misses an early session-state marker. Non-tmux SSH injects
-        // directly after start (no session to reuse), so it leaves the refs disarmed.
-        const sshStartupInput = sshStartupInputFor(connection);
+        // listener never misses an early session-state marker. Non-tmux SSH waits
+        // for readiness before injecting, so it leaves the refs disarmed.
         // The remote tmux command (and its session-state markers) only runs when a
         // tmux session id is present; otherwise the backend falls back to a plain
         // shell, which we treat like non-tmux SSH and inject into directly.
-        const sshUsesTmux =
-          connectionUsesTmux(connection, sshSettings.defaultUseTmuxSessions) &&
-          Boolean(pane.tmuxSessionId);
         sshStartupInjectedRef.current = false;
         sshStartupMarkerTailRef.current = "";
         sshStartupPendingInputRef.current = sshStartupInput && sshUsesTmux ? sshStartupInput : "";
@@ -2522,6 +2492,7 @@ function TerminalPaneView({
             textEncoding: normalizeTerminalEncoding(pane.textEncoding),
           },
         });
+        if (connection.type === "ssh") startupState.started(result, x11ForwardingStatus);
         if (disposed) {
           if (!preservingRuntime) {
             void invokeCommand("close_terminal_session", { sessionId: result.sessionId });
@@ -2573,54 +2544,14 @@ function TerminalPaneView({
           }
         }
         if (connection.type === "ssh") {
-          updateOpenTerminalPaneX11ForwardingStatus(
-            tabId,
-            pane.id,
-            result.x11ForwardingStatus ?? x11ForwardingStatus,
-          );
-          void startEnabledSshPortForwardings(
-            connection.sshPortForwardings ?? [],
-            (forwarding) => invokeCommand("start_ssh_port_forward", {
-              request: {
-                ...tmuxConnectionRequest(connection),
-                forwardId: forwarding.id,
-                mode: forwarding.mode,
-                bind: forwarding.bind,
-                listenPort: forwarding.listenPort,
-                destHost: forwarding.destHost,
-                destPort: forwarding.destPort,
-                remotePort: forwarding.destPort,
-                sessionId: result.sessionId,
-              },
-            }),
-          ).then((failures) => {
-            if (disposed) {
-              return;
-            }
-            setOpenTerminalPaneSshForwardFailures(
-              tabId,
-              pane.id,
-              failures.map((failure) => failure.forwarding.id),
-            );
-            if (failures.length > 0) {
-              const reason = failures[0].reason;
-              showStatusBarNotice(t("terminal.sshPortForwardStartupFailed", {
-                message: reason instanceof Error ? reason.message : String(reason),
-              }), { tone: "warning" });
-            }
-          });
+          void finishSshStartup();
         }
         if (localStartup.startupInput) {
           writeInputToSession(localStartup.startupInput);
         }
-        if (sshStartupInput && !sshUsesTmux) {
-          // Non-tmux SSH lands directly in the remote shell, so there is no session to
-          // reuse — replay the script on every connect, like the local shell does.
-          // (tmux replay is handled by the session-state marker in the output listener.)
-          writeInputToSession(sshStartupInput);
-        }
-        void maybeAutoDetectOsIcon(connection, result.sessionId);
       } catch (error) {
+        startupState.end();
+        if (disposed) return;
         updateTerminalConnectionState("disconnected");
         terminal.writeln("");
         terminal.writeln(t("terminal.failedToStartDetail", { message: String(error) }));
@@ -2655,13 +2586,18 @@ function TerminalPaneView({
       const sessionId = sessionIdRef.current;
       preservingRuntime = Boolean(sessionId && shouldPreservePaneRuntimeOnUnmount(pane.id));
       if (sessionId && preservingRuntime) {
+        startupState.detach();
         preserveTerminalPaneRuntime(pane.id, {
           bufferText: terminal.getBufferText(),
           sessionId,
           sessionStarted,
+          startupState,
+          readyListener,
         });
-      } else if (sessionId) {
-        void invokeCommand("close_terminal_session", { sessionId });
+      } else {
+        startupState.end();
+        void readyListener.then((unlisten) => unlisten());
+        if (sessionId) void invokeCommand("close_terminal_session", { sessionId });
       }
       if (sessionStarted && !preservingRuntime && trackConnectionSession) {
         markConnectionSessionEnded(connection.id);
@@ -3146,12 +3082,6 @@ function TerminalPaneView({
     terminalRendererRef.current?.focus();
   }
 
-  function handleOpenSftp() {
-    if (pane.connection?.type !== "ssh") {
-      return;
-    }
-    void onOpenSftp(pane.connection, pane.id);
-  }
 
   function handleOpenSshPortForwarding() {
     if (pane.connection?.type !== "ssh") {
@@ -3281,17 +3211,12 @@ function TerminalPaneView({
               <Network size={13} />
             </button>
           ) : null}
-          {isSshPane && showSftpButton ? (
-            <button
-              className="terminal-pane-action"
-              aria-label={t("terminal.openSftp")}
-              data-tutorial-id="terminal.openSftp"
-              onClick={handleOpenSftp}
-              title={t("terminal.sftp")}
-              type="button"
-            >
-              <Folder size={13} />
-            </button>
+          {isSshPane && showSftpButton && pane.connection ? (
+            <SftpToolbarButton
+              connection={pane.connection}
+              paneId={pane.id}
+              resolveInitialRemotePath={() => resolveSftpDialogInitialRemotePath(pane.connection!, pane)}
+            />
           ) : null}
           {gitRepo ? (
             <button

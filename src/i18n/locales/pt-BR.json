@@ -2494,6 +2494,10 @@
       "italic": "Itálico",
       "copyElement": "Duplicar elemento",
       "resizeDialog": "Redimensionar editor de captura",
+      "cursorPosition": "X {{x}}, Y {{y}}",
+      "copyCursorPosition": "Copiar a posição do cursor",
+      "cursorPositionCopied": "Posição do cursor copiada para a área de transferência.",
+      "zoom": "Zoom",
       "unsavedTitle": "Salvar edições da captura?",
       "unsavedMessage": "Suas anotações serão perdidas se você continuar sem salvar.",
       "dontSave": "Não salvar"
@@ -4519,6 +4523,11 @@
     "notificationWithTitle": "Notificação de {{name}}: {{title}} — {{message}}"
   },
   "sftp": {
+    "minimize": "Minimizar",
+    "backgroundTransferring": "As transferências de arquivos de {{host}} estão em execução em segundo plano; reabra o navegador de arquivos para ver o progresso.",
+    "backgroundAttention": "As transferências de arquivos de {{host}} precisam de atenção; reabra o navegador de arquivos para continuar.",
+    "backgroundFinished": "As transferências de arquivos de {{host}} terminaram; reabra o navegador de arquivos para conferir os resultados.",
+    "backgroundFailed": "Uma transferência de arquivos de {{host}} falhou; reabra o navegador de arquivos para conferir os resultados.",
     "connecting": "Conectando",
     "verifyingHost": "Verificando host",
     "connected": "Conectado",

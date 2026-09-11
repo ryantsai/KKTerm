@@ -2494,6 +2494,10 @@
       "italic": "Italic",
       "copyElement": "Copy element",
       "resizeDialog": "Resize screenshot editor",
+      "cursorPosition": "X {{x}}, Y {{y}}",
+      "copyCursorPosition": "Copy cursor position",
+      "cursorPositionCopied": "Cursor position copied to clipboard.",
+      "zoom": "Zoom",
       "unsavedTitle": "Save screenshot edits?",
       "unsavedMessage": "Your annotations will be lost if you continue without saving.",
       "dontSave": "Don't save"
@@ -4519,6 +4523,11 @@
     "notificationWithTitle": "Notification from {{name}}: {{title}} — {{message}}"
   },
   "sftp": {
+    "minimize": "Minimize",
+    "backgroundTransferring": "File transfers for {{host}} are running in the background; reopen the file browser to view progress.",
+    "backgroundAttention": "File transfers for {{host}} need attention; reopen the file browser to continue.",
+    "backgroundFinished": "File transfers for {{host}} have finished; reopen the file browser to review the results.",
+    "backgroundFailed": "A file transfer for {{host}} failed; reopen the file browser to review the results.",
     "connecting": "Connecting",
     "verifyingHost": "Verifying host",
     "connected": "Connected",

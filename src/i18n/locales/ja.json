@@ -2494,6 +2494,10 @@
       "italic": "斜体",
       "copyElement": "要素を複製",
       "resizeDialog": "スクリーンショットエディターのサイズを変更",
+      "cursorPosition": "X {{x}}, Y {{y}}",
+      "copyCursorPosition": "カーソル位置をコピー",
+      "cursorPositionCopied": "カーソル位置をクリップボードにコピーしました。",
+      "zoom": "ズーム",
       "unsavedTitle": "スクリーンショットの編集を保存しますか？",
       "unsavedMessage": "保存せずに続行すると、注釈は失われます。",
       "dontSave": "保存しない"
@@ -4519,6 +4523,11 @@
     "notificationWithTitle": "{{name}} からの通知: {{title}} — {{message}}"
   },
   "sftp": {
+    "minimize": "最小化",
+    "backgroundTransferring": "{{host}} のファイル転送はバックグラウンドで実行中です。ファイルブラウザーを再度開くと進行状況を確認できます。",
+    "backgroundAttention": "{{host}} のファイル転送には操作が必要です。続行するにはファイルブラウザーを再度開いてください。",
+    "backgroundFinished": "{{host}} のファイル転送が終了しました。ファイルブラウザーを再度開いて結果を確認してください。",
+    "backgroundFailed": "{{host}} のファイル転送が失敗しました。ファイルブラウザーを再度開いて結果を確認してください。",
     "connecting": "接続中",
     "verifyingHost": "ホストを確認中",
     "connected": "接続済み",

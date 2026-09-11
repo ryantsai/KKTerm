@@ -81,6 +81,19 @@ test("advanced DOM overlays share URL and RDP intersection detection", async () 
   }
 });
 
+test("minimized SFTP popups keep their Session mounted without blocking native surfaces", async () => {
+  const popup = await readFile(new URL("../src/modules/workspace/connections/terminal/SftpToolbarPopup.tsx", import.meta.url), "utf8");
+  const workspace = await readFile(new URL("../src/modules/workspace/connections/sftp/SftpWorkspace.tsx", import.meta.url), "utf8");
+  const registry = await readFile(new URL("../src/modules/workspace/nativeOverlay.ts", import.meta.url), "utf8");
+  assert.match(popup, /<DialogPortal key=\{browser.paneId\}>/);
+  assert.match(popup, /connection-dialog-backdrop/);
+  assert.match(registry, /"\.connection-dialog-backdrop"/);
+  assert.match(popup, /style=\{visible \? undefined : \{ display: "none" \}\}/, "minimized backdrops must have zero geometry in the native intersection registry");
+  assert.match(popup, /inert=\{!visible\}/, "hidden browsers cannot keep keyboard focus");
+  assert.match(workspace, /showOverlays && transferConflict \?/, "background conflicts must wait without mounting a portaled modal");
+  assert.match(workspace, /if \(!onMinimize \|\| !onClose \|\| !isActive\) return;/, "a hidden popup must not intercept terminal Escape");
+});
+
 test("Dashboard overlays use the central snapshot suppression path", async () => {
   const files = await Promise.all(
     [
