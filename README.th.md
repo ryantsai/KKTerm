@@ -20,6 +20,16 @@
   <strong><a href="https://github.com/ryantsai/KKTerm/releases/latest">ดาวน์โหลด KKTerm รุ่นล่าสุด</a></strong>
 </p>
 
+> 💚 **KKTerm ฟรี ทำงานแบบ local-first ไม่มี telemetry ไม่ต้องสมัครสมาชิก พัฒนาโดยนักพัฒนาอิสระ**
+> ถ้า KKTerm ช่วยประหยัดเวลาของคุณทุกวัน วิธีสนับสนุนที่ดีที่สุดคือ**ซื้อ KKTerm จาก Microsoft Store หรือ Mac App Store** **จ่ายครั้งเดียว ไม่มีค่าสมาชิกรายเดือน** — เป็นแอปเดียวกับเวอร์ชันฟรีบน GitHub และรายได้ทั้งหมดจะนำไปใช้แก้บัก เพิ่มฟีเจอร์ และออกบิลด์ที่มีลายเซ็นพร้อมอัปเดตอัตโนมัติ
+>
+> <p align="center">
+>   <a href="https://apps.microsoft.com/detail/9nvqc5cnwwjk?hl=zh-TW&gl=HK"><img src="https://img.shields.io/badge/Microsoft_Store-Get_KKTerm_%E2%80%A2_One--time_payment-0078D4?style=for-the-badge&logo=microsoftstore&logoColor=white" alt="รับ KKTerm จาก Microsoft Store——จ่ายครั้งเดียว ไม่มีค่าสมาชิก" /></a>
+>   <a href="https://apps.apple.com/tw/app/kkterm/id6806710046?mt=12"><img src="https://img.shields.io/badge/Mac_App_Store-Download_KKTerm_%E2%80%A2_One--time_payment-000000?style=for-the-badge&logo=apple&logoColor=white" alt="ดาวน์โหลด KKTerm จาก Mac App Store——จ่ายครั้งเดียว ไม่มีค่าสมาชิก" /></a>
+> </p>
+>
+> <p align="center"><sub>อยากใช้เวอร์ชันฟรี? ดาวน์โหลดรีลีสล่าสุดจาก GitHub ได้เลย — ไม่ต้องสมัครสมาชิก ไม่มีเงื่อนไข</sub></p>
+
 <p align="center">
   <a href="https://github.com/ryantsai/KKTerm/stargazers">
     <img src="https://img.shields.io/github/stars/ryantsai/KKTerm?style=for-the-badge&logo=github&color=ffd33d" alt="GitHub stars" />
@@ -112,15 +122,30 @@ Dashboard View, Connection ของเทอร์มินัล, ตัวด
 
 ## รับ KKTerm
 
-ดาวน์โหลด [รุ่นล่าสุด](https://github.com/ryantsai/KKTerm/releases/latest) สำหรับ Windows, macOS หรือ Linux Windows มีตัวติดตั้งและ ZIP แบบพกพาสำหรับ x64/ARM64 ให้แตก ZIP แบบพกพาไปยังโฟลเดอร์ในเครื่องที่เขียนได้หรือไดรฟ์ถอดได้ อย่าเรียกใช้จากตำแหน่งแชร์บนเครือข่าย ตรวจสอบไฟล์ `.sha256` ที่อยู่ข้างเคียงก่อนเรียกใช้แพ็กเกจ
+**สนับสนุนการพัฒนา (แนะนำ):** รับ KKTerm จาก [Microsoft Store](https://apps.microsoft.com/detail/9nvqc5cnwwjk?hl=zh-TW&gl=HK) (Windows) หรือ [Mac App Store](https://apps.apple.com/tw/app/kkterm/id6806710046?mt=12) (macOS) จ่ายครั้งเดียว ไม่มีค่าสมาชิก — เป็นแอปเดียวกับเวอร์ชันฟรี พร้อมแพ็กเกจที่มีลายเซ็นและอัปเดตอัตโนมัติผ่านสโตร์ รายได้ทั้งหมดสนับสนุนการพัฒนาต่อโดยตรง
+
+**เวอร์ชันฟรี:** ดาวน์โหลด [รุ่นล่าสุด](https://github.com/ryantsai/KKTerm/releases/latest) สำหรับ Windows, macOS หรือ Linux Windows มีตัวติดตั้งและ ZIP แบบพกพาสำหรับ x64/ARM64 ให้แตก ZIP แบบพกพาไปยังโฟลเดอร์ในเครื่องที่เขียนได้หรือไดรฟ์ถอดได้ อย่าเรียกใช้จากตำแหน่งแชร์บนเครือข่าย ตรวจสอบไฟล์ `.sha256` ที่อยู่ข้างเคียงก่อนเรียกใช้แพ็กเกจ
 
 หากต้องการ build จากซอร์ส ให้เริ่มจาก [`CONTRIBUTING.md`](CONTRIBUTING.md)
+
+### ข้อจำกัดตามตรงของเวอร์ชันสโตร์
+
+เวอร์ชัน **Mac App Store** ทำงานใน App Sandbox ของ Apple จึงไม่เหมือนเวอร์ชันฟรีทุกประการ
+
+- เชลล์ local ก็ถูกจำกัดอยู่ในคอนเทนเนอร์เช่นกัน — `$HOME` คือคอนเทนเนอร์ จึงไม่มี dotfiles ไม่มี `~/.ssh` และใช้เครื่องมือ Homebrew ไม่ได้ เซสชัน SSH ระยะไกลไม่ได้รับผลกระทบ ถ้าต้องการเชลล์ local แบบไม่จำกัด ให้ใช้บิลด์ macOS แบบดาวน์โหลดโดยตรง
+- โฟลเดอร์จริงแต่ละแห่งต้องอนุญาตครั้งเดียวผ่านตัวเลือกของระบบ (จำไว้แม้รีสตาร์ตแล้ว) หน้าต่าง local ของ SFTP เริ่มที่ Documents ของคอนเทนเนอร์ และภาพจับหน้าจอจะบันทึกในโฟลเดอร์ของคอนเทนเนอร์เป็นค่าเริ่มต้น
+- ไม่มีบันทึกวิดีโอและไม่มีเมนูตั้งเวลาปิดเครื่อง การดาวน์โหลดครั้งแรกของการเชื่อมต่อ URL จะถามหาโฟลเดอร์ปลายทาง
+- อัปเดตผ่าน App Store เท่านั้น (ไม่มีตัวอัปเดตในแอป) ไคลเอนต์ MCP ที่ถูกจำกัดเชื่อมต่อบริดจ์ในตัวไม่ได้ และ ping จะใช้ TCP probe แทน ถ้าย้ายมาจากบิลด์ดาวน์โหลดโดยตรง ให้ลบรายการบันทึกหน้าจอเก่าในการตั้งค่าความเป็นส่วนตัวและความปลอดภัยแล้วอนุญาตใหม่
+
+เวอร์ชัน **Microsoft Store** คือแอป Windows ฉบับเต็ม ต่างกัน 2 จุด คือมีทดลองใช้ 7 วัน (ตรวจสัญญาอนุญาตครั้งเดียวต่อการเปิดแอป และไม่ล็อกแอปถ้าติดต่อสโตร์ไม่ได้) และอัปเดตผ่านสโตร์
+
+รายละเอียดดูที่ [`docs/MAC_APP_STORE.md`](docs/MAC_APP_STORE.md) และคู่มือบทที่ 2, 5, 7, 8, 11, 14, 15
 
 ## ร่วมพัฒนา สนับสนุน และเอกสาร
 
 ยินดีรับการมีส่วนร่วมและรายงานบั๊ก ดู [`CONTRIBUTING.md`](CONTRIBUTING.md), [คู่มือการใช้งาน](docs/manual/INDEX.md), [สถาปัตยกรรม](docs/ARCHITECTURE.md), [คู่มือ Dashboard](docs/DASHBOARD.md), [คู่มือ IT Ops](docs/ITOPS.md) และ [Custom Module Host API](docs/KKMOD_HOST_API_V2.md)
 
-ถ้า KKTerm มีประโยชน์สำหรับคุณ สามารถ[เลี้ยงกาแฟฉันสักแก้ว](https://buymeacoffee.com/ryantsai)ได้
+ถ้า KKTerm มีประโยชน์สำหรับคุณ การสนับสนุนที่ดีที่สุดคือซื้อจาก [Microsoft Store](https://apps.microsoft.com/detail/9nvqc5cnwwjk?hl=zh-TW&gl=HK) หรือ [Mac App Store](https://apps.apple.com/tw/app/kkterm/id6806710046?mt=12) (จ่ายครั้งเดียว ไม่มีค่าสมาชิก) — หรือ[เลี้ยงกาแฟฉันสักแก้ว](https://buymeacoffee.com/ryantsai)ก็ได้
 
 ## สัญญาอนุญาต
 

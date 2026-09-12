@@ -20,6 +20,16 @@
   <strong><a href="https://github.com/ryantsai/KKTerm/releases/latest">Tải bản KKTerm mới nhất</a></strong>
 </p>
 
+> 💚 **KKTerm miễn phí, local-first, không telemetry, không đăng ký, do một nhà phát triển độc lập xây dựng.**
+> Nếu KKTerm giúp bạn tiết kiệm thời gian mỗi ngày, cách ủng hộ tốt nhất là **mua bản của bạn trên Microsoft Store hoặc Mac App Store**. **Trả một lần, dùng mãi mãi** — cùng một ứng dụng như bản miễn phí trên GitHub, và mỗi lượt mua đều trực tiếp tài trợ sửa lỗi, tính năng mới cùng các bản phát hành có chữ ký, tự động cập nhật.
+>
+> <p align="center">
+>   <a href="https://apps.microsoft.com/detail/9nvqc5cnwwjk?hl=zh-TW&gl=HK"><img src="https://img.shields.io/badge/Microsoft_Store-Get_KKTerm_%E2%80%A2_One--time_payment-0078D4?style=for-the-badge&logo=microsoftstore&logoColor=white" alt="Tải KKTerm trên Microsoft Store — trả một lần, không đăng ký" /></a>
+>   <a href="https://apps.apple.com/tw/app/kkterm/id6806710046?mt=12"><img src="https://img.shields.io/badge/Mac_App_Store-Download_KKTerm_%E2%80%A2_One--time_payment-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Tải KKTerm trên Mac App Store — trả một lần, không đăng ký" /></a>
+> </p>
+>
+> <p align="center"><sub>Muốn dùng bản miễn phí? Tải bản phát hành GitHub mới nhất — không cần tài khoản, không ràng buộc.</sub></p>
+
 <p align="center">
   <a href="https://github.com/ryantsai/KKTerm/stargazers">
     <img src="https://img.shields.io/github/stars/ryantsai/KKTerm?style=for-the-badge&logo=github&color=ffd33d" alt="GitHub stars" />
@@ -112,15 +122,30 @@ Dashboard View, Connection của terminal, trình xem tài liệu và drill view
 
 ## Tải KKTerm
 
-Tải [bản phát hành mới nhất](https://github.com/ryantsai/KKTerm/releases/latest) cho Windows, macOS hoặc Linux. Windows có trình cài đặt và ZIP portable x64/ARM64; giải nén ZIP portable vào thư mục cục bộ có quyền ghi hoặc ổ đĩa rời, không chạy từ thư mục chia sẻ mạng. Hãy kiểm tra tệp `.sha256` đi kèm trước khi chạy gói cài đặt.
+**Ủng hộ phát triển (khuyến nghị):** tải KKTerm trên [Microsoft Store](https://apps.microsoft.com/detail/9nvqc5cnwwjk?hl=zh-TW&gl=HK) (Windows) hoặc [Mac App Store](https://apps.apple.com/tw/app/kkterm/id6806710046?mt=12) (macOS). Trả một lần, không đăng ký — cùng ứng dụng như bản miễn phí, kèm gói có chữ ký và tự động cập nhật qua cửa hàng. Mỗi lượt mua đều trực tiếp tài trợ phát triển tiếp theo.
+
+**Bản miễn phí:** tải [bản phát hành mới nhất](https://github.com/ryantsai/KKTerm/releases/latest) cho Windows, macOS hoặc Linux. Windows có trình cài đặt và ZIP portable x64/ARM64; giải nén ZIP portable vào thư mục cục bộ có quyền ghi hoặc ổ đĩa rời, không chạy từ thư mục chia sẻ mạng. Hãy kiểm tra tệp `.sha256` đi kèm trước khi chạy gói cài đặt.
 
 Nếu muốn build từ mã nguồn, hãy bắt đầu với [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
+### Giới hạn thẳng thắn của bản Store
+
+Bản **Mac App Store** chạy trong App Sandbox của Apple nên không giống hệt bản miễn phí.
+
+- Shell cục bộ cũng bị giam trong container: `$HOME` là container — không dotfiles, không `~/.ssh`, không công cụ Homebrew. Phiên SSH từ xa không bị ảnh hưởng; muốn làm việc cục bộ không giới hạn, hãy dùng bản macOS tải trực tiếp.
+- Mỗi thư mục thật cần cấp quyền một lần qua hộp chọn gốc (ghi nhớ sau khi khởi động lại); ngăn cục bộ SFTP bắt đầu từ Documents của container, ảnh chụp màn hình mặc định lưu trong thư mục container.
+- Không quay video, không menu hẹn giờ tắt máy; lượt tải đầu tiên của kết nối URL sẽ hỏi thư mục đích.
+- Cập nhật chỉ qua App Store (không có trình cập nhật tích hợp). Client MCP bị giam không tới được cầu nối tích hợp, ping chuyển sang dùng TCP probe. Nếu chuyển từ bản tải trực tiếp, hãy xóa mục Ghi màn hình cũ trong Quyền riêng tư & Bảo mật rồi phê duyệt lại.
+
+Bản **Microsoft Store** là ứng dụng Windows đầy đủ, khác hai điểm: dùng thử 7 ngày (giấy phép kiểm tra một lần mỗi lần mở, không bao giờ khóa app nếu không tới được Store) và cập nhật qua Store.
+
+Chi tiết xem [`docs/MAC_APP_STORE.md`](docs/MAC_APP_STORE.md) và các chương 2, 5, 7, 8, 11, 14, 15 của sổ tay.
 
 ## Đóng góp, ủng hộ và tài liệu
 
 Hoan nghênh đóng góp và báo lỗi. Xem [`CONTRIBUTING.md`](CONTRIBUTING.md), [sổ tay vận hành](docs/manual/INDEX.md), [kiến trúc](docs/ARCHITECTURE.md), [hướng dẫn Dashboard](docs/DASHBOARD.md), [hướng dẫn IT Ops](docs/ITOPS.md) và [Custom Module Host API](docs/KKMOD_HOST_API_V2.md).
 
-Nếu KKTerm hữu ích, bạn có thể [mời tôi một ly cà phê](https://buymeacoffee.com/ryantsai).
+Nếu KKTerm hữu ích, cách ủng hộ tốt nhất là mua trên [Microsoft Store](https://apps.microsoft.com/detail/9nvqc5cnwwjk?hl=zh-TW&gl=HK) hoặc [Mac App Store](https://apps.apple.com/tw/app/kkterm/id6806710046?mt=12) (trả một lần, không đăng ký) — hoặc [mời tôi một ly cà phê](https://buymeacoffee.com/ryantsai).
 
 ## Giấy phép
 

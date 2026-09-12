@@ -20,6 +20,16 @@
   <strong><a href="https://github.com/ryantsai/KKTerm/releases/latest">最新の KKTerm をダウンロード</a></strong>
 </p>
 
+> 💚 **KKTerm は個人開発者による、無料・ローカルファーストのアプリです。テレメトリもサブスクもありません。**
+> 毎日の作業を助けていると感じたら、**Microsoft Store または Mac App Store での購入**が一番の支援になります。**買い切り・サブスクなし**——GitHub の無料版と同じアプリで、収益はバグ修正・新機能・署名付き自動更新ビルドの開発に直接使われます。
+>
+> <p align="center">
+>   <a href="https://apps.microsoft.com/detail/9nvqc5cnwwjk?hl=zh-TW&gl=HK"><img src="https://img.shields.io/badge/Microsoft_Store-Get_KKTerm_%E2%80%A2_One--time_payment-0078D4?style=for-the-badge&logo=microsoftstore&logoColor=white" alt="Microsoft Store で KKTerm を入手——買い切り、サブスクなし" /></a>
+>   <a href="https://apps.apple.com/tw/app/kkterm/id6806710046?mt=12"><img src="https://img.shields.io/badge/Mac_App_Store-Download_KKTerm_%E2%80%A2_One--time_payment-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Mac App Store で KKTerm をダウンロード——買い切り、サブスクなし" /></a>
+> </p>
+>
+> <p align="center"><sub>無料版がよければ GitHub の最新リリースからどうぞ——登録不要、条件なしです。</sub></p>
+
 <p align="center">
   <a href="https://github.com/ryantsai/KKTerm/stargazers">
     <img src="https://img.shields.io/github/stars/ryantsai/KKTerm?style=for-the-badge&logo=github&color=ffd33d" alt="GitHub stars" />
@@ -112,15 +122,30 @@ Dashboard View、ターミナル Connection、ドキュメントビューアー�
 
 ## KKTerm を入手する
 
-[最新リリース](https://github.com/ryantsai/KKTerm/releases/latest)から Windows、macOS、Linux 用のバージョンをダウンロードしてください。Windows にはセットアップ実行ファイルと x64/ARM64 のポータブル ZIP があります。ポータブル ZIP は書き込み可能なローカルフォルダーまたはリムーバブルドライブに展開し、ネットワーク共有から実行しないでください。実行前に隣接する `.sha256` ファイルを確認してください。
+**開発支援（おすすめ）：**KKTerm を [Microsoft Store](https://apps.microsoft.com/detail/9nvqc5cnwwjk?hl=zh-TW&gl=HK)（Windows）または [Mac App Store](https://apps.apple.com/tw/app/kkterm/id6806710046?mt=12)（macOS）から入手してください。買い切り・サブスクなし——無料版と同じアプリで、署名付きパッケージとストア経由の自動更新が付きます。収益は開発の継続に直接使われます。
+
+**無料版：**[最新リリース](https://github.com/ryantsai/KKTerm/releases/latest)から Windows、macOS、Linux 用のバージョンをダウンロードしてください。Windows にはセットアップ実行ファイルと x64/ARM64 のポータブル ZIP があります。ポータブル ZIP は書き込み可能なローカルフォルダーまたはリムーバブルドライブに展開し、ネットワーク共有から実行しないでください。実行前に隣接する `.sha256` ファイルを確認してください。
 
 ソースからビルドする場合は、まず [`CONTRIBUTING.md`](CONTRIBUTING.md) をお読みください。
+
+### ストア版の正直な制限事項
+
+**Mac App Store** 版は Apple の App Sandbox 内で動作するため、無料版と完全には同じではありません。
+
+- ローカルシェルもサンドボックス内に閉じ込められます——`$HOME` はコンテナであり、dotfiles、`~/.ssh`、Homebrew のツールは使えません。リモート SSH セッションに影響はなく、制限のないローカルシェルが必要なら直接ダウンロード版の macOS ビルドをお使いください。
+- 実際のフォルダーにはネイティブピッカーで一度だけ許可を与える必要があり（許可は再起動後も記憶されます）。SFTP のローカルペインはコンテナ内の Documents から始まり、スクリーンショットは既定でコンテナ内のフォルダーに保存されます。
+- 動画録画とシャットダウンタイマーのメニューはありません。URL 接続の初回ダウンロード時は保存先フォルダーを聞かれます。
+- 更新は App Store 経由のみ（アプリ内アップデーターなし）。サンドボックス内の MCP クライアントは内蔵ブリッジに接続できず、ping は TCP プローブにフォールバックします。直接ダウンロード版から乗り換えた場合は「プライバシーとセキュリティ」の画面収録の古いエントリを削除して再承認してください。
+
+**Microsoft Store** 版は完全な Windows ビルドで、違いは 2 点だけです。7 日間のトライアル（起動ごとにライセンスを 1 回だけ確認し、ストアに接続できなくてもアプリはブロックされません）と、ストア経由の更新です。
+
+詳細は [`docs/MAC_APP_STORE.md`](docs/MAC_APP_STORE.md) とマニュアルの章 2、5、7、8、11、14、15 をご覧ください。
 
 ## 貢献、支援、ドキュメント
 
 コントリビューションと不具合報告を歓迎します。 [`CONTRIBUTING.md`](CONTRIBUTING.md)、[操作マニュアル](docs/manual/INDEX.md)、[アーキテクチャ](docs/ARCHITECTURE.md)、[Dashboard ガイド](docs/DASHBOARD.md)、[IT Ops ガイド](docs/ITOPS.md)、[Custom Module Host API](docs/KKMOD_HOST_API_V2.md) を参照してください。
 
-KKTerm が役に立ったら、[コーヒーをごちそういただけます](https://buymeacoffee.com/ryantsai)。
+KKTerm が役に立ったら、[Microsoft Store](https://apps.microsoft.com/detail/9nvqc5cnwwjk?hl=zh-TW&gl=HK)や [Mac App Store](https://apps.apple.com/tw/app/kkterm/id6806710046?mt=12)での購入（買い切り・サブスクなし）が一番の支援になります——[コーヒーをごちそう](https://buymeacoffee.com/ryantsai)いただくのも大歓迎です。
 
 ## ライセンス
 

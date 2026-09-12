@@ -20,6 +20,16 @@
   <strong><a href="https://github.com/ryantsai/KKTerm/releases/latest">下載最新版 KKTerm</a></strong>
 </p>
 
+> 💚 **KKTerm 由獨立開發者打造，免費、沒有遙測，也沒有訂閱。**
+> 如果 KKTerm 每天都幫你省下時間，最直接的支援方式就是到 **Microsoft Store 或 Mac App Store 購買**。**一次付費、永久擁有**——和 GitHub 免費版是同一套軟體，每一筆購買都會直接投入修復問題、開發新功能，以及提供簽署過、可自動更新的版本。
+>
+> <p align="center">
+>   <a href="https://apps.microsoft.com/detail/9nvqc5cnwwjk?hl=zh-TW&gl=HK"><img src="https://img.shields.io/badge/Microsoft_Store-Get_KKTerm_%E2%80%A2_One--time_payment-0078D4?style=for-the-badge&logo=microsoftstore&logoColor=white" alt="從 Microsoft Store 取得 KKTerm——一次付費、沒有訂閱" /></a>
+>   <a href="https://apps.apple.com/tw/app/kkterm/id6806710046?mt=12"><img src="https://img.shields.io/badge/Mac_App_Store-Download_KKTerm_%E2%80%A2_One--time_payment-000000?style=for-the-badge&logo=apple&logoColor=white" alt="從 Mac App Store 下載 KKTerm——一次付費、沒有訂閱" /></a>
+> </p>
+>
+> <p align="center"><sub>想要免費版？請到 GitHub 下載最新版本——不用註冊、不附帶任何條件。</sub></p>
+
 <p align="center">
   <a href="https://github.com/ryantsai/KKTerm/stargazers">
     <img src="https://img.shields.io/github/stars/ryantsai/KKTerm?style=for-the-badge&logo=github&color=ffd33d" alt="GitHub stars" />
@@ -112,15 +122,30 @@ Dashboard View、終端機 Connection、文件檢視器與 IT Ops drill view 共
 
 ## 取得 KKTerm
 
-從 [最新版本](https://github.com/ryantsai/KKTerm/releases/latest) 下載 Windows、macOS 或 Linux 版本。Windows 提供安裝程式與 x64／ARM64 免安裝 ZIP；請將免安裝 ZIP 解壓縮到可寫入的本機資料夾或可移除磁碟，不要從網路分享位置執行。執行前請核對旁邊的 `.sha256` 檔案。
+**支援開發（推薦）：**從 [Microsoft Store](https://apps.microsoft.com/detail/9nvqc5cnwwjk?hl=zh-TW&gl=HK)（Windows）或 [Mac App Store](https://apps.apple.com/tw/app/kkterm/id6806710046?mt=12)（macOS）取得 KKTerm。一次付費、沒有訂閱——和免費版是同一套軟體，並透過商店提供簽署過的包裝與自動更新。每一筆購買都直接支援後續開發。
+
+**免費版：**從 [最新版本](https://github.com/ryantsai/KKTerm/releases/latest) 下載 Windows、macOS 或 Linux 版本。Windows 提供安裝程式與 x64／ARM64 免安裝 ZIP；請將免安裝 ZIP 解壓縮到可寫入的本機資料夾或可移除磁碟，不要從網路分享位置執行。執行前請核對旁邊的 `.sha256` 檔案。
 
 若要從原始碼建置，請先閱讀 [`CONTRIBUTING.md`](CONTRIBUTING.md)。
+
+### 商店版的誠實限制
+
+**Mac App Store** 版執行於 Apple 的 App Sandbox 內，和免費版不完全相同：
+
+- 本機 Shell 同樣被侷限在容器內——容器才是 `$HOME`，因此讀不到 dotfiles、`~/.ssh` 與 Homebrew 工具。遠端 SSH 連線不受影響；需要不受限的本機 Shell，請使用直接下載的 macOS 版本。
+- 存取真實資料夾需要透過原生選擇器授權一次（授權會被記住）；SFTP 本機面板從容器內的 Documents 開始，螢幕截圖預設存放在容器內資料夾。
+- 不提供影片錄製與關機排程選單；URL 連線的第一次下載會請你選擇目的地資料夾。
+- 更新完全透過 App Store（沒有內建更新器）。被 sandbox 侷限的 MCP 客戶端連不上內建 bridge，ping 會改用 TCP 探測。從直接下載版切換過來時，請在「隱私權與安全性」中移除舊的「螢幕錄製」項目並重新允許。
+
+**Microsoft Store** 版是完整的 Windows 版本，只有兩處不同：提供 7 天試用（每次啟動檢查一次授權，連不上商店時不會鎖住 App），更新完全透過商店。
+
+詳細說明請見 [`docs/MAC_APP_STORE.md`](docs/MAC_APP_STORE.md)，以及操作手冊第 2、5、7、8、11、14、15 章。
 
 ## 參與、支援與文件
 
 歡迎貢獻程式碼與回報問題。請參閱 [`CONTRIBUTING.md`](CONTRIBUTING.md)，再瀏覽[操作手冊](docs/manual/INDEX.md)、[架構文件](docs/ARCHITECTURE.md)、[Dashboard 指南](docs/DASHBOARD.md)、[IT Ops 指南](docs/ITOPS.md) 與 [Custom Module Host API](docs/KKMOD_HOST_API_V2.md)。
 
-如果 KKTerm 對你有幫助，也可以[請我喝杯咖啡](https://buymeacoffee.com/ryantsai)。
+如果 KKTerm 對你有幫助，最有力量的支援是到 [Microsoft Store](https://apps.microsoft.com/detail/9nvqc5cnwwjk?hl=zh-TW&gl=HK) 或 [Mac App Store](https://apps.apple.com/tw/app/kkterm/id6806710046?mt=12) 購買（一次付費、沒有訂閱）——也可以[請我喝杯咖啡](https://buymeacoffee.com/ryantsai)。
 
 ## 授權
 

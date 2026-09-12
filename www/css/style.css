@@ -563,6 +563,111 @@ h1 {
   .footer-bottom p:last-child { text-align: right; }
 }
 
+/* ---------- Support banner + store badges ---------- */
+.support-banner {
+  background: linear-gradient(90deg, rgba(139, 207, 76, 0.16), rgba(139, 207, 76, 0.07));
+  border-bottom: 1px solid rgba(139, 207, 76, 0.35);
+  text-align: center;
+  padding: 10px var(--space-4);
+}
+.support-banner p {
+  margin: 0 auto;
+  max-width: 900px;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+.support-banner a {
+  color: var(--accent-strong);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+.support-banner a:hover { color: var(--text); }
+.support-banner-sub { color: var(--text-muted); }
+
+.store-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+.btn-store {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #05080f;
+  color: #fff;
+  transition: transform var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+.btn-store:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-glow);
+}
+.store-icon { width: 30px; height: 30px; flex-shrink: 0; }
+.store-text { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.25; }
+.store-text small {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #aeb9cf;
+  font-weight: 500;
+}
+.store-text strong { font-size: 1.08rem; font-weight: 700; }
+
+.support-note {
+  margin-top: var(--space-4) !important;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid rgba(139, 207, 76, 0.35);
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  font-size: 0.92rem;
+  color: var(--text-muted);
+  max-width: 62ch;
+}
+.support-note strong { color: var(--text); }
+.support-note a {
+  color: var(--accent-strong);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.support-note a:hover { color: var(--text); }
+
+.section-sub strong { color: var(--text); }
+
+.download-card-featured {
+  position: relative;
+  border-color: rgba(139, 207, 76, 0.55);
+  box-shadow: var(--shadow-glow);
+}
+.pill-recommended {
+  position: absolute;
+  top: -13px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent-strong);
+  color: var(--accent-ink);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 3px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.download-subhead {
+  margin-top: var(--space-6);
+  margin-bottom: var(--space-3);
+  text-align: center;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
 /* ---------- Scroll reveal ---------- */
 .reveal {
   opacity: 0;

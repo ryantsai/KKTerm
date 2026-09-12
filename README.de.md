@@ -20,6 +20,16 @@
   <strong><a href="https://github.com/ryantsai/KKTerm/releases/latest">Neueste KKTerm-Version herunterladen</a></strong>
 </p>
 
+> 💚 **KKTerm ist kostenlos, local-first, ohne Telemetrie und ohne Abo — entwickelt von einem unabhängigen Entwickler.**
+> Wenn KKTerm dir täglich Zeit spart, unterstützt du das Projekt am besten, indem du **deine Kopie im Microsoft Store oder Mac App Store kaufst**. **Einmal zahlen, für immer nutzen** — dieselbe App wie der kostenlose GitHub-Build; jeder Kauf fließt direkt in Bugfixes, neue Funktionen und signierte Builds mit automatischen Updates.
+>
+> <p align="center">
+>   <a href="https://apps.microsoft.com/detail/9nvqc5cnwwjk?hl=zh-TW&gl=HK"><img src="https://img.shields.io/badge/Microsoft_Store-Get_KKTerm_%E2%80%A2_One--time_payment-0078D4?style=for-the-badge&logo=microsoftstore&logoColor=white" alt="KKTerm im Microsoft Store holen — einmal zahlen, kein Abo" /></a>
+>   <a href="https://apps.apple.com/tw/app/kkterm/id6806710046?mt=12"><img src="https://img.shields.io/badge/Mac_App_Store-Download_KKTerm_%E2%80%A2_One--time_payment-000000?style=for-the-badge&logo=apple&logoColor=white" alt="KKTerm im Mac App Store laden — einmal zahlen, kein Abo" /></a>
+> </p>
+>
+> <p align="center"><sub>Lieber kostenlos? Hole dir das neueste GitHub-Release — ohne Konto, ohne Bedingungen.</sub></p>
+
 <p align="center">
   <a href="https://github.com/ryantsai/KKTerm/stargazers">
     <img src="https://img.shields.io/github/stars/ryantsai/KKTerm?style=for-the-badge&logo=github&color=ffd33d" alt="GitHub stars" />
@@ -112,15 +122,30 @@ Dashboard-Views, Terminal-Connections, der Dokument-Viewer und IT-Ops-Drilldown-
 
 ## KKTerm herunterladen
 
-Lade die [neueste Version](https://github.com/ryantsai/KKTerm/releases/latest) für Windows, macOS oder Linux herunter. Windows bietet ein Setup-Programm sowie portable ZIPs für x64/ARM64. Entpacke ein portables ZIP in einen lokal beschreibbaren Ordner oder auf ein Wechsellaufwerk, nicht in eine Netzwerkfreigabe. Prüfe vor dem Start die danebenliegende `.sha256`-Datei.
+**Entwicklung unterstützen (empfohlen):** Hole dir KKTerm im [Microsoft Store](https://apps.microsoft.com/detail/9nvqc5cnwwjk?hl=zh-TW&gl=HK) (Windows) oder im [Mac App Store](https://apps.apple.com/tw/app/kkterm/id6806710046?mt=12) (macOS). Einmal zahlen, kein Abo — dieselbe App wie der kostenlose Build, dazu signierte Pakete und automatische Updates über den Store. Jeder Kauf finanziert direkt die Weiterentwicklung.
+
+**Kostenlose Builds:** Lade die [neueste Version](https://github.com/ryantsai/KKTerm/releases/latest) für Windows, macOS oder Linux herunter. Windows bietet ein Setup-Programm sowie portable ZIPs für x64/ARM64. Entpacke ein portables ZIP in einen lokal beschreibbaren Ordner oder auf ein Wechsellaufwerk, nicht in eine Netzwerkfreigabe. Prüfe vor dem Start die danebenliegende `.sha256`-Datei.
 
 Für einen Build aus dem Quellcode lies zuerst [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
+### Ehrliche Einschränkungen der Store-Editionen
+
+Die **Mac App Store**-Version läuft in Apples App Sandbox und ist daher nicht 1:1 der kostenlose Build.
+
+- Lokale Shells sind ebenfalls eingesperrt — `$HOME` ist der Container, also keine Dotfiles, kein `~/.ssh`, keine Homebrew-Tools. Remote-SSH-Sitzungen sind nicht betroffen; für unbeschränktes lokales Arbeiten nimm den macOS-Build als Direktdownload.
+- Echte Ordner brauchen eine einmalige Freigabe über die native Auswahl (bleibt nach Neustarts erhalten); der lokale SFTP-Bereich startet in Documents des Containers, Screenshots landen standardmäßig in einem Container-Ordner.
+- Keine Videoaufnahme, kein Shutdown-Timer-Menü; der erste Download einer URL-Verbindung fragt nach einem Zielordner.
+- Updates kommen nur aus dem App Store (kein In-App-Updater). Eingesperrte MCP-Clients erreichen die eingebaute Bridge nicht, Ping weicht auf TCP-Probe aus. Bei Wechsel vom Direktdownload-Build den alten Bildschirmaufnahme-Eintrag unter Datenschutz & Sicherheit entfernen und neu erlauben.
+
+Die **Microsoft Store**-Version ist das volle Windows-Programm mit zwei Unterschieden: 7-Tage-Testversion (Lizenz wird einmal pro Start geprüft, blockiert die App nie bei Store-Problemen) und Updates über den Store.
+
+Details in [`docs/MAC_APP_STORE.md`](docs/MAC_APP_STORE.md) und den Handbuchkapiteln 2, 5, 7, 8, 11, 14 und 15.
 
 ## Beitragen, unterstützen und Dokumentation
 
 Beiträge und Fehlerberichte sind willkommen. Siehe [`CONTRIBUTING.md`](CONTRIBUTING.md), das [Benutzerhandbuch](docs/manual/INDEX.md), die [Architektur](docs/ARCHITECTURE.md), den [Dashboard-Leitfaden](docs/DASHBOARD.md), den [IT-Ops-Leitfaden](docs/ITOPS.md) und die [Custom-Module-Host-API](docs/KKMOD_HOST_API_V2.md).
 
-Wenn KKTerm nützlich ist, kannst du [mir einen Kaffee spendieren](https://buymeacoffee.com/ryantsai).
+Wenn KKTerm nützlich ist, unterstützt du am besten mit einem Kauf im [Microsoft Store](https://apps.microsoft.com/detail/9nvqc5cnwwjk?hl=zh-TW&gl=HK) oder [Mac App Store](https://apps.apple.com/tw/app/kkterm/id6806710046?mt=12) (einmal zahlen, kein Abo) — oder du kannst [mir einen Kaffee spendieren](https://buymeacoffee.com/ryantsai).
 
 ## Lizenz
 

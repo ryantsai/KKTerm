@@ -20,6 +20,16 @@
   <strong><a href="https://github.com/ryantsai/KKTerm/releases/latest">Unduh rilis KKTerm terbaru</a></strong>
 </p>
 
+> 💚 **KKTerm gratis, local-first, tanpa telemetri dan tanpa langganan, dibuat oleh pengembang independen.**
+> Jika KKTerm menghemat waktumu setiap hari, cara terbaik untuk mendukungnya adalah **membeli salinanmu di Microsoft Store atau Mac App Store**. **Sekali bayar, tanpa langganan** — aplikasi yang sama dengan build gratis di GitHub, dan setiap pembelian langsung mendanai perbaikan bug, fitur baru, serta rilis bertanda tangan dengan pembaruan otomatis.
+>
+> <p align="center">
+>   <a href="https://apps.microsoft.com/detail/9nvqc5cnwwjk?hl=zh-TW&gl=HK"><img src="https://img.shields.io/badge/Microsoft_Store-Get_KKTerm_%E2%80%A2_One--time_payment-0078D4?style=for-the-badge&logo=microsoftstore&logoColor=white" alt="Dapatkan KKTerm di Microsoft Store — sekali bayar, tanpa langganan" /></a>
+>   <a href="https://apps.apple.com/tw/app/kkterm/id6806710046?mt=12"><img src="https://img.shields.io/badge/Mac_App_Store-Download_KKTerm_%E2%80%A2_One--time_payment-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Unduh KKTerm di Mac App Store — sekali bayar, tanpa langganan" /></a>
+> </p>
+>
+> <p align="center"><sub>Lebih suka yang gratis? Unduh rilis GitHub terbaru — tanpa akun, tanpa syarat.</sub></p>
+
 <p align="center">
   <a href="https://github.com/ryantsai/KKTerm/stargazers">
     <img src="https://img.shields.io/github/stars/ryantsai/KKTerm?style=for-the-badge&logo=github&color=ffd33d" alt="GitHub stars" />
@@ -112,15 +122,30 @@ Dashboard View, Connection terminal, penampil dokumen, dan drill view IT Ops mem
 
 ## Dapatkan KKTerm
 
-Unduh [rilis terbaru](https://github.com/ryantsai/KKTerm/releases/latest) untuk Windows, macOS, atau Linux. Windows menyediakan installer dan ZIP portabel x64/ARM64; ekstrak ZIP portabel ke folder lokal yang dapat ditulis atau drive yang dapat dilepas, bukan ke lokasi berbagi jaringan. Verifikasi file `.sha256` di sebelahnya sebelum menjalankan paket.
+**Dukung pengembangan (disarankan):** dapatkan KKTerm di [Microsoft Store](https://apps.microsoft.com/detail/9nvqc5cnwwjk?hl=zh-TW&gl=HK) (Windows) atau [Mac App Store](https://apps.apple.com/tw/app/kkterm/id6806710046?mt=12) (macOS). Sekali bayar, tanpa langganan — aplikasi yang sama dengan build gratis, plus paket bertanda tangan dan pembaruan otomatis via toko. Setiap pembelian langsung mendanai pengembangan lanjutan.
+
+**Build gratis:** unduh [rilis terbaru](https://github.com/ryantsai/KKTerm/releases/latest) untuk Windows, macOS, atau Linux. Windows menyediakan installer dan ZIP portabel x64/ARM64; ekstrak ZIP portabel ke folder lokal yang dapat ditulis atau drive yang dapat dilepas, bukan ke lokasi berbagi jaringan. Verifikasi file `.sha256` di sebelahnya sebelum menjalankan paket.
 
 Untuk build dari source, mulai dengan [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
+### Batasan jujur edisi Store
+
+Versi **Mac App Store** berjalan di dalam App Sandbox Apple, jadi tidak sama persis dengan versi gratis.
+
+- Shell lokal ikut terkungkung: `$HOME` adalah kontainer — tanpa dotfiles, tanpa `~/.ssh`, tanpa tool Homebrew. Sesi SSH jarak jauh tidak terpengaruh; untuk kerja lokal tanpa batas, gunakan build macOS unduhan langsung.
+- Setiap folder asli butuh izin sekali lewat pemilih bawaan (diingat setelah restart); panel lokal SFTP mulai dari Documents kontainer, dan screenshot tersimpan default di folder kontainer.
+- Tanpa perekaman video dan tanpa menu timer mati; unduhan pertama koneksi URL menanyakan folder tujuan.
+- Update hanya via App Store (tanpa updater bawaan). Klien MCP yang terkungkung tidak bisa mencapai bridge bawaan, dan ping beralih ke probe TCP. Jika pindah dari build unduhan langsung, hapus entri Perekaman Layar lama di Privasi & Keamanan lalu setujui ulang.
+
+Versi **Microsoft Store** adalah aplikasi Windows penuh, dengan dua perbedaan: uji coba 7 hari (lisensi dicek sekali per peluncuran, tidak pernah mengunci aplikasi jika Store tak terjangkau) dan update via Store.
+
+Detail di [`docs/MAC_APP_STORE.md`](docs/MAC_APP_STORE.md) dan bab 2, 5, 7, 8, 11, 14, 15 manual.
 
 ## Berkontribusi, mendukung, dan dokumentasi
 
 Kontribusi dan laporan bug diterima. Lihat [`CONTRIBUTING.md`](CONTRIBUTING.md), [manual operasi](docs/manual/INDEX.md), [arsitektur](docs/ARCHITECTURE.md), [panduan Dashboard](docs/DASHBOARD.md), [panduan IT Ops](docs/ITOPS.md), dan [Custom Module Host API](docs/KKMOD_HOST_API_V2.md).
 
-Jika KKTerm bermanfaat, Anda dapat [mentraktir saya kopi](https://buymeacoffee.com/ryantsai).
+Jika KKTerm bermanfaat, dukungan terbaik adalah membeli di [Microsoft Store](https://apps.microsoft.com/detail/9nvqc5cnwwjk?hl=zh-TW&gl=HK) atau [Mac App Store](https://apps.apple.com/tw/app/kkterm/id6806710046?mt=12) (sekali bayar, tanpa langganan) — atau [traktir saya kopi](https://buymeacoffee.com/ryantsai).
 
 ## Lisensi
 

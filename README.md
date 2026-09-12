@@ -16,9 +16,16 @@
   <sub>Named after <strong>乖乖 (Kuāi Kuāi)</strong>, the green coconut snack Taiwanese sysadmins place on servers to keep them well-behaved.</sub>
 </p>
 
-<p align="center">
-  <strong><a href="https://github.com/ryantsai/KKTerm/releases/latest">Download the latest release</a></strong>
-</p>
+> 💚 **KKTerm is free, local-first, and built by an independent developer — no telemetry, no subscription, no VC.**
+> If KKTerm saves you time every day, the kindest way to keep it alive is to **get your copy from the Microsoft Store or the Mac App Store**.
+> It's a **one-time payment only — pay once, yours forever** — the same app as the free GitHub build, and every purchase goes straight back into bug fixes, new features, and signed, auto-updating releases.
+>
+> <p align="center">
+>   <a href="https://apps.microsoft.com/detail/9nvqc5cnwwjk?hl=zh-TW&gl=HK"><img src="https://img.shields.io/badge/Microsoft_Store-Get_KKTerm_%E2%80%A2_One--time_payment-0078D4?style=for-the-badge&logo=microsoftstore&logoColor=white" alt="Get KKTerm from the Microsoft Store — one-time payment, no subscription" /></a>
+>   <a href="https://apps.apple.com/tw/app/kkterm/id6806710046?mt=12"><img src="https://img.shields.io/badge/Mac_App_Store-Download_KKTerm_%E2%80%A2_One--time_payment-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Download KKTerm on the Mac App Store — one-time payment, no subscription" /></a>
+> </p>
+>
+> <p align="center"><sub>Prefer the free build? Grab the <a href="https://github.com/ryantsai/KKTerm/releases/latest">latest GitHub release</a> — no account, no strings attached.</sub></p>
 
 <p align="center">
   <a href="https://github.com/ryantsai/KKTerm/stargazers">
@@ -118,15 +125,30 @@ Dashboard Views, terminal Connections, the Document viewer, and IT Ops drill vie
 
 ## Get KKTerm
 
-Download the [latest release](https://github.com/ryantsai/KKTerm/releases/latest) for Windows, macOS, or Linux. Windows provides a setup executable and x64/ARM64 portable ZIPs; extract a portable ZIP to a writable local folder or removable drive, not a network share. Verify the adjacent `.sha256` file before running a package.
+**Support development (recommended):** get KKTerm from the [Microsoft Store](https://apps.microsoft.com/detail/9nvqc5cnwwjk?hl=zh-TW&gl=HK) (Windows) or the [Mac App Store](https://apps.apple.com/tw/app/kkterm/id6806710046?mt=12) (macOS). One-time payment, no subscription — same app as the free build, plus signed packaging and automatic updates through the store. Every purchase directly funds continued development.
+
+**Free builds:** download the [latest release](https://github.com/ryantsai/KKTerm/releases/latest) for Windows, macOS, or Linux. Windows provides a setup executable and x64/ARM64 portable ZIPs; extract a portable ZIP to a writable local folder or removable drive, not a network share. Verify the adjacent `.sha256` file before running a package.
 
 To build from source, start with [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
+### Store editions: honest limitations
+
+The **Mac App Store** build runs inside Apple's App Sandbox, so it is not 1:1 the free build:
+
+- Local shells are sandboxed too — `$HOME` is the app container, so dotfiles, `~/.ssh`, and Homebrew tools are unavailable. Remote SSH Sessions are unaffected; use the direct-download macOS build for unconfined local shell work.
+- Each real folder needs a one-time grant through the native picker (remembered across restarts); the SFTP local pane starts in the container's Documents, and screenshots default to a container folder.
+- No video recording and no shutdown-timer menu; the first download of a URL Connection asks for a destination folder.
+- Updates come from the App Store only (no in-app updater). Sandboxed MCP clients cannot reach the built-in bridge, and ping falls back to a TCP probe. When switching from the direct-download build, remove the old Screen Recording entry under Privacy & Security and re-approve it.
+
+The **Microsoft Store** build is the full Windows app with two differences: a 7-day trial (the Store license is checked once per launch and never locks the app if the Store is unreachable) and Store-owned updates.
+
+Full details live in [`docs/MAC_APP_STORE.md`](docs/MAC_APP_STORE.md) and manual chapters 2, 5, 7, 8, 11, 14, and 15.
 
 ## Contribute, support, and docs
 
 Contributions and bug reports are welcome. See [`CONTRIBUTING.md`](CONTRIBUTING.md), then browse the [operation manual](docs/manual/INDEX.md), [architecture](docs/ARCHITECTURE.md), [Dashboard guide](docs/DASHBOARD.md), [IT Ops guide](docs/ITOPS.md), and [Custom Module host API](docs/KKMOD_HOST_API_V2.md).
 
-If KKTerm is useful, you can [buy me a coffee](https://buymeacoffee.com/ryantsai).
+If KKTerm is useful, the most impactful support is a [Microsoft Store](https://apps.microsoft.com/detail/9nvqc5cnwwjk?hl=zh-TW&gl=HK) or [Mac App Store](https://apps.apple.com/tw/app/kkterm/id6806710046?mt=12) purchase (one-time payment, no subscription) — or you can [buy me a coffee](https://buymeacoffee.com/ryantsai).
 
 ## License
 

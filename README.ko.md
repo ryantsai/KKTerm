@@ -20,6 +20,16 @@
   <strong><a href="https://github.com/ryantsai/KKTerm/releases/latest">최신 KKTerm 다운로드</a></strong>
 </p>
 
+> 💚 **KKTerm은 독립 개발자가 만드는 무료 로컬-퍼스트 앱입니다. 텔레메트리도 구독도 없습니다.**
+> KKTerm이 매일 시간을 아껴준다면, **Microsoft Store 또는 Mac App Store에서 구매**해 주시는 것이 가장 큰 지원이 됩니다. **일회성 결제, 구독 없음**——GitHub 무료 빌드와 동일한 앱이며, 수익금은 버그 수정, 새 기능, 서명된 자동 업데이트 빌드 개발에 직접 사용됩니다.
+>
+> <p align="center">
+>   <a href="https://apps.microsoft.com/detail/9nvqc5cnwwjk?hl=zh-TW&gl=HK"><img src="https://img.shields.io/badge/Microsoft_Store-Get_KKTerm_%E2%80%A2_One--time_payment-0078D4?style=for-the-badge&logo=microsoftstore&logoColor=white" alt="Microsoft Store에서 KKTerm 받기——일회성 결제, 구독 없음" /></a>
+>   <a href="https://apps.apple.com/tw/app/kkterm/id6806710046?mt=12"><img src="https://img.shields.io/badge/Mac_App_Store-Download_KKTerm_%E2%80%A2_One--time_payment-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Mac App Store에서 KKTerm 다운로드——일회성 결제, 구독 없음" /></a>
+> </p>
+>
+> <p align="center"><sub>무료 빌드를 원하시면 GitHub 최신 릴리스에서 받으세요——가입도 조건도 없습니다.</sub></p>
+
 <p align="center">
   <a href="https://github.com/ryantsai/KKTerm/stargazers">
     <img src="https://img.shields.io/github/stars/ryantsai/KKTerm?style=for-the-badge&logo=github&color=ffd33d" alt="GitHub stars" />
@@ -112,15 +122,30 @@ Dashboard View, 터미널 Connection, 문서 뷰어, IT Ops drill view는 하나
 
 ## KKTerm 받기
 
-[최신 릴리스](https://github.com/ryantsai/KKTerm/releases/latest)에서 Windows, macOS 또는 Linux용 버전을 다운로드하세요. Windows에는 설치 실행 파일과 x64/ARM64 포터블 ZIP이 제공됩니다. 포터블 ZIP은 쓰기 가능한 로컬 폴더나 이동식 드라이브에 압축을 풀고, 네트워크 공유 위치에서 실행하지 마세요. 실행 전에 옆에 있는 `.sha256` 파일을 확인하세요.
+**개발 후원(권장):** [Microsoft Store](https://apps.microsoft.com/detail/9nvqc5cnwwjk?hl=zh-TW&gl=HK)(Windows) 또는 [Mac App Store](https://apps.apple.com/tw/app/kkterm/id6806710046?mt=12)(macOS)에서 KKTerm을 받으세요. 일회성 결제, 구독 없음——GitHub 무료 빌드와 동일한 앱이며, 서명된 패키지와 스토어 자동 업데이트가 제공됩니다. 수익금은 지속적인 개발에 직접 사용됩니다.
+
+**무료 빌드:** [최신 릴리스](https://github.com/ryantsai/KKTerm/releases/latest)에서 Windows, macOS 또는 Linux용 버전을 다운로드하세요. Windows에는 설치 실행 파일과 x64/ARM64 포터블 ZIP이 제공됩니다. 포터블 ZIP은 쓰기 가능한 로컬 폴더나 이동식 드라이브에 압축을 풀고, 네트워크 공유 위치에서 실행하지 마세요. 실행 전에 옆에 있는 `.sha256` 파일을 확인하세요.
 
 소스에서 빌드하려면 먼저 [`CONTRIBUTING.md`](CONTRIBUTING.md)를 읽어 주세요.
+
+### 스토어 버전의 솔직한 제한 사항
+
+**Mac App Store** 버전은 Apple의 App Sandbox 안에서 동작하므로 무료 빌드와 100% 동일하지 않습니다.
+
+- 로컬 셸도 샌드박스에 갇힙니다——`$HOME`은 컨테이너이며 dotfiles, `~/.ssh`, Homebrew 도구를 사용할 수 없습니다. 원격 SSH 세션에는 영향이 없으며, 제한 없는 로컬 셸이 필요하면 직접 다운로드한 macOS 빌드를 사용하세요.
+- 실제 폴더는 네이티브 선택기로 한 번만 허용하면 되며(허용은 재시작 후에도 기억됩니다). SFTP 로컬 창은 컨테이너의 Documents에서 시작하고, 스크린샷은 기본적으로 컨테이너 폴더에 저장됩니다.
+- 동영상 녹화와 종료 타이머 메뉴가 없으며, URL 연결의 첫 다운로드 때는 대상 폴더를 묻습니다.
+- 업데이트는 App Store를 통해서만 제공됩니다(인앱 업데이터 없음). 샌드박스 안의 MCP 클라이언트는 내장 브리지에 연결할 수 없고, ping은 TCP 프로브로 대체됩니다. 직접 다운로드 빌드에서 옮겨 왔다면 개인정보 보호 및 보안의 화면 기록에서 이전 항목을 삭제하고 다시 승인하세요.
+
+**Microsoft Store** 버전은 완전한 Windows 빌드이며, 차이점은 2가지뿐입니다. 7일 평가판(실행할 때마다 라이선스를 한 번만 확인하고, 스토어에 연결되지 않아도 앱이 차단되지 않음)과 스토어를 통한 업데이트입니다.
+
+자세한 내용은 [`docs/MAC_APP_STORE.md`](docs/MAC_APP_STORE.md)와 매뉴얼 2, 5, 7, 8, 11, 14, 15장을 참고하세요.
 
 ## 기여, 후원, 문서
 
 기여와 버그 신고를 환영합니다. [`CONTRIBUTING.md`](CONTRIBUTING.md), [사용 설명서](docs/manual/INDEX.md), [아키텍처](docs/ARCHITECTURE.md), [Dashboard 가이드](docs/DASHBOARD.md), [IT Ops 가이드](docs/ITOPS.md), [Custom Module Host API](docs/KKMOD_HOST_API_V2.md)를 참고하세요.
 
-KKTerm이 유용하다면 [커피 한 잔 사주세요](https://buymeacoffee.com/ryantsai).
+KKTerm이 유용하다면 [Microsoft Store](https://apps.microsoft.com/detail/9nvqc5cnwwjk?hl=zh-TW&gl=HK)나 [Mac App Store](https://apps.apple.com/tw/app/kkterm/id6806710046?mt=12)에서 구매(일회성 결제, 구독 없음)해 주시는 것이 가장 큰 후원이 됩니다——[커피 한 잔 사주기](https://buymeacoffee.com/ryantsai)도 환영합니다.
 
 ## 라이선스
 
