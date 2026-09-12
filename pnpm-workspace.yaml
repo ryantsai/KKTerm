@@ -1,0 +1,11 @@
+# pnpm 12 no longer reads settings from the "pnpm" field in package.json.
+# https://pnpm.io/settings
+
+# Packages allowed to run install lifecycle scripts. pnpm blocks all others.
+allowBuilds:
+  esbuild: true
+  workerd: true
+
+overrides:
+  glob: ^13.0.6
+  rimraf: ^6.1.3

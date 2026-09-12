@@ -1,4 +1,4 @@
-// Auto-discovering test runner for `npm run check`.
+// Auto-discovering test runner for `pnpm run check`.
 //
 // Discovers every `tests/*.test.mjs` file and runs it through the Node test
 // runner. A new test file is picked up automatically — there is no hand-edited
@@ -7,7 +7,7 @@
 // QUARANTINE holds source-grep guards whose asserted implementation text has
 // drifted from the current source. It is currently empty — every previously
 // quarantined guard has been realigned with the live source and is back under
-// `npm run check`. Do not add new entries to grow the quarantine — fix the test.
+// `pnpm run check`. Do not add new entries to grow the quarantine — fix the test.
 import { readdir } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { dirname, join } from "node:path";

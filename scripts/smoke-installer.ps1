@@ -172,7 +172,7 @@ function Get-ExistingRealInstall {
 }
 
 if (-not (Test-Path $ResolvedInstallerPath)) {
-    throw "Installer not found at $ResolvedInstallerPath. Run npm run package:installer first."
+    throw "Installer not found at $ResolvedInstallerPath. Run pnpm run package:installer first."
 }
 
 if (-not $SkipChecksum) {

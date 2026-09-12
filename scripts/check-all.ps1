@@ -2,5 +2,5 @@ $ErrorActionPreference = "Stop"
 
 Set-Location (Join-Path $PSScriptRoot "..")
 
-npm run check:all
+pnpm run check:all
 exit $LASTEXITCODE

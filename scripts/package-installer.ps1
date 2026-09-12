@@ -44,7 +44,7 @@ try {
     $PreviousTauriConfig = $env:TAURI_CONFIG
     $env:TAURI_CONFIG = '{"bundle":{"externalBin":["binaries/kkterm-cli"]}}'
     try {
-        npm exec tauri -- build --bundles=nsis
+        pnpm exec tauri build --bundles=nsis
     }
     finally {
         $env:TAURI_CONFIG = $PreviousTauriConfig

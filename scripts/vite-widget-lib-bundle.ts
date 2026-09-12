@@ -5,9 +5,10 @@
 // Usage in TypeScript:
 //   import qrcodeSource from "widget-lib:qrcode?global=QRCode";
 //
-// The plugin invokes esbuild (already a Vite dependency) with bundle=true and
-// format=iife. The IIFE assigns its result to the requested global on window,
-// matching the runtime contract widget libraries rely on inside the sandbox.
+// The plugin invokes esbuild (a direct devDependency, deduped with the copy
+// Vite resolves) with bundle=true and format=iife. The IIFE assigns its
+// result to the requested global on window, matching the runtime contract
+// widget libraries rely on inside the sandbox.
 
 import { build } from "esbuild";
 import type { Plugin } from "vite";

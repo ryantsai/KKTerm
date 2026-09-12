@@ -117,7 +117,7 @@ for (const fileName of localeFiles) {
     console.log(
       `  Key order first differs at shared index ${orderMismatch.index}: expected ${orderMismatch.expected}, found ${orderMismatch.actual}`,
     );
-    console.log("  Run `npm run i18n:normalize` to mirror en.json key order.");
+    console.log("  Run `pnpm run i18n:normalize` to mirror en.json key order.");
   }
 }
 

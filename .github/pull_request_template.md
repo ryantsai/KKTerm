@@ -46,7 +46,7 @@ Delete any section that does not apply.
 - [ ] Dialogs built from `src/app/ui/dialog` primitives; colors read from tokens (no hard-coded hex)
 - [ ] Windows footer button order (primary before Cancel, bottom-right); single dismiss path (no duplicate close X)
 - [ ] Transient status uses `showStatusBarNotice` (no one-off toasts); no `window.alert/confirm/prompt`
-- [ ] Tutorial-capable UI wired with `data-tutorial-id` + nav/metadata mappings (`npm run check` passes)
+- [ ] Tutorial-capable UI wired with `data-tutorial-id` + nav/metadata mappings (`pnpm run check` passes)
 
 ## High-risk invariants
 
@@ -60,8 +60,8 @@ Delete any section that does not apply.
 
 <!-- Full suite expected for changes > 500 LOC; skip for cosmetic/docs-only (AGENTS.md). State what you ran. -->
 
-- [ ] `npm run check`
-- [ ] `npm run build`
+- [ ] `pnpm run check`
+- [ ] `pnpm run build`
 - [ ] `cargo check --manifest-path src-tauri/Cargo.toml`
 - [ ] `cargo test --manifest-path src-tauri/Cargo.toml`
 - [ ] Validated in the real Tauri desktop runtime (required for terminal focus/input, WebView2, RDP/VNC, keychain, native menus, title-bar close, OS integration)

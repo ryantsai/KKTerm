@@ -52,9 +52,9 @@ test("sidecar prep supports an explicit cargo cross target", () => {
   assert.match(sidecar, /target\\\$CargoTarget\\release\\kkterm-cli\.exe/);
 });
 
-test("npm exposes the arm64 packaging script", () => {
+test("pnpm exposes the arm64 packaging script", () => {
   assert.equal(
     pkg.scripts["package:installer:arm64"],
-    "npm install && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-installer-arm64.ps1",
+    "pnpm install && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-installer-arm64.ps1",
   );
 });

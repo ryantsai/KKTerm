@@ -12,7 +12,7 @@
 
     Toolchain pieces that are checked:
       - Rust (rustup/cargo) + the aarch64-pc-windows-msvc target
-      - Node.js + npm (frontend build via beforeBuildCommand)
+      - Node.js + pnpm (frontend build via beforeBuildCommand)
       - MSVC C++ ARM64 build tools (Visual Studio 2026 Build Tools component
         Microsoft.VisualStudio.Component.VC.Tools.ARM64)
       - C++ Clang Compiler for Windows (Visual Studio component
@@ -326,13 +326,17 @@ function Invoke-ToolchainCheck {
         }
     }
 
-    # --- Node / npm ---------------------------------------------------------
-    if (-not (Test-CommandExists "node") -or -not (Test-CommandExists "npm")) {
-        Write-Warning "Node.js/npm not found (needed for the frontend build)."
-        if ($InstallMissing) { Invoke-Winget "OpenJS.NodeJS.LTS" | Out-Null }
-        if (-not (Test-CommandExists "npm")) { $missing += "node/npm" }
+    # --- Node / pnpm --------------------------------------------------------
+    if (-not (Test-CommandExists "node") -or -not (Test-CommandExists "pnpm")) {
+        Write-Warning "Node.js/pnpm not found (needed for the frontend build)."
+        if ($InstallMissing) {
+            if (-not (Test-CommandExists "node")) { Invoke-Winget "OpenJS.NodeJS.LTS" | Out-Null }
+            # pnpm ships through Corepack, pinned by package.json "packageManager".
+            if (Test-CommandExists "corepack") { corepack enable pnpm }
+        }
+        if (-not (Test-CommandExists "pnpm")) { $missing += "node/pnpm" }
     } else {
-        Write-Host "OK: node/npm"
+        Write-Host "OK: node/pnpm"
     }
 
     # --- CMake (aws-lc-sys) -------------------------------------------------
@@ -441,7 +445,7 @@ try {
     try {
         $TauriCli = Join-Path $RepoRoot "node_modules\.bin\tauri.cmd"
         if (-not (Test-Path $TauriCli)) {
-            throw "Tauri CLI not found at $TauriCli. Run npm install first."
+            throw "Tauri CLI not found at $TauriCli. Run pnpm install first."
         }
 
         & $TauriCli build --bundles nsis "--target=$CargoTarget"

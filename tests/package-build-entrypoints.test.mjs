@@ -18,11 +18,11 @@ const appPackageScripts = [
   "package:linux",
 ];
 
-test("app artifact package commands install npm dependencies before building", () => {
+test("app artifact package commands install pnpm dependencies before building", () => {
   for (const name of appPackageScripts) {
     assert.match(
       packageJson.scripts[name],
-      /^npm install && /,
+      /^pnpm install && /,
       `${name} should install dependencies before starting its platform build`,
     );
   }

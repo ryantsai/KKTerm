@@ -18,7 +18,7 @@ $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot = Resolve-Path (Join-Path $ScriptDir "..")
 $PackageJsonPath = Join-Path $RepoRoot "package.json"
-$PackageLockPath = Join-Path $RepoRoot "package-lock.json"
+$PackageLockPath = Join-Path $RepoRoot "pnpm-lock.yaml"
 $TauriConfigPath = Join-Path $RepoRoot "src-tauri\tauri.conf.json"
 $CargoTomlPath = Join-Path $RepoRoot "src-tauri\Cargo.toml"
 $ChangelogPath = Join-Path $RepoRoot "CHANGELOG.md"
@@ -150,7 +150,7 @@ function Set-CargoPackageVersion {
     $Current = [regex]::Match($Content, '(?m)^version = "(\d+\.\d+\.\d+)"')
     if ($Current.Success -and $Current.Groups[1].Value -eq $Version) {
         # Already at the target version (e.g. -NoVersionIncrement reuse); treat as
-        # a no-op, matching the `--allow-same-version` behaviour of the npm bump.
+        # a no-op, matching the `--allow-same-version` behaviour of the pnpm bump.
         return
     }
     $Updated = [regex]::Replace(
@@ -223,7 +223,7 @@ try {
 
     Assert-Command "git"
     Assert-Command "gh"
-    Assert-Command "npm"
+    Assert-Command "pnpm"
     Assert-Command "node"
     Assert-Command "cargo"
 
@@ -270,7 +270,7 @@ try {
     # half-applied release up front and to roll those exact files back on failure.
     $TrackedVersionFiles = @(
         "package.json",
-        "package-lock.json",
+        "pnpm-lock.yaml",
         "src-tauri/tauri.conf.json",
         "src-tauri/Cargo.toml",
         "src-tauri/Cargo.lock",
@@ -337,7 +337,7 @@ artifacts/release-notes-*.md) that were not part of a finished release.
     # them first means a lint/type/test failure aborts on a pristine tree with
     # nothing to undo. This is the primary guardrail: tests can no longer fail
     # *after* the version files have already been rewritten.
-    Invoke-Checked -FilePath "npm" -ArgumentList @("run", "check") -Action "Frontend lint, tests, and type check"
+    Invoke-Checked -FilePath "pnpm" -ArgumentList @("run", "check") -Action "Frontend lint, tests, and type check"
     Invoke-Checked -FilePath "cargo" -ArgumentList @("check", "--manifest-path", "src-tauri/Cargo.toml") -Action "Rust check"
     Invoke-Checked -FilePath "cargo" -ArgumentList @("test", "--manifest-path", "src-tauri/Cargo.toml") -Action "Rust tests"
 
@@ -376,18 +376,18 @@ artifacts/release-notes-*.md) that were not part of a finished release.
 
         Invoke-Checked -FilePath "node" -ArgumentList $ReleaseNotesArgs -Action "Generate release notes"
 
-        Invoke-Checked -FilePath "npm" -ArgumentList @("version", $NextVersion, "--no-git-tag-version", "--allow-same-version") -Action "Update npm package version"
+        Invoke-Checked -FilePath "pnpm" -ArgumentList @("version", $NextVersion, "--no-git-tag-version", "--allow-same-version") -Action "Update package version"
         Set-TauriConfigVersion -Path $TauriConfigPath -Version $NextVersion
         Set-CargoPackageVersion -Path $CargoTomlPath -Version $NextVersion
 
         if (-not $SkipBuild) {
-            Invoke-Checked -FilePath "npm" -ArgumentList @("run", "package:installer") -Action "Build installer package"
+            Invoke-Checked -FilePath "pnpm" -ArgumentList @("run", "package:installer") -Action "Build installer package"
             Invoke-Checked -FilePath "powershell" -ArgumentList @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts/package-portable.ps1", "-Arch", "x64", "-OutputDir", $OutputDir, "-SkipBuild") -Action "Build x64 portable package"
             if ($IncludeArm64) {
                 # `--` forwards -InstallMissing to the ARM64 packaging script so the
                 # cross-build toolchain (aarch64 Rust target, ARM64 MSVC tools, CMake,
                 # NASM) is provisioned on the runner before building.
-                Invoke-Checked -FilePath "npm" -ArgumentList @("run", "package:installer:arm64", "--", "-InstallMissing") -Action "Build ARM64 installer package"
+                Invoke-Checked -FilePath "pnpm" -ArgumentList @("run", "package:installer:arm64", "--", "-InstallMissing") -Action "Build ARM64 installer package"
                 Invoke-Checked -FilePath "powershell" -ArgumentList @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts/package-portable.ps1", "-Arch", "arm64", "-OutputDir", $OutputDir, "-SkipBuild") -Action "Build ARM64 portable package"
             }
         }
@@ -422,7 +422,7 @@ artifacts/release-notes-*.md) that were not part of a finished release.
         }
 
         if (-not $SkipSmoke) {
-            Invoke-Checked -FilePath "npm" -ArgumentList @("run", "smoke:installer") -Action "Smoke test installer"
+            Invoke-Checked -FilePath "pnpm" -ArgumentList @("run", "smoke:installer") -Action "Smoke test installer"
             Invoke-Checked -FilePath "powershell" -ArgumentList @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts/smoke-portable.ps1", "-Artifact", $PortableZip) -Action "Smoke test portable package"
         }
 
@@ -471,7 +471,7 @@ artifacts/release-notes-*.md) that were not part of a finished release.
             Write-Host "VT_API_KEY not set; skipping VirusTotal pre-publish scan." -ForegroundColor DarkGray
         }
 
-        $AddResult = Invoke-NativeCapture -FilePath "git" -ArgumentList @("add", "package.json", "package-lock.json", "src-tauri/tauri.conf.json", "src-tauri/Cargo.toml", "src-tauri/Cargo.lock", "CHANGELOG.md", $VersionReleaseNotesPath)
+        $AddResult = Invoke-NativeCapture -FilePath "git" -ArgumentList @("add", "package.json", "pnpm-lock.yaml", "src-tauri/tauri.conf.json", "src-tauri/Cargo.toml", "src-tauri/Cargo.lock", "CHANGELOG.md", $VersionReleaseNotesPath)
         if ($AddResult.ExitCode -ne 0) {
             throw "Unable to stage version files:`n$($AddResult.Output -join "`n")"
         }

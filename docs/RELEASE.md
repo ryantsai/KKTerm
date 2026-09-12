@@ -38,17 +38,17 @@ Users should review the generated files before sharing them. Future diagnostics 
 
 ## Bundled Operation Manual
 
-The user-facing operation manual under `docs/manual/` ships with every installer build. Tauri copies each chapter declared in `src-tauri/tauri.conf.json` → `bundle.resources` (mapped to `manual/<filename>.md` in the resource directory). The built-in AI Assistant uses these files as its help/search reference. When a chapter is added or removed, update three places in the same PR: the new/removed `docs/manual/*.md` file, the `bundle.resources` map in `src-tauri/tauri.conf.json`, and the `CHAPTERS` list in `src-tauri/src/manual.rs`. `npm run build` + `cargo check` is sufficient to catch mismatched entries.
+The user-facing operation manual under `docs/manual/` ships with every installer build. Tauri copies each chapter declared in `src-tauri/tauri.conf.json` → `bundle.resources` (mapped to `manual/<filename>.md` in the resource directory). The built-in AI Assistant uses these files as its help/search reference. When a chapter is added or removed, update three places in the same PR: the new/removed `docs/manual/*.md` file, the `bundle.resources` map in `src-tauri/tauri.conf.json`, and the `CHAPTERS` list in `src-tauri/src/manual.rs`. `pnpm run build` + `cargo check` is sufficient to catch mismatched entries.
 
 ## Windows Installer
 
 Create the Windows installer with:
 
 ```bash
-npm run package:installer
+pnpm run package:installer
 ```
 
-The app artifact `npm run package:*` commands install npm dependencies before
+The app artifact `pnpm run package:*` commands install dependencies before
 starting their platform build scripts.
 
 The script runs the Tauri NSIS bundle target, copies the generated setup executable to a stable release filename, and writes:
@@ -63,9 +63,9 @@ The installer uses a current-user install mode by default, creates KKTerm Start 
 Native ARM64 (`aarch64-pc-windows-msvc`) builds ship alongside x64. No feature relies on x64-only APIs at runtime — every native surface uses OS APIs that ship as ARM64 on Windows 11 on Arm — so the work is in the build toolchain and a few arch-aware data paths.
 
 ```powershell
-npm run package:installer:arm64                      # build (toolchain must be present)
-npm run package:installer:arm64 -- -InstallMissing   # also download/install the toolchain
-npm run package:installer:arm64 -- -ToolchainOnly    # just check/install toolchain
+pnpm run package:installer:arm64                      # build (toolchain must be present)
+pnpm run package:installer:arm64 -- -InstallMissing   # also download/install the toolchain
+pnpm run package:installer:arm64 -- -ToolchainOnly    # just check/install toolchain
 ```
 
 The output is `artifacts/kkterm-<version>-windows-arm64-setup.exe` plus a `.sha256` checksum, matching the x64 script's conventions. Both architectures are built and published together by the **Release** workflow (see "GitHub Release" below); locally, `pwsh scripts/release-github.ps1 -IncludeArm64` adds ARM64 to an x64 release run.
@@ -98,8 +98,8 @@ Feature code that must stay arch-aware:
 Tauri v2 has no native MSIX bundle target, so `scripts/package-msix.ps1` assembles the package from the standard `tauri build --no-bundle` output and packs it with the Windows SDK's MakeAppx. Build with:
 
 ```powershell
-npm run package:msix          # x64
-npm run package:msix:arm64    # ARM64 (same toolchain as the ARM64 installer)
+pnpm run package:msix          # x64
+pnpm run package:msix:arm64    # ARM64 (same toolchain as the ARM64 installer)
 ```
 
 The script writes `artifacts/kkterm-<version>-windows-<arch>.msix` plus a `.sha256` checksum. The package declares the desktop `runFullTrust` capability, targets `Windows.Desktop` (minimum `10.0.22000.0`, Windows 11), and contains the executable, the `kkterm-cli` sidecar, the manual, the bundled Assistant Skills, and the tile assets from `src-tauri/icons/`.
@@ -116,12 +116,12 @@ At runtime, KKTerm recognizes a Mac App Store installation by the standard recei
 
 ## Windows Portable ZIP
 
-Build the Windows x64 portable package with `npm run package:portable`, or ARM64 with `npm run package:portable:arm64`. Each command writes an architecture-specific ZIP and checksum:
+Build the Windows x64 portable package with `pnpm run package:portable`, or ARM64 with `pnpm run package:portable:arm64`. Each command writes an architecture-specific ZIP and checksum:
 
 - `artifacts/kkterm-<version>-windows-x64-portable.zip` and `.sha256`
 - `artifacts/kkterm-<version>-windows-arm64-portable.zip` and `.sha256`
 
-The ZIP contains the same release executable and Tauri resources as the installer build, `kkterm-cli.exe`, and `kkterm-portable.marker`. It deliberately contains no `data` directory. Portable mode requires an installed Evergreen WebView2 runtime; unlike NSIS, the ZIP cannot bootstrap it during extraction. Run `npm run smoke:portable` after building x64. The smoke test verifies the checksum and archive shape, launches the extracted app in the real Tauri runtime, resolves the bundled manual and Assistant Skills, checks same-root single-instance behavior and clean SQLite exit, and confirms installed storage and KKTerm registry snapshots are unchanged.
+The ZIP contains the same release executable and Tauri resources as the installer build, `kkterm-cli.exe`, and `kkterm-portable.marker`. It deliberately contains no `data` directory. Portable mode requires an installed Evergreen WebView2 runtime; unlike NSIS, the ZIP cannot bootstrap it during extraction. Run `pnpm run smoke:portable` after building x64. The smoke test verifies the checksum and archive shape, launches the extracted app in the real Tauri runtime, resolves the bundled manual and Assistant Skills, checks same-root single-instance behavior and clean SQLite exit, and confirms installed storage and KKTerm registry snapshots are unchanged.
 
 Portable update checks use the same trusted metadata but select the exact `windows-<arch>-portable` ZIP/checksum pair. The prompt uses `settings.portableUpdateDownload`; it never launches NSIS. KKTerm downloads and verifies the ZIP, safely stages the known program payload under the portable cache, exits through the native Rust lifecycle, replaces the executable, CLI, manual, and bundled Assistant Skills through a detached handoff, and relaunches. The handoff keeps the existing portable marker, never touches `data`, and restores the previous program payload if the swap or relaunch command fails.
 
@@ -132,7 +132,7 @@ TODO: Restore Windows Authenticode signing and the Tauri updater signing flow be
 Smoke test the installer artifact with:
 
 ```bash
-npm run smoke:installer
+pnpm run smoke:installer
 ```
 
 The smoke test verifies the release artifact checksum, silently installs into a temporary directory, confirms `kkterm.exe` is present and non-empty, then silently uninstalls and removes only the temporary smoke-test directory it created.
@@ -142,7 +142,7 @@ The smoke test verifies the release artifact checksum, silently installs into a 
 Publish the next build release with:
 
 ```bash
-npm run release:github
+pnpm run release:github
 ```
 
 ### Cloudflare release mirror
@@ -194,10 +194,10 @@ When `OPENAI_API_KEY` is available, `scripts/generate-release-notes.mjs` asks Op
 
 ```powershell
 $env:OPENAI_API_KEY = "sk-..."
-npm run release:github
+pnpm run release:github
 ```
 
-GitHub Actions uses the same scripts through the manual **Release** workflow. The workflow first invokes `scripts/release-github-both-arch.ps1` on Windows so CI/CD increments the version, generates release notes, commits/tags, creates the GitHub Release, and publishes the x64 and ARM64 installers plus portable ZIPs together, matching the local `npm run release:github:both-arch` path. After Windows succeeds, the same workflow runs the macOS release script and then the Linux release script against the newly pushed tag so the complete cross-platform release can be produced from one workflow dispatch. The platform jobs intentionally run in that order to avoid concurrent `latest.json` updates overwriting staggered platform entries. Store the release-notes API key as the repository secret `OPENAI_API_KEY`; the workflow exposes it to the script as the same environment variable. Use the workflow inputs to mark a release as draft/prerelease, skip the Windows package build or smoke tests, disable AI notes, or run a dry preview.
+GitHub Actions uses the same scripts through the manual **Release** workflow. The workflow first invokes `scripts/release-github-both-arch.ps1` on Windows so CI/CD increments the version, generates release notes, commits/tags, creates the GitHub Release, and publishes the x64 and ARM64 installers plus portable ZIPs together, matching the local `pnpm run release:github:both-arch` path. After Windows succeeds, the same workflow runs the macOS release script and then the Linux release script against the newly pushed tag so the complete cross-platform release can be produced from one workflow dispatch. The platform jobs intentionally run in that order to avoid concurrent `latest.json` updates overwriting staggered platform entries. Store the release-notes API key as the repository secret `OPENAI_API_KEY`; the workflow exposes it to the script as the same environment variable. Use the workflow inputs to mark a release as draft/prerelease, skip the Windows package build or smoke tests, disable AI notes, or run a dry preview.
 
 ## macOS GitHub Release Assets
 
@@ -206,10 +206,10 @@ macOS builds are attached after the Windows release because they must run on a M
 After the Windows release exists, run this on macOS:
 
 ```bash
-npm run release:github:macos
+pnpm run release:github:macos
 ```
 
-The script builds a single universal (Intel + Apple Silicon) DMG and signed Tauri updater bundle with `npm run package:macos` (`tauri build --target universal-apple-darwin`), copies the user-facing DMG to:
+The script builds a single universal (Intel + Apple Silicon) DMG and signed Tauri updater bundle with `pnpm run package:macos` (`tauri build --target universal-apple-darwin`), copies the user-facing DMG to:
 
 - `artifacts/kkterm-<version>-macos-universal.dmg`
 - `artifacts/kkterm-<version>-macos-universal.dmg.sha256`
@@ -222,9 +222,9 @@ It also copies the Tauri updater assets and metadata to:
 
 It detects the version from the DMG filename and uses the matching `v<version>` GitHub Release when `--tag` is not supplied. It then notarizes and staples the final renamed DMG, writes the checksum, uploads the macOS files with `gh release upload --clobber`, patches the release notes `Direct Downloads` section with the macOS DMG link, and writes `latest.json` with both `darwin-aarch64` and `darwin-x86_64` updater entries pointing at the same universal bundle. The `latest.json` `notes` field is copied from the current GitHub Release body so the Tauri updater dialog can show the real release notes. Use `--tag v<version>` to force a specific release, `--skip-build` to upload the latest already-built Tauri DMG/updater bundle, `--skip-notes-patch` to leave the release body unchanged, and `--dry-run` to print the resolved version, tag, repository, and artifact names without building or uploading.
 
-The universal build compiles both architecture slices, so the build host must have the `x86_64-apple-darwin` Rust target installed alongside its host target (Apple Silicon machines only ship `aarch64-apple-darwin` by default). Install it once with `rustup target add x86_64-apple-darwin`; `npm run package:macos` checks for it and stops with that hint before invoking Tauri if it is missing. CI installs both targets through the toolchain action.
+The universal build compiles both architecture slices, so the build host must have the `x86_64-apple-darwin` Rust target installed alongside its host target (Apple Silicon machines only ship `aarch64-apple-darwin` by default). Install it once with `rustup target add x86_64-apple-darwin`; `pnpm run package:macos` checks for it and stops with that hint before invoking Tauri if it is missing. CI installs both targets through the toolchain action.
 
-The macOS build still requires Apple Developer ID signing and notarization environment variables expected by Tauri, such as `APPLE_SIGNING_IDENTITY` plus either App Store Connect API key variables or Apple ID notarization variables. It also requires the Tauri updater private key through `TAURI_SIGNING_PRIVATE_KEY`; `npm run package:macos` reads `TAURI_SIGNING_PRIVATE_KEY_PATH` when the variable is unset, defaults that path to `$HOME/.tauri/kkterm-updater.key`, and base64-wraps a raw Minisign key box if given one (keys generated by `tauri signer generate` are already base64-wrapped and pass through unchanged). A blank-password updater key is supported: the package scripts export `TAURI_SIGNING_PRIVATE_KEY_PASSWORD=""` when the variable is unset, so the signer does not prompt in CI or release shells. Keep those values in the local shell environment or an uncommitted `.env.local`; never commit Apple certificates, private keys, app-specific passwords, notarization secrets, or updater private keys. The public updater key is committed in `src-tauri/tauri.macos.conf.json`.
+The macOS build still requires Apple Developer ID signing and notarization environment variables expected by Tauri, such as `APPLE_SIGNING_IDENTITY` plus either App Store Connect API key variables or Apple ID notarization variables. It also requires the Tauri updater private key through `TAURI_SIGNING_PRIVATE_KEY`; `pnpm run package:macos` reads `TAURI_SIGNING_PRIVATE_KEY_PATH` when the variable is unset, defaults that path to `$HOME/.tauri/kkterm-updater.key`, and base64-wraps a raw Minisign key box if given one (keys generated by `tauri signer generate` are already base64-wrapped and pass through unchanged). A blank-password updater key is supported: the package scripts export `TAURI_SIGNING_PRIVATE_KEY_PASSWORD=""` when the variable is unset, so the signer does not prompt in CI or release shells. Keep those values in the local shell environment or an uncommitted `.env.local`; never commit Apple certificates, private keys, app-specific passwords, notarization secrets, or updater private keys. The public updater key is committed in `src-tauri/tauri.macos.conf.json`.
 
 ## Linux GitHub Release Assets
 
@@ -233,7 +233,7 @@ Linux builds are attached after the Windows release because the Windows release 
 After the Windows release exists, run this on Linux:
 
 ```bash
-npm run release:github:linux
+pnpm run release:github:linux
 ```
 
 On Ubuntu 24.04, the Linux build host must have the Tauri/AppImage native
@@ -241,7 +241,7 @@ packages installed: `libwebkit2gtk-4.1-dev libgtk-3-dev
 libayatana-appindicator3-dev librsvg2-dev libgbm-dev libssl-dev
 build-essential pkg-config libfuse2t64`.
 
-The script builds the x86_64 AppImage with `npm run package:linux`, copies the user-facing AppImage to:
+The script builds the x86_64 AppImage with `pnpm run package:linux`, copies the user-facing AppImage to:
 
 - `artifacts/kkterm-<version>-linux-x86_64.AppImage`
 - `artifacts/kkterm-<version>-linux-x86_64.AppImage.sha256`
@@ -262,7 +262,7 @@ Three AppImage-specific bugs are already fixed in the tree; do not regress them:
 
 A clean-machine AppImage launch — a distro with no development libraries installed — is the real portability gate, since AppImage is the only distribution channel.
 
-The Linux build requires the Tauri updater private key through `TAURI_SIGNING_PRIVATE_KEY`; `npm run package:linux` reads `TAURI_SIGNING_PRIVATE_KEY_PATH` when the variable is unset, defaults that path to `$HOME/.tauri/kkterm-updater.key`, and base64-wraps a raw Minisign key box if given one. A blank-password updater key is supported through the same `TAURI_SIGNING_PRIVATE_KEY_PASSWORD=""` default described above. Keep the private key and password in the local shell environment or an uncommitted `.env.local`; never commit updater private keys. The public updater key is committed in `src-tauri/tauri.linux.conf.json`.
+The Linux build requires the Tauri updater private key through `TAURI_SIGNING_PRIVATE_KEY`; `pnpm run package:linux` reads `TAURI_SIGNING_PRIVATE_KEY_PATH` when the variable is unset, defaults that path to `$HOME/.tauri/kkterm-updater.key`, and base64-wraps a raw Minisign key box if given one. A blank-password updater key is supported through the same `TAURI_SIGNING_PRIVATE_KEY_PASSWORD=""` default described above. Keep the private key and password in the local shell environment or an uncommitted `.env.local`; never commit updater private keys. The public updater key is committed in `src-tauri/tauri.linux.conf.json`.
 
 ## Antivirus and EDR Review
 
@@ -290,7 +290,7 @@ The portable ZIP is not a sandbox. KKTerm-owned state stays in its sibling `data
 
 - Windows, macOS, and Linux are supported release targets. macOS DMG and Linux AppImage publishing are currently attached as follow-up asset uploads to an existing GitHub Release.
 - The Windows installer build and smoke test are repeatable, but the installer is unsigned until release signing is configured.
-- SSH readiness performance is instrumented for native post-auth terminal setup and retained in local performance snapshots after a native SSH Session starts. The repeatable `npm run measure:ssh-readiness` helper can validate the `<= 150 ms` budget against a trusted non-`ProxyJump` SSH Connection, but the latest documented run still lacks a measured value because valid SSH auth was not available in the measurement environment.
+- SSH readiness performance is instrumented for native post-auth terminal setup and retained in local performance snapshots after a native SSH Session starts. The repeatable `pnpm run measure:ssh-readiness` helper can validate the `<= 150 ms` budget against a trusted non-`ProxyJump` SSH Connection, but the latest documented run still lacks a measured value because valid SSH auth was not available in the measurement environment.
 - Native SSH-launched SFTP does not support `ProxyJump`; SSH terminal sessions with `ProxyJump` use the system `ssh` fallback/debug path where available.
 - SSH config import support exists behind the local command boundary, but the current Settings surface does not expose a user-facing import action. The same applies to the diagnostics bundle action.
 - SFTP supports recursive file and folder transfer, multi-select drag/drop, overwrite prompts with overwrite-all handling, clearable finished transfer history, remote properties, chmod, and chown, but folder sync, diff/compare, transfer resume, archive/extract, and remote file editing remain deferred.

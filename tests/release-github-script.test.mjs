@@ -85,9 +85,9 @@ test("release script validates source before mutating the version files", () => 
   );
   const versionBumpIdx = script.indexOf('@("version", $NextVersion');
 
-  assert.ok(checkIdx !== -1, "npm run check step should exist");
+  assert.ok(checkIdx !== -1, "pnpm run check step should exist");
   assert.ok(cargoTestIdx !== -1, "cargo test step should exist");
-  assert.ok(versionBumpIdx !== -1, "npm version bump step should exist");
+  assert.ok(versionBumpIdx !== -1, "pnpm version bump step should exist");
   assert.ok(
     checkIdx < versionBumpIdx && cargoTestIdx < versionBumpIdx,
     "validation must run before the version bump",

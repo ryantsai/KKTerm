@@ -6,7 +6,7 @@ Quick snapshot as of August 11, 2026:
 
 All core connection types (SSH, Telnet, Serial, FTP/FTPS, RDP, VNC, URL/WebView2, local shells, and the local File/Document viewer), terminal features, SSH port forwarding, SFTP/FTP, RDP/VNC, AI Assistant tool calling with composer attachments, Dashboard Module redesign, Install Helper, the Site-first IT Ops Module (Sites, Server Room/Rack topology, Hosts inventory, Task Library, SSH Batch Runs, and playbooks), and UI customization are implemented and shipping. The app builds for Windows, macOS, and Linux. The app metadata is currently at v0.1.142 and releasing continuously.
 
-Release validation gates are documented in `AGENTS.md` and `docs/RELEASE.md`; run the full suite before significant code changes or release publication. Previous packaging validation passed for `npm run package:installer` and `npm run smoke:installer`.
+Release validation gates are documented in `AGENTS.md` and `docs/RELEASE.md`; run the full suite before significant code changes or release publication. Previous packaging validation passed for `pnpm run package:installer` and `pnpm run smoke:installer`.
 
 For operational measurement records see `docs/PERFORMANCE.md`. For packaging and release artifacts see `docs/RELEASE.md`.
 

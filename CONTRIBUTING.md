@@ -65,7 +65,7 @@ If the queues are empty, that just means you get to define the problem. Open an 
 ### Prerequisites
 
 - **Windows 10/11, macOS, or Linux**
-- **Node.js** (LTS) and **npm**
+- **Node.js** (LTS) and **pnpm** — any recent pnpm self-switches to the version pinned by `packageManager` in `package.json`; `corepack enable pnpm` also works
 - **Rust toolchain** (`rustup` recommended)
 - **Tauri v2 prerequisites for Windows** — most importantly **WebView2 Runtime** (preinstalled on modern Windows; otherwise grab it from Microsoft)
 - **Visual Studio Build Tools** with the Desktop C++ workload (required by Rust on Windows)
@@ -75,17 +75,17 @@ If the queues are empty, that just means you get to define the problem. Open an 
 ```bash
 git clone https://github.com/ryantsai/KKTerm.git
 cd KKTerm
-npm install
-npm run tauri dev
+pnpm install
+pnpm run tauri dev
 ```
 
 The first build of the Rust side will take several minutes — it is compiling `russh`, `vnc-rs`, `suppaftp`, and a handful of other crates from source. Subsequent builds are incremental and fast.
 
-If `npm run tauri dev` produces a native window: you're set. If it produces a stack trace: copy it into an issue and tag it `setup`, we'll dig.
+If `pnpm run tauri dev` produces a native window: you're set. If it produces a stack trace: copy it into an issue and tag it `setup`, we'll dig.
 
 ### Running the real native build
 
-A Vite browser preview (`npm run dev`) is fine for some frontend inspection, but **it is not a valid validation surface** for KKTerm. The native window is the only place that can host ConPTY, WebView2, the RDP ActiveX control, the VNC framebuffer, the Windows keychain, native menus, and the tray. Always validate native-touching changes with `npm run tauri dev` or the `Run KKTerm exe` VS Code launch config.
+A Vite browser preview (`pnpm run dev`) is fine for some frontend inspection, but **it is not a valid validation surface** for KKTerm. The native window is the only place that can host ConPTY, WebView2, the RDP ActiveX control, the VNC framebuffer, the Windows keychain, native menus, and the tray. Always validate native-touching changes with `pnpm run tauri dev` or the `Run KKTerm exe` VS Code launch config.
 
 ### VS Code launch configs
 
@@ -185,13 +185,13 @@ Full glossary with examples: [`CONTEXT.md`](CONTEXT.md).
 Run all four. They are not optional.
 
 ```bash
-npm run check                                              # ESLint + frontend tests + tsc
-npm run build                                              # Vite production build
+pnpm run check                                             # ESLint + frontend tests + tsc
+pnpm run build                                             # Vite production build
 cargo check --manifest-path src-tauri/Cargo.toml           # Rust compiles
 cargo test  --manifest-path src-tauri/Cargo.toml           # Rust tests pass
 ```
 
-`npm run check` runs, in order: `npm run lint` (ESLint flat config — correctness rules such as `react-hooks/rules-of-hooks` are errors, pre-existing stylistic findings are warnings), the frontend test suite, then `tsc --noEmit`. Both CI jobs run the same checks (`cargo test` included).
+`pnpm run check` runs, in order: `pnpm run lint` (ESLint flat config — correctness rules such as `react-hooks/rules-of-hooks` are errors, pre-existing stylistic findings are warnings), the frontend test suite, then `tsc --noEmit`. Both CI jobs run the same checks (`cargo test` included).
 
 Frontend tests live in `tests/` and are **auto-discovered** by `tests/run-all.mjs` — drop in a `*.test.mjs` (plain Node) or `*.test.ts` (run through the `tsx` loader, for behavioral tests against pure modules) and it runs automatically; there is no list to edit. A short, documented `QUARANTINE` set in the runner holds pre-existing source-grep guards whose asserted source text has drifted; prefer fixing or replacing those with behavioral tests over adding to it.
 
@@ -200,7 +200,7 @@ If a check cannot be run in your environment, say so explicitly in the PR descri
 For UI-touching changes, additionally smoke-test in the real native runtime:
 
 ```bash
-npm run tauri dev
+pnpm run tauri dev
 ```
 
 …and exercise the feature in the actual window. The browser preview is not a substitute.
@@ -240,7 +240,7 @@ This is the area where new contributors most commonly slip. Three rules and you'
 
 When you actually translate the key into another locale, delete the matching `localization_todo` file. If you rename or remove a key, rename or remove the todo file too.
 
-Always run `npm run i18n:check` during translation runs. It compares `src/i18n/locales/en.json` to every other locale file and reports missing or redundant keys before review.
+Always run `pnpm run i18n:check` during translation runs. It compares `src/i18n/locales/en.json` to every other locale file and reports missing or redundant keys before review.
 
 Technical terms (SSH, SFTP, RDP, VNC, tmux, ProxyJump, PowerShell, WSL, API, URL) typically stay English across all locales.
 
@@ -273,7 +273,7 @@ Good bug reports include:
 - What you expected.
 - What actually happened.
 - A screenshot, short screen capture, or terminal output for the failing part.
-- Whether the bug reproduces in the latest `main` from `npm run tauri dev`.
+- Whether the bug reproduces in the latest `main` from `pnpm run tauri dev`.
 
 "It felt off" is a legitimate report — just say so, and we'll investigate together. Imprecision is fine; vagueness about reproducing isn't.
 

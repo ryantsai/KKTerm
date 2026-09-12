@@ -1,7 +1,7 @@
 # Mac App Store file access and packaging
 
 The `mac-app-store` Cargo feature is opt-in and macOS-only. The normal
-`npm run package:macos` command does not enable it. Store behavior is compiled
+`pnpm run package:macos` command does not enable it. Store behavior is compiled
 into the executable and reported by `get_app_mode.macAppStoreBuild`; it is not
 selected by an environment variable at runtime or by a Store receipt.
 
@@ -12,7 +12,7 @@ Set `APPLE_SIGNING_IDENTITY` to the App Store application signing identity and
 Install both Rust macOS targets, then run:
 
 ```sh
-npm run package:macos:app-store
+pnpm run package:macos:app-store
 ```
 
 The command builds a universal app with `tauri.appstore.conf.json`, embeds the

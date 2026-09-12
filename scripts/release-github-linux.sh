@@ -260,7 +260,7 @@ import_local_env_files
 
 require_command git
 require_command gh
-require_command npm
+require_command pnpm
 require_command node
 require_command sha256sum
 
@@ -278,13 +278,13 @@ fi
 
 if (( ! SKIP_BUILD && ! DRY_RUN )); then
   log "Build Linux AppImage"
-  npm run package:linux
+  pnpm run package:linux
 fi
 
 if (( DRY_RUN && ! SKIP_BUILD )); then
   VERSION="$PACKAGE_VERSION"
-  SOURCE_APPIMAGE="<created by npm run package:linux>"
-  SOURCE_APPIMAGE_SIG="<created by npm run package:linux>"
+  SOURCE_APPIMAGE="<created by pnpm run package:linux>"
+  SOURCE_APPIMAGE_SIG="<created by pnpm run package:linux>"
 else
   SOURCE_APPIMAGE="$(find_latest_appimage)"
   SOURCE_APPIMAGE_SIG="$SOURCE_APPIMAGE.sig"

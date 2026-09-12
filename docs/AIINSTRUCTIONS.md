@@ -140,13 +140,13 @@ git remote add upstream https://github.com/ryantsai/KKTerm.git
 Inside the cloned repo:
 
 ```powershell
-npm install
+pnpm install
 ```
 
 Verify the dev build runs:
 
 ```powershell
-npm run tauri dev
+pnpm run tauri dev
 ```
 
 This compiles the Rust backend and starts the Vite dev server. First compile takes a few minutes. The KKTerm window should open when ready.
@@ -154,13 +154,13 @@ This compiles the Rust backend and starts the Vite dev server. First compile tak
 **Common checks before submitting a PR:**
 
 ```powershell
-npm run check                                    # ESLint + frontend test suite + tsc --noEmit
-npm run build                                    # Frontend production build
+pnpm run check                                    # ESLint + frontend test suite + tsc --noEmit
+pnpm run build                                    # Frontend production build
 cargo check --manifest-path src-tauri/Cargo.toml
 cargo test --manifest-path src-tauri/Cargo.toml
 ```
 
-All four must pass cleanly before opening a PR. Under `AGENTS.md` the full check suite is only required after a significant code change (more than 500 changed lines); cosmetic UI or documentation-only changes can skip it. When adding or changing locale keys, also run `npm run i18n:check` (and `npm run i18n:normalize` after broad locale edits).
+All four must pass cleanly before opening a PR. Under `AGENTS.md` the full check suite is only required after a significant code change (more than 500 changed lines); cosmetic UI or documentation-only changes can skip it. When adding or changing locale keys, also run `pnpm run i18n:check` (and `pnpm run i18n:normalize` after broad locale edits).
 
 ---
 
@@ -288,7 +288,7 @@ Before touching code, read these definitions — they matter for naming, storage
 - `docs/MCP.md` — built-in MCP tool catalog (must be updated when built-in MCP tools change)
 - `docs/CUSTOM_MODULE_CATALOG.md` / `docs/KKMOD_HOST_API_V2.md` — Custom Module catalog and host API
 - `docs/PERFORMANCE.md` — performance notes and targets
-- `docs/manual/INDEX.md` — **operation manual** shipped with the app, 20 chapters. Chapters cover rail Modules and their sub-features; each chapter starts with an `## AI grep hints` block listing i18n keys and synonyms. When a user asks "how do I…" inside the app, the built-in AI Assistant searches this folder. **When a PR changes UI behavior, update the matching chapter in `docs/manual/` in the same PR**, and prefer referencing i18n keys (e.g. `connections.quickConnect`) over English label text so locale changes don't invalidate the manual. If the assistant can offer to show the user a UI element, add a stable `data-tutorial-id`, route it in `src/app/tutorialNavigationModel.ts`, document it in the `tutorial_highlight` tool metadata, and keep `npm run check` green.
+- `docs/manual/INDEX.md` — **operation manual** shipped with the app, 20 chapters. Chapters cover rail Modules and their sub-features; each chapter starts with an `## AI grep hints` block listing i18n keys and synonyms. When a user asks "how do I…" inside the app, the built-in AI Assistant searches this folder. **When a PR changes UI behavior, update the matching chapter in `docs/manual/` in the same PR**, and prefer referencing i18n keys (e.g. `connections.quickConnect`) over English label text so locale changes don't invalidate the manual. If the assistant can offer to show the user a UI element, add a stable `data-tutorial-id`, route it in `src/app/tutorialNavigationModel.ts`, document it in the `tutorial_highlight` tool metadata, and keep `pnpm run check` green.
 
 ---
 

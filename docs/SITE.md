@@ -501,7 +501,7 @@ enters the export.
 - **Tutorial** — if the Rack View is tutorial-capable, add a stable
   `data-tutorial-id`, a `src/app/tutorialNavigationModel.ts` entry, matching
   `tutorial_highlight` metadata in `src-tauri/src/ai.rs`, and manual grep hints;
-  `npm run check` validates these mappings.
+  `pnpm run check` validates these mappings.
 - **`docs/ADR/0011-it-ops-module.md`** and `docs/ROADMAP.md` — note the Site
   rename and the topology layer (ROADMAP "IT Ops Center" section).
 
@@ -536,7 +536,7 @@ other behavior in this document reflects shipped code.
 
 ## Checks before handoff (per phase, per `AGENTS.md`)
 
-`npm run check` && `npm run build` && `cargo check`/`cargo test`
+`pnpm run check` && `pnpm run build` && `cargo check`/`cargo test`
 (`--manifest-path src-tauri/Cargo.toml`). Native rack drag/drop, click-to-open
 across ssh/rdp/vnc, and keychain-backed opens must be validated in the real
 Tauri desktop runtime, not Vite/browser preview.

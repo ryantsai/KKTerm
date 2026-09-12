@@ -288,7 +288,7 @@ When adding or renaming a script-widget library:
 - Add the registry entry in `src/modules/dashboard/script/widgetLibraries.ts` with a stable key, global name, description, and loader.
 - Add the same key to `dashboard_widget_library_keys()` in `src-tauri/src/ai.rs` so `dashboard_create_widget` and `dashboard_update_custom_widget` expose the key to the AI Assistant tool schema.
 - If old generated widgets may already reference the global without `body.libraries`, add a narrow legacy inference pattern in `resolveWidgetLibraryKeys`.
-- Run `node --test tests/dashboard-script-srcdoc.test.mjs`, `npm run build`, and `cargo test --manifest-path src-tauri/Cargo.toml dashboard_widget_tool_schema_exposes_script_libraries`. `npm run build` is the check that proves the registered loader and package dependency can actually bundle.
+- Run `node --test tests/dashboard-script-srcdoc.test.mjs`, `pnpm run build`, and `cargo test --manifest-path src-tauri/Cargo.toml dashboard_widget_tool_schema_exposes_script_libraries`. `pnpm run build` is the check that proves the registered loader and package dependency can actually bundle.
 
 ### Finding: Broken Script HTML
 

@@ -162,7 +162,7 @@ No external package may load until this gate passes.
   installed/catalog states, confirmation flows, dynamic rail normalization and
   routing, asynchronous window-construction boundary, macOS main-thread window
   ordering, host lifecycle, and native-overlay policy.
-- Run `npm run check`, `npm run build`, `cargo check --manifest-path
+- Run `pnpm run check`, `pnpm run build`, `cargo check --manifest-path
   src-tauri/Cargo.toml`, and `cargo test --manifest-path src-tauri/Cargo.toml`.
 - Release QA validates installation, restart persistence (including restoring a
   Custom Module as the launch destination), input/focus, module switching,

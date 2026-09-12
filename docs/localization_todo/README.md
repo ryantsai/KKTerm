@@ -18,7 +18,7 @@ Every new or changed user-visible English key added to `src/i18n/locales/en.json
 must get a matching `docs/localization_todo/<namespace>.<keyPath>.md` file in
 the same change. Add the file even when you also add best-effort translations to
 every non-English locale, because the backlog is the explicit review record for
-new translation work. Before finishing, run `npm run i18n:check` to prove every
+new translation work. Before finishing, run `pnpm run i18n:check` to prove every
 locale contains the key in the same relative order.
 
 Do not skip the todo file just because an AI coding session filled in translated
@@ -52,7 +52,7 @@ every locale:
    contract, not optional decoration.
 4. Confirm regional terminology and script rules — especially the zh-TW rule
    below — and that the value was not copied from a sibling locale.
-5. Fix any value that does not fit the context, then run `npm run i18n:check`.
+5. Fix any value that does not fit the context, then run `pnpm run i18n:check`.
 6. Only after every locale passes the checks above, **delete** the todo file.
 
 If you cannot verify a locale (for example you are not confident in the
@@ -68,7 +68,7 @@ When you add or change an English key in `src/i18n/locales/en.json` and do **not
 When you (or a localization pass) translate the key into every supported locale:
 
 1. Update each non-English locale file under `src/i18n/locales/`.
-2. Insert translated keys in the same relative order as `src/i18n/locales/en.json`; run `npm run i18n:normalize` if a locale drifts.
+2. Insert translated keys in the same relative order as `src/i18n/locales/en.json`; run `pnpm run i18n:normalize` if a locale drifts.
 3. For related regional locales, translate independently instead of copying from the sibling locale. Cross-locale translation bleed is forbidden even when scripts or words look similar: `zh-CN` and `zh-TW`, `es-ES` and `es-MX`, and `pt-PT` and `pt-BR` must use their own script, spelling, and regional terminology.
 
 `ai.tmuxSessionLabels` is a deliberate creative-label exception: these are themed suggestions for new tmux sessions, not a one-to-one translation list. Locales may curate their own theme, and an explicitly shared themed set is acceptable, but every locale must preserve the array length. This exception does not permit copying sibling-locale prose or mechanically converting ordinary translations.
@@ -76,13 +76,13 @@ When you (or a localization pass) translate the key into every supported locale:
 ### CRITICAL — zh-TW must never contain Mainland Chinese terminology
 
 `zh-TW.json` targets Traditional Chinese users in **Taiwan**. It must use Taiwan computing terminology — never Mainland Chinese terms, even when the characters are traditional. This is a hard review gate: any zh-TW string that uses a Mainland term is a bug that blocks the translation pass. See `docs/manual/16-localization.md` for the full forbidden→required term mapping table. Common examples: 連線 (not 連接 for "connection"), 終端機 (not 終端), 視窗 (not 窗口), 儲存 (not 保存), 預設 (not 默認), 資料 (not 數據), 資訊 (not 信息), 軟體 (not 軟件), 網路 (not 網絡), 滑鼠 (not 鼠標), 存取 (not 訪問), 記憶體 (not 內存), 伺服器 (not 服務器), 客戶端 (not 用戶端), 遠端 (not 遠程), 使用者 (not 用戶), 程式 (not 程序), 螢幕 (not 屏幕), 選單 (not 菜單), 搜尋 (not 搜索), 說明 (not 幫助), 萬用字元 (not 通配符), 回送 (not 回環), 介面 (not 接口), 資料夾 (not 文件夾), 檔案總管 (not 文件資源管理器), 載入 (not 加載), 套件 (not 軟件包). When in doubt, consult an established Taiwan computing glossary — never copy from `zh-CN.json` and convert characters.
-4. Run `npm run i18n:check` and fix any missing, redundant, or misordered keys before finishing the translation run.
+4. Run `pnpm run i18n:check` and fix any missing, redundant, or misordered keys before finishing the translation run.
 5. **Delete** the matching `docs/localization_todo/<namespace>.<keyPath>.md` file.
 
 When you rename or remove a key:
 
 1. Update `en.json` and every non-English locale that touched the key.
-2. Run `npm run i18n:check` and fix any missing, redundant, or misordered keys.
+2. Run `pnpm run i18n:check` and fix any missing, redundant, or misordered keys.
 3. Rename or delete the matching `docs/localization_todo/*.md` file to match.
 
 ## Why per-file

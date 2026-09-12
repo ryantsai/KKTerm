@@ -177,7 +177,7 @@ Known tutorial targets:
 - IT Ops targets listed in [12-it-ops.md](12-it-ops.md).
 - Settings targets listed in [15-settings.md](15-settings.md), including General, Appearance, Dashboard, Workspace, File Explorer, Don't Sleep, Install Helper, Credentials, AI Assistant, SSH, Terminal, URL, RDP, VNC, and About sections.
 
-When adding a new tutorial target, add the `data-tutorial-id` anchor, route it in `src/app/tutorialNavigationModel.ts`, document it in `tutorial_highlight` metadata, and include it in the owning manual chapter's `## AI grep hints`. `npm run check` verifies the anchor and navigation registry stay aligned.
+When adding a new tutorial target, add the `data-tutorial-id` anchor, route it in `src/app/tutorialNavigationModel.ts`, document it in `tutorial_highlight` metadata, and include it in the owning manual chapter's `## AI grep hints`. `pnpm run check` verifies the anchor and navigation registry stay aligned.
 
 Thinking / progress markers:
 

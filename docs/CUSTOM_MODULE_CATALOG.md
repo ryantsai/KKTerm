@@ -33,7 +33,7 @@ version is rejected.
 1. Create a Standard-class bucket, for example:
 
    ```powershell
-   npx wrangler r2 bucket create kkterm-custom-modules --location=apac
+   pnpm exec wrangler r2 bucket create kkterm-custom-modules --location=apac
    ```
 
 2. In the R2 dashboard, connect a production custom domain such as
@@ -95,7 +95,7 @@ Build and validate the Module using the `develop-kkmod-modules` skill. From this
 repository, run:
 
 ```powershell
-npm run publish:custom-module -- `
+pnpm run publish:custom-module -- `
   -Package C:\releases\example-1.2.0.kkmod `
   -Bucket kkterm-custom-modules `
   -BaseUrl https://modules.example.com `
@@ -126,7 +126,7 @@ Before a KKTerm desktop release, optionally snapshot the successfully published
 entries into the embedded baseline:
 
 ```powershell
-npm run publish:custom-module -- `
+pnpm run publish:custom-module -- `
   -Package C:\releases\example-1.2.0.kkmod `
   -Bucket kkterm-custom-modules `
   -BaseUrl https://modules.example.com `
@@ -142,7 +142,7 @@ small verified metadata enters the executable.
 The online catalog expires even when no Module changes. Renew it before expiry:
 
 ```powershell
-npm run publish:custom-module -- `
+pnpm run publish:custom-module -- `
   -RenewOnly `
   -Bucket kkterm-custom-modules `
   -BaseUrl https://modules.example.com `
@@ -158,7 +158,7 @@ Withdraw a Module from discovery by publishing a newly signed catalog that
 omits its id:
 
 ```powershell
-npm run publish:custom-module -- `
+pnpm run publish:custom-module -- `
   -RemoveId com.example.module `
   -Bucket kkterm-custom-modules `
   -BaseUrl https://modules.example.com `

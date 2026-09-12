@@ -49,7 +49,7 @@ extract_tauri_signing_key() {
 if [[ -z "${TAURI_SIGNING_PRIVATE_KEY:-}" ]]; then
   if [[ ! -f "$KEY_PATH" ]]; then
     printf 'Missing Tauri updater signing key: %s\n' "$KEY_PATH" >&2
-    printf 'Set TAURI_SIGNING_PRIVATE_KEY or TAURI_SIGNING_PRIVATE_KEY_PATH before running npm run package:linux.\n' >&2
+    printf 'Set TAURI_SIGNING_PRIVATE_KEY or TAURI_SIGNING_PRIVATE_KEY_PATH before running pnpm run package:linux.\n' >&2
     exit 1
   fi
 

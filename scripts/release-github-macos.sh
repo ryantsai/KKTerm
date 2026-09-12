@@ -328,7 +328,7 @@ import_local_env_files
 
 require_command git
 require_command gh
-require_command npm
+require_command pnpm
 require_command node
 require_command shasum
 require_command xcrun
@@ -347,13 +347,13 @@ fi
 
 if (( ! SKIP_BUILD && ! DRY_RUN )); then
   log "Build signed/notarized macOS DMG"
-  npm run package:macos
+  pnpm run package:macos
 fi
 
 if (( DRY_RUN && ! SKIP_BUILD )); then
   VERSION="$PACKAGE_VERSION"
-  SOURCE_DMG="<created by npm run package:macos>"
-  SOURCE_UPDATER="<created by npm run package:macos>"
+  SOURCE_DMG="<created by pnpm run package:macos>"
+  SOURCE_UPDATER="<created by pnpm run package:macos>"
 else
   SOURCE_DMG=$(find_latest_dmg)
   SOURCE_UPDATER=$(find_latest_updater_bundle)

@@ -7,21 +7,22 @@
   "engines": {
     "node": "24.20.x"
   },
+  "packageManager": "pnpm@12.4.1",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
-    "check": "npm run lint && node tests/run-all.mjs && tsc --noEmit",
-    "check:all": "npm run check && cargo test --manifest-path src-tauri/Cargo.toml",
-    "package:installer": "npm install && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-installer.ps1",
-    "package:installer:arm64": "npm install && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-installer-arm64.ps1",
-    "package:portable": "npm install && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-portable.ps1",
-    "package:portable:arm64": "npm install && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-portable.ps1 -Arch arm64",
-    "package:msix": "npm install && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-msix.ps1",
-    "package:msix:arm64": "npm install && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-msix.ps1 -Arch arm64",
-    "package:macos": "npm install && zsh scripts/package-macos.sh",
-    "package:macos:app-store": "npm install && zsh scripts/package-macos-app-store.sh",
-    "package:linux": "npm install && bash scripts/package-linux.sh",
+    "check": "pnpm run lint && node tests/run-all.mjs && tsc --noEmit",
+    "check:all": "pnpm run check && cargo test --manifest-path src-tauri/Cargo.toml",
+    "package:installer": "pnpm install && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-installer.ps1",
+    "package:installer:arm64": "pnpm install && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-installer-arm64.ps1",
+    "package:portable": "pnpm install && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-portable.ps1",
+    "package:portable:arm64": "pnpm install && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-portable.ps1 -Arch arm64",
+    "package:msix": "pnpm install && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-msix.ps1",
+    "package:msix:arm64": "pnpm install && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-msix.ps1 -Arch arm64",
+    "package:macos": "pnpm install && zsh scripts/package-macos.sh",
+    "package:macos:app-store": "pnpm install && zsh scripts/package-macos-app-store.sh",
+    "package:linux": "pnpm install && bash scripts/package-linux.sh",
     "package:custom-module-fixture": "node scripts/package-custom-module-fixture.mjs",
     "publish:custom-module": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/publish-custom-module.ps1",
     "release:github": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release-github.ps1",
@@ -57,6 +58,7 @@
     "@tauri-apps/plugin-opener": "^2.5.5",
     "@tauri-apps/plugin-process": "^2.3.1",
     "@tauri-apps/plugin-updater": "^2.11.0",
+    "@tiptap/core": "^3.30.5",
     "@tiptap/extension-code-block": "^3.30.5",
     "@tiptap/extension-highlight": "^3.30.5",
     "@tiptap/extension-image": "^3.30.5",
@@ -78,6 +80,7 @@
     "@xterm/xterm": "^6.0.0",
     "@xyflow/react": "^12.11.5",
     "@xzdarcy/react-timeline-editor": "^1.0.0",
+    "@xzdarcy/timeline-engine": "^1.0.0",
     "animejs": "^4.5.0",
     "ansi-to-html": "^0.7.2",
     "chart.js": "^4.5.1",
@@ -114,6 +117,7 @@
     "react-grid-layout": "^2.2.4",
     "react-i18next": "^17.0.12",
     "react-linear-gradient-picker": "^5.0.0",
+    "react-resizable": "^3.2.0",
     "reicon-react": "1.2.0",
     "roughjs": "^4.6.6",
     "simple-statistics": "^7.11.0",
@@ -133,6 +137,7 @@
     "@types/three": "^0.185.4",
     "@types/turndown": "^5.0.6",
     "@vitejs/plugin-react": "^6.1.1",
+    "esbuild": "^0.28.2",
     "eslint": "^10.9.1",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.11.0",
@@ -142,14 +147,5 @@
     "typescript-eslint": "^8.68.0",
     "vite": "^8.2.2",
     "wrangler": "^4.127.1"
-  },
-  "overrides": {
-    "glob": "^13.0.6",
-    "rimraf": "^6.1.3"
-  },
-  "allowScripts": {
-    "esbuild@0.28.1": true,
-    "esbuild@0.28.2": true,
-    "workerd@1.20260828.1": true
   }
 }

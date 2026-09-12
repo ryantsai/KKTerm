@@ -172,7 +172,7 @@ Phase 1 touches:
       (e.g. `purple` or `blue-see`, since they diverge furthest from Default).
 - [ ] Host-platform button order still correct (test on the actual OS, or via
       `DialogConventionProvider` preview for both conventions).
-- [ ] `npm run check` passes (ESLint, `tests/run-all.mjs` including the three
+- [ ] `pnpm run check` passes (ESLint, `tests/run-all.mjs` including the three
       policy tests named in §3, `tsc --noEmit`).
 - [ ] No new i18n keys needed (Phase 1 is styling-only — if a component swap
       requires new copy, stop and follow the localization flow before
@@ -181,7 +181,7 @@ Phase 1 touches:
       anything near a native surface: title-bar close X placement, any
       dialog that can overlap a URL Connection or RDP/VNC pane. Pure form
       dialogs (Settings, most Connection types) are fine to eyeball in
-      `npm run dev`.
+      `pnpm run dev`.
 
 ## 8. Open questions
 

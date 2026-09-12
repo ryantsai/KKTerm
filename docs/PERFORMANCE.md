@@ -15,7 +15,7 @@ Do not add debug-only timing indicators back to the Status Bar. Use diagnostics,
 | --- | ---: | --- |
 | Cold launch to usable UI | <= 1,000 ms acceptable, <= 500 ms target | Release-measurement run or DevTools/performance instrumentation |
 | New local terminal tab ready | <= 100 ms | Release-measurement run or explicit local terminal timing instrumentation |
-| SSH terminal ready after auth | <= 150 ms, excluding network/auth wait | `npm run measure:ssh-readiness`, diagnostics snapshot, or release-measurement run |
+| SSH terminal ready after auth | <= 150 ms, excluding network/auth wait | `pnpm run measure:ssh-readiness`, diagnostics snapshot, or release-measurement run |
 | Idle memory | <= 150 MiB target | Diagnostics snapshot or OS process working-set/private-bytes counters |
 
 ## Measurement Run
@@ -29,7 +29,7 @@ Use a release-like Tauri build when possible. Development builds are still usefu
 5. Open a new local terminal tab.
 6. Record local terminal readiness from explicit timing instrumentation.
 7. Open a native non-`ProxyJump` SSH Connection that has already completed host-key trust.
-8. Record SSH readiness with `npm run measure:ssh-readiness` or diagnostics after authentication completes. The value is measured in the Rust SSH path after verified connect/auth returns and covers terminal channel, PTY, shell, and initial directory setup.
+8. Record SSH readiness with `pnpm run measure:ssh-readiness` or diagnostics after authentication completes. The value is measured in the Rust SSH path after verified connect/auth returns and covers terminal channel, PTY, shell, and initial directory setup.
 
 Record the machine, OS, build type, date, and values in release notes or the validating issue before marking a milestone measurement item complete.
 
@@ -58,7 +58,7 @@ $env:KKTERM_SSH_AUTH = "agent" # or keyFile/password
 $env:KKTERM_SSH_KEY_PATH = "C:\Users\you\.ssh\id_ed25519" # keyFile only
 $env:KKTERM_SSH_PASSWORD = "..." # password only; not printed by the script
 $env:KKTERM_SSH_KNOWN_HOSTS_PATH = "$env:APPDATA\com.kkterm.app\ssh_known_hosts"
-npm run measure:ssh-readiness
+pnpm run measure:ssh-readiness
 ```
 
 The helper opens the native `russh` terminal path, starts timing only after verified connect/auth completes, asserts the `<= 150 ms` budget, prints the measured duration, and does not print host output or secret values.
@@ -90,7 +90,7 @@ Measured on 2026-05-02 11:50:35 +08:00 using the release executable built at `sr
 | New local terminal tab ready | 16 ms | <= 100 ms | Pass | Historical measurement from the previous app chrome `Local ready` value after triggering the `New local terminal` button in the release app. New runs should use explicit timing instrumentation. |
 | Working set after one local terminal | 29.4 MiB | No separate budget | Informational | Process private bytes were 6.5 MiB. Shell child-process memory is not included in this app-process value. |
 | Release executable size | 16.9 MiB | Not Electron-scale | Pass | Size of `src-tauri/target/release/kkterm.exe`. |
-| SSH terminal ready after auth | Not measured | <= 150 ms excluding network/auth | Pending | The app records native SSH post-auth terminal readiness in performance snapshots and diagnostics manifests, and the repeatable `npm run measure:ssh-readiness` helper can measure it directly. This run still requires a non-`ProxyJump` SSH Connection with host key already trusted and valid auth available in the measurement environment. |
+| SSH terminal ready after auth | Not measured | <= 150 ms excluding network/auth | Pending | The app records native SSH post-auth terminal readiness in performance snapshots and diagnostics manifests, and the repeatable `pnpm run measure:ssh-readiness` helper can measure it directly. This run still requires a non-`ProxyJump` SSH Connection with host key already trusted and valid auth available in the measurement environment. |
 
 This run meets every measured performance budget. SSH readiness remains the only documented performance budget not validated by this run.
 
@@ -123,7 +123,7 @@ The quick scenarios below are the smoke pass. The full manual checklist is the l
 | `htop` or `btop` runs | Full-screen redraws are stable and input remains responsive |
 | `git status`, `git log`, and pager navigation | Scroll, search, and quit behavior match normal terminal expectations |
 | Search terminal scrollback from a pane | Matches are highlighted, next/previous navigation wraps through scrollback, and closing search clears decorations |
-| `npm run check` or similar noisy command | Scrollback remains available and terminal stays responsive |
+| `pnpm run check` or similar noisy command | Scrollback remains available and terminal stays responsive |
 | `cargo test` or similar long command | Output does not corrupt after resize |
 | Paste a multi-line command while confirmation is enabled | User confirmation appears before input is sent |
 | Paste into an app that enables bracketed paste, such as a shell/readline or editor | Pasted text is bracket-delimited by the terminal app when supported |
@@ -263,7 +263,7 @@ Run these checks in a Node project.
 
 | Check | Steps | Expected Result | Result |
 | --- | --- | --- | --- |
-| Noisy command output | Run `npm run check` or another project check script. | Streaming output remains responsive and readable. | |
+| Noisy command output | Run `pnpm run check` or another project check script. | Streaming output remains responsive and readable. | |
 | Long output scrollback | Run a command that prints enough lines to fill scrollback, such as a verbose test or build. | Scrollback remains available after the command completes. | |
 | Interactive interrupt | Start a long-running script such as a dev server, then press Ctrl+C. | Process receives interrupt and returns to the prompt. | |
 | Resize during output | Resize the window while npm output is streaming. | New output uses the new terminal width without corrupting existing visible rows. | |

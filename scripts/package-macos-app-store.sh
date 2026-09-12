@@ -26,7 +26,7 @@ pathlib.Path(sys.argv[1]).write_text(json.dumps({"bundle": {"macOS": {"files": {
 }}}}))
 PY
 
-npm exec tauri -- build --target universal-apple-darwin --bundles app \
+pnpm exec tauri build --target universal-apple-darwin --bundles app \
   --config src-tauri/tauri.appstore.conf.json --config "$STORE_CONFIG"
 
 STORE_APP="$PWD/src-tauri/target/universal-apple-darwin/release/bundle/macos/KKTerm.app"

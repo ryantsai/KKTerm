@@ -27,7 +27,7 @@ test("macOS release script is a native zsh GitHub release asset uploader", () =>
 test("macOS release script does not create tags or increment versions", () => {
   assert.match(script, /assert_tag_matches_version "\$TAG_NAME" "\$VERSION"/);
   assert.match(script, /gh release view "\$TAG_NAME"/);
-  assert.doesNotMatch(script, /npm version/);
+  assert.doesNotMatch(script, /pnpm version/);
   assert.doesNotMatch(script, /git tag -a/);
   assert.doesNotMatch(script, /gh release create/);
 });
@@ -49,14 +49,14 @@ test("macOS release script builds deterministic DMG and checksum asset names", (
   assert.match(script, /TARGET_TRIPLE="universal-apple-darwin"/);
   assert.match(script, /DMG_NAME="kkterm-\$VERSION-macos-universal\.dmg"/);
   assert.match(script, /SHA_NAME="\$DMG_NAME\.sha256"/);
-  assert.match(script, /npm run package:macos/);
+  assert.match(script, /pnpm run package:macos/);
   assert.match(script, /shasum -a 256 "\$DMG_PATH"/);
 });
 
 test("macOS package script loads the updater private key for Tauri signing", () => {
   assert.equal(
     packageJson.scripts["package:macos"],
-    "npm install && zsh scripts/package-macos.sh",
+    "pnpm install && zsh scripts/package-macos.sh",
   );
   assert.match(packageMacosScript, /TAURI_SIGNING_PRIVATE_KEY_PATH:-\$HOME\/\.tauri\/kkterm-updater\.key/);
   assert.match(packageMacosScript, /normalize_tauri_signing_key\(\) \{/);
@@ -71,7 +71,7 @@ test("macOS package script loads the updater private key for Tauri signing", () 
   );
   assert.match(packageMacosScript, /export TAURI_SIGNING_PRIVATE_KEY="\$\(extract_tauri_signing_key "\$KEY_PATH"\)"/);
   assert.match(packageMacosScript, /export TAURI_SIGNING_PRIVATE_KEY="\$\(normalize_tauri_signing_key "\$TAURI_SIGNING_PRIVATE_KEY"\)"/);
-  assert.match(packageMacosScript, /npm exec tauri -- build --target universal-apple-darwin --bundles app,dmg "\$@"/);
+  assert.match(packageMacosScript, /pnpm exec tauri build --target universal-apple-darwin --bundles app,dmg "\$@"/);
 });
 
 test("macOS package script guards the universal build on the x86_64 Rust target", () => {
@@ -80,7 +80,7 @@ test("macOS package script guards the universal build on the x86_64 Rust target"
   assert.match(packageMacosScript, /rustup target add x86_64-apple-darwin/);
 
   const guardIndex = packageMacosScript.indexOf("require_universal_targets\n");
-  const buildIndex = packageMacosScript.indexOf("npm exec tauri -- build");
+  const buildIndex = packageMacosScript.indexOf("pnpm exec tauri build");
   assert.ok(guardIndex !== -1, "guard must be invoked before the build");
   assert.ok(guardIndex < buildIndex, "guard must run before tauri build");
 });

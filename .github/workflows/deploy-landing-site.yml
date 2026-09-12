@@ -30,14 +30,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 24.20.0
-          cache: npm
+          cache: pnpm
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
       - name: Deploy worker (static site + release downloads)
         run: |
-          npx wrangler deploy --config cloudflare/release-worker/wrangler.jsonc \
+          pnpm exec wrangler deploy --config cloudflare/release-worker/wrangler.jsonc \
             ${{ inputs.dry_run && '--dry-run' || '' }}

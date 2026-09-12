@@ -118,7 +118,7 @@ the v2 host context, lifecycle events, isolated storage, readiness handshake,
 and external-link bridge. Build its installable archive with:
 
 ```bash
-npm run package:custom-module-fixture
+pnpm run package:custom-module-fixture
 ```
 
 ## KKTerm-curated publishing

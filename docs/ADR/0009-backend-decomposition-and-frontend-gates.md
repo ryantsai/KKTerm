@@ -15,7 +15,7 @@ Two test/quality gaps compounded it:
 
 1. **CI did not run the Rust test suite** — only `cargo check`. 600+ behavioral
    tests never gated merges.
-2. **The frontend `npm run check` was a hand-maintained `&&` chain** of ~38
+2. **The frontend `pnpm run check` was a hand-maintained `&&` chain** of ~38
    explicit `node tests/<file>` invocations. ~39 other `tests/*.test.mjs` files
    were silently never run, and ~12 of those had rotted — they assert exact
    source text (`assert.match(source, /regex/)`) that drifted from the
@@ -61,7 +61,7 @@ A full command move remains available if `lib.rs` growth ever justifies it.
 
 ### 3. Test runner auto-discovers; stale guards stay visible
 
-`npm run check` runs `tests/run-all.mjs`, which discovers every
+`pnpm run check` runs `tests/run-all.mjs`, which discovers every
 `tests/*.test.{mjs,ts}` automatically — adding a test never requires editing a
 list. The stale source-grep guards from the original runner migration were
 triaged:
@@ -75,7 +75,7 @@ triaged:
 ### 4. ESLint gate: correctness errors, pre-existing noise as warnings
 
 A flat ESLint config (`typescript-eslint` + `eslint-plugin-react-hooks`) is
-wired into `npm run check`. It must stay **green on current code** so it can
+wired into `pnpm run check`. It must stay **green on current code** so it can
 block *new* problems: `react-hooks/rules-of-hooks` and the serious
 `js.recommended` rules are errors; pre-existing stylistic findings
 (`prefer-const`, `no-case-declarations`, etc.) are warnings until burned down.

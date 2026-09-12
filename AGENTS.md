@@ -79,7 +79,7 @@ Strong success criteria let you loop independently.
   i18n keys, not English labels.
 - Tutorial-capable UI needs a stable `data-tutorial-id`, a navigation entry in
   `src/app/tutorialNavigationModel.ts`, matching `tutorial_highlight` metadata
-  in `src-tauri/src/ai.rs`, and manual grep hints. `npm run check` validates
+  in `src-tauri/src/ai.rs`, and manual grep hints. `pnpm run check` validates
   these mappings.
 - All user-visible strings go through i18n. Add English keys first in
   `src/i18n/locales/en.json`; whenever new UI strings are created or changed,
@@ -202,13 +202,13 @@ significant code change, defined as more than 500 changed lines of code. Do not
 run the full suite for cosmetic UI changes or documentation-only updates.
 
 ```bash
-npm run check
-npm run build
+pnpm run check
+pnpm run build
 cargo check --manifest-path src-tauri/Cargo.toml
 cargo test --manifest-path src-tauri/Cargo.toml
 ```
 
-`npm run check` runs ESLint (`npm run lint`), then the auto-discovered frontend
+`pnpm run check` runs ESLint (`pnpm run lint`), then the auto-discovered frontend
 test suite (`tests/run-all.mjs` picks up every `tests/*.test.{mjs,ts}` except a
 documented `QUARANTINE` set), then `tsc --noEmit`. Add a new frontend test by
 dropping a file in `tests/`; do not maintain a hand-edited test list. CI runs

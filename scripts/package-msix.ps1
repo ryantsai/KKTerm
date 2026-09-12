@@ -237,11 +237,11 @@ function Invoke-AppBuild {
     $PreviousTauriConfig = $env:TAURI_CONFIG
     $env:TAURI_CONFIG = '{"bundle":{"externalBin":["binaries/kkterm-cli"]}}'
     try {
-        $TauriArgs = @("exec", "tauri", "--", "build", "--no-bundle")
+        $TauriArgs = @("exec", "tauri", "build", "--no-bundle")
         if ($CargoTarget) {
             $TauriArgs += @("--target", $CargoTarget)
         }
-        & npm @TauriArgs
+        & pnpm @TauriArgs
         if ($LASTEXITCODE -ne 0) {
             throw "Building the $Arch executable failed with exit code $LASTEXITCODE."
         }

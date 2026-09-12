@@ -68,14 +68,16 @@ jobs:
           ref: main
           fetch-depth: 0
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 24.20.0
-          cache: npm
+          cache: pnpm
 
       - uses: dtolnay/rust-toolchain@1.97.1
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
       - name: Configure release commit author
         run: |
@@ -136,16 +138,18 @@ jobs:
           git fetch origin main --tags
           git reset --hard origin/main
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 24.20.0
-          cache: npm
+          cache: pnpm
 
       - uses: dtolnay/rust-toolchain@1.97.1
         with:
           targets: aarch64-apple-darwin, x86_64-apple-darwin
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
       - name: Import Apple signing certificate
         if: ${{ env.APPLE_CERTIFICATE_P12 != '' }}
@@ -193,10 +197,12 @@ jobs:
           git fetch origin main --tags
           git reset --hard origin/main
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 24.20.0
-          cache: npm
+          cache: pnpm
 
       - uses: dtolnay/rust-toolchain@1.97.1
 
@@ -214,7 +220,7 @@ jobs:
             pkg-config \
             libfuse2t64
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
       - name: Build and publish Linux AppImage
         run: bash scripts/release-github-linux.sh --tag "${{ needs.release.outputs.tag }}"

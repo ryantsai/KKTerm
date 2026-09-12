@@ -47,7 +47,7 @@ require_universal_targets() {
 if [[ -z "${TAURI_SIGNING_PRIVATE_KEY:-}" ]]; then
   if [[ ! -f "$KEY_PATH" ]]; then
     print -u2 "Missing Tauri updater signing key: $KEY_PATH"
-    print -u2 "Set TAURI_SIGNING_PRIVATE_KEY or TAURI_SIGNING_PRIVATE_KEY_PATH before running npm run package:macos."
+    print -u2 "Set TAURI_SIGNING_PRIVATE_KEY or TAURI_SIGNING_PRIVATE_KEY_PATH before running pnpm run package:macos."
     exit 1
   fi
 
@@ -61,4 +61,4 @@ export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:
 
 require_universal_targets
 
-npm exec tauri -- build --target universal-apple-darwin --bundles app,dmg "$@"
+pnpm exec tauri build --target universal-apple-darwin --bundles app,dmg "$@"
