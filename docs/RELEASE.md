@@ -48,6 +48,9 @@ Create the Windows installer with:
 npm run package:installer
 ```
 
+The app artifact `npm run package:*` commands install npm dependencies before
+starting their platform build scripts.
+
 The script runs the Tauri NSIS bundle target, copies the generated setup executable to a stable release filename, and writes:
 
 - `artifacts/kkterm-<version>-windows-x64-setup.exe`
