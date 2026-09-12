@@ -205,6 +205,8 @@ export function TitleBar({
         </div>
         {activePage === "workspace" && showWorkspaceOpenMenu && isWindowsPlatform() ? (
           <button
+            tabIndex={-1}
+            onMouseDown={(event) => event.preventDefault()}
             aria-label={t("app.openFile")}
             className="app-titlebar-open-path-button"
             onClick={() => void invokeCommand("open_launch_file_picker", undefined)}
@@ -218,6 +220,8 @@ export function TitleBar({
       <div className="app-titlebar-controls">
         {activePage === "workspace" ? (
           <button
+            tabIndex={-1}
+            onMouseDown={(event) => event.preventDefault()}
             type="button"
             className={`app-titlebar-button app-titlebar-panel-button ${
               connectionPanelCollapsed ? "" : "active"
@@ -232,6 +236,8 @@ export function TitleBar({
         ) : null}
         {activePage === "itops" ? (
           <button
+            tabIndex={-1}
+            onMouseDown={(event) => event.preventDefault()}
             type="button"
             className={`app-titlebar-button app-titlebar-panel-button ${
               itOpsSiteTreeCollapsed ? "" : "active"
@@ -245,6 +251,8 @@ export function TitleBar({
           </button>
         ) : null}
         <button
+          tabIndex={-1}
+          onMouseDown={(event) => event.preventDefault()}
           type="button"
           className={`app-titlebar-button app-titlebar-panel-button ${
             aiPanelCollapsed ? "" : "active"
@@ -259,6 +267,8 @@ export function TitleBar({
         {nativeWindowControls ? null : (
           <>
             <button
+              tabIndex={-1}
+              onMouseDown={(event) => event.preventDefault()}
               type="button"
               className="app-titlebar-button"
               onClick={handleMinimize}
@@ -268,6 +278,8 @@ export function TitleBar({
               <MinimizeIcon />
             </button>
             <button
+              tabIndex={-1}
+              onMouseDown={(event) => event.preventDefault()}
               type="button"
               className="app-titlebar-button"
               onClick={handleToggleMaximize}
@@ -281,6 +293,8 @@ export function TitleBar({
               {maximized ? <RestoreIcon /> : <MaximizeIcon />}
             </button>
             <button
+              tabIndex={-1}
+              onMouseDown={(event) => event.preventDefault()}
               type="button"
               className="app-titlebar-button app-titlebar-close"
               onClick={handleClose}

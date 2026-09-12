@@ -266,27 +266,28 @@ test("custom titlebar matches the native Windows title height", async () => {
   );
 });
 
-test("custom titlebar buttons expose a keyboard focus indicator", async () => {
+test("custom titlebar buttons preserve focus and hide focus borders", async () => {
   const appCssSource = await readFile(
     new URL("../src/app/app.css", import.meta.url),
+    "utf8",
+  );
+  const titleBarSource = await readFile(
+    new URL("../src/app/TitleBar.tsx", import.meta.url),
     "utf8",
   );
 
   assert.match(
     appCssSource,
-    /\.app-titlebar button:focus-visible\s*\{[^}]*outline:\s*2px solid var\(--titlebar-text\);[^}]*outline-offset:\s*-3px;/s,
-    "all custom titlebar buttons should expose a shared keyboard focus indicator",
+    /\.app-titlebar button:focus,\s*\.app-titlebar button:focus-visible\s*\{[^}]*outline:\s*none;[^}]*box-shadow:\s*none;/s,
+    "titlebar controls should not show focus borders",
   );
-  assert.doesNotMatch(
-    appCssSource,
-    /\.app-titlebar button:focus\s*\{[^}]*outline:\s*none;/s,
-    "custom titlebar buttons should not suppress focus indicators for keyboard users",
-  );
-  assert.doesNotMatch(
-    appCssSource,
-    /\.app-titlebar-open-path-button:focus-visible\s*\{[^}]*outline:/s,
-    "the titlebar file button should use the shared focus indicator",
-  );
+  const buttons = [...titleBarSource.matchAll(/<button\b([\s\S]*?)<\//g)];
+  assert.equal(buttons.length, 7);
+  for (const [, button] of buttons) {
+    assert.match(button, /tabIndex=\{-1\}/);
+    assert.match(button, /onMouseDown=\{\(event\) => event\.preventDefault\(\)\}/);
+    assert.match(button, /onClick=/, "titlebar actions should remain clickable");
+  }
 });
 
 test("custom titlebar controls stay anchored to the visible viewport", async () => {
