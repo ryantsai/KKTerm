@@ -55,6 +55,6 @@ test("sidecar prep supports an explicit cargo cross target", () => {
 test("npm exposes the arm64 packaging script", () => {
   assert.equal(
     pkg.scripts["package:installer:arm64"],
-    "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-installer-arm64.ps1",
+    "npm install && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-installer-arm64.ps1",
   );
 });
