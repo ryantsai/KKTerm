@@ -94,6 +94,19 @@ test("release script validates source before mutating the version files", () => 
   );
 });
 
+test("release version bump accepts generated notes after the clean-tree preflight", () => {
+  const preflightIdx = script.indexOf("if ($Status -and -not $AllowDirty)");
+  const notesIdx = script.indexOf('-Action "Generate release notes"');
+  const versionBump = script.match(/@\("version", \$NextVersion[^\n]+/);
+
+  assert.ok(preflightIdx !== -1, "initial clean-tree guard must remain enabled");
+  assert.ok(versionBump, "pnpm version bump step should exist");
+  assert.ok(preflightIdx < notesIdx && notesIdx < versionBump.index);
+  assert.match(versionBump[0], /"--no-git-checks"/);
+  assert.match(versionBump[0], /"--no-git-tag-version"/);
+  assert.match(versionBump[0], /"--allow-same-version"/);
+});
+
 test("release script rolls back local mutations when a release step fails", () => {
   assert.match(script, /function Undo-ReleaseMutations \{/);
   assert.match(script, /git reset --hard \$OriginalHead/);

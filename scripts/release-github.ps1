@@ -376,7 +376,9 @@ artifacts/release-notes-*.md) that were not part of a finished release.
 
         Invoke-Checked -FilePath "node" -ArgumentList $ReleaseNotesArgs -Action "Generate release notes"
 
-        Invoke-Checked -FilePath "pnpm" -ArgumentList @("version", $NextVersion, "--no-git-tag-version", "--allow-same-version") -Action "Update package version"
+        # Release notes have intentionally dirtied the tree after our preflight
+        # check. pnpm checks cleanliness even when its commit/tag step is disabled.
+        Invoke-Checked -FilePath "pnpm" -ArgumentList @("version", $NextVersion, "--no-git-tag-version", "--allow-same-version", "--no-git-checks") -Action "Update package version"
         Set-TauriConfigVersion -Path $TauriConfigPath -Version $NextVersion
         Set-CargoPackageVersion -Path $CargoTomlPath -Version $NextVersion
 
