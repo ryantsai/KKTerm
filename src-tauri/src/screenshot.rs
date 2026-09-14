@@ -581,12 +581,12 @@ pub fn capture_rect_to_clipboard(
     let width = (request.width * scale).round().max(1.0) as u32;
     let height = (request.height * scale).round().max(1.0) as u32;
     let (cropped, width, height) = crop_rgba(&rgba, win_width, win_height, x, y, width, height)?;
-    write_rgba_to_clipboard(&cropped, width, height)
+    write_rgba_to_clipboard(app, &cropped, width, height)
 }
 
 #[cfg(not(target_os = "windows"))]
 pub fn write_data_url_to_clipboard(
-    _app: &tauri::AppHandle,
+    app: &tauri::AppHandle,
     request: ScreenshotDataUrlRequest,
 ) -> Result<(), String> {
     let (_, encoded) = request
@@ -600,7 +600,7 @@ pub fn write_data_url_to_clipboard(
     let image = image::load_from_memory(&bytes)
         .map_err(|error| format!("failed to read screenshot: {error}"))?
         .to_rgba8();
-    write_rgba_to_clipboard(image.as_raw(), image.width(), image.height())
+    write_rgba_to_clipboard(app, image.as_raw(), image.width(), image.height())
 }
 
 #[cfg(not(target_os = "windows"))]
@@ -665,7 +665,7 @@ pub fn capture_rect_to_library(
     let width = (request.width * scale).round().max(1.0) as u32;
     let height = (request.height * scale).round().max(1.0) as u32;
     let (cropped, width, height) = crop_rgba(&rgba, win_width, win_height, x, y, width, height)?;
-    deliver_rgba(&cropped, width, height, kind, &options)
+    deliver_rgba(app, &cropped, width, height, kind, &options)
 }
 
 #[cfg(not(target_os = "windows"))]
@@ -678,7 +678,14 @@ pub fn capture_fullscreen_to_library(
 ) -> Result<ScreenshotCaptureResult, String> {
     let _guard = MinimizedCaptureWindow::new(app, minimize_window)?;
     let region = capture_engine::capture_virtual_screen()?;
-    deliver_rgba(&region.rgba, region.width, region.height, kind, &options)
+    deliver_rgba(
+        app,
+        &region.rgba,
+        region.width,
+        region.height,
+        kind,
+        &options,
+    )
 }
 
 #[cfg(not(target_os = "windows"))]
@@ -697,6 +704,7 @@ pub fn capture_active_window_to_library(
     #[cfg(not(any(target_os = "macos", target_os = "linux")))]
     return Err("window screenshot capture is unavailable on this platform".to_string());
     deliver_rgba(
+        app,
         image.as_raw(),
         image.width(),
         image.height(),
@@ -721,6 +729,7 @@ pub fn capture_interactive_region_to_library(
     #[cfg(not(any(target_os = "macos", target_os = "linux")))]
     return Err("region screenshot capture is unavailable on this platform".to_string());
     deliver_rgba(
+        app,
         image.as_raw(),
         image.width(),
         image.height(),
@@ -729,7 +738,7 @@ pub fn capture_interactive_region_to_library(
     )
 }
 
-fn write_rgba_to_clipboard(rgba: &[u8], width: u32, height: u32) -> Result<(), String> {
+fn write_rgba_to_clipboard_now(rgba: &[u8], width: u32, height: u32) -> Result<(), String> {
     let expected = width as usize * height as usize * 4;
     if width == 0 || height == 0 || rgba.len() < expected {
         return Err("captured screenshot image data is incomplete".to_string());
@@ -743,6 +752,38 @@ fn write_rgba_to_clipboard(rgba: &[u8], width: u32, height: u32) -> Result<(), S
             bytes: std::borrow::Cow::Borrowed(&rgba[..expected]),
         })
         .map_err(|error| format!("failed to copy screenshot to the clipboard: {error}"))
+}
+
+#[cfg(not(target_os = "windows"))]
+fn write_rgba_to_clipboard(
+    app: &tauri::AppHandle,
+    rgba: &[u8],
+    width: u32,
+    height: u32,
+) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        let expected = width as usize * height as usize * 4;
+        if width == 0 || height == 0 || rgba.len() < expected {
+            return Err("captured screenshot image data is incomplete".to_string());
+        }
+        let pixels = rgba[..expected].to_vec();
+        let (sender, receiver) = std::sync::mpsc::sync_channel(1);
+        app.run_on_main_thread(move || {
+            let result = write_rgba_to_clipboard_now(&pixels, width, height);
+            let _ = sender.send(result);
+        })
+        .map_err(|error| format!("failed to schedule the image clipboard write: {error}"))?;
+        return receiver
+            .recv_timeout(std::time::Duration::from_secs(10))
+            .map_err(|_| "timed out while copying the screenshot to the clipboard".to_string())?;
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = app;
+        write_rgba_to_clipboard_now(rgba, width, height)
+    }
 }
 
 fn save_rgba_to_library(
@@ -825,8 +866,7 @@ pub fn deliver_data_url_to_library(
         }
         #[cfg(not(target_os = "windows"))]
         {
-            let _ = app;
-            write_rgba_to_clipboard(image.as_raw(), width, height)?;
+            write_rgba_to_clipboard(app, image.as_raw(), width, height)?;
         }
     }
 
@@ -850,6 +890,7 @@ pub fn deliver_data_url_to_library(
 
 #[cfg(not(target_os = "windows"))]
 fn deliver_rgba(
+    app: &tauri::AppHandle,
     rgba: &[u8],
     width: u32,
     height: u32,
@@ -877,7 +918,7 @@ fn deliver_rgba(
     let save_to_folder = options.capture_mode != "clipboard";
 
     if copy_to_clipboard {
-        write_rgba_to_clipboard(rgba, width, height)?;
+        write_rgba_to_clipboard(app, rgba, width, height)?;
     }
     let stored_screenshot = if save_to_folder {
         Some(save_rgba_to_library(rgba, width, height, kind, options)?)
@@ -1849,7 +1890,7 @@ pub fn copy_library_screenshot_to_clipboard(
 
 #[cfg(not(target_os = "windows"))]
 pub fn copy_library_screenshot_to_clipboard(
-    _app: &tauri::AppHandle,
+    app: &tauri::AppHandle,
     id: String,
     folder_path: String,
 ) -> Result<(), String> {
@@ -1858,7 +1899,7 @@ pub fn copy_library_screenshot_to_clipboard(
     let image = image::open(path)
         .map_err(|error| format!("failed to read screenshot: {error}"))?
         .to_rgba8();
-    write_rgba_to_clipboard(image.as_raw(), image.width(), image.height())
+    write_rgba_to_clipboard(app, image.as_raw(), image.width(), image.height())
 }
 
 pub fn delete_library_screenshot(id: String, folder_path: String) -> Result<(), String> {
@@ -2861,7 +2902,7 @@ mod platform {
         let width = header.biWidth.unsigned_abs();
         let height = header.biHeight.unsigned_abs();
         let rgba = dib_to_rgba(dib, width, height)?;
-        super::write_rgba_to_clipboard(&rgba, width, height)
+        super::write_rgba_to_clipboard_now(&rgba, width, height)
     }
 
     pub fn write_rgba_to_clipboard(
@@ -2871,7 +2912,7 @@ mod platform {
         height: u32,
     ) -> Result<(), String> {
         let _ = owner_hwnd;
-        super::write_rgba_to_clipboard(rgba, width, height)
+        super::write_rgba_to_clipboard_now(rgba, width, height)
     }
 
     pub fn capture_screen_rect_to_dib(
