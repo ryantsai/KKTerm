@@ -5983,7 +5983,7 @@
     "browserTitle": "内嵌浏览器",
     "browserDescription": "切换一个标签页即可打开路由器管理界面，并保存登录信息。",
     "filesTitle": "文件资源管理器与文档查看器",
-    "filesDescription": "浏览本地磁盘，查看日志、CSV、图片和 PDF，支持跟踪文件末尾。",
+    "filesDescription": "浏览本地磁盘，查看日志、CSV、图片和 PDF，支持实时跟踪文件末尾。",
     "aiEyebrow": "AI 参与，操作可控",
     "aiTitle": "助手操作终端，你全程监督",
     "aiDescription": "多数“终端 AI”演示止步于聊天。KKTerm 助手直接在会话中工作：把屏幕上的内容作为上下文交给它，即可操作已连接的机器。",

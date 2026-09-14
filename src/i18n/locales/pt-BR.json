@@ -5983,7 +5983,7 @@
     "browserTitle": "Navegador integrado",
     "browserDescription": "A administração do roteador a uma aba de distância, com acessos salvos.",
     "filesTitle": "Explorador de arquivos e visualizador de documentos",
-    "filesDescription": "Navegue por discos locais e consulte logs, CSV, imagens e PDF, com acompanhamento do final do arquivo.",
+    "filesDescription": "Navegue por discos locais e consulte logs, CSV, imagens e PDF, acompanhando o final do arquivo em tempo real.",
     "aiEyebrow": "IA sob sua supervisão",
     "aiTitle": "Um assistente que opera seus terminais enquanto você acompanha",
     "aiDescription": "Muitas demonstrações de IA no terminal param na conversa. O assistente KKTerm trabalha na sessão: forneça o contexto da tela e ele poderá agir nas máquinas conectadas.",

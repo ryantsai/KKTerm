@@ -31,7 +31,7 @@
   "browserTitle": "Browser integrato",
   "browserDescription": "L'interfaccia del router a una scheda di distanza, con accessi salvati.",
   "filesTitle": "Esplora file e visualizzatore documenti",
-  "filesDescription": "Esplora dischi locali e consulta log, CSV, immagini e PDF, seguendo anche la coda dei file.",
+  "filesDescription": "Esplora dischi locali e consulta log, CSV, immagini e PDF, seguendo in tempo reale la fine dei file.",
   "aiEyebrow": "L'IA con te al comando",
   "aiTitle": "Un assistente che comanda i terminali sotto i tuoi occhi",
   "aiDescription": "Molte demo di IA nel terminale si fermano alla chat. L'assistente KKTerm lavora nella sessione: passagli il contesto già sullo schermo e agirà sulle macchine connesse.",

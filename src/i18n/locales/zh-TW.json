@@ -5983,7 +5983,7 @@
     "browserTitle": "內嵌瀏覽器",
     "browserDescription": "路由器管理介面就在另一個分頁，並可儲存登入資訊。",
     "filesTitle": "檔案總管與文件檢視器",
-    "filesDescription": "瀏覽本機磁碟，並檢視記錄、CSV、圖片與 PDF，支援持續追蹤檔案尾端。",
+    "filesDescription": "瀏覽本機磁碟，並檢視記錄、CSV、圖片與 PDF，支援即時追蹤檔案尾端。",
     "aiEyebrow": "由你掌握的 AI",
     "aiTitle": "AI 助理操作終端機，你全程掌握",
     "aiDescription": "多數「終端機 AI」展示只停留在聊天。KKTerm 助理可直接在工作階段中操作：將畫面上的內容提供給它，就能對已連線的主機採取行動。",

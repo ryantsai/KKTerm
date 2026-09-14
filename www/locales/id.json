@@ -31,7 +31,7 @@
   "browserTitle": "Peramban bawaan",
   "browserDescription": "Antarmuka admin router hanya berjarak satu tab, dengan login tersimpan.",
   "filesTitle": "Penjelajah berkas dan penampil dokumen",
-  "filesDescription": "Jelajahi disk lokal dan lihat log, CSV, gambar, serta PDF, dengan pelacakan akhir berkas.",
+  "filesDescription": "Jelajahi disk lokal dan lihat log, CSV, gambar, serta PDF, dengan pelacakan bagian akhir berkas secara langsung.",
   "aiEyebrow": "AI dalam pengawasan Anda",
   "aiTitle": "Asisten yang mengoperasikan terminal, dengan Anda menyaksikan",
   "aiDescription": "Banyak demo AI terminal berhenti pada percakapan. Asisten KKTerm bekerja dalam sesi: berikan konteks dari layar dan ia dapat bertindak pada mesin yang terhubung.",

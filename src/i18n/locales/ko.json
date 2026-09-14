@@ -5989,7 +5989,7 @@
     "aiDescription": "대부분의 터미널 AI 데모는 채팅에 그칩니다. KKTerm 도우미는 세션 안에서 동작합니다. 화면의 맥락을 전달하면 연결된 컴퓨터에서 작업합니다.",
     "aiHistory": "실시간 터미널 스크롤 기록을 대화에 바로 추가",
     "aiScreenshot": "패널을 캡처하고 “왜 이상하게 보이지?”라고 질문",
-    "aiApproval": "위험한 명령은 표시되며 명시적인 승인을 기다림",
+    "aiApproval": "위험한 명령은 표시하고 명시적인 승인을 기다립니다",
     "aiModels": "OpenAI, Gemini, Grok, Ollama, Claude Code CLI, Codex CLI 등 원하는 모델 선택",
     "dashboardEyebrow": "내 대시보드, 내 방식대로",
     "dashboardTitle": "Grafana를 흉내 내지 않는 대시보드",
