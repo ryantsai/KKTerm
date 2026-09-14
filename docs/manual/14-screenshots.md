@@ -33,6 +33,13 @@ On Windows, MP4 recordings contained within one monitor first use `windows-captu
 
 Video capture writes directly to the Screenshots folder and appears in the same library as images. Windows supports Window, Fullscreen, and Region using the existing native target picker. macOS and Linux currently support Fullscreen recording; choosing another target reports that platform limit. While recording, a translucent, protected, always-on-top controller sits at the top center of the selected target. Its compact horizontal icon bar can be dragged and provides only `screenshots.video.pause` / `screenshots.video.resume` and `screenshots.video.stop`; it has no target preview and does not appear in recorded frames. On macOS the same two actions and the recording dot appear in a floating pill at the top of the main app window instead of a detached window; it is visible across Modules and disappears when the recording stops. The controller uses the app's existing Tauri/web bundle and adds no second UI runtime. Stopping opens the lightweight `screenshots.video.editorTitle` sheet: the native media preview contains the complete recording frame above a transport row and one resizable timeline clip provided by `@xzdarcy/react-timeline-editor`. Play/Pause and five-second seek actions keep the video and timeline playhead synchronized; the ruler fits the recording duration to the available editor width. Dragging either edge selects a trim range; native text selection is disabled across this editor so timeline labels cannot intercept that gesture. `screenshots.video.exportTrimmed` creates a new copy while preserving the source recording. Recordings are silent in this first slice.
 
+On Windows, Esc cancels both the region and window picker for images and videos,
+including while dragging a region. While the Module capture delay is pending,
+Esc in the app cancels the pending image or video capture. During an active or
+paused Windows recording, Esc works even while KKTerm is minimized: it discards
+the recording, removes its file, and closes the controller without opening the
+trim editor. Use `screenshots.video.stop` to keep the recording instead.
+
 The detached controller's `screenshots.video.pause`, `screenshots.video.resume`, and
 `screenshots.video.stop` actions also work while the main window is minimized.
 

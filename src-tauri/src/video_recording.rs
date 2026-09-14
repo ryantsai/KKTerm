@@ -83,6 +83,8 @@ impl RecordingBackend {
 const TOOL_ID: &str = "ffmpeg";
 pub const RECORDING_STARTED_EVENT: &str = "kkterm://video-recording-started";
 pub const RECORDING_COMPLETED_EVENT: &str = "kkterm://video-recording-completed";
+#[cfg(target_os = "windows")]
+pub const RECORDING_CANCELED_EVENT: &str = "kkterm://video-recording-canceled";
 #[cfg(not(target_os = "macos"))]
 const CONTROLS_WINDOW_LABEL: &str = "video-recording-controls";
 #[cfg(not(target_os = "macos"))]
@@ -98,6 +100,20 @@ const CONTROLS_TARGET_INSET: i32 = 10;
 pub struct VideoRecordingState {
     active: Mutex<Option<ActiveRecording>>,
     finalizing: AtomicBool,
+    #[cfg(target_os = "windows")]
+    exiting: AtomicBool,
+}
+
+#[cfg(target_os = "windows")]
+impl VideoRecordingState {
+    pub fn shutdown(&self) {
+        self.exiting.store(true, Ordering::Release);
+        if let Ok(mut active) = self.active.lock()
+            && let Some(mut recording) = active.take()
+        {
+            recording.backend.abort();
+        }
+    }
 }
 
 impl Drop for VideoRecordingState {
@@ -120,6 +136,78 @@ struct ActiveRecording {
     format: String,
     width: Option<u32>,
     height: Option<u32>,
+}
+
+struct Finalizing<'a>(&'a AtomicBool);
+impl Drop for Finalizing<'_> {
+    fn drop(&mut self) {
+        self.0.store(false, Ordering::Release);
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn take_canceled_recording(
+    state: &VideoRecordingState,
+    path: &Path,
+) -> Option<ActiveRecording> {
+    let mut active = state.active.lock().ok()?;
+    if active.as_ref()?.path != path {
+        return None;
+    }
+    state.finalizing.store(true, Ordering::Release);
+    active.take()
+}
+
+#[cfg(target_os = "windows")]
+fn discard_recording(mut recording: ActiveRecording) -> Result<(), String> {
+    // Reap the producer before removing its file (including paused FFmpeg).
+    recording.backend.abort();
+    match fs::remove_file(&recording.path) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(format!("failed to remove canceled recording: {error}")),
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn watch_recording_escape(app: tauri::AppHandle, path: PathBuf) -> Result<(), String> {
+    use tauri::Emitter;
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_ESCAPE};
+    #[derive(Clone, Serialize)]
+    struct Canceled {
+        path: String,
+        error: Option<String>,
+    }
+    std::thread::Builder::new()
+        .name("recording-escape".into())
+        .spawn(move || {
+            let state = app.state::<VideoRecordingState>();
+            loop {
+                if state.exiting.load(Ordering::Acquire) {
+                    return;
+                }
+                {
+                    let Ok(active) = state.active.lock() else { return };
+                    if !active.as_ref().is_some_and(|recording| recording.path == path) {
+                        return;
+                    }
+                }
+                if unsafe { GetAsyncKeyState(VK_ESCAPE as i32) } < 0 {
+                    let Some(recording) = take_canceled_recording(&state, &path) else { return };
+                    let _finalizing = Finalizing(&state.finalizing);
+                    let error = discard_recording(recording).err();
+                    close_controls_window(&app);
+                    let _ = app.emit(RECORDING_CANCELED_EVENT, Canceled {
+                        path: path.to_string_lossy().into_owned(),
+                        error,
+                    });
+                    return;
+                }
+                std::thread::sleep(Duration::from_millis(16));
+            }
+        })
+        .map(|_| ())
+        .map_err(|error| format!("failed to initialize recording cancellation: {error}"))
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -627,6 +715,16 @@ pub fn start(
             return Err(error);
         }
     }
+    #[cfg(target_os = "windows")]
+    if let Err(error) = watch_recording_escape(app.clone(), path.clone()) {
+        if let Some(recording) = take_canceled_recording(state, &path) {
+            let _finalizing = Finalizing(&state.finalizing);
+            let cleanup = discard_recording(recording);
+            close_controls_window(app);
+            cleanup?;
+        }
+        return Err(error);
+    }
     Ok(VideoRecordingSession {
         path: path.to_string_lossy().into_owned(),
         file_name,
@@ -819,12 +917,6 @@ pub fn stop(
         .take()
         .ok_or_else(|| "no video recording is active".to_string())?;
     state.finalizing.store(true, Ordering::Release);
-    struct Finalizing<'a>(&'a AtomicBool);
-    impl Drop for Finalizing<'_> {
-        fn drop(&mut self) {
-            self.0.store(false, Ordering::Release);
-        }
-    }
     let _finalizing = Finalizing(&state.finalizing);
     if let Some(paused_at) = recording.paused_at.take() {
         recording.backend.pause(false)?;
@@ -997,6 +1089,48 @@ pub fn trim(request: TrimVideoRequest, folder_path: &str) -> Result<String, Stri
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn cancel_only_discards_the_matching_recording_and_reaps_its_process() {
+        let folder = tempfile::tempdir().unwrap();
+        let path = folder.path().join("canceled.mp4");
+        let keep = folder.path().join("existing.mp4");
+        fs::write(&path, b"incomplete video").unwrap();
+        fs::write(&keep, b"saved video").unwrap();
+        let child = hide_window(Command::new("ping.exe").args(["-n", "30", "127.0.0.1"]))
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap();
+        let state = VideoRecordingState::default();
+        *state.active.lock().unwrap() = Some(ActiveRecording {
+            backend: RecordingBackend::Ffmpeg(child),
+            path: path.clone(),
+            started_at: now_millis(),
+            paused_at: None,
+            paused_duration_ms: 0,
+            mode: "region".into(),
+            format: "mp4".into(),
+            width: Some(640),
+            height: Some(480),
+        });
+        assert!(take_canceled_recording(&state, &keep).is_none());
+        assert!(state.active.lock().unwrap().is_some());
+        assert!(!state.finalizing.load(Ordering::Acquire));
+        set_paused(&state, true).unwrap();
+        let recording = take_canceled_recording(&state, &path).unwrap();
+        {
+            let _finalizing = Finalizing(&state.finalizing);
+            assert!(state.finalizing.load(Ordering::Acquire));
+            assert!(state.active.lock().unwrap().is_none());
+            assert!(take_canceled_recording(&state, &path).is_none());
+            discard_recording(recording).unwrap();
+        }
+        assert!(!state.finalizing.load(Ordering::Acquire));
+        assert!(!path.exists());
+        assert_eq!(fs::read(keep).unwrap(), b"saved video");
+    }
 
     #[test]
     fn frame_rates_validate_requests_and_cap_gif_capture() {

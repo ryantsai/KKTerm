@@ -41,6 +41,8 @@ import { showNativeContextMenu } from "../../lib/nativeContextMenu";
 import {
   invokeCommand,
   isTauriRuntime,
+  VIDEO_RECORDING_CANCELED_EVENT,
+  type CanceledVideoRecording,
   type CompletedVideoRecording,
   type StoredScreenshot,
   type VideoRecordingSession,
@@ -68,6 +70,7 @@ import {
 import {
   CAPTURE_DELAYS,
   readCaptureDelay,
+  waitForCaptureDelay,
   writeCaptureDelay,
 } from "./captureDelay";
 import "./screenshots.css";
@@ -180,6 +183,7 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
   const [completedRecording, setCompletedRecording] = useState<CompletedVideoRecording | null>(null);
   const [videoBusy, setVideoBusy] = useState(false);
   const lastCompletedPathRef = useRef<string | null>(null);
+  const lastCanceledPathRef = useRef<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const selectionAnchorRef = useRef<string | null>(null);
   const [viewerId, setViewerId] = useState<string | null>(null);
@@ -283,7 +287,14 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
       "kkterm://video-recording-completed",
       (event) => handleRecordingCompleted(event.payload),
     );
-    return () => { void unlisten.then((dispose) => dispose()); };
+    const unlistenCanceled = listen<CanceledVideoRecording>(VIDEO_RECORDING_CANCELED_EVENT, (event) => {
+      lastCanceledPathRef.current = event.payload.path;
+      setRecording((current) => current?.path === event.payload.path ? null : current);
+    });
+    return () => {
+      void unlisten.then((dispose) => dispose());
+      void unlistenCanceled.then((dispose) => dispose());
+    };
   }, [handleRecordingCompleted]);
 
   function changeViewMode(next: ScreenshotsViewMode) {
@@ -580,9 +591,7 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
     }
     setVideoBusy(true);
     try {
-      if (captureDelay > 0) {
-        await new Promise<void>((resolve) => window.setTimeout(resolve, captureDelay * 1000));
-      }
+      await waitForCaptureDelay(captureDelay);
       const session = await invokeCommand("start_video_recording", {
         request: {
           mode,
@@ -591,6 +600,7 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
           minimizeWindow: true,
         },
       });
+      if (lastCanceledPathRef.current === session.path) return;
       setRecording(session);
       showStatusBarNotice(t("screenshots.video.recordingStarted"), { tone: "success" });
     } catch (error) {

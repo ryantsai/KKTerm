@@ -10,10 +10,12 @@ import type { TFunction } from "i18next";
 import {
   invokeCommand,
   isTauriRuntime,
+  VIDEO_RECORDING_CANCELED_EVENT,
+  type CanceledVideoRecording,
   type ScreenshotCaptureResult,
 } from "../../lib/tauri";
 import { useWorkspaceStore } from "../../store";
-import { readCaptureDelay } from "./captureDelay";
+import { readCaptureDelay, waitForCaptureDelay } from "./captureDelay";
 import { useScreenshotsStore } from "./state";
 
 export type ScreenshotCaptureMode = "region" | "window" | "fullscreen";
@@ -69,11 +71,7 @@ export async function performScreenshotCapture(
   }
   useScreenshotsStore.getState().setCaptureInFlight(true);
   try {
-    if (delaySeconds > 0) {
-      await new Promise<void>((resolve) => {
-        window.setTimeout(resolve, delaySeconds * 1000);
-      });
-    }
+    await waitForCaptureDelay(delaySeconds);
     const result =
       mode === "region"
         ? await invokeCommand("capture_interactive_region_screenshot_to_library", {
@@ -117,8 +115,18 @@ export function useScreenshotCaptureBridge() {
         void performScreenshotCapture(event.payload.mode, tRef.current, delaySeconds);
       }
     });
+    const unlistenCanceled = listen<CanceledVideoRecording>(VIDEO_RECORDING_CANCELED_EVENT, (event) => {
+      void useScreenshotsStore.getState().refresh();
+      if (event.payload.error) {
+        useWorkspaceStore.getState().showStatusBarNotice(
+          tRef.current("screenshots.captureError", { message: event.payload.error }),
+          { tone: "error" },
+        );
+      }
+    });
     return () => {
       void unlisten.then((dispose) => dispose());
+      void unlistenCanceled.then((dispose) => dispose());
     };
   }, []);
 }

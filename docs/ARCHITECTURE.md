@@ -360,6 +360,19 @@ Video recording reuses the selected physical screen rectangle. The Screenshots t
 
 The same screenshot path is also used internally for native-surface overlay suppression. Before hiding a URL overlay `WebviewWindow` or parking an RDP ActiveX HWND for a registered DOM overlay such as a dialog or Region overlay, the frontend captures that native surface rectangle and displays the resulting transient bitmap under the DOM overlay. The URL and RDP lifecycles stay separate; only RDP uses the off-screen parking commands. These internal captures are not persisted and are distinct from user-requested clipboard or AI Assistant captures.
 
+Windows capture cancellation is native: both selection overlays request keyboard
+focus and poll Esc only for the lifetime of the picker, so minimizing KKTerm cannot
+strand selection on another window's focus. Frontend capture delays share an
+Esc-cancellable wait while the app has focus. Active Windows recordings have a
+short-lived Esc watcher bound to the recording path; cancellation claims the
+same active state as Stop, blocks new starts during cleanup, reaps capture/encoding
+before deleting the partial file, closes the controller, and emits
+`kkterm://video-recording-canceled`. Cancellation never emits the completed event
+or opens the trim editor. Cleanup failures use the app-wide Status Bar notice
+bridge. The watcher exits when its recording is stopped or replaced. The native
+app Exit handler signals the watcher and aborts the active producer, so its
+retained app handle cannot keep an FFmpeg child alive past shutdown.
+
 ### SSH Config Importer
 
 Parses SSH config and creates draft connections. It should preserve supported directives and visibly report unsupported directives.

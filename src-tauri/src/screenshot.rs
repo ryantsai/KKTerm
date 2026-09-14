@@ -2728,7 +2728,9 @@ mod platform {
 
     use base64::{Engine as _, engine::general_purpose::STANDARD};
     use image::{ColorType, ImageEncoder, codecs::jpeg::JpegEncoder};
-    use windows_sys::Win32::UI::Input::KeyboardAndMouse::{ReleaseCapture, SetCapture, VK_ESCAPE};
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
+        GetAsyncKeyState, ReleaseCapture, SetCapture, SetFocus, VK_ESCAPE,
+    };
     use windows_sys::Win32::{
         Foundation::{HWND, LPARAM, LRESULT, RECT, WPARAM},
         Graphics::Gdi::{
@@ -2747,9 +2749,11 @@ mod platform {
                 CREATESTRUCTW, CS_HREDRAW, CS_VREDRAW, CreateWindowExW, DefWindowProcW,
                 DestroyWindow, DispatchMessageW, EnumWindows, GWLP_USERDATA, GetMessageW,
                 GetSystemMetrics, GetWindowLongPtrW, GetWindowRect, IDC_CROSS, IsWindowVisible,
-                LoadCursorW, MSG, PostQuitMessage, RegisterClassW, SM_CXVIRTUALSCREEN,
+                KillTimer, LoadCursorW, MSG, PM_REMOVE, PeekMessageW, PostQuitMessage, RegisterClassW,
+                SM_CXVIRTUALSCREEN,
                 SM_CYVIRTUALSCREEN, SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SW_SHOW,
-                SetWindowLongPtrW, ShowWindow, TranslateMessage, WM_CREATE, WM_DESTROY, WM_KEYDOWN,
+                SetForegroundWindow, SetTimer, SetWindowLongPtrW, ShowWindow, TranslateMessage,
+                WM_CREATE, WM_DESTROY, WM_KEYDOWN, WM_QUIT, WM_TIMER,
                 WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MOUSEMOVE, WM_NCCREATE, WM_PAINT, WNDCLASSW,
                 WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
             },
@@ -2757,6 +2761,7 @@ mod platform {
     };
 
     const SCREENSHOT_DIM_ALPHA: u8 = 112;
+    const SELECTION_ESCAPE_TIMER: usize = 1;
 
     #[derive(Clone, Copy, Debug, Eq, PartialEq)]
     pub struct ScreenRect {
@@ -3325,6 +3330,19 @@ mod platform {
 
             let buffered_paint_initialized = BufferedPaintInit() >= 0;
             ShowWindow(hwnd, SW_SHOW);
+            let _ = SetForegroundWindow(hwnd);
+            let _ = SetFocus(hwnd);
+            // Windows may refuse foreground activation after minimizing the app.
+            // Keep Esc available for both pickers even without keyboard focus.
+            if SetTimer(hwnd, SELECTION_ESCAPE_TIMER, 16, None) == 0 {
+                DestroyWindow(hwnd);
+                let mut message: MSG = mem::zeroed();
+                let _ = PeekMessageW(&mut message, ptr::null_mut(), WM_QUIT, WM_QUIT, PM_REMOVE);
+                if buffered_paint_initialized {
+                    let _ = BufferedPaintUnInit();
+                }
+                return Err("failed to initialize screenshot selection cancellation".to_string());
+            }
             let _ = InvalidateRect(hwnd, ptr::null(), 1);
 
             let mut message: MSG = mem::zeroed();
@@ -3430,11 +3448,21 @@ mod platform {
                     }
                     DefWindowProcW(hwnd, message, wparam, lparam)
                 }
+                WM_TIMER if wparam == SELECTION_ESCAPE_TIMER => {
+                    // Only the high bit is reliable: another process can consume
+                    // GetAsyncKeyState's shared "pressed since last call" bit.
+                    if GetAsyncKeyState(VK_ESCAPE as i32) < 0 {
+                        DestroyWindow(hwnd);
+                    }
+                    0
+                }
                 WM_PAINT => {
                     paint_selection_overlay(hwnd, overlay);
                     0
                 }
                 WM_DESTROY => {
+                    let _ = KillTimer(hwnd, SELECTION_ESCAPE_TIMER);
+                    let _ = ReleaseCapture();
                     PostQuitMessage(0);
                     0
                 }

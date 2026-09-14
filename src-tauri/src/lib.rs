@@ -5603,6 +5603,8 @@ pub fn run() {
             }
 
             if matches!(event, tauri::RunEvent::Exit) {
+                #[cfg(target_os = "windows")]
+                app.state::<video_recording::VideoRecordingState>().shutdown();
                 if app
                     .try_state::<app_paths::AppPaths>()
                     .is_some_and(|paths| paths.is_portable())

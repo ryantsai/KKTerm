@@ -879,6 +879,8 @@ export interface CompletedVideoRecording extends VideoRecordingSession {
 }
 
 export const VIDEO_RECORDING_STARTED_EVENT = "kkterm://video-recording-started";
+export const VIDEO_RECORDING_CANCELED_EVENT = "kkterm://video-recording-canceled";
+export type CanceledVideoRecording = { path: string; error: string | null };
 export const VIDEO_RECORDING_COMPLETED_EVENT = "kkterm://video-recording-completed";
 
 export interface StartWebviewSessionRequest {
