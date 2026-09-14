@@ -4519,6 +4519,8 @@
     "quickSelectHint": "クリックまたはラベル入力でコピー。URL は Ctrl+クリックまたは Shift+クリックで開きます。Esc でキャンセル。",
     "quickSelectNoMatches": "画面にコピーできるテキストがありません。",
     "quickSelectCopied": "{{text}} をコピーしました",
+    "attentionPending": "ターミナルのベルが鳴りました",
+    "attentionFocus": "{{tab}}（{{workspace}}）の {{name}} にフォーカス",
     "notification": "{{name}} からの通知: {{message}}",
     "notificationWithTitle": "{{name}} からの通知: {{title}} — {{message}}"
   },

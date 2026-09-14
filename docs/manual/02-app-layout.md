@@ -90,7 +90,9 @@ Owned by `src/modules/workspace/StatusBar.tsx`. Its roles are:
 5. **Don't Sleep state** — when Don't Sleep mode is enabled, the right side shows a coffee icon with tooltip `app.dontSleepStatusEnabled`. If `settings.dontSleepForegroundOnly` is on, this indicates the user-facing mode is enabled; the OS power assertion is active only while KKTerm is focused and not minimized.
 6. **Scheduled shutdown state** — an active schedule shows `app.shutdownTimerCountdown` at the bottom right. Right-clicking this timer, the Activity Rail Don't Sleep icon, or the enabled Status Bar coffee icon exposes `app.shutdownTimerCancel`. The Rust-owned wall-clock deadline continues while the main window is minimized or hidden. At the selected deadline, KKTerm opens a separate always-on-top native window with `app.shutdownTimerWarningMessage` and a final 60-second countdown; `app.shutdownTimerWarningCancel` remains the sole dismiss action. If it is not canceled, Windows uses forced `shutdown.exe`, macOS sends the System Events shutdown Apple event, and Linux requests logind power-off (using the skip-inhibitors flag when the installed systemd supports it).
 
-Tutorial targets: `workspace.statusBar`, `workspace.hostUsage`.
+Terminal attention bells appear immediately before the Don't Sleep icon, using the same monochrome 14px icons and 24×22px action spacing. Each unfocused terminal that emits BEL gets a separate `terminal.attentionFocus` button; hovering identifies the Pane, Tab, and Workspace, and clicking focuses that existing terminal directly. Its bell and `terminal.attentionPending` badges clear on focus or Session end; other terminals remain pending. Repeated rings reuse the same button. This persistent Session state does not create a transient popup or a preference.
+
+Tutorial targets: `workspace.statusBar`, `workspace.hostUsage`, `terminal.attention`.
 
 Right-side status icons use the shared `RailTooltip`, which prefers a native OS tooltip and clamps it into the monitor work area so a maximized window's bottom-right icons are not truncated at the screen edge.
 

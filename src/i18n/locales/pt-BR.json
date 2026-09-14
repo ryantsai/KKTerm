@@ -4519,6 +4519,8 @@
     "quickSelectHint": "Clique ou digite um rótulo para copiar. Ctrl-clique ou Shift-clique em uma URL para abri-la. Esc para cancelar.",
     "quickSelectNoMatches": "Nenhum texto copiável visível na tela.",
     "quickSelectCopied": "{{text}} copiado",
+    "attentionPending": "O terminal emitiu um alerta",
+    "attentionFocus": "Focar {{name}} em {{tab}} ({{workspace}})",
     "notification": "Notificação de {{name}}: {{message}}",
     "notificationWithTitle": "Notificação de {{name}}: {{title}} — {{message}}"
   },

@@ -4519,6 +4519,8 @@
     "quickSelectHint": "Klicken oder Label eingeben zum Kopieren. URL mit Strg- oder Umschalt-Klick öffnen. Esc zum Abbrechen.",
     "quickSelectNoMatches": "Kein kopierbarer Text auf dem Bildschirm sichtbar.",
     "quickSelectCopied": "{{text}} kopiert",
+    "attentionPending": "Terminal hat geklingelt",
+    "attentionFocus": "{{name}} in {{tab}} ({{workspace}}) fokussieren",
     "notification": "Benachrichtigung von {{name}}: {{message}}",
     "notificationWithTitle": "Benachrichtigung von {{name}}: {{title}} — {{message}}"
   },

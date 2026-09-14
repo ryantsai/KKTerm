@@ -39,16 +39,19 @@ import {
 import { SystemCleanerScanOrb } from "../system-cleaner/SystemCleanerScanOrb";
 import { useSystemCleanerScanStore } from "../system-cleaner/scanState";
 import { Progress } from "../../app/ui/Progress";
+import { TerminalAttentionStatusButtons } from "./TerminalAttention";
 
 const NOTIFICATION_FADE_MS = 220;
 
 export function StatusBar({
   onOpenAssistant,
   onOpenDashboardView,
+  onOpenWorkspace,
   installerActive,
 }: {
   onOpenAssistant: () => void;
   onOpenDashboardView: (viewId: string) => void;
+  onOpenWorkspace: () => void;
   installerActive: boolean;
 }) {
   const { t, i18n } = useTranslation();
@@ -177,6 +180,7 @@ export function StatusBar({
         <CredentialStoreStatusButton />
         <XServerStatusIcon />
         <SystemCleanerScanStatus />
+        <TerminalAttentionStatusButtons onOpenWorkspace={onOpenWorkspace} />
         <DontSleepStatusIcon />
         {shutdownTimerStatus ? (
           <ShutdownTimerStatusButton status={shutdownTimerStatus} />

@@ -57,6 +57,7 @@ import {
 import { confirmTrustedSshHostKey, connectionPasswordOwnerId, connectionSshSocksProxyPasswordOwnerId, defaultPortForConnectionType, connectionTypeLabel, ftpPortForProtocolSelection, isRemoteDesktopConnectionType, localShellOptionsForPlatform, resolveSshCompression, resolveSshOldProtocols, resolveSshSocksProxyRequest, uniqueRuntimeId, type LocalShellOption } from "./utils";
 import { IMPORT_CONNECTIONS_REQUEST_EVENT, NEW_CONNECTION_REQUEST_EVENT, NEW_CONNECTION_TAB_REQUEST_EVENT, RECENT_CONNECTION_LIMIT, loadCollapsedFolderIds, loadRecentConnectionIds, notifyConnectionTreeInvalidated, requestTerminalConnectionReconnect, saveCollapsedFolderIds, saveRecentConnectionIds, type NewConnectionRequestDetail, type NewConnectionTabRequestDetail } from "./connectionSidebarState";
 import { collectConnectionFolderIds, countConnections, countFolders, filterConnectedConnections, filterConnectionTree, findConnectionInTree, flattenConnections, flattenFolders, visibleFlatConnections as flattenVisibleConnections, withLiveConnectionStatuses } from "./treeUtils";
+import { TerminalAttentionBadge } from "../TerminalAttention";
 import { WorkspaceIcon } from "../workspaceIcons";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Check, ChevronDown, ChevronRight, CircleDot, Copy, Folder, FolderPlus, KeyRound, LayoutDashboard, List, Maximize2, Minimize2, PanelsTopLeft, PanelRight, Pencil, Pin, PinOff, Play, Plus, Radio, RotateCcw, Save, Search, Settings, SquarePlus, Trash2, X } from "../../../lib/reicon";
 import { listen } from "@tauri-apps/api/event";
@@ -6082,6 +6083,7 @@ function ConnectionChildTabRow({
           )}
         </span>
       </button>
+      <TerminalAttentionBadge childConnectionId={child.id} />
       <ConnectionStatusIndicator
         connectionType={connection.type}
         status={connected ? "connected" : "idle"}
@@ -6204,6 +6206,7 @@ function ConnectionRow({
           </span>
         </button>
       )}
+      <TerminalAttentionBadge connectionId={connection.id} />
       <ConnectionStatusIndicator
         connectionType={connection.type}
         status={connection.status}

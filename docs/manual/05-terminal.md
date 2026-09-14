@@ -76,6 +76,8 @@ When `settings.enableInlineImages` is on (default), programs can draw images dir
 
 ## Terminal notifications
 
+When an unfocused terminal emits a bell (BEL / Ctrl+G), KKTerm shows `terminal.attentionPending` badges on its Pane, containing Tab, and Connection Tree rows. Each pending terminal also gets one monochrome bell immediately before Don't Sleep in the Status Bar (`terminal.attention`, tooltip `terminal.attentionFocus`). Clicking that bell opens the existing terminal in its Workspace and focuses its input, revealing it if another Pane was maximized. Focusing the terminal by any route clears only its own badges and Status Bar bell. Multiple terminals have separate bells; repeated rings from one terminal reuse its bell. Closing or ending the Session clears its attention. Bells are automatic, including while KKTerm is in the background, with no preference, sound, flashing, or Status Bar popup. The green connection indicator keeps its connectivity meaning.
+
 When `settings.allowTerminalNotifications` is on (default), a program that raises an OSC 9 or OSC 777 notification (for example a long build signalling completion) surfaces it as a Status Bar notice using `terminal.notification` or `terminal.notificationWithTitle`, prefixed with the Connection name. Turning the toggle off silences already-open terminals immediately.
 
 ## Sync input to all terminals

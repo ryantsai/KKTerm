@@ -76,6 +76,7 @@ import type { SettingsSectionId } from "./modules/settings/settingsAssistantCont
 import { useWorkspaceStore } from "./store";
 import type { WorkspaceTab } from "./types";
 import { StatusBar } from "./modules/workspace/StatusBar";
+import { TerminalAttentionLifecycle } from "./modules/workspace/TerminalAttention";
 import { TabStrip, WorkspaceCanvas } from "./modules/workspace/WorkspaceCanvas";
 import { CustomModuleHost } from "./modules/custom-modules/CustomModuleHost";
 import { CustomModuleSecretPrompt } from "./modules/custom-modules/CustomModuleSecretPrompt";
@@ -920,11 +921,13 @@ function App() {
           onSetupEncryptedStorage={openPortableEncryptedStorageSetup}
         />
       ) : null}
+      <TerminalAttentionLifecycle />
       {statusBarEnabled ? (
         <StatusBar
           key="status-bar"
           onOpenAssistant={openAssistantPanel}
           onOpenDashboardView={openDashboardView}
+          onOpenWorkspace={() => navigateToPage("workspace")}
           installerActive={visibleBasePage === "installer"}
         />
       ) : null}

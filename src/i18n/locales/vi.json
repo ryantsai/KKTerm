@@ -4519,6 +4519,8 @@
     "quickSelectHint": "Nhấp hoặc gõ nhãn để sao chép. Ctrl-nhấp hoặc Shift-nhấp URL để mở. Nhấn Esc để hủy.",
     "quickSelectNoMatches": "Không có văn bản nào sao chép được trên màn hình.",
     "quickSelectCopied": "Đã sao chép {{text}}",
+    "attentionPending": "Chuông thiết bị đầu cuối đã reo",
+    "attentionFocus": "Chuyển tiêu điểm đến {{name}} trong {{tab}} ({{workspace}})",
     "notification": "Thông báo từ {{name}}: {{message}}",
     "notificationWithTitle": "Thông báo từ {{name}}: {{title}} — {{message}}"
   },

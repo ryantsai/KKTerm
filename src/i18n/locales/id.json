@@ -4519,6 +4519,8 @@
     "quickSelectHint": "Klik atau ketik label untuk menyalin. Ctrl-klik atau Shift-klik URL untuk membukanya. Esc untuk membatalkan.",
     "quickSelectNoMatches": "Tidak ada teks yang dapat disalin di layar.",
     "quickSelectCopied": "{{text}} disalin",
+    "attentionPending": "Terminal berbunyi",
+    "attentionFocus": "Fokuskan {{name}} di {{tab}} ({{workspace}})",
     "notification": "Notifikasi dari {{name}}: {{message}}",
     "notificationWithTitle": "Notifikasi dari {{name}}: {{title}} — {{message}}"
   },

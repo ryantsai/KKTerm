@@ -6,6 +6,8 @@ import { readFromClipboard, writeToClipboard } from "../../../../lib/clipboard";
 import { CUSTOM_FONTS_LOADED_EVENT } from "../../../../lib/customFonts";
 import { isContentFocusPreservingTarget } from "../../../../lib/chromeFocus";
 import { ScreenshotMenu } from "../../ScreenshotMenu";
+import { TerminalAttentionBadge } from "../../TerminalAttention";
+import { isTerminalWindowFocused, useTerminalAttentionStore } from "../../terminalAttentionState";
 
 import { ConnectionGlyph } from "../ConnectionGlyph";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bot, Braces, Check, FileText, FolderOpen, Mouse, ChevronRight, Circle, Copy, Menu, Monitor, Network, Palette, PanelBottom, Pencil, Radio, RefreshCw, Scan, Search, SplitSquareHorizontal, Square, Type, X } from "../../../../lib/reicon";
@@ -2001,6 +2003,12 @@ function TerminalPaneView({
     const terminalHost = element;
     const terminal = createTerminalRenderer(rendererSettings, terminalOpacity, syntaxHighlightProfile);
     terminalRendererRef.current = terminal;
+    let acceptBells = true;
+    const bellDisposable = terminal.onBell(() => {
+      const sessionId = sessionIdRef.current;
+      if (acceptBells && sessionId) useTerminalAttentionStore.getState().ring(pane.id, sessionId,
+        isActiveRef.current && isTerminalWindowFocused() && terminal.hasFocus());
+    });
     const cwdDisposable = terminal.onCwdChange((cwd) => updatePaneCwd(tabId, pane.id, cwd));
     const notificationDisposable = terminal.onNotification((notification) => {
       // Read the toggle at event time so turning terminal notifications off in
@@ -2137,6 +2145,9 @@ function TerminalPaneView({
     registerPaneRenderer(pane.id, terminal);
     const focusDisposable = terminal.onFocus(() => {
       onFocusRef.current();
+      if (isActiveRef.current && isTerminalWindowFocused() && terminal.hasFocus()) {
+        useTerminalAttentionStore.getState().clear(pane.id, sessionIdRef.current ?? undefined);
+      }
     });
     const terminalSessionType = terminalSessionTypeFor(connection);
     const preservedRuntime = takePreservedTerminalPaneRuntime(pane.id);
@@ -2151,6 +2162,7 @@ function TerminalPaneView({
       return () => {
         cwdDisposable.dispose();
         notificationDisposable.dispose();
+        bellDisposable.dispose();
         focusDisposable.dispose();
         unregisterPaneRenderer(pane.id, terminal);
         terminal.dispose();
@@ -2394,6 +2406,8 @@ function TerminalPaneView({
             return;
           }
           sessionEnded = true;
+          acceptBells = false;
+          useTerminalAttentionStore.getState().clear(pane.id, event.payload.sessionId);
           startupState.end();
           updateTerminalConnectionState("disconnected");
           if (sessionStarted && trackConnectionSession) {
@@ -2583,6 +2597,7 @@ function TerminalPaneView({
       tmuxWheelPendingLinesRef.current = 0;
       cwdDisposable.dispose();
       notificationDisposable.dispose();
+      bellDisposable.dispose();
       removeOutputListener?.();
       removeEndedListener?.();
       const sessionId = sessionIdRef.current;
@@ -2597,6 +2612,7 @@ function TerminalPaneView({
           readyListener,
         });
       } else {
+        useTerminalAttentionStore.getState().clear(pane.id, sessionId ?? undefined);
         startupState.end();
         void readyListener.then((unlisten) => unlisten());
         if (sessionId) void invokeCommand("close_terminal_session", { sessionId });
@@ -3175,6 +3191,7 @@ function TerminalPaneView({
             <Circle size={9} fill="currentColor" />
           )}
           {paneToolbarTitle}
+          <TerminalAttentionBadge paneId={pane.id} />
         </span>
         <div className="terminal-pane-actions">
           {pane.connection ? (

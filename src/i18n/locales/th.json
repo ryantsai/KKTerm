@@ -4519,6 +4519,8 @@
     "quickSelectHint": "คลิกหรือพิมพ์ป้ายกำกับเพื่อคัดลอก Ctrl-คลิกหรือ Shift-คลิก URL เพื่อเปิด กด Esc เพื่อยกเลิก",
     "quickSelectNoMatches": "ไม่มีข้อความที่คัดลอกได้บนหน้าจอ",
     "quickSelectCopied": "คัดลอก {{text}} แล้ว",
+    "attentionPending": "เทอร์มินัลส่งเสียงเตือน",
+    "attentionFocus": "โฟกัส {{name}} ใน {{tab}} ({{workspace}})",
     "notification": "การแจ้งเตือนจาก {{name}}: {{message}}",
     "notificationWithTitle": "การแจ้งเตือนจาก {{name}}: {{title}} — {{message}}"
   },

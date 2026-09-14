@@ -4519,6 +4519,8 @@
     "quickSelectHint": "点击或输入标签即可复制；按住 Ctrl 或 Shift 点击 URL 可打开；按 Esc 取消。",
     "quickSelectNoMatches": "屏幕上没有可复制的文本。",
     "quickSelectCopied": "已复制 {{text}}",
+    "attentionPending": "终端响铃",
+    "attentionFocus": "聚焦 {{tab}}（{{workspace}}）中的 {{name}}",
     "notification": "来自 {{name}} 的通知：{{message}}",
     "notificationWithTitle": "来自 {{name}} 的通知：{{title}} — {{message}}"
   },

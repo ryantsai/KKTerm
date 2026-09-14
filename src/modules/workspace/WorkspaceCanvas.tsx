@@ -7,6 +7,7 @@ import { ftpBrowserCommands, localBrowserCommands } from "../../lib/fileBrowserC
 import { TerminalWorkspace } from "./connections/terminal/TerminalWorkspace";
 import { TerminalRecordingsDialog } from "./connections/terminal/TerminalRecordingsDialog";
 import { ConnectionIcon } from "./connections/ConnectionIcon";
+import { TerminalAttentionBadge } from "./TerminalAttention";
 import { ConnectionTypeGlyph } from "./connections/ConnectionGlyph";
 import { CONNECTION_CREATION_OPTIONS } from "./connections/ConnectionMenus";
 import {
@@ -356,6 +357,7 @@ export function TabStrip() {
                     type={connectionTypeForTab(tab).type}
                   />
                   <span>{displayTitle}</span>
+                  <TerminalAttentionBadge tabId={tab.id} />
                 </button>
               )}
               <button

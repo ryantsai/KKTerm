@@ -654,3 +654,7 @@ The newer `2026-07-28` discovery-based protocol is not advertised;
 `server/discover` returns method-not-found so compatible clients fall back to
 legacy initialization. The CLI never sends JSON-RPC responses for
 notifications.
+
+### Terminal attention tutorial target
+
+`tutorial_highlight` accepts `terminal.attention` with navigation `page=workspace`. It identifies the pending-terminal bell buttons in the Status Bar; it is only present when a live terminal has rung while unfocused and the Status Bar is visible. Activating a bell focuses that existing terminal and clears its attention.

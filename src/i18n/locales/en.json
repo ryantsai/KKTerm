@@ -4519,6 +4519,8 @@
     "quickSelectHint": "Click or type a label to copy. Ctrl-click or Shift-click a URL to open it. Esc to cancel.",
     "quickSelectNoMatches": "No copyable text is visible on the screen.",
     "quickSelectCopied": "Copied {{text}}",
+    "attentionPending": "Terminal rang",
+    "attentionFocus": "Focus {{name}} in {{tab}} ({{workspace}})",
     "notification": "Notification from {{name}}: {{message}}",
     "notificationWithTitle": "Notification from {{name}}: {{title}} — {{message}}"
   },

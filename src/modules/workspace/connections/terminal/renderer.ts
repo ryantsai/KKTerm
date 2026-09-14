@@ -89,6 +89,8 @@ export interface TerminalRenderer {
   findNext: (term: string) => boolean;
   findPrevious: (term: string) => boolean;
   focus: () => void;
+  hasFocus: () => boolean;
+  onBell: (handler: () => void) => IDisposable;
   attachCustomKeyEventHandler: (handler: (event: KeyboardEvent) => boolean) => void;
   getSelection: () => string;
   onCwdChange: (handler: (cwd: string) => void) => IDisposable;
@@ -370,6 +372,17 @@ class XtermTerminalRenderer implements TerminalRenderer, TerminalFontAtlasRefres
 
   focus() {
     this.terminal.focus();
+  }
+
+  hasFocus() {
+    return document.hasFocus() && document.visibilityState !== "hidden"
+      && this.terminal.textarea === document.activeElement
+      && Boolean(this.terminal.element?.getBoundingClientRect().width)
+      && Boolean(this.terminal.element?.getBoundingClientRect().height);
+  }
+
+  onBell(handler: () => void) {
+    return this.terminal.onBell(handler);
   }
 
   blur() {

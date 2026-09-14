@@ -4519,6 +4519,8 @@
     "quickSelectHint": "클릭하거나 라벨을 입력하여 복사합니다. URL을 Ctrl-클릭 또는 Shift-클릭하여 엽니다. Esc로 취소합니다.",
     "quickSelectNoMatches": "화면에 복사할 수 있는 텍스트가 없습니다.",
     "quickSelectCopied": "{{text}} 복사됨",
+    "attentionPending": "터미널 벨이 울렸습니다",
+    "attentionFocus": "{{tab}}({{workspace}})의 {{name}}에 포커스",
     "notification": "{{name}}의 알림: {{message}}",
     "notificationWithTitle": "{{name}}의 알림: {{title}} — {{message}}"
   },

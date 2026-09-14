@@ -149,6 +149,7 @@ const WORKSPACE_TUTORIAL_TARGET_IDS = [
   "workspace.hostUsage",
   "workspace.screenshotMenu",
   "terminal.pane",
+  "terminal.attention",
   "terminal.tmuxSessions",
   "terminal.sshPortRedirect",
   "terminal.startRecording",

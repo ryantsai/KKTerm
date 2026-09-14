@@ -487,6 +487,13 @@
   opacity: 0.55;
 }
 
+.terminal-attention-badge {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  color: var(--amber);
+}
+
 .status-bar-assistant-working {
   color: var(--accent);
 }

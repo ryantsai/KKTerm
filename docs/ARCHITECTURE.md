@@ -285,6 +285,8 @@ Connection startup must keep the frontend event loop and Tauri command runtime a
 
 ### Terminal Session
 
+Terminal BEL attention is runtime-only in `src/modules/workspace/terminalAttentionState.ts`, keyed by Pane and Session id. The renderer forwards xterm `onBell`; only unfocused terminals acquire attention. `TerminalAttention.tsx` projects it into Pane/Tab/Connection Tree badges and one monochrome Status Bar action per pending terminal, immediately before Don't Sleep. Clicking uses the current Pane location to activate its Workspace/Tab, reveal the split, and focus terminal input; actual focus or Session teardown clears only that terminal. Native window-focus events participate in acknowledgement, including when the Status Bar is hidden. Repeated rings deduplicate and no bell creates a transient popup or preference. OSC 9/777 notifications retain their separate existing Settings-controlled Status Bar notices.
+
 Owns local PTY lifecycle, SSH terminal channel lifecycle, Telnet TCP lifecycle, Serial port lifecycle, input/output streams, resize events, tab integration, split pane integration, and terminal compatibility behavior.
 
 Lifecycle invariant: switching the active workspace Tab must not disconnect, close, or recreate a local terminal Session, SSH terminal Session, or SFTP Session. Open Tab surfaces stay mounted while inactive so their live Sessions remain attached. Explicit tab close from the tab strip is the user-owned teardown action for the Session or Sessions presented by that Tab.
