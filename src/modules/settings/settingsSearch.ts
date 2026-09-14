@@ -278,7 +278,8 @@ export const SETTINGS_SEARCH_KEYS: Record<SettingsSectionId, readonly string[]> 
   ],
   "about-settings": [
     "settings.version", "settings.developer", "settings.license", "settings.repository",
-    "settings.github", "settings.appSlogan", "settings.portableMode",
+    "settings.github", "settings.homePage", "settings.privacy", "settings.legalNotices",
+    "settings.supportEmail", "settings.appSlogan", "settings.portableMode",
     "settings.portableDataFolder", "settings.openPortableDataFolder",
   ],
 };
