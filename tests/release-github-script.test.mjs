@@ -43,7 +43,7 @@ test("release script can also build and publish ARM64 installer and portable ass
   // ARM64 build provisions its toolchain via the dedicated packaging script.
   assert.match(
     script,
-    /"run", "package:installer:arm64", "--", "-InstallMissing"/,
+    /"run", "package:installer:arm64", "-InstallMissing"/,
   );
   // ARM64 assets follow the windows-arm64 naming convention and are appended
   // to the release asset list only when requested.

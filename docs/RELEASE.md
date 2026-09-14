@@ -64,8 +64,8 @@ Native ARM64 (`aarch64-pc-windows-msvc`) builds ship alongside x64. No feature r
 
 ```powershell
 pnpm run package:installer:arm64                      # build (toolchain must be present)
-pnpm run package:installer:arm64 -- -InstallMissing   # also download/install the toolchain
-pnpm run package:installer:arm64 -- -ToolchainOnly    # just check/install toolchain
+pnpm run package:installer:arm64 -InstallMissing      # also download/install the toolchain
+pnpm run package:installer:arm64 -ToolchainOnly       # just check/install toolchain
 ```
 
 The output is `artifacts/kkterm-<version>-windows-arm64-setup.exe` plus a `.sha256` checksum, matching the x64 script's conventions. Both architectures are built and published together by the **Release** workflow (see "GitHub Release" below); locally, `pwsh scripts/release-github.ps1 -IncludeArm64` adds ARM64 to an x64 release run.

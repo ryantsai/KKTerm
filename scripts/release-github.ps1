@@ -386,10 +386,12 @@ artifacts/release-notes-*.md) that were not part of a finished release.
             Invoke-Checked -FilePath "pnpm" -ArgumentList @("run", "package:installer") -Action "Build installer package"
             Invoke-Checked -FilePath "powershell" -ArgumentList @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts/package-portable.ps1", "-Arch", "x64", "-OutputDir", $OutputDir, "-SkipBuild") -Action "Build x64 portable package"
             if ($IncludeArm64) {
-                # `--` forwards -InstallMissing to the ARM64 packaging script so the
+                # pnpm forwards arguments after the script name directly; do not add
+                # `--`, which PowerShell interprets as an ambiguous parameter.
+                # Pass -InstallMissing to the ARM64 packaging script so the
                 # cross-build toolchain (aarch64 Rust target, ARM64 MSVC tools, CMake,
                 # NASM) is provisioned on the runner before building.
-                Invoke-Checked -FilePath "pnpm" -ArgumentList @("run", "package:installer:arm64", "--", "-InstallMissing") -Action "Build ARM64 installer package"
+                Invoke-Checked -FilePath "pnpm" -ArgumentList @("run", "package:installer:arm64", "-InstallMissing") -Action "Build ARM64 installer package"
                 Invoke-Checked -FilePath "powershell" -ArgumentList @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts/package-portable.ps1", "-Arch", "arm64", "-OutputDir", $OutputDir, "-SkipBuild") -Action "Build ARM64 portable package"
             }
         }
