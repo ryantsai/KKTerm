@@ -187,6 +187,25 @@ test("PowerShell 7 detection covers versioned ARP display names", () => {
   );
 });
 
+test("nvm-windows uses the official release channel and v2 asset names", () => {
+  const nvm = recipe("nvm-windows");
+  assert.deepEqual(nvm.provider, {
+    kind: "downloadInstaller",
+    url: "https://github.com/nvm-windows/nvm/releases/download/v2.0.0/nvm-2.0.0-amd64-setup.exe",
+    fileName: "nvm-2.0.0-amd64-setup.exe",
+    arm64Url:
+      "https://github.com/nvm-windows/nvm/releases/download/v2.0.0/nvm-2.0.0-arm64-setup.exe",
+    arm64FileName: "nvm-2.0.0-arm64-setup.exe",
+    githubRepo: "nvm-windows/nvm",
+    githubAssetPattern: "nvm-*-amd64-setup.exe",
+    githubArm64AssetPattern: "nvm-*-arm64-setup.exe",
+  });
+  assert.deepEqual(nvm.chocolateyProvider, { kind: "chocolatey", id: "nvm" });
+  assert.equal(nvm.needs, undefined);
+  assert.ok(nvm.options?.includes("provider"));
+  assert.ok(!nvm.options?.includes("version"));
+});
+
 test("Bun offers WinGet, Chocolatey, and GitHub-release sources", () => {
   const bun = recipe("bun");
   assert.equal(bun.category, "development");

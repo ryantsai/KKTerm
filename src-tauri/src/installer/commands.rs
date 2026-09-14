@@ -2144,12 +2144,13 @@ fn compatible_managed_node_runtime(tool_id: &str) -> Result<Option<ManagedNodeRu
     let Some(engine_range) = managed_node_engine_range(tool_id)? else {
         return Ok(None);
     };
-    let Some(nvm_home) = super::install::refreshed_nvm_home_public() else {
+    let Some(nvm_install_root) = super::install::refreshed_nvm_install_root_public() else {
         return Ok(None);
     };
     let mut candidates = Vec::new();
-    let entries = std::fs::read_dir(&nvm_home)
-        .map_err(|error| format!("failed to inspect Node runtimes in {nvm_home}: {error}"))?;
+    let entries = std::fs::read_dir(&nvm_install_root).map_err(|error| {
+        format!("failed to inspect Node runtimes in {nvm_install_root}: {error}")
+    })?;
     for entry in entries.flatten() {
         let version_dir = entry.path();
         let node_path = version_dir.join("node.exe");

@@ -50,26 +50,45 @@ export function TerminalAttentionLifecycle() {
   return null;
 }
 
-export function TerminalAttentionBadge({ paneId, tabId, connectionId, childConnectionId }: {
+type TerminalAttentionTarget = {
   paneId?: string;
   tabId?: string;
   connectionId?: string;
   childConnectionId?: string;
-}) {
-  const { t } = useTranslation();
+};
+
+export function useTerminalAttentionActive({
+  paneId,
+  tabId,
+  connectionId,
+  childConnectionId,
+}: TerminalAttentionTarget) {
   const pending = useTerminalAttentionStore((state) => state.pending);
   const activeWorkspaceId = useWorkspaceStore((state) => state.activeWorkspaceId);
-  const active = useWorkspaceStore((state) => terminalAttentionTargets(state.tabs, pending).some(({ tab, pane }) => {
+  return useWorkspaceStore((state) => terminalAttentionTargets(state.tabs, pending).some(({ tab, pane }) => {
     if (paneId) return pane.id === paneId;
     if (tabId) return tab.id === tabId;
     if ((tab.workspaceId ?? DEFAULT_WORKSPACE_ID) !== activeWorkspaceId) return false;
     if (childConnectionId) return pane.childConnectionId === childConnectionId;
     return pane.connection?.id === connectionId || tab.childConnectionGroupParentId === connectionId;
   }));
+}
+
+export function TerminalAttentionBadge(props: TerminalAttentionTarget) {
+  const { t } = useTranslation();
+  const active = useTerminalAttentionActive(props);
   return active ? (
     <span className="terminal-attention-badge" role="img" aria-label={t("terminal.attentionPending")}>
       <Bell size={12} aria-hidden="true" />
     </span>
+  ) : null;
+}
+
+export function TerminalAttentionDot(props: TerminalAttentionTarget) {
+  const { t } = useTranslation();
+  const active = useTerminalAttentionActive(props);
+  return active ? (
+    <span className="terminal-attention-dot" role="img" aria-label={t("terminal.attentionPending")} />
   ) : null;
 }
 

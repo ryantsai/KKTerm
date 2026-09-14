@@ -45,7 +45,16 @@ export type Provider =
   | { kind: "chocolatey"; id: string }
   | { kind: "npm"; pkg: string }
   | { kind: "uvPip"; package: string }
-  | { kind: "downloadInstaller"; url: string; fileName: string }
+  | {
+      kind: "downloadInstaller";
+      url: string;
+      fileName: string;
+      arm64Url?: string;
+      arm64FileName?: string;
+      githubRepo?: string;
+      githubAssetPattern?: string;
+      githubArm64AssetPattern?: string;
+    }
   | {
       kind: "githubRelease";
       repo: string;

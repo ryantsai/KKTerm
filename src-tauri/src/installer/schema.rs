@@ -188,6 +188,25 @@ pub enum Provider {
             skip_serializing_if = "Option::is_none"
         )]
         arm64_file_name: Option<String>,
+        /// Optional GitHub repository used to resolve the latest stable
+        /// installer asset instead of relying on the static URL above.
+        #[serde(default, rename = "githubRepo", skip_serializing_if = "Option::is_none")]
+        github_repo: Option<String>,
+        /// Optional x64 GitHub release asset glob, e.g.
+        /// `nvm-*-amd64-setup.exe`.
+        #[serde(
+            default,
+            rename = "githubAssetPattern",
+            skip_serializing_if = "Option::is_none"
+        )]
+        github_asset_pattern: Option<String>,
+        /// Optional native ARM64 GitHub release asset glob.
+        #[serde(
+            default,
+            rename = "githubArm64AssetPattern",
+            skip_serializing_if = "Option::is_none"
+        )]
+        github_arm64_asset_pattern: Option<String>,
     },
     GithubRelease {
         /// "owner/repo".
@@ -233,6 +252,7 @@ impl Provider {
                 file_name,
                 arm64_url,
                 arm64_file_name,
+                ..
             } => {
                 if prefer_arm64 {
                     if let (Some(arm_url), Some(arm_file)) =
@@ -245,6 +265,35 @@ impl Provider {
             }
             _ => None,
         }
+    }
+
+    /// For a `DownloadInstaller` backed by GitHub releases, return the
+    /// repository and architecture-appropriate asset glob. A missing ARM64
+    /// pattern falls back to the x64 pattern so Windows on Arm can still use
+    /// an emulated x64 installer.
+    pub fn github_release_source(&self, prefer_arm64: bool) -> Option<(&str, &str)> {
+        let Provider::DownloadInstaller {
+            github_repo,
+            github_asset_pattern,
+            github_arm64_asset_pattern,
+            ..
+        } = self
+        else {
+            return None;
+        };
+        let repo = github_repo.as_deref()?.trim();
+        let pattern = if prefer_arm64 {
+            github_arm64_asset_pattern
+                .as_deref()
+                .filter(|pattern| !pattern.trim().is_empty())
+                .or_else(|| github_asset_pattern.as_deref())?
+        } else {
+            github_asset_pattern.as_deref()?.trim()
+        };
+        if pattern.trim().is_empty() {
+            return None;
+        }
+        Some((repo, pattern))
     }
 }
 
@@ -1016,6 +1065,9 @@ mod tests {
             file_name: "app-x64.exe".into(),
             arm64_url: Some("https://example.com/app-arm64.exe".into()),
             arm64_file_name: Some("app-arm64.exe".into()),
+            github_repo: None,
+            github_asset_pattern: None,
+            github_arm64_asset_pattern: None,
         };
 
         assert_eq!(
@@ -1035,6 +1087,9 @@ mod tests {
             file_name: "app-x64.exe".into(),
             arm64_url: None,
             arm64_file_name: None,
+            github_repo: None,
+            github_asset_pattern: None,
+            github_arm64_asset_pattern: None,
         };
 
         assert_eq!(
@@ -1047,6 +1102,9 @@ mod tests {
             file_name: "app-x64.exe".into(),
             arm64_url: Some("https://example.com/app-arm64.exe".into()),
             arm64_file_name: None,
+            github_repo: None,
+            github_asset_pattern: None,
+            github_arm64_asset_pattern: None,
         };
         assert_eq!(
             provider.download_target(true),
@@ -1060,6 +1118,58 @@ mod tests {
             Provider::Winget { id: "X".into() }.download_target(true),
             None
         );
+    }
+
+    #[test]
+    fn github_release_source_selects_architecture_specific_asset_pattern() {
+        let provider = Provider::DownloadInstaller {
+            url: "https://example.com/app-x64.exe".into(),
+            file_name: "app-x64.exe".into(),
+            arm64_url: None,
+            arm64_file_name: None,
+            github_repo: Some("owner/repo".into()),
+            github_asset_pattern: Some("app-*-amd64.exe".into()),
+            github_arm64_asset_pattern: Some("app-*-arm64.exe".into()),
+        };
+
+        assert_eq!(
+            provider.github_release_source(false),
+            Some(("owner/repo", "app-*-amd64.exe"))
+        );
+        assert_eq!(
+            provider.github_release_source(true),
+            Some(("owner/repo", "app-*-arm64.exe"))
+        );
+    }
+
+    #[test]
+    fn shipped_nvm_recipe_uses_official_release_channel() {
+        let json = include_str!("../../../installer/catalog.v1.json");
+        let catalog: Catalog =
+            serde_json::from_str(json).expect("shipped catalog JSON should parse");
+        let recipe = catalog
+            .recipes
+            .iter()
+            .find(|recipe| recipe.id == "nvm-windows")
+            .expect("catalog should include nvm-windows");
+
+        assert!(recipe.needs.is_empty());
+        assert!(matches!(
+            &recipe.provider,
+            Provider::DownloadInstaller {
+                github_repo: Some(repo),
+                github_asset_pattern: Some(pattern),
+                github_arm64_asset_pattern: Some(arm_pattern),
+                url,
+                arm64_url: Some(arm_url),
+                ..
+            } if repo == "nvm-windows/nvm"
+                && pattern == "nvm-*-amd64-setup.exe"
+                && arm_pattern == "nvm-*-arm64-setup.exe"
+                && url.ends_with("nvm-2.0.0-amd64-setup.exe")
+                && arm_url.ends_with("nvm-2.0.0-arm64-setup.exe")
+        ));
+        assert_eq!(recipe.options, vec![RecipeOption::Provider]);
     }
 
     #[test]

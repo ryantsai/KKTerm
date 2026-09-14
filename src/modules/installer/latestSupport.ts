@@ -12,6 +12,7 @@ export function providerSupportsLatestVersion(provider: Provider): boolean {
     case "bundle":
       return provider.steps.length === 1;
     case "downloadInstaller":
+      return Boolean(provider.githubRepo && provider.githubAssetPattern);
     case "windowsFeature":
     case "wslDistro":
       return false;

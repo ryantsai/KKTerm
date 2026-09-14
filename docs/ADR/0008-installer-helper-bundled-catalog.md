@@ -115,6 +115,11 @@ whichever exist:
 3. **Direct download / GitHub release** (`downloadProvider`):
    - A vendor `.exe`/`.msi`/`.msix` with a stable URL → `downloadInstaller`
      (add `arm64Url` / `arm64FileName` when a native ARM64 asset exists).
+   - A versioned vendor installer whose current asset is published on GitHub
+     releases → `downloadInstaller` with `githubRepo` and
+     `githubAssetPattern` (plus `githubArm64AssetPattern` when the ARM64
+     asset uses a different name). Keep the versioned URL current as the
+     static target for clients that cannot resolve release metadata.
    - A portable archive published on GitHub releases → `githubRelease`
      with `assetPattern`, `layout` (`zip` / `exeInstaller` / `msi`), and
      an optional `pathSubdir` pointing at the nested executable directory

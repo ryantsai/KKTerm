@@ -52,10 +52,24 @@ test("installer latest-version UI only treats versioned providers as supported",
       fileName: "Hermes-Setup.exe",
     },
   };
+  const nvmWindows = {
+    id: "nvm-windows",
+    name: "nvm-windows",
+    descriptionEn: "",
+    provider: {
+      kind: "downloadInstaller",
+      url: "https://github.com/nvm-windows/nvm/releases/download/v2.0.0/nvm-2.0.0-amd64-setup.exe",
+      fileName: "nvm-2.0.0-amd64-setup.exe",
+      githubRepo: "nvm-windows/nvm",
+      githubAssetPattern: "nvm-*-amd64-setup.exe",
+    },
+  };
 
   assert.equal(recipeSupportsLatestVersion(antigravity), false);
   assert.equal(recipeSupportsLatestVersion(codexDesktop), false);
   assert.equal(recipeSupportsLatestVersion(hermesDesktop), false);
+  assert.equal(recipeSupportsLatestVersion(nvmWindows), true);
+  assert.equal(latestVersionWebUrlForRecipe(nvmWindows), null);
   assert.equal(
     latestVersionWebUrlForRecipe(antigravity),
     "https://antigravity.google/cli/install.cmd",

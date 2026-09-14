@@ -2101,8 +2101,8 @@ mod tests {
         let snapshot = InstalledSoftwareSnapshot {
             entries: vec![InstalledSoftwareEntry {
                 registry_key: "nvm".into(),
-                display_name: Some("NVM for Windows 1.2.2".into()),
-                display_version: Some("1.2.2".into()),
+                display_name: Some("NVM for Windows 2.0.0".into()),
+                display_version: Some("2.0.0".into()),
                 install_location: None,
             }],
         };
@@ -2110,7 +2110,7 @@ mod tests {
         let state = detect_installed_software(&recipe, &snapshot);
 
         assert!(state.installed);
-        assert_eq!(state.installed_version.as_deref(), Some("1.2.2"));
+        assert_eq!(state.installed_version.as_deref(), Some("2.0.0"));
     }
 
     #[test]

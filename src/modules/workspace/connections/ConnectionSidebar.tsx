@@ -57,9 +57,9 @@ import {
 import { confirmTrustedSshHostKey, connectionPasswordOwnerId, connectionSshSocksProxyPasswordOwnerId, defaultPortForConnectionType, connectionTypeLabel, ftpPortForProtocolSelection, isRemoteDesktopConnectionType, localShellOptionsForPlatform, resolveSshCompression, resolveSshOldProtocols, resolveSshSocksProxyRequest, uniqueRuntimeId, type LocalShellOption } from "./utils";
 import { IMPORT_CONNECTIONS_REQUEST_EVENT, NEW_CONNECTION_REQUEST_EVENT, NEW_CONNECTION_TAB_REQUEST_EVENT, RECENT_CONNECTION_LIMIT, loadCollapsedFolderIds, loadRecentConnectionIds, notifyConnectionTreeInvalidated, requestTerminalConnectionReconnect, saveCollapsedFolderIds, saveRecentConnectionIds, type NewConnectionRequestDetail, type NewConnectionTabRequestDetail } from "./connectionSidebarState";
 import { collectConnectionFolderIds, countConnections, countFolders, filterConnectedConnections, filterConnectionTree, findConnectionInTree, flattenConnections, flattenFolders, visibleFlatConnections as flattenVisibleConnections, withLiveConnectionStatuses } from "./treeUtils";
-import { TerminalAttentionBadge } from "../TerminalAttention";
+import { useTerminalAttentionActive } from "../TerminalAttention";
 import { WorkspaceIcon } from "../workspaceIcons";
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Check, ChevronDown, ChevronRight, CircleDot, Copy, Folder, FolderPlus, KeyRound, LayoutDashboard, List, Maximize2, Minimize2, PanelsTopLeft, PanelRight, Pencil, Pin, PinOff, Play, Plus, Radio, RotateCcw, Save, Search, Settings, SquarePlus, Trash2, X } from "../../../lib/reicon";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bell, Check, ChevronDown, ChevronRight, CircleDot, Copy, Folder, FolderPlus, KeyRound, LayoutDashboard, List, Maximize2, Minimize2, PanelsTopLeft, PanelRight, Pencil, Pin, PinOff, Play, Plus, Radio, RotateCcw, Save, Search, Settings, SquarePlus, Trash2, X } from "../../../lib/reicon";
 import { listen } from "@tauri-apps/api/event";
 import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent as ReactDragEvent, FormEvent, KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
@@ -6083,8 +6083,8 @@ function ConnectionChildTabRow({
           )}
         </span>
       </button>
-      <TerminalAttentionBadge childConnectionId={child.id} />
       <ConnectionStatusIndicator
+        childConnectionId={child.id}
         connectionType={connection.type}
         status={connected ? "connected" : "idle"}
       />
@@ -6206,8 +6206,8 @@ function ConnectionRow({
           </span>
         </button>
       )}
-      <TerminalAttentionBadge connectionId={connection.id} />
       <ConnectionStatusIndicator
+        connectionId={connection.id}
         connectionType={connection.type}
         status={connection.status}
       />
@@ -6216,16 +6216,34 @@ function ConnectionRow({
 }
 
 function ConnectionStatusIndicator({
+  childConnectionId,
+  connectionId,
   connectionType,
   status,
 }: {
+  childConnectionId?: string;
+  connectionId?: string;
   connectionType: ConnectionType;
   status: ConnectionStatus;
 }) {
+  const { t } = useTranslation();
+  const attentionPending = useTerminalAttentionActive({ childConnectionId, connectionId });
   const syncInputEnabled = useWorkspaceStore((state) => state.syncInputEnabled);
   const isConnectedTerminal =
     status === "connected" &&
     ["local", "ssh", "telnet", "serial"].includes(connectionType);
+
+  if (attentionPending) {
+    return (
+      <span
+        aria-label={t("terminal.attentionPending")}
+        className="terminal-attention-connection-bell"
+        role="img"
+      >
+        <Bell aria-hidden="true" size={11} strokeWidth={2} />
+      </span>
+    );
+  }
 
   if (syncInputEnabled && isConnectedTerminal) {
     return (

@@ -191,6 +191,17 @@ fn install_recipe_by_provider(
         Provider::Npm { pkg } => install_npm(&recipe.id, pkg, &options, cancel, emit),
         Provider::UvPip { package } => install_uv_pip(&recipe.id, package, &options, cancel, emit),
         provider @ Provider::DownloadInstaller { .. } => {
+            if let Some((repo, asset_pattern)) =
+                provider.github_release_source(super::schema::prefer_native_arm64())
+            {
+                return install_github_release_installer(
+                    &recipe.id,
+                    repo,
+                    asset_pattern,
+                    cancel,
+                    emit,
+                );
+            }
             let (url, file_name) = provider
                 .download_target(super::schema::prefer_native_arm64())
                 .expect("DownloadInstaller provider resolves a download target");
@@ -1681,26 +1692,18 @@ fn install_npm(
 
 // ---- github-release ----------------------------------------------------
 
-fn install_github_release(
-    tool_id: &str,
+struct GithubReleaseAsset {
+    tag_name: Option<String>,
+    asset_name: String,
+    download_url: String,
+}
+
+fn fetch_github_release_asset(
+    client: &reqwest::blocking::Client,
     repo: &str,
     asset_pattern: &str,
-    layout: GithubReleaseLayout,
-    path_subdir: Option<&str>,
-    options: &InstallOptions,
-    cancel: Arc<AtomicBool>,
-    emit: &EventSink,
-) -> Result<Option<String>, String> {
-    emit(ProgressEvent::Step {
-        tool_id: tool_id.into(),
-        message: format!("Querying GitHub releases for {repo}"),
-    });
+) -> Result<GithubReleaseAsset, String> {
     let api_url = format!("https://api.github.com/repos/{repo}/releases/latest");
-    let client = crate::net::proxy::apply_blocking(reqwest::blocking::Client::builder())
-        .user_agent("KKTerm-Installer/1")
-        .timeout(std::time::Duration::from_secs(30))
-        .build()
-        .map_err(|e| e.to_string())?;
     let release_json: serde_json::Value = client
         .get(&api_url)
         .send()
@@ -1712,7 +1715,6 @@ fn install_github_release(
         .get("tag_name")
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
-
     let pattern = asset_pattern.to_string();
     let asset = release_json
         .get("assets")
@@ -1730,12 +1732,71 @@ fn install_github_release(
     let asset_name = asset
         .get("name")
         .and_then(|v| v.as_str())
-        .ok_or("asset has no name field")?;
+        .ok_or("asset has no name field")?
+        .to_string();
     let download_url = asset
         .get("browser_download_url")
         .and_then(|v| v.as_str())
         .ok_or("asset has no browser_download_url field")?
         .to_string();
+
+    Ok(GithubReleaseAsset {
+        tag_name,
+        asset_name,
+        download_url,
+    })
+}
+
+fn install_github_release_installer(
+    tool_id: &str,
+    repo: &str,
+    asset_pattern: &str,
+    cancel: Arc<AtomicBool>,
+    emit: &EventSink,
+) -> Result<Option<String>, String> {
+    emit(ProgressEvent::Step {
+        tool_id: tool_id.into(),
+        message: format!("Querying GitHub releases for {repo}"),
+    });
+    let client = crate::net::proxy::apply_blocking(reqwest::blocking::Client::builder())
+        .user_agent("KKTerm-Installer/1")
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let asset = fetch_github_release_asset(&client, repo, asset_pattern)?;
+    install_download_installer(
+        tool_id,
+        &asset.download_url,
+        &asset.asset_name,
+        cancel,
+        emit,
+    )?;
+    Ok(asset.tag_name)
+}
+
+fn install_github_release(
+    tool_id: &str,
+    repo: &str,
+    asset_pattern: &str,
+    layout: GithubReleaseLayout,
+    path_subdir: Option<&str>,
+    options: &InstallOptions,
+    cancel: Arc<AtomicBool>,
+    emit: &EventSink,
+) -> Result<Option<String>, String> {
+    emit(ProgressEvent::Step {
+        tool_id: tool_id.into(),
+        message: format!("Querying GitHub releases for {repo}"),
+    });
+    let client = crate::net::proxy::apply_blocking(reqwest::blocking::Client::builder())
+        .user_agent("KKTerm-Installer/1")
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let asset = fetch_github_release_asset(&client, repo, asset_pattern)?;
+    let tag_name = asset.tag_name;
+    let asset_name = asset.asset_name;
+    let download_url = asset.download_url;
 
     let install_dir = options
         .location
@@ -1750,7 +1811,7 @@ fn install_github_release(
         tool_id: tool_id.into(),
         message: format!("Downloading {asset_name}"),
     });
-    let download_path = install_dir.join(asset_name);
+    let download_path = install_dir.join(&asset_name);
     download_with_progress(
         &client,
         &download_url,
@@ -2114,6 +2175,55 @@ pub fn refreshed_nvm_home_public() -> Option<String> {
         .get("NVM_HOME")
         .cloned()
         .or_else(|| std::env::var("NVM_HOME").ok())
+}
+
+/// Resolve the Node-version storage root used by nvm-windows. Version 2
+/// stores `NVM_HOME` at the manager's program directory and exposes the real
+/// Node storage root through `nvm config get root`; v1 uses `NVM_HOME` itself.
+#[cfg(target_os = "windows")]
+pub fn refreshed_nvm_install_root_public() -> Option<String> {
+    let root = command_output_with_refreshed_path("nvm", &["config", "get", "root"])
+        .filter(|output| output.status.success())
+        .and_then(|output| {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            parse_nvm_root_output(&stdout).or_else(|| {
+                parse_nvm_root_output(&String::from_utf8_lossy(&output.stderr))
+            })
+        });
+    root.or_else(|| {
+        refreshed_nvm_home_public().map(|home| {
+            let v2_root = PathBuf::from(&home).join("installs");
+            if v2_root.is_dir() {
+                v2_root.to_string_lossy().into_owned()
+            } else {
+                home
+            }
+        })
+    })
+}
+
+#[cfg(target_os = "windows")]
+fn parse_nvm_root_output(text: &str) -> Option<String> {
+    text.lines().find_map(|line| {
+        let line = line.trim();
+        if line.is_empty() {
+            return None;
+        }
+        let value = line
+            .split_once(':')
+            .filter(|(label, _)| label.trim().eq_ignore_ascii_case("root"))
+            .map(|(_, value)| value.trim())
+            .unwrap_or(line)
+            .trim_matches(|ch| ch == '"' || ch == '\'')
+            .trim();
+        if value.is_empty()
+            || value.eq_ignore_ascii_case("(empty)")
+            || (!value.contains('\\') && !value.contains('/'))
+        {
+            return None;
+        }
+        Some(value.to_string())
+    })
 }
 
 /// Run an admin-only command (Chocolatey) **elevated**, raising one UAC prompt
@@ -3278,6 +3388,20 @@ mod tests {
             vars.get("NVM_HOME").map(String::as_str),
             Some(r"C:\Users\Ryan\AppData\Local\nvm")
         );
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn parse_nvm_root_output_accepts_v2_and_labeled_paths() {
+        assert_eq!(
+            parse_nvm_root_output("C:\\Users\\Ryan\\AppData\\Local\\Author Software\\nvm\\installs\r\n"),
+            Some(r"C:\Users\Ryan\AppData\Local\Author Software\nvm\installs".into())
+        );
+        assert_eq!(
+            parse_nvm_root_output("Root: C:\\Users\\Ryan\\nvm\\installs\n"),
+            Some(r"C:\Users\Ryan\nvm\installs".into())
+        );
+        assert_eq!(parse_nvm_root_output("(empty)\n"), None);
     }
 
     fn winget_recipe_with_options(options: Vec<super::super::schema::RecipeOption>) -> Recipe {

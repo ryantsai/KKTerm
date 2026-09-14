@@ -25,6 +25,10 @@ pub fn latest_version(recipe: &Recipe) -> LatestVersionResult {
         Provider::Chocolatey { id } => chocolatey_latest(id),
         Provider::Npm { pkg } => npm_latest_for_recipe(pkg, recipe.release_notes_url.as_deref()),
         Provider::UvPip { package } => pypi_latest(package),
+        Provider::DownloadInstaller {
+            github_repo: Some(repo),
+            ..
+        } => github_latest(repo),
         Provider::DownloadInstaller { .. } => Ok(None),
         Provider::GithubRelease { repo, .. } => github_latest(repo),
         Provider::WindowsFeature { .. } => Ok(None),
@@ -110,6 +114,13 @@ fn latest_provider_for_recipe(recipe: &Recipe) -> &Provider {
         if github_release_marker_path(&recipe.id).exists() {
             return provider;
         }
+    }
+    if let Some(provider @ Provider::DownloadInstaller {
+        github_repo: Some(_),
+        ..
+    }) = recipe.download_provider.as_ref()
+    {
+        return provider;
     }
     if official_cli_latest_pointer_url(&recipe.id).is_some()
         && let Some(provider @ Provider::DownloadInstaller { .. }) =
@@ -549,6 +560,9 @@ mod tests {
             file_name: "grok-build-install.ps1".into(),
             arm64_url: None,
             arm64_file_name: None,
+            github_repo: None,
+            github_asset_pattern: None,
+            github_arm64_asset_pattern: None,
         };
 
         assert_eq!(official_cli_latest_url("grok-build", &winget), None);

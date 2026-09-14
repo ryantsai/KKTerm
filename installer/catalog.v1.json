@@ -348,30 +348,29 @@
       "descriptionEn": "Node Version Manager for Windows. Lets you switch between multiple Node versions.",
       "category": "runtime",
       "icon": "Layers",
-      "needs": [
-        "winget"
-      ],
+      "homepage": "https://github.com/nvm-windows/nvm",
+      "releaseNotesUrl": "https://github.com/nvm-windows/nvm/releases",
       "detection": {
         "displayNamePrefixes": [
           "NVM for Windows"
         ]
       },
       "provider": {
-        "kind": "winget",
-        "id": "CoreyButler.NVMforWindows"
-      },
-      "downloadProvider": {
         "kind": "downloadInstaller",
-        "url": "https://github.com/coreybutler/nvm-windows/releases/latest/download/nvm-setup.exe",
-        "fileName": "nvm-setup.exe"
+        "url": "https://github.com/nvm-windows/nvm/releases/download/v2.0.0/nvm-2.0.0-amd64-setup.exe",
+        "fileName": "nvm-2.0.0-amd64-setup.exe",
+        "arm64Url": "https://github.com/nvm-windows/nvm/releases/download/v2.0.0/nvm-2.0.0-arm64-setup.exe",
+        "arm64FileName": "nvm-2.0.0-arm64-setup.exe",
+        "githubRepo": "nvm-windows/nvm",
+        "githubAssetPattern": "nvm-*-amd64-setup.exe",
+        "githubArm64AssetPattern": "nvm-*-arm64-setup.exe"
       },
       "chocolateyProvider": {
         "kind": "chocolatey",
         "id": "nvm"
       },
       "options": [
-        "provider",
-        "version"
+        "provider"
       ],
       "descriptionLocales": {
         "es": "Administrador de versiones Node para Windows. Le permite cambiar entre múltiples versiones de Node.",
