@@ -2506,6 +2506,7 @@ type CommandMap = {
     args: {
       request: {
         mode: "region" | "window" | "fullscreen";
+        frameRate: 30 | 60 | 120;
         useDirectx: boolean;
         minimizeWindow: boolean;
       };

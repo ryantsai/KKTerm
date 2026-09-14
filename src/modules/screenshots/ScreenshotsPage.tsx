@@ -75,6 +75,18 @@ import "./screenshots.css";
 const VIEW_MODE_STORAGE_KEY = "kkterm.screenshotsViewMode.v2";
 const SORT_STORAGE_KEY = "kkterm.screenshotsSort.v1";
 const GROUP_STORAGE_KEY = "kkterm.screenshotsGroup.v1";
+const FRAME_RATE_STORAGE_KEY = "kkterm.screenshotsFrameRate.v1";
+const VIDEO_FRAME_RATES = [30, 60, 120] as const;
+type VideoFrameRate = (typeof VIDEO_FRAME_RATES)[number];
+
+function readFrameRate(): VideoFrameRate {
+  try {
+    const value = Number(localStorage.getItem(FRAME_RATE_STORAGE_KEY));
+    return value === 60 || value === 120 ? value : 30;
+  } catch {
+    return 30;
+  }
+}
 const VideoEditor = lazy(() => import("./VideoEditor").then((module) => ({
   default: module.VideoEditor,
 })));
@@ -155,6 +167,7 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
   const [groupBy, setGroupBy] = useState<ScreenshotGroupBy>(readGroupBy);
   const [captureDelay, setCaptureDelay] = useState(readCaptureDelay);
   const [mediaKind, setMediaKind] = useState<"image" | "video">("image");
+  const [frameRate, setFrameRate] = useState<VideoFrameRate>(readFrameRate);
   // Video recording needs FFmpeg, which the sandboxed Mac App Store build can
   // never reach: Homebrew and /usr/local are outside the container and there is
   // no Install Helper on macOS to manage a private copy. Hide the media picker
@@ -573,6 +586,7 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
       const session = await invokeCommand("start_video_recording", {
         request: {
           mode,
+          frameRate,
           useDirectx: useWorkspaceStore.getState().generalSettings.useDirectxScreenCapture,
           minimizeWindow: true,
         },
@@ -668,6 +682,31 @@ export function ScreenshotsPage({ active }: { active: boolean }) {
             <option value="video">{t("screenshots.mediaVideo")}</option>
           </select>
         </label>
+        ) : null}
+        {videoRecordingSupported && mediaKind === "video" ? (
+          <label
+            className="screenshots-delay-select"
+            title={t("screenshots.video.frameRateHint")}
+            data-tutorial-id="screenshots.videoFrameRate"
+          >
+            <select
+              aria-label={t("screenshots.video.frameRate")}
+              value={frameRate}
+              disabled={Boolean(recording) || videoBusy}
+              onChange={(event) => {
+                const value = Number(event.currentTarget.value);
+                const next = value === 60 || value === 120 ? value : 30;
+                setFrameRate(next);
+                persist(FRAME_RATE_STORAGE_KEY, String(next));
+              }}
+            >
+              {VIDEO_FRAME_RATES.map((fps) => (
+                <option key={fps} value={fps}>
+                  {t("screenshots.video.frameRateOption", { fps })}
+                </option>
+              ))}
+            </select>
+          </label>
         ) : null}
         {recording ? (
           <button

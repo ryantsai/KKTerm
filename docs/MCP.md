@@ -658,3 +658,5 @@ notifications.
 ### Terminal attention tutorial target
 
 `tutorial_highlight` accepts `terminal.attention` with navigation `page=workspace`. It identifies the pending-terminal bell buttons in the Status Bar; it is only present when a live terminal has rung while unfocused and the Status Bar is visible. Activating a bell focuses that existing terminal and clears its attention.
+
+The Screenshots tutorial target `screenshots.videoFrameRate` uses navigation `page=screenshots` and is present after selecting Video mode. It identifies the 30/60/120 fps recording selector.

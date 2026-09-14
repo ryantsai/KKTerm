@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>KKTerm — One window for terminals, SSH, SFTP, RDP, VNC, and an AI that builds you tools</title>
-<meta name="description" content="KKTerm is a local-first desktop admin workspace: terminals, SSH, SFTP, RDP/VNC, and a dashboard in one native window — plus an AI assistant that acts on your sessions with human approval. Free, no telemetry, Windows/macOS/Linux." />
+<title data-i18n="pageTitle">KKTerm — One window for terminals, SSH, SFTP, RDP, VNC, and an AI that builds you tools</title>
+<meta name="description" content="KKTerm is a local-first desktop admin workspace: terminals, SSH, SFTP, RDP/VNC, and a dashboard in one native window — plus an AI assistant that acts on your sessions with human approval. Free, no telemetry, Windows/macOS/Linux." data-i18n-content="metaDescription" />
 <meta name="theme-color" content="#0b1220" />
 <link rel="canonical" href="https://kkterm.ryantsai.com/" />
 
 <meta property="og:type" content="website" />
-<meta property="og:title" content="KKTerm — One window for every connection you own" />
-<meta property="og:description" content="Terminal, SSH, SFTP, RDP/VNC, and a dashboard in one native desktop window. Local-first. No telemetry. An AI assistant that builds you tools on request." />
+<meta property="og:title" content="KKTerm — One window for every connection you own" data-i18n-content="socialTitle" />
+<meta property="og:description" content="Terminal, SSH, SFTP, RDP/VNC, and a dashboard in one native desktop window. Local-first. No telemetry. An AI assistant that builds you tools on request." data-i18n-content="socialDescription" />
 <meta property="og:image" content="/assets/media/kkterm-maelstrom-terminal-poster.jpg" />
 <meta name="twitter:card" content="summary_large_image" />
 
@@ -20,8 +20,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&amp;family=Fira+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/css/style.css" />
 </head>
-<body>
-<a class="skip-link" href="#main">Skip to main content</a>
+<body class="homepage">
+<a class="skip-link" href="#main"><span data-i18n="skipLink">Skip to main content</span></a>
 
 <!-- Icon sprite (hand-drawn, original geometry — not copies of any third-party icon set) -->
 <svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
@@ -56,9 +56,7 @@
 </defs>
 </svg>
 
-<div class="support-banner" role="note">
-  <p>💚 <strong>KKTerm is free — and you can keep it alive.</strong> Get your copy on the <a href="https://apps.microsoft.com/detail/9nvqc5cnwwjk?hl=zh-TW&gl=HK" target="_blank" rel="noopener">Microsoft Store</a> or <a href="https://apps.apple.com/tw/app/kkterm/id6806710046?mt=12" target="_blank" rel="noopener">Mac App Store</a> <span class="support-banner-sub">· One-time payment, no subscription.</span></p>
-</div>
+<div class="support-banner" role="note"><p><span data-i18n="supportBanner">Support independent development with a store purchase. One-time payment, no subscription.</span></p></div>
 
 <header class="site-header" id="top">
   <div class="container header-inner">
@@ -67,35 +65,32 @@
       <span class="brand-name">KKTerm</span>
     </a>
 
-    <nav class="nav-desktop" aria-label="Primary">
-      <a href="#connections">Features</a>
-      <a href="#ai">AI Assistant</a>
-      <a href="#dashboard">Dashboard</a>
-      <a href="#operations">Operations</a>
-      <a href="#download">Download</a>
-      <a href="https://github.com/ryantsai/KKTerm" class="nav-icon-link" aria-label="KKTerm on GitHub" target="_blank" rel="noopener">
-        <svg class="icon" aria-hidden="true"><use href="#i-github"/></svg>
-      </a>
+    <nav class="nav-desktop" aria-label="Primary" data-i18n-aria-label="primaryNavigation">
+      <a href="#connections"><span data-i18n="navFeatures">Features</span></a>
+      <a href="#ai"><span data-i18n="navAi">AI Assistant</span></a>
+      <a href="#dashboard"><span data-i18n="navDashboard">Dashboard</span></a>
+      <a href="#operations"><span data-i18n="navOperations">Operations</span></a>
+      <a href="#download"><span data-i18n="navDownload">Download</span></a>
+
     </nav>
 
-    <a class="btn btn-primary btn-sm nav-cta" href="#download">
-      <svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>
-      Get KKTerm
-    </a>
+    <label class="language-picker"><svg class="icon" aria-hidden="true"><use href="#i-globe"/></svg><select id="languageSelect" aria-label="Language" data-i18n-aria-label="language"></select></label>
+      <a href="https://github.com/ryantsai/KKTerm" class="nav-icon-link" aria-label="KKTerm on GitHub" data-i18n-aria-label="githubLabel" target="_blank" rel="noopener">
+        <svg class="icon" aria-hidden="true"><use href="#i-github"/></svg>
+      </a>
 
-    <button class="menu-toggle" id="menuToggle" aria-label="Open menu" aria-expanded="false" aria-controls="mobileNav">
+    <button class="menu-toggle" id="menuToggle" aria-label="Open menu" data-i18n-aria-label="menuOpen" aria-expanded="false" aria-controls="mobileNav">
       <svg class="icon" aria-hidden="true"><use href="#i-menu"/></svg>
     </button>
   </div>
 
-  <nav id="mobileNav" class="nav-mobile" aria-label="Mobile" hidden>
-    <a href="#connections">Features</a>
-    <a href="#ai">AI Assistant</a>
-    <a href="#dashboard">Dashboard</a>
-    <a href="#operations">Operations</a>
-    <a href="#not">Honest limits</a>
-    <a href="#download">Download</a>
-    <a href="https://github.com/ryantsai/KKTerm" target="_blank" rel="noopener">GitHub</a>
+  <nav id="mobileNav" class="nav-mobile" aria-label="Mobile" data-i18n-aria-label="mobileNavigation" hidden>
+    <a href="#connections"><span data-i18n="navFeatures">Features</span></a>
+    <a href="#ai"><span data-i18n="navAi">AI Assistant</span></a>
+    <a href="#dashboard"><span data-i18n="navDashboard">Dashboard</span></a>
+    <a href="#operations"><span data-i18n="navOperations">Operations</span></a>
+    <a href="#not"><span data-i18n="navLimits">Honest limits</span></a>
+    <a href="#download"><span data-i18n="navDownload">Download</span></a>
   </nav>
 </header>
 
@@ -105,67 +100,29 @@
   <section class="hero">
     <div class="container hero-inner">
       <div class="hero-copy">
-        <p class="eyebrow"><span class="dot" aria-hidden="true"></span>Local-first · No telemetry · Free</p>
-        <h1>One native window for every terminal, SSH, SFTP, RDP, and VNC connection you own.</h1>
-        <p class="hero-sub">
-          KKTerm replaces the pile of clients on your taskbar — terminal, SSH, SFTP, RDP, VNC,
-          an embedded browser, a file manager — with one workspace. Plus an AI assistant that acts
-          on your sessions, with a human in the approval loop.
-        </p>
-        <div class="hero-actions">
-          <a class="btn btn-primary btn-lg" href="https://github.com/ryantsai/KKTerm/releases/latest" target="_blank" rel="noopener">
-            <svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>
-            Download latest release
-          </a>
-          <a class="btn btn-ghost btn-lg" href="https://github.com/ryantsai/KKTerm" target="_blank" rel="noopener">
-            <svg class="icon" aria-hidden="true"><use href="#i-github"/></svg>
-            View on GitHub
-          </a>
+        <p class="eyebrow"><span class="dot" aria-hidden="true"></span><span data-i18n="heroEyebrow">Local-first · No telemetry · Free</span></p>
+        <h1><span data-i18n="heroTitle">One native window for every terminal, SSH, SFTP, RDP, and VNC connection you own.</span></h1>
+        <p class="hero-sub"><span data-i18n="heroDescription">KKTerm replaces the pile of clients on your taskbar — terminal, SSH, SFTP, RDP, VNC, an embedded browser, a file manager — with one workspace. Plus an AI assistant that acts on your sessions, with a human in the approval loop.</span></p>
+        <div class="store-row" aria-label="Support KKTerm by getting it from an app store" data-i18n-aria-label="storeLinksLabel">
+          <a class="btn-store" href="https://apps.microsoft.com/detail/9nvqc5cnwwjk" target="_blank" rel="noopener"><svg class="store-icon" aria-hidden="true"><use href="#i-microsoft"/></svg><span data-i18n="microsoftDownload">Get it from Microsoft Store</span></a>
+          <a class="btn-store" href="https://apps.apple.com/app/kkterm/id6806710046?mt=12" target="_blank" rel="noopener"><svg class="store-icon" aria-hidden="true"><use href="#i-apple"/></svg><span data-i18n="appleDownload">Download on the Mac App Store</span></a>
         </div>
-        <div class="store-row" aria-label="Support KKTerm by getting it from an app store">
-          <a class="btn-store" href="https://apps.microsoft.com/detail/9nvqc5cnwwjk?hl=zh-TW&gl=HK" target="_blank" rel="noopener">
-            <svg class="store-icon" aria-hidden="true"><use href="#i-microsoft"/></svg>
-            <span class="store-text"><small>Get it from</small><strong>Microsoft Store</strong></span>
-          </a>
-          <a class="btn-store" href="https://apps.apple.com/tw/app/kkterm/id6806710046?mt=12" target="_blank" rel="noopener">
-            <svg class="store-icon" aria-hidden="true"><use href="#i-apple"/></svg>
-            <span class="store-text"><small>Download on the</small><strong>Mac App Store</strong></span>
-          </a>
-        </div>
-        <p class="support-note">💚 <strong>Support independent development:</strong> the store editions fund the same KKTerm you get free on GitHub — a <strong>one-time payment, no subscription</strong>. Every purchase goes straight back into bug fixes, new features, and signed, auto-updating releases.</p>
-        <ul class="hero-badges" aria-label="Platform and license">
+        <p class="support-note"><span data-i18n="supportNote">💚 Support independent development: the store editions fund the same KKTerm you get free on GitHub — a one-time payment, no subscription. Every purchase goes straight back into bug fixes, new features, and signed, auto-updating releases.</span></p>
+        <ul class="hero-badges" aria-label="Platform and license" data-i18n-aria-label="platformLabel">
           <li><svg class="icon icon-sm" aria-hidden="true"><use href="#i-desktop"/></svg>Windows · macOS · Linux</li>
-          <li><svg class="icon icon-sm" aria-hidden="true"><use href="#i-shield"/></svg>Source available</li>
-          <li><svg class="icon icon-sm" aria-hidden="true"><use href="#i-package"/></svg>Under 20&nbsp;MB install</li>
+          <li><svg class="icon icon-sm" aria-hidden="true"><use href="#i-shield"/></svg><span data-i18n="sourceAvailable">Source available</span></li>
+          <li><svg class="icon icon-sm" aria-hidden="true"><use href="#i-package"/></svg><span data-i18n="installSize">Under 20 MB install</span></li>
         </ul>
       </div>
 
       <div class="hero-visual reveal">
         <figure class="product-shot hero-demo">
-          <video autoplay muted loop playsinline preload="metadata" poster="/assets/media/kkterm-maelstrom-terminal-poster.jpg" width="1280" height="800" aria-label="KKTerm demo terminal running over the animated Maelstrom ocean background">
+          <video autoplay muted loop playsinline preload="metadata" poster="/assets/media/kkterm-maelstrom-terminal-poster.jpg" width="1280" height="800" aria-label="KKTerm demo terminal running over the animated Maelstrom ocean background" data-i18n-aria-label="heroVideoAlt">
             <source src="/assets/media/kkterm-maelstrom-terminal.mp4" type="video/mp4" />
           </video>
-          <figcaption><span class="live-dot" aria-hidden="true"></span>Real KKTerm capture · Maelstrom terminal background</figcaption>
+          <figcaption><span class="live-dot" aria-hidden="true"></span><span data-i18n="heroCaption">Real KKTerm capture · Maelstrom terminal background</span></figcaption>
         </figure>
       </div>
-    </div>
-  </section>
-
-  <!-- PROOF STRIP -->
-  <section class="proof" aria-label="Project stats">
-    <div class="container proof-inner">
-      <a href="https://github.com/ryantsai/KKTerm/stargazers" target="_blank" rel="noopener">
-        <img src="https://img.shields.io/github/stars/ryantsai/KKTerm?style=for-the-badge&logo=github&color=8bcf4c&labelColor=121a2c" alt="GitHub stars" />
-      </a>
-      <a href="https://github.com/ryantsai/KKTerm/network/members" target="_blank" rel="noopener">
-        <img src="https://img.shields.io/github/forks/ryantsai/KKTerm?style=for-the-badge&logo=github&color=8bcf4c&labelColor=121a2c" alt="GitHub forks" />
-      </a>
-      <a href="https://github.com/ryantsai/KKTerm/releases" target="_blank" rel="noopener">
-        <img src="https://img.shields.io/github/downloads/ryantsai/KKTerm/total?style=for-the-badge&logo=github&color=8bcf4c&labelColor=121a2c" alt="GitHub downloads" />
-      </a>
-      <a href="https://github.com/ryantsai/KKTerm/blob/main/LICENSE" target="_blank" rel="noopener">
-        <img src="https://img.shields.io/github/license/ryantsai/KKTerm?style=for-the-badge&color=8bcf4c&labelColor=121a2c" alt="MIT license" />
-      </a>
     </div>
   </section>
 
@@ -173,24 +130,24 @@
   <section class="section" id="connections">
     <div class="container">
       <div class="section-head reveal">
-        <p class="eyebrow">Everything in one place</p>
-        <h2>One window, every connection</h2>
-        <p class="section-sub">Same app. Same window. Same hotkeys. No more alt-tabbing through a decade of separate tools.</p>
+        <p class="eyebrow"><span data-i18n="connectionsEyebrow">Everything in one place</span></p>
+        <h2><span data-i18n="connectionsTitle">One window, every connection</span></h2>
+        <p class="section-sub"><span data-i18n="connectionsDescription">Same app. Same window. Same hotkeys. No more alt-tabbing through a decade of separate tools.</span></p>
       </div>
 
       <div class="grid grid-4 reveal">
-        <div class="conn-card"><svg class="icon" aria-hidden="true"><use href="#i-terminal"/></svg><h3>Local terminal</h3><p>PowerShell, cmd, and WSL shells, side by side.</p></div>
-        <div class="conn-card"><svg class="icon" aria-hidden="true"><use href="#i-server"/></svg><h3>SSH</h3><p>Keys, agent, passwords, jump hosts, port forwarding.</p></div>
-        <div class="conn-card"><svg class="icon" aria-hidden="true"><use href="#i-folder"/></svg><h3>SFTP &amp; FTP/FTPS</h3><p>Dual-pane file browser, drag to transfer.</p></div>
-        <div class="conn-card"><svg class="icon" aria-hidden="true"><use href="#i-cable"/></svg><h3>Telnet &amp; Serial</h3><p>Ancient gear and COM-port devices, still welcome.</p></div>
-        <div class="conn-card"><svg class="icon" aria-hidden="true"><use href="#i-desktop"/></svg><h3>RDP</h3><p>The real Microsoft Remote Desktop, built right in.</p></div>
-        <div class="conn-card"><svg class="icon" aria-hidden="true"><use href="#i-eye"/></svg><h3>VNC</h3><p>Rendered straight into the workspace canvas.</p></div>
-        <div class="conn-card"><svg class="icon" aria-hidden="true"><use href="#i-globe"/></svg><h3>Embedded browser</h3><p>A router's admin UI, one tab away, saved logins.</p></div>
-        <div class="conn-card"><svg class="icon" aria-hidden="true"><use href="#i-file"/></svg><h3>File Explorer &amp; Document viewer</h3><p>Local disk browsing plus a log/CSV/image/PDF viewer with tail-follow.</p></div>
+        <div class="conn-card"><svg class="icon" aria-hidden="true"><use href="#i-terminal"/></svg><h3><span data-i18n="localTerminal">Local terminal</span></h3><p><span data-i18n="localTerminalDescription">PowerShell, cmd, and WSL shells, side by side.</span></p></div>
+        <div class="conn-card"><svg class="icon" aria-hidden="true"><use href="#i-server"/></svg><h3>SSH</h3><p><span data-i18n="sshDescription">Keys, agent, passwords, jump hosts, port forwarding.</span></p></div>
+        <div class="conn-card"><svg class="icon" aria-hidden="true"><use href="#i-folder"/></svg><h3>SFTP &amp; FTP/FTPS</h3><p><span data-i18n="sftpDescription">Dual-pane file browser, drag to transfer.</span></p></div>
+        <div class="conn-card"><svg class="icon" aria-hidden="true"><use href="#i-cable"/></svg><h3><span data-i18n="serialTitle">Telnet &amp; Serial</span></h3><p><span data-i18n="serialDescription">Ancient gear and COM-port devices, still welcome.</span></p></div>
+        <div class="conn-card"><svg class="icon" aria-hidden="true"><use href="#i-desktop"/></svg><h3>RDP</h3><p><span data-i18n="rdpDescription">The real Microsoft Remote Desktop, built right in.</span></p></div>
+        <div class="conn-card"><svg class="icon" aria-hidden="true"><use href="#i-eye"/></svg><h3>VNC</h3><p><span data-i18n="vncDescription">Rendered straight into the workspace canvas.</span></p></div>
+        <div class="conn-card"><svg class="icon" aria-hidden="true"><use href="#i-globe"/></svg><h3><span data-i18n="browserTitle">Embedded browser</span></h3><p><span data-i18n="browserDescription">A router&#x27;s admin UI, one tab away, saved logins.</span></p></div>
+        <div class="conn-card"><svg class="icon" aria-hidden="true"><use href="#i-file"/></svg><h3><span data-i18n="filesTitle">File Explorer &amp; Document viewer</span></h3><p><span data-i18n="filesDescription">Local disk browsing plus a log/CSV/image/PDF viewer with tail-follow.</span></p></div>
       </div>
 
       <figure class="feature-media reveal">
-        <img class="product-shot" src="/assets/screenshots/connections-grid.png" alt="KKTerm Tab with SSH terminals, SFTP, and a web interface arranged in one grid" width="1920" height="1044" loading="lazy" decoding="async" />
+        <img class="product-shot" src="/assets/screenshots/connections-grid.png" alt="KKTerm Tab with SSH terminals, SFTP, and a web interface arranged in one grid" data-i18n-alt="connectionsImageAlt" width="1920" height="1044" loading="lazy" decoding="async" />
       </figure>
     </div>
   </section>
@@ -199,21 +156,18 @@
   <section class="section section-alt" id="ai">
     <div class="container feature-row">
       <div class="feature-copy reveal">
-        <p class="eyebrow"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-sparkles"/></svg>AI, in the loop</p>
-        <h2>An assistant that commands your terminals — with you watching</h2>
-        <p>
-          Most "AI in your terminal" demos stop at chat. KKTerm's assistant works inside your session:
-          hand it context from whatever is already on screen, and it acts on the boxes you're connected to.
-        </p>
+        <p class="eyebrow"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-sparkles"/></svg><span data-i18n="aiEyebrow">AI, in the loop</span></p>
+        <h2><span data-i18n="aiTitle">An assistant that commands your terminals — with you watching</span></h2>
+        <p><span data-i18n="aiDescription">Most &quot;AI in your terminal&quot; demos stop at chat. KKTerm&#x27;s assistant works inside your session: hand it context from whatever is already on screen, and it acts on the boxes you&#x27;re connected to.</span></p>
         <ul class="check-list">
-          <li><svg class="icon icon-sm" aria-hidden="true"><use href="#i-check"/></svg>Pull live terminal scrollback straight into the conversation</li>
-          <li><svg class="icon icon-sm" aria-hidden="true"><use href="#i-check"/></svg>Screenshot a Pane and ask "why does this look wrong?"</li>
-          <li><svg class="icon icon-sm" aria-hidden="true"><use href="#i-check"/></svg>Every risky command is flagged and waits for an explicit yes</li>
-          <li><svg class="icon icon-sm" aria-hidden="true"><use href="#i-check"/></svg>Bring your own model — OpenAI, Gemini, Grok, Ollama, Claude Code CLI, Codex CLI, and more</li>
+          <li><svg class="icon icon-sm" aria-hidden="true"><use href="#i-check"/></svg><span data-i18n="aiHistory">Pull live terminal scrollback straight into the conversation</span></li>
+          <li><svg class="icon icon-sm" aria-hidden="true"><use href="#i-check"/></svg><span data-i18n="aiScreenshot">Screenshot a Pane and ask &quot;why does this look wrong?&quot;</span></li>
+          <li><svg class="icon icon-sm" aria-hidden="true"><use href="#i-check"/></svg><span data-i18n="aiApproval">Every risky command is flagged and waits for an explicit yes</span></li>
+          <li><svg class="icon icon-sm" aria-hidden="true"><use href="#i-check"/></svg><span data-i18n="aiModels">Bring your own model — OpenAI, Gemini, Grok, Ollama, Claude Code CLI, Codex CLI, and more</span></li>
         </ul>
       </div>
       <figure class="feature-media reveal">
-        <img class="product-shot" src="/assets/screenshots/ai-assistant.png" alt="KKTerm AI Assistant beside a live terminal with approval and tool controls" width="1920" height="1044" loading="lazy" decoding="async" />
+        <img class="product-shot" src="/assets/screenshots/ai-assistant.png" alt="KKTerm AI Assistant beside a live terminal with approval and tool controls" data-i18n-alt="aiImageAlt" width="1920" height="1044" loading="lazy" decoding="async" />
       </figure>
     </div>
   </section>
@@ -222,18 +176,15 @@
   <section class="section" id="dashboard">
     <div class="container feature-row feature-row-reverse">
       <div class="feature-copy reveal">
-        <p class="eyebrow"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-grid"/></svg>Your dashboard, your rules</p>
-        <h2>A dashboard that doesn't pretend to be Grafana</h2>
-        <p>
-          Describe a widget in plain English and the AI assistant builds it, live, on your grid —
-          in its own sandbox, with your approval. No marketplace, no JavaScript required.
-        </p>
-        <blockquote class="quote">"Add a widget showing the last 5 commits on my main repo as a list."</blockquote>
-        <blockquote class="quote">"Build a widget that pings my home router every 30 seconds and shows green/red."</blockquote>
-        <p>Drag, resize, re-color. Delete one with a right-click when the magic wears off.</p>
+        <p class="eyebrow"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-grid"/></svg><span data-i18n="dashboardEyebrow">Your dashboard, your rules</span></p>
+        <h2><span data-i18n="dashboardTitle">A dashboard that doesn&#x27;t pretend to be Grafana</span></h2>
+        <p><span data-i18n="dashboardDescription">Describe a widget in plain English and the AI assistant builds it, live, on your grid — in its own sandbox, with your approval. No marketplace, no JavaScript required.</span></p>
+        <blockquote class="quote"><span data-i18n="widgetCommits">&quot;Add a widget showing the last 5 commits on my main repo as a list.&quot;</span></blockquote>
+        <blockquote class="quote"><span data-i18n="widgetPing">&quot;Build a widget that pings my home router every 30 seconds and shows green/red.&quot;</span></blockquote>
+        <p><span data-i18n="widgetCustomize">Drag, resize, re-color. Delete one with a right-click when the magic wears off.</span></p>
       </div>
       <figure class="feature-media reveal">
-        <img class="product-shot" src="/assets/screenshots/ai-widgets.png" alt="KKTerm Dashboard with a grid of AI-created widgets" width="1920" height="1044" loading="lazy" decoding="async" />
+        <img class="product-shot" src="/assets/screenshots/ai-widgets.png" alt="KKTerm Dashboard with a grid of AI-created widgets" data-i18n-alt="dashboardImageAlt" width="1920" height="1044" loading="lazy" decoding="async" />
       </figure>
     </div>
   </section>
@@ -242,17 +193,13 @@
   <section class="section section-alt" id="tmux">
     <div class="container feature-row">
       <div class="feature-copy reveal">
-        <p class="eyebrow"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-refresh"/></svg>Never lose the plot</p>
-        <h2>Keep your AI agents alive across a dropped Wi-Fi</h2>
-        <p>
-          Open an SSH connection with tmux enabled, start <code>claude</code> or <code>codex</code>,
-          close the laptop, open it again — the pane silently re-attaches. Still running.
-          Still has its scrollback. Still in the middle of whatever it was doing.
-        </p>
-        <p>Local PowerShell panes get the same trick on Windows through <strong>psmux</strong>, the native tmux clone.</p>
+        <p class="eyebrow"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-refresh"/></svg><span data-i18n="tmuxEyebrow">Never lose the plot</span></p>
+        <h2><span data-i18n="tmuxTitle">Keep your AI agents alive across a dropped Wi-Fi</span></h2>
+        <p><span data-i18n="tmuxDescription">Open an SSH connection with tmux enabled, start claude or codex, close the laptop, open it again — the pane silently re-attaches. Still running. Still has its scrollback. Still in the middle of whatever it was doing.</span></p>
+        <p><span data-i18n="psmuxDescription">Local PowerShell panes get the same trick on Windows through psmux, the native tmux clone.</span></p>
       </div>
       <figure class="feature-media reveal">
-        <img class="product-shot" src="/assets/screenshots/tmux-reattach.png" alt="SSH terminal Panes re-attached to named tmux sessions in KKTerm" width="1944" height="1071" loading="lazy" decoding="async" />
+        <img class="product-shot" src="/assets/screenshots/tmux-reattach.png" alt="SSH terminal Panes re-attached to named tmux sessions in KKTerm" data-i18n-alt="tmuxImageAlt" width="1944" height="1071" loading="lazy" decoding="async" />
       </figure>
     </div>
   </section>
@@ -261,17 +208,13 @@
   <section class="section" id="workspaces">
     <div class="container feature-row feature-row-reverse">
       <div class="feature-copy reveal">
-        <p class="eyebrow"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-layers"/></svg>Keep your worlds apart</p>
-        <h2>Workspaces for the home lab, the day job, and that one client</h2>
-        <p>
-          Workspaces are named, isolated containers of Connections you switch between from the
-          Activity Rail. Switching re-scopes the Connection Tree only — your open Sessions, Dashboard,
-          and Settings stay put. Changing context costs one click, not a relaunch.
-        </p>
-        <p>Inside a Workspace, a Tab can hold a grid of mixed Panes: SSH next to SFTP, a local shell below an RDP session, VNC beside a file browser.</p>
+        <p class="eyebrow"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-layers"/></svg><span data-i18n="workspacesEyebrow">Keep your worlds apart</span></p>
+        <h2><span data-i18n="workspacesTitle">Workspaces for the home lab, the day job, and that one client</span></h2>
+        <p><span data-i18n="workspacesDescription">Workspaces are named, isolated containers of Connections you switch between from the Activity Rail. Switching re-scopes the Connection Tree only — your open Sessions, Dashboard, and Settings stay put. Changing context costs one click, not a relaunch.</span></p>
+        <p><span data-i18n="panesDescription">Inside a Workspace, a Tab can hold a grid of mixed Panes: SSH next to SFTP, a local shell below an RDP session, VNC beside a file browser.</span></p>
       </div>
       <figure class="feature-media reveal">
-        <img class="product-shot" src="/assets/screenshots/multi-pane.png" alt="A KKTerm Workspace Tab split into multiple terminal Panes" width="1920" height="1044" loading="lazy" decoding="async" />
+        <img class="product-shot" src="/assets/screenshots/multi-pane.png" alt="A KKTerm Workspace Tab split into multiple terminal Panes" data-i18n-alt="panesImageAlt" width="1920" height="1044" loading="lazy" decoding="async" />
       </figure>
     </div>
   </section>
@@ -280,33 +223,33 @@
   <section class="section section-alt" id="operations">
     <div class="container">
       <div class="section-head reveal">
-        <p class="eyebrow"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-activity"/></svg>Beyond the terminal</p>
-        <h2>Operate the fleet, capture the evidence</h2>
-        <p class="section-sub">The same local workspace also covers repeatable IT work and the screenshots or recordings that explain what happened.</p>
+        <p class="eyebrow"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-activity"/></svg><span data-i18n="operationsEyebrow">Beyond the terminal</span></p>
+        <h2><span data-i18n="operationsTitle">Operate the fleet, capture the evidence</span></h2>
+        <p class="section-sub"><span data-i18n="operationsDescription">The same local workspace also covers repeatable IT work and the screenshots or recordings that explain what happened.</span></p>
       </div>
       <div class="grid grid-2 operations-grid">
         <article class="module-showcase reveal">
-          <img class="product-shot" src="/assets/screenshots/itops.png" alt="KKTerm IT Ops Module showing site inventory and infrastructure topology" width="2756" height="2028" loading="lazy" decoding="async" />
+          <img class="product-shot" src="/assets/screenshots/itops.png" alt="KKTerm IT Ops Module showing site inventory and infrastructure topology" data-i18n-alt="itopsImageAlt" width="2756" height="2028" loading="lazy" decoding="async" />
           <div class="module-showcase-copy">
-            <p class="eyebrow">IT Ops</p>
-            <h3>Sites, racks, tasks, and batch runs</h3>
-            <p>Model rooms and racks, bind Connections to Hosts, scan endpoints, and fan out reusable tasks over SSH with saved run reports.</p>
+            <p class="eyebrow"><span data-i18n="itopsTitle">IT Ops</span></p>
+            <h3><span data-i18n="itopsSubtitle">Sites, racks, tasks, and batch runs</span></h3>
+            <p><span data-i18n="itopsDescription">Model rooms and racks, bind Connections to Hosts, scan endpoints, and fan out reusable tasks over SSH with saved run reports.</span></p>
           </div>
         </article>
         <article class="module-showcase reveal">
-          <img class="product-shot" src="/assets/screenshots/screenshots-module.png" alt="KKTerm Screenshots Module with a capture library and editor" width="1303" height="768" loading="lazy" decoding="async" />
+          <img class="product-shot" src="/assets/screenshots/screenshots-module.png" alt="KKTerm Screenshots Module with a capture library and editor" data-i18n-alt="screenshotsImageAlt" width="1303" height="768" loading="lazy" decoding="async" />
           <div class="module-showcase-copy">
-            <p class="eyebrow">Screenshots</p>
-            <h3>Capture, annotate, record, and trim</h3>
-            <p>Grab a region, window, or full screen; organize the library; annotate images; and record silent MP4, WebM, or GIF clips with FFmpeg.</p>
+            <p class="eyebrow"><span data-i18n="screenshotsTitle">Screenshots</span></p>
+            <h3><span data-i18n="screenshotsSubtitle">Capture, annotate, record, and trim</span></h3>
+            <p><span data-i18n="screenshotsDescription">Grab a region, window, or full screen; organize the library; annotate images; and record silent MP4, WebM, or GIF clips with FFmpeg.</span></p>
           </div>
         </article>
       </div>
       <div class="grid grid-4 capability-grid reveal">
-        <div class="conn-card"><svg class="icon" aria-hidden="true"><use href="#i-layers"/></svg><h3>Git &amp; Compare</h3><p>Inspect history, stage changes, and compare text, folders, hex, or images without leaving the app.</p></div>
-        <div class="conn-card"><svg class="icon" aria-hidden="true"><use href="#i-grid"/></svg><h3>Custom Modules</h3><p>Install optional <code>.kkmod</code> tools that add isolated destinations to the Activity Rail.</p></div>
-        <div class="conn-card"><svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg><h3>Local secrets &amp; backups</h3><p>Keep durable data in SQLite, passwords in the OS keychain, and export selective or full backups.</p></div>
-        <div class="conn-card"><svg class="icon" aria-hidden="true"><use href="#i-globe"/></svg><h3>14 interface languages</h3><p>Run the full app in English, Traditional Chinese, Japanese, Korean, and ten more locales.</p></div>
+        <div class="conn-card"><svg class="icon" aria-hidden="true"><use href="#i-layers"/></svg><h3><span data-i18n="gitTitle">Git &amp; Compare</span></h3><p><span data-i18n="gitDescription">Inspect history, stage changes, and compare text, folders, hex, or images without leaving the app.</span></p></div>
+        <div class="conn-card"><svg class="icon" aria-hidden="true"><use href="#i-grid"/></svg><h3><span data-i18n="modulesTitle">Custom Modules</span></h3><p><span data-i18n="modulesDescription">Install optional .kkmod tools that add isolated destinations to the Activity Rail.</span></p></div>
+        <div class="conn-card"><svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg><h3><span data-i18n="secretsTitle">Local secrets &amp; backups</span></h3><p><span data-i18n="secretsDescription">Keep durable data in SQLite, passwords in the OS keychain, and export selective or full backups.</span></p></div>
+        <div class="conn-card"><svg class="icon" aria-hidden="true"><use href="#i-globe"/></svg><h3><span data-i18n="languagesTitle">14 interface languages</span></h3><p><span data-i18n="languagesDescription">Run the full app in English, Traditional Chinese, Japanese, Korean, and ten more locales.</span></p></div>
       </div>
     </div>
   </section>
@@ -315,19 +258,16 @@
   <section class="section" id="customize">
     <div class="container">
       <div class="section-head reveal">
-        <p class="eyebrow"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-palette"/></svg>Dress it up</p>
-        <h2>26 color themes, 26 animated backgrounds</h2>
-        <p class="section-sub">
-          Color themes restyle the whole app chrome; animated backgrounds run behind any dashboard view
-          <em>or terminal pane</em> — yes, including <code>matrix</code>. Both pause when you're elsewhere, so they cost roughly nothing.
-        </p>
+        <p class="eyebrow"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-palette"/></svg><span data-i18n="customizeEyebrow">Dress it up</span></p>
+        <h2><span data-i18n="customizeTitle">26 color themes, 26 animated backgrounds</span></h2>
+        <p class="section-sub"><span data-i18n="customizeDescription">Color themes restyle the whole app chrome; animated backgrounds run behind any dashboard view or terminal pane — yes, including matrix. Both pause when you&#x27;re elsewhere, so they cost roughly nothing.</span></p>
       </div>
       <div class="grid grid-2 reveal">
         <figure class="feature-media">
-          <img class="product-shot" src="/assets/screenshots/color-themes.png" alt="KKTerm Settings showing the color scheme gallery" width="1617" height="1699" loading="lazy" decoding="async" />
+          <img class="product-shot" src="/assets/screenshots/color-themes.png" alt="KKTerm Settings showing the color scheme gallery" data-i18n-alt="themesImageAlt" width="1617" height="1699" loading="lazy" decoding="async" />
         </figure>
         <figure class="feature-media">
-          <img class="product-shot" src="/assets/screenshots/backgrounds.png" alt="KKTerm background picker with animated Dashboard and terminal backgrounds" width="1178" height="1758" loading="lazy" decoding="async" />
+          <img class="product-shot" src="/assets/screenshots/backgrounds.png" alt="KKTerm background picker with animated Dashboard and terminal backgrounds" data-i18n-alt="backgroundsImageAlt" width="1178" height="1758" loading="lazy" decoding="async" />
         </figure>
       </div>
     </div>
@@ -337,17 +277,13 @@
   <section class="section" id="install-helper">
     <div class="container feature-row">
       <div class="feature-copy reveal">
-        <p class="eyebrow"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-package"/></svg>Windows only</p>
-        <h2>Install Helper: a fresh box, set up without ten browser tabs</h2>
-        <p>
-          A built-in catalog that finds, installs, updates, and uninstalls the tools you'd otherwise
-          chase by hand — Node, Python, Git, Claude Code, Codex, WSL, PowerToys, and more.
-          UAC prompts stay explicit; nothing installs silently.
-        </p>
-        <p class="muted-note">macOS and Linux already have package managers you love, so this one stays a Windows-only convenience.</p>
+        <p class="eyebrow"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-package"/></svg><span data-i18n="windowsOnly">Windows only</span></p>
+        <h2><span data-i18n="installerTitle">Install Helper: a fresh box, set up without ten browser tabs</span></h2>
+        <p><span data-i18n="installerDescription">A built-in catalog that finds, installs, updates, and uninstalls the tools you&#x27;d otherwise chase by hand — Node, Python, Git, Claude Code, Codex, WSL, PowerToys, and more. UAC prompts stay explicit; nothing installs silently.</span></p>
+        <p class="muted-note"><span data-i18n="installerPlatforms">macOS and Linux already have package managers you love, so this one stays a Windows-only convenience.</span></p>
       </div>
       <figure class="feature-media reveal">
-        <img class="product-shot" src="/assets/screenshots/install-helper.png" alt="KKTerm Install Helper catalog with installed and available developer tools" width="2001" height="1376" loading="lazy" decoding="async" />
+        <img class="product-shot" src="/assets/screenshots/install-helper.png" alt="KKTerm Install Helper catalog with installed and available developer tools" data-i18n-alt="installerImageAlt" width="2001" height="1376" loading="lazy" decoding="async" />
       </figure>
     </div>
   </section>
@@ -356,14 +292,14 @@
   <section class="section section-alt" id="not">
     <div class="container">
       <div class="section-head reveal">
-        <p class="eyebrow">Honesty earns trust</p>
-        <h2>What KKTerm is not</h2>
+        <p class="eyebrow"><span data-i18n="limitsEyebrow">Honesty earns trust</span></p>
+        <h2><span data-i18n="limitsTitle">What KKTerm is not</span></h2>
       </div>
       <div class="grid grid-2 not-grid reveal">
-        <div class="not-card"><h3>Not a cloud product</h3><p>No sync, no team accounts, no SaaS tier. A "sign in to KKTerm" dialog would mean something went catastrophically wrong.</p></div>
-        <div class="not-card"><h3>Not an autonomous agent</h3><p>The assistant proposes; the human disposes. "Allow All" is a choice you make, not a default.</p></div>
-        <div class="not-card"><h3>Not a Grafana replacement</h3><p>The Dashboard is for personal control surfaces, not 10k-host observability.</p></div>
-        <div class="not-card"><h3>Not pretending every OS is identical</h3><p>Windows, macOS, and Linux builds ship, but platform-specific features stay honest about what's native and what isn't.</p></div>
+        <div class="not-card"><h3><span data-i18n="noCloudTitle">Not a cloud product</span></h3><p><span data-i18n="noCloudDescription">No sync, no team accounts, no SaaS tier. A &quot;sign in to KKTerm&quot; dialog would mean something went catastrophically wrong.</span></p></div>
+        <div class="not-card"><h3><span data-i18n="noAutonomyTitle">Not an autonomous agent</span></h3><p><span data-i18n="noAutonomyDescription">The assistant proposes; the human disposes. &quot;Allow All&quot; is a choice you make, not a default.</span></p></div>
+        <div class="not-card"><h3><span data-i18n="noGrafanaTitle">Not a Grafana replacement</span></h3><p><span data-i18n="noGrafanaDescription">The Dashboard is for personal control surfaces, not 10k-host observability.</span></p></div>
+        <div class="not-card"><h3><span data-i18n="platformDifferencesTitle">Not pretending every OS is identical</span></h3><p><span data-i18n="platformDifferencesDescription">Windows, macOS, and Linux builds ship, but platform-specific features stay honest about what&#x27;s native and what isn&#x27;t.</span></p></div>
       </div>
     </div>
   </section>
@@ -371,20 +307,10 @@
   <!-- STORY: Kuai Kuai -->
   <section class="section story" id="story">
     <div class="container story-inner reveal">
-      <p class="eyebrow">Why "KKTerm"?</p>
-      <h2>Named after a snack that keeps servers well-behaved</h2>
-      <p>
-        Walk into a data center in Taiwan and look at the top of the racks — you'll spot a small
-        green bag of <strong>乖乖 (Kuāi Kuāi)</strong>, a coconut-flavored corn snack from the 1960s.
-        The name means <em>&ldquo;be good, behave.&rdquo;</em> Engineers place it on equipment as a good-luck
-        charm: it must be green (coconut, never spicy red or curry yellow), it must be unexpired,
-        and it must never be eaten. That bag is on duty.
-      </p>
-      <p>
-        <strong>KKTerm</strong> — Kuai Kuai Term — aims for the same job: sit quietly next to your
-        important machines and help them behave. Local-first. No telemetry. Approval-gated AI.
-        The boring, dependable kind of software.
-      </p>
+      <p class="eyebrow"><span data-i18n="storyEyebrow">Why &quot;KKTerm&quot;?</span></p>
+      <h2><span data-i18n="storyTitle">Named after a snack that keeps servers well-behaved</span></h2>
+      <p><span data-i18n="storyDescription">Walk into a data center in Taiwan and look at the top of the racks — you&#x27;ll spot a small green bag of 乖乖 (Kuāi Kuāi), a coconut-flavored corn snack from the 1960s. The name means “be good, behave.” Engineers place it on equipment as a good-luck charm: it must be green (coconut, never spicy red or curry yellow), it must be unexpired, and it must never be eaten. That bag is on duty.</span></p>
+      <p><span data-i18n="storyPurpose">KKTerm — Kuai Kuai Term — aims for the same job: sit quietly next to your important machines and help them behave. Local-first. No telemetry. Approval-gated AI. The boring, dependable kind of software.</span></p>
     </div>
   </section>
 
@@ -392,55 +318,28 @@
   <section class="section download" id="download">
     <div class="container reveal">
       <div class="section-head">
-        <p class="eyebrow">Get KKTerm</p>
-          <h2>Free. Source available. No account required.</h2>
-        <p class="section-sub">The kindest way to get KKTerm — and keep it alive — is a store edition: <strong>one-time payment, no subscription</strong>, with signed packaging and automatic updates. Every purchase funds continued development.</p>
+        <p class="eyebrow"><span data-i18n="downloadEyebrow">Get KKTerm</span></p>
+          <h2><span data-i18n="downloadTitle">Get KKTerm. Support its future.</span></h2>
+        <p class="section-sub"><span data-i18n="downloadDescription">The kindest way to get KKTerm — and keep it alive — is a store edition: one-time payment, no subscription, with signed packaging and automatic updates. Every purchase funds continued development.</span></p>
       </div>
       <div class="grid grid-2 download-grid">
         <div class="download-card download-card-featured">
-          <span class="pill-recommended">Supports development</span>
+          <span class="pill-recommended" data-i18n="storeSupport">Supports development</span>
           <svg class="icon icon-lg" aria-hidden="true"><use href="#i-microsoft"/></svg>
           <h3>Windows · Microsoft Store</h3>
-          <p>One-time payment, no subscription. Signed and auto-updating.</p>
-          <a class="btn btn-primary" href="https://apps.microsoft.com/detail/9nvqc5cnwwjk?hl=zh-TW&gl=HK" target="_blank" rel="noopener">Get it from Microsoft Store</a>
+          <p><span data-i18n="storePayment">One-time payment, no subscription. Signed and auto-updating.</span></p>
+          <a class="btn btn-primary" href="https://apps.microsoft.com/detail/9nvqc5cnwwjk" target="_blank" rel="noopener"><span data-i18n="microsoftDownload">Get it from Microsoft Store</span></a>
         </div>
         <div class="download-card download-card-featured">
-          <span class="pill-recommended">Supports development</span>
+          <span class="pill-recommended" data-i18n="storeSupport">Supports development</span>
           <svg class="icon icon-lg" aria-hidden="true"><use href="#i-apple"/></svg>
           <h3>macOS · Mac App Store</h3>
-          <p>One-time payment, no subscription. Signed and auto-updating.</p>
-          <a class="btn btn-primary" href="https://apps.apple.com/tw/app/kkterm/id6806710046?mt=12" target="_blank" rel="noopener">Download on the Mac App Store</a>
+          <p><span data-i18n="storePayment">One-time payment, no subscription. Signed and auto-updating.</span></p>
+          <a class="btn btn-primary" href="https://apps.apple.com/app/kkterm/id6806710046?mt=12" target="_blank" rel="noopener"><span data-i18n="appleDownload">Download on the Mac App Store</span></a>
         </div>
       </div>
-      <p class="download-subhead">Prefer the free builds?</p>
-      <div class="grid grid-3 download-grid">
-        <div class="download-card">
-          <svg class="icon icon-lg" aria-hidden="true"><use href="#i-desktop"/></svg>
-          <h3>Windows</h3>
-          <p>Installer + Install Helper catalog for dev tooling.</p>
-          <a class="btn btn-ghost" href="https://github.com/ryantsai/KKTerm/releases/latest" target="_blank" rel="noopener">GitHub release</a>
-        </div>
-        <div class="download-card">
-          <svg class="icon icon-lg" aria-hidden="true"><use href="#i-desktop"/></svg>
-          <h3>macOS</h3>
-          <p>Native build for Apple Silicon and Intel.</p>
-          <a class="btn btn-ghost" href="https://github.com/ryantsai/KKTerm/releases/latest" target="_blank" rel="noopener">GitHub release</a>
-        </div>
-        <div class="download-card">
-          <svg class="icon icon-lg" aria-hidden="true"><use href="#i-desktop"/></svg>
-          <h3>Linux</h3>
-          <p>AppImage / distro packages from the releases page.</p>
-          <a class="btn btn-ghost" href="https://github.com/ryantsai/KKTerm/releases/latest" target="_blank" rel="noopener">GitHub release</a>
-        </div>
-      </div>
-      <p class="download-footnote">
-        <strong>Honest limitations:</strong> the Mac App Store build runs inside Apple's App Sandbox — local shells are confined (container home, no dotfiles or Homebrew tools; remote SSH is unaffected), real folders need a one-time picker grant, and video recording plus the shutdown-timer menu are unavailable. The Microsoft Store build is the full Windows app with a 7-day trial option. Both update through their store. Full details: <a href="https://github.com/ryantsai/KKTerm/blob/main/docs/MAC_APP_STORE.md" target="_blank" rel="noopener">docs/MAC_APP_STORE.md</a>.
-      </p>
-      <p class="download-footnote">
-        Free Windows installers are currently unsigned while release signing is on the roadmap — your antivirus may give you a stern look. That's normal; the Microsoft Store edition is signed.
-        Prefer to build from source? Everything you need is in
-        <a href="https://github.com/ryantsai/KKTerm/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">CONTRIBUTING.md</a>.
-      </p>
+      <p class="download-footnote"><span data-i18n="storeLimitations">Honest limitations: the Mac App Store build runs inside Apple&#x27;s App Sandbox — local shells are confined (container home, no dotfiles or Homebrew tools; remote SSH is unaffected), real folders need a one-time picker grant, and video recording plus the shutdown-timer menu are unavailable. The Microsoft Store build is the full Windows app with a 7-day trial option. Both update through their store.</span></p>
+      <p class="download-footnote"><span data-i18n="githubHelp">For Linux, free builds, source code, and documentation, use GitHub in the top-right header.</span></p>
     </div>
   </section>
 
@@ -451,38 +350,32 @@
     <div class="footer-brand">
       <img src="/assets/logo.png" alt="" width="28" height="28" />
       <span>KKTerm</span>
-      <p>A local-first admin workspace with no developer-operated telemetry.</p>
+      <p><span data-i18n="footerDescription">A local-first admin workspace with no developer-operated telemetry.</span></p>
     </div>
     <div class="footer-links">
-      <h4>Project</h4>
-      <a href="https://github.com/ryantsai/KKTerm" target="_blank" rel="noopener">GitHub</a>
-      <a href="https://apps.microsoft.com/detail/9nvqc5cnwwjk?hl=zh-TW&gl=HK" target="_blank" rel="noopener">Microsoft Store</a>
-      <a href="https://apps.apple.com/tw/app/kkterm/id6806710046?mt=12" target="_blank" rel="noopener">Mac App Store</a>
-      <a href="https://github.com/ryantsai/KKTerm/releases/latest" target="_blank" rel="noopener">Releases</a>
-      <a href="https://github.com/ryantsai/KKTerm/issues" target="_blank" rel="noopener">Issues</a>
-      <a href="https://github.com/ryantsai/KKTerm/discussions/141" target="_blank" rel="noopener">Discussions</a>
-      <a href="https://github.com/ryantsai/KKTerm/blob/main/LICENSE" target="_blank" rel="noopener">License terms</a>
+      <h4><span data-i18n="footerProject">Project</span></h4>
+      <a href="https://apps.microsoft.com/detail/9nvqc5cnwwjk" target="_blank" rel="noopener">Microsoft Store</a>
+      <a href="https://apps.apple.com/app/kkterm/id6806710046?mt=12" target="_blank" rel="noopener">Mac App Store</a>
     </div>
     <div class="footer-links">
-      <h4>Docs</h4>
-      <a href="https://github.com/ryantsai/KKTerm/blob/main/docs/manual/INDEX.md" target="_blank" rel="noopener">User manual</a>
-      <a href="https://github.com/ryantsai/KKTerm/blob/main/docs/ROADMAP.md" target="_blank" rel="noopener">Roadmap</a>
-      <a href="/support.html">Support</a>
-      <a href="mailto:publish@ryantsai.com">Contact</a>
-      <a href="/privacy.html">Privacy Policy</a>
-      <a href="/legal.html">Legal Notices</a>
+      <h4><span data-i18n="footerDocs">Docs</span></h4>
+      <a href="/support.html"><span data-i18n="footerSupport">Support</span></a>
+      <a href="mailto:publish@ryantsai.com"><span data-i18n="footerContact">Contact</span></a>
+      <a href="/privacy.html"><span data-i18n="footerPrivacy">Privacy Policy</span></a>
+      <a href="/legal.html"><span data-i18n="footerLegal">Legal Notices</span></a>
     </div>
     <div class="footer-links">
-      <h4>Available in 14 languages</h4>
-      <p class="lang-list">English · 繁體中文 · 简体中文 · 日本語 · 한국어 · Français · Deutsch · Español · Italiano · Português (BR) · ไทย · Bahasa Indonesia · Tiếng Việt</p>
+      <h4><span data-i18n="footerLanguages">Available in 14 languages</span></h4>
+      <p class="lang-list">English · 繁體中文 · 简体中文 · 日本語 · 한국어 · Français · Deutsch · Español · Español (México) · Italiano · Português (BR) · ไทย · Bahasa Indonesia · Tiếng Việt</p>
     </div>
   </div>
   <div class="container footer-bottom">
-    <p>&copy; <span id="year"></span> KKTerm. Source available under the project license.</p>
-    <p>Independent project. Third-party names and trademarks belong to their respective owners.</p>
+    <p><span data-i18n="copyright">© <span id="year"></span> KKTerm. Source available under the project license.</span></p>
+    <p><span data-i18n="trademarks">Independent project. Third-party names and trademarks belong to their respective owners.</span></p>
   </div>
 </footer>
 
+<script type="module" src="/js/homepage.js"></script>
 <script src="/js/main.js"></script>
 </body>
 </html>

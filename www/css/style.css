@@ -499,7 +499,7 @@ h1 {
   .footer-inner { grid-template-columns: 1.4fr 1fr 1fr 1.2fr; }
 }
 .footer-brand { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
-.footer-brand span { font-family: var(--font-mono); font-weight: 600; }
+.footer-brand > span { font-family: var(--font-mono); font-weight: 600; }
 .footer-brand p { flex-basis: 100%; color: var(--text-faint); font-size: 0.9rem; margin-top: var(--space-2); }
 .footer-links { display: flex; flex-direction: column; gap: var(--space-2); }
 .footer-links h4 { color: var(--text-faint); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: var(--space-1); }
@@ -677,4 +677,27 @@ h1 {
 .reveal.is-visible {
   opacity: 1;
   transform: translateY(0);
+}
+/* Homepage language and project controls stay available on narrow screens. */
+.homepage [data-i18n] { overflow-wrap: anywhere; }
+.homepage .grid > *, .homepage .feature-row > *, .homepage .footer-inner > * { min-width: 0; }
+.homepage .btn, .homepage .pill-recommended { white-space: normal; }
+.homepage .btn { padding-block: 12px; }
+.homepage .btn-store { max-width: 100%; }
+.language-picker { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.language-picker select { min-height: 44px; width: 150px; max-width: 100%; padding: 8px; font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; }
+.language-picker select:focus-visible, .header-inner > .nav-icon-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.header-inner > .nav-icon-link { flex: 0 0 44px; min-height: 44px; align-items: center; justify-content: center; }
+.header-inner .menu-toggle { flex: 0 0 44px; margin-left: 0; }
+.header-inner .nav-desktop { gap: var(--space-3); }
+@media (max-width: 1199px) {
+  .header-inner .nav-desktop { display: none; }
+  .header-inner .menu-toggle { display: inline-flex; }
+}
+@media (max-width: 520px) {
+  .homepage .grid-4 { grid-template-columns: 1fr; }
+  .header-inner { gap: var(--space-2); padding-inline: 12px; }
+  .header-inner .brand-name { display: none; }
+  .language-picker > .icon { display: none; }
+  .language-picker select { width: 142px; }
 }

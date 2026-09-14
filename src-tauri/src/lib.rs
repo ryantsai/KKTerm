@@ -1311,11 +1311,13 @@ fn resume_video_recording(
 }
 
 #[tauri::command]
-fn stop_video_recording(
+async fn stop_video_recording(
     app: tauri::AppHandle,
-    state: tauri::State<'_, video_recording::VideoRecordingState>,
 ) -> Result<video_recording::CompletedVideoRecording, String> {
-    let completed = video_recording::stop(&app, &state)?;
+    let completed = run_blocking_command("video recording finalization", {
+        let app = app.clone();
+        move || video_recording::stop(&app, &app.state::<video_recording::VideoRecordingState>())
+    }).await?;
     let _ = app.emit(
         video_recording::RECORDING_COMPLETED_EVENT,
         completed.clone(),

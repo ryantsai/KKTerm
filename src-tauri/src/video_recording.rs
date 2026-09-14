@@ -3,8 +3,11 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
-    sync::Mutex,
-    time::{SystemTime, UNIX_EPOCH},
+    sync::{
+        Mutex,
+        atomic::{AtomicBool, Ordering},
+    },
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
 use serde::{Deserialize, Serialize};
@@ -16,6 +19,66 @@ use tauri::{PhysicalPosition, Position, WebviewUrl, WebviewWindowBuilder};
 use std::os::windows::process::CommandExt;
 
 use crate::installer::detect::github_release_install_dir;
+
+#[cfg(target_os = "windows")]
+mod windows;
+
+enum RecordingBackend {
+    Ffmpeg(Child),
+    #[cfg(target_os = "windows")]
+    Windows(windows::NativeRecording),
+}
+
+impl RecordingBackend {
+    fn pause(&mut self, paused: bool) -> Result<(), String> {
+        match self {
+            Self::Ffmpeg(child) => set_process_paused(child.id(), paused),
+            #[cfg(target_os = "windows")]
+            Self::Windows(recording) => {
+                recording.pause(paused);
+                Ok(())
+            }
+        }
+    }
+
+    fn abort(&mut self) {
+        match self {
+            Self::Ffmpeg(child) => {
+                let _ = child.kill();
+                let _ = child.wait();
+            }
+            #[cfg(target_os = "windows")]
+            Self::Windows(recording) => {
+                let _ = recording.finish();
+            }
+        }
+    }
+
+    fn finish(self) -> Result<(), String> {
+        match self {
+            Self::Ffmpeg(mut child) => {
+                if let Some(stdin) = child.stdin.as_mut() {
+                    // Even if FFmpeg already exited, collect stderr and reap it.
+                    let _ = stdin.write_all(b"q\n");
+                }
+                let output = child
+                    .wait_with_output()
+                    .map_err(|e| format!("failed to finish FFmpeg: {e}"))?;
+                if output.status.success() {
+                    return Ok(());
+                }
+                let message = String::from_utf8_lossy(&output.stderr).trim().to_string();
+                Err(if message.is_empty() {
+                    "FFmpeg recording failed".to_string()
+                } else {
+                    message
+                })
+            }
+            #[cfg(target_os = "windows")]
+            Self::Windows(mut recording) => recording.finish(),
+        }
+    }
+}
 
 const TOOL_ID: &str = "ffmpeg";
 pub const RECORDING_STARTED_EVENT: &str = "kkterm://video-recording-started";
@@ -34,6 +97,7 @@ const CONTROLS_TARGET_INSET: i32 = 10;
 #[derive(Default)]
 pub struct VideoRecordingState {
     active: Mutex<Option<ActiveRecording>>,
+    finalizing: AtomicBool,
 }
 
 impl Drop for VideoRecordingState {
@@ -41,17 +105,13 @@ impl Drop for VideoRecordingState {
         if let Ok(active) = self.active.get_mut()
             && let Some(recording) = active.as_mut()
         {
-            if let Some(stdin) = recording.child.stdin.as_mut() {
-                let _ = stdin.write_all(b"q\n");
-            }
-            let _ = recording.child.kill();
-            let _ = recording.child.wait();
+            recording.backend.abort();
         }
     }
 }
 
 struct ActiveRecording {
-    child: Child,
+    backend: RecordingBackend,
     path: PathBuf,
     started_at: u128,
     paused_at: Option<u128>,
@@ -82,8 +142,112 @@ pub struct VideoDependencyStatus {
 #[serde(rename_all = "camelCase")]
 pub struct StartVideoRecordingRequest {
     mode: String,
+    #[serde(default = "default_frame_rate")]
+    frame_rate: u32,
     use_directx: bool,
     minimize_window: bool,
+}
+
+fn default_frame_rate() -> u32 {
+    30
+}
+
+fn capture_frame_rate(frame_rate: u32, format: &str) -> Result<u32, String> {
+    if !matches!(frame_rate, 30 | 60 | 120) {
+        return Err("video frame rate must be 30, 60, or 120".to_string());
+    }
+    // GIF export is capped at 15 fps; capturing more only wastes resources.
+    Ok(if format == "gif" { 15 } else { frame_rate })
+}
+
+fn add_h264_encoder_args(command: &mut Command, encoder: &str) {
+    command.args(["-c:v", encoder]);
+    match encoder {
+        "h264_nvenc" => {
+            command.args(["-preset", "p1", "-rc", "vbr", "-cq", "23", "-b:v", "0"]);
+        }
+        "h264_qsv" => {
+            command.args(["-preset", "veryfast", "-global_quality", "23"]);
+        }
+        "h264_amf" => {
+            command.args([
+                "-quality", "speed", "-rc", "cqp", "-qp_i", "23", "-qp_p", "23",
+            ]);
+        }
+        "h264_videotoolbox" => {
+            command.args(["-allow_sw", "0", "-b:v", "20M"]);
+        }
+        _ => {
+            command.args(["-preset", "veryfast", "-crf", "23"]);
+        }
+    }
+}
+
+fn select_h264_encoder(program: &str, width: u32, height: u32, frame_rate: u32) -> &'static str {
+    // A compiled-in encoder is not proof of working hardware/drivers. Encode a
+    // few synthetic frames at the target dimensions/rate before selecting it.
+    let candidates: &[&str] = if cfg!(target_os = "windows") {
+        &["h264_nvenc", "h264_qsv", "h264_amf"]
+    } else if cfg!(target_os = "macos") {
+        &["h264_videotoolbox"]
+    } else {
+        &["h264_nvenc", "h264_qsv"]
+    };
+    for &encoder in candidates {
+        let mut probe = Command::new(program);
+        probe.args([
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-nostdin",
+            "-f",
+            "lavfi",
+            "-i",
+            &format!(
+                "color=size={}x{}:rate={frame_rate}",
+                width.max(2),
+                height.max(2)
+            ),
+            "-frames:v",
+            "3",
+        ]);
+        add_mp4_encoding_args(&mut probe, encoder);
+        probe.args(["-f", "null", "-"]);
+        let Ok(mut child) = hide_window(&mut probe)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+        else {
+            continue;
+        };
+        let deadline = Instant::now() + Duration::from_secs(3);
+        loop {
+            match child.try_wait() {
+                Ok(Some(status)) => {
+                    if status.success() {
+                        return encoder;
+                    }
+                    break;
+                }
+                Ok(None) if Instant::now() < deadline => {
+                    std::thread::sleep(Duration::from_millis(20));
+                }
+                _ => {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    break;
+                }
+            }
+        }
+    }
+    "libx264"
+}
+
+fn add_mp4_encoding_args(command: &mut Command, encoder: &str) {
+    command.args(["-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2"]);
+    add_h264_encoder_args(command, encoder);
+    command.args(["-pix_fmt", "yuv420p", "-movflags", "+faststart"]);
 }
 
 #[derive(Clone, Serialize)]
@@ -257,20 +421,7 @@ fn expanded_folder(value: &str) -> PathBuf {
 fn add_encoding_args(command: &mut Command, format: &str) -> Result<&'static str, String> {
     match format {
         "mp4" => {
-            command.args([
-                "-vf",
-                "scale=trunc(iw/2)*2:trunc(ih/2)*2",
-                "-c:v",
-                "libx264",
-                "-preset",
-                "veryfast",
-                "-crf",
-                "23",
-                "-pix_fmt",
-                "yuv420p",
-                "-movflags",
-                "+faststart",
-            ]);
+            add_mp4_encoding_args(command, "libx264");
             Ok("mp4")
         }
         "webm" => {
@@ -304,11 +455,13 @@ pub fn start(
     folder_path: &str,
     format: &str,
 ) -> Result<VideoRecordingSession, String> {
+    let frame_rate = capture_frame_rate(request.frame_rate, format)?;
+    let frame_rate_arg = frame_rate.to_string();
     let mut active = state
         .active
         .lock()
         .map_err(|_| "video recorder state is unavailable")?;
-    if active.is_some() {
+    if active.is_some() || state.finalizing.load(Ordering::Acquire) {
         return Err("a video recording is already active".to_string());
     }
     let (program, _) = resolve_ffmpeg().ok_or_else(|| "FFmpeg is not installed".to_string())?;
@@ -323,11 +476,12 @@ pub fn start(
     };
     let file_name = format!("KKTerm-video-{started_at}.{extension}");
     let path = folder.join(&file_name);
-    let mut command = Command::new(program);
+    let mut command = Command::new(&program);
     command.args(["-hide_banner", "-loglevel", "error", "-y"]);
 
     #[cfg(target_os = "windows")]
     let (width, height, recording_target);
+    let mut backend = None;
     #[cfg(not(target_os = "windows"))]
     let (width, height) = (None, None);
     #[cfg(target_os = "windows")]
@@ -347,11 +501,22 @@ pub fn start(
                 width: rect.width,
             }),
         );
+        if format == "mp4" {
+            match windows::NativeRecording::start(&rect, frame_rate, &path) {
+                Ok(recording) => backend = Some(RecordingBackend::Windows(recording)),
+                Err(error) => {
+                    eprintln!("Native video startup unavailable; falling back to GDI: {error}");
+                    // Native startup has joined its workers before returning an
+                    // error, so no native writer can race the fallback.
+                    let _ = fs::remove_file(&path);
+                }
+            }
+        }
         command.args([
             "-f",
             "gdigrab",
             "-framerate",
-            "30",
+            &frame_rate_arg,
             "-offset_x",
             &rect.x.to_string(),
             "-offset_y",
@@ -374,7 +539,7 @@ pub fn start(
             "-f",
             "avfoundation",
             "-framerate",
-            "30",
+            &frame_rate_arg,
             "-capture_cursor",
             "1",
             "-i",
@@ -393,21 +558,45 @@ pub fn start(
             "FFmpeg X11 recording requires DISPLAY; native Wayland capture is not yet available"
                 .to_string()
         })?;
-        command.args(["-f", "x11grab", "-framerate", "30", "-i", &display]);
+        command.args([
+            "-f",
+            "x11grab",
+            "-framerate",
+            &frame_rate_arg,
+            "-i",
+            &display,
+        ]);
     }
 
-    add_encoding_args(&mut command, format)?;
-    command
-        .arg(&path)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::null())
-        .stderr(Stdio::piped());
-    hide_window(&mut command);
-    let mut child = command
-        .spawn()
-        .map_err(|error| format!("failed to start FFmpeg: {error}"))?;
+    if backend.is_none() {
+        if format == "mp4" {
+            let encoder = select_h264_encoder(
+                &program,
+                width.unwrap_or(1920),
+                height.unwrap_or(1080),
+                frame_rate,
+            );
+            add_mp4_encoding_args(&mut command, encoder);
+        } else {
+            add_encoding_args(&mut command, format)?;
+        }
+        // Keep the file's nominal rate explicit; overloaded capture may duplicate
+        // frames, so this is a target rate, not a throughput guarantee.
+        command.args(["-r", &frame_rate_arg, "-fps_mode", "cfr"]);
+        command
+            .arg(&path)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .stderr(Stdio::piped());
+        hide_window(&mut command);
+        let child = command
+            .spawn()
+            .map_err(|error| format!("failed to start FFmpeg: {error}"))?;
+        backend = Some(RecordingBackend::Ffmpeg(child));
+    }
+    let started_at = now_millis();
     *active = Some(ActiveRecording {
-        child,
+        backend: backend.expect("recording backend was initialized"),
         path: path.clone(),
         started_at,
         paused_at: None,
@@ -432,11 +621,7 @@ pub fn start(
             if let Ok(mut active) = state.active.lock()
                 && let Some(mut recording) = active.take()
             {
-                if let Some(stdin) = recording.child.stdin.as_mut() {
-                    let _ = stdin.write_all(b"q\n");
-                }
-                let _ = recording.child.kill();
-                let _ = recording.child.wait();
+                recording.backend.abort();
             }
             let _ = fs::remove_file(&path);
             return Err(error);
@@ -610,7 +795,7 @@ pub fn set_paused(state: &VideoRecordingState, paused: bool) -> Result<(), Strin
     if paused == recording.paused_at.is_some() {
         return Ok(());
     }
-    set_process_paused(recording.child.id(), paused)?;
+    recording.backend.pause(paused)?;
     if paused {
         recording.paused_at = Some(now_millis());
     } else if let Some(paused_at) = recording.paused_at.take() {
@@ -633,42 +818,37 @@ pub fn stop(
     let mut recording = active
         .take()
         .ok_or_else(|| "no video recording is active".to_string())?;
+    state.finalizing.store(true, Ordering::Release);
+    struct Finalizing<'a>(&'a AtomicBool);
+    impl Drop for Finalizing<'_> {
+        fn drop(&mut self) {
+            self.0.store(false, Ordering::Release);
+        }
+    }
+    let _finalizing = Finalizing(&state.finalizing);
     if let Some(paused_at) = recording.paused_at.take() {
-        set_process_paused(recording.child.id(), false)?;
+        recording.backend.pause(false)?;
         recording.paused_duration_ms = recording
             .paused_duration_ms
             .saturating_add(now_millis().saturating_sub(paused_at));
     }
-    if let Some(stdin) = recording.child.stdin.as_mut() {
-        stdin
-            .write_all(b"q\n")
-            .map_err(|error| format!("failed to stop FFmpeg: {error}"))?;
-    }
-    let output = recording
-        .child
-        .wait_with_output()
-        .map_err(|error| format!("failed to finish FFmpeg: {error}"))?;
-    if !output.status.success() {
-        let message = String::from_utf8_lossy(&output.stderr).trim().to_string();
-        return Err(if message.is_empty() {
-            "FFmpeg recording failed".to_string()
-        } else {
-            message
-        });
-    }
+    drop(active);
+    let stopped_at = now_millis();
+    let result = recording.backend.finish();
+    #[cfg(not(target_os = "macos"))]
+    close_controls_window(app);
+    result?;
     let file_name = recording
         .path
         .file_name()
         .and_then(|name| name.to_str())
         .unwrap_or("recording")
         .to_string();
-    #[cfg(not(target_os = "macos"))]
-    close_controls_window(app);
     Ok(CompletedVideoRecording {
         path: recording.path.to_string_lossy().into_owned(),
         file_name,
         started_at: recording.started_at,
-        duration_ms: now_millis()
+        duration_ms: stopped_at
             .saturating_sub(recording.started_at)
             .saturating_sub(recording.paused_duration_ms),
     })
@@ -817,6 +997,91 @@ pub fn trim(request: TrimVideoRequest, folder_path: &str) -> Result<String, Stri
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn frame_rates_validate_requests_and_cap_gif_capture() {
+        for rate in [30, 60, 120] {
+            assert_eq!(capture_frame_rate(rate, "mp4"), Ok(rate));
+            assert_eq!(capture_frame_rate(rate, "webm"), Ok(rate));
+            assert_eq!(capture_frame_rate(rate, "gif"), Ok(15));
+        }
+        for rate in [0, 15, 24, 59, 121, u32::MAX] {
+            assert!(capture_frame_rate(rate, "mp4").is_err());
+        }
+        let legacy: StartVideoRecordingRequest = serde_json::from_value(serde_json::json!({
+            "mode": "fullscreen", "useDirectx": false, "minimizeWindow": false,
+        }))
+        .unwrap();
+        assert_eq!(legacy.frame_rate, 30);
+    }
+
+    #[test]
+    fn unavailable_encoder_probe_falls_back_to_software() {
+        assert_eq!(
+            select_h264_encoder("kkterm-nonexistent-ffmpeg", 1920, 1080, 120),
+            "libx264"
+        );
+    }
+
+    #[test]
+    #[ignore = "requires installed FFmpeg and a desktop capture environment"]
+    fn hardware_recording_smoke() {
+        let (program, _) = resolve_ffmpeg().expect("FFmpeg installed");
+        for rate in [30, 60, 120] {
+            let encoder = select_h264_encoder(&program, 1920, 1080, rate);
+            let path = std::env::temp_dir()
+                .join(format!("kkterm-video-smoke-{}-{rate}.mp4", now_millis()));
+            let mut command = Command::new(&program);
+            command.args([
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-nostdin",
+                "-f",
+                "lavfi",
+                "-i",
+                &format!("testsrc2=size=1920x1080:rate={rate}"),
+                "-t",
+                "2",
+            ]);
+            add_mp4_encoding_args(&mut command, encoder);
+            command
+                .args(["-r", &rate.to_string(), "-fps_mode", "cfr"])
+                .arg(&path);
+            let output = hide_window(&mut command).output().unwrap();
+            assert!(
+                output.status.success(),
+                "{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            let (probe, _) = resolve_binary("ffprobe").expect("ffprobe installed");
+            let output = hide_window(
+                Command::new(probe)
+                    .args([
+                        "-v",
+                        "error",
+                        "-select_streams",
+                        "v:0",
+                        "-count_frames",
+                        "-show_entries",
+                        "stream=r_frame_rate,nb_read_frames,width,height",
+                        "-of",
+                        "json",
+                    ])
+                    .arg(&path),
+            )
+            .output()
+            .unwrap();
+            let metadata: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+            let stream = &metadata["streams"][0];
+            assert_eq!(stream["r_frame_rate"], format!("{rate}/1"));
+            assert_eq!(stream["nb_read_frames"], (rate * 2).to_string());
+            assert_eq!(stream["width"], 1920);
+            assert_eq!(stream["height"], 1080);
+            fs::remove_file(path).unwrap();
+            eprintln!("verified {rate} fps MP4 using {encoder}");
+        }
+    }
 
     #[cfg(not(target_os = "macos"))]
     #[test]

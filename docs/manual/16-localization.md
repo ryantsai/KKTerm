@@ -110,6 +110,20 @@ Technical terms (SSH, SFTP, RDP, VNC, tmux, ProxyJump, PowerShell, WSL, API, URL
 
 `app`, `settings`, `connections`, `terminal`, `sftp`, `webview`, `remoteDesktop`, `ai`, `watchdog`, `workspace`, `common`, `languages`, `manual`, plus feature namespaces `dashboard`, `appLauncher`, `installer`, `itops`, `git`, `compare`. Each chapter of this manual lists which namespaces are in scope.
 
+## Public homepage language
+
+The public homepage has its own header language selector (`homepage.language`)
+for the same 14 locales. On first visit it matches browser language preferences;
+unsupported languages fall back to English. A manual selection is remembered
+under `kkterm.homepage.language`, separately from the desktop app setting.
+Homepage copy, menu labels (`homepage.menuOpen`, `homepage.menuClose`), image
+descriptions, and metadata switch together. Separate legal and support pages
+and text embedded in screenshots retain their existing language.
+
+Website strings use the `homepage` namespace in the app locale files. Run
+`node scripts/sync-homepage-locales.mjs` after translation changes to refresh
+the static dictionaries in `www/locales/`. See `www/README.md` for verification.
+
 ## Typed key autocomplete
 
 In TypeScript code, `useT()` from `src/i18n/useT.ts` autocompletes keys from the English JSON shape. Outside React, import `i18next` from `src/i18n/config.ts` and call `i18next.t(key)` directly.

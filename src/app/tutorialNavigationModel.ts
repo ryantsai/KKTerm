@@ -230,6 +230,7 @@ const INSTALLER_TUTORIAL_TARGET_IDS = [
 ] as const;
 
 const SCREENSHOTS_TUTORIAL_TARGET_IDS = [
+  "screenshots.videoFrameRate",
   "app.activityRailScreenshots",
   "screenshots.captureRegion",
   "screenshots.captureWindow",
