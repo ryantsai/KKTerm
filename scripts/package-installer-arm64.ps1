@@ -203,8 +203,8 @@ function Find-VsClangTools {
         return $true
     }
 
-    foreach ($vsPath in Get-VsInstallationPaths) {
-        if (Test-Path (Join-Path $vsPath "VC\Tools\Llvm\bin\clang-cl.exe")) {
+    foreach ($candidateDir in Get-VsClangCandidateDirs) {
+        if (Test-Path (Join-Path $candidateDir "clang-cl.exe")) {
             return $true
         }
     }
@@ -212,13 +212,25 @@ function Find-VsClangTools {
     return $false
 }
 
-function Add-VsClangToPath {
+function Get-VsClangCandidateDirs {
+    $isArm64Host = [System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture -eq
+        [System.Runtime.InteropServices.Architecture]::Arm64
+    $architectureDirs = if ($isArm64Host) { @("ARM64", "x64") } else { @("x64", "ARM64") }
     $candidateDirs = @()
+
     foreach ($vsPath in Get-VsInstallationPaths) {
+        foreach ($architectureDir in $architectureDirs) {
+            $candidateDirs += Join-Path $vsPath "VC\Tools\Llvm\$architectureDir\bin"
+        }
+        # Visual Studio 2022 and earlier may use the unqualified bin directory.
         $candidateDirs += Join-Path $vsPath "VC\Tools\Llvm\bin"
     }
 
-    return Add-PathForCommand -Command "clang-cl.exe" -CandidateDirs $candidateDirs
+    return @($candidateDirs | Select-Object -Unique)
+}
+
+function Add-VsClangToPath {
+    return Add-PathForCommand -Command "clang-cl.exe" -CandidateDirs (Get-VsClangCandidateDirs)
 }
 
 function Import-VsArm64DeveloperEnvironment {

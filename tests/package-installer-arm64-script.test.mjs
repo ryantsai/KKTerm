@@ -35,6 +35,10 @@ test("arm64 package script emits an arm64-named installer and checksum", () => {
 test("arm64 package script detects the ARM64 build toolchain", () => {
   assert.match(script, /rustup target list --installed/);
   assert.match(script, /Microsoft\.VisualStudio\.Component\.VC\.Tools\.ARM64/);
+  assert.match(script, /@\("ARM64", "x64"\)/);
+  assert.match(script, /@\("x64", "ARM64"\)/);
+  assert.match(script, /VC\\Tools\\Llvm\\\$architectureDir\\bin/);
+  assert.match(script, /VC\\Tools\\Llvm\\bin/);
   // aws-lc-sys (pulled in by rustls) needs CMake + NASM for the ARM64 build.
   assert.match(script, /cmake/);
   assert.match(script, /nasm/i);
