@@ -41,10 +41,11 @@ test("capture delay and selection-based batch actions stay connected", async () 
   assert.match(bridge, /listen<ScreenshotCaptureRequest>/);
   assert.match(bridge, /event\.payload\.source === "shortcut"/);
   assert.match(bridge, /readCaptureDelay\(\)/);
+  assert.match(bridge, /waitForCaptureDelay\(delaySeconds\)/);
   assert.match(shortcuts, /emit_capture_request\(app, mode, "shortcut"\)/);
   assert.match(tray, /emit_tray_capture/);
   assert.match(tauri, /minimizeWindow: boolean/);
-  assert.match(bridge, /delaySeconds \* 1000/);
+  assert.match(delay, /delaySeconds \* 1000/);
   assert.match(state, /refreshGeneration/);
   assert.match(state, /generation !== refreshGeneration/);
   assert.match(page, /delete_screenshots/);
