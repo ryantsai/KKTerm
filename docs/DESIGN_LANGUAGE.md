@@ -88,6 +88,39 @@ bordered-row rhythm. Site, Server Room, and Rack drill-down views are the
 documented spatial-canvas exception; their empty setup states use explanatory
 text with inline action links rather than isolated primary buttons.
 
+## Command chrome focus
+
+**Required for all existing and new command chrome: pointer clicks must not
+produce an unwanted focus/selection border, outline, or focus-ring box shadow.**
+This applies to title-bar buttons, Tab headers and their actions, Activity Rail
+buttons, Status Bar actions, Module-header buttons, Pane-header buttons, and
+content-toolbar commands. A click must not leave keyboard focus on a command
+button merely because it was clicked. An action may intentionally focus the
+content, editor, dialog, or panel it opens or activates.
+
+Title-bar, Tab Strip, rail, Status Bar, Module-header, and content-toolbar
+command buttons preserve content focus on pointer clicks. The shared policy in
+`src/lib/chromeFocus.ts` cancels primary `mousedown` focus; draggable controls
+instead restore the previous focus on release, preserving native HTML drag.
+Click actions, pointer events, and keyboard navigation remain available. Terminal
+outside-pointer handling must consult the same policy before blurring or
+repairing focus, so it cannot override a chrome button's focus prevention.
+New command toolbars can use `data-preserve-content-focus="true"`; controls
+that need pointer focus can opt out with `data-preserve-content-focus="false"`.
+Inputs, textareas, selects, editable content, labels, and popup menu/listbox
+choices keep normal focus. Do not blanket-disable focus on all buttons or
+remove keyboard focus rings. Use `:focus-visible` for button focus styling;
+active/selected state borders are independent of focus. Button labels, Pane
+captions and Tab Strip titles are non-selectable chrome; inline rename fields
+remain selectable.
+
+Treat a click-only focus border or content-focus regression in these areas as
+a review failure. When adding or changing command chrome, verify a pointer
+click from focused content, keyboard Tab/Enter/Space operation with a visible
+keyboard focus indicator, and drag/reorder behavior where supported. Use
+`tests/chrome-focus.browser.html` and `tests/chrome-focus-policy.test.mjs` as
+regression references; validate native Session focus in the real Tauri runtime.
+
 ## Dialog primitives — `src/app/ui/dialog/`
 
 Build dialogs from these typed primitives instead of bespoke markup. Import from

@@ -107,6 +107,15 @@ Strong success criteria let you loop independently.
   in `docs/DESIGN_LANGUAGE.md`. Read it before adding any dialog, sheet, settings
   surface, or file-browser UI. Build dialogs from `src/app/ui/dialog` primitives
   and read color tokens from `src/styles/colorSchemes.css`; never hard-code hex.
+- **No unwanted click borders on command chrome.** Title-bar buttons, Tab
+  headers and their actions, Activity Rail buttons, Status Bar actions,
+  Module-header buttons, Pane-header buttons, and content-toolbar commands must
+  not acquire or retain a focus/selection border merely from a pointer click,
+  or steal focus from the content they operate on. Follow
+  `docs/DESIGN_LANGUAGE.md` → "Command chrome focus" and reuse
+  `src/lib/chromeFocus.ts` for new controls. Preserve keyboard `:focus-visible`
+  indicators, intentional active/selected states, editable-field focus, and
+  native dragging; hiding all outlines is not an acceptable fix.
 - App-owned popup dialogs use a single concise title by default. Do not add a
   subtitle or explanatory header copy unless the flow truly needs it; put
   supporting text in the dialog body near the relevant controls instead.

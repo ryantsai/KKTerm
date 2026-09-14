@@ -29,6 +29,23 @@ select {
 
 button {
   border: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Pointer focus must not look like keyboard selection. Keep :focus-visible
+   and state borders (active tabs, toggles, selected rows) intact. */
+button:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.terminal-pane-title,
+.sftp-pane-label,
+.sftp-bar-kind,
+.sftp-bar-center,
+.remote-fullscreen-bar-title {
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 

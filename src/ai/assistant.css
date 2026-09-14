@@ -1764,7 +1764,7 @@
 }
 
 .assistant-model-select:focus,
-.assistant-permission-button:focus {
+.assistant-permission-button:focus-visible {
   color: var(--text-muted);
   border-color: var(--accent);
   box-shadow: none;

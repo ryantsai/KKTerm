@@ -8,6 +8,11 @@
 
 ## Tab Strip
 
+Pointer clicks on Tab titles, `workspace.closeTab`, scroll arrows, and
+`app.openFile` do not leave keyboard focus on those buttons. The activated
+content or opened dialog owns focus. Tab titles are non-selectable chrome;
+the `workspace.renameTab` input still supports normal cursor and text selection.
+
 Horizontal row above the Workspace Canvas. Accessible label `workspace.tabs`. The Tab Strip is scoped to the active Workspace: switching Workspaces in the Activity Rail shows only open Tabs that belong to the destination Workspace, activates the first open Tab there, or shows the empty Workspace state when that Workspace has no open Tabs. Tabs from other Workspaces remain open in the background until explicitly closed. Scroll affordances: `workspace.scrollTabsLeft`, `workspace.scrollTabsRight`. Dragging a Tab left or right onto another Tab reorders it to that position; the reorder is runtime-only and is not restored after app restart. Double-clicking a Tab title starts inline rename with accessible label `workspace.renameTab`. Tab rename is runtime-only per Tab: it changes the open Tab's `displayTitle`, does not update Connection metadata, and is not restored after app restart. Middle-clicking a Tab closes it through the same close path as the close button. Per-tab close label uses `workspace.closeTab` with the tab title interpolated as `{{title}}`.
 
 On Windows, a muted plus at the trailing edge opens the native file picker directly. When `settings.hideTopTabButtons` replaces the strip with Child Connection Tabs, `app.openFile` moves to the compact title-bar chevron; the two entry points are never shown together.

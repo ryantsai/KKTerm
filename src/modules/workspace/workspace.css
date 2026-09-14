@@ -53,11 +53,18 @@
 }
 
 .tab-strip {
+  user-select: none;
+  -webkit-user-select: none;
   display: flex;
   align-items: end;
   min-width: 0;
   background: var(--surface-muted);
   border-bottom: 1px solid var(--border);
+}
+
+.tab-strip input {
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .tab-scroll-container {

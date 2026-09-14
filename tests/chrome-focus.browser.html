@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<!-- Serve with Vite. This fixture can also run in the Tauri WebView2 host. -->
+<head><meta charset="utf-8"><title>Command chrome focus regression</title></head>
+<body><div id="fixture"></div><pre id="results"></pre><script type="module">
+import { installChromeFocusPolicy, isContentFocusPreservingTarget } from "/src/lib/chromeFocus.ts";
+import "/src/App.css";
+const dispose = installChromeFocusPolicy();
+const fixture = document.getElementById("fixture");
+const results = document.getElementById("results");
+function check(condition, message) {
+  results.textContent += `${condition ? "PASS" : "FAIL"}: ${message}\n`;
+  if (!condition) throw new Error(message);
+}
+const surfaces = [
+  "app-titlebar", "tab-strip", "module-header", "sidebar-actions", "assistant-topbar",
+  "status-bar-actions", "workspace-toolbar", "terminal-search-bar", "quick-command-bar",
+  "sftp-pane-head", "sftp-col-head", "fv-toolbar", "fv-findbar", "note-search-bar", "git-toolbar",
+  "diff-sbs-toolbar", "screenshots-library-toolbar", "it-drill-toolbar",
+];
+for (const name of surfaces) {
+  fixture.innerHTML = `<div class="${name}"><button><svg><path /></svg></button><input /></div>`;
+  const button = fixture.querySelector("button");
+  const input = fixture.querySelector("input");
+  const icon = fixture.querySelector("path");
+  const mouse = new MouseEvent("mousedown", { bubbles: true, cancelable: true, button: 0 });
+  icon.dispatchEvent(mouse);
+  check(mouse.defaultPrevented && isContentFocusPreservingTarget(icon), `${name}: icon click cancels button focus`);
+  const edit = new MouseEvent("mousedown", { bubbles: true, cancelable: true, button: 0 });
+  input.dispatchEvent(edit);
+  check(!edit.defaultPrevented, `${name}: editable field retains normal focus`);
+  let clicked = false;
+  button.onclick = () => { clicked = true; };
+  button.click();
+  check(clicked && button.tabIndex === 0, `${name}: activation and keyboard tab stop remain available`);
+}
+for (const markup of [
+  '<button class="rail-button"><svg id="target" /></button>',
+  '<button class="status-bar-action"><span id="target">Status</span></button>',
+  '<article class="terminal-pane"><header><button id="target">Pane action</button></header></article>',
+  '<div role="dialog"><div role="toolbar"><button id="target">Editor action</button></div></div>',
+  '<div data-preserve-content-focus="true"><button id="target">Custom chrome</button></div>',
+]) {
+  fixture.innerHTML = markup;
+  check(isContentFocusPreservingTarget(fixture.querySelector("#target")), `chrome focus: ${markup}`);
+}
+for (const markup of [
+  '<button id="target">Dialog action</button>',
+  '<div class="tab-strip"><input id="target" /></div>',
+  '<div class="module-header"><select id="target"><option>Choice</option></select></div>',
+  '<div role="toolbar"><textarea id="target"></textarea></div>',
+  '<div role="toolbar"><div contenteditable="true"><button id="target">Editable</button></div></div>',
+  '<div role="toolbar"><label><button id="target">Label</button></label></div>',
+  '<div class="module-header"><div role="menu"><button id="target">Menu item</button></div></div>',
+  '<div class="module-header"><div role="listbox"><button id="target">Option</button></div></div>',
+  '<div class="module-header"><div role="dialog"><button id="target">Confirm</button></div></div>',
+  '<div role="toolbar"><button data-preserve-content-focus="false" id="target">Record shortcut</button></div>',
+  '<div class="tab-strip"><button disabled id="target">Disabled</button></div>',
+  '<div class="tab-strip"><button aria-disabled="true" id="target">Disabled</button></div>',
+  '<div class="tree-list"><button id="target">Connection row</button></div>',
+]) {
+  fixture.innerHTML = markup;
+  check(!isContentFocusPreservingTarget(fixture.querySelector("#target")), `normal focus: ${markup}`);
+}
+fixture.innerHTML = '<input id="editor"><div class="tab-strip"><div draggable="true" id="drag-tab"><button id="command">Command</button></div><input id="rename"></div>';
+const button = fixture.querySelector("button");
+const editor = document.getElementById("editor");
+editor.focus();
+const dragPress = new MouseEvent("mousedown", { bubbles: true, cancelable: true, button: 0 });
+button.dispatchEvent(dragPress);
+check(!dragPress.defaultPrevented, "draggable Tab preserves native mousedown default");
+button.focus();
+button.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
+check(document.activeElement === editor, "draggable command restores previous focus on release");
+button.focus();
+check(document.activeElement === button, "release removes the temporary restoration listener");
+for (const type of ["pointerdown", "keydown", "click"]) {
+  const event = new Event(type, { bubbles: true, cancelable: true });
+  button.dispatchEvent(event);
+  check(!event.defaultPrevented, `${type} remains uncancelled`);
+}
+for (const buttonNumber of [1, 2]) {
+  const event = new MouseEvent("mousedown", { bubbles: true, cancelable: true, button: buttonNumber });
+  button.dispatchEvent(event);
+  check(!event.defaultPrevented, `mouse button ${buttonNumber} remains uncancelled`);
+}
+check(getComputedStyle(button).userSelect === "none", "button label is non-selectable");
+check(getComputedStyle(document.getElementById("rename")).userSelect === "text", "inline rename text remains selectable");
+// Leave a real input/button pair for trusted mouse/keyboard checks by the driver.
+button.onclick = () => { button.dataset.clicked = "true"; };
+window.chromeFocusFixture = { dispose, ready: true };
+</script></body></html>

@@ -2,10 +2,22 @@
 
 ## AI grep hints
 
+- Pointer focus: `src/lib/chromeFocus.ts`; "button steals focus", "selection border", "toolbar focus", "keyboard focus ring".
+
 - Title bar: `app.titlebar.appName`, `app.titlebar.appNameVersion`; `src/app/TitleBar.tsx`, `src/app/app.css`; "app version", "hover app name", "hover title-bar icon", "green blue color shift", "UI font", "kerning", "reduced motion".
 - Keys: `app.primaryNav`, `app.connectionRail`, `app.connectedConnectionsRail`, `app.connections`, `app.aiAssistant`, `app.openFile`, `app.resizeConnections`, `app.resizeAiAssistant`, `app.openConnectedConnection`, `app.openPinnedConnection`, `app.dontSleepEnabledTooltip`, `app.dontSleepDisabledTooltip`, `app.dontSleepStatusEnabled`, `app.shutdownTimerAfter`, `app.shutdownTimerCancel`, `app.shutdownTimerCountdown`, `app.shutdownTimerWarningTitle`, `app.shutdownTimerWarningMessage`, `app.shutdownTimerWarningCancel`, `app.credentialStoreLocked`, `app.credentialStoreUnlocked`, `app.credentialStoreLockAction`, `app.credentialStoreUnlockAction`, `settings.dontSleepForegroundOnly`, `workspace.workspaceSwitcher`, `workspace.newWorkspace`, `workspace.workspaceDetails`, `workspace.workspaceIconColor`, `workspace.importConnections`, `workspace.importFromWorkspace`, `workspace.searchConnections`, `workspace.filterConnectionTypes`, `workspace.selectAllConnections`, `workspace.deselectAllConnections`, `workspace.workspaceSurface`, `workspace.hostUsage`, `watchdog.statusBarLabel`, `watchdog.detail.*`
 - Topics: Activity Rail, Workspace switcher, new Workspace dialog, custom title-bar panel toggles, panel resize, pinned Connections on the rail, Connections panel collapse, Child Connection Tabs, universal AI Assistant panel, universal host usage status bar, encrypted credential database Status Bar indicator, Don't Sleep Status Bar indicator, scheduled forced shutdown countdown and final warning, Watchdog Status Bar indicator and detail panel, restored last Module on launch, tutorial targets `app.activityRailWorkspace`, `app.activityRailNewWorkspace`, `app.activityRailDashboard`, `app.activityRailItOps`, `app.connectionRail`, `app.activityRailDontSleep`, `app.activityRailInstaller`, `app.activityRailSettings`, `app.connectionsResize`, `app.aiAssistantResize`, `workspace.statusBar`, `workspace.hostUsage`
 - Synonyms: "left bar", "sidebar", "right panel", "AI sidebar", "make panel wider", "hide the AI panel", "bottom bar", "lock icon", "unlock icon", "encrypted database locked", "coffee icon", "don't sleep indicator", "shutdown timer", "scheduled shutdown", "power off later", "cancel shutdown", "watchdog icon", "running watchdogs", "watchdog status", "connection tree tabs", "child tabs", "remember dashboard", "remember installer", "restore last page", "last module"
+
+## Pointer and keyboard focus
+
+Clicking title-bar, rail, Status Bar, Module-header, Tab Strip, or content-toolbar
+command buttons preserves focus in the current content until the action opens
+or activates another surface. This also applies to terminal, file-browser,
+Document, URL, remote-desktop, Dashboard, IT Ops, screenshot-editor, Notes,
+and Git/Compare toolbars. Button labels do not acquire browser text selection.
+Keyboard navigation retains focus indicators; search, address, rename and other
+editable fields, popup choices, and selectable content keep their normal focus.
 
 ## Activity Rail (48 px, left edge)
 

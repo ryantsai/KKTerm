@@ -8,6 +8,10 @@ import { RemoteFullscreenApp } from "./modules/workspace/connections/remote-desk
 import { parseRemoteFullscreenRoute } from "./modules/workspace/connections/remote-desktop/remoteFullscreenRoute";
 import { VideoRecordingControlsWindow } from "./modules/screenshots/VideoRecordingControlsWindow";
 import "./App.css";
+import { installChromeFocusPolicy } from "./lib/chromeFocus";
+
+const removeChromeFocusPolicy = installChromeFocusPolicy();
+import.meta.hot?.dispose(removeChromeFocusPolicy);
 
 // A detached RDP/VNC full-screen window loads the same bundle with a
 // `#/remote-fullscreen/...` route. It attaches to the live Session by id and

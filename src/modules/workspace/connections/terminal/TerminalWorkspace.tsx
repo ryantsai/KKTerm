@@ -4,6 +4,7 @@ import { createTerminalStartupState } from "./terminalStartupState";
 import { ConfirmDialog } from "../../../../app/ConfirmDialog";
 import { readFromClipboard, writeToClipboard } from "../../../../lib/clipboard";
 import { CUSTOM_FONTS_LOADED_EVENT } from "../../../../lib/customFonts";
+import { isContentFocusPreservingTarget } from "../../../../lib/chromeFocus";
 import { ScreenshotMenu } from "../../ScreenshotMenu";
 
 import { ConnectionGlyph } from "../ConnectionGlyph";
@@ -1962,7 +1963,8 @@ function TerminalPaneView({
     function handleExternalPointerDown(event: PointerEvent) {
       const renderer = terminalRendererRef.current;
       const target = event.target as Node | null;
-      if (!renderer || !target || paneRef.current?.contains(target)) {
+      if (!renderer || !target || paneRef.current?.contains(target)
+        || isContentFocusPreservingTarget(target)) {
         return;
       }
 
