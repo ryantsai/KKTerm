@@ -3263,6 +3263,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     }));
   },
   openLocalTerminal: (options) => {
+    if (get().appModeInfo.macAppStoreBuild === true) {
+      return;
+    }
     const id = `local-${Date.now()}`;
     const { sshSettings, terminalSettings } = get();
     const shell = options?.shell ?? terminalSettings.defaultShell;
@@ -3280,6 +3283,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     });
   },
   openLocalTerminalHere: (cwd, options) => {
+    if (get().appModeInfo.macAppStoreBuild === true) {
+      return;
+    }
     const normalizedCwd = cwd.trim() || ".";
     const id = `local-popup-${Date.now()}`;
     const { sshSettings, terminalSettings } = get();
@@ -3341,6 +3347,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   openFolderCompareView: (left, right) => set({ folderCompareView: { left, right } }),
   closeFolderCompareView: () => set({ folderCompareView: undefined }),
   openElevatedLocalTerminal: async (option, options) => {
+    if (get().appModeInfo.macAppStoreBuild === true) {
+      return;
+    }
     const isAppElevated = await invokeCommand("is_app_elevated", undefined).catch(() => false);
     const action = elevatedLocalShellAction({
       adminLabel: i18next.t("connections.admin"),

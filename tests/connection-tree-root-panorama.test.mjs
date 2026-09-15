@@ -12,8 +12,8 @@ test("Connection Tree exposes a root panorama and hides folder-only controls wit
   assert.match(source, /shouldConfirmPanorama\(unopenedConnections\.length\)/);
   assert.match(source, /setPendingPanorama\(\{[\s\S]*?connectionIds,[\s\S]*?newSessionCount: unopenedConnections\.length/);
   assert.match(source, /t\("connections\.panoramaView"\)[\s\S]*?<PanelsTopLeft size=\{13\} \/>/);
-  assert.match(source, /const hasWorkspaceFolders = treeWithLiveStatuses\.folders\.length > 0/);
-  assert.match(source, /const hasWorkspaceConnections = flattenConnections\(treeWithLiveStatuses\)\.length > 0/);
+  assert.match(source, /const hasWorkspaceFolders = availableTreeWithLiveStatuses\.folders\.length > 0/);
+  assert.match(source, /const hasWorkspaceConnections = flattenConnections\(availableTreeWithLiveStatuses\)\.length > 0/);
   assert.match(source, /connections\.panoramaView[\s\S]*?disabled=\{!hasWorkspaceConnections\}/);
   assert.match(source, /\{hasWorkspaceFolders \? \([\s\S]*?connections\.collapseAll[\s\S]*?connections\.expandAll/);
   assert.match(source, /\{hasWorkspaceFolders \? \([\s\S]*?connections\.hideFolders/);

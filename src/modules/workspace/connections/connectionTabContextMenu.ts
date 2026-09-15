@@ -4,6 +4,7 @@ export const CONNECTION_TAB_CONTEXT_MENU_EVENT = "kkterm:connection-tab-context-
 
 export type ConnectionTabContextMenuDetail = {
   connection: Connection;
+  tabId: string;
   x: number;
   y: number;
 };

@@ -6047,7 +6047,7 @@
     "downloadTitle": "Get KKTerm. Support its future.",
     "downloadDescription": "The kindest way to get KKTerm — and keep it alive — is a store edition: one-time payment, no subscription, with signed packaging and automatic updates. Every purchase funds continued development.",
     "storePayment": "One-time payment, no subscription. Signed and auto-updating.",
-    "storeLimitations": "Honest limitations: the Mac App Store build runs inside Apple's App Sandbox — local shells are confined (container home, no dotfiles or Homebrew tools; remote SSH is unaffected), real folders need a one-time picker grant, and video recording plus the shutdown-timer menu are unavailable. The Microsoft Store build is the full Windows app with a 7-day trial option. Both update through their store.",
+    "storeLimitations": "Honest limitations: the Mac App Store build runs inside Apple's App Sandbox — Local terminal is unavailable, remote SSH is unaffected, real folders need a one-time picker grant, and video recording plus the shutdown-timer menu are unavailable. The Microsoft Store build is the full Windows app with a 7-day trial option. Both update through their store.",
     "githubHelp": "For Linux, free builds, source code, and documentation, use GitHub in the top-right header.",
     "footerDescription": "A local-first admin workspace with no developer-operated telemetry.",
     "footerProject": "Project",

@@ -25,7 +25,7 @@ test("Document Connection add menu opens the file picker instead of the properti
     "utf8",
   );
   const menuSource = await readFile(
-    new URL("../src/modules/workspace/connections/ConnectionMenus.tsx", import.meta.url),
+    new URL("../src/modules/workspace/connections/connectionCreationOptions.ts", import.meta.url),
     "utf8",
   );
 

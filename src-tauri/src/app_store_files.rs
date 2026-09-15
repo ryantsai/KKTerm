@@ -1,5 +1,7 @@
 //! Mac App Store file grants. Paths in settings are hints, never authorization.
 pub const ENABLED: bool = cfg!(all(target_os = "macos", feature = "mac-app-store"));
+pub const LOCAL_TERMINAL_UNAVAILABLE_ERROR: &str =
+    "local terminal Sessions are unavailable in the Mac App Store build";
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]

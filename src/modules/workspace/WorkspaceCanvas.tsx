@@ -9,7 +9,7 @@ import { TerminalRecordingsDialog } from "./connections/terminal/TerminalRecordi
 import { ConnectionIcon } from "./connections/ConnectionIcon";
 import { TerminalAttentionDot } from "./TerminalAttention";
 import { ConnectionTypeGlyph } from "./connections/ConnectionGlyph";
-import { CONNECTION_CREATION_OPTIONS } from "./connections/ConnectionMenus";
+import { connectionCreationOptions } from "./connections/connectionCreationOptions";
 import {
   requestConnectionNewTab,
   requestImportConnections,
@@ -28,6 +28,7 @@ import { useTranslation } from "react-i18next";
 import { isImeComposingEvent, isImeEditableTarget } from "../../lib/ime";
 import { isWindowsPlatform } from "../../lib/platform";
 import { invokeCommand } from "../../lib/tauri";
+import { useMacAppStoreBuild } from "../../lib/macAppStoreBuild";
 import { DEFAULT_WORKSPACE_ID, useWorkspaceStore } from "../../store";
 import { activeConnectionForNewTab, workspaceShortcutFromKeyboardEvent } from "./keymap";
 import type { WorkspaceTab } from "../../types";
@@ -78,6 +79,7 @@ function tabWorkspaceId(tab: WorkspaceTab) {
 
 function WorkspaceEmptyState() {
   const { t } = useTranslation();
+  const macAppStoreBuild = useMacAppStoreBuild();
 
   return (
     <section className="empty-workspace" data-tutorial-id="workspace.emptyState">
@@ -85,7 +87,7 @@ function WorkspaceEmptyState() {
       <h2>{t("workspace.noActiveSession")}</h2>
       <p>{t("workspace.openFromTree")}</p>
       <div className="empty-workspace-connection-links">
-        {CONNECTION_CREATION_OPTIONS.map(({ labelKey, type }) => (
+        {connectionCreationOptions(macAppStoreBuild).map(({ labelKey, type }) => (
           <button
             className="empty-workspace-connection-link"
             key={type}
@@ -210,6 +212,7 @@ export function TabStrip() {
     activateTab(tab.id);
     dispatchConnectionTabContextMenu({
       connection: tab.connection,
+      tabId: tab.id,
       x: event.clientX,
       y: event.clientY,
     });

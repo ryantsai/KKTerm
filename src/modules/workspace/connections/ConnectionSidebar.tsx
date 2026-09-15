@@ -3,7 +3,8 @@ import { useDialogFocus } from "../../../app/ui/dialog/useDialogFocus";
 import { ConnectionIconBackgroundPicker } from "./ConnectionIconBackgroundPicker";
 import { ConnectionIconPicker } from "./ConnectionIconPicker";
 import { ConnectionIcon, connectionIconSrcForConnection } from "./ConnectionIcon";
-import { AddConnectionMenu, CONNECTION_CREATION_OPTIONS } from "./ConnectionMenus";
+import { AddConnectionMenu } from "./ConnectionMenus";
+import { connectionCreationOptions } from "./connectionCreationOptions";
 import { FtpConnectionFields, FtpConnectionOptions } from "./connection-dialog/FtpConnectionFields";
 import { LocalConnectionFields } from "./connection-dialog/LocalConnectionFields";
 import { defaultWslConnectionName, distroFromWslShell } from "./connection-dialog/wslLocalShell";
@@ -46,6 +47,11 @@ import {
   CONNECTION_TAB_CONTEXT_MENU_EVENT,
   type ConnectionTabContextMenuDetail,
 } from "./connectionTabContextMenu";
+import {
+  findRemoteDesktopSurface,
+  isRemoteFullscreenSurfaceReady,
+  requestRemoteFullscreen,
+} from "./remote-desktop/remoteFullscreenRequest";
 import { buildFileViewConnectionDraftFromPath } from "./fileViewConnectionDraft";
 import { buildLocalFilesConnectionDraftFromPath } from "./localFilesConnectionDraft";
 import { dragHasConnectionPaths, readConnectionPathsDrag } from "./connectionPathsDrag";
@@ -56,7 +62,7 @@ import {
 } from "./credentialUnlockPreflight";
 import { confirmTrustedSshHostKey, connectionPasswordOwnerId, connectionSshSocksProxyPasswordOwnerId, defaultPortForConnectionType, connectionTypeLabel, ftpPortForProtocolSelection, isRemoteDesktopConnectionType, localShellOptionsForPlatform, resolveSshCompression, resolveSshOldProtocols, resolveSshSocksProxyRequest, uniqueRuntimeId, type LocalShellOption } from "./utils";
 import { IMPORT_CONNECTIONS_REQUEST_EVENT, NEW_CONNECTION_REQUEST_EVENT, NEW_CONNECTION_TAB_REQUEST_EVENT, RECENT_CONNECTION_LIMIT, loadCollapsedFolderIds, loadRecentConnectionIds, notifyConnectionTreeInvalidated, requestTerminalConnectionReconnect, saveCollapsedFolderIds, saveRecentConnectionIds, type NewConnectionRequestDetail, type NewConnectionTabRequestDetail } from "./connectionSidebarState";
-import { collectConnectionFolderIds, countConnections, countFolders, filterConnectedConnections, filterConnectionTree, findConnectionInTree, flattenConnections, flattenFolders, visibleFlatConnections as flattenVisibleConnections, withLiveConnectionStatuses } from "./treeUtils";
+import { collectConnectionFolderIds, countConnections, countFolders, filterConnectedConnections, filterConnectionTree, findConnectionInTree, flattenConnections, flattenFolders, visibleFlatConnections as flattenVisibleConnections, withLiveConnectionStatuses, withoutLocalTerminalConnections } from "./treeUtils";
 import { useTerminalAttentionActive } from "../TerminalAttention";
 import { WorkspaceIcon } from "../workspaceIcons";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bell, Check, ChevronDown, ChevronRight, CircleDot, Copy, Folder, FolderPlus, KeyRound, LayoutDashboard, List, Maximize2, Minimize2, PanelsTopLeft, PanelRight, Pencil, Pin, PinOff, Play, Plus, Radio, RotateCcw, Save, Search, Settings, SquarePlus, Trash2, X } from "../../../lib/reicon";
@@ -79,6 +85,7 @@ import { useImeCompositionGuard } from "../../../lib/ime";
 import { nativeMenuIcons } from "../../../lib/nativeMenuIcons";
 import { lockOsIconAutoDetect } from "../../../lib/osIcons";
 import { isMacPlatform, isWindowsPlatform } from "../../../lib/platform";
+import { useMacAppStoreBuild } from "../../../lib/macAppStoreBuild";
 import { showNativeContextMenu, type NativeContextMenuItem } from "../../../lib/nativeContextMenu";
 import { confirmNativeDialog, invokeCommand, isCredentialUnlockRequiredError, isTauriRuntime, selectAndReadSshConfigFile, selectAppLauncherFolder, selectFileViewPath, selectKeyFile, type TmuxSession } from "../../../lib/tauri";
 import { connectionTree } from "../../../app-defaults";
@@ -211,6 +218,7 @@ type TreeContextMenuState =
       kind: "connection";
       connection: Connection;
       folderId?: string;
+      tabId?: string;
       x: number;
       y: number;
     };
@@ -288,6 +296,7 @@ export function ConnectionSidebar({
   onTogglePanel?: () => void;
 }) {
   const { i18n, t } = useTranslation();
+  const macAppStoreBuild = useMacAppStoreBuild();
   const query = useWorkspaceStore((state) => state.query);
   const setQuery = useWorkspaceStore((state) => state.setQuery);
   const activeWorkspaceId = useWorkspaceStore((state) => state.activeWorkspaceId);
@@ -475,6 +484,7 @@ export function ConnectionSidebar({
       void openTreeContextMenu({
         kind: "connection",
         connection: detail.connection,
+        tabId: detail.tabId,
         x: detail.x,
         y: detail.y,
       });
@@ -646,6 +656,9 @@ export function ConnectionSidebar({
   }
 
   function handleNewConnectionTypeSelected(connectionType: ConnectionType) {
+    if (macAppStoreBuild && connectionType === "local") {
+      return;
+    }
     if (connectionType === "fileView") {
       void handleNewFileViewConnectionSelected();
       return;
@@ -1878,15 +1891,21 @@ export function ConnectionSidebar({
     () => withLiveConnectionStatuses(tree, activeSessionCounts),
     [activeSessionCounts, tree],
   );
+  const availableTreeWithLiveStatuses = useMemo(
+    () => macAppStoreBuild
+      ? withoutLocalTerminalConnections(treeWithLiveStatuses)
+      : treeWithLiveStatuses,
+    [macAppStoreBuild, treeWithLiveStatuses],
+  );
 
   const filteredTree = useMemo(() => {
     const normalizedQuery = deferredQuery.trim().toLowerCase();
     if (!normalizedQuery) {
-      return treeWithLiveStatuses;
+      return availableTreeWithLiveStatuses;
     }
 
-    return filterConnectionTree(treeWithLiveStatuses, normalizedQuery);
-  }, [deferredQuery, treeWithLiveStatuses]);
+    return filterConnectionTree(availableTreeWithLiveStatuses, normalizedQuery);
+  }, [availableTreeWithLiveStatuses, deferredQuery]);
   // The tree actually rendered: the search-filtered tree, optionally narrowed to
   // connected-only by the "Show Connected" filter. Both the folder view and the
   // "Hide Folders" flat view read from this so the two filters compose. An active
@@ -1907,13 +1926,13 @@ export function ConnectionSidebar({
   );
   const recentConnections = useMemo(() => {
     const connectionsById = new Map(
-      flattenConnections(treeWithLiveStatuses).map((connection) => [connection.id, connection]),
+      flattenConnections(availableTreeWithLiveStatuses).map((connection) => [connection.id, connection]),
     );
     return recentConnectionIds
       .map((connectionId) => connectionsById.get(connectionId))
       .filter((connection): connection is Connection => Boolean(connection))
       .slice(0, RECENT_CONNECTION_LIMIT);
-  }, [recentConnectionIds, treeWithLiveStatuses]);
+  }, [availableTreeWithLiveStatuses, recentConnectionIds]);
 
   // Tray menu only needs id+name, which don't change on session-count updates.
   // Depending on `recentConnections` directly fires an extra Tauri IPC on every
@@ -1941,8 +1960,8 @@ export function ConnectionSidebar({
 
   // Hold the latest tree in a ref so the Tauri listeners can be registered once
   // instead of resubscribing on every activeSessionCounts change.
-  const treeRef = useRef(treeWithLiveStatuses);
-  treeRef.current = treeWithLiveStatuses;
+  const treeRef = useRef(availableTreeWithLiveStatuses);
+  treeRef.current = availableTreeWithLiveStatuses;
   const handleOpenConnectionRef = useRef(handleOpenConnection);
   handleOpenConnectionRef.current = handleOpenConnection;
   const onExternalOpenConnectionRef = useRef(onExternalOpenConnection);
@@ -1985,8 +2004,8 @@ export function ConnectionSidebar({
 
     return flattenVisibleConnections(displayTree);
   }, [displayTree, showAllConnections]);
-  const hasWorkspaceFolders = treeWithLiveStatuses.folders.length > 0;
-  const hasWorkspaceConnections = flattenConnections(treeWithLiveStatuses).length > 0;
+  const hasWorkspaceFolders = availableTreeWithLiveStatuses.folders.length > 0;
+  const hasWorkspaceConnections = flattenConnections(availableTreeWithLiveStatuses).length > 0;
 
 
   function menuPositionFromElement(element: HTMLElement) {
@@ -1999,7 +2018,7 @@ export function ConnectionSidebar({
 
   function buildAddConnectionMenuItems(): NativeContextMenuItem[] {
     return [
-      ...CONNECTION_CREATION_OPTIONS.map(({ labelKey, type: connectionType }) => ({
+      ...connectionCreationOptions(macAppStoreBuild).map(({ labelKey, type: connectionType }) => ({
         kind: "item" as const,
         label: t(labelKey),
         iconSrc: connectionIconSrcForConnection({ type: connectionType }),
@@ -2019,6 +2038,9 @@ export function ConnectionSidebar({
   }
 
   function handleQuickConnectTypeSelected(connectionType: ConnectionType) {
+    if (macAppStoreBuild && connectionType === "local") {
+      return;
+    }
     setAddConnectionMenuOpen(false);
     setFormError("");
     setTreeError("");
@@ -2029,7 +2051,7 @@ export function ConnectionSidebar({
   function buildQuickConnectMenuItems(): NativeContextMenuItem[] {
     const normalLabel = t("connections.normal");
     const adminLabel = t("connections.admin");
-    const shellItems = quickConnectShellOptions.flatMap((option) => {
+    const shellItems = macAppStoreBuild ? [] : quickConnectShellOptions.flatMap((option) => {
       const iconSrc = connectionIconSrcForConnection({ type: "local", localShell: option.value });
       if (!option.canElevate) {
         return [
@@ -2222,6 +2244,11 @@ export function ConnectionSidebar({
     const canOpenNewTab =
       menu.kind !== "connection" || !showChildTabsInTree || isTerminalConnectionType(menu.connection.type);
     if (menu.kind === "connection") {
+      const remoteSurface = findRemoteDesktopSurface(
+        tabs,
+        menu.connection.id,
+        menu.tabId ?? activeTabId ?? undefined,
+      );
       items.push(
         {
           kind: "item",
@@ -2230,6 +2257,17 @@ export function ConnectionSidebar({
           iconSvg: nativeMenuIcons.squarePlus,
           action: () => handleTreeMenuOpenNewTab(menu),
         },
+        ...(isRemoteDesktopConnectionType(menu.connection.type)
+          ? [
+              {
+                kind: "item" as const,
+                label: t("remoteDesktop.fullscreen.enter"),
+                iconSvg: nativeMenuIcons.maximize,
+                disabled: !remoteSurface || !isRemoteFullscreenSurfaceReady(remoteSurface.surfaceId),
+                action: () => handleTreeMenuOpenFullscreen(menu),
+              },
+            ]
+          : []),
         { kind: "separator" },
       );
       if (isTerminalConnectionType(menu.connection.type)) {
@@ -2662,6 +2700,26 @@ export function ConnectionSidebar({
     if (menu.kind === "connection") {
       void handleOpenConnectionInNewTab(menu.connection);
     }
+  }
+
+  function handleTreeMenuOpenFullscreen(menu: TreeContextMenuState) {
+    setTreeContextMenu(null);
+    if (menu.kind !== "connection") {
+      return;
+    }
+    const target = findRemoteDesktopSurface(
+      tabs,
+      menu.connection.id,
+      menu.tabId ?? activeTabId ?? undefined,
+    );
+    if (!target || !isRemoteFullscreenSurfaceReady(target.surfaceId)) {
+      return;
+    }
+    activateTab(target.tabId);
+    if (target.paneId !== target.tabId) {
+      setFocusedPane(target.tabId, target.paneId);
+    }
+    requestAnimationFrame(() => requestRemoteFullscreen(target.surfaceId));
   }
 
   function findOpenTabForConnection(connectionId: string) {
@@ -3180,6 +3238,7 @@ export function ConnectionSidebar({
               </button>
               {addConnectionMenuOpen ? (
                 <AddConnectionMenu
+                  macAppStoreBuild={macAppStoreBuild}
                   onImportRequested={handleImportRequested}
                   onSelectType={handleNewConnectionTypeSelected}
                 />
@@ -3478,6 +3537,22 @@ export function ConnectionSidebar({
         <TreeContextMenu
           menu={treeContextMenu}
           canAddToPane={supportsAddConnectionToTab(tabs.find((tab) => tab.id === activeTabId))}
+          canOpenFullscreen={
+            (() => {
+              if (
+                treeContextMenu.kind !== "connection" ||
+                !isRemoteDesktopConnectionType(treeContextMenu.connection.type)
+              ) {
+                return false;
+              }
+              const target = findRemoteDesktopSurface(
+                tabs,
+                treeContextMenu.connection.id,
+                treeContextMenu.tabId ?? activeTabId ?? undefined,
+              );
+              return Boolean(target && isRemoteFullscreenSurfaceReady(target.surfaceId));
+            })()
+          }
           canOpenNewTab={
             treeContextMenu.kind !== "connection" ||
             !showChildTabsInTree ||
@@ -3501,6 +3576,7 @@ export function ConnectionSidebar({
           onProperties={() => handleTreeMenuProperties(treeContextMenu)}
           onRename={() => void handleTreeMenuRename(treeContextMenu)}
           onAddToPane={(direction) => void handleTreeMenuAddToPane(treeContextMenu, direction)}
+          onOpenFullscreen={() => handleTreeMenuOpenFullscreen(treeContextMenu)}
           onOpenNewTab={() => handleTreeMenuOpenNewTab(treeContextMenu)}
           onSaveLayout={() => handleTreeMenuSaveLayout(treeContextMenu)}
           onResetLayout={() => handleTreeMenuResetLayout(treeContextMenu)}
@@ -4286,6 +4362,7 @@ function InlineTreeRenameInput({
 function TreeContextMenu({
   menu,
   canAddToPane,
+  canOpenFullscreen,
   canOpenNewTab,
   isPinned,
   onClose,
@@ -4297,6 +4374,7 @@ function TreeContextMenu({
   onProperties,
   onRename,
   onAddToPane,
+  onOpenFullscreen,
   onOpenNewTab,
   onSaveLayout,
   onResetLayout,
@@ -4305,6 +4383,7 @@ function TreeContextMenu({
 }: {
   menu: TreeContextMenuState;
   canAddToPane: boolean;
+  canOpenFullscreen: boolean;
   canOpenNewTab: boolean;
   isPinned: boolean;
   onClose: () => void;
@@ -4316,6 +4395,7 @@ function TreeContextMenu({
   onProperties: () => void;
   onRename: () => void;
   onAddToPane: (direction: SplitDirection) => void;
+  onOpenFullscreen: () => void;
   onOpenNewTab: () => void;
   onSaveLayout: () => void;
   onResetLayout: () => void;
@@ -4380,10 +4460,18 @@ function TreeContextMenu({
         </>
       ) : null}
       {menu.kind === "connection" ? (
-        <button disabled={!canOpenNewTab} onClick={onOpenNewTab} role="menuitem" type="button">
-          <SquarePlus className="menu-item-icon" size={15} />
-          <span>{t("workspace.newTab")}</span>
-        </button>
+        <>
+          <button disabled={!canOpenNewTab} onClick={onOpenNewTab} role="menuitem" type="button">
+            <SquarePlus className="menu-item-icon" size={15} />
+            <span>{t("workspace.newTab")}</span>
+          </button>
+          {isRemoteDesktopConnectionType(menu.connection.type) ? (
+            <button disabled={!canOpenFullscreen} onClick={onOpenFullscreen} role="menuitem" type="button">
+              <Maximize2 className="menu-item-icon" size={15} />
+              <span>{t("remoteDesktop.fullscreen.enter")}</span>
+            </button>
+          ) : null}
+        </>
       ) : null}
       {menu.kind !== "tree" ? (
         <>

@@ -5100,6 +5100,15 @@ pub(crate) fn connection_tool(app: &tauri::AppHandle, name: &str, args: Value) -
             .list_connection_tree()
             .map(|tree| serde_json::to_value(tree).unwrap_or(Value::Null)),
         "connection_create" => {
+            if crate::app_store_files::ENABLED
+                && args.get("type").and_then(Value::as_str) == Some("local")
+            {
+                return json!({
+                    "ok": false,
+                    "error": crate::app_store_files::LOCAL_TERMINAL_UNAVAILABLE_ERROR,
+                })
+                .to_string();
+            }
             serde_json::from_value::<crate::storage::CreateConnectionRequest>(args)
                 .map_err(|error| format!("invalid connection_create request: {error}"))
                 .and_then(|request| {
@@ -5109,6 +5118,15 @@ pub(crate) fn connection_tool(app: &tauri::AppHandle, name: &str, args: Value) -
                 })
         }
         "connection_update" => {
+            if crate::app_store_files::ENABLED
+                && args.get("type").and_then(Value::as_str) == Some("local")
+            {
+                return json!({
+                    "ok": false,
+                    "error": crate::app_store_files::LOCAL_TERMINAL_UNAVAILABLE_ERROR,
+                })
+                .to_string();
+            }
             serde_json::from_value::<crate::storage::UpdateConnectionRequest>(args)
                 .map_err(|error| format!("invalid connection_update request: {error}"))
                 .and_then(|request| {
@@ -5137,6 +5155,16 @@ pub(crate) fn connection_tool(app: &tauri::AppHandle, name: &str, args: Value) -
             let id = arg_string(&args, "id");
             if id.is_empty() {
                 Err("connection_open requires id".to_string())
+            } else if crate::app_store_files::ENABLED
+                && storage
+                    .get_connection(&id)
+                    .ok()
+                    .and_then(|connection| serde_json::to_value(connection).ok())
+                    .and_then(|connection| connection.get("type").and_then(Value::as_str).map(str::to_owned))
+                    .as_deref()
+                    == Some("local")
+            {
+                Err(crate::app_store_files::LOCAL_TERMINAL_UNAVAILABLE_ERROR.to_string())
             } else {
                 app.emit("assistant-open-connection", id)
                     .map(|_| json!({"ok": true}))

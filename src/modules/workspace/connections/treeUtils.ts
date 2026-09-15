@@ -47,6 +47,24 @@ export function filterConnectionTree(tree: ConnectionTree, normalizedQuery: stri
   };
 }
 
+// Store builds cannot provide a useful host-local shell. Keep durable local
+// Connections untouched so the direct-download build can still use them, but
+// remove them from Store-only navigation surfaces.
+export function withoutLocalTerminalConnections(tree: ConnectionTree): ConnectionTree {
+  return {
+    connections: tree.connections.filter((connection) => connection.type !== "local"),
+    folders: tree.folders.map(withoutLocalTerminalFolderConnections),
+  };
+}
+
+function withoutLocalTerminalFolderConnections(folder: ConnectionFolder): ConnectionFolder {
+  return {
+    ...folder,
+    connections: folder.connections.filter((connection) => connection.type !== "local"),
+    folders: folder.folders.map(withoutLocalTerminalFolderConnections),
+  };
+}
+
 function filterConnectionFolder(
   folder: ConnectionFolder,
   normalizedQuery: string,

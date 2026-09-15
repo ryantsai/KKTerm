@@ -6047,7 +6047,7 @@
     "downloadTitle": "KKTerm beziehen. Seine Zukunft unterstützen.",
     "downloadDescription": "Eine Store-Version finanziert die Weiterentwicklung: Einmalzahlung ohne Abo, signiertes Paket und automatische Updates. Jeder Kauf hilft.",
     "storePayment": "Einmalzahlung, kein Abo. Signiert und mit automatischen Updates.",
-    "storeLimitations": "Grenzen: Die Mac-App-Store-Version läuft in Apples App Sandbox. Lokale Shells sind auf das Container-Home beschränkt, ohne persönliche Konfigurationsdateien oder Homebrew-Werkzeuge; Remote-SSH bleibt unberührt. Echte Ordner benötigen einmalig eine Freigabe im Auswahldialog. Videoaufnahmen und das Menü für den Abschalttimer fehlen. Die Microsoft-Store-Version bietet die vollständige Windows-App mit einer 7-Tage-Testoption. Beide werden über ihren Store aktualisiert.",
+    "storeLimitations": "Grenzen: Die Mac-App-Store-Version läuft in Apples App Sandbox und bietet kein lokales Terminal; Remote-SSH bleibt unberührt. Echte Ordner benötigen einmalig eine Freigabe im Auswahldialog. Videoaufnahmen und das Menü für den Abschalttimer fehlen. Die Microsoft-Store-Version bietet die vollständige Windows-App mit einer 7-Tage-Testoption. Beide werden über ihren Store aktualisiert.",
     "githubHelp": "Linux, kostenlose Versionen, Quellcode und Dokumentation findest du über GitHub oben rechts in der Kopfzeile.",
     "footerDescription": "Ein lokaler Verwaltungsarbeitsbereich ohne vom Entwickler betriebene Telemetrie.",
     "footerProject": "Projekt",

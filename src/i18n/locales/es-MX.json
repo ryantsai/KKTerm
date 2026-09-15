@@ -6047,7 +6047,7 @@
     "downloadTitle": "Llévate KKTerm y apoya lo que viene.",
     "downloadDescription": "La compra en tienda ayuda a mantener el desarrollo. Pagas una vez, sin suscripción, y recibes un paquete firmado con actualizaciones automáticas. Cada compra impulsa nuevas mejoras.",
     "storePayment": "Un solo pago, sin suscripción. Firma y actualizaciones automáticas incluidas.",
-    "storeLimitations": "Restricciones: la edición del Mac App Store usa App Sandbox de Apple. Las shells locales quedan en el directorio del contenedor, sin archivos personales de configuración ni herramientas Homebrew; las conexiones SSH remotas no cambian. Para carpetas reales se requiere autorización una vez desde el selector. No se incluyen grabación de video ni el menú del temporizador de apagado. La edición de Microsoft Store ofrece la app completa de Windows y una opción de prueba de 7 días. Ambas reciben actualizaciones desde su tienda.",
+    "storeLimitations": "Restricciones: la edición del Mac App Store usa App Sandbox de Apple y no ofrece terminal local; las conexiones SSH remotas no cambian. Para carpetas reales se requiere autorización una vez desde el selector. No se incluyen grabación de video ni el menú del temporizador de apagado. La edición de Microsoft Store ofrece la app completa de Windows y una opción de prueba de 7 días. Ambas reciben actualizaciones desde su tienda.",
     "githubHelp": "Encuentra Linux, versiones gratis, código fuente y documentación en GitHub, en la parte superior derecha del encabezado.",
     "footerDescription": "Un espacio de administración centrado en lo local, sin telemetría administrada por el desarrollador.",
     "footerProject": "Proyecto",

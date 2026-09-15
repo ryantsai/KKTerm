@@ -15,6 +15,9 @@ export function FileExplorerSettings() {
   const { t } = useTranslation();
   const sftpSettings = useWorkspaceStore((state) => state.sftpSettings);
   const terminalSettings = useWorkspaceStore((state) => state.terminalSettings);
+  const macAppStoreBuild = useWorkspaceStore(
+    (state) => state.appModeInfo.macAppStoreBuild === true,
+  );
   const setSftpSettings = useWorkspaceStore((state) => state.setSftpSettings);
   const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
   const [draft, setDraft] = useState<SftpSettings>(sftpSettings);
@@ -31,8 +34,10 @@ export function FileExplorerSettings() {
   );
   const hasChanges =
     draft.fileExplorerOpenMode !== sftpSettings.fileExplorerOpenMode ||
-    draft.fileExplorerTerminalShell !== sftpSettings.fileExplorerTerminalShell ||
-    draft.fileExplorerTerminalElevated !== sftpSettings.fileExplorerTerminalElevated;
+    (!macAppStoreBuild && (
+      draft.fileExplorerTerminalShell !== sftpSettings.fileExplorerTerminalShell ||
+      draft.fileExplorerTerminalElevated !== sftpSettings.fileExplorerTerminalElevated
+    ));
 
   useEffect(() => {
     setDraft(sftpSettings);
@@ -43,8 +48,12 @@ export function FileExplorerSettings() {
       const request: SftpSettings = {
         ...useWorkspaceStore.getState().sftpSettings,
         fileExplorerOpenMode: draft.fileExplorerOpenMode,
-        fileExplorerTerminalShell: selectedTerminal.shell,
-        fileExplorerTerminalElevated: selectedTerminal.elevated,
+        fileExplorerTerminalShell: macAppStoreBuild
+          ? sftpSettings.fileExplorerTerminalShell
+          : selectedTerminal.shell,
+        fileExplorerTerminalElevated: macAppStoreBuild
+          ? sftpSettings.fileExplorerTerminalElevated
+          : selectedTerminal.elevated,
       };
       const saved = isTauriRuntime()
         ? await invokeCommand("update_sftp_settings", { request })
@@ -88,28 +97,30 @@ export function FileExplorerSettings() {
             </select>
             <small className="field-hint">{t("settings.fileExplorerOpenModeHint")}</small>
           </label>
-          <label>
-            <span>{t("settings.fileExplorerTerminal")}</span>
-            <select
-              value={selectedTerminal.id}
-              onChange={(event) => {
-                const option = options.find((entry) => entry.id === event.currentTarget.value);
-                if (!option) {
-                  return;
-                }
-                setDraft((state) => ({
-                  ...state,
-                  fileExplorerTerminalShell: option.shell,
-                  fileExplorerTerminalElevated: option.elevated,
-                }));
-              }}
-            >
-              {options.map((option) => (
-                <option key={option.id} value={option.id}>{option.label}</option>
-              ))}
-            </select>
-            <small className="field-hint">{t("settings.fileExplorerTerminalHint")}</small>
-          </label>
+          {macAppStoreBuild ? null : (
+            <label>
+              <span>{t("settings.fileExplorerTerminal")}</span>
+              <select
+                value={selectedTerminal.id}
+                onChange={(event) => {
+                  const option = options.find((entry) => entry.id === event.currentTarget.value);
+                  if (!option) {
+                    return;
+                  }
+                  setDraft((state) => ({
+                    ...state,
+                    fileExplorerTerminalShell: option.shell,
+                    fileExplorerTerminalElevated: option.elevated,
+                  }));
+                }}
+              >
+                {options.map((option) => (
+                  <option key={option.id} value={option.id}>{option.label}</option>
+                ))}
+              </select>
+              <small className="field-hint">{t("settings.fileExplorerTerminalHint")}</small>
+            </label>
+          )}
         </div>
       </fieldset>
     </section>

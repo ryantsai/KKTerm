@@ -3,7 +3,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ConnectionIcon } from "../../../../workspace/connections/ConnectionIcon";
 import { connectionSubtitle, connectionTypeLabel } from "../../../../workspace/connections/utils";
-import { flattenConnections, withLiveConnectionStatuses } from "../../../../workspace/connections/treeUtils";
+import { flattenConnections, withLiveConnectionStatuses, withoutLocalTerminalConnections } from "../../../../workspace/connections/treeUtils";
 import { invokeCommand, isTauriRuntime } from "../../../../../lib/tauri";
 import { connectionUsesTmux, tmuxSessionIdsForConnection, useWorkspaceStore } from "../../../../../store";
 import { defaultLayoutFor } from "../../../../workspace/layout";
@@ -148,6 +148,9 @@ export function ConnectionWidgetBody({
   const [launcherSearch, setLauncherSearch] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
   const activeSessionCounts = useWorkspaceStore((state) => state.activeSessionCounts);
+  const macAppStoreBuild = useWorkspaceStore(
+    (state) => state.appModeInfo.macAppStoreBuild === true,
+  );
 
   useEffect(() => {
     let disposed = false;
@@ -178,8 +181,11 @@ export function ConnectionWidgetBody({
   }, []);
 
   const liveTree = useMemo(
-    () => withLiveConnectionStatuses(tree, activeSessionCounts),
-    [activeSessionCounts, tree],
+    () => withLiveConnectionStatuses(
+      macAppStoreBuild ? withoutLocalTerminalConnections(tree) : tree,
+      activeSessionCounts,
+    ),
+    [activeSessionCounts, macAppStoreBuild, tree],
   );
   const allConnections = useMemo(() => flattenConnections(liveTree), [liveTree]);
   const connectionsById = useMemo(
@@ -190,8 +196,11 @@ export function ConnectionWidgetBody({
   // new connection object every time activeSessionCounts changes, otherwise the
   // terminal session effect tears down and restarts in an infinite loop.
   const sessionConnectionsById = useMemo(
-    () => new Map(flattenConnections(tree).map((connection) => [connection.id, connection])),
-    [tree],
+    () => new Map(
+      flattenConnections(macAppStoreBuild ? withoutLocalTerminalConnections(tree) : tree)
+        .map((connection) => [connection.id, connection]),
+    ),
+    [macAppStoreBuild, tree],
   );
   const selectedConnections = config.connectionIds.flatMap((id) => {
     const connection = connectionsById.get(id);

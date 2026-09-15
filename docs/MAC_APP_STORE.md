@@ -67,9 +67,14 @@ confined exactly as the app is. These were measured against a binary signed with
   menu is not offered. macOS shutdown needs a System Events Apple event, which
   requires `com.apple.security.automation.apple-events`; the Store build does not
   carry it, and a shutdown feature invites App Review scrutiny.
-- **Local shell Sessions.** Confined by inheritance, with no workaround: the
-  user's dotfiles, `/etc/paths`, and Homebrew tools are unreadable. Documented in
-  manual chapter 5.
+- **Local terminal Sessions.** Unavailable. A child shell inherits App Sandbox;
+  allowing the PTY operation alone still leaves the user's home, startup files,
+  projects, and Homebrew tools inaccessible. Store UI omits Local terminal
+  creation, saved Local terminal Connections, Dashboard launch targets, and the
+  File Explorer open-terminal action and its Settings selector. Existing saved
+  data is retained for export or a direct-download build, and the Rust Session
+  command rejects any Store-build local launch that bypasses the UI. Documented
+  in manual chapter 5.
 - **Built-in MCP bridge.** The socket lives in the container, so a sandboxed
   external client cannot reach it. Unsandboxed clients are unaffected. See
   `docs/MCP.md`.
@@ -117,6 +122,13 @@ development build or standalone browser preview does not prove sandbox access.
 12. Repeat 8-11 on the ordinary macOS build: video recording, the shutdown
     schedule menu, `~/Pictures/Screenshots`, and the real home folder in the SFTP
     local pane must all behave exactly as before.
+13. In the Store build, confirm Local terminal is absent from Add Connection,
+    Quick Connect, the empty Workspace shortcuts, the Connection Tree and
+    Activity Rail, Workspace import, Dashboard Connection widgets, and the File
+    Explorer terminal action and its Settings selector. In a normal macOS build,
+    confirm every one of those entry points remains available. With an existing
+    Local terminal Connection, confirm the Store build hides rather than deletes
+    it and a direct-download build can still list it.
 
 Bookmarks are stored atomically under the app-data `sandbox-bookmarks/` directory,
 outside SQLite and Settings exports. Existing paths remain usable as picker hints,

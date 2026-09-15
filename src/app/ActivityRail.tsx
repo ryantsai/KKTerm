@@ -4,6 +4,7 @@ import {
   Coffee,
   Gauge,
   LayoutDashboard,
+  Maximize2,
   Pin,
   PinOff,
   Plus,
@@ -13,12 +14,19 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { loadStoredChildConnections } from "../modules/workspace/connections/childConnections";
+import { requestConnectionNewTab } from "../modules/workspace/connections/connectionSidebarState";
+import {
+  findRemoteDesktopSurface,
+  isRemoteFullscreenSurfaceReady,
+  requestRemoteFullscreen,
+} from "../modules/workspace/connections/remote-desktop/remoteFullscreenRequest";
 import { ConnectionIcon } from "../modules/workspace/connections/ConnectionIcon";
 import { flattenConnections } from "../modules/workspace/connections/treeUtils";
 import { ariaPressed } from "../lib/aria";
 import { nativeMenuIcons } from "../lib/nativeMenuIcons";
 import { showNativeContextMenu, type NativeContextMenuItem } from "../lib/nativeContextMenu";
 import { isWindowsPlatform, supportsInstallerHelper } from "../lib/platform";
+import { useMacAppStoreBuild } from "../lib/macAppStoreBuild";
 import { activityRailModuleOrder } from "./activityRailOrder";
 import { invokeCommand, isTauriRuntime } from "../lib/tauri";
 import { DEFAULT_WORKSPACE_ID, useWorkspaceStore } from "../store";
@@ -76,6 +84,7 @@ type CustomModuleRailDragState = {
 type RailConnectionMenuState = {
   connection: Connection;
   pinned: boolean;
+  tabId?: string;
   x: number;
   y: number;
 };
@@ -84,6 +93,16 @@ const CONNECTION_RAIL_ORDER_KEY = "kkterm.connectionRail.order.v1";
 const CUSTOM_MODULE_RAIL_ORDER_KEY = "kkterm.customModuleRail.order.v1";
 const WORKSPACE_RAIL_ICON_SIZE = 18;
 const WORKSPACE_RAIL_ICON_SHELL_SIZE = 24;
+
+function canOpenRailConnectionInNewTab(connection: Connection, hideTopTabButtons: boolean) {
+  return (
+    !hideTopTabButtons ||
+    connection.type === "local" ||
+    connection.type === "ssh" ||
+    connection.type === "telnet" ||
+    connection.type === "serial"
+  );
+}
 
 function loadConnectionRailOrder() {
   if (typeof window === "undefined") {
@@ -157,6 +176,7 @@ export function ActivityRail({
   onNavigateCustomModule: (destination: CustomModuleDestination) => void;
 }) {
   const { t, i18n } = useTranslation();
+  const macAppStoreBuild = useMacAppStoreBuild();
   const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
   const activeWorkspaceId = useWorkspaceStore((state) => state.activeWorkspaceId);
   const workspaces = useWorkspaceStore((state) => state.workspaces);
@@ -169,6 +189,7 @@ export function ActivityRail({
   const generalSettings = useWorkspaceStore((state) => state.generalSettings);
   const setGeneralSettings = useWorkspaceStore((state) => state.setGeneralSettings);
   const activateTab = useWorkspaceStore((state) => state.activateTab);
+  const setFocusedPane = useWorkspaceStore((state) => state.setFocusedPane);
   const openConnection = useWorkspaceStore((state) => state.openConnection);
   const openChildConnectionLayout = useWorkspaceStore(
     (state) => state.openChildConnectionLayout,
@@ -441,7 +462,9 @@ export function ActivityRail({
 
   const connectedRailItems = useMemo<ConnectedRailItem[]>(() => {
     const savedConnectionById = new Map(
-      savedConnections.map((connection) => [connection.id, connection]),
+      savedConnections
+        .filter((connection) => !macAppStoreBuild || connection.type !== "local")
+        .map((connection) => [connection.id, connection]),
     );
     const pinnedConnectionIds = generalSettings.pinnedConnectionIds ?? [];
     const pinnedConnectionIdSet = new Set(pinnedConnectionIds);
@@ -461,6 +484,7 @@ export function ActivityRail({
           const connection = tab.connection;
           if (
             !connection ||
+            (macAppStoreBuild && connection.type === "local") ||
             pinnedConnectionIdSet.has(connection.id) ||
             seenConnectionIds.has(connection.id) ||
             !activeSessionCounts[connection.id]
@@ -490,6 +514,7 @@ export function ActivityRail({
     connectionRailOrder,
     generalSettings.pinnedConnectionIds,
     generalSettings.showConnectedConnectionsInRail,
+    macAppStoreBuild,
     savedConnections,
     tabs,
   ]);
@@ -698,7 +723,37 @@ export function ActivityRail({
   function buildRailConnectionMenuItems(
     menu: RailConnectionMenuState,
   ): NativeContextMenuItem[] {
+    const remoteSurface = findRemoteDesktopSurface(
+      tabs,
+      menu.connection.id,
+      menu.tabId ?? activeTabId ?? undefined,
+    );
     return [
+      {
+        kind: "item",
+        label: t("workspace.newTab"),
+        disabled: !canOpenRailConnectionInNewTab(
+          menu.connection,
+          generalSettings.hideTopTabButtons,
+        ),
+        iconSvg: nativeMenuIcons.squarePlus,
+        action: () => {
+          onNavigate("workspace");
+          requestConnectionNewTab(menu.connection);
+        },
+      },
+      ...(menu.connection.type === "rdp" || menu.connection.type === "vnc"
+        ? [
+            {
+              kind: "item" as const,
+              label: t("remoteDesktop.fullscreen.enter"),
+              iconSvg: nativeMenuIcons.maximize,
+              disabled: !remoteSurface || !isRemoteFullscreenSurfaceReady(remoteSurface.surfaceId),
+              action: () => openRailConnectionFullscreen(menu),
+            },
+          ]
+        : []),
+      { kind: "separator" },
       {
         kind: "item",
         label: t(menu.pinned ? "connections.unpinFromRail" : "connections.pinToRail"),
@@ -710,6 +765,24 @@ export function ActivityRail({
         },
       },
     ];
+  }
+
+  function openRailConnectionFullscreen(menu: RailConnectionMenuState) {
+    setRailConnectionMenu(null);
+    const target = findRemoteDesktopSurface(
+      tabs,
+      menu.connection.id,
+      menu.tabId ?? activeTabId ?? undefined,
+    );
+    if (!target || !isRemoteFullscreenSurfaceReady(target.surfaceId)) {
+      return;
+    }
+    onNavigate("workspace");
+    activateTab(target.tabId);
+    if (target.paneId !== target.tabId) {
+      setFocusedPane(target.tabId, target.paneId);
+    }
+    requestAnimationFrame(() => requestRemoteFullscreen(target.surfaceId));
   }
 
   async function openRailConnectionMenu(menu: RailConnectionMenuState) {
@@ -1105,6 +1178,7 @@ export function ActivityRail({
                 void openRailConnectionMenu({
                   connection: item.connection,
                   pinned: item.pinned,
+                  tabId: item.tabId,
                   x: event.clientX,
                   y: event.clientY,
                 });
@@ -1140,6 +1214,46 @@ export function ActivityRail({
           onContextMenu={(event) => event.preventDefault()}
           role="menu"
         >
+          <button
+            className="terminal-menu-item"
+            disabled={
+              !canOpenRailConnectionInNewTab(
+                railConnectionMenu.connection,
+                generalSettings.hideTopTabButtons,
+              )
+            }
+            onClick={() => {
+              const connection = railConnectionMenu.connection;
+              setRailConnectionMenu(null);
+              onNavigate("workspace");
+              requestConnectionNewTab(connection);
+            }}
+            role="menuitem"
+            type="button"
+          >
+            <Plus size={14} />
+            {t("workspace.newTab")}
+          </button>
+          {railConnectionMenu.connection.type === "rdp" ||
+          railConnectionMenu.connection.type === "vnc" ? (
+            <button
+              className="terminal-menu-item"
+              disabled={(() => {
+                const target = findRemoteDesktopSurface(
+                  tabs,
+                  railConnectionMenu.connection.id,
+                  railConnectionMenu.tabId ?? activeTabId ?? undefined,
+                );
+                return !target || !isRemoteFullscreenSurfaceReady(target.surfaceId);
+              })()}
+              onClick={() => openRailConnectionFullscreen(railConnectionMenu)}
+              role="menuitem"
+              type="button"
+            >
+              <Maximize2 size={14} />
+              {t("remoteDesktop.fullscreen.enter")}
+            </button>
+          ) : null}
           <button
             className="terminal-menu-item"
             onClick={() => {
@@ -1185,6 +1299,7 @@ export function ActivityRail({
       </button>
       {showNewWorkspace ? (
         <NewWorkspaceDialog
+          macAppStoreBuild={macAppStoreBuild}
           workspaces={workspaces}
           onClose={() => setShowNewWorkspace(false)}
           onCreated={(workspace) => {
@@ -1201,6 +1316,7 @@ export function ActivityRail({
       ) : null}
       {workspaceToEdit ? (
         <NewWorkspaceDialog
+          macAppStoreBuild={macAppStoreBuild}
           workspace={workspaceToEdit}
           workspaces={workspaces}
           onClose={() => setWorkspaceToEdit(null)}

@@ -195,6 +195,9 @@ export function SftpWorkspace({
   const sftpSettings = useWorkspaceStore((state) => state.sftpSettings);
   const openNoteEditor = useWorkspaceStore((state) => state.openNoteEditor);
   const terminalSettings = useWorkspaceStore((state) => state.terminalSettings);
+  const macAppStoreBuild = useWorkspaceStore(
+    (state) => state.appModeInfo.macAppStoreBuild === true,
+  );
   const fileExplorerOpenMode = sftpSettings.fileExplorerOpenMode;
   const openFileViewerPath = useWorkspaceStore((state) => state.openFileViewerPath);
   const openLocalTerminalHere = useWorkspaceStore((state) => state.openLocalTerminalHere);
@@ -2496,7 +2499,7 @@ export function SftpWorkspace({
           onDeleteSelected={!isLocalDrivePicker ? handleDeleteLocalPath : undefined}
           onOpenFolder={openLocalFolder}
           onOpenFile={(fileName) => void handleOpenLocalFile(fileName)}
-          onOpenTerminalHere={() => void handleOpenLocalTerminalHere()}
+          onOpenTerminalHere={macAppStoreBuild ? undefined : () => void handleOpenLocalTerminalHere()}
           onOpenGit={gitRepo ? () => openGitBrowser(gitRepo.repoRoot, gitRepo.label) : undefined}
           onPathSubmit={(path) => void loadLocalDirectory(path)}
           recentPaths={recentLocalPaths}

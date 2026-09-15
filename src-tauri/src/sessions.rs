@@ -1510,6 +1510,11 @@ impl SessionManager {
         secrets: &secrets::Secrets,
         mut request: StartTerminalSessionRequest,
     ) -> Result<TerminalSessionStarted, String> {
+        if crate::app_store_files::ENABLED
+            && request.connection_type.trim().eq_ignore_ascii_case("local")
+        {
+            return Err(crate::app_store_files::LOCAL_TERMINAL_UNAVAILABLE_ERROR.to_string());
+        }
         resolve_terminal_socks_proxy(secrets, &mut request)?;
         // A Connection created before this launch carries only a key-file path.
         // Sandboxed Mac App Store builds need its stored grant re-opened before

@@ -21,7 +21,7 @@ is running.
 
 | Kind | i18n label | Notes |
 |------|------------|-------|
-| Local terminal | `connections.localShell` | Local PTY (ConPTY/`portable_pty`). |
+| Local terminal | `connections.localShell` | Local PTY (ConPTY/`portable_pty`). Available in direct-download macOS, Windows, and Linux builds; omitted from the Mac App Store build. |
 | SSH terminal | `connections.secureShell`, type label `connections.ssh` | Backed by the `NativeSsh` transport. May persist tmux launch prefs. |
 | Telnet | `connections.telnetShell`, type label `connections.telnet` | Password terminal. |
 | Serial | `connections.serialLine`, type label `connections.serial` | Serial line. The `connections.line` field is an editable combobox: type a device path, or use the chevron button (`connections.serialLineDetect`) to open a list of OS-detected ports (`list_serial_ports` — macOS `/dev/cu.*`, Linux `/dev/tty*`, Windows `COM*`). On macOS, use the `/dev/cu.*` callout path; `/dev/tty.*` dial-in paths are rejected because they can wait for carrier detection. Other macOS paths, such as PTY-backed virtual ports, stay available for manual entry. The list re-scans each time it opens (catches hot-plugged devices) and shows `connections.serialLineNoneDetected` when empty. A new Connection defaults to the first detected *device* port, skipping the built-in callouts macOS always publishes (Bluetooth, debug console, WLAN debug) because those open without error and then stay silent; when only those are detected, the platform-appropriate example is kept instead. A custom control is used instead of a native `<datalist>` because WKWebView (macOS) renders no dropdown affordance for it. The `connections.speed` field offers common baud-rate suggestions (`9600`, `19200`, `38400`, `115200`) while remaining editable for a custom positive integer. A Serial Session that ends on its own (adapter unplugged, read error) reports the same disconnected state as Telnet and SSH, so the Pane stops accepting dead keystrokes and offers `connections.reconnect`, and the Pane prints the reason it ended. On connect the Pane prints one `[serial <line> <speed> <framing> flow=<mode>]` banner reporting the settings the OS actually applied, so a speed or framing mismatch — the usual cause of a Serial Pane that shows only mojibake or nothing at all — is visible without guesswork. |
@@ -131,6 +131,12 @@ and is **not** saved.
 
 **Add Connection** uses the same form shape but persists to SQLite. The Type selector label is `connections.type`.
 
+The Mac App Store build omits Local terminal from Add Connection, Quick
+Connect, and the empty Workspace shortcuts. It also hides existing Local
+terminal Connections from the Connection Tree, Activity Rail, Workspace import
+picker, and Dashboard Connection widget. This filtering does not delete the
+saved Connection; exports and direct-download builds can still use it.
+
 The Add Connection browser's `connections.import.tileTitle` entry opens the batch `connections.import.title` dialog. Its `connections.import.fromFileTitle` tab accepts CSV/TSV/text, OpenSSH config (`~/.ssh/config`, `%USERPROFILE%\.ssh\config`, or equivalent content under another filename), RDCMan `.rdg`, MobaXterm `.mxtsessions`, and PuTTY `.reg`. An OpenSSH config produces one editable, initially selected preview row per concrete Host alias; wildcard-only Host sections supply inherited defaults but do not create rows. `IdentityFile` and `ProxyJump` survive the preview and are saved on imported SSH Connections. Unsupported SSH directives appear under `connections.import.warningsHeading`. Users may select any subset before the primary `connections.import.importCount` action creates the Connections in the chosen Workspace.
 
 When Add Connection, Quick Connect, or Connection Properties needs to write a
@@ -146,7 +152,7 @@ success or failure is a valid peer response. If no inbound SSH packet arrives
 for four further intervals, KKTerm treats the network path as dead rather than
 leaving a Session displayed as connected while input is silently lost.
 
-Local terminal Add/Edit Connection uses the `connections.shell` tabbed selector for the local shell choice and still stores the selected `localShell` value on the Connection. On macOS, a bare local shell (for example the default `/bin/zsh` or the Fish preset) starts with a login flag so it reads the same login startup files as the system Terminal — `~/.zprofile`, including Homebrew's `brew shellenv` — and therefore sees the same PATH, such as `/opt/homebrew/bin` for Homebrew-installed CLIs; a custom shell command line that already carries its own arguments is launched exactly as written.
+Outside the Mac App Store build, Local terminal Add/Edit Connection uses the `connections.shell` tabbed selector for the local shell choice and still stores the selected `localShell` value on the Connection. On macOS, a bare local shell (for example the default `/bin/zsh` or the Fish preset) starts with a login flag so it reads the same login startup files as the system Terminal — `~/.zprofile`, including Homebrew's `brew shellenv` — and therefore sees the same PATH, such as `/opt/homebrew/bin` for Homebrew-installed CLIs; a custom shell command line that already carries its own arguments is launched exactly as written.
 
 RDP Add/Edit Connection can inherit its administrative-session and local-resource choices from Settings or override them for that Connection. `settings.rdpAdministrativeSession` remains off by default and requests a server administration session; it does not elevate the selected account. Redirection also remains off by default. On Windows, enabling it initially redirects all local drives and `settings.rdpChooseDrives` opens a Sheet for choosing all drives or a selected subset; a temporarily unavailable saved drive remains visible and selected through `settings.rdpUnavailableDrive`. On macOS and Linux, `settings.rdpAddFolder` can add multiple folders, each exposed by IronRDP as a separate redirected drive; the Windows drive selector is not shown.
 
@@ -221,3 +227,5 @@ Each Connection in the tree shows a live status dot when it has one or more Sess
 ## Pinned Connections on the Activity Rail
 
 Pinning a Connection (`connections.pinToRail`) adds it to the `app.connectedConnectionsRail` group on the Activity Rail. Pinned icons survive launches; status dots reflect live Sessions. Unpinning is reversible — Connections themselves are not affected.
+
+Right-clicking a pinned or connected Activity Rail icon starts with `workspace.newTab`. For an RDP or VNC Connection, `remoteDesktop.fullscreen.enter` appears immediately below it and presents an existing live Session full screen; it is disabled until that Connection has a live remote-desktop surface. The remaining pin/unpin action follows after a separator.

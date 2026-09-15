@@ -12,7 +12,7 @@ import { invokeCommand } from "../../lib/tauri";
 import type { Connection, Workspace } from "../../types";
 import { ConnectionIconBackgroundPicker, ConnectionIconColorPicker } from "./connections/ConnectionIconBackgroundPicker";
 import { ConnectionIcon } from "./connections/ConnectionIcon";
-import { flattenConnections } from "./connections/treeUtils";
+import { flattenConnections, withoutLocalTerminalConnections } from "./connections/treeUtils";
 import { connectionTypeLabel } from "./connections/utils";
 import {
   filterWorkspaceImportConnections,
@@ -34,12 +34,14 @@ interface ImportGroup {
  * and is expected to refresh the Workspace list and activate it.
  */
 export function NewWorkspaceDialog({
+  macAppStoreBuild = false,
   workspace,
   workspaces,
   onClose,
   onCreated,
   onSaved,
 }: {
+  macAppStoreBuild?: boolean;
   workspace?: Workspace;
   workspaces: Workspace[];
   onClose: () => void;
@@ -75,7 +77,10 @@ export function NewWorkspaceDialog({
           const tree = await invokeCommand("list_connection_tree", {
             workspaceId: workspace.id,
           });
-          const connections = flattenConnections(tree);
+          const availableTree = macAppStoreBuild
+            ? withoutLocalTerminalConnections(tree)
+            : tree;
+          const connections = flattenConnections(availableTree);
           if (connections.length > 0) {
             groups.push({
               workspaceId: workspace.id,
@@ -97,7 +102,7 @@ export function NewWorkspaceDialog({
     return () => {
       disposed = true;
     };
-  }, [isEditMode, workspaces, t]);
+  }, [isEditMode, macAppStoreBuild, workspaces, t]);
 
   const canSave = useMemo(() => name.trim().length > 0 && !submitting, [name, submitting]);
   const selectedImportGroup = useMemo(

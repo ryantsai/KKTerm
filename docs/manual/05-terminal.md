@@ -194,16 +194,16 @@ Generic placeholders used in error / status surfaces: `terminal.connectLabel`, `
 
 ## Mac App Store local shell
 
-Local shell Sessions in the Mac App Store build inherit the App Sandbox from
-KKTerm itself, so the shell is confined the same way the app is. This is a
-platform restriction with no in-app setting; direct-download macOS builds,
-Windows, and Linux run local shells unconfined as before.
+The Mac App Store build does not offer Local terminal Connections or Sessions.
+A spawned child shell inherits KKTerm's App Sandbox. Allowing the PTY operation
+can make `/bin/zsh` start, but it cannot make the result equivalent to a native
+terminal: `$HOME` remains the app container, and the user's startup files,
+projects, and Homebrew tools remain inaccessible.
 
-Inside such a Session, `$HOME` is the app container rather than the real home
-folder, so the user's `~/.zshrc`, `~/.ssh`, and project directories are not
-readable, and `/etc/paths` and `/etc/zprofile` cannot be read to build the login
-PATH. Tools installed under `/opt/homebrew` or `/usr/local` cannot be executed.
-Commands that stay inside the container, and every remote SSH Session, work
-normally — remote shells run on the remote host and are not affected.
-
-Use the direct-download macOS build for unconfined local shell work.
+Local terminal creation and saved Local terminal Connections are hidden in the
+Store build, including the File Explorer open-terminal action. Existing saved
+Connections are retained rather than deleted, so they remain available to
+exports and to the direct-download macOS build. Remote SSH Sessions are
+unaffected because their shell and filesystem live on the remote host. A user
+who explicitly enables macOS Remote Login may also save an SSH Connection to
+`localhost`, subject to normal SSH authentication and macOS sharing settings.

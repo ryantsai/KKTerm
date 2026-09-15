@@ -140,8 +140,8 @@ test("SFTP open-terminal action is wired only on the local pane", async () => {
   );
   assert.match(
     sftpWorkspaceSource,
-    /const handleOpenLocalTerminalHere = async \(\) => \{[\s\S]*?openLocalTerminalHere\(localPath,[\s\S]*?<FilePane[\s\S]*?side="local"[\s\S]*?onOpenTerminalHere=\{\(\) => void handleOpenLocalTerminalHere\(\)\}/,
-    "the local pane should expose Open Terminal Here for the current local path",
+    /const handleOpenLocalTerminalHere = async \(\) => \{[\s\S]*?openLocalTerminalHere\(localPath,[\s\S]*?<FilePane[\s\S]*?side="local"[\s\S]*?onOpenTerminalHere=\{macAppStoreBuild \? undefined : \(\) => void handleOpenLocalTerminalHere\(\)\}/,
+    "the local pane should expose Open Terminal Here outside the Mac App Store build",
   );
   assert.doesNotMatch(
     sftpWorkspaceSource,

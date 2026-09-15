@@ -59,6 +59,11 @@ import {
 } from "./vncSurface";
 import { isCurrentVncFrame } from "./vncFrame";
 import { NoteToolbarButton } from "../../../notes/NoteToolbarButton";
+import {
+  REMOTE_FULLSCREEN_REQUEST_EVENT,
+  registerRemoteFullscreenSurface,
+  type RemoteFullscreenRequestDetail,
+} from "./remoteFullscreenRequest";
 
 const RDP_ESTABLISHING_STATE = 2;
 const RDP_PRE_CAPTURE_INTERVAL_MS = 800;
@@ -921,6 +926,25 @@ export function RemoteDesktopWorkspace({
     );
   };
   openFullscreenRef.current = openFullscreen;
+
+  useEffect(() => {
+    const unregisterSurface = registerRemoteFullscreenSurface(
+      tab.id,
+      () => Boolean(sessionIdRef.current && sessionStartedRef.current),
+    );
+    function handleRemoteFullscreenRequest(event: Event) {
+      const detail = (event as CustomEvent<RemoteFullscreenRequestDetail>).detail;
+      if (detail?.surfaceId === tab.id) {
+        openFullscreenRef.current();
+      }
+    }
+
+    window.addEventListener(REMOTE_FULLSCREEN_REQUEST_EVENT, handleRemoteFullscreenRequest);
+    return () => {
+      window.removeEventListener(REMOTE_FULLSCREEN_REQUEST_EVENT, handleRemoteFullscreenRequest);
+      unregisterSurface();
+    };
+  }, [tab.id]);
 
   useEffect(() => {
     if (!isTauriRuntime()) {

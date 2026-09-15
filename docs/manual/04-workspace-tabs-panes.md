@@ -53,6 +53,8 @@ Selecting the first Child Connection Tab creates one live group Tab owned by its
 
 Native Tauri context menu (`src/lib/nativeContextMenu.ts`). Items vary by Tab kind but typically include rename, close, and split actions. Tab drag/drop reorders Tabs.
 
+An RDP/VNC Tab uses the shared Connection context menu. `remoteDesktop.fullscreen.enter` appears immediately below `workspace.newTab`, targets the exact right-clicked Tab when the same Connection has multiple open Sessions, and is disabled until that Tab has a live remote-desktop surface.
+
 ## Panes
 
 A Tab subdivides into Panes. Each Pane is a single terminal surface or workspace view. Panes are arranged in a recursive split tree.

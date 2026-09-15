@@ -47,6 +47,17 @@ The empty-setting default grant is remembered separately from explicit folder
 settings. Other builds retain system-Downloads behavior. See
 `docs/MAC_APP_STORE.md` for packaging and signed-runtime acceptance checks.
 
+The Store build does not offer host-local terminal Sessions. A shell launched
+as KKTerm's child inherits App Sandbox, and a PTY-specific sandbox exception
+does not give that shell access to the user's home, startup files, projects, or
+Homebrew tools. React therefore filters Local terminal creation choices and
+saved Local terminal Connections from the Connection Tree, Activity Rail,
+Workspace import picker, Dashboard Connection widget, File Explorer's
+open-terminal action, and its Settings selector. The Rust Session and AI/MCP
+command boundaries reject Store-build local Session requests. Filtering is
+presentation-only: existing durable Local terminal Connections remain in SQLite
+for export or use by a direct-download build.
+
 ## Major Source Areas
 
 ### App Shell
