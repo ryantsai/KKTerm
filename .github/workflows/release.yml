@@ -127,6 +127,7 @@ jobs:
       APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      HOMEBREW_TAP_SSH_KEY: ${{ secrets.HOMEBREW_TAP_SSH_KEY }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -172,6 +173,13 @@ jobs:
           test -n "$APPLE_API_KEY_P8"
           printf '%s' "$APPLE_API_KEY_P8" > "$RUNNER_TEMP/AuthKey.p8"
           echo "APPLE_API_KEY_PATH=$RUNNER_TEMP/AuthKey.p8" >> "$GITHUB_ENV"
+
+      - name: Write Homebrew tap deploy key
+        run: |
+          test -n "$HOMEBREW_TAP_SSH_KEY"
+          printf '%s' "$HOMEBREW_TAP_SSH_KEY" > "$RUNNER_TEMP/homebrew-tap-deploy-key"
+          chmod 600 "$RUNNER_TEMP/homebrew-tap-deploy-key"
+          echo "HOMEBREW_TAP_SSH_KEY_PATH=$RUNNER_TEMP/homebrew-tap-deploy-key" >> "$GITHUB_ENV"
 
       - name: Build, notarize, and publish macOS assets
         run: zsh scripts/release-github-macos.sh --tag "${{ needs.release.outputs.tag }}"

@@ -8,6 +8,7 @@ TAG_NAME=""
 TARGET_TRIPLE="universal-apple-darwin"
 SKIP_BUILD=0
 SKIP_NOTES_PATCH=0
+SKIP_HOMEBREW=0
 ALLOW_DIRTY=0
 DRY_RUN=0
 
@@ -23,6 +24,7 @@ Options:
   -o, --output-dir <dir>   Artifact output directory. Default: artifacts.
       --skip-build         Upload an already-built DMG from the Tauri bundle dir.
       --skip-notes-patch   Upload assets without updating the GitHub Release body.
+      --skip-homebrew      Upload assets without publishing the Homebrew cask.
       --allow-dirty        Do not require a clean working tree.
       --dry-run            Print actions without building or uploading.
   -h, --help               Show this help.
@@ -305,6 +307,10 @@ while (( $# > 0 )); do
       SKIP_NOTES_PATCH=1
       shift
       ;;
+    --skip-homebrew)
+      SKIP_HOMEBREW=1
+      shift
+      ;;
     --allow-dirty)
       ALLOW_DIRTY=1
       shift
@@ -387,6 +393,7 @@ log "Source DMG:    $SOURCE_DMG"
 log "Source update: $SOURCE_UPDATER"
 log "DMG asset:     $DMG_PATH"
 log "Update asset:  $UPDATER_PATH"
+log "Homebrew tap:   ${HOMEBREW_TAP_REPO:-ryantsai/homebrew-tap}"
 
 if (( DRY_RUN )); then
   exit 0
@@ -415,6 +422,15 @@ write_latest_json "$LATEST_JSON_PATH" "$VERSION" "$REPO" "$TAG_NAME" "$UPDATER_N
 log "Upload macOS assets"
 gh release upload "$TAG_NAME" "$DMG_PATH" "$SHA_PATH" "$UPDATER_PATH" "$UPDATER_SIG_PATH" "$LATEST_JSON_PATH" --clobber
 rm -rf "$existing_latest_dir"
+
+if (( ! SKIP_HOMEBREW )); then
+  log "Publish Homebrew cask"
+  DMG_SHA256=$(awk '{ print $1 }' "$SHA_PATH")
+  zsh "$REPO_ROOT/scripts/update-homebrew-cask.sh" \
+    --version "$VERSION" \
+    --sha256 "$DMG_SHA256" \
+    --release-repo "$REPO"
+fi
 
 log "Dispatch Cloudflare release mirror"
 if ! gh workflow run mirror-release.yml --ref main -f "tag=$TAG_NAME"; then
