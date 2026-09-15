@@ -84,11 +84,13 @@ export function TerminalAttentionBadge(props: TerminalAttentionTarget) {
   ) : null;
 }
 
-export function TerminalAttentionDot(props: TerminalAttentionTarget) {
+export function TerminalAttentionBell(props: TerminalAttentionTarget) {
   const { t } = useTranslation();
   const active = useTerminalAttentionActive(props);
   return active ? (
-    <span className="terminal-attention-dot" role="img" aria-label={t("terminal.attentionPending")} />
+    <span className="terminal-attention-connection-bell" role="img" aria-label={t("terminal.attentionPending")}>
+      <Bell aria-hidden="true" size={11} strokeWidth={2} />
+    </span>
   ) : null;
 }
 

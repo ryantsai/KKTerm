@@ -2012,7 +2012,7 @@ pub(crate) fn remote_tmux_resume_command(
             else \
                 printf '\\r\\n[%s]\\r\\n' 'KKTerm: tmux session created'; \
             fi; \
-            {cd_command}exec tmux new-session -A -s {session} \\; set-option mouse on \\; set-option set-clipboard on \\; set-option history-limit {history_limit}; \
+            {cd_command}exec tmux new-session -A -s {session} \\; set-option mouse on \\; set-option set-clipboard on \\; set-option history-limit {history_limit} \\; set-option -t {session} bell-action any \\; set-option -t {session} visual-bell off; \
         else \
             {cd_command}printf '\\r\\n[%s]\\r\\n' 'KKTerm: tmux not found, using normal shell'; exec \"${{SHELL:-sh}}\" -i; \
         fi",
@@ -4230,6 +4230,16 @@ mod tests {
             !cmd.contains("[KKTerm: tmux session attached]"),
             "attached marker must not appear contiguously in the command source: {cmd}"
         );
+    }
+
+    #[test]
+    fn tmux_resume_command_forwards_bells_for_the_managed_session() {
+        for directory in [None, Some("/tmp")] {
+            let cmd = remote_tmux_resume_command(directory, "kkterm-test", 5_000);
+            assert!(cmd.contains("\\; set-option -t 'kkterm-test' bell-action any"));
+            assert!(cmd.contains("\\; set-option -t 'kkterm-test' visual-bell off"));
+            assert!(!cmd.contains("set-option -g"));
+        }
     }
 
     #[test]

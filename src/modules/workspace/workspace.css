@@ -494,16 +494,6 @@
   color: var(--amber);
 }
 
-.terminal-attention-dot {
-  display: inline-block;
-  flex: 0 0 auto;
-  width: 8px;
-  height: 8px;
-  background: var(--green);
-  border-radius: 999px;
-  animation: terminal-attention-pulse 1.4s ease-in-out infinite;
-}
-
 .terminal-attention-connection-bell {
   display: inline-flex;
   flex: 0 0 8px;
@@ -527,7 +517,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .terminal-attention-dot,
   .terminal-attention-connection-bell {
     animation: none;
   }
