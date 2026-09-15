@@ -196,8 +196,11 @@ function Initialize-Arm64BuildEnvironment {
         throw "Visual Studio ARM64 C++ build tools were not found."
     }
     $DevCmd = Join-Path $VsPath "Common7\Tools\VsDevCmd.bat"
-    $ClangDir = Join-Path $VsPath "VC\Tools\Llvm\bin"
-    if (-not (Test-Path -LiteralPath (Join-Path $ClangDir "clang-cl.exe"))) {
+    $ClangDir = @("VC\Tools\Llvm\x64\bin", "VC\Tools\Llvm\bin") |
+        ForEach-Object { Join-Path $VsPath $_ } |
+        Where-Object { Test-Path -LiteralPath (Join-Path $_ "clang-cl.exe") -PathType Leaf } |
+        Select-Object -First 1
+    if (-not $ClangDir) {
         throw "Visual Studio C++ Clang Compiler for Windows was not found."
     }
 
