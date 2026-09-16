@@ -1615,6 +1615,10 @@ fn model_context_limit_tracks_current_large_context_families() {
         (1_050_000, false)
     );
     assert_eq!(
+        model_context_limit_tokens("openai", "gpt-6-astra"),
+        (1_050_000, false)
+    );
+    assert_eq!(
         model_context_limit_tokens("openai", "gpt-5"),
         (400_000, false)
     );
@@ -1644,6 +1648,14 @@ fn model_context_limit_tracks_current_large_context_families() {
     );
     assert_eq!(
         model_context_limit_tokens("deepseek", "deepseek-v4-pro"),
+        (1_000_000, false)
+    );
+    assert_eq!(
+        model_context_limit_tokens("deepseek", "deepseek-flash"),
+        (1_000_000, false)
+    );
+    assert_eq!(
+        model_context_limit_tokens("opencode", "deepseek-v4.1-flash"),
         (1_000_000, false)
     );
     assert_eq!(
@@ -1678,8 +1690,12 @@ fn current_multimodal_model_families_accept_image_input() {
     assert!(!supports_image_input("openrouter", "qwen/qwen3.8-2.4t-a95b"));
     assert!(supports_image_input("ollama-cloud", "minimax-m3"));
     assert!(!supports_image_input("ollama-cloud", "minimax-m2.7"));
+    assert!(supports_image_input("openai", "gpt-6-astra"));
     assert!(!supports_image_input("zai", "glm-5.3"));
     assert!(!supports_image_input("deepseek", "deepseek-v4-flash"));
+    assert!(supports_image_input("deepseek", "deepseek-flash"));
+    assert!(supports_image_input("openrouter", "deepseek/deepseek-v4.1-flash"));
+    assert!(supports_image_input("opencode", "deepseek-v4.1-flash"));
     assert!(!supports_image_input("openrouter", "deepseek/deepseek-v4-pro"));
 }
 
@@ -1692,6 +1708,9 @@ fn curated_model_messages_keep_images_and_large_context_history() {
         ("deepseek", "deepseek-v4-flash-vision-exp"),
         ("openrouter", "deepseek/deepseek-v4-flash-vision-exp"),
         ("opencode", "deepseek-v4-flash-vision-exp"),
+        ("deepseek", "deepseek-flash"),
+        ("openrouter", "deepseek/deepseek-v4.1-flash"),
+        ("opencode", "deepseek-v4.1-flash"),
     ] {
         let earlier_turn = "earlier context ".repeat(60_000);
         let result = build_agent_messages_for_provider_with_usage(

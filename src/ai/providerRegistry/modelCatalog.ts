@@ -12,12 +12,13 @@ type AiProviderModelCatalog = Record<AiProviderKind, AiProviderModelCatalogEntry
 // Update this catalog when provider model recommendations change. Keep it to
 // chat/LLM models only: no image-generation, video-generation, audio, embedding,
 // moderation, or transcription models.
-// Provider availability and protocol review: docs/AI_PROVIDERS.md (2026-09-04).
+// Provider availability and protocol review: docs/AI_PROVIDERS.md (2026-09-16).
 export const AI_PROVIDER_MODEL_CATALOG: AiProviderModelCatalog = {
   openai: {
     defaultModel: "gpt-5.6-luna",
     defaultReasoningEffort: "high",
     models: [
+      { id: "gpt-6-astra", label: "GPT-6 Astra", recommended: true, supportsImageInput: true },
       { id: "gpt-5.6-luna", label: "GPT-5.6 Luna", recommended: true, supportsImageInput: true },
       { id: "gpt-5.6-terra", label: "GPT-5.6 Terra", recommended: true, supportsImageInput: true },
       { id: "gpt-5.6-sol", label: "GPT-5.6 Sol", recommended: true, supportsImageInput: true },
@@ -55,6 +56,7 @@ export const AI_PROVIDER_MODEL_CATALOG: AiProviderModelCatalog = {
     defaultReasoningEffort: "high",
     models: [
       { id: "openrouter/auto", label: "OpenRouter Auto", recommended: true, supportsImageInput: true },
+      { id: "openai/gpt-6-astra", label: "OpenAI GPT-6 Astra", recommended: true, supportsImageInput: true },
       { id: "openai/gpt-5.6-luna", label: "OpenAI GPT-5.6 Luna", recommended: true, supportsImageInput: true },
       { id: "openai/gpt-5.6-terra", label: "OpenAI GPT-5.6 Terra", recommended: true, supportsImageInput: true },
       { id: "openai/gpt-5.6-sol", label: "OpenAI GPT-5.6 Sol", recommended: true, supportsImageInput: true },
@@ -72,8 +74,9 @@ export const AI_PROVIDER_MODEL_CATALOG: AiProviderModelCatalog = {
       { id: "z-ai/glm-5.3", label: "GLM-5.3", recommended: true, supportsImageInput: false },
       { id: "z-ai/glm-5.3-flash", label: "GLM-5.3 Flash", recommended: true, supportsImageInput: true },
       { id: "z-ai/glm-5.2", label: "GLM-5.2", recommended: true, supportsImageInput: false },
-      { id: "deepseek/deepseek-v4-flash", label: "DeepSeek V4 Flash", recommended: true, supportsImageInput: false },
-      { id: "deepseek/deepseek-v4-flash-vision-exp", label: "DeepSeek V4 Flash Vision Exp", recommended: true, supportsImageInput: true },
+      { id: "deepseek/deepseek-v4.1-flash", label: "DeepSeek V4.1 Flash", recommended: true, supportsImageInput: true },
+      { id: "deepseek/deepseek-v4-flash", label: "DeepSeek V4 Flash", supportsImageInput: false },
+      { id: "deepseek/deepseek-v4-flash-vision-exp", label: "DeepSeek V4 Flash Vision Exp", supportsImageInput: true },
       { id: "qwen/qwen3.8-max", label: "Qwen3.8 Max", recommended: true, supportsImageInput: true },
       { id: "qwen/qwen3.8-flash", label: "Qwen3.8 Flash", recommended: true, supportsImageInput: true },
       { id: "nvidia/nemotron-3.5-lightning", label: "Nemotron 3.5 Lightning", recommended: true, supportsImageInput: false },
@@ -108,14 +111,13 @@ export const AI_PROVIDER_MODEL_CATALOG: AiProviderModelCatalog = {
     ],
   },
   deepseek: {
-    defaultModel: "deepseek-v4-flash",
+    defaultModel: "deepseek-flash",
     defaultReasoningEffort: "high",
     models: [
-      { id: "deepseek-v4-flash-vision-exp", label: "DeepSeek V4 Flash Vision Exp", recommended: true, supportsImageInput: true },
-      { id: "deepseek-v4-flash", label: "DeepSeek V4 Flash", recommended: true, supportsImageInput: false },
-      { id: "deepseek-v4-pro", label: "DeepSeek V4 Pro", recommended: true, supportsImageInput: false },
-      { id: "deepseek-chat", label: "DeepSeek Chat", supportsImageInput: false },
-      { id: "deepseek-reasoner", label: "DeepSeek Reasoner", supportsImageInput: false },
+      { id: "deepseek-flash", label: "DeepSeek V4.1 Flash", note: "Current multimodal model", recommended: true, supportsImageInput: true },
+      { id: "deepseek-v4-pro", label: "DeepSeek V4 Pro", note: "Retained performance tier", recommended: true, supportsImageInput: false },
+      { id: "deepseek-v4-flash", label: "DeepSeek V4 Flash", note: "Retired alias for V4.1 Flash", supportsImageInput: false },
+      { id: "deepseek-v4-flash-vision-exp", label: "DeepSeek V4 Flash Vision Exp", note: "Retired vision alias for V4.1 Flash", supportsImageInput: true },
     ],
   },
   gemini: {
@@ -148,6 +150,7 @@ export const AI_PROVIDER_MODEL_CATALOG: AiProviderModelCatalog = {
     defaultModel: "gpt-5.6-luna",
     defaultReasoningEffort: "high",
     models: [
+      { id: "gpt-6-astra", label: "GPT-6 Astra", recommended: true, supportsImageInput: true },
       { id: "gpt-5.6-luna", label: "GPT-5.6 Luna", recommended: true, supportsImageInput: true },
       { id: "gpt-5.6-terra", label: "GPT-5.6 Terra", recommended: true, supportsImageInput: true },
       { id: "gpt-5.6-sol", label: "GPT-5.6 Sol", recommended: true, supportsImageInput: true },
@@ -164,6 +167,7 @@ export const AI_PROVIDER_MODEL_CATALOG: AiProviderModelCatalog = {
     defaultModel: "openai/gpt-5.6-luna",
     defaultReasoningEffort: "high",
     models: [
+      { id: "openai/gpt-6-astra", label: "OpenAI GPT-6 Astra", recommended: true, supportsImageInput: true },
       { id: "openai/gpt-5.6-luna", label: "OpenAI GPT-5.6 Luna", recommended: true, supportsImageInput: true },
       { id: "anthropic/claude-fable-5-1", label: "Claude Fable 5.1", recommended: true, supportsImageInput: true },
       { id: "anthropic/claude-fable-5", label: "Claude Fable 5", recommended: true, supportsImageInput: true },
@@ -184,6 +188,7 @@ export const AI_PROVIDER_MODEL_CATALOG: AiProviderModelCatalog = {
     defaultReasoningEffort: "medium",
     models: [
       { id: "auto", label: "Auto", recommended: true, supportsImageInput: true },
+      { id: "gpt-6-astra", label: "GPT-6 Astra", recommended: true, supportsImageInput: true },
       { id: "gpt-5-mini", label: "GPT-5 Mini", recommended: true, supportsImageInput: true },
       { id: "gpt-5.6-luna", label: "GPT-5.6 Luna", recommended: true, supportsImageInput: true },
       { id: "gpt-5.6-terra", label: "GPT-5.6 Terra", recommended: true, supportsImageInput: true },
@@ -193,8 +198,6 @@ export const AI_PROVIDER_MODEL_CATALOG: AiProviderModelCatalog = {
       { id: "claude-fable-5", label: "Claude Fable 5", recommended: true, supportsImageInput: true },
       { id: "claude-sonnet-5", label: "Claude Sonnet 5", recommended: true, supportsImageInput: true },
       { id: "gemini-3.8-flash", label: "Gemini 3.8 Flash", recommended: true, supportsImageInput: true },
-      { id: "gemini-3.6-flash", label: "Gemini 3.6 Flash", recommended: true, supportsImageInput: true },
-      { id: "kimi-k2.7-code", label: "Kimi K2.7 Code", recommended: true, supportsImageInput: true },
       { id: "kimi-k3", label: "Kimi K3", recommended: true, supportsImageInput: true },
       { id: "claude-haiku-4.5", label: "Claude Haiku 4.5", supportsImageInput: true },
     ],
@@ -219,6 +222,7 @@ export const AI_PROVIDER_MODEL_CATALOG: AiProviderModelCatalog = {
       { id: "gpt-oss:120b-cloud", label: "gpt-oss 120B (cloud)", supportsImageInput: false },
       { id: "qwen3-coder:480b-cloud", label: "Qwen3 Coder 480B (cloud)", supportsImageInput: false },
       { id: "qwen3.5:122b-cloud", label: "Qwen3.5 122B (cloud)", supportsImageInput: true },
+      { id: "deepseek-v4.1-flash:cloud", label: "DeepSeek V4.1 Flash (cloud)", supportsImageInput: true },
     ],
   },
   "ollama-cloud": {
@@ -226,6 +230,7 @@ export const AI_PROVIDER_MODEL_CATALOG: AiProviderModelCatalog = {
     defaultReasoningEffort: "default",
     models: [
       { id: "gpt-oss:120b", label: "gpt-oss 120B", recommended: true, supportsImageInput: false },
+      { id: "deepseek-v4.1-flash", label: "DeepSeek V4.1 Flash", recommended: true, supportsImageInput: true },
       { id: "glm-5.3", label: "GLM-5.3", recommended: true, supportsImageInput: false },
       { id: "glm-5.3-flash", label: "GLM-5.3 Flash", recommended: true, supportsImageInput: true },
       { id: "kimi-k3", label: "Kimi K3", recommended: true, supportsImageInput: true },
@@ -266,11 +271,14 @@ export const AI_PROVIDER_MODEL_CATALOG: AiProviderModelCatalog = {
       { id: "kimi-k3", label: "Kimi K3", recommended: true, supportsImageInput: false },
       { id: "kimi-k2.7-code", label: "Kimi K2.7 Code", recommended: true, supportsImageInput: true },
       { id: "kimi-k2.6", label: "Kimi K2.6", recommended: true, supportsImageInput: false },
+      { id: "deepseek-v4.1-flash", label: "DeepSeek V4.1 Flash", recommended: true, supportsImageInput: true },
       { id: "deepseek-v4-flash", label: "DeepSeek V4 Flash", recommended: true, supportsImageInput: false },
       { id: "deepseek-v4-pro", label: "DeepSeek V4 Pro", recommended: true, supportsImageInput: false },
       { id: "deepseek-v4-flash-vision-exp", label: "DeepSeek V4 Flash Vision Exp", recommended: true, supportsImageInput: true },
       { id: "glm-5.3", label: "GLM-5.3", recommended: true, supportsImageInput: false },
       { id: "glm-5.3-flash", label: "GLM-5.3 Flash", recommended: true, supportsImageInput: true },
+      { id: "hy4-preview", label: "Hy4 preview", recommended: true, supportsImageInput: false },
+      { id: "hy3", label: "Hy3", recommended: true, supportsImageInput: false },
       { id: "longcat-2.0", label: "LongCat-2.0", recommended: true, supportsImageInput: false },
       { id: "mimo-v2.5-pro", label: "MiMo-V2.5 Pro", recommended: true, supportsImageInput: false },
       { id: "glm-5.2", label: "GLM-5.2", recommended: true, supportsImageInput: false },
@@ -284,6 +292,7 @@ export const AI_PROVIDER_MODEL_CATALOG: AiProviderModelCatalog = {
     defaultModel: "gpt-5.6-luna",
     defaultReasoningEffort: "high",
     models: [
+      { id: "gpt-6-astra", label: "GPT-6 Astra compatible", recommended: true, supportsImageInput: true },
       { id: "gpt-5.6-luna", label: "GPT-5.6 Luna compatible", recommended: true, supportsImageInput: true },
       { id: "claude-fable-5-1", label: "Claude Fable 5.1 compatible", recommended: true, supportsImageInput: true },
       { id: "claude-fable-5", label: "Claude Fable 5 compatible", recommended: true, supportsImageInput: true },
@@ -292,7 +301,7 @@ export const AI_PROVIDER_MODEL_CATALOG: AiProviderModelCatalog = {
       { id: "grok-4.6", label: "Grok 4.6 compatible", recommended: true, supportsImageInput: true },
       { id: "gemma4", label: "Gemma 4 compatible", recommended: true, supportsImageInput: true },
       { id: "gpt-5.5", label: "GPT-5.5 compatible", supportsImageInput: true },
-      { id: "deepseek-v4-flash", label: "DeepSeek V4 Flash compatible", supportsImageInput: false },
+      { id: "deepseek-flash", label: "DeepSeek V4.1 Flash compatible", supportsImageInput: true },
       { id: "llama-3.3-70b-instruct", label: "Llama 3.3 70B compatible", supportsImageInput: false },
     ],
   },

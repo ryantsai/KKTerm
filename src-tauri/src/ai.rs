@@ -8184,7 +8184,10 @@ fn model_context_limit_tokens(provider_kind: &str, model: &str) -> (usize, bool)
     if model.starts_with("gpt-5.4-mini") || model.starts_with("gpt-5.4-nano") {
         return (400_000, false);
     }
-    if model.starts_with("gpt-5.6") || model.starts_with("gpt-5.5") || model.starts_with("gpt-5.4")
+    if model.starts_with("gpt-5.6")
+        || model.starts_with("gpt-6")
+        || model.starts_with("gpt-5.5")
+        || model.starts_with("gpt-5.4")
     {
         return (1_050_000, false);
     }
@@ -8208,7 +8211,7 @@ fn model_context_limit_tokens(provider_kind: &str, model: &str) -> (usize, bool)
     if model.starts_with("gpt-3.5") {
         return (16_000, true);
     }
-    if model.starts_with("deepseek-v4") {
+    if model.starts_with("deepseek-flash") || model.starts_with("deepseek-v4") {
         return (1_000_000, false);
     }
     if model.starts_with("deepseek") || provider == "deepseek" {
@@ -8892,7 +8895,9 @@ fn supports_image_input(provider_kind: &str, model: &str) -> bool {
     let base_model = unprefixed_model.split(':').next().unwrap_or(unprefixed_model);
     if matches!(
         base_model,
-        "deepseek-v4-flash-vision-exp"
+        "deepseek-flash"
+            | "deepseek-v4.1-flash"
+            | "deepseek-v4-flash-vision-exp"
             | "glm-5.3-flash"
             | "qwen3.8"
             | "qwen3.8-27b"
@@ -8912,7 +8917,9 @@ fn supports_image_input(provider_kind: &str, model: &str) -> bool {
     }
 
     match provider_kind {
-        "openai" | "azure-openai" => normalized_model.starts_with("gpt-5"),
+        "openai" | "azure-openai" => {
+            normalized_model.starts_with("gpt-5") || normalized_model.starts_with("gpt-6")
+        }
         "grok" => {
             normalized_model.starts_with("grok-4") && !normalized_model.starts_with("grok-code")
         }
@@ -8937,6 +8944,7 @@ fn text_only_model(model: &str) -> bool {
 
 fn image_input_model(model: &str) -> bool {
     model.starts_with("gpt-5")
+        || model.starts_with("gpt-6")
         || model.starts_with("claude")
         || model.starts_with("gemini")
         || model.starts_with("grok-4")

@@ -1,7 +1,7 @@
 import type { AiProviderDefinition } from "./types";
 
 const IMAGE_INPUT_MODEL_PATTERNS = [
-  /^gpt-5(?:[.-]|$)/,
+  /^gpt-(?:5|6)(?:[.-]|$)/,
   /^claude(?:[.-]|$)/,
   /^gemini(?:[.-]|$)/,
   /^grok-4(?:[.-]|$)/,
@@ -62,7 +62,13 @@ export function modelSupportsImageInput(
   }
 
   const unprefixedModel = stripProviderPrefix(normalizedModel);
-  if (unprefixedModel.split(":")[0] === "deepseek-v4-flash-vision-exp") {
+  if (
+    matchesAny(unprefixedModel.split(":")[0], [
+      /^deepseek-v4-flash-vision-exp$/,
+      /^deepseek-flash$/,
+      /^deepseek-v4\.1-flash$/,
+    ])
+  ) {
     return true;
   }
 
@@ -79,7 +85,7 @@ export function modelSupportsImageInput(
   }
 
   if (provider.kind === "openai" || provider.kind === "azure-openai") {
-    return normalizedModel.startsWith("gpt-5");
+    return normalizedModel.startsWith("gpt-5") || normalizedModel.startsWith("gpt-6");
   }
 
   if (provider.kind === "grok") {

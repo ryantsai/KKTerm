@@ -45,7 +45,7 @@ if (defaultAiProviderSettings.reasoningEffort !== openAiDefinition.defaultReason
 const recommendedOpenAiModelIds = openAiDefinition.modelOptions
   .filter((model) => model.recommended)
   .map((model) => model.id);
-for (const modelId of ["gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol"]) {
+for (const modelId of ["gpt-6-astra", "gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol"]) {
   if (!recommendedOpenAiModelIds.includes(modelId)) {
     throw new Error(`OpenAI curated models should include ${modelId}.`);
   }
@@ -79,6 +79,7 @@ if (!grokDefinition.modelOptions.some((model) => model.id === "grok-4.6" && mode
 const openRouterDefinition = getAiProviderDefinition("openrouter");
 for (const modelId of [
   "openrouter/auto",
+  "openai/gpt-6-astra",
   "openai/gpt-5.6-luna",
   "anthropic/claude-fable-5",
   "anthropic/claude-opus-5",
@@ -87,11 +88,30 @@ for (const modelId of [
   "moonshotai/kimi-k3",
   "xiaomi/mimo-v2.5",
   "z-ai/glm-5.2",
-  "deepseek/deepseek-v4-flash",
+  "deepseek/deepseek-v4.1-flash",
 ]) {
   if (!openRouterDefinition.modelOptions.some((model) => model.id === modelId && model.recommended)) {
     throw new Error(`OpenRouter curated models should recommend ${modelId}.`);
   }
+}
+
+const deepseekDefinition = getAiProviderDefinition("deepseek");
+if (deepseekDefinition.defaultModel !== "deepseek-flash") {
+  throw new Error(`DeepSeek should default to DeepSeek V4.1 Flash, got: ${deepseekDefinition.defaultModel}`);
+}
+if (
+  !deepseekDefinition.modelOptions.some(
+    (model) => model.id === "deepseek-flash" && model.recommended && model.supportsImageInput,
+  )
+) {
+  throw new Error("DeepSeek curated models should recommend multimodal DeepSeek V4.1 Flash.");
+}
+if (
+  deepseekDefinition.modelOptions.some(
+    (model) => model.id === "deepseek-chat" || model.id === "deepseek-reasoner",
+  )
+) {
+  throw new Error("DeepSeek curated models should drop the discontinued legacy aliases.");
 }
 
 const geminiDefinition = getAiProviderDefinition("gemini");
