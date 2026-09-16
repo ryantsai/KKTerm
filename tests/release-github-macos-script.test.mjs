@@ -13,6 +13,10 @@ const packageMacosScript = await readFile(
   new URL("../scripts/package-macos.sh", import.meta.url),
   "utf8",
 );
+const homebrewScript = await readFile(
+  new URL("../scripts/update-homebrew-cask.sh", import.meta.url),
+  "utf8",
+);
 
 test("macOS release script is a native zsh GitHub release asset uploader", () => {
   assert.match(script, /^#!\/usr\/bin\/env zsh/);
@@ -125,4 +129,26 @@ test("macOS release script notarizes and staples the final DMG before checksummi
   assert.ok(uploadIndex !== -1, "release flow should upload the copied DMG");
   assert.ok(notarizeIndex < checksumIndex, "notarization must happen before checksum generation");
   assert.ok(checksumIndex < uploadIndex, "checksum must happen before upload");
+});
+
+test("macOS release publishes the checksummed DMG through the Homebrew tap", () => {
+  assert.match(script, /Publish Homebrew cask/);
+  assert.match(script, /scripts\/update-homebrew-cask\.sh/);
+  assert.match(script, /--version "\$VERSION"/);
+  assert.match(script, /--sha256 "\$DMG_SHA256"/);
+  assert.match(script, /--skip-homebrew/);
+
+  const uploadIndex = script.indexOf('gh release upload "$TAG_NAME"');
+  const homebrewIndex = script.indexOf('zsh "$REPO_ROOT/scripts/update-homebrew-cask.sh"');
+  assert.ok(uploadIndex < homebrewIndex, "the DMG must be published before the cask references it");
+});
+
+test("Homebrew publisher writes, validates, commits, and pushes the KKTerm cask", () => {
+  assert.match(homebrewScript, /^#!\/usr\/bin\/env zsh/);
+  assert.match(homebrewScript, /Casks\/kkterm\.rb/);
+  assert.match(homebrewScript, /brew style --cask "\$cask_path"/);
+  assert.match(homebrewScript, /brew audit --cask "\$temporary_tap\/kkterm"/);
+  assert.match(homebrewScript, /git -C "\$tap_dir" commit -m "kkterm \$VERSION"/);
+  assert.match(homebrewScript, /git -C "\$tap_dir" push origin HEAD:main/);
+  assert.match(homebrewScript, /HOMEBREW_TAP_SSH_KEY_PATH/);
 });

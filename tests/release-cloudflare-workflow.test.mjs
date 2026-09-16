@@ -44,4 +44,6 @@ test("main release workflow orchestrates all platform release jobs in order", as
   assert.match(source, /release-macos:[\s\S]*timeout-minutes:\s*180/);
   assert.doesNotMatch(source, /base64\s+--decode/);
   assert.match(source, /security list-keychains/);
+  assert.match(source, /HOMEBREW_TAP_SSH_KEY/);
+  assert.match(source, /HOMEBREW_TAP_SSH_KEY_PATH/);
 });
