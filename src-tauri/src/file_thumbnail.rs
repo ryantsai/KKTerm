@@ -3,7 +3,6 @@ use base64::Engine;
 use image::{DynamicImage, ImageDecoder, ImageReader};
 use sha2::{Digest, Sha256};
 use std::{fs, io::{Cursor, Read}, path::Path};
-use tauri::Manager;
 
 const EDGE: u32 = 128;
 const MAX_SOURCE: u64 = 32 * 1024 * 1024;
@@ -14,7 +13,7 @@ static WORKERS: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(2);
 pub async fn read_local_thumbnail(app: tauri::AppHandle, path: String) -> Option<String> {
     // Bound actual blocking work, including callers outside the browser queue.
     let permit = WORKERS.acquire().await.ok()?;
-    let cache = app.path().app_cache_dir().ok()?.join("file-thumbnails-v1");
+    let cache = crate::app_paths::cache_dir(&app).ok()?.join("file-thumbnails-v1");
     let result = tauri::async_runtime::spawn_blocking(move || thumbnail(Path::new(&path), &cache))
         .await.ok().flatten();
     drop(permit);

@@ -248,6 +248,8 @@ export const SETTINGS_SEARCH_KEYS: Record<SettingsSectionId, readonly string[]> 
     "settings.screenshotsFormatPng", "settings.screenshotsFormatJpeg",
     "settings.screenshotsVideoFormat", "settings.screenshotsVideoFormatMp4",
     "settings.screenshotsVideoFormatWebm", "settings.screenshotsVideoFormatGif",
+    "settings.screenshotsRecording", "settings.screenshotsVideoEncoder",
+    "settings.screenshotsVideoEncoderGpu", "settings.screenshotsVideoEncoderCpu",
     "settings.screenshotsQuality", "settings.useDirectxScreenCapture",
     "settings.screenshotsBrowse", "settings.screenshotsOpenInEditorAfterCapture",
     "settings.screenshotsShortcuts", "settings.screenshotsDefaults",
