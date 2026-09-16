@@ -1,7 +1,8 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment -- the raymarched
-// Schwarzschild black hole shader/effect below is preserved verbatim from its
-// source (untyped JS raymarch math + a small effect factory); full typing is
-// out of scope, matching the convention used by fujiBackground.tsx.
+// The raymarched Schwarzschild black hole shader/effect below is preserved
+// verbatim from its source (untyped JS raymarch math + a small effect
+// factory); full typing is out of scope, matching the convention used by
+// fujiBackground.tsx.
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment -- see above
 // @ts-nocheck
 import * as THREE from "three";
 import { WebGLBackgroundCanvas, type WebGLBackgroundHandle } from "./webglBackgroundHost";
@@ -498,11 +499,11 @@ function createSchwarzschildGeodesicBlackHoleEffect({
   let height = 2;
   let frame = 0;
   let debugMode = "final";
-  let sceneTarget = createRenderTarget(width, height, targetType);
-  let halfA = createRenderTarget(width, height, targetType);
-  let halfB = createRenderTarget(width, height, targetType);
-  let quarterA = createRenderTarget(width, height, targetType);
-  let quarterB = createRenderTarget(width, height, targetType);
+  const sceneTarget = createRenderTarget(width, height, targetType);
+  const halfA = createRenderTarget(width, height, targetType);
+  const halfB = createRenderTarget(width, height, targetType);
+  const quarterA = createRenderTarget(width, height, targetType);
+  const quarterB = createRenderTarget(width, height, targetType);
 
   const debugModes = new Map([
     ["final", 0],

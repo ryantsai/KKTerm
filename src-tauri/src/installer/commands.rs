@@ -1094,6 +1094,14 @@ fn terminal_launch_affordance(tool_id: &str) -> Option<TerminalLaunchAffordance>
                 ],
             })
         }
+        "herdr" => plain(
+            "herdr",
+            &[
+                "herdr  —  open the agent terminal runtime",
+                "herdr update  —  update to the latest release",
+                "herdr --help  —  list commands and flags",
+            ],
+        ),
         _ => None,
     }
 }
@@ -1216,6 +1224,12 @@ fn gui_launch_affordance(tool_id: &str) -> Vec<GuiLaunchCandidate> {
         "bruno" => vec![
             Path("%LOCALAPPDATA%\\Programs\\Bruno\\Bruno.exe"),
             Path("%ProgramFiles%\\Bruno\\Bruno.exe"),
+        ],
+        // electron-builder installs under the package name (`t3code`) while
+        // the executable follows the product name (`T3 Code (Alpha)`).
+        "t3-code" => vec![
+            Path("%LOCALAPPDATA%\\Programs\\t3code\\T3 Code (Alpha).exe"),
+            Path("%LOCALAPPDATA%\\Programs\\t3code\\T3 Code.exe"),
         ],
         "claude-desktop" => vec![Path("%LOCALAPPDATA%\\AnthropicClaude\\claude.exe")],
         "codex-desktop" => vec![Appx("OpenAI.Codex")],
@@ -3498,6 +3512,7 @@ mod tests {
             "psmux",
             "hermes-agent",
             "openclaw",
+            "herdr",
         ] {
             let affordance = terminal_launch_affordance(tool_id)
                 .unwrap_or_else(|| panic!("`{tool_id}` should expose a terminal launcher"));
@@ -3558,6 +3573,7 @@ mod tests {
             "blender",
             "obs-studio",
             "7zip",
+            "t3-code",
         ] {
             assert!(
                 !gui_launch_affordance(tool_id).is_empty(),

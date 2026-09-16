@@ -53,6 +53,8 @@ for (const { id, asset } of [
   { id: "oh-my-posh", asset: "oh-my-posh.svg" },
   { id: "bentopdf", asset: "bentopdf.svg" },
   { id: "bun", asset: "bun.svg" },
+  { id: "herdr", asset: "herdr.svg" },
+  { id: "t3-code", asset: "t3-code.svg" },
   { id: "openflowkit", asset: "openflowkit.svg" },
   { id: "drawio", asset: "drawio.svg" },
   { id: "krita", asset: "krita.svg" },

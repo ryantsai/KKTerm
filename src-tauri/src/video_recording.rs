@@ -542,6 +542,7 @@ pub fn start(
     request: StartVideoRecordingRequest,
     folder_path: &str,
     format: &str,
+    video_encoder: &str,
 ) -> Result<VideoRecordingSession, String> {
     let frame_rate = capture_frame_rate(request.frame_rate, format)?;
     let frame_rate_arg = frame_rate.to_string();
@@ -590,7 +591,7 @@ pub fn start(
             }),
         );
         if format == "mp4" {
-            match windows::NativeRecording::start(&rect, frame_rate, &path) {
+            match windows::NativeRecording::start(&rect, frame_rate, &path, video_encoder == "gpu") {
                 Ok(recording) => backend = Some(RecordingBackend::Windows(recording)),
                 Err(error) => {
                     eprintln!("Native video startup unavailable; falling back to GDI: {error}");
@@ -658,12 +659,16 @@ pub fn start(
 
     if backend.is_none() {
         if format == "mp4" {
-            let encoder = select_h264_encoder(
-                &program,
-                width.unwrap_or(1920),
-                height.unwrap_or(1080),
-                frame_rate,
-            );
+            let encoder = if video_encoder == "gpu" {
+                select_h264_encoder(
+                    &program,
+                    width.unwrap_or(1920),
+                    height.unwrap_or(1080),
+                    frame_rate,
+                )
+            } else {
+                "libx264"
+            };
             add_mp4_encoding_args(&mut command, encoder);
         } else {
             add_encoding_args(&mut command, format)?;

@@ -115,7 +115,7 @@ export function ScreenshotsSettings() {
 
       {macAppStoreBuild ? null : (
       <fieldset className="settings-subsection settings-fieldset">
-        <legend>{t("settings.screenshotsVideoFormat")}</legend>
+        <legend data-tutorial-id="settings.screenshotsRecording">{t("settings.screenshotsRecording")}</legend>
         <div>
           <p className="field-hint">{t("settings.screenshotsVideoFormatHint")}</p>
         </div>
@@ -133,6 +133,20 @@ export function ScreenshotsSettings() {
               <option value="webm">{t("settings.screenshotsVideoFormatWebm")}</option>
               <option value="gif">{t("settings.screenshotsVideoFormatGif")}</option>
             </select>
+          </label>
+          <label>
+            <span>{t("settings.screenshotsVideoEncoder")}</span>
+            <select
+              value={draft?.videoEncoder ?? "gpu"}
+              disabled={draft?.videoFormat !== "mp4"}
+              onChange={(event) => update({
+                videoEncoder: event.currentTarget.value === "gpu" ? "gpu" : "cpu",
+              })}
+            >
+              <option value="gpu">{t("settings.screenshotsVideoEncoderGpu")}</option>
+              <option value="cpu">{t("settings.screenshotsVideoEncoderCpu")}</option>
+            </select>
+            <small>{t("settings.screenshotsVideoEncoderHint")}</small>
           </label>
         </div>
       </fieldset>

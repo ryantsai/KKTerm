@@ -68,6 +68,10 @@ limited to small app-identification assets.
   simple geometric/text logo from `https://antigravity.google/`, cross-checked
   against Wikimedia Commons `File:Google Antigravity Logo.svg` (PD textlogo,
   trademark notice applies).
+- `herdr.svg`: `herdrdev/herdr`, `assets/logo.svg`, Apache License 2.0
+  (copyright Herdr, Inc.; trademark notice applies).
+- `t3-code.svg`: `pingdotgg/t3code`, `assets/prod/logo.svg`, MIT License
+  (copyright T3 Tools; trademark notice applies).
 - `bentopdf.svg`: `goodtab/bentopdf`,
   `public/images/favicon.svg`, Apache License 2.0 (copyright Abdullah Alam;
   trademark notice applies).

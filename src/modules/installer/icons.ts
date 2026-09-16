@@ -35,6 +35,7 @@ import git from "../../assets/installer-icons/git.svg?url";
 import github from "../../assets/installer-icons/github.svg?url";
 import googleChrome from "../../assets/installer-icons/google-chrome.svg?url";
 import grok from "../../assets/installer-icons/grok.svg?url";
+import herdr from "../../assets/installer-icons/herdr.svg?url";
 import hermesAgent from "../../assets/installer-icons/hermes-agent.svg?url";
 import inkscape from "../../assets/installer-icons/inkscape.svg?url";
 import keepassxc from "../../assets/installer-icons/keepassxc.svg?url";
@@ -63,6 +64,7 @@ import rustdesk from "../../assets/installer-icons/rustdesk.svg?url";
 import scrcpy from "../../assets/installer-icons/scrcpy.svg?url";
 import sharex from "../../assets/installer-icons/sharex.svg?url";
 import sysinternalsSuite from "../../assets/installer-icons/sysinternals-suite.png?url";
+import t3Code from "../../assets/installer-icons/t3-code.svg?url";
 import tailscale from "../../assets/installer-icons/tailscale.svg?url";
 import vlc from "../../assets/installer-icons/vlc.svg?url";
 import vscode from "../../assets/installer-icons/vscode.png?url";
@@ -106,6 +108,8 @@ const RECIPE_ICON_URLS: Record<string, string> = {
   opencode,
   rustup: rust,
   bun,
+  herdr,
+  "t3-code": t3Code,
   "codex-desktop": codex,
   "claude-desktop": anthropic,
   "hermes-agent": hermesAgent,

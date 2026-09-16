@@ -104,6 +104,7 @@ const SETTINGS_TUTORIAL_TARGET_SECTIONS: Record<string, SettingsSectionId> = {
   "settings.screenshotsFolder": "screenshots-settings",
   "settings.useDirectxScreenCapture": "screenshots-settings",
   "settings.screenshotsFormat": "screenshots-settings",
+  "settings.screenshotsRecording": "screenshots-settings",
   "settings.screenshotsShortcuts": "screenshots-settings",
   "settings.shortcuts": "shortcuts-settings",
   "settings.proxy": "proxy-settings",

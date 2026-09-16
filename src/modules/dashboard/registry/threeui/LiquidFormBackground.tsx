@@ -74,7 +74,7 @@ export function LiquidFormBackground({ className = "", ...props }: LiquidFormBac
       frame = visible && !document.hidden ? requestAnimationFrame(render) : 0;
     };
     const resizeObserver = new ResizeObserver(resize);
-    const intersection = new IntersectionObserver(([entry]) => { visible = entry?.isIntersecting ?? true; if (visible && !frame) frame = requestAnimationFrame(render); if (!visible && frame) cancelAnimationFrame(frame), frame = 0; });
+    const intersection = new IntersectionObserver(([entry]) => { visible = entry?.isIntersecting ?? true; if (visible && !frame) frame = requestAnimationFrame(render); if (!visible && frame) { cancelAnimationFrame(frame); frame = 0; } });
     resizeObserver.observe(host); intersection.observe(host); canvas.addEventListener("pointermove", pointer, { passive: true }); resize(); frame = requestAnimationFrame(render);
     return () => { if (frame) cancelAnimationFrame(frame); resizeObserver.disconnect(); intersection.disconnect(); canvas.removeEventListener("pointermove", pointer); gl.deleteBuffer(buffer); gl.deleteShader(vertex); gl.deleteShader(fragment); gl.deleteProgram(program); };
   }, []);

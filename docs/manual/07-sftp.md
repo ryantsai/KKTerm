@@ -34,6 +34,17 @@ Startup states:
 
 ## Layout
 
+Local image files show lazy thumbnails in `sftp.listView` and `sftp.galleryView`,
+including the local pane of SFTP/FTP. Only visible items request previews; scrolling
+away cancels queued work. Windows first reuses Explorer's thumbnail cache through
+the Shell API. PNG, JPEG, GIF (first frame), and WebP have a bounded local decoder
+fallback on all platforms; other recognized image formats depend on a Windows
+cache hit. Unavailable, oversized, and unreadable previews keep their file icons.
+Cloud placeholders are not downloaded to generate previews. Remote files keep
+their file icons and do not trigger thumbnail transfers. Refreshing the directory
+invalidates in-memory previews; generated previews use a disposable, bounded app
+cache keyed by path, size, and modification time.
+
 The browser follows the KKTerm design language (see [DESIGN_LANGUAGE.md](../DESIGN_LANGUAGE.md)): a symmetric dual-pane file manager with a center transfer-arrow gutter and a collapsible transfer-activity bar at the bottom. A single-row titlebar shows, left to right: a transfer glyph + the protocol kind (`sftp.protocolSftp` / `sftp.protocolFtp` / `sftp.protocolFiles`) and, for SSH-toolbar popups, a subtle protocol change button (`sftp.protocolSelectorAria`); the `user@host` centered; and the right-side actions (the `sftp.terminal` action for standalone panes, a compact connection status `sftp.connected` / `sftp.connecting` / `sftp.notConnected`, and a `common.close` button shown for the SFTP popup and for standalone SFTP / File Explorer Tabs whenever `settings.hideTopTabButtons` hides the top Tab Strip's per-Tab close). When a connection fails, the titlebar status shows `sftp.notConnected` (red). FTPS fallback uses the standard Status Bar warning notice. FTP connection errors open an app-owned dialog; transfer failures remain in the transfer activity history. Plain FTP keeps only the compact `sftp.plainFtpWarning` titlebar chip.
 
 File Explorer Connections (`localFiles`) reuse this browser shell as a single-pane local browser: the titlebar shows the saved Connection name, and only the local file pane is shown, with no remote pane, center transfer gutter, connection-status pill, or bottom Transfer Activity bar.

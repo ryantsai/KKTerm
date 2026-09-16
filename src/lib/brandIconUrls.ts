@@ -27,6 +27,7 @@ import gitIcon from "../assets/installer-icons/git.svg?url";
 import githubIcon from "../assets/installer-icons/github.svg?url";
 import googleChromeIcon from "../assets/installer-icons/google-chrome.svg?url";
 import grokIcon from "../assets/installer-icons/grok.svg?url";
+import herdrIcon from "../assets/installer-icons/herdr.svg?url";
 import hermesAgentIcon from "../assets/installer-icons/hermes-agent.svg?url";
 import inkscapeIcon from "../assets/installer-icons/inkscape.svg?url";
 import keepassxcIcon from "../assets/installer-icons/keepassxc.svg?url";
@@ -56,6 +57,7 @@ import rustDeskIcon from "../assets/installer-icons/rustdesk.svg?url";
 import scrcpyIcon from "../assets/installer-icons/scrcpy.svg?url";
 import shareXIcon from "../assets/installer-icons/sharex.svg?url";
 import sysinternalsSuiteIcon from "../assets/installer-icons/sysinternals-suite.png?url";
+import t3CodeIcon from "../assets/installer-icons/t3-code.svg?url";
 import tailscaleIcon from "../assets/installer-icons/tailscale.svg?url";
 import vlcIcon from "../assets/installer-icons/vlc.svg?url";
 import vscodeIcon from "../assets/installer-icons/vscode.png?url";
@@ -101,6 +103,7 @@ const brandIconUrlById: Record<string, string> = {
   git: gitIcon,
   "github-cli": githubIcon,
   "grok-build": grokIcon,
+  herdr: herdrIcon,
   "hermes-agent": hermesAgentIcon,
   "hermes-desktop": hermesAgentIcon,
   inkscape: inkscapeIcon,
@@ -126,6 +129,7 @@ const brandIconUrlById: Record<string, string> = {
   scrcpy: scrcpyIcon,
   sharex: shareXIcon,
   "sysinternals-suite": sysinternalsSuiteIcon,
+  "t3-code": t3CodeIcon,
   tailscale: tailscaleIcon,
   vlc: vlcIcon,
   vscode: vscodeIcon,

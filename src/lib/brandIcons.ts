@@ -239,6 +239,11 @@ export const BRAND_ICON_ENTRIES: BrandIconEntry[] = [
     keywords: ["github", "gh", "git", "code", "developer", "command", "cli"],
   },
   {
+    id: "herdr",
+    label: "Herdr",
+    keywords: ["herdr", "terminal", "runtime", "agent", "coding", "session"],
+  },
+  {
     id: "hermes-agent",
     label: "Hermes Agent",
     keywords: ["hermes", "agent", "ai", "assistant", "bot"],
@@ -357,6 +362,11 @@ export const BRAND_ICON_ENTRIES: BrandIconEntry[] = [
     id: "sysinternals-suite",
     label: "Sysinternals Suite",
     keywords: ["sysinternals", "microsoft", "windows", "system", "utility"],
+  },
+  {
+    id: "t3-code",
+    label: "T3 Code",
+    keywords: ["t3", "t3 code", "t3code", "agent", "coding", "desktop"],
   },
   {
     id: "tailscale",

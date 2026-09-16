@@ -1627,6 +1627,7 @@ export interface ScreenshotSettings {
   folderPath: string;
   format: ScreenshotFormat;
   videoFormat: VideoFormat;
+  videoEncoder: "cpu" | "gpu";
   quality: number;
   captureMode: ScreenshotCaptureDelivery;
   openInEditorAfterCapture: boolean;

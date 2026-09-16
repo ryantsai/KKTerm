@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-08-13",
+  "generatedAt": "2026-09-16",
   "recipes": [
     {
       "id": "git",
@@ -1642,6 +1642,102 @@
         "pt-BR": "Runtime e kit de ferramentas JavaScript tudo-em-um com empacotador, executor de testes e gerenciador de pacotes compatível com Node.js.",
         "vi": "Runtime và bộ công cụ JavaScript tất cả trong một với trình đóng gói, trình chạy kiểm thử và trình quản lý gói tương thích Node.js.",
         "ko": "번들러, 테스트 러너, Node.js 호환 패키지 관리자를 갖춘 올인원 JavaScript 런타임 및 도구 키트입니다."
+      }
+    },
+    {
+      "id": "herdr",
+      "name": "Herdr",
+      "section": "development",
+      "descriptionEn": "Terminal runtime for coding agents. Keeps agent sessions alive across disconnects so you can reattach from any terminal or over SSH.",
+      "category": "development",
+      "icon": "Terminal",
+      "needs": [
+        "winget"
+      ],
+      "homepage": "https://herdr.dev/",
+      "releaseNotesUrl": "https://github.com/herdrdev/herdr/releases",
+      "detection": {
+        "displayNames": [
+          "herdr"
+        ]
+      },
+      "provider": {
+        "kind": "winget",
+        "id": "Herdr.Herdr.Preview"
+      },
+      "downloadProvider": {
+        "kind": "downloadInstaller",
+        "url": "https://herdr.dev/install.ps1",
+        "fileName": "herdr-install.ps1"
+      },
+      "options": [
+        "provider"
+      ],
+      "descriptionLocales": {
+        "de": "Terminal-Laufzeitumgebung für Coding-Agents. Hält Agent-Sitzungen über Verbindungsabbrüche hinweg am Leben, sodass du dich von jedem Terminal oder über SSH wieder verbinden kannst.",
+        "it": "Runtime da terminale per agenti di programmazione. Mantiene attive le sessioni degli agenti anche dopo una disconnessione, così puoi riconnetterti da qualsiasi terminale o via SSH.",
+        "fr": "Runtime de terminal pour les agents de codage. Maintient les sessions des agents actives malgré les déconnexions, pour vous reconnecter depuis n'importe quel terminal ou via SSH.",
+        "zh-CN": "面向编程代理的终端运行时。断开连接后仍保持代理会话存活，可从任意终端或通过 SSH 重新接入。",
+        "zh-TW": "專為程式開發代理設計的終端機執行環境。連線中斷後仍保持代理工作階段存活，可從任何終端機或透過 SSH 重新接回。",
+        "ja": "コーディングエージェント向けのターミナルランタイム。接続が切れてもエージェントのセッションを維持し、任意のターミナルまたは SSH から再接続できます。",
+        "es": "Entorno de ejecución de terminal para agentes de programación. Mantiene vivas las sesiones de los agentes tras las desconexiones, para reconectarse desde cualquier terminal o por SSH.",
+        "es-MX": "Entorno de ejecución de terminal para agentes de programación. Mantiene vivas las sesiones de los agentes tras las desconexiones, para reconectarse desde cualquier terminal o por SSH.",
+        "th": "รันไทม์เทอร์มินัลสำหรับเอเจนต์เขียนโค้ด รักษาเซสชันของเอเจนต์ให้คงอยู่แม้การเชื่อมต่อขาดหาย และเชื่อมต่อกลับได้จากเทอร์มินัลใดก็ได้หรือผ่าน SSH",
+        "id": "Runtime terminal untuk agen pengodean. Menjaga sesi agen tetap hidup saat koneksi terputus sehingga dapat tersambung kembali dari terminal mana pun atau melalui SSH.",
+        "pt-BR": "Runtime de terminal para agentes de programação. Mantém as sessões dos agentes vivas após desconexões, para reconectar de qualquer terminal ou via SSH.",
+        "vi": "Môi trường chạy terminal cho các tác nhân lập trình. Giữ các phiên tác nhân tồn tại qua những lần mất kết nối để bạn có thể kết nối lại từ bất kỳ terminal nào hoặc qua SSH.",
+        "ko": "코딩 에이전트용 터미널 런타임입니다. 연결이 끊겨도 에이전트 세션을 유지하여 어떤 터미널이나 SSH에서든 다시 연결할 수 있습니다."
+      }
+    },
+    {
+      "id": "t3-code",
+      "name": "T3 Code",
+      "section": "development",
+      "descriptionEn": "Open-source control surface for coding agents. Orchestrates Claude Code, Codex, OpenCode, and other agent CLIs from one desktop app, with web and mobile clients.",
+      "category": "development",
+      "icon": "MessagesSquare",
+      "needs": [
+        "winget"
+      ],
+      "homepage": "https://t3.codes/",
+      "releaseNotesUrl": "https://github.com/pingdotgg/t3code/releases",
+      "detection": {
+        "displayNames": [
+          "T3 Code"
+        ],
+        "displayNamePrefixes": [
+          "T3 Code"
+        ]
+      },
+      "provider": {
+        "kind": "winget",
+        "id": "T3Tools.T3Code"
+      },
+      "downloadProvider": {
+        "kind": "downloadInstaller",
+        "url": "https://github.com/pingdotgg/t3code/releases/download/v0.0.42/T3-Code-0.0.42-x64.exe",
+        "fileName": "T3-Code-0.0.42-x64.exe",
+        "arm64Url": "https://github.com/pingdotgg/t3code/releases/download/v0.0.42/T3-Code-0.0.42-arm64.exe",
+        "arm64FileName": "T3-Code-0.0.42-arm64.exe"
+      },
+      "options": [
+        "provider",
+        "version"
+      ],
+      "descriptionLocales": {
+        "de": "Open-Source-Steueroberfläche für Coding-Agents. Orchestriert Claude Code, Codex, OpenCode und weitere Agent-CLIs aus einer Desktop-App, ergänzt durch Web- und Mobile-Clients.",
+        "it": "Superficie di controllo open source per agenti di programmazione. Orchestra Claude Code, Codex, OpenCode e altre CLI di agenti da un'unica app desktop, con client web e mobile.",
+        "fr": "Surface de contrôle open source pour les agents de codage. Orchestrez Claude Code, Codex, OpenCode et d'autres CLI d'agents depuis une application de bureau, avec des clients web et mobiles.",
+        "zh-CN": "面向编程代理的开源控制台。在同一个桌面应用中编排 Claude Code、Codex、OpenCode 等代理 CLI，并提供网页与移动客户端。",
+        "zh-TW": "開放原始碼的程式開發代理控制介面。可在同一個桌面應用程式中協調 Claude Code、Codex、OpenCode 等代理命令列工具，並提供網頁與行動用戶端。",
+        "ja": "コーディングエージェント向けのオープンソース制御サーフェス。Claude Code、Codex、OpenCode などのエージェント CLI を 1 つのデスクトップ アプリから操作でき、Web とモバイルのクライアントも利用できます。",
+        "es": "Superficie de control de código abierto para agentes de programación. Orquesta Claude Code, Codex, OpenCode y otras CLI de agentes desde una sola aplicación de escritorio, con clientes web y móviles.",
+        "es-MX": "Superficie de control de código abierto para agentes de programación. Orquesta Claude Code, Codex, OpenCode y otras CLI de agentes desde una sola aplicación de escritorio, con clientes web y móviles.",
+        "th": "พื้นผิวควบคุมโอเพนซอร์สสำหรับเอเจนต์เขียนโค้ด จัดการ Claude Code, Codex, OpenCode และ CLI ของเอเจนต์อื่น ๆ จากแอปเดสก์ท็อปเดียว พร้อมไคลเอนต์เว็บและมือถือ",
+        "id": "Permukaan kendali sumber terbuka untuk agen pengodean. Mengorkestrasi Claude Code, Codex, OpenCode, dan CLI agen lainnya dari satu aplikasi desktop, dengan klien web dan seluler.",
+        "pt-BR": "Superfície de controle de código aberto para agentes de programação. Orquestra Claude Code, Codex, OpenCode e outras CLIs de agentes em um único aplicativo de desktop, com clientes web e móveis.",
+        "vi": "Bề mặt điều khiển mã nguồn mở cho các tác nhân lập trình. Điều phối Claude Code, Codex, OpenCode và các CLI tác nhân khác từ một ứng dụng máy tính để bàn, kèm ứng dụng web và di động.",
+        "ko": "코딩 에이전트를 위한 오픈 소스 제어 화면입니다. Claude Code, Codex, OpenCode 등의 에이전트 CLI를 하나의 데스크톱 앱에서 조율하며 웹과 모바일 클라이언트도 제공합니다."
       }
     },
     {

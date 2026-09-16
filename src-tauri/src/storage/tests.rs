@@ -672,8 +672,34 @@ fn screenshot_settings_upgrade_legacy_jpeg_quality_and_default_to_both() {
     let serialized = serde_json::to_value(settings).expect("serialize screenshot settings");
     assert_eq!(serialized["quality"], 74);
     assert_eq!(serialized["videoFormat"], "mp4");
+    assert_eq!(serialized["videoEncoder"], "gpu");
     assert_eq!(serialized["openInEditorAfterCapture"], false);
     assert!(serialized.get("jpegQuality").is_none());
+}
+
+#[test]
+fn screenshot_settings_video_encoder_persists_and_rejects_invalid_values() {
+    let folder = tempfile::tempdir().unwrap();
+    let db_path = folder.path().join("settings.sqlite");
+    {
+        let storage = Storage::open(db_path.clone()).unwrap();
+        let mut settings = storage.screenshot_settings().unwrap();
+        settings.folder_path = folder.path().to_string_lossy().into_owned();
+        assert_eq!(settings.video_encoder(), "gpu");
+        settings.video_encoder = "gpu".into();
+        assert_eq!(storage.update_screenshot_settings(settings).unwrap().video_encoder(), "gpu");
+    }
+    let storage = Storage::open(db_path.clone()).unwrap();
+    let mut settings = storage.screenshot_settings().unwrap();
+    assert_eq!(settings.video_encoder(), "gpu");
+    settings.video_encoder = "invalid".into();
+    assert!(storage.update_screenshot_settings(settings).is_err());
+    let mut settings = storage.screenshot_settings().unwrap();
+    assert_eq!(settings.video_encoder(), "gpu");
+    settings.video_encoder = "cpu".into();
+    assert_eq!(storage.update_screenshot_settings(settings).unwrap().video_encoder(), "cpu");
+    drop(storage);
+    assert_eq!(Storage::open(db_path).unwrap().screenshot_settings().unwrap().video_encoder(), "cpu");
 }
 
 fn find_folder<'a>(

@@ -15,7 +15,7 @@ import { loadBackgroundImage } from "../../../dashboard/state/persistence";
 import type { DashboardBackground } from "../../../dashboard/types";
 import { ExplorerSidebar } from "./ExplorerSidebar";
 import { SftpBackgroundLayer } from "./SftpBackgroundLayer";
-import { FileGlyph } from "./finderGlyphs";
+import { FileThumbnail, fileThumbnails } from "./FileThumbnail";
 import { formatFileSize, joinLocalPath } from "./format";
 import { writeConnectionPathsDrag } from "../connectionPathsDrag";
 import type { FilePaneSide, LocalFavorite } from "./types";
@@ -131,6 +131,9 @@ export function FilePane({
   const [view, setView] = useState<ViewMode>("list");
   const [isDropTarget, setIsDropTarget] = useState(false);
   const [search, setSearch] = useState("");
+
+  // A fresh directory listing also invalidates failed previews and same-second edits.
+  useEffect(() => { if (side === "local") fileThumbnails.clear(); }, [files, side]);
 
   const selectedNameSet = useMemo(() => new Set(selectedNames), [selectedNames]);
   const sortedFiles = useMemo(() => sortFileEntries(files, sort), [files, sort]);
@@ -776,7 +779,7 @@ export function FilePane({
                     >
                       <div className="nm">
                         <span className="sftp-row-glyph">
-                          <FileGlyph entry={file} size={20} />
+                          <FileThumbnail entry={file} path={side === "local" ? joinLocalPath(path, file.name) : undefined} size={20} />
                         </span>
                         {renderRowName(file)}
                       </div>
@@ -802,7 +805,7 @@ export function FilePane({
                       {...handlers}
                     >
                       <span className="sftp-tile-ico">
-                        <FileGlyph entry={file} size={52} />
+                        <FileThumbnail entry={file} path={side === "local" ? joinLocalPath(path, file.name) : undefined} size={52} />
                       </span>
                       <span className="sftp-tile-cap">{renderRowName(file)}</span>
                     </div>

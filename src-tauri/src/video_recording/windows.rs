@@ -27,7 +27,8 @@ use windows::{
         Graphics::{
             Direct3D11::{
                 D3D11_BIND_RENDER_TARGET, D3D11_BIND_SHADER_RESOURCE, D3D11_BOX,
-                D3D11_USAGE_DEFAULT, ID3D11Texture2D,
+                D3D11_USAGE_DEFAULT, ID3D11Device, ID3D11DeviceContext, ID3D11Multithread,
+                ID3D11Texture2D,
             },
             Dxgi::IDXGISurface,
             Gdi::{GetMonitorInfoW, HMONITOR, MONITORINFO},
@@ -156,6 +157,13 @@ impl GraphicsCaptureApiHandler for Capture {
     type Flags = (Arc<Shared>, (u32, u32, u32, u32));
     type Error = CaptureError;
     fn new(ctx: Context<Self::Flags>) -> Result<Self, Self::Error> {
+        // Capture and MediaStreamSource use this device from different threads.
+        // The Rust frame mutex only protects the surface reference, not D3D11's
+        // immediate context; enable the runtime's lock before publishing frames.
+        let multithread: ID3D11Multithread = ctx.device_context.cast()?;
+        unsafe {
+            let _ = multithread.SetMultithreadProtected(true);
+        }
         Ok(Self {
             shared: ctx.flags.0,
             crop: ctx.flags.1,
@@ -187,46 +195,12 @@ impl GraphicsCaptureApiHandler for Capture {
             control.stop();
             return Ok(());
         }
-        let mut desc = *frame.desc();
-        desc.Width = width;
-        desc.Height = height;
-        desc.MipLevels = 1;
-        desc.ArraySize = 1;
-        desc.Usage = D3D11_USAGE_DEFAULT;
-        desc.BindFlags = (D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE).0 as u32;
-        desc.CPUAccessFlags = 0;
-        desc.MiscFlags = 0;
-        let mut texture: Option<ID3D11Texture2D> = None;
-        unsafe {
-            frame
-                .device()
-                .CreateTexture2D(&desc, None, Some(&mut texture))?;
-        }
-        let texture = texture.ok_or("Windows capture did not create a texture")?;
-        let source = D3D11_BOX {
-            left: x,
-            top: y,
-            front: 0,
-            right: x + width,
-            bottom: y + height,
-            back: 1,
-        };
-        unsafe {
-            frame.device_context().CopySubresourceRegion(
-                &texture,
-                0,
-                0,
-                0,
-                0,
-                frame.as_raw_texture(),
-                0,
-                Some(&source),
-            );
-            frame.device_context().Flush();
-        }
-        let dxgi: IDXGISurface = texture.cast()?;
-        let surface: IDirect3DSurface =
-            unsafe { CreateDirect3D11SurfaceFromDXGISurface(&dxgi)? }.cast()?;
+        let surface = copy_surface(
+            frame.device(),
+            frame.device_context(),
+            frame.as_raw_texture(),
+            self.crop,
+        )?;
         self.shared.frames.lock().unwrap().surface = Some(AgileReference::new(&surface)?);
         self.shared.changed.notify_all();
         self.last_copy_tick = Some(tick);
@@ -239,6 +213,48 @@ impl GraphicsCaptureApiHandler for Capture {
         self.shared.changed.notify_all();
         Ok(())
     }
+}
+
+fn copy_surface(
+    device: &ID3D11Device,
+    context: &ID3D11DeviceContext,
+    source_texture: &ID3D11Texture2D,
+    crop: (u32, u32, u32, u32),
+) -> Result<IDirect3DSurface, CaptureError> {
+    let (x, y, width, height) = crop;
+    let mut desc = Default::default();
+    unsafe {
+        source_texture.GetDesc(&mut desc);
+    }
+    desc.Width = width;
+    desc.Height = height;
+    desc.MipLevels = 1;
+    desc.ArraySize = 1;
+    desc.Usage = D3D11_USAGE_DEFAULT;
+    desc.BindFlags = (D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE).0 as u32;
+    desc.CPUAccessFlags = 0;
+    desc.MiscFlags = 0;
+    let mut texture: Option<ID3D11Texture2D> = None;
+    unsafe {
+        device.CreateTexture2D(&desc, None, Some(&mut texture))?;
+    }
+    let texture = texture.ok_or("Windows capture did not create a texture")?;
+    let source = D3D11_BOX {
+        left: x,
+        top: y,
+        front: 0,
+        right: x + width,
+        bottom: y + height,
+        back: 1,
+    };
+    unsafe {
+        context.CopySubresourceRegion(&texture, 0, 0, 0, 0, source_texture, 0, Some(&source));
+        context.Flush();
+    }
+    let dxgi: IDXGISurface = texture.cast()?;
+    let surface: IDirect3DSurface =
+        unsafe { CreateDirect3D11SurfaceFromDXGISurface(&dxgi)? }.cast()?;
+    Ok(surface)
 }
 
 fn monitor_crop(rect: &RecordingRect) -> Result<(Monitor, (u32, u32, u32, u32)), String> {
@@ -290,7 +306,7 @@ pub(super) struct NativeRecording {
 }
 
 impl NativeRecording {
-    pub(super) fn start(rect: &RecordingRect, rate: u32, path: &Path) -> Result<Self, String> {
+    pub(super) fn start(rect: &RecordingRect, rate: u32, path: &Path, use_gpu: bool) -> Result<Self, String> {
         let (monitor, crop) = monitor_crop(rect)?;
         let shared = Arc::new(Shared::new(rate));
         let settings = Settings::new(
@@ -325,7 +341,7 @@ impl NativeRecording {
         let path = path.to_path_buf();
         let (ready_tx, ready_rx) = mpsc::sync_channel(1);
         recording.encoder = Some(std::thread::spawn(move || {
-            let result = encode(&shared, &path, crop.2, crop.3, ready_tx);
+            let result = encode(&shared, &path, crop.2, crop.3, use_gpu, ready_tx);
             let mut state = shared.frames.lock().unwrap();
             if let Err(error) = &result {
                 state.error = Some(error.clone());
@@ -395,6 +411,7 @@ fn encode(
     path: &Path,
     width: u32,
     height: u32,
+    use_gpu: bool,
     ready: mpsc::SyncSender<Result<(), String>>,
 ) -> Result<(), String> {
     let result = (|| -> windows::core::Result<()> {
@@ -503,7 +520,9 @@ fn encode(
         let file = StorageFile::GetFileFromPathAsync(&HSTRING::from(storage_path))?.join()?;
         let stream = file.OpenAsync(FileAccessMode::ReadWrite)?.join()?;
         let transcoder = MediaTranscoder::new()?;
-        transcoder.SetHardwareAccelerationEnabled(true)?;
+        // GPU is the default. CPU remains available to avoid intermittent
+        // hardware-path corruption seen at 4K/60 fps with some drivers.
+        transcoder.SetHardwareAccelerationEnabled(use_gpu)?;
         let prepared = transcoder
             .PrepareMediaStreamSourceTranscodeAsync(&source, &stream, &profile)?
             .join()?;
@@ -541,6 +560,161 @@ fn encode(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    #[ignore = "requires a Windows hardware D3D11 device"]
+    fn capture_protects_context_shared_with_media_encoder() {
+        let (device, device_context) = windows_capture::d3d11::create_d3d_device().unwrap();
+        let multithread: ID3D11Multithread = device_context.cast().unwrap();
+        let _capture = Capture::new(Context {
+            flags: (Arc::new(Shared::new(60)), (0, 0, 3840, 2160)),
+            device,
+            device_context,
+        })
+        .unwrap();
+        assert!(
+            unsafe { multithread.GetMultithreadProtected() }.as_bool(),
+            "capture and MediaStreamSource must not race the immediate context"
+        );
+    }
+
+    #[test]
+    #[ignore = "requires a Windows hardware D3D11 device, H.264 encoder, and ffmpeg"]
+    fn native_encoder_preserves_complete_4k_frames() {
+        use windows::Win32::Graphics::{
+            Direct3D11::D3D11_TEXTURE2D_DESC,
+            Dxgi::Common::{DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_SAMPLE_DESC},
+        };
+        unsafe {
+            RoInitialize(RO_INIT_MULTITHREADED).unwrap();
+        }
+        struct Apartment;
+        impl Drop for Apartment {
+            fn drop(&mut self) {
+                unsafe {
+                    RoUninitialize();
+                }
+            }
+        }
+        let _apartment = Apartment;
+        let (device, context) = windows_capture::d3d11::create_d3d_device().unwrap();
+        let shared = Arc::new(Shared::new(60));
+        // Exercise the same device setup as a real capture session.
+        let _capture = Capture::new(Context {
+            flags: (shared.clone(), (0, 0, 3840, 2160)),
+            device: device.clone(),
+            device_context: context.clone(),
+        })
+        .unwrap();
+        let desc = D3D11_TEXTURE2D_DESC {
+            Width: 3840,
+            Height: 2160,
+            MipLevels: 1,
+            ArraySize: 1,
+            Format: DXGI_FORMAT_B8G8R8A8_UNORM,
+            SampleDesc: DXGI_SAMPLE_DESC {
+                Count: 1,
+                Quality: 0,
+            },
+            Usage: D3D11_USAGE_DEFAULT,
+            BindFlags: (D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE).0 as u32,
+            ..Default::default()
+        };
+        let mut texture = None;
+        unsafe {
+            device
+                .CreateTexture2D(&desc, None, Some(&mut texture))
+                .unwrap();
+        }
+        let texture = texture.unwrap();
+        let mut view = None;
+        unsafe {
+            device
+                .CreateRenderTargetView(&texture, None, Some(&mut view))
+                .unwrap();
+        }
+        let view = view.unwrap();
+        let publish = |value| {
+            unsafe {
+                context.ClearRenderTargetView(&view, &[value, value, value, 1.0]);
+            }
+            let surface = copy_surface(&device, &context, &texture, (0, 0, 3840, 2160)).unwrap();
+            shared.frames.lock().unwrap().surface = Some(AgileReference::new(&surface).unwrap());
+            shared.changed.notify_all();
+        };
+        publish(0.5);
+        let path = std::env::temp_dir().join(format!(
+            "kkterm-native-4k-pixels-{}.mp4",
+            super::super::now_millis()
+        ));
+        let (ready_tx, ready_rx) = mpsc::sync_channel(1);
+        let encoder_shared = shared.clone();
+        let encoder_path = path.clone();
+        let mut recording = NativeRecording {
+            capture: None,
+            shared: shared.clone(),
+            encoder: Some(std::thread::spawn(move || {
+                encode(&encoder_shared, &encoder_path, 3840, 2160, false, ready_tx)
+            })),
+        };
+        ready_rx.recv().unwrap().unwrap();
+        let epoch = Instant::now();
+        for tick in 0..900 {
+            // First repeat a static capture for ten seconds, then alternate
+            // complete gray frames for five seconds to stress capture/encode.
+            if tick >= 600 {
+                publish(if tick % 2 == 0 { 0.25 } else { 0.75 });
+            }
+            // Model a brief scheduling stall: missed output ticks must not
+            // expose incomplete surfaces when sampling resumes.
+            if tick == 300 {
+                let _state = shared.frames.lock().unwrap();
+                std::thread::sleep(Duration::from_millis(100));
+            }
+            std::thread::sleep(
+                Duration::from_nanos((tick + 1) * 1_000_000_000 / 60)
+                    .saturating_sub(epoch.elapsed()),
+            );
+        }
+        recording.finish().unwrap();
+        let decoded = std::process::Command::new("ffmpeg")
+            .args(["-v", "error", "-i"])
+            .arg(&path)
+            .args([
+                "-vf",
+                "scale=64:36",
+                "-pix_fmt",
+                "gray",
+                "-f",
+                "rawvideo",
+                "-",
+            ])
+            .output()
+            .unwrap();
+        assert!(
+            decoded.status.success(),
+            "{}",
+            String::from_utf8_lossy(&decoded.stderr)
+        );
+        assert!(
+            decoded.stdout.len() >= 64 * 36 * 600,
+            "too few decoded frames"
+        );
+        let mut corrupted = Vec::new();
+        for (index, frame) in decoded.stdout.chunks_exact(64 * 36).enumerate() {
+            let min = *frame.iter().min().unwrap();
+            let max = *frame.iter().max().unwrap();
+            if min < 45 || max - min > 8 {
+                corrupted.push((index, min, max));
+            }
+        }
+        assert!(
+            corrupted.is_empty(),
+            "partial solid-color frames in {}: {corrupted:?}",
+            path.display()
+        );
+        std::fs::remove_file(path).unwrap();
+    }
+
     #[test]
     fn monitor_crop_handles_negative_origins_and_rejects_spanning_targets() {
         let rect = RecordingRect {
@@ -585,7 +759,7 @@ mod tests {
                 "kkterm-native-smoke-{}-{rate}.mp4",
                 super::super::now_millis()
             ));
-            let mut recording = NativeRecording::start(&rect, rate, &path)
+            let mut recording = NativeRecording::start(&rect, rate, &path, false)
                 .expect("native capture starts without fallback");
             std::thread::sleep(Duration::from_millis(1200));
             recording.pause(true);

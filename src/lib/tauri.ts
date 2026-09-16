@@ -3205,6 +3205,10 @@ type CommandMap = {
     args: { request: { path?: string } };
     result: LocalDirectoryListing;
   };
+  read_local_thumbnail: {
+    args: { path: string };
+    result: string | null;
+  };
   list_local_places: {
     args: undefined;
     result: LocalPlacesListing;

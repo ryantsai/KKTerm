@@ -262,6 +262,7 @@ const GUI_LAUNCH_RECIPES = new Set<string>([
   "comfyui",
   "lmstudio",
   "bruno",
+  "t3-code",
   "claude-desktop",
   "codex-desktop",
   "powertoys",
@@ -326,6 +327,7 @@ const CLI_LAUNCH_COMMANDS: Record<string, string> = {
   opencode: "opencode",
   pi: "pi",
   "oh-my-pi": "omp",
+  herdr: "herdr",
   rustup: "rustup",
   bun: "bun",
   ripgrep: "rg",
@@ -413,6 +415,11 @@ const CLI_LAUNCH_SAMPLES: Record<string, string[]> = {
   psmux: [
     "psmux  —  start a terminal multiplexer session",
     "psmux --help  —  list commands and flags",
+  ],
+  herdr: [
+    "herdr  —  open the agent terminal runtime",
+    "herdr update  —  update to the latest release",
+    "herdr --help  —  list commands and flags",
   ],
   "hermes-agent": [
     "hermes setup  —  configure providers and accounts",

@@ -1226,6 +1226,8 @@ pub struct ScreenshotSettings {
     format: String,
     #[serde(default = "default_video_format")]
     video_format: String,
+    #[serde(default = "default_video_encoder")]
+    video_encoder: String,
     #[serde(default = "default_screenshot_quality", alias = "jpegQuality")]
     quality: u8,
     #[serde(default = "default_screenshot_capture_mode")]
@@ -1267,6 +1269,10 @@ impl ScreenshotSettings {
 
     pub(crate) fn video_format(&self) -> &str {
         &self.video_format
+    }
+
+    pub(crate) fn video_encoder(&self) -> &str {
+        &self.video_encoder
     }
 
     pub(crate) fn quality(&self) -> u8 {
@@ -7071,6 +7077,7 @@ fn default_screenshot_settings() -> ScreenshotSettings {
         folder_path: default_screenshot_folder_path(),
         format: default_screenshot_format(),
         video_format: default_video_format(),
+        video_encoder: default_video_encoder(),
         quality: default_screenshot_quality(),
         capture_mode: default_screenshot_capture_mode(),
         open_in_editor_after_capture: false,
@@ -7094,6 +7101,10 @@ fn default_screenshot_format() -> String {
 
 fn default_video_format() -> String {
     "mp4".to_string()
+}
+
+fn default_video_encoder() -> String {
+    "gpu".to_string()
 }
 
 fn default_screenshot_quality() -> u8 {
@@ -8202,6 +8213,11 @@ fn validate_screenshot_settings(
         "webm" => "webm".to_string(),
         "gif" => "gif".to_string(),
         _ => return Err("video format must be mp4, webm, or gif".to_string()),
+    };
+    settings.video_encoder = match settings.video_encoder.trim().to_lowercase().as_str() {
+        "cpu" => "cpu".to_string(),
+        "" | "gpu" => "gpu".to_string(),
+        _ => return Err("video encoder must be cpu or gpu".to_string()),
     };
     settings.quality = settings.quality.clamp(1, 100);
     settings.capture_mode = match settings.capture_mode.trim().to_lowercase().as_str() {

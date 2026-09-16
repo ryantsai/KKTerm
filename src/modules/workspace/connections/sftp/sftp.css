@@ -647,6 +647,16 @@
 }
 
 /* gallery */
+.sftp-file-thumbnail {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.sftp-file-thumbnail img {
+  object-fit: contain;
+  width: calc(20px * var(--sftp-zoom, 1));
+  height: calc(20px * var(--sftp-zoom, 1));
+}
 .sftp-gallery-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(calc(96px * var(--sftp-zoom, 1)), 1fr));

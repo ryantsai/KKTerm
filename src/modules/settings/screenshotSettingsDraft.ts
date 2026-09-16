@@ -7,6 +7,7 @@ const browserDefaults: ScreenshotSettings = {
   folderPath: "%USERPROFILE%\\Pictures\\Screenshots",
   format: "png",
   videoFormat: "mp4",
+  videoEncoder: "gpu",
   quality: 90,
   captureMode: "both",
   openInEditorAfterCapture: false,

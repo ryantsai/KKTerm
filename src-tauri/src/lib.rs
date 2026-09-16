@@ -19,6 +19,7 @@ mod debug_heartbeat;
 mod diagnostics;
 mod favicon;
 mod file_viewer;
+mod file_thumbnail;
 mod ftp;
 mod git;
 mod github_copilot;
@@ -1278,6 +1279,7 @@ async fn start_video_recording(
                 request,
                 settings.folder_path(),
                 settings.video_format(),
+                settings.video_encoder(),
             )
         }
     })
@@ -5297,6 +5299,7 @@ pub fn run() {
             start_sftp_session,
             list_sftp_directory,
             list_local_directory,
+            file_thumbnail::read_local_thumbnail,
             list_local_places,
             create_local_folder,
             rename_local_path,

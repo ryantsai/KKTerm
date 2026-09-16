@@ -87,7 +87,6 @@ export function RemoteFullscreenApp({ route }: { route: RemoteFullscreenRoute })
       disposed = true;
       dispose?.();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

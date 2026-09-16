@@ -72,6 +72,8 @@ test("existing catalog tools carry their user-facing sections in the catalog", (
     ["ffmpeg", "utilities"],
     ["scrcpy", "utilities"],
     ["bun", "development"],
+    ["herdr", "development"],
+    ["t3-code", "development"],
     ["openflowkit", "design"],
     ["hermes-desktop", "aiAgents"],
     ["winget", "packageManagers"],
