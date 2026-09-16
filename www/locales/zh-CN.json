@@ -95,7 +95,7 @@
   "downloadTitle": "获取 KKTerm，支持未来开发。",
   "downloadDescription": "购买商店版是支持 KKTerm 持续开发的好方式：一次付费，无需订阅，提供签名安装包和自动更新。每次购买都为后续开发提供资金。",
   "storePayment": "一次付费，无需订阅。已签名，自动更新。",
-  "storeLimitations": "使用限制：Mac App Store 版受 Apple App Sandbox 限制，不提供本地终端；远程 SSH 不受影响。访问实际文件夹需要通过选择器授权一次，且不提供录屏和关机定时器菜单。Microsoft Store 版提供完整 Windows 功能及 7 天试用。两者均通过商店更新。",
+  "storeLimitations": "坦诚说明限制：Mac App Store 版在 Apple App Sandbox 中运行，不提供本地终端；远程 SSH 不受影响。访问实际文件夹需要通过文件选择器授权一次，且不提供录屏和关机定时器菜单。Microsoft Store 版提供完整 Windows 功能及 7 天试用。两者均通过商店更新。",
   "githubHelp": "Linux、免费版本、源码和文档，请使用页眉右上角的 GitHub 链接。",
   "footerDescription": "本地优先的管理工作区，不含开发者运营的遥测。",
   "footerProject": "项目",

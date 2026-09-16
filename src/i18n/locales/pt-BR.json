@@ -6052,7 +6052,7 @@
     "downloadTitle": "Obtenha o KKTerm. Apoie seu futuro.",
     "downloadDescription": "A edição da loja sustenta o desenvolvimento contínuo: pagamento único, sem assinatura, pacote assinado e atualizações automáticas. Cada compra financia as próximas melhorias.",
     "storePayment": "Pagamento único, sem assinatura. Assinado e com atualizações automáticas.",
-    "storeLimitations": "Limitações: a versão da Mac App Store roda no App Sandbox da Apple e não oferece terminal local; SSH remoto não é afetado. Pastas reais exigem uma autorização inicial pelo seletor. Gravação de vídeo e menu do temporizador de desligamento não estão disponíveis. A Microsoft Store oferece o aplicativo Windows completo e opção de teste de 7 dias. Ambas as versões são atualizadas pela loja.",
+    "storeLimitations": "Para sermos honestos: a versão da Mac App Store roda no App Sandbox da Apple e não oferece terminal local; SSH remoto não é afetado. Pastas reais exigem uma autorização única pelo seletor de arquivos. Gravação de vídeo e menu do temporizador de desligamento não estão disponíveis. A Microsoft Store oferece o aplicativo Windows completo e opção de teste de 7 dias. Ambas as versões são atualizadas pela loja.",
     "githubHelp": "Para Linux, versões gratuitas, código-fonte e documentação, use o GitHub no canto superior direito do cabeçalho.",
     "footerDescription": "Um espaço de administração local sem telemetria operada pelo desenvolvedor.",
     "footerProject": "Projeto",

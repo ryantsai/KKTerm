@@ -6052,7 +6052,7 @@
     "downloadTitle": "Tải KKTerm. Ủng hộ tương lai của ứng dụng.",
     "downloadDescription": "Phiên bản cửa hàng giúp duy trì phát triển: trả một lần, không đăng ký định kỳ, gói có chữ ký số và cập nhật tự động. Mỗi lượt mua đều tài trợ cho công việc tiếp theo.",
     "storePayment": "Trả một lần, không đăng ký định kỳ. Có chữ ký số và tự động cập nhật.",
-    "storeLimitations": "Giới hạn: bản Mac App Store chạy trong App Sandbox của Apple và không cung cấp terminal cục bộ; SSH từ xa không bị ảnh hưởng. Thư mục thật cần cấp quyền một lần qua trình chọn. Không có ghi hình và menu hẹn giờ tắt máy. Bản Microsoft Store có đầy đủ chức năng Windows và tùy chọn dùng thử 7 ngày. Cả hai cập nhật qua cửa hàng tương ứng.",
+    "storeLimitations": "Nói thẳng: bản Mac App Store chạy trong App Sandbox của Apple và không cung cấp terminal cục bộ; SSH từ xa không bị ảnh hưởng. Thư mục thật cần được cấp quyền một lần qua trình chọn tệp. Không có ghi hình và menu hẹn giờ tắt máy. Bản Microsoft Store có đầy đủ chức năng Windows và tùy chọn dùng thử 7 ngày. Cả hai cập nhật qua cửa hàng tương ứng.",
     "githubHelp": "Để lấy bản Linux, bản miễn phí, mã nguồn và tài liệu, dùng GitHub ở góc trên bên phải đầu trang.",
     "footerDescription": "Không gian quản trị ưu tiên cục bộ, không có đo từ xa do nhà phát triển vận hành.",
     "footerProject": "Dự án",

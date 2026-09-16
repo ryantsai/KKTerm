@@ -6052,7 +6052,7 @@
     "downloadTitle": "取得 KKTerm，支持未來開發。",
     "downloadDescription": "從商店購買 KKTerm，是支持持續開發的好方法。一次付費，無須訂閱，提供已簽署的安裝套件與自動更新。每筆購買都支持後續開發。",
     "storePayment": "一次付費，無須訂閱。已簽署並自動更新。",
-    "storeLimitations": "使用限制：Mac App Store 版本受 Apple App Sandbox 限制，不提供本機終端機；遠端 SSH 不受影響。存取實際資料夾需透過選取器授權一次，且不提供錄影與關機計時器選單。Microsoft Store 版本提供完整 Windows 功能及 7 天試用。兩者皆透過商店更新。",
+    "storeLimitations": "坦白說明限制：Mac App Store 版本在 Apple App Sandbox 中執行，不提供本機終端機；遠端 SSH 不受影響。存取實際資料夾需透過資料夾選擇器授權一次，且不提供錄影與關機計時器選單。Microsoft Store 版本提供完整 Windows 功能及 7 天試用。兩者皆透過商店更新。",
     "githubHelp": "Linux、免費版本、原始碼與文件，請使用頁首右上角的 GitHub 連結。",
     "footerDescription": "本機優先的管理工作區，無開發者營運的遙測服務。",
     "footerProject": "專案",

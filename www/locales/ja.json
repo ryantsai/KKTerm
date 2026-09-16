@@ -95,7 +95,7 @@
   "downloadTitle": "KKTerm を入手して、開発を応援。",
   "downloadDescription": "ストア版の購入が継続開発を支えます。買い切りでサブスクリプションはなく、署名済みパッケージと自動更新を提供。売上は今後の開発に使われます。",
   "storePayment": "買い切り、継続課金なし。署名済み、自動更新対応。",
-  "storeLimitations": "制限について：Mac App Store 版は Apple App Sandbox 内で動作し、ローカルターミナルは利用できません。リモート SSH は影響を受けません。実フォルダーへのアクセスには選択画面で一度許可が必要で、録画とシャットダウンタイマーのメニューは使えません。Microsoft Store 版は Windows の全機能と 7 日間の試用を提供します。どちらもストア経由で更新されます。",
+  "storeLimitations": "正直な制限事項：Mac App Store 版は Apple App Sandbox 内で動作し、ローカルターミナルは利用できません。リモート SSH は影響を受けません。実際のフォルダーへのアクセスには、選択ダイアログで一度だけ許可が必要です。録画とシャットダウンタイマーのメニューは使えません。Microsoft Store 版は Windows の全機能と 7 日間の試用を提供します。どちらもストア経由で更新されます。",
   "githubHelp": "Linux、無料版、ソースコード、ドキュメントは、ヘッダー右上の GitHub からご覧ください。",
   "footerDescription": "開発者が運用するテレメトリのない、ローカル優先の管理ワークスペース。",
   "footerProject": "プロジェクト",

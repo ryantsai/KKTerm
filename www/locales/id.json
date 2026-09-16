@@ -95,7 +95,7 @@
   "downloadTitle": "Dapatkan KKTerm. Dukung masa depannya.",
   "downloadDescription": "Edisi toko mendukung pengembangan berkelanjutan: sekali bayar tanpa langganan, paket bertanda tangan digital, dan pembaruan otomatis. Setiap pembelian mendanai pekerjaan berikutnya.",
   "storePayment": "Sekali bayar, tanpa langganan. Bertanda tangan digital dan diperbarui otomatis.",
-  "storeLimitations": "Batasan: versi Mac App Store berjalan di App Sandbox Apple dan tidak menyediakan terminal lokal; SSH jarak jauh tidak terpengaruh. Folder nyata perlu izin sekali melalui pemilih. Perekaman video dan menu timer mati tidak tersedia. Versi Microsoft Store menyediakan aplikasi Windows lengkap dengan opsi uji coba 7 hari. Keduanya diperbarui melalui toko masing-masing.",
+  "storeLimitations": "Sejujurnya, ada batasan: versi Mac App Store berjalan di App Sandbox Apple dan tidak menyediakan terminal lokal; SSH jarak jauh tidak terpengaruh. Folder nyata memerlukan izin satu kali melalui pemilih folder. Perekaman video dan menu jadwal mati tidak tersedia. Versi Microsoft Store menyediakan aplikasi Windows lengkap dengan opsi uji coba 7 hari. Keduanya diperbarui melalui toko masing-masing.",
   "githubHelp": "Untuk Linux, versi gratis, kode sumber, dan dokumentasi, gunakan GitHub di kanan atas header.",
   "footerDescription": "Ruang administrasi yang mengutamakan lokal, tanpa telemetri yang dioperasikan pengembang.",
   "footerProject": "Proyek",
