@@ -17,6 +17,10 @@ const homebrewScript = await readFile(
   new URL("../scripts/update-homebrew-cask.sh", import.meta.url),
   "utf8",
 );
+const buildScript = await readFile(
+  new URL("../src-tauri/build.rs", import.meta.url),
+  "utf8",
+);
 
 test("macOS release script is a native zsh GitHub release asset uploader", () => {
   assert.match(script, /^#!\/usr\/bin\/env zsh/);
@@ -76,6 +80,25 @@ test("macOS package script loads the updater private key for Tauri signing", () 
   assert.match(packageMacosScript, /export TAURI_SIGNING_PRIVATE_KEY="\$\(extract_tauri_signing_key "\$KEY_PATH"\)"/);
   assert.match(packageMacosScript, /export TAURI_SIGNING_PRIVATE_KEY="\$\(normalize_tauri_signing_key "\$TAURI_SIGNING_PRIVATE_KEY"\)"/);
   assert.match(packageMacosScript, /pnpm exec tauri build --target universal-apple-darwin --bundles app,dmg "\$@"/);
+});
+
+test("macOS native build resolves SDK Swift overlay dependencies through an rpath", () => {
+  assert.match(buildScript, /CARGO_CFG_TARGET_OS"\)\.as_deref\(\) == Ok\("macos"\)/);
+  assert.match(
+    buildScript,
+    /cargo:rustc-link-arg-bins=-Wl,-rpath,\/usr\/lib\/swift/,
+  );
+});
+
+test("macOS package script rejects app binaries with unresolvable rpath dependencies", () => {
+  assert.match(packageMacosScript, /assert_resolvable_rpath_dependencies\(\) \{/);
+  assert.match(packageMacosScript, /otool -arch "\$arch" -L "\$binary"/);
+  assert.match(packageMacosScript, /grep '\^@rpath\/'/);
+  assert.match(packageMacosScript, /LC_RPATH/);
+  assert.match(
+    packageMacosScript,
+    /pnpm exec tauri build --target universal-apple-darwin --bundles app,dmg "\$@"\n\nassert_resolvable_rpath_dependencies/,
+  );
 });
 
 test("macOS package script guards the universal build on the x86_64 Rust target", () => {

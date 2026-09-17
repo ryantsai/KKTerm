@@ -1,6 +1,11 @@
 #!/usr/bin/env zsh
 set -euo pipefail
 
+SCRIPT_DIR=${0:A:h}
+REPO_ROOT=${SCRIPT_DIR:h}
+TARGET_TRIPLE="universal-apple-darwin"
+APP_BINARY="$REPO_ROOT/src-tauri/target/$TARGET_TRIPLE/release/bundle/macos/KKTerm.app/Contents/MacOS/kkterm"
+
 KEY_PATH=${TAURI_SIGNING_PRIVATE_KEY_PATH:-$HOME/.tauri/kkterm-updater.key}
 
 normalize_tauri_signing_key() {
@@ -61,4 +66,64 @@ export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:
 
 require_universal_targets
 
+# A `@rpath/...` dependency is only launchable when an LC_RPATH in the binary
+# covers it. The macOS SDK has shipped framework stubs that re-export the
+# framework's Swift overlay as `@rpath/libswift*.dylib` (see src-tauri/build.rs),
+# which aborts dyld at launch when no rpath provides it - exactly the failure
+# reported for the Intel slice of 3000.0.15. Fail the package step, which the
+# release script runs before notarizing or uploading anything.
+assert_resolvable_rpath_dependencies() {
+  local binary="$APP_BINARY"
+  local -a deps rpaths
+  local arch candidate dep deps_output rpath rpaths_output satisfied
+
+  [[ -f "$binary" ]] || {
+    print -u2 "Missing built app binary: $binary"
+    exit 1
+  }
+  command -v otool >/dev/null 2>&1 || {
+    print -u2 "Required command not found on PATH: otool (install the Xcode command line tools)"
+    exit 1
+  }
+
+  for arch in x86_64 arm64; do
+    deps_output=$(otool -arch "$arch" -L "$binary" 2>/dev/null |
+      awk '/^[[:space:]]/ { print $1 }' |
+      grep '^@rpath/' || true)
+    [[ -n "$deps_output" ]] || continue
+    deps=("${(f)deps_output}")
+
+    rpaths_output=$(otool -arch "$arch" -l "$binary" 2>/dev/null |
+      awk '/LC_RPATH/{getline; getline; print $2}' || true)
+    rpaths=("${(f)rpaths_output}")
+
+    for dep in "${deps[@]}"; do
+      satisfied=0
+      for rpath in "${rpaths[@]}"; do
+        case "$rpath" in
+          @executable_path*) candidate="${binary:h}/${rpath#@executable_path/}" ;;
+          @loader_path*) candidate="${binary:h}/${rpath#@loader_path/}" ;;
+          *) candidate="$rpath" ;;
+        esac
+        # System directories resolve from the dyld shared cache, so the file is
+        # usually absent from disk even when dyld can load it.
+        if [[ -e "$candidate/${dep#@rpath/}" || "$candidate" == /usr/lib* || "$candidate" == /System/Library/* ]]; then
+          satisfied=1
+          break
+        fi
+      done
+      (( satisfied )) || {
+        print -u2 "Unresolvable macOS dependency for $arch: $dep"
+        print -u2 "No LC_RPATH in $binary provides it, so dyld would abort the launch (Library not loaded)."
+        print -u2 "Repoint the link at a resolvable path (see src-tauri/build.rs) or ship the library inside the app bundle."
+        exit 1
+      }
+    done
+  done
+
+  print -- "==> Verified KKTerm.app dependencies resolve on x86_64 and arm64"
+}
+
 pnpm exec tauri build --target universal-apple-darwin --bundles app,dmg "$@"
+
+assert_resolvable_rpath_dependencies

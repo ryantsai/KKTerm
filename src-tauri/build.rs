@@ -8,6 +8,19 @@ fn main() {
         assert_eq!(std::env::var("CARGO_CFG_TARGET_OS").as_deref(), Ok("macos"),
             "mac-app-store is only supported on macOS");
     }
+    // The macOS SDK stubs for some frameworks (CoreMedia on the x86_64 slice
+    // with a deployment target below macOS 10.14.4) re-export the framework's
+    // Swift overlay as `@rpath/libswift*.dylib`, even when the binary
+    // references no Swift symbol. dyld cannot substitute `@rpath` without an
+    // LC_RPATH, so the universal build's Intel slice aborted at launch with
+    // "Library not loaded: @rpath/libswiftCoreMedia.dylib", while the arm64
+    // slice (11.0 deployment target) linked the plain framework. Point @rpath
+    // lookups at the system Swift runtime directory the OS ships, matching what
+    // Xcode does for any Swift-linked target. The package step verifies the
+    // dependency is resolvable; see docs/RELEASE.md.
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("macos") {
+        println!("cargo:rustc-link-arg-bins=-Wl,-rpath,/usr/lib/swift");
+    }
     println!("cargo:rerun-if-changed=../.env");
     let _ = dotenvy::from_path("../.env");
     println!("cargo:rerun-if-env-changed=KKTERM_CUSTOM_MODULE_CATALOG_PUBLIC_KEY");
