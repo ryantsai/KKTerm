@@ -10,7 +10,8 @@ export type ConnectionType =
   | "vnc"
   | "ftp"
   | "localFiles"
-  | "fileView";
+  | "fileView"
+  | "cloudStorage";
 
 /**
  * A named, isolated container of Connections. The first Workspace ("Default")
@@ -144,6 +145,7 @@ export interface Connection {
   rdpOptions?: RdpConnectionOptions;
   vncOptions?: VncConnectionOptions;
   ftpOptions?: FtpConnectionOptions;
+  cloudStorageOptions?: CloudStorageOptions;
   type: ConnectionType;
   status: ConnectionStatus;
 }
@@ -931,6 +933,7 @@ export interface CreateConnectionRequest {
   rdpOptions?: RdpConnectionOptions;
   vncOptions?: VncConnectionOptions;
   ftpOptions?: FtpConnectionOptions;
+  cloudStorageOptions?: CloudStorageOptions;
   sshPortForwardings?: SshPortForwarding[] | null;
   fileViewOpenExternal?: boolean;
 }
@@ -1019,7 +1022,7 @@ export interface RemoteDesktopPane {
 }
 
 export interface FileBrowserPane {
-  kind: "sftp" | "ftp" | "localFiles";
+  kind: "sftp" | "ftp" | "localFiles" | "cloudStorage";
   id: string;
   childConnectionId?: string;
   title: string;
@@ -1618,6 +1621,43 @@ export interface FtpConnectionOptions {
   remotePath?: string;
 }
 
+export type CloudStorageProvider = "s3" | "azureBlob";
+export type AzureBlobAuthMode = "key" | "sas";
+
+/**
+ * Persisted options for a Cloud Storage Connection (`cloudStorage`). One
+ * Connection type covers S3-compatible object storage and Azure Blob Storage;
+ * `provider` selects which parameter group applies and the Rust
+ * `normalize_cloud_storage_options` clears the fields that do not belong to it,
+ * so stale values can never survive a provider switch.
+ *
+ * Credentials stay out of this object: the provider principal (S3 access key
+ * id, Azure account name) is the Connection username and the secret (S3 secret
+ * access key, Azure account key or SAS token) lives in the OS keychain, exactly
+ * like FTP.
+ */
+export interface CloudStorageOptions {
+  provider: CloudStorageProvider;
+  ignoreCertErrors: boolean;
+  connectTimeoutSecs?: number;
+  /** Start directory for the local pane; empty/undefined = the OS home folder. */
+  localPath?: string;
+  /** Start directory for the remote pane; empty/undefined = the provider root. */
+  remotePath?: string;
+  /** S3 bucket. Required: a Connection addresses exactly one bucket. */
+  bucket?: string;
+  /** Custom S3 endpoint for MinIO / R2 / Ceph / Spaces / localstack. */
+  endpoint?: string;
+  region?: string;
+  /** Path-style addressing, required by most self-hosted S3 servers. */
+  forcePathStyle: boolean;
+  /** Azure storage account name. */
+  account?: string;
+  /** Azure Blob container. Required. */
+  container?: string;
+  authMode?: AzureBlobAuthMode;
+}
+
 export type ScreenshotFormat = "png" | "jpeg";
 export type VideoFormat = "mp4" | "webm" | "gif";
 export type ScreenshotCaptureDelivery = "folder" | "clipboard" | "both";
@@ -1740,7 +1780,7 @@ export interface WorkspaceTab {
   displayTitle?: string | null;
   toolbarTitle?: string;
   subtitle: string;
-  kind: "terminal" | "sftp" | "webview" | "remoteDesktop" | "ftp" | "localFiles" | "fileViewer";
+  kind: "terminal" | "sftp" | "webview" | "remoteDesktop" | "ftp" | "localFiles" | "fileViewer" | "cloudStorage";
   panes: WorkspacePane[];
   layout?: LayoutNode;
   focusedPaneId?: string;

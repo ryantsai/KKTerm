@@ -18,7 +18,7 @@ A top-level section of the locale JSON mapping to a feature area in the frontend
 
 
 **Connection**:
-A durable openable resource stored in SQLite. The supported kinds are local terminal, SSH terminal, Telnet terminal, Serial terminal, URL (an embedded http(s) WebView2 target), RDP, VNC, FTP/FTPS, File Explorer (a local filesystem browser, kind `localFiles`), and Document (a single-file universal viewer/light editor, kind `fileView`). SFTP is opened from an SSH Connection and is not stored as a standalone Connection. Every Connection belongs to exactly one **Workspace**.
+A durable openable resource stored in SQLite. The supported kinds are local terminal, SSH terminal, Telnet terminal, Serial terminal, URL (an embedded http(s) WebView2 target), RDP, VNC, FTP/FTPS, Cloud Storage (S3-compatible object storage or Azure Blob Storage, kind `cloudStorage`), File Explorer (a local filesystem browser, kind `localFiles`), and Document (a single-file universal viewer/light editor, kind `fileView`). SFTP is opened from an SSH Connection and is not stored as a standalone Connection. Every Connection belongs to exactly one **Workspace**.
 _Avoid_: Profile, saved session, host entry
 
 **File Explorer Connection**:

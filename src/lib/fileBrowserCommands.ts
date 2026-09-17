@@ -16,7 +16,7 @@ import {
   type SftpSessionStarted,
   type SftpTransferResult,
 } from "./tauri";
-import type { Connection, FtpConnectionOptions, SftpSettings } from "../types";
+import type { Connection, CloudStorageOptions, FtpConnectionOptions, SftpSettings } from "../types";
 import { connectionPasswordOwnerId, resolveSshCompression, resolveSshOldProtocols, resolveSshSocksProxyRequest } from "../modules/workspace/connections/utils";
 import { useWorkspaceStore } from "../store";
 
@@ -29,6 +29,12 @@ export interface FileBrowserCapabilities {
   openTerminalHere: boolean;
   /** Transport can cancel a transfer that has already started */
   cancelTransfers: boolean;
+  /**
+   * Transport has an empty-folder primitive. Object storage does not: a
+   * "folder" there is only the shared prefix of existing objects, so the New
+   * Folder action is hidden rather than creating a junk placeholder object.
+   */
+  createFolder: boolean;
 }
 
 export interface FileBrowserCommands {
@@ -94,6 +100,7 @@ export function sftpBrowserCommands(connection: Connection): FileBrowserCommands
       verifySshHostKey: true,
       openTerminalHere: true,
       cancelTransfers: true,
+      createFolder: true,
     },
     startSession: ({ sessionId, path, password }) =>
       invokeCommand("start_sftp_session", {
@@ -160,6 +167,7 @@ export function ftpBrowserCommands(
       verifySshHostKey: false,
       openTerminalHere: false,
       cancelTransfers: true,
+      createFolder: true,
     },
     startSession: ({ sessionId, path, password }) =>
       invokeCommand("start_ftp_session", {
@@ -271,6 +279,7 @@ export function localBrowserCommands(): FileBrowserCommands {
       openTerminalHere: false,
       // copy_local_path runs to completion in one blocking call.
       cancelTransfers: false,
+      createFolder: true,
     },
     startSession: ({ sessionId, path }) => listLocal(path, sessionId),
     listDirectory: ({ sessionId, path }) => listLocal(path, sessionId),
@@ -300,6 +309,66 @@ export function localBrowserCommands(): FileBrowserCommands {
   return localBrowserCommandsSingleton;
 }
 
+/**
+ * Cloud Storage adapter. One Connection type covers S3-compatible object
+ * storage and Azure Blob Storage; the provider is a discriminator in
+ * `cloudStorageOptions` and only changes the label, never the command shape.
+ *
+ * Object storage has no POSIX permission model and no empty-folder primitive,
+ * so `editPermissions` and `createFolder` are both unavailable.
+ */
+export function cloudStorageBrowserCommands(
+  connection: Connection,
+  options: CloudStorageOptions,
+): FileBrowserCommands {
+  const protocolLabel = options.provider === "azureBlob" ? "Azure Blob" : "S3";
+
+  return {
+    protocolLabel,
+    capabilities: {
+      editPermissions: false,
+      verifySshHostKey: false,
+      openTerminalHere: false,
+      cancelTransfers: true,
+      createFolder: false,
+    },
+    startSession: ({ sessionId, path, password }) =>
+      invokeCommand("start_cloud_storage_session", {
+        request: {
+          sessionId,
+          title: connection.name,
+          host: connection.host,
+          user: connection.user,
+          secretOwnerId: connectionPasswordOwnerId(connection),
+          password,
+          path,
+          options,
+        },
+      }),
+    listDirectory: (args) =>
+      invokeCommand("list_cloud_storage_directory", { request: args }),
+    closeSession: (sessionId) =>
+      invokeCommand("close_cloud_storage_session", { sessionId }).then(() => undefined),
+    createFolder: () => {
+      throw new Error("Cloud storage has no empty-folder primitive; upload a file into a folder to create it");
+    },
+    renamePath: (args) =>
+      invokeCommand("rename_cloud_storage_path", { request: args }).then(() => undefined),
+    deletePath: (args) =>
+      invokeCommand("delete_cloud_storage_path", { request: args }).then(() => undefined),
+    pathProperties: (args) =>
+      invokeCommand("cloud_storage_path_properties", { request: args }),
+    updatePathProperties: () => {
+      throw new Error("Cloud storage does not support editing POSIX properties");
+    },
+    uploadPath: (args) => invokeCommand("upload_cloud_storage_path", { request: args }),
+    downloadPath: (args) => invokeCommand("download_cloud_storage_path", { request: args }),
+    cancelTransfer: (args) =>
+      invokeCommand("cancel_cloud_storage_transfer", { request: args }).then(() => undefined),
+    transferProgressEvent: "cloud-storage-transfer-progress",
+  };
+}
+
 /** Resolve the right adapter from a Connection. */
 export function fileBrowserCommandsFor(connection: Connection): FileBrowserCommands {
   if (connection.type === "localFiles") {
@@ -315,6 +384,14 @@ export function fileBrowserCommandsFor(connection: Connection): FileBrowserComma
       ignoreCertErrors: false,
     };
     return ftpBrowserCommands(connection, options);
+  }
+  if (connection.type === "cloudStorage") {
+    const options: CloudStorageOptions = connection.cloudStorageOptions ?? {
+      provider: "s3",
+      ignoreCertErrors: false,
+      forcePathStyle: false,
+    };
+    return cloudStorageBrowserCommands(connection, options);
   }
   return sftpBrowserCommands(connection);
 }

@@ -778,6 +778,7 @@ function EmbeddedConnectionPane({
     case "sftp":
     case "ftp":
     case "localFiles":
+    case "cloudStorage":
       body = (
         <SftpWorkspace
           commands={fileBrowserCommands ?? undefined}

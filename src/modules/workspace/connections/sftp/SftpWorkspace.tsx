@@ -851,6 +851,12 @@ export function SftpWorkspace({
       rememberRemotePath(result.path);
       setSelectedRemoteNames([]);
       setStatus(t("sftp.connected"));
+      // Object storage pages large delimiter listings, so a full page means
+      // the folder may hold more entries than are shown. Say so instead of
+      // silently hiding objects.
+      if (result.truncated) {
+        showStatusBarNotice(t("connections.cloudStorageListingTruncated"), { tone: "warning" });
+      }
     } catch (error) {
       setStatus(String(error));
     } finally {
@@ -2572,7 +2578,11 @@ export function SftpWorkspace({
               selectedNames={selectedRemoteNames}
               onRefresh={refreshRemoteDirectory}
               onGoUp={openRemoteParent}
-              onCreateFolder={isConnected && !isTransferring ? handleCreateRemoteFolder : undefined}
+              onCreateFolder={
+                isConnected && !isTransferring && commands?.capabilities.createFolder
+                  ? handleCreateRemoteFolder
+                  : undefined
+              }
               onRenameSelected={isConnected && !isTransferring ? handleRenameRemotePath : undefined}
               onDeleteSelected={isConnected && !isTransferring ? handleDeleteRemotePath : undefined}
               onOpenFolder={openRemoteFolder}

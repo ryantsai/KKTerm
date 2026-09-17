@@ -3,7 +3,7 @@ import folderServerIcon from "../../../assets/file-icons/material-icon-theme/ico
 import folderWindowsIcon from "../../../assets/file-icons/material-icon-theme/icons/folder-windows.svg";
 import { currentPlatform } from "../../../lib/platform";
 
-export type FileBrowserConnectionIconKind = "ftp" | "sftp" | "localFiles";
+export type FileBrowserConnectionIconKind = "ftp" | "sftp" | "localFiles" | "cloudStorage";
 
 export function fileBrowserConnectionIconSrc(kind: FileBrowserConnectionIconKind) {
   if (kind === "localFiles") {

@@ -3,7 +3,7 @@ import {
   dispatchConnectionTabContextMenu,
   isConnectionTabContextMenuConnection,
 } from "./connections/connectionTabContextMenu";
-import { ftpBrowserCommands, localBrowserCommands } from "../../lib/fileBrowserCommands";
+import { cloudStorageBrowserCommands, ftpBrowserCommands, localBrowserCommands } from "../../lib/fileBrowserCommands";
 import { TerminalWorkspace } from "./connections/terminal/TerminalWorkspace";
 import { TerminalRecordingsDialog } from "./connections/terminal/TerminalRecordingsDialog";
 import { ConnectionIcon } from "./connections/ConnectionIcon";
@@ -624,6 +624,26 @@ export function WorkspaceCanvas({
           // protocol can't support (e.g. POSIX permissions editor).
           const commands = connection
             ? ftpBrowserCommands(connection, ftpOptions)
+            : undefined;
+          return (
+            <DockableWorkspaceTab isActive={tabIsActive} key={tab.id} tab={tab}>
+              <SftpWorkspace
+                commands={commands}
+                isActive={tabIsActive}
+                onClose={hideTopTabButtons ? () => closeTab(tab.id) : undefined}
+                tab={tab}
+              />
+            </DockableWorkspaceTab>
+          );
+        }
+        if (tab.kind === "cloudStorage") {
+          const connection = tab.connection;
+          // Cloud Storage Connections (S3-compatible / Azure Blob) reuse the
+          // same SftpWorkspace through the provider-discriminated adapter,
+          // which also carries the capability flags (object storage has no
+          // POSIX permissions and no empty folder).
+          const commands = connection?.cloudStorageOptions
+            ? cloudStorageBrowserCommands(connection, connection.cloudStorageOptions)
             : undefined;
           return (
             <DockableWorkspaceTab isActive={tabIsActive} key={tab.id} tab={tab}>

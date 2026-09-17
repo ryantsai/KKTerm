@@ -9,6 +9,7 @@ mod app_updates;
 mod assistant_skills;
 mod auto_start;
 mod bundle_identifier;
+mod cloud_storage;
 mod currency_rates;
 mod custom_modules;
 mod dashboard_commands;
@@ -4079,6 +4080,128 @@ async fn close_ftp_session(app: tauri::AppHandle, session_id: String) -> Result<
     .await
 }
 
+// ── Cloud Storage (S3-compatible / Azure Blob) ───────────────────────────────
+
+#[tauri::command]
+async fn start_cloud_storage_session(
+    app: tauri::AppHandle,
+    request: cloud_storage::StartCloudStorageSessionRequest,
+) -> Result<cloud_storage::CloudStorageDirectoryListing, String> {
+    let worker_app = app.clone();
+    run_blocking_command("Cloud storage startup", move || {
+        let sessions = worker_app.state::<cloud_storage::CloudStorageSessionManager>();
+        let secrets = worker_app.state::<secrets::Secrets>();
+        sessions.start_cloud_storage_session(worker_app.clone(), &secrets, request)
+    })
+    .await
+}
+
+#[tauri::command]
+async fn list_cloud_storage_directory(
+    app: tauri::AppHandle,
+    request: cloud_storage::ListCloudStorageDirectoryRequest,
+) -> Result<cloud_storage::CloudStorageDirectoryListing, String> {
+    run_blocking_command("Cloud storage list directory", move || {
+        let sessions = app.state::<cloud_storage::CloudStorageSessionManager>();
+        sessions.list_cloud_storage_directory(request)
+    })
+    .await
+}
+
+#[tauri::command]
+async fn upload_cloud_storage_path(
+    app: tauri::AppHandle,
+    request: cloud_storage::UploadCloudStoragePathRequest,
+) -> Result<cloud_storage::CloudStorageTransferResult, String> {
+    let worker_app = app.clone();
+    run_blocking_command("Cloud storage upload", move || {
+        let sessions = worker_app.state::<cloud_storage::CloudStorageSessionManager>();
+        sessions.upload_cloud_storage_path(worker_app.clone(), request)
+    })
+    .await
+}
+
+#[tauri::command]
+async fn download_cloud_storage_path(
+    app: tauri::AppHandle,
+    request: cloud_storage::DownloadCloudStoragePathRequest,
+) -> Result<cloud_storage::CloudStorageTransferResult, String> {
+    let worker_app = app.clone();
+    run_blocking_command("Cloud storage download", move || {
+        let sessions = worker_app.state::<cloud_storage::CloudStorageSessionManager>();
+        sessions.download_cloud_storage_path(worker_app.clone(), request)
+    })
+    .await
+}
+
+#[tauri::command]
+fn cancel_cloud_storage_transfer(
+    sessions: tauri::State<'_, cloud_storage::CloudStorageSessionManager>,
+    request: cloud_storage::CancelCloudStorageTransferRequest,
+) -> Result<(), String> {
+    sessions.cancel_cloud_storage_transfer(request)
+}
+
+#[tauri::command]
+async fn create_cloud_storage_folder(
+    app: tauri::AppHandle,
+    request: cloud_storage::CreateCloudStorageFolderRequest,
+) -> Result<(), String> {
+    run_blocking_command("Cloud storage create folder", move || {
+        let sessions = app.state::<cloud_storage::CloudStorageSessionManager>();
+        sessions.create_cloud_storage_folder(request)
+    })
+    .await
+}
+
+#[tauri::command]
+async fn rename_cloud_storage_path(
+    app: tauri::AppHandle,
+    request: cloud_storage::RenameCloudStoragePathRequest,
+) -> Result<(), String> {
+    run_blocking_command("Cloud storage rename", move || {
+        let sessions = app.state::<cloud_storage::CloudStorageSessionManager>();
+        sessions.rename_cloud_storage_path(request)
+    })
+    .await
+}
+
+#[tauri::command]
+async fn delete_cloud_storage_path(
+    app: tauri::AppHandle,
+    request: cloud_storage::DeleteCloudStoragePathRequest,
+) -> Result<(), String> {
+    run_blocking_command("Cloud storage delete", move || {
+        let sessions = app.state::<cloud_storage::CloudStorageSessionManager>();
+        sessions.delete_cloud_storage_path(request)
+    })
+    .await
+}
+
+#[tauri::command]
+async fn cloud_storage_path_properties(
+    app: tauri::AppHandle,
+    request: cloud_storage::CloudStoragePathPropertiesRequest,
+) -> Result<cloud_storage::CloudStoragePathProperties, String> {
+    run_blocking_command("Cloud storage properties", move || {
+        let sessions = app.state::<cloud_storage::CloudStorageSessionManager>();
+        sessions.cloud_storage_path_properties(request)
+    })
+    .await
+}
+
+#[tauri::command]
+async fn close_cloud_storage_session(
+    app: tauri::AppHandle,
+    session_id: String,
+) -> Result<(), String> {
+    run_blocking_command("Cloud storage close", move || {
+        let sessions = app.state::<cloud_storage::CloudStorageSessionManager>();
+        sessions.close_cloud_storage_session(&session_id)
+    })
+    .await
+}
+
 #[tauri::command]
 async fn start_webview_session(
     app: tauri::AppHandle,
@@ -4885,8 +5008,9 @@ pub fn run() {
             app.manage(ai::WidgetHealthRegistry::new());
             app.manage(native_tooltip::new_state());
             app.manage(sessions::SessionManager::new());
-            app.manage(sftp::SftpSessionManager::new());
-            app.manage(ftp::FtpSessionManager::new());
+    app.manage(sftp::SftpSessionManager::new());
+    app.manage(ftp::FtpSessionManager::new());
+    app.manage(cloud_storage::CloudStorageSessionManager::new());
             app.manage(webview_sessions);
             app.manage(rdp::RdpSessionManager::new());
             app.manage(vnc::VncSessionManager::new());
@@ -5376,6 +5500,17 @@ pub fn run() {
             delete_ftp_path,
             ftp_path_properties,
             close_ftp_session,
+            // ── Cloud Storage (S3-compatible / Azure Blob)
+            start_cloud_storage_session,
+            list_cloud_storage_directory,
+            upload_cloud_storage_path,
+            download_cloud_storage_path,
+            cancel_cloud_storage_transfer,
+            create_cloud_storage_folder,
+            rename_cloud_storage_path,
+            delete_cloud_storage_path,
+            cloud_storage_path_properties,
+            close_cloud_storage_session,
             // ── URL WebView
             start_webview_session,
             update_webview_bounds,

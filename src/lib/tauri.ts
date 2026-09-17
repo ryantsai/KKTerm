@@ -74,6 +74,7 @@ import type {
   MoveConnectionRequest,
   PerformanceSnapshot,
   PreparedAppLauncherEntry,
+  CloudStorageOptions,
   RenameConnectionFolderRequest,
   RenameConnectionRequest,
   RdpSettings,
@@ -320,6 +321,12 @@ export interface SftpDirectoryListing {
   sessionId: string;
   path: string;
   entries: SftpDirectoryEntry[];
+  /**
+   * Set by providers whose directory listing is paged (object storage). True
+   * means the listing may be incomplete, so the browser can say so instead of
+   * silently hiding entries.
+   */
+  truncated?: boolean;
 }
 
 export type SftpSessionStarted = SftpDirectoryListing;
@@ -540,6 +547,52 @@ export interface FtpTransferProgress {
 }
 
 export interface FtpPathProperties {
+  path: string;
+  name: string;
+  kind: "file" | "folder" | "symlink" | "other";
+  size?: number;
+  modified?: number;
+  permissions?: number;
+  mode?: string;
+  user?: string;
+  group?: string;
+}
+
+export interface CloudStorageDirectoryEntry {
+  name: string;
+  kind: "file" | "folder";
+  size?: number;
+  modified?: number;
+}
+
+export interface CloudStorageDirectoryListing {
+  sessionId: string;
+  path: string;
+  entries: CloudStorageDirectoryEntry[];
+  /**
+   * True when the provider returned a full listing page, so the folder may
+   * hold more entries than are shown.
+   */
+  truncated: boolean;
+}
+
+export type CloudStorageSessionStarted = CloudStorageDirectoryListing;
+
+export interface CloudStorageTransferResult {
+  name: string;
+  files: number;
+  folders: number;
+  bytes: number;
+}
+
+export interface CloudStorageTransferProgress {
+  transferId: string;
+  transferredBytes: number;
+  totalBytes: number;
+  progress: number;
+}
+
+export interface CloudStoragePathProperties {
   path: string;
   name: string;
   kind: "file" | "folder" | "symlink" | "other";
@@ -3571,6 +3624,73 @@ type CommandMap = {
     result: FtpPathProperties;
   };
   close_ftp_session: {
+    args: { sessionId: string };
+    result: null;
+  };
+  start_cloud_storage_session: {
+    args: {
+      request: {
+        sessionId?: string;
+        title: string;
+        host: string;
+        user: string;
+        secretOwnerId?: string | null;
+        password?: string;
+        path?: string;
+        options: CloudStorageOptions;
+      };
+    };
+    result: CloudStorageSessionStarted;
+  };
+  list_cloud_storage_directory: {
+    args: { request: { sessionId: string; path: string } };
+    result: CloudStorageDirectoryListing;
+  };
+  upload_cloud_storage_path: {
+    args: {
+      request: {
+        sessionId: string;
+        transferId: string;
+        localPath: string;
+        remoteDirectory: string;
+        overwriteBehavior: SftpSettings["overwriteBehavior"];
+      };
+    };
+    result: CloudStorageTransferResult;
+  };
+  download_cloud_storage_path: {
+    args: {
+      request: {
+        sessionId: string;
+        transferId: string;
+        remotePath: string;
+        localDirectory: string;
+        overwriteBehavior: SftpSettings["overwriteBehavior"];
+      };
+    };
+    result: CloudStorageTransferResult;
+  };
+  cancel_cloud_storage_transfer: {
+    args: { request: { transferId: string } };
+    result: null;
+  };
+  create_cloud_storage_folder: {
+    args: { request: { sessionId: string; parentPath: string; name: string } };
+    result: null;
+  };
+  rename_cloud_storage_path: {
+    args: { request: { sessionId: string; path: string; newName: string } };
+    result: null;
+  };
+  delete_cloud_storage_path: {
+    args: { request: { sessionId: string; path: string } };
+    result: null;
+  };
+  cloud_storage_path_properties: {
+    args: { request: { sessionId: string; path: string } };
+    result: CloudStoragePathProperties;
+  };
+  close_cloud_storage_session: {
     args: { sessionId: string };
     result: null;
   };

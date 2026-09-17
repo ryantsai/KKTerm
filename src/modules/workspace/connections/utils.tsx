@@ -1,4 +1,4 @@
-import { Cable, FileText, FolderInput, FolderOpen, Globe2, Laptop, Monitor, Mouse, Network, Server } from "../../../lib/reicon";
+import { Cable, Cloud, FileText, FolderInput, FolderOpen, Globe2, Laptop, Monitor, Mouse, Network, Server } from "../../../lib/reicon";
 import { confirmNativeDialog, invokeCommand, type SshHostKeyPreview } from "../../../lib/tauri";
 import i18next from "../../../i18n/config";
 import type { Connection, ConnectionType, SshSettings, TerminalCustomShell, WorkspaceTab } from "../../../types";
@@ -125,6 +125,8 @@ export function connectionTypeLabel(type: ConnectionType) {
       return i18next.t("connections.localFiles");
     case "fileView":
       return i18next.t("connections.fileView");
+    case "cloudStorage":
+      return i18next.t("connections.cloudStorage");
   }
 }
 
@@ -137,6 +139,16 @@ export function connectionSubtitle(connection: Connection) {
   }
   if (connection.type === "serial") {
     return `${connection.serialLine ?? connection.host} @ ${connection.serialSpeed ?? 9600}`;
+  }
+  if (connection.type === "cloudStorage") {
+    // The provider, not the endpoint host, is what identifies the target: a
+    // bucket and a container can both live behind a generic hostname.
+    const options = connection.cloudStorageOptions;
+    const target =
+      options?.provider === "azureBlob"
+        ? [options.account, options.container].filter(Boolean).join("/")
+        : [options?.bucket, options?.region].filter(Boolean).join(" · ");
+    return target ? `${connectionTypeLabel(connection.type)} — ${target}` : connectionTypeLabel(connection.type);
   }
   const address = connection.port ? `${connection.host}:${connection.port}` : connection.host;
   if (connection.user) {
@@ -159,6 +171,9 @@ export function connectionToolbarTitle(connection: Connection) {
     return connection.name;
   }
   if (connection.type === "fileView") {
+    return connection.name;
+  }
+  if (connection.type === "cloudStorage") {
     return connection.name;
   }
   return connection.port ? `${connection.host}:${connection.port}` : connection.host;
@@ -190,6 +205,8 @@ export function connectionIconForType(type: ConnectionType) {
       return FolderOpen;
     case "fileView":
       return FileText;
+    case "cloudStorage":
+      return Cloud;
   }
 }
 

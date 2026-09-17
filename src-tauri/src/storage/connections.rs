@@ -33,6 +33,8 @@ impl Storage {
         let user = normalize_connection_user(request.user, &connection_type)?;
         let folder_id = normalize_optional_id(request.folder_id);
         let ftp_options = normalize_ftp_connection_options(request.ftp_options, &connection_type)?;
+        let cloud_storage_options =
+            normalize_cloud_storage_connection_options(request.cloud_storage_options, &connection_type)?;
         let key_path =
             normalize_ssh_auth_key_path(request.key_path, &connection_type, &ftp_options);
         let proxy_jump = normalize_ssh_optional_field(request.proxy_jump, &connection_type);
@@ -74,6 +76,8 @@ impl Storage {
         let rdp_options_json = serialize_connection_options(&rdp_options, "RDP")?;
         let vnc_options_json = serialize_connection_options(&vnc_options, "VNC")?;
         let ftp_options_json = serialize_connection_options(&ftp_options, "FTP")?;
+        let cloud_storage_options_json =
+            serialize_connection_options(&cloud_storage_options, "cloud storage")?;
         let ssh_port_forwardings_json = ssh_port_forwardings_to_json(&ssh_port_forwardings)?;
         let id = make_connection_id(&name);
         let use_tmux_sessions =
@@ -106,8 +110,8 @@ impl Storage {
         transaction
             .execute(
                 "INSERT INTO connections (
-                    id, folder_id, name, host, username, port, key_path, proxy_jump, ssh_socks_proxy, ssh_socks_proxy_username, ssh_socks_proxy_inherit_defaults, auth_method, local_shell, local_startup_directory, local_startup_script, url, data_partition, url_user_agent, url_proxy, url_proxy_inherit_defaults, use_tmux_sessions, use_psmux_sessions, tmux_connection_id, serial_line, serial_speed, rdp_options, vnc_options, ftp_options, ssh_port_forwardings_json, file_view_open_external, connection_type, status, sort_order, workspace_id, ssh_compression, ssh_old_protocols
-                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30, ?31, 'idle', ?32, ?33, ?34, ?35)",
+                    id, folder_id, name, host, username, port, key_path, proxy_jump, ssh_socks_proxy, ssh_socks_proxy_username, ssh_socks_proxy_inherit_defaults, auth_method, local_shell, local_startup_directory, local_startup_script, url, data_partition, url_user_agent, url_proxy, url_proxy_inherit_defaults, use_tmux_sessions, use_psmux_sessions, tmux_connection_id, serial_line, serial_speed, rdp_options, vnc_options, ftp_options, cloud_storage_options, ssh_port_forwardings_json, file_view_open_external, connection_type, status, sort_order, workspace_id, ssh_compression, ssh_old_protocols
+                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30, ?31, ?32, 'idle', ?33, ?34, ?35, ?36)",
                 params![
                     id,
                     folder_id,
@@ -137,6 +141,7 @@ impl Storage {
                     rdp_options_json,
                     vnc_options_json,
                     ftp_options_json,
+                    cloud_storage_options_json,
                     ssh_port_forwardings_json,
                     file_view_open_external,
                     connection_type,
@@ -193,6 +198,7 @@ impl Storage {
             rdp_options,
             vnc_options,
             ftp_options,
+            cloud_storage_options,
             password_credential_id: None,
             icon_color: None,
             icon_data_url: None,
@@ -243,6 +249,8 @@ impl Storage {
         let user = normalize_connection_user(request.user, &connection_type)?;
         let target_folder_id = normalize_optional_id(request.folder_id);
         let ftp_options = normalize_ftp_connection_options(request.ftp_options, &connection_type)?;
+        let cloud_storage_options =
+            normalize_cloud_storage_connection_options(request.cloud_storage_options, &connection_type)?;
         let key_path =
             normalize_ssh_auth_key_path(request.key_path, &connection_type, &ftp_options);
         let proxy_jump = normalize_ssh_optional_field(request.proxy_jump, &connection_type);
@@ -284,6 +292,8 @@ impl Storage {
         let rdp_options_json = serialize_connection_options(&rdp_options, "RDP")?;
         let vnc_options_json = serialize_connection_options(&vnc_options, "VNC")?;
         let ftp_options_json = serialize_connection_options(&ftp_options, "FTP")?;
+        let cloud_storage_options_json =
+            serialize_connection_options(&cloud_storage_options, "cloud storage")?;
         let ssh_port_forwardings_json = ssh_port_forwardings_to_json(&ssh_port_forwardings)?;
         let mut connection = self.lock()?;
         let transaction = connection.transaction().map_err(to_storage_error)?;
@@ -396,13 +406,14 @@ impl Storage {
                      rdp_options = ?25,
                      vnc_options = ?26,
                      ftp_options = ?27,
-                     ssh_port_forwardings_json = ?28,
-                     file_view_open_external = ?29,
-                     sort_order = ?30,
-                     workspace_id = ?31,
-                     ssh_compression = ?32,
-                     ssh_old_protocols = ?33
-                 WHERE id = ?34",
+                     cloud_storage_options = ?28,
+                     ssh_port_forwardings_json = ?29,
+                     file_view_open_external = ?30,
+                     sort_order = ?31,
+                     workspace_id = ?32,
+                     ssh_compression = ?33,
+                     ssh_old_protocols = ?34
+                 WHERE id = ?35",
                 params![
                     target_folder_id,
                     name,
@@ -431,6 +442,7 @@ impl Storage {
                     rdp_options_json,
                     vnc_options_json,
                     ftp_options_json,
+                    cloud_storage_options_json,
                     ssh_port_forwardings_json,
                     file_view_open_external,
                     sort_order,
@@ -1851,7 +1863,7 @@ impl Storage {
                         auth_method, local_shell, local_startup_directory,
                         local_startup_script, url, data_partition, use_tmux_sessions, use_psmux_sessions,
                         tmux_connection_id, serial_line, serial_speed, rdp_options, vnc_options,
-                        ftp_options, password_credential_id, icon_color, icon_data_url, icon_background_color,
+                        ftp_options, cloud_storage_options, password_credential_id, icon_color, icon_data_url, icon_background_color,
                         terminal_opacity, terminal_background_json, terminal_color_scheme, terminal_syntax_highlight_profile_id, file_view_open_external,
                         connection_type, status, sort_order
                     )
@@ -1861,7 +1873,7 @@ impl Storage {
                         auth_method, local_shell, local_startup_directory,
                         local_startup_script, url, data_partition, use_tmux_sessions, use_psmux_sessions,
                         ?3, serial_line, serial_speed, rdp_options, vnc_options,
-                        ftp_options, password_credential_id, icon_color, icon_data_url, icon_background_color,
+                        ftp_options, cloud_storage_options, password_credential_id, icon_color, icon_data_url, icon_background_color,
                         terminal_opacity, terminal_background_json, terminal_color_scheme, terminal_syntax_highlight_profile_id, file_view_open_external,
                         connection_type, 'idle', ?4
                     FROM connections

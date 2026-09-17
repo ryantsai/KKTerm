@@ -11,6 +11,7 @@ export const CONNECTION_CREATION_OPTIONS = [
   { type: "ftp", labelKey: "connections.ftp" },
   { type: "localFiles", labelKey: "connections.localFiles" },
   { type: "fileView", labelKey: "connections.fileView" },
+  { type: "cloudStorage", labelKey: "connections.cloudStorage" },
 ] as const satisfies ReadonlyArray<{
   type: ConnectionType;
   labelKey: string;

@@ -1620,6 +1620,7 @@ export interface WorkspaceState {
   openSftpBrowser: (connection: Connection) => void;
   openSftpBrowserInNewTab: (connection: Connection) => void;
   openFtpBrowser: (connection: Connection) => void;
+  openCloudStorageBrowser: (connection: Connection) => void;
   openLocalFilesBrowser: (connection: Connection) => void;
   openFileViewer: (connection: Connection) => void;
   openFileViewerPath: (
@@ -2163,6 +2164,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     }
     if (connection.type === "ftp") {
       get().openFtpBrowser(connection);
+      return;
+    }
+    if (connection.type === "cloudStorage") {
+      get().openCloudStorageBrowser(connection);
       return;
     }
     if (connection.type === "localFiles") {
@@ -2900,6 +2905,44 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       toolbarTitle: toolbarTitleForConnection(connection),
       subtitle: `${connection.user || "anonymous"}@${connection.host}`,
       kind: "ftp",
+      panes: [],
+      connection,
+    };
+
+    set((state) => ({
+      tabs: [...state.tabs, tab],
+      activeTabId: tab.id,
+    }));
+  },
+  openCloudStorageBrowser: (connection) => {
+    if (connection.type !== "cloudStorage") {
+      return;
+    }
+
+    const tabId = `tab-${connection.id}-cloud-storage`;
+    const existingTab = get().tabs.find((tab) => tab.id === tabId);
+    if (existingTab) {
+      set({ activeTabId: existingTab.id });
+      return;
+    }
+
+    const provider = connection.cloudStorageOptions?.provider ?? "s3";
+    const protocolLabel = provider === "azureBlob" ? "Azure Blob" : "S3";
+    const target =
+      provider === "azureBlob"
+        ? [connection.cloudStorageOptions?.account, connection.cloudStorageOptions?.container]
+            .filter(Boolean)
+            .join("/")
+        : [connection.cloudStorageOptions?.bucket, connection.cloudStorageOptions?.region]
+            .filter(Boolean)
+            .join(" · ");
+    const tab: WorkspaceTab = {
+      id: tabId,
+      workspaceId: get().activeWorkspaceId,
+      title: `${connection.name} ${protocolLabel}`,
+      toolbarTitle: toolbarTitleForConnection(connection),
+      subtitle: target || connection.host,
+      kind: "cloudStorage",
       panes: [],
       connection,
     };

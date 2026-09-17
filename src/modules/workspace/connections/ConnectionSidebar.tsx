@@ -6,6 +6,7 @@ import { ConnectionIcon, connectionIconSrcForConnection } from "./ConnectionIcon
 import { AddConnectionMenu } from "./ConnectionMenus";
 import { connectionCreationOptions } from "./connectionCreationOptions";
 import { FtpConnectionFields, FtpConnectionOptions } from "./connection-dialog/FtpConnectionFields";
+import { CloudStorageFields } from "./connection-dialog/CloudStorageFields";
 import { LocalConnectionFields } from "./connection-dialog/LocalConnectionFields";
 import { defaultWslConnectionName, distroFromWslShell } from "./connection-dialog/wslLocalShell";
 import { LocalFilesConnectionFields } from "./connection-dialog/LocalFilesConnectionFields";
@@ -94,7 +95,7 @@ import { DialogPortal } from "../../../app/DialogPortal";
 import { Btn, ConfirmSheet, LegacyDialogActions } from "../../../app/ui/dialog";
 import { pushTrayMenu } from "../../../app/trayMenu";
 import { CHILD_CONNECTION_CLOSED_EVENT, DEFAULT_WORKSPACE_ID, appendTmuxSessionId, connectionUsesTmux, forgetConnectionLocalState, useWorkspaceStore } from "../../../store";
-import type { Connection, ConnectionFolder, ConnectionStatus, ConnectionTree, ConnectionType, CreateConnectionRequest, RdpSettings, SplitDirection, SshCompressionMode, SshOldProtocolsMode, SshSettings, StoredCredentialSummary, UpdateConnectionRequest, VncSettings, WorkspaceChildConnection, WorkspaceTab } from "../../../types";
+import type { CloudStorageProvider, Connection, ConnectionFolder, ConnectionStatus, ConnectionTree, ConnectionType, CreateConnectionRequest, RdpSettings, SplitDirection, SshCompressionMode, SshOldProtocolsMode, SshSettings, StoredCredentialSummary, UpdateConnectionRequest, VncSettings, WorkspaceChildConnection, WorkspaceTab } from "../../../types";
 
 // Pointer travel (px, either axis) before a press is treated as a drag rather
 // than a click. Kept above ordinary click jitter so selecting a row never
@@ -4623,6 +4624,9 @@ function ConnectionDialog({
   const [ftpLocalPath, setFtpLocalPath] = useState(
     initialConnection?.ftpOptions?.localPath ?? "",
   );
+  const [cloudProvider, setCloudProvider] = useState<CloudStorageProvider>(
+    initialConnection?.cloudStorageOptions?.provider ?? "s3",
+  );
   const [keyPath, setKeyPath] = useState(
     initialConnection?.keyPath ?? sshSettings.defaultKeyPath ?? "",
   );
@@ -4685,6 +4689,7 @@ function ConnectionDialog({
   );
   const isTelnetConnection = connectionType === "telnet";
   const isFtpConnection = connectionType === "ftp";
+  const isCloudStorageConnection = connectionType === "cloudStorage";
   const ftpUsesSshAuth = isFtpConnection && ftpProtocol === "sftp";
   const usesSshDefaults = connectionType === "ssh";
   const usesSshAuthFields = usesSshDefaults || ftpUsesSshAuth;
@@ -4724,6 +4729,7 @@ function ConnectionDialog({
     connectionType === "rdp" ||
     connectionType === "vnc" ||
     connectionType === "ftp" ||
+    connectionType === "cloudStorage" ||
     connectionType === "url";
 
   useEffect(() => {
@@ -5159,6 +5165,41 @@ function ConnectionDialog({
               remotePath: String(form.get("ftpRemotePath") ?? "").trim() || undefined,
             }
           : undefined,
+      cloudStorageOptions:
+        connectionType === "cloudStorage"
+          ? {
+              provider: String(form.get("cloudProvider") ?? "s3") as CloudStorageProvider,
+              ignoreCertErrors: form.get("cloudIgnoreCertErrors") === "on",
+              connectTimeoutSecs:
+                Number(String(form.get("cloudConnectTimeoutSecs") ?? "30")) || 30,
+              localPath: String(form.get("cloudLocalPath") ?? "").trim() || undefined,
+              remotePath: String(form.get("cloudRemotePath") ?? "").trim() || undefined,
+              // The single endpoint field is the service endpoint for both
+              // object stores; the bucket/container is a separate field.
+              bucket:
+                form.get("cloudProvider") === "s3"
+                  ? String(form.get("cloudBucket") ?? "").trim() || undefined
+                  : undefined,
+              region:
+                form.get("cloudProvider") === "s3"
+                  ? String(form.get("cloudRegion") ?? "").trim() || undefined
+                  : undefined,
+              forcePathStyle:
+                form.get("cloudProvider") === "s3" && form.get("cloudForcePathStyle") === "on",
+              account:
+                form.get("cloudProvider") === "azureBlob"
+                  ? String(form.get("cloudAccount") ?? "").trim() || undefined
+                  : undefined,
+              container:
+                form.get("cloudProvider") === "azureBlob"
+                  ? String(form.get("cloudContainer") ?? "").trim() || undefined
+                  : undefined,
+              authMode:
+                form.get("cloudProvider") === "azureBlob"
+                  ? (String(form.get("cloudAuthMode") ?? "key") as "key" | "sas")
+                  : undefined,
+            }
+          : undefined,
       password:
         isTelnetConnection
           ? password
@@ -5166,7 +5207,7 @@ function ConnectionDialog({
           ? password
           : usesRemoteDesktopFields
             ? password || undefined
-            : isFtpConnection
+            : isFtpConnection || isCloudStorageConnection
               ? password || undefined
               : undefined,
       passwordCredentialId: canUseSavedPasswordCredential ? passwordCredentialId || undefined : undefined,
@@ -5420,6 +5461,14 @@ function ConnectionDialog({
             portDraft={portDraft}
             selectedPasswordCredentialId={selectedPasswordCredentialId}
             sshSettings={sshSettings}
+          />
+        );
+      case "cloudStorage":
+        return (
+          <CloudStorageFields
+            initialConnection={initialConnection}
+            onProviderChange={setCloudProvider}
+            provider={cloudProvider}
           />
         );
       default:

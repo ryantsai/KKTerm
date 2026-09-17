@@ -108,6 +108,8 @@ hickory-resolver = "0.26"
 if-addrs = "0.15"
 tokio-util = { version = "0.7", features = ["rt"] }
 oxipng = { version = "10.2.1", default-features = false, features = ["parallel", "zopfli"] }
+object_store = { version = "0.14.2", default-features = false, features = ["aws", "azure"] }
+bytes = "1"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows-capture = "=2.0.1"

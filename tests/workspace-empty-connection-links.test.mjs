@@ -27,6 +27,7 @@ test("Workspace empty state offers every supported Connection creation flow", as
     "ftp",
     "localFiles",
     "fileView",
+    "cloudStorage",
   ];
   const optionBlock = menuSource.match(
     /export const CONNECTION_CREATION_OPTIONS = \[(?<options>[\s\S]*?)\] as const/,

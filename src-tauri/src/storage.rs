@@ -14,7 +14,7 @@ use std::{
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use zip::{ZipArchive, ZipWriter, write::SimpleFileOptions};
 
-const SCHEMA_USER_VERSION: i32 = 65;
+const SCHEMA_USER_VERSION: i32 = 66;
 const MAX_SETTINGS_IMPORT_BYTES: u64 = 16 * 1024 * 1024 * 1024;
 const AUTOMATIC_BACKUP_INTERVAL_SECONDS: i64 = 24 * 60 * 60;
 
@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS connections (
     rdp_options TEXT,
     vnc_options TEXT,
     ftp_options TEXT,
+    cloud_storage_options TEXT,
     password_credential_id TEXT REFERENCES connection_password_credentials(id) ON DELETE SET NULL,
     icon_color TEXT,
     icon_data_url TEXT,
@@ -1801,6 +1802,8 @@ pub struct SavedConnection {
     vnc_options: Option<VncConnectionOptions>,
     #[serde(default)]
     ftp_options: Option<crate::ftp::FtpOptions>,
+    #[serde(default)]
+    cloud_storage_options: Option<crate::cloud_storage::CloudStorageOptions>,
     password_credential_id: Option<String>,
     icon_color: Option<String>,
     icon_data_url: Option<String>,
@@ -1916,6 +1919,8 @@ pub struct CreateConnectionRequest {
     #[serde(default)]
     ftp_options: Option<crate::ftp::FtpOptions>,
     #[serde(default)]
+    cloud_storage_options: Option<crate::cloud_storage::CloudStorageOptions>,
+    #[serde(default)]
     ssh_port_forwardings: Option<Vec<SshPortForwarding>>,
     #[serde(default)]
     file_view_open_external: bool,
@@ -1967,6 +1972,8 @@ pub struct UpdateConnectionRequest {
     vnc_options: Option<VncConnectionOptions>,
     #[serde(default)]
     ftp_options: Option<crate::ftp::FtpOptions>,
+    #[serde(default)]
+    cloud_storage_options: Option<crate::cloud_storage::CloudStorageOptions>,
     #[serde(default)]
     ssh_port_forwardings: Option<Vec<SshPortForwarding>>,
     #[serde(default)]
@@ -3266,7 +3273,7 @@ impl Storage {
                         terminal_opacity INTEGER,
                         terminal_background_json TEXT,
                         file_browser_view_options_json TEXT,
-                        connection_type TEXT NOT NULL CHECK (connection_type IN ('local', 'ssh', 'telnet', 'serial', 'url', 'rdp', 'vnc', 'ftp', 'localFiles', 'fileView')),
+    connection_type TEXT NOT NULL CHECK (connection_type IN ('local', 'ssh', 'telnet', 'serial', 'url', 'rdp', 'vnc', 'ftp', 'localFiles', 'fileView', 'cloudStorage')),
                         status TEXT NOT NULL CHECK (status IN ('connected', 'idle', 'offline')),
                         sort_order INTEGER NOT NULL
                     );
@@ -3568,6 +3575,142 @@ impl Storage {
                 )
                 .map_err(to_storage_error)?;
         }
+        // v66: Cloud Storage Connection kind. One durable type covers
+        // S3-compatible object storage and Azure Blob Storage, with the
+        // provider discriminated inside the new `cloud_storage_options` JSON
+        // column. SQLite cannot alter a CHECK constraint in place, so rebuild
+        // both tables whose CHECK lists enumerate connection types: the
+        // `connections` table (new kind plus options column) and
+        // `connection_password_credentials` (keeps the legacy origin-type column
+        // truthful for Cloud Storage credentials instead of writing a lie).
+        // Every upgrade path has the full pre-v66 column set by this point, so a
+        // full explicit-column copy is safe. This is a one-time migration;
+        // current-version startup needs no ongoing reconciliation because the new
+        // column is only ever read and written per Connection.
+        if stored_version < 66 && table_exists(&connection, "connections")? {
+            connection
+                .pragma_update(None, "legacy_alter_table", "ON")
+                .map_err(to_storage_error)?;
+            connection
+                .execute_batch(
+                    r#"
+                    BEGIN;
+                    ALTER TABLE connections RENAME TO connections_pre_v66;
+                    CREATE TABLE connections (
+                        id TEXT PRIMARY KEY,
+                        folder_id TEXT REFERENCES connection_folders(id) ON DELETE CASCADE,
+                        workspace_id TEXT REFERENCES workspaces(id) ON DELETE CASCADE,
+                        name TEXT NOT NULL,
+                        tab_title TEXT,
+                        host TEXT NOT NULL,
+                        username TEXT NOT NULL,
+                        port INTEGER,
+                        key_path TEXT,
+                        proxy_jump TEXT,
+                        ssh_socks_proxy TEXT,
+                        ssh_socks_proxy_username TEXT,
+                        ssh_socks_proxy_inherit_defaults INTEGER NOT NULL DEFAULT 1,
+                        ssh_compression TEXT,
+                        ssh_old_protocols TEXT,
+                        auth_method TEXT NOT NULL DEFAULT 'keyFile',
+                        local_shell TEXT,
+                        local_startup_directory TEXT,
+                        local_startup_script TEXT,
+                        url TEXT,
+                        data_partition TEXT,
+                        url_user_agent TEXT,
+                        url_proxy TEXT,
+                        url_proxy_inherit_defaults INTEGER NOT NULL DEFAULT 1,
+                        use_tmux_sessions INTEGER NOT NULL DEFAULT 1,
+                        use_psmux_sessions INTEGER NOT NULL DEFAULT 0,
+                        tmux_connection_id TEXT,
+                        serial_line TEXT,
+                        serial_speed INTEGER,
+                        rdp_options TEXT,
+                        vnc_options TEXT,
+                        ftp_options TEXT,
+                        cloud_storage_options TEXT,
+                        password_credential_id TEXT REFERENCES connection_password_credentials(id) ON DELETE SET NULL,
+                        icon_color TEXT,
+                        icon_data_url TEXT,
+                        icon_background_color TEXT,
+                        terminal_opacity INTEGER,
+                        terminal_background_json TEXT,
+                        terminal_color_scheme TEXT,
+                        terminal_syntax_highlight_profile_id TEXT,
+                        file_browser_view_options_json TEXT,
+                        ssh_port_forwardings_json TEXT,
+                        file_view_open_external INTEGER NOT NULL DEFAULT 0,
+                        connection_type TEXT NOT NULL CHECK (connection_type IN ('local', 'ssh', 'telnet', 'serial', 'url', 'rdp', 'vnc', 'ftp', 'localFiles', 'fileView', 'cloudStorage')),
+                        status TEXT NOT NULL CHECK (status IN ('connected', 'idle', 'offline')),
+                        sort_order INTEGER NOT NULL
+                    );
+                    INSERT INTO connections (
+                        id, folder_id, workspace_id, name, tab_title, host, username, port, key_path,
+                        proxy_jump, ssh_socks_proxy, ssh_socks_proxy_username, ssh_socks_proxy_inherit_defaults,
+                        ssh_compression, ssh_old_protocols, auth_method, local_shell, local_startup_directory,
+                        local_startup_script, url, data_partition, url_user_agent, url_proxy,
+                        url_proxy_inherit_defaults, use_tmux_sessions, use_psmux_sessions, tmux_connection_id,
+                        serial_line, serial_speed, rdp_options, vnc_options, ftp_options,
+                        password_credential_id, icon_color, icon_data_url, icon_background_color,
+                        terminal_opacity, terminal_background_json, terminal_color_scheme,
+                        terminal_syntax_highlight_profile_id, file_browser_view_options_json,
+                        ssh_port_forwardings_json, file_view_open_external, connection_type, status, sort_order
+                    )
+                    SELECT
+                        id, folder_id, workspace_id, name, tab_title, host, username, port, key_path,
+                        proxy_jump, ssh_socks_proxy, ssh_socks_proxy_username, ssh_socks_proxy_inherit_defaults,
+                        ssh_compression, ssh_old_protocols, auth_method, local_shell, local_startup_directory,
+                        local_startup_script, url, data_partition, url_user_agent, url_proxy,
+                        url_proxy_inherit_defaults, use_tmux_sessions, use_psmux_sessions, tmux_connection_id,
+                        serial_line, serial_speed, rdp_options, vnc_options, ftp_options,
+                        password_credential_id, icon_color, icon_data_url, icon_background_color,
+                        terminal_opacity, terminal_background_json, terminal_color_scheme,
+                        terminal_syntax_highlight_profile_id, file_browser_view_options_json,
+                        ssh_port_forwardings_json, file_view_open_external, connection_type, status, sort_order
+                    FROM connections_pre_v66;
+                    DROP TABLE connections_pre_v66;
+                    COMMIT;
+                    "#,
+                )
+                .map_err(to_storage_error)?;
+            connection
+                .pragma_update(None, "legacy_alter_table", "OFF")
+                .map_err(to_storage_error)?;
+        }
+        // `connection_password_credentials.connection_type` deliberately keeps
+        // its original value set. That column is documented as legacy origin
+        // metadata that must not filter selection, linking, merging, or password
+        // deduplication, and Cloud Storage does not participate in Saved
+        // Credentials yet, so widening its CHECK would only add a second parent
+        // table rebuild to this migration for no behavioural gain.
+        // The rebuild above keeps the public `connections` name stable, so any
+        // stale scratch-table FK clauses need the same repair the v25 rebuild
+        // performs. This is a no-op when no child table captured the scratch
+        // name; when it does fire it rebuilds the child tables, which is why the
+        // index batch above re-asserts the url_credentials index shape.
+        repair_connections_scratch_references(&connection, "connections_pre_v66", "v66")?;
+        // Restoring the indexes has to happen after the repair above. Rebuilding
+        // `connections` drops every index that hung off it, and the repair
+        // rebuilds the child tables, which drops their indexes too. The v61
+        // index block only runs for stored_version < 61, so a database already
+        // past v61 would silently lose these hot-path indexes without this
+        // re-assertion.
+        connection
+            .execute_batch(
+                r#"
+                CREATE INDEX IF NOT EXISTS idx_connections_folder_sort
+                    ON connections(folder_id, sort_order);
+                CREATE INDEX IF NOT EXISTS idx_connections_workspace_folder_sort
+                    ON connections(workspace_id, folder_id, sort_order);
+                CREATE INDEX IF NOT EXISTS idx_connections_password_credential
+                    ON connections(password_credential_id);
+                DROP INDEX IF EXISTS idx_url_credentials_connection;
+                CREATE INDEX idx_url_credentials_connection
+                    ON url_credentials(connection_id, updated_at DESC);
+                "#,
+            )
+            .map_err(to_storage_error)?;
         connection
             .execute_batch(&format!("PRAGMA user_version = {SCHEMA_USER_VERSION}"))
             .map_err(to_storage_error)?;
@@ -4027,9 +4170,9 @@ fn repair_connections_scratch_references(
         DROP TABLE url_credentials_{suffix}_fk_fix;
 
         ALTER TABLE connection_password_credentials RENAME TO connection_password_credentials_{suffix}_fk_fix;
-        CREATE TABLE connection_password_credentials (
-            id TEXT PRIMARY KEY,
-            connection_type TEXT NOT NULL CHECK (connection_type IN ('ssh', 'telnet', 'rdp', 'vnc', 'ftp')),
+                    CREATE TABLE connection_password_credentials (
+                        id TEXT PRIMARY KEY,
+                        connection_type TEXT NOT NULL CHECK (connection_type IN ('ssh', 'telnet', 'rdp', 'vnc', 'ftp')),
             username TEXT NOT NULL,
             label TEXT NOT NULL,
             created_from_connection_id TEXT REFERENCES connections(id) ON DELETE SET NULL,
@@ -4999,7 +5142,7 @@ fn list_root_connections_for_workspace(
     let mut statement = connection
         .prepare(
             "SELECT connections.id, name, tab_title, host, connections.username, port, key_path, proxy_jump, ssh_socks_proxy, ssh_socks_proxy_username, ssh_socks_proxy_inherit_defaults, auth_method, local_shell, local_startup_directory, local_startup_script, url, data_partition, use_tmux_sessions, tmux_connection_id, connection_type, serial_line, serial_speed, rdp_options, vnc_options, ftp_options, icon_color, icon_data_url, icon_background_color, terminal_opacity, terminal_background_json, password_credential_id,
-                    (SELECT username FROM url_credentials WHERE url_credentials.connection_id = connections.id ORDER BY updated_at DESC LIMIT 1), file_browser_view_options_json, file_view_open_external, ssh_port_forwardings_json, use_psmux_sessions, ssh_compression, url_proxy, url_proxy_inherit_defaults, url_user_agent, terminal_color_scheme, terminal_syntax_highlight_profile_id, ssh_old_protocols
+                    (SELECT username FROM url_credentials WHERE url_credentials.connection_id = connections.id ORDER BY updated_at DESC LIMIT 1), file_browser_view_options_json, file_view_open_external, ssh_port_forwardings_json, use_psmux_sessions, ssh_compression, url_proxy, url_proxy_inherit_defaults, url_user_agent, terminal_color_scheme, terminal_syntax_highlight_profile_id, ssh_old_protocols, cloud_storage_options
              FROM connections
              WHERE folder_id IS NULL AND workspace_id = ?1
              ORDER BY sort_order, name",
@@ -5056,7 +5199,7 @@ fn list_connections_for_folder(
     let mut statement = connection
         .prepare(&format!(
             "SELECT connections.id, name, tab_title, host, connections.username, port, key_path, proxy_jump, ssh_socks_proxy, ssh_socks_proxy_username, ssh_socks_proxy_inherit_defaults, auth_method, local_shell, local_startup_directory, local_startup_script, url, data_partition, use_tmux_sessions, tmux_connection_id, connection_type, serial_line, serial_speed, rdp_options, vnc_options, ftp_options, icon_color, icon_data_url, icon_background_color, terminal_opacity, terminal_background_json, password_credential_id,
-                    (SELECT username FROM url_credentials WHERE url_credentials.connection_id = connections.id ORDER BY updated_at DESC LIMIT 1), file_browser_view_options_json, file_view_open_external, ssh_port_forwardings_json, use_psmux_sessions, ssh_compression, url_proxy, url_proxy_inherit_defaults, url_user_agent, terminal_color_scheme, terminal_syntax_highlight_profile_id, ssh_old_protocols
+                    (SELECT username FROM url_credentials WHERE url_credentials.connection_id = connections.id ORDER BY updated_at DESC LIMIT 1), file_browser_view_options_json, file_view_open_external, ssh_port_forwardings_json, use_psmux_sessions, ssh_compression, url_proxy, url_proxy_inherit_defaults, url_user_agent, terminal_color_scheme, terminal_syntax_highlight_profile_id, ssh_old_protocols, cloud_storage_options
              FROM connections
              WHERE {where_clause}
              ORDER BY sort_order, name",
@@ -5452,7 +5595,7 @@ fn get_connection_by_id(
     let saved_connection = connection
         .query_row(
             "SELECT connections.id, name, tab_title, host, connections.username, port, key_path, proxy_jump, ssh_socks_proxy, ssh_socks_proxy_username, ssh_socks_proxy_inherit_defaults, auth_method, local_shell, local_startup_directory, local_startup_script, url, data_partition, use_tmux_sessions, tmux_connection_id, connection_type, serial_line, serial_speed, rdp_options, vnc_options, ftp_options, icon_color, icon_data_url, icon_background_color, terminal_opacity, terminal_background_json, password_credential_id,
-                    (SELECT username FROM url_credentials WHERE url_credentials.connection_id = connections.id ORDER BY updated_at DESC LIMIT 1), file_browser_view_options_json, file_view_open_external, ssh_port_forwardings_json, use_psmux_sessions, ssh_compression, url_proxy, url_proxy_inherit_defaults, url_user_agent, terminal_color_scheme, terminal_syntax_highlight_profile_id, ssh_old_protocols
+                    (SELECT username FROM url_credentials WHERE url_credentials.connection_id = connections.id ORDER BY updated_at DESC LIMIT 1), file_browser_view_options_json, file_view_open_external, ssh_port_forwardings_json, use_psmux_sessions, ssh_compression, url_proxy, url_proxy_inherit_defaults, url_user_agent, terminal_color_scheme, terminal_syntax_highlight_profile_id, ssh_old_protocols, cloud_storage_options
              FROM connections
              WHERE connections.id = ?1",
             params![connection_id],
@@ -5473,6 +5616,7 @@ fn get_connection_by_id(
                     ssh_socks_proxy_inherit_defaults: row.get(10)?,
                     ssh_compression: row.get(36)?,
                     ssh_old_protocols: row.get(42)?,
+                    cloud_storage_options: parse_cloud_storage_options(row.get(43)?)?,
                     auth_method: row.get(11)?,
                     local_shell: row.get(12)?,
                     local_startup_directory: row.get(13)?,
@@ -5536,6 +5680,7 @@ fn saved_connection_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<SavedC
         ssh_socks_proxy_inherit_defaults: row.get(10)?,
         ssh_compression: row.get(36)?,
         ssh_old_protocols: row.get(42)?,
+        cloud_storage_options: parse_cloud_storage_options(row.get(43)?)?,
         auth_method: row.get(11)?,
         local_shell: row.get(12)?,
         local_startup_directory: row.get(13)?,
@@ -5947,14 +6092,16 @@ fn normalize_connection_type(value: &str) -> Result<String, String> {
     match value.trim() {
         "localFiles" => Ok("localFiles".to_string()),
         "fileView" => Ok("fileView".to_string()),
+        "cloudStorage" => Ok("cloudStorage".to_string()),
         value => match value.to_lowercase().as_str() {
             "local" | "ssh" | "telnet" | "serial" | "url" | "rdp" | "vnc" | "ftp" => {
                 Ok(value.to_lowercase())
             }
             "localfiles" => Ok("localFiles".to_string()),
             "fileview" => Ok("fileView".to_string()),
+            "cloudstorage" => Ok("cloudStorage".to_string()),
             _ => Err(
-                "connection type must be local, ssh, telnet, serial, url, rdp, vnc, ftp, localFiles, or fileView"
+                "connection type must be local, ssh, telnet, serial, url, rdp, vnc, ftp, localFiles, fileView, or cloudStorage"
                     .to_string(),
             ),
         },
@@ -6045,7 +6192,10 @@ fn fnv1a64(value: &str) -> u64 {
 fn normalize_connection_user(value: String, connection_type: &str) -> Result<String, String> {
     match connection_type {
         "serial" | "url" | "localFiles" | "fileView" => Ok(String::new()),
-        "vnc" => Ok(value.trim().to_string()),
+        // The cloud provider principal is the Connection username (S3 access
+        // key id, Azure account name). Azure SAS tokens carry no
+        // principal, so an empty username is legal.
+        "vnc" | "cloudStorage" => Ok(value.trim().to_string()),
         _ => required_field("user", value),
     }
 }
@@ -6487,6 +6637,19 @@ fn parse_ftp_connection_options(
     value: Option<String>,
 ) -> rusqlite::Result<Option<crate::ftp::FtpOptions>> {
     parse_connection_options(value)
+}
+
+fn parse_cloud_storage_options(
+    value: Option<String>,
+) -> rusqlite::Result<Option<crate::cloud_storage::CloudStorageOptions>> {
+    parse_connection_options(value)
+}
+
+fn normalize_cloud_storage_connection_options(
+    options: Option<crate::cloud_storage::CloudStorageOptions>,
+    connection_type: &str,
+) -> Result<Option<crate::cloud_storage::CloudStorageOptions>, String> {
+    crate::cloud_storage::normalize_cloud_storage_options(options, connection_type)
 }
 
 fn normalize_ftp_connection_options(

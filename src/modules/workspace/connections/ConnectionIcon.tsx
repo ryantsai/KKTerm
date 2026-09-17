@@ -29,6 +29,7 @@ export const CONNECTION_ICON_SRC: Record<ConnectionType, string> = {
   ftp: fileBrowserConnectionIconSrc("ftp"),
   localFiles: fileBrowserConnectionIconSrc("localFiles"),
   fileView: documentIcon,
+  cloudStorage: fileBrowserConnectionIconSrc("cloudStorage"),
 };
 
 export const PREDEFINED_CONNECTION_ICON_TYPES: ConnectionType[] = [

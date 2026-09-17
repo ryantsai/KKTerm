@@ -27,7 +27,7 @@ export type RemoteDesktopController = {
 };
 
 export type FileBrowserController = {
-  kind: "sftp" | "ftp" | "localFiles";
+  kind: "sftp" | "ftp" | "localFiles" | "cloudStorage";
   list: (path?: string | null) => Promise<unknown>;
   createFolder: (parentPath: string, name: string) => Promise<unknown>;
   rename: (path: string, newName: string) => Promise<unknown>;
