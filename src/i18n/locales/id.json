@@ -3910,7 +3910,6 @@
     "cloudStorageLocalPathPlaceholder": "Direktori beranda",
     "cloudStorageRemotePath": "Jalur awal jarak jauh",
     "cloudStorageRemotePathPlaceholder": "Akar penyimpanan",
-    "cloudStorageCredentialsHint": "Rahasia disimpan di penyimpanan kredensial sistem operasi, tidak pernah di file koneksi.",
     "cloudStorageListingTruncated": "Folder ini mungkin berisi lebih banyak item daripada yang ditampilkan. Penyedia penyimpanan membagi daftar menjadi halaman.",
     "addToPane": "Tambah ke panel",
     "transferSshPublicKey": "Transfer kunci publik SSH",

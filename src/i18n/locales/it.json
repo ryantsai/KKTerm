@@ -3910,7 +3910,6 @@
     "cloudStorageLocalPathPlaceholder": "Directory home",
     "cloudStorageRemotePath": "Percorso di avvio remoto",
     "cloudStorageRemotePathPlaceholder": "Radice dell'archiviazione",
-    "cloudStorageCredentialsHint": "Il segreto è archiviato nell'archivio credenziali del sistema operativo, mai nel file di connessione.",
     "cloudStorageListingTruncated": "Questa cartella potrebbe contenere più elementi di quelli visualizzati. Il provider di archiviazione ha suddiviso l'elenco in pagine.",
     "addToPane": "Aggiungi al pannello",
     "transferSshPublicKey": "Trasferisci chiave pub SSH",

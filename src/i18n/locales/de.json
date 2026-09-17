@@ -3910,7 +3910,6 @@
     "cloudStorageLocalPathPlaceholder": "Home-Verzeichnis",
     "cloudStorageRemotePath": "Remote-Startpfad",
     "cloudStorageRemotePathPlaceholder": "Speicherwurzel",
-    "cloudStorageCredentialsHint": "Das Geheimnis wird im Anmeldeinformationsspeicher des Betriebssystems gespeichert, niemals in der Verbindungsdatei.",
     "cloudStorageListingTruncated": "Dieser Ordner enthält möglicherweise mehr Elemente als angezeigt. Der Speicheranbieter hat die Auflistung seitenweise ausgegeben.",
     "addToPane": "Zum Panel hinzufügen",
     "transferSshPublicKey": "SSH-Pub-Key übertragen",

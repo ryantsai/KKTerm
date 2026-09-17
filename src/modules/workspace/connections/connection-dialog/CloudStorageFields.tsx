@@ -245,11 +245,6 @@ export function CloudStorageConnectionOptions({
             </label>
           ) : null}
         </div>
-        <div className="connection-session-fields">
-          <p className="connection-option-hint">
-            <span>{t("connections.cloudStorageCredentialsHint")}</span>
-          </p>
-        </div>
       </div>
     </fieldset>
   );

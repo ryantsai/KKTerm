@@ -3910,7 +3910,6 @@
     "cloudStorageLocalPathPlaceholder": "Home directory",
     "cloudStorageRemotePath": "Remote start path",
     "cloudStorageRemotePathPlaceholder": "Storage root",
-    "cloudStorageCredentialsHint": "The secret is stored in the operating system credential store, never in the connection file.",
     "cloudStorageListingTruncated": "This folder may contain more items than are shown. The storage provider paged the listing.",
     "addToPane": "Add to pane",
     "transferSshPublicKey": "TransferSSH pub key",

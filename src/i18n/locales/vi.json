@@ -3910,7 +3910,6 @@
     "cloudStorageLocalPathPlaceholder": "Thư mục chính",
     "cloudStorageRemotePath": "Đường dẫn bắt đầu từ xa",
     "cloudStorageRemotePathPlaceholder": "Gốc lưu trữ",
-    "cloudStorageCredentialsHint": "Thông tin bí mật được lưu trong kho thông tin xác thực của hệ điều hành, không bao giờ trong tệp kết nối.",
     "cloudStorageListingTruncated": "Thư mục này có thể chứa nhiều mục hơn số lượng hiển thị. Nhà cung cấp lưu trữ đã phân trang danh sách.",
     "addToPane": "Add to pane",
     "transferSshPublicKey": "TransferSSH pub key",

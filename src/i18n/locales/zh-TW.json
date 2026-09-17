@@ -3910,7 +3910,6 @@
     "cloudStorageLocalPathPlaceholder": "個人目錄",
     "cloudStorageRemotePath": "遠端起始路徑",
     "cloudStorageRemotePathPlaceholder": "儲存體根目錄",
-    "cloudStorageCredentialsHint": "私密資料儲存在作業系統的認證保管庫中，絕不會寫入連線檔案。",
     "cloudStorageListingTruncated": "此資料夾可能包含更多未顯示的項目。儲存服務提供者已將清單分頁。",
     "addToPane": "新增至窗格",
     "transferSshPublicKey": "傳輸 SSH 公開金鑰",

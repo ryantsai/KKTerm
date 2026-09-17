@@ -3910,7 +3910,6 @@
     "cloudStorageLocalPathPlaceholder": "主目录",
     "cloudStorageRemotePath": "远程起始路径",
     "cloudStorageRemotePathPlaceholder": "存储根目录",
-    "cloudStorageCredentialsHint": "密钥存储在操作系统的凭据存储中，绝不会保存在连接文件中。",
     "cloudStorageListingTruncated": "此文件夹可能包含更多未显示的项目。存储提供程序对列表进行了分页。",
     "addToPane": "添加到窗格",
     "transferSshPublicKey": "传输 SSH 公钥",

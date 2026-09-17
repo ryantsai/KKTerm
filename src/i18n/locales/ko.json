@@ -3910,7 +3910,6 @@
     "cloudStorageLocalPathPlaceholder": "홈 디렉터리",
     "cloudStorageRemotePath": "원격 시작 경로",
     "cloudStorageRemotePathPlaceholder": "스토리지 루트",
-    "cloudStorageCredentialsHint": "비밀 값은 운영 체제 자격 증명 저장소에 저장되며 연결 파일에는 저장되지 않습니다.",
     "cloudStorageListingTruncated": "이 폴더에는 표시된 것보다 더 많은 항목이 있을 수 있습니다. 스토리지 공급자가 목록을 페이지로 나눴습니다.",
     "addToPane": "페인에 추가",
     "transferSshPublicKey": "SSH 공개 키 전송",

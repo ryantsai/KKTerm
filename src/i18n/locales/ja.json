@@ -3910,7 +3910,6 @@
     "cloudStorageLocalPathPlaceholder": "ホームディレクトリ",
     "cloudStorageRemotePath": "リモート開始パス",
     "cloudStorageRemotePathPlaceholder": "ストレージのルート",
-    "cloudStorageCredentialsHint": "シークレットはオペレーティングシステムの資格情報ストアに保存され、接続ファイルには保存されません。",
     "cloudStorageListingTruncated": "このフォルダーには表示されているより多くの項目が含まれている可能性があります。ストレージプロバイダーが一覧をページ分割しました。",
     "addToPane": "ペインに追加",
     "transferSshPublicKey": "SSH公開鍵を転送",

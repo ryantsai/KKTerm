@@ -3910,7 +3910,6 @@
     "cloudStorageLocalPathPlaceholder": "ไดเรกทอรีหลัก",
     "cloudStorageRemotePath": "เส้นทางเริ่มต้นระยะไกล",
     "cloudStorageRemotePathPlaceholder": "รากของที่เก็บข้อมูล",
-    "cloudStorageCredentialsHint": "ข้อมูลลับถูกจัดเก็บไว้ในที่จัดเก็บข้อมูลรับรองของระบบปฏิบัติการ ไม่เคยอยู่ในไฟล์การเชื่อมต่อ",
     "cloudStorageListingTruncated": "โฟลเดอร์นี้อาจมีรายการมากกว่าที่แสดงไว้ ผู้ให้บริการที่เก็บข้อมูลแบ่งรายการออกเป็นหน้า",
     "addToPane": "เพิ่มไปยังบานหน้าต่าง",
     "transferSshPublicKey": "โอนคีย์สาธารณะ SSH",

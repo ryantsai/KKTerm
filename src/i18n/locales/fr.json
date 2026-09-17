@@ -3910,7 +3910,6 @@
     "cloudStorageLocalPathPlaceholder": "Répertoire personnel",
     "cloudStorageRemotePath": "Chemin de départ distant",
     "cloudStorageRemotePathPlaceholder": "Racine du stockage",
-    "cloudStorageCredentialsHint": "Le secret est stocké dans le magasin d'identifiants du système d'exploitation, jamais dans le fichier de connexion.",
     "cloudStorageListingTruncated": "Ce dossier peut contenir plus d'éléments que ceux affichés. Le fournisseur de stockage a paginé la liste.",
     "addToPane": "Ajouter au volet",
     "transferSshPublicKey": "Transférer la clé publique SSH",
