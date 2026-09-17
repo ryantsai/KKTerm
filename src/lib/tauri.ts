@@ -122,6 +122,10 @@ import type {
 } from "../modules/dashboard/widgets/builtin/ai-coding-usage/types";
 import type { PcInfoSnapshot } from "../modules/dashboard/widgets/builtin/pc-info/types";
 import type {
+  ApplyNetworkProfileRequest,
+  NetworkProfilesSnapshot,
+} from "../modules/dashboard/widgets/builtin/network-profiles/types";
+import type {
   CustomModuleCatalogEntry,
   CustomModulePackageReview,
   CustomModuleSessionStarted,
@@ -3965,6 +3969,14 @@ type CommandMap = {
   network_interfaces: {
     args: undefined;
     result: Array<{ name: string; mac?: string; addresses: Array<{ ip: string; family: "v4" | "v6"; cidr?: number }>; isLoopback: boolean; isUp: boolean }>;
+  };
+  network_profiles_snapshot: {
+    args: undefined;
+    result: NetworkProfilesSnapshot;
+  };
+  network_profiles_apply: {
+    args: { request: ApplyNetworkProfileRequest };
+    result: null;
   };
   network_wol: {
     args: { mac: string; broadcast?: string; port?: number };

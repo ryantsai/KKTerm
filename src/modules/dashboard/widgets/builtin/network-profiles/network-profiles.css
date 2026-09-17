@@ -1,0 +1,268 @@
+.dw-network-profiles {
+  display: flex;
+  min-width: 0;
+  height: 100%;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--text);
+  font-family: var(--app-ui-font-family);
+}
+
+.dw-network-profiles-adapter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px 11px;
+  border: 1px solid var(--hairline);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--surface) 84%, transparent);
+  box-shadow: var(--control-shadow);
+}
+
+.dw-network-profiles-adapter-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 9px;
+  color: var(--w-accent, var(--accent));
+  background: var(--w-accent-soft, var(--accent-soft));
+}
+
+.dw-network-profiles-adapter-main {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 2px;
+}
+
+.dw-network-profiles-kicker,
+.dw-network-profiles-section-head span {
+  color: var(--text-faint);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.dw-network-profiles-adapter select {
+  width: fit-content;
+  max-width: 100%;
+  border: 0;
+  outline: 0;
+  color: var(--text);
+  background: transparent;
+  font: 680 14px/1.2 var(--app-ui-font-family);
+  letter-spacing: -0.01em;
+}
+
+.dw-network-profiles-adapter select:focus-visible,
+.dw-network-profiles-icon-button:focus-visible,
+.dw-network-profiles-scroll:focus-visible,
+.dw-network-profile-card-actions button:focus-visible,
+.dw-network-profile-apply:focus-visible,
+.dw-network-profiles-save:focus-visible,
+.dw-network-profiles-empty-action:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.dw-network-profiles-adapter-detail {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dw-network-profiles-adapter-detail i {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: var(--text-faint);
+}
+
+.dw-network-profiles-adapter-detail i.is-connected { background: var(--green); }
+
+.dw-network-profiles-icon-button,
+.dw-network-profiles-scroll,
+.dw-network-profile-card-actions button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.dw-network-profiles-icon-button:hover,
+.dw-network-profiles-scroll:hover,
+.dw-network-profile-card-actions button:hover { color: var(--text); background: var(--hover); }
+.dw-network-profiles-icon-button:active,
+.dw-network-profiles-scroll:active,
+.dw-network-profile-card-actions button:active { transform: scale(0.94); background: var(--press); }
+.dw-network-profiles-icon-button:disabled { opacity: 0.45; }
+
+.dw-network-profiles-live {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(110px, 0.9fr);
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: 9px;
+  background: var(--hairline);
+}
+
+.dw-network-profiles-live > span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  padding: 7px 9px;
+  background: color-mix(in srgb, var(--surface-muted) 90%, transparent);
+}
+
+.dw-network-profiles-live b { color: var(--text-muted); font-size: 10px; font-weight: 650; }
+.dw-network-profiles-live em { color: var(--w-accent, var(--accent)); font-size: 10px; font-style: normal; }
+.dw-network-profiles-live code,
+.dw-network-profiles-dns { overflow: hidden; font: 11px/1.25 ui-monospace, monospace; text-overflow: ellipsis; white-space: nowrap; }
+.dw-network-profiles-dns b { font-family: var(--app-ui-font-family); }
+
+.dw-network-profiles-capability {
+  padding: 7px 9px;
+  border: 1px solid color-mix(in srgb, var(--amber) 36%, var(--border));
+  border-radius: 8px;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--amber) 10%, var(--surface));
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.dw-network-profiles-section { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: 6px; }
+.dw-network-profiles-section-head { display: flex; align-items: center; justify-content: space-between; padding: 0 3px; }
+.dw-network-profiles-section-head strong { font-size: 11px; font-weight: 680; }
+
+.dw-network-profiles-carousel-shell { display: flex; min-height: 0; flex: 1; align-items: stretch; gap: 4px; }
+.dw-network-profiles-scroll { align-self: center; width: 24px; height: 38px; border: 1px solid var(--hairline); background: color-mix(in srgb, var(--surface) 88%, transparent); }
+
+.dw-network-profiles-carousel {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  gap: 9px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  scroll-snap-type: x mandatory;
+}
+.dw-network-profiles-carousel::-webkit-scrollbar { display: none; }
+
+.dw-network-profile-card {
+  display: flex;
+  min-width: min(245px, 78%);
+  max-width: 290px;
+  flex: 1 0 245px;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  scroll-snap-align: start;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  box-shadow: var(--control-shadow);
+  transition: border-color 180ms ease, background-color 180ms ease, transform 100ms ease-out;
+}
+.dw-network-profile-card:hover { border-color: var(--border-strong); }
+.dw-network-profile-card:active { transform: scale(0.992); }
+.dw-network-profile-card.is-selected { border-color: var(--w-accent, var(--accent)); background: color-mix(in srgb, var(--w-accent-soft, var(--accent-soft)) 42%, var(--surface)); }
+
+.dw-network-profile-card-head { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 8px; }
+.dw-network-profile-card-head > strong { overflow: hidden; font-size: 13px; font-weight: 700; letter-spacing: -0.01em; text-overflow: ellipsis; white-space: nowrap; }
+.dw-network-profile-card-actions { display: flex; opacity: 0; transition: opacity 140ms ease; }
+.dw-network-profile-card:hover .dw-network-profile-card-actions,
+.dw-network-profile-card:focus-within .dw-network-profile-card-actions,
+.dw-network-profile-card.is-selected .dw-network-profile-card-actions { opacity: 1; }
+.dw-network-profile-card-actions button { width: 24px; height: 24px; }
+
+.dw-network-profile-family-row { display: flex; min-width: 0; align-items: center; gap: 8px; }
+.dw-network-profile-family-row > span { overflow: hidden; color: var(--text-muted); font: 10.5px/1.2 ui-monospace, monospace; text-overflow: ellipsis; white-space: nowrap; }
+.dw-network-profile-mode { display: inline-flex; min-width: 76px; align-items: center; justify-content: space-between; gap: 6px; padding: 4px 6px; border: 1px solid var(--hairline); border-radius: 6px; color: var(--text); font-size: 10px; }
+.dw-network-profile-mode em { color: var(--text-muted); font-style: normal; font-weight: 550; }
+.dw-network-profile-mode.is-manual { border-color: color-mix(in srgb, var(--w-accent, var(--accent)) 45%, var(--hairline)); background: color-mix(in srgb, var(--w-accent-soft, var(--accent-soft)) 50%, transparent); }
+.dw-network-profile-mode.is-disabled { opacity: 0.68; }
+
+.dw-network-profile-card-footer { display: flex; min-width: 0; align-items: center; gap: 8px; margin-top: auto; padding-top: 8px; border-top: 1px solid var(--hairline); }
+.dw-network-profile-card-footer > span { overflow: hidden; flex: 1; color: var(--text-faint); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.dw-network-profile-apply,
+.dw-network-profiles-save {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 0;
+  border-radius: 7px;
+  color: var(--accent-text);
+  background: var(--w-accent, var(--accent));
+  box-shadow: var(--button-shadow);
+  font: 650 11px/1 var(--app-ui-font-family);
+}
+.dw-network-profile-apply { min-height: 27px; padding: 0 9px; }
+.dw-network-profile-apply:active,
+.dw-network-profiles-save:active { transform: scale(0.97); background: var(--accent-press); }
+.dw-network-profile-apply:disabled,
+.dw-network-profiles-save:disabled { opacity: 0.42; transform: none; }
+
+.dw-network-profiles-empty-action {
+  display: flex;
+  min-height: 110px;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 11px;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--surface-muted) 74%, transparent);
+}
+.dw-network-profiles-empty-action span { display: grid; gap: 3px; text-align: left; }
+.dw-network-profiles-empty-action strong { color: var(--text); font-size: 12px; }
+.dw-network-profiles-empty-action small { font-size: 10.5px; }
+.dw-network-profiles-empty-action:hover { border-color: var(--w-accent, var(--accent)); background: var(--hover); }
+
+.dw-network-profiles-footer { display: flex; min-width: 0; align-items: center; gap: 10px; }
+.dw-network-profiles-save { min-height: 30px; padding: 0 11px; }
+.dw-network-profiles-footer > span { overflow: hidden; margin-left: auto; color: var(--text-faint); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.dw-network-profiles-empty { display: grid; height: 100%; place-items: center; color: var(--text-muted); font-size: 12px; }
+.dw-network-profiles .is-spinning { animation: dw-network-profiles-spin 800ms linear infinite; }
+
+@keyframes dw-network-profiles-spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 520px) {
+  .dw-network-profiles-live { grid-template-columns: 1fr 1fr; }
+  .dw-network-profiles-dns { grid-column: 1 / -1; }
+  .dw-network-profile-card { min-width: min(220px, 88%); flex-basis: 220px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dw-network-profile-card,
+  .dw-network-profile-card-actions { transition: none; }
+  .dw-network-profiles .is-spinning { animation: none; }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .dw-network-profiles-adapter,
+  .dw-network-profile-card,
+  .dw-network-profiles-scroll { background: var(--surface); }
+}
+
+@media (prefers-contrast: more) {
+  .dw-network-profiles-adapter,
+  .dw-network-profile-card,
+  .dw-network-profiles-live { border-color: var(--border-strong); }
+}

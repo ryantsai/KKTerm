@@ -6,6 +6,7 @@ import { ConnectionWidgetBody } from "../widgets/ConnectionWidgetBody";
 import { ConvertersBody } from "../widgets/ConvertersBody";
 import { GeneratorToolsBody } from "../widgets/GeneratorToolsBody";
 import { NetworkToolsBody } from "../widgets/NetworkToolsBody";
+import { NetworkProfilesBody } from "../widgets/NetworkProfilesBody";
 import { NotesBody } from "../widgets/NotesBody";
 import { PcInfoBody } from "../widgets/PcInfoBody";
 import type { DashboardWidgetInstance } from "../types";
@@ -82,6 +83,17 @@ export const BUILT_IN_WIDGETS: BuiltInWidgetEntry[] = [
     defaultIcon: "Cpu",
     defaultSize: { w: 5, h: 6 },
     Body: PcInfoBody,
+  },
+  {
+    id: "networkProfiles",
+    titleKey: "dashboard.networkProfilesTitle",
+    summaryKey: "dashboard.networkProfilesSummary",
+    category: "utility",
+    defaultPreset: "panel",
+    defaultAccent: "sky",
+    defaultIcon: "Network",
+    defaultSize: { w: 7, h: 5 },
+    Body: NetworkProfilesBody,
   },
   {
     id: "networkTools",

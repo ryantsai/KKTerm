@@ -549,6 +549,8 @@ commands.allow = [
   "network_dns_lookup",
   "network_tcp_check",
   "network_interfaces",
+  "network_profiles_snapshot",
+  "network_profiles_apply",
   "network_wol",
   "network_whois",
   "network_ping_start",
