@@ -5718,6 +5718,8 @@ pub fn run() {
             net::commands::network_dns_lookup,
             net::commands::network_tcp_check,
             net::commands::network_interfaces,
+            net::commands::network_profiles_snapshot,
+            net::commands::network_profiles_apply,
             net::commands::network_wol,
             net::commands::network_whois,
             net::commands::network_ping_start,

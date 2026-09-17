@@ -4,7 +4,9 @@
 //! Policy gates (allowWidgetNetworkTools, ai.network) are wired in lib.rs at the
 //! registration boundary in a follow-up task once storage accessors exist.
 
-use crate::net::{NetError, dns, interfaces, ping, scan, stream::StreamRegistry, whois, wol};
+use crate::net::{
+    NetError, dns, interfaces, ping, profiles, scan, stream::StreamRegistry, whois, wol,
+};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, State};
@@ -73,6 +75,22 @@ pub async fn network_tcp_check(
 #[tauri::command]
 pub fn network_interfaces() -> Result<Vec<interfaces::NetInterface>, NetError> {
     interfaces::list_interfaces()
+}
+
+#[tauri::command]
+pub async fn network_profiles_snapshot() -> Result<profiles::NetworkProfilesSnapshot, String> {
+    tauri::async_runtime::spawn_blocking(profiles::snapshot)
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+#[tauri::command]
+pub async fn network_profiles_apply(
+    request: profiles::ApplyNetworkProfileRequest,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || profiles::apply(request))
+        .await
+        .map_err(|error| error.to_string())?
 }
 
 #[tauri::command]

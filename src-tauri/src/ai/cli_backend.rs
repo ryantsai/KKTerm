@@ -718,6 +718,12 @@ pub(crate) fn cli_backend_command_names(provider: AiCliBackendKind) -> &'static 
 
 pub(crate) fn common_user_bin_candidates(names: &[&str]) -> Vec<PathBuf> {
     let mut roots = Vec::new();
+    #[cfg(target_os = "macos")]
+    {
+        // Apps launched from Finder do not inherit the interactive shell PATH.
+        // Check both standard Homebrew link locations explicitly.
+        roots.extend(macos_homebrew_bin_roots());
+    }
     if let Some(profile) = std::env::var_os("USERPROFILE") {
         roots.push(PathBuf::from(&profile).join(".local").join("bin"));
     }
@@ -732,6 +738,14 @@ pub(crate) fn common_user_bin_candidates(names: &[&str]) -> Vec<PathBuf> {
     }
 
     bin_candidates_from_roots(roots, names)
+}
+
+#[cfg(any(target_os = "macos", test))]
+pub(crate) fn macos_homebrew_bin_roots() -> Vec<PathBuf> {
+    vec![
+        PathBuf::from("/opt/homebrew/bin"),
+        PathBuf::from("/usr/local/bin"),
+    ]
 }
 
 pub(crate) fn path_cli_backend_candidates(provider: AiCliBackendKind) -> Vec<PathBuf> {

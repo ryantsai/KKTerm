@@ -35,4 +35,5 @@
 @import "./modules/dashboard/widgets/builtin/whois-lookup/whois-lookup.css";
 @import "./modules/dashboard/widgets/builtin/converters/converters.css";
 @import "./modules/dashboard/widgets/builtin/tool-group/tool-group.css";
+@import "./modules/dashboard/widgets/builtin/network-profiles/network-profiles.css";
 @import "./watchdog/watchdog.css";

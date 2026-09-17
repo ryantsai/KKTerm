@@ -33,6 +33,7 @@ pub mod commands;
 pub mod dns;
 pub mod interfaces;
 pub mod ping;
+pub mod profiles;
 pub mod proxy;
 pub mod scan;
 pub mod snmp;

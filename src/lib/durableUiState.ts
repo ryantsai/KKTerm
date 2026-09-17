@@ -27,6 +27,7 @@ export const DURABLE_UI_STATE_PREFIXES = [
   "kkterm.quickCommandBundleSelection.",
   "kkterm.workspace.childConnections.v1",
   "kkterm.dashboard.notes.",
+  "kkterm.dashboard.networkProfiles.v1",
   "kkterm.fileBrowserFavorites.v1",
   "kkterm.cliAccountLabels.v1",
   "kkterm.installerLauncherRecentPaths.v1",

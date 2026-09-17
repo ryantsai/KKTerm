@@ -82,7 +82,7 @@ A saved frontend Tab instance shown as an italic child row under its parent term
 _Avoid_: child connection, saved session, sub-connection, backend tab
 
 **Dashboard Module**:
-A built-in Activity Rail Module that provides a dynamic widget playground. Users select from built-in widgets (App Launcher, Connection, Notes, AI Coding Usage, PC Info, Network Tools, Generators, and Converters) or AI Created Widgets. The built-in AI Assistant and coding agents create new widgets through atomic Tauri commands; users customize each widget's visual preset, accent, icon, and title and arrange them on a 12-column drag-and-drop grid. See `docs/DASHBOARD.md` for the durable architecture.
+A built-in Activity Rail Module that provides a dynamic widget playground. Users select from built-in widgets (App Launcher, Connection, Notes, AI Coding Usage, PC Info, Network Profiles, Network Tools, Generators, and Converters) or AI Created Widgets. The built-in AI Assistant and coding agents create new widgets through atomic Tauri commands; users customize each widget's visual preset, accent, icon, and title and arrange them on a 12-column drag-and-drop grid. See `docs/DASHBOARD.md` for the durable architecture.
 _Avoid_: landing page, overview
 
 **Install Helper Module**:

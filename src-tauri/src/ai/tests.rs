@@ -667,6 +667,14 @@ fn bin_candidates_expand_roots_in_name_order() {
 }
 
 #[test]
+fn cli_backend_discovery_checks_homebrew_bins() {
+    let candidates = bin_candidates_from_roots(macos_homebrew_bin_roots(), &["codex"]);
+
+    assert_eq!(candidates[0], PathBuf::from("/opt/homebrew/bin/codex"));
+    assert_eq!(candidates[1], PathBuf::from("/usr/local/bin/codex"));
+}
+
+#[test]
 #[cfg(target_os = "windows")]
 fn cli_backend_discovery_prefers_path_candidates_before_common_bins() {
     let path_candidates = bin_candidates_from_roots(
