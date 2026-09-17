@@ -453,11 +453,11 @@ Get-NetAdapter | Where-Object { -not $_.Virtual } | ForEach-Object {
     id=$a.InterfaceGuid.ToString(); name=$a.Name; detail=$a.InterfaceDescription; connected=($a.Status -eq 'Up');
     ipv4Mode=$(if($v4b -and -not $v4b.Enabled){'disabled'}elseif($i4.Dhcp -eq 'Enabled'){'automatic'}elseif($i4){'manual'}else{'disabled'});
     ipv6Mode=$(if($v6b -and -not $v6b.Enabled){'disabled'}elseif($i6.RouterDiscovery -eq 'Disabled'){'manual'}else{'automatic'});
-    ipv4Addresses=@($c.IPv4Address|%{"$($_.IPAddress)/$($_.PrefixLength)"});
+    ipv4Addresses=@($c.IPv4Address | Where-Object { $_.IPAddress } | %{"$($_.IPAddress)/$($_.PrefixLength)"});
     ipv6Addresses=@(Get-NetIPAddress -InterfaceIndex $a.ifIndex -AddressFamily IPv6 -ErrorAction SilentlyContinue | Where-Object { $_.PrefixOrigin -ne 'WellKnown' -and $_.AddressState -ne 'Duplicate' } | %{"$($_.IPAddress)/$($_.PrefixLength)"});
     ipv4Gateway=if($c.IPv4DefaultGateway){$c.IPv4DefaultGateway.NextHop}else{$null};
     ipv6Gateway=if($c.IPv6DefaultGateway){$c.IPv6DefaultGateway.NextHop}else{$null};
-    dnsServers=@((Get-DnsClientServerAddress -InterfaceIndex $a.ifIndex -ErrorAction SilentlyContinue).ServerAddresses)
+    dnsServers=@((Get-DnsClientServerAddress -InterfaceIndex $a.ifIndex -ErrorAction SilentlyContinue).ServerAddresses | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
   }
 }); ConvertTo-Json -InputObject $items -Compress -Depth 5"#;
     let mut command = Command::new("powershell.exe");

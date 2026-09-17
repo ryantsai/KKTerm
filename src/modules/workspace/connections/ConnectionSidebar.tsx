@@ -6,7 +6,7 @@ import { ConnectionIcon, connectionIconSrcForConnection } from "./ConnectionIcon
 import { AddConnectionMenu } from "./ConnectionMenus";
 import { connectionCreationOptions } from "./connectionCreationOptions";
 import { FtpConnectionFields, FtpConnectionOptions } from "./connection-dialog/FtpConnectionFields";
-import { CloudStorageFields } from "./connection-dialog/CloudStorageFields";
+import { CloudStorageConnectionOptions, CloudStorageFields } from "./connection-dialog/CloudStorageFields";
 import { LocalConnectionFields } from "./connection-dialog/LocalConnectionFields";
 import { defaultWslConnectionName, distroFromWslShell } from "./connection-dialog/wslLocalShell";
 import { LocalFilesConnectionFields } from "./connection-dialog/LocalFilesConnectionFields";
@@ -622,7 +622,7 @@ export function ConnectionSidebar({
     if (existing) {
       let connection = existing;
       if (creds?.password) {
-        connection = await createConnectionPasswordCredential(connection.id, creds.password);
+        connection = await saveConnectionPassword(connection, creds.password);
         await reloadConnectionGroups();
       } else if (creds?.passwordCredentialId) {
         connection = await assignConnectionPasswordCredential(connection.id, creds.passwordCredentialId);
@@ -643,7 +643,7 @@ export function ConnectionSidebar({
       request: createRequest,
     });
     if (creds?.password) {
-      connection = await createConnectionPasswordCredential(connection.id, creds.password);
+      connection = await saveConnectionPassword(connection, creds.password);
     } else if (creds?.passwordCredentialId) {
       connection = await assignConnectionPasswordCredential(connection.id, creds.passwordCredentialId);
     }
@@ -1251,14 +1251,20 @@ export function ConnectionSidebar({
     });
   }
 
-  async function createConnectionPasswordCredential(
-    connectionId: string,
+  async function saveConnectionPassword(
+    connection: Connection,
     password: string,
     allowReuse = true,
   ) {
+    if (connection.type === "cloudStorage") {
+      await invokeCommand("store_secret", {
+        request: { kind: "connectionPassword", ownerId: connection.id, secret: password },
+      });
+      return { ...connection, hasPassword: true };
+    }
     return invokeCommand("create_connection_password_credential", {
       request: {
-        connectionId,
+        connectionId: connection.id,
         secret: password,
         allowReuse,
       },
@@ -1394,7 +1400,7 @@ export function ConnectionSidebar({
         }
         connection = await saveConnectionIconPresentation(connection, iconDataUrl, iconBackgroundColor, iconColor);
         if (password) {
-          connection = await createConnectionPasswordCredential(connection.id, password);
+          connection = await saveConnectionPassword(connection, password);
         } else if (passwordCredentialId) {
           connection = await assignConnectionPasswordCredential(connection.id, passwordCredentialId);
         }
@@ -1525,8 +1531,8 @@ export function ConnectionSidebar({
       });
       connection = await saveConnectionIconPresentation(connection, iconDataUrl, iconBackgroundColor, iconColor);
       if (password) {
-        connection = await createConnectionPasswordCredential(
-          connection.id,
+        connection = await saveConnectionPassword(
+          connection,
           password,
           options?.allowCredentialReuse,
         );
@@ -1636,7 +1642,7 @@ export function ConnectionSidebar({
         iconColor,
       );
       if (password) {
-        connection = await createConnectionPasswordCredential(connection.id, password);
+        connection = await saveConnectionPassword(connection, password);
       } else if (passwordCredentialId) {
         connection = await assignConnectionPasswordCredential(connection.id, passwordCredentialId);
       }
@@ -5478,6 +5484,8 @@ function ConnectionDialog({
 
   function renderConnectionTypeOptions() {
     switch (connectionType) {
+      case "cloudStorage":
+        return <CloudStorageConnectionOptions initialConnection={initialConnection} provider={cloudProvider} />;
       case "ssh":
         return (
           <SshConnectionOptions
@@ -5596,7 +5604,7 @@ function ConnectionDialog({
           <div
             className={
               usesTwoColumnOptions
-                ? "connection-dialog-fields connection-dialog-fields-two-column"
+                ? `connection-dialog-fields connection-dialog-fields-two-column${isCloudStorageConnection ? " cloud-storage-dialog-fields" : ""}`
                 : "connection-dialog-fields"
             }
           >

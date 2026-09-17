@@ -1530,6 +1530,39 @@
   transform: translateX(200%);
 }
 
+.connection-option-fields .cloud-provider-selector::before {
+  width: calc((100% - 6px) / 2);
+}
+
+.connection-option-fields .cloud-provider-selector[data-cloud-provider="azureBlob"]::before {
+  transform: translateX(100%);
+}
+
+.connection-option-fields .cloud-provider-row {
+  grid-template-columns: auto minmax(0, 1fr);
+  row-gap: 8px;
+}
+
+.connection-option-fields .cloud-provider-row > .cloud-provider-selector {
+  grid-column: 1 / -1;
+}
+
+.cloud-storage-dialog-fields .connection-dialog-primary-fields > .connection-specific-options {
+  margin-top: 10px;
+}
+
+@media (max-width: 720px) {
+  .cloud-storage-dialog-fields {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 18px;
+  }
+
+  .cloud-storage-dialog-fields > .connection-specific-options {
+    grid-column: 1;
+    grid-row: auto;
+  }
+}
+
 .connection-option-fields .ftp-protocol-selector button {
   position: relative;
   z-index: 1;

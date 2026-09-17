@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Cloud, KeyRound, Lock, ShieldOff, Timer, User } from "../../../../lib/reicon";
+import { Cloud } from "../../../../lib/reicon";
 import { technicalInputProps } from "../../../../lib/inputBehavior";
 import type { CloudStorageOptions, CloudStorageProvider, Connection } from "../../../../types";
 
@@ -44,15 +44,15 @@ export function CloudStorageFields({
         <legend>{t("connections.cloudStorageOptions")}</legend>
         <div className="connection-specific-options-panel">
           <div className="connection-option-fields">
-            <div className="ftp-protocol-row">
+            <div className="ftp-protocol-row cloud-provider-row">
               <Cloud className="option-glyph" size={17} aria-hidden />
               <span id="cloud-storage-provider-label">
                 {t("connections.cloudStorageProvider")}
               </span>
               <input name="cloudProvider" type="hidden" value={provider} />
               <div
-                className="ftp-protocol-selector"
-                data-ftp-protocol={provider}
+                className="ftp-protocol-selector cloud-provider-selector"
+                data-cloud-provider={provider}
                 role="tablist"
                 aria-label={t("connections.cloudStorageProvider")}
                 aria-labelledby="cloud-storage-provider-label"
@@ -79,7 +79,6 @@ export function CloudStorageFields({
             </div>
 
             <label>
-              <Cloud className="option-glyph" size={17} aria-hidden />
               <span>{endpointLabel(t, provider)}*</span>
               <input
                 name="host"
@@ -149,34 +148,11 @@ export function CloudStorageFields({
               </>
             ) : null}
           </div>
-
-          <div className="connection-session-fields">
-            <label className="connection-session-toggle">
-              <ShieldOff className="option-glyph" size={17} aria-hidden />
-              <span>{t("connections.cloudStorageIgnoreCertErrors")}</span>
-              <input
-                name="cloudIgnoreCertErrors"
-                type="checkbox"
-                defaultChecked={options?.ignoreCertErrors ?? false}
-              />
-            </label>
-            {provider === "s3" ? (
-              <label className="connection-session-toggle">
-                <span>{t("connections.cloudStorageForcePathStyle")}</span>
-                <input
-                  name="cloudForcePathStyle"
-                  type="checkbox"
-                  defaultChecked={options?.forcePathStyle ?? false}
-                />
-              </label>
-            ) : null}
-          </div>
         </div>
       </fieldset>
 
       <div className="connection-auth-fields">
         <label>
-          <User className="option-glyph" size={17} aria-hidden />
           <span>{principalLabel(t, provider)}</span>
           <input
             name="user"
@@ -186,7 +162,6 @@ export function CloudStorageFields({
           />
         </label>
         <label>
-          <KeyRound className="option-glyph" size={17} aria-hidden />
           <span>{secretLabel(t, provider)}</span>
           <input
             name="password"
@@ -201,51 +176,82 @@ export function CloudStorageFields({
           />
         </label>
       </div>
-
-      <fieldset className="connection-session-fields connection-specific-options">
-        <legend>{t("connections.cloudStorageBrowserOptions")}</legend>
-        <div className="connection-specific-options-panel">
-          <div className="connection-option-fields">
-            <label>
-              <Timer className="option-glyph" size={17} aria-hidden />
-              <span>{t("connections.cloudStorageConnectTimeoutSecs")}</span>
-              <input
-                name="cloudConnectTimeoutSecs"
-                defaultValue={options?.connectTimeoutSecs ?? 30}
-                inputMode="numeric"
-                min="1"
-                max="600"
-                type="number"
-              />
-            </label>
-            <label className="connection-proxy-row">
-              <span>{t("connections.cloudStorageLocalPath")}</span>
-              <input
-                name="cloudLocalPath"
-                {...technicalInputProps}
-                defaultValue={options?.localPath ?? ""}
-                placeholder={t("connections.cloudStorageLocalPathPlaceholder")}
-              />
-            </label>
-            <label className="connection-proxy-row">
-              <span>{t("connections.cloudStorageRemotePath")}</span>
-              <input
-                name="cloudRemotePath"
-                {...technicalInputProps}
-                defaultValue={options?.remotePath ?? ""}
-                placeholder={t("connections.cloudStorageRemotePathPlaceholder")}
-              />
-            </label>
-          </div>
-          <div className="connection-session-fields">
-            <p className="connection-option-hint">
-              <Lock className="option-glyph" size={17} aria-hidden />
-              <span>{t("connections.cloudStorageCredentialsHint")}</span>
-            </p>
-          </div>
-        </div>
-      </fieldset>
     </>
+  );
+}
+
+export function CloudStorageConnectionOptions({
+  initialConnection,
+  provider,
+}: {
+  initialConnection?: Connection;
+  provider: CloudStorageProvider;
+}) {
+  const { t } = useTranslation();
+  const options = initialConnection?.cloudStorageOptions;
+
+  return (
+    <fieldset className="connection-session-fields connection-specific-options">
+      <legend>{t("connections.cloudStorageBrowserOptions")}</legend>
+      <div className="connection-specific-options-panel">
+        <div className="connection-option-fields">
+          <label>
+            <span>{t("connections.cloudStorageConnectTimeoutSecs")}</span>
+            <input
+              name="cloudConnectTimeoutSecs"
+              defaultValue={options?.connectTimeoutSecs ?? 30}
+              inputMode="numeric"
+              min="1"
+              max="600"
+              type="number"
+            />
+          </label>
+          <label className="connection-proxy-row">
+            <span>{t("connections.cloudStorageLocalPath")}</span>
+            <input
+              name="cloudLocalPath"
+              {...technicalInputProps}
+              defaultValue={options?.localPath ?? ""}
+              placeholder={t("connections.cloudStorageLocalPathPlaceholder")}
+            />
+          </label>
+          <label className="connection-proxy-row">
+            <span>{t("connections.cloudStorageRemotePath")}</span>
+            <input
+              name="cloudRemotePath"
+              {...technicalInputProps}
+              defaultValue={options?.remotePath ?? ""}
+              placeholder={t("connections.cloudStorageRemotePathPlaceholder")}
+            />
+          </label>
+        </div>
+        <div className="connection-session-fields">
+          <label className="connection-session-toggle">
+            <span>{t("connections.cloudStorageIgnoreCertErrors")}</span>
+            <input
+              name="cloudIgnoreCertErrors"
+              type="checkbox"
+              defaultChecked={options?.ignoreCertErrors ?? false}
+            />
+          </label>
+          {provider === "s3" ? (
+            <label className="connection-session-toggle">
+              <span>{t("connections.cloudStorageForcePathStyle")}</span>
+              <input
+                name="cloudForcePathStyle"
+                type="checkbox"
+                defaultChecked={options?.forcePathStyle ?? false}
+              />
+            </label>
+          ) : null}
+        </div>
+        <div className="connection-session-fields">
+          <p className="connection-option-hint">
+            <span>{t("connections.cloudStorageCredentialsHint")}</span>
+          </p>
+        </div>
+      </div>
+    </fieldset>
   );
 }
 

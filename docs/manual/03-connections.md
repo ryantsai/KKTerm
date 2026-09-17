@@ -1,5 +1,16 @@
 # 03 — Connections
 
+Cloud Storage configuration uses `connections.cloudStorageProvider` to switch
+between S3 and Azure Blob. Endpoint, bucket/container, and credentials appear in
+the primary column; `connections.cloudStorageBrowserOptions` groups paths,
+timeout, TLS, and S3 path-style options in the adjacent panel. On narrow windows,
+the panels stack vertically.
+`connections.cloudStorageSecretAccessKey` and
+`connections.cloudStorageAccountKeyOrSas` save a secret for that Connection in
+the configured credential store, without creating a reusable Saved Credential.
+When editing, leaving the secret blank preserves the stored value; entering a
+new value replaces it.
+
 ## AI grep hints
 
 - Keys: `connections.*` (full namespace), `app.connectionRail`
