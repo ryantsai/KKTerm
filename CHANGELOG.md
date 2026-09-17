@@ -3,6 +3,56 @@
 All notable changes to KKTerm are documented here.
 
 ## Direct Downloads
+* 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.16/kkterm-3000.0.16-windows-x64-setup.exe)
+* 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.16/kkterm-3000.0.16-windows-arm64-setup.exe)
+* 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.16/kkterm-3000.0.16-windows-x64-portable.zip)
+* 📦 [Portable for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.16/kkterm-3000.0.16-windows-arm64-portable.zip)
+
+## Highlights
+- Added a **Network Profiles** Dashboard Widget Instance, integrating network profile management into your dashboard—because your Terminal shouldn’t have to do all the networking legwork. *(feat: add Network Profiles widget with backend integration — a0f4a12)*  
+- Improved **Cloud Storage Connection** handling with a dedicated **CloudStorageFields** UI for managing cloud storage connection details. *(feat: add CloudStorageFields component… — 2eb655c; feat: enhance cloud storage connection handling and UI integration — e789f11)*
+
+## New
+- **Network Profiles** Dashboard Widget Instance. *(feat: add Network Profiles widget with backend integration — 1f22433)*
+- **CloudStorageFields** component for managing cloud storage connections (e.g., provider selection, endpoint/auth/browser-related fields). *(feat: add CloudStorageFields component… — 2eb655c)*
+
+## Improved
+- Cloud storage connection handling and UI integration improvements. *(feat: enhance cloud storage connection handling and UI integration — e789f11)*
+- Updated translations for network profiles and cloud storage options (including **Vietnamese, Simplified Chinese, and Traditional Chinese**). *(feat(i18n): update Vietnamese, Simplified Chinese, and Traditional Chinese translations… — 4e9e1ce)*
+- Removed cloud storage credentials hint from multiple language files and the UI. *(feat(i18n): remove cloud storage credentials hint from multiple language files and UI — a0f4a12)*
+
+## Fixed
+- None mentioned in this release context.
+
+## Internal
+- Added/updated tests for cloud storage secret saving and Windows snapshot behavior with network profiles. *(test(cloud-storage)…; test(network-profiles)… — 4e9e1ce)*
+- Enhanced CLI backend to check Homebrew bin locations on macOS. *(feat: Enhance CLI backend… — c501b35)*
+- Improved macOS build process with rpath dependency resolution and validation. *(feat: Enhance macOS build process… — 84a2ee2)*
+
+---
+
+## 精選重點
+- 新增 **網路設定（Network Profiles）** 的 Dashboard Widget Instance，將網路設定管理整合到你的儀表板中——畢竟你的終端機不應該什麼網路工作都要自己扛。*(feat: add Network Profiles widget with backend integration — a0f4a12)*
+- 強化 **雲端儲存（Cloud Storage）連線** 的處理方式，提供專用的 **CloudStorageFields** 介面來管理雲端儲存連線資訊。*(feat: add CloudStorageFields component… — 2eb655c；feat: enhance cloud storage connection handling and UI integration — e789f11)*
+
+## 新增
+- **網路設定（Network Profiles）** 的 Dashboard Widget Instance。*(feat: add Network Profiles widget with backend integration — 1f22433)*
+- **CloudStorageFields** 元件：用於管理雲端儲存連線（例如：供應商選擇、endpoint/驗證/browser 等相關欄位）。*(feat: add CloudStorageFields component… — 2eb655c)*
+
+## 改進
+- 強化雲端儲存連線處理與 UI 整合。*(feat: enhance cloud storage connection handling and UI integration — e789f11)*
+- 更新網路設定與雲端儲存選項的翻譯（包含**越南語、簡體中文、繁體中文**）。*(feat(i18n): update Vietnamese, Simplified Chinese, and Traditional Chinese translations… — 4e9e1ce)*
+- 從多語系檔案與 UI 移除「雲端儲存憑證提示」。*(feat(i18n): remove cloud storage credentials hint from multiple language files and UI — a0f4a12)*
+
+## 修正
+- 本次釋出內容未提及任何修正項目。
+
+## 內部
+- 新增/更新雲端儲存 secret 儲存測試，以及 Windows 上網路設定的快照行為測試。*(test(cloud-storage)…；test(network-profiles)… — 4e9e1ce)*
+- 強化 macOS 上的 CLI 後端：檢查 Homebrew 的 bin 位置。*(feat: Enhance CLI backend… — c501b35)*
+- 改善 macOS 建置流程：進行 rpath 相依解析與驗證。*(feat: Enhance macOS build process… — 84a2ee2)*
+
+## Direct Downloads
 * 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.15/kkterm-3000.0.15-windows-x64-setup.exe)
 * 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.15/kkterm-3000.0.15-windows-arm64-setup.exe)
 * 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.15/kkterm-3000.0.15-windows-x64-portable.zip)

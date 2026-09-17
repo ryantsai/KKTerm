@@ -1,6 +1,6 @@
 [package]
 name = "kkterm"
-version = "3000.0.15"
+version = "3000.0.16"
 description = "Fast local-first administration workspace for terminals, SSH, SFTP, and approval-based command assistance."
 authors = ["Ryan Tsai"]
 license-file = "../LICENSE"
