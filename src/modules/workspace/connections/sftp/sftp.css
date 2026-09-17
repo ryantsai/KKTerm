@@ -57,7 +57,8 @@
   font-weight: 700;
   letter-spacing: 0.01em;
 }
-.sftp-bar-kind img {
+.sftp-bar-kind img,
+.sftp-bar-kind svg {
   flex: 0 0 auto;
 }
 .sftp-protocol-menu-host {

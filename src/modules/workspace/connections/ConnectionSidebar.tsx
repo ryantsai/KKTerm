@@ -2,7 +2,7 @@ import { ConnectionGlyph, connectionSubtitle, connectionTypeSubtitle } from "./C
 import { useDialogFocus } from "../../../app/ui/dialog/useDialogFocus";
 import { ConnectionIconBackgroundPicker } from "./ConnectionIconBackgroundPicker";
 import { ConnectionIconPicker } from "./ConnectionIconPicker";
-import { ConnectionIcon, connectionIconSrcForConnection } from "./ConnectionIcon";
+import { ConnectionIcon, connectionIconSrcForConnection, connectionMenuIconForConnection } from "./ConnectionIcon";
 import { AddConnectionMenu } from "./ConnectionMenus";
 import { connectionCreationOptions } from "./connectionCreationOptions";
 import { FtpConnectionFields, FtpConnectionOptions } from "./connection-dialog/FtpConnectionFields";
@@ -2028,7 +2028,7 @@ export function ConnectionSidebar({
       ...connectionCreationOptions(macAppStoreBuild).map(({ labelKey, type: connectionType }) => ({
         kind: "item" as const,
         label: t(labelKey),
-        iconSrc: connectionIconSrcForConnection({ type: connectionType }),
+        ...connectionMenuIconForConnection({ type: connectionType }),
         action:
           connectionType === "fileView"
             ? handleNewFileViewConnectionSelected
@@ -2089,7 +2089,7 @@ export function ConnectionSidebar({
     const recentConnectionMenuItem = (connection: Connection): NativeContextMenuItem => ({
       kind: "item" as const,
       label: quickConnectRecentLabel(connection),
-      iconSrc: connectionIconSrcForConnection({
+      ...connectionMenuIconForConnection({
         iconDataUrl: connection.iconDataUrl,
         localShell: connection.localShell,
         type: connection.type,
@@ -5182,6 +5182,7 @@ function ConnectionDialog({
               remotePath: String(form.get("cloudRemotePath") ?? "").trim() || undefined,
               // The single endpoint field is the service endpoint for both
               // object stores; the bucket/container is a separate field.
+              endpoint: String(form.get("host") ?? "").trim() || undefined,
               bucket:
                 form.get("cloudProvider") === "s3"
                   ? String(form.get("cloudBucket") ?? "").trim() || undefined

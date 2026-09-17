@@ -174,6 +174,7 @@ const macosTemplateNativeIconsBySvg = new Map<string, MenuIcon>([
   [nativeMenuIcons.camera, "QuickLook"],
   [nativeMenuIcons.chevronsUpDown, "Refresh"],
   [nativeMenuIcons.clipboardPaste, "MultipleDocuments"],
+  [nativeMenuIcons.cloud, "MobileMe"],
   [nativeMenuIcons.clock, "Info"],
   [nativeMenuIcons.columns, "ColumnView"],
   [nativeMenuIcons.columnInsert, "ColumnView"],

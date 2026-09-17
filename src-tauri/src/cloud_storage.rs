@@ -423,7 +423,7 @@ impl CloudStorageSessionManager {
             .session_id
             .clone()
             .unwrap_or_else(|| make_session_id(&request.title));
-        let options = request.options.clone();
+        let options = resolve_session_options(&request.host, request.options.clone())?;
 
         let password = match request
             .password
@@ -786,6 +786,28 @@ fn client_options(options: &CloudStorageOptions) -> ClientOptions {
         client = client.with_proxy_url(endpoint);
     }
     client
+}
+
+fn resolve_session_options(
+    host: &str,
+    mut options: CloudStorageOptions,
+) -> Result<CloudStorageOptions, String> {
+    // Older Connection dialogs stored the endpoint only in host.
+    options.endpoint = trim_option(options.endpoint.take())
+        .or_else(|| trim_option(Some(host.to_string())));
+    if let Some(endpoint) = options.endpoint.as_deref() {
+        validate_http_endpoint(endpoint)?;
+        let url = url::Url::parse(endpoint).map_err(|error| error.to_string())?;
+        if options.provider == CloudStorageProvider::S3
+            && url.host_str().is_some_and(|host| {
+                host.ends_with(".r2.cloudflarestorage.com")
+            })
+        {
+            // R2 exposes an account-level endpoint; the bucket belongs in the path.
+            options.force_path_style = true;
+        }
+    }
+    Ok(options)
 }
 
 fn build_s3_store(
@@ -1421,6 +1443,75 @@ fn transfer_result_for(local_path: &Path) -> Result<CloudStorageTransferResult, 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn legacy_r2_host_is_used_as_endpoint_with_bucket_paths() {
+        let options = resolve_session_options(
+            " https://account.r2.cloudflarestorage.com ",
+            CloudStorageOptions::default(),
+        ).unwrap();
+        assert_eq!(options.endpoint.as_deref(), Some("https://account.r2.cloudflarestorage.com"));
+        assert!(options.force_path_style);
+        let jurisdiction = resolve_session_options(
+            "https://account.eu.r2.cloudflarestorage.com",
+            CloudStorageOptions::default(),
+        ).unwrap();
+        assert!(jurisdiction.force_path_style);
+    }
+
+    #[test]
+    fn explicit_endpoints_win_and_other_services_keep_addressing_choice() {
+        let options = resolve_session_options("https://old.example.com", CloudStorageOptions {
+            endpoint: Some(" https://storage.example.com ".into()),
+            ..CloudStorageOptions::default()
+        }).unwrap();
+        assert_eq!(options.endpoint.as_deref(), Some("https://storage.example.com"));
+        assert!(!options.force_path_style);
+        let azure = resolve_session_options("https://account.blob.core.windows.net", CloudStorageOptions {
+            provider: CloudStorageProvider::AzureBlob,
+            ..CloudStorageOptions::default()
+        }).unwrap();
+        assert_eq!(azure.endpoint.as_deref(), Some("https://account.blob.core.windows.net"));
+        assert!(resolve_session_options("not a URL", CloudStorageOptions::default()).is_err());
+        assert!(resolve_session_options("", CloudStorageOptions::default()).unwrap().endpoint.is_none());
+    }
+
+    #[tokio::test]
+    async fn s3_listing_reaches_custom_endpoint_with_bucket_path() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            let (mut socket, _) = listener.accept().await.unwrap();
+            let mut request = Vec::new();
+            let mut buffer = [0; 2048];
+            while !request.windows(4).any(|value| value == b"\r\n\r\n") {
+                let count = socket.read(&mut buffer).await.unwrap();
+                assert!(count > 0);
+                request.extend_from_slice(&buffer[..count]);
+            }
+            let body = "<ListBucketResult><Name>test-bucket</Name><IsTruncated>false</IsTruncated></ListBucketResult>";
+            socket.write_all(format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/xml\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len(),
+            ).as_bytes()).await.unwrap();
+            String::from_utf8(request).unwrap()
+        });
+        let options = resolve_session_options(&format!("http://{address}"), CloudStorageOptions {
+            bucket: Some("test-bucket".into()),
+            force_path_style: true,
+            ..CloudStorageOptions::default()
+        }).unwrap();
+        let store = build_s3_store(&options, "test-key", "test-secret").unwrap();
+        let result = tokio::time::timeout(Duration::from_secs(5), store.list_with_delimiter(None)).await;
+        if !matches!(&result, Ok(Ok(_))) {
+            server.abort();
+            panic!("custom endpoint listing failed: {result:?}");
+        }
+        let request = server.await.unwrap();
+        assert!(request.starts_with("GET /test-bucket?"), "{request}");
+        assert!(request.to_ascii_lowercase().contains(&format!("host: {address}")));
+    }
 
     #[test]
     fn cloud_options_normalize_to_none_for_other_connection_types() {

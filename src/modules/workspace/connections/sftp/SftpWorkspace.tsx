@@ -1,7 +1,7 @@
 import { confirmTrustedSshHostKey, connectionToolbarTitle, resolveSshOldProtocols, resolveSshSocksProxyRequest, uniqueRuntimeId, usesNativeSshHostKeyVerification } from "../utils";
 import { EMPTY_POPUP_PROGRESS, nextSftpPopupProgress, type SftpPopupActivity } from "./sftpPopupActivity";
 
-import { AlertTriangle, ChevronsUpDown, Minus, X } from "../../../../lib/reicon";
+import { AlertTriangle, ChevronsUpDown, Cloud, Minus, X } from "../../../../lib/reicon";
 import { Actions, Btn, DIcon, DialogShell, Field, Sheet, TextInput } from "../../../../app/ui/dialog";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -2395,7 +2395,11 @@ export function SftpWorkspace({
       <div className="workspace-toolbar sftp-toolbar" data-tutorial-id="sftp.toolbar">
         <span className="sftp-bar-left">
           <span className="sftp-bar-kind">
-            <img alt="" aria-hidden="true" draggable={false} height={18} src={kindIconSrc} width={18} />
+            {effectiveBrowserKind === "cloudStorage" ? (
+              <Cloud aria-hidden size={18} />
+            ) : (
+              <img alt="" aria-hidden="true" draggable={false} height={18} src={kindIconSrc} width={18} />
+            )}
             <span>{kindLabel}</span>
             {sourceConnection ? (
               <span className="sftp-protocol-menu-host" ref={protocolMenuRef}>

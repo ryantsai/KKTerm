@@ -11,6 +11,11 @@ the configured credential store, without creating a reusable Saved Credential.
 When editing, leaving the secret blank preserves the stored value; entering a
 new value replaces it.
 
+`connections.cloudStorageEndpoint` is the service URL used for requests, including
+for existing Connections saved before endpoint forwarding was corrected.
+Cloudflare R2 account endpoints automatically use bucket paths. For R2,
+`connections.cloudStorageRegion` accepts `auto` or `us-east-1`.
+
 ## AI grep hints
 
 - Keys: `connections.*` (full namespace), `app.connectionRail`

@@ -10,7 +10,8 @@ import terminalIcon from "../../../assets/connection-icons/terminal.png";
 import urlIcon from "../../../assets/connection-icons/url.png";
 import vncIcon from "../../../assets/connection-icons/vnc.png";
 import wslIcon from "../../../assets/connection-icons/wsl.png";
-import { lucideIconNameFromRef, reiconIconNameFromRef } from "../../../lib/iconCatalog";
+import { lucideIconNameFromRef, reiconIconNameFromRef, reiconIconRefForName } from "../../../lib/iconCatalog";
+import { nativeMenuIcons } from "../../../lib/nativeMenuIcons";
 import { brandIconRefToUrl } from "../../../lib/brandIconUrls";
 import { materialIconRefToUrl } from "../../../lib/iconCatalogUrls";
 import { osIconRefToUrl } from "../../../lib/osIconUrls";
@@ -29,7 +30,7 @@ export const CONNECTION_ICON_SRC: Record<ConnectionType, string> = {
   ftp: fileBrowserConnectionIconSrc("ftp"),
   localFiles: fileBrowserConnectionIconSrc("localFiles"),
   fileView: documentIcon,
-  cloudStorage: fileBrowserConnectionIconSrc("cloudStorage"),
+  cloudStorage: reiconIconRefForName("Cloud"),
 };
 
 export const PREDEFINED_CONNECTION_ICON_TYPES: ConnectionType[] = [
@@ -73,6 +74,26 @@ export function connectionIconSrcForConnection({
     return fileBrowserConnectionIconSrc("localFiles");
   }
   return CONNECTION_ICON_SRC[type];
+}
+
+/**
+ * Native context menus rasterize an image source, so an inline Reicon/Lucide
+ * default (which has no URL behind it) cannot be loaded. Return the matching
+ * raw SVG for native menu items that would otherwise lose their icon.
+ */
+export function connectionMenuIconForConnection({
+  iconDataUrl,
+  localShell,
+  type,
+}: {
+  iconDataUrl?: string | null;
+  localShell?: string;
+  type: ConnectionType;
+}) {
+  if (!iconDataUrl && type === "cloudStorage") {
+    return { iconSvg: nativeMenuIcons.cloud };
+  }
+  return { iconSrc: connectionIconSrcForConnection({ iconDataUrl, localShell, type }) };
 }
 
 /**
