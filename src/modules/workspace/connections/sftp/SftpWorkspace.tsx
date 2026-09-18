@@ -2822,6 +2822,9 @@ function fileBrowserProtocolLabel(
   if (connection.type === "ftp") {
     return t("sftp.protocolFtp");
   }
+  if (connection.type === "cloudStorage") {
+    return t("connections.cloudStorage");
+  }
   return t("sftp.protocolSftp");
 }
 
