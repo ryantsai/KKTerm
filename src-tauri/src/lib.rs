@@ -4705,6 +4705,9 @@ fn configure_macos_updater<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tau
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    if ai_coding_usage::run_claude_statusline_adapter_if_requested() {
+        return;
+    }
     let process_args = std::env::args().collect::<Vec<_>>();
     let process_cwd = std::env::current_dir().unwrap_or_default();
     let launch_path_state =
