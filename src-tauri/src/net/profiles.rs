@@ -615,23 +615,25 @@ fn windows_apply_script(request: &ApplyNetworkProfileRequest, report_path: &str)
         let (enabled, action) = if family.mode == IpMode::Disabled { ("$false", "Disable") } else { ("$true", "Enable") };
         statements.push(format!("$step='{name} protocol binding'; $b=Get-NetAdapterBinding -Name ([System.Management.Automation.WildcardPattern]::Escape($a.Name)) -ComponentID {binding} -ErrorAction Stop; if ($null -eq $b) {{ throw 'Protocol binding not found' }}; if ($b.Enabled -ne {enabled}) {{ {action}-NetAdapterBinding -InputObject $b -Confirm:$false -ErrorAction Stop }}"));
     }
+    // Re-read the stable GUID after binding changes: a driver restart may
+    // replace the adapter's interface index. No physical link is required.
+    statements.push(format!(
+        "$step='adapter refresh'; $a=Get-NetAdapter -ErrorAction Stop | Where-Object {{ $_.InterfaceGuid.ToString() -eq '{adapter_id}' }} | Select-Object -First 1; if ($null -eq $a -or $a.ifIndex -le 0) {{ throw 'Network adapter is no longer available' }}"
+    ));
     statements.extend(windows_family_statements("IPv4", &request.ipv4));
     statements.extend(windows_family_statements("IPv6", &request.ipv6));
-    // With both bindings disabled there is no usable DNS client to configure.
-    if request.ipv4.mode != IpMode::Disabled || request.ipv6.mode != IpMode::Disabled {
-        statements.push("$step='DNS server configuration'".into());
-        if request.dns_servers.is_empty() {
-            statements.push("Set-DnsClientServerAddress -InterfaceIndex $a.ifIndex -ResetServerAddresses -ErrorAction Stop".into());
-        } else {
-            let dns = request.dns_servers.iter().map(|value| format!("'{}'", ps_quote(value))).collect::<Vec<_>>().join(",");
-            statements.push(format!("Set-DnsClientServerAddress -InterfaceIndex $a.ifIndex -ServerAddresses @({dns}) -ErrorAction Stop"));
-        }
-    }
+    statements.extend(windows_dns_statements(request));
     let body = statements.join(";\n");
     let path = ps_quote(report_path);
     // Open the existing channel before any network mutation, with sharing
     // compatible with the Rust handle. Never load executable code from temp.
     format!(r#"$ErrorActionPreference='Stop'; $ProgressPreference='SilentlyContinue'; $writer=$null
+function Invoke-KKNetsh {{
+  param([string[]]$Arguments)
+  $output = & (Join-Path ([Environment]::SystemDirectory) 'netsh.exe') @Arguments 2>&1
+  $code = $LASTEXITCODE
+  if ($code -ne 0) {{ throw ("netsh exited with " + $code + ': ' + ($output -join ' ').Trim()) }}
+}}
 try {{
 $stream=[System.IO.File]::Open('{path}', [System.IO.FileMode]::Open, [System.IO.FileAccess]::Write, [System.IO.FileShare]::ReadWrite)
 $writer=[System.IO.StreamWriter]::new($stream, [System.Text.UTF8Encoding]::new($false))
@@ -652,34 +654,76 @@ fn windows_family_statements(family_name: &str, family: &NetworkFamilySnapshot) 
     if family.mode == IpMode::Disabled {
         return Vec::new();
     }
-    let mut out = vec![format!("$step='{family_name} interface readiness'; $ready=$false; for ($attempt=0; $attempt -lt 50; $attempt++) {{ if (Get-NetIPInterface -InterfaceIndex $a.ifIndex -AddressFamily {family_name} -ErrorAction SilentlyContinue) {{ $ready=$true; break }}; Start-Sleep -Milliseconds 200 }}; if (-not $ready) {{ throw 'IP interface did not become available within 10 seconds' }}")];
-    if family.mode == IpMode::Manual {
-        out.push(format!("$step='{family_name} automatic addressing'; Set-NetIPInterface -InterfaceIndex $a.ifIndex -AddressFamily {family_name} -Dhcp Disabled -ErrorAction Stop"));
-        if family_name == "IPv6" {
-            out.push("Set-NetIPInterface -InterfaceIndex $a.ifIndex -AddressFamily IPv6 -RouterDiscovery Disabled -ErrorAction Stop".into());
+    // NetTCPIP's active IP interface can be absent on a disconnected NIC.
+    // netsh's persistent configuration does not require link, DHCP or DAD
+    // readiness. Do not just remove the wait and keep active-only setters.
+    let mut out = Vec::new();
+    if family_name == "IPv4" {
+        // set address replaces old static addresses AND default gateways while
+        // switching DHCP mode; add address is only for subsequent addresses.
+        if family.mode == IpMode::Automatic {
+            out.push("$step='IPv4 automatic addressing'; Invoke-KKNetsh @('interface','ipv4','set','address',\"name=$($a.ifIndex)\",'source=dhcp','store=persistent')".into());
+        } else {
+            for (index, address) in family.addresses.iter().enumerate() {
+                let (action, options) = if index == 0 {
+                    ("set", format!("'source=static','gateway={}',", ps_quote(family.gateway.as_deref().unwrap_or("none"))))
+                } else {
+                    ("add", String::new())
+                };
+                out.push(format!("$step='IPv4 static address {}'; Invoke-KKNetsh @('interface','ipv4','{action}','address',\"name=$($a.ifIndex)\",{options}'address={}/{}','store=persistent')", index + 1, ps_quote(&address.address), address.prefix));
+            }
         }
+        return out;
     }
-    let destination = if family_name == "IPv4" { "0.0.0.0/0" } else { "::/0" };
+    // IPv6 has no equivalent of ipv4 set address's replace-all semantics.
+    // Retain scoped cleanup of both stores, preserving link-local addresses
+    // and unrelated routes/adapters, then use persistent native setters.
+    let automatic = if family.mode == IpMode::Automatic { "enabled" } else { "disabled" };
+    let configure = format!("$step='IPv6 automatic addressing'; Invoke-KKNetsh @('interface','ipv6','set','interface',\"interface=$($a.ifIndex)\",'routerdiscovery={automatic}','managedaddress={automatic}','otherstateful={automatic}','store=persistent')");
+    if family.mode == IpMode::Manual {
+        out.push(configure.clone());
+    }
     let route_filter = if family.mode == IpMode::Automatic { " | Where-Object Protocol -eq 'NetMgmt'" } else { "" };
     let address_filter = if family.mode == IpMode::Automatic { "PrefixOrigin -eq 'Manual'" } else { "PrefixOrigin -ne 'WellKnown'" };
-    // Clear persistent entries first, then re-enumerate active entries: removing
-    // one store may also remove its active counterpart. Filter discovery output
-    // instead of suppressing errors (an empty result is legitimate).
     for store in ["PersistentStore", "ActiveStore"] {
-        out.push(format!("$step='{family_name} {store} default routes'; Get-NetRoute -PolicyStore {store} -ErrorAction Stop | Where-Object {{ $_.InterfaceIndex -eq $a.ifIndex -and $_.AddressFamily -eq '{family_name}' -and $_.DestinationPrefix -eq '{destination}' }}{route_filter} | Remove-NetRoute -Confirm:$false -ErrorAction Stop"));
-        out.push(format!("$step='{family_name} {store} addresses'; Get-NetIPAddress -PolicyStore {store} -ErrorAction Stop | Where-Object {{ $_.InterfaceIndex -eq $a.ifIndex -and $_.AddressFamily -eq '{family_name}' }} | Where-Object {address_filter} | Remove-NetIPAddress -Confirm:$false -ErrorAction Stop"));
+        out.push(format!("$step='IPv6 {store} default routes'; Get-NetRoute -PolicyStore {store} -ErrorAction Stop | Where-Object {{ $_.InterfaceIndex -eq $a.ifIndex -and $_.AddressFamily -eq 'IPv6' -and $_.DestinationPrefix -eq '::/0' }}{route_filter} | Remove-NetRoute -Confirm:$false -ErrorAction Stop"));
+        out.push(format!("$step='IPv6 {store} addresses'; Get-NetIPAddress -PolicyStore {store} -ErrorAction Stop | Where-Object {{ $_.InterfaceIndex -eq $a.ifIndex -and $_.AddressFamily -eq 'IPv6' }} | Where-Object {address_filter} | Remove-NetIPAddress -Confirm:$false -ErrorAction Stop"));
     }
     if family.mode == IpMode::Automatic {
-        out.push(format!("$step='{family_name} automatic addressing'; Set-NetIPInterface -InterfaceIndex $a.ifIndex -AddressFamily {family_name} -Dhcp Enabled -ErrorAction Stop"));
-        if family_name == "IPv6" {
-            out.push("Set-NetIPInterface -InterfaceIndex $a.ifIndex -AddressFamily IPv6 -RouterDiscovery Enabled -ErrorAction Stop".into());
-        }
+        out.push(configure);
     } else {
         for (index, address) in family.addresses.iter().enumerate() {
-            let gateway = if index == 0 {
-                family.gateway.as_deref().map(|value| format!(" -DefaultGateway '{}'", ps_quote(value))).unwrap_or_default()
-            } else { String::new() };
-            out.push(format!("$step='{family_name} static address {}'; New-NetIPAddress -InterfaceIndex $a.ifIndex -AddressFamily {family_name} -IPAddress '{}' -PrefixLength {}{gateway} -ErrorAction Stop", index + 1, ps_quote(&address.address), address.prefix));
+            out.push(format!("$step='IPv6 static address {}'; Invoke-KKNetsh @('interface','ipv6','add','address',\"interface=$($a.ifIndex)\",'address={}/{}','store=persistent')", index + 1, ps_quote(&address.address), address.prefix));
+        }
+        if let Some(gateway) = family.gateway.as_deref() {
+            out.push(format!("$step='IPv6 default gateway'; Invoke-KKNetsh @('interface','ipv6','add','route','prefix=::/0',\"interface=$($a.ifIndex)\",'nexthop={}','store=persistent')", ps_quote(gateway)));
+        }
+    }
+    out
+}
+
+#[cfg(any(target_os = "windows", test))]
+fn windows_dns_statements(request: &ApplyNetworkProfileRequest) -> Vec<String> {
+    let mut out = Vec::new();
+    for (name, family, ipv6) in [("ipv4", &request.ipv4, false), ("ipv6", &request.ipv6, true)] {
+        if family.mode == IpMode::Disabled {
+            continue;
+        }
+        let mut seen = std::collections::HashSet::new();
+        let servers: Vec<_> = request.dns_servers.iter()
+            .filter(|value| value.parse::<IpAddr>().is_ok_and(|address| address.is_ipv6() == ipv6 && seen.insert(address)))
+            .collect();
+        let source = if request.dns_servers.is_empty() { "dhcp" } else { "static" };
+        let address = if source == "dhcp" {
+            String::new()
+        } else {
+            format!("'address={}',", ps_quote(servers.first().map(|value| value.as_str()).unwrap_or("none")))
+        };
+        // DNS validation probes require a working link; saving a profile does
+        // not. Native exit codes still fail the operation on rejected settings.
+        out.push(format!("$step='{name} DNS server configuration'; Invoke-KKNetsh @('interface','{name}','set','dnsservers',\"name=$($a.ifIndex)\",'source={source}',{address}'validate=no')"));
+        for (index, server) in servers.iter().enumerate().skip(1) {
+            out.push(format!("Invoke-KKNetsh @('interface','{name}','add','dnsservers',\"name=$($a.ifIndex)\",'address={}','index={}','validate=no')", ps_quote(server), index + 1));
         }
     }
     out
@@ -985,9 +1029,9 @@ mod tests {
             gateway: None,
         };
         let statements = windows_family_statements("IPv4", &family).join("\n");
-        assert!(statements.contains("-Dhcp Enabled"));
-        assert!(statements.contains("PrefixOrigin -eq 'Manual'"));
-        assert!(statements.contains("Protocol -eq 'NetMgmt'"));
+        assert!(statements.contains("'set','address'"));
+        assert!(statements.contains("'source=dhcp'"));
+        assert!(statements.contains("'store=persistent'"));
     }
 
     #[test]

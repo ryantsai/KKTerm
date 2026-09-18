@@ -111,11 +111,20 @@ gateway is the one with the lowest route metric.
 On Windows, `dashboard.networkProfilesApplyError` distinguishes cancelled UAC
 from a failed configuration step and includes the original Windows diagnostic.
 Protocol bindings change only when necessary; both families' binding changes
-finish before addresses are configured, with a bounded interface-readiness wait.
-Replacing static settings clears matching persistent and active entries for the
-selected adapter. Automatic addressing is enabled after manual-entry cleanup.
-When both IPv4 and IPv6 are disabled, DNS configuration is skipped. Successful
-`dashboard.networkProfilesApplied` requires confirmation from the elevated helper.
+finish before the adapter is resolved again by its stable identifier. IPv4/IPv6
+addressing and gateways use persistent Windows configuration, without waiting
+for an active IP-interface record, a connected cable, or a DHCP lease. Switching
+IPv4 mode replaces the previous static addresses and default gateways; IPv6
+cleanup stays scoped to the selected adapter and preserves link-local addresses.
+DNS is configured separately for each enabled family, without probing DNS-server
+reachability on an offline network. When both families are disabled, DNS is
+skipped. Native command failures still stop application and report their step.
+
+After the elevated helper confirms success, `dashboard.networkProfilesApplied`
+shows one success popup in the bottom Status Bar with the profile and adapter
+names. Success means Windows accepted the settings, not that the NIC is online.
+A disconnected NIC can still show no live address until it reconnects; use
+`common.refresh` to inspect its live state after connecting the cable.
 Changes are not transactional: a failed step can leave earlier changes applied.
 Use `common.refresh` to inspect the adapter before retrying; preserve the reported
 step and diagnostic when reporting an issue. Do not disable UAC to troubleshoot.
