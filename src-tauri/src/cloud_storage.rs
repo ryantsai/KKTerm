@@ -659,7 +659,7 @@ impl CloudStorageSessionManager {
                 request.local_directory
             ));
         }
-        let destination = local_directory.join(&name);
+        let destination = download_child_path(&local_directory, &name)?;
         let behavior = OverwriteBehavior::from_request(request.overwrite_behavior.as_deref());
         if behavior == OverwriteBehavior::Fail && destination.exists() {
             return Err(format!(
@@ -668,6 +668,7 @@ impl CloudStorageSessionManager {
             ));
         }
         let cancel = self.register_transfer(&request.transfer_id);
+        let progress = |transferred, total| emit_progress(&app, &request.transfer_id, transferred, total);
 
         let outcome = connection.runtime.block_on(async {
             let is_folder = remote_is_folder(&connection, &remote_path).await?;
@@ -676,10 +677,9 @@ impl CloudStorageSessionManager {
                     &connection,
                     &remote_path,
                     &destination,
-                    &name,
                     &cancel,
-                    &app,
-                    &request.transfer_id,
+                    behavior,
+                    &progress,
                 )
                 .await
             } else {
@@ -690,8 +690,8 @@ impl CloudStorageSessionManager {
                             &remote_path,
                             &destination,
                             &cancel,
-                            &app,
-                            &request.transfer_id,
+                            behavior,
+                            &progress,
                         )
                         .await
                     }
@@ -908,18 +908,35 @@ fn read_cloud_directory(
     connection: &CloudStorageConnection,
     path: &str,
 ) -> Result<(Vec<CloudStorageDirectoryEntry>, String, bool), String> {
-    connection.runtime.block_on(async {
-        match &connection.transport {
-            CloudStorageTransport::ObjectStore { store, provider } => {
-                let cap = match provider {
-                    CloudStorageProvider::AzureBlob => AZURE_LIST_PAGE_CAP,
-                    _ => S3_LIST_PAGE_CAP,
-                };
-                let (entries, truncated) = object_store_list(store, path, cap).await?;
-                Ok((entries, path.to_string(), truncated))
-            }
+    connection.runtime.block_on(read_cloud_directory_async(connection, path))
+}
+
+// Async transfers must not re-enter the session runtime via the sync wrapper.
+async fn read_cloud_directory_async(
+    connection: &CloudStorageConnection,
+    path: &str,
+) -> Result<(Vec<CloudStorageDirectoryEntry>, String, bool), String> {
+    match &connection.transport {
+        CloudStorageTransport::ObjectStore { store, provider } => {
+            let cap = match provider {
+                CloudStorageProvider::AzureBlob => AZURE_LIST_PAGE_CAP,
+                _ => S3_LIST_PAGE_CAP,
+            };
+            let (entries, truncated) = object_store_list(store, path, cap).await?;
+            Ok((entries, path.to_string(), truncated))
         }
-    })
+    }
+}
+
+async fn object_store_file_exists(
+    store: &Arc<dyn ObjectStore>,
+    location: &ObjectPath,
+) -> Result<bool, String> {
+    match store.head(location).await {
+        Ok(_) => Ok(true),
+        Err(object_store::Error::NotFound { .. }) => Ok(false),
+        Err(error) => Err(object_store_error(error)),
+    }
 }
 
 async fn remote_target_exists(
@@ -928,12 +945,7 @@ async fn remote_target_exists(
 ) -> Result<bool, String> {
     match &connection.transport {
         CloudStorageTransport::ObjectStore { store, .. } => {
-            let key = object_key(path);
-            match store.head(&ObjectPath::from(key.as_str())).await {
-                Ok(_) => Ok(true),
-                Err(object_store::Error::NotFound { .. }) => Ok(false),
-                Err(error) => Err(format!("failed to check the destination: {error}")),
-            }
+            object_store_file_exists(store, &path_from_key(&object_key(path))?).await
         }
     }
 }
@@ -947,14 +959,13 @@ async fn remote_is_folder(
     }
     match &connection.transport {
         CloudStorageTransport::ObjectStore { store, .. } => {
-            let key = object_key(path);
-            if store.head(&ObjectPath::from(key.as_str())).await.is_ok() {
+            let prefix = path_from_key(&object_key(path))?;
+            if object_store_file_exists(store, &prefix).await? {
                 return Ok(false);
             }
-            // A prefix is a folder when at least one object lives beneath it.
-            let prefix = ObjectPath::from(format!("{key}/").as_str());
+            // A prefix is a folder only when a listing actually yields an object.
             let mut stream = store.list(Some(&prefix));
-            Ok(stream.next().await.is_some())
+            Ok(stream.next().await.transpose().map_err(object_store_error)?.is_some())
         }
     }
 }
@@ -964,46 +975,44 @@ async fn download_object_tree(
     connection: &CloudStorageConnection,
     remote_path: &str,
     destination: &Path,
-    name: &str,
     cancel: &Arc<AtomicBool>,
-    app: &AppHandle,
-    transfer_id: &str,
+    behavior: OverwriteBehavior,
+    progress: &impl Fn(u64, u64),
 ) -> Result<u64, String> {
+    if cancel.load(Ordering::SeqCst) {
+        return Err(TRANSFER_CANCELED.to_string());
+    }
+    let (entries, _, _) = read_cloud_directory_async(connection, remote_path).await?;
     tokio::fs::create_dir_all(destination)
         .await
         .map_err(|e| format!("failed to create {}: {e}", destination.display()))?;
-    let (entries, _, _) = read_cloud_directory(connection, remote_path)?;
     let mut total = 0u64;
     for entry in entries {
         if cancel.load(Ordering::SeqCst) {
             return Err(TRANSFER_CANCELED.to_string());
         }
         let child_remote = join_remote_path(remote_path, &entry.name);
-        let child_local = destination.join(&entry.name);
+        let child_local = download_child_path(destination, &entry.name)?;
         if entry.kind == "folder" {
             total += Box::pin(download_object_tree(
                 connection,
                 &child_remote,
                 &child_local,
-                &entry.name,
                 cancel,
-                app,
-                transfer_id,
+                behavior,
+                progress,
             ))
             .await?;
             continue;
         }
-        let bytes = connection.runtime.block_on(async {
-            match &connection.transport {
-                CloudStorageTransport::ObjectStore { store, .. } => {
-                    object_store_download(store, &child_remote, &child_local, cancel, app, transfer_id)
-                        .await
-                }
+        let bytes = match &connection.transport {
+            CloudStorageTransport::ObjectStore { store, .. } => {
+                object_store_download(store, &child_remote, &child_local, cancel, behavior, progress)
+                    .await?
             }
-        })?;
+        };
         total += bytes;
     }
-    let _ = name;
     Ok(total)
 }
 
@@ -1122,9 +1131,9 @@ async fn object_store_properties(
             group: None,
         }),
         Err(object_store::Error::NotFound { .. }) => {
-            let prefix = ObjectPath::from(format!("{key}/").as_str());
+            let prefix = path_from_key(&key)?;
             let mut stream = store.list(Some(&prefix));
-            if stream.next().await.is_some() {
+            if stream.next().await.transpose().map_err(object_store_error)?.is_some() {
                 Ok(CloudStoragePathProperties {
                     path: path.to_string(),
                     name,
@@ -1151,13 +1160,13 @@ async fn object_store_delete(store: &Arc<dyn ObjectStore>, path: &str) -> Result
     }
     // A single key deletes directly; a prefix is deleted breadth-first so a
     // folder removal cannot silently orphan children.
-    if store.head(&path_from_key(&key)?).await.is_ok() {
+    let prefix = path_from_key(&key)?;
+    if object_store_file_exists(store, &prefix).await? {
         return store
-            .delete(&path_from_key(&key)?)
+            .delete(&prefix)
             .await
             .map_err(object_store_error);
     }
-    let prefix = ObjectPath::from(format!("{key}/").as_str());
     let mut stream = store.list(Some(&prefix));
     let mut victims: Vec<ObjectPath> = Vec::new();
     while let Some(item) = stream.next().await {
@@ -1177,7 +1186,7 @@ async fn object_store_delete(store: &Arc<dyn ObjectStore>, path: &str) -> Result
 }
 
 /// Object-store rename is a server-side copy followed by a delete. Folder
-/// renames walk the prefix and copy every object beneath it.
+/// renames copy all objects before deleting any source object.
 async fn object_store_rename(
     store: &Arc<dyn ObjectStore>,
     from: &str,
@@ -1188,14 +1197,21 @@ async fn object_store_rename(
     if from_key.is_empty() || to_key.is_empty() {
         return Err("the storage root cannot be renamed".to_string());
     }
-    if store.head(&path_from_key(&from_key)?).await.is_ok() {
-        store
-            .copy(&path_from_key(&from_key)?, &path_from_key(&to_key)?)
-            .await
-            .map_err(object_store_error)?;
+    let from_prefix = path_from_key(&from_key)?;
+    let to_path = path_from_key(&to_key)?;
+    if from_prefix == to_path {
         return Ok(());
     }
-    let from_prefix = ObjectPath::from(format!("{from_key}/").as_str());
+    if object_store_file_exists(store, &from_prefix).await? {
+        store
+            .copy(&from_prefix, &to_path)
+            .await
+            .map_err(object_store_error)?;
+        return store.delete(&from_prefix).await.map_err(object_store_error);
+    }
+    // ObjectPath strips trailing slashes; keep the separator in the string
+    // used to extract relative keys rather than constructing "target//child".
+    let source_directory = format!("{from_key}/");
     let mut stream = store.list(Some(&from_prefix));
     let mut moves: Vec<(ObjectPath, ObjectPath)> = Vec::new();
     while let Some(item) = stream.next().await {
@@ -1203,20 +1219,21 @@ async fn object_store_rename(
         let suffix = meta
             .location
             .as_ref()
-            .strip_prefix(from_prefix.as_ref())
-            .unwrap_or_default()
-            .to_string();
+            .strip_prefix(&source_directory)
+            .ok_or_else(|| format!("object is outside the source folder: {}", meta.location))?;
         let target = path_from_key(&format!("{to_key}/{suffix}"))?;
         moves.push((meta.location.clone(), target));
     }
     if moves.is_empty() {
         return Err(format!("not found: {from}"));
     }
-    for (source, target) in moves {
+    for (source, target) in &moves {
         store
-            .copy(&source, &target)
+            .copy(source, target)
             .await
             .map_err(object_store_error)?;
+    }
+    for (source, _) in moves {
         store.delete(&source).await.map_err(object_store_error)?;
     }
     Ok(())
@@ -1284,45 +1301,81 @@ async fn object_store_download(
     remote_path: &str,
     destination: &Path,
     cancel: &Arc<AtomicBool>,
-    app: &AppHandle,
-    transfer_id: &str,
+    behavior: OverwriteBehavior,
+    progress: &impl Fn(u64, u64),
 ) -> Result<u64, String> {
+    if cancel.load(Ordering::SeqCst) {
+        return Err(TRANSFER_CANCELED.to_string());
+    }
     let key = object_key(remote_path);
     let result = store
         .get(&path_from_key(&key)?)
         .await
         .map_err(object_store_error)?;
     let total = result.meta.size;
-    if let Some(parent) = destination.parent() {
-        tokio::fs::create_dir_all(parent)
-            .await
-            .map_err(|e| format!("failed to create {}: {e}", parent.display()))?;
-    }
-    let mut file = tokio::fs::File::create(destination)
+    let parent = destination.parent().unwrap_or_else(|| Path::new("."));
+    tokio::fs::create_dir_all(parent)
         .await
-        .map_err(|e| format!("failed to create {}: {e}", destination.display()))?;
+        .map_err(|e| format!("failed to create {}: {e}", parent.display()))?;
+    // Never truncate the destination until the complete download succeeds.
+    // Dropping TempPath removes partial data on cancellation or any I/O error.
+    let temporary = tempfile::NamedTempFile::new_in(parent)
+        .map_err(|e| format!("failed to stage {}: {e}", destination.display()))?;
+    let (file, temporary_path) = temporary.into_parts();
+    let mut file = tokio::fs::File::from_std(file);
     let mut stream = result.into_stream();
     let mut written = 0u64;
     while let Some(chunk) = stream.next().await {
         let chunk = chunk.map_err(object_store_error)?;
         if cancel.load(Ordering::SeqCst) {
-            drop(file);
-            let _ = tokio::fs::remove_file(destination).await;
             return Err(TRANSFER_CANCELED.to_string());
         }
         file.write_all(&chunk)
             .await
             .map_err(|e| format!("failed to write {}: {e}", destination.display()))?;
         written += chunk.len() as u64;
-        emit_progress(app, transfer_id, written, total);
+        progress(written, total);
+    }
+    if written != total {
+        return Err(format!("incomplete download: expected {total} bytes, received {written}"));
     }
     file.flush()
         .await
         .map_err(|e| format!("failed to flush {}: {e}", destination.display()))?;
+    drop(file);
+    if cancel.load(Ordering::SeqCst) {
+        return Err(TRANSFER_CANCELED.to_string());
+    }
+    let saved = match behavior {
+        OverwriteBehavior::Overwrite => temporary_path.persist(destination),
+        OverwriteBehavior::Fail => temporary_path.persist_noclobber(destination),
+    };
+    saved.map_err(|error| {
+        if error.error.kind() == std::io::ErrorKind::AlreadyExists {
+            format!("destination already exists: {}", destination.display())
+        } else {
+            format!("failed to save {}: {error}", destination.display())
+        }
+    })?;
+    progress(written, total);
     Ok(written)
 }
 
 // --------------------------------- helpers ----------------------------------
+
+fn download_child_path(parent: &Path, name: &str) -> Result<PathBuf, String> {
+    // Object keys are not filesystem paths. Reject separators, Windows drive /
+    // alternate-stream syntax and aliases instead of writing outside the folder.
+    if name.is_empty()
+        || name == "."
+        || name == ".."
+        || name.contains(['/', '\\', ':'])
+        || name.chars().any(char::is_control)
+    {
+        return Err(format!("object name is not a safe local file name: {name}"));
+    }
+    Ok(parent.join(name))
+}
 
 fn make_session_id(title: &str) -> String {
     let slug: String = title
@@ -1617,3 +1670,6 @@ mod tests {
         assert_eq!(pairs[2], ("sig".to_string(), "abc%3D".to_string()));
     }
 }
+
+#[cfg(test)]
+mod review_tests;
