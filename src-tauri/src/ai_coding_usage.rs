@@ -1,5 +1,4 @@
 use crate::storage;
-use base64::Engine as _;
 use rusqlite::{Connection, OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -7,8 +6,8 @@ use serde_json::{Value, json};
 use std::os::windows::process::CommandExt;
 use std::{
     ffi::{OsStr, OsString},
-    io::{BufRead, BufReader, Read, Seek, SeekFrom, Write},
-    path::{Path, PathBuf},
+    io::{BufRead, BufReader, Write},
+    path::PathBuf,
     process::{Command, Stdio},
     sync::{OnceLock, mpsc},
     time::{Duration, Instant},
@@ -25,13 +24,6 @@ const PROVIDERS: [AiCodingUsageProvider; 2] = [
 const PROVIDER_TIMEOUT: Duration = Duration::from_secs(180);
 const CODEX_CHATGPT_DEFAULT_BASE_URL: &str = "https://chatgpt.com/backend-api";
 const CODEX_CHATGPT_USAGE_PATH: &str = "/wham/usage";
-/// Codex session rollouts embed server-reported, account-wide rate-limit
-/// snapshots; treat one this recent as equivalent to a live endpoint read.
-const CODEX_LOCAL_USAGE_FRESH_TTL: time::Duration = time::Duration::minutes(5);
-const CODEX_LOCAL_USAGE_DAY_DIR_LIMIT: usize = 3;
-const CODEX_LOCAL_USAGE_FILE_LIMIT: usize = 8;
-const CODEX_LOCAL_USAGE_TAIL_BYTES: u64 = 256 * 1024;
-
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum AiCodingUsageProvider {
@@ -81,7 +73,10 @@ pub struct AiCodingUsageProviderState {
     subscription_plan: Option<String>,
     five_hour: AiCodingUsageQuotaWindow,
     weekly: AiCodingUsageQuotaWindow,
+    /// Capture time of the last successful quota snapshot.
     last_refresh_at: Option<String>,
+    /// Last attempt, including failures; used for polling and rate-limit backoff.
+    last_attempt_at: Option<String>,
     last_error: Option<String>,
 }
 
@@ -204,9 +199,7 @@ struct ProviderUpdate {
     auth_state: &'static str,
     snapshot: Option<ProviderSnapshot>,
     raw_provider_json: Option<Value>,
-    /// When the snapshot data was actually captured. Local-cache snapshots
-    /// carry their session event time so the UI reports honest freshness;
-    /// None means "now" (live endpoint reads).
+    /// Capture time, distinct from the attempt timestamp. None means "now".
     captured_at: Option<String>,
     last_error: Option<String>,
 }
@@ -354,7 +347,7 @@ fn load_provider_state(
         account_email,
         subscription_plan,
         auth_state,
-        last_refresh_at,
+        last_attempt_at,
         last_error,
     )) = row
     else {
@@ -364,25 +357,43 @@ fn load_provider_state(
     let snapshot = connection
         .query_row(
             "SELECT five_hour_used_percent, five_hour_resets_at,
-                    weekly_used_percent, weekly_resets_at
+                    weekly_used_percent, weekly_resets_at, captured_at, raw_provider_json
              FROM ai_coding_usage_snapshots
              WHERE provider = ?1",
             params![provider.as_str()],
             |row| {
-                Ok(ProviderSnapshot {
-                    five_hour: AiCodingUsageQuotaWindow {
-                        used_percent: row.get(0)?,
-                        resets_at: row.get(1)?,
+                Ok((
+                    ProviderSnapshot {
+                        five_hour: AiCodingUsageQuotaWindow {
+                            used_percent: row.get(0)?,
+                            resets_at: row.get(1)?,
+                        },
+                        weekly: AiCodingUsageQuotaWindow {
+                            used_percent: row.get(2)?,
+                            resets_at: row.get(3)?,
+                        },
                     },
-                    weekly: AiCodingUsageQuotaWindow {
-                        used_percent: row.get(2)?,
-                        resets_at: row.get(3)?,
-                    },
-                })
+                    row.get::<_, String>(4)?,
+                    row.get::<_, Option<String>>(5)?,
+                ))
             },
         )
         .optional()
         .map_err(|error| format!("failed to load usage snapshot: {error}"))?;
+
+    let snapshot = snapshot.and_then(|(mut snapshot, captured_at, raw)| {
+        if provider == AiCodingUsageProvider::Codex {
+            // Re-normalize old caches too. Rollouts have no verified account
+            // binding and must not be relabeled as the currently signed-in user.
+            let raw: Value = serde_json::from_str(raw.as_deref()?).ok()?;
+            if raw.get("source").and_then(Value::as_str) == Some("codex_local_sessions") {
+                return None;
+            }
+            snapshot = normalize_codex_rate_limits(&raw);
+        }
+        expire_reset_quota_windows(&mut snapshot, OffsetDateTime::now_utc());
+        Some((snapshot, captured_at))
+    });
 
     Ok(AiCodingUsageProviderState {
         provider,
@@ -392,13 +403,14 @@ fn load_provider_state(
         subscription_plan,
         five_hour: snapshot
             .as_ref()
-            .map(|snapshot| snapshot.five_hour.clone())
+            .map(|(snapshot, _)| snapshot.five_hour.clone())
             .unwrap_or_else(AiCodingUsageQuotaWindow::unknown),
         weekly: snapshot
             .as_ref()
-            .map(|snapshot| snapshot.weekly.clone())
+            .map(|(snapshot, _)| snapshot.weekly.clone())
             .unwrap_or_else(AiCodingUsageQuotaWindow::unknown),
-        last_refresh_at,
+        last_refresh_at: snapshot.map(|(_, captured_at)| captured_at),
+        last_attempt_at,
         last_error,
     })
 }
@@ -413,6 +425,7 @@ fn disconnected_state(provider: AiCodingUsageProvider) -> AiCodingUsageProviderS
         five_hour: AiCodingUsageQuotaWindow::unknown(),
         weekly: AiCodingUsageQuotaWindow::unknown(),
         last_refresh_at: None,
+        last_attempt_at: None,
         last_error: None,
     }
 }
@@ -422,7 +435,19 @@ fn save_provider_update(
     provider: AiCodingUsageProvider,
     update: ProviderUpdate,
 ) -> Result<(), String> {
-    let now = update.captured_at.clone().map_or_else(now_rfc3339, Ok)?;
+    let now = now_rfc3339()?;
+    let captured_at = update.captured_at.clone().unwrap_or_else(|| now.clone());
+    // A successful auth check without quota cannot prove that an old snapshot
+    // belongs to this login/organization. Clear it before relabeling the account.
+    // Whole-refresh failures retain the old account and snapshot together.
+    if update.snapshot.is_none() {
+        connection
+            .execute(
+                "DELETE FROM ai_coding_usage_snapshots WHERE provider = ?1",
+                params![provider.as_str()],
+            )
+            .map_err(|error| format!("failed to invalidate usage snapshot: {error}"))?;
+    }
     let last_error = update.last_error.as_deref().map(scrub_provider_error);
     connection
         .execute(
@@ -474,7 +499,7 @@ fn save_provider_update(
                     snapshot.weekly.used_percent,
                     snapshot.weekly.resets_at,
                     raw_json,
-                    now
+                    captured_at
                 ],
             )
             .map_err(|error| format!("failed to save usage snapshot: {error}"))?;
@@ -531,115 +556,20 @@ fn connect_codex(
     refresh_codex(cli_paths)
 }
 
-/// Hybrid Codex refresh: prefer the account-wide rate-limit snapshot that the
-/// local Codex CLI/IDE writes into session rollouts (free, offline), fall back
-/// to the live endpoints when the snapshot is stale — e.g. when another
-/// machine on the same account is the active one — and finally reuse the stale
-/// local snapshot if the live refresh also fails.
+/// The app-server binds usage to its active account and handles managed auth.
+/// Session rollouts cannot prove that their quota belongs to that account.
+/// On failure, the stored account/snapshot remains visible with its original
+/// capture time and an error; never rebind a rollout to a new login.
 fn refresh_codex(cli_paths: &ProviderCliPaths) -> Result<ProviderUpdate, String> {
-    let identity = read_codex_local_identity();
-    let local = identity
-        .as_ref()
-        .and_then(|_| read_codex_local_usage(&codex_home_dir().join("sessions")));
-    if let (Some(local), Some(identity)) = (&local, &identity) {
-        if OffsetDateTime::now_utc() - local.captured_at <= CODEX_LOCAL_USAGE_FRESH_TTL {
-            return Ok(codex_update_from_local(local, identity));
-        }
-    }
-    match refresh_codex_online(cli_paths) {
-        Ok(update) => Ok(update),
-        Err(error) => match (local, identity) {
-            (Some(local), Some(identity)) => {
-                let mut update = codex_update_from_local(&local, &identity);
-                update.last_error = Some(format!(
-                    "Live Codex usage refresh failed ({error}); showing the last local session snapshot."
-                ));
-                Ok(update)
-            }
-            _ => Err(error),
-        },
-    }
-}
-
-fn refresh_codex_online(cli_paths: &ProviderCliPaths) -> Result<ProviderUpdate, String> {
     match refresh_codex_app_server(cli_paths) {
         Ok(update) => Ok(update),
+        Err(error) if provider_error_needs_reauth(&error) => Err(error),
         Err(app_server_error) => match refresh_codex_wham_usage() {
             Ok(update) => Ok(update),
             Err(wham_error) => Err(format!(
                 "{app_server_error}; Codex direct usage fallback failed: {wham_error}"
             )),
         },
-    }
-}
-
-#[derive(Clone, Debug)]
-struct CodexLocalUsage {
-    snapshot: ProviderSnapshot,
-    captured_at: OffsetDateTime,
-    rate_limits: Value,
-}
-
-#[derive(Clone, Debug, Default)]
-struct CodexLocalIdentity {
-    email: Option<String>,
-    plan: Option<String>,
-}
-
-/// Reads account identity from `auth.json` (ID-token claims). `None` means
-/// there are no local Codex credentials, so local session data must not be
-/// presented as a connected account.
-fn read_codex_local_identity() -> Option<CodexLocalIdentity> {
-    let content = std::fs::read_to_string(codex_auth_path()).ok()?;
-    let value: Value = serde_json::from_str(&content).ok()?;
-    let claims = value
-        .pointer("/tokens/id_token")
-        .and_then(Value::as_str)
-        .and_then(decode_jwt_claims);
-    let email = claims
-        .as_ref()
-        .and_then(|claims| claims.get("email"))
-        .and_then(Value::as_str)
-        .map(str::to_string);
-    let plan = claims
-        .as_ref()
-        .and_then(|claims| claims.get("https://api.openai.com/auth"))
-        .and_then(|auth| auth.get("chatgpt_plan_type"))
-        .and_then(Value::as_str)
-        .map(str::to_string);
-    Some(CodexLocalIdentity { email, plan })
-}
-
-fn decode_jwt_claims(token: &str) -> Option<Value> {
-    let payload = token.split('.').nth(1)?;
-    let bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
-        .decode(payload)
-        .ok()?;
-    serde_json::from_slice(&bytes).ok()
-}
-
-fn codex_update_from_local(
-    local: &CodexLocalUsage,
-    identity: &CodexLocalIdentity,
-) -> ProviderUpdate {
-    let mut snapshot = local.snapshot.clone();
-    expire_reset_quota_windows(&mut snapshot, OffsetDateTime::now_utc());
-    ProviderUpdate {
-        account_label: identity
-            .email
-            .clone()
-            .or_else(|| identity.plan.clone())
-            .or_else(|| Some(AiCodingUsageProvider::Codex.label().to_string())),
-        account_email: identity.email.clone(),
-        subscription_plan: identity.plan.clone(),
-        auth_state: "connected",
-        snapshot: Some(snapshot),
-        raw_provider_json: Some(json!({
-            "source": "codex_local_sessions",
-            "rate_limits": local.rate_limits,
-        })),
-        captured_at: local.captured_at.format(&Rfc3339).ok(),
-        last_error: None,
     }
 }
 
@@ -659,140 +589,6 @@ fn expire_reset_quota_windows(snapshot: &mut ProviderSnapshot, now: OffsetDateTi
     }
 }
 
-fn read_codex_local_usage(sessions_dir: &Path) -> Option<CodexLocalUsage> {
-    recent_codex_rollout_files(sessions_dir)
-        .into_iter()
-        .find_map(|path| codex_local_usage_from_rollout(&path))
-}
-
-/// Newest-first rollout files from the most recent `sessions/YYYY/MM/DD`
-/// folders, bounded so the scan stays cheap on long-lived installs.
-fn recent_codex_rollout_files(sessions_dir: &Path) -> Vec<PathBuf> {
-    let mut day_dirs = Vec::new();
-    'scan: for year in sorted_numeric_dirs_desc(sessions_dir) {
-        for month in sorted_numeric_dirs_desc(&year) {
-            for day in sorted_numeric_dirs_desc(&month) {
-                day_dirs.push(day);
-                if day_dirs.len() >= CODEX_LOCAL_USAGE_DAY_DIR_LIMIT {
-                    break 'scan;
-                }
-            }
-        }
-    }
-    let mut files: Vec<(std::time::SystemTime, PathBuf)> = day_dirs
-        .iter()
-        .filter_map(|dir| std::fs::read_dir(dir).ok())
-        .flatten()
-        .filter_map(Result::ok)
-        .filter_map(|entry| {
-            let path = entry.path();
-            if path.extension().and_then(OsStr::to_str) != Some("jsonl") {
-                return None;
-            }
-            let modified = entry.metadata().ok()?.modified().ok()?;
-            Some((modified, path))
-        })
-        .collect();
-    files.sort_by(|a, b| b.0.cmp(&a.0));
-    files.truncate(CODEX_LOCAL_USAGE_FILE_LIMIT);
-    files.into_iter().map(|(_, path)| path).collect()
-}
-
-fn sorted_numeric_dirs_desc(dir: &Path) -> Vec<PathBuf> {
-    let Ok(entries) = std::fs::read_dir(dir) else {
-        return Vec::new();
-    };
-    let mut dirs: Vec<(u32, PathBuf)> = entries
-        .filter_map(Result::ok)
-        .filter_map(|entry| {
-            let path = entry.path();
-            let value = path
-                .file_name()
-                .and_then(OsStr::to_str)
-                .and_then(|name| name.parse::<u32>().ok())?;
-            path.is_dir().then_some((value, path))
-        })
-        .collect();
-    dirs.sort_by(|a, b| b.0.cmp(&a.0));
-    dirs.into_iter().map(|(_, path)| path).collect()
-}
-
-fn codex_local_usage_from_rollout(path: &Path) -> Option<CodexLocalUsage> {
-    let fallback_captured_at = std::fs::metadata(path)
-        .and_then(|metadata| metadata.modified())
-        .ok()
-        .map(OffsetDateTime::from);
-    let tail = read_file_tail(path, CODEX_LOCAL_USAGE_TAIL_BYTES)?;
-    tail.lines()
-        .rev()
-        .filter(|line| line.contains("rate_limits"))
-        .find_map(|line| codex_local_usage_from_line(line, fallback_captured_at))
-}
-
-fn codex_local_usage_from_line(
-    line: &str,
-    fallback_captured_at: Option<OffsetDateTime>,
-) -> Option<CodexLocalUsage> {
-    let value: Value = serde_json::from_str(line).ok()?;
-    let rate_limits = value
-        .pointer("/payload/rate_limits")
-        .or_else(|| value.get("rate_limits"))
-        .filter(|rate_limits| rate_limits.is_object())?;
-    let captured_at = value
-        .get("timestamp")
-        .and_then(Value::as_str)
-        .and_then(|timestamp| OffsetDateTime::parse(timestamp, &Rfc3339).ok())
-        .or(fallback_captured_at)?;
-    let five_hour = codex_rate_limit_window(rate_limits.get("primary"), captured_at);
-    let weekly = codex_rate_limit_window(rate_limits.get("secondary"), captured_at);
-    if five_hour.used_percent.is_none() && weekly.used_percent.is_none() {
-        return None;
-    }
-    Some(CodexLocalUsage {
-        snapshot: ProviderSnapshot { five_hour, weekly },
-        captured_at,
-        rate_limits: rate_limits.clone(),
-    })
-}
-
-fn codex_rate_limit_window(
-    value: Option<&Value>,
-    captured_at: OffsetDateTime,
-) -> AiCodingUsageQuotaWindow {
-    let Some(object) = value.and_then(Value::as_object) else {
-        return AiCodingUsageQuotaWindow::unknown();
-    };
-    let used_percent = numeric_key(object, &["used_percent", "usedPercent"]).map(clamp_percent);
-    let resets_at = object
-        .get("resets_at")
-        .or_else(|| object.get("resetsAt"))
-        .and_then(timestamp_to_rfc3339)
-        .or_else(|| {
-            let seconds = numeric_key(object, &["resets_in_seconds", "resetsInSeconds"])?;
-            (captured_at + time::Duration::seconds(seconds as i64))
-                .format(&Rfc3339)
-                .ok()
-        });
-    AiCodingUsageQuotaWindow {
-        used_percent,
-        resets_at,
-    }
-}
-
-/// Rollout files can grow large; only the tail matters because the newest
-/// `token_count` event carries the freshest rate-limit snapshot. A truncated
-/// first line simply fails to parse and is skipped.
-fn read_file_tail(path: &Path, max_bytes: u64) -> Option<String> {
-    let mut file = std::fs::File::open(path).ok()?;
-    let len = file.metadata().ok()?.len();
-    if len > max_bytes {
-        file.seek(SeekFrom::Start(len - max_bytes)).ok()?;
-    }
-    let mut bytes = Vec::new();
-    file.read_to_end(&mut bytes).ok()?;
-    Some(String::from_utf8_lossy(&bytes).into_owned())
-}
-
 fn refresh_codex_app_server(cli_paths: &ProviderCliPaths) -> Result<ProviderUpdate, String> {
     let mut session = CodexRpcSession::start(cli_paths)?;
     session.initialize()?;
@@ -800,11 +596,6 @@ fn refresh_codex_app_server(cli_paths: &ProviderCliPaths) -> Result<ProviderUpda
         "method": "account/read",
         "id": 2,
         "params": { "refreshToken": true }
-    }))?;
-    let rate_limits = session.request(json!({
-        "method": "account/rateLimits/read",
-        "id": 3,
-        "params": {}
     }))?;
     let account_value = account.pointer("/result/account").unwrap_or(&Value::Null);
     if account_value.is_null() {
@@ -818,6 +609,25 @@ fn refresh_codex_app_server(cli_paths: &ProviderCliPaths) -> Result<ProviderUpda
         .get("planType")
         .and_then(Value::as_str)
         .map(str::to_string);
+    // API-key and cloud-provider accounts have no ChatGPT subscription quota.
+    // Return an explicit empty snapshot rather than falling back to stale OAuth.
+    if account_value.get("type").and_then(Value::as_str) != Some("chatgpt") {
+        return Ok(ProviderUpdate {
+            account_label: Some(AiCodingUsageProvider::Codex.label().to_string()),
+            account_email: email,
+            subscription_plan: plan,
+            auth_state: "connected",
+            snapshot: Some(normalize_codex_rate_limits(&Value::Null)),
+            raw_provider_json: Some(json!({ "source": "unsupported_auth" })),
+            captured_at: None,
+            last_error: Some("Codex subscription quota requires ChatGPT sign-in, not API-key or cloud authentication.".to_string()),
+        });
+    }
+    let rate_limits = session.request(json!({
+        "method": "account/rateLimits/read",
+        "id": 3,
+        "params": {}
+    }))?;
     let snapshot = normalize_codex_rate_limits(&rate_limits);
     Ok(ProviderUpdate {
         account_label: email
@@ -909,11 +719,19 @@ fn read_codex_wham_credentials() -> Result<CodexWhamCredentials, String> {
     })?;
     let value: Value = serde_json::from_str(&content)
         .map_err(|error| format!("failed to parse Codex credentials: {error}"))?;
+    codex_wham_credentials_from_value(&value)
+}
+
+fn codex_wham_credentials_from_value(value: &Value) -> Result<CodexWhamCredentials, String> {
+    if let Some(mode) = value.get("auth_mode") {
+        if !matches!(mode.as_str(), Some("chatgpt") | Some("chatgptAuthTokens")) {
+            return Err("Codex subscription quota requires ChatGPT sign-in.".to_string());
+        }
+    }
     let tokens = value.get("tokens").unwrap_or(&Value::Null);
     let access_token = tokens
         .get("access_token")
         .and_then(Value::as_str)
-        .or_else(|| value.get("OPENAI_API_KEY").and_then(Value::as_str))
         .filter(|token| !token.trim().is_empty())
         .ok_or_else(|| {
             "Codex credentials do not contain an access token. Sign in with `codex`.".to_string()
@@ -1021,17 +839,19 @@ fn refresh_claude(cli_paths: &ProviderCliPaths) -> Result<ProviderUpdate, String
     );
     let output = run_command(
         &command,
-        &["auth", "status", "--json"],
+        &["auth", "status"],
         Duration::from_secs(30),
     )?;
-    let status_value =
-        serde_json::from_str::<Value>(&output).unwrap_or_else(|_| json!({ "text": output }));
-
-    if status_value.get("loggedIn").and_then(Value::as_bool) == Some(false) {
-        return Err("Claude Code is not logged in.".to_string());
-    }
-
+    // JSON is the documented default for `claude auth status`.
+    let status_value = parse_claude_auth_status(&output)?;
+    let subscription_auth = status_value.get("authMethod").and_then(Value::as_str)
+        == Some("claude.ai");
     let mut update = claude_update_from_status_value(status_value);
+    if !subscription_auth {
+        update.snapshot = Some(normalize_claude_oauth_usage(&Value::Null));
+        update.last_error = Some("Claude subscription quota is unavailable for this authentication method.".to_string());
+        return Ok(update);
+    }
     match fetch_claude_oauth_usage(cli_paths) {
         Ok(usage) => {
             update.snapshot = Some(normalize_claude_oauth_usage(&usage));
@@ -1042,6 +862,15 @@ fn refresh_claude(cli_paths: &ProviderCliPaths) -> Result<ProviderUpdate, String
         }
     }
     Ok(update)
+}
+
+fn parse_claude_auth_status(output: &str) -> Result<Value, String> {
+    let value: Value = serde_json::from_str(output)
+        .map_err(|_| "Claude Code auth status returned invalid JSON.".to_string())?;
+    if value.get("loggedIn").and_then(Value::as_bool) != Some(true) {
+        return Err("Claude Code is not logged in.".to_string());
+    }
+    Ok(value)
 }
 
 fn claude_update_from_status_value(value: Value) -> ProviderUpdate {
@@ -1139,10 +968,12 @@ fn fetch_claude_oauth_usage(cli_paths: &ProviderCliPaths) -> Result<Value, Strin
 }
 
 fn claude_usage_http_error(status: reqwest::StatusCode, retry_after: Option<&str>) -> String {
-    let Some(retry_after) = retry_after.filter(|value| !value.trim().is_empty()) else {
+    let Some(retry_after) = retry_after.map(str::trim).filter(|value| !value.is_empty()) else {
         return format!("Claude usage endpoint returned HTTP {status}.");
     };
-    format!("Claude usage endpoint returned HTTP {status}; retry after {retry_after}s.")
+    // Retry-After can be delta-seconds or an HTTP date, not always seconds.
+    let suffix = if retry_after.bytes().all(|byte| byte.is_ascii_digit()) { "s" } else { "" };
+    format!("Claude usage endpoint returned HTTP {status}; retry after {retry_after}{suffix}.")
 }
 
 fn read_claude_oauth_token() -> Result<String, String> {
@@ -1159,6 +990,7 @@ fn read_claude_oauth_token() -> Result<String, String> {
     value
         .pointer("/claudeAiOauth/accessToken")
         .and_then(Value::as_str)
+        .filter(|token| !token.trim().is_empty())
         .map(str::to_string)
         .ok_or_else(|| {
             "Claude credentials do not contain an OAuth access token. Sign in with `claude auth login`."
@@ -1167,19 +999,20 @@ fn read_claude_oauth_token() -> Result<String, String> {
 }
 
 fn claude_credentials_path() -> Option<PathBuf> {
-    #[cfg(any(target_os = "windows", target_os = "linux"))]
-    {
-        let home = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME"))?;
-        Some(
-            PathBuf::from(home)
-                .join(".claude")
-                .join(".credentials.json"),
-        )
-    }
-    #[cfg(not(any(target_os = "windows", target_os = "linux")))]
-    {
-        None
-    }
+    #[cfg(target_os = "windows")]
+    let home = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME"));
+    #[cfg(not(target_os = "windows"))]
+    let home = std::env::var_os("HOME");
+    claude_credentials_path_for(std::env::var_os("CLAUDE_CONFIG_DIR"), home)
+}
+
+fn claude_credentials_path_for(config_dir: Option<OsString>, home: Option<OsString>) -> Option<PathBuf> {
+    // Also supports the CLI's file fallback on macOS. Do not probe a different
+    // profile or copy credentials out of Keychain when this file is absent.
+    let root = config_dir.filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+        .or_else(|| home.filter(|value| !value.is_empty()).map(|home| PathBuf::from(home).join(".claude")))?;
+    Some(root.join(".credentials.json"))
 }
 
 fn normalize_claude_oauth_usage(value: &Value) -> ProviderSnapshot {
@@ -1227,7 +1060,8 @@ impl CodexRpcSession {
             .args(["app-server", "--listen", "stdio://"])
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
+            // An unread stderr pipe can fill and stall otherwise valid RPCs.
+            .stderr(Stdio::null())
             .spawn()
             .map_err(|error| {
                 format!(
@@ -1496,6 +1330,7 @@ fn run_command(
     loop {
         if start.elapsed() > timeout {
             let _ = child.kill();
+            let _ = child.wait();
             return Err(format!("{} timed out", command.display()));
         }
         if let Some(status) = child
@@ -1520,140 +1355,84 @@ fn run_command(
 }
 
 fn normalize_codex_rate_limits(value: &Value) -> ProviderSnapshot {
-    let windows = collect_quota_windows(value);
-    let five_hour = windows
-        .iter()
-        .find(|window| window.name_contains("primary"))
-        .or_else(|| {
-            windows
-                .iter()
-                .find(|window| window.name_contains("session"))
-        })
-        .or_else(|| {
-            windows.iter().find(|window| {
-                window
-                    .duration_minutes
-                    .is_some_and(|duration| duration <= 360.0)
+    let unknown = || ProviderSnapshot {
+        five_hour: AiCodingUsageQuotaWindow::unknown(),
+        weekly: AiCodingUsageQuotaWindow::unknown(),
+    };
+    let Some(bucket) = codex_quota_bucket(value) else { return unknown(); };
+    let candidates: Vec<(&str, &Value)> = if let Some(windows) = bucket.as_array() {
+        windows.iter().map(|window| ("", window)).collect()
+    } else {
+        ["primary", "primary_window", "secondary", "secondary_window"]
+            .into_iter()
+            .filter_map(|name| bucket.get(name).map(|window| (name, window)))
+            .collect()
+    };
+    let window_for = |minutes, legacy_names: [&str; 2]| {
+        candidates.iter()
+            .find(|(_, window)| quota_window_minutes(window) == Ok(Some(minutes)))
+            .or_else(|| candidates.iter().find(|(name, window)| {
+                legacy_names.contains(name) && quota_window_minutes(window) == Ok(None)
+            }))
+            .and_then(|(_, window)| window.as_object())
+            .map(|window| AiCodingUsageQuotaWindow {
+                used_percent: numeric_key(window, &["usedPercent", "used_percent", "used_percentage", "usage_percent", "percentUsed"])
+                    .map(clamp_percent),
+                resets_at: ["resetsAt", "resets_at", "reset_at"].iter()
+                    .find_map(|key| window.get(*key).and_then(timestamp_to_rfc3339)),
             })
-        })
-        .map(QuotaCandidate::to_window)
-        .unwrap_or_else(AiCodingUsageQuotaWindow::unknown);
-    let weekly = windows
-        .iter()
-        .find(|window| window.name_contains("secondary"))
-        .or_else(|| windows.iter().find(|window| window.name_contains("week")))
-        .or_else(|| windows.iter().find(|window| window.name_contains("seven")))
-        .or_else(|| {
-            windows.iter().find(|window| {
-                window
-                    .duration_minutes
-                    .is_some_and(|duration| duration >= 7_000.0)
-                    && !window.name_contains("code")
-            })
-        })
-        .or_else(|| {
-            windows.iter().find(|window| {
-                window
-                    .duration_minutes
-                    .is_some_and(|duration| duration >= 7_000.0)
-            })
-        })
-        .map(QuotaCandidate::to_window)
-        .unwrap_or_else(AiCodingUsageQuotaWindow::unknown);
-    ProviderSnapshot { five_hour, weekly }
-}
-
-#[derive(Debug)]
-struct QuotaCandidate {
-    used_percent: Option<f64>,
-    resets_at: Option<String>,
-    duration_minutes: Option<f64>,
-    label: Option<String>,
-}
-
-impl QuotaCandidate {
-    fn to_window(&self) -> AiCodingUsageQuotaWindow {
-        AiCodingUsageQuotaWindow {
-            used_percent: self.used_percent,
-            resets_at: self.resets_at.clone(),
-        }
-    }
-
-    fn name_contains(&self, needle: &str) -> bool {
-        self.label
-            .as_ref()
-            .is_some_and(|label| label.to_lowercase().contains(needle))
+            .unwrap_or_else(AiCodingUsageQuotaWindow::unknown)
+    };
+    // These are fixed-label UI slots, not arbitrary primary/secondary meters.
+    // Explicit durations must agree; absence is never a zero-percent allowance.
+    ProviderSnapshot {
+        five_hour: window_for(300.0, ["primary", "primary_window"]),
+        weekly: window_for(10080.0, ["secondary", "secondary_window"]),
     }
 }
 
-fn collect_quota_windows(value: &Value) -> Vec<QuotaCandidate> {
-    let mut windows = Vec::new();
-    collect_quota_windows_inner(value, None, &mut windows);
-    windows
+fn codex_quota_bucket(value: &Value) -> Option<&Value> {
+    let root = value.get("result").unwrap_or(value);
+    let bucket = if let Some(buckets) = root.get("rateLimitsByLimitId").and_then(Value::as_object) {
+        buckets.get("codex")?
+    } else if let Some(bucket) = root.get("rateLimits") {
+        bucket
+    } else if let Some(bucket) = root.get("rate_limit") {
+        bucket
+    } else if let Some(windows) = root.get("limits").filter(|value| value.is_array()) {
+        return Some(windows);
+    } else if root.get("primary").is_some() || root.get("secondary").is_some() {
+        root
+    } else {
+        return None;
+    };
+    let object = bucket.as_object()?;
+    // Never substitute code-review or model-specific quotas for base Codex.
+    for key in ["limitId", "limit_id"] {
+        if let Some(id) = object.get(key).filter(|value| !value.is_null()) {
+            if id.as_str() != Some("codex") { return None; }
+        }
+    }
+    Some(bucket)
 }
 
-fn collect_quota_windows_inner(
-    value: &Value,
-    label: Option<String>,
-    windows: &mut Vec<QuotaCandidate>,
-) {
-    match value {
-        Value::Object(map) => {
-            let label = map
-                .get("name")
-                .or_else(|| map.get("label"))
-                .or_else(|| map.get("window"))
-                .and_then(Value::as_str)
-                .map(str::to_string)
-                .or(label);
-            let used_percent = numeric_key(
-                map,
-                &[
-                    "usedPercent",
-                    "used_percentage",
-                    "used_percent",
-                    "usage_percent",
-                    "percentUsed",
-                ],
-            );
-            let duration_minutes = numeric_key(map, &["windowDurationMins", "durationMinutes"])
-                .or_else(|| {
-                    numeric_key(map, &["limit_window_seconds"]).map(|seconds| seconds / 60.0)
-                });
-            let resets_at = map
-                .get("resetsAt")
-                .or_else(|| map.get("resets_at"))
-                .or_else(|| map.get("reset_at"))
-                .and_then(timestamp_to_rfc3339);
-            if used_percent.is_some() || resets_at.is_some() {
-                windows.push(QuotaCandidate {
-                    used_percent: used_percent.map(clamp_percent),
-                    resets_at,
-                    duration_minutes,
-                    label: label.clone(),
-                });
-            }
-            for (key, nested) in map {
-                let nested_label = label
-                    .as_ref()
-                    .map(|label| format!("{label}.{key}"))
-                    .or_else(|| Some(key.to_string()));
-                collect_quota_windows_inner(nested, nested_label, windows);
-            }
+fn quota_window_minutes(value: &Value) -> Result<Option<f64>, ()> {
+    let object = value.as_object().ok_or(())?;
+    for (key, divisor) in [
+        ("windowDurationMins", 1.0), ("window_minutes", 1.0),
+        ("durationMinutes", 1.0), ("limit_window_seconds", 60.0),
+    ] {
+        if let Some(value) = object.get(key).filter(|value| !value.is_null()) {
+            let minutes = value.as_f64().ok_or(())? / divisor;
+            return if minutes.is_finite() && minutes > 0.0 { Ok(Some(minutes)) } else { Err(()) };
         }
-        Value::Array(items) => {
-            for item in items {
-                collect_quota_windows_inner(item, label.clone(), windows);
-            }
-        }
-        _ => {}
     }
+    Ok(None)
 }
 
 fn numeric_key(map: &serde_json::Map<String, Value>, keys: &[&str]) -> Option<f64> {
     keys.iter()
-        .find_map(|key| map.get(*key))
-        .and_then(Value::as_f64)
+        .find_map(|key| map.get(*key).and_then(Value::as_f64))
 }
 
 fn timestamp_to_rfc3339(value: &Value) -> Option<String> {
@@ -1696,11 +1475,9 @@ fn now_rfc3339() -> Result<String, String> {
 }
 
 fn scrub_provider_error(error: &str) -> String {
-    let mut scrubbed = error.replace('\n', " ");
-    if scrubbed.len() > 500 {
-        scrubbed.truncate(500);
-    }
-    scrubbed
+    error.chars().take(500).map(|character| {
+        if character == '\n' || character == '\r' { ' ' } else { character }
+    }).collect()
 }
 
 fn scrub_sensitive_provider_json(value: &Value) -> Value {
@@ -1942,44 +1719,6 @@ mod tests {
     }
 
     #[test]
-    fn parses_codex_rollout_token_count_with_resets_in_seconds() {
-        let line = r#"{"timestamp":"2026-07-09T10:00:00Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"total_tokens":1234}},"rate_limits":{"primary":{"used_percent":44.0,"window_minutes":300,"resets_in_seconds":3600},"secondary":{"used_percent":7.5,"window_minutes":10080,"resets_in_seconds":86400}}}}"#;
-
-        let usage = codex_local_usage_from_line(line, None).expect("usage");
-
-        assert_eq!(usage.snapshot.five_hour.used_percent, Some(44.0));
-        assert_eq!(usage.snapshot.weekly.used_percent, Some(7.5));
-        assert_eq!(
-            usage.snapshot.five_hour.resets_at.as_deref(),
-            Some("2026-07-09T11:00:00Z")
-        );
-        assert_eq!(
-            usage.snapshot.weekly.resets_at.as_deref(),
-            Some("2026-07-10T10:00:00Z")
-        );
-        assert_eq!(
-            usage.captured_at,
-            OffsetDateTime::parse("2026-07-09T10:00:00Z", &Rfc3339).unwrap()
-        );
-    }
-
-    #[test]
-    fn parses_codex_rollout_token_count_with_resets_at_epoch() {
-        let line = r#"{"timestamp":"2026-07-09T10:00:00Z","payload":{"type":"token_count","rate_limits":{"primary":{"used_percent":10.0,"resets_at":1783000000},"secondary":{"used_percent":20.0,"resets_at":1783100000}}}}"#;
-
-        let usage = codex_local_usage_from_line(line, None).expect("usage");
-
-        assert_eq!(usage.snapshot.five_hour.used_percent, Some(10.0));
-        assert!(usage.snapshot.five_hour.resets_at.is_some());
-    }
-
-    #[test]
-    fn skips_codex_rollout_lines_with_null_rate_limits() {
-        let line = r#"{"timestamp":"2026-07-09T10:00:00Z","payload":{"type":"token_count","info":{},"rate_limits":null}}"#;
-        assert!(codex_local_usage_from_line(line, None).is_none());
-    }
-
-    #[test]
     fn expires_quota_windows_whose_reset_passed() {
         let now = OffsetDateTime::parse("2026-07-09T12:00:00Z", &Rfc3339).unwrap();
         let mut snapshot = ProviderSnapshot {
@@ -1998,25 +1737,6 @@ mod tests {
         assert_eq!(snapshot.five_hour.used_percent, None);
         assert_eq!(snapshot.five_hour.resets_at, None);
         assert_eq!(snapshot.weekly.used_percent, Some(30.0));
-    }
-
-    #[test]
-    fn decodes_codex_identity_from_jwt_claims() {
-        let claims = serde_json::json!({
-            "email": "ryan@example.com",
-            "https://api.openai.com/auth": { "chatgpt_plan_type": "pro" }
-        });
-        let payload = base64::engine::general_purpose::URL_SAFE_NO_PAD
-            .encode(serde_json::to_vec(&claims).unwrap());
-        let token = format!("header.{payload}.signature");
-
-        let decoded = decode_jwt_claims(&token).expect("claims");
-
-        assert_eq!(decoded["email"], "ryan@example.com");
-        assert_eq!(
-            decoded["https://api.openai.com/auth"]["chatgpt_plan_type"],
-            "pro"
-        );
     }
 
     #[test]
@@ -2040,3 +1760,7 @@ mod tests {
         assert_eq!(command.as_os_str(), OsStr::new("C:\\Tools\\codex.exe"));
     }
 }
+
+#[cfg(test)]
+#[path = "ai_coding_usage_tests.rs"]
+mod compatibility_tests;
