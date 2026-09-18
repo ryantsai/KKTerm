@@ -1017,3 +1017,970 @@ fn claude_statusline_adapter_command() -> Result<String, String> {
     Ok(format!("\"{path}\" {CLAUDE_STATUSLINE_ADAPTER_ARG}"))
 }
 
+fn install_claude_statusline_adapter() -> Result<(), String> {
+    let Some(config_dir) = claude_config_dir() else {
+        return Err("Claude config directory is unavailable.".to_string());
+    };
+    std::fs::create_dir_all(&config_dir)
+        .map_err(|error| format!("failed to create Claude config directory: {error}"))?;
+    let settings_path = config_dir.join("settings.json");
+    let mut settings: Value = match std::fs::read_to_string(&settings_path) {
+        Ok(content) => serde_json::from_str(&content)
+            .map_err(|error| format!("failed to parse Claude settings.json: {error}"))?,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => json!({}),
+        Err(error) => return Err(format!("failed to read Claude settings.json: {error}")),
+    };
+    let object = settings
+        .as_object_mut()
+        .ok_or_else(|| "Claude settings.json must contain a JSON object.".to_string())?;
+    let adapter_command = claude_statusline_adapter_command()?;
+    if object
+        .get("statusLine")
+        .and_then(|value| value.get("command"))
+        .and_then(Value::as_str)
+        .is_some_and(|command| command.contains(CLAUDE_STATUSLINE_ADAPTER_ARG))
+    {
+        return Ok(());
+    }
+
+    let previous = object.get("statusLine").cloned();
+    let backup_path = claude_statusline_backup_path()
+        .ok_or_else(|| "Claude status-line backup path is unavailable.".to_string())?;
+    let backup = json!({ "version": 1, "previousStatusLine": previous });
+    std::fs::write(
+        backup_path,
+        serde_json::to_vec_pretty(&backup)
+            .map_err(|error| format!("failed to serialize status-line backup: {error}"))?,
+    )
+    .map_err(|error| format!("failed to save status-line backup: {error}"))?;
+
+    let mut status_line = previous.unwrap_or_else(|| json!({ "type": "command" }));
+    let status_object = status_line
+        .as_object_mut()
+        .ok_or_else(|| "Claude statusLine setting must contain a JSON object.".to_string())?;
+    status_object.insert("type".to_string(), Value::String("command".to_string()));
+    status_object.insert("command".to_string(), Value::String(adapter_command));
+    object.insert("statusLine".to_string(), status_line);
+    std::fs::write(
+        settings_path,
+        serde_json::to_vec_pretty(&settings)
+            .map_err(|error| format!("failed to serialize Claude settings: {error}"))?,
+    )
+    .map_err(|error| format!("failed to update Claude settings.json: {error}"))
+}
+
+fn run_previous_statusline(command: &str, input: &[u8]) -> Result<Vec<u8>, String> {
+    #[cfg(target_os = "windows")]
+    let candidates: &[(&str, &[&str])] = &[
+        ("bash", &["-lc", command]),
+        ("powershell", &["-NoProfile", "-Command", command]),
+    ];
+    #[cfg(not(target_os = "windows"))]
+    let candidates: &[(&str, &[&str])] = &[("sh", &["-lc", command])];
+
+    let mut last_error = None;
+    for (program, args) in candidates {
+        let mut child = match Command::new(program)
+            .args(*args)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()
+        {
+            Ok(child) => child,
+            Err(error) => {
+                last_error = Some(error.to_string());
+                continue;
+            }
+        };
+        if let Some(mut stdin) = child.stdin.take() {
+            stdin
+                .write_all(input)
+                .map_err(|error| format!("failed to forward status-line input: {error}"))?;
+        }
+        return child
+            .wait_with_output()
+            .map(|output| output.stdout)
+            .map_err(|error| format!("failed to run previous status line: {error}"));
+    }
+    Err(format!(
+        "failed to start a shell for previous status line: {}",
+        last_error.unwrap_or_else(|| "no shell available".to_string())
+    ))
+}
+
+/// Lightweight process mode used by Claude Code's statusLine command. It
+/// captures documented rate-limit telemetry, then proxies the user's previous
+/// status-line command so KKTerm does not replace their display.
+pub fn run_claude_statusline_adapter_if_requested() -> bool {
+    if !std::env::args().any(|arg| arg == CLAUDE_STATUSLINE_ADAPTER_ARG) {
+        return false;
+    }
+    let mut input = Vec::new();
+    if std::io::stdin().read_to_end(&mut input).is_ok()
+        && serde_json::from_slice::<Value>(&input).is_ok()
+    {
+        if let Some(path) = claude_statusline_cache_path() {
+            let _ = std::fs::write(path, &input);
+        }
+    }
+    let previous_command = claude_statusline_backup_path()
+        .and_then(|path| std::fs::read_to_string(path).ok())
+        .and_then(|content| serde_json::from_str::<Value>(&content).ok())
+        .and_then(|value| {
+            value
+                .pointer("/previousStatusLine/command")
+                .and_then(Value::as_str)
+                .map(str::to_string)
+        });
+    if let Some(command) = previous_command {
+        if !command.contains(CLAUDE_STATUSLINE_ADAPTER_ARG) {
+            if let Ok(output) = run_previous_statusline(&command, &input) {
+                let _ = std::io::stdout().write_all(&output);
+            }
+        }
+    }
+    true
+}
+
+fn claude_version_token(output: &str) -> Option<String> {
+    output
+        .split_whitespace()
+        .find(|token| {
+            token.contains('.')
+                && token
+                    .chars()
+                    .all(|character| character.is_ascii_digit() || character == '.')
+        })
+        .map(str::to_string)
+}
+
+fn fetch_claude_oauth_usage(cli_paths: &ProviderCliPaths) -> Result<Value, String> {
+    let token = read_claude_oauth_token()?;
+    let client = crate::net::proxy::apply_blocking(reqwest::blocking::Client::builder())
+        .timeout(Duration::from_secs(20))
+        .build()
+        .map_err(|error| format!("failed to build HTTP client: {error}"))?;
+    let response = client
+        .get(CLAUDE_OAUTH_USAGE_URL)
+        .bearer_auth(&token)
+        .header("anthropic-beta", CLAUDE_OAUTH_BETA_HEADER)
+        .header(
+            reqwest::header::USER_AGENT,
+            claude_usage_user_agent(cli_paths),
+        )
+        .send()
+        .map_err(|error| format!("Claude usage request failed: {error}"))?;
+    let status = response.status();
+    let retry_after = response
+        .headers()
+        .get(reqwest::header::RETRY_AFTER)
+        .and_then(|value| value.to_str().ok())
+        .map(str::to_string);
+    if status == reqwest::StatusCode::UNAUTHORIZED {
+        return Err(
+            "Claude Code OAuth token rejected. Please sign in again with `claude auth login`."
+                .to_string(),
+        );
+    }
+    if !status.is_success() {
+        return Err(claude_usage_http_error(status, retry_after.as_deref()));
+    }
+    response
+        .json::<Value>()
+        .map_err(|error| format!("failed to parse Claude usage response: {error}"))
+}
+
+fn claude_usage_http_error(status: reqwest::StatusCode, retry_after: Option<&str>) -> String {
+    let Some(retry_after) = retry_after.map(str::trim).filter(|value| !value.is_empty()) else {
+        return format!("Claude usage endpoint returned HTTP {status}.");
+    };
+    // Retry-After can be delta-seconds or an HTTP date, not always seconds.
+    let suffix = if retry_after.bytes().all(|byte| byte.is_ascii_digit()) { "s" } else { "" };
+    format!("Claude usage endpoint returned HTTP {status}; retry after {retry_after}{suffix}.")
+}
+
+fn read_claude_oauth_token() -> Result<String, String> {
+    let path = claude_credentials_path()
+        .ok_or_else(|| "Claude credentials file is not available on this platform.".to_string())?;
+    let content = std::fs::read_to_string(&path).map_err(|error| {
+        format!(
+            "failed to read Claude credentials at {}: {error}",
+            path.display()
+        )
+    })?;
+    let value: serde_json::Value = serde_json::from_str(&content)
+        .map_err(|error| format!("failed to parse Claude credentials: {error}"))?;
+    value
+        .pointer("/claudeAiOauth/accessToken")
+        .and_then(Value::as_str)
+        .filter(|token| !token.trim().is_empty())
+        .map(str::to_string)
+        .ok_or_else(|| {
+            "Claude credentials do not contain an OAuth access token. Sign in with `claude auth login`."
+                .to_string()
+        })
+}
+
+fn claude_credentials_path() -> Option<PathBuf> {
+    Some(claude_config_dir()?.join(".credentials.json"))
+}
+
+fn claude_credentials_path_for(config_dir: Option<OsString>, home: Option<OsString>) -> Option<PathBuf> {
+    // Also supports the CLI's file fallback on macOS. Do not probe a different
+    // profile or copy credentials out of Keychain when this file is absent.
+    let root = config_dir.filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+        .or_else(|| home.filter(|value| !value.is_empty()).map(|home| PathBuf::from(home).join(".claude")))?;
+    Some(root.join(".credentials.json"))
+}
+
+fn normalize_claude_oauth_usage(value: &Value) -> ProviderSnapshot {
+    let five_hour = value
+        .pointer("/five_hour")
+        .and_then(oauth_usage_window_from_value)
+        .unwrap_or_else(AiCodingUsageQuotaWindow::unknown);
+    let weekly = value
+        .pointer("/seven_day")
+        .and_then(oauth_usage_window_from_value)
+        .unwrap_or_else(AiCodingUsageQuotaWindow::unknown);
+    ProviderSnapshot { five_hour, weekly }
+}
+
+fn oauth_usage_window_from_value(value: &Value) -> Option<AiCodingUsageQuotaWindow> {
+    let object = value.as_object()?;
+    let used_percent = object
+        .get("utilization")
+        .and_then(Value::as_f64)
+        .map(clamp_percent);
+    let resets_at = object
+        .get("resets_at")
+        .and_then(Value::as_str)
+        .map(str::to_string);
+    Some(AiCodingUsageQuotaWindow {
+        used_percent,
+        resets_at,
+    })
+}
+
+struct CodexRpcSession {
+    child: std::process::Child,
+    stdin: std::process::ChildStdin,
+    rx: mpsc::Receiver<String>,
+}
+
+impl CodexRpcSession {
+    fn start(cli_paths: &ProviderCliPaths) -> Result<Self, String> {
+        let command = resolve_provider_command(
+            cli_paths.codex.as_deref(),
+            "codex",
+            AiCodingUsageProvider::Codex,
+        );
+        let mut child = new_provider_process(&command)
+            .args(["app-server", "--listen", "stdio://"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            // An unread stderr pipe can fill and stall otherwise valid RPCs.
+            .stderr(Stdio::null())
+            .spawn()
+            .map_err(|error| {
+                format!(
+                    "failed to start Codex app-server with {}: {error}",
+                    command.display()
+                )
+            })?;
+        let stdin = child
+            .stdin
+            .take()
+            .ok_or_else(|| "failed to open Codex app-server stdin".to_string())?;
+        let stdout = child
+            .stdout
+            .take()
+            .ok_or_else(|| "failed to open Codex app-server stdout".to_string())?;
+        let (tx, rx) = mpsc::channel();
+        std::thread::spawn(move || {
+            let reader = BufReader::new(stdout);
+            for line in reader.lines().map_while(Result::ok) {
+                let _ = tx.send(line);
+            }
+        });
+        Ok(Self { child, stdin, rx })
+    }
+
+    fn initialize(&mut self) -> Result<(), String> {
+        self.write_json(json!({
+            "method": "initialize",
+            "id": 1,
+            "params": {
+                "clientInfo": {
+                    "name": "kkterm",
+                    "title": "KKTerm",
+                    "version": env!("CARGO_PKG_VERSION")
+                }
+            }
+        }))?;
+        self.wait_for_id(1, Duration::from_secs(20))?;
+        self.write_json(json!({ "method": "initialized", "params": {} }))?;
+        Ok(())
+    }
+
+    fn request(&mut self, message: Value) -> Result<Value, String> {
+        let id = message
+            .get("id")
+            .and_then(Value::as_i64)
+            .ok_or_else(|| "Codex request missing id".to_string())?;
+        self.write_json(message)?;
+        self.wait_for_id(id, Duration::from_secs(60))
+    }
+
+    fn wait_for_id(&mut self, id: i64, timeout: Duration) -> Result<Value, String> {
+        let deadline = Instant::now() + timeout;
+        while Instant::now() < deadline {
+            let remaining = deadline.saturating_duration_since(Instant::now());
+            let Ok(line) = self
+                .rx
+                .recv_timeout(remaining.min(Duration::from_millis(250)))
+            else {
+                continue;
+            };
+            if let Ok(value) = serde_json::from_str::<Value>(&line) {
+                if value.get("id").and_then(Value::as_i64) == Some(id) {
+                    if let Some(error) = value.get("error") {
+                        return Err(format!("Codex app-server error: {error}"));
+                    }
+                    return Ok(value);
+                }
+            }
+        }
+        Err("Timed out waiting for Codex app-server.".to_string())
+    }
+
+    fn wait_for_notification(&mut self, method: &str, timeout: Duration) -> Result<(), String> {
+        let deadline = Instant::now() + timeout;
+        while Instant::now() < deadline {
+            let remaining = deadline.saturating_duration_since(Instant::now());
+            let Ok(line) = self
+                .rx
+                .recv_timeout(remaining.min(Duration::from_millis(250)))
+            else {
+                continue;
+            };
+            let Ok(value) = serde_json::from_str::<Value>(&line) else {
+                continue;
+            };
+            if value.get("method").and_then(Value::as_str) == Some(method) {
+                let success = value
+                    .pointer("/params/success")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false);
+                if success {
+                    return Ok(());
+                }
+                let error = value
+                    .pointer("/params/error")
+                    .and_then(Value::as_str)
+                    .unwrap_or("login failed");
+                return Err(format!("Codex login failed: {error}"));
+            }
+        }
+        Err("Timed out waiting for Codex login.".to_string())
+    }
+
+    fn write_json(&mut self, value: Value) -> Result<(), String> {
+        let line = serde_json::to_string(&value)
+            .map_err(|error| format!("failed to serialize Codex RPC: {error}"))?;
+        writeln!(self.stdin, "{line}")
+            .and_then(|_| self.stdin.flush())
+            .map_err(|error| format!("failed to write Codex RPC: {error}"))
+    }
+}
+
+impl Drop for CodexRpcSession {
+    fn drop(&mut self) {
+        let _ = self.child.kill();
+        let _ = self.child.wait();
+    }
+}
+
+#[derive(Clone, Debug)]
+struct ProviderCommand {
+    program: OsString,
+    display: String,
+}
+
+impl ProviderCommand {
+    fn as_os_str(&self) -> &OsStr {
+        self.program.as_os_str()
+    }
+
+    fn display(&self) -> &str {
+        &self.display
+    }
+}
+
+fn new_provider_process(command: &ProviderCommand) -> Command {
+    let mut process = Command::new(command.as_os_str());
+    hide_provider_process_window(&mut process);
+    process
+}
+
+fn hide_provider_process_window(_command: &mut Command) {
+    #[cfg(target_os = "windows")]
+    {
+        _command.creation_flags(CREATE_NO_WINDOW);
+    }
+}
+
+fn resolve_provider_command(
+    configured: Option<&str>,
+    fallback_name: &str,
+    provider: AiCodingUsageProvider,
+) -> ProviderCommand {
+    if let Some(path) = configured.filter(|path| !path.trim().is_empty()) {
+        return ProviderCommand {
+            program: OsString::from(path),
+            display: path.to_string(),
+        };
+    }
+
+    if let Some(path) = common_provider_command_path(provider) {
+        return ProviderCommand {
+            display: path.display().to_string(),
+            program: path.into_os_string(),
+        };
+    }
+
+    ProviderCommand {
+        program: OsString::from(fallback_name),
+        display: fallback_name.to_string(),
+    }
+}
+
+fn common_provider_command_path(provider: AiCodingUsageProvider) -> Option<PathBuf> {
+    let names: &[&str] = match provider {
+        AiCodingUsageProvider::Codex => &["codex.exe", "codex.cmd"],
+        AiCodingUsageProvider::ClaudeCode => &["claude.exe", "claude.cmd"],
+    };
+    common_user_bin_candidates(names)
+        .into_iter()
+        .chain(match provider {
+            AiCodingUsageProvider::Codex => codex_vscode_extension_candidates(),
+            AiCodingUsageProvider::ClaudeCode => Vec::new(),
+        })
+        .find(|path| path.is_file())
+}
+
+fn common_user_bin_candidates(names: &[&str]) -> Vec<PathBuf> {
+    let mut roots = Vec::new();
+    if let Some(profile) = std::env::var_os("USERPROFILE") {
+        roots.push(PathBuf::from(&profile).join(".local").join("bin"));
+    }
+    if let Some(nvm_symlink) = std::env::var_os("NVM_SYMLINK") {
+        roots.push(PathBuf::from(nvm_symlink));
+    }
+    if let Some(appdata) = std::env::var_os("APPDATA") {
+        roots.push(PathBuf::from(appdata).join("npm"));
+    }
+
+    roots
+        .into_iter()
+        .flat_map(|root| names.iter().map(move |name| root.join(name)))
+        .collect()
+}
+
+fn codex_vscode_extension_candidates() -> Vec<PathBuf> {
+    let Some(profile) = std::env::var_os("USERPROFILE") else {
+        return Vec::new();
+    };
+    let extensions = PathBuf::from(profile).join(".vscode").join("extensions");
+    let Ok(entries) = std::fs::read_dir(extensions) else {
+        return Vec::new();
+    };
+    let mut extension_dirs = entries
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .filter(|path| {
+            path.file_name()
+                .and_then(OsStr::to_str)
+                .is_some_and(|name| name.starts_with("openai.chatgpt-"))
+        })
+        .collect::<Vec<_>>();
+    // Newest extension version first.
+    extension_dirs.sort();
+    extension_dirs.reverse();
+    // The VS Code Codex extension ships a per-architecture binary. Probe the
+    // native-arch folder first so a Windows on Arm host finds windows-arm64,
+    // then fall back to the x64 build (which runs under emulation).
+    extension_dirs
+        .into_iter()
+        .flat_map(|path| {
+            codex_extension_arch_dirs()
+                .iter()
+                .map(move |arch| path.join("bin").join(arch).join("codex.exe"))
+        })
+        .collect()
+}
+
+/// Architecture subfolders under the Codex VS Code extension's `bin/`, ordered
+/// by preference for the running build's native architecture.
+fn codex_extension_arch_dirs() -> &'static [&'static str] {
+    #[cfg(target_arch = "aarch64")]
+    {
+        &["windows-arm64", "windows-x86_64"]
+    }
+    #[cfg(not(target_arch = "aarch64"))]
+    {
+        &["windows-x86_64", "windows-arm64"]
+    }
+}
+
+fn run_command(
+    command: &ProviderCommand,
+    args: &[&str],
+    timeout: Duration,
+) -> Result<String, String> {
+    let mut child = new_provider_process(command)
+        .args(args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|error| format!("failed to start {}: {error}", command.display()))?;
+    let start = Instant::now();
+    loop {
+        if start.elapsed() > timeout {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(format!("{} timed out", command.display()));
+        }
+        if let Some(status) = child
+            .try_wait()
+            .map_err(|error| format!("failed to wait for {}: {error}", command.display()))?
+        {
+            let output = child
+                .wait_with_output()
+                .map_err(|error| format!("failed to read {} output: {error}", command.display()))?;
+            if status.success() {
+                return Ok(String::from_utf8_lossy(&output.stdout).trim().to_string());
+            }
+            let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            return Err(if stderr.is_empty() {
+                format!("{} exited with {status}", command.display())
+            } else {
+                stderr
+            });
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
+}
+
+fn normalize_codex_rate_limits(value: &Value) -> ProviderSnapshot {
+    let unknown = || ProviderSnapshot {
+        five_hour: AiCodingUsageQuotaWindow::unknown(),
+        weekly: AiCodingUsageQuotaWindow::unknown(),
+    };
+    let Some(bucket) = codex_quota_bucket(value) else { return unknown(); };
+    let candidates: Vec<(&str, &Value)> = if let Some(windows) = bucket.as_array() {
+        windows.iter().map(|window| ("", window)).collect()
+    } else {
+        ["primary", "primary_window", "secondary", "secondary_window"]
+            .into_iter()
+            .filter_map(|name| bucket.get(name).map(|window| (name, window)))
+            .collect()
+    };
+    let window_for = |minutes, legacy_names: [&str; 2]| {
+        candidates.iter()
+            .find(|(_, window)| quota_window_minutes(window) == Ok(Some(minutes)))
+            .or_else(|| candidates.iter().find(|(name, window)| {
+                legacy_names.contains(name) && quota_window_minutes(window) == Ok(None)
+            }))
+            .and_then(|(_, window)| window.as_object())
+            .map(|window| AiCodingUsageQuotaWindow {
+                used_percent: numeric_key(window, &["usedPercent", "used_percent", "used_percentage", "usage_percent", "percentUsed"])
+                    .map(clamp_percent),
+                resets_at: ["resetsAt", "resets_at", "reset_at"].iter()
+                    .find_map(|key| window.get(*key).and_then(timestamp_to_rfc3339)),
+            })
+            .unwrap_or_else(AiCodingUsageQuotaWindow::unknown)
+    };
+    // These are fixed-label UI slots, not arbitrary primary/secondary meters.
+    // Explicit durations must agree; absence is never a zero-percent allowance.
+    ProviderSnapshot {
+        five_hour: window_for(300.0, ["primary", "primary_window"]),
+        weekly: window_for(10080.0, ["secondary", "secondary_window"]),
+    }
+}
+
+fn codex_quota_bucket(value: &Value) -> Option<&Value> {
+    let root = value.get("result").unwrap_or(value);
+    let bucket = if let Some(buckets) = root.get("rateLimitsByLimitId").and_then(Value::as_object) {
+        buckets.get("codex")?
+    } else if let Some(bucket) = root.get("rateLimits") {
+        bucket
+    } else if let Some(bucket) = root.get("rate_limit") {
+        bucket
+    } else if let Some(windows) = root.get("limits").filter(|value| value.is_array()) {
+        return Some(windows);
+    } else if root.get("primary").is_some() || root.get("secondary").is_some() {
+        root
+    } else {
+        return None;
+    };
+    let object = bucket.as_object()?;
+    // Never substitute code-review or model-specific quotas for base Codex.
+    for key in ["limitId", "limit_id"] {
+        if let Some(id) = object.get(key).filter(|value| !value.is_null()) {
+            if id.as_str() != Some("codex") { return None; }
+        }
+    }
+    Some(bucket)
+}
+
+fn quota_window_minutes(value: &Value) -> Result<Option<f64>, ()> {
+    let object = value.as_object().ok_or(())?;
+    for (key, divisor) in [
+        ("windowDurationMins", 1.0), ("window_minutes", 1.0),
+        ("durationMinutes", 1.0), ("limit_window_seconds", 60.0),
+    ] {
+        if let Some(value) = object.get(key).filter(|value| !value.is_null()) {
+            let minutes = value.as_f64().ok_or(())? / divisor;
+            return if minutes.is_finite() && minutes > 0.0 { Ok(Some(minutes)) } else { Err(()) };
+        }
+    }
+    Ok(None)
+}
+
+fn numeric_key(map: &serde_json::Map<String, Value>, keys: &[&str]) -> Option<f64> {
+    keys.iter()
+        .find_map(|key| map.get(*key).and_then(Value::as_f64))
+}
+
+fn timestamp_to_rfc3339(value: &Value) -> Option<String> {
+    if let Some(text) = value.as_str() {
+        return Some(text.to_string());
+    }
+    let seconds = value.as_i64()?;
+    OffsetDateTime::from_unix_timestamp(seconds)
+        .ok()?
+        .format(&Rfc3339)
+        .ok()
+}
+
+fn find_string_key(value: &Value, keys: &[&str]) -> Option<String> {
+    match value {
+        Value::Object(map) => {
+            for key in keys {
+                if let Some(text) = map.get(*key).and_then(Value::as_str) {
+                    return Some(text.to_string());
+                }
+            }
+            map.values()
+                .find_map(|nested| find_string_key(nested, keys))
+        }
+        Value::Array(items) => items
+            .iter()
+            .find_map(|nested| find_string_key(nested, keys)),
+        _ => None,
+    }
+}
+
+fn clamp_percent(value: f64) -> f64 {
+    value.clamp(0.0, 100.0)
+}
+
+fn now_rfc3339() -> Result<String, String> {
+    OffsetDateTime::now_utc()
+        .format(&Rfc3339)
+        .map_err(|error| format!("failed to format timestamp: {error}"))
+}
+
+fn scrub_provider_error(error: &str) -> String {
+    error.chars().take(500).map(|character| {
+        if character == '\n' || character == '\r' { ' ' } else { character }
+    }).collect()
+}
+
+fn scrub_sensitive_provider_json(value: &Value) -> Value {
+    match value {
+        Value::Object(map) => Value::Object(
+            map.iter()
+                .map(|(key, nested)| {
+                    let value = if provider_json_key_is_sensitive(key) {
+                        Value::String("[REDACTED]".to_string())
+                    } else {
+                        scrub_sensitive_provider_json(nested)
+                    };
+                    (key.clone(), value)
+                })
+                .collect(),
+        ),
+        Value::Array(items) => {
+            Value::Array(items.iter().map(scrub_sensitive_provider_json).collect())
+        }
+        other => other.clone(),
+    }
+}
+
+fn provider_json_key_is_sensitive(key: &str) -> bool {
+    let normalized = key.to_ascii_lowercase().replace(['-', ' '], "_");
+    normalized == "token"
+        || normalized.ends_with("_token")
+        || normalized.contains("access_token")
+        || normalized.contains("accesstoken")
+        || normalized.contains("refresh_token")
+        || normalized.contains("refreshtoken")
+        || normalized.contains("api_key")
+        || normalized.contains("apikey")
+        || normalized.contains("secret")
+        || normalized.contains("password")
+        || normalized.contains("authorization")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn normalizes_claude_oauth_usage() {
+        let value = serde_json::json!({
+            "five_hour": { "utilization": 23.0, "resets_at": "2026-05-19T18:30:00+00:00" },
+            "seven_day": { "utilization": 18.0, "resets_at": "2026-05-25T14:00:00+00:00" },
+            "seven_day_opus": null,
+            "extra_usage": { "is_enabled": false }
+        });
+
+        let snapshot = normalize_claude_oauth_usage(&value);
+
+        assert_eq!(snapshot.five_hour.used_percent, Some(23.0));
+        assert_eq!(snapshot.weekly.used_percent, Some(18.0));
+        assert_eq!(
+            snapshot.five_hour.resets_at.as_deref(),
+            Some("2026-05-19T18:30:00+00:00")
+        );
+        assert_eq!(
+            snapshot.weekly.resets_at.as_deref(),
+            Some("2026-05-25T14:00:00+00:00")
+        );
+    }
+
+    #[test]
+    fn missing_oauth_usage_window_falls_back_to_unknown() {
+        let snapshot = normalize_claude_oauth_usage(&serde_json::json!({}));
+        assert!(snapshot.five_hour.used_percent.is_none());
+        assert!(snapshot.weekly.used_percent.is_none());
+    }
+
+    #[test]
+    fn claude_usage_http_error_includes_retry_after() {
+        let message = claude_usage_http_error(reqwest::StatusCode::TOO_MANY_REQUESTS, Some("120"));
+
+        assert_eq!(
+            message,
+            "Claude usage endpoint returned HTTP 429 Too Many Requests; retry after 120s."
+        );
+    }
+
+    #[test]
+    fn claude_auth_status_populates_account_without_snapshot() {
+        let value = serde_json::json!({
+            "loggedIn": true,
+            "authMethod": "claude.ai",
+            "email": "ryan@example.com",
+            "orgName": "Ryan's Org",
+            "subscriptionType": "pro"
+        });
+
+        let update = claude_update_from_status_value(value);
+
+        assert_eq!(update.auth_state, "connected");
+        assert_eq!(update.account_email.as_deref(), Some("ryan@example.com"));
+        assert_eq!(update.account_label.as_deref(), Some("ryan@example.com"));
+        assert_eq!(update.subscription_plan.as_deref(), Some("pro"));
+        assert_eq!(update.last_error, None);
+        assert!(update.snapshot.is_none());
+    }
+
+    #[test]
+    fn scrub_sensitive_provider_json_redacts_nested_secrets() {
+        let value = serde_json::json!({
+            "usage": { "used_percent": 42.0 },
+            "access_token": "tok-1",
+            "nested": {
+                "refreshToken": "tok-2",
+                "api_key": "key-1",
+                "items": [
+                    { "clientSecret": "secret-1" },
+                    { "label": "safe" }
+                ]
+            }
+        });
+
+        let scrubbed = scrub_sensitive_provider_json(&value);
+
+        assert_eq!(scrubbed["usage"]["used_percent"], 42.0);
+        assert_eq!(scrubbed["access_token"], "[REDACTED]");
+        assert_eq!(scrubbed["nested"]["refreshToken"], "[REDACTED]");
+        assert_eq!(scrubbed["nested"]["api_key"], "[REDACTED]");
+        assert_eq!(scrubbed["nested"]["items"][0]["clientSecret"], "[REDACTED]");
+        assert_eq!(scrubbed["nested"]["items"][1]["label"], "safe");
+    }
+
+    #[test]
+    fn normalizes_codex_rate_limits_from_duration_windows() {
+        let value = serde_json::json!({
+            "result": {
+                "limits": [
+                    { "usedPercent": 31.0, "windowDurationMins": 300, "resetsAt": 1770000000 },
+                    { "usedPercent": 74.0, "windowDurationMins": 10080, "resetsAt": 1770400000 }
+                ]
+            }
+        });
+
+        let snapshot = normalize_codex_rate_limits(&value);
+
+        assert_eq!(snapshot.five_hour.used_percent, Some(31.0));
+        assert_eq!(snapshot.weekly.used_percent, Some(74.0));
+    }
+
+    #[test]
+    fn normalizes_codex_wham_usage_rate_limit_windows() {
+        let value = serde_json::json!({
+            "plan_type": "pro",
+            "rate_limit": {
+                "primary_window": {
+                    "used_percent": 44.0,
+                    "limit_window_seconds": 18000,
+                    "reset_at": 1779633820
+                },
+                "secondary_window": {
+                    "used_percent": 7.0,
+                    "limit_window_seconds": 604800,
+                    "reset_at": 1780220620
+                }
+            },
+            "code_review_rate_limit": {
+                "used_percent": 12.0,
+                "limit_window_seconds": 604800,
+                "reset_at": 1780220620
+            },
+            "credits": {
+                "has_credits": true,
+                "balance": "4.20"
+            }
+        });
+
+        let snapshot = normalize_codex_rate_limits(&value);
+
+        assert_eq!(snapshot.five_hour.used_percent, Some(44.0));
+        assert_eq!(snapshot.weekly.used_percent, Some(7.0));
+        assert!(snapshot.five_hour.resets_at.is_some());
+        assert!(snapshot.weekly.resets_at.is_some());
+    }
+
+    #[test]
+    fn parses_codex_chatgpt_base_url_from_config() {
+        let config = r#"
+            model = "gpt-5"
+            chatgpt_base_url = "https://chatgpt.com/"
+        "#;
+
+        let parsed = parse_codex_chatgpt_base_url(config);
+
+        assert_eq!(parsed.as_deref(), Some("https://chatgpt.com/"));
+    }
+
+    #[test]
+    fn normalizes_codex_chatgpt_base_url_to_backend_api() {
+        assert_eq!(
+            normalize_codex_chatgpt_base_url("https://chatgpt.com/"),
+            "https://chatgpt.com/backend-api"
+        );
+        assert_eq!(
+            normalize_codex_chatgpt_base_url("https://example.com/backend-api/"),
+            "https://example.com/backend-api"
+        );
+    }
+
+    #[test]
+    fn clamps_invalid_usage_percentages() {
+        assert_eq!(clamp_percent(-5.0), 0.0);
+        assert_eq!(clamp_percent(55.0), 55.0);
+        assert_eq!(clamp_percent(150.0), 100.0);
+    }
+
+    #[test]
+    fn provider_labels_are_stable() {
+        assert_eq!(AiCodingUsageProvider::Codex.label(), "Codex");
+        assert_eq!(AiCodingUsageProvider::ClaudeCode.label(), "Claude Code");
+    }
+
+    #[test]
+    fn codex_extension_arch_dirs_cover_both_targets_native_first() {
+        let dirs = codex_extension_arch_dirs();
+        assert!(dirs.contains(&"windows-x86_64"));
+        assert!(dirs.contains(&"windows-arm64"));
+        #[cfg(target_arch = "aarch64")]
+        assert_eq!(dirs.first(), Some(&"windows-arm64"));
+        #[cfg(not(target_arch = "aarch64"))]
+        assert_eq!(dirs.first(), Some(&"windows-x86_64"));
+    }
+
+    #[test]
+    fn reauth_detection_catches_claude_oauth_failures() {
+        assert!(provider_error_needs_reauth(
+            "Claude Code OAuth token rejected. Please sign in again with `claude auth login`."
+        ));
+        assert!(provider_error_needs_reauth(
+            "API Error: 401 {\"error\":{\"type\":\"authentication_error\"}}"
+        ));
+        assert!(!provider_error_needs_reauth(
+            "Claude usage endpoint returned HTTP 429; retry after 60s."
+        ));
+    }
+
+    #[test]
+    fn expires_quota_windows_whose_reset_passed() {
+        let now = OffsetDateTime::parse("2026-07-09T12:00:00Z", &Rfc3339).unwrap();
+        let mut snapshot = ProviderSnapshot {
+            five_hour: AiCodingUsageQuotaWindow {
+                used_percent: Some(80.0),
+                resets_at: Some("2026-07-09T11:00:00Z".to_string()),
+            },
+            weekly: AiCodingUsageQuotaWindow {
+                used_percent: Some(30.0),
+                resets_at: Some("2026-07-12T00:00:00Z".to_string()),
+            },
+        };
+
+        expire_reset_quota_windows(&mut snapshot, now);
+
+        assert_eq!(snapshot.five_hour.used_percent, None);
+        assert_eq!(snapshot.five_hour.resets_at, None);
+        assert_eq!(snapshot.weekly.used_percent, Some(30.0));
+    }
+
+    #[test]
+    fn claude_version_token_parses_cli_output() {
+        assert_eq!(
+            claude_version_token("2.1.7 (Claude Code)").as_deref(),
+            Some("2.1.7")
+        );
+        assert_eq!(claude_version_token("Claude Code").as_deref(), None);
+    }
+
+    #[test]
+    fn configured_cli_path_wins_over_discovery() {
+        let command = resolve_provider_command(
+            Some("C:\\Tools\\codex.exe"),
+            "codex",
+            AiCodingUsageProvider::Codex,
+        );
+
+        assert_eq!(command.display(), "C:\\Tools\\codex.exe");
+        assert_eq!(command.as_os_str(), OsStr::new("C:\\Tools\\codex.exe"));
+    }
+}
+
+#[cfg(test)]
+#[path = "ai_coding_usage_tests.rs"]
+mod compatibility_tests;
