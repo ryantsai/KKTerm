@@ -3,6 +3,63 @@
 All notable changes to KKTerm are documented here.
 
 ## Direct Downloads
+* 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.17/kkterm-3000.0.17-windows-x64-setup.exe)
+* 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.17/kkterm-3000.0.17-windows-arm64-setup.exe)
+* 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.17/kkterm-3000.0.17-windows-x64-portable.zip)
+* 📦 [Portable for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.17/kkterm-3000.0.17-windows-arm64-portable.zip)
+
+## Highlights
+- Hardened **Cloud storage** transfer handling and **network profile** application to reduce the “did it actually go through?” moments during a Session’s work cycle. (PR #777)
+- Improved **AI coding usage** quota refresh behavior and documented provider compatibility. (PR #778)
+- Strengthened **Windows network profile** application, including better reporting of native errors and correct handling for offline Windows adapters. (PR #779, PR #780)
+
+## New
+- Enhanced the **Network Profiles** Dashboard Widget styling and added/updated **localization** for network profile UI and validation messages. (PR #??)
+
+## Improved
+- Applied **network profiles** more reliably to offline Windows adapters by using persistent native settings. (PR #780)
+- Added/updated manual documentation for offline NIC configuration and Windows network profile failure semantics. (docs updates around PR #780 / #779)
+
+## Fixed
+- Hardened **Cloud storage** transfers and **network profile** application. (PR #777) — by @ryantsai
+- Fixed **AI coding usage** quota selection and freshness; documented provider compatibility. (PR #778) — by @ryantsai
+- Hardened **Windows network profile** application and ensured native errors are reported. (PR #779) — by @ryantsai
+- Applied network profiles to **offline Windows adapters** safely, using persistent native settings and guarded success popup semantics. (PR #780) — by @ryantsai
+- Prevented locale/encoding issues in Windows PowerShell scripts by forcing UTF-8 for non-ASCII output. (6b6ab4f)
+
+## Internal
+- Guarded concurrent network profile applies and normalized Windows snapshot behavior for more deterministic outcomes. (fd543fb)
+- Added/expanded test coverage around offline apply, sequencing, diagnostics, and refresh/quota policies. (multiple test commits)
+- Docs and localization maintenance (including i18n translation updates). (dbf0e43, b2ae3c6, dcff355)
+
+
+---
+
+## 重點摘要
+- 強化 **雲端儲存（Cloud storage）** 轉移處理與 **網路設定檔（network profile）** 套用，降低 Session 工作過程中「它到底有沒有真的成功？」的疑慮。 (PR #777)
+- 改善 **AI 程式碼使用量（AI coding usage）** 的配額（quota）刷新行為，並補上供應商相容性說明。 (PR #778)
+- 強化 **Windows 網路設定檔** 的套用：包含更好的原生錯誤回報，以及針對離線 Windows 網卡（adapter）的正確處理。 (PR #779、#780)
+
+## 新增
+- 強化 **「網路設定檔」Dashboard Widget** 的樣式，並新增/更新網路設定檔相關介面與驗證訊息的 **在地化（localization）**。 (PR #??)
+
+## 改善
+- 透過使用持久化的原生設定，讓 **離線 Windows 網卡** 更可靠地套用網路設定檔。 (PR #780)
+- 更新/擴充手冊文件：包含離線 NIC 設定與 Windows 網路設定檔失敗時的語意說明。 (PR #780 / #779 附近的文件更新)
+
+## 修正
+- 強化 **雲端儲存** 轉移與 **網路設定檔** 套用。 (PR #777) — @ryantsai
+- 修正 **AI 程式碼使用量** 的配額選取與新鮮度（freshness）；並文件化供應商相容性。 (PR #778) — @ryantsai
+- 強化 **Windows 網路設定檔** 套用，並確保可回報原生錯誤。 (PR #779) — @ryantsai
+- 安全地讓網路設定檔套用到 **離線 Windows 網卡**，並加入對成功彈窗語意的防護。 (PR #780) — @ryantsai
+- 修正 Windows PowerShell 腳本的語系/編碼問題：對非 ASCII 輸出強制使用 UTF-8。 (6b6ab4f)
+
+## Internal
+- 防止網路設定檔套用時的並發問題，並針對 Windows snapshot 行為做正常化，讓結果更一致。 (fd543fb)
+- 擴增測試覆蓋：離線套用、套用順序、診斷，以及刷新/配額政策等。 (多個測試提交)
+- 文件與在地化維護（包含 i18n 翻譯更新）。 (dbf0e43、b2ae3c6、dcff355)
+
+## Direct Downloads
 * 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.16/kkterm-3000.0.16-windows-x64-setup.exe)
 * 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.16/kkterm-3000.0.16-windows-arm64-setup.exe)
 * 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.16/kkterm-3000.0.16-windows-x64-portable.zip)
