@@ -725,7 +725,7 @@
     "networkProfilesInvalidMask": "ป้อนซับเน็ตมาสก์ IPv4 ที่ถูกต้อง (เช่น 255.255.255.0 หรือ 24)",
     "networkProfilesInvalidPrefix": "ป้อนความยาวพรีฟิกซ์ IPv6 ที่ถูกต้องระหว่าง 0 ถึง 128",
     "networkProfilesInvalidGateway": "ป้อนเกตเวย์ {{family}} ที่ถูกต้อง หรือเว้นว่างไว้",
-    "networkProfilesInvalidDns": "ป้อนที่อยู่เซิร์ฟเวอร์ DNS ที่ถูกต้องไม่เกิน 8 รายการ",
+    "networkProfilesInvalidDns": "ป้อนที่อยู่เซิร์ฟเวอร์ DNS ที่ถูกต้องสูงสุด 8 รายการ",
     "networkProfilesApplyTitle": "นำโปรไฟล์เครือข่ายไปใช้หรือไม่",
     "networkProfilesApplyBody": "นำ \"{{profile}}\" ไปใช้กับ {{adapter}} หรือไม่ การเข้าถึงเครือข่ายอาจถูกขัดจังหวะขณะเปลี่ยนการกำหนดค่า",
     "networkProfilesDeleteTitle": "ลบโปรไฟล์เครือข่ายหรือไม่",

@@ -709,7 +709,7 @@
     "networkProfilesSystemDns": "시스템 DNS",
     "networkProfilesApply": "적용",
     "networkProfilesEmptyTitle": "네트워크 프로필 추가",
-    "networkProfilesEmptyHint": "IPv4, IPv6, DNS를 구성한 다음 모든 어댑터에 적용하세요.",
+    "networkProfilesEmptyHint": "IPv4, IPv6, DNS를 구성한 다음 원하는 어댑터에 적용하세요.",
     "networkProfilesNicknameTitle": "어댑터 별명",
     "networkProfilesNicknameLabel": "별명",
     "networkProfilesAddTitle": "네트워크 프로필 추가",

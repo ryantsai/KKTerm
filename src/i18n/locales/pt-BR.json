@@ -709,7 +709,7 @@
     "networkProfilesSystemDns": "DNS do sistema",
     "networkProfilesApply": "Aplicar",
     "networkProfilesEmptyTitle": "Adicionar um perfil de rede",
-    "networkProfilesEmptyHint": "Configure IPv4, IPv6 e DNS e aplique-o a qualquer adaptador.",
+    "networkProfilesEmptyHint": "Configure IPv4, IPv6 e DNS e depois aplique-o a qualquer adaptador.",
     "networkProfilesNicknameTitle": "Apelido do adaptador",
     "networkProfilesNicknameLabel": "Apelido",
     "networkProfilesAddTitle": "Adicionar perfil de rede",
