@@ -108,6 +108,18 @@ again. Windows snapshots preserve localized adapter names and descriptions; when
 an adapter has multiple default gateways in one address family, the displayed
 gateway is the one with the lowest route metric.
 
+On Windows, `dashboard.networkProfilesApplyError` distinguishes cancelled UAC
+from a failed configuration step and includes the original Windows diagnostic.
+Protocol bindings change only when necessary; both families' binding changes
+finish before addresses are configured, with a bounded interface-readiness wait.
+Replacing static settings clears matching persistent and active entries for the
+selected adapter. Automatic addressing is enabled after manual-entry cleanup.
+When both IPv4 and IPv6 are disabled, DNS configuration is skipped. Successful
+`dashboard.networkProfilesApplied` requires confirmation from the elevated helper.
+Changes are not transactional: a failed step can leave earlier changes applied.
+Use `common.refresh` to inspect the adapter before retrying; preserve the reported
+step and diagnostic when reporting an issue. Do not disable UAC to troubleshoot.
+
 The Dashboard also ships two grouped utility widgets. Each hosts several local tools behind a tab strip (rendered by `src/modules/dashboard/widgets/builtin/tool-group/ToolGroupWidget.tsx`; the individual tools live under `src/modules/dashboard/widgets/builtin/<name>/`). Every tool persists its inputs and the active tab in `localStorage` per Widget Instance, renders results as click-to-copy rows (`dashboard.widgetCopyValue` / `dashboard.widgetCopied`), themes from the instance accent through `--w-accent` / `--w-accent-soft`, and honours `prefers-reduced-motion`.
 
 Utility-widget technical inputs, including subnet queries, DNS names, QR/barcode
