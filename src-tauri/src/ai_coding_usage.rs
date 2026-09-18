@@ -6,7 +6,7 @@ use serde_json::{Value, json};
 use std::os::windows::process::CommandExt;
 use std::{
     ffi::{OsStr, OsString},
-    io::{BufRead, BufReader, Write},
+    io::{BufRead, BufReader, Read, Write},
     path::PathBuf,
     process::{Command, Stdio},
     sync::{OnceLock, mpsc},
@@ -828,7 +828,13 @@ fn connect_claude(cli_paths: &ProviderCliPaths) -> Result<ProviderUpdate, String
         AiCodingUsageProvider::ClaudeCode,
     );
     run_command(&command, &["auth", "login"], PROVIDER_TIMEOUT)?;
-    refresh_claude(cli_paths)
+    let mut update = refresh_claude(cli_paths)?;
+    if let Err(error) = install_claude_statusline_adapter() {
+        if update.last_error.is_none() {
+            update.last_error = Some(format!("Claude status-line telemetry adapter was not installed: {error}"));
+        }
+    }
+    Ok(update)
 }
 
 fn refresh_claude(cli_paths: &ProviderCliPaths) -> Result<ProviderUpdate, String> {
@@ -852,6 +858,17 @@ fn refresh_claude(cli_paths: &ProviderCliPaths) -> Result<ProviderUpdate, String
         update.last_error = Some("Claude subscription quota is unavailable for this authentication method.".to_string());
         return Ok(update);
     }
+    // Prefer Claude Code's documented status-line telemetry. It is generated
+    // locally from the active subscription session and does not consume tokens.
+    if let Some((snapshot, raw, captured_at)) = read_claude_statusline_usage() {
+        update.snapshot = Some(snapshot);
+        update.raw_provider_json = Some(raw);
+        update.captured_at = captured_at;
+        return Ok(update);
+    }
+
+    // Compatibility fallback for users who have not produced status-line
+    // telemetry yet. This endpoint is intentionally best-effort.
     match fetch_claude_oauth_usage(cli_paths) {
         Ok(usage) => {
             update.snapshot = Some(normalize_claude_oauth_usage(&usage));
@@ -899,6 +916,9 @@ const CLAUDE_OAUTH_BETA_HEADER: &str = "oauth-2025-04-20";
 /// endpoint aggressively rate-limits requests without a `claude-code/<ver>`
 /// User-Agent (anonymous bucket returns persistent 429s), so always send one.
 const CLAUDE_USAGE_FALLBACK_USER_AGENT: &str = "claude-code/2.0.0";
+const CLAUDE_STATUSLINE_ADAPTER_ARG: &str = "--claude-statusline-adapter";
+const CLAUDE_STATUSLINE_CACHE_FILE: &str = "kkterm-statusline-usage.json";
+const CLAUDE_STATUSLINE_BACKUP_FILE: &str = "kkterm-statusline-adapter.json";
 
 fn claude_usage_user_agent(cli_paths: &ProviderCliPaths) -> String {
     static USER_AGENT: OnceLock<String> = OnceLock::new();
@@ -917,6 +937,200 @@ fn claude_usage_user_agent(cli_paths: &ProviderCliPaths) -> String {
                 .unwrap_or_else(|| CLAUDE_USAGE_FALLBACK_USER_AGENT.to_string())
         })
         .clone()
+}
+
+
+fn claude_config_dir() -> Option<PathBuf> {
+    #[cfg(target_os = "windows")]
+    let home = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME"));
+    #[cfg(not(target_os = "windows"))]
+    let home = std::env::var_os("HOME");
+    std::env::var_os("CLAUDE_CONFIG_DIR")
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+        .or_else(|| {
+            home.filter(|value| !value.is_empty())
+                .map(|home| PathBuf::from(home).join(".claude"))
+        })
+}
+
+fn claude_statusline_cache_path() -> Option<PathBuf> {
+    Some(claude_config_dir()?.join(CLAUDE_STATUSLINE_CACHE_FILE))
+}
+
+fn claude_statusline_backup_path() -> Option<PathBuf> {
+    Some(claude_config_dir()?.join(CLAUDE_STATUSLINE_BACKUP_FILE))
+}
+
+fn statusline_window(value: Option<&Value>) -> AiCodingUsageQuotaWindow {
+    let Some(value) = value else {
+        return AiCodingUsageQuotaWindow::unknown();
+    };
+    let used_percent = value
+        .get("used_percentage")
+        .and_then(Value::as_f64)
+        .map(clamp_percent);
+    let resets_at = value.get("resets_at").and_then(timestamp_to_rfc3339);
+    AiCodingUsageQuotaWindow {
+        used_percent,
+        resets_at,
+    }
+}
+
+fn read_claude_statusline_usage() -> Option<(ProviderSnapshot, Value, Option<String>)> {
+    let path = claude_statusline_cache_path()?;
+    let content = std::fs::read_to_string(&path).ok()?;
+    let value: Value = serde_json::from_str(&content).ok()?;
+    let limits = value.get("rate_limits")?;
+    let mut snapshot = ProviderSnapshot {
+        five_hour: statusline_window(limits.get("five_hour")),
+        weekly: statusline_window(limits.get("seven_day")),
+    };
+    expire_reset_quota_windows(&mut snapshot, OffsetDateTime::now_utc());
+    if snapshot.five_hour.used_percent.is_none() && snapshot.weekly.used_percent.is_none() {
+        return None;
+    }
+    let captured_at = std::fs::metadata(path)
+        .and_then(|metadata| metadata.modified())
+        .ok()
+        .map(OffsetDateTime::from)
+        .and_then(|timestamp| timestamp.format(&Rfc3339).ok());
+    Some((
+        snapshot,
+        json!({
+            "source": "claude_statusline",
+            "rate_limits": limits
+        }),
+        captured_at,
+    ))
+}
+
+fn claude_statusline_adapter_command() -> Result<String, String> {
+    let exe = std::env::current_exe()
+        .map_err(|error| format!("failed to locate KKTerm executable: {error}"))?;
+    let path = exe.to_string_lossy().replace('\\', "/").replace('"', "\\\"");
+    Ok(format!("\\"{path}\\" {CLAUDE_STATUSLINE_ADAPTER_ARG}"))
+}
+
+fn install_claude_statusline_adapter() -> Result<(), String> {
+    let Some(config_dir) = claude_config_dir() else {
+        return Err("Claude config directory is unavailable.".to_string());
+    };
+    std::fs::create_dir_all(&config_dir)
+        .map_err(|error| format!("failed to create Claude config directory: {error}"))?;
+    let settings_path = config_dir.join("settings.json");
+    let mut settings: Value = match std::fs::read_to_string(&settings_path) {
+        Ok(content) => serde_json::from_str(&content)
+            .map_err(|error| format!("failed to parse Claude settings.json: {error}"))?,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => json!({}),
+        Err(error) => return Err(format!("failed to read Claude settings.json: {error}")),
+    };
+    let object = settings
+        .as_object_mut()
+        .ok_or_else(|| "Claude settings.json must contain a JSON object.".to_string())?;
+    let adapter_command = claude_statusline_adapter_command()?;
+    if object
+        .get("statusLine")
+        .and_then(|value| value.get("command"))
+        .and_then(Value::as_str)
+        .is_some_and(|command| command.contains(CLAUDE_STATUSLINE_ADAPTER_ARG))
+    {
+        return Ok(());
+    }
+
+    let previous = object.get("statusLine").cloned();
+    let backup_path = claude_statusline_backup_path()
+        .ok_or_else(|| "Claude status-line backup path is unavailable.".to_string())?;
+    let backup = json!({ "version": 1, "previousStatusLine": previous });
+    std::fs::write(
+        backup_path,
+        serde_json::to_vec_pretty(&backup)
+            .map_err(|error| format!("failed to serialize status-line backup: {error}"))?,
+    )
+    .map_err(|error| format!("failed to save status-line backup: {error}"))?;
+
+    let mut status_line = previous.unwrap_or_else(|| json!({ "type": "command" }));
+    let status_object = status_line
+        .as_object_mut()
+        .ok_or_else(|| "Claude statusLine setting must contain a JSON object.".to_string())?;
+    status_object.insert("type".to_string(), Value::String("command".to_string()));
+    status_object.insert("command".to_string(), Value::String(adapter_command));
+    object.insert("statusLine".to_string(), status_line);
+    std::fs::write(
+        settings_path,
+        serde_json::to_vec_pretty(&settings)
+            .map_err(|error| format!("failed to serialize Claude settings: {error}"))?,
+    )
+    .map_err(|error| format!("failed to update Claude settings.json: {error}"))
+}
+
+fn run_previous_statusline(command: &str, input: &[u8]) -> Result<Vec<u8>, String> {
+    #[cfg(target_os = "windows")]
+    let candidates: &[(&str, &[&str])] = &[
+        ("bash", &["-lc", command]),
+        ("powershell", &["-NoProfile", "-Command", command]),
+    ];
+    #[cfg(not(target_os = "windows"))]
+    let candidates: &[(&str, &[&str])] = &[("sh", &["-lc", command])];
+
+    let mut last_error = None;
+    for (program, args) in candidates {
+        let mut child = match Command::new(program)
+            .args(*args)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()
+        {
+            Ok(child) => child,
+            Err(error) => {
+                last_error = Some(error.to_string());
+                continue;
+            }
+        };
+        if let Some(mut stdin) = child.stdin.take() {
+            stdin
+                .write_all(input)
+                .map_err(|error| format!("failed to forward status-line input: {error}"))?;
+        }
+        return child
+            .wait_with_output()
+            .map(|output| output.stdout)
+            .map_err(|error| format!("failed to run previous status line: {error}"));
+    }
+    Err(format!(
+        "failed to start a shell for previous status line: {}",
+        last_error.unwrap_or_else(|| "no shell available".to_string())
+    ))
+}
+
+/// Lightweight process mode used by Claude Code's statusLine command. It
+/// captures documented rate-limit telemetry, then proxies the user's previous
+/// status-line command so KKTerm does not replace their display.
+pub fn run_claude_statusline_adapter_if_requested() -> bool {
+    if !std::env::args().any(|arg| arg == CLAUDE_STATUSLINE_ADAPTER_ARG) {
+        return false;
+    }
+    let mut input = Vec::new();
+    if std::io::stdin().read_to_end(&mut input).is_ok()
+        && serde_json::from_slice::<Value>(&input).is_ok()
+    {
+        if let Some(path) = claude_statusline_cache_path() {
+            let _ = std::fs::write(path, &input);
+        }
+    }
+    let previous_command = claude_statusline_backup_path()
+        .and_then(|path| std::fs::read_to_string(path).ok())
+        .and_then(|content| serde_json::from_str::<Value>(&content).ok())
+        .and_then(|value| value.pointer("/previousStatusLine/command").and_then(Value::as_str).map(str::to_string));
+    if let Some(command) = previous_command {
+        if !command.contains(CLAUDE_STATUSLINE_ADAPTER_ARG) {
+            if let Ok(output) = run_previous_statusline(&command, &input) {
+                let _ = std::io::stdout().write_all(&output);
+            }
+        }
+    }
+    true
 }
 
 fn claude_version_token(output: &str) -> Option<String> {
@@ -999,11 +1213,7 @@ fn read_claude_oauth_token() -> Result<String, String> {
 }
 
 fn claude_credentials_path() -> Option<PathBuf> {
-    #[cfg(target_os = "windows")]
-    let home = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME"));
-    #[cfg(not(target_os = "windows"))]
-    let home = std::env::var_os("HOME");
-    claude_credentials_path_for(std::env::var_os("CLAUDE_CONFIG_DIR"), home)
+    Some(claude_config_dir()?.join(".credentials.json"))
 }
 
 fn claude_credentials_path_for(config_dir: Option<OsString>, home: Option<OsString>) -> Option<PathBuf> {
