@@ -424,6 +424,8 @@ fn shell_join(args: &[String]) -> String {
 
 #[cfg(target_os = "windows")]
 fn windows_snapshot() -> Result<NetworkProfilesSnapshot, String> {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x08000000;
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
     struct RawAdapter {
@@ -461,7 +463,9 @@ Get-NetAdapter | Where-Object { -not $_.Virtual } | ForEach-Object {
   }
 }); ConvertTo-Json -InputObject $items -Compress -Depth 5"#;
     let mut command = Command::new("powershell.exe");
-    command.args(["-NoProfile", "-NonInteractive", "-Command", script]);
+    command
+        .creation_flags(CREATE_NO_WINDOW)
+        .args(["-NoProfile", "-NonInteractive", "-Command", script]);
     let raw = command_output(command, "PowerShell")?;
     let parsed: Vec<RawAdapter> = serde_json::from_str(&raw)
         .map_err(|error| format!("invalid PowerShell network data: {error}"))?;

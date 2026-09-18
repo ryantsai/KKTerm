@@ -61,9 +61,9 @@
 .dw-network-profiles-adapter select:focus-visible,
 .dw-network-profiles-icon-button:focus-visible,
 .dw-network-profiles-scroll:focus-visible,
+.dw-network-profiles-add:focus-visible,
 .dw-network-profile-card-actions button:focus-visible,
 .dw-network-profile-apply:focus-visible,
-.dw-network-profiles-save:focus-visible,
 .dw-network-profiles-empty-action:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
@@ -145,8 +145,23 @@
 }
 
 .dw-network-profiles-section { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: 6px; }
-.dw-network-profiles-section-head { display: flex; align-items: center; justify-content: space-between; padding: 0 3px; }
+.dw-network-profiles-section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 3px; }
 .dw-network-profiles-section-head strong { font-size: 11px; font-weight: 680; }
+.dw-network-profiles-section-tools { display: flex; min-width: 0; align-items: center; gap: 8px; }
+.dw-network-profiles-add {
+  display: inline-flex;
+  height: 24px;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  font: 650 11px/1 var(--app-ui-font-family);
+}
+.dw-network-profiles-add:hover { border-color: var(--border-strong); background: var(--hover); }
+.dw-network-profiles-add:active { transform: scale(0.96); }
 
 .dw-network-profiles-carousel-shell { display: flex; min-height: 0; flex: 1; align-items: stretch; gap: 4px; }
 .dw-network-profiles-scroll { align-self: center; width: 24px; height: 38px; border: 1px solid var(--hairline); background: color-mix(in srgb, var(--surface) 88%, transparent); }
@@ -176,18 +191,15 @@
   border-radius: 11px;
   background: color-mix(in srgb, var(--surface) 92%, transparent);
   box-shadow: var(--control-shadow);
-  transition: border-color 180ms ease, background-color 180ms ease, transform 100ms ease-out;
+  transition: border-color 180ms ease, background-color 180ms ease;
 }
 .dw-network-profile-card:hover { border-color: var(--border-strong); }
-.dw-network-profile-card:active { transform: scale(0.992); }
-.dw-network-profile-card.is-selected { border-color: var(--w-accent, var(--accent)); background: color-mix(in srgb, var(--w-accent-soft, var(--accent-soft)) 42%, var(--surface)); }
 
 .dw-network-profile-card-head { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 8px; }
 .dw-network-profile-card-head > strong { overflow: hidden; font-size: 13px; font-weight: 700; letter-spacing: -0.01em; text-overflow: ellipsis; white-space: nowrap; }
 .dw-network-profile-card-actions { display: flex; opacity: 0; transition: opacity 140ms ease; }
 .dw-network-profile-card:hover .dw-network-profile-card-actions,
-.dw-network-profile-card:focus-within .dw-network-profile-card-actions,
-.dw-network-profile-card.is-selected .dw-network-profile-card-actions { opacity: 1; }
+.dw-network-profile-card:focus-within .dw-network-profile-card-actions { opacity: 1; }
 .dw-network-profile-card-actions button { width: 24px; height: 24px; }
 
 .dw-network-profile-family-row { display: flex; min-width: 0; align-items: center; gap: 8px; }
@@ -199,12 +211,13 @@
 
 .dw-network-profile-card-footer { display: flex; min-width: 0; align-items: center; gap: 8px; margin-top: auto; padding-top: 8px; border-top: 1px solid var(--hairline); }
 .dw-network-profile-card-footer > span { overflow: hidden; flex: 1; color: var(--text-faint); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
-.dw-network-profile-apply,
-.dw-network-profiles-save {
+.dw-network-profile-apply {
   display: inline-flex;
+  min-height: 27px;
   align-items: center;
   justify-content: center;
   gap: 5px;
+  padding: 0 9px;
   border: 0;
   border-radius: 7px;
   color: var(--accent-text);
@@ -212,11 +225,18 @@
   box-shadow: var(--button-shadow);
   font: 650 11px/1 var(--app-ui-font-family);
 }
-.dw-network-profile-apply { min-height: 27px; padding: 0 9px; }
-.dw-network-profile-apply:active,
-.dw-network-profiles-save:active { transform: scale(0.97); background: var(--accent-press); }
-.dw-network-profile-apply:disabled,
-.dw-network-profiles-save:disabled { opacity: 0.42; transform: none; }
+.dw-network-profile-apply:active { transform: scale(0.97); background: var(--accent-press); }
+.dw-network-profile-apply:disabled { opacity: 0.42; transform: none; }
+
+.dw-network-profile-card-footer > .dw-network-profile-current {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  color: var(--green);
+  font: 650 10.5px/1 var(--app-ui-font-family);
+  white-space: nowrap;
+}
 
 .dw-network-profiles-empty-action {
   display: flex;
@@ -235,11 +255,15 @@
 .dw-network-profiles-empty-action small { font-size: 10.5px; }
 .dw-network-profiles-empty-action:hover { border-color: var(--w-accent, var(--accent)); background: var(--hover); }
 
-.dw-network-profiles-footer { display: flex; min-width: 0; align-items: center; gap: 10px; }
-.dw-network-profiles-save { min-height: 30px; padding: 0 11px; }
-.dw-network-profiles-footer > span { overflow: hidden; margin-left: auto; color: var(--text-faint); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .dw-network-profiles-empty { display: grid; height: 100%; place-items: center; color: var(--text-muted); font-size: 12px; }
 .dw-network-profiles .is-spinning { animation: dw-network-profiles-spin 800ms linear infinite; }
+
+.dw-network-profile-form { display: flex; flex-direction: column; gap: 14px; }
+.dw-network-profile-form-family { display: flex; flex-direction: column; gap: 10px; }
+.dw-network-profile-form-family-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.dw-network-profile-form-family-head > strong { font-size: 12px; font-weight: 680; }
+.dw-network-profile-form-mode { width: 132px; }
+.dw-network-profile-form-error { margin: 0; color: var(--red); font-size: 11.5px; }
 
 @keyframes dw-network-profiles-spin { to { transform: rotate(360deg); } }
 

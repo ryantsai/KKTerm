@@ -13,6 +13,9 @@ test("Network Profiles is a built-in widget with a structured privileged backend
   assert.match(widget, /adapterNicknames/);
   assert.match(widget, /network_profiles_apply/);
   assert.match(widget, /useSyncExternalStore/);
+  assert.match(widget, /networkProfilesAddTitle/);
+  assert.match(widget, /profileMatchesAdapter/);
+  assert.doesNotMatch(widget, /networkProfilesSaveCurrent|networkProfilesSelected/);
   assert.doesNotMatch(widget, /PowerShell|networksetup|nmcli|pkexec/);
   assert.match(backend, /struct ApplyNetworkProfileRequest/);
   assert.match(backend, /fn validate_request/);
@@ -20,5 +23,10 @@ test("Network Profiles is a built-in widget with a structured privileged backend
   assert.match(backend, /EncodedCommand/);
   assert.match(backend, /ignore-auto-dns/);
   assert.match(backend, /IPv6 Prefix Length/);
+  assert.equal(
+    (backend.match(/creation_flags\(CREATE_NO_WINDOW\)/g) ?? []).length,
+    2,
+    "both PowerShell spawns must hide their console window",
+  );
   assert.match(durable, /kkterm\.dashboard\.networkProfiles\.v1/);
 });

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type SetStateAction } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Check,
@@ -11,7 +11,7 @@ import {
   Trash2,
 } from "../../../../../lib/reicon";
 import { invokeCommand, isTauriRuntime } from "../../../../../lib/tauri";
-import { Actions, Btn, ConfirmSheet, DialogShell, Field, Sheet, TextInput } from "../../../../../app/ui/dialog";
+import { Actions, Btn, ConfirmSheet, DialogShell, Field, Select, Sheet, TextInput } from "../../../../../app/ui/dialog";
 import { useWorkspaceStore } from "../../../../../store";
 import { readDurableUiState, writeDurableUiState } from "../../../../../lib/durableUiState";
 import type { BuiltInWidgetBodyProps } from "../../../registry/builtInRegistry";
@@ -23,27 +23,28 @@ import type {
   NetworkProfilesSnapshot,
 } from "./types";
 
-interface SavedNetworkProfile {
-  id: string;
+interface NetworkProfileDraft {
   name: string;
-  createdAt: number;
   ipv4: NetworkFamilySnapshot;
   ipv6: NetworkFamilySnapshot;
   dnsServers: string[];
+}
+
+interface SavedNetworkProfile extends NetworkProfileDraft {
+  id: string;
+  createdAt: number;
 }
 
 interface NetworkProfilesConfig {
   profiles: SavedNetworkProfile[];
   adapterNicknames: Record<string, string>;
   selectedAdapterId: string | null;
-  selectedProfileId: string | null;
 }
 
 const DEFAULT_CONFIG: NetworkProfilesConfig = {
   profiles: [],
   adapterNicknames: {},
   selectedAdapterId: null,
-  selectedProfileId: null,
 };
 
 const STORAGE_KEY = "kkterm.dashboard.networkProfiles.v1";
@@ -99,7 +100,6 @@ export function normalizeNetworkProfilesConfig(value: unknown): NetworkProfilesC
     profiles,
     adapterNicknames,
     selectedAdapterId: typeof candidate.selectedAdapterId === "string" ? candidate.selectedAdapterId : null,
-    selectedProfileId: typeof candidate.selectedProfileId === "string" ? candidate.selectedProfileId : null,
   };
 }
 
@@ -150,22 +150,153 @@ function firstAddress(family: NetworkFamilySnapshot) {
   return address ? `${address.address}/${address.prefix}` : "—";
 }
 
-function profileFromAdapter(name: string, adapter: NetworkAdapterSnapshot): SavedNetworkProfile {
+const IPV4_ADDRESS = /^(?:\d{1,3}\.){3}\d{1,3}$/;
+
+function isValidIpv4(value: string) {
+  const candidate = value.trim();
+  if (!IPV4_ADDRESS.test(candidate)) return false;
+  return candidate.split(".").every((part) => {
+    if (part.length > 1 && part.startsWith("0")) return false;
+    return Number(part) <= 255;
+  });
+}
+
+function addressFamily(value: string): "ipv4" | "ipv6" | null {
+  const candidate = value.trim();
+  if (isValidIpv4(candidate)) return "ipv4";
+  if (!candidate.includes(":") || !/^[0-9a-fA-F:.]+$/.test(candidate)) return null;
+  try {
+    const parsed = new URL(`http://[${candidate}]/`);
+    return parsed.hostname.startsWith("[") ? "ipv6" : null;
+  } catch {
+    return null;
+  }
+}
+
+function ipv4MaskToPrefix(value: string): number | null {
+  const candidate = value.trim().replace(/^\//, "");
+  if (/^\d{1,2}$/.test(candidate)) {
+    const prefix = Number(candidate);
+    return prefix <= 32 ? prefix : null;
+  }
+  if (!isValidIpv4(candidate)) return null;
+  let prefix = 0;
+  let seenZero = false;
+  for (const part of candidate.split(".")) {
+    for (let bit = 7; bit >= 0; bit -= 1) {
+      if ((Number(part) >> bit) & 1) {
+        if (seenZero) return null;
+        prefix += 1;
+      } else {
+        seenZero = true;
+      }
+    }
+  }
+  return prefix;
+}
+
+function prefixToIpv4Mask(prefix: number) {
+  const mask = prefix === 0 ? 0 : (0xffffffff << (32 - prefix)) >>> 0;
+  return [24, 16, 8, 0].map((shift) => (mask >>> shift) & 0xff).join(".");
+}
+
+function parseDnsServers(value: string): string[] | null {
+  const entries = value.split(/[\s,;]+/).filter(Boolean);
+  if (entries.length > 8) return null;
+  return entries.every((entry) => addressFamily(entry) !== null) ? entries : null;
+}
+
+type FamilyFieldError = "address" | "prefix" | "gateway";
+
+function buildManualFamily(
+  mode: NetworkIpMode,
+  address: string,
+  prefixValue: string,
+  gateway: string,
+  ipv6: boolean,
+): { family: NetworkFamilySnapshot } | { error: FamilyFieldError } {
+  if (mode !== "manual") return { family: { mode, addresses: [], gateway: null } };
+  const addressValue = address.trim();
+  if (addressFamily(addressValue) !== (ipv6 ? "ipv6" : "ipv4")) return { error: "address" };
+  const rawPrefix = prefixValue.trim();
+  const prefix = ipv6
+    ? /^\d{1,3}$/.test(rawPrefix) && Number(rawPrefix) <= 128 ? Number(rawPrefix) : null
+    : ipv4MaskToPrefix(rawPrefix);
+  if (prefix === null) return { error: "prefix" };
+  const gatewayValue = gateway.trim();
+  if (gatewayValue && addressFamily(gatewayValue) !== (ipv6 ? "ipv6" : "ipv4")) return { error: "gateway" };
+  return { family: { mode, addresses: [{ address: addressValue, prefix }], gateway: gatewayValue || null } };
+}
+
+interface NetworkProfileFormValues {
+  name: string;
+  ipv4Mode: NetworkIpMode;
+  ipv4Address: string;
+  ipv4Mask: string;
+  ipv4Gateway: string;
+  ipv6Mode: NetworkIpMode;
+  ipv6Address: string;
+  ipv6Prefix: string;
+  ipv6Gateway: string;
+  dnsServers: string;
+}
+
+const UNCONFIGURED_FORM_VALUES: NetworkProfileFormValues = {
+  name: "",
+  ipv4Mode: "automatic",
+  ipv4Address: "",
+  ipv4Mask: "",
+  ipv4Gateway: "",
+  ipv6Mode: "automatic",
+  ipv6Address: "",
+  ipv6Prefix: "64",
+  ipv6Gateway: "",
+  dnsServers: "",
+};
+
+function formValuesFromFamilies(
+  name: string,
+  ipv4: NetworkFamilySnapshot,
+  ipv6: NetworkFamilySnapshot,
+  dnsServers: string[],
+): NetworkProfileFormValues {
+  const v4 = ipv4.addresses[0];
+  const v6 = ipv6.addresses[0];
   return {
-    id: newId(),
     name,
-    createdAt: Date.now(),
-    ipv4: structuredClone(adapter.ipv4),
-    ipv6: structuredClone(adapter.ipv6),
-    dnsServers: [...adapter.dnsServers],
+    ipv4Mode: ipv4.mode,
+    ipv4Address: v4?.address ?? "",
+    ipv4Mask: v4 ? prefixToIpv4Mask(v4.prefix) : "",
+    ipv4Gateway: ipv4.gateway ?? "",
+    ipv6Mode: ipv6.mode,
+    ipv6Address: v6?.address ?? "",
+    ipv6Prefix: v6 ? String(v6.prefix) : "64",
+    ipv6Gateway: ipv6.gateway ?? "",
+    dnsServers: dnsServers.join(", "),
   };
 }
 
-type NameDialogState =
-  | { kind: "saveProfile"; initialValue: string }
-  | { kind: "renameProfile"; profileId: string; initialValue: string }
-  | { kind: "nickname"; initialValue: string }
-  | null;
+function familyMatchesCurrent(profileFamily: NetworkFamilySnapshot, adapterFamily: NetworkFamilySnapshot) {
+  if (profileFamily.mode !== adapterFamily.mode) return false;
+  if (profileFamily.mode !== "manual") return true;
+  const addresses = (family: NetworkFamilySnapshot) => family.addresses
+    .map((entry) => `${entry.address.trim().toLowerCase()}/${entry.prefix}`)
+    .sort()
+    .join(",");
+  return addresses(profileFamily) === addresses(adapterFamily)
+    && (profileFamily.gateway ?? "").trim().toLowerCase() === (adapterFamily.gateway ?? "").trim().toLowerCase();
+}
+
+function dnsMatchesCurrent(profileDns: string[], adapterDns: string[]) {
+  const servers = (values: string[]) => [...new Set(values.map((value) => value.trim().toLowerCase()).filter(Boolean))].sort().join(",");
+  return servers(profileDns) === servers(adapterDns);
+}
+
+function profileMatchesAdapter(profile: SavedNetworkProfile, adapter: NetworkAdapterSnapshot) {
+  return familyMatchesCurrent(profile.ipv4, adapter.ipv4)
+    && familyMatchesCurrent(profile.ipv6, adapter.ipv6)
+    && dnsMatchesCurrent(profile.dnsServers, adapter.dnsServers);
+}
 
 export function NetworkProfilesBody(_props: BuiltInWidgetBodyProps) {
   const { t } = useTranslation();
@@ -173,9 +304,10 @@ export function NetworkProfilesBody(_props: BuiltInWidgetBodyProps) {
   const [config, setConfig] = useNetworkProfilesConfig();
   const [snapshot, setSnapshot] = useState<NetworkProfilesSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileForm, setProfileForm] = useState<{ profileId: string | null } | null>(null);
   const [applyingProfile, setApplyingProfile] = useState<SavedNetworkProfile | null>(null);
   const [deleteProfile, setDeleteProfile] = useState<SavedNetworkProfile | null>(null);
-  const [nameDialog, setNameDialog] = useState<NameDialogState>(null);
+  const [nicknameDialog, setNicknameDialog] = useState<string | null>(null);
   const carouselRef = useRef<HTMLDivElement | null>(null);
 
   const refresh = async (quiet = false) => {
@@ -210,41 +342,31 @@ export function NetworkProfilesBody(_props: BuiltInWidgetBodyProps) {
     () => snapshot?.adapters.find((adapter) => adapter.id === config.selectedAdapterId) ?? snapshot?.adapters[0] ?? null,
     [config.selectedAdapterId, snapshot],
   );
-  const selectedProfile = config.profiles.find((profile) => profile.id === config.selectedProfileId)
-    ?? config.profiles[0]
-    ?? null;
   const canApply = snapshot?.capability === "supported"
     && (snapshot.platform !== "linux" || Boolean(selectedAdapter?.serviceId));
   const adapterLabel = (adapter: NetworkAdapterSnapshot) => config.adapterNicknames[adapter.id] || adapter.name;
+  const editingProfile = profileForm?.profileId
+    ? config.profiles.find((profile) => profile.id === profileForm.profileId) ?? null
+    : null;
 
-  function selectProfile(profileId: string) {
-    setConfig((current) => ({ ...current, selectedProfileId: profileId }));
+  function saveNickname(value: string) {
+    const nickname = value.trim();
+    if (!nickname || !selectedAdapter) return;
+    setConfig((current) => ({
+      ...current,
+      adapterNicknames: { ...current.adapterNicknames, [selectedAdapter.id]: nickname },
+    }));
+    showStatusBarNotice(t("dashboard.networkProfilesNicknameSaved", { name: nickname }), { tone: "success" });
+    setNicknameDialog(null);
   }
 
-  function saveName(value: string) {
-    const name = value.trim();
-    if (!name || !selectedAdapter || !nameDialog) return;
-    if (nameDialog.kind === "saveProfile") {
-      const profile = profileFromAdapter(name, selectedAdapter);
-      setConfig((current) => ({
-        ...current,
-        profiles: [...current.profiles, profile].slice(-100),
-        selectedProfileId: profile.id,
-      }));
-      showStatusBarNotice(t("dashboard.networkProfilesSaved", { name }), { tone: "success" });
-    } else if (nameDialog.kind === "renameProfile") {
-      setConfig((current) => ({
-        ...current,
-        profiles: current.profiles.map((profile) => profile.id === nameDialog.profileId ? { ...profile, name } : profile),
-      }));
-    } else {
-      setConfig((current) => ({
-        ...current,
-        adapterNicknames: { ...current.adapterNicknames, [selectedAdapter.id]: name },
-      }));
-      showStatusBarNotice(t("dashboard.networkProfilesNicknameSaved", { name }), { tone: "success" });
-    }
-    setNameDialog(null);
+  function saveProfile(draft: NetworkProfileDraft) {
+    const profileId = editingProfile?.id ?? null;
+    setConfig((current) => profileId
+      ? { ...current, profiles: current.profiles.map((profile) => (profile.id === profileId ? { ...profile, ...draft } : profile)) }
+      : { ...current, profiles: [...current.profiles, { id: newId(), createdAt: Date.now(), ...draft }].slice(-100) });
+    showStatusBarNotice(t("dashboard.networkProfilesSaved", { name: draft.name }), { tone: "success" });
+    setProfileForm(null);
   }
 
   async function applyProfile(profile: SavedNetworkProfile) {
@@ -275,7 +397,6 @@ export function NetworkProfilesBody(_props: BuiltInWidgetBodyProps) {
     setConfig((current) => ({
       ...current,
       profiles: current.profiles.filter((profile) => profile.id !== id),
-      selectedProfileId: current.selectedProfileId === id ? null : current.selectedProfileId,
     }));
     setDeleteProfile(null);
   }
@@ -330,7 +451,7 @@ export function NetworkProfilesBody(_props: BuiltInWidgetBodyProps) {
             data-preserve-content-focus="true"
             title={t("dashboard.networkProfilesEditNickname")}
             aria-label={t("dashboard.networkProfilesEditNickname")}
-            onClick={() => setNameDialog({ kind: "nickname", initialValue: adapterLabel(selectedAdapter) })}
+            onClick={() => setNicknameDialog(adapterLabel(selectedAdapter))}
           ><Edit3 size={15} /></button>
         ) : null}
         <button
@@ -361,47 +482,58 @@ export function NetworkProfilesBody(_props: BuiltInWidgetBodyProps) {
       <section className="dw-network-profiles-section" aria-label={t("dashboard.networkProfilesSavedProfiles")}>
         <div className="dw-network-profiles-section-head">
           <strong>{t("dashboard.networkProfilesSavedProfiles")}</strong>
-          <span>{config.profiles.length}</span>
+          <div className="dw-network-profiles-section-tools">
+            <span>{config.profiles.length}</span>
+            <button
+              type="button"
+              data-preserve-content-focus="true"
+              className="dw-network-profiles-add"
+              onClick={() => setProfileForm({ profileId: null })}
+            ><Plus size={13} />{t("common.add")}</button>
+          </div>
         </div>
         {config.profiles.length > 0 ? (
           <div className="dw-network-profiles-carousel-shell">
             <button type="button" data-preserve-content-focus="true" className="dw-network-profiles-scroll" onClick={() => scrollCarousel(-1)} aria-label={t("dashboard.networkProfilesPrevious")}><ChevronLeft size={16} /></button>
             <div ref={carouselRef} className="dw-network-profiles-carousel">
-              {config.profiles.map((profile) => (
-                <article
-                  key={profile.id}
-                  className={`dw-network-profile-card${profile.id === selectedProfile?.id ? " is-selected" : ""}`}
-                  onClick={() => selectProfile(profile.id)}
-                >
-                  <div className="dw-network-profile-card-head">
-                    <strong>{profile.name}</strong>
-                    <div className="dw-network-profile-card-actions">
-                      <button type="button" data-preserve-content-focus="true" aria-label={t("dashboard.networkProfilesRenameProfile")} title={t("dashboard.networkProfilesRenameProfile")} onClick={(event) => { event.stopPropagation(); setNameDialog({ kind: "renameProfile", profileId: profile.id, initialValue: profile.name }); }}><Edit3 size={13} /></button>
-                      <button type="button" data-preserve-content-focus="true" aria-label={t("dashboard.networkProfilesDeleteProfile")} title={t("dashboard.networkProfilesDeleteProfile")} onClick={(event) => { event.stopPropagation(); setDeleteProfile(profile); }}><Trash2 size={13} /></button>
+              {config.profiles.map((profile) => {
+                const matchesCurrent = selectedAdapter ? profileMatchesAdapter(profile, selectedAdapter) : false;
+                return (
+                  <article key={profile.id} className="dw-network-profile-card">
+                    <div className="dw-network-profile-card-head">
+                      <strong>{profile.name}</strong>
+                      <div className="dw-network-profile-card-actions">
+                        <button type="button" data-preserve-content-focus="true" aria-label={t("dashboard.networkProfilesEditProfile")} title={t("dashboard.networkProfilesEditProfile")} onClick={() => setProfileForm({ profileId: profile.id })}><Edit3 size={13} /></button>
+                        <button type="button" data-preserve-content-focus="true" aria-label={t("dashboard.networkProfilesDeleteProfile")} title={t("dashboard.networkProfilesDeleteProfile")} onClick={() => setDeleteProfile(profile)}><Trash2 size={13} /></button>
+                      </div>
                     </div>
-                  </div>
-                  <div className="dw-network-profile-family-row">
-                    <ModePill label="IPv4" mode={profile.ipv4.mode} t={t} />
-                    <span>{firstAddress(profile.ipv4)}</span>
-                  </div>
-                  <div className="dw-network-profile-family-row">
-                    <ModePill label="IPv6" mode={profile.ipv6.mode} t={t} />
-                    <span>{firstAddress(profile.ipv6)}</span>
-                  </div>
-                  <div className="dw-network-profile-card-footer">
-                    <span>{profile.dnsServers.join(", ") || t("dashboard.networkProfilesSystemDns")}</span>
-                    <button
-                      type="button"
-                      data-preserve-content-focus="true"
-                      className="dw-network-profile-apply"
-                      disabled={!selectedAdapter || !canApply}
-                      onClick={(event) => { event.stopPropagation(); setApplyingProfile(profile); }}
-                    >
-                      <Check size={13} />{t("dashboard.networkProfilesApply")}
-                    </button>
-                  </div>
-                </article>
-              ))}
+                    <div className="dw-network-profile-family-row">
+                      <ModePill label="IPv4" mode={profile.ipv4.mode} t={t} />
+                      <span>{firstAddress(profile.ipv4)}</span>
+                    </div>
+                    <div className="dw-network-profile-family-row">
+                      <ModePill label="IPv6" mode={profile.ipv6.mode} t={t} />
+                      <span>{firstAddress(profile.ipv6)}</span>
+                    </div>
+                    <div className="dw-network-profile-card-footer">
+                      <span>{profile.dnsServers.join(", ") || t("dashboard.networkProfilesSystemDns")}</span>
+                      {matchesCurrent ? (
+                        <span className="dw-network-profile-current"><Check size={12} />{t("dashboard.networkProfilesCurrent")}</span>
+                      ) : (
+                        <button
+                          type="button"
+                          data-preserve-content-focus="true"
+                          className="dw-network-profile-apply"
+                          disabled={!selectedAdapter || !canApply}
+                          onClick={() => setApplyingProfile(profile)}
+                        >
+                          <Check size={13} />{t("dashboard.networkProfilesApply")}
+                        </button>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
             </div>
             <button type="button" data-preserve-content-focus="true" className="dw-network-profiles-scroll" onClick={() => scrollCarousel(1)} aria-label={t("dashboard.networkProfilesNext")}><ChevronRight size={16} /></button>
           </div>
@@ -410,8 +542,7 @@ export function NetworkProfilesBody(_props: BuiltInWidgetBodyProps) {
             type="button"
             data-preserve-content-focus="true"
             className="dw-network-profiles-empty-action"
-            disabled={!selectedAdapter}
-            onClick={() => setNameDialog({ kind: "saveProfile", initialValue: "" })}
+            onClick={() => setProfileForm({ profileId: null })}
           >
             <Plus size={18} />
             <span><strong>{t("dashboard.networkProfilesEmptyTitle")}</strong><small>{t("dashboard.networkProfilesEmptyHint")}</small></span>
@@ -419,24 +550,25 @@ export function NetworkProfilesBody(_props: BuiltInWidgetBodyProps) {
         )}
       </section>
 
-      <footer className="dw-network-profiles-footer">
-        <button
-          type="button"
-          data-preserve-content-focus="true"
-          className="dw-network-profiles-save"
-          disabled={!selectedAdapter}
-          onClick={() => setNameDialog({ kind: "saveProfile", initialValue: "" })}
-        ><Plus size={15} />{t("dashboard.networkProfilesSaveCurrent")}</button>
-        {selectedProfile ? <span>{t("dashboard.networkProfilesSelected", { name: selectedProfile.name })}</span> : null}
-      </footer>
-
-      {nameDialog ? (
+      {profileForm ? (
+        <ProfileDialog
+          title={t(editingProfile ? "dashboard.networkProfilesEditTitle" : "dashboard.networkProfilesAddTitle")}
+          initialValues={editingProfile
+            ? formValuesFromFamilies(editingProfile.name, editingProfile.ipv4, editingProfile.ipv6, editingProfile.dnsServers)
+            : selectedAdapter
+              ? formValuesFromFamilies("", selectedAdapter.ipv4, selectedAdapter.ipv6, selectedAdapter.dnsServers)
+              : UNCONFIGURED_FORM_VALUES}
+          onCancel={() => setProfileForm(null)}
+          onSave={saveProfile}
+        />
+      ) : null}
+      {nicknameDialog !== null && selectedAdapter ? (
         <NameDialog
-          title={nameDialog.kind === "nickname" ? t("dashboard.networkProfilesNicknameTitle") : nameDialog.kind === "renameProfile" ? t("dashboard.networkProfilesRenameTitle") : t("dashboard.networkProfilesSaveTitle")}
-          label={nameDialog.kind === "nickname" ? t("dashboard.networkProfilesNicknameLabel") : t("dashboard.networkProfilesProfileName")}
-          initialValue={nameDialog.initialValue}
-          onCancel={() => setNameDialog(null)}
-          onSave={saveName}
+          title={t("dashboard.networkProfilesNicknameTitle")}
+          label={t("dashboard.networkProfilesNicknameLabel")}
+          initialValue={nicknameDialog}
+          onCancel={() => setNicknameDialog(null)}
+          onSave={saveNickname}
         />
       ) : null}
       {applyingProfile && selectedAdapter ? (
@@ -462,6 +594,133 @@ export function NetworkProfilesBody(_props: BuiltInWidgetBodyProps) {
         />
       ) : null}
     </div>
+  );
+}
+
+function ProfileDialog({
+  title,
+  initialValues,
+  onSave,
+  onCancel,
+}: {
+  title: string;
+  initialValues: NetworkProfileFormValues;
+  onSave: (draft: NetworkProfileDraft) => void;
+  onCancel: () => void;
+}) {
+  const { t } = useTranslation();
+  const [values, setValues] = useState(initialValues);
+  const [error, setError] = useState<string | null>(null);
+  const update = (patch: Partial<NetworkProfileFormValues>) => setValues((current) => ({ ...current, ...patch }));
+
+  const familyErrorMessage = (field: FamilyFieldError, ipv6: boolean) => {
+    const family = ipv6 ? "IPv6" : "IPv4";
+    if (field === "address") return t("dashboard.networkProfilesInvalidAddress", { family });
+    if (field === "gateway") return t("dashboard.networkProfilesInvalidGateway", { family });
+    return t(ipv6 ? "dashboard.networkProfilesInvalidPrefix" : "dashboard.networkProfilesInvalidMask");
+  };
+
+  const submit = () => {
+    const name = values.name.trim();
+    if (!name) return;
+    const ipv4 = buildManualFamily(values.ipv4Mode, values.ipv4Address, values.ipv4Mask, values.ipv4Gateway, false);
+    if ("error" in ipv4) {
+      setError(familyErrorMessage(ipv4.error, false));
+      return;
+    }
+    const ipv6 = buildManualFamily(values.ipv6Mode, values.ipv6Address, values.ipv6Prefix, values.ipv6Gateway, true);
+    if ("error" in ipv6) {
+      setError(familyErrorMessage(ipv6.error, true));
+      return;
+    }
+    const dnsServers = parseDnsServers(values.dnsServers);
+    if (dnsServers === null) {
+      setError(t("dashboard.networkProfilesInvalidDns"));
+      return;
+    }
+    onSave({ name, ipv4: ipv4.family, ipv6: ipv6.family, dnsServers });
+  };
+
+  const modeOptions = [
+    { value: "automatic", label: t("dashboard.networkProfilesMode.automatic") },
+    { value: "manual", label: t("dashboard.networkProfilesMode.manual") },
+    { value: "disabled", label: t("dashboard.networkProfilesMode.disabled") },
+  ];
+
+  return (
+    <DialogShell onBackdrop={onCancel}>
+      <Sheet
+        width={520}
+        title={title}
+        footer={<Actions cancel={<Btn onClick={onCancel}>{t("common.cancel")}</Btn>} primary={<Btn kind="primary" icon="check" disabled={!values.name.trim()} onClick={submit}>{t("common.save")}</Btn>} />}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && !(event.target instanceof HTMLSelectElement)) {
+            event.preventDefault();
+            submit();
+          }
+        }}
+      >
+        <div className="dw-network-profile-form" onChange={() => setError(null)}>
+          <Field label={t("dashboard.networkProfilesProfileName")} req>
+            <TextInput autoFocus maxLength={80} value={values.name} onChange={(event) => update({ name: event.currentTarget.value })} />
+          </Field>
+          <div className="dw-network-profile-form-family">
+            <div className="dw-network-profile-form-family-head">
+              <strong>IPv4</strong>
+              <Select
+                className="dw-network-profile-form-mode"
+                aria-label={t("dashboard.networkProfilesFamilyMode", { family: "IPv4" })}
+                options={modeOptions}
+                value={values.ipv4Mode}
+                onChange={(event) => update({ ipv4Mode: event.currentTarget.value as NetworkIpMode })}
+              />
+            </div>
+            {values.ipv4Mode === "manual" ? (
+              <div className="kk-field-grid" style={{ "--cols": 2 } as CSSProperties}>
+                <Field label={t("dashboard.networkProfilesAddress")} req>
+                  <TextInput mono value={values.ipv4Address} onChange={(event) => update({ ipv4Address: event.currentTarget.value })} />
+                </Field>
+                <Field label={t("dashboard.networkProfilesSubnetMask")} req>
+                  <TextInput mono value={values.ipv4Mask} onChange={(event) => update({ ipv4Mask: event.currentTarget.value })} />
+                </Field>
+                <Field className="kk-col-span-2" label={t("dashboard.networkProfilesGateway")}>
+                  <TextInput mono value={values.ipv4Gateway} onChange={(event) => update({ ipv4Gateway: event.currentTarget.value })} />
+                </Field>
+              </div>
+            ) : null}
+          </div>
+          <div className="dw-network-profile-form-family">
+            <div className="dw-network-profile-form-family-head">
+              <strong>IPv6</strong>
+              <Select
+                className="dw-network-profile-form-mode"
+                aria-label={t("dashboard.networkProfilesFamilyMode", { family: "IPv6" })}
+                options={modeOptions}
+                value={values.ipv6Mode}
+                onChange={(event) => update({ ipv6Mode: event.currentTarget.value as NetworkIpMode })}
+              />
+            </div>
+            {values.ipv6Mode === "manual" ? (
+              <div className="kk-field-grid" style={{ "--cols": 2 } as CSSProperties}>
+                <Field label={t("dashboard.networkProfilesAddress")} req>
+                  <TextInput mono value={values.ipv6Address} onChange={(event) => update({ ipv6Address: event.currentTarget.value })} />
+                </Field>
+                <Field label={t("dashboard.networkProfilesPrefixLength")} req>
+                  <TextInput mono inputMode="numeric" value={values.ipv6Prefix} onChange={(event) => update({ ipv6Prefix: event.currentTarget.value })} />
+                </Field>
+                <Field className="kk-col-span-2" label={t("dashboard.networkProfilesGateway")}>
+                  <TextInput mono value={values.ipv6Gateway} onChange={(event) => update({ ipv6Gateway: event.currentTarget.value })} />
+                </Field>
+              </div>
+            ) : null}
+          </div>
+          <Field label={t("dashboard.networkProfilesDns")} hint={t("dashboard.networkProfilesDnsHint")}>
+            <TextInput mono value={values.dnsServers} onChange={(event) => update({ dnsServers: event.currentTarget.value })} />
+          </Field>
+          {error ? <p className="dw-network-profile-form-error" role="alert">{error}</p> : null}
+        </div>
+      </Sheet>
+    </DialogShell>
   );
 }
 
