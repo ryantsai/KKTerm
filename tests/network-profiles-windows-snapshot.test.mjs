@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const source = readFileSync("src-tauri/src/net/profiles.rs", "utf8");
-const script = source.match(/let script = r#"(\$items=@\([\s\S]*?)"#;/)?.[1];
+const script = source.match(/fn windows_snapshot_script\(\) -> &'static str \{\s*r#"(\$items=@\([\s\S]*?)"#/)?.[1];
 assert.ok(script, "the Windows snapshot script must be available for fixture execution");
 
 test("Windows snapshot omits missing addresses and DNS without losing configured adapters", {

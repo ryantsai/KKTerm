@@ -431,6 +431,9 @@ fn shell_join(args: &[String]) -> String {
 }
 
 #[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+#[cfg(target_os = "windows")]
 fn windows_snapshot_command(script: &str) -> Command {
     use std::os::windows::process::CommandExt;
     // Redirected Windows PowerShell output otherwise uses the console code
@@ -439,7 +442,7 @@ fn windows_snapshot_command(script: &str) -> Command {
         "[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); {script}"
     );
     let mut command = Command::new("powershell.exe");
-    command.creation_flags(0x08000000).args([
+    command.creation_flags(CREATE_NO_WINDOW).args([
         "-NoProfile", "-NonInteractive", "-Command", &script,
     ]);
     command
@@ -460,8 +463,8 @@ Get-NetAdapter | Where-Object { -not $_.Virtual } | ForEach-Object {
     ipv6Mode=$(if($v6b -and -not $v6b.Enabled){'disabled'}elseif($i6.RouterDiscovery -eq 'Disabled'){'manual'}else{'automatic'});
     ipv4Addresses=@($c.IPv4Address | Where-Object { $_.IPAddress } | %{"$($_.IPAddress)/$($_.PrefixLength)"});
     ipv6Addresses=@(Get-NetIPAddress -InterfaceIndex $a.ifIndex -AddressFamily IPv6 -ErrorAction SilentlyContinue | Where-Object { $_.PrefixOrigin -ne 'WellKnown' -and $_.AddressState -ne 'Duplicate' } | %{"$($_.IPAddress)/$($_.PrefixLength)"});
-    ipv4Gateway=($c.IPv4DefaultGateway | Sort-Object RouteMetric | Select-Object -First 1 -ExpandProperty NextHop);
-    ipv6Gateway=($c.IPv6DefaultGateway | Sort-Object RouteMetric | Select-Object -First 1 -ExpandProperty NextHop);
+    ipv4Gateway=$(@($c.IPv4DefaultGateway | Sort-Object RouteMetric)[0].NextHop);
+    ipv6Gateway=$(@($c.IPv6DefaultGateway | Sort-Object RouteMetric)[0].NextHop);
     dnsServers=@((Get-DnsClientServerAddress -InterfaceIndex $a.ifIndex -ErrorAction SilentlyContinue).ServerAddresses | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
   }
 }); ConvertTo-Json -InputObject $items -Compress -Depth 5"#
@@ -534,7 +537,6 @@ fn windows_snapshot() -> Result<NetworkProfilesSnapshot, String> {
 #[cfg(target_os = "windows")]
 fn windows_apply(request: &ApplyNetworkProfileRequest) -> Result<(), String> {
     use std::os::windows::process::CommandExt;
-    const CREATE_NO_WINDOW: u32 = 0x08000000;
     let adapter_id = ps_quote(&request.adapter_id);
     let mut statements = Vec::new();
     statements.push(format!(
