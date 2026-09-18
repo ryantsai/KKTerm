@@ -45,43 +45,55 @@ export function nextAiCodingUsageRefreshAt(
   if (provider.provider !== "claudeCode" || !isClaudeUsageRateLimitError(provider.lastError)) {
     return null;
   }
-  const lastRefreshMs = parseTimestampMs(provider.lastRefreshAt);
-  if (lastRefreshMs === null) {
-    return nowMs + CLAUDE_USAGE_RATE_LIMIT_COOLDOWN_MS;
+  const lastAttemptMs = refreshAttemptTimestampMs(provider);
+  if (lastAttemptMs === null) {
+    // Legacy/corrupt state has no stable anchor. Permit a retry to establish
+    // one instead of moving the deadline forward forever on every evaluation.
+    return nowMs;
   }
-  return lastRefreshMs + claudeUsageRateLimitCooldownMs(provider.lastError);
+  return lastAttemptMs + claudeUsageRateLimitCooldownMs(provider.lastError, lastAttemptMs);
 }
 
-function claudeUsageRateLimitCooldownMs(message?: string | null) {
-  const retryAfterSeconds = retryAfterSecondsFromError(message);
-  if (retryAfterSeconds !== null && retryAfterSeconds > 0) {
-    return Math.max(retryAfterSeconds * 1000, CLAUDE_USAGE_REFRESH_INTERVAL_MS);
+function claudeUsageRateLimitCooldownMs(
+  message: string | null | undefined,
+  lastAttemptMs: number,
+) {
+  const retryAfter = message?.match(/retry after\s+(.+?)(?:\.$|$)/i)?.[1].trim();
+  if (!retryAfter) {
+    return CLAUDE_USAGE_RATE_LIMIT_COOLDOWN_MS;
   }
-  return CLAUDE_USAGE_RATE_LIMIT_COOLDOWN_MS;
+  const secondsMatch = retryAfter.match(/^(\d+)\s*(?:s|sec|second|seconds)?$/i);
+  if (secondsMatch) {
+    const seconds = Number(secondsMatch[1]);
+    const delayMs = seconds * 1000;
+    return Number.isFinite(delayMs)
+      ? Math.max(delayMs, CLAUDE_USAGE_REFRESH_INTERVAL_MS)
+      : CLAUDE_USAGE_RATE_LIMIT_COOLDOWN_MS;
+  }
+  // HTTP Retry-After also permits an absolute date.
+  const retryAt = Date.parse(retryAfter);
+  return Number.isNaN(retryAt)
+    ? CLAUDE_USAGE_RATE_LIMIT_COOLDOWN_MS
+    : Math.max(retryAt - lastAttemptMs, CLAUDE_USAGE_REFRESH_INTERVAL_MS);
 }
 
 function isClaudeUsageRateLimitError(message?: string | null) {
   return Boolean(message?.match(/HTTP\s+429|Too Many Requests/i));
 }
 
-function retryAfterSecondsFromError(message?: string | null) {
-  const match = message?.match(/retry after\s+(\d+)\s*(?:s|sec|second|seconds)?/i);
-  if (!match) {
-    return null;
-  }
-  const seconds = Number(match[1]);
-  return Number.isFinite(seconds) ? seconds : null;
-}
-
 function isAiCodingUsageRefreshStale(
   provider: AiCodingUsageProviderState,
   nowMs: number,
 ) {
-  const lastRefreshMs = parseTimestampMs(provider.lastRefreshAt);
+  const lastAttemptMs = refreshAttemptTimestampMs(provider);
   return (
-    lastRefreshMs === null ||
-    nowMs - lastRefreshMs > aiCodingUsageRefreshIntervalMs(provider)
+    lastAttemptMs === null ||
+    nowMs - lastAttemptMs > aiCodingUsageRefreshIntervalMs(provider)
   );
+}
+
+function refreshAttemptTimestampMs(provider: AiCodingUsageProviderState) {
+  return parseTimestampMs(provider.lastAttemptAt) ?? parseTimestampMs(provider.lastRefreshAt);
 }
 
 function aiCodingUsageRefreshIntervalMs(provider: AiCodingUsageProviderState) {
