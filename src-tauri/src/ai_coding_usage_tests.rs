@@ -238,3 +238,30 @@ fn expired_cached_windows_are_unknown_even_before_a_network_refresh() {
     assert_eq!(state.five_hour.used_percent, None);
     assert_eq!(state.weekly.used_percent, Some(34.0));
 }
+
+
+#[test]
+fn statusline_window_normalizes_documented_rate_limit_fields() {
+    let value = serde_json::json!({
+        "used_percentage": 37.5,
+        "resets_at": 1789700000
+    });
+    let window = statusline_window(Some(&value));
+    assert_eq!(window.used_percent, Some(37.5));
+    assert!(window.resets_at.is_some());
+}
+
+#[test]
+fn statusline_window_keeps_missing_usage_unknown() {
+    let value = serde_json::json!({ "resets_at": 1789700000 });
+    let window = statusline_window(Some(&value));
+    assert_eq!(window.used_percent, None);
+    assert!(window.resets_at.is_some());
+}
+
+#[test]
+fn claude_statusline_adapter_command_quotes_executable() {
+    let command = claude_statusline_adapter_command().expect("adapter command");
+    assert!(command.contains(CLAUDE_STATUSLINE_ADAPTER_ARG));
+    assert!(command.starts_with('"'));
+}
