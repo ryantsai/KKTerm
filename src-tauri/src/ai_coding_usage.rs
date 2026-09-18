@@ -858,6 +858,11 @@ fn refresh_claude(cli_paths: &ProviderCliPaths) -> Result<ProviderUpdate, String
         update.last_error = Some("Claude subscription quota is unavailable for this authentication method.".to_string());
         return Ok(update);
     }
+    // A configured Claude provider is the opt-in boundary for this adapter.
+    // Existing users get the documented telemetry path on their next refresh.
+    // Managed/read-only settings simply keep using the compatibility fallback.
+    let _ = install_claude_statusline_adapter();
+
     // Prefer Claude Code's documented status-line telemetry. It is generated
     // locally from the active subscription session and does not consume tokens.
     if let Some((snapshot, raw, captured_at)) = read_claude_statusline_usage() {
