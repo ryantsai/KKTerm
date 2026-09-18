@@ -26,7 +26,7 @@ The [authentication documentation](https://code.claude.com/docs/en/authenticatio
 
 **Remaining limitations:** native macOS Keychain-only credentials are not read by this collector. Do not export them to a plaintext file as a workaround. The existing `/api/oauth/usage` endpoint and beta/User-Agent behavior remain best effort; this review did not establish a supported public contract or authenticate against that endpoint. A successful CLI login does not guarantee quota availability.
 
-A better follow-up is an explicitly enabled adapter for the documented [status-line JSON](https://code.claude.com/docs/en/statusline): `rate_limits.five_hour` and `rate_limits.seven_day` expose utilization and reset times when available. Missing fields must stay unknown. This is provider-produced telemetry, not an always-live polling endpoint. Installation must preserve the user's existing status-line command and remain opt-in; it is not installed by this PR.
+KKTerm now includes an opt-in adapter for the documented [status-line JSON](https://code.claude.com/docs/en/statusline): `rate_limits.five_hour` and `rate_limits.seven_day` expose utilization and reset times when available. Connecting Claude Code installs a lightweight KKTerm status-line proxy in the user's Claude settings. The proxy caches the documented JSON locally, then forwards the same stdin to the user's previous status-line command and returns its stdout, so an existing display is preserved. The helper exits before Tauri startup and does not consume model tokens. KKTerm prefers this telemetry when available and retains the private OAuth usage request only as a compatibility fallback. Missing or expired windows stay unknown.
 
 ## Freshness and failure handling
 
@@ -50,7 +50,7 @@ Copilot's [current organization billing model](https://docs.github.com/copilot/c
 
 Before adding provider names, extend the data model to a collection of metrics with explicit kind (`quotaPercent`, `creditBalance`, `spend`, `sessionTokens`, `contextPercent`), provider bucket/model pool, window duration, reset time, unit/currency, source, account binding, capture time, attempt time, and availability. Unknown, expired, unsupported, and zero are different states. Keep quota and session telemetry visually separate.
 
-Recommended order: (1) opt-in Claude status-line telemetry to reduce private-endpoint dependence; (2) Copilot AI-credit reporting with explicit billing authorization; (3) Antigravity once its machine-readable quota surface is verified; (4) Grok Build session telemetry, then account quota only with a verified contract. Do not overwrite CLI settings, persist tokens in widget state, refresh OAuth outside the owning CLI, or make model calls just to collect usage.
+Recommended order after this change: (1) validate the Claude status-line adapter across Windows/macOS/Linux and managed-settings environments; (2) Copilot AI-credit reporting with explicit billing authorization; (3) Antigravity once its machine-readable quota surface is verified; (4) Grok Build session telemetry, then account quota only with a verified contract. Do not overwrite CLI settings, persist tokens in widget state, refresh OAuth outside the owning CLI, or make model calls just to collect usage.
 
 ## Validation
 
