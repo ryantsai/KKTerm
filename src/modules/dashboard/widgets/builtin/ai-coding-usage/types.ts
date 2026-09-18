@@ -14,7 +14,10 @@ export interface AiCodingUsageProviderState {
   subscriptionPlan?: string | null;
   fiveHour: AiCodingUsageQuotaWindow;
   weekly: AiCodingUsageQuotaWindow;
+  /** Capture time of the last successful quota snapshot, not a failed attempt. */
   lastRefreshAt?: string | null;
+  /** Poll/backoff anchor; optional for compatibility with older state. */
+  lastAttemptAt?: string | null;
   lastError?: string | null;
 }
 

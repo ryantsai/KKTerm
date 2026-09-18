@@ -143,3 +143,79 @@ test("AI coding usage background refresh uses the longer Claude Code interval", 
     ],
   );
 });
+
+test("failed attempts back off without changing the displayed snapshot capture time", async () => {
+  const { isAiCodingUsageRefreshAllowed } = await loadRefreshPolicyModule();
+  const lastRefreshAt = "2026-09-17T00:00:00Z";
+  const lastAttemptAt = "2026-09-18T00:00:00Z";
+  const attempt = Date.parse(lastAttemptAt);
+  const provider = connectedProvider({
+    lastRefreshAt,
+    lastAttemptAt,
+    lastError: "Claude usage endpoint returned HTTP 429 Too Many Requests; retry after 3600s.",
+  });
+  assert.equal(isAiCodingUsageRefreshAllowed(provider, attempt + 30 * 60 * 1000), false);
+  assert.equal(isAiCodingUsageRefreshAllowed(provider, attempt + 60 * 60 * 1000), true);
+  assert.equal(provider.lastRefreshAt, lastRefreshAt);
+});
+
+test("HTTP-date Retry-After remains blocked until the absolute deadline", async () => {
+  const { isAiCodingUsageRefreshAllowed } = await loadRefreshPolicyModule();
+  const provider = connectedProvider({
+    lastAttemptAt: "2026-09-18T00:00:00Z",
+    lastError: "Claude usage endpoint returned HTTP 429 Too Many Requests; retry after Fri, 18 Sep 2026 01:00:00 GMT.",
+  });
+  assert.equal(isAiCodingUsageRefreshAllowed(provider, Date.parse("2026-09-18T00:59:59Z")), false);
+  assert.equal(isAiCodingUsageRefreshAllowed(provider, Date.parse("2026-09-18T01:00:00Z")), true);
+});
+
+test("missing timestamp does not create a permanently sliding cooldown", async () => {
+  const { isAiCodingUsageRefreshAllowed } = await loadRefreshPolicyModule();
+  const provider = connectedProvider({
+    lastError: "Claude usage endpoint returned HTTP 429 Too Many Requests.",
+  });
+  const now = Date.parse("2026-09-18T00:00:00Z");
+  assert.equal(isAiCodingUsageRefreshAllowed(provider, now), true);
+  assert.equal(isAiCodingUsageRefreshAllowed(provider, now + 30 * 60 * 1000), true);
+});
+
+test("background scheduling uses recent attempts even when the quota snapshot is old or missing", async () => {
+  const { providersDueForAiCodingUsageBackgroundRefresh } = await loadRefreshPolicyModule();
+  const now = Date.parse("2026-09-18T00:05:00Z");
+  for (const provider of ["codex", "claudeCode"]) {
+    for (const lastRefreshAt of [null, "2026-09-17T00:00:00Z"]) {
+      const state = connectedProvider({
+        provider,
+        lastRefreshAt,
+        lastAttemptAt: "2026-09-18T00:04:00Z",
+        lastError: "offline",
+      });
+      assert.equal(providersDueForAiCodingUsageBackgroundRefresh([state], now).length, 0);
+    }
+  }
+});
+
+test("invalid retry-after falls back to cooldown and zero/past deadlines keep the minimum interval", async () => {
+  const { nextAiCodingUsageRefreshAt } = await loadRefreshPolicyModule();
+  const attempt = Date.parse("2026-09-18T00:00:00Z");
+  for (const [retryAfter, minutes] of [
+    ["invalid", 30], ["0s", 15], ["Fri, 18 Sep 2026 00:00:00 GMT", 15],
+  ]) {
+    const state = connectedProvider({
+      lastAttemptAt: new Date(attempt).toISOString(),
+      lastError: `Claude usage endpoint returned HTTP 429; retry after ${retryAfter}.`,
+    });
+    assert.equal(nextAiCodingUsageRefreshAt(state, attempt), attempt + minutes * 60 * 1000);
+  }
+});
+
+test("invalid attempt timestamps retain compatibility with legacy snapshot timestamps", async () => {
+  const { nextAiCodingUsageRefreshAt } = await loadRefreshPolicyModule();
+  const captured = Date.parse("2026-09-18T00:00:00Z");
+  const state = connectedProvider({
+    lastRefreshAt: new Date(captured).toISOString(),
+    lastAttemptAt: "invalid",
+    lastError: "Claude usage endpoint returned HTTP 429 Too Many Requests.",
+  });
+  assert.equal(nextAiCodingUsageRefreshAt(state, captured), captured + 30 * 60 * 1000);
+});
