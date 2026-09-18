@@ -114,6 +114,25 @@ Prompt-mode approval.
 
 For transfer integrity, KKTerm disables SSH compression inside native SFTP Sessions even when compression is enabled for the parent SSH Connection; the SSH terminal continues to use its configured compression setting. KKTerm sends one SFTP write at a time and waits for its acknowledgement. Canceling an in-flight transfer or reaching its I/O timeout closes the affected SFTP Session and reconnects before the next queued transfer starts. The interrupted transfer is not retried automatically. If the remote protocol stream had already stopped responding, a partial upload may remain because KKTerm does not issue cleanup commands through the unusable Session.
 
+### Cloud Storage downloads and renames
+
+Cloud Storage Connections (S3-compatible and Azure Blob) use the same file-browser
+transfer actions. Folder downloads include nested folders. Each downloaded file
+is staged beside its destination and committed only after its contents arrive
+successfully. Canceling or failing before that commit preserves an existing local
+file; files already completed earlier in a folder transfer remain downloaded.
+The non-overwrite path also refuses to replace a file created by another process
+while the download was in progress. Object names containing path separators,
+Windows drive/alternate-stream syntax, or control characters are rejected as local
+file names rather than interpreted as paths.
+
+Cloud renames use server-side copy followed by source deletion, not an atomic
+filesystem rename. A folder's objects are all copied before any source is deleted.
+A copy failure leaves the sources intact but may leave destination copies; a later
+delete failure may leave objects at both names. Refresh and inspect both locations
+before retrying a failed rename. Authentication and listing errors are reported
+instead of being interpreted as proof that an object is missing or is a folder.
+
 ## SFTP Debug Logging
 
 Debug builds write SFTP startup and transfer records to `sftp.debug.log` beside `kkterm.log`. Release builds write the same JSONL log only when Settings → General → Debug → `settings.advancedDebugging` is enabled. Records include SFTP browser startup stages, requested and effective compression, per-session operation waits, transfer start/completion/error summaries, upload open/write/shutdown timeouts, Session invalidation and close results, and whether KKTerm removed a newly-created partial remote file or skipped cleanup because the Session was unusable. The log omits passwords, SSH key passphrases, terminal contents, and file contents, but it may include remote hostnames, usernames, local paths, and remote paths, so users should review it before sharing.
@@ -149,7 +168,7 @@ Text and Hex are always available; the default mode is auto-detected from both f
 
 Selecting a **folder** as the left side and choosing `compare.compareTo` on a second folder opens **Folder Compare** (`compare.folderTitle`) instead of the file overlay — a Beyond Compare-style two-pane directory diff. Both sides must be **local** folders: Folder Compare recursively reads and mirrors local paths, so picking a remote folder is rejected with `compare.folderRemoteUnsupported`, and selecting one file and one folder reports `compare.mismatch`.
 
-The backend `compare_folders` command walks both trees and aligns entries by relative path, classifying each as **same**, **different** (byte-exact content comparison — equal size then a streamed chunk compare; files larger than 64 MB fall back to a modification-time check so the scan stays bounded), **left-only**, or **right-only**; a folder row is "different" when any descendant differs or exists on only one side. The walk stops after 200,000 aligned entries and the result is flagged truncated (`compare.folderTruncated`) so a pathological tree can't run unbounded. The header shows per-status counts (`compare.folderCountDifferent` / `compare.folderCountLeftOnly` / `compare.folderCountRightOnly` / `compare.folderCountSame`) and an All/Differences/Same filter reusing the diff `git.diffMode.*` labels. The row list is virtualized (only the rows in view are rendered), so large trees stay responsive — notably on macOS, where the WebKit webview would otherwise freeze building tens of thousands of rows.
+The backend `compare_folders` command walks both trees and aligns entries by relative path, classifying each as **same**, **different** (byte-exact content comparison — equal size then a streamed chunk compare; files larger than 64 MB fall back to a modification-time check so the scan stays bounded), **left-only**, or **right-only**; a folder row is "different" when any descendant differs or exists on only one side. The walk stops after 200,000 aligned entries and the result is flagged truncated (`compare.folderTruncated`) so a pathological tree can't run unbounded. The header shows per-status counts (`compare.folderCountDifferent` / `compare.folderCountSame` / `compare.folderCountLeftOnly` / `compare.folderCountRightOnly`) and an All/Differences/Same filter reusing the diff `git.diffMode.*` labels. The row list is virtualized (only the rows in view are rendered), so large trees stay responsive — notably on macOS, where the WebKit webview would otherwise freeze building tens of thousands of rows.
 
 From the tree you can:
 

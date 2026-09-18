@@ -11,6 +11,10 @@ use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, Ipv4Addr};
 use std::process::Command;
 
+// All widget instances share the same machine. Reject overlapping applies
+// rather than interleaving address, route and DNS changes or queuing stale work.
+static PROFILE_APPLY_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum IpMode {
@@ -79,6 +83,10 @@ pub fn snapshot() -> Result<NetworkProfilesSnapshot, String> {
 
 pub fn apply(request: ApplyNetworkProfileRequest) -> Result<(), String> {
     validate_request(&request)?;
+    let _apply_guard = PROFILE_APPLY_LOCK.try_lock().map_err(|error| match error {
+        std::sync::TryLockError::WouldBlock => "another network profile is already being applied".to_string(),
+        std::sync::TryLockError::Poisoned(_) => "network profile application lock is poisoned".to_string(),
+    })?;
     #[cfg(target_os = "windows")]
     return windows_apply(&request);
     #[cfg(target_os = "macos")]
@@ -423,9 +431,44 @@ fn shell_join(args: &[String]) -> String {
 }
 
 #[cfg(target_os = "windows")]
-fn windows_snapshot() -> Result<NetworkProfilesSnapshot, String> {
+fn windows_snapshot_command(script: &str) -> Command {
     use std::os::windows::process::CommandExt;
-    const CREATE_NO_WINDOW: u32 = 0x08000000;
+    // Redirected Windows PowerShell output otherwise uses the console code
+    // page, which cannot be decoded as UTF-8 for localized adapter names.
+    let script = format!(
+        "[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); {script}"
+    );
+    let mut command = Command::new("powershell.exe");
+    command.creation_flags(0x08000000).args([
+        "-NoProfile", "-NonInteractive", "-Command", &script,
+    ]);
+    command
+}
+
+#[cfg(target_os = "windows")]
+fn windows_snapshot_script() -> &'static str {
+    r#"$items=@(
+Get-NetAdapter | Where-Object { -not $_.Virtual } | ForEach-Object {
+  $a=$_; $i4=Get-NetIPInterface -InterfaceIndex $a.ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue;
+  $i6=Get-NetIPInterface -InterfaceIndex $a.ifIndex -AddressFamily IPv6 -ErrorAction SilentlyContinue;
+  $c=Get-NetIPConfiguration -InterfaceIndex $a.ifIndex -ErrorAction SilentlyContinue;
+  $v4b=Get-NetAdapterBinding -Name $a.Name -ComponentID ms_tcpip -ErrorAction SilentlyContinue;
+  $v6b=Get-NetAdapterBinding -Name $a.Name -ComponentID ms_tcpip6 -ErrorAction SilentlyContinue;
+  [pscustomobject]@{
+    id=$a.InterfaceGuid.ToString(); name=$a.Name; detail=$a.InterfaceDescription; connected=($a.Status -eq 'Up');
+    ipv4Mode=$(if($v4b -and -not $v4b.Enabled){'disabled'}elseif($i4.Dhcp -eq 'Enabled'){'automatic'}elseif($i4){'manual'}else{'disabled'});
+    ipv6Mode=$(if($v6b -and -not $v6b.Enabled){'disabled'}elseif($i6.RouterDiscovery -eq 'Disabled'){'manual'}else{'automatic'});
+    ipv4Addresses=@($c.IPv4Address | Where-Object { $_.IPAddress } | %{"$($_.IPAddress)/$($_.PrefixLength)"});
+    ipv6Addresses=@(Get-NetIPAddress -InterfaceIndex $a.ifIndex -AddressFamily IPv6 -ErrorAction SilentlyContinue | Where-Object { $_.PrefixOrigin -ne 'WellKnown' -and $_.AddressState -ne 'Duplicate' } | %{"$($_.IPAddress)/$($_.PrefixLength)"});
+    ipv4Gateway=($c.IPv4DefaultGateway | Sort-Object RouteMetric | Select-Object -First 1 -ExpandProperty NextHop);
+    ipv6Gateway=($c.IPv6DefaultGateway | Sort-Object RouteMetric | Select-Object -First 1 -ExpandProperty NextHop);
+    dnsServers=@((Get-DnsClientServerAddress -InterfaceIndex $a.ifIndex -ErrorAction SilentlyContinue).ServerAddresses | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+  }
+}); ConvertTo-Json -InputObject $items -Compress -Depth 5"#
+}
+
+#[cfg(target_os = "windows")]
+fn windows_snapshot() -> Result<NetworkProfilesSnapshot, String> {
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
     struct RawAdapter {
@@ -444,29 +487,7 @@ fn windows_snapshot() -> Result<NetworkProfilesSnapshot, String> {
         #[serde(default)]
         dns_servers: Vec<String>,
     }
-    let script = r#"$items=@(
-Get-NetAdapter | Where-Object { -not $_.Virtual } | ForEach-Object {
-  $a=$_; $i4=Get-NetIPInterface -InterfaceIndex $a.ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue;
-  $i6=Get-NetIPInterface -InterfaceIndex $a.ifIndex -AddressFamily IPv6 -ErrorAction SilentlyContinue;
-  $c=Get-NetIPConfiguration -InterfaceIndex $a.ifIndex -ErrorAction SilentlyContinue;
-  $v4b=Get-NetAdapterBinding -Name $a.Name -ComponentID ms_tcpip -ErrorAction SilentlyContinue;
-  $v6b=Get-NetAdapterBinding -Name $a.Name -ComponentID ms_tcpip6 -ErrorAction SilentlyContinue;
-  [pscustomobject]@{
-    id=$a.InterfaceGuid.ToString(); name=$a.Name; detail=$a.InterfaceDescription; connected=($a.Status -eq 'Up');
-    ipv4Mode=$(if($v4b -and -not $v4b.Enabled){'disabled'}elseif($i4.Dhcp -eq 'Enabled'){'automatic'}elseif($i4){'manual'}else{'disabled'});
-    ipv6Mode=$(if($v6b -and -not $v6b.Enabled){'disabled'}elseif($i6.RouterDiscovery -eq 'Disabled'){'manual'}else{'automatic'});
-    ipv4Addresses=@($c.IPv4Address | Where-Object { $_.IPAddress } | %{"$($_.IPAddress)/$($_.PrefixLength)"});
-    ipv6Addresses=@(Get-NetIPAddress -InterfaceIndex $a.ifIndex -AddressFamily IPv6 -ErrorAction SilentlyContinue | Where-Object { $_.PrefixOrigin -ne 'WellKnown' -and $_.AddressState -ne 'Duplicate' } | %{"$($_.IPAddress)/$($_.PrefixLength)"});
-    ipv4Gateway=if($c.IPv4DefaultGateway){$c.IPv4DefaultGateway.NextHop}else{$null};
-    ipv6Gateway=if($c.IPv6DefaultGateway){$c.IPv6DefaultGateway.NextHop}else{$null};
-    dnsServers=@((Get-DnsClientServerAddress -InterfaceIndex $a.ifIndex -ErrorAction SilentlyContinue).ServerAddresses | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-  }
-}); ConvertTo-Json -InputObject $items -Compress -Depth 5"#;
-    let mut command = Command::new("powershell.exe");
-    command
-        .creation_flags(CREATE_NO_WINDOW)
-        .args(["-NoProfile", "-NonInteractive", "-Command", script]);
-    let raw = command_output(command, "PowerShell")?;
+    let raw = command_output(windows_snapshot_command(windows_snapshot_script()), "PowerShell")?;
     let parsed: Vec<RawAdapter> = serde_json::from_str(&raw)
         .map_err(|error| format!("invalid PowerShell network data: {error}"))?;
     Ok(NetworkProfilesSnapshot {
@@ -950,5 +971,59 @@ mod tests {
     #[test]
     fn rejects_control_characters_in_adapter_ids() {
         assert!(validate_identifier("Ethernet\nInjected", "adapter").is_err());
+    }
+
+    #[test]
+    fn overlapping_apply_is_rejected_before_any_os_command() {
+        let guard = PROFILE_APPLY_LOCK.lock().unwrap();
+        let family = NetworkFamilySnapshot {
+            mode: IpMode::Automatic,
+            addresses: Vec::new(),
+            gateway: None,
+        };
+        let error = apply(ApplyNetworkProfileRequest {
+            adapter_id: "test-adapter-not-a-real-device".into(),
+            service_id: None,
+            ipv4: family.clone(),
+            ipv6: family,
+            dns_servers: Vec::new(),
+        }).unwrap_err();
+        assert_eq!(error, "another network profile is already being applied");
+        drop(guard);
+        assert!(PROFILE_APPLY_LOCK.try_lock().is_ok());
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn windows_snapshot_handles_unicode_multiple_gateways_and_empty_arrays() {
+        // Stub discovery commands only; never inspect or change the host network.
+        let fixtures = r#"
+function Get-NetAdapter { [pscustomobject]@{ Virtual=$false; ifIndex=42; InterfaceGuid=[guid]'00000000-0000-0000-0000-000000000042'; Name='乙太網路'; InterfaceDescription='測試介面'; Status='Up' } }
+function Get-NetIPInterface { [pscustomobject]@{ Dhcp='Enabled'; RouterDiscovery='Enabled' } }
+function Get-NetIPConfiguration { [pscustomobject]@{
+  IPv4Address=@([pscustomobject]@{ IPAddress='192.0.2.10'; PrefixLength=24 });
+  IPv4DefaultGateway=@([pscustomobject]@{ NextHop='192.0.2.2'; RouteMetric=20 }, [pscustomobject]@{ NextHop='192.0.2.1'; RouteMetric=5 });
+  IPv6DefaultGateway=@()
+} }
+function Get-NetAdapterBinding { [pscustomobject]@{ Enabled=$true } }
+function Get-NetIPAddress { }
+function Get-DnsClientServerAddress { [pscustomobject]@{ ServerAddresses=@('192.0.2.53') } }
+"#;
+        let script = format!("{fixtures}\n{}", windows_snapshot_script());
+        let raw = command_output(windows_snapshot_command(&script), "PowerShell fixture").unwrap();
+        let values: Vec<serde_json::Value> = serde_json::from_str(&raw).unwrap();
+        assert_eq!(values.len(), 1);
+        assert_eq!(values[0]["name"], "乙太網路");
+        assert_eq!(values[0]["detail"], "測試介面");
+        assert_eq!(values[0]["ipv4Gateway"], "192.0.2.1");
+        assert!(values[0]["ipv6Gateway"].is_null());
+        assert_eq!(values[0]["ipv4Addresses"], serde_json::json!(["192.0.2.10/24"]));
+        assert_eq!(values[0]["ipv6Addresses"], serde_json::json!([]));
+        assert_eq!(values[0]["dnsServers"], serde_json::json!(["192.0.2.53"]));
+
+        let script = format!("function Get-NetAdapter {{ }}\n{}", windows_snapshot_script());
+        let raw = command_output(windows_snapshot_command(&script), "PowerShell empty fixture").unwrap();
+        let values: Vec<serde_json::Value> = serde_json::from_str(&raw).unwrap();
+        assert!(values.is_empty());
     }
 }
