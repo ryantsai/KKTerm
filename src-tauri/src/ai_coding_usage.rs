@@ -1009,4 +1009,6 @@ fn claude_statusline_adapter_command() -> Result<String, String> {
     let exe = std::env::current_exe()
         .map_err(|error| format!("failed to locate KKTerm executable: {error}"))?;
     let path = exe.to_string_lossy().replace('\\', "/").replace('"', "\\\"");
-    Ok(format!("\\\"{path}\\\" {CLAUDE_STATUSLINE_ADAPTER_ARG}"))
+    Ok(format!("\"{path}\" {CLAUDE_STATUSLINE_ADAPTER_ARG}"))
+}
+
