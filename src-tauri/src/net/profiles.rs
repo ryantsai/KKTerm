@@ -451,7 +451,7 @@ fn windows_snapshot_command(script: &str) -> Command {
 #[cfg(target_os = "windows")]
 fn windows_snapshot_script() -> &'static str {
     r#"$items=@(
-Get-NetAdapter | Where-Object { -not $_.Virtual } | ForEach-Object {
+Get-NetAdapter | Where-Object { -not $_.Virtual -and $_.Status -ne 'Not Present' } | ForEach-Object {
   $a=$_; $i4=Get-NetIPInterface -InterfaceIndex $a.ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue;
   $i6=Get-NetIPInterface -InterfaceIndex $a.ifIndex -AddressFamily IPv6 -ErrorAction SilentlyContinue;
   $c=Get-NetIPConfiguration -InterfaceIndex $a.ifIndex -ErrorAction SilentlyContinue;
@@ -571,7 +571,7 @@ fn windows_apply(request: &ApplyNetworkProfileRequest) -> Result<(), String> {
 
 #[cfg(any(target_os = "windows", test))]
 fn windows_apply_broker(encoded: &str) -> String {
-    format!(r#"$ErrorActionPreference='Stop'; try {{
+    format!(r#"$ErrorActionPreference='Stop'; [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); try {{
 $p=Start-Process -FilePath (Join-Path $PSHOME 'powershell.exe') -ArgumentList @('-NoProfile','-NonInteractive','-EncodedCommand','{encoded}') -Verb RunAs -WindowStyle Hidden -Wait -PassThru -ErrorAction Stop
 if ($null -eq $p.ExitCode) {{ throw 'The elevated process did not return an exit code' }}
 exit $p.ExitCode
@@ -683,8 +683,11 @@ fn windows_family_statements(family_name: &str, family: &NetworkFamilySnapshot) 
     if family.mode == IpMode::Manual {
         out.push(configure.clone());
     }
-    let route_filter = if family.mode == IpMode::Automatic { " | Where-Object Protocol -eq 'NetMgmt'" } else { "" };
-    let address_filter = if family.mode == IpMode::Automatic { "PrefixOrigin -eq 'Manual'" } else { "PrefixOrigin -ne 'WellKnown'" };
+    // Script-block filters: Windows PowerShell 5.1 rewrites a downstream
+    // removal failure as "The 'Ieq' operator failed" when the simplified
+    // Where-Object syntax is used, hiding the native diagnostic.
+    let route_filter = if family.mode == IpMode::Automatic { " | Where-Object { $_.Protocol -eq 'NetMgmt' }" } else { "" };
+    let address_filter = if family.mode == IpMode::Automatic { "{ $_.PrefixOrigin -eq 'Manual' }" } else { "{ $_.PrefixOrigin -ne 'WellKnown' }" };
     for store in ["PersistentStore", "ActiveStore"] {
         out.push(format!("$step='IPv6 {store} default routes'; Get-NetRoute -PolicyStore {store} -ErrorAction Stop | Where-Object {{ $_.InterfaceIndex -eq $a.ifIndex -and $_.AddressFamily -eq 'IPv6' -and $_.DestinationPrefix -eq '::/0' }}{route_filter} | Remove-NetRoute -Confirm:$false -ErrorAction Stop"));
         out.push(format!("$step='IPv6 {store} addresses'; Get-NetIPAddress -PolicyStore {store} -ErrorAction Stop | Where-Object {{ $_.InterfaceIndex -eq $a.ifIndex -and $_.AddressFamily -eq 'IPv6' }} | Where-Object {address_filter} | Remove-NetIPAddress -Confirm:$false -ErrorAction Stop"));
@@ -1089,6 +1092,7 @@ mod tests {
     fn windows_snapshot_handles_unicode_multiple_gateways_and_empty_arrays() {
         // Stub discovery commands only; never inspect or change the host network.
         let fixtures = r#"
+[System.Threading.Thread]::CurrentThread.CurrentCulture = [System.Globalization.CultureInfo]::GetCultureInfo('zh-TW')
 function Get-NetAdapter { [pscustomobject]@{ Virtual=$false; ifIndex=42; InterfaceGuid=[guid]'00000000-0000-0000-0000-000000000042'; Name='乙太網路'; InterfaceDescription='測試介面'; Status='Up' } }
 function Get-NetIPInterface { [pscustomobject]@{ Dhcp='Enabled'; RouterDiscovery='Enabled' } }
 function Get-NetIPConfiguration { [pscustomobject]@{
@@ -1116,6 +1120,32 @@ function Get-DnsClientServerAddress { [pscustomobject]@{ ServerAddresses=@('192.
         let raw = command_output(windows_snapshot_command(&script), "PowerShell empty fixture").unwrap();
         let values: Vec<serde_json::Value> = serde_json::from_str(&raw).unwrap();
         assert!(values.is_empty());
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn windows_snapshot_hides_adapters_windows_cannot_configure() {
+        // A Device-Manager-disabled NIC is "Not Present": it has no IP
+        // interface for netsh to address, so the widget must not offer it.
+        let fixtures = r#"
+function Get-NetAdapter { @(
+  [pscustomobject]@{ Virtual=$false; ifIndex=42; InterfaceGuid=[guid]'00000000-0000-0000-0000-000000000042'; Name='乙太網路'; InterfaceDescription='測試介面'; Status='Disconnected' },
+  [pscustomobject]@{ Virtual=$false; ifIndex=19; InterfaceGuid=[guid]'00000000-0000-0000-0000-000000000019'; Name='Wi-Fi 4'; InterfaceDescription='Qualcomm FastConnect 7800'; Status='Not Present' },
+  [pscustomobject]@{ Virtual=$false; ifIndex=17; InterfaceGuid=[guid]'00000000-0000-0000-0000-000000000017'; Name='Wi-Fi 幽靈'; InterfaceDescription='已停用介面'; Status='Not Present' },
+  [pscustomobject]@{ Virtual=$true; ifIndex=13; InterfaceGuid=[guid]'00000000-0000-0000-0000-000000000013'; Name='VMware Network Adapter VMnet8'; InterfaceDescription='VMware Virtual Ethernet Adapter'; Status='Up' }
+) }
+function Get-NetIPInterface { [pscustomobject]@{ Dhcp='Enabled'; RouterDiscovery='Enabled' } }
+function Get-NetIPConfiguration { [pscustomobject]@{ IPv4Address=@(); IPv4DefaultGateway=@(); IPv6DefaultGateway=@() } }
+function Get-NetAdapterBinding { [pscustomobject]@{ Enabled=$true } }
+function Get-NetIPAddress { }
+function Get-DnsClientServerAddress { [pscustomobject]@{ ServerAddresses=@() } }
+"#;
+        let script = format!("{fixtures}\n{}", windows_snapshot_script());
+        let raw = command_output(windows_snapshot_command(&script), "PowerShell fixture").unwrap();
+        let values: Vec<serde_json::Value> = serde_json::from_str(&raw).unwrap();
+        assert_eq!(values.len(), 1);
+        assert_eq!(values[0]["name"], "乙太網路");
+        assert_eq!(values[0]["connected"], false);
     }
 }
 

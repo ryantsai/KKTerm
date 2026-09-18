@@ -55,6 +55,11 @@ test("offline application uses persistent setters, not active interface readines
   assert.match(script, /if \(\$code -ne 0\)/);
 });
 
+test("Windows snapshot hides adapters Windows networking cannot configure", () => {
+  const snapshot = section("fn windows_snapshot_script()", "fn windows_snapshot()");
+  assert.ok(snapshot.includes("Get-NetAdapter | Where-Object { -not $_.Virtual -and $_.Status -ne 'Not Present' }"));
+});
+
 test("DNS is configured by enabled family without reachability validation", () => {
   assert.match(script, /windows_dns_statements\(request\)/);
   assert.match(dns, /family\.mode == IpMode::Disabled/);

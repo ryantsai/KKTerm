@@ -119,6 +119,10 @@ cleanup stays scoped to the selected adapter and preserves link-local addresses.
 DNS is configured separately for each enabled family, without probing DNS-server
 reachability on an offline network. When both families are disabled, DNS is
 skipped. Native command failures still stop application and report their step.
+Adapters Windows reports as Not Present — for example, a NIC disabled in Device
+Manager — are omitted from `dashboard.networkProfilesAdapter`, because Windows
+networking cannot configure them; enable the device and use `common.refresh` to
+list it again.
 
 After the elevated helper confirms success, `dashboard.networkProfilesApplied`
 shows one success popup in the bottom Status Bar with the profile and adapter

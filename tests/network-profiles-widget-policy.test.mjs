@@ -23,10 +23,8 @@ test("Network Profiles is a built-in widget with a structured privileged backend
   assert.match(backend, /EncodedCommand/);
   assert.match(backend, /ignore-auto-dns/);
   assert.match(backend, /IPv6 Prefix Length/);
-  assert.equal(
-    (backend.match(/creation_flags\(CREATE_NO_WINDOW\)/g) ?? []).length,
-    2,
-    "both PowerShell spawns must hide their console window",
-  );
+  assert.match(backend, /fn windows_snapshot_command\(script: &str\) -> Command \{[\s\S]*?creation_flags\(CREATE_NO_WINDOW\)/);
+  assert.match(backend, /windows_snapshot_command\(windows_snapshot_script\(\)\)/);
+  assert.match(backend, /windows_snapshot_command\(&broker\)/);
   assert.match(durable, /kkterm\.dashboard\.networkProfiles\.v1/);
 });

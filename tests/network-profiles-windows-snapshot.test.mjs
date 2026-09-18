@@ -12,10 +12,12 @@ test("Windows snapshot omits missing addresses and DNS without losing configured
 }, () => {
   // Execute the production PowerShell projection against disconnected and configured
   // adapter fixtures. No OS configuration is read or changed by these commands.
+  // Non-ASCII names/details and a non-English culture assert the UTF-8 bridge.
   const fixtures = `
+[System.Threading.Thread]::CurrentThread.CurrentCulture = [System.Globalization.CultureInfo]::GetCultureInfo('zh-TW')
 function Get-NetAdapter {
   1..2 | ForEach-Object {
-    [pscustomobject]@{ ifIndex=$_; InterfaceGuid="adapter-$_"; Name="Adapter $_"; Virtual=$false; Status=$(if($_ -eq 2){'Up'}else{'Disconnected'}) }
+    [pscustomobject]@{ ifIndex=$_; InterfaceGuid="adapter-$_"; Name=$(if($_ -eq 1){'無線網路卡'}else{'有線網路卡'}); InterfaceDescription=$(if($_ -eq 1){'測試介面卡描述'}else{'測試介面卡二'}); Virtual=$false; Status=$(if($_ -eq 2){'Up'}else{'Disconnected'}) }
   }
 }
 function Get-NetIPInterface { param($InterfaceIndex, $AddressFamily, $ErrorAction)
@@ -36,7 +38,10 @@ function Get-DnsClientServerAddress { param($InterfaceIndex, $ErrorAction)
 `;
   const result = spawnSync("powershell.exe", [
     "-NoProfile", "-NonInteractive", "-EncodedCommand",
-    Buffer.from(fixtures + script, "utf16le").toString("base64"),
+    // Mirror windows_snapshot_command: a Traditional Chinese Windows console
+    // default (OEM 950) is in place first, then the production wrapper forces
+    // UTF-8 so non-ASCII adapter names survive regardless of the host code page.
+    Buffer.from("[Console]::OutputEncoding = [System.Text.Encoding]::GetEncoding(950); [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); " + fixtures + script, "utf16le").toString("base64"),
   ], { encoding: "utf8", windowsHide: true });
   assert.equal(result.status, 0, result.stderr);
   const [disconnected, connected] = JSON.parse(result.stdout);
@@ -45,9 +50,13 @@ function Get-DnsClientServerAddress { param($InterfaceIndex, $ErrorAction)
   assert.deepEqual(disconnected.ipv6Addresses, []);
   assert.equal(disconnected.ipv4Gateway, null);
   assert.equal(disconnected.connected, false);
+  assert.equal(disconnected.name, "無線網路卡");
+  assert.equal(disconnected.detail, "測試介面卡描述");
   assert.deepEqual(connected.dnsServers, ["192.0.2.53", "2001:db8::53"]);
   assert.deepEqual(connected.ipv4Addresses, ["192.0.2.5/24"]);
   assert.deepEqual(connected.ipv6Addresses, ["2001:db8::5/64"]);
   assert.equal(connected.ipv4Gateway, "192.0.2.1");
   assert.equal(connected.connected, true);
+  assert.equal(connected.name, "有線網路卡");
+  assert.equal(connected.detail, "測試介面卡二");
 });

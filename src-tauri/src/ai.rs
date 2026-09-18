@@ -7555,8 +7555,13 @@ fn shell_command_tool(root: &Path, args: Value) -> String {
         process.args(["/C", &command]);
         process
     } else {
+        // Windows PowerShell 5.1 encodes redirected stdout with the OEM code
+        // page by default, which mangles non-ASCII output on any non-English
+        // Windows. Force UTF-8 (no BOM) before running the requested command.
+        let script =
+            format!("[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); {command}");
         let mut process = Command::new("powershell");
-        process.args(["-NoProfile", "-NonInteractive", "-Command", &command]);
+        process.args(["-NoProfile", "-NonInteractive", "-Command", &script]);
         process
     };
     let output = crate::installer::proc::no_window(process.current_dir(root)).output();

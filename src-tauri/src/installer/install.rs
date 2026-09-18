@@ -1995,7 +1995,7 @@ fn add_to_user_path(dir: &PathBuf, tool_id: &str, emit: &EventSink) {
     // safely. Failure here is non-fatal — the tool is still installed.
     let dir_str = dir.to_string_lossy().to_string();
     let script = format!(
-        r#"$cur = [Environment]::GetEnvironmentVariable('Path','User'); if ($cur -notlike '*{0}*') {{ [Environment]::SetEnvironmentVariable('Path', ($cur + ';{0}').Trim(';'), 'User') }}"#,
+        r#"[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); $cur = [Environment]::GetEnvironmentVariable('Path','User'); if ($cur -notlike '*{0}*') {{ [Environment]::SetEnvironmentVariable('Path', ($cur + ';{0}').Trim(';'), 'User') }}"#,
         dir_str.replace('\'', "''")
     );
     let result = no_window(Command::new("powershell").args([
@@ -2693,7 +2693,10 @@ fn refreshed_environment() -> RefreshedEnvironment {
 
 #[cfg(target_os = "windows")]
 fn refreshed_windows_environment() -> RefreshedEnvironment {
-    let script = r#"$names = @('Path','NVM_HOME','NVM_SYMLINK'); foreach ($name in $names) { $machine = [Environment]::GetEnvironmentVariable($name,'Machine'); $user = [Environment]::GetEnvironmentVariable($name,'User'); if ($machine) { "Machine`t$name`t$machine" }; if ($user) { "User`t$name`t$user" } }"#;
+    // Windows PowerShell 5.1 encodes redirected stdout with the OEM code page
+    // by default; non-ASCII persisted PATH entries would otherwise decode as
+    // replacement characters before `parse_persisted_environment`.
+    let script = r#"[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); $names = @('Path','NVM_HOME','NVM_SYMLINK'); foreach ($name in $names) { $machine = [Environment]::GetEnvironmentVariable($name,'Machine'); $user = [Environment]::GetEnvironmentVariable($name,'User'); if ($machine) { "Machine`t$name`t$machine" }; if ($user) { "User`t$name`t$user" } }"#;
     let output = no_window(
         Command::new("powershell")
             .args(["-NoProfile", "-NonInteractive", "-Command", script])

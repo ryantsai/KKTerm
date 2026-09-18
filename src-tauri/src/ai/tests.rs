@@ -482,6 +482,18 @@ fn cli_capture_honors_timeout() {
     assert!(started.elapsed() < Duration::from_secs(2));
 }
 
+#[cfg(target_os = "windows")]
+#[test]
+fn shell_command_tool_preserves_non_ascii_powershell_output() {
+    // Windows PowerShell 5.1 defaults redirected stdout to the OEM code page,
+    // so non-ASCII output must come back intact on any display language.
+    let result = shell_command_tool(
+        &std::env::temp_dir(),
+        serde_json::json!({ "command": "'測試輸出'", "shell": "powershell" }),
+    );
+    assert!(result.contains("測試輸出"), "{result}");
+}
+
 #[test]
 fn configured_cli_backend_command_wins_over_discovery() {
     let command = resolve_cli_backend_command(

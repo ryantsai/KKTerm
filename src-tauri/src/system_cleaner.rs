@@ -805,23 +805,35 @@ fn audit(event: &str, details: serde_json::Value) {
     }
 }
 
+// Windows PowerShell 5.1 encodes redirected stdout with the OEM code page by
+// default, which loses or invalidates non-ASCII app names before the strict
+// UTF-8 JSON decode. Force UTF-8 (no BOM) before emitting anything.
+const INSTALLED_APP_METADATA_SCRIPT: &str = r#"[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); $paths=@('HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*','HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*','HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*'); Get-ItemProperty $paths -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName } | Select-Object DisplayName,Publisher,@{Name='EstimatedSizeBytes';Expression={[int64]$_.EstimatedSize * 1KB}} | ConvertTo-Json -Compress"#;
+
 fn installed_app_metadata() -> HashMap<String, InstalledAppMetadata> {
     let mut command = Command::new("powershell.exe");
     command.args([
         "-NoProfile",
         "-NonInteractive",
         "-Command",
-        "$paths=@('HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*','HKLM:\\Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*','HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*'); Get-ItemProperty $paths -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName } | Select-Object DisplayName,Publisher,@{Name='EstimatedSizeBytes';Expression={[int64]$_.EstimatedSize * 1KB}} | ConvertTo-Json -Compress",
+        INSTALLED_APP_METADATA_SCRIPT,
     ]);
     #[cfg(target_os = "windows")]
     command.creation_flags(CREATE_NO_WINDOW);
     let Ok(output) = command.output() else {
         return HashMap::new();
     };
-    if !output.status.success() || output.stdout.iter().all(u8::is_ascii_whitespace) {
+    if !output.status.success() {
         return HashMap::new();
     }
-    let Ok(value) = serde_json::from_slice::<serde_json::Value>(&output.stdout) else {
+    parse_installed_app_metadata(&output.stdout)
+}
+
+fn parse_installed_app_metadata(stdout: &[u8]) -> HashMap<String, InstalledAppMetadata> {
+    if stdout.iter().all(u8::is_ascii_whitespace) {
+        return HashMap::new();
+    }
+    let Ok(value) = serde_json::from_slice::<serde_json::Value>(stdout) else {
         return HashMap::new();
     };
     let values = match value {
@@ -938,20 +950,28 @@ fn installed_apps() -> Vec<InstalledApp> {
 }
 
 #[cfg(target_os = "windows")]
+const APPX_PACKAGES_SCRIPT: &str = r#"[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); Get-AppxPackage | Select-Object Name,PackageFullName,Version,Publisher,IsFramework,NonRemovable | ConvertTo-Json -Compress"#;
+
+#[cfg(target_os = "windows")]
 fn appx_packages() -> Result<Vec<AppxPackage>, String> {
     let mut command = Command::new("powershell.exe");
     command.args([
         "-NoProfile",
         "-NonInteractive",
         "-Command",
-        "Get-AppxPackage | Select-Object Name,PackageFullName,Version,Publisher,IsFramework,NonRemovable | ConvertTo-Json -Compress",
+        APPX_PACKAGES_SCRIPT,
     ]);
     command.creation_flags(CREATE_NO_WINDOW);
     let output = command.output().map_err(|error| error.to_string())?;
     if !output.status.success() {
         return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
     }
-    let value: serde_json::Value = serde_json::from_slice(&output.stdout)
+    parse_appx_packages(&output.stdout)
+}
+
+#[cfg(target_os = "windows")]
+fn parse_appx_packages(stdout: &[u8]) -> Result<Vec<AppxPackage>, String> {
+    let value: serde_json::Value = serde_json::from_slice(stdout)
         .map_err(|error| format!("Could not read Windows app packages: {error}"))?;
     let values = match value {
         serde_json::Value::Array(values) => values,
@@ -982,6 +1002,14 @@ fn appx_packages() -> Result<Vec<AppxPackage>, String> {
             .cmp(&right.name.to_ascii_lowercase())
     });
     Ok(packages)
+}
+
+#[cfg(target_os = "windows")]
+fn appx_remove_script(package_full_name: &str) -> String {
+    let escaped = package_full_name.replace('\'', "''");
+    format!(
+        "[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); Remove-AppxPackage -Package '{escaped}' -Confirm:$false -ErrorAction Stop"
+    )
 }
 
 #[tauri::command]
@@ -1019,9 +1047,9 @@ pub async fn system_cleaner_remove_appx_package(package_full_name: String) -> Re
             "appx-remove.approved",
             json!({ "packageFullName": &package_full_name }),
         );
-        let escaped = package_full_name.replace('\'', "''");
-        let script =
-            format!("Remove-AppxPackage -Package '{escaped}' -Confirm:$false -ErrorAction Stop");
+        // Localized failure text must survive the UTF-8 bridge for the audit
+        // trail and the error surface.
+        let script = appx_remove_script(&package_full_name);
         let mut command = Command::new("powershell.exe");
         command.args(["-NoProfile", "-NonInteractive", "-Command", &script]);
         command.creation_flags(CREATE_NO_WINDOW);
@@ -1659,5 +1687,63 @@ Microsoft Visual Studio    Microsoft.VisualStudio     17.9.0    17.10.0   winget
         assert_eq!(round_to_allocation_unit(1, 262_144), 262_144);
         assert_eq!(round_to_allocation_unit(262_144, 262_144), 262_144);
         assert_eq!(round_to_allocation_unit(262_145, 262_144), 524_288);
+    }
+
+    // Windows PowerShell 5.1 encodes redirected stdout with the host OEM code
+    // page unless the script forces UTF-8, so these fixtures use non-ASCII
+    // names and must keep them intact on any Windows display language.
+    #[cfg(target_os = "windows")]
+    fn run_windows_fixture(script: &str) -> std::process::Output {
+        use std::os::windows::process::CommandExt;
+        // Emulate a Traditional Chinese Windows console default (OEM 950)
+        // before the production script forces UTF-8, so these fixtures fail
+        // on any host that drops the encoding preamble.
+        let script =
+            format!("[Console]::OutputEncoding = [System.Text.Encoding]::GetEncoding(950); {script}");
+        Command::new("powershell.exe")
+            .creation_flags(CREATE_NO_WINDOW)
+            .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+            .output()
+            .expect("PowerShell fixture must start")
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn installed_app_metadata_keeps_non_ascii_names() {
+        let fixtures = "function Get-ItemProperty { [CmdletBinding()]param($Path) [pscustomobject]@{ DisplayName='測試應用程式'; Publisher='測試發行者'; EstimatedSize=123 } }";
+        let output = run_windows_fixture(&format!("{fixtures}\n{INSTALLED_APP_METADATA_SCRIPT}"));
+        assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+        let metadata = parse_installed_app_metadata(&output.stdout);
+        let entry = metadata
+            .get("測試應用程式")
+            .expect("non-ASCII display name must survive the UTF-8 bridge");
+        assert_eq!(entry.publisher, "測試發行者");
+        assert_eq!(entry.estimated_size_bytes, 123 * 1024);
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn appx_inventory_keeps_non_ascii_identity() {
+        let fixtures = r#"function Get-AppxPackage {
+  [pscustomobject]@{ Name='測試套件'; PackageFullName='Test.Package_1.0.0.0_x64__abc'; Version='1.0.0.0'; Publisher='CN=測試發行者'; IsFramework=$false; NonRemovable=$false }
+  [pscustomobject]@{ Name='Test.Framework_1.0.0.0_x64__abc'; PackageFullName='Test.Framework_1.0.0.0_x64__abc'; Version='1.0.0.0'; Publisher='CN=framework'; IsFramework=$true; NonRemovable=$false }
+}"#;
+        let output = run_windows_fixture(&format!("{fixtures}\n{APPX_PACKAGES_SCRIPT}"));
+        assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+        let packages = parse_appx_packages(&output.stdout).expect("fixture JSON must parse");
+        assert_eq!(packages.len(), 1);
+        assert_eq!(packages[0].name, "測試套件");
+        assert_eq!(packages[0].publisher, "CN=測試發行者");
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn appx_removal_error_keeps_localized_text() {
+        let fixtures = "function Remove-AppxPackage { [CmdletBinding()]param($Package,[switch]$Confirm) throw '無法移除應用程式套件' }";
+        let script = format!("{fixtures}\n{}", appx_remove_script("Test.Package_1.0.0.0_x64__abc"));
+        let output = run_windows_fixture(&script);
+        assert!(!output.status.success());
+        let error = String::from_utf8_lossy(&output.stderr);
+        assert!(error.contains("無法移除應用程式套件"), "{error}");
     }
 }

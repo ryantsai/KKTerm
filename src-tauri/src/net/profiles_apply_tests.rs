@@ -149,6 +149,7 @@ const NETSH_CALL: &str = "& (Join-Path ([Environment]::SystemDirectory) 'netsh.e
 
 #[cfg(target_os = "windows")]
 const FIXTURES: &str = r#"
+[System.Threading.Thread]::CurrentThread.CurrentCulture = [System.Globalization.CultureInfo]::GetCultureInfo('zh-TW')
 $script:bindings=0
 function Get-NetAdapter { [CmdletBinding()]param()
   if ($script:fail -eq 'missing' -or ($script:fail -eq 'removed' -and $script:bindings -gt 0)) { return }
