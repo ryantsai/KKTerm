@@ -31,7 +31,11 @@ elevation.
 
 Use `--accent-text` for accent-colored text and `--sel` for selected navigation
 with white text. Default and Dark keep these readable independently of decorative
-accent colors. `--focus` is a color for `outline`; `--ring` is a complete
+accent colors. Dashboard built-in widget bodies fill controls with the
+per-instance widget accent (`--w-accent`); pair it with the palette's readable
+text token (`--w-title-text`, resolved in
+`src/modules/dashboard/registry/palette.ts`) and never put `--accent-text` or
+`--text` on an accent fill. `--focus` is a color for `outline`; `--ring` is a complete
 `box-shadow` value, never an outline color or the color portion of another shadow.
 Retain a visible outline in forced-colors mode, where box shadows are suppressed.
 
