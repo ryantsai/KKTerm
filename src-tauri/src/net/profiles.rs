@@ -535,106 +535,151 @@ fn windows_snapshot() -> Result<NetworkProfilesSnapshot, String> {
 }
 
 #[cfg(target_os = "windows")]
+fn windows_apply_report_file() -> Result<tempfile::NamedTempFile, String> {
+    use std::os::windows::fs::OpenOptionsExt;
+    // Keep the original handle open without FILE_SHARE_DELETE: the elevated
+    // child must not follow a replaced file/symlink in a user-writable directory.
+    tempfile::Builder::new().prefix("kkterm-network-").suffix(".txt").make(|path| {
+        std::fs::OpenOptions::new().read(true).write(true).create_new(true)
+            .share_mode(0x00000001 | 0x00000002).open(path)
+    }).map_err(|error| format!("failed to create network profile diagnostic channel: {error}"))
+}
+
+#[cfg(target_os = "windows")]
 fn windows_apply(request: &ApplyNetworkProfileRequest) -> Result<(), String> {
-    use std::os::windows::process::CommandExt;
-    let adapter_id = ps_quote(&request.adapter_id);
-    let mut statements = Vec::new();
-    statements.push(format!(
-        "$a=Get-NetAdapter | Where-Object {{ $_.InterfaceGuid.ToString() -eq '{adapter_id}' }} | Select-Object -First 1; if ($null -eq $a) {{ throw 'Network adapter not found' }}"
-    ));
-    statements.extend(windows_family_statements("IPv4", "ms_tcpip", &request.ipv4));
-    statements.extend(windows_family_statements(
-        "IPv6",
-        "ms_tcpip6",
-        &request.ipv6,
-    ));
-    if request.dns_servers.is_empty() {
-        statements.push("Set-DnsClientServerAddress -InterfaceIndex $a.ifIndex -ResetServerAddresses -ErrorAction Stop".into());
-    } else {
-        let dns = request
-            .dns_servers
-            .iter()
-            .map(|value| format!("'{}'", ps_quote(value)))
-            .collect::<Vec<_>>()
-            .join(",");
-        statements.push(format!("Set-DnsClientServerAddress -InterfaceIndex $a.ifIndex -ServerAddresses @({dns}) -ErrorAction Stop"));
-    }
-    let inner = statements.join("; ");
+    use std::io::Read;
+    let mut report = windows_apply_report_file()?;
+    let path = report.path().to_str().ok_or("network profile diagnostic path is not valid Unicode")?;
+    let inner = windows_apply_script(request, path);
     let encoded = base64::engine::general_purpose::STANDARD.encode(
-        inner
-            .encode_utf16()
-            .flat_map(u16::to_le_bytes)
-            .collect::<Vec<_>>(),
+        inner.encode_utf16().flat_map(u16::to_le_bytes).collect::<Vec<_>>(),
     );
-    let broker = format!(
-        "$ErrorActionPreference='Stop'; try {{ $p=Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile','-NonInteractive','-EncodedCommand','{encoded}') -Verb RunAs -Wait -PassThru; exit $p.ExitCode }} catch {{ exit 1 }}"
-    );
-    let mut command = Command::new("powershell.exe");
-    command.creation_flags(CREATE_NO_WINDOW).args([
-        "-NoProfile",
-        "-NonInteractive",
-        "-Command",
-        &broker,
-    ]);
-    let status = command
-        .status()
+    let broker = windows_apply_broker(&encoded);
+    // CreateProcess has a 32,767 UTF-16 code-unit command-line limit. Leave
+    // headroom for PowerShell's executable path, flags and UTF-8 preamble.
+    if broker.encode_utf16().count() > 30_000 {
+        return Err("network profile command exceeds the Windows command-line limit".into());
+    }
+    let output = windows_snapshot_command(&broker).output()
         .map_err(|error| format!("failed to request administrator authorization: {error}"))?;
-    status
-        .success()
-        .then_some(())
-        .ok_or_else(|| "network profile application was cancelled or failed".into())
+    let mut detail = String::new();
+    report.as_file_mut().take(32_768).read_to_string(&mut detail)
+        .map_err(|error| format!("failed to read network profile result: {error}"))?;
+    windows_apply_result(output.status.success(), output.status.code(), &detail,
+        &String::from_utf8_lossy(&output.stderr))
 }
 
 #[cfg(any(target_os = "windows", test))]
-fn windows_family_statements(
-    family_name: &str,
-    binding: &str,
-    family: &NetworkFamilySnapshot,
-) -> Vec<String> {
-    let mut out = vec![format!(
-        "{}-NetAdapterBinding -Name $a.Name -ComponentID {binding} -ErrorAction Stop",
-        if family.mode == IpMode::Disabled {
-            "Disable"
-        } else {
-            "Enable"
-        }
-    )];
-    if family.mode == IpMode::Disabled {
-        return out;
+fn windows_apply_broker(encoded: &str) -> String {
+    format!(r#"$ErrorActionPreference='Stop'; try {{
+$p=Start-Process -FilePath (Join-Path $PSHOME 'powershell.exe') -ArgumentList @('-NoProfile','-NonInteractive','-EncodedCommand','{encoded}') -Verb RunAs -WindowStyle Hidden -Wait -PassThru -ErrorAction Stop
+if ($null -eq $p.ExitCode) {{ throw 'The elevated process did not return an exit code' }}
+exit $p.ExitCode
+}} catch {{
+$e=$_.Exception
+while ($null -ne $e) {{
+  if ($e -is [System.ComponentModel.Win32Exception] -and $e.NativeErrorCode -eq 1223) {{ exit 1223 }}
+  $e=$e.InnerException
+}}
+[Console]::Error.Write($_.Exception.Message); exit 1
+}}"#)
+}
+
+#[cfg(any(target_os = "windows", test))]
+fn windows_apply_result(success: bool, code: Option<i32>, report: &str, stderr: &str) -> Result<(), String> {
+    if code == Some(1223) {
+        return Err("administrator authorization was cancelled (UAC)".into());
     }
-    let dhcp = if family.mode == IpMode::Automatic {
-        "Enabled"
-    } else {
-        "Disabled"
-    };
-    out.push(format!("Set-NetIPInterface -InterfaceIndex $a.ifIndex -AddressFamily {family_name} -Dhcp {dhcp} -ErrorAction Stop"));
-    if family_name == "IPv6" {
-        out.push(format!(
-            "Set-NetIPInterface -InterfaceIndex $a.ifIndex -AddressFamily IPv6 -RouterDiscovery {} -ErrorAction Stop",
-            if family.mode == IpMode::Automatic {
-                "Enabled"
-            } else {
-                "Disabled"
-            }
-        ));
+    if let Some(detail) = report.strip_prefix("ERROR\n") {
+        return Err(format!("{}; network settings may be partially changed; refresh the adapter before retrying", detail.trim()));
+    }
+    if success && report.trim() == "OK" {
+        return Ok(());
+    }
+    let detail = stderr.trim();
+    if !detail.is_empty() {
+        return Err(format!("network profile elevation failed: {detail}"));
+    }
+    Err(format!("network profile application did not confirm completion (exit code {code:?}); refresh the adapter before retrying"))
+}
+
+#[cfg(any(target_os = "windows", test))]
+fn windows_apply_script(request: &ApplyNetworkProfileRequest, report_path: &str) -> String {
+    let adapter_id = ps_quote(&request.adapter_id);
+    let mut statements = vec![format!(
+        "$step='adapter lookup'; $a=Get-NetAdapter -ErrorAction Stop | Where-Object {{ $_.InterfaceGuid.ToString() -eq '{adapter_id}' }} | Select-Object -First 1; if ($null -eq $a) {{ throw 'Network adapter not found' }}"
+    )];
+    // Binding changes can restart the whole adapter. Finish both families'
+    // binding changes before touching addresses, routes or DNS.
+    for (name, binding, family) in [("IPv4", "ms_tcpip", &request.ipv4), ("IPv6", "ms_tcpip6", &request.ipv6)] {
+        let (enabled, action) = if family.mode == IpMode::Disabled { ("$false", "Disable") } else { ("$true", "Enable") };
+        statements.push(format!("$step='{name} protocol binding'; $b=Get-NetAdapterBinding -Name ([System.Management.Automation.WildcardPattern]::Escape($a.Name)) -ComponentID {binding} -ErrorAction Stop; if ($null -eq $b) {{ throw 'Protocol binding not found' }}; if ($b.Enabled -ne {enabled}) {{ {action}-NetAdapterBinding -InputObject $b -Confirm:$false -ErrorAction Stop }}"));
+    }
+    statements.extend(windows_family_statements("IPv4", &request.ipv4));
+    statements.extend(windows_family_statements("IPv6", &request.ipv6));
+    // With both bindings disabled there is no usable DNS client to configure.
+    if request.ipv4.mode != IpMode::Disabled || request.ipv6.mode != IpMode::Disabled {
+        statements.push("$step='DNS server configuration'".into());
+        if request.dns_servers.is_empty() {
+            statements.push("Set-DnsClientServerAddress -InterfaceIndex $a.ifIndex -ResetServerAddresses -ErrorAction Stop".into());
+        } else {
+            let dns = request.dns_servers.iter().map(|value| format!("'{}'", ps_quote(value))).collect::<Vec<_>>().join(",");
+            statements.push(format!("Set-DnsClientServerAddress -InterfaceIndex $a.ifIndex -ServerAddresses @({dns}) -ErrorAction Stop"));
+        }
+    }
+    let body = statements.join(";\n");
+    let path = ps_quote(report_path);
+    // Open the existing channel before any network mutation, with sharing
+    // compatible with the Rust handle. Never load executable code from temp.
+    format!(r#"$ErrorActionPreference='Stop'; $ProgressPreference='SilentlyContinue'; $writer=$null
+try {{
+$stream=[System.IO.File]::Open('{path}', [System.IO.FileMode]::Open, [System.IO.FileAccess]::Write, [System.IO.FileShare]::ReadWrite)
+$writer=[System.IO.StreamWriter]::new($stream, [System.Text.UTF8Encoding]::new($false))
+{body}
+$writer.Write('OK'); $writer.Flush(); exit 0
+}} catch {{
+if ($null -ne $writer) {{
+  $message=$step + ': ' + $_.Exception.Message + ' [' + $_.FullyQualifiedErrorId + ']'
+  if ($message.Length -gt 6000) {{ $message=$message.Substring(0,6000) }}
+  $writer.Write("ERROR`n" + $message); $writer.Flush()
+}}
+exit 1
+}} finally {{ if ($null -ne $writer) {{ $writer.Dispose() }} }}"#)
+}
+
+#[cfg(any(target_os = "windows", test))]
+fn windows_family_statements(family_name: &str, family: &NetworkFamilySnapshot) -> Vec<String> {
+    if family.mode == IpMode::Disabled {
+        return Vec::new();
+    }
+    let mut out = vec![format!("$step='{family_name} interface readiness'; $ready=$false; for ($attempt=0; $attempt -lt 50; $attempt++) {{ if (Get-NetIPInterface -InterfaceIndex $a.ifIndex -AddressFamily {family_name} -ErrorAction SilentlyContinue) {{ $ready=$true; break }}; Start-Sleep -Milliseconds 200 }}; if (-not $ready) {{ throw 'IP interface did not become available within 10 seconds' }}")];
+    if family.mode == IpMode::Manual {
+        out.push(format!("$step='{family_name} automatic addressing'; Set-NetIPInterface -InterfaceIndex $a.ifIndex -AddressFamily {family_name} -Dhcp Disabled -ErrorAction Stop"));
+        if family_name == "IPv6" {
+            out.push("Set-NetIPInterface -InterfaceIndex $a.ifIndex -AddressFamily IPv6 -RouterDiscovery Disabled -ErrorAction Stop".into());
+        }
+    }
+    let destination = if family_name == "IPv4" { "0.0.0.0/0" } else { "::/0" };
+    let route_filter = if family.mode == IpMode::Automatic { " | Where-Object Protocol -eq 'NetMgmt'" } else { "" };
+    let address_filter = if family.mode == IpMode::Automatic { "PrefixOrigin -eq 'Manual'" } else { "PrefixOrigin -ne 'WellKnown'" };
+    // Clear persistent entries first, then re-enumerate active entries: removing
+    // one store may also remove its active counterpart. Filter discovery output
+    // instead of suppressing errors (an empty result is legitimate).
+    for store in ["PersistentStore", "ActiveStore"] {
+        out.push(format!("$step='{family_name} {store} default routes'; Get-NetRoute -PolicyStore {store} -ErrorAction Stop | Where-Object {{ $_.InterfaceIndex -eq $a.ifIndex -and $_.AddressFamily -eq '{family_name}' -and $_.DestinationPrefix -eq '{destination}' }}{route_filter} | Remove-NetRoute -Confirm:$false -ErrorAction Stop"));
+        out.push(format!("$step='{family_name} {store} addresses'; Get-NetIPAddress -PolicyStore {store} -ErrorAction Stop | Where-Object {{ $_.InterfaceIndex -eq $a.ifIndex -and $_.AddressFamily -eq '{family_name}' }} | Where-Object {address_filter} | Remove-NetIPAddress -Confirm:$false -ErrorAction Stop"));
     }
     if family.mode == IpMode::Automatic {
-        out.push(format!("Get-NetIPAddress -InterfaceIndex $a.ifIndex -AddressFamily {family_name} -ErrorAction SilentlyContinue | Where-Object PrefixOrigin -eq 'Manual' | Remove-NetIPAddress -Confirm:$false -ErrorAction SilentlyContinue"));
-        out.push(format!("Get-NetRoute -InterfaceIndex $a.ifIndex -AddressFamily {family_name} -DestinationPrefix '{}' -ErrorAction SilentlyContinue | Where-Object Protocol -eq 'NetMgmt' | Remove-NetRoute -Confirm:$false -ErrorAction SilentlyContinue", if family_name == "IPv4" { "0.0.0.0/0" } else { "::/0" }));
-    } else if family.mode == IpMode::Manual {
-        out.push(format!("Get-NetIPAddress -InterfaceIndex $a.ifIndex -AddressFamily {family_name} -ErrorAction SilentlyContinue | Where-Object PrefixOrigin -ne 'WellKnown' | Remove-NetIPAddress -Confirm:$false -ErrorAction SilentlyContinue"));
-        out.push(format!("Get-NetRoute -InterfaceIndex $a.ifIndex -AddressFamily {family_name} -DestinationPrefix '{}' -ErrorAction SilentlyContinue | Remove-NetRoute -Confirm:$false -ErrorAction SilentlyContinue", if family_name == "IPv4" { "0.0.0.0/0" } else { "::/0" }));
+        out.push(format!("$step='{family_name} automatic addressing'; Set-NetIPInterface -InterfaceIndex $a.ifIndex -AddressFamily {family_name} -Dhcp Enabled -ErrorAction Stop"));
+        if family_name == "IPv6" {
+            out.push("Set-NetIPInterface -InterfaceIndex $a.ifIndex -AddressFamily IPv6 -RouterDiscovery Enabled -ErrorAction Stop".into());
+        }
+    } else {
         for (index, address) in family.addresses.iter().enumerate() {
             let gateway = if index == 0 {
-                family
-                    .gateway
-                    .as_deref()
-                    .map(|value| format!(" -DefaultGateway '{}'", ps_quote(value)))
-                    .unwrap_or_default()
-            } else {
-                String::new()
-            };
-            out.push(format!("New-NetIPAddress -InterfaceIndex $a.ifIndex -AddressFamily {family_name} -IPAddress '{}' -PrefixLength {}{gateway} -ErrorAction Stop", ps_quote(&address.address), address.prefix));
+                family.gateway.as_deref().map(|value| format!(" -DefaultGateway '{}'", ps_quote(value))).unwrap_or_default()
+            } else { String::new() };
+            out.push(format!("$step='{family_name} static address {}'; New-NetIPAddress -InterfaceIndex $a.ifIndex -AddressFamily {family_name} -IPAddress '{}' -PrefixLength {}{gateway} -ErrorAction Stop", index + 1, ps_quote(&address.address), address.prefix));
         }
     }
     out
@@ -939,7 +984,7 @@ mod tests {
             addresses: Vec::new(),
             gateway: None,
         };
-        let statements = windows_family_statements("IPv4", "ms_tcpip", &family).join("\n");
+        let statements = windows_family_statements("IPv4", &family).join("\n");
         assert!(statements.contains("-Dhcp Enabled"));
         assert!(statements.contains("PrefixOrigin -eq 'Manual'"));
         assert!(statements.contains("Protocol -eq 'NetMgmt'"));
@@ -1029,3 +1074,7 @@ function Get-DnsClientServerAddress { [pscustomobject]@{ ServerAddresses=@('192.
         assert!(values.is_empty());
     }
 }
+
+#[cfg(test)]
+#[path = "profiles_apply_tests.rs"]
+mod apply_tests;
