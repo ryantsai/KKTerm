@@ -169,6 +169,8 @@ test("macOS release publishes the checksummed DMG through the Homebrew tap", () 
 test("Homebrew publisher writes, validates, commits, and pushes the KKTerm cask", () => {
   assert.match(homebrewScript, /^#!\/usr\/bin\/env zsh/);
   assert.match(homebrewScript, /Casks\/kkterm\.rb/);
+  assert.match(homebrewScript, /depends_on :macos/);
+  assert.doesNotMatch(homebrewScript, /depends_on macos: :big_sur/);
   assert.match(homebrewScript, /brew style --cask "\$cask_path"/);
   assert.match(homebrewScript, /brew audit --cask "\$temporary_tap\/kkterm"/);
   assert.match(homebrewScript, /git -C "\$tap_dir" commit -m "kkterm \$VERSION"/);
