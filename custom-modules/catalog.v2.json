@@ -4,13 +4,13 @@
     {
       "id": "com.kkterm.bentopdf",
       "name": "BentoPDF",
-      "version": "2.8.7",
+      "version": "2.8.9",
       "publisher": "KKTerm",
       "summary": "An unofficial self-contained BentoPDF integration for KKTerm API v2.",
       "apiVersion": 2,
-      "downloadUrl": "https://modules.kkterm.ryantsai.com/packages/sha256/91fd672a870c03b281cbb78dfc2952fb7a5234072ad24270ce38df177cfea821.kkmod",
-      "sha256": "91fd672a870c03b281cbb78dfc2952fb7a5234072ad24270ce38df177cfea821",
-      "signature": "AgQiAY+kwozKXW+IafAl2xW+h8JL6KWPdviir7pOCQ4u75TbdRGVzctsMMX6SXKjrp/iFV5A2Vw5xkq0axAHCg==",
+      "downloadUrl": "https://modules.kkterm.ryantsai.com/packages/sha256/87b00cfdfac54fa7ed67fce17ce70878bbbf0b34a6be386c604828ff9bddfa26.kkmod",
+      "sha256": "87b00cfdfac54fa7ed67fce17ce70878bbbf0b34a6be386c604828ff9bddfa26",
+      "signature": "xY2vhha+JsC8dKStc54cf7+WmCBAJQJJ9tLk0zSFQGX1snk1ngpyUF58x07OfRlBD9lkNB7K1Xn8B8/B9LQvAA==",
       "license": "AGPL-3.0-only",
       "permissions": {
         "browserStorage": true,
@@ -51,35 +51,86 @@
             "epub",
             "fb2",
             "cbz",
+            "cbr",
             "wpd",
             "wps",
             "pages",
             "pub",
             "vsd",
+            "vsdx",
+            "odg",
+            "oxps",
+            "eml",
+            "msg",
             "psd",
             "xml",
             "p12",
             "pfx",
             "pem",
             "crt",
+            "cer",
+            "der",
             "key",
             "ttf",
-            "otf"
+            "otf",
+            "jp2",
+            "jpx",
+            "jxr",
+            "pam",
+            "pbm",
+            "pgm",
+            "pnm",
+            "ppm",
+            "zip"
           ]
+        },
+        "networkFetch": {
+          "origins": [
+            "https://freetsa.org"
+          ],
+          "methods": [
+            "POST"
+          ],
+          "allowPrivateNetwork": false,
+          "maxResponseBytes": 1048576
         }
       },
-      "downloadSize": 310845525
+      "downloadSize": 328060312
+    },
+    {
+      "id": "com.kkterm.cyberchef",
+      "name": "CyberChef",
+      "version": "11.5.1",
+      "publisher": "KKTerm",
+      "summary": "An unofficial, local-only CyberChef integration for KKTerm API v2.",
+      "apiVersion": 2,
+      "downloadUrl": "https://modules.kkterm.ryantsai.com/packages/sha256/bfa46c83696c752cced02ccf6b4d288160c25d9fa8a1640a2e81c405b1eacc2e.kkmod",
+      "sha256": "bfa46c83696c752cced02ccf6b4d288160c25d9fa8a1640a2e81c405b1eacc2e",
+      "signature": "cAbHFWurre/SmE3qZox777NguWV0tAXOJI8Dlc82E1rjF7PHKJG64k9XCmREDXYIRkYScEj6T15bHhsvvLBaAQ==",
+      "license": "Apache-2.0",
+      "permissions": {
+        "browserStorage": true,
+        "openExternal": true,
+        "clipboard": true,
+        "hostUi": true,
+        "files": {
+          "open": true,
+          "save": true,
+          "extensions": []
+        }
+      },
+      "downloadSize": 25441720
     },
     {
       "id": "com.kkterm.excalidraw",
       "name": "Excalidraw",
-      "version": "2.0.1",
+      "version": "2.0.2",
       "publisher": "KKTerm",
       "summary": "An unofficial offline Excalidraw integration for KKTerm.",
       "apiVersion": 2,
-      "downloadUrl": "https://modules.kkterm.ryantsai.com/packages/sha256/503a629e82cfad0340c58ff5ece0ab48c5eb95c8b34296747b5e7cff45d214f2.kkmod",
-      "sha256": "503a629e82cfad0340c58ff5ece0ab48c5eb95c8b34296747b5e7cff45d214f2",
-      "signature": "bd9SDcO5eHxgJnYoKaU3QzdoTULy1bLaj1bJgAm6oR2boFMJvD9tVEnRnnYxJC18LHrO2PrZA2nbf6VG/32LCQ==",
+      "downloadUrl": "https://modules.kkterm.ryantsai.com/packages/sha256/66495b080304894e6380893a007434067a7ca327cb0961a86bf9c9c2f17d6797.kkmod",
+      "sha256": "66495b080304894e6380893a007434067a7ca327cb0961a86bf9c9c2f17d6797",
+      "signature": "mIXA9UzFoT3uIbTW+l5eyLjRryPt/lvq1I9h5jiZI4escBL5HhCNez6TxV5wI92eKodwLxitwG1TxFLm34wvBg==",
       "license": "MIT",
       "permissions": {
         "documentStorage": true,
@@ -107,7 +158,47 @@
           ]
         }
       },
-      "downloadSize": 20368679
+      "downloadSize": 20365533
+    },
+    {
+      "id": "com.kkterm.openflowkit",
+      "name": "OpenFlowKit",
+      "version": "0.2.1",
+      "publisher": "KKTerm",
+      "summary": "An unofficial self-contained OpenFlowKit diagram editor for KKTerm API v2, with local-first diagrams and AI generation through KKTerm's configured provider.",
+      "apiVersion": 2,
+      "downloadUrl": "https://modules.kkterm.ryantsai.com/packages/sha256/a02dc2fe453b17364fbcbff6a4fbbfe3eb2dc6f8b727eae8b74fd0259eda08bb.kkmod",
+      "sha256": "a02dc2fe453b17364fbcbff6a4fbbfe3eb2dc6f8b727eae8b74fd0259eda08bb",
+      "signature": "JyvJWizj7mYdkUPjULWsmYcaHWh6CKl5x6nXYJ0UyVs4BdIJBGtS+x/cOsZZ0xcQsgjY6eSM5KmSAuhUxBhwAw==",
+      "license": "MIT",
+      "permissions": {
+        "browserStorage": true,
+        "openExternal": true,
+        "clipboard": true,
+        "hostAi": true,
+        "files": {
+          "open": true,
+          "save": true,
+          "extensions": [
+            "json",
+            "mmd",
+            "md",
+            "svg",
+            "png",
+            "jpg",
+            "jpeg",
+            "webp",
+            "pdf",
+            "txt",
+            "csv",
+            "xml",
+            "drawio",
+            "webm",
+            "mp4"
+          ]
+        }
+      },
+      "downloadSize": 22769824
     }
   ]
 }
