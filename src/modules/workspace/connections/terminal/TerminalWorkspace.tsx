@@ -2475,6 +2475,13 @@ function TerminalPaneView({
         sshStartupApplyOnAttachRef.current = sshUsesTmux
           ? readSshApplyStartupToExistingTmux(connection.id)
           : false;
+        if (connection.type === "ssh") {
+          logUiDebug("[DEBUG-782] terminal.start_command.begin", {
+            sessionId: requestedSessionId,
+            connectionId: connection.id,
+            authMethod: connection.authMethod,
+          });
+        }
         const result = await invokeCommand("start_terminal_session", {
           request: {
             sessionId: requestedSessionId,
@@ -2509,6 +2516,12 @@ function TerminalPaneView({
             textEncoding: normalizeTerminalEncoding(pane.textEncoding),
           },
         });
+        if (connection.type === "ssh") {
+          logUiDebug("[DEBUG-782] terminal.start_command.end", {
+            sessionId: requestedSessionId,
+            startupPending: result.startupPending,
+          });
+        }
         if (connection.type === "ssh") startupState.started(result, x11ForwardingStatus);
         if (disposed) {
           if (!preservingRuntime) {
@@ -2567,6 +2580,11 @@ function TerminalPaneView({
           writeInputToSession(localStartup.startupInput);
         }
       } catch (error) {
+        if (connection.type === "ssh") {
+          logUiDebug("[DEBUG-782] terminal.setup.error", {
+            sessionId: requestedSessionId,
+          });
+        }
         startupState.end();
         if (disposed) return;
         updateTerminalConnectionState("disconnected");

@@ -1,10 +1,10 @@
 {
   "name": "@kkterm/excalidraw-module",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc --noEmit && vite build && node scripts/copy-runtime-assets.mjs",
+    "build": "node scripts/adapt-pica.mjs && tsc --noEmit && vite build && node scripts/copy-runtime-assets.mjs",
     "generate:notices": "node scripts/generate-third-party-notices.mjs"
   },
   "dependencies": {

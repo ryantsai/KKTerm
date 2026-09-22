@@ -1,6 +1,7 @@
 import { cp, mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { extname, relative, resolve } from 'node:path';
 import { normalizeHtmlReferences } from './html-paths.mjs';
+import { packageHeicWorker } from './heic-worker.mjs';
 
 const moduleRoot = resolve(import.meta.dirname, '..');
 const sourceRoot = resolve(process.argv[2] || process.env.BENTOPDF_SOURCE || '');
@@ -65,7 +66,20 @@ for (const [key, packageName] of Object.entries(embedPdfFonts)) {
   );
 }
 
-const workerCandidates = (await readdir(resolve(targetDist, 'assets')))
+const assetNames = await readdir(resolve(targetDist, 'assets'));
+const heicCandidates = assetNames
+  .filter((name) => name.startsWith('heic2any-') && name.endsWith('.js'));
+if (heicCandidates.length !== 1) {
+  throw new Error(`Expected one heic2any bundle; found ${heicCandidates.length}.`);
+}
+const heicPath = resolve(targetDist, 'assets', heicCandidates[0]);
+const heicWorker = packageHeicWorker(await readFile(heicPath, 'utf8'));
+await writeFile(heicPath, heicWorker.bundle, 'utf8');
+const heicWorkerDirectory = resolve(targetDist, 'kkmod-runtime/heic2any');
+await mkdir(heicWorkerDirectory, { recursive: true });
+await writeFile(resolve(heicWorkerDirectory, 'worker.js'), heicWorker.workerSource, 'utf8');
+
+const workerCandidates = assetNames
   .filter((name) => name.startsWith('worker-engine-') && name.endsWith('.js'));
 if (workerCandidates.length !== 1) {
   throw new Error(`Expected one EmbedPDF worker bundle; found ${workerCandidates.length}.`);

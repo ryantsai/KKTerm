@@ -111,6 +111,12 @@ await replaceOnce(
 );
 
 await replaceOnce(
+  resolve(sourceRoot, 'src/js/logic/edit-pdf-page.ts'),
+  '        worker: true,',
+  '        worker: false,'
+);
+
+await replaceOnce(
   resolve(sourceRoot, 'src/js/utils/tesseract-runtime.ts'),
   `function getDefaultTesseractAssetEnv(): TesseractAssetEnv {
   return import.meta.env;
@@ -124,6 +130,18 @@ await replaceOnce(
     VITE_TESSERACT_AVAILABLE_LANGUAGES: 'eng',
   };
 }`
+);
+
+await replaceOnce(
+  resolve(sourceRoot, 'src/js/utils/tesseract-runtime.ts'),
+  '    return logger ? { logger } : {};',
+  '    return { ...(logger ? { logger } : {}), workerBlobURL: false };'
+);
+
+await replaceOnce(
+  resolve(sourceRoot, 'src/js/utils/tesseract-runtime.ts'),
+  '    workerPath: config.workerPath,',
+  '    workerBlobURL: false,\n    workerPath: config.workerPath,'
 );
 
 await replaceOnce(

@@ -76,6 +76,12 @@ for (const [relativePath, count] of workerImports) {
     );
 }
 
+await replaceOnce(
+    resolve(sourceRoot, "src/core/operations/GenerateRSAKeyPair.mjs"),
+    "                workers: -1,",
+    "                workers: 2,"
+);
+
 const indexPath = resolve(sourceRoot, "src/web/index.js");
 await replaceOnce(
     indexPath,

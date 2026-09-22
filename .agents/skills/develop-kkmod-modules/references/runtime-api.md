@@ -24,6 +24,20 @@ terminal input, database access, and raw Connection secrets are unavailable.
 The bridge and browser-compatibility policy are injected into every
 same-package frame.
 
+**Worker trap:** `worker-src 'self'` does not permit a Blob or data Worker,
+even when the code that creates it came from a packaged script. Dependencies
+may hide this behind `worker: true`, `workerBlobURL`, a worker pool, or a worker
+feature probe. A blocked constructor can produce an asynchronous CSP error while
+the dependency keeps waiting for a message, leaving a viewer on “Loading
+document” indefinitely. Audit generated JavaScript for direct and indirect
+`new Worker(...)` calls, including `URL.createObjectURL(...)` passed through a
+variable. Use the dependency's direct engine when available, or ship a separate
+worker script below `dist/` and use its same-package URL. Do not add `blob:` or
+`data:` to the host worker CSP. A packaged Worker still inherits the script CSP:
+bundled `eval` or `new Function` also needs a CSP-safe adaptation. Verify a real
+input reaches completion under the host CSP; opening the page alone does not
+exercise lazy worker paths.
+
 `browserStorage` retains localStorage, IndexedDB, and the Storage API. Without
 it, localStorage is session-memory only and IndexedDB/Storage are disabled.
 Clipboard is native only with `clipboard`; otherwise every operation rejects.

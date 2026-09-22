@@ -31,8 +31,23 @@ test("BentoPDF delegates local exports and its one online TSA to KKTerm API v2",
   assert.match(adaptation, /TIMESTAMP_TSA_PRESETS/);
   assert.match(adaptation, /FreeTSA/);
   assert.match(adaptation, /VITE_TESSERACT_WORKER_URL/);
+  assert.match(adaptation, /workerBlobURL: false/);
   assert.match(adaptation, /\/dist\/kkmod-runtime\/ocr\/worker\.min\.js/);
   assert.match(adaptation, /VITE_TESSERACT_AVAILABLE_LANGUAGES/);
   assert.match(adaptation, /eng/);
   assert.match(adaptation, /VITE_OCR_FONT_BASE_URL/);
+});
+
+test("BentoPDF editor uses the direct engine because Custom Modules block blob workers", async () => {
+  const [adaptation, host] = await Promise.all([
+    readFile(new URL("../custom-modules/bentopdf/scripts/apply-adaptation.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../src-tauri/src/custom_modules.rs", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(host, /worker-src 'self';/);
+  assert.doesNotMatch(host, /worker-src 'self' blob:/);
+  assert.match(
+    adaptation,
+    /resolve\(sourceRoot, 'src\/js\/logic\/edit-pdf-page\.ts'\),\s*'        worker: true,',\s*'        worker: false,'/,
+  );
 });

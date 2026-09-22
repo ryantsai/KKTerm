@@ -88,13 +88,17 @@ import { lockOsIconAutoDetect } from "../../../lib/osIcons";
 import { isMacPlatform, isWindowsPlatform } from "../../../lib/platform";
 import { useMacAppStoreBuild } from "../../../lib/macAppStoreBuild";
 import { showNativeContextMenu, type NativeContextMenuItem } from "../../../lib/nativeContextMenu";
-import { confirmNativeDialog, invokeCommand, isCredentialUnlockRequiredError, isTauriRuntime, selectAndReadSshConfigFile, selectAppLauncherFolder, selectFileViewPath, selectKeyFile, type TmuxSession } from "../../../lib/tauri";
+import { confirmNativeDialog, invokeCommand, isCredentialUnlockRequiredError, isTauriRuntime, logUiDebug, selectAndReadSshConfigFile, selectAppLauncherFolder, selectFileViewPath, selectKeyFile, type TmuxSession } from "../../../lib/tauri";
 import { connectionTree } from "../../../app-defaults";
 import { DeleteConfirmationDialog } from "../../../app/DeleteConfirmationDialog";
 import { DialogPortal } from "../../../app/DialogPortal";
 import { Btn, ConfirmSheet, LegacyDialogActions } from "../../../app/ui/dialog";
 import { pushTrayMenu } from "../../../app/trayMenu";
 import { CHILD_CONNECTION_CLOSED_EVENT, DEFAULT_WORKSPACE_ID, appendTmuxSessionId, connectionUsesTmux, forgetConnectionLocalState, useWorkspaceStore } from "../../../store";
+import {
+  connectionRowClickActivation,
+  connectionRowDoubleClickActivation,
+} from "./connectionRowActivation";
 import type { CloudStorageProvider, Connection, ConnectionFolder, ConnectionStatus, ConnectionTree, ConnectionType, CreateConnectionRequest, RdpSettings, SplitDirection, SshCompressionMode, SshOldProtocolsMode, SshSettings, StoredCredentialSummary, UpdateConnectionRequest, VncSettings, WorkspaceChildConnection, WorkspaceTab } from "../../../types";
 
 // Pointer travel (px, either axis) before a press is treated as a drag rather
@@ -6325,14 +6329,35 @@ function ConnectionRow({
         <button
           className="connection-open"
           onClick={(event) => {
-            if (doubleClickOpensConnection) {
+            const activation = connectionRowClickActivation(
+              doubleClickOpensConnection,
+              event.detail,
+            );
+            if (connection.type === "ssh") {
+              logUiDebug("[DEBUG-782] connection.row_click", {
+                connectionId: connection.id,
+                clickCount: event.detail,
+                doubleClickOpensConnection,
+                activation,
+              });
+            }
+            if (activation === "select") {
               onSelect();
               return;
             }
-            onOpen(event);
+            if (activation === "open") {
+              onOpen(event);
+            }
           }}
           onDoubleClick={(event) => {
-            if (doubleClickOpensConnection) {
+            const activation = connectionRowDoubleClickActivation(doubleClickOpensConnection);
+            if (connection.type === "ssh") {
+              logUiDebug("[DEBUG-782] connection.row_double_click", {
+                connectionId: connection.id,
+                activation,
+              });
+            }
+            if (activation === "open") {
               event.preventDefault();
               onOpen(event);
             }

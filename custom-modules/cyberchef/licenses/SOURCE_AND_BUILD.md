@@ -15,6 +15,9 @@ bundles to packaged same-origin workers, replaces inline/eval presentation
 hooks with CSP-safe packaged code, removes browser-native prompts, routes
 transient notices through KKTerm's Status Bar, and delegates open/save and
 downloads to KKTerm's permission-bound browser mediation.
+RSA key generation uses two packaged Workers directly; the upstream automatic
+core-count probe creates a Blob Worker when `navigator.hardwareConcurrency` is
+unavailable, which would stall under the KKMod CSP.
 
 CyberChef settings, favourites, and saved recipes use its isolated persistent
 browser storage. Its English-only interface intentionally falls back to

@@ -19,12 +19,12 @@ test("double-click open mode still selects Connection Tree rows on single click"
   );
   assert.match(
     sidebarSource,
-    /if \(doubleClickOpensConnection\) \{[\s\S]*?onSelect\(\);[\s\S]*?return;[\s\S]*?\}[\s\S]*?onOpen\(event\);/,
+    /connectionRowClickActivation\([\s\S]*?doubleClickOpensConnection,[\s\S]*?event\.detail,[\s\S]*?\)[\s\S]*?activation === "select"[\s\S]*?onSelect\(\)[\s\S]*?activation === "open"[\s\S]*?onOpen\(event\)/,
     "single-click in double-click mode should select without opening",
   );
   assert.match(
     sidebarSource,
-    /onDoubleClick=\{\(event\) => \{[\s\S]*?if \(doubleClickOpensConnection\) \{[\s\S]*?event\.preventDefault\(\);[\s\S]*?onOpen\(event\);/,
+    /onDoubleClick=\{\(event\) => \{[\s\S]*?const activation = connectionRowDoubleClickActivation\(doubleClickOpensConnection\);[\s\S]*?if \(activation === "open"\) \{[\s\S]*?event\.preventDefault\(\);[\s\S]*?onOpen\(event\);/,
     "double-click mode should still open from the double-click handler",
   );
   assert.match(

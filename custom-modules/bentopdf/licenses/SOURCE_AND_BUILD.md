@@ -10,8 +10,12 @@ licensed under AGPL-3.0-only.
 
 The adaptation removes service-worker registration and the home-page GitHub
 API request, pins patched browser dependencies, supplies package-local WASM and
-English OCR assets, delegates local browser exports to KKTerm's permission-bound
-download mediation, and initializes KKTerm's API v2 lifecycle. RFC 3161 network
+English OCR assets, runs the EmbedPDF editor on its direct engine, disables
+Tesseract's Blob worker wrapper, and packages heic2any's embedded worker as a
+same-package script without dynamic code. Those upstream worker paths are
+blocked by the Custom Module CSP. The adaptation delegates
+local browser exports to KKTerm's permission-bound download mediation, and
+initializes KKTerm's API v2 lifecycle. RFC 3161 network
 timestamping is limited to `POST https://freetsa.org/tsr` through
 `KKTerm.network.fetch`; the other upstream TSA presets and arbitrary TSA URLs
 are unavailable. It does not include a v1 manifest or runtime fallback.

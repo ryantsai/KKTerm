@@ -816,13 +816,29 @@ pub fn start_native_terminal(
                     "error": error,
                 }),
             );
+            ssh_debug(
+                "[DEBUG-782] worker.error_output.begin",
+                json!({ "sessionId": request.session_id }),
+            );
             emit_terminal_output(
                 &app,
                 &request.session_id,
                 format!("\r\n[native SSH session error: {error}]\r\n"),
             );
+            ssh_debug(
+                "[DEBUG-782] worker.error_output.end",
+                json!({ "sessionId": request.session_id }),
+            );
         }
+        ssh_debug(
+            "[DEBUG-782] worker.ended_event.begin",
+            json!({ "sessionId": request.session_id }),
+        );
         crate::sessions::emit_terminal_session_ended(&app, &request.session_id);
+        ssh_debug(
+            "[DEBUG-782] worker.ended_event.end",
+            json!({ "sessionId": request.session_id }),
+        );
     });
 
     let terminal = NativeSshTerminal {
@@ -1234,7 +1250,19 @@ impl NativeSshTerminal {
         let _ = self.control.send(SshTerminalControl::Close);
         self.cancel_startup.cancel();
         if let Some(worker) = self.worker.take() {
+            let join_started = Instant::now();
+            ssh_debug(
+                "[DEBUG-782] terminal.close.join.begin",
+                json!({ "sessionId": self.session_id }),
+            );
             let _ = worker.join();
+            ssh_debug(
+                "[DEBUG-782] terminal.close.join.end",
+                json!({
+                    "sessionId": self.session_id,
+                    "elapsedMs": join_started.elapsed().as_millis(),
+                }),
+            );
         }
     }
 }
@@ -3061,12 +3089,31 @@ async fn authenticate_with_agent(
         .map_err(|error| format!("failed to negotiate SSH agent key algorithm: {error}"))?
         .flatten();
 
+    ssh_debug("[DEBUG-782] agent.connect.begin", json!({}));
     let mut agents = connect_ssh_agents().await?;
+    ssh_debug(
+        "[DEBUG-782] agent.connect.end",
+        json!({ "agentCount": agents.len() }),
+    );
     let mut failures = Vec::new();
     for agent in &mut agents {
+        ssh_debug(
+            "[DEBUG-782] agent.identities.begin",
+            json!({ "source": agent.source }),
+        );
         let identities = match request_agent_identities(agent).await {
-            Ok(identities) => identities,
+            Ok(identities) => {
+                ssh_debug(
+                    "[DEBUG-782] agent.identities.end",
+                    json!({ "source": agent.source, "count": identities.len() }),
+                );
+                identities
+            }
             Err(error) => {
+                ssh_debug(
+                    "[DEBUG-782] agent.identities.error",
+                    json!({ "source": agent.source }),
+                );
                 failures.push(error);
                 continue;
             }
@@ -3158,7 +3205,13 @@ async fn connect_ssh_agents() -> Result<Vec<SshAgent>, String> {
     let mut agents = Vec::new();
     let mut failures = Vec::new();
 
-    match AgentClient::connect_named_pipe(r"\\.\pipe\openssh-ssh-agent").await {
+    ssh_debug("[DEBUG-782] agent.named_pipe.begin", json!({}));
+    let named_pipe = AgentClient::connect_named_pipe(r"\\.\pipe\openssh-ssh-agent").await;
+    ssh_debug(
+        "[DEBUG-782] agent.named_pipe.end",
+        json!({ "connected": named_pipe.is_ok() }),
+    );
+    match named_pipe {
         Ok(agent) => agents.push(SshAgent {
             source: "Windows OpenSSH agent",
             client: agent.dynamic(),
@@ -3166,7 +3219,13 @@ async fn connect_ssh_agents() -> Result<Vec<SshAgent>, String> {
         Err(error) => failures.push(format!("Windows OpenSSH agent: {error}")),
     }
 
-    match AgentClient::connect_pageant().await {
+    ssh_debug("[DEBUG-782] agent.pageant.begin", json!({}));
+    let pageant = AgentClient::connect_pageant().await;
+    ssh_debug(
+        "[DEBUG-782] agent.pageant.end",
+        json!({ "connected": pageant.is_ok() }),
+    );
+    match pageant {
         Ok(agent) => agents.push(SshAgent {
             source: "Pageant agent",
             client: agent.dynamic(),

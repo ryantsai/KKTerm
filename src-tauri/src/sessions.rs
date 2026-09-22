@@ -1,9 +1,10 @@
 #[cfg(target_os = "windows")]
 use crate::windows_local_pty;
-use crate::{secrets, serial, ssh, storage, telnet, x_server};
+use crate::{logging, secrets, serial, ssh, storage, telnet, x_server};
 use encoding_rs::{Encoding, UTF_8};
 use portable_pty::{Child, CommandBuilder, MasterPty, PtySize, native_pty_system};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::{
     collections::{BTreeMap, HashMap, HashSet, VecDeque},
     ffi::OsString,
@@ -1621,6 +1622,7 @@ impl SessionManager {
         }
 
         let auth_method = ssh_auth_method_for(&request, password.as_deref())?;
+        let mut used_ssh_fallback = false;
         if uses_native_ssh(&request, password.as_deref(), &auth_method, true) {
             let known_hosts_path = ssh::app_known_hosts_path(&app)?;
             let passphrase = connection_passphrase_for(secrets, &request);
@@ -1671,11 +1673,20 @@ impl SessionManager {
                     });
                 }
                 Err(error) if should_fallback_to_interactive_ssh(&error) => {
+                    used_ssh_fallback = true;
+                    logging::ssh_debug(
+                        "[DEBUG-782] fallback.notice.begin",
+                        &json!({ "sessionId": session_id }),
+                    );
                     emit_terminal_output(
                         &app,
                         &session_id,
                         "\r\n[fallback: starting interactive ssh for username/password authentication]\r\n"
                             .to_string(),
+                    );
+                    logging::ssh_debug(
+                        "[DEBUG-782] fallback.notice.end",
+                        &json!({ "sessionId": session_id }),
                     );
                 }
                 Err(error) => return Err(error),
@@ -1741,6 +1752,12 @@ impl SessionManager {
             });
         }
 
+        if used_ssh_fallback {
+            logging::ssh_debug(
+                "[DEBUG-782] fallback.pty.begin",
+                &json!({ "sessionId": session_id }),
+            );
+        }
         let pty_system = native_pty_system();
         let pair = pty_system
             .openpty(pty_size_for(&request))
@@ -1760,6 +1777,12 @@ impl SessionManager {
             .spawn_command(command)
             .map_err(|error| format!("failed to start terminal process: {error}"))?;
         drop(pair.slave);
+        if used_ssh_fallback {
+            logging::ssh_debug(
+                "[DEBUG-782] fallback.pty.end",
+                &json!({ "sessionId": session_id }),
+            );
+        }
 
         let session = TerminalSession {
             transport: TerminalTransport::Pty {
@@ -1773,6 +1796,12 @@ impl SessionManager {
             .lock()
             .map_err(|_| "terminal session lock is poisoned".to_string())?
             .insert(session_id.clone(), session);
+        if used_ssh_fallback {
+            logging::ssh_debug(
+                "[DEBUG-782] fallback.session_registered",
+                &json!({ "sessionId": session_id }),
+            );
+        }
 
         let output_session_id = session_id.clone();
         thread::spawn(move || {
