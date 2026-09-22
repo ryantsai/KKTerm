@@ -49,21 +49,11 @@ for (const relative of [
   await rm(resolve(targetDist, relative), { recursive: true, force: true });
 }
 
-const embedPdfFonts = {
-  jp: 'fonts-jp',
-  kr: 'fonts-kr',
-  sc: 'fonts-sc',
-  tc: 'fonts-tc',
-  arabic: 'fonts-arabic',
-  hebrew: 'fonts-hebrew',
-  latin: 'fonts-latin',
-};
-for (const [key, packageName] of Object.entries(embedPdfFonts)) {
-  await cp(
-    resolve(sourceRoot, `node_modules/@embedpdf/${packageName}/fonts`),
-    resolve(targetDist, `kkmod-runtime/embedpdf-fonts/${key}`),
-    { recursive: true }
-  );
+for (const key of ['jp', 'kr', 'sc', 'tc', 'arabic', 'hebrew', 'latin']) {
+  const fontDirectory = resolve(targetDist, `kkmod-runtime/embedpdf-fonts/${key}`);
+  if (!(await stat(fontDirectory)).isDirectory() || (await readdir(fontDirectory)).length === 0) {
+    throw new Error(`Missing packaged EmbedPDF font assets for ${key}.`);
+  }
 }
 
 const assetNames = await readdir(resolve(targetDist, 'assets'));

@@ -50,4 +50,6 @@ test("BentoPDF editor uses the direct engine because Custom Modules block blob w
     adaptation,
     /resolve\(sourceRoot, 'src\/js\/logic\/edit-pdf-page\.ts'\),\s*'        worker: true,',\s*'        worker: false,'/,
   );
+  assert.match(adaptation, /const FONT_CDN = '\/dist\/kkmod-runtime\/embedpdf-fonts'/);
+  assert.match(adaptation, /fonts-\$\{key\}@1\.0\.0\/fonts\//);
 });

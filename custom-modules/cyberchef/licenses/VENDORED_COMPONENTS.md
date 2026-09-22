@@ -16,5 +16,5 @@ tree. Their source notices remain in the compiled upstream code where present.
 - English Tesseract trained data — Apache-2.0, distributed from the
   `tesseract-ocr/tessdata` family of repositories.
 
-Upstream source: https://github.com/gchq/CyberChef/tree/v11.3.0/src/core/vendor
+Upstream source: https://github.com/gchq/CyberChef/tree/v11.5.0/src/core/vendor
 Tesseract data license: https://github.com/tesseract-ocr/tessdata/blob/main/LICENSE

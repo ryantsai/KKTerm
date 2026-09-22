@@ -1,12 +1,12 @@
 # CyberChef KKMod corresponding source and build information
 
-This package is an unofficial KKTerm API v2 adaptation of CyberChef v11.3.0,
+This package is an unofficial KKTerm API v2 adaptation of CyberChef v11.5.0,
 licensed under Apache-2.0.
 
 - Upstream source: https://github.com/gchq/CyberChef
-- Upstream tag: `v11.3.0`
-- Upstream commit: `d24ba1afce2e3a080308b5df7db033332fe94a1a`
-- Adaptation date: 2026-08-31
+- Upstream tag: `v11.5.0`
+- Upstream commit: `8cd426dd4f40f1423912d5fad91b578a86a65112`
+- Adaptation date: 2026-09-22
 
 The adaptation keeps CyberChef local-only. It omits the `HTTP request`,
 `DNS over HTTPS`, and `Show on map` operations because KKMod host API v2 does

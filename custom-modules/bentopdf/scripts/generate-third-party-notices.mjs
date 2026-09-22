@@ -68,7 +68,7 @@ const sections = [
   'KKTerm BentoPDF Custom Module — third-party notices',
   '==================================================',
   '',
-  'Generated from the adapted BentoPDF v2.8.7 package-lock.json and installed',
+  'Generated from the adapted BentoPDF v2.8.8 package-lock.json and installed',
   'production dependency tree. This is an unofficial KKTerm integration.',
   '',
   'Vendored browser runtimes',

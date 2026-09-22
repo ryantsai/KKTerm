@@ -1,6 +1,6 @@
 {
   "name": "@kkterm/cyberchef-module",
-  "version": "11.3.2",
+  "version": "11.5.1",
   "private": true,
   "type": "module",
   "scripts": {

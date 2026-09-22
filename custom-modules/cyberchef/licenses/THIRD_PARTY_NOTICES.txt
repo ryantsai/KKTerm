@@ -1,7 +1,7 @@
 KKTerm CyberChef Custom Module — third-party notices
 ====================================================
 
-Generated from the adapted CyberChef v11.3.0 package-lock.json and installed
+Generated from the adapted CyberChef v11.5.0 package-lock.json and installed
 browser dependency tree. This is an unofficial KKTerm integration.
 
 Vendored browser components
@@ -24,7 +24,7 @@ tree. Their source notices remain in the compiled upstream code where present.
 - English Tesseract trained data — Apache-2.0, distributed from the
   `tesseract-ocr/tessdata` family of repositories.
 
-Upstream source: https://github.com/gchq/CyberChef/tree/v11.3.0/src/core/vendor
+Upstream source: https://github.com/gchq/CyberChef/tree/v11.5.0/src/core/vendor
 Tesseract data license: https://github.com/tesseract-ocr/tessdata/blob/main/LICENSE
 
 Packaged dependency inventory
@@ -49,7 +49,7 @@ License: MIT
 Source: https://github.com/babel/babel.git
 License text SHA-256: 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
 
-@babel/runtime@7.29.7
+@babel/runtime@8.0.0
 License: MIT
 Source: https://github.com/babel/babel.git
 License text SHA-256: 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
@@ -63,6 +63,11 @@ License text SHA-256: bd10cd5dd8abf4ecf41c1e0d51950ab4d84ec213bb729c92ed4b6c02f2
 License: MIT
 Source: git+https://github.com/Borewit/text-codec.git
 License text SHA-256: 30eaabc9b8fa0bc1659ff04effc7306c0fdce438d4533d79077489327797f652
+
+@cto.af/wtf8@0.0.5
+License: MIT
+Source: git+https://github.com/cto-af/wtf8.git
+License text SHA-256: dab2e9d3cd30a4caa8f2468b24156dccd500950468ce0cc0b4c8541cd65b33c8
 
 @jimp/core@1.6.1
 License: MIT
@@ -214,7 +219,7 @@ License: MIT
 Source: EricSmekens/jsep
 License text SHA-256: b6a79aabc539dce5299fdd594da10beef57caadb5140cac88561b0bb3e12d20c
 
-@noble/hashes@2.2.0
+@noble/hashes@2.4.0
 License: MIT
 Source: git+https://github.com/paulmillr/noble-hashes.git
 License text SHA-256: 4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec
@@ -242,7 +247,7 @@ License text SHA-256: d9a1b1e30d633d5732ea18e3cba9538d293ebc53e1a9e4e96ab739e0c5
 License: MIT
 Source: git@gitlab.wvservices.com:waves-enterprise/crypto.git
 
-@xmldom/xmldom@0.8.13
+@xmldom/xmldom@0.8.15
 License: MIT
 Source: git://github.com/xmldom/xmldom.git
 License text SHA-256: 61057b4f2bed7f2473705c991d4e971baf248e828649cec09b2e7e103644e0a3
@@ -385,7 +390,7 @@ License: MIT
 Source: git+https://github.com/devongovett/browserify-zlib.git
 License text SHA-256: 183421fd5b6b9b3c9355b509e9785b4cf18168aa7d5a60e140001ee78e36e0ed
 
-bson@7.3.1
+bson@7.3.2
 License: Apache-2.0
 Source: mongodb/js-bson
 License text SHA-256: 43070e2d4e532684de521b885f385d0841030efa2b1a20bafb76133a5e1379c1
@@ -423,10 +428,10 @@ License: MIT
 Source: git+https://github.com/ljharb/call-bound.git
 License text SHA-256: 3df72862fb6dc141ca353b587ef1000832784160195073506daf8a56417144c7
 
-cbor@10.0.12
+cbor2@2.3.0
 License: MIT
-Source: git+ssh://git@github.com/hildjj/node-cbor.git
-License text SHA-256: a77199a04547d272b3193d2efe5840e5b0041a0a1ad3b62fca6725d2c056a574
+Source: git+ssh://git@github.com/hildjj/cbor2.git
+License text SHA-256: 0a569b357b4eef1aecd07ddd3140fb2fd7bdabc7d617a89b0762036ed9e671c5
 
 chi-squared@1.1.0
 License: MIT
@@ -458,7 +463,7 @@ License: MIT
 Source: git+https://github.com/zloirock/core-js.git
 License text SHA-256: 826192089a5a1058a7f4f404b2436d92b73f38fd0dbcc6378cfa2b8de58e5375
 
-core-js@3.49.0
+core-js@3.50.0
 License: MIT
 Source: git+https://github.com/zloirock/core-js.git
 License text SHA-256: 826192089a5a1058a7f4f404b2436d92b73f38fd0dbcc6378cfa2b8de58e5375
@@ -914,7 +919,7 @@ License: MIT
 Source: git+https://github.com/inspect-js/hasOwn.git
 License text SHA-256: 928a86b1d2984fd8ca1e148ef9c3b80ec4ee5e452aa58b0fda60a8f46f8c7dc6
 
-highlight.js@11.11.1
+highlight.js@11.12.0
 License: BSD-3-Clause
 Source: git://github.com/highlightjs/highlight.js.git
 License text SHA-256: eabb8d3cadaf8d4e2ff98951db8df859157d48f534cbfc4790c789b840c4ff4b
@@ -1050,10 +1055,15 @@ License: MIT
 Source: git+https://github.com/brainfoolong/js-ascon.git
 License text SHA-256: af44b4fd218aa7118cd8566e4f3319ac94d27f78621ff3077ce7b994181bc158
 
-js-sha3@0.9.3
+js-sha3@0.13.0
 License: MIT
 Source: https://github.com/emn178/js-sha3.git
-License text SHA-256: 7032cf126d8033ed0ce484c368538679df80b3d0627562263650dd7c8dc581d8
+License text SHA-256: 2c42c9a566263c711dbb17c6df20b44893cfc00fbdba61922a0f05ec30a85a81
+
+js-yaml@5.4.1
+License: MIT
+Source: nodeca/js-yaml
+License text SHA-256: bd470a9114ffb0c125553667203e65dce3ed50a339a3f5c43de24e225c040b7a
 
 jsep@1.4.0
 License: MIT
@@ -1069,7 +1079,7 @@ License: MIT
 Source: git+https://github.com/json5/json5.git
 License text SHA-256: 5b43c9cb06b2f11a0a141c88a9f2852452240d208bfcd5d00d67c2e8e2e4f480
 
-jsonata@2.2.1
+jsonata@2.2.2
 License: MIT
 Source: https://github.com/jsonata-js/jsonata.git
 License text SHA-256: b8918d8758f30711632d30ab2f838b574b55b3fe3f05c54268a80683779bf6b8
@@ -1089,7 +1099,7 @@ License: Apache-2.0
 Source: https://github.com/cozmo/jsQR
 License text SHA-256: c5accbbd8546e94c34aed24afe689a617627d18eed5a6c48277e48db57c23851
 
-jsrsasign@11.1.3
+jsrsasign@11.1.5
 License: MIT
 Source: https://github.com/kjur/jsrsasign.git
 
@@ -1103,7 +1113,7 @@ License: MIT
 Source: git://github.com/brianloveswords/node-jws.git
 License text SHA-256: 960502165e03cfa45e3b306bbc90a0e6da5b2f4254cee1e76dd19c1e126aa9ca
 
-kbpgp@2.1.17
+kbpgp@2.1.19
 License: BSD-3-Clause
 Source: git://github.com/keybase/kbpgp.git
 License text SHA-256: 0661edcabc5fc06620d1d37ed28133ac3b4986223c8e7ed6bca4daf697a120dd
@@ -1196,7 +1206,7 @@ lz4js@0.2.0
 License: ISC
 Source: git+ssh://git@github.com/Benzinga/lz4js.git
 
-markdown-it@14.3.0
+markdown-it@14.3.1
 License: MIT
 Source: markdown-it/markdown-it
 License text SHA-256: 9fc15c73fe40f618d0485364854183747b26d00163810e8ba4a8f8f1cd68f851
@@ -1244,7 +1254,7 @@ License: MIT
 Source: git://github.com/minimistjs/minimist.git
 License text SHA-256: 2cd23e64d69941c70a6a6a42ee2e4b3249bb9f071380a6e68709f5c6efd9d96a
 
-moment-timezone@0.6.2
+moment-timezone@0.6.3
 License: MIT
 Source: https://github.com/moment/moment-timezone.git
 License text SHA-256: b3a550795f41cdccdb5eb2523505ce54dc4a7a3e0d3a6d457d297591341795e7
@@ -1279,7 +1289,7 @@ License: MIT
 Source: git@github.com:suguru03/neo-async.git
 License text SHA-256: fe4e52022671eb1f5b2f2412d3f1d8f7334208cc47a3e58f7b40ffd189325943
 
-ngeohash@0.6.3
+ngeohash@0.6.4
 License: MIT
 Source: https://github.com/sunng87/node-geohash
 License text SHA-256: 62b9b932cf5effd097de675f6604f05dc1fa57553ad5e25381563c0cd9a922b4
@@ -1301,11 +1311,6 @@ Source: git+https://github.com/Neo-Desktop/md6.git
 nodom@2.4.0
 License: ISC
 Source: git+https://github.com/pakastin/nodom.git
-
-nofilter@3.1.0
-License: MIT
-Source: git+https://github.com/hildjj/nofilter.git
-License text SHA-256: a77199a04547d272b3193d2efe5840e5b0041a0a1ad3b62fca6725d2c056a574
 
 notepack.io@3.0.1
 License: MIT
@@ -1350,7 +1355,12 @@ License: MIT
 Source: git+https://github.com/opencollective/opencollective-postinstall.git
 License text SHA-256: 8eb40b0d3cd3121f5827c75aa7e658f8ad0cf9536173146a27a33634647b11fe
 
-otpauth@9.5.1
+openpgp@6.3.1
+License: LGPL-3.0+
+Source: https://github.com/openpgpjs/openpgpjs
+License text SHA-256: a5681bf9b05db14d86776930017c647ad9e6e56ff6bbcfdf21e5848288dfaf1b
+
+otpauth@9.5.2
 License: MIT
 Source: https://github.com/hectorm/otpauth.git
 License text SHA-256: fa8da61ed83f47dd024bd6da28ab9f4a25920117656ba07ba03029137d3d1de9
@@ -1433,7 +1443,7 @@ License: NOASSERTION
 Source: git://github.com/visionmedia/node-progress
 License text SHA-256: 99b18a1800f80c9675a24851a95a194a877986602191dc82b96efcb689b40c72
 
-protobufjs@8.7.0
+protobufjs@8.8.0
 License: BSD-3-Clause
 Source: protobufjs/protobuf.js
 License text SHA-256: 79157668b36019266d89359c2fdc2fb4919c9f5751f16402c147138abf8c0f2b
@@ -1569,7 +1579,7 @@ License: MIT
 Source: git@github.com:cryptocoinjs/scryptsy.git
 License text SHA-256: cb3294fd1a02a55fb6b6820683f6356571ae1078e4611684131e7e279dac86bb
 
-semver@7.7.4
+semver@7.8.5
 License: ISC
 Source: git+https://github.com/npm/node-semver.git
 License text SHA-256: 0ae52fe329ccfd23fedbd688361bd0dedaf5cae3e3516eb2ad17831f2d8b347c
@@ -1770,7 +1780,7 @@ License: MIT
 Source: git://github.com/browserify/node-util
 License text SHA-256: 1d0c8d5954184cfd2303d8462d002f414913bf7104689f4a47d52d7643c95754
 
-uuid@14.0.1
+uuid@14.0.2
 License: MIT
 Source: https://github.com/uuidjs/uuid.git
 License text SHA-256: 19f9e00b8c981751ab9b00c64c5d573976c192cbfba0937d8ab48777d38bbf9b
@@ -1790,7 +1800,7 @@ License: BSD-2-Clause
 Source: jsdom/webidl-conversions
 License text SHA-256: cc645a131c9430f0a39f851ae8230eea248fab10a3f1192b68daae769cea5df9
 
-webpack@5.108.4
+webpack@5.110.3
 License: MIT
 Source: https://github.com/webpack/webpack.git
 License text SHA-256: 2af12ca8b612a22e6659ae68e0e59ee7ac792718c45524a989b512c49c5f5879
@@ -2016,6 +2026,28 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+[LICENSE.md; SHA-256 0a569b357b4eef1aecd07ddd3140fb2fd7bdabc7d617a89b0762036ed9e671c5]
+The MIT License (MIT)
+
+Copyright (c) 2023 Joe Hildebrand
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 [LICENSE; SHA-256 0ae52fe329ccfd23fedbd688361bd0dedaf5cae3e3516eb2ad17831f2d8b347c]
 The ISC License
@@ -2928,6 +2960,28 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 IN THE SOFTWARE.
+
+[LICENSE.txt; SHA-256 2c42c9a566263c711dbb17c6df20b44893cfc00fbdba61922a0f05ec30a85a81]
+Copyright 2015-2026 Chen, Yi-Cyuan
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 [LICENSE.txt; SHA-256 2c44cee9bf9dfda2833327a43c8e8825125928e6686f5ac33f0d9d6b4b929c3c]
 Copyright (c) 2013, GoInstant Inc., a salesforce.com company
@@ -5786,28 +5840,6 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-[LICENSE.txt; SHA-256 7032cf126d8033ed0ce484c368538679df80b3d0627562263650dd7c8dc581d8]
-Copyright 2015-2023 Chen, Yi-Cyuan
-
-Permission is hereby granted, free of charge, to any person obtaining
-a copy of this software and associated documentation files (the
-"Software"), to deal in the Software without restriction, including
-without limitation the rights to use, copy, modify, merge, publish,
-distribute, sublicense, and/or sell copies of the Software, and to
-permit persons to whom the Software is furnished to do so, subject to
-the following conditions:
-
-The above copyright notice and this permission notice shall be
-included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
 [LICENSE; SHA-256 7042c591a6e70eb1852cde421d5d0d36be74f08fd878d855f447541b56fa9b0c]
 MIT License
 
@@ -7190,6 +7222,173 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
+[LICENSE; SHA-256 a5681bf9b05db14d86776930017c647ad9e6e56ff6bbcfdf21e5848288dfaf1b]
+                   GNU LESSER GENERAL PUBLIC LICENSE
+                       Version 3, 29 June 2007
+
+ Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>
+ Everyone is permitted to copy and distribute verbatim copies
+ of this license document, but changing it is not allowed.
+
+
+  This version of the GNU Lesser General Public License incorporates
+the terms and conditions of version 3 of the GNU General Public
+License, supplemented by the additional permissions listed below.
+
+  0. Additional Definitions.
+
+  As used herein, "this License" refers to version 3 of the GNU Lesser
+General Public License, and the "GNU GPL" refers to version 3 of the GNU
+General Public License.
+
+  "The Library" refers to a covered work governed by this License,
+other than an Application or a Combined Work as defined below.
+
+  An "Application" is any work that makes use of an interface provided
+by the Library, but which is not otherwise based on the Library.
+Defining a subclass of a class defined by the Library is deemed a mode
+of using an interface provided by the Library.
+
+  A "Combined Work" is a work produced by combining or linking an
+Application with the Library.  The particular version of the Library
+with which the Combined Work was made is also called the "Linked
+Version".
+
+  The "Minimal Corresponding Source" for a Combined Work means the
+Corresponding Source for the Combined Work, excluding any source code
+for portions of the Combined Work that, considered in isolation, are
+based on the Application, and not on the Linked Version.
+
+  The "Corresponding Application Code" for a Combined Work means the
+object code and/or source code for the Application, including any data
+and utility programs needed for reproducing the Combined Work from the
+Application, but excluding the System Libraries of the Combined Work.
+
+  1. Exception to Section 3 of the GNU GPL.
+
+  You may convey a covered work under sections 3 and 4 of this License
+without being bound by section 3 of the GNU GPL.
+
+  2. Conveying Modified Versions.
+
+  If you modify a copy of the Library, and, in your modifications, a
+facility refers to a function or data to be supplied by an Application
+that uses the facility (other than as an argument passed when the
+facility is invoked), then you may convey a copy of the modified
+version:
+
+   a) under this License, provided that you make a good faith effort to
+   ensure that, in the event an Application does not supply the
+   function or data, the facility still operates, and performs
+   whatever part of its purpose remains meaningful, or
+
+   b) under the GNU GPL, with none of the additional permissions of
+   this License applicable to that copy.
+
+  3. Object Code Incorporating Material from Library Header Files.
+
+  The object code form of an Application may incorporate material from
+a header file that is part of the Library.  You may convey such object
+code under terms of your choice, provided that, if the incorporated
+material is not limited to numerical parameters, data structure
+layouts and accessors, or small macros, inline functions and templates
+(ten or fewer lines in length), you do both of the following:
+
+   a) Give prominent notice with each copy of the object code that the
+   Library is used in it and that the Library and its use are
+   covered by this License.
+
+   b) Accompany the object code with a copy of the GNU GPL and this license
+   document.
+
+  4. Combined Works.
+
+  You may convey a Combined Work under terms of your choice that,
+taken together, effectively do not restrict modification of the
+portions of the Library contained in the Combined Work and reverse
+engineering for debugging such modifications, if you also do each of
+the following:
+
+   a) Give prominent notice with each copy of the Combined Work that
+   the Library is used in it and that the Library and its use are
+   covered by this License.
+
+   b) Accompany the Combined Work with a copy of the GNU GPL and this license
+   document.
+
+   c) For a Combined Work that displays copyright notices during
+   execution, include the copyright notice for the Library among
+   these notices, as well as a reference directing the user to the
+   copies of the GNU GPL and this license document.
+
+   d) Do one of the following:
+
+       0) Convey the Minimal Corresponding Source under the terms of this
+       License, and the Corresponding Application Code in a form
+       suitable for, and under terms that permit, the user to
+       recombine or relink the Application with a modified version of
+       the Linked Version to produce a modified Combined Work, in the
+       manner specified by section 6 of the GNU GPL for conveying
+       Corresponding Source.
+
+       1) Use a suitable shared library mechanism for linking with the
+       Library.  A suitable mechanism is one that (a) uses at run time
+       a copy of the Library already present on the user's computer
+       system, and (b) will operate properly with a modified version
+       of the Library that is interface-compatible with the Linked
+       Version.
+
+   e) Provide Installation Information, but only if you would otherwise
+   be required to provide such information under section 6 of the
+   GNU GPL, and only to the extent that such information is
+   necessary to install and execute a modified version of the
+   Combined Work produced by recombining or relinking the
+   Application with a modified version of the Linked Version. (If
+   you use option 4d0, the Installation Information must accompany
+   the Minimal Corresponding Source and Corresponding Application
+   Code. If you use option 4d1, you must provide the Installation
+   Information in the manner specified by section 6 of the GNU GPL
+   for conveying Corresponding Source.)
+
+  5. Combined Libraries.
+
+  You may place library facilities that are a work based on the
+Library side by side in a single library together with other library
+facilities that are not Applications and are not covered by this
+License, and convey such a combined library under terms of your
+choice, if you do both of the following:
+
+   a) Accompany the combined library with a copy of the same work based
+   on the Library, uncombined with any other library facilities,
+   conveyed under the terms of this License.
+
+   b) Give prominent notice with the combined library that part of it
+   is a work based on the Library, and explaining where to find the
+   accompanying uncombined form of the same work.
+
+  6. Revised Versions of the GNU Lesser General Public License.
+
+  The Free Software Foundation may publish revised and/or new versions
+of the GNU Lesser General Public License from time to time. Such new
+versions will be similar in spirit to the present version, but may
+differ in detail to address new problems or concerns.
+
+  Each version is given a distinguishing version number. If the
+Library as you received it specifies that a certain numbered version
+of the GNU Lesser General Public License "or any later version"
+applies to it, you have the option of following the terms and
+conditions either of that published version or of any later version
+published by the Free Software Foundation. If the Library as you
+received it does not specify a version number of the GNU Lesser
+General Public License, you may choose any version of the GNU Lesser
+General Public License ever published by the Free Software Foundation.
+
+  If the Library as you received it specifies that a proxy can decide
+whether future versions of the GNU Lesser General Public License shall
+apply, that proxy's public statement of acceptance of any version is
+permanent authorization for you to choose that version for the
+Library.
+
 [LICENSE; SHA-256 a596744eec6b05682ed972bf93937668bbc8da2caed93fbf6510389de019b5c0]
 The MIT License (MIT)
 
@@ -7275,28 +7474,6 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
-
-[LICENSE.md; SHA-256 a77199a04547d272b3193d2efe5840e5b0041a0a1ad3b62fca6725d2c056a574]
-The MIT License (MIT)
-
-Copyright (c) 2021 Joe Hildebrand
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in
-the Software without restriction, including without limitation the rights to
-use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software is furnished to do so,
-subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 [LICENSE; SHA-256 a9a1ea6807dbbe0136c088cf4a5f37fbc3b6fd1f31dd36f2813107028f60e62d]
 The MIT License (MIT)
@@ -7803,6 +7980,29 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
 LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+[LICENSE; SHA-256 bd470a9114ffb0c125553667203e65dce3ed50a339a3f5c43de24e225c040b7a]
+(The MIT License)
+
+Copyright (C) 2011-2015 by Vitaly Puzrin
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
 
 [LICENSE.md; SHA-256 bd7c2da51c2d1f42cd7993f50858b632a584f5750de5747df832768801a112bc]
 The MIT License (MIT)
@@ -8575,6 +8775,27 @@ LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE A
 IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
 WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+[LICENSE.md; SHA-256 dab2e9d3cd30a4caa8f2468b24156dccd500950468ce0cc0b4c8541cd65b33c8]
+Copyright® 2025 The @cto.af/wtf8 Authors and Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the “Software”), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 [LICENSE; SHA-256 dc3339f05d09a3d2c2c71d1a424c0cca9f2df4f2906015c7a5aee8e3e1866764]
 Copyright (c) 2017 Calvin Metcalf

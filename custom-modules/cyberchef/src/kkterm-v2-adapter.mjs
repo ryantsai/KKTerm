@@ -1,5 +1,5 @@
 /* eslint-disable jsdoc/require-jsdoc, no-console */
-/* KKTerm CyberChef adapter: CyberChef v11.3.0 modified for KKMod host API v2. */
+/* KKTerm CyberChef adapter: CyberChef v11.5.0 modified for KKMod host API v2. */
 
 const READY_FALLBACK_MS = 12_000;
 let currentContext = {theme: "light", locale: "en"};

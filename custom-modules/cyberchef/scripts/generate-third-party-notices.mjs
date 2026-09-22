@@ -77,7 +77,7 @@ const sections = [
     "KKTerm CyberChef Custom Module — third-party notices",
     "====================================================",
     "",
-    "Generated from the adapted CyberChef v11.3.0 package-lock.json and installed",
+    "Generated from the adapted CyberChef v11.5.0 package-lock.json and installed",
     "browser dependency tree. This is an unofficial KKTerm integration.",
     "",
     "Vendored browser components",

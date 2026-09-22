@@ -1,21 +1,22 @@
 # BentoPDF KKMod corresponding source and build information
 
-This package is an unofficial KKTerm API v2 adaptation of BentoPDF v2.8.7,
+This package is an unofficial KKTerm API v2 adaptation of BentoPDF v2.8.8,
 licensed under AGPL-3.0-only.
 
 - Upstream source: https://github.com/alam00000/bentopdf
-- Upstream tag: `v2.8.7`
-- Upstream commit: `55915a29017a5090a6ea61e61b0f4d899f032923`
-- Adaptation date: 2026-08-15
+- Upstream tag: `v2.8.8`
+- Upstream commit: `f96cd4e5166f3d51393dfe9f3c440b5bb77802f1`
+- Adaptation date: 2026-09-22
 
 The adaptation removes service-worker registration and the home-page GitHub
 API request, pins patched browser dependencies, supplies package-local WASM and
 English OCR assets, runs the EmbedPDF editor on its direct engine, disables
 Tesseract's Blob worker wrapper, and packages heic2any's embedded worker as a
 same-package script without dynamic code. Those upstream worker paths are
-blocked by the Custom Module CSP. The adaptation delegates
-local browser exports to KKTerm's permission-bound download mediation, and
-initializes KKTerm's API v2 lifecycle. RFC 3161 network
+blocked by the Custom Module CSP. The adaptation also maps the updated editor's
+font fallback to packaged font assets, delegates local browser exports to
+KKTerm's permission-bound download mediation, and initializes KKTerm's API v2
+lifecycle. RFC 3161 network
 timestamping is limited to `POST https://freetsa.org/tsr` through
 `KKTerm.network.fetch`; the other upstream TSA presets and arbitrary TSA URLs
 are unavailable. It does not include a v1 manifest or runtime fallback.
@@ -26,7 +27,9 @@ BentoPDF's primary PDF.js CMaps and standard fonts are packaged as well.
 
 To reproduce the browser build, clone the exact upstream tag, run
 `scripts/apply-adaptation.mjs` from the KKTerm source tree, install the resulting
-lockfile, stage the runtime assets named in `VENDORED_COMPONENTS.md`, and run
+lockfile, stage the runtime assets named in `VENDORED_COMPONENTS.md` under
+`public/kkmod-runtime/` (including the seven `@embedpdf/fonts-*` v1.0.0 packs
+under `embedpdf-fonts/{jp,kr,sc,tc,arabic,hebrew,latin}/`), and run
 the adapted cross-platform `npm run build`. The adaptation pins the package-local
 WASM defaults and absolute same-package OCR worker/core/language/font routes,
 and exposes only the bundled English OCR language. Then run

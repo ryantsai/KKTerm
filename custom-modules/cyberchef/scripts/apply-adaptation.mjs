@@ -2,8 +2,8 @@ import {execFileSync} from "node:child_process";
 import {copyFile, readFile, writeFile} from "node:fs/promises";
 import {resolve} from "node:path";
 
-const UPSTREAM_VERSION = "11.3.0";
-const UPSTREAM_COMMIT = "d24ba1afce2e3a080308b5df7db033332fe94a1a";
+const UPSTREAM_VERSION = "11.5.0";
+const UPSTREAM_COMMIT = "8cd426dd4f40f1423912d5fad91b578a86a65112";
 const DISABLED_OPERATIONS = ["HTTP request", "DNS over HTTPS", "Show on map"];
 const DISABLED_OPERATION_TESTS = ["ShowOnMap"];
 const moduleRoot = resolve(import.meta.dirname, "..");

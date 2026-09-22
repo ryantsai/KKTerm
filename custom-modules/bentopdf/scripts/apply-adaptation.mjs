@@ -10,8 +10,8 @@ if (!process.argv[2] && !process.env.BENTOPDF_SOURCE) {
 
 const packagePath = resolve(sourceRoot, 'package.json');
 const packageJson = JSON.parse(await readFile(packagePath, 'utf8'));
-if (packageJson.name !== 'bento-pdf' || packageJson.version !== '2.8.7') {
-  throw new Error('Expected the immutable BentoPDF v2.8.7 source tree.');
+if (packageJson.name !== 'bento-pdf' || packageJson.version !== '2.8.8') {
+  throw new Error('Expected the immutable BentoPDF v2.8.8 source tree.');
 }
 
 async function replaceOnce(path, before, after) {
@@ -83,11 +83,9 @@ await ensureImport(
 );
 await replaceOnce(
   mainPath,
-  "  if (githubStarsElements.some((el) => el) && !__SIMPLE_MODE__) {",
-  `  const isKktermModule = Boolean(
-    (window as Window & { KKTerm?: { apiVersion?: number } }).KKTerm
-  );
-  if (githubStarsElements.some((el) => el) && !__SIMPLE_MODE__ && !isKktermModule) {`
+  '    !__DISABLE_GITHUB_STARS__',
+  `    !__DISABLE_GITHUB_STARS__ &&
+    !(window as Window & { KKTerm?: { apiVersion?: number } }).KKTerm`
 );
 
 await replaceOnce(
@@ -116,6 +114,22 @@ await replaceOnce(
   '        worker: false,'
 );
 
+const editorFontsPath = resolve(sourceRoot, 'src/js/config/editor-fonts.ts');
+await replaceOnce(
+  editorFontsPath,
+  `const FONT_CDN =
+  import.meta.env.VITE_EMBEDPDF_FONTS_URL ||
+  'https://cdn.jsdelivr.net/npm/@embedpdf';`,
+  `const FONT_CDN = '/dist/kkmod-runtime/embedpdf-fonts';`
+);
+for (const key of ['jp', 'kr', 'sc', 'tc', 'arabic', 'hebrew', 'latin']) {
+  await replaceOnce(
+    editorFontsPath,
+    `fonts-${key}@1.0.0/fonts/`,
+    `${key}/`
+  );
+}
+
 await replaceOnce(
   resolve(sourceRoot, 'src/js/utils/tesseract-runtime.ts'),
   `function getDefaultTesseractAssetEnv(): TesseractAssetEnv {
@@ -140,8 +154,8 @@ await replaceOnce(
 
 await replaceOnce(
   resolve(sourceRoot, 'src/js/utils/tesseract-runtime.ts'),
-  '    workerPath: config.workerPath,',
-  '    workerBlobURL: false,\n    workerPath: config.workerPath,'
+  '    ...(logger ? { logger } : {}),\n    workerPath: config.workerPath,',
+  '    ...(logger ? { logger } : {}),\n    workerBlobURL: false,\n    workerPath: config.workerPath,'
 );
 
 await replaceOnce(
