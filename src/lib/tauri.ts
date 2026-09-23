@@ -2854,6 +2854,10 @@ type CommandMap = {
     args: { request: { sessionId: string; data: number[] } };
     result: null;
   };
+  send_terminal_saved_password: {
+    args: { request: { sessionId: string; sourceConnectionId: string } };
+    result: null;
+  };
   resize_terminal: {
     args: {
       request: {

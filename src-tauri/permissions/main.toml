@@ -250,6 +250,7 @@ commands.allow = [
   "start_terminal_session",
   "local_shell_available",
   "write_terminal_input",
+  "send_terminal_saved_password",
   "resize_terminal",
   "set_terminal_encoding",
   "close_terminal_session",

@@ -2307,6 +2307,16 @@ impl SessionManager {
         }
     }
 
+    pub fn send_saved_password(&self, session_id: String, password: String) -> Result<(), String> {
+        if password.contains('\r') || password.contains('\n') {
+            return Err("stored password contains a line break".to_string());
+        }
+        self.write_terminal_input(TerminalInputRequest {
+            session_id,
+            data: format!("{password}\r").into_bytes(),
+        })
+    }
+
     pub fn set_terminal_encoding(&self, request: SetTerminalEncodingRequest) -> Result<(), String> {
         let sessions = self
             .sessions

@@ -36,6 +36,8 @@ Transport labels for status messages: `remoteDesktop.rdpActiveX`, `remoteDesktop
 
 ## Toolbar actions
 
+The RDP/VNC Pane toolbar shows the Connection host on the left: an IP address stays intact, while a fully qualified hostname shows only its leftmost label. The native hover tooltip shows the full host and port. The right label shows only the username when present; it does not repeat the host.
+
 - `remoteDesktop.actionsMenu` — hamburger button at the right end of the toolbar, immediately left of the Pane close button when that button is present. Opens a native menu with `remoteDesktop.fullscreen.enter` followed by the common viewer modes: `settings.remoteDesktopViewModeFit`, `settings.remoteDesktopViewModeStretch`, `settings.remoteDesktopViewModeActualSize`, `settings.remoteDesktopViewModeFitWidth`, and `settings.remoteDesktopViewModeFitHeight`. The Full screen item shows the current platform shortcut. The selected view mode is saved as a per-Connection override and uses the Settings default until changed from the toolbar or Connection options. For VNC, `settings.remoteDesktopViewModeActualSize` keeps the remote framebuffer at 1:1 size and enables workspace scrollbars, which is useful for dual-monitor servers that would otherwise be squeezed into one Pane. For RDP, changing the mode saves the Connection and reconnects so the native ActiveX display settings are re-created cleanly.
 
 - `remoteDesktop.sendCtrlAltDel` — keyboard icon in the toolbar.

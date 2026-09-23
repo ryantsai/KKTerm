@@ -61,7 +61,7 @@ import i18next from "./i18n/config";
 import { invokeCommand, openFilesystemPath } from "./lib/tauri";
 import { elevatedLocalShellAction } from "./modules/workspace/connections/quickConnectMenuModel";
 import { resolveDefaultTerminalAppearance } from "./modules/workspace/connections/terminalAppearanceDefaults";
-import type { LocalShellOption } from "./modules/workspace/connections/utils";
+import { terminalHostDisplayName, type LocalShellOption } from "./modules/workspace/connections/utils";
 import type { GitBrowserTarget } from "./modules/git/gitTypes";
 import type { CompareEndpoint, CompareView } from "./modules/compare/compareTypes";
 import { markPanesForRuntimeMove } from "./modules/workspace/paneRegistry";
@@ -932,6 +932,9 @@ function toolbarTitleForConnection(connection: Connection) {
   }
   if (connection.type === "fileView") {
     return connection.name;
+  }
+  if (connection.type === "ssh" || connection.type === "telnet" || connection.type === "rdp" || connection.type === "vnc") {
+    return terminalHostDisplayName(connection.host);
   }
   return formatConnectionAddress(connection);
 }
@@ -4419,7 +4422,7 @@ function formatConnectionAddress(connection: Connection) {
 }
 
 function remoteDesktopSubtitle(connection: Connection) {
-  return connection.user?.trim() || formatConnectionAddress(connection);
+  return connection.user?.trim() || "";
 }
 
 function urlConnectionSubtitle(connection: Connection) {

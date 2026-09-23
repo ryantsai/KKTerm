@@ -229,6 +229,13 @@ struct UnassignConnectionPasswordCredentialRequest {
     connection_id: String,
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SendTerminalSavedPasswordRequest {
+    session_id: String,
+    source_connection_id: String,
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ConnectionPasswordCredentialEntry {
@@ -2982,6 +2989,24 @@ fn write_terminal_input(
 }
 
 #[tauri::command]
+async fn send_terminal_saved_password(
+    app: tauri::AppHandle,
+    request: SendTerminalSavedPasswordRequest,
+) -> Result<(), String> {
+    run_blocking_command("send saved terminal password", move || {
+        let storage = app.state::<storage::Storage>();
+        let owner_id = storage.terminal_connection_password_owner_id(request.source_connection_id)?;
+        let secrets = app.state::<secrets::Secrets>();
+        let password = secrets
+            .read_connection_password(owner_id)?
+            .ok_or_else(|| "saved terminal password is unavailable".to_string())?;
+        let sessions = app.state::<sessions::SessionManager>();
+        sessions.send_saved_password(request.session_id, password)
+    })
+    .await
+}
+
+#[tauri::command]
 fn resize_terminal(
     sessions: tauri::State<'_, sessions::SessionManager>,
     request: sessions::ResizeTerminalRequest,
@@ -5386,6 +5411,7 @@ pub fn run() {
             start_terminal_session,
             local_shell_available,
             write_terminal_input,
+            send_terminal_saved_password,
             resize_terminal,
             set_terminal_encoding,
             close_terminal_session,

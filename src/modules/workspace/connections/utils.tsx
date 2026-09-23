@@ -176,7 +176,31 @@ export function connectionToolbarTitle(connection: Connection) {
   if (connection.type === "cloudStorage") {
     return connection.name;
   }
+  if (connection.type === "ssh" || connection.type === "telnet" || connection.type === "rdp" || connection.type === "vnc") {
+    return terminalHostDisplayName(connection.host);
+  }
   return connection.port ? `${connection.host}:${connection.port}` : connection.host;
+}
+
+export function terminalHostDisplayName(host: string) {
+  const value = host.trim();
+  if (!value || value.includes(":")) return value;
+  const parts = value.replace(/\.$/u, "").split(".");
+  const isIpv4 = parts.length === 4 && parts.every((part) => /^\d{1,3}$/u.test(part) && Number(part) <= 255);
+  return (parts.length > 1 || value.endsWith(".")) && !isIpv4 ? parts[0] : value;
+}
+
+export function terminalHostTooltip(connection: Connection, defaultSshPort = 22) {
+  const host = connection.host.trim();
+  const address = host.includes(":") && !host.startsWith("[") ? `[${host}]` : host;
+  const defaultPorts: Partial<Record<ConnectionType, number>> = {
+    ssh: defaultSshPort,
+    telnet: 23,
+    rdp: 3389,
+    vnc: 5900,
+  };
+  const port = connection.port ?? defaultPorts[connection.type];
+  return port ? `${address}:${port}` : address;
 }
 
 function localTerminalToolbarTitle(connection: Connection) {

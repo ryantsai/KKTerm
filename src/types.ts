@@ -1343,6 +1343,8 @@ export interface TerminalSettings {
   /** Right-click pastes the clipboard instead of opening the context menu
    * (Shift+right-click still opens the menu). */
   rightClickPaste: boolean;
+  /** Offer a manual saved-password picker after sudo or su prompts. */
+  offerSavedPasswords: boolean;
   /** Every new terminal Session starts with recording active, as if the
    * record button was pressed. */
   autoRecordSessions: boolean;

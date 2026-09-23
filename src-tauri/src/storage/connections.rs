@@ -949,6 +949,25 @@ impl Storage {
         self.with_connection(list_connection_password_credentials)
     }
 
+    pub fn terminal_connection_password_owner_id(&self, connection_id: String) -> Result<String, String> {
+        let connection_id = required_field("connection id", connection_id)?;
+        self.with_connection(|connection| {
+            let (connection_type, credential_id): (String, Option<String>) = connection
+                .query_row(
+                    "SELECT connection_type, password_credential_id FROM connections WHERE id = ?1",
+                    params![&connection_id],
+                    |row| Ok((row.get(0)?, row.get(1)?)),
+                )
+                .optional()
+                .map_err(to_storage_error)?
+                .ok_or_else(|| "connection was not found".to_string())?;
+            if connection_type != "ssh" && connection_type != "telnet" {
+                return Err("only terminal Connection passwords can be sent".to_string());
+            }
+            Ok(credential_id.unwrap_or(connection_id))
+        })
+    }
+
     pub fn create_connection_password_credential_metadata(
         &self,
         connection_id: String,

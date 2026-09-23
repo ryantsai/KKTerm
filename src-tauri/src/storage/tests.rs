@@ -4631,6 +4631,7 @@ fn terminal_settings_round_trip_through_settings_table() {
     assert!(!defaults.use_random_dynamic_background);
     assert!(defaults.confirm_multiline_paste);
     assert!(!defaults.right_click_paste);
+    assert!(defaults.offer_saved_passwords);
     assert!(!defaults.auto_record_sessions);
 
     let updated = storage
@@ -4646,6 +4647,7 @@ fn terminal_settings_round_trip_through_settings_table() {
             allow_osc52_clipboard: true,
             confirm_multiline_paste: false,
             right_click_paste: true,
+            offer_saved_passwords: false,
             auto_record_sessions: true,
             default_shell: "pwsh.exe".to_string(),
             custom_shells: vec![TerminalCustomShell {
@@ -4687,6 +4689,7 @@ fn terminal_settings_round_trip_through_settings_table() {
     assert!(updated.use_random_dynamic_background);
     assert!(updated.copy_on_select);
     assert!(updated.right_click_paste);
+    assert!(!updated.offer_saved_passwords);
     assert!(updated.auto_record_sessions);
     assert_eq!(updated.color_scheme, "dracula");
     assert_eq!(updated.hyperlink_rules.len(), 1);
@@ -4708,6 +4711,7 @@ fn terminal_settings_round_trip_through_settings_table() {
         .expect("terminal settings reload");
     assert_eq!(reloaded.font_family, "Cascadia Mono");
     assert_eq!(reloaded.default_shell, "pwsh.exe");
+    assert!(!reloaded.offer_saved_passwords);
     assert_eq!(reloaded.custom_shells.len(), 1);
     assert_eq!(reloaded.custom_shells[0].name, "Git Bash");
     assert_eq!(

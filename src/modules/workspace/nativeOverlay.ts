@@ -22,6 +22,7 @@ const INTERSECTING_NATIVE_SURFACE_OVERLAY_SELECTOR = [
   ".dashboard-tab-gradient-popover",
   ".dw-bg-popover",
   ".terminal-actions-menu",
+  ".terminal-password-picker",
   ".terminal-bg-popover",
   ".tmux-session-menu-portal",
   ".sftp-protocol-menu",

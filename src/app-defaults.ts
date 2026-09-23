@@ -98,6 +98,7 @@ export const defaultTerminalSettings: TerminalSettings = {
   allowOsc52Clipboard: true,
   confirmMultilinePaste: true,
   rightClickPaste: false,
+  offerSavedPasswords: true,
   autoRecordSessions: false,
   defaultShell: defaultLocalShell(),
   customShells: [],

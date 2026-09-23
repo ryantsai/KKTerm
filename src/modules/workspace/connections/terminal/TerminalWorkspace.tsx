@@ -1,4 +1,4 @@
-import { confirmTrustedSshHostKey, connectionPasswordOwnerId, connectionToolbarTitle, localShellOptionsForPlatform, resolveAvailableLocalShell, resolveSshCompression, resolveSshOldProtocols, resolveSshSocksProxyRequest, uniqueRuntimeId, usesNativeSshHostKeyVerification } from "../utils";
+import { confirmTrustedSshHostKey, connectionPasswordOwnerId, connectionToolbarTitle, terminalHostTooltip, localShellOptionsForPlatform, resolveAvailableLocalShell, resolveSshCompression, resolveSshOldProtocols, resolveSshSocksProxyRequest, uniqueRuntimeId, usesNativeSshHostKeyVerification } from "../utils";
 import { resolveLocalShellForLaunch } from "./pwshPreflight";
 import { createTerminalStartupState } from "./terminalStartupState";
 import { ConfirmDialog } from "../../../../app/ConfirmDialog";
@@ -67,6 +67,9 @@ import {
   allSyntaxHighlightProfiles,
   findSyntaxHighlightProfile,
 } from "./syntaxHighlighting";
+import { SavedPasswordPromptDetector } from "./savedPasswordPrompt";
+import { terminalPasswordChoices, type TerminalPasswordChoice } from "./terminalPasswordChoices";
+import { TerminalPasswordPicker } from "./TerminalPasswordPicker";
 
 const SftpWorkspace = lazy(() =>
   import("../sftp/SftpWorkspace").then(({ SftpWorkspace }) => ({
@@ -849,6 +852,9 @@ function formatUrlPaneSubtitle(url: string) {
 }
 
 function formatEmbeddedConnectionPaneSubtitle(connection: Connection) {
+  if (connection.type === "rdp" || connection.type === "vnc") {
+    return connection.user.trim();
+  }
   if (connection.type === "localFiles") {
     return connection.localStartupDirectory || connection.host || "";
   }
@@ -1628,6 +1634,52 @@ function TerminalPaneView({
     input: string;
   } | null>(null);
   const quickSelectOverlayRef = useRef<HTMLDivElement | null>(null);
+  const savedPasswordPromptRef = useRef(new SavedPasswordPromptDetector());
+  const passwordOfferPendingRef = useRef(false);
+  const passwordOfferSequenceRef = useRef(0);
+  const [passwordPicker, setPasswordPicker] = useState<{
+    anchor: { x: number; y: number };
+    choices: TerminalPasswordChoice[];
+  } | null>(null);
+  const [passwordSendBusy, setPasswordSendBusy] = useState(false);
+  const passwordSendBusyRef = useRef(false);
+
+  function closePasswordPicker(restoreFocus = true) {
+    passwordOfferPendingRef.current = false;
+    passwordOfferSequenceRef.current += 1;
+    savedPasswordPromptRef.current.reset();
+    setPasswordPicker(null);
+    if (restoreFocus) {
+      const focus = () => {
+        if (isActiveRef.current && isTerminalWindowFocused()) focusTerminalRenderer();
+      };
+      queueMicrotask(focus);
+      window.requestAnimationFrame(focus);
+    }
+  }
+
+  async function sendSavedPassword(sourceConnectionId: string) {
+    const sessionId = sessionIdRef.current;
+    if (!sessionId || passwordSendBusyRef.current) return;
+    passwordSendBusyRef.current = true;
+    setPasswordSendBusy(true);
+    try {
+      await invokeCommand("send_terminal_saved_password", {
+        request: { sessionId, sourceConnectionId },
+      });
+      closePasswordPicker();
+    } catch (error) {
+      useWorkspaceStore.getState().showStatusBarNotice(
+        t("terminal.savedPasswordSendFailed", {
+          message: error instanceof Error ? error.message : String(error),
+        }),
+        { tone: "error" },
+      );
+    } finally {
+      passwordSendBusyRef.current = false;
+      setPasswordSendBusy(false);
+    }
+  }
 
   function updateTerminalConnectionState(state: "connecting" | "connected" | "disconnected") {
     terminalConnectionStateRef.current = state;
@@ -1726,6 +1778,15 @@ function TerminalPaneView({
     : undefined;
   const gitRepo = useGitRepoDetection(gitDetectPath, isLocalTerminal);
   const { t } = useTranslation();
+  useEffect(() => {
+    if (isActive && terminalSettings.offerSavedPasswords) return;
+    if (passwordOfferPendingRef.current) {
+      passwordOfferPendingRef.current = false;
+      passwordOfferSequenceRef.current += 1;
+      savedPasswordPromptRef.current.reset();
+      setPasswordPicker(null);
+    }
+  }, [isActive, terminalSettings.offerSavedPasswords]);
   const isReconnectableTerminal =
     pane.connection?.type === "ssh" ||
     pane.connection?.type === "telnet" ||
@@ -1986,6 +2047,7 @@ function TerminalPaneView({
       return;
     }
 
+    const savedPasswordPrompt = savedPasswordPromptRef.current;
     startedRef.current = true;
     const rendererSettings =
       connection.type === "ssh"
@@ -2265,12 +2327,23 @@ function TerminalPaneView({
       // without re-running this session effect. When on, the same gated input is
       // mirrored to every other open terminal pane.
       void writeWithPasteConfirmation(data, (input) => {
+        // xterm can emit mouse/focus protocol input when the picker takes focus.
+        const isMouseOrFocusSequence = isTerminalPointerSequence(input);
+        if (!isMouseOrFocusSequence) {
+          if (passwordOfferPendingRef.current) {
+            passwordOfferPendingRef.current = false;
+            passwordOfferSequenceRef.current += 1;
+            setPasswordPicker(null);
+            savedPasswordPromptRef.current.reset();
+          }
+          savedPasswordPromptRef.current.observeInput(input);
+        }
         writeInputToSession(input);
         // Only mirror real keyboard/IME/paste text. xterm routes mouse and
         // focus activity through onData as control sequences too; broadcasting
         // those would dump garbled coordinates into the other panes (and into
         // shells that never enabled mouse mode), so they are filtered out.
-        if (useWorkspaceStore.getState().syncInputEnabled && !isTerminalPointerSequence(input)) {
+        if (useWorkspaceStore.getState().syncInputEnabled && !isMouseOrFocusSequence) {
           broadcastInputToOtherPanes(pane.id, input);
         }
       });
@@ -2371,7 +2444,40 @@ function TerminalPaneView({
           if (event.payload.sessionId !== sessionIdRef.current) {
             return;
           }
-          terminal.write(event.payload.data);
+          const offerPassword =
+            useWorkspaceStore.getState().terminalSettings.offerSavedPasswords
+            && (connection.type === "ssh" || connection.type === "telnet")
+            && savedPasswordPromptRef.current.observeOutput(event.payload.data);
+          const offerSequence = offerPassword ? ++passwordOfferSequenceRef.current : 0;
+          if (offerPassword) passwordOfferPendingRef.current = true;
+          terminal.write(event.payload.data, offerPassword ? () => {
+            if (disposed || sessionEnded || !isActiveRef.current || !passwordOfferPendingRef.current
+              || offerSequence !== passwordOfferSequenceRef.current) return;
+            const geometry = terminal.getScreenGeometry();
+            const host = terminalElementRef.current;
+            if (!geometry || !host) return;
+            const cursor = terminal.getCursorPosition();
+            const rect = host.getBoundingClientRect();
+            const anchor = {
+              x: rect.left + geometry.left + cursor.column * geometry.cellWidth,
+              y: rect.top + geometry.top + (cursor.row + 1) * geometry.cellHeight,
+            };
+            void Promise.all([
+              invokeCommand("list_connection_tree"),
+              invokeCommand("list_stored_credentials"),
+            ]).then(([tree, credentials]) => {
+              if (disposed || sessionEnded || event.payload.sessionId !== sessionIdRef.current
+                || !isActiveRef.current || !passwordOfferPendingRef.current
+                || offerSequence !== passwordOfferSequenceRef.current
+                || !useWorkspaceStore.getState().terminalSettings.offerSavedPasswords) return;
+              const choices = terminalPasswordChoices(tree, credentials, connection.id);
+              if (!choices.length) {
+                passwordOfferPendingRef.current = false;
+                return;
+              }
+              setPasswordPicker({ anchor, choices });
+            }).catch(() => { passwordOfferPendingRef.current = false; });
+          } : undefined);
           if (pane.tmuxSessionId) {
             tmuxStartupOutputTailRef.current = (tmuxStartupOutputTailRef.current + event.payload.data).slice(
               -TMUX_UNAVAILABLE_MARKER.length * 2,
@@ -2407,6 +2513,10 @@ function TerminalPaneView({
             return;
           }
           sessionEnded = true;
+          passwordOfferPendingRef.current = false;
+          passwordOfferSequenceRef.current += 1;
+          savedPasswordPrompt.reset();
+          setPasswordPicker(null);
           acceptBells = false;
           useTerminalAttentionStore.getState().clear(pane.id, event.payload.sessionId);
           startupState.end();
@@ -2595,6 +2705,10 @@ function TerminalPaneView({
 
     return () => {
       disposed = true;
+      savedPasswordPrompt.reset();
+      passwordOfferPendingRef.current = false;
+      passwordOfferSequenceRef.current += 1;
+      setPasswordPicker(null);
       startedRef.current = false;
       dataDisposable.dispose();
       selectionDisposable.dispose();
@@ -3195,7 +3309,12 @@ function TerminalPaneView({
       }
     >
       <header>
-        <span className="terminal-pane-title">
+        <span
+          className="terminal-pane-title"
+          title={pane.connection && (pane.connection.type === "ssh" || pane.connection.type === "telnet")
+            ? terminalHostTooltip(pane.connection, sshSettings.defaultPort)
+            : undefined}
+        >
           {pane.connection ? (
             <ConnectionGlyph
               className="terminal-pane-connection-icon"
@@ -3822,6 +3941,16 @@ function TerminalPaneView({
           onCancel={() => resolveMultilinePasteConfirmation(false)}
           onConfirm={() => resolveMultilinePasteConfirmation(true)}
           title={t("settings.confirmMultilinePaste")}
+        />
+      ) : null}
+      {passwordPicker ? (
+        <TerminalPasswordPicker
+          anchor={passwordPicker.anchor}
+          busy={passwordSendBusy}
+          choices={passwordPicker.choices}
+          currentConnectionId={pane.connection?.id ?? ""}
+          onClose={closePasswordPicker}
+          onSend={(sourceConnectionId) => void sendSavedPassword(sourceConnectionId)}
         />
       ) : null}
     </article>

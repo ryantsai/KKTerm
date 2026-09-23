@@ -99,6 +99,7 @@ export interface TerminalRenderer {
   getLastCommandOutput: () => string | null;
   getViewportLines: () => string[];
   getScreenGeometry: () => TerminalScreenGeometry | null;
+  getCursorPosition: () => { column: number; row: number };
   setColorScheme: (schemeId: string) => void;
   setSyntaxHighlightProfile: (profile: TerminalSyntaxHighlightProfile | null) => void;
   onSearchResultsChange: (handler: (result: ISearchResultChangeEvent) => void) => IDisposable;
@@ -107,7 +108,7 @@ export interface TerminalRenderer {
   setWheelScrollbackOverride: (enabled: boolean, handler?: (lines: number) => void) => void;
   setBackgroundOpacity: (opacity: number) => void;
   paste: (data: string) => void;
-  write: (data: string) => void;
+  write: (data: string, callback?: () => void) => void;
   writeln: (data: string) => void;
   setFontSize: (size: number) => void;
   setFontFamily: (family: string) => void;
@@ -503,6 +504,13 @@ class XtermTerminalRenderer implements TerminalRenderer, TerminalFontAtlasRefres
     };
   }
 
+  getCursorPosition() {
+    return {
+      column: this.terminal.buffer.active.cursorX,
+      row: this.terminal.buffer.active.cursorY,
+    };
+  }
+
   setColorScheme(schemeId: string) {
     const scheme = resolveTerminalColorScheme(schemeId);
     if (scheme.id === this.colorScheme.id) {
@@ -854,8 +862,8 @@ class XtermTerminalRenderer implements TerminalRenderer, TerminalFontAtlasRefres
     }
   }
 
-  write(data: string) {
-    this.terminal.write(data);
+  write(data: string, callback?: () => void) {
+    this.terminal.write(data, callback);
   }
 
   paste(data: string) {

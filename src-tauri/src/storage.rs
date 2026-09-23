@@ -931,6 +931,8 @@ pub struct TerminalSettings {
     confirm_multiline_paste: bool,
     #[serde(default)]
     right_click_paste: bool,
+    #[serde(default = "default_true")]
+    offer_saved_passwords: bool,
     #[serde(default)]
     auto_record_sessions: bool,
     default_shell: String,
@@ -7041,6 +7043,7 @@ fn default_terminal_settings() -> TerminalSettings {
         allow_osc52_clipboard: default_allow_osc52_clipboard(),
         confirm_multiline_paste: true,
         right_click_paste: false,
+        offer_saved_passwords: true,
         auto_record_sessions: false,
         default_shell: if cfg!(target_os = "windows") {
             "powershell.exe".to_string()

@@ -74,6 +74,7 @@ test("advanced DOM overlays share URL and RDP intersection detection", async () 
     ".sftp-viewopts-menu",
     ".terminal-actions-menu",
     ".terminal-bg-popover",
+    ".terminal-password-picker",
     ".tmux-session-menu-portal",
     ".tutorial-overlay",
   ]) {

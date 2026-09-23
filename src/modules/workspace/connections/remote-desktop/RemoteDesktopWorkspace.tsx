@@ -1,4 +1,4 @@
-import { connectionIconForType, connectionPasswordOwnerId, connectionSubtitle, connectionToolbarTitle, connectionTypeLabel } from "../utils";
+import { connectionIconForType, connectionPasswordOwnerId, connectionSubtitle, connectionToolbarTitle, connectionTypeLabel, terminalHostTooltip } from "../utils";
 import { ScreenshotMenu } from "../../ScreenshotMenu";
 
 import { documentHasRdpBlockingOverlay } from "../../nativeOverlay";
@@ -99,6 +99,7 @@ export function RemoteDesktopWorkspace({
   const typeLabel = connection ? connectionTypeLabel(connection.type) : t("remoteDesktop.typeLabel");
   const Icon = connection ? connectionIconForType(connection.type) : Monitor;
   const toolbarTitle = tab.toolbarTitle ?? (connection ? connectionToolbarTitle(connection) : tab.title);
+  const toolbarUsername = connection?.user.trim();
   const workspaceRef = useRef<HTMLElement | null>(null);
   const hostRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -1699,12 +1700,12 @@ export function RemoteDesktopWorkspace({
     >
       <article className="terminal-pane remote-desktop-pane">
         <header>
-          <span>
+          <span title={connection ? terminalHostTooltip(connection) : undefined}>
             <Icon size={13} />
             {toolbarTitle}
           </span>
           <div className="terminal-pane-actions" data-tutorial-id="remoteDesktop.toolbar">
-            {tab.subtitle ? <small>{tab.subtitle}</small> : null}
+            {toolbarUsername ? <small>{toolbarUsername}</small> : null}
           {rdpStatus ? <span className="webview-toolbar-status">{rdpStatus}</span> : null}
           {showRemoteDesktopToolbar ? (
             <button

@@ -924,6 +924,18 @@ export function TerminalSettings() {
               <small>{t("settings.rightClickPasteHint")}</small>
             </span>
           </label>
+          <label className="settings-toggle-row">
+            <ToggleSwitch
+              checked={draft.offerSavedPasswords}
+              onChange={(checked) =>
+                setDraft((settings) => ({ ...settings, offerSavedPasswords: checked }))
+              }
+            />
+            <span>
+              <strong>{t("settings.offerSavedPasswords")}</strong>
+              <small>{t("settings.offerSavedPasswordsHint")}</small>
+            </span>
+          </label>
         </div>
       </fieldset>
 
