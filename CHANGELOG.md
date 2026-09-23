@@ -3,6 +3,68 @@
 All notable changes to KKTerm are documented here.
 
 ## Direct Downloads
+* 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.18/kkterm-3000.0.18-windows-x64-setup.exe)
+* 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.18/kkterm-3000.0.18-windows-arm64-setup.exe)
+* 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.18/kkterm-3000.0.18-windows-x64-portable.zip)
+* 📦 [Portable for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.18/kkterm-3000.0.18-windows-arm64-portable.zip)
+
+## Highlights
+
+- **Saved password picker for `sudo`/`su` prompts** in Terminal sessions—select saved credentials when KKTerm detects the prompt (because typing passwords repeatedly is a sysadmin sport nobody asked to master).
+- **More complete connection tooltips** for SSH/Telnet/RDP/VNC-style connections, improving how Connection details appear in the UI.
+- **Updated localization** for saved password prompt UI text across multiple languages.
+
+## New
+
+- **Cloud storage connection type** support in the **file browser protocol label**.
+
+## Improved
+
+- Enhanced Terminal connection utilities to display **host information** and **tooltips** for SSH, Telnet, RDP, and VNC connections.
+- Improved connection row activation behavior for single vs. double click interactions in the Connections list.
+
+## Fixed
+
+- Updated Homebrew cask dependency to use `:macos` instead of `macos: :big_sur`.
+
+## Internal
+
+- Published updated snapshot for the custom module catalog (sequence 18).
+- Updated **BentoPDF** and **CyberChef** KKMods to latest upstream.
+- Updated CyberChef and Excalidraw module versions, plus related packaging/adaptation and tests.
+
+**Notes on saved password picker:** Implemented via PR `cf80ea6` (“implement saved password picker for sudo and su prompts”).
+
+---
+
+## 版本亮點（v3000.0.18）
+
+- **Terminal 連線中的 `sudo`/`su` 密碼提示**支援「已儲存密碼選擇器」：當 KKTerm 偵測到提示時，可從已儲存的憑證中直接選擇（因為重複輸入密碼這件事，身為系統管理員也沒人真的想一直做）。
+- **SSH/Telnet/RDP/VNC 連線**的顯示資訊更完整：在介面中提供更好的工具提示（Tooltips），讓連線細節更好辨識。
+- **已更新多語系在地化**：涵蓋「已儲存密碼」相關提示文字與介面文案。
+
+## 新增
+
+- **檔案瀏覽器協定標籤**新增對「雲端儲存連線類型」的支援。
+
+## 改進
+
+- 強化 Terminal 連線工具：可顯示 **主機資訊**，並對 **SSH、Telnet、RDP、VNC** 類型提供更完整的工具提示。
+- 改善「連線列（Connection row）」的啟用邏輯：更有效處理列表中的**單擊與雙擊**。
+
+## 修正
+
+- 修正 Homebrew Cask 相依項目使用方式：由 `macos: :big_sur` 改為 `:macos`。
+
+## 內部
+
+- 發佈更新的自訂模組目錄（custom module catalog）快照：序號 18。
+- 更新 **BentoPDF** 與 **CyberChef** 的 KKMods 至最新上游版本。
+- 更新 CyberChef 與 Excalidraw 模組版本，並同步進行相關封裝/適配與測試。
+
+**已儲存密碼選擇器補充說明：**此功能由 PR `cf80ea6`（“implement saved password picker for sudo and su prompts”）實作。
+
+## Direct Downloads
 * 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.17/kkterm-3000.0.17-windows-x64-setup.exe)
 * 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.17/kkterm-3000.0.17-windows-arm64-setup.exe)
 * 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.17/kkterm-3000.0.17-windows-x64-portable.zip)
