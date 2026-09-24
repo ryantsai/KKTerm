@@ -73,6 +73,8 @@ Tree accessible label: `connections.connectionTree`. Expand/collapse chevrons us
 
 Tutorial targets: `connections.panel`, `connections.search`, `connections.quickConnect`, `connections.addConnection`, `connections.folderControls`, `connections.tree`.
 
+When a Connection has a saved Connection Note, hovering its Connection Tree row shows the note as plain text in the native tooltip. Masked text stays hidden, and previews longer than 1,000 characters end with an ellipsis.
+
 ## Right-click context menu (native Tauri menu)
 
 Driven by `src/lib/nativeContextMenu.ts`. On a Connection or folder node:

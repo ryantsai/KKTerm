@@ -205,3 +205,40 @@ export function isNoteHtmlEmpty(html: string): boolean {
   if (root.querySelector("img, hr, table")) return false;
   return root.textContent?.trim().length === 0;
 }
+
+const CONNECTION_NOTE_TOOLTIP_MAX_CHARS = 1000;
+
+/** Plain-text, bounded preview for the Connection Tree's native row tooltip. */
+export function noteHtmlToTooltipText(html: string): string {
+  const doc = parseNoteDocument(html);
+  const root = doc.getElementById("note-root");
+  if (!root) return "";
+
+  root.querySelectorAll<HTMLElement>(`[${NOTE_MASK_ATTRIBUTE}="true"]`).forEach((element) => {
+    element.replaceWith(doc.createTextNode("••••••"));
+  });
+  root.querySelectorAll<HTMLImageElement>("img").forEach((image) => {
+    const alt = image.getAttribute("alt")?.trim();
+    if (alt) image.replaceWith(doc.createTextNode(alt));
+    else image.remove();
+  });
+  root.querySelectorAll("br, hr").forEach((element) => {
+    element.replaceWith(doc.createTextNode("\n"));
+  });
+  root
+    .querySelectorAll("p, div, h1, h2, h3, h4, li, blockquote, pre, tr")
+    .forEach((element) => element.append(doc.createTextNode("\n")));
+
+  const text = (root.textContent ?? "")
+    .replace(/\u00a0/g, " ")
+    .replace(/[ \t\r\f\v]+/g, " ")
+    .replace(/ *\n */g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  const characters = Array.from(text);
+  if (characters.length <= CONNECTION_NOTE_TOOLTIP_MAX_CHARS) return text;
+  return `${characters
+    .slice(0, CONNECTION_NOTE_TOOLTIP_MAX_CHARS - 1)
+    .join("")
+    .trimEnd()}…`;
+}

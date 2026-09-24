@@ -65,6 +65,7 @@ import { confirmTrustedSshHostKey, connectionPasswordOwnerId, connectionSshSocks
 import { IMPORT_CONNECTIONS_REQUEST_EVENT, NEW_CONNECTION_REQUEST_EVENT, NEW_CONNECTION_TAB_REQUEST_EVENT, RECENT_CONNECTION_LIMIT, loadCollapsedFolderIds, loadRecentConnectionIds, notifyConnectionTreeInvalidated, requestTerminalConnectionReconnect, saveCollapsedFolderIds, saveRecentConnectionIds, type NewConnectionRequestDetail, type NewConnectionTabRequestDetail } from "./connectionSidebarState";
 import { collectConnectionFolderIds, countConnections, countFolders, filterConnectedConnections, filterConnectionTree, findConnectionInTree, flattenConnections, flattenFolders, visibleFlatConnections as flattenVisibleConnections, withLiveConnectionStatuses, withoutLocalTerminalConnections } from "./treeUtils";
 import { useTerminalAttentionActive } from "../TerminalAttention";
+import { useConnectionHasNote, useNoteBindings } from "../../notes/noteBindings";
 import { WorkspaceIcon } from "../workspaceIcons";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bell, Check, ChevronDown, ChevronRight, CircleDot, Copy, Folder, FolderPlus, KeyRound, LayoutDashboard, List, Maximize2, Minimize2, PanelsTopLeft, PanelRight, Pencil, Pin, PinOff, Play, Plus, Radio, RotateCcw, Save, Search, Settings, SquarePlus, Trash2, X } from "../../../lib/reicon";
 import { listen } from "@tauri-apps/api/event";
@@ -6289,6 +6290,11 @@ function ConnectionRow({
   const doubleClickOpensConnection = useWorkspaceStore(
     (state) => state.generalSettings.doubleClickOpensConnection,
   );
+  const hasNote = useConnectionHasNote(connection.id);
+  const noteTooltip = useNoteBindings(
+    (state) => state.previewById.get(connection.id) ?? null,
+  );
+  const loadNotePreview = useNoteBindings((state) => state.loadPreview);
 
   return (
     <div
@@ -6304,7 +6310,13 @@ function ConnectionRow({
       data-tree-drop-kind="connection"
       onClickCapture={onClickCapture}
       onContextMenu={onContextMenu}
+      onMouseEnter={() => {
+        if (!isRenaming && hasNote && noteTooltip === null) {
+          void loadNotePreview(connection.id);
+        }
+      }}
       onPointerDown={onPointerDragStart}
+      title={!isRenaming ? noteTooltip || undefined : undefined}
     >
       {isRenaming ? (
         <div className="connection-open connection-open-editing">
