@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useDashboardAnimationActive } from "../view/animationGating";
-import clearwaterPageUrl from "./clearwater/clearwater.html?url";
+
+const clearwaterPageUrl = new URL("./clearwater/clearwater.html", import.meta.url).href;
 
 export function ClearwaterBg() {
   const { t } = useTranslation();
