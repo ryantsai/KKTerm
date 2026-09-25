@@ -13,6 +13,7 @@ const localizedDynamicBackgroundKeys = [
   "whitecaps",
   "waveField",
   "openOceanBlue",
+  "clearwater",
   "tropicalGreen",
   "windowRain",
   "submergedSnellOcean",

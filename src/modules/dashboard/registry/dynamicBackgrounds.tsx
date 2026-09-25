@@ -4,6 +4,7 @@ import { dynamicBackgroundDevicePixelRatio } from "./dynamicBackgroundCanvas";
 import { BalloonsBg, DunesBg, JellyfishBg, LighthouseBg, SavannaBg } from "./extraDynamicBackgrounds";
 import { FujiBg } from "./fujiBackground";
 import { MistySeaBg } from "./mistySeaBackground";
+import { ClearwaterBg } from "./clearwaterBackground";
 import {
   MaelstromBg,
   OpenOceanBlueBg,
@@ -3871,6 +3872,7 @@ const DYNAMIC_BACKGROUND_COMPONENTS = {
   halftone: HalftoneBg,
   clouds: CloudsBg,
   ocean: OceanBg,
+  clearwater: ClearwaterBg,
   mistySea: MistySeaBg,
   maelstrom: MaelstromBg,
   sunGlitter: SunGlitterBg,
@@ -3965,6 +3967,7 @@ export const DYNAMIC_BACKGROUNDS: readonly {
   { id: "halftone", labelKey: "dashboard.dynamicBackgrounds.halftone", mood: "calm" },
   { id: "clouds", labelKey: "dashboard.dynamicBackgrounds.clouds", mood: "calm" },
   { id: "ocean", labelKey: "dashboard.dynamicBackgrounds.ocean", mood: "calm" },
+  { id: "clearwater", labelKey: "dashboard.dynamicBackgrounds.clearwater", mood: "calm" },
   { id: "mistySea", labelKey: "dashboard.dynamicBackgrounds.mistySea", mood: "calm" },
   { id: "maelstrom", labelKey: "dashboard.dynamicBackgrounds.maelstrom", mood: "erratic" },
   { id: "sunGlitter", labelKey: "dashboard.dynamicBackgrounds.sunGlitter", mood: "warm" },

@@ -11,6 +11,7 @@ const expectedIds = [
   "halftone",
   "clouds",
   "ocean",
+  "clearwater",
   "mistySea",
   "maelstrom",
   "sunGlitter",
