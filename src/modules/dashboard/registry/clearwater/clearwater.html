@@ -841,7 +841,7 @@ function post(t){
 }
 
 /* ---------------- Camera & input ---------------- */
-const SUN_EL = 31*Math.PI/180, SUN_AZ = 6*Math.PI/180;
+const SUN_EL = 65*Math.PI/180, SUN_AZ = 0*Math.PI/180;
 const SUNV = [Math.sin(SUN_AZ)*Math.cos(SUN_EL), Math.sin(SUN_EL), -Math.cos(SUN_AZ)*Math.cos(SUN_EL)];
 const cam = { yaw: Q.has('yaw')? parseFloat(Q.get('yaw')) : 0, pitch: Q.has('pitch')? parseFloat(Q.get('pitch')) : -1.35, vy:0, vp:0, h:1.55 };
 let drag = null, lastTap = null;
@@ -904,7 +904,7 @@ function frame(now){
   if (!pebReady){ requestAnimationFrame(frame); return; }
   const B = camBasis(t);
 
-  runFFT(t*0.9);
+  runFFT(t*0.72);
   // keep the ripple window centred under the view, snapped to whole texels
   const look = -B.pos[1]/Math.min(B.f[1],-0.2);
   const want = [B.pos[0]+B.f[0]*look*0.9, B.pos[2]+B.f[2]*look*0.9];
