@@ -3,6 +3,50 @@
 All notable changes to KKTerm are documented here.
 
 ## Direct Downloads
+* 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.19/kkterm-3000.0.19-windows-x64-setup.exe)
+* 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.19/kkterm-3000.0.19-windows-arm64-setup.exe)
+* 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.19/kkterm-3000.0.19-windows-x64-portable.zip)
+* 📦 [Portable for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.19/kkterm-3000.0.19-windows-arm64-portable.zip)
+
+## Highlights
+- Dynamic dashboard backgrounds get a **Clearwater** option, with updated URL import and tuned lighting settings (so your Tabs look less “mysterious fog,” more “carefully lit”).  
+- Notes for **Connection Tree** now show **tooltip previews**, and note loading logic is improved.
+
+## New
+- Add **Clearwater** dynamic background component for Dashboard Widget Instances.
+
+## Improved
+- Update the Clearwater background URL import method for improved URL handling.  
+- Adjust Clearwater sun elevation and azimuth for improved lighting effects.  
+- Add tooltip previews for Connection Tree notes and improve note loading logic.
+
+## Fixed
+- None.
+
+## Internal
+- None.
+
+---
+
+## 亮點
+- 動態儀表板背景新增 **Clearwater** 選項，並更新了 URL 匯入方式與調整燈光參數（讓你的分頁別再像「網路陰影」一樣糊，改得更有質感）。  
+- 針對 **連線樹（Connection Tree）** 的筆記支援 **工具提示預覽**，同時也改善筆記載入邏輯。
+
+## 新增
+- 新增 **Clearwater** 動態背景元件，支援 Dashboard Widget Instance。
+
+## 改善
+- 更新 Clearwater 背景的 URL 匯入方式，提升 URL 處理效果。  
+- 調整 Clearwater 的太陽仰角與方位角，讓燈光效果更好。  
+- 為連線樹（Connection Tree）筆記新增工具提示預覽，並改善筆記載入邏輯。
+
+## 修正
+- 無。
+
+## Internal
+- 無。
+
+## Direct Downloads
 * 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.18/kkterm-3000.0.18-windows-x64-setup.exe)
 * 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.18/kkterm-3000.0.18-windows-arm64-setup.exe)
 * 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.18/kkterm-3000.0.18-windows-x64-portable.zip)
