@@ -2,20 +2,11 @@ name: Appearance parity workbench
 on:
   push:
     branches: [automation/appearance-parity-20260930]
+    paths: [.github/workflows/appearance-parity-workbench.yml]
 permissions:
   contents: read
 jobs:
-  audit:
+  ready:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - name: Package source snapshot
-        run: |
-          git archive --format=tar HEAD > "$RUNNER_TEMP/kkterm-source.tar"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: kkterm-appearance-source
-          path: ${{ runner.temp }}/kkterm-source.tar
-          retention-days: 1
+      - run: echo 'Waiting for explicit implementation workflow revision.'
