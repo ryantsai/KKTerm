@@ -6,7 +6,7 @@ on:
 permissions:
   contents: read
 jobs:
-  implement:
+  fix-tests:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -16,30 +16,30 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Apply checksum-verified patch to the pinned main commit
+      - name: Update catalog guards on the PR branch
         id: commit
         shell: bash
         run: |
           set -euo pipefail
-          cp -r .workbench "$RUNNER_TEMP/appearance-workbench"
-          git switch -c feat/appearance-ai-mcp-parity c3987128763cab386561d8b9f3bb1f0f3808c291
-          python3 "$RUNNER_TEMP/appearance-workbench/apply-appearance.py"
-          git add docs scripts src src-tauri tests
+          cp .workbench/fix-catalog-tests.py "$RUNNER_TEMP/fix-catalog-tests.py"
+          git switch -c feat/appearance-ai-mcp-parity origin/feat/appearance-ai-mcp-parity
+          test "$(git rev-parse HEAD)" = 6380b25aebfbb95cb352c2b885aaf389c80b70b9
+          python3 "$RUNNER_TEMP/fix-catalog-tests.py"
+          git add tests
           git diff --cached --check
-          git diff --cached --stat
           git config user.name 'ChatGPT'
           git config user.email 'noreply@openai.com'
-          git commit -m 'feat: unify AI and MCP appearance tools with dynamic background name resolution'
+          git commit -m 'test: verify shared background catalog instead of inline registry literals'
           git push origin HEAD:refs/heads/feat/appearance-ai-mcp-parity
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
   frontend:
-    needs: implement
+    needs: fix-tests
     name: Windows frontend validation
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ needs.implement.outputs.sha }}
+          ref: ${{ needs.fix-tests.outputs.sha }}
           persist-credentials: false
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
@@ -47,17 +47,25 @@ jobs:
           node-version: 24.20.0
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm run check
-      - run: pnpm run build
-  rust:
-    needs: implement
-    name: Windows Rust validation
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
+      - name: Full frontend checks
+        shell: pwsh
+        run: |
+          pnpm run check *> "$env:RUNNER_TEMP/frontend-check.log"
+          $code = $LASTEXITCODE
+          Get-Content "$env:RUNNER_TEMP/frontend-check.log" | Select-String -Pattern 'error TS|failing tests:|^test at|^.? failing|^.? fail |^.? pass |^.? tests |AssertionError' | Select-Object -First 40
+          Get-Content "$env:RUNNER_TEMP/frontend-check.log" -Tail 18
+          exit $code
+      - name: Production frontend build
+        if: ${{ !cancelled() }}
+        shell: pwsh
+        run: |
+          pnpm run build *> "$env:RUNNER_TEMP/frontend-build.log"
+          $code = $LASTEXITCODE
+          Get-Content "$env:RUNNER_TEMP/frontend-build.log" -Tail 35
+          exit $code
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
         with:
-          ref: ${{ needs.implement.outputs.sha }}
-          persist-credentials: false
-      - uses: dtolnay/rust-toolchain@1.97.1
-      - run: cargo check --manifest-path src-tauri/Cargo.toml
-      - run: cargo test --manifest-path src-tauri/Cargo.toml
+          name: frontend-validation-logs
+          path: ${{ runner.temp }}/frontend-*.log
+          retention-days: 3
