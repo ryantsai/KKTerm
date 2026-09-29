@@ -1,3 +1,4 @@
+import dynamicBackgroundCatalog from "../../../shared/dynamicBackgroundCatalog.json";
 import { useEffect, useRef, type ComponentType } from "react";
 import { CircuitBg, CrystalsBg, HalftoneBg, InkBg, OrbitalsBg } from "./abstractDynamicBackgrounds";
 import { dynamicBackgroundDevicePixelRatio } from "./dynamicBackgroundCanvas";
@@ -3957,100 +3958,17 @@ const DYNAMIC_BACKGROUND_COMPONENTS = {
 export type DynamicBackgroundId = keyof typeof DYNAMIC_BACKGROUND_COMPONENTS;
 type DynamicBackgroundMood = "calm" | "spacey" | "warm" | "geeky" | "erratic";
 
+// Lightweight metadata is also consumed by the Rust/AI/MCP name resolver.
 export const DYNAMIC_BACKGROUNDS: readonly {
   id: DynamicBackgroundId;
   labelKey: string;
   mood: DynamicBackgroundMood;
-}[] = [
-  { id: "fuji", labelKey: "dashboard.dynamicBackgrounds.fuji", mood: "calm" },
-  { id: "aurora", labelKey: "dashboard.dynamicBackgrounds.aurora", mood: "calm" },
-  { id: "halftone", labelKey: "dashboard.dynamicBackgrounds.halftone", mood: "calm" },
-  { id: "clouds", labelKey: "dashboard.dynamicBackgrounds.clouds", mood: "calm" },
-  { id: "ocean", labelKey: "dashboard.dynamicBackgrounds.ocean", mood: "calm" },
-  { id: "clearwater", labelKey: "dashboard.dynamicBackgrounds.clearwater", mood: "calm" },
-  { id: "mistySea", labelKey: "dashboard.dynamicBackgrounds.mistySea", mood: "calm" },
-  { id: "maelstrom", labelKey: "dashboard.dynamicBackgrounds.maelstrom", mood: "erratic" },
-  { id: "sunGlitter", labelKey: "dashboard.dynamicBackgrounds.sunGlitter", mood: "warm" },
-  { id: "whitecaps", labelKey: "dashboard.dynamicBackgrounds.whitecaps", mood: "erratic" },
-  { id: "waveField", labelKey: "dashboard.dynamicBackgrounds.waveField", mood: "calm" },
-  { id: "openOceanBlue", labelKey: "dashboard.dynamicBackgrounds.openOceanBlue", mood: "calm" },
-  { id: "tropicalGreen", labelKey: "dashboard.dynamicBackgrounds.tropicalGreen", mood: "calm" },
-  { id: "waters", labelKey: "dashboard.dynamicBackgrounds.waters", mood: "calm" },
-  { id: "raindrops", labelKey: "dashboard.dynamicBackgrounds.raindrops", mood: "calm" },
-  { id: "rainywindow", labelKey: "dashboard.dynamicBackgrounds.rainyWindow", mood: "calm" },
-  { id: "frostedWindow", labelKey: "dashboard.dynamicBackgrounds.frostedWindow", mood: "calm" },
-  { id: "snow", labelKey: "dashboard.dynamicBackgrounds.snow", mood: "calm" },
-  { id: "sakura", labelKey: "dashboard.dynamicBackgrounds.sakura", mood: "calm" },
-  { id: "fireflies", labelKey: "dashboard.dynamicBackgrounds.fireflies", mood: "calm" },
-  { id: "bubbles", labelKey: "dashboard.dynamicBackgrounds.bubbles", mood: "calm" },
-  { id: "aquarium", labelKey: "dashboard.dynamicBackgrounds.aquarium", mood: "calm" },
-  { id: "jellyfish", labelKey: "dashboard.dynamicBackgrounds.jellyfish", mood: "calm" },
-  { id: "lighthouse", labelKey: "dashboard.dynamicBackgrounds.lighthouse", mood: "calm" },
-  { id: "balloons", labelKey: "dashboard.dynamicBackgrounds.balloons", mood: "calm" },
-  { id: "ricefield", labelKey: "dashboard.dynamicBackgrounds.ricefield", mood: "calm" },
-  { id: "lanterns", labelKey: "dashboard.dynamicBackgrounds.lanterns", mood: "calm" },
-  { id: "heroGeometric", labelKey: "dashboard.dynamicBackgrounds.heroGeometric", mood: "calm" },
-  { id: "webglLiquid", labelKey: "dashboard.dynamicBackgrounds.webglLiquid", mood: "calm" },
-  { id: "silkAurora", labelKey: "dashboard.dynamicBackgrounds.silkAurora", mood: "calm" },
-  { id: "animatedGradient", labelKey: "dashboard.dynamicBackgrounds.animatedGradient", mood: "calm" },
-  { id: "starfield", labelKey: "dashboard.dynamicBackgrounds.starfield", mood: "spacey" },
-  { id: "nebula", labelKey: "dashboard.dynamicBackgrounds.nebula", mood: "spacey" },
-  { id: "orbitals", labelKey: "dashboard.dynamicBackgrounds.orbitals", mood: "spacey" },
-  { id: "ditherPrismHero", labelKey: "dashboard.dynamicBackgrounds.ditherPrismHero", mood: "spacey" },
-  { id: "closingPlasma", labelKey: "dashboard.dynamicBackgrounds.closingPlasma", mood: "spacey" },
-  { id: "prismGradient", labelKey: "dashboard.dynamicBackgrounds.prismGradient", mood: "spacey" },
-  { id: "embers", labelKey: "dashboard.dynamicBackgrounds.embers", mood: "warm" },
-  { id: "lava", labelKey: "dashboard.dynamicBackgrounds.lava", mood: "warm" },
-  { id: "ink", labelKey: "dashboard.dynamicBackgrounds.ink", mood: "warm" },
-  { id: "dunes", labelKey: "dashboard.dynamicBackgrounds.dunes", mood: "warm" },
-  { id: "savanna", labelKey: "dashboard.dynamicBackgrounds.savanna", mood: "warm" },
-  { id: "matrix", labelKey: "dashboard.dynamicBackgrounds.matrix", mood: "geeky" },
-  { id: "topo", labelKey: "dashboard.dynamicBackgrounds.topo", mood: "geeky" },
-  { id: "synthwave", labelKey: "dashboard.dynamicBackgrounds.synthwave", mood: "geeky" },
-  { id: "circuit", labelKey: "dashboard.dynamicBackgrounds.circuit", mood: "geeky" },
-  { id: "crystals", labelKey: "dashboard.dynamicBackgrounds.crystals", mood: "geeky" },
-  { id: "cyberpunk", labelKey: "dashboard.dynamicBackgrounds.cyberpunk", mood: "erratic" },
-  { id: "taipei101", labelKey: "dashboard.dynamicBackgrounds.taipei101", mood: "erratic" },
-  { id: "thunderstorm", labelKey: "dashboard.dynamicBackgrounds.thunderstorm", mood: "erratic" },
-  { id: "confetti", labelKey: "dashboard.dynamicBackgrounds.confetti", mood: "erratic" },
-  { id: "particleCursor", labelKey: "dashboard.dynamicBackgrounds.particleCursor", mood: "erratic" },
-  { id: "liquidChrome", labelKey: "dashboard.dynamicBackgrounds.liquidChrome", mood: "erratic" },
-  { id: "windowRain", labelKey: "dashboard.dynamicBackgrounds.windowRain", mood: "calm" },
-  { id: "submergedSnellOcean", labelKey: "dashboard.dynamicBackgrounds.submergedSnellOcean", mood: "calm" },
-  { id: "spectralCascadeOcean", labelKey: "dashboard.dynamicBackgrounds.spectralCascadeOcean", mood: "erratic" },
-  { id: "blackHole", labelKey: "dashboard.dynamicBackgrounds.blackHole", mood: "spacey" },
-  { id: "predictiveArc", labelKey: "dashboard.dynamicBackgrounds.predictiveArc", mood: "spacey" },
-  { id: "liquidForm", labelKey: "dashboard.dynamicBackgrounds.liquidForm", mood: "calm" },
-  { id: "energyOrb", labelKey: "dashboard.dynamicBackgrounds.energyOrb", mood: "spacey" },
-  { id: "noiseFlow", labelKey: "dashboard.dynamicBackgrounds.noiseFlow", mood: "calm" },
-  { id: "streamConvergence", labelKey: "dashboard.dynamicBackgrounds.streamConvergence", mood: "calm" },
-  { id: "bellField", labelKey: "dashboard.dynamicBackgrounds.bellField", mood: "warm" },
-  { id: "flowField", labelKey: "dashboard.dynamicBackgrounds.flowField", mood: "erratic" },
-  { id: "condensation", labelKey: "dashboard.dynamicBackgrounds.condensation", mood: "calm" },
-  { id: "generativeTree", labelKey: "dashboard.dynamicBackgrounds.generativeTree", mood: "calm" },
-  { id: "ribbonField", labelKey: "dashboard.dynamicBackgrounds.ribbonField", mood: "spacey" },
-  { id: "particleOrb", labelKey: "dashboard.dynamicBackgrounds.particleOrb", mood: "spacey" },
-  { id: "cloudField", labelKey: "dashboard.dynamicBackgrounds.cloudField", mood: "calm" },
-  { id: "voidField", labelKey: "dashboard.dynamicBackgrounds.voidField", mood: "spacey" },
-  { id: "recursiveErosion", labelKey: "dashboard.dynamicBackgrounds.recursiveErosion", mood: "erratic" },
-  { id: "quanteraTradingBackground", labelKey: "dashboard.dynamicBackgrounds.quanteraTradingBackground", mood: "geeky" },
-  { id: "halftoneFlow", labelKey: "dashboard.dynamicBackgrounds.halftoneFlow", mood: "geeky" },
-  { id: "constellationField", labelKey: "dashboard.dynamicBackgrounds.constellationField", mood: "spacey" },
-  { id: "particleDrift", labelKey: "dashboard.dynamicBackgrounds.particleDrift", mood: "spacey" },
-  { id: "particleNetwork", labelKey: "dashboard.dynamicBackgrounds.particleNetwork", mood: "geeky" },
-  { id: "amberHalftone", labelKey: "dashboard.dynamicBackgrounds.amberHalftone", mood: "warm" },
-  { id: "matrixField", labelKey: "dashboard.dynamicBackgrounds.matrixField", mood: "geeky" },
-  { id: "gatewayFlow", labelKey: "dashboard.dynamicBackgrounds.gatewayFlow", mood: "geeky" },
-  { id: "connectivityGraph", labelKey: "dashboard.dynamicBackgrounds.connectivityGraph", mood: "geeky" },
-  { id: "interfaceLines", labelKey: "dashboard.dynamicBackgrounds.interfaceLines", mood: "geeky" },
-  { id: "defenseLines", labelKey: "dashboard.dynamicBackgrounds.defenseLines", mood: "erratic" },
-  { id: "topoField", labelKey: "dashboard.dynamicBackgrounds.topoField", mood: "geeky" },
-  { id: "sylvaLivingWorld", labelKey: "dashboard.dynamicBackgrounds.sylvaLivingWorld", mood: "calm" },
-  { id: "templeNight", labelKey: "dashboard.dynamicBackgrounds.templeNight", mood: "spacey" },
-];
+}[] = dynamicBackgroundCatalog as readonly {
+  id: DynamicBackgroundId; labelKey: string; mood: DynamicBackgroundMood;
+}[];
 
 export function isDynamicBackgroundId(value: string): value is DynamicBackgroundId {
-  return value in DYNAMIC_BACKGROUND_COMPONENTS;
+  return Object.prototype.hasOwnProperty.call(DYNAMIC_BACKGROUND_COMPONENTS, value);
 }
 
 export function getDashboardDynamicBackgroundHostClassName() {

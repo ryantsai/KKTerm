@@ -18,6 +18,9 @@
 
 use serde_json::{Value, json};
 
+#[path = "appearance_tool_catalog.rs"]
+pub mod appearance;
+
 /// The complete published MCP tool surface, in stable order. Adding a tool
 /// here updates both the live bridge and the offline CLI introspection at
 /// once — see the feature-growth contract in `docs/MCP.md`.
@@ -1678,7 +1681,25 @@ pub fn tool_descriptors() -> Vec<Value> {
             },
         }),
     ];
+    tools.push(json!({"name":"kkterm.dashboard.check_widget_health", "description":"Read one script widget instance's runtime health after creating or editing it.",
+        "inputSchema":{"type":"object","properties":{"instanceId":{"type":"string"}},"required":["instanceId"]}}));
     tools.extend(system_cleaner_tool_descriptors());
+    tools.extend(appearance::tools().into_iter().map(|tool| json!({
+        "name": tool.mcp, "description": tool.description, "inputSchema": tool.schema,
+        "annotations": {"readOnlyHint": !tool.mutating, "destructiveHint": tool.mutating, "openWorldHint": false}
+    })));
+    // Existing public names retain their transport/permission contracts, but
+    // now use exactly the same typed appearance schema as the native assistant.
+    for tool in &mut tools {
+        let schema = match tool["name"].as_str() {
+            Some("kkterm.dashboard.update_view") => Some(appearance::dashboard_patch_schema()),
+            Some("kkterm.itops.sites.set_background") => Some(appearance::background_target_schema(&["siteId"])),
+            Some("kkterm.itops.server_rooms.set_background") => Some(appearance::background_target_schema(&["siteId", "serverRoom"])),
+            Some("kkterm.itops.racks.set_background") => Some(appearance::background_target_schema(&["id"])),
+            _ => None,
+        };
+        if let Some(schema) = schema { tool["inputSchema"] = schema; }
+    }
     tools
 }
 

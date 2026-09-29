@@ -81,6 +81,7 @@ commands.allow = [
   "get_database_folder",
   "get_terminal_settings",
   "update_terminal_settings",
+  "appearance_data",
   "get_appearance_settings",
   "update_appearance_settings",
   "get_system_accent_color",

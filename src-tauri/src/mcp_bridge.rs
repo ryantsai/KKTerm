@@ -790,7 +790,11 @@ fn remap_required_id(mut args: Value, source: &str, target: &str) -> Result<Valu
 }
 
 async fn dispatch_tool(app: &AppHandle, name: &str, args: Value) -> Result<Value, String> {
+    if let Some(tool) = crate::mcp_tool_catalog::appearance::tools().into_iter().find(|tool| tool.mcp == name) {
+        return parse_tool_json(&crate::ai::live_session_tool(app, tool.native, args).await);
+    }
     match name {
+        "kkterm.dashboard.check_widget_health" => parse_tool_json(&crate::ai::dashboard_check_widget_health_tool(app, args).await),
         "kkterm.workspace.workspaces.list" => {
             parse_tool_json(&crate::ai::workspace_tool(app, "workspace_list", json!({})))
         }

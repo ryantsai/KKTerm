@@ -5076,3 +5076,45 @@ fn replay_recorded_responses_stream_fixtures() {
         include_str!("fixtures/responses_tool_call.expected.json"),
     );
 }
+
+#[test]
+fn appearance_tools_have_native_mcp_schema_and_approval_parity() {
+    let settings: AiAssistantToolSettings = serde_json::from_value(json!({"connections":true,"sessions":true,"dashboard":true,"itops":true})).unwrap();
+    let native = ai_tool_definitions(&settings);
+    let mcp = crate::mcp_tool_catalog::tool_descriptors();
+    for tool in crate::mcp_tool_catalog::appearance::tools() {
+        let descriptor = native.iter().find(|n| n.function.name == tool.native).expect("native descriptor");
+        let published = mcp.iter().find(|n| n["name"] == tool.mcp).expect("MCP descriptor");
+        assert_eq!(descriptor.function.parameters,published["inputSchema"]);
+        assert_eq!(descriptor.function.description,published["description"].as_str().unwrap());
+        assert_eq!(tool_requires_allow_all(tool.native),tool.mutating);
+        assert_eq!(tool.mcp.split('.').any(|s| s=="dangerous"),tool.mutating);
+    }
+    for (native_name,mcp_name) in [("dashboard_update_view","kkterm.dashboard.update_view"),("itops_set_site_background","kkterm.itops.sites.set_background"),("itops_set_server_room_background","kkterm.itops.server_rooms.set_background"),("itops_set_rack_background","kkterm.itops.racks.set_background")] {
+        assert_eq!(native.iter().find(|t|t.function.name==native_name).unwrap().function.parameters,
+            mcp.iter().find(|t|t["name"]==mcp_name).unwrap()["inputSchema"]);
+    }
+}
+
+#[test]
+fn disabled_appearance_groups_are_not_published() {
+    let settings: AiAssistantToolSettings = serde_json::from_value(json!({"connections":false,"sessions":false,"dashboard":false,"itops":false})).unwrap();
+    let native = ai_tool_definitions(&settings);
+    for tool in crate::mcp_tool_catalog::appearance::tools() {
+        assert!(!native.iter().any(|t| t.function.name==tool.native));
+    }
+}
+
+#[test]
+fn assistant_visual_inspection_reuses_mcp_schemas_and_requires_capture_approval() {
+    let settings: AiAssistantToolSettings = serde_json::from_value(json!({"sessions":true,"dashboard":true,"screenshots":true})).unwrap();
+    let native = ai_tool_definitions(&settings);
+    let mcp = crate::mcp_tool_catalog::tool_descriptors();
+    for (name,mcp_name,_,write) in crate::mcp_tool_catalog::appearance::visual_tool_bindings() {
+        assert_eq!(native.iter().find(|t|t.function.name==name).unwrap().function.parameters,
+            mcp.iter().find(|t|t["name"]==mcp_name).unwrap()["inputSchema"]);
+        assert_eq!(tool_requires_allow_all(name),write);
+    }
+    assert_eq!(native.iter().find(|t|t.function.name=="dashboard_check_widget_health").unwrap().function.parameters,
+        mcp.iter().find(|t|t["name"]=="kkterm.dashboard.check_widget_health").unwrap()["inputSchema"]);
+}

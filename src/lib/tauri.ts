@@ -2145,6 +2145,10 @@ type CommandMap = {
     args: undefined;
     result: string;
   };
+  appearance_data: {
+    args: { request: Record<string, unknown> };
+    result: unknown;
+  };
   get_terminal_settings: {
     args: undefined;
     result: TerminalSettings;

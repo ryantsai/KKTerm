@@ -2271,6 +2271,7 @@ pub struct SystemCleanerHistoryRecord {
 }
 
 mod settings;
+mod appearance;
 
 mod connections;
 
