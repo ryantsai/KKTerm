@@ -1,0 +1,15 @@
+name: Appearance parity workbench
+on:
+  push:
+    branches: [automation/appearance-parity-20260930]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Inspect appearance and tool integration boundaries
+        run: python3 .workbench/appearance-audit.py
