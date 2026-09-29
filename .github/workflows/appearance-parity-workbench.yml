@@ -6,7 +6,58 @@ on:
 permissions:
   contents: read
 jobs:
-  ready:
+  implement:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      sha: ${{ steps.commit.outputs.sha }}
     steps:
-      - run: echo 'Waiting for explicit implementation workflow revision.'
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply checksum-verified patch to the pinned main commit
+        id: commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp -r .workbench "$RUNNER_TEMP/appearance-workbench"
+          git switch -c feat/appearance-ai-mcp-parity c3987128763cab386561d8b9f3bb1f0f3808c291
+          python3 "$RUNNER_TEMP/appearance-workbench/apply-appearance.py"
+          git add docs scripts src src-tauri tests
+          git diff --cached --check
+          git diff --cached --stat
+          git config user.name 'ChatGPT'
+          git config user.email 'noreply@openai.com'
+          git commit -m 'feat: unify AI and MCP appearance tools with dynamic background name resolution'
+          git push origin HEAD:refs/heads/feat/appearance-ai-mcp-parity
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+  frontend:
+    needs: implement
+    name: Windows frontend validation
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.implement.outputs.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.20.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run check
+      - run: pnpm run build
+  rust:
+    needs: implement
+    name: Windows Rust validation
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.implement.outputs.sha }}
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@1.97.1
+      - run: cargo check --manifest-path src-tauri/Cargo.toml
+      - run: cargo test --manifest-path src-tauri/Cargo.toml
