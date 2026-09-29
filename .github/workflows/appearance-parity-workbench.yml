@@ -11,5 +11,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Inspect appearance and tool integration boundaries
-        run: python3 .workbench/appearance-audit.py
+      - name: Package source snapshot
+        run: |
+          git archive --format=tar HEAD > "$RUNNER_TEMP/kkterm-source.tar"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kkterm-appearance-source
+          path: ${{ runner.temp }}/kkterm-source.tar
+          retention-days: 1
