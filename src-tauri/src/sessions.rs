@@ -2588,7 +2588,11 @@ fn connection_passphrase_for(
 
 fn should_fallback_to_interactive_ssh(error: &str) -> bool {
     let normalized = error.to_lowercase();
+    // A saved-password attempt already reached the server. Retrying through
+    // system ssh cannot correct a wrong username and starts another PTY-backed
+    // authentication flow. Return the failure so the Connection can be edited.
     normalized.contains("authentication")
+        && !normalized.starts_with("ssh password authentication")
         && !normalized.contains("host key")
         && !normalized.contains("known host")
 }
@@ -4467,6 +4471,10 @@ mod tests {
 
         assert!(uses_native_ssh(&request, None, &auth_method, true));
         assert!(!uses_native_ssh(&request, None, &auth_method, false));
+        assert!(matches!(
+            native_ssh_auth_for(&request, None, None, &auth_method).unwrap(),
+            ssh::NativeSshAuth::Password { password: None }
+        ));
     }
 
     #[test]
@@ -4521,15 +4529,23 @@ mod tests {
         assert!(should_fallback_to_interactive_ssh(
             "SSH key-file authentication failed: invalid key"
         ));
-        assert!(should_fallback_to_interactive_ssh(
-            "SSH password authentication failed: rejected"
-        ));
         assert!(!should_fallback_to_interactive_ssh(
             "SSH host key for example.internal:22 changed"
         ));
         assert!(!should_fallback_to_interactive_ssh(
             "failed to open SSH channel"
         ));
+    }
+
+    #[test]
+    fn rejected_saved_password_does_not_start_interactive_ssh() {
+        for error in [
+            "SSH password authentication was rejected",
+            "SSH password authentication failed: rejected",
+            "SSH password authentication failed: early eof",
+        ] {
+            assert!(!should_fallback_to_interactive_ssh(error), "{error}");
+        }
     }
 
     fn ssh_request() -> StartTerminalSessionRequest {

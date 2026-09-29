@@ -1,6 +1,37 @@
 use super::*;
 
 #[tokio::test(start_paused = true)]
+async fn empty_password_keeps_interactive_input_and_pauses_startup_timeout() {
+    for password in [None, Some(String::new()), Some("   ".to_string())] {
+        let auth = normalize_native_ssh_auth(NativeSshAuth::Password { password }).unwrap();
+        assert!(matches!(auth, NativeSshAuth::Password { password: None }));
+        assert!(terminal_auth_needs_input(&auth));
+
+        let budget = SshStartupBudget::new(SSH_STARTUP_TIMEOUT);
+        let cancel = CancellationToken::new();
+        let (control, mut control_rx) = mpsc::unbounded_channel();
+        let output = std::cell::RefCell::new(String::new());
+        let input = async {
+            tokio::time::sleep(SSH_STARTUP_TIMEOUT + Duration::from_secs(5)).await;
+            control.send(SshTerminalControl::Input(b"entered-password\r".to_vec())).unwrap();
+        };
+        let startup = budget.wait_for_input(read_terminal_prompt_input(
+            &mut control_rx,
+            false,
+            |text| output.borrow_mut().push_str(text),
+        ));
+        let (result, ()) = tokio::join!(run_terminal_startup(startup, &budget, &cancel), input);
+        assert_eq!(result.unwrap(), Some("entered-password".to_string()));
+        assert_eq!(*output.borrow(), "\r\n", "password input must not echo");
+    }
+
+    let saved = normalize_native_ssh_auth(NativeSshAuth::Password {
+        password: Some("saved-password".to_string()),
+    }).unwrap();
+    assert!(!terminal_auth_needs_input(&saved));
+}
+
+#[tokio::test(start_paused = true)]
 async fn overdue_timer_cannot_expire_a_prompt_when_its_wakeup_is_delayed() {
     let budget = SshStartupBudget::new(SSH_STARTUP_TIMEOUT);
     let expiry = budget.expired();
