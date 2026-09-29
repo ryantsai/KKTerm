@@ -13,6 +13,10 @@ const backgrounds = [
 
 const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+const backgroundCatalog = JSON.parse(await readFile(
+  new URL("../src/shared/dynamicBackgroundCatalog.json", import.meta.url),
+  "utf8",
+));
 const registrySource = await readFile(
   new URL("../src/modules/dashboard/registry/dynamicBackgrounds.tsx", import.meta.url),
   "utf8",
@@ -35,6 +39,11 @@ const dashboardManualSource = await readFile(
 );
 const readmeSource = await readFile(new URL("../README.md", import.meta.url), "utf8");
 
+test("the background picker consumes the shared catalog", () => {
+  assert.match(registrySource, /import dynamicBackgroundCatalog from "\.\.\/\.\.\/\.\.\/shared\/dynamicBackgroundCatalog\.json"/);
+  assert.match(registrySource, /\}\[\] = dynamicBackgroundCatalog/);
+});
+
 test("Dashboard HTML dynamic backgrounds are available everywhere the picker needs them", () => {
   for (const background of backgrounds) {
     assert.match(
@@ -47,13 +56,11 @@ test("Dashboard HTML dynamic backgrounds are available everywhere the picker nee
       new RegExp(`${background.id}: ${background.component}`),
       `${background.id} should be registered with its React component`,
     );
-    assert.match(
-      registrySource,
-      new RegExp(
-        `\\{ id: "${background.id}", labelKey: "dashboard\\.dynamicBackgrounds\\.${background.id}", mood: "${background.mood}" \\}`,
-      ),
-      `${background.id} should be exposed in the shared background datasource`,
-    );
+    const entry = backgroundCatalog.find((entry) => entry.id === background.id);
+    assert.ok(entry, `${background.id} should be exposed in the shared background catalog`);
+    assert.equal(entry.labelKey, `dashboard.dynamicBackgrounds.${background.id}`);
+    assert.equal(entry.mood, background.mood);
+    assert.equal(entry.names.en, background.label);
     assert.ok(
       existsSync(new URL(`../public/dynamic-bg-thumbs/${background.id}.webp`, import.meta.url)),
       `${background.id} should have a captured static thumbnail`,

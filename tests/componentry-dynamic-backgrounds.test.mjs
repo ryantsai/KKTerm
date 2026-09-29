@@ -14,6 +14,10 @@ const backgrounds = [
   { id: "liquidChrome", component: "LiquidChromeBg", file: "liquid-chrome.tsx" },
 ];
 
+const backgroundCatalog = JSON.parse(await readFile(
+  new URL("../src/shared/dynamicBackgroundCatalog.json", import.meta.url),
+  "utf8",
+));
 const registrySource = await readFile(
   new URL("../src/modules/dashboard/registry/dynamicBackgrounds.tsx", import.meta.url),
   "utf8",
@@ -57,6 +61,11 @@ const packageJson = JSON.parse(
   await readFile(new URL("../package.json", import.meta.url), "utf8"),
 );
 
+test("the background picker consumes the shared catalog", () => {
+  assert.match(registrySource, /import dynamicBackgroundCatalog from "\.\.\/\.\.\/\.\.\/shared\/dynamicBackgroundCatalog\.json"/);
+  assert.match(registrySource, /\}\[\] = dynamicBackgroundCatalog/);
+});
+
 test("all Componentry hero backgrounds use the shared KKTerm background path", async () => {
   for (const background of backgrounds) {
     assert.match(
@@ -67,10 +76,9 @@ test("all Componentry hero backgrounds use the shared KKTerm background path", a
       registrySource,
       new RegExp(`${background.id}: ${background.component}`),
     );
-    assert.match(
-      registrySource,
-      new RegExp(`\\{ id: "${background.id}", labelKey: "dashboard\\.dynamicBackgrounds\\.${background.id}"`),
-    );
+    const entry = backgroundCatalog.find((entry) => entry.id === background.id);
+    assert.ok(entry, `${background.id} should be exposed in the shared background catalog`);
+    assert.equal(entry.labelKey, `dashboard.dynamicBackgrounds.${background.id}`);
     assert.ok(
       existsSync(new URL(`../public/dynamic-bg-thumbs/${background.id}.webp`, import.meta.url)),
       `${background.id} should have a captured static thumbnail`,

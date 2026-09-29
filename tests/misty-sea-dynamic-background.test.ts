@@ -14,6 +14,10 @@ const implementationSource = await readFile(
   new URL("../src/modules/dashboard/registry/mistySeaBackground.tsx", import.meta.url),
   "utf8",
 );
+const backgroundCatalog = JSON.parse(await readFile(
+  new URL("../src/shared/dynamicBackgroundCatalog.json", import.meta.url),
+  "utf8",
+));
 const registrySource = await readFile(
   new URL("../src/modules/dashboard/registry/dynamicBackgrounds.tsx", import.meta.url),
   "utf8",
@@ -31,6 +35,11 @@ const manualSource = await readFile(
   "utf8",
 );
 const readmeSource = await readFile(new URL("../README.md", import.meta.url), "utf8");
+
+test("the background picker consumes the shared catalog", () => {
+  assert.match(registrySource, /import dynamicBackgroundCatalog from "\.\.\/\.\.\/\.\.\/shared\/dynamicBackgroundCatalog\.json"/);
+  assert.match(registrySource, /\}\[\] = dynamicBackgroundCatalog/);
+});
 
 test("Misty Sea palette interpolates scene hours and wraps across midnight", () => {
   const midday = mistySeaPaletteAtHour(12);
@@ -67,10 +76,10 @@ test("Misty Sea is available throughout the shared background pipeline", () => {
   assert.match(implementationSource, /getContext\("webgl"/);
   assert.match(implementationSource, /applyFallbackBackground/);
   assert.match(registrySource, /mistySea: MistySeaBg/);
-  assert.match(
-    registrySource,
-    /\{ id: "mistySea", labelKey: "dashboard\.dynamicBackgrounds\.mistySea", mood: "calm" \}/,
-  );
+  const entry = backgroundCatalog.find((entry: {id: string}) => entry.id === "mistySea");
+  assert.ok(entry);
+  assert.equal(entry.labelKey, "dashboard.dynamicBackgrounds.mistySea");
+  assert.equal(entry.mood, "calm");
   assert.ok(existsSync(new URL("../public/dynamic-bg-thumbs/mistySea.webp", import.meta.url)));
   assert.match(validationSource, /"mistySea"/);
   assert.match(englishLocaleSource, /"mistySea": "Misty Sea"/);
