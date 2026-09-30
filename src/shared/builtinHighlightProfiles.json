@@ -1,0 +1,797 @@
+[
+  {
+    "id": "builtin:cisco-ios",
+    "name": "Cisco IOS",
+    "caseSensitive": false,
+    "rules": [
+      {
+        "id": "cisco-prompt",
+        "name": "CLI prompt",
+        "pattern": "(?:^|\\s)[A-Za-z0-9._-]+(?:\\([^)]*\\))?[>#](?=\\s|$)",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#F6C85F",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "cisco-negative-connectivity",
+        "name": "Negative connectivity",
+        "pattern": "\\b(?:no(?:t)?(?:connect(?:ed)?)?|shut(?:down)?|down)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#FF6B6B",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "cisco-failures",
+        "name": "Failures and denials",
+        "pattern": "\\b(?:disabled?|disconnected?|disallowed?|discarded?|errors?|fail(?:ure|ed)?|citywwm|den(?:y|ied))\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#FF6B6B",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "cisco-critical",
+        "name": "Critical states",
+        "pattern": "\\b(?:red|administratively|undo|unknown|fault|blocked?|refused|problems?|warnings?|alerts?|critical|delete|inactive|unassigned)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#FF6B6B",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "cisco-percent-high",
+        "name": "Utilization 70–100%",
+        "pattern": "(?<!\\d)(?:7\\d|8\\d|9\\d|100)(?:\\.\\d{1,2})?%(?!\\d)",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#FF6B6B",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "cisco-positive",
+        "name": "Positive states",
+        "pattern": "\\b(?:green|up|forward|full|active)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#7BD88F",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "cisco-connectivity",
+        "name": "Connectivity states",
+        "pattern": "\\b(?:connect(?:ed)?|permit(?:ted)?|establish(?:ed)?|enable(?:d)?|allow(?:ed)?)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#7BD88F",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "cisco-percent-low",
+        "name": "Utilization 0–39%",
+        "pattern": "(?<!\\d)(?:[0-9]|[12]\\d|3\\d)(?:\\.\\d{1,2})?%(?!\\d)",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#7BD88F",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "cisco-routing",
+        "name": "Routing protocols",
+        "pattern": "\\b(?:BGP|OSPF(?:v3)?|RIPng|RIP|EIGRP|static|ODR|UNR|IS-?IS|PIM|direct)(?:-\\d+)?\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#5CC8FF",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "cisco-network-services",
+        "name": "Network services",
+        "pattern": "\\b(?:cyan|IPv6|TCP|UDP|ICMP|IGMP|GRE|ESP|AH|ISAKMP|ARP|ARPA|DHCP|HTTPS?|DNS|TFTP|FTP|Telnet|SSH|WWW|NTP|RADIUS|TACACS|POP\\d|SMTP|PPP|Frame-?Relay|FR|HDLC)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#5CC8FF",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "cisco-layer2",
+        "name": "Layer 2 and redundancy",
+        "pattern": "\\b(?:standby|VRRP|GLBP|MSTP?|RSTP|STP|spanning-tree|dot1q|802\\.1q)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#5CC8FF",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "cisco-control-services",
+        "name": "Control and services",
+        "pattern": "\\b(?:LDP|TDP|MPLS|AAA|account(?:ing)?|authentication|authorization|NAT|BFD|NQA|SLA|RTR|VRF|VPN(?:-instance)?)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#5CC8FF",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "cisco-direction",
+        "name": "Interface direction",
+        "pattern": "\\b(?:(?:passive-|silent-)?interface|in(?:bound|put)?|out(?:bound|put)?)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#C792EA",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "cisco-policy-core",
+        "name": "Routing and policy",
+        "pattern": "\\b(?:magenta|router|redistribute|import-route|import|export|network|neighbor|peer|area|ACL|classifier|class-map|behavior|policy-map|policy)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#C792EA",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "cisco-policy-objects",
+        "name": "Policy objects",
+        "pattern": "\\b(?:access-(?:list|class|group)|ip-prefix|prefix-list|route(?:-[\\w.-]+)?|traffic[\\w.-]*)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#C792EA",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "cisco-percent-mid",
+        "name": "Utilization 40–69%",
+        "pattern": "(?<!\\d)(?:4\\d|5\\d|6\\d)(?:\\.\\d{1,2})?%(?!\\d)",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#C792EA",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "cisco-ethernet-interfaces",
+        "name": "Ethernet interfaces",
+        "pattern": "\\b(?:Fast|Gigabit)?Ethernet\\d+(?:/\\d{1,3}){0,4}(?:\\.\\d{1,4})?\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#F6C85F",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "cisco-ipv4",
+        "name": "IPv4 and CIDR",
+        "pattern": "\\b(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)(?:\\.(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)){3}(?:/\\d{1,2}|:\\d{1,5})?\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#F6C85F",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "cisco-ipv6",
+        "name": "IPv6 and prefixes",
+        "pattern": "(?<![0-9A-Fa-f:])(?:(?:[0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}|(?:[0-9A-Fa-f]{1,4}:){1,7}:|(?:[0-9A-Fa-f]{1,4}:){1,6}:[0-9A-Fa-f]{1,4}|(?:[0-9A-Fa-f]{1,4}:){1,5}(?::[0-9A-Fa-f]{1,4}){1,2}|(?:[0-9A-Fa-f]{1,4}:){1,4}(?::[0-9A-Fa-f]{1,4}){1,3}|(?:[0-9A-Fa-f]{1,4}:){1,3}(?::[0-9A-Fa-f]{1,4}){1,4}|(?:[0-9A-Fa-f]{1,4}:){1,2}(?::[0-9A-Fa-f]{1,4}){1,5}|[0-9A-Fa-f]{1,4}:(?:(?::[0-9A-Fa-f]{1,4}){1,6})|:(?:(?::[0-9A-Fa-f]{1,4}){1,7}|:))(?:/\\d{1,3})?(?![0-9A-Fa-f:])",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#F6C85F",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "cisco-mac",
+        "name": "MAC addresses",
+        "pattern": "\\b(?:[0-9A-Fa-f]{4}[.-]){2}[0-9A-Fa-f]{4}\\b|\\b(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#F6C85F",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "cisco-clns",
+        "name": "CLNS and NSAP identifiers",
+        "pattern": "\\b\\d{1,2}(?:\\.[0-9A-Fa-f]{2,4}){1,11}\\.?\\d{1,2}\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#F6C85F",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "cisco-interfaces",
+        "name": "Interfaces",
+        "pattern": "\\b(?:orange|GE|FA|FE|Eth(?:-?trunk)?|Null|Loopback|Tunnel|Dialer|BRI|Serial|ATM|POS|Vlan(?:if)?)(?:\\d+(?:/\\d{1,3}){0,4}(?:\\.\\d{1,10})?)?\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#F6C85F",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "cisco-bundles",
+        "name": "Virtual and bundled interfaces",
+        "pattern": "\\b(?:Virtual-(?:Template|PPP|Access)|channel-group|Port-channel|Ether-?Channel)(?:\\d+(?:/\\d{1,3}){0,4})?\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#F6C85F",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      }
+    ]
+  },
+  {
+    "id": "builtin:juniper-junos",
+    "name": "Juniper Junos",
+    "caseSensitive": false,
+    "rules": [
+      {
+        "id": "junos-prompt",
+        "name": "CLI prompt",
+        "pattern": "(?:^|\\s)[A-Za-z0-9._-]+@[A-Za-z0-9._-]+(?:\\[[^\\]]+\\])?[>%#](?=\\s|$)",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#F6C85F",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "junos-failure",
+        "name": "Failure states",
+        "pattern": "\\b(?:down|disabled?|failed?|inactive|reject(?:ed)?|discard(?:ed)?|timeout|unreachable|fault|error|loss|not present|offline)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#FF6B6B",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "junos-alarm",
+        "name": "Alarms",
+        "pattern": "\\b(?:major|minor|critical|red alarm|yellow alarm|alarm|chassis alarm|rescue configuration is not set)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#FF6B6B",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "junos-healthy",
+        "name": "Healthy states",
+        "pattern": "\\b(?:up|established|master|primary|enabled|active|complete|success|online|ready|accept|permit|full)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#7BD88F",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "junos-attention",
+        "name": "Attention states",
+        "pattern": "\\b(?:warning|backup|secondary|standby|probing|degraded|pending|init|starting|hold|unknown)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#F6C85F",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "junos-interface",
+        "name": "Interfaces",
+        "pattern": "\\b(?:ae|as|at|bme|cbp|demux|dsc|em|esi|et|fe|fxp|ge|gr|gre|ip|irb|jsrv|lc|lo|lsi|lt|me|mt|pfe|pfh|pimd|pip|pp|reth|sp|st|tap|vcp|vlan|vme|vtep|xe)-?\\d+(?:/\\d{1,3}){0,2}(?:\\.\\d{1,10})?\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#5CC8FF",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "junos-ipv4",
+        "name": "IPv4 and CIDR",
+        "pattern": "\\b(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)(?:\\.(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)){3}(?:/\\d{1,2}|:\\d{1,5})?\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#F6C85F",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "junos-ipv6",
+        "name": "IPv6 and prefixes",
+        "pattern": "(?<![0-9A-Fa-f:])(?:(?:[0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}|(?:[0-9A-Fa-f]{1,4}:){1,7}:|(?:[0-9A-Fa-f]{1,4}:){1,6}:[0-9A-Fa-f]{1,4}|(?:[0-9A-Fa-f]{1,4}:){1,5}(?::[0-9A-Fa-f]{1,4}){1,2}|(?:[0-9A-Fa-f]{1,4}:){1,4}(?::[0-9A-Fa-f]{1,4}){1,3}|(?:[0-9A-Fa-f]{1,4}:){1,3}(?::[0-9A-Fa-f]{1,4}){1,4}|(?:[0-9A-Fa-f]{1,4}:){1,2}(?::[0-9A-Fa-f]{1,4}){1,5}|[0-9A-Fa-f]{1,4}:(?:(?::[0-9A-Fa-f]{1,4}){1,6})|:(?:(?::[0-9A-Fa-f]{1,4}){1,7}|:))(?:/\\d{1,3})?(?![0-9A-Fa-f:])",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#F6C85F",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "junos-mac",
+        "name": "MAC addresses",
+        "pattern": "\\b(?:[0-9A-Fa-f]{4}[.-]){2}[0-9A-Fa-f]{4}\\b|\\b(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#F6C85F",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "junos-routing",
+        "name": "Routing protocols",
+        "pattern": "\\b(?:BGP|OSPF(?:v3)?|IS-IS|ISIS|LDP|MPLS|RSVP|BFD|EVPN|VRRP|PIM|RIP|static|direct|local|aggregate|generated)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#C792EA",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "junos-policy",
+        "name": "Policy and firewall",
+        "pattern": "\\b(?:policy-statement|prefix-list|route-filter|firewall|term|from|then|next-hop|community|as-path|forwarding-class|loss-priority|code-points|classifier|scheduler-map)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#C792EA",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "junos-hierarchy",
+        "name": "Configuration hierarchy",
+        "pattern": "\\b(?:interfaces|protocols|routing-options|policy-options|security|services|system|chassis|class-of-service|forwarding-options|snmp|groups|traceoptions)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#A8E6CF",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "junos-family",
+        "name": "Address families",
+        "pattern": "\\b(?:family|inet6?|ethernet-switching|bridge|EVPN|CCC|MPLS|ISO)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#5CC8FF",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "junos-actions",
+        "name": "Configuration actions",
+        "pattern": "\\b(?:set|delete|deactivate|activate|commit|confirmed|rollback|load|save|compare|edit|top|exit|quit)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#F6C85F",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      }
+    ]
+  },
+  {
+    "id": "builtin:fortigate",
+    "name": "FortiGate",
+    "caseSensitive": false,
+    "rules": [
+      {
+        "id": "fortigate-prompt",
+        "name": "CLI prompt",
+        "pattern": "(?:^|\\s)[A-Za-z0-9._-]+(?:\\s+\\([^)]+\\))?\\s*[#$](?=\\s|$)",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#F6C85F",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "fortigate-failure",
+        "name": "Failure states",
+        "pattern": "\\b(?:down|dead|disconnected|disabled?|errors?|failed?|invalid|denied|blocked|dropped|timeout|unreachable|out-of-sync|inactive|expired|critical|fault|revoked|not installed)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#FF6B6B",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "fortigate-healthy",
+        "name": "Healthy states",
+        "pattern": "\\b(?:up|alive|active|established|connected|enabled|success|running|reachable|synchronized|in-sync|installed|valid|primary|master|accept|allow)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#7BD88F",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "fortigate-attention",
+        "name": "Attention states",
+        "pattern": "\\b(?:warning|standby|secondary|pending|negotiating|degraded|conserve|unknown|flapping|idle)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#F6C85F",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "fortigate-ipv4",
+        "name": "IPv4 and CIDR",
+        "pattern": "\\b(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)(?:\\.(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)){3}(?:/\\d{1,2}|:\\d{1,5})?\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#F6C85F",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "fortigate-ipv6",
+        "name": "IPv6 and prefixes",
+        "pattern": "(?<![0-9A-Fa-f:])(?:(?:[0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}|(?:[0-9A-Fa-f]{1,4}:){1,7}:|(?:[0-9A-Fa-f]{1,4}:){1,6}:[0-9A-Fa-f]{1,4}|(?:[0-9A-Fa-f]{1,4}:){1,5}(?::[0-9A-Fa-f]{1,4}){1,2}|(?:[0-9A-Fa-f]{1,4}:){1,4}(?::[0-9A-Fa-f]{1,4}){1,3}|(?:[0-9A-Fa-f]{1,4}:){1,3}(?::[0-9A-Fa-f]{1,4}){1,4}|(?:[0-9A-Fa-f]{1,4}:){1,2}(?::[0-9A-Fa-f]{1,4}){1,5}|[0-9A-Fa-f]{1,4}:(?:(?::[0-9A-Fa-f]{1,4}){1,6})|:(?:(?::[0-9A-Fa-f]{1,4}){1,7}|:))(?:/\\d{1,3})?(?![0-9A-Fa-f:])",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#F6C85F",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "fortigate-mac",
+        "name": "MAC addresses",
+        "pattern": "\\b(?:[0-9A-Fa-f]{4}[.-]){2}[0-9A-Fa-f]{4}\\b|\\b(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#F6C85F",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "fortigate-interface",
+        "name": "Interfaces",
+        "pattern": "\\b(?:port\\d+|wan\\d*|lan\\d*|dmz|internal|mgmt\\d*|ha\\d*|fortilink|ssl\\.root|virtual-wan-link|modem|wwan|vlan\\d*|aggregate\\d*)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#5CC8FF",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "fortigate-routing",
+        "name": "Routing protocols",
+        "pattern": "\\b(?:BGP|OSPF(?:v3)?|RIPng|RIP|IS-IS|BFD|static|connected|kernel|blackhole|route-map|prefix-list|routing-table)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#C792EA",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "fortigate-vpn",
+        "name": "VPN and IPsec",
+        "pattern": "\\b(?:VPN|IPsec|IKEv2?|phase1|phase2|SSL-VPN|ADVPN|dialup|tunnel|selector|security association|quick mode|encapsulation|decapsulation)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#5CC8FF",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "fortigate-ha-sdwan",
+        "name": "HA and SD-WAN",
+        "pattern": "\\b(?:HA|FGCP|cluster|primary|secondary|master|slave|member|SD-WAN|SLA|health-check|link-monitor|virtual-wan-link|failover|heartbeat)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#A8E6CF",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "fortigate-security",
+        "name": "Firewall and security",
+        "pattern": "\\b(?:firewall|policy|policy6|address6?|addrgrp6?|service|service group|VIP|IP pool|NAT|SNAT|DNAT|UTM|IPS|antivirus|webfilter|dnsfilter|application control|SSL inspection|DoS|FortiGuard)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#C792EA",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "fortigate-auth",
+        "name": "Authentication",
+        "pattern": "\\b(?:LDAP|RADIUS|TACACS\\+?|FSSO|SAML|FortiToken|two-factor|authentication|authorization|admin|user group)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#C792EA",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "fortigate-resources",
+        "name": "System resources",
+        "pattern": "\\b(?:CPU|memory|sessions?|uptime|load average|conserve mode|NPU|offload|NP6|NP7|CP8|CP9|FortiASIC)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#A8E6CF",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "fortigate-actions",
+        "name": "CLI actions",
+        "pattern": "\\b(?:config|edit|set|unset|append|select|unselect|next|end|show|full-configuration|get|diagnose|execute|tree)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#F6C85F",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      }
+    ]
+  },
+  {
+    "id": "builtin:operational-logs",
+    "name": "Operational Logs",
+    "caseSensitive": false,
+    "rules": [
+      {
+        "id": "logs-fatal",
+        "name": "Fatal and errors",
+        "pattern": "\\b(?:FATAL|ERROR|ERR|CRITICAL|PANIC|EXCEPTION|FAILED?)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#FF6B6B",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "logs-warning",
+        "name": "Warnings",
+        "pattern": "\\b(?:WARN|WARNING|DEPRECATED|RETRY|TIMEOUT)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#F6C85F",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "logs-success",
+        "name": "Success",
+        "pattern": "\\b(?:OK|PASS(?:ED)?|SUCCESS|HEALTHY|READY|STARTED)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#7BD88F",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "logs-debug",
+        "name": "Debug and trace",
+        "pattern": "\\b(?:DEBUG|TRACE|VERBOSE)\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#8796A5",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "logs-timestamp",
+        "name": "Timestamps",
+        "pattern": "\\b\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:[.,]\\d+)?(?:Z|[+-]\\d{2}:?\\d{2})?\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#8EA1B5",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "logs-http-bad",
+        "name": "HTTP failures",
+        "pattern": "\\b(?:4\\d{2}|5\\d{2})\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#FF8F70",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      },
+      {
+        "id": "logs-ipv4",
+        "name": "IPv4 addresses",
+        "pattern": "\\b(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)(?:\\.(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)){3}\\b",
+        "enabled": true,
+        "style": {
+          "fontFamily": null,
+          "foreground": "#5CC8FF",
+          "background": null,
+          "bold": false,
+          "italic": false
+        }
+      }
+    ]
+  }
+]

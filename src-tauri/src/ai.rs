@@ -3953,7 +3953,44 @@ fn ai_tool_definitions_with_skills(
             json!({"type":"object","properties":{"id":{"type":"string"}},"required":["id"]}),
         ));
     }
+    for tool in crate::mcp_tool_catalog::appearance::tools() {
+        if appearance_group_enabled(settings, tool.group) {
+            tools.push(tool_definition(tool.native, tool.description, tool.schema));
+        }
+    }
+    let published = crate::mcp_tool_catalog::tool_descriptors();
+    for (native, mcp, group, _) in crate::mcp_tool_catalog::appearance::visual_tool_bindings() {
+        if appearance_group_enabled(settings, group) {
+            if let Some(tool) = published.iter().find(|tool| tool["name"] == mcp) {
+                tools.push(tool_definition(native, tool["description"].as_str().unwrap_or("Inspect the current app appearance"), tool["inputSchema"].clone()));
+            }
+        }
+    }
+    for tool in &mut tools {
+        let schema = match tool.function.name {
+            "dashboard_update_view" => Some(crate::mcp_tool_catalog::appearance::dashboard_patch_schema()),
+            "itops_set_site_background" => Some(crate::mcp_tool_catalog::appearance::background_target_schema(&["siteId"])),
+            "itops_set_server_room_background" => Some(crate::mcp_tool_catalog::appearance::background_target_schema(&["siteId", "serverRoom"])),
+            "itops_set_rack_background" => Some(crate::mcp_tool_catalog::appearance::background_target_schema(&["id"])),
+            _ => None,
+        };
+        if let Some(schema) = schema { tool.function.parameters = schema; }
+        if tool.function.name == "dashboard_update_view" {
+            tool.function.description = "Update a Dashboard view's title, grid density, order, background or tab color. Omitted fields stay unchanged; null clears background/tabColor. background.dynamic accepts a canonical ID or display name from appearance_list_backgrounds.".to_string();
+        }
+    }
     tools
+}
+
+fn appearance_group_enabled(settings: &AiAssistantToolSettings, group: &str) -> bool {
+    match group {
+        "connections" => settings.connections(),
+        "sessions" => settings.sessions(),
+        "dashboard" => settings.dashboard(),
+        "screenshots" => settings.screenshots(),
+        "catalog" => settings.connections() || settings.sessions() || settings.dashboard() || settings.itops(),
+        _ => false,
+    }
 }
 
 fn system_cleaner_tool_definitions() -> Vec<OpenAiToolDefinition> {
@@ -4702,7 +4739,12 @@ async fn run_ai_tool(
             return result;
         }
     }
+    let appearance_tool = crate::mcp_tool_catalog::appearance::tools().into_iter()
+        .find(|tool| tool.native == call.function.name);
     let result = match call.function.name.as_str() {
+        name if appearance_tool.as_ref().is_some_and(|tool| appearance_group_enabled(tool_settings, tool.group)) => {
+            live_session_tool(app, name, args).await
+        }
         "assistant_use_skill" => assistant_use_skill_tool(
             app,
             settings.disabled_skill_names(),
@@ -4741,6 +4783,27 @@ async fn run_ai_tool(
         "send_email" if tool_settings.email() => send_email_tool(settings, args).await,
         "performance_counters" if tool_settings.performance_counters() => {
             performance_counters_tool(app)
+        }
+        name @ ("dashboard_view_screenshot" | "dashboard_widget_screenshot") if tool_settings.dashboard() => {
+            live_session_tool(app, name, args).await
+        }
+        "workspace_connection_screenshot" if tool_settings.sessions() => {
+            live_session_tool(app, "workspace_connection_screenshot", args).await
+        }
+        "app_list_windows" if tool_settings.screenshots() => {
+            match crate::screenshot::list_app_windows(app) {
+                Ok(windows) => json!({"ok":true,"windows":windows}).to_string(),
+                Err(error) => json!({"ok":false,"error":error}).to_string(),
+            }
+        }
+        "app_capture_window" if tool_settings.screenshots() => {
+            match args.get("windowId").and_then(Value::as_str) {
+                Some(id) => match crate::screenshot::capture_app_window(app, id, false) {
+                    Ok(screenshot) => json!({"ok":true,"windowId":id,"screenshot":screenshot}).to_string(),
+                    Err(error) => json!({"ok":false,"error":error}).to_string(),
+                },
+                None => json!({"ok":false,"error":"windowId is required"}).to_string(),
+            }
         }
         "dashboard_check_widget_health" if tool_settings.dashboard() => {
             dashboard_check_widget_health_tool(app, args).await
@@ -4853,6 +4916,8 @@ fn assistant_use_skill_tool(
 }
 
 fn tool_requires_allow_all(tool_name: &str) -> bool {
+    if crate::mcp_tool_catalog::appearance::is_mutating(tool_name)
+        || crate::mcp_tool_catalog::appearance::visual_tool_bindings().iter().any(|(name, _, _, write)| *name == tool_name && *write) { return true; }
     tool_name == "shell_command"
         || tool_name == "send_email"
         || (tool_name.starts_with("dashboard_")

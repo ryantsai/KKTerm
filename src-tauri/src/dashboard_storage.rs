@@ -36,7 +36,7 @@ pub enum DashboardBackground {
     Preset { preset: String },
     Image { file: String, fit: String, dim: i64 },
     Video { file: String, fit: String, dim: i64 },
-    Dynamic { dynamic: String },
+    Dynamic { #[serde(deserialize_with = "crate::background_catalog::deserialize_dynamic")] dynamic: String },
     CustomGradient { stops: Vec<GradientColorStop>, angle: f64 },
 }
 

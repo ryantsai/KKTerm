@@ -48,6 +48,10 @@ const skySource = await readFile(
   new URL("../src/modules/dashboard/registry/poseidon/sky.js", import.meta.url),
   "utf8",
 );
+const backgroundCatalog = JSON.parse(await readFile(
+  new URL("../src/shared/dynamicBackgroundCatalog.json", import.meta.url),
+  "utf8",
+));
 const registrySource = await readFile(
   new URL("../src/modules/dashboard/registry/dynamicBackgrounds.tsx", import.meta.url),
   "utf8",
@@ -67,6 +71,11 @@ const newSceneIds = [
   "openOceanBlue",
   "tropicalGreen",
 ] as const;
+
+test("the background picker consumes the shared catalog", () => {
+  assert.match(registrySource, /import dynamicBackgroundCatalog from "\.\.\/\.\.\/\.\.\/shared\/dynamicBackgroundCatalog\.json"/);
+  assert.match(registrySource, /\}\[\] = dynamicBackgroundCatalog/);
+});
 
 test("Poseidon ocean backgrounds use its full FFT ocean", () => {
   assert.match(implementationSource, /NeutralToneMapping/);
@@ -141,7 +150,9 @@ test("all Poseidon scenes are registered, previewed, validated, and localized fo
 
   for (const id of newSceneIds) {
     assert.match(registrySource, new RegExp(`${id}: [A-Z][A-Za-z]+Bg`));
-    assert.match(registrySource, new RegExp(`id: "${id}"`));
+    const entry = backgroundCatalog.find((entry: {id: string}) => entry.id === id);
+    assert.ok(entry, `${id} should be exposed in the shared background catalog`);
+    assert.equal(entry.labelKey, `dashboard.dynamicBackgrounds.${id}`);
     assert.ok(existsSync(new URL(`../public/dynamic-bg-thumbs/${id}.webp`, import.meta.url)));
     assert.match(validationSource, new RegExp(`"${id}"`));
     assert.match(zhTwLocaleSource, new RegExp(`"${id}":`));

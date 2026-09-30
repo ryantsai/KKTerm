@@ -215,3 +215,13 @@ exports and to the direct-download macOS build. Remote SSH Sessions are
 unaffected because their shell and filesystem live on the remote host. A user
 who explicitly enables macOS Remote Login may also save an SSH Connection to
 `localhost`, subject to normal SSH authentication and macOS sharing settings.
+
+### Assistant / MCP appearance control
+
+The Assistant and built-in MCP/CLI can read/patch saved terminal backgrounds,
+opacity, color scheme and `terminal.syntaxHighlight` selection. Dynamic
+backgrounds accept picker display names or canonical IDs. They can also list,
+read, create, edit, copy, delete, and import keyword-highlighting profiles;
+built-ins remain immutable and deletion refuses in-use selections. Live-pane
+appearance updates are separate from saved Connection updates and do not
+reconnect Sessions. See `docs/AI_APPEARANCE_TOOLS.md` for precise tool contracts.

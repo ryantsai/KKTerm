@@ -660,3 +660,23 @@ notifications.
 `tutorial_highlight` accepts `terminal.attention` with navigation `page=workspace`. It identifies the pending-terminal bell buttons in the Status Bar; it is only present when a live terminal has rung while unfocused and the Status Bar is visible. Activating a bell focuses that existing terminal and clears its attention.
 
 The Screenshots tutorial target `screenshots.videoFrameRate` uses navigation `page=screenshots` and is present after selecting Video mode. It identifies the 30/60/120 fps recording selector.
+
+## Appearance and keyword-highlighting parity
+
+Native Assistant, MCP, and `kkterm-cli` discovery now share appearance contracts.
+Use `kkterm.appearance.backgrounds.list` to discover dynamic background IDs and
+names, then pass either in `{ "kind": "dynamic", "dynamic": "Misty Sea" }`.
+This works for saved Connection, Dashboard, Site, Server Room, Rack, and browser
+background setters. Unknown/ambiguous names fail without changing state.
+
+Saved appearance uses `kkterm.workspace.connections.get_appearance` and
+`kkterm.workspace.connections.dangerous.update_appearance`; transient/live panes
+use `kkterm.workspace.sessions.dangerous.update_terminal_appearance`. Keyword
+profiles are exposed through `kkterm.workspace.highlighting.list`, `.read`, and
+`.dangerous.create/update/copy/delete/import`. Built-ins are read-only; apply an
+existing profile through the appearance patch's `highlightProfile` field. New
+mutations keep the dangerous-tool gate; read/discovery calls remain safe.
+`kkterm.dashboard.check_widget_health` also matches the native runtime-health read.
+
+See [Appearance tools](AI_APPEARANCE_TOOLS.md) for schemas, examples, nullable
+patch semantics, validation, saved-versus-live scope, and authorization details.

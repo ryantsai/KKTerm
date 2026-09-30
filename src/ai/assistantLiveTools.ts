@@ -1,3 +1,5 @@
+import { isAppearanceTool, runAppearanceTool } from "./appearanceTools";
+import i18next from "../i18n/config";
 // Frontend live-tool dispatcher for the Assistant: executes the session_*,
 // quick_command_*, screenshot, and tutorial tools that the backend agent loop
 // requests over the live tool bridge. Handlers read live state from the
@@ -52,6 +54,16 @@ export async function runAssistantLiveTool(
   args: Record<string, unknown>,
   deps: AssistantLiveToolDeps,
 ) {
+  if (isAppearanceTool(toolName)) {
+    return runAppearanceTool(toolName, args, {
+      data: (request) => invokeCommand("appearance_data", { request }),
+      getTabs: () => useWorkspaceStore.getState().tabs,
+      updateTabs: (apply) => useWorkspaceStore.setState((state) => ({ tabs: apply(state.tabs) })),
+      setTerminalSettings: (settings) => useWorkspaceStore.getState().setTerminalSettings(settings),
+      separatePaneBackgrounds: () => useWorkspaceStore.getState().generalSettings.separateSplitTerminalBackgrounds,
+      language: i18next.resolvedLanguage ?? i18next.language,
+    });
+  }
   switch (toolName) {
     case "tutorial_highlight":
       return assistantTutorialHighlight(args, deps);

@@ -1,3 +1,4 @@
+mod background_catalog;
 mod ai;
 mod ai_coding_usage;
 mod app_group;
@@ -1075,6 +1076,19 @@ fn update_terminal_settings(
     request: storage::TerminalSettings,
 ) -> Result<storage::TerminalSettings, String> {
     storage.update_terminal_settings(request)
+}
+
+#[tauri::command]
+fn appearance_data(
+    app: tauri::AppHandle,
+    storage: tauri::State<'_, storage::Storage>,
+    request: serde_json::Value,
+) -> Result<serde_json::Value, String> {
+    let result = storage.appearance_data(request.clone())?;
+    if request.get("action").and_then(serde_json::Value::as_str) == Some("patch_connection") {
+        let _ = app.emit("connection-tree-changed", serde_json::json!({"source":"appearance"}));
+    }
+    Ok(result)
 }
 
 #[tauri::command]
@@ -5232,6 +5246,7 @@ pub fn run() {
             get_database_folder,
             get_terminal_settings,
             update_terminal_settings,
+            appearance_data,
             get_appearance_settings,
             update_appearance_settings,
             get_system_accent_color,

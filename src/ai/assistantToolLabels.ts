@@ -126,6 +126,18 @@ export function toolCallLabel(
   if (labels[normalizedToolName]) {
     return labels[normalizedToolName];
   }
+  if (normalizedToolName.startsWith("terminal_highlight_") || normalizedToolName === "appearance_list_backgrounds" || normalizedToolName === "terminal_list_color_schemes" || normalizedToolName === "connection_get_appearance" || normalizedToolName === "connection_update_appearance") {
+    return status === "running" ? t("ai.toolConnections") : t("ai.toolConnectionsDone");
+  }
+  if (normalizedToolName === "session_update_terminal_appearance" || normalizedToolName === "workspace_connection_screenshot") {
+    return status === "running" ? t("ai.toolSessions") : t("ai.toolSessionsDone");
+  }
+  if (normalizedToolName === "app_list_windows" || normalizedToolName === "app_capture_window") {
+    return status === "running" ? t("ai.toolScreenshots") : t("ai.toolScreenshotsDone");
+  }
+  if (normalizedToolName === "dashboard_view_screenshot" || normalizedToolName === "dashboard_widget_screenshot") {
+    return status === "running" ? t("ai.toolDashboard") : t("ai.toolDashboardDone");
+  }
   if (normalizedToolName.startsWith("itops_")) {
     return status === "running" ? t("ai.toolItOps") : t("ai.toolItOpsDone");
   }
@@ -146,7 +158,10 @@ export function isDashboardMutatingTool(toolName: unknown) {
   if (!normalizedToolName) {
     return false;
   }
-  return normalizedToolName.startsWith("dashboard_") && normalizedToolName !== "dashboard_load_state";
+  return normalizedToolName.startsWith("dashboard_") && ![
+    "dashboard_load_state", "dashboard_read_widget_source", "dashboard_read_widget_secret",
+    "dashboard_check_widget_health", "dashboard_view_screenshot", "dashboard_widget_screenshot",
+  ].includes(normalizedToolName);
 }
 
 export function humanizeAssistantToolName(toolName: string | undefined) {

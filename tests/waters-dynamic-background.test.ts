@@ -17,6 +17,10 @@ const implementationSource = await readFile(
   new URL("../src/modules/dashboard/registry/watersBackground.tsx", import.meta.url),
   "utf8",
 );
+const backgroundCatalog = JSON.parse(await readFile(
+  new URL("../src/shared/dynamicBackgroundCatalog.json", import.meta.url),
+  "utf8",
+));
 const registrySource = await readFile(
   new URL("../src/modules/dashboard/registry/dynamicBackgrounds.tsx", import.meta.url),
   "utf8",
@@ -34,6 +38,11 @@ const manualSource = await readFile(
   "utf8",
 );
 const readmeSource = await readFile(new URL("../README.md", import.meta.url), "utf8");
+
+test("the background picker consumes the shared catalog", () => {
+  assert.match(registrySource, /import dynamicBackgroundCatalog from "\.\.\/\.\.\/\.\.\/shared\/dynamicBackgroundCatalog\.json"/);
+  assert.match(registrySource, /\}\[\] = dynamicBackgroundCatalog/);
+});
 
 test("waters camera sweep loops without a seam", () => {
   assert.equal(watersCameraYaw(0), 0);
@@ -86,10 +95,10 @@ test("waters releases its WebGL scene when the background stops", () => {
 test("waters is registered everywhere a dynamic background must appear", () => {
   assert.match(implementationSource, /export function WatersBg\(/);
   assert.match(registrySource, /waters: WatersBg/);
-  assert.match(
-    registrySource,
-    /\{ id: "waters", labelKey: "dashboard\.dynamicBackgrounds\.waters", mood: "calm" \}/,
-  );
+  const entry = backgroundCatalog.find((entry: {id: string}) => entry.id === "waters");
+  assert.ok(entry);
+  assert.equal(entry.labelKey, "dashboard.dynamicBackgrounds.waters");
+  assert.equal(entry.mood, "calm");
   assert.ok(existsSync(new URL("../public/dynamic-bg-thumbs/waters.webp", import.meta.url)));
   assert.match(validationSource, /"waters"/);
   assert.match(englishLocaleSource, /"waters": "Waters"/);

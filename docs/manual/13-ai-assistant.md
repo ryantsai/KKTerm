@@ -226,3 +226,25 @@ Assistant tools (`settings.aiToolsTitle`) and Assistant Skills (`settings.assist
 Assistant Skills are local SKILL.md-compatible folders managed in Settings → AI (`settings.assistantSkillsTitle`, hint `settings.assistantSkillsHint`). KKTerm ships bundled starter skills and copies missing ones into the editable app-data skills folder when skills are listed or invoked: `dashboard-widget-builder`, `dashboard-widget-designer`, `dashboard-data-visualization`, `desktop-accessibility-ui`, `dns-dhcp-troubleshooter`, `firewall-port-troubleshooter`, `network-connectivity-troubleshooter`, `remote-desktop-helper`, `sftp-transfer-helper`, `ssh-troubleshooter`, `terminal-command-planner`, and `tls-certificate-troubleshooter`. Open `settings.assistantSkillsOpenFolder`, add or edit one folder per skill, then refresh. Each valid skill can be enabled/disabled with `settings.assistantSkillsEnabled` / `settings.assistantSkillsDisabled` and opened directly with `settings.assistantSkillsOpen`. The assistant sees enabled skill metadata and must invoke `assistant_use_skill` to load full instructions; KKTerm does not use keyword matching to pick skills. v1 loads skill instructions only; bundled `scripts/` are not executed.
 
 MCP servers are managed under Settings → Credentials (`settings.mcpServersTitle`, hint `settings.mcpServersHint`). See [15-settings.md](15-settings.md) §Credentials & MCP.
+
+### Appearance and keyword-highlighting tools
+
+The Assistant can now list backgrounds by ID/display name, patch saved Connection
+background/opacity/color scheme, apply keyword-highlighting profiles, and edit
+custom profile rules directly. The Connections tool group
+`settings.aiTools.connections.label` controls saved appearance and profiles;
+`settings.aiTools.sessions.label` controls live-pane-only appearance changes.
+Mutations use the normal `ai.toolApprovalTitle` flow in Prompt mode.
+
+Ask for a dynamic background by its picker name (including localized names),
+such as “Set this Connection's background to Misty Sea.” Unknown or ambiguous
+names fail rather than selecting an arbitrary scene. The Assistant can copy
+built-ins, create/read/update/delete custom keyword profiles, and import supplied
+SecureCRT INI text. Built-ins cannot be overwritten and in-use profiles cannot
+be deleted. Null highlighting disables it; null color scheme restores the global
+default. Applying saved appearance updates open panes without reconnecting.
+
+MCP/CLI users have matching appearance capabilities and schemas, with their
+existing dangerous-tool authorization gate. See `docs/AI_APPEARANCE_TOOLS.md`
+for tool names and JSON examples. The separate
+`settings.syntaxHighlightGenerateWithAi` control still generates an editable draft.
