@@ -21,6 +21,16 @@ use serde_json::{Value, json};
 #[path = "appearance_tool_catalog.rs"]
 pub mod appearance;
 
+/// Shared by the native Assistant and both MCP catalog publishers.
+pub fn dashboard_widget_health_schema() -> Value {
+    json!({
+        "type": "object",
+        "properties": {"instanceId": {"type": "string"}},
+        "required": ["instanceId"],
+        "additionalProperties": false,
+    })
+}
+
 /// The complete published MCP tool surface, in stable order. Adding a tool
 /// here updates both the live bridge and the offline CLI introspection at
 /// once — see the feature-growth contract in `docs/MCP.md`.
@@ -538,12 +548,7 @@ pub fn tool_descriptors() -> Vec<Value> {
         json!({
             "name": "kkterm.dashboard.check_widget_health",
             "description": "Read the live runtime health of one Dashboard Widget Instance, waiting briefly for its frontend smoke test to report ready, error, timeout, stalled, or pending.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {"instanceId": {"type": "string"}},
-                "required": ["instanceId"],
-                "additionalProperties": false,
-            },
+            "inputSchema": dashboard_widget_health_schema(),
         }),
         json!({
             "name": "kkterm.dashboard.create_view",
@@ -1681,8 +1686,6 @@ pub fn tool_descriptors() -> Vec<Value> {
             },
         }),
     ];
-    tools.push(json!({"name":"kkterm.dashboard.check_widget_health", "description":"Read one script widget instance's runtime health after creating or editing it.",
-        "inputSchema":{"type":"object","properties":{"instanceId":{"type":"string"}},"required":["instanceId"]}}));
     tools.extend(system_cleaner_tool_descriptors());
     tools.extend(appearance::tools().into_iter().map(|tool| json!({
         "name": tool.mcp, "description": tool.description, "inputSchema": tool.schema,
@@ -2239,4 +2242,34 @@ fn move_folder_input_schema() -> Value {
         "required": ["folderId", "parentFolderId", "targetIndex"],
         "additionalProperties": false,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn published_tool_names_are_unique() {
+        let tools = tool_descriptors();
+        let mut names = std::collections::HashSet::new();
+        for tool in &tools {
+            let name = tool["name"].as_str().expect("tool name");
+            assert!(names.insert(name), "duplicate tool descriptor: {name}");
+        }
+    }
+
+    #[test]
+    fn widget_health_uses_the_shared_strict_instance_schema() {
+        let tools = tool_descriptors();
+        let health = tools.iter()
+            .find(|tool| tool["name"] == "kkterm.dashboard.check_widget_health")
+            .expect("widget health tool");
+        assert_eq!(health["inputSchema"], dashboard_widget_health_schema());
+        assert_eq!(health["inputSchema"], json!({
+            "type": "object",
+            "properties": {"instanceId": {"type": "string"}},
+            "required": ["instanceId"],
+            "additionalProperties": false,
+        }));
+    }
 }

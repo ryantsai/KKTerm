@@ -511,6 +511,10 @@ separately gated because it can target any KKTerm-owned OS window. None of
 these tools bypasses the normal desktop rendering path or captures
 hidden/unmounted content.
 
+`kkterm.dashboard.check_widget_health` is published once and shares its input
+schema with the native Assistant's `dashboard_check_widget_health`: one required
+string `instanceId`, with no additional properties. It remains a read-only check.
+
 ### Adding a new Module
 
 When a new activity-rail Module is added, give

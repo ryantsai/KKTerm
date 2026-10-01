@@ -3174,7 +3174,7 @@ fn ai_tool_definitions_with_skills(
         tools.push(tool_definition(
             "dashboard_check_widget_health",
             "Confirm a script widget actually mounted after you created or updated it. Returns state: ready (loaded with no top-level runtime error), error (threw at runtime; includes the error text and source line/column), timeout (never signaled ready within the smoke-test window), stalled (an animation-lifecycle loop stopped ticking), or pending (still mounting). After dashboard_create_widget or dashboard_update_custom_widget, call this once with the returned instanceId; if state is error, timeout, or stalled, read the error, fix the widget source, and call dashboard_update_custom_widget with a body patch. Make at most one automatic self-fix attempt, then re-check; if it still fails, tell the user what broke instead of looping. A pending result is not a failure - the widget was placed and may still be painting.",
-            json!({"type":"object","properties":{"instanceId":{"type":"string"}},"required":["instanceId"]}),
+            crate::mcp_tool_catalog::dashboard_widget_health_schema(),
         ));
         tools.push(tool_definition(
             "dashboard_reset",
