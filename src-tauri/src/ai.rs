@@ -98,7 +98,7 @@ const TUTORIAL_TOOL_KNOWN_TARGETS: &str = concat!(
     "settings.defaultUser, settings.defaultPort, settings.defaultKey, settings.sshBufferLines with navigation page=settings settingsSectionId=ssh-settings; ",
     "settings.terminalFontFamily, settings.terminalFontSize, settings.defaultShell, settings.scrollbackLines with navigation page=settings settingsSectionId=terminal-settings; ",
     "settings.ignoreCertificateErrors, settings.urlSavedPasswords, settings.urlDataShards with navigation page=settings settingsSectionId=url-settings; ",
-    "settings.rdpColorDepth, settings.rdpPerformanceProfile, settings.rdpRemoteResolution with navigation page=settings settingsSectionId=rdp-settings; ",
+    "settings.rdpColorDepth, settings.rdpPerformanceProfile, settings.rdpRemoteResolution, settings.rdpOpenInFullscreen with navigation page=settings settingsSectionId=rdp-settings; ",
     "settings.vncViewOnly, settings.vncColorLevel with navigation page=settings settingsSectionId=vnc-settings; ",
     "settings.screenshotsFolder, settings.screenshotsFormat, settings.screenshotsRecording, settings.screenshotsShortcuts, settings.useDirectxScreenCapture with navigation page=settings settingsSectionId=screenshots-settings; ",
     "settings.workspace with navigation page=settings settingsSectionId=workspace-settings; settings.fileExplorer with navigation page=settings settingsSectionId=file-explorer-settings; settings.dontSleep with navigation page=settings settingsSectionId=dont-sleep-settings; settings.installer with navigation page=settings settingsSectionId=installer-settings; settings.customModules with navigation page=settings settingsSectionId=custom-modules-settings; ",

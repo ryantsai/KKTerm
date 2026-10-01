@@ -394,6 +394,11 @@ const SETTINGS_SECTIONS: Record<SettingsSectionId, SettingsSectionSummary> = {
         description: "RDP performance profile default.",
         tutorialTargetId: "settings.rdpPerformanceProfile",
       },
+      {
+        key: "settings.rdpOpenInFullscreen",
+        description: "Open new RDP Sessions in fullscreen after connecting; off by default.",
+        tutorialTargetId: "settings.rdpOpenInFullscreen",
+      },
     ],
   },
   "vnc-settings": {

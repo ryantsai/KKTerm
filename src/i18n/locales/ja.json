@@ -3189,6 +3189,8 @@
     "rdpPerformanceSpeed": "速度優先",
     "rdpRemoteResolution": "リモート解像度",
     "rdpRemoteResolutionAutomatic": "自動",
+    "rdpOpenInFullscreen": "全画面で開く",
+    "rdpOpenInFullscreenHint": "新しいRDPセッションを全画面で開きます。全画面を終了するとワークスペースに戻ります。",
     "rdpAdministrativeSession": "管理セッション",
     "rdpAdministrativeSessionHint": "サーバー管理用のセッションに接続します。",
     "rdpRedirectClipboard": "クリップボード",

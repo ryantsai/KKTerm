@@ -3,7 +3,7 @@
 ## AI grep hints
 
 - Keys: `remoteDesktop.*` (full namespace, including `remoteDesktop.fullscreen.*`), `connections.windowsRdp`, `connections.screenControl`, `settings.rdpRemoteResolution*`, `settings.remoteDesktopViewMode*`, `settings.vncPerformancePreset`, `settings.vncCompressionLevel`, `settings.vncJpegQuality`, `settings.vncJpegEnabled`, `settings.rdpAdministrativeSession`, `settings.rdpShareLocalFolders`, `settings.rdpAddFolder`, `settings.rdpAllLocalDrives`, `settings.rdpChooseDrives`, `settings.submitAiAttachmentsDirectly`, `workspace.sendEntirePanelToAi`, `ai.directAttachmentPrompt`
-- Topics: RDP via mstscax ActiveX, RDP via IronRDP, Windows drive redirection, macOS/Linux shared local folder, VNC via vnc-rs, Ctrl+Alt+Del, Ctrl+Alt+End hotkey hint, remote resolution (Automatic / fixed `WxH`), view mode scaling, reconnect, framebuffer waiting, Windows ActiveX native full screen and connection bar, detached VNC/canvas full-screen window (span all monitors, monitor picker, platform full-screen shortcut, `open_remote_fullscreen_window`, `list_display_monitors`), tutorial targets `remoteDesktop.toolbar`, `remoteDesktop.viewMode`, `remoteDesktop.sendCtrlAltDel`, `remoteDesktop.reconnect`, `remoteDesktop.sendToAi`, `remoteDesktop.surface`, `settings.rdpRemoteResolution`
+- Topics: RDP via mstscax ActiveX, RDP via IronRDP, Windows drive redirection, macOS/Linux shared local folder, VNC via vnc-rs, Ctrl+Alt+Del, Ctrl+Alt+End hotkey hint, remote resolution (Automatic / fixed `WxH`), view mode scaling, reconnect, framebuffer waiting, Windows ActiveX native full screen and connection bar, detached VNC/canvas full-screen window (span all monitors, monitor picker, platform full-screen shortcut, `open_remote_fullscreen_window`, `list_display_monitors`), tutorial targets `remoteDesktop.toolbar`, `remoteDesktop.viewMode`, `remoteDesktop.sendCtrlAltDel`, `remoteDesktop.reconnect`, `remoteDesktop.sendToAi`, `remoteDesktop.surface`, `settings.rdpRemoteResolution`, `settings.rdpOpenInFullscreen`
 - Synonyms: "remote desktop", "screen sharing", "mstsc", "IronRDP", "drive mapping", "redirect drives", "share local folder", "VNC viewer", "send three-finger salute", "high DPI scaling", "remote screen size", "full screen", "fullscreen", "second monitor", "multi-monitor", "span monitors", "connection bar"
 
 ## Connection kinds
@@ -99,6 +99,14 @@ Debug builds write RDP startup, ActiveX control creation, display-size sync, cli
 ## RDP / VNC settings
 
 Per-kind defaults (resolution, view mode, colour depth, etc.) live in Settings → RDP (`settings.sectionRdp`) and Settings → VNC (`settings.sectionVnc`). See [15-settings.md](15-settings.md).
+
+### Open new RDP Sessions in fullscreen
+
+`settings.rdpOpenInFullscreen` is off by default. It appears after `settings.rdpRemoteResolution` in Settings → RDP → `settings.display`, and in the RDP Connection options before `connections.rdpAdvancedOptions`. `settings.rdpOpenInFullscreenHint` explains returning to the Workspace on exit. Tutorial/grep anchor: `settings.rdpOpenInFullscreen` with navigation `page=settings settingsSectionId=rdp-settings`.
+
+The Connection editor's `connections.inheritSettingsDefaults` switch owns the whole RDP options group. While enabled, the fullscreen switch is disabled and displays the current global default; while disabled, it saves a per-Connection choice. Existing customized Connections without this choice remain off. The five `settings.remoteDesktopViewMode` options remain scaling modes; fullscreen is a separate startup preference.
+
+Only an explicitly opened foreground RDP Session can enter fullscreen once, after it connects and its surface is ready. Reconnect, revisiting an existing Tab, saved-layout restore, folder bulk-open, and Panorama do not trigger it. Changing this preference does not move an already running Session. Switching away or losing app focus while connecting cancels automatic entry. Leaving fullscreen returns the same Session to its original Workspace Pane; Windows uses the native connection bar and macOS/Linux use the detached full-screen window described above. VNC is unchanged.
 
 ### VNC performance presets
 

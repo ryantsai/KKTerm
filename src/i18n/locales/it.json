@@ -3189,6 +3189,8 @@
     "rdpPerformanceSpeed": "Velocità",
     "rdpRemoteResolution": "Risoluzione remota",
     "rdpRemoteResolutionAutomatic": "Automatica",
+    "rdpOpenInFullscreen": "Apri a schermo intero",
+    "rdpOpenInFullscreenHint": "Apri le nuove sessioni RDP a schermo intero. Esci dallo schermo intero per tornare all’area di lavoro.",
     "rdpAdministrativeSession": "Sessione amministrativa",
     "rdpAdministrativeSessionHint": "Connettiti a una sessione per amministrare il server.",
     "rdpRedirectClipboard": "Appunti",

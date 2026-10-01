@@ -1811,6 +1811,7 @@ pub fn connection_input_schema(id_name: Option<&str>) -> Value {
         "bitmapCache": {"type": ["boolean", "null"]},
         "performanceProfile": {"type": ["string", "null"], "enum": ["balanced", "quality", "speed", null]},
         "remoteResolution": {"type": ["string", "null"]},
+        "openInFullscreen": {"type": ["boolean", "null"], "description": "Open newly started RDP Sessions in fullscreen after connecting; defaults to false."},
         "viewMode": {"type": ["string", "null"], "enum": ["fit", "stretch", "actualSize", "fitWidth", "fitHeight", null]}
     }});
     let vnc_options_schema = json!({"type": ["object", "null"], "properties": {

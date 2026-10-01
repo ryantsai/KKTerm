@@ -162,6 +162,7 @@ export const defaultRdpSettings: RdpSettings = {
   bitmapCache: true,
   performanceProfile: "balanced",
   remoteResolution: "automatic",
+  openInFullscreen: false,
   viewMode: "fit",
 };
 

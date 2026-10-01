@@ -1014,6 +1014,8 @@ export interface UrlPane {
 
 export interface RemoteDesktopPane {
   kind: "remoteDesktop";
+  /** One-shot intent captured only for explicitly opened foreground Sessions; never persisted. */
+  rdpStartupFullscreen?: boolean;
   id: string;
   childConnectionId?: string;
   title: string;
@@ -1546,6 +1548,7 @@ export interface RdpSettings {
   bitmapCache: boolean;
   performanceProfile: RdpPerformanceProfile;
   remoteResolution: RdpRemoteResolution;
+  openInFullscreen: boolean;
   viewMode: RemoteDesktopViewMode;
 }
 
@@ -1564,6 +1567,7 @@ export interface RdpConnectionOptions {
   bitmapCache?: boolean;
   performanceProfile?: RdpPerformanceProfile;
   remoteResolution?: RdpRemoteResolution;
+  openInFullscreen?: boolean;
   viewMode?: RemoteDesktopViewMode;
 }
 

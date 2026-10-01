@@ -140,6 +140,19 @@ export function RdpSettings() {
             </select>
           </label>
         </div>
+        <div className="settings-toggle-list">
+          <label className="settings-toggle-row" data-tutorial-id="settings.rdpOpenInFullscreen">
+            <ToggleSwitch
+              ariaLabel={t("settings.rdpOpenInFullscreen")}
+              checked={draft.openInFullscreen}
+              onChange={(checked) => setDraft((settings) => ({ ...settings, openInFullscreen: checked }))}
+            />
+            <span>
+              <strong>{t("settings.rdpOpenInFullscreen")}</strong>
+              <small>{t("settings.rdpOpenInFullscreenHint")}</small>
+            </span>
+          </label>
+        </div>
       </fieldset>
       <fieldset className="settings-subsection settings-fieldset">
         <legend>{t("settings.networkPerformance")}</legend>
@@ -236,6 +249,7 @@ function normalizeRdpResolutionSettings(settings: RdpSettingsModel): RdpSettings
   return {
     ...settings,
     administrativeSession: settings.administrativeSession ?? false,
+    openInFullscreen: settings.openInFullscreen ?? false,
     sharedLocalFolders: normalizeRdpSharedLocalFolders(settings.sharedLocalFolders, settings.sharedLocalFolder),
     sharedLocalFolder: undefined,
     remoteResolution: isVisibleRdpRemoteResolution(settings.remoteResolution)

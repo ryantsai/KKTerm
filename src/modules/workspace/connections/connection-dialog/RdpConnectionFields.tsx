@@ -1,5 +1,6 @@
 import { Cable, ChevronRight, Clipboard, HardDrive, Layers, Monitor, Palette, Printer, Scaling, Settings2, Shield, SlidersHorizontal, Zap } from "../../../../lib/reicon";
 import { useState } from "react";
+import { ToggleSwitch } from "../../../settings/ToggleSwitch";
 import { useTranslation } from "react-i18next";
 import { technicalInputProps } from "../../../../lib/inputBehavior";
 import { isWindowsPlatform } from "../../../../lib/platform";
@@ -108,6 +109,14 @@ export function RdpConnectionOptions({
   rdpSettings: RdpSettings;
 }) {
   const { t } = useTranslation();
+  const [openInFullscreen, setOpenInFullscreen] = useState(
+    initialConnection?.rdpOptions?.inheritDefaults === false
+      ? initialConnection.rdpOptions.openInFullscreen ?? false
+      : rdpSettings.openInFullscreen ?? false,
+  );
+  const effectiveOpenInFullscreen = rdpInheritsSettingsDefaults
+    ? rdpSettings.openInFullscreen ?? false
+    : openInFullscreen;
   const [redirectDrives, setRedirectDrives] = useState(
     initialConnection?.rdpOptions?.redirectDrives ?? rdpSettings.redirectDrives,
   );
@@ -211,6 +220,20 @@ export function RdpConnectionOptions({
                 ))}
               </select>
             </label>
+          </div>
+          <div className="connection-session-toggle connection-startup-fullscreen">
+            <Monitor className="option-glyph" size={17} aria-hidden />
+            <span className="connection-startup-fullscreen-copy">
+              <strong>{t("settings.rdpOpenInFullscreen")}</strong>
+              <small>{t("settings.rdpOpenInFullscreenHint")}</small>
+            </span>
+            <ToggleSwitch
+              ariaLabel={t("settings.rdpOpenInFullscreen")}
+              checked={effectiveOpenInFullscreen}
+              disabled={rdpInheritsSettingsDefaults}
+              onChange={setOpenInFullscreen}
+            />
+            <input name="rdpOpenInFullscreen" type="hidden" value={effectiveOpenInFullscreen ? "on" : ""} />
           </div>
           <details className={`connection-advanced-section${rdpInheritsSettingsDefaults ? " is-disabled" : ""}`}>
             <summary className="connection-advanced-summary">

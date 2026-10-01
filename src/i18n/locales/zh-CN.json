@@ -3189,6 +3189,8 @@
     "rdpPerformanceSpeed": "速度优先",
     "rdpRemoteResolution": "远程分辨率",
     "rdpRemoteResolutionAutomatic": "自动",
+    "rdpOpenInFullscreen": "以全屏模式打开",
+    "rdpOpenInFullscreenHint": "以全屏模式打开新的 RDP 会话。退出全屏以返回工作区。",
     "rdpAdministrativeSession": "管理会话",
     "rdpAdministrativeSessionHint": "连接到用于管理服务器的会话。",
     "rdpRedirectClipboard": "剪贴板",

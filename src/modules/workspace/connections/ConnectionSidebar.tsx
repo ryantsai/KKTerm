@@ -2764,7 +2764,7 @@ export function ConnectionSidebar({
       if (existingTab) {
         activateTab(existingTab.id);
       } else {
-        openConnection(connection);
+        openConnection(connection, { allowRdpStartupFullscreen: false });
       }
     }
   }
@@ -5109,6 +5109,9 @@ function ConnectionDialog({
                   ? rdpSettings.remoteResolution
                   : form.get("rdpRemoteResolution") ?? rdpSettings.remoteResolution,
               ) as RdpSettings["remoteResolution"],
+              openInFullscreen: inheritRdpDefaults
+                ? rdpSettings.openInFullscreen ?? false
+                : form.get("rdpOpenInFullscreen") === "on",
               viewMode: String(
                 inheritRdpDefaults
                   ? rdpSettings.viewMode

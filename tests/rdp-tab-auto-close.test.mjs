@@ -9,11 +9,19 @@ test("RDP disconnect handling does not restore the removed Tab auto-close flow",
   );
   const rdpSource = await readFile(new URL("../src-tauri/src/rdp.rs", import.meta.url), "utf8");
 
-  assert.doesNotMatch(
-    remoteDesktopSource,
-    /get_rdp_session_status/,
-    "RDP disconnect detection should not poll session status",
+  const startupPoll = remoteDesktopSource.slice(
+    remoteDesktopSource.indexOf("if (!canStartRdp || !startupFullscreenRequested"),
+    remoteDesktopSource.indexOf("}, [canStartRdp, startupFullscreenRequested, tab.id]);"),
   );
+  assert.match(startupPoll, /get_rdp_session_status/);
+  assert.equal(
+    remoteDesktopSource.match(/get_rdp_session_status/g)?.length,
+    1,
+    "only the one-shot fullscreen startup intent may poll RDP status",
+  );
+  assert.match(startupPoll, /if \(status.connected\) \{\s*tryOpenRdpStartupFullscreen/);
+  assert.doesNotMatch(startupPoll, /closeTab|close_rdp_session|markConnectionSessionEnded/);
+  assert.match(startupPoll, /window.clearInterval\(timer\)/);
   assert.doesNotMatch(
     remoteDesktopSource,
     /rdp-session-event|RdpSessionEvent|closeRdpTabAfterRemoteDisconnect/,
