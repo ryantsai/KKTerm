@@ -5115,6 +5115,15 @@ fn assistant_visual_inspection_reuses_mcp_schemas_and_requires_capture_approval(
             mcp.iter().find(|t|t["name"]==mcp_name).unwrap()["inputSchema"]);
         assert_eq!(tool_requires_allow_all(name),write);
     }
-    assert_eq!(native.iter().find(|t|t.function.name=="dashboard_check_widget_health").unwrap().function.parameters,
-        mcp.iter().find(|t|t["name"]=="kkterm.dashboard.check_widget_health").unwrap()["inputSchema"]);
+    let native_health: Vec<_> = native.iter()
+        .filter(|tool| tool.function.name == "dashboard_check_widget_health")
+        .collect();
+    let mcp_health: Vec<_> = mcp.iter()
+        .filter(|tool| tool["name"] == "kkterm.dashboard.check_widget_health")
+        .collect();
+    assert_eq!(native_health.len(), 1, "publish one native health descriptor");
+    assert_eq!(mcp_health.len(), 1, "publish one MCP health descriptor");
+    assert_eq!(native_health[0].function.parameters, mcp_health[0]["inputSchema"]);
+    assert_eq!(native_health[0].function.parameters["additionalProperties"], false);
+    assert!(!tool_requires_allow_all("dashboard_check_widget_health"));
 }
