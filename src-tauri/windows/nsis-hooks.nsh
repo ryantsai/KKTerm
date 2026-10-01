@@ -91,7 +91,8 @@
   WriteRegStr SHCTX "Software\Classes\${KKTERM_DOCUMENT_PROGID}\Application" "ApplicationName" "KKTerm"
   WriteRegStr SHCTX "Software\Classes\${KKTERM_DOCUMENT_PROGID}\DefaultIcon" "" "$INSTDIR\${MAINBINARYNAME}.exe,0"
   WriteRegStr SHCTX "Software\Classes\${KKTERM_DOCUMENT_PROGID}\shell\open" "" "Open with KKTerm"
-  WriteRegStr SHCTX "Software\Classes\${KKTERM_DOCUMENT_PROGID}\shell\open\command" "" '$"$INSTDIR\${MAINBINARYNAME}.exe$" $"%1$"'
+  ; Double quotes are literal inside an NSIS single-quoted string.
+  WriteRegStr SHCTX "Software\Classes\${KKTERM_DOCUMENT_PROGID}\shell\open\command" "" '"$INSTDIR\${MAINBINARYNAME}.exe" "%1"'
 
   !insertmacro KKTERM_FOR_EACH_SUPPORTED_EXTENSION KKTERM_REGISTER_OPEN_WITH
   !insertmacro UPDATEFILEASSOC
