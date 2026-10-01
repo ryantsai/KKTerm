@@ -177,6 +177,27 @@ test("platform bundles add every recognized extension to Open With without claim
   assert.match(smokeInstaller, /Assert-DefaultAssociationUnchanged/);
 });
 
+test("NSIS Open with preserves executable and document argument quoting", () => {
+  const match = nsisHooks.match(
+    /WriteRegStr SHCTX "[^"\r\n]+\\shell\\open\\command" "" '([^'\r\n]+)'/,
+  );
+  assert.ok(match, "Open with command is declared as one NSIS string");
+
+  for (const installDir of [
+    String.raw`C:\Program Files\KKTerm`,
+    String.raw`C:\Users\測試使用者\AppData\Local\KKTerm`,
+    String.raw`C:\Users\Dollar$User\KKTerm`,
+  ]) {
+    // NSIS decodes $\" escapes before substituting runtime variables. A bare
+    // $" is not an escape and must not leak into the registry command.
+    const command = match[1]
+      .replaceAll(String.raw`$\"`, '"')
+      .replaceAll("${MAINBINARYNAME}", "kkterm")
+      .replaceAll("$INSTDIR", () => installDir);
+    assert.equal(command, `"${installDir}\\kkterm.exe" "%1"`);
+  }
+});
+
 test("NSIS uninstall preserves the automatic database backups folder when deleting app data", () => {
   assert.match(nsisHooks, /\$DeleteAppDataCheckboxState = 1/);
   assert.match(nsisHooks, /Rename "\$APPDATA\\\$\{BUNDLEID\}\\backups"/);
