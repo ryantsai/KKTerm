@@ -242,8 +242,11 @@ pnpm run release:github:linux
 
 On Ubuntu 24.04, the Linux build host must have the Tauri/AppImage native
 packages installed: `libwebkit2gtk-4.1-dev libgtk-3-dev
-libayatana-appindicator3-dev librsvg2-dev libgbm-dev libssl-dev
+libayatana-appindicator3-dev librsvg2-dev libgbm-dev libpipewire-0.3-dev libssl-dev
 build-essential pkg-config libfuse2t64`.
+The PipeWire development package also supplies the SPA development dependency
+required by `xcap`. Clang/libclang must be available for its generated bindings;
+the hosted Ubuntu runner already provides them.
 
 The script builds the x86_64 AppImage with `pnpm run package:linux`, copies the user-facing AppImage to:
 
