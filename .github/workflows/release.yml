@@ -223,6 +223,7 @@ jobs:
             libayatana-appindicator3-dev \
             librsvg2-dev \
             libgbm-dev \
+            libpipewire-0.3-dev \
             libssl-dev \
             build-essential \
             pkg-config \

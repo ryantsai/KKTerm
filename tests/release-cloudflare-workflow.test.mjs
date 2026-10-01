@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { load } from "js-yaml";
 
 test("release mirror workflow supports every publication and recovery entry point", async () => {
   const source = await readFile(new URL("../.github/workflows/mirror-release.yml", import.meta.url), "utf8");
@@ -46,4 +47,18 @@ test("main release workflow orchestrates all platform release jobs in order", as
   assert.match(source, /security list-keychains/);
   assert.match(source, /HOMEBREW_TAP_SSH_KEY/);
   assert.match(source, /HOMEBREW_TAP_SSH_KEY_PATH/);
+});
+
+test("Linux release installs xcap's PipeWire development dependency before building", async () => {
+  const source = await readFile(new URL("../.github/workflows/release.yml", import.meta.url), "utf8");
+  const workflow = load(source);
+  const steps = workflow.jobs["release-linux"].steps;
+  const installIndex = steps.findIndex((step) => /apt-get\s+install/.test(step.run ?? ""));
+  const buildIndex = steps.findIndex((step) => step.run?.includes("scripts/release-github-linux.sh"));
+  assert.ok(installIndex >= 0 && installIndex < buildIndex, "native dependencies precede the Linux build");
+
+  const command = steps[installIndex].run.replace(/\\\r?\n/g, " ");
+  const packages = command.match(/apt-get\s+install\s+-y\s+([^\n]+)/)?.[1]
+    .split("#")[0].trim().split(/\s+/) ?? [];
+  assert.ok(packages.includes("libpipewire-0.3-dev"), "xcap requires PipeWire and SPA development files");
 });
