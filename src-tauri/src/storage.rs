@@ -1194,6 +1194,8 @@ pub struct RdpSettings {
     performance_profile: String,
     #[serde(default = "default_remote_desktop_resolution")]
     remote_resolution: String,
+    #[serde(default)]
+    open_in_fullscreen: bool,
     #[serde(default = "default_remote_desktop_view_mode")]
     view_mode: String,
 }
@@ -2011,6 +2013,8 @@ pub struct RdpConnectionOptions {
     performance_profile: Option<String>,
     #[serde(default)]
     remote_resolution: Option<String>,
+    #[serde(default)]
+    open_in_fullscreen: Option<bool>,
     #[serde(default)]
     view_mode: Option<String>,
 }
@@ -6540,6 +6544,7 @@ fn normalize_rdp_connection_options(
             bitmap_cache: None,
             performance_profile: None,
             remote_resolution: None,
+            open_in_fullscreen: None,
             view_mode: None,
         }));
     }
@@ -7181,6 +7186,7 @@ fn default_rdp_settings() -> RdpSettings {
         bitmap_cache: true,
         performance_profile: default_remote_desktop_performance_profile(),
         remote_resolution: default_remote_desktop_resolution(),
+        open_in_fullscreen: false,
         view_mode: default_remote_desktop_view_mode(),
     }
 }

@@ -1578,7 +1578,7 @@ export interface WorkspaceState {
   renameTab: (tabId: string, title: string) => Promise<void>;
   closeTab: (tabId: string) => void;
   moveTab: (tabId: string, targetTabId: string) => void;
-  openConnection: (connection: Connection) => void;
+  openConnection: (connection: Connection, options?: { allowRdpStartupFullscreen?: boolean }) => void;
   openConnectionInNewTab: (
     connection: Connection,
     options?: {
@@ -1619,7 +1619,8 @@ export interface WorkspaceState {
     sourceConnection: Connection,
     forward: { forwardId: string; localPort: number; remotePort: number; url: string },
   ) => void;
-  openRemoteDesktopConnection: (connection: Connection) => void;
+  openRemoteDesktopConnection: (connection: Connection, options?: { allowRdpStartupFullscreen?: boolean }) => void;
+  consumeRdpStartupFullscreen: (paneId: string) => boolean;
   openSftpBrowser: (connection: Connection) => void;
   openSftpBrowserInNewTab: (connection: Connection) => void;
   openFtpBrowser: (connection: Connection) => void;
@@ -2156,13 +2157,13 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       return nextTabs === state.tabs ? {} : { tabs: nextTabs };
     });
   },
-  openConnection: (connection) => {
+  openConnection: (connection, options) => {
     if (connection.type === "url") {
       get().openUrlConnection(connection);
       return;
     }
     if (isRemoteDesktopConnection(connection)) {
-      get().openRemoteDesktopConnection(connection);
+      get().openRemoteDesktopConnection(connection, options);
       return;
     }
     if (connection.type === "ftp") {
@@ -2289,6 +2290,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       return;
     }
 
+    if (pane.kind === "remoteDesktop") {
+      pane.rdpStartupFullscreen = shouldOpenRdpInFullscreen(connection, get().rdpSettings);
+    }
     const tabId = createConnectionTabId(connection.id);
     const subtitle = isRemoteDesktopConnection(connection)
       ? remoteDesktopSubtitle(connection)
@@ -2706,7 +2710,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       }),
     }));
   },
-  openRemoteDesktopConnection: (connection) => {
+  openRemoteDesktopConnection: (connection, options) => {
     if (!isRemoteDesktopConnection(connection)) {
       return;
     }
@@ -2722,6 +2726,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const pane = buildPaneForConnection(connection);
     if (!pane) {
       return;
+    }
+    if (pane.kind === "remoteDesktop" && options?.allowRdpStartupFullscreen !== false) {
+      pane.rdpStartupFullscreen = shouldOpenRdpInFullscreen(connection, get().rdpSettings);
     }
     const tab: WorkspaceTab = {
       id: `tab-${connection.id}`,
@@ -2741,6 +2748,28 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       tabs: [...state.tabs, tab],
       activeTabId: tab.id,
     }));
+  },
+  consumeRdpStartupFullscreen: (paneId) => {
+    const state = get();
+    const owner = state.tabs.find((tab) => tab.panes.some((pane) => pane.id === paneId));
+    const pane = owner?.panes.find((entry) => entry.id === paneId);
+    if (pane?.kind !== "remoteDesktop" || !pane.rdpStartupFullscreen) {
+      return false;
+    }
+    // Consume before entering full screen. Settings saves, reconnects and later
+    // activations cannot re-arm a live Session; only a newly opened Pane can.
+    set({
+      tabs: state.tabs.map((tab) => tab !== owner ? tab : {
+        ...tab,
+        panes: tab.panes.map((entry) => entry !== pane ? entry : {
+          ...entry,
+          rdpStartupFullscreen: undefined,
+        }),
+      }),
+    });
+    return owner?.id === state.activeTabId
+      && tabWorkspaceId(owner) === state.activeWorkspaceId
+      && owner.focusedPaneId === paneId;
   },
   openUrlConnection: (connection) => {
     if (connection.type !== "url" || !connection.url) {
@@ -4286,6 +4315,30 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
 }));
 
+// Invalidate intent synchronously on navigation, including before a lazy Pane
+// mounts or when switching Workspaces unmounts it without an inactive render.
+useWorkspaceStore.subscribe((state, previous) => {
+  if (
+    state.tabs === previous.tabs
+    && state.activeTabId === previous.activeTabId
+    && state.activeWorkspaceId === previous.activeWorkspaceId
+  ) {
+    return;
+  }
+  const previousTab = previous.tabs.find((tab) => tab.id === previous.activeTabId);
+  const previousPaneId = previousTab?.focusedPaneId;
+  if (!previousPaneId) {
+    return;
+  }
+  const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId);
+  if (
+    state.activeWorkspaceId !== previous.activeWorkspaceId
+    || state.activeTabId !== previous.activeTabId
+    || activeTab?.focusedPaneId !== previousPaneId
+  ) {
+    state.consumeRdpStartupFullscreen(previousPaneId);
+  }
+});
 
 function updateTabTerminalAppearance(
   tab: WorkspaceTab,
@@ -4419,6 +4472,16 @@ function formatConnectionAddress(connection: Connection) {
   return connection.port
     ? `${connection.host}:${connection.port}`
     : connection.host;
+}
+
+function shouldOpenRdpInFullscreen(connection: Connection, defaults: RdpSettings) {
+  if (connection.type !== "rdp") {
+    return false;
+  }
+  const overrides = connection.rdpOptions;
+  return (!overrides || overrides.inheritDefaults
+    ? defaults.openInFullscreen
+    : overrides.openInFullscreen ?? false) === true;
 }
 
 function remoteDesktopSubtitle(connection: Connection) {

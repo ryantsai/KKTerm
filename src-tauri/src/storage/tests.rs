@@ -4982,6 +4982,7 @@ fn rdp_and_vnc_settings_round_trip_through_settings_table() {
     let rdp_defaults = storage.rdp_settings().expect("default RDP settings load");
     assert_eq!(rdp_defaults.color_depth, 32);
     assert!(!rdp_defaults.administrative_session);
+    assert!(!rdp_defaults.open_in_fullscreen);
     assert!(rdp_defaults.redirect_clipboard);
     assert!(!rdp_defaults.redirect_drives);
     assert!(!rdp_defaults.redirect_printers);
@@ -5009,6 +5010,7 @@ fn rdp_and_vnc_settings_round_trip_through_settings_table() {
             bitmap_cache: true,
             performance_profile: "quality".to_string(),
             remote_resolution: "automatic".to_string(),
+            open_in_fullscreen: true,
             view_mode: "actualSize".to_string(),
         })
         .expect("RDP settings update");
@@ -5016,6 +5018,7 @@ fn rdp_and_vnc_settings_round_trip_through_settings_table() {
     let rdp_reloaded = storage.rdp_settings().expect("RDP settings reload");
     assert_eq!(rdp_reloaded.color_depth, 24);
     assert!(rdp_reloaded.administrative_session);
+    assert!(rdp_reloaded.open_in_fullscreen);
     assert!(!rdp_reloaded.redirect_clipboard);
     assert!(rdp_reloaded.redirect_drives);
     assert!(rdp_reloaded.redirect_printers);
@@ -5073,8 +5076,58 @@ fn legacy_rdp_settings_default_drive_selection_to_all() {
 
     assert_eq!(settings.drive_selection, RdpDriveSelection::All);
     assert!(!settings.administrative_session);
+    assert!(!settings.open_in_fullscreen);
     assert!(settings.shared_local_folders.is_empty());
     assert!(settings.shared_local_folder.is_none());
+}
+
+#[test]
+fn rdp_startup_fullscreen_survives_database_reopen_and_can_be_disabled() {
+    let path = temp_db_path("rdp-startup-fullscreen");
+    let storage = Storage::open(path.clone()).expect("storage opens");
+    let mut settings = storage.rdp_settings().expect("RDP settings load");
+    assert!(!settings.open_in_fullscreen);
+    settings.open_in_fullscreen = true;
+    storage.update_rdp_settings(settings).expect("fullscreen default enabled");
+    drop(storage);
+
+    let storage = Storage::open(path.clone()).expect("storage reopens");
+    let mut settings = storage.rdp_settings().expect("saved fullscreen default loads");
+    assert!(settings.open_in_fullscreen);
+    settings.open_in_fullscreen = false;
+    storage.update_rdp_settings(settings).expect("fullscreen default disabled");
+    drop(storage);
+
+    let storage = Storage::open(path).expect("storage reopens again");
+    assert!(!storage.rdp_settings().expect("disabled default loads").open_in_fullscreen);
+}
+
+#[test]
+fn rdp_startup_fullscreen_options_preserve_explicit_values_and_group_inheritance() {
+    let legacy: RdpConnectionOptions = serde_json::from_str(r#"{"inheritDefaults":false}"#)
+        .expect("legacy RDP options deserialize");
+    let legacy = normalize_rdp_connection_options(Some(legacy), "rdp")
+        .expect("legacy options normalize").expect("RDP options remain");
+    assert!(legacy.open_in_fullscreen.is_none());
+
+    for enabled in [false, true] {
+        let options: RdpConnectionOptions = serde_json::from_value(serde_json::json!({
+            "inheritDefaults": false,
+            "openInFullscreen": enabled,
+        })).expect("explicit RDP options deserialize");
+        let options = normalize_rdp_connection_options(Some(options), "rdp")
+            .expect("explicit options normalize").expect("RDP options remain");
+        assert_eq!(options.open_in_fullscreen, Some(enabled));
+        assert_eq!(serde_json::to_value(options).unwrap()["openInFullscreen"], enabled);
+    }
+
+    let inherited: RdpConnectionOptions = serde_json::from_str(
+        r#"{"inheritDefaults":true,"openInFullscreen":true}"#,
+    ).expect("inherited RDP options deserialize");
+    let inherited = normalize_rdp_connection_options(Some(inherited), "rdp")
+        .expect("inherited options normalize").expect("RDP options remain");
+    assert!(inherited.inherit_defaults);
+    assert!(inherited.open_in_fullscreen.is_none());
 }
 
 #[test]
@@ -5192,6 +5245,7 @@ fn remote_desktop_connection_options_are_optional_protocol_overrides() {
                 bitmap_cache: Some(true),
                 performance_profile: Some("quality".to_string()),
                 remote_resolution: None,
+                open_in_fullscreen: Some(true),
                 view_mode: Some("actualSize".to_string()),
             }),
             vnc_options: Some(VncConnectionOptions {
@@ -5260,6 +5314,7 @@ fn remote_desktop_connection_options_are_optional_protocol_overrides() {
                 bitmap_cache: Some(true),
                 performance_profile: Some("quality".to_string()),
                 remote_resolution: None,
+                open_in_fullscreen: Some(true),
                 view_mode: Some("actualSize".to_string()),
             }),
             vnc_options: Some(VncConnectionOptions {
@@ -5296,6 +5351,10 @@ fn remote_desktop_connection_options_are_optional_protocol_overrides() {
         .iter()
         .find(|connection| connection.id == rdp.id)
         .expect("RDP connection is listed");
+    assert_eq!(
+        saved_rdp.rdp_options.as_ref().and_then(|options| options.open_in_fullscreen),
+        Some(true)
+    );
     assert_eq!(
         saved_rdp
             .rdp_options

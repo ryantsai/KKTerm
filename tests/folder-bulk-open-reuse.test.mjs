@@ -20,7 +20,7 @@ test("folder bulk-open reuses Connections that are already open in a Tab or Pane
   );
   assert.match(
     sidebarSource,
-    /const existingTab = findOpenTabForConnection\(connection\.id\);[\s\S]*?activateTab\(existingTab\.id\)[\s\S]*?openConnection\(connection\)/,
+    /const existingTab = findOpenTabForConnection\(connection\.id\);[\s\S]*?activateTab\(existingTab\.id\)[\s\S]*?openConnection\(connection, \{ allowRdpStartupFullscreen: false \}\)/,
     "separate-Tab bulk-open should activate an existing Session instead of reconnecting",
   );
 });

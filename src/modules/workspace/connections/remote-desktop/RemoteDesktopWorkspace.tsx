@@ -18,6 +18,7 @@ import {
   invokeCommand,
   isTauriRuntime,
   logUiDebug,
+  listenMainWindowFocusChanged,
   openRemoteFullscreen,
   type AssistantScreenshot,
   type StoredScreenshot,
@@ -65,6 +66,7 @@ import {
   type RemoteFullscreenRequestDetail,
 } from "./remoteFullscreenRequest";
 
+const RDP_CONNECTED_STATE = 1;
 const RDP_ESTABLISHING_STATE = 2;
 const RDP_PRE_CAPTURE_INTERVAL_MS = 800;
 // After the RDP control first reports a displayable session, re-issue the
@@ -112,6 +114,7 @@ export function RemoteDesktopWorkspace({
   const lastLoggedBoundsRef = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
   const rafRef = useRef<number | null>(null);
   const displayReadyRef = useRef(false);
+  const rdpConnectedRef = useRef(false);
   const displaySyncInFlightRef = useRef(false);
   const displaySettleTimerRef = useRef<number | null>(null);
   const displaySettlePassesRef = useRef(0);
@@ -143,6 +146,9 @@ export function RemoteDesktopWorkspace({
   const rdpPreCaptureSignal = useWorkspaceStore((state) => state.rdpPreCaptureSignal);
   const generalSettings = useWorkspaceStore((state) => state.generalSettings);
   const rdpSettings = useWorkspaceStore((state) => state.rdpSettings);
+  const startupFullscreenRequested = useWorkspaceStore((state) => state.tabs.some((entry) =>
+    entry.panes.some((pane) => pane.id === tab.id && pane.kind === "remoteDesktop" && pane.rdpStartupFullscreen),
+  ));
   const vncSettings = useWorkspaceStore((state) => state.vncSettings);
   const [suppressed, setSuppressed] = useState(false);
   const [rdpError, setRdpError] = useState("");
@@ -167,6 +173,7 @@ export function RemoteDesktopWorkspace({
   }, [connection?.id, connection?.rdpOptions, connection?.vncOptions, rdpSettings, vncSettings]);
 
   const reportRemoteDesktopError = (message: string) => {
+    useWorkspaceStore.getState().consumeRdpStartupFullscreen(tab.id);
     setRdpError(message);
     if (connection?.type === "rdp") {
       showStatusBarNotice(t("remoteDesktop.rdpErrorStatus", { message }), { tone: "error" });
@@ -286,6 +293,7 @@ export function RemoteDesktopWorkspace({
     sessionStartedRef.current = true;
     setRdpStatus(t("remoteDesktop.connected"));
     markRdpConnectionStarted();
+    tryOpenRdpStartupFullscreen(sessionId);
   };
 
   const handleRdpCanvasDisconnected = (sessionId: string) => {
@@ -656,6 +664,7 @@ export function RemoteDesktopWorkspace({
         rdpVisibleRef.current = visible;
         if (visible) {
           setRdpSnapshot(null);
+          tryOpenRdpStartupFullscreen(sessionId);
         }
       })
       .catch((error) => {
@@ -766,6 +775,7 @@ export function RemoteDesktopWorkspace({
         if (sessionIdRef.current !== result.sessionId) {
           return;
         }
+        rdpConnectedRef.current = result.connectionState === RDP_CONNECTED_STATE;
         if (result.displaySynced) {
           markRdpConnectionStarted();
           displayReadyRef.current = true;
@@ -839,6 +849,7 @@ export function RemoteDesktopWorkspace({
   };
 
   const handleReconnect = async () => {
+    useWorkspaceStore.getState().consumeRdpStartupFullscreen(tab.id);
     if ((!canStartRdp && !canStartVnc && !useRdpCanvas) || !connection || !isTauriRuntime()) {
       return;
     }
@@ -905,6 +916,8 @@ export function RemoteDesktopWorkspace({
   };
 
   const openFullscreen = () => {
+    // Manual entry wins even if the initial display is still settling.
+    useWorkspaceStore.getState().consumeRdpStartupFullscreen(tab.id);
     const sessionId = sessionIdRef.current;
     if (!sessionId || !connection || (connection.type !== "rdp" && connection.type !== "vnc")) {
       return;
@@ -927,6 +940,93 @@ export function RemoteDesktopWorkspace({
     );
   };
   openFullscreenRef.current = openFullscreen;
+
+  const tryOpenRdpStartupFullscreen = (sessionId: string) => {
+    if (sessionIdRef.current !== sessionId || !sessionStartedRef.current) {
+      return;
+    }
+    // Displayable ActiveX state also includes interactive login prompts (2).
+    // Keep the intent pending until the connection is established (1) and visible.
+    if (canStartRdp && (!rdpConnectedRef.current || !rdpVisibleRef.current)) {
+      return;
+    }
+    const requested = useWorkspaceStore.getState().consumeRdpStartupFullscreen(tab.id);
+    if (
+      !requested
+      || !visibilityRef.current.isActive
+      || visibilityRef.current.suppressed
+      || documentHasRdpBlockingOverlay(hostRef.current)
+      // The Windows ActiveX path checks native foreground ownership itself;
+      // its focused child HWND need not leave the WebView document focused.
+      || (useRdpCanvas && !document.hasFocus())
+    ) {
+      return;
+    }
+    openFullscreenRef.current();
+  };
+
+  useEffect(() => {
+    if (!canStartRdp || !startupFullscreenRequested || !isTauriRuntime()) {
+      return;
+    }
+    let disposed = false;
+    let inFlight = false;
+    // The ordinary display poll stops once login prompts can be shown. Only
+    // opted-in launches need to wait beyond that point for Connected = 1.
+    const timer = window.setInterval(() => {
+      const sessionId = sessionIdRef.current;
+      if (inFlight || !sessionId || !displayReadyRef.current || !rdpVisibleRef.current) {
+        return;
+      }
+      inFlight = true;
+      void invokeCommand("get_rdp_session_status", { request: { sessionId } })
+        .then((status) => {
+          if (disposed || sessionIdRef.current !== status.sessionId) return;
+          rdpConnectedRef.current = status.connected;
+          if (status.connected) {
+            tryOpenRdpStartupFullscreen(status.sessionId);
+          } else if (status.connectionState !== RDP_ESTABLISHING_STATE) {
+            useWorkspaceStore.getState().consumeRdpStartupFullscreen(tab.id);
+          }
+        })
+        .catch(() => {
+          if (!disposed) useWorkspaceStore.getState().consumeRdpStartupFullscreen(tab.id);
+        })
+        .finally(() => { inFlight = false; });
+    }, 1000);
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+    };
+    // The callback uses live session/visibility refs and the store's one-shot intent.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canStartRdp, startupFullscreenRequested, tab.id]);
+
+  useEffect(() => {
+    if (!isActive) {
+      useWorkspaceStore.getState().consumeRdpStartupFullscreen(tab.id);
+    }
+  }, [isActive, tab.id]);
+
+  useEffect(() => {
+    if (!startupFullscreenRequested) {
+      return;
+    }
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+    void listenMainWindowFocusChanged((focused) => {
+      if (!disposed && !focused) {
+        useWorkspaceStore.getState().consumeRdpStartupFullscreen(tab.id);
+      }
+    }).then((dispose) => {
+      if (disposed) dispose();
+      else unlisten = dispose;
+    }).catch(() => undefined);
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [startupFullscreenRequested, tab.id]);
 
   useEffect(() => {
     const unregisterSurface = registerRemoteFullscreenSurface(
@@ -1150,6 +1250,7 @@ export function RemoteDesktopWorkspace({
       computeBounds();
       sessionStartingRef.current = true;
       displayReadyRef.current = false;
+      rdpConnectedRef.current = false;
       displaySyncInFlightRef.current = false;
       rdpVisibleRef.current = false;
       lastBoundsRef.current = bounds;
@@ -1215,6 +1316,7 @@ export function RemoteDesktopWorkspace({
       sessionStartedRef.current = false;
       rdpConnectionCountedRef.current = false;
       displayReadyRef.current = false;
+      rdpConnectedRef.current = false;
       displaySyncInFlightRef.current = false;
       rdpVisibleRef.current = false;
       if (sessionIdRef.current === sessionId) {
@@ -2015,6 +2117,7 @@ function resolveRdpOptions(
     bitmapCache: overrides.bitmapCache ?? defaults.bitmapCache,
     performanceProfile: overrides.performanceProfile ?? defaults.performanceProfile,
     remoteResolution: overrides.remoteResolution ?? defaults.remoteResolution,
+    openInFullscreen: overrides.openInFullscreen ?? false,
     viewMode: overrides.viewMode ?? defaults.viewMode,
   };
 }

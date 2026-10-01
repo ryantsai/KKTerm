@@ -3189,6 +3189,8 @@
     "rdpPerformanceSpeed": "速度優先",
     "rdpRemoteResolution": "遠端解析度",
     "rdpRemoteResolutionAutomatic": "自動",
+    "rdpOpenInFullscreen": "連線後以全螢幕開啟",
+    "rdpOpenInFullscreenHint": "新的RDP連線成功後自動進入全螢幕；離開全螢幕後返回原本的工作區。",
     "rdpAdministrativeSession": "系統管理工作階段",
     "rdpAdministrativeSessionHint": "連線至用來管理伺服器的工作階段。",
     "rdpRedirectClipboard": "剪貼簿",
