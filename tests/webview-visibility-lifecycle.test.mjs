@@ -129,16 +129,20 @@ test("backend shows macOS URL overlays without making them key", async () => {
   );
 });
 
-test("backend realizes hidden URL overlay windows before HWND-dependent no-activate show", async () => {
+test("backend registers URL Sessions only after the native window exists and never waits on the UI thread", async () => {
   const source = await readFile(new URL("../src-tauri/src/webview.rs", import.meta.url), "utf8");
+  const startFunction = source.match(/pub fn start_session\([\s\S]*?\n    \}/)?.[0];
   const hwndFunction = source.match(/fn webview_hwnd\(window: &WebviewWindow\)[\s\S]*?\n\}/)?.[0];
   const showFunction = source.match(/fn show_webview_window\(window: &WebviewWindow\) -> Result<\(\), String> \{[\s\S]*?\n\}/)?.[0];
 
+  assert.ok(startFunction, "URL Session start should exist");
   assert.ok(hwndFunction, "Windows webview HWND helper should exist");
   assert.ok(showFunction, "Windows show_webview_window should exist");
-  assert.match(hwndFunction, /match window\.hwnd\(\)/);
-  assert.match(hwndFunction, /window\s*\.show\(\)/);
-  assert.match(hwndFunction, /failed to get URL webview HWND after realize/);
+  // An async build only queues creation; a WebView2 failure must not leave a
+  // registered Session whose every show fails.
+  assert.match(startFunction, /\.build\(\)[\s\S]*?window\.hwnd\(\)[\s\S]*?sessions\.insert\(/);
+  assert.match(hwndFunction, /window\s*\.hwnd\(\)/);
+  assert.doesNotMatch(hwndFunction, /thread::sleep|window\s*\.show\(\)/);
   assert.match(showFunction, /webview_hwnd\(window\)\?/);
   assert.match(showFunction, /SW_SHOWNOACTIVATE/);
   assert.match(showFunction, /SWP_NOACTIVATE/);
