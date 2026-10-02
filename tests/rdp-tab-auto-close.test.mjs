@@ -9,10 +9,10 @@ test("RDP disconnect handling does not restore the removed Tab auto-close flow",
   );
   const rdpSource = await readFile(new URL("../src-tauri/src/rdp.rs", import.meta.url), "utf8");
 
-  const startupPoll = remoteDesktopSource.slice(
-    remoteDesktopSource.indexOf("if (!canStartRdp || !startupFullscreenRequested"),
-    remoteDesktopSource.indexOf("}, [canStartRdp, startupFullscreenRequested, tab.id]);"),
-  );
+  const pollStart = remoteDesktopSource.indexOf("if (!startupFullscreenRequested || !isTauriRuntime())");
+  const pollEnd = remoteDesktopSource.indexOf("}, [canStartRdp, useRdpCanvas, startupFullscreenRequested, tab.id]);");
+  assert.ok(pollStart >= 0 && pollEnd > pollStart, "startup poll must be present");
+  const startupPoll = remoteDesktopSource.slice(pollStart, pollEnd);
   assert.match(startupPoll, /get_rdp_session_status/);
   assert.equal(
     remoteDesktopSource.match(/get_rdp_session_status/g)?.length,

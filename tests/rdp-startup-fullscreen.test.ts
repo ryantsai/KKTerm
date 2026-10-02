@@ -185,7 +185,7 @@ test("platform readiness hooks reuse the existing full-screen entry and cancel o
   assert.match(source, /const handleReconnect = async \(\) => \{\s*useWorkspaceStore.getState\(\).consumeRdpStartupFullscreen\(tab.id\);/);
   assert.match(source, /const openFullscreen = \(\) => \{[\s\S]*?consumeRdpStartupFullscreen\(tab.id\);/);
   assert.match(source, /rdpConnectedRef.current = result.connectionState === RDP_CONNECTED_STATE/);
-  assert.match(source, /canStartRdp && \(!rdpConnectedRef.current \|\| !rdpVisibleRef.current\)/);
+  assert.match(source, /rdpConnectedRef.current && rdpVisibleRef.current && startupActivationRef.current !== null/);
   assert.match(source, /invokeCommand\("get_rdp_session_status"[\s\S]*?if \(status.connected\) \{\s*tryOpenRdpStartupFullscreen/);
-  assert.match(source, /const tryOpenRdpStartupFullscreen[\s\S]*?documentHasRdpBlockingOverlay[\s\S]*?openFullscreenRef.current\(\);/);
+  assert.match(source, /const tryOpenRdpStartupFullscreen[\s\S]*?hasRdpStartupFullscreen[\s\S]*?documentHasRdpBlockingOverlay[\s\S]*?enterFullscreenRef.current/);
 });

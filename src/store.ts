@@ -1620,6 +1620,7 @@ export interface WorkspaceState {
     forward: { forwardId: string; localPort: number; remotePort: number; url: string },
   ) => void;
   openRemoteDesktopConnection: (connection: Connection, options?: { allowRdpStartupFullscreen?: boolean }) => void;
+  hasRdpStartupFullscreen: (paneId: string) => boolean;
   consumeRdpStartupFullscreen: (paneId: string) => boolean;
   openSftpBrowser: (connection: Connection) => void;
   openSftpBrowserInNewTab: (connection: Connection) => void;
@@ -2749,14 +2750,25 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       activeTabId: tab.id,
     }));
   },
+  hasRdpStartupFullscreen: (paneId) => {
+    const state = get();
+    const owner = state.tabs.find((tab) => tab.panes.some((pane) => pane.id === paneId));
+    const pane = owner?.panes.find((entry) => entry.id === paneId);
+    return pane?.kind === "remoteDesktop"
+      && pane.rdpStartupFullscreen === true
+      && owner?.id === state.activeTabId
+      && tabWorkspaceId(owner) === state.activeWorkspaceId
+      && owner.focusedPaneId === paneId;
+  },
   consumeRdpStartupFullscreen: (paneId) => {
     const state = get();
+    const eligible = state.hasRdpStartupFullscreen(paneId);
     const owner = state.tabs.find((tab) => tab.panes.some((pane) => pane.id === paneId));
     const pane = owner?.panes.find((entry) => entry.id === paneId);
     if (pane?.kind !== "remoteDesktop" || !pane.rdpStartupFullscreen) {
       return false;
     }
-    // Consume before entering full screen. Settings saves, reconnects and later
+    // Complete or cancel this launch. Settings saves, reconnects and later
     // activations cannot re-arm a live Session; only a newly opened Pane can.
     set({
       tabs: state.tabs.map((tab) => tab !== owner ? tab : {
@@ -2767,9 +2779,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         }),
       }),
     });
-    return owner?.id === state.activeTabId
-      && tabWorkspaceId(owner) === state.activeWorkspaceId
-      && owner.focusedPaneId === paneId;
+    return eligible;
   },
   openUrlConnection: (connection) => {
     if (connection.type !== "url" || !connection.url) {

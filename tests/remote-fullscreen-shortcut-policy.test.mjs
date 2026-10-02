@@ -236,7 +236,7 @@ test("Windows RDP expands and restores the retained host and remote display", ()
   const inactiveGuard = enterTransition.slice(inactiveGuardIndex, stateReadIndex);
   assert.match(inactiveGuard, /"kktermNotForeground"/);
   assert.match(inactiveGuard, /"shortcutDispatchInvalidated"/);
-  assert.match(inactiveGuard, /return Ok\(\(\)\)/);
+  assert.match(inactiveGuard, /return Ok\(RdpFullscreenEntryOutcome::Skipped\)/);
   const lostForegroundDuringStateCheck = enterTransition.slice(
     postStateGuardIndex,
     alreadyAppliedIndex,
@@ -246,7 +246,7 @@ test("Windows RDP expands and restores the retained host and remote display", ()
     /"kktermLostForegroundDuringStateCheck"/,
   );
   assert.match(lostForegroundDuringStateCheck, /"shortcutInvalidatedDuringStateCheck"/);
-  assert.match(lostForegroundDuringStateCheck, /return Ok\(\(\)\)/);
+  assert.match(lostForegroundDuringStateCheck, /return Ok\(RdpFullscreenEntryOutcome::Skipped\)/);
   assert.doesNotMatch(
     lostForegroundDuringStateCheck,
     /configure_native_fullscreen|sync_remote_desktop_size|set_property_bool[^;]*"FullScreen"/,
@@ -263,7 +263,7 @@ test("Windows RDP expands and restores the retained host and remote display", ()
     lostForegroundDuringConfiguration,
     /"shortcutInvalidatedDuringConfiguration"/,
   );
-  assert.match(lostForegroundDuringConfiguration, /return Ok\(\(\)\)/);
+  assert.match(lostForegroundDuringConfiguration, /return Ok\(RdpFullscreenEntryOutcome::Skipped\)/);
   const prePropertyGuardIndex = enterTransition.indexOf(
     entryGuard,
     postConfigureGuardIndex + 1,
@@ -287,7 +287,7 @@ test("Windows RDP expands and restores the retained host and remote display", ()
   );
   assert.match(lostForegroundGuard, /"kktermLostForeground"/);
   assert.match(lostForegroundGuard, /"shortcutInvalidatedBeforePropertyPut"/);
-  assert.match(lostForegroundGuard, /return Ok\(\(\)\)/);
+  assert.match(lostForegroundGuard, /return Ok\(RdpFullscreenEntryOutcome::Skipped\)/);
   assert.doesNotMatch(lostForegroundGuard, /set_property_bool[^;]*"FullScreen"/);
   assert.match(
     enterTransition,
@@ -444,7 +444,7 @@ test("Windows refreshes shortcut focus only after an RDP visibility update relea
 });
 
 test("detached full screen remains a WebView path only for VNC and canvas RDP", () => {
-  assert.match(workspace, /void openRemoteFullscreen/);
+  assert.match(workspace, /await openRemoteFullscreen/);
   assert.doesNotMatch(fullscreenApp, /WindowsRdpFullscreenHost/);
   assert.doesNotMatch(fullscreenApp, /WindowsRdpNativeFullscreenMenu/);
   assert.doesNotMatch(fullscreenApp, /setAsWindowMenu/);
@@ -1344,7 +1344,7 @@ test("Windows exposes the ActiveX full-screen shortcut as fixed Ctrl+Alt+Break",
 });
 
 test("Windows ActiveX connection bar uses the durable Connection name", () => {
-  assert.match(workspace, /request:\s*\{\s*sessionId,\s*connectionName:\s*connection\.name\s*\}/);
+  assert.match(workspace, /request:\s*\{\s*sessionId,\s*connectionName:\s*connection\.name,\s*activationGeneration\s*\}/);
   assert.match(fullscreenBackend, /struct EnterRdpFullscreenRequest[\s\S]*connection_name:\s*String/);
   assert.match(
     fullscreenBackend,

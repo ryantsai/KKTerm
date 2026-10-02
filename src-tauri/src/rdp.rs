@@ -1,3 +1,17 @@
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum RdpFullscreenEntryOutcome {
+    Applied,
+    Skipped,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RdpStartupFullscreenState {
+    app_foreground: bool,
+    activation_generation: usize,
+}
+
 #[cfg(target_os = "windows")]
 mod platform {
     use std::{
@@ -17,6 +31,7 @@ mod platform {
     use serde_json::json;
     use tauri::{AppHandle, Manager};
 
+    use super::{RdpFullscreenEntryOutcome, RdpStartupFullscreenState};
     use crate::logging::{rdp_debug, ui_debug};
     use windows::{
         Win32::{
@@ -555,6 +570,9 @@ mod platform {
     pub struct EnterRdpFullscreenRequest {
         session_id: String,
         connection_name: String,
+        // Startup retries must remain in the activation that armed them.
+        // Manual entry intentionally omits this guard.
+        activation_generation: Option<usize>,
     }
 
     #[derive(Deserialize)]
@@ -1161,17 +1179,25 @@ mod platform {
             &self,
             app: AppHandle,
             request: EnterRdpFullscreenRequest,
-        ) -> Result<(), String> {
+        ) -> Result<RdpFullscreenEntryOutcome, String> {
             let sessions = Arc::clone(&self.sessions);
             let session_id = request.session_id;
             let connection_name = required_field("RDP connection name", request.connection_name)?;
+            let activation_generation = request.activation_generation;
             run_on_main_thread("enter_rdp_fullscreen", app, move |_app| {
                 let mut sessions = lock_sessions(&sessions)?;
                 let session = sessions
                     .get_mut(&session_id)
                     .ok_or_else(|| format!("RDP session '{session_id}' was not found"))?;
                 session.connection_name = connection_name;
-                enter_native_fullscreen(session)
+                match activation_generation {
+                    Some(generation) => enter_native_fullscreen_if(session, &|| {
+                        crate::remote_fullscreen_shortcut::windows_activation_generation_is_current(
+                            generation,
+                        )
+                    }),
+                    None => enter_native_fullscreen(session),
+                }
             })
         }
 
@@ -2453,6 +2479,24 @@ mod platform {
         process_id == std::process::id()
     }
 
+    pub fn startup_fullscreen_state(app: AppHandle) -> Result<RdpStartupFullscreenState, String> {
+        run_on_main_thread("get_rdp_startup_fullscreen_state", app, move |_app| {
+            let activation_generation =
+                crate::remote_fullscreen_shortcut::windows_activation_generation();
+            // The retained AtlAxWin overlay and its main-window owner share
+            // the UI thread. Moving focus between them blurs the WebView but
+            // does not send WM_ACTIVATEAPP. Its existing epoch does record an
+            // external leave-and-return, even between frontend polls.
+            Ok(RdpStartupFullscreenState {
+                app_foreground: kkterm_process_owns_foreground()
+                    && crate::remote_fullscreen_shortcut::windows_activation_generation_is_current(
+                        activation_generation,
+                    ),
+                activation_generation,
+            })
+        })
+    }
+
     fn fullscreen_display_settings(
         session: &RdpSession,
         monitor_rect: &RECT,
@@ -2533,14 +2577,16 @@ mod platform {
         .map_err(|error| format!("failed to update the RDP full-screen host z-order: {error}"))
     }
 
-    fn enter_native_fullscreen(session: &mut RdpSession) -> Result<(), String> {
+    fn enter_native_fullscreen(
+        session: &mut RdpSession,
+    ) -> Result<RdpFullscreenEntryOutcome, String> {
         enter_native_fullscreen_if(session, &|| true)
     }
 
     fn enter_native_fullscreen_if(
         session: &mut RdpSession,
         dispatch_is_current: &impl Fn() -> bool,
-    ) -> Result<(), String> {
+    ) -> Result<RdpFullscreenEntryOutcome, String> {
         // mstscax can block indefinitely when FullScreen is set while its
         // container is already in the background. A queued GO request can
         // outlive the foreground state that produced it, so discard it before
@@ -2557,7 +2603,7 @@ mod platform {
                     },
                 }),
             );
-            return Ok(());
+            return Ok(RdpFullscreenEntryOutcome::Skipped);
         }
         let already_fullscreen = native_fullscreen_applied(session);
         // The FullScreen property read above can pump WM_ACTIVATEAPP. Do not
@@ -2575,10 +2621,10 @@ mod platform {
                     },
                 }),
             );
-            return Ok(());
+            return Ok(RdpFullscreenEntryOutcome::Skipped);
         }
         if already_fullscreen {
-            return Ok(());
+            return Ok(RdpFullscreenEntryOutcome::Applied);
         }
         let (monitor_rect, scale_factor) = fullscreen_monitor_geometry(session)?;
         let had_restore = session.fullscreen_restore.is_some();
@@ -2619,7 +2665,7 @@ mod platform {
                     },
                 }),
             );
-            return Ok(());
+            return Ok(RdpFullscreenEntryOutcome::Skipped);
         }
         let display_settings = fullscreen_display_settings(session, &monitor_rect, scale_factor);
         let display_sync_completed = sync_remote_desktop_size(session, display_settings, true);
@@ -2649,7 +2695,7 @@ mod platform {
                     "displayRestoreCompleted": display_restore_completed,
                 }),
             );
-            return Ok(());
+            return Ok(RdpFullscreenEntryOutcome::Skipped);
         }
         let fullscreen_result = {
             let _suppress_request = RdpFullscreenEventSuppression::new(
@@ -2714,7 +2760,7 @@ mod platform {
                 "topmost": app_is_active,
             }),
         );
-        Ok(())
+        Ok(RdpFullscreenEntryOutcome::Applied)
     }
 
     fn rollback_failed_fullscreen_entry(
@@ -2810,7 +2856,7 @@ mod platform {
         match dispid {
             DISPID_DISCONNECTED => restore_disconnected_fullscreen_host(session),
             DISPID_REQUEST_GO_FULLSCREEN => {
-                enter_native_fullscreen_if(session, &request_is_current)
+                enter_native_fullscreen_if(session, &request_is_current).map(|_| ())
             }
             DISPID_REQUEST_LEAVE_FULLSCREEN => {
                 leave_native_fullscreen_if(session, &request_is_current)
@@ -4671,6 +4717,12 @@ mod platform {
     use serde::{Deserialize, Serialize};
     use tauri::AppHandle;
 
+    use super::{RdpFullscreenEntryOutcome, RdpStartupFullscreenState};
+
+    pub fn startup_fullscreen_state(_app: AppHandle) -> Result<RdpStartupFullscreenState, String> {
+        Err("RDP startup full-screen state requires Windows".to_string())
+    }
+
     #[derive(Clone)]
     pub struct RdpSessionManager;
 
@@ -4792,6 +4844,7 @@ mod platform {
     pub struct EnterRdpFullscreenRequest {
         pub session_id: String,
         pub connection_name: String,
+        pub activation_generation: Option<usize>,
     }
 
     #[derive(Deserialize)]
@@ -4861,7 +4914,7 @@ mod platform {
             &self,
             _app: AppHandle,
             _request: EnterRdpFullscreenRequest,
-        ) -> Result<(), String> {
+        ) -> Result<RdpFullscreenEntryOutcome, String> {
             Err(
                 "RDP full screen requires Windows and the Microsoft RDP ActiveX control"
                     .to_string(),
@@ -4993,3 +5046,41 @@ mod platform {
 }
 
 pub use platform::*;
+
+#[cfg(test)]
+mod startup_fullscreen_contract_tests {
+    use super::*;
+
+    #[test]
+    fn native_fullscreen_outcome_distinguishes_safe_refusal_from_success() {
+        assert_eq!(
+            serde_json::to_value(RdpFullscreenEntryOutcome::Applied).unwrap(),
+            serde_json::json!("applied"),
+        );
+        assert_eq!(
+            serde_json::to_value(RdpFullscreenEntryOutcome::Skipped).unwrap(),
+            serde_json::json!("skipped"),
+        );
+    }
+
+    #[test]
+    fn startup_focus_state_preserves_the_activation_generation() {
+        let state = RdpStartupFullscreenState {
+            app_foreground: true,
+            activation_generation: 42,
+        };
+        assert_eq!(
+            serde_json::to_value(state).unwrap(),
+            serde_json::json!({ "appForeground": true, "activationGeneration": 42 }),
+        );
+    }
+
+    #[test]
+    fn manual_fullscreen_entry_does_not_require_a_startup_generation() {
+        let _: EnterRdpFullscreenRequest = serde_json::from_value(serde_json::json!({
+            "sessionId": "rdp-test",
+            "connectionName": "Remote desktop",
+        }))
+        .unwrap();
+    }
+}

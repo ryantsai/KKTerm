@@ -409,6 +409,7 @@ commands.allow = [
   "start_rdp_session",
   "update_rdp_bounds",
   "set_rdp_visibility",
+  "get_rdp_startup_fullscreen_state",
   "enter_rdp_fullscreen",
   "exit_rdp_fullscreen",
   "sync_rdp_display_size",

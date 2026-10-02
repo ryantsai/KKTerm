@@ -35,6 +35,11 @@ import type {
 } from "../../../../types";
 import { normalizeRdpSharedLocalFolders } from "./rdpLocalResources";
 import {
+  createRdpStartupFullscreenAttempt,
+  isRdpStartupActivationCurrent,
+  type RdpFullscreenEntryOutcome,
+} from "./rdpStartupFullscreen";
+import {
   registerRdpTextSender,
   registerRemoteDesktopController,
   unregisterRdpTextSender,
@@ -108,6 +113,11 @@ export function RemoteDesktopWorkspace({
   const sessionStartedRef = useRef(false);
   const sessionStartingRef = useRef(false);
   const openFullscreenRef = useRef<() => void>(() => undefined);
+  const enterFullscreenRef = useRef<(generation?: number) => Promise<RdpFullscreenEntryOutcome>>(
+    async () => "skipped",
+  );
+  const startupFullscreenAttemptRef = useRef(createRdpStartupFullscreenAttempt());
+  const startupActivationRef = useRef<number | null>(null);
   const rdpConnectionCountedRef = useRef(false);
   const sessionIdRef = useRef<string | null>(null);
   const lastBoundsRef = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
@@ -915,72 +925,88 @@ export function RemoteDesktopWorkspace({
     });
   };
 
-  const openFullscreen = () => {
-    // Manual entry wins even if the initial display is still settling.
-    useWorkspaceStore.getState().consumeRdpStartupFullscreen(tab.id);
+  const checkRdpStartupActivation = async () => {
+    const generation = startupActivationRef.current;
+    if (generation === null) return false;
+    const state = await invokeCommand("get_rdp_startup_fullscreen_state");
+    if (!isRdpStartupActivationCurrent(generation, state)) {
+      useWorkspaceStore.getState().consumeRdpStartupFullscreen(tab.id);
+      return false;
+    }
+    return true;
+  };
+
+  const enterFullscreen = async (activationGeneration?: number): Promise<RdpFullscreenEntryOutcome> => {
     const sessionId = sessionIdRef.current;
     if (!sessionId || !connection || (connection.type !== "rdp" && connection.type !== "vnc")) {
-      return;
+      return "skipped";
     }
     if (canStartRdp) {
-      void invokeCommand("enter_rdp_fullscreen", {
-        request: { sessionId, connectionName: connection.name },
-      }).catch((error) =>
-        reportRemoteDesktopError(error instanceof Error ? error.message : String(error)),
-      );
-      return;
+      return invokeCommand("enter_rdp_fullscreen", {
+        request: { sessionId, connectionName: connection.name, activationGeneration },
+      });
     }
-    void openRemoteFullscreen({
+    await openRemoteFullscreen({
       sessionId,
       connectionId: connection.id,
       kind: connection.type,
       monitorMode: "current",
-    }).catch((error) =>
+    });
+    return "applied";
+  };
+  enterFullscreenRef.current = enterFullscreen;
+
+  const openFullscreen = () => {
+    // Manual entry wins even if the initial display is still settling.
+    useWorkspaceStore.getState().consumeRdpStartupFullscreen(tab.id);
+    void enterFullscreenRef.current().catch((error) =>
       reportRemoteDesktopError(error instanceof Error ? error.message : String(error)),
     );
   };
   openFullscreenRef.current = openFullscreen;
 
   const tryOpenRdpStartupFullscreen = (sessionId: string) => {
-    if (sessionIdRef.current !== sessionId || !sessionStartedRef.current) {
-      return;
-    }
-    // Displayable ActiveX state also includes interactive login prompts (2).
-    // Keep the intent pending until the connection is established (1) and visible.
-    if (canStartRdp && (!rdpConnectedRef.current || !rdpVisibleRef.current)) {
-      return;
-    }
-    const requested = useWorkspaceStore.getState().consumeRdpStartupFullscreen(tab.id);
-    if (
-      !requested
-      || !visibilityRef.current.isActive
-      || visibilityRef.current.suppressed
-      || documentHasRdpBlockingOverlay(hostRef.current)
-      // The Windows ActiveX path checks native foreground ownership itself;
-      // its focused child HWND need not leave the WebView document focused.
-      || (useRdpCanvas && !document.hasFocus())
-    ) {
-      return;
-    }
-    openFullscreenRef.current();
+    void startupFullscreenAttemptRef.current({
+      isEligible: () => sessionIdRef.current === sessionId
+        && sessionStartedRef.current
+        && useWorkspaceStore.getState().hasRdpStartupFullscreen(tab.id)
+        && visibilityRef.current.isActive
+        && !visibilityRef.current.suppressed
+        && !documentHasRdpBlockingOverlay(hostRef.current)
+        // Login prompts (Connected = 2) are displayable but not ready for entry.
+        && (!canStartRdp || (rdpConnectedRef.current && rdpVisibleRef.current && startupActivationRef.current !== null))
+        && (!useRdpCanvas || document.hasFocus()),
+      enter: () => enterFullscreenRef.current(canStartRdp ? startupActivationRef.current ?? undefined : undefined),
+      // A native refusal is retryable only during the original foreground launch.
+      canRetry: async () => useWorkspaceStore.getState().hasRdpStartupFullscreen(tab.id)
+        && (canStartRdp ? await checkRdpStartupActivation() : document.hasFocus()),
+      finish: () => { useWorkspaceStore.getState().consumeRdpStartupFullscreen(tab.id); },
+      onError: (error) => reportRemoteDesktopError(error instanceof Error ? error.message : String(error)),
+    });
   };
 
   useEffect(() => {
-    if (!canStartRdp || !startupFullscreenRequested || !isTauriRuntime()) {
+    if (!startupFullscreenRequested || !isTauriRuntime()) {
       return;
     }
     let disposed = false;
     let inFlight = false;
-    // The ordinary display poll stops once login prompts can be shown. Only
-    // opted-in launches need to wait beyond that point for Connected = 1.
+    // Keep opted-in launches pending through login and temporary UI overlays.
+    // The activation generation also detects leave-and-return while the RDP
+    // overlay owns focus and the main window receives no additional blur event.
     const timer = window.setInterval(() => {
-      const sessionId = sessionIdRef.current;
-      if (inFlight || !sessionId || !displayReadyRef.current || !rdpVisibleRef.current) {
-        return;
-      }
+      if (inFlight) return;
       inFlight = true;
-      void invokeCommand("get_rdp_session_status", { request: { sessionId } })
-        .then((status) => {
+      void (async () => {
+        if (canStartRdp && !(await checkRdpStartupActivation())) return;
+        const sessionId = sessionIdRef.current;
+        if (disposed || !sessionId || !sessionStartedRef.current) return;
+        if (useRdpCanvas) {
+          tryOpenRdpStartupFullscreen(sessionId);
+          return;
+        }
+        if (canStartRdp && displayReadyRef.current && rdpVisibleRef.current) {
+          const status = await invokeCommand("get_rdp_session_status", { request: { sessionId } });
           if (disposed || sessionIdRef.current !== status.sessionId) return;
           rdpConnectedRef.current = status.connected;
           if (status.connected) {
@@ -988,7 +1014,8 @@ export function RemoteDesktopWorkspace({
           } else if (status.connectionState !== RDP_ESTABLISHING_STATE) {
             useWorkspaceStore.getState().consumeRdpStartupFullscreen(tab.id);
           }
-        })
+        }
+      })()
         .catch(() => {
           if (!disposed) useWorkspaceStore.getState().consumeRdpStartupFullscreen(tab.id);
         })
@@ -1000,7 +1027,7 @@ export function RemoteDesktopWorkspace({
     };
     // The callback uses live session/visibility refs and the store's one-shot intent.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canStartRdp, startupFullscreenRequested, tab.id]);
+  }, [canStartRdp, useRdpCanvas, startupFullscreenRequested, tab.id]);
 
   useEffect(() => {
     if (!isActive) {
@@ -1009,14 +1036,35 @@ export function RemoteDesktopWorkspace({
   }, [isActive, tab.id]);
 
   useEffect(() => {
-    if (!startupFullscreenRequested) {
+    if (!startupFullscreenRequested || !isTauriRuntime()) {
       return;
     }
     let disposed = false;
     let unlisten: (() => void) | undefined;
+    startupActivationRef.current = null;
+    if (canStartRdp) {
+      void invokeCommand("get_rdp_startup_fullscreen_state").then((state) => {
+        if (disposed) return;
+        if (!state.appForeground) {
+          useWorkspaceStore.getState().consumeRdpStartupFullscreen(tab.id);
+          return;
+        }
+        startupActivationRef.current = state.activationGeneration;
+      }).catch(() => {
+        if (!disposed) useWorkspaceStore.getState().consumeRdpStartupFullscreen(tab.id);
+      });
+    }
     void listenMainWindowFocusChanged((focused) => {
       if (!disposed && !focused) {
-        useWorkspaceStore.getState().consumeRdpStartupFullscreen(tab.id);
+        if (canStartRdp) {
+          // ActiveX's owned overlay can blur the main window without leaving
+          // KKTerm. Only process deactivation invalidates this Windows launch.
+          void checkRdpStartupActivation().catch(() => {
+            if (!disposed) useWorkspaceStore.getState().consumeRdpStartupFullscreen(tab.id);
+          });
+        } else {
+          useWorkspaceStore.getState().consumeRdpStartupFullscreen(tab.id);
+        }
       }
     }).then((dispose) => {
       if (disposed) dispose();
@@ -1026,7 +1074,9 @@ export function RemoteDesktopWorkspace({
       disposed = true;
       unlisten?.();
     };
-  }, [startupFullscreenRequested, tab.id]);
+    // The activation check reads the captured generation from a live ref.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canStartRdp, startupFullscreenRequested, tab.id]);
 
   useEffect(() => {
     const unregisterSurface = registerRemoteFullscreenSurface(

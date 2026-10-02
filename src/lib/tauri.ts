@@ -1036,6 +1036,11 @@ export interface RdpSessionStatus {
   connected: boolean;
 }
 
+export interface RdpStartupFullscreenState {
+  appForeground: boolean;
+  activationGeneration: number;
+}
+
 export interface UpdateRdpBoundsRequest {
   sessionId: string;
   x: number;
@@ -1084,6 +1089,8 @@ export interface RdpSimpleRequest {
 
 export interface EnterRdpFullscreenRequest extends RdpSimpleRequest {
   connectionName: string;
+  /** Startup requests stay valid only during their original app activation. */
+  activationGeneration?: number;
 }
 
 export type RdpTextMode = "clipboard" | "sendKeys";
@@ -3852,7 +3859,11 @@ type CommandMap = {
   };
   enter_rdp_fullscreen: {
     args: { request: EnterRdpFullscreenRequest };
-    result: null;
+    result: "applied" | "skipped";
+  };
+  get_rdp_startup_fullscreen_state: {
+    args: undefined;
+    result: RdpStartupFullscreenState;
   };
   exit_rdp_fullscreen: {
     args: { request: RdpSimpleRequest };
