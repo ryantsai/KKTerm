@@ -4399,11 +4399,18 @@ fn set_rdp_visibility(
 }
 
 #[tauri::command]
+fn get_rdp_startup_fullscreen_state(
+    app: tauri::AppHandle,
+) -> Result<rdp::RdpStartupFullscreenState, String> {
+    rdp::startup_fullscreen_state(app)
+}
+
+#[tauri::command]
 fn enter_rdp_fullscreen(
     app: tauri::AppHandle,
     rdp_sessions: tauri::State<'_, rdp::RdpSessionManager>,
     request: rdp::EnterRdpFullscreenRequest,
-) -> Result<(), String> {
+) -> Result<rdp::RdpFullscreenEntryOutcome, String> {
     rdp_sessions.enter_fullscreen(app, request)
 }
 
@@ -5593,6 +5600,7 @@ pub fn run() {
             start_rdp_session,
             update_rdp_bounds,
             set_rdp_visibility,
+            get_rdp_startup_fullscreen_state,
             enter_rdp_fullscreen,
             exit_rdp_fullscreen,
             sync_rdp_display_size,
