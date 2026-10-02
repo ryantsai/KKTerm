@@ -181,6 +181,9 @@ jobs:
           chmod 600 "$RUNNER_TEMP/homebrew-tap-deploy-key"
           echo "HOMEBREW_TAP_SSH_KEY_PATH=$RUNNER_TEMP/homebrew-tap-deploy-key" >> "$GITHUB_ENV"
 
+      - name: Check Homebrew tap read access
+        run: zsh scripts/update-homebrew-cask.sh --check-access
+
       - name: Build, notarize, and publish macOS assets
         run: zsh scripts/release-github-macos.sh --tag "${{ needs.release.outputs.tag }}"
 
