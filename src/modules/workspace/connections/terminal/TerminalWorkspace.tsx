@@ -1899,7 +1899,9 @@ function TerminalPaneView({
   }
 
   async function writeWithPasteConfirmation(data: string, writeInput: (input: string) => void) {
-    if (terminalSettings.confirmMultilinePaste && isMultilinePaste(data)) {
+    // onData lives for the Session, so read the current setting rather than
+    // retaining the value captured when the terminal was opened.
+    if (useWorkspaceStore.getState().terminalSettings.confirmMultilinePaste && isMultilinePaste(data)) {
       const shouldPaste = await requestMultilinePasteConfirmation();
       if (!shouldPaste) {
         return;
