@@ -190,7 +190,7 @@ the exact GitHub release assets for the generated tag:
 - `kkterm-<version>-windows-x64-portable.zip`
 - `kkterm-<version>-windows-arm64-portable.zip`
 
-When `OPENAI_API_KEY` is available, `scripts/generate-release-notes.mjs` asks OpenAI to summarize the GitHub-generated notes and commit context using `gpt-5.4-nano` by default. AI-generated notes are written in English first, followed by a Traditional Chinese (Taiwan) version with the same facts, light humor, and tone. If the key is missing or the API call fails, the script falls back to deterministic notes from GitHub generated notes and commit subjects. Local runs may set secrets in the process environment or in an uncommitted `.env.local` file:
+When `OPENAI_API_KEY` is available, `scripts/generate-release-notes.mjs` asks OpenAI to summarize the GitHub-generated notes and commit context using `gpt-6-luna` by default. The model can be overridden with `OPENAI_RELEASE_NOTES_MODEL` (including `.env.local`) or the generator’s `--model` argument, which takes precedence. The Windows wrapper leaves model selection to the generator. AI-generated notes are written in English first, followed by a Traditional Chinese (Taiwan) version with the same facts, light humor, and tone. If the key is missing or the API call fails, the script falls back to deterministic notes from GitHub generated notes and commit subjects. Local runs may set secrets in the process environment or in an uncommitted `.env.local` file:
 
 ```powershell
 $env:OPENAI_API_KEY = "sk-..."

@@ -363,9 +363,7 @@ artifacts/release-notes-*.md) that were not part of a finished release.
             "--release-file",
             $VersionReleaseNotesPath,
             "--changelog",
-            $ChangelogPath,
-            "--model",
-            "gpt-5.4-nano"
+            $ChangelogPath
         )
         if ($PreviousTag) {
             $ReleaseNotesArgs += @("--previous-tag", $PreviousTag)

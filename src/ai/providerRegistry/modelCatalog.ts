@@ -25,8 +25,8 @@ export const AI_PROVIDER_MODEL_CATALOG: AiProviderModelCatalog = {
       { id: "gpt-5.4-mini", label: "GPT-5.4 Mini", supportsImageInput: true },
       { id: "gpt-5.4", label: "GPT-5.4", supportsImageInput: true },
       { id: "gpt-5.4-pro", label: "GPT-5.4 Pro", supportsImageInput: true },
-      { id: "gpt-5.4-nano", label: "GPT-5.4 Nano", supportsImageInput: true },
-      { id: "gpt-5.3-codex", label: "GPT-5.3 Codex", supportsImageInput: true },
+      { id: "gpt-6-luna", label: "GPT-6 Luna", recommended: true, supportsImageInput: true },
+      { id: "gpt-6-sol", label: "GPT-6 Sol", recommended: true, supportsImageInput: true },
       { id: "gpt-5.2", label: "GPT-5.2", supportsImageInput: true },
     ],
   },
@@ -187,6 +187,10 @@ export const AI_PROVIDER_MODEL_CATALOG: AiProviderModelCatalog = {
     defaultModel: "auto",
     defaultReasoningEffort: "medium",
     models: [
+      // Independent Copilot availability: keep these as non-recommended options.
+      { id: "gpt-5.1-mini", label: "GPT-5.1 Mini", supportsImageInput: true },
+      { id: "gpt-5.4-nano", label: "GPT-5.4 Nano", supportsImageInput: true },
+      { id: "gpt-5.3-codex", label: "GPT-5.3 Codex", supportsImageInput: true },
       { id: "auto", label: "Auto", recommended: true, supportsImageInput: true },
       { id: "gpt-6-astra", label: "GPT-6 Astra", recommended: true, supportsImageInput: true },
       { id: "gpt-5-mini", label: "GPT-5 Mini", recommended: true, supportsImageInput: true },

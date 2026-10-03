@@ -1,3 +1,4 @@
+import { isDeprecatedProviderModel } from "./providerRegistry/deprecations";
 import type { AiProviderKind } from "../types";
 import type { AiModelOption, AiProviderDefinition } from "./providerRegistry";
 
@@ -79,8 +80,14 @@ export function selectModelOptionsForProvider({
     provider.modelOptions.map((model) => [normalizeModelId(model.id), model]),
   );
   const customModelId = customModel.trim();
-  const sortedProviderModels = sortModelOptionsForProvider(provider.kind, provider.modelOptions);
-  const sortedRefreshedModels = sortModelOptionsForProvider(provider.kind, refreshedModels).map(
+  // Withdraw deprecated OpenAI suggestions, including IDs returned by refresh.
+  // Explicit saved/custom selections are reinserted below without migration.
+  const isSuggestedModel = (model: ProviderModelOption) =>
+    !isDeprecatedProviderModel(provider.kind, model.id);
+  const sortedProviderModels = sortModelOptionsForProvider(
+    provider.kind, provider.modelOptions.filter(isSuggestedModel),
+  );
+  const sortedRefreshedModels = sortModelOptionsForProvider(provider.kind, refreshedModels.filter(isSuggestedModel)).map(
     (model) => mergeModelMetadata(model, providerModelLookup),
   );
   const refreshedModelsAreAuthoritative =

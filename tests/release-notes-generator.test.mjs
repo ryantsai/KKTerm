@@ -120,3 +120,79 @@ test("prependChangelogEntry normalizes release heading after direct downloads", 
   assert.match(updated, /## v0\.1\.32/);
   assert.doesNotMatch(updated, /# KKTerm v0\.1\.32/);
 });
+
+test("release model defaults and overrides use the official Nano replacement", async () => {
+  const { resolveReleaseNotesModel, generateAiReleaseNotes } = await import("../scripts/generate-release-notes.mjs");
+  assert.equal(resolveReleaseNotesModel(), "gpt-6-luna");
+  assert.equal(resolveReleaseNotesModel(undefined, "env-model"), "env-model");
+  assert.equal(resolveReleaseNotesModel("cli-model", "env-model"), "cli-model");
+  const originalFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = async (url, options) => {
+      assert.equal(url, "https://api.openai.com/v1/responses");
+      const body = JSON.parse(options.body);
+      assert.equal(body.model, "gpt-6-luna");
+      assert.equal(body.store, false);
+      assert.match(body.input, /Traditional Chinese/);
+      return { ok: true, json: async () => ({ output: [{ content: [{ text: "Release notes" }] }] }) };
+    };
+    assert.equal(await generateAiReleaseNotes(sampleContext, resolveReleaseNotesModel(), "test-key"), "Release notes\n");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("release entry points no longer pin deprecated Nano or defeat local overrides", async () => {
+  const { readFile } = await import("node:fs/promises");
+  for (const file of [".github/workflows/release.yml", ".env.example", "docs/RELEASE.md"]) {
+    const source = await readFile(new URL(`../${file}`, import.meta.url), "utf8");
+    assert.match(source, /gpt-6-luna/);
+    assert.doesNotMatch(source, /gpt-5\.4-nano/);
+  }
+  const wrapper = await readFile(new URL("../scripts/release-github.ps1", import.meta.url), "utf8");
+  assert.doesNotMatch(wrapper, /gpt-5\.4-nano/);
+  assert.doesNotMatch(wrapper, /"--model"/);
+});
+
+test("API failure still writes deterministic release notes and changelog", async () => {
+  const { mkdtemp, writeFile, readFile, rm } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { fileURLToPath, pathToFileURL } = await import("node:url");
+  const { execFile } = await import("node:child_process");
+  const { promisify } = await import("node:util");
+  const dir = await mkdtemp(join(tmpdir(), "kkterm-release-notes-"));
+  try {
+    const run = promisify(execFile);
+    // A no-tag, no-PR fixture prevents gh calls regardless of the CI checkout.
+    await run("git", ["init", dir]);
+    await run("git", ["-C", dir, "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "--allow-empty", "-m", "Release fixture"]);
+    const mockPath = join(dir, "mock-fetch.mjs");
+    const requestPath = join(dir, "request.json");
+    await writeFile(mockPath, `import { writeFileSync } from 'node:fs';
+      globalThis.fetch = async (url, options) => {
+        writeFileSync(${JSON.stringify(requestPath)}, options.body);
+        return { ok: false, json: async () => ({ error: { message: 'test API failure' } }) };
+      };`);
+    const output = join(dir, "notes.md");
+    const releaseFile = join(dir, "version.md");
+    const changelog = join(dir, "changelog.md");
+    const env = { ...process.env, OPENAI_API_KEY: "test-key" };
+    delete env.OPENAI_RELEASE_NOTES_MODEL;
+    const { stderr } = await promisify(execFile)(process.execPath, [
+      "--import", pathToFileURL(mockPath).href,
+      fileURLToPath(new URL("../scripts/generate-release-notes.mjs", import.meta.url)),
+      "--version", "vtest", "--repo", "fixture/offline", "--output", output,
+      "--release-file", releaseFile, "--changelog", changelog,
+    ], { cwd: dir, env });
+    assert.match(stderr, /AI release notes failed; using deterministic fallback/);
+    assert.equal(JSON.parse(await readFile(requestPath, "utf8")).model, "gpt-6-luna");
+    const notes = await readFile(output, "utf8");
+    assert.match(notes, /# KKTerm vtest/);
+    assert.match(notes, /## Changes/);
+    assert.equal(await readFile(releaseFile, "utf8"), notes);
+    assert.match(await readFile(changelog, "utf8"), /## vtest/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
