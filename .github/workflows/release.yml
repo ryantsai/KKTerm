@@ -61,7 +61,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      OPENAI_RELEASE_NOTES_MODEL: gpt-5.4-nano
+      OPENAI_RELEASE_NOTES_MODEL: gpt-6-luna
     steps:
       - uses: actions/checkout@v4
         with:
