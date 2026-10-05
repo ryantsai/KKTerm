@@ -2,6 +2,19 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
+test("forced startup display settling still resizes the remote desktop in native fullscreen", async () => {
+  const source = await readFile(new URL("../src-tauri/src/rdp.rs", import.meta.url), "utf8");
+  const updateBounds = source.slice(source.indexOf("pub fn update_bounds("), source.indexOf("pub fn set_visibility("));
+  const fullscreenBranch = updateBounds.match(/if native_fullscreen \{([\s\S]*?)return Ok\(\(\)\);/)?.[1];
+  assert.ok(fullscreenBranch);
+  assert.match(fullscreenBranch, /if request\.force/);
+  assert.match(fullscreenBranch, /fullscreen_monitor_geometry\(session\)/);
+  assert.match(fullscreenBranch, /fullscreen_display_settings\(session, &monitor_rect, monitor_scale\)/);
+  assert.match(fullscreenBranch, /sync_remote_desktop_size\(session, display_settings, true\)/);
+  assert.doesNotMatch(fullscreenBranch, /show_and_resize_rdp|stage_rdp|SetWindowPos/,
+    "settling must preserve the fullscreen host and pending windowed restore geometry");
+});
+
 test("RDP dynamic display sync does not fall back to ActiveX Reconnect", async () => {
   const rdpSource = await readFile(new URL("../src-tauri/src/rdp.rs", import.meta.url), "utf8");
   const resizeFunction = rdpSource.match(

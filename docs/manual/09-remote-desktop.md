@@ -102,11 +102,13 @@ Per-kind defaults (resolution, view mode, colour depth, etc.) live in Settings �
 
 ### Open new RDP Sessions in fullscreen
 
-`settings.rdpOpenInFullscreen` is off by default. It appears after `settings.rdpRemoteResolution` in Settings → RDP → `settings.display`, and in the RDP Connection options before `connections.rdpAdvancedOptions`. `settings.rdpOpenInFullscreenHint` explains returning to the Workspace on exit. Tutorial/grep anchor: `settings.rdpOpenInFullscreen` with navigation `page=settings settingsSectionId=rdp-settings`.
+`settings.rdpOpenInFullscreen` is off by default. It appears after `settings.rdpRemoteResolution` in Settings → RDP → `settings.display`, and in the RDP Connection options before `connections.rdpAdvancedOptions`. The switch uses a single label without helper text. Tutorial/grep anchor: `settings.rdpOpenInFullscreen` with navigation `page=settings settingsSectionId=rdp-settings`.
 
 The Connection editor's `connections.inheritSettingsDefaults` switch owns the whole RDP options group. While enabled, the fullscreen switch is disabled and displays the current global default; while disabled, it saves a per-Connection choice. Existing customized Connections without this choice remain off. The five `settings.remoteDesktopViewMode` options remain scaling modes; fullscreen is a separate startup preference.
 
 Only an explicitly opened foreground RDP Session can enter fullscreen once, after it connects and its surface is ready. Temporary dialogs or popups defer automatic entry until the surface is available. Reconnect, revisiting an existing Tab, saved-layout restore, folder bulk-open, and Panorama do not trigger it. Changing this preference does not move an already running Session. Switching away or losing app focus while connecting cancels automatic entry; moving focus into Windows' own RDP surface does not. Leaving fullscreen returns the same Session to its original Workspace Pane; Windows uses the native connection bar and macOS/Linux use the detached full-screen window described above. VNC is unchanged.
+
+On Windows, automatic fullscreen reapplies the monitor-sized remote resolution during the first few seconds after connection, so a server that ignores the initial resize can still expand to the full screen. An explicitly fixed remote resolution remains fixed.
 
 ### VNC performance presets
 

@@ -3190,7 +3190,6 @@
     "rdpRemoteResolution": "Độ phân giải từ xa",
     "rdpRemoteResolutionAutomatic": "Tự động",
     "rdpOpenInFullscreen": "Mở ở chế độ toàn màn hình",
-    "rdpOpenInFullscreenHint": "Mở phiên RDP mới ở chế độ toàn màn hình. Thoát chế độ toàn màn hình để quay lại không gian làm việc.",
     "rdpAdministrativeSession": "Phiên quản trị",
     "rdpAdministrativeSessionHint": "Kết nối với một phiên để quản trị máy chủ.",
     "rdpRedirectClipboard": "Bảng nhớ tạm",

@@ -225,7 +225,6 @@ export function RdpConnectionOptions({
             <Monitor className="option-glyph" size={17} aria-hidden />
             <span className="connection-startup-fullscreen-copy">
               <strong>{t("settings.rdpOpenInFullscreen")}</strong>
-              <small>{t("settings.rdpOpenInFullscreenHint")}</small>
             </span>
             <ToggleSwitch
               ariaLabel={t("settings.rdpOpenInFullscreen")}

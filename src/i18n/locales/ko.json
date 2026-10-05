@@ -3190,7 +3190,6 @@
     "rdpRemoteResolution": "원격 해상도",
     "rdpRemoteResolutionAutomatic": "자동",
     "rdpOpenInFullscreen": "전체 화면으로 열기",
-    "rdpOpenInFullscreenHint": "새 RDP 세션을 전체 화면으로 엽니다. 전체 화면을 종료하면 작업 공간으로 돌아갑니다.",
     "rdpAdministrativeSession": "관리 세션",
     "rdpAdministrativeSessionHint": "서버 관리를 위한 세션에 연결합니다.",
     "rdpRedirectClipboard": "클립보드",

@@ -3190,7 +3190,6 @@
     "rdpRemoteResolution": "Resolusi jarak jauh",
     "rdpRemoteResolutionAutomatic": "Otomatis",
     "rdpOpenInFullscreen": "Buka dalam layar penuh",
-    "rdpOpenInFullscreenHint": "Buka sesi RDP baru dalam layar penuh. Keluar dari layar penuh untuk kembali ke ruang kerja.",
     "rdpAdministrativeSession": "Sesi administratif",
     "rdpAdministrativeSessionHint": "Hubungkan ke sesi untuk mengelola server.",
     "rdpRedirectClipboard": "Papan klip",

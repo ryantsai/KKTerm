@@ -80,18 +80,18 @@ function assertFiveScalingModes(markup: string) {
 test("real global RDP switch renders English, default-off, keyboard-accessible and separate from scaling", () => {
   const markup = renderToStaticMarkup(createElement(RdpSettings));
   assertSwitchState(markup, false, false);
-  assert.ok(markup.includes("Open new RDP sessions in fullscreen. Exit fullscreen to return to the workspace."));
+  assert.ok(!markup.includes("Open new RDP sessions in fullscreen. Exit fullscreen to return to the workspace."));
   assert.ok(markup.includes('data-tutorial-id="settings.rdpOpenInFullscreen"'));
   assertFiveScalingModes(markup);
   assert.ok(markup.indexOf('data-tutorial-id="settings.rdpRemoteResolution"')
     < markup.indexOf('data-tutorial-id="settings.rdpOpenInFullscreen"'));
 });
 
-test("both real switches render the approved Taiwan Traditional Chinese label and helper", async () => {
+test("both real switches render the Taiwan Traditional Chinese label without redundant helper text", async () => {
   await switchLanguage("zh-TW");
   for (const markup of [renderToStaticMarkup(createElement(RdpSettings)), renderConnection({ globalEnabled: false })]) {
     assertSwitchState(markup, false, false, "連線後以全螢幕開啟");
-    assert.ok(markup.includes("新的RDP連線成功後自動進入全螢幕；離開全螢幕後返回原本的工作區。"));
+    assert.ok(!markup.includes("新的RDP連線成功後自動進入全螢幕；離開全螢幕後返回原本的工作區。"));
     assertFiveScalingModes(markup);
   }
 });

@@ -3190,7 +3190,6 @@
     "rdpRemoteResolution": "Remote resolution",
     "rdpRemoteResolutionAutomatic": "Automatic",
     "rdpOpenInFullscreen": "Open in fullscreen",
-    "rdpOpenInFullscreenHint": "Open new RDP sessions in fullscreen. Exit fullscreen to return to the workspace.",
     "rdpAdministrativeSession": "Administrative session",
     "rdpAdministrativeSessionHint": "Connect to a session for administering the server.",
     "rdpRedirectClipboard": "Clipboard",

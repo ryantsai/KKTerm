@@ -998,6 +998,23 @@ mod platform {
                     if native_fullscreen {
                         // The retained ActiveX host currently fills its monitor;
                         // retain the latest windowed Pane bounds until exit.
+                        // The server can ignore the first display update during
+                        // automatic entry. Keep the startup settle passes alive,
+                        // targeting the monitor rather than the restored Pane.
+                        if request.force {
+                            let (monitor_rect, monitor_scale) =
+                                fullscreen_monitor_geometry(session)?;
+                            let display_settings =
+                                fullscreen_display_settings(session, &monitor_rect, monitor_scale);
+                            let display_sync_completed =
+                                sync_remote_desktop_size(session, display_settings, true);
+                            apply_smart_sizing(&session.dispatch, true);
+                            if !display_sync_completed {
+                                return Err(
+                                    "failed to settle the RDP full-screen display size".to_string(),
+                                );
+                            }
+                        }
                         return Ok(());
                     }
                     // The connection bar or ActiveX chord can clear FullScreen

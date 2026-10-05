@@ -3190,7 +3190,6 @@
     "rdpRemoteResolution": "Remote-Auflösung",
     "rdpRemoteResolutionAutomatic": "Automatisch",
     "rdpOpenInFullscreen": "Im Vollbild öffnen",
-    "rdpOpenInFullscreenHint": "Neue RDP-Sitzungen im Vollbild öffnen. Verlassen Sie das Vollbild, um zum Arbeitsbereich zurückzukehren.",
     "rdpAdministrativeSession": "Administrative Sitzung",
     "rdpAdministrativeSessionHint": "Verbindung mit einer Sitzung zur Verwaltung des Servers herstellen.",
     "rdpRedirectClipboard": "Zwischenablage",

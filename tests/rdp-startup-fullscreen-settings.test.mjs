@@ -21,7 +21,7 @@ test("RDP startup fullscreen switches follow Remote Resolution and preserve five
   for (const source of [settings, editor]) {
     assert.ok(source.indexOf('t("settings.rdpRemoteResolution")') < source.indexOf('t("settings.rdpOpenInFullscreen")'));
     assert.match(source, /<ToggleSwitch\s+ariaLabel=\{t\("settings\.rdpOpenInFullscreen"\)\}/);
-    assert.match(source, /t\("settings\.rdpOpenInFullscreenHint"\)/);
+    assert.doesNotMatch(source, /t\("settings\.rdpOpenInFullscreenHint"\)/);
     assert.doesNotMatch(source, /<option value="(?:fullscreen|fullScreen)"/);
     const modes = [...source.matchAll(/<option value="(fit|stretch|actualSize|fitWidth|fitHeight)"/g)].map((match) => match[1]);
     assert.deepEqual(modes, ["fit", "stretch", "actualSize", "fitWidth", "fitHeight"]);

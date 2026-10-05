@@ -149,7 +149,6 @@ export function RdpSettings() {
             />
             <span>
               <strong>{t("settings.rdpOpenInFullscreen")}</strong>
-              <small>{t("settings.rdpOpenInFullscreenHint")}</small>
             </span>
           </label>
         </div>
