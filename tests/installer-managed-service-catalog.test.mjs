@@ -189,17 +189,17 @@ test("PowerShell 7 detection covers versioned ARP display names", () => {
   );
 });
 
-test("nvm-windows uses the official release channel and v2 asset names", () => {
+test("nvm-windows uses the official release channel and x64/ARM64 Setup assets", () => {
   const nvm = recipe("nvm-windows");
   assert.deepEqual(nvm.provider, {
     kind: "downloadInstaller",
-    url: "https://github.com/nvm-windows/nvm/releases/download/v2.0.0/nvm-2.0.0-amd64-setup.exe",
-    fileName: "nvm-2.0.0-amd64-setup.exe",
+    url: "https://github.com/nvm-windows/nvm/releases/download/v2.0.1/nvm-2.0.1-x64-setup.exe",
+    fileName: "nvm-2.0.1-x64-setup.exe",
     arm64Url:
-      "https://github.com/nvm-windows/nvm/releases/download/v2.0.0/nvm-2.0.0-arm64-setup.exe",
-    arm64FileName: "nvm-2.0.0-arm64-setup.exe",
+      "https://github.com/nvm-windows/nvm/releases/download/v2.0.1/nvm-2.0.1-arm64-setup.exe",
+    arm64FileName: "nvm-2.0.1-arm64-setup.exe",
     githubRepo: "nvm-windows/nvm",
-    githubAssetPattern: "nvm-*-amd64-setup.exe",
+    githubAssetPattern: "nvm-*-x64-setup.exe",
     githubArm64AssetPattern: "nvm-*-arm64-setup.exe",
   });
   assert.deepEqual(nvm.chocolateyProvider, { kind: "chocolatey", id: "nvm" });

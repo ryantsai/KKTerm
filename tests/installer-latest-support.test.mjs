@@ -58,10 +58,10 @@ test("installer latest-version UI only treats versioned providers as supported",
     descriptionEn: "",
     provider: {
       kind: "downloadInstaller",
-      url: "https://github.com/nvm-windows/nvm/releases/download/v2.0.0/nvm-2.0.0-amd64-setup.exe",
-      fileName: "nvm-2.0.0-amd64-setup.exe",
+      url: "https://github.com/nvm-windows/nvm/releases/download/v2.0.1/nvm-2.0.1-x64-setup.exe",
+      fileName: "nvm-2.0.1-x64-setup.exe",
       githubRepo: "nvm-windows/nvm",
-      githubAssetPattern: "nvm-*-amd64-setup.exe",
+      githubAssetPattern: "nvm-*-x64-setup.exe",
     },
   };
 
