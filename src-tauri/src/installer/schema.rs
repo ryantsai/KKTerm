@@ -193,7 +193,7 @@ pub enum Provider {
         #[serde(default, rename = "githubRepo", skip_serializing_if = "Option::is_none")]
         github_repo: Option<String>,
         /// Optional x64 GitHub release asset glob, e.g.
-        /// `nvm-*-amd64-setup.exe`.
+        /// `nvm-*-x64-setup.exe`.
         #[serde(
             default,
             rename = "githubAssetPattern",
@@ -1164,10 +1164,10 @@ mod tests {
                 arm64_url: Some(arm_url),
                 ..
             } if repo == "nvm-windows/nvm"
-                && pattern == "nvm-*-amd64-setup.exe"
+                && pattern == "nvm-*-x64-setup.exe"
                 && arm_pattern == "nvm-*-arm64-setup.exe"
-                && url.ends_with("nvm-2.0.0-amd64-setup.exe")
-                && arm_url.ends_with("nvm-2.0.0-arm64-setup.exe")
+                && url.ends_with("nvm-2.0.1-x64-setup.exe")
+                && arm_url.ends_with("nvm-2.0.1-arm64-setup.exe")
         ));
         assert_eq!(recipe.options, vec![RecipeOption::Provider]);
     }
