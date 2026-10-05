@@ -61,7 +61,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      OPENAI_RELEASE_NOTES_MODEL: gpt-5.4-nano
+      OPENAI_RELEASE_NOTES_MODEL: gpt-6-luna
     steps:
       - uses: actions/checkout@v4
         with:
@@ -177,9 +177,17 @@ jobs:
       - name: Write Homebrew tap deploy key
         run: |
           test -n "$HOMEBREW_TAP_SSH_KEY"
-          printf '%s' "$HOMEBREW_TAP_SSH_KEY" > "$RUNNER_TEMP/homebrew-tap-deploy-key"
-          chmod 600 "$RUNNER_TEMP/homebrew-tap-deploy-key"
-          echo "HOMEBREW_TAP_SSH_KEY_PATH=$RUNNER_TEMP/homebrew-tap-deploy-key" >> "$GITHUB_ENV"
+          key_path="$RUNNER_TEMP/homebrew-tap-deploy-key"
+          printf '%s\n' "$HOMEBREW_TAP_SSH_KEY" | tr -d '\r' > "$key_path"
+          chmod 600 "$key_path"
+          if ! ssh-keygen -y -P '' -f "$key_path" >/dev/null 2>&1; then
+            echo "::error::HOMEBREW_TAP_SSH_KEY must contain a valid SSH private key with no passphrase."
+            exit 1
+          fi
+          echo "HOMEBREW_TAP_SSH_KEY_PATH=$key_path" >> "$GITHUB_ENV"
+
+      - name: Check Homebrew tap read access
+        run: zsh scripts/update-homebrew-cask.sh --check-access
 
       - name: Build, notarize, and publish macOS assets
         run: zsh scripts/release-github-macos.sh --tag "${{ needs.release.outputs.tag }}"

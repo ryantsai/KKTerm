@@ -6,10 +6,12 @@ SHA256=""
 RELEASE_REPO="ryantsai/KKTerm"
 TAP_REPO="${HOMEBREW_TAP_REPO:-ryantsai/homebrew-tap}"
 DRY_RUN=0
+CHECK_ACCESS=0
 
 usage() {
   cat <<'USAGE'
 Usage: scripts/update-homebrew-cask.sh --version <X.Y.Z> --sha256 <digest> [options]
+       scripts/update-homebrew-cask.sh --check-access [--tap-repo <owner/repo>]
 
 Update and publish the KKTerm cask in the Homebrew tap.
 
@@ -20,6 +22,7 @@ Options:
                               GitHub repository containing the release.
       --tap-repo <owner/repo> Homebrew tap repository. Default: ryantsai/homebrew-tap.
       --dry-run               Print the generated cask without cloning or pushing.
+      --check-access          Verify tap read access without cloning or pushing.
   -h, --help                  Show this help.
 
 Set HOMEBREW_TAP_SSH_KEY_PATH to use a write-enabled SSH deploy key. Without
@@ -96,6 +99,10 @@ while (( $# > 0 )); do
       DRY_RUN=1
       shift
       ;;
+    --check-access)
+      CHECK_ACCESS=1
+      shift
+      ;;
     -h|--help)
       usage
       exit 0
@@ -106,8 +113,12 @@ while (( $# > 0 )); do
   esac
 done
 
-[[ "$VERSION" =~ '^[0-9]+\.[0-9]+\.[0-9]+$' ]] || die "Expected --version <major>.<minor>.<build>."
-[[ "$SHA256" =~ '^[0-9a-f]{64}$' ]] || die "Expected --sha256 to be a lowercase 64-character digest."
+if (( CHECK_ACCESS )); then
+  (( ! DRY_RUN )) || die "--check-access cannot be combined with --dry-run."
+else
+  [[ "$VERSION" =~ '^[0-9]+\.[0-9]+\.[0-9]+$' ]] || die "Expected --version <major>.<minor>.<build>."
+  [[ "$SHA256" =~ '^[0-9a-f]{64}$' ]] || die "Expected --sha256 to be a lowercase 64-character digest."
+fi
 [[ "$RELEASE_REPO" =~ '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$' ]] || die "Invalid --release-repo value: $RELEASE_REPO"
 [[ "$TAP_REPO" =~ '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$' ]] || die "Invalid --tap-repo value: $TAP_REPO"
 
@@ -123,21 +134,54 @@ require_command brew
 require_command git
 
 temporary_tap="kktermrelease${$}/tap"
+tap_attempted=0
+ssh_config_dir=""
+
+cleanup_temporary_tap() {
+  if (( tap_attempted )); then
+    brew untap --force "$temporary_tap" >/dev/null 2>&1 || true
+  fi
+  if [[ -n "$ssh_config_dir" ]]; then
+    rm -rf -- "$ssh_config_dir"
+  fi
+}
+
+trap cleanup_temporary_tap EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 if [[ -n "${HOMEBREW_TAP_SSH_KEY_PATH:-}" ]]; then
   [[ -f "$HOMEBREW_TAP_SSH_KEY_PATH" ]] || die "HOMEBREW_TAP_SSH_KEY_PATH does not point to a file."
+  require_command ssh
   chmod 600 "$HOMEBREW_TAP_SSH_KEY_PATH"
-  export GIT_SSH_COMMAND="ssh -i $HOMEBREW_TAP_SSH_KEY_PATH -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+  # Homebrew filters GIT_SSH_COMMAND but preserves HOMEBREW_SSH_CONFIG_PATH.
+  # Keep the config path free of spaces for Homebrew's ssh -F invocation; a
+  # symlink lets IdentityFile safely reference any deploy-key filename.
+  ssh_config_dir=$(mktemp -d /tmp/kkterm-homebrew-ssh.XXXXXX)
+  ln -s "${HOMEBREW_TAP_SSH_KEY_PATH:A}" "$ssh_config_dir/identity"
+  cat > "$ssh_config_dir/config" <<SSH_CONFIG
+Host github.com
+  IdentityFile "$ssh_config_dir/identity"
+  IdentitiesOnly yes
+  BatchMode yes
+  StrictHostKeyChecking accept-new
+SSH_CONFIG
+  chmod 600 "$ssh_config_dir/config"
+  export HOMEBREW_SSH_CONFIG_PATH="$ssh_config_dir/config"
+  # Direct git commands (including push) do not go through Homebrew.
+  export GIT_SSH_COMMAND="ssh -F $HOMEBREW_SSH_CONFIG_PATH"
   tap_url="git@github.com:$TAP_REPO.git"
 else
   tap_url="https://github.com/$TAP_REPO.git"
 fi
 
-cleanup_temporary_tap() {
-  brew untap --force "$temporary_tap" >/dev/null 2>&1 || true
-}
+if (( CHECK_ACCESS )); then
+  GIT_TERMINAL_PROMPT=0 git ls-remote "$tap_url" HEAD >/dev/null || die "Cannot read Homebrew tap $TAP_REPO with the selected git credentials."
+  print -- "==> Homebrew tap read access verified for $TAP_REPO."
+  exit 0
+fi
 
-trap cleanup_temporary_tap EXIT
+tap_attempted=1
 brew tap "$temporary_tap" "$tap_url"
 tap_dir=$(brew --repository "$temporary_tap")
 

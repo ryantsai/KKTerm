@@ -3340,6 +3340,37 @@ mod tests {
     }
 
     #[test]
+    fn shipped_nvm_patterns_match_upstream_setup_assets_for_each_architecture() {
+        let catalog: super::super::schema::Catalog =
+            serde_json::from_str(include_str!("../../../installer/catalog.v1.json"))
+                .expect("shipped catalog JSON should parse");
+        let provider = &catalog
+            .recipes
+            .iter()
+            .find(|r| r.id == "nvm-windows")
+            .expect("catalog should include nvm-windows")
+            .provider;
+        // Upstream v2.0.1 uses x64, not amd64, and also publishes sync binaries.
+        let assets = [
+            "nvm-2.0.1-arm64-setup.exe",
+            "nvm-2.0.1-arm64-sync.exe",
+            "nvm-2.0.1-x64-setup.exe",
+            "nvm-2.0.1-x64-sync.exe",
+        ];
+        for (prefer_arm64, expected) in [
+            (false, "nvm-2.0.1-x64-setup.exe"),
+            (true, "nvm-2.0.1-arm64-setup.exe"),
+        ] {
+            let (_, pattern) = provider.github_release_source(prefer_arm64).unwrap();
+            let matches: Vec<_> = assets
+                .into_iter()
+                .filter(|name| glob_match(pattern, name))
+                .collect();
+            assert_eq!(matches, vec![expected]);
+        }
+    }
+
+    #[test]
     fn glob_leading_star() {
         assert!(glob_match("*.exe", "aider.exe"));
         assert!(!glob_match("*.exe", "aider.tar.gz"));

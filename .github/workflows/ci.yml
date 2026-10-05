@@ -6,6 +6,16 @@ on:
   pull_request:
 
 jobs:
+  homebrew-release:
+    name: Homebrew release script
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.20.0
+      - run: node --test tests/update-homebrew-cask.test.mjs tests/release-github-macos-script.test.mjs
+
   frontend:
     name: Frontend
     runs-on: windows-latest

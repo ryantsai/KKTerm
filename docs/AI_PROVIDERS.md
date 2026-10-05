@@ -345,3 +345,30 @@ Validation rules:
 2. Add the file to `src-tauri/tauri.conf.json` under `bundle.resources`.
 3. Run `cargo test --manifest-path src-tauri/Cargo.toml assistant_skills --lib`.
 4. Update `docs/manual/13-ai-assistant.md` and `docs/manual/15-settings.md` when user-facing behavior changes.
+
+## OpenAI API retirement notice (2026-10-01)
+
+Official source: https://developers.openai.com/api/docs/deprecations (verified 2026-10-03).
+
+| OpenAI API model | Shutdown | Recommended replacement |
+| --- | --- | --- |
+| `gpt-5.4-nano` | 2027-04-01 | `gpt-6-luna` |
+| `gpt-5.1` | 2027-04-01 | `gpt-6-sol` |
+| `gpt-5.3-codex` | 2027-04-01 | `gpt-6-sol` |
+
+Release notes use `gpt-6-luna` through the existing Responses API. OpenAI
+suggestions include the replacement models and omit these three deprecated IDs,
+even in refreshed Show All lists. Explicit saved/custom IDs remain selectable;
+KKTerm does not silently rewrite existing settings. Users should select the
+replacement before shutdown; an explicit retired ID can still fail at the API.
+The assistant's existing GPT-5.6 Luna default is unchanged. OpenAI's HTTP adapter
+already uses Responses, as recommended for GPT-6 function calling:
+https://developers.openai.com/api/docs/models/gpt-6-luna and
+https://developers.openai.com/api/docs/models/gpt-6-sol.
+
+Matching is exact: `gpt-5.1-mini` is not covered by this notice. Azure deployment
+names and GitHub Copilot SDK IDs have independent availability; this notice does
+not assign a shutdown date or substitute an OpenAI API ID for either provider.
+Their existing Nano/Codex suggestions remain separate, non-recommended options;
+Copilot uses its refreshed SDK list for curated availability. Check the provider's
+own availability before changing a deployment or SDK model selection.

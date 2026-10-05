@@ -3,6 +3,36 @@
 All notable changes to KKTerm are documented here.
 
 ## Direct Downloads
+* 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.21/kkterm-3000.0.21-windows-x64-setup.exe)
+* 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.21/kkterm-3000.0.21-windows-arm64-setup.exe)
+* 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.21/kkterm-3000.0.21-windows-x64-portable.zip)
+* 📦 [Portable for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.21/kkterm-3000.0.21-windows-arm64-portable.zip)
+
+## Highlights
+- Prevented a Tab from freezing when a URL Session’s WebView2 window never successfully created (no more “phantom” Session).
+- Fixed deferred RDP startup so the fullscreen request isn’t lost before the app acknowledges the entry.
+
+## Fixed
+- **Webview / Session:** Reject URL Sessions if the WebView2 window was never created, avoiding later show/bounds retry loops and the resulting app freeze when visiting the Tab. (PR #793 by @ryantsai; SHA: **a72ad65**)  
+- **RDP / Connection:** Preserve the RDP startup fullscreen setting until entry is acknowledged, instead of losing it during deferred startup. (PR #792 by @ryantsai; SHA: **f2ea2a1**)
+
+## Internal
+- Added/updated automated coverage around WebView visibility lifecycle and RDP startup fullscreen acknowledgement (includes updates under the changes for PRs #793 and #792).
+
+---
+
+## 精選重點
+- 修正當 URL Session 的 WebView2 視窗其實未成功建立時，導致在瀏覽到該 Tab 時整個 App 卡住的問題（不再出現「幽靈」Session）。
+- 修正延遲啟動的 RDP 全螢幕行為，避免在 App 尚未確認進入前請求就被丟掉。
+
+## 已修正
+- **Webview / Session：** 若 URL Session 的 WebView2 視窗從未建立成功，則拒絕該 Session；避免後續 show/bounds 的重試循環，從而避免造訪該 Tab 時 App 凍結。(PR #793，作者 @ryantsai；SHA：**a72ad65**)
+- **RDP / Connection：** 在「進入已被確認」之前，保留 RDP 啟動全螢幕設定，避免延遲啟動期間全螢幕請求遺失。(PR #792，作者 @ryantsai；SHA：**f2ea2a1**)
+
+## 內部
+- 補強/更新自動化測試涵蓋面（包含 PR #793 與 #792 相關的 WebView 可視性生命週期與 RDP 啟動全螢幕確認邏輯測試更新）。
+
+## Direct Downloads
 * 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.20/kkterm-3000.0.20-windows-x64-setup.exe)
 * 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.20/kkterm-3000.0.20-windows-arm64-setup.exe)
 * 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.20/kkterm-3000.0.20-windows-x64-portable.zip)

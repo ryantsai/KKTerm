@@ -5,8 +5,12 @@ import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
 const execFile = promisify(execFileCallback);
-const DEFAULT_MODEL = "gpt-5.4-nano";
+const DEFAULT_MODEL = "gpt-6-luna";
 const MAX_BODY_CHARS = 1200;
+
+export function resolveReleaseNotesModel(cliModel, envModel) {
+  return cliModel ?? envModel ?? DEFAULT_MODEL;
+}
 
 export function buildReleaseNotesPrompt(context) {
   return [
@@ -146,7 +150,7 @@ async function main() {
   const outputPath = options.output ?? path.join("artifacts", `release-notes-${version}.md`);
   const releaseFilePath = options.releaseFile ?? path.join("docs", "releases", `${version}.md`);
   const changelogPath = options.changelog ?? "CHANGELOG.md";
-  const model = options.model ?? process.env.OPENAI_RELEASE_NOTES_MODEL ?? DEFAULT_MODEL;
+  const model = resolveReleaseNotesModel(options.model, process.env.OPENAI_RELEASE_NOTES_MODEL);
   const repo = options.repo ?? (await resolveRepo());
   const compareUrl = repo && previousTag ? `https://github.com/${repo}/compare/${previousTag}...${version}` : "";
 
@@ -190,7 +194,7 @@ async function main() {
   console.log(`Changelog updated at ${changelogPath}`);
 }
 
-async function generateAiReleaseNotes(context, model, apiKey) {
+export async function generateAiReleaseNotes(context, model, apiKey) {
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {

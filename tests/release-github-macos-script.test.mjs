@@ -17,6 +17,10 @@ const homebrewScript = await readFile(
   new URL("../scripts/update-homebrew-cask.sh", import.meta.url),
   "utf8",
 );
+const releaseWorkflow = await readFile(
+  new URL("../.github/workflows/release.yml", import.meta.url),
+  "utf8",
+);
 const buildScript = await readFile(
   new URL("../src-tauri/build.rs", import.meta.url),
   "utf8",
@@ -176,4 +180,11 @@ test("Homebrew publisher writes, validates, commits, and pushes the KKTerm cask"
   assert.match(homebrewScript, /git -C "\$tap_dir" commit -m "kkterm \$VERSION"/);
   assert.match(homebrewScript, /git -C "\$tap_dir" push origin HEAD:main/);
   assert.match(homebrewScript, /HOMEBREW_TAP_SSH_KEY_PATH/);
+});
+
+test("release workflow checks tap read access after writing the key and before macOS build", () => {
+  const keyIndex = releaseWorkflow.indexOf("- name: Write Homebrew tap deploy key");
+  const preflightIndex = releaseWorkflow.indexOf("run: zsh scripts/update-homebrew-cask.sh --check-access");
+  const buildIndex = releaseWorkflow.indexOf("- name: Build, notarize, and publish macOS assets");
+  assert.ok(keyIndex !== -1 && preflightIndex > keyIndex && buildIndex > preflightIndex);
 });
