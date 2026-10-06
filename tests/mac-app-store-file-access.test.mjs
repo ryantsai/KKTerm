@@ -32,6 +32,16 @@ test("native grants require the Store feature and survive outside exported setti
   assert.doesNotMatch(entry, /bookmark/i, "machine-local grants must not be exported with launcher entries");
 });
 
+test("MCP App Group lookup is restricted to Store builds in both app and CLI", async () => {
+  const source = await read("src-tauri/src/app_group.rs");
+  assert.match(source, /#\[cfg\(all\(target_os = "macos", feature = "mac-app-store"\)\)\]\s*pub fn shared_container_dir/);
+  assert.match(source, /#\[cfg\(not\(all\(target_os = "macos", feature = "mac-app-store"\)\)\)\]\s*pub fn shared_container_dir\(\) -> Option<PathBuf> \{\s*None/);
+  const cli = await read("src-tauri/src/bin/kkterm-cli.rs");
+  const bridge = await read("src-tauri/src/mcp_bridge.rs");
+  assert.match(cli, /app_group::shared_container_dir\(\)/);
+  assert.match(bridge, /app_group::shared_container_dir\(\)/);
+});
+
 test("Store folder drops stay scoped to the launcher and standard native drops stay unchanged", async () => {
   const widget = await read("src/modules/dashboard/widgets/builtin/app-launcher/AppLauncherWidget.tsx");
   assert.match(widget, /isTauriRuntime\(\) && !macAppStoreBuild/);

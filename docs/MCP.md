@@ -634,13 +634,15 @@ file, bearer-token auth, tool surface, and safety gate are identical:
   format compatibility). The socket is bound *before* the descriptor is written,
   so a client that reads the descriptor can always connect.
 
-In the sandboxed Mac App Store build, `<app_data_dir>` is inside the app
-container, so the socket and descriptor live under
-`~/Library/Containers/com.kkterm.app/Data/`. A client that is itself sandboxed
-(and not in KKTerm's app group) cannot read another app's container and so
-cannot reach the bridge; unsandboxed clients connect normally. This is an App
-Sandbox rule with no in-app workaround. Direct-download macOS builds put the
-socket in the ordinary app-data directory and are reachable by any local client.
+In the sandboxed Mac App Store build, the app and its separately provisioned
+CLI helper resolve the shared App Group container for `group.com.kkterm.app`.
+The socket and descriptor live there when that container is available; otherwise
+the resolver falls back to app data. Only macOS builds compiled with
+`mac-app-store` consult the App Group API. Direct-download / Developer ID builds
+always use `~/Library/Application Support/com.kkterm.app/` for both app and CLI,
+even if an old Group Container directory exists. A sandboxed external client
+without access to the shared container cannot reach the bridge; this is an App
+Sandbox restriction with no in-app workaround.
 
 On every supported OS, `kkterm-cli` answers `initialize` / `tools/list` locally
 (so clients can introspect even when KKTerm is not running) and forwards

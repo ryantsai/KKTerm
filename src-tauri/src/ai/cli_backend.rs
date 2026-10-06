@@ -21,15 +21,18 @@ pub(crate) struct AcpStdioSession {
 
 impl AcpStdioSession {
     fn start(spec: &AcpCommandSpec) -> Result<Self, String> {
+        #[cfg(target_os = "macos")]
+        let mut child = macos_acp_command(spec, std::env::var_os("PATH"), macos_homebrew_bin_roots());
+        #[cfg(not(target_os = "macos"))]
+        let mut child = Command::new(&spec.program);
         ai_interaction_debug!(
             "agent.acp_start",
             json!({
                 "label": spec.label,
-                "program": &spec.program,
+                "program": child.get_program().to_string_lossy(),
                 "args": &spec.args,
             })
         );
-        let mut child = Command::new(&spec.program);
         child
             .args(&spec.args)
             .stdin(Stdio::piped())
@@ -595,6 +598,45 @@ pub(crate) fn npx_command() -> String {
     } else {
         "npx".to_string()
     }
+}
+
+#[cfg(any(target_os = "macos", test))]
+pub(crate) fn macos_acp_command(
+    spec: &AcpCommandSpec,
+    inherited_path: Option<std::ffi::OsString>,
+    fallback_roots: Vec<PathBuf>,
+) -> Command {
+    let mut roots = inherited_path
+        .as_deref()
+        .map(|path| std::env::split_paths(path).collect::<Vec<_>>())
+        .unwrap_or_default();
+    for root in fallback_roots {
+        if !roots.contains(&root) {
+            roots.push(root);
+        }
+    }
+    let program = if spec.program == "npx" {
+        roots
+            .iter()
+            .map(|root| root.join("npx"))
+            .find(|path| path.is_absolute() && path.is_file())
+            .unwrap_or_else(|| PathBuf::from(&spec.program))
+    } else {
+        PathBuf::from(&spec.program)
+    };
+    // Keep the shim's bin directory (not its canonicalized npm package path)
+    // first so /usr/bin/env node and adapter subprocesses use the same install.
+    if program.is_absolute()
+        && let Some(parent) = program.parent()
+    {
+        roots.retain(|root| root != parent);
+        roots.insert(0, parent.to_path_buf());
+    }
+    let mut command = Command::new(program);
+    if let Ok(path) = std::env::join_paths(roots) {
+        command.env("PATH", path);
+    }
+    command
 }
 
 pub async fn ai_cli_backend_status(

@@ -687,6 +687,121 @@ fn cli_backend_discovery_checks_homebrew_bins() {
 }
 
 #[test]
+fn macos_acp_finds_homebrew_npx_and_exposes_its_node_directory() {
+    let root = tempfile::tempdir().unwrap();
+    let system_bin = root.path().join("usr-bin");
+    let brew_bin = root.path().join("homebrew-bin");
+    std::fs::create_dir_all(&brew_bin).unwrap();
+    std::fs::write(brew_bin.join("npx"), "fixture").unwrap();
+    let spec = AcpCommandSpec {
+        program: "npx".into(),
+        args: vec![],
+        label: "Claude ACP",
+    };
+    let command = macos_acp_command(
+        &spec,
+        Some(std::env::join_paths([&system_bin]).unwrap()),
+        vec![brew_bin.clone()],
+    );
+    assert_eq!(command.get_program(), brew_bin.join("npx"));
+    let path = command
+        .get_envs()
+        .find(|(key, _)| *key == "PATH")
+        .unwrap()
+        .1
+        .unwrap();
+    assert_eq!(
+        std::env::split_paths(path).collect::<Vec<_>>(),
+        vec![brew_bin, system_bin]
+    );
+}
+
+#[test]
+fn macos_acp_preserves_path_precedence_and_explicit_programs() {
+    let root = tempfile::tempdir().unwrap();
+    let custom_bin = root.path().join("custom bin");
+    let brew_bin = root.path().join("brew-bin");
+    for bin in [&custom_bin, &brew_bin] {
+        std::fs::create_dir_all(bin).unwrap();
+        std::fs::write(bin.join("npx"), "fixture").unwrap();
+    }
+    let mut spec = AcpCommandSpec {
+        program: "npx".into(),
+        args: vec![],
+        label: "Codex ACP",
+    };
+    let inherited = std::env::join_paths([&custom_bin, &brew_bin]).unwrap();
+    let command = macos_acp_command(&spec, Some(inherited), vec![brew_bin.clone()]);
+    assert_eq!(command.get_program(), custom_bin.join("npx"));
+    let path = command
+        .get_envs()
+        .find(|(key, _)| *key == "PATH")
+        .unwrap()
+        .1
+        .unwrap();
+    assert_eq!(
+        std::env::split_paths(path).collect::<Vec<_>>(),
+        vec![custom_bin.clone(), brew_bin.clone()]
+    );
+
+    spec.program = custom_bin.join("cursor-agent").display().to_string();
+    let command = macos_acp_command(&spec, None, vec![brew_bin]);
+    assert_eq!(command.get_program(), std::ffi::OsStr::new(&spec.program));
+}
+
+#[test]
+fn macos_acp_missing_npx_keeps_normal_spawn_failure() {
+    let root = tempfile::tempdir().unwrap();
+    let spec = AcpCommandSpec {
+        program: "npx".into(),
+        args: vec![],
+        label: "Claude ACP",
+    };
+    let command = macos_acp_command(&spec, None, vec![root.path().to_path_buf()]);
+    assert_eq!(command.get_program(), "npx");
+}
+
+#[test]
+#[cfg(unix)]
+fn macos_acp_launches_env_node_shim_past_a_broken_npx_symlink() {
+    use std::os::unix::fs::{PermissionsExt, symlink};
+    let root = tempfile::tempdir().unwrap();
+    let stale_bin = root.path().join("stale-bin");
+    let brew_bin = root.path().join("homebrew bin");
+    std::fs::create_dir_all(&stale_bin).unwrap();
+    std::fs::create_dir_all(&brew_bin).unwrap();
+    symlink(root.path().join("missing-npx"), stale_bin.join("npx")).unwrap();
+    std::fs::write(brew_bin.join("npx"), "#!/usr/bin/env node\n").unwrap();
+    std::fs::write(
+        brew_bin.join("node"),
+        "#!/bin/sh\nprintf 'adapter-ready'\n",
+    )
+    .unwrap();
+    for name in ["node", "npx"] {
+        std::fs::set_permissions(brew_bin.join(name), std::fs::Permissions::from_mode(0o755))
+            .unwrap();
+    }
+    let spec = AcpCommandSpec {
+        program: "npx".into(),
+        args: vec![],
+        label: "Claude ACP",
+    };
+    let output = macos_acp_command(
+        &spec,
+        Some(std::env::join_paths([stale_bin]).unwrap()),
+        vec![brew_bin],
+    )
+    .output()
+    .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(output.stdout, b"adapter-ready");
+}
+
+#[test]
 #[cfg(target_os = "windows")]
 fn cli_backend_discovery_prefers_path_candidates_before_common_bins() {
     let path_candidates = bin_candidates_from_roots(
