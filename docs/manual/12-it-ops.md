@@ -95,6 +95,37 @@ The script is state-changing operator input. Review it and the target Site befor
 
 **IPAM** is the global IP address plan. It stands outside the Site tree in the navigator's `itops.navigation.networking` section and stays reachable whichever Site is selected. Its grid includes a Type column and shows VLAN and IP Prefix records together. `common.add` opens a menu whose `itops.ipam.cidrLabel` and `itops.ipam.vlanLabel` items create the corresponding record type; the menu expands the page header without covering the import and export toolbar.
 
+### Custom fields
+
+Configure `itops.customFields.heading` under `settings.sectionItOps` before
+editing a record. Each field applies to `itops.customFields.recordType.prefix`,
+`itops.customFields.recordType.address`, or `itops.customFields.recordType.vlan`.
+Use text for circuit numbers, provider names and contact details, a number for
+bandwidth, and additional fields for fixed IP or dial-up account metadata.
+Record dialogs show each field with the control for its configured type; empty
+values can be cleared, while zero and `itops.customFields.no` remain real values.
+Short values share a compact two-column layout; multiline text and links use the
+full width, and narrow windows use one column.
+Saved field values appear beneath the record identity in the IPAM grid.
+
+`itops.customFields.types.credential` selects an existing Saved Credential by
+label and username. Manage credentials in Settings; passwords stay in the secret
+store and are never shown or copied into a custom field. With
+`itops.customFields.types.link`, choose `itops.customFields.linkKind` and
+`itops.customFields.linkTarget`. A Connection opens in Workspace, a Rack opens
+its Rack View, a Rack Device opens its Rack and Properties, and a Network Node
+opens its Network Map with that node selected and centered. Deleted targets show
+`itops.customFields.unavailable`; editing the record can clear or replace them.
+HTTP(S) values open in the default browser.
+
+Custom definitions and values are included in full backups and the selective
+IT Ops export/import segment. The IPAM CSV, TSV, and Excel formats keep their
+standard built-in columns and do not carry custom fields.
+
+Tutorial/grep hints: `settings.itopsCustomFields` (navigation `page=settings
+settingsSectionId=itops-settings`), `itops.customFields.heading`,
+`src/modules/itops/CustomFields.tsx`, `src/modules/settings/ItOpsCustomFieldSettings.tsx`.
+
 ### VLANs
 
 A **VLAN** is a durable record of an 802.1Q VLAN your network runs. VLANs are deliberately not stored inside one Network Map, because VLAN 30 drawn on two maps has to be the same VLAN.

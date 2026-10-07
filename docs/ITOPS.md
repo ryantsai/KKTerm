@@ -209,6 +209,17 @@ a wider prefix silently re-parents everything it now contains, and no
 migration or repair pass is needed. Utilization counts documented addresses
 against usable addresses; nothing is scanned or probed automatically.
 
+**IPAM Custom Field** — an operator-defined metadata field configured in
+Settings → IT Ops. Each definition applies to IP Prefixes, IP Address Records,
+or VLANs and has a stable id, a name, a data type, and optional choice options.
+Types are text, multiline text, number, Boolean, date, choice, HTTP(S) URL,
+Saved Credential reference, and KKTerm Deep Link. Deep Links target Connections,
+Racks, Rack Devices, or a Network Node identified by its Network Map and node id.
+Targets are soft references: a deleted target leaves an unavailable value that
+the operator can clear. Credential fields contain only a Saved Credential id;
+password bytes stay in the configured secret store. Saved types and record kinds
+are immutable; choices already used by a record cannot be removed.
+
 **Network Node** — one resizable shape on a Network Map: id, label, kind,
 rectangle/circle/diamond/triangle/hexagon silhouette, canvas position and size,
 Network Map palette or custom icon background, lock state,
@@ -296,7 +307,7 @@ whether a hand-drawn node is connected to the first node in document order.
 
 ## Persistence
 
-Three SQLite tables (new schema version):
+SQLite tables:
 
 - `itops_sites` — id, name, ordered Connection ids, optional dynamic filter,
   and a legacy transport fallback retained for storage compatibility. Site
@@ -344,6 +355,15 @@ Three SQLite tables (new schema version):
   `graph_json`. Node and link ids are map-local; the one exception is each
   link's `nativeVlanId` / `taggedVlanIds`, which are soft references into
   `itops_vlans` and are remapped on selective import like any other soft id.
+- `itops_custom_fields` / `itops_custom_field_values` — global IPAM metadata
+  definitions and typed JSON values keyed by field and owning record. Values
+  are validated in Rust and committed in the same transaction as a record edit.
+  Deleting a definition cascades its values; owner-deletion triggers remove
+  values when an IP Prefix, Address Record, or VLAN is deleted through any path.
+  Schema v67 is additive and needs no seed or current-version reconciliation.
+  Both tables travel with selective IT Ops bundles and full backups; import
+  remaps field ids, record owners, and link destinations while preserving
+  map-local node ids. IPAM CSV/TSV/Excel files retain their standard columns.
 
 Durable definitions only. **Live state never persists**: in-flight Batch
 Run progress stays in memory in the runtime layer, consistent with the
@@ -429,7 +449,14 @@ History containing that Task. Statistics use the Task's stable id; ad-hoc
 and older unattributed history rows are never guessed by label.
 
 IPAM (`src/modules/itops/IpamPanel.tsx`) reuses the Task Library's
-spreadsheet-style table inside the same frame. Its Add button opens a menu for
+spreadsheet-style table inside the same frame. `CustomFields.tsx` renders typed
+operator-defined values in the three record editors and compact values in the
+grid. Following a Rack Device value opens its Rack and Properties; following a
+Network Node value opens its Network Map, selects the node, and centers the viewport.
+`customFieldTypes.ts` / `customFieldModel.ts` own the frontend value contract;
+`src-tauri/src/itops/custom_fields.rs` owns validation and atomic persistence.
+
+Its Add button opens a menu for
 creating either an IP Prefix or VLAN; both record types share the grid and have
 an explicit Type column. Rows are grouped by their
 optional Site tag, with Site-less or stale soft references collected under All

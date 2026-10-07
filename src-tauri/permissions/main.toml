@@ -510,6 +510,8 @@ commands.allow = [
   "itops_update_vlan",
   "itops_remove_vlan",
   "itops_ipam_snapshot",
+  "itops_custom_field_snapshot",
+  "itops_set_custom_fields",
   "itops_create_ip_prefix",
   "itops_update_ip_prefix",
   "itops_remove_ip_prefix",

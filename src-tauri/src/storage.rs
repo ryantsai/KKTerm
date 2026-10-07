@@ -14,7 +14,7 @@ use std::{
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use zip::{ZipArchive, ZipWriter, write::SimpleFileOptions};
 
-const SCHEMA_USER_VERSION: i32 = 66;
+const SCHEMA_USER_VERSION: i32 = 67;
 const MAX_SETTINGS_IMPORT_BYTES: u64 = 16 * 1024 * 1024 * 1024;
 const AUTOMATIC_BACKUP_INTERVAL_SECONDS: i64 = 24 * 60 * 60;
 
@@ -462,6 +462,35 @@ CREATE TABLE IF NOT EXISTS itops_ip_address_records (
     updated_at    TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(vrf, address)
 );
+
+-- Operator-defined IPAM metadata. Values never contain plaintext credentials.
+CREATE TABLE IF NOT EXISTS itops_custom_fields (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    record_kind TEXT NOT NULL CHECK(record_kind IN ('prefix', 'address', 'vlan')),
+    field_type TEXT NOT NULL,
+    options_json TEXT NOT NULL DEFAULT '[]',
+    sort_order INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS itops_custom_field_values (
+    id TEXT PRIMARY KEY,
+    field_id TEXT NOT NULL REFERENCES itops_custom_fields(id) ON DELETE CASCADE,
+    record_kind TEXT NOT NULL CHECK(record_kind IN ('prefix', 'address', 'vlan')),
+    record_id TEXT NOT NULL,
+    value_json TEXT NOT NULL,
+    UNIQUE(field_id, record_id)
+);
+CREATE INDEX IF NOT EXISTS idx_itops_custom_field_owner
+    ON itops_custom_field_values(record_kind, record_id);
+CREATE TRIGGER IF NOT EXISTS itops_custom_field_prefix_delete AFTER DELETE ON itops_ip_prefixes BEGIN
+    DELETE FROM itops_custom_field_values WHERE record_kind = 'prefix' AND record_id = OLD.id;
+END;
+CREATE TRIGGER IF NOT EXISTS itops_custom_field_address_delete AFTER DELETE ON itops_ip_address_records BEGIN
+    DELETE FROM itops_custom_field_values WHERE record_kind = 'address' AND record_id = OLD.id;
+END;
+CREATE TRIGGER IF NOT EXISTS itops_custom_field_vlan_delete AFTER DELETE ON itops_vlans BEGIN
+    DELETE FROM itops_custom_field_values WHERE record_kind = 'vlan' AND record_id = OLD.id;
+END;
 
 -- A Network Map: the logical link diagram, distinct from the physical Site →
 -- Server Room → Rack topology. graph_json holds the whole document (nodes,
@@ -3718,6 +3747,13 @@ impl Storage {
                 "#,
             )
             .map_err(to_storage_error)?;
+        if stored_version < 67 {
+            // Additive custom-field tables and owner-deletion triggers only;
+            // no defaults, backfills, or ongoing reconciliation on the fast path.
+            connection
+                .execute_batch(include_str!("itops/custom_fields_schema.sql"))
+                .map_err(to_storage_error)?;
+        }
         connection
             .execute_batch(&format!("PRAGMA user_version = {SCHEMA_USER_VERSION}"))
             .map_err(to_storage_error)?;

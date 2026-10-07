@@ -1418,6 +1418,59 @@
     }
   },
   "itops": {
+    "customFields": {
+      "heading": "Benutzerdefinierte Felder",
+      "settingsHint": "Definieren Sie Leitungsnummern, Bandbreite, Anbieter, Kontakte oder andere Metadaten für IPAM-Einträge.",
+      "name": "Feldname",
+      "recordKind": "Gilt für",
+      "type": "Datentyp",
+      "add": "Benutzerdefiniertes Feld hinzufügen",
+      "options": "Auswahlwerte",
+      "optionsHint": "Geben Sie einen Auswahlwert pro Zeile ein. Verwendete Werte können nicht entfernt werden.",
+      "immutableHint": "Datentyp und Eintragstyp eines gespeicherten Felds können nicht geändert werden.",
+      "removeTitle": "Benutzerdefiniertes Feld löschen",
+      "removeBody": "Beim Speichern der Einstellungen werden „{{name}}“ und alle zugehörigen gespeicherten Werte gelöscht.",
+      "unavailable": "Verknüpftes Ziel nicht verfügbar",
+      "credentialHint": "Wählen Sie gespeicherte Zugangsdaten unter Einstellungen → Zugangsdaten. Passwörter bleiben im Geheimnisspeicher.",
+      "urlHint": "Geben Sie eine HTTP- oder HTTPS-URL ein.",
+      "linkKind": "Verknüpfungstyp",
+      "linkTarget": "Verknüpfungsziel",
+      "yes": "Ja",
+      "no": "Nein",
+      "types": {
+        "text": "Text",
+        "multiline": "Mehrzeiliger Text",
+        "number": "Zahl",
+        "boolean": "Ja / Nein",
+        "date": "Datum",
+        "select": "Auswahl",
+        "url": "Web-URL",
+        "credential": "Gespeicherte Zugangsdaten",
+        "link": "KKTerm-Verknüpfung"
+      },
+      "recordType": {
+        "prefix": "IP-Präfix",
+        "address": "IP-Adresseintrag",
+        "vlan": "VLAN"
+      },
+      "linkType": {
+        "connection": "Verbindung",
+        "rack": "Rack",
+        "rackItem": "Rack-Gerät",
+        "networkNode": "Netzwerkknoten"
+      },
+      "errors": {
+        "definitionLimit": "Sie können bis zu 128 benutzerdefinierte Felder definieren.",
+        "definitionInvalid": "Verwenden Sie je Eintragstyp einen eindeutigen Feldnamen mit 1–120 Zeichen und einen unterstützten Datentyp.",
+        "choiceOptions": "Auswahlwerte müssen eindeutig, nicht leer und jeweils höchstens 120 Zeichen lang sein.",
+        "choiceCount": "Geben Sie 1–100 Auswahlwerte für dieses Feld ein.",
+        "immutable": "Datentyp und Eintragstyp eines gespeicherten Felds können nicht geändert werden.",
+        "fieldMissing": "Dieses benutzerdefinierte Feld existiert nicht mehr. Öffnen Sie den Editor erneut, um die Felder zu aktualisieren.",
+        "kindMismatch": "Dieses benutzerdefinierte Feld gilt für einen anderen Eintragstyp.",
+        "recordMissing": "Dieser IPAM-Eintrag existiert nicht mehr.",
+        "invalidValue": "Geben Sie einen gültigen Wert für „{{name}}“ ein. Behalten Sie bei Auswahlfeldern bereits verwendete Auswahlwerte bei."
+      }
+    },
     "railLabel": "IT Ops",
     "title": "IT Ops",
     "tabs": {

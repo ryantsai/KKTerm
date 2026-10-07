@@ -4,6 +4,7 @@
 // a full reload. Live Batch Run state arrives in later phases.
 
 import { create } from "zustand";
+import i18next from "../../i18n/config";
 import { invokeCommand, isTauriRuntime } from "../../lib/tauri";
 import type {
   AddressStatus,
@@ -39,6 +40,14 @@ import type {
 } from "../../types";
 import type { DashboardBackground } from "../dashboard/types";
 import { sanitizeRoomObjects, type RoomObject } from "./roomObjects";
+import type { CustomFieldDefinition, CustomFieldRecordKind, CustomFieldSnapshot, CustomFieldValues } from "./customFieldTypes";
+import { customFieldErrorTranslation } from "./customFieldModel";
+
+function customFieldCommandError(error: unknown): never {
+  const translation = customFieldErrorTranslation(error);
+  if (translation) throw new Error(i18next.t(translation.key, { name: translation.name }));
+  throw error;
+}
 
 /** Every place the IT Ops navigator can land. The last three are global
  * destinations that stand outside any one Site. */
@@ -62,6 +71,8 @@ export interface ItOpsNavigationRequest {
    *  Site destination rather than failing the navigation. */
   rackId?: string;
   rackItemId?: string;
+  networkMapId?: string;
+  networkNodeId?: string;
 }
 
 /** Where the IT Ops navigator currently is. Mirrored by the Sites tab so the
@@ -148,6 +159,7 @@ export interface HostInput {
 
 /** What the Prefix dialog collects; the backend canonicalizes the CIDR. */
 export interface PrefixInput {
+  customFields?: CustomFieldValues;
   cidr: string;
   vrf: string;
   role: string;
@@ -158,6 +170,7 @@ export interface PrefixInput {
 }
 
 export interface VlanInput {
+  customFields?: CustomFieldValues;
   vid: number;
   name: string;
   description: string;
@@ -166,6 +179,7 @@ export interface VlanInput {
 }
 
 export interface AddressInput {
+  customFields?: CustomFieldValues;
   address: string;
   vrf: string;
   status: AddressStatus;
@@ -191,6 +205,7 @@ function sortVlans(vlans: Vlan[]): Vlan[] {
 // create and update calls from drifting apart as fields are added.
 function prefixArgs(input: PrefixInput) {
   return {
+    customFields: input.customFields,
     cidr: input.cidr,
     vrf: input.vrf,
     role: input.role,
@@ -203,6 +218,7 @@ function prefixArgs(input: PrefixInput) {
 
 function addressArgs(input: AddressInput) {
   return {
+    customFields: input.customFields,
     address: input.address,
     vrf: input.vrf,
     status: input.status,
@@ -504,6 +520,11 @@ interface ItOpsState {
   ipam: IpamSnapshot;
   ipamLoaded: boolean;
   loadIpam: () => Promise<void>;
+  customFields: CustomFieldSnapshot;
+  customFieldsLoaded: boolean;
+  loadCustomFields: () => Promise<void>;
+  saveCustomFields: (fields: CustomFieldDefinition[]) => Promise<void>;
+  applyCustomFieldValues: (kind: CustomFieldRecordKind, recordId: string, values?: CustomFieldValues) => void;
   importIpam: (batch: IpamImportBatch) => Promise<IpamImportResult>;
   createPrefix: (input: PrefixInput) => Promise<void>;
   updatePrefix: (id: string, input: PrefixInput) => Promise<void>;
@@ -981,13 +1002,15 @@ export const useItOpsStore = create<ItOpsState>((set, get) => ({
   },
 
   async createVlan(input) {
-    const created = await invokeCommand("itops_create_vlan", input);
+    const created = await invokeCommand("itops_create_vlan", input).catch(customFieldCommandError);
+    get().applyCustomFieldValues("vlan", created.id, input.customFields);
     set({ vlans: sortVlans([...get().vlans, created]) });
     return created;
   },
 
   async updateVlan(id, input) {
-    const saved = await invokeCommand("itops_update_vlan", { id, ...input });
+    const saved = await invokeCommand("itops_update_vlan", { id, ...input }).catch(customFieldCommandError);
+    get().applyCustomFieldValues("vlan", id, input.customFields);
     set({
       vlans: sortVlans(get().vlans.map((entry) => (entry.id === id ? saved : entry))),
     });
@@ -996,6 +1019,7 @@ export const useItOpsStore = create<ItOpsState>((set, get) => ({
 
   async removeVlan(id) {
     await invokeCommand("itops_remove_vlan", { id });
+    set({ customFields: { ...get().customFields, values: get().customFields.values.filter((entry) => entry.recordKind !== "vlan" || entry.recordId !== id) } });
     set({
       vlans: get().vlans.filter((entry) => entry.id !== id),
       // The backend clears these references in the same transaction. Mirror
@@ -1011,6 +1035,35 @@ export const useItOpsStore = create<ItOpsState>((set, get) => ({
   },
 
   // ── Global IPAM ──
+  customFields: { fields: [], values: [] },
+  customFieldsLoaded: false,
+
+  async loadCustomFields() {
+    if (!isTauriRuntime()) {
+      set({ customFieldsLoaded: true });
+      return;
+    }
+    const customFields = await invokeCommand("itops_custom_field_snapshot");
+    set({ customFields, customFieldsLoaded: true });
+  },
+
+  async saveCustomFields(fields) {
+    const customFields = await invokeCommand("itops_set_custom_fields", { fields }).catch(customFieldCommandError);
+    set({ customFields, customFieldsLoaded: true });
+  },
+
+  applyCustomFieldValues(kind, recordId, values) {
+    if (!values) return;
+    const customFields = get().customFields;
+    set({ customFields: {
+      ...customFields,
+      values: [
+        ...customFields.values.filter((entry) => entry.recordKind !== kind || entry.recordId !== recordId || !(entry.fieldId in values)),
+        ...Object.entries(values).flatMap(([fieldId, value]) => value === null ? [] : [{ fieldId, recordKind: kind, recordId, value }]),
+      ],
+    } });
+  },
+
   ipam: EMPTY_IPAM,
   ipamLoaded: false,
 
@@ -1030,32 +1083,38 @@ export const useItOpsStore = create<ItOpsState>((set, get) => ({
   },
 
   async createPrefix(input) {
-    await invokeCommand("itops_create_ip_prefix", prefixArgs(input));
+    const created = await invokeCommand("itops_create_ip_prefix", prefixArgs(input)).catch(customFieldCommandError);
+    get().applyCustomFieldValues("prefix", created.id, input.customFields);
     await get().loadIpam();
   },
 
   async updatePrefix(id, input) {
-    await invokeCommand("itops_update_ip_prefix", { id, ...prefixArgs(input) });
+    await invokeCommand("itops_update_ip_prefix", { id, ...prefixArgs(input) }).catch(customFieldCommandError);
+    get().applyCustomFieldValues("prefix", id, input.customFields);
     await get().loadIpam();
   },
 
   async removePrefix(id) {
     await invokeCommand("itops_remove_ip_prefix", { id });
+    set({ customFields: { ...get().customFields, values: get().customFields.values.filter((entry) => entry.recordKind !== "prefix" || entry.recordId !== id) } });
     await get().loadIpam();
   },
 
   async createAddress(input) {
-    await invokeCommand("itops_create_ip_address", addressArgs(input));
+    const created = await invokeCommand("itops_create_ip_address", addressArgs(input)).catch(customFieldCommandError);
+    get().applyCustomFieldValues("address", created.id, input.customFields);
     await get().loadIpam();
   },
 
   async updateAddress(id, input) {
-    await invokeCommand("itops_update_ip_address", { id, ...addressArgs(input) });
+    await invokeCommand("itops_update_ip_address", { id, ...addressArgs(input) }).catch(customFieldCommandError);
+    get().applyCustomFieldValues("address", id, input.customFields);
     await get().loadIpam();
   },
 
   async removeAddress(id) {
     await invokeCommand("itops_remove_ip_address", { id });
+    set({ customFields: { ...get().customFields, values: get().customFields.values.filter((entry) => entry.recordKind !== "address" || entry.recordId !== id) } });
     await get().loadIpam();
   },
 

@@ -1418,6 +1418,59 @@
     }
   },
   "itops": {
+    "customFields": {
+      "heading": "自訂欄位",
+      "settingsHint": "為 IPAM 記錄設定電路編號、頻寬、業者、聯絡人或其他中繼資料。",
+      "name": "欄位名稱",
+      "recordKind": "適用記錄",
+      "type": "資料類型",
+      "add": "新增自訂欄位",
+      "options": "選項",
+      "optionsHint": "每行輸入一個選項。使用中的選項無法移除。",
+      "immutableHint": "已儲存欄位的資料類型與記錄類型無法變更。",
+      "removeTitle": "刪除自訂欄位",
+      "removeBody": "儲存設定後，將刪除「{{name}}」及其所有已儲存的值。",
+      "unavailable": "連結目標無法使用",
+      "credentialHint": "從「設定 → 認證資料」選取已儲存的認證資料。密碼會保留在秘密儲存區。",
+      "urlHint": "輸入 HTTP 或 HTTPS 網址。",
+      "linkKind": "連結類型",
+      "linkTarget": "連結目標",
+      "yes": "是",
+      "no": "否",
+      "types": {
+        "text": "文字",
+        "multiline": "多行文字",
+        "number": "數值",
+        "boolean": "是／否",
+        "date": "日期",
+        "select": "選項",
+        "url": "網頁網址",
+        "credential": "已儲存的認證資料",
+        "link": "KKTerm 連結"
+      },
+      "recordType": {
+        "prefix": "IP 前綴",
+        "address": "IP 位址記錄",
+        "vlan": "VLAN"
+      },
+      "linkType": {
+        "connection": "連線",
+        "rack": "機櫃",
+        "rackItem": "機櫃裝置",
+        "networkNode": "網路節點"
+      },
+      "errors": {
+        "definitionLimit": "最多可設定 128 個自訂欄位。",
+        "definitionInvalid": "每種記錄類型請使用不重複且長度為 1–120 個字元的欄位名稱，以及支援的資料類型。",
+        "choiceOptions": "選項不得重複或留空，每個選項最多 120 個字元。",
+        "choiceCount": "請為此欄位輸入 1–100 個選項。",
+        "immutable": "已儲存欄位的資料類型與記錄類型無法變更。",
+        "fieldMissing": "此自訂欄位已不存在。請重新開啟編輯器以更新欄位。",
+        "kindMismatch": "此自訂欄位適用於其他記錄類型。",
+        "recordMissing": "此 IPAM 記錄已不存在。",
+        "invalidValue": "請為「{{name}}」輸入有效值。若為選項欄位，請保留已使用的選項。"
+      }
+    },
     "railLabel": "IT Ops",
     "title": "IT Ops",
     "tabs": {

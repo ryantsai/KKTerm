@@ -1418,6 +1418,59 @@
     }
   },
   "itops": {
+    "customFields": {
+      "heading": "カスタムフィールド",
+      "settingsHint": "IPAM レコードに回線番号、帯域幅、事業者、連絡先などのメタデータを定義します。",
+      "name": "フィールド名",
+      "recordKind": "適用対象",
+      "type": "データ型",
+      "add": "カスタムフィールドを追加",
+      "options": "選択肢",
+      "optionsHint": "選択肢を1行に1つ入力します。使用中の選択肢は削除できません。",
+      "immutableHint": "保存済みフィールドのデータ型とレコード種別は変更できません。",
+      "removeTitle": "カスタムフィールドを削除",
+      "removeBody": "設定を保存すると「{{name}}」とその保存済みの値がすべて削除されます。",
+      "unavailable": "リンク先を利用できません",
+      "credentialHint": "設定 → 認証情報から保存済みの認証情報を選択します。パスワードはシークレットストアに保持されます。",
+      "urlHint": "HTTP または HTTPS の URL を入力します。",
+      "linkKind": "リンクの種類",
+      "linkTarget": "リンク先",
+      "yes": "はい",
+      "no": "いいえ",
+      "types": {
+        "text": "テキスト",
+        "multiline": "複数行テキスト",
+        "number": "数値",
+        "boolean": "はい／いいえ",
+        "date": "日付",
+        "select": "選択肢",
+        "url": "Web URL",
+        "credential": "保存済みの認証情報",
+        "link": "KKTerm リンク"
+      },
+      "recordType": {
+        "prefix": "IP プレフィックス",
+        "address": "IP アドレスレコード",
+        "vlan": "VLAN"
+      },
+      "linkType": {
+        "connection": "接続",
+        "rack": "ラック",
+        "rackItem": "ラックデバイス",
+        "networkNode": "ネットワークノード"
+      },
+      "errors": {
+        "definitionLimit": "カスタムフィールドは最大128個まで定義できます。",
+        "definitionInvalid": "レコードの種類ごとに1～120文字の重複しないフィールド名と、対応するデータ型を使用してください。",
+        "choiceOptions": "選択肢は空にできず、重複せず、それぞれ120文字以内である必要があります。",
+        "choiceCount": "このフィールドの選択肢を1～100個入力してください。",
+        "immutable": "保存済みフィールドのデータ型とレコードの種類は変更できません。",
+        "fieldMissing": "このカスタムフィールドは存在しません。エディターを開き直してフィールドを更新してください。",
+        "kindMismatch": "このカスタムフィールドは別の種類のレコードに適用されます。",
+        "recordMissing": "このIPAMレコードは存在しません。",
+        "invalidValue": "「{{name}}」に有効な値を入力してください。選択肢フィールドでは、使用中の選択肢を残してください。"
+      }
+    },
     "railLabel": "IT Ops",
     "title": "IT Ops",
     "tabs": {

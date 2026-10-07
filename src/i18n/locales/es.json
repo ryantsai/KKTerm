@@ -1418,6 +1418,59 @@
     }
   },
   "itops": {
+    "customFields": {
+      "heading": "Campos personalizados",
+      "settingsHint": "Define números de circuito, ancho de banda, proveedores, contactos u otros metadatos en los registros de IPAM.",
+      "name": "Nombre del campo",
+      "recordKind": "Se aplica a",
+      "type": "Tipo de datos",
+      "add": "Añadir campo personalizado",
+      "options": "Opciones",
+      "optionsHint": "Introduce una opción por línea. Las opciones en uso no se pueden eliminar.",
+      "immutableHint": "No se pueden cambiar el tipo de datos ni el tipo de registro de un campo guardado.",
+      "removeTitle": "Eliminar campo personalizado",
+      "removeBody": "Al guardar los ajustes, se eliminarán «{{name}}» y todos sus valores guardados.",
+      "unavailable": "Destino enlazado no disponible",
+      "credentialHint": "Selecciona una credencial guardada en Ajustes → Credenciales. Las contraseñas permanecen en el almacén de secretos.",
+      "urlHint": "Introduce una URL HTTP o HTTPS.",
+      "linkKind": "Tipo de enlace",
+      "linkTarget": "Destino del enlace",
+      "yes": "Sí",
+      "no": "No",
+      "types": {
+        "text": "Texto",
+        "multiline": "Texto de varias líneas",
+        "number": "Número",
+        "boolean": "Sí / No",
+        "date": "Fecha",
+        "select": "Opción",
+        "url": "URL web",
+        "credential": "Credencial guardada",
+        "link": "Enlace de KKTerm"
+      },
+      "recordType": {
+        "prefix": "Prefijo IP",
+        "address": "Registro de dirección IP",
+        "vlan": "VLAN"
+      },
+      "linkType": {
+        "connection": "Conexión",
+        "rack": "Bastidor",
+        "rackItem": "Dispositivo del bastidor",
+        "networkNode": "Nodo de red"
+      },
+      "errors": {
+        "definitionLimit": "Puedes definir hasta 128 campos personalizados.",
+        "definitionInvalid": "Usa un nombre de campo único de entre 1 y 120 caracteres por tipo de registro y un tipo de datos compatible.",
+        "choiceOptions": "Las opciones deben ser únicas, no estar vacías y tener un máximo de 120 caracteres cada una.",
+        "choiceCount": "Introduce entre 1 y 100 opciones para este campo.",
+        "immutable": "No se pueden cambiar el tipo de datos ni el tipo de registro de un campo guardado.",
+        "fieldMissing": "Este campo personalizado ya no existe. Vuelve a abrir el editor para actualizar los campos.",
+        "kindMismatch": "Este campo personalizado se aplica a otro tipo de registro.",
+        "recordMissing": "Este registro de IPAM ya no existe.",
+        "invalidValue": "Introduce un valor válido para «{{name}}». En los campos de opciones, conserva las opciones que ya se están usando."
+      }
+    },
     "railLabel": "IT Ops",
     "title": "IT Ops",
     "tabs": {

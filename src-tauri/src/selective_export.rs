@@ -245,6 +245,16 @@ fn segment_tables(segment: &str) -> Option<&'static [TableSpec]> {
                 pk: Pk::Generated("nmap"),
                 fks: &[],
             },
+            TableSpec {
+                name: "itops_custom_fields",
+                pk: Pk::Generated("cf"),
+                fks: &[],
+            },
+            TableSpec {
+                name: "itops_custom_field_values",
+                pk: Pk::Generated("cfvalue"),
+                fks: &[("field_id", "itops_custom_fields")],
+            },
         ]),
         // AI Assistant chat history and durable memories. Memory scope
         // ("connection:<id>") follows a Connection imported in the same bundle.
@@ -1052,6 +1062,25 @@ fn rewrite_row(
         }
     }
 
+    if table.name == "itops_custom_fields" && action == "add" {
+        let kind = row.get("record_kind").and_then(Value::as_str).unwrap_or("");
+        let name = row.get("name").and_then(Value::as_str).unwrap_or("").to_string();
+        let mut stmt = tx.prepare("SELECT name FROM itops_custom_fields WHERE record_kind = ?")
+            .map_err(|error| error.to_string())?;
+        let used = stmt.query_map([kind], |row| row.get::<_, String>(0))
+            .map_err(|error| error.to_string())?
+            .collect::<rusqlite::Result<Vec<_>>>().map_err(|error| error.to_string())?;
+        let mut unique = name.clone();
+        let mut suffix = 2;
+        while used.iter().any(|name| name.to_lowercase() == unique.to_lowercase()) {
+            let ending = format!(" ({suffix})");
+            let base: String = name.chars().take(120 - ending.chars().count()).collect();
+            unique = format!("{base}{ending}");
+            suffix += 1;
+        }
+        row.insert("name".into(), Value::String(unique));
+    }
+
     let old_url_secret_owner = if table.name == "url_credentials" {
         row.get("secret_owner_id")
             .and_then(Value::as_str)
@@ -1200,6 +1229,25 @@ fn rewrite_soft_references(
                     remap_json_id(link, "nativeVlanId", "itops_vlans", remap);
                     remap_json_id_array(link, "taggedVlanIds", "itops_vlans", remap);
                 }
+            });
+        }
+        "itops_custom_field_values" => {
+            let table = match row.get("record_kind").and_then(Value::as_str) {
+                Some("prefix") => Some("itops_ip_prefixes"),
+                Some("address") => Some("itops_ip_address_records"),
+                Some("vlan") => Some("itops_vlans"),
+                _ => None,
+            };
+            if let Some(table) = table { remap_soft_id(row, "record_id", table, remap); }
+            rewrite_json_column(row, "value_json", |value| {
+                remap_json_id(value, "connectionId", "connections", remap);
+                remap_json_id(value, "siteId", "itops_sites", remap);
+                remap_json_id(value, "rackId", "itops_site_racks", remap);
+                remap_json_id(value, "rackItemId", "itops_site_rack_items", remap);
+                remap_json_id(value, "mapId", "itops_network_maps", remap);
+                // Node ids stay local to their map. Credentials only travel when
+                // the Connections segment explicitly includes them.
+                remap_json_id(value, "credentialId", "connection_password_credentials", remap);
             });
         }
         "itops_tasks" => {
@@ -2209,6 +2257,71 @@ mod tests {
                  graph_json TEXT NOT NULL DEFAULT '{}');",
         )
         .expect("itops schema");
+        conn.execute_batch(include_str!("itops/custom_fields_schema.sql")).unwrap();
+    }
+
+    #[test]
+    fn itops_custom_fields_merge_preserves_types_and_remaps_owners_and_targets() {
+        use rusqlite::params;
+        use serde_json::json;
+        let src = SqliteConnection::open_in_memory().unwrap();
+        itops_schema(&src);
+        src.execute_batch("INSERT INTO itops_sites (id, name, sort_order) VALUES ('s','HQ',0);
+            INSERT INTO itops_site_racks VALUES ('r','s','R1',0);
+            INSERT INTO itops_site_rack_items (id, rack_id, kind, start_u) VALUES ('d','r','server',1);
+            INSERT INTO itops_ip_prefixes (id, cidr) VALUES ('p','192.0.2.0/24');
+            INSERT INTO itops_ip_address_records (id, address) VALUES ('a','192.0.2.1');
+            INSERT INTO itops_vlans (id, vid) VALUES ('v',10);
+            INSERT INTO itops_network_maps (id, name, sort_order) VALUES ('m','WAN',0);").unwrap();
+        for (id, kind, value_type, owner, value) in [
+            ("fc", "prefix", "link", "p", json!({"kind":"connection","connectionId":"c"})),
+            ("fr", "address", "link", "a", json!({"kind":"rack","siteId":"s","rackId":"r"})),
+            ("fd", "address", "link", "a", json!({"kind":"rackItem","siteId":"s","rackId":"r","rackItemId":"d"})),
+            ("fn", "address", "link", "a", json!({"kind":"networkNode","mapId":"m","nodeId":"n"})),
+            ("fcred", "address", "credential", "a", json!({"kind":"credential","credentialId":"cred"})),
+            ("fb", "vlan", "boolean", "v", json!(false)),
+            ("ft", "prefix", "text", "p", json!("WAN-001")),
+            ("fz", "prefix", "number", "p", json!(0)),
+        ] {
+            src.execute("INSERT INTO itops_custom_fields VALUES (?, ?, ?, ?, '[]', 0)", params![id,id,kind,value_type]).unwrap();
+            src.execute("INSERT INTO itops_custom_field_values VALUES (?, ?, ?, ?, ?)", params![format!("value-{id}"),id,kind,owner,value.to_string()]).unwrap();
+        }
+        let long_name = "欄".repeat(120);
+        src.execute("UPDATE itops_custom_fields SET name = ? WHERE id = 'ft'", [&long_name]).unwrap();
+        let segment: Map<String, Value> = segment_tables("itops").unwrap().iter().map(|spec| {
+            (spec.name.to_string(), Value::Array(read_table(&src, spec.name).unwrap()))
+        }).collect();
+        let mut dst = SqliteConnection::open_in_memory().unwrap();
+        itops_schema(&dst);
+        dst.execute("INSERT INTO itops_custom_fields VALUES ('local',?,'prefix','text','[]',0)", [&long_name]).unwrap();
+        let mut remap = HashMap::from([
+            (("connections".into(), "c".into()), "c-new".into()),
+            (("connection_password_credentials".into(), "cred".into()), "cred-new".into()),
+        ]);
+        let tx = dst.transaction().unwrap();
+        apply_segment(&tx, segment_tables("itops").unwrap(), &segment, "add", &mut remap).unwrap();
+        tx.commit().unwrap();
+        let snapshot = crate::itops::custom_fields::snapshot(&dst).unwrap();
+        assert_eq!(snapshot.values.len(), 8);
+        assert!(snapshot.fields.iter().any(|field| field.name == format!("{} (2)", "欄".repeat(116))));
+        let new_id = |table: &str, id: &str| remap.get(&(table.to_string(), id.to_string())).unwrap().clone();
+        for entry in snapshot.values {
+            assert_ne!(entry.field_id, "ft");
+            if entry.record_kind == "prefix" { assert_eq!(entry.record_id, new_id("itops_ip_prefixes", "p")); }
+            if entry.record_kind == "address" { assert_eq!(entry.record_id, new_id("itops_ip_address_records", "a")); }
+            if entry.record_kind == "vlan" { assert_eq!(entry.record_id, new_id("itops_vlans", "v")); }
+            match entry.value.get("kind").and_then(Value::as_str) {
+                Some("connection") => assert_eq!(entry.value["connectionId"], "c-new"),
+                Some("rack") | Some("rackItem") => {
+                    assert_eq!(entry.value["siteId"], new_id("itops_sites", "s"));
+                    assert_eq!(entry.value["rackId"], new_id("itops_site_racks", "r"));
+                    if entry.value["kind"] == "rackItem" { assert_eq!(entry.value["rackItemId"], new_id("itops_site_rack_items", "d")); }
+                }
+                Some("networkNode") => { assert_eq!(entry.value["mapId"], new_id("itops_network_maps", "m")); assert_eq!(entry.value["nodeId"], "n"); }
+                Some("credential") => assert_eq!(entry.value["credentialId"], "cred-new"),
+                _ => assert!(entry.value == json!(false) || entry.value == json!(0) || entry.value == json!("WAN-001")),
+            }
+        }
     }
 
     #[test]

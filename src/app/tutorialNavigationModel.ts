@@ -115,6 +115,7 @@ const SETTINGS_TUTORIAL_TARGET_SECTIONS: Record<string, SettingsSectionId> = {
   "settings.dontSleep": "dont-sleep-settings",
   "settings.installer": "installer-settings",
   "settings.customModules": "custom-modules-settings",
+  "settings.itopsCustomFields": "itops-settings",
 };
 
 const WORKSPACE_TUTORIAL_TARGET_IDS = [

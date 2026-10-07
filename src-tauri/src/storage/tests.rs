@@ -6771,6 +6771,47 @@ fn v65_connection_note_tables_upgrade_and_current_reopen_is_write_free() {
 }
 
 #[test]
+fn ipam_custom_fields_upgrade_v66_and_current_reopen_preserve_values_without_writes() {
+    let db_path = temp_db_path("ipam-custom-fields-v67");
+    {
+        let storage = Storage::open(db_path.clone()).unwrap();
+        storage.with_connection(|conn| {
+            conn.execute_batch("DROP TRIGGER itops_custom_field_prefix_delete;
+                DROP TRIGGER itops_custom_field_address_delete;
+                DROP TRIGGER itops_custom_field_vlan_delete;
+                DROP TABLE itops_custom_field_values;
+                DROP TABLE itops_custom_fields;
+                INSERT INTO itops_ip_prefixes (id, cidr, vrf) VALUES ('p', '192.0.2.0/24', '');
+                PRAGMA user_version = 66;").map_err(to_storage_error)
+        }).unwrap();
+    }
+    let upgraded = Storage::open(db_path.clone()).unwrap();
+    upgraded.with_connection(|conn| {
+        let version: i32 = conn.pragma_query_value(None, "user_version", |row| row.get(0)).unwrap();
+        assert_eq!(version, SCHEMA_USER_VERSION);
+        assert_eq!(crate::itops::custom_fields::snapshot(conn).unwrap().fields.len(), 0);
+        conn.execute_batch("INSERT INTO itops_custom_fields VALUES ('f', 'Circuit', 'prefix', 'text', '[]', 0);
+            INSERT INTO itops_custom_field_values VALUES ('v', 'f', 'prefix', 'p', '\"WAN-1\"');").map_err(to_storage_error)
+    }).unwrap();
+    drop(upgraded);
+    let reopened = Storage::open(db_path.clone()).unwrap();
+    let before = reopened.with_connection(|conn| {
+        Ok((conn.total_changes(), conn.pragma_query_value::<i64, _>(None, "schema_version", |row| row.get(0)).unwrap()))
+    }).unwrap();
+    reopened.initialize_schema().unwrap();
+    reopened.with_connection(|conn| {
+        assert_eq!(conn.total_changes(), before.0);
+        assert_eq!(conn.pragma_query_value::<i64, _>(None, "schema_version", |row| row.get(0)).unwrap(), before.1);
+        let snapshot = crate::itops::custom_fields::snapshot(conn).unwrap();
+        assert_eq!(snapshot.values[0].value, serde_json::json!("WAN-1"));
+        assert_eq!(conn.query_row("SELECT cidr FROM itops_ip_prefixes WHERE id='p'", [], |row| row.get::<_, String>(0)).unwrap(), "192.0.2.0/24");
+        Ok(())
+    }).unwrap();
+    drop(reopened);
+    let _ = fs::remove_file(db_path);
+}
+
+#[test]
 fn connection_note_binds_on_save_and_unbinds_on_delete() {
     let db_path = temp_db_path("connection-note-lifecycle");
     let storage = Storage::open(db_path.clone()).expect("storage opens");

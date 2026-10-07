@@ -22,6 +22,7 @@ import { useWorkspaceStore } from "../../store";
 import type { Vlan } from "../../types";
 import { useItOpsStore, type VlanInput } from "./state";
 import { VLAN_ACCENTS } from "./vlanModel";
+import { CustomFieldEditor, useCustomFieldDraft } from "./CustomFields";
 
 /** IEEE 802.1Q usable range; 0 and 4095 are reserved by the standard. */
 const VID_MIN = 1;
@@ -46,6 +47,7 @@ export function VlanDialog({ vlan, onClose }: { vlan: Vlan | null; onClose: () =
   // Network Map overlay without the operator picking colours by hand.
   const [accent, setAccent] = useState(vlan?.accent ?? vlans.length % VLAN_ACCENTS.length);
   const [busy, setBusy] = useState(false);
+  const custom = useCustomFieldDraft("vlan", vlan?.id);
 
   const parsed = Number(vid);
   const validVid =
@@ -56,9 +58,10 @@ export function VlanDialog({ vlan, onClose }: { vlan: Vlan | null; onClose: () =
   const taken = vlans.some((entry) => entry.vid === parsed && entry.id !== vlan?.id);
 
   async function save() {
-    if (!validVid || taken || busy) return;
+    if (!validVid || taken || busy || !custom.valid) return;
     setBusy(true);
     const input: VlanInput = {
+      customFields: custom.values,
       vid: parsed,
       name: name.trim(),
       description,
@@ -91,7 +94,7 @@ export function VlanDialog({ vlan, onClose }: { vlan: Vlan | null; onClose: () =
                 kind="primary"
                 icon="check"
                 onClick={() => void save()}
-                disabled={!validVid || taken || busy}
+                disabled={!validVid || taken || busy || !custom.valid}
               >
                 {t("itops.actions.save")}
               </Btn>
@@ -155,6 +158,7 @@ export function VlanDialog({ vlan, onClose }: { vlan: Vlan | null; onClose: () =
             onChange={(event) => setDescription(event.currentTarget.value)}
           />
         </Field>
+        <CustomFieldEditor kind="vlan" values={custom.values} onChange={custom.setValues} />
       </Sheet>
     </DialogShell>
   );

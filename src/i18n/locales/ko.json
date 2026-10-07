@@ -1418,6 +1418,59 @@
     }
   },
   "itops": {
+    "customFields": {
+      "heading": "사용자 지정 필드",
+      "settingsHint": "IPAM 기록에 회선 번호, 대역폭, 공급자, 연락처 등의 메타데이터를 정의합니다.",
+      "name": "필드 이름",
+      "recordKind": "적용 대상",
+      "type": "데이터 유형",
+      "add": "사용자 지정 필드 추가",
+      "options": "선택 항목",
+      "optionsHint": "한 줄에 하나의 선택 항목을 입력합니다. 사용 중인 항목은 제거할 수 없습니다.",
+      "immutableHint": "저장된 필드의 데이터 유형과 기록 유형은 변경할 수 없습니다.",
+      "removeTitle": "사용자 지정 필드 삭제",
+      "removeBody": "설정을 저장하면 “{{name}}” 및 저장된 모든 값이 삭제됩니다.",
+      "unavailable": "연결된 대상을 사용할 수 없음",
+      "credentialHint": "설정 → 자격 증명에서 저장된 자격 증명을 선택합니다. 비밀번호는 비밀 저장소에 유지됩니다.",
+      "urlHint": "HTTP 또는 HTTPS URL을 입력합니다.",
+      "linkKind": "링크 유형",
+      "linkTarget": "링크 대상",
+      "yes": "예",
+      "no": "아니요",
+      "types": {
+        "text": "텍스트",
+        "multiline": "여러 줄 텍스트",
+        "number": "숫자",
+        "boolean": "예 / 아니요",
+        "date": "날짜",
+        "select": "선택 항목",
+        "url": "웹 URL",
+        "credential": "저장된 자격 증명",
+        "link": "KKTerm 링크"
+      },
+      "recordType": {
+        "prefix": "IP 접두사",
+        "address": "IP 주소 기록",
+        "vlan": "VLAN"
+      },
+      "linkType": {
+        "connection": "연결",
+        "rack": "랙",
+        "rackItem": "랙 장치",
+        "networkNode": "네트워크 노드"
+      },
+      "errors": {
+        "definitionLimit": "사용자 지정 필드는 최대 128개까지 정의할 수 있습니다.",
+        "definitionInvalid": "기록 유형별로 중복되지 않는 1~120자 필드 이름과 지원되는 데이터 유형을 사용하세요.",
+        "choiceOptions": "선택 항목은 중복되거나 비어 있을 수 없으며 각각 최대 120자여야 합니다.",
+        "choiceCount": "이 필드의 선택 항목을 1~100개 입력하세요.",
+        "immutable": "저장된 필드의 데이터 유형과 기록 유형은 변경할 수 없습니다.",
+        "fieldMissing": "이 사용자 지정 필드가 더 이상 존재하지 않습니다. 편집기를 다시 열어 필드를 새로 고치세요.",
+        "kindMismatch": "이 사용자 지정 필드는 다른 기록 유형에 적용됩니다.",
+        "recordMissing": "이 IPAM 기록이 더 이상 존재하지 않습니다.",
+        "invalidValue": "“{{name}}”에 유효한 값을 입력하세요. 선택 항목 필드에서는 이미 사용 중인 항목을 유지하세요."
+      }
+    },
     "railLabel": "IT Ops",
     "title": "IT Ops",
     "tabs": {

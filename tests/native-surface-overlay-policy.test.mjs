@@ -82,6 +82,14 @@ test("advanced DOM overlays share URL and RDP intersection detection", async () 
   }
 });
 
+test("IPAM custom-field deletion uses the shared portal confirmation surface", async () => {
+  const source = await readFile(new URL("../src/modules/settings/ItOpsCustomFieldSettings.tsx", import.meta.url), "utf8");
+  assert.match(source, /<ConfirmSheet\b/);
+  assert.doesNotMatch(source, /className="[^"]*backdrop/);
+  const dialog = await readFile(new URL("../src/app/ui/dialog/ConfirmSheet.tsx", import.meta.url), "utf8");
+  assert.match(dialog, /<DialogShell\b/);
+});
+
 test("minimized SFTP popups keep their Session mounted without blocking native surfaces", async () => {
   const popup = await readFile(new URL("../src/modules/workspace/connections/terminal/SftpToolbarPopup.tsx", import.meta.url), "utf8");
   const workspace = await readFile(new URL("../src/modules/workspace/connections/sftp/SftpWorkspace.tsx", import.meta.url), "utf8");

@@ -1418,6 +1418,59 @@
     }
   },
   "itops": {
+    "customFields": {
+      "heading": "Trường tùy chỉnh",
+      "settingsHint": "Định nghĩa số mạch, băng thông, nhà cung cấp, người liên hệ hoặc siêu dữ liệu khác cho bản ghi IPAM.",
+      "name": "Tên trường",
+      "recordKind": "Áp dụng cho",
+      "type": "Kiểu dữ liệu",
+      "add": "Thêm trường tùy chỉnh",
+      "options": "Lựa chọn",
+      "optionsHint": "Nhập một lựa chọn trên mỗi dòng. Không thể xóa lựa chọn đang được sử dụng.",
+      "immutableHint": "Không thể đổi kiểu dữ liệu và loại bản ghi của trường đã lưu.",
+      "removeTitle": "Xóa trường tùy chỉnh",
+      "removeBody": "Khi lưu Cài đặt, “{{name}}” cùng tất cả giá trị đã lưu của trường sẽ bị xóa.",
+      "unavailable": "Đích liên kết không khả dụng",
+      "credentialHint": "Chọn thông tin xác thực đã lưu trong Cài đặt → Thông tin xác thực. Mật khẩu vẫn nằm trong kho bí mật.",
+      "urlHint": "Nhập URL HTTP hoặc HTTPS.",
+      "linkKind": "Loại liên kết",
+      "linkTarget": "Đích liên kết",
+      "yes": "Có",
+      "no": "Không",
+      "types": {
+        "text": "Văn bản",
+        "multiline": "Văn bản nhiều dòng",
+        "number": "Số",
+        "boolean": "Có / Không",
+        "date": "Ngày",
+        "select": "Lựa chọn",
+        "url": "URL web",
+        "credential": "Thông tin xác thực đã lưu",
+        "link": "Liên kết KKTerm"
+      },
+      "recordType": {
+        "prefix": "Tiền tố IP",
+        "address": "Bản ghi địa chỉ IP",
+        "vlan": "VLAN"
+      },
+      "linkType": {
+        "connection": "Kết nối",
+        "rack": "Tủ rack",
+        "rackItem": "Thiết bị trong rack",
+        "networkNode": "Nút mạng"
+      },
+      "errors": {
+        "definitionLimit": "Bạn có thể định nghĩa tối đa 128 trường tùy chỉnh.",
+        "definitionInvalid": "Dùng tên trường duy nhất từ 1–120 ký tự cho mỗi loại bản ghi và kiểu dữ liệu được hỗ trợ.",
+        "choiceOptions": "Các lựa chọn phải duy nhất, không rỗng và mỗi lựa chọn tối đa 120 ký tự.",
+        "choiceCount": "Nhập 1–100 lựa chọn cho trường này.",
+        "immutable": "Không thể đổi kiểu dữ liệu và loại bản ghi của trường đã lưu.",
+        "fieldMissing": "Trường tùy chỉnh này không còn tồn tại. Mở lại trình chỉnh sửa để cập nhật các trường.",
+        "kindMismatch": "Trường tùy chỉnh này áp dụng cho một loại bản ghi khác.",
+        "recordMissing": "Bản ghi IPAM này không còn tồn tại.",
+        "invalidValue": "Nhập giá trị hợp lệ cho “{{name}}”. Với trường lựa chọn, hãy giữ các lựa chọn đã được sử dụng."
+      }
+    },
     "railLabel": "IT Ops",
     "title": "IT Ops",
     "tabs": {

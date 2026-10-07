@@ -51,6 +51,9 @@ import { saveExportBytes } from "./itopsExport";
 import { useItOpsStore, type AddressInput, type PrefixInput } from "./state";
 import { VlanDialog } from "./VlanDialog";
 import { vlanAccent, vlanLabel } from "./vlanModel";
+import { CustomFieldEditor, CustomFieldSummary, navigateCustomFieldLink, useCustomFieldCatalog, useCustomFieldDraft } from "./CustomFields";
+import type { CustomFieldLink } from "./customFieldTypes";
+import type { CustomFieldCatalog } from "./customFieldModel";
 
 const PREFIX_STATUSES: PrefixStatus[] = ["container", "active", "reserved", "deprecated"];
 const ADDRESS_STATUSES: AddressStatus[] = ["active", "reserved", "deprecated"];
@@ -94,7 +97,7 @@ function UtilizationMeter({ value, label }: { value: number; label: string }) {
   );
 }
 
-function AddressIdentity({ record }: { record: IpAddressRecord }) {
+function AddressIdentity({ record, catalog, onNavigate }: { record: IpAddressRecord; catalog: CustomFieldCatalog; onNavigate: (link: CustomFieldLink) => void }) {
   const { t } = useTranslation();
   const device = [
     record.deviceType ? t(`itops.networkMap.nodeKind.${record.deviceType}`) : null,
@@ -106,6 +109,7 @@ function AddressIdentity({ record }: { record: IpAddressRecord }) {
       {device.length > 0 || record.description ? (
         <small>{device.length > 0 ? device.join(" · ") : record.description}</small>
       ) : null}
+      <CustomFieldSummary kind="address" recordId={record.id} catalog={catalog} onNavigate={onNavigate} />
     </span>
   );
 }
@@ -131,15 +135,17 @@ function PrefixDialog({
   const [siteId, setSiteId] = useState(prefix?.siteId ?? "");
   const [vlanId, setVlanId] = useState(prefix?.vlanId ?? "");
   const [busy, setBusy] = useState(false);
+  const custom = useCustomFieldDraft("prefix", prefix?.id);
 
   // Live echo of what will actually be stored, so a typed host address visibly
   // snaps to its network before the operator commits it.
   const preview = previewCidr(cidr);
 
   async function save() {
-    if (!preview || busy) return;
+    if (!preview || busy || !custom.valid) return;
     setBusy(true);
     const input: PrefixInput = {
+      customFields: custom.values,
       cidr,
       vrf: vrf.trim(),
       role: role.trim(),
@@ -173,7 +179,7 @@ function PrefixDialog({
           <Actions
             cancel={<Btn onClick={onClose}>{t("itops.actions.cancel")}</Btn>}
             primary={
-              <Btn kind="primary" icon="check" onClick={() => void save()} disabled={!preview || busy}>
+              <Btn kind="primary" icon="check" onClick={() => void save()} disabled={!preview || busy || !custom.valid}>
                 {t("itops.actions.save")}
               </Btn>
             }
@@ -260,6 +266,7 @@ function PrefixDialog({
             onChange={(event) => setDescription(event.currentTarget.value)}
           />
         </Field>
+        <CustomFieldEditor kind="prefix" values={custom.values} onChange={custom.setValues} />
       </Sheet>
     </DialogShell>
   );
@@ -302,6 +309,7 @@ function AddressDialog({
   const [hostId, setHostId] = useState(record?.hostId ?? seed?.hostId ?? "");
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const custom = useCustomFieldDraft("address", record?.id);
   const hosts = useMemo(() => Object.values(hostsBySite).flat(), [hostsBySite]);
   const visibleHosts = siteId ? hosts.filter((host) => host.siteId === siteId) : hosts;
 
@@ -321,9 +329,10 @@ function AddressDialog({
   }, [prefix, record, suggestFreeAddresses]);
 
   async function save() {
-    if (!address.trim() || busy) return;
+    if (!address.trim() || busy || !custom.valid) return;
     setBusy(true);
     const input: AddressInput = {
+      customFields: custom.values,
       address: address.trim(),
       vrf: vrf.trim(),
       status,
@@ -365,7 +374,7 @@ function AddressDialog({
                 kind="primary"
                 icon="check"
                 onClick={() => void save()}
-                disabled={!address.trim() || busy}
+                disabled={!address.trim() || busy || !custom.valid}
               >
                 {t("itops.actions.save")}
               </Btn>
@@ -484,6 +493,7 @@ function AddressDialog({
             onChange={(event) => setDescription(event.currentTarget.value)}
           />
         </Field>
+        <CustomFieldEditor kind="address" values={custom.values} onChange={custom.setValues} />
       </Sheet>
     </DialogShell>
   );
@@ -883,7 +893,7 @@ function ScanDialog({
   );
 }
 
-export function IpamPanel() {
+export function IpamPanel({ onShowWorkspace }: { onShowWorkspace: () => void }) {
   const { t } = useTranslation();
   const ipam = useItOpsStore((state) => state.ipam);
   const loaded = useItOpsStore((state) => state.ipamLoaded);
@@ -898,6 +908,23 @@ export function IpamPanel() {
   const hostsBySite = useItOpsStore((state) => state.hostsBySite);
   const loadHosts = useItOpsStore((state) => state.loadHosts);
   const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
+  const customFields = useItOpsStore((state) => state.customFields);
+  const loadCustomFields = useItOpsStore((state) => state.loadCustomFields);
+  const catalog = useCustomFieldCatalog(customFields.fields.some((field) => ["link", "credential"].includes(field.type)));
+
+  async function navigate(link: CustomFieldLink) {
+    try {
+      if (!await navigateCustomFieldLink(link, onShowWorkspace)) {
+        showStatusBarNotice(t("itops.customFields.unavailable"), { tone: "warning" });
+      }
+    } catch (error) {
+      showStatusBarNotice(t("itops.errorNotice", { message: errorMessage(error) }), { tone: "error" });
+    }
+  }
+
+  useEffect(() => {
+    void loadCustomFields().catch((error: unknown) => showStatusBarNotice(String(error), { tone: "error" }));
+  }, [loadCustomFields, showStatusBarNotice]);
 
   const [connections, setConnections] = useState<Connection[]>([]);
   const [query, setQuery] = useState("");
@@ -1220,6 +1247,7 @@ export function IpamPanel() {
                                 .filter(Boolean)
                                 .join(" · ")}
                             </small>
+                            <CustomFieldSummary kind="vlan" recordId={vlan.id} catalog={catalog} onNavigate={(link) => void navigate(link)} />
                           </span>
                         </span>
                         <span>—</span>
@@ -1293,6 +1321,7 @@ export function IpamPanel() {
                                {prefix.description ||
                                  vrfLabel(prefix.vrf, t("itops.ipam.defaultVrf"))}
                             </small>
+                            <CustomFieldSummary kind="prefix" recordId={prefix.id} catalog={catalog} onNavigate={(link) => void navigate(link)} />
                           </span>
                         </span>
                         <span>{prefix.role || "—"}</span>
@@ -1344,7 +1373,7 @@ export function IpamPanel() {
                             records.map((record) => (
                               <div key={record.id} className="it-ipam-address-row">
                                 <strong>{record.address}</strong>
-                                <AddressIdentity record={record} />
+                                <AddressIdentity record={record} catalog={catalog} onNavigate={(link) => void navigate(link)} />
                                 <em className="it-ipam-pill" data-status={record.status}>
                                   {t(`itops.ipam.addressStatus.${record.status}`)}
                                 </em>
@@ -1398,7 +1427,7 @@ export function IpamPanel() {
                   {unassigned.map((record) => (
                     <div key={record.id} className="it-ipam-address-row">
                       <strong>{record.address}</strong>
-                      <AddressIdentity record={record} />
+                      <AddressIdentity record={record} catalog={catalog} onNavigate={(link) => void navigate(link)} />
                       <em className="it-ipam-pill" data-status={record.status}>
                         {t(`itops.ipam.addressStatus.${record.status}`)}
                       </em>

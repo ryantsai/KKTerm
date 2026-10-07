@@ -1418,6 +1418,59 @@
     }
   },
   "itops": {
+    "customFields": {
+      "heading": "自定义字段",
+      "settingsHint": "为 IPAM 记录定义电路编号、带宽、运营商、联系人或其他元数据。",
+      "name": "字段名称",
+      "recordKind": "适用记录",
+      "type": "数据类型",
+      "add": "添加自定义字段",
+      "options": "选项",
+      "optionsHint": "每行输入一个选项。不能移除正在使用的选项。",
+      "immutableHint": "已保存字段的数据类型和记录类型不能更改。",
+      "removeTitle": "删除自定义字段",
+      "removeBody": "保存设置后将删除“{{name}}”及其全部已保存的值。",
+      "unavailable": "链接目标不可用",
+      "credentialHint": "从“设置 → 凭据”中选择已保存的凭据。密码保留在机密存储中。",
+      "urlHint": "输入 HTTP 或 HTTPS 网址。",
+      "linkKind": "链接类型",
+      "linkTarget": "链接目标",
+      "yes": "是",
+      "no": "否",
+      "types": {
+        "text": "文本",
+        "multiline": "多行文本",
+        "number": "数字",
+        "boolean": "是／否",
+        "date": "日期",
+        "select": "选项",
+        "url": "网页网址",
+        "credential": "已保存的凭据",
+        "link": "KKTerm 链接"
+      },
+      "recordType": {
+        "prefix": "IP 前缀",
+        "address": "IP 地址记录",
+        "vlan": "VLAN"
+      },
+      "linkType": {
+        "connection": "连接",
+        "rack": "机架",
+        "rackItem": "机架设备",
+        "networkNode": "网络节点"
+      },
+      "errors": {
+        "definitionLimit": "最多可以定义 128 个自定义字段。",
+        "definitionInvalid": "请为每种记录类型使用唯一的 1–120 字符字段名称及支持的数据类型。",
+        "choiceOptions": "选项必须唯一且非空，每个选项最多 120 个字符。",
+        "choiceCount": "请为此字段输入 1–100 个选项。",
+        "immutable": "已保存字段的数据类型和记录类型不能更改。",
+        "fieldMissing": "此自定义字段已不存在。请重新打开编辑器以刷新字段。",
+        "kindMismatch": "此自定义字段适用于其他记录类型。",
+        "recordMissing": "此 IPAM 记录已不存在。",
+        "invalidValue": "请为“{{name}}”输入有效值。对于选项字段，请保留正在使用的选项。"
+      }
+    },
     "railLabel": "IT Ops",
     "title": "IT Ops",
     "tabs": {

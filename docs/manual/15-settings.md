@@ -396,6 +396,23 @@ Section header `settings.sectionItOps`, listed immediately below Screenshots and
 - Subsection `itops.networkMap.heading`: `settings.networkMapAnimations` is the universal animation policy for Network Map node artwork, warning indicators, overview previews, and link traces. `settings.networkMapAnimationsOnHover` is the default; it pauses motion until the object/card is hovered, or selected for keyboard/touch access. `settings.networkMapAnimationsAlways` preserves the former continuous behavior. The operating system reduced-motion preference still disables motion in either mode. Hint: `settings.networkMapAnimationsHint`.
 - Save status: `settings.itOpsSaved`.
 
+Subsection `itops.customFields.heading` defines metadata for IPAM records.
+`itops.customFields.add` creates a draft definition with
+`itops.customFields.name`, `itops.customFields.recordKind`, and
+`itops.customFields.type` in a compact row under shared column headings.
+Expand `itops.customFields.options` beneath a choice field to edit its options.
+Text, multiline text, numbers, yes/no values, dates,
+choices, HTTP(S) URLs, Saved Credential references, and KKTerm links are
+supported. A choice uses `itops.customFields.options`, one option per line;
+options already in use cannot be removed. Saved data types and record kinds
+cannot be changed, preventing existing values from being reinterpreted.
+Removing a saved field uses `itops.customFields.removeTitle` /
+`itops.customFields.removeBody`; the definition and all its values are removed
+when Settings is saved. Field edits share the Settings Save action and
+`settings.itOpsSaved` notice. Tutorial/grep anchor: `settings.itopsCustomFields`
+(navigation `page=settings settingsSectionId=itops-settings`). See chapter 12
+for per-record controls and link navigation.
+
 ## Shortcuts
 
 Section header `settings.sectionShortcuts`. This is a top-level Settings section in the left sidebar, listed above Proxy, and is reached with `tutorial_highlight` target `settings.shortcuts` (navigation `page=settings settingsSectionId=shortcuts-settings`). The section customizes the Workspace Module keyboard shortcuts; the intro hint is `settings.shortcutsHint`.

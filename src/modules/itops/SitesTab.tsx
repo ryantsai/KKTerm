@@ -245,6 +245,10 @@ export function SitesTab({
   const [selectedDestination, setSelectedDestination] = useState<SiteDestination>("site");
   const [rootSurface, setRootSurface] = useState<RootSurface>("site");
   const [selectedNetworkMapId, setSelectedNetworkMapId] = useState("");
+  const [networkNodeFocus, setNetworkNodeFocus] = useState<{ mapId: string; nodeId: string; nonce: number } | undefined>();
+  useEffect(() => {
+    setNetworkNodeFocus((current) => current?.mapId === selectedNetworkMapId ? current : undefined);
+  }, [selectedNetworkMapId]);
   const [networkMapDialog, setNetworkMapDialog] = useState<{
     map: NetworkMap | null;
     duplicateOf?: NetworkMap;
@@ -471,7 +475,8 @@ export function SitesTab({
     }
     if (destination === "networkMaps") {
       setRootSurface("networkMaps");
-      setSelectedNetworkMapId("");
+      setSelectedNetworkMapId(pendingNavigation.networkMapId ?? "");
+      setNetworkNodeFocus(pendingNavigation.networkMapId && pendingNavigation.networkNodeId ? { mapId: pendingNavigation.networkMapId, nodeId: pendingNavigation.networkNodeId, nonce: Date.now() } : undefined);
       return;
     }
     const requestedSiteId = pendingNavigation.siteId;
@@ -487,14 +492,14 @@ export function SitesTab({
     }
     // A rack-item request drills into the owning rack and opens the item; a
     // rack or item that has since been removed degrades to the Site itself.
-    if (pendingNavigation.rackId && pendingNavigation.rackItemId) {
+    if (pendingNavigation.rackId) {
       const rack = (racksBySite[siteId] ?? []).find(
         (entry) => entry.id === pendingNavigation.rackId,
       );
       const item = rack?.items.find((entry) => entry.id === pendingNavigation.rackItemId);
-      if (rack && item) {
+      if (rack && (!pendingNavigation.rackItemId || item)) {
         selectNode(siteId, { serverRoom: rack.serverRoom, rackId: rack.id });
-        setItemDialog({ rack, item });
+        if (item) setItemDialog({ rack, item });
         return;
       }
     }
@@ -1296,6 +1301,7 @@ export function SitesTab({
                 onSelect={() => {
                   setRootSurface("networkMaps");
                   setSelectedNetworkMapId("");
+                  setNetworkNodeFocus(undefined);
                 }}
               />
               {isExpanded(LIBRARY_SURFACES.networkMaps.nodeId)
@@ -1313,6 +1319,7 @@ export function SitesTab({
                         onSelect={() => {
                           setRootSurface("networkMaps");
                           setSelectedNetworkMapId(map.id);
+                          setNetworkNodeFocus(undefined);
                         }}
                         onContextMenu={(event) => showNetworkMapMenu(event, map)}
                       />
@@ -1334,13 +1341,14 @@ export function SitesTab({
         </div>
       ) : rootSurface === "ipam" ? (
         <div className="hg-detail it-destination-page">
-          <IpamPanel />
+          <IpamPanel onShowWorkspace={onShowWorkspace} />
         </div>
       ) : rootSurface === "networkMaps" ? (
         <div className="hg-detail it-destination-page">
           <NetworkMapDesigner
             active={active}
             selectedMapId={selectedNetworkMapId}
+            focusNode={networkNodeFocus}
             onSelectedMapIdChange={setSelectedNetworkMapId}
             onShowWorkspace={onShowWorkspace}
             onNavigateItOpsDeepLink={navigateNetworkMapDeepLink}

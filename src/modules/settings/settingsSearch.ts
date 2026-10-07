@@ -262,6 +262,7 @@ export const SETTINGS_SEARCH_KEYS: Record<SettingsSectionId, readonly string[]> 
     "settings.screenshotsBorderColor", "settings.screenshotsIncludeCursor",
   ],
   "itops-settings": [
+    "itops.customFields.heading", "itops.customFields.settingsHint", "itops.customFields.type",
     "settings.networkMapAnimations", "settings.networkMapAnimationsOnHover",
     "settings.networkMapAnimationsAlways", "settings.networkMapAnimationsHint",
   ],

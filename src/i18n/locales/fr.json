@@ -1418,6 +1418,59 @@
     }
   },
   "itops": {
+    "customFields": {
+      "heading": "Champs personnalisés",
+      "settingsHint": "Définissez les numéros de circuit, la bande passante, les fournisseurs, les contacts ou d’autres métadonnées des enregistrements IPAM.",
+      "name": "Nom du champ",
+      "recordKind": "S’applique à",
+      "type": "Type de données",
+      "add": "Ajouter un champ personnalisé",
+      "options": "Choix",
+      "optionsHint": "Saisissez un choix par ligne. Les choix utilisés ne peuvent pas être supprimés.",
+      "immutableHint": "Le type de données et le type d’enregistrement d’un champ enregistré ne peuvent pas être modifiés.",
+      "removeTitle": "Supprimer le champ personnalisé",
+      "removeBody": "L’enregistrement des paramètres supprimera « {{name}} » et toutes ses valeurs enregistrées.",
+      "unavailable": "Cible liée indisponible",
+      "credentialHint": "Sélectionnez des identifiants enregistrés dans Paramètres → Identifiants. Les mots de passe restent dans le stockage des secrets.",
+      "urlHint": "Saisissez une URL HTTP ou HTTPS.",
+      "linkKind": "Type de lien",
+      "linkTarget": "Cible du lien",
+      "yes": "Oui",
+      "no": "Non",
+      "types": {
+        "text": "Texte",
+        "multiline": "Texte multiligne",
+        "number": "Nombre",
+        "boolean": "Oui / Non",
+        "date": "Date",
+        "select": "Choix",
+        "url": "URL web",
+        "credential": "Identifiants enregistrés",
+        "link": "Lien KKTerm"
+      },
+      "recordType": {
+        "prefix": "Préfixe IP",
+        "address": "Enregistrement d’adresse IP",
+        "vlan": "VLAN"
+      },
+      "linkType": {
+        "connection": "Connexion",
+        "rack": "Baie",
+        "rackItem": "Appareil de baie",
+        "networkNode": "Nœud réseau"
+      },
+      "errors": {
+        "definitionLimit": "Vous pouvez définir jusqu’à 128 champs personnalisés.",
+        "definitionInvalid": "Utilisez un nom de champ unique de 1 à 120 caractères par type d’enregistrement et un type de données pris en charge.",
+        "choiceOptions": "Les choix doivent être uniques, non vides et comporter au maximum 120 caractères chacun.",
+        "choiceCount": "Saisissez de 1 à 100 choix pour ce champ.",
+        "immutable": "Le type de données et le type d’enregistrement d’un champ enregistré ne peuvent pas être modifiés.",
+        "fieldMissing": "Ce champ personnalisé n’existe plus. Rouvrez l’éditeur pour actualiser les champs.",
+        "kindMismatch": "Ce champ personnalisé s’applique à un autre type d’enregistrement.",
+        "recordMissing": "Cet enregistrement IPAM n’existe plus.",
+        "invalidValue": "Saisissez une valeur valide pour « {{name}} ». Pour les champs de choix, conservez les choix déjà utilisés."
+      }
+    },
     "railLabel": "IT Ops",
     "title": "IT Ops",
     "tabs": {

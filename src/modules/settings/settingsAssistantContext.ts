@@ -464,6 +464,10 @@ const SETTINGS_SECTIONS: Record<SettingsSectionId, SettingsSectionSummary> = {
     fallbackLabel: "IT Ops",
     controls: [
       {
+        key: "itops.customFields.heading",
+        description: "Operator-defined typed metadata for IPAM Prefixes, Address Records, and VLANs, including vault credential references and links to Connections, racks, Rack Devices, and Network Nodes.",
+      },
+      {
         key: "settings.networkMapAnimations",
         description:
           "Universal Network Map animation policy for both node artwork and link traces.",

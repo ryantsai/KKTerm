@@ -3145,11 +3145,13 @@ type LinkDialogRequest = {
 
 function MapEditor({
   map,
+  focusNode,
   onOpenProperties,
   deepLinkCatalog,
   onNavigateDeepLink,
 }: {
   map: NetworkMap;
+  focusNode?: { nodeId: string; nonce: number };
   onOpenProperties: (map: NetworkMap) => void;
   deepLinkCatalog: NetworkMapDeepLinkCatalog;
   onNavigateDeepLink: (link: NetworkNodeDeepLink) => void;
@@ -3185,6 +3187,17 @@ function MapEditor({
   // edits the graph or its operator-authored status fields.
   const [spotlightVlanId, setSpotlightVlanId] = useState<string | null>(null);
   const [flowInstance, setFlowInstance] = useState<ReactFlowInstance | null>(null);
+
+  useEffect(() => {
+    if (!focusNode || !flowInstance) return;
+    const node = graphRef.current.nodes.find((node) => node.id === focusNode.nodeId);
+    if (!node) return;
+    setSelection({ kind: "canvas", items: [{ kind: "node", id: node.id }] });
+    const frame = requestAnimationFrame(() => {
+      void flowInstance.setCenter(node.x + node.width / 2, node.y + node.height / 2, { zoom: 1 });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focusNode, flowInstance]);
 
   function cancelPlacement() {
     setPlacementDraft(null);
@@ -4095,7 +4108,7 @@ function MapEditor({
             elevateNodesOnSelect={false}
             deleteKeyCode={null}
             onlyRenderVisibleElements
-            fitView
+            fitView={!focusNode}
             proOptions={{ hideAttribution: true }}
           >
             <Background variant={BackgroundVariant.Dots} gap={18} size={1} />
@@ -4326,12 +4339,14 @@ function VlanLegend({
 export function NetworkMapDesigner({
   active,
   selectedMapId,
+  focusNode,
   onSelectedMapIdChange,
   onShowWorkspace,
   onNavigateItOpsDeepLink,
 }: {
   active: boolean;
   selectedMapId?: string;
+  focusNode?: { nodeId: string; nonce: number };
   onSelectedMapIdChange?: (id: string) => void;
   onShowWorkspace: () => void;
   onNavigateItOpsDeepLink: (link: NetworkNodeDeepLink) => void;
@@ -4516,6 +4531,7 @@ export function NetworkMapDesigner({
           <MapEditor
             key={selected.id}
             map={selected}
+            focusNode={focusNode}
             deepLinkCatalog={deepLinkCatalog}
             onNavigateDeepLink={navigateDeepLink}
             onOpenProperties={(currentMap) => setDialog(currentMap)}

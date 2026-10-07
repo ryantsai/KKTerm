@@ -2,6 +2,7 @@
 
 use tauri::{AppHandle, Manager};
 
+use super::custom_fields;
 use super::ids::new_itops_id;
 use super::types::Vlan;
 use super::vlan_storage;
@@ -22,20 +23,23 @@ pub fn itops_create_vlan(
     description: String,
     site_id: Option<String>,
     accent: u8,
+    custom_fields: Option<custom_fields::FieldValues>,
 ) -> Result<Vlan, String> {
     let id = new_itops_id("vlan");
     app.state::<crate::storage::Storage>()
         .with_connection_infallible(|conn| {
-            vlan_storage::create_vlan(
-                conn,
-                &id,
-                vid,
-                &name,
-                &description,
-                site_id.as_deref(),
-                accent,
-            )
-            .map_err(|error| error.to_string())
+            custom_fields::with_record_values(conn, "vlan", &id, custom_fields, |conn| {
+                vlan_storage::create_vlan(
+                    conn,
+                    &id,
+                    vid,
+                    &name,
+                    &description,
+                    site_id.as_deref(),
+                    accent,
+                )
+                .map_err(|error| error.to_string())
+            })
         })
 }
 
@@ -48,19 +52,22 @@ pub fn itops_update_vlan(
     description: String,
     site_id: Option<String>,
     accent: u8,
+    custom_fields: Option<custom_fields::FieldValues>,
 ) -> Result<Vlan, String> {
     app.state::<crate::storage::Storage>()
         .with_connection_infallible(|conn| {
-            vlan_storage::update_vlan(
-                conn,
-                &id,
-                vid,
-                &name,
-                &description,
-                site_id.as_deref(),
-                accent,
-            )
-            .map_err(|error| error.to_string())
+            custom_fields::with_record_values(conn, "vlan", &id, custom_fields, |conn| {
+                vlan_storage::update_vlan(
+                    conn,
+                    &id,
+                    vid,
+                    &name,
+                    &description,
+                    site_id.as_deref(),
+                    accent,
+                )
+                .map_err(|error| error.to_string())
+            })
         })
 }
 

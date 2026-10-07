@@ -1418,6 +1418,59 @@
     }
   },
   "itops": {
+    "customFields": {
+      "heading": "Kolom kustom",
+      "settingsHint": "Tentukan nomor sirkuit, bandwidth, penyedia, kontak, atau metadata lain pada catatan IPAM.",
+      "name": "Nama kolom",
+      "recordKind": "Berlaku untuk",
+      "type": "Tipe data",
+      "add": "Tambahkan kolom kustom",
+      "options": "Pilihan",
+      "optionsHint": "Masukkan satu pilihan per baris. Pilihan yang digunakan tidak dapat dihapus.",
+      "immutableHint": "Tipe data dan jenis catatan kolom yang tersimpan tidak dapat diubah.",
+      "removeTitle": "Hapus kolom kustom",
+      "removeBody": "Menyimpan Pengaturan akan menghapus “{{name}}” beserta semua nilai yang tersimpan.",
+      "unavailable": "Tujuan tertaut tidak tersedia",
+      "credentialHint": "Pilih kredensial tersimpan dari Pengaturan → Kredensial. Kata sandi tetap berada di penyimpanan rahasia.",
+      "urlHint": "Masukkan URL HTTP atau HTTPS.",
+      "linkKind": "Jenis tautan",
+      "linkTarget": "Tujuan tautan",
+      "yes": "Ya",
+      "no": "Tidak",
+      "types": {
+        "text": "Teks",
+        "multiline": "Teks multibaris",
+        "number": "Angka",
+        "boolean": "Ya / Tidak",
+        "date": "Tanggal",
+        "select": "Pilihan",
+        "url": "URL web",
+        "credential": "Kredensial tersimpan",
+        "link": "Tautan KKTerm"
+      },
+      "recordType": {
+        "prefix": "Prefiks IP",
+        "address": "Catatan Alamat IP",
+        "vlan": "VLAN"
+      },
+      "linkType": {
+        "connection": "Koneksi",
+        "rack": "Rak",
+        "rackItem": "Perangkat Rak",
+        "networkNode": "Node Jaringan"
+      },
+      "errors": {
+        "definitionLimit": "Anda dapat menentukan hingga 128 kolom kustom.",
+        "definitionInvalid": "Gunakan nama kolom unik sepanjang 1–120 karakter per jenis catatan dan tipe data yang didukung.",
+        "choiceOptions": "Pilihan harus unik, tidak kosong, dan masing-masing maksimal 120 karakter.",
+        "choiceCount": "Masukkan 1–100 pilihan untuk kolom ini.",
+        "immutable": "Tipe data dan jenis catatan kolom yang tersimpan tidak dapat diubah.",
+        "fieldMissing": "Kolom kustom ini sudah tidak ada. Buka kembali editor untuk memperbarui kolom.",
+        "kindMismatch": "Kolom kustom ini berlaku untuk jenis catatan lain.",
+        "recordMissing": "Catatan IPAM ini sudah tidak ada.",
+        "invalidValue": "Masukkan nilai yang valid untuk “{{name}}”. Untuk kolom pilihan, pertahankan pilihan yang sudah digunakan."
+      }
+    },
     "railLabel": "IT Ops",
     "title": "IT Ops",
     "tabs": {

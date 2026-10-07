@@ -1418,6 +1418,59 @@
     }
   },
   "itops": {
+    "customFields": {
+      "heading": "Custom fields",
+      "settingsHint": "Define circuit numbers, bandwidth, providers, contacts, or other metadata on IPAM records.",
+      "name": "Field name",
+      "recordKind": "Applies to",
+      "type": "Data type",
+      "add": "Add custom field",
+      "options": "Choices",
+      "optionsHint": "Enter one choice per line. Choices in use cannot be removed.",
+      "immutableHint": "A saved field's data type and record type cannot be changed.",
+      "removeTitle": "Delete custom field",
+      "removeBody": "Saving Settings will delete “{{name}}” and all its saved values.",
+      "unavailable": "Linked target unavailable",
+      "credentialHint": "Select a saved credential from Settings → Credentials. Passwords stay in the secret store.",
+      "urlHint": "Enter an HTTP or HTTPS URL.",
+      "linkKind": "Link type",
+      "linkTarget": "Link target",
+      "yes": "Yes",
+      "no": "No",
+      "types": {
+        "text": "Text",
+        "multiline": "Multiline text",
+        "number": "Number",
+        "boolean": "Yes / No",
+        "date": "Date",
+        "select": "Choice",
+        "url": "Web URL",
+        "credential": "Saved credential",
+        "link": "KKTerm link"
+      },
+      "recordType": {
+        "prefix": "IP Prefix",
+        "address": "IP Address Record",
+        "vlan": "VLAN"
+      },
+      "linkType": {
+        "connection": "Connection",
+        "rack": "Rack",
+        "rackItem": "Rack Device",
+        "networkNode": "Network Node"
+      },
+      "errors": {
+        "definitionLimit": "You can define up to 128 custom fields.",
+        "definitionInvalid": "Use a unique field name of 1–120 characters per record type and a supported data type.",
+        "choiceOptions": "Choices must be unique, non-empty, and at most 120 characters each.",
+        "choiceCount": "Enter 1–100 choices for this field.",
+        "immutable": "A saved field’s data type and record type cannot change.",
+        "fieldMissing": "This custom field no longer exists. Reopen the editor to refresh the fields.",
+        "kindMismatch": "This custom field applies to a different record type.",
+        "recordMissing": "This IPAM record no longer exists.",
+        "invalidValue": "Enter a valid value for “{{name}}”. For choice fields, keep any choices that are already in use."
+      }
+    },
     "railLabel": "IT Ops",
     "title": "IT Ops",
     "tabs": {

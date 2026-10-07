@@ -5714,6 +5714,8 @@ pub fn run() {
             itops::vlan_commands::itops_update_vlan,
             itops::vlan_commands::itops_remove_vlan,
             itops::ipam_commands::itops_ipam_snapshot,
+            itops::custom_fields::itops_custom_field_snapshot,
+            itops::custom_fields::itops_set_custom_fields,
             itops::ipam_commands::itops_create_ip_prefix,
             itops::ipam_commands::itops_update_ip_prefix,
             itops::ipam_commands::itops_remove_ip_prefix,

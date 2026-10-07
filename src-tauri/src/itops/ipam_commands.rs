@@ -7,7 +7,7 @@ use super::types::{
     AddressStatus, IpAddressRecord, IpPrefix, IpamDeviceType, IpamImportBatch, IpamImportResult,
     IpamScanResult, IpamSnapshot, IpamWorkbookSheet, PrefixStatus,
 };
-use super::{ipam_import, ipam_scan, ipam_storage};
+use super::{custom_fields, ipam_import, ipam_scan, ipam_storage};
 
 /// The whole IPAM view in one call: prefixes with their derived hierarchy and
 /// utilization, plus every Address Record. Small enough to reload wholesale
@@ -31,22 +31,25 @@ pub fn itops_create_ip_prefix(
     description: String,
     site_id: Option<String>,
     vlan_id: Option<String>,
+    custom_fields: Option<custom_fields::FieldValues>,
 ) -> Result<IpPrefix, String> {
     let id = new_itops_id("prefix");
     app.state::<crate::storage::Storage>()
         .with_connection_infallible(|conn| {
-            ipam_storage::create_prefix(
-                conn,
-                &id,
-                &cidr,
-                &vrf,
-                &role,
-                status,
-                &description,
-                site_id.as_deref(),
-                vlan_id.as_deref(),
-            )
-            .map_err(|error| error.to_string())
+            custom_fields::with_record_values(conn, "prefix", &id, custom_fields, |conn| {
+                ipam_storage::create_prefix(
+                    conn,
+                    &id,
+                    &cidr,
+                    &vrf,
+                    &role,
+                    status,
+                    &description,
+                    site_id.as_deref(),
+                    vlan_id.as_deref(),
+                )
+                .map_err(|error| error.to_string())
+            })
         })
 }
 
@@ -62,21 +65,24 @@ pub fn itops_update_ip_prefix(
     description: String,
     site_id: Option<String>,
     vlan_id: Option<String>,
+    custom_fields: Option<custom_fields::FieldValues>,
 ) -> Result<IpPrefix, String> {
     app.state::<crate::storage::Storage>()
         .with_connection_infallible(|conn| {
-            ipam_storage::update_prefix(
-                conn,
-                &id,
-                &cidr,
-                &vrf,
-                &role,
-                status,
-                &description,
-                site_id.as_deref(),
-                vlan_id.as_deref(),
-            )
-            .map_err(|error| error.to_string())
+            custom_fields::with_record_values(conn, "prefix", &id, custom_fields, |conn| {
+                ipam_storage::update_prefix(
+                    conn,
+                    &id,
+                    &cidr,
+                    &vrf,
+                    &role,
+                    status,
+                    &description,
+                    site_id.as_deref(),
+                    vlan_id.as_deref(),
+                )
+                .map_err(|error| error.to_string())
+            })
         })
 }
 
@@ -103,26 +109,29 @@ pub fn itops_create_ip_address(
     host_id: Option<String>,
     connection_id: Option<String>,
     rack_item_id: Option<String>,
+    custom_fields: Option<custom_fields::FieldValues>,
 ) -> Result<IpAddressRecord, String> {
     let id = new_itops_id("ipaddr");
     app.state::<crate::storage::Storage>()
         .with_connection_infallible(|conn| {
-            ipam_storage::create_address(
-                conn,
-                &id,
-                &address,
-                &vrf,
-                status,
-                &dns_name,
-                device_type,
-                &device_model,
-                &description,
-                site_id.as_deref(),
-                host_id.as_deref(),
-                connection_id.as_deref(),
-                rack_item_id.as_deref(),
-            )
-            .map_err(|error| error.to_string())
+            custom_fields::with_record_values(conn, "address", &id, custom_fields, |conn| {
+                ipam_storage::create_address(
+                    conn,
+                    &id,
+                    &address,
+                    &vrf,
+                    status,
+                    &dns_name,
+                    device_type,
+                    &device_model,
+                    &description,
+                    site_id.as_deref(),
+                    host_id.as_deref(),
+                    connection_id.as_deref(),
+                    rack_item_id.as_deref(),
+                )
+                .map_err(|error| error.to_string())
+            })
         })
 }
 
@@ -142,25 +151,28 @@ pub fn itops_update_ip_address(
     host_id: Option<String>,
     connection_id: Option<String>,
     rack_item_id: Option<String>,
+    custom_fields: Option<custom_fields::FieldValues>,
 ) -> Result<IpAddressRecord, String> {
     app.state::<crate::storage::Storage>()
         .with_connection_infallible(|conn| {
-            ipam_storage::update_address(
-                conn,
-                &id,
-                &address,
-                &vrf,
-                status,
-                &dns_name,
-                device_type,
-                &device_model,
-                &description,
-                site_id.as_deref(),
-                host_id.as_deref(),
-                connection_id.as_deref(),
-                rack_item_id.as_deref(),
-            )
-            .map_err(|error| error.to_string())
+            custom_fields::with_record_values(conn, "address", &id, custom_fields, |conn| {
+                ipam_storage::update_address(
+                    conn,
+                    &id,
+                    &address,
+                    &vrf,
+                    status,
+                    &dns_name,
+                    device_type,
+                    &device_model,
+                    &description,
+                    site_id.as_deref(),
+                    host_id.as_deref(),
+                    connection_id.as_deref(),
+                    rack_item_id.as_deref(),
+                )
+                .map_err(|error| error.to_string())
+            })
         })
 }
 

@@ -667,6 +667,11 @@ notifications.
 
 The Screenshots tutorial target `screenshots.videoFrameRate` uses navigation `page=screenshots` and is present after selecting Video mode. It identifies the 30/60/120 fps recording selector.
 
+The IPAM custom-field Settings target `settings.itopsCustomFields` uses
+navigation `page=settings settingsSectionId=itops-settings`. It identifies the
+typed custom-field definition editor. Existing IPAM record tools preserve these
+operator-authored values when editing built-in record properties.
+
 ## Appearance and keyword-highlighting parity
 
 Native Assistant, MCP, and `kkterm-cli` discovery now share appearance contracts.

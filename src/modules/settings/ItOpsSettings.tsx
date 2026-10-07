@@ -5,6 +5,9 @@ import { invokeCommand, isTauriRuntime } from "../../lib/tauri";
 import { useWorkspaceStore } from "../../store";
 import type { GeneralSettings, NetworkMapAnimationMode } from "../../types";
 import { SettingsSectionHeader, useSettingsSaveRegistration } from "./shared";
+import { ItOpsCustomFieldSettings } from "./ItOpsCustomFieldSettings";
+import { useItOpsStore } from "../itops/state";
+import type { CustomFieldDefinition } from "../itops/customFieldTypes";
 
 export function ItOpsSettings() {
   const { t } = useTranslation();
@@ -12,15 +15,30 @@ export function ItOpsSettings() {
   const setGeneralSettings = useWorkspaceStore((state) => state.setGeneralSettings);
   const showStatusBarNotice = useWorkspaceStore((state) => state.showStatusBarNotice);
   const [draft, setDraft] = useState<GeneralSettings>(generalSettings);
+  const customFields = useItOpsStore((state) => state.customFields.fields);
+  const customFieldsLoaded = useItOpsStore((state) => state.customFieldsLoaded);
+  const loadCustomFields = useItOpsStore((state) => state.loadCustomFields);
+  const saveCustomFields = useItOpsStore((state) => state.saveCustomFields);
+  const [fieldDraft, setFieldDraft] = useState<CustomFieldDefinition[]>(customFields);
+  const [saving, setSaving] = useState(false);
+  const fieldChanges = JSON.stringify(fieldDraft) !== JSON.stringify(customFields);
   const hasChanges =
-    draft.networkMapAnimations !== generalSettings.networkMapAnimations;
+    draft.networkMapAnimations !== generalSettings.networkMapAnimations || fieldChanges;
+
+  useEffect(() => {
+    void loadCustomFields().catch((error: unknown) => showStatusBarNotice(String(error), { tone: "error" }));
+  }, [loadCustomFields, showStatusBarNotice]);
+  useEffect(() => setFieldDraft(customFields), [customFields]);
 
   useEffect(() => {
     setDraft(generalSettings);
   }, [generalSettings]);
 
   async function handleSave() {
+    if (saving || !customFieldsLoaded) return;
+    setSaving(true);
     try {
+      if (fieldChanges) await saveCustomFields(fieldDraft);
       const currentSettings = useWorkspaceStore.getState().generalSettings;
       const request = {
         ...currentSettings,
@@ -37,6 +55,8 @@ export function ItOpsSettings() {
         saveError instanceof Error ? saveError.message : String(saveError),
         { tone: "error" },
       );
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -56,13 +76,13 @@ export function ItOpsSettings() {
             <span>{t("settings.networkMapAnimations")}</span>
             <select
               value={draft.networkMapAnimations}
-              onChange={(event) =>
+              onChange={(event) => {
+                const networkMapAnimations = event.currentTarget.value as NetworkMapAnimationMode;
                 setDraft((state) => ({
                   ...state,
-                  networkMapAnimations: event.currentTarget
-                    .value as NetworkMapAnimationMode,
-                }))
-              }
+                  networkMapAnimations,
+                }));
+              }}
             >
               <option value="onHover">
                 {t("settings.networkMapAnimationsOnHover")}
@@ -77,6 +97,7 @@ export function ItOpsSettings() {
           </label>
         </div>
       </fieldset>
+      <ItOpsCustomFieldSettings fields={fieldDraft} savedFields={customFields} onChange={setFieldDraft} disabled={!customFieldsLoaded || saving} />
     </section>
   );
 }

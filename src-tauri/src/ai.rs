@@ -101,6 +101,7 @@ const TUTORIAL_TOOL_KNOWN_TARGETS: &str = concat!(
     "settings.rdpColorDepth, settings.rdpPerformanceProfile, settings.rdpRemoteResolution, settings.rdpOpenInFullscreen with navigation page=settings settingsSectionId=rdp-settings; ",
     "settings.vncViewOnly, settings.vncColorLevel with navigation page=settings settingsSectionId=vnc-settings; ",
     "settings.screenshotsFolder, settings.screenshotsFormat, settings.screenshotsRecording, settings.screenshotsShortcuts, settings.useDirectxScreenCapture with navigation page=settings settingsSectionId=screenshots-settings; ",
+    "settings.itopsCustomFields with navigation page=settings settingsSectionId=itops-settings; ",
     "settings.workspace with navigation page=settings settingsSectionId=workspace-settings; settings.fileExplorer with navigation page=settings settingsSectionId=file-explorer-settings; settings.dontSleep with navigation page=settings settingsSectionId=dont-sleep-settings; settings.installer with navigation page=settings settingsSectionId=installer-settings; settings.customModules with navigation page=settings settingsSectionId=custom-modules-settings; ",
     "settings.shortcuts with navigation page=settings settingsSectionId=shortcuts-settings; ",
     "settings.proxy with navigation page=settings settingsSectionId=proxy-settings; ",
@@ -5516,6 +5517,7 @@ pub(crate) async fn itops_tool(app: &tauri::AppHandle, name: &str, args: Value) 
                 arg_string(&args, "description"),
                 optional_string(&args, "siteId"),
                 accent,
+                None,
             )
             .map(to_value)
         })()),
@@ -5533,6 +5535,7 @@ pub(crate) async fn itops_tool(app: &tauri::AppHandle, name: &str, args: Value) 
                 arg_string(&args, "description"),
                 optional_string(&args, "siteId"),
                 accent,
+                None,
             )
             .map(to_value)
         })()),
@@ -5567,6 +5570,7 @@ pub(crate) async fn itops_tool(app: &tauri::AppHandle, name: &str, args: Value) 
                     values.4,
                     values.5,
                     values.6,
+                    None,
                 )
                 .map(to_value)
             } else {
@@ -5580,6 +5584,7 @@ pub(crate) async fn itops_tool(app: &tauri::AppHandle, name: &str, args: Value) 
                     values.4,
                     values.5,
                     values.6,
+                    None,
                 )
                 .map(to_value)
             }
@@ -5635,6 +5640,7 @@ pub(crate) async fn itops_tool(app: &tauri::AppHandle, name: &str, args: Value) 
                     values.8,
                     values.9,
                     values.10,
+                    None,
                 )
                 .map(to_value)
             } else {
@@ -5652,6 +5658,7 @@ pub(crate) async fn itops_tool(app: &tauri::AppHandle, name: &str, args: Value) 
                     values.8,
                     values.9,
                     values.10,
+                    None,
                 )
                 .map(to_value)
             }

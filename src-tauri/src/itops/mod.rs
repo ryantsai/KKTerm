@@ -7,6 +7,7 @@
 // are global like `task_storage`.
 
 pub mod commands;
+pub mod custom_fields;
 pub mod host_storage;
 pub(crate) mod ids;
 pub mod inventory;

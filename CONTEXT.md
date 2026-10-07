@@ -161,6 +161,13 @@ _Avoid_: subnet, broadcast domain (as the stored entity), IP Prefix, network seg
 
 **IPAM**:
 The global IT Ops address-plan destination in the navigator's Networking section. It manages **VLANs** and **IP Prefixes** in one typed record grid, with **IP Address Records** nested under Prefixes. It never scans automatically, and an explicit bounded discovery scan stays transient until the operator imports selected results. It does not lease or reserve anything on the network. Prefix nesting, depth, and utilization are recomputed from containment on every read and are never stored, so adding a wider prefix silently re-parents the blocks it now contains. IPAM is a view over three durable tables, not a durable entity itself.
+
+**IPAM Custom Field**:
+Operator-defined typed metadata on an IP Prefix, IP Address Record, or VLAN,
+configured in Settings → IT Ops. It documents circuit and inventory details
+without changing the network. Values can refer to a Saved Credential or link to
+a Connection, Rack, Rack Device, or Network Node; credentials store only a vault
+reference, and deleted link targets remain explicitly unavailable.
 _Avoid_: subnet manager, DHCP, address scanner, DDI
 
 **IP Prefix**:

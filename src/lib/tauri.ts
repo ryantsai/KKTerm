@@ -1748,6 +1748,14 @@ type CommandMap = {
     args: undefined;
     result: import("../types").Vlan[];
   };
+  itops_custom_field_snapshot: {
+    args: undefined;
+    result: import("../modules/itops/customFieldTypes").CustomFieldSnapshot;
+  };
+  itops_set_custom_fields: {
+    args: { fields: import("../modules/itops/customFieldTypes").CustomFieldDefinition[] };
+    result: import("../modules/itops/customFieldTypes").CustomFieldSnapshot;
+  };
   itops_create_vlan: {
     args: {
       vid: number;
@@ -1755,6 +1763,7 @@ type CommandMap = {
       description: string;
       siteId: string | null;
       accent: number;
+      customFields?: import("../modules/itops/customFieldTypes").CustomFieldValues;
     };
     result: import("../types").Vlan;
   };
@@ -1766,6 +1775,7 @@ type CommandMap = {
       description: string;
       siteId: string | null;
       accent: number;
+      customFields?: import("../modules/itops/customFieldTypes").CustomFieldValues;
     };
     result: import("../types").Vlan;
   };
@@ -1798,6 +1808,7 @@ type CommandMap = {
       description: string;
       siteId: string | null;
       vlanId: string | null;
+      customFields?: import("../modules/itops/customFieldTypes").CustomFieldValues;
     };
     result: import("../types").IpPrefix;
   };
@@ -1811,6 +1822,7 @@ type CommandMap = {
       description: string;
       siteId: string | null;
       vlanId: string | null;
+      customFields?: import("../modules/itops/customFieldTypes").CustomFieldValues;
     };
     result: import("../types").IpPrefix;
   };
@@ -1831,6 +1843,7 @@ type CommandMap = {
       hostId: string | null;
       connectionId: string | null;
       rackItemId: string | null;
+      customFields?: import("../modules/itops/customFieldTypes").CustomFieldValues;
     };
     result: import("../types").IpAddressRecord;
   };
@@ -1848,6 +1861,7 @@ type CommandMap = {
       hostId: string | null;
       connectionId: string | null;
       rackItemId: string | null;
+      customFields?: import("../modules/itops/customFieldTypes").CustomFieldValues;
     };
     result: import("../types").IpAddressRecord;
   };
