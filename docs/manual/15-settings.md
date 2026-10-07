@@ -400,11 +400,16 @@ Subsection `itops.customFields.heading` defines metadata for IPAM records.
 `itops.customFields.add` creates a draft definition with
 `itops.customFields.name`, `itops.customFields.recordKind`, and
 `itops.customFields.type` in a compact row under shared column headings.
+The new field's name receives keyboard focus. In narrow panes, each control
+keeps its own visible label. Saved record kinds and data types appear as
+read-only text; only a new field offers those dropdowns.
 Expand `itops.customFields.options` beneath a choice field to edit its options.
 Text, multiline text, numbers, yes/no values, dates,
 choices, HTTP(S) URLs, Saved Credential references, and KKTerm links are
 supported. A choice uses `itops.customFields.options`, one option per line;
-options already in use cannot be removed. Saved data types and record kinds
+blank lines are ignored on save. Options already in use cannot be removed;
+`itops.customFields.errors.choiceInUse` explains how to clear or replace their
+record values first. Saved data types and record kinds
 cannot be changed, preventing existing values from being reinterpreted.
 Removing a saved field uses `itops.customFields.removeTitle` /
 `itops.customFields.removeBody`; the definition and all its values are removed

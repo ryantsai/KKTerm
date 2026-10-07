@@ -12,6 +12,8 @@ import {
   TextInput,
 } from "../../app/ui/dialog";
 import { useDashboardStore } from "../dashboard/state/dashboardStore";
+import { customFieldErrorTranslation } from "../itops/customFieldModel";
+import { useItOpsStore } from "../itops/state";
 import { reloadDurableUiStatePrefix } from "../../lib/durableUiState";
 import { invokeCommand, selectSettingsBackupImportFile } from "../../lib/tauri";
 import type { CredentialSecretStoreStatus, SelectiveManifest } from "../../types";
@@ -128,6 +130,14 @@ export function SelectiveImportDialog({
         await loadDashboard();
       }
       if (result.applied.includes("itops")) {
+        const itops = useItOpsStore.getState();
+        await Promise.all([
+          itops.customFieldsLoaded ? itops.loadCustomFields() : undefined,
+          itops.ipamLoaded ? itops.loadIpam() : undefined,
+          itops.vlansLoaded ? itops.loadVlans() : undefined,
+          itops.networkMapsLoaded ? itops.loadNetworkMaps() : undefined,
+          ...Object.keys(itops.racksBySite).map((siteId) => itops.loadRacks(siteId)),
+        ]);
         window.dispatchEvent(new CustomEvent("kkterm:itops-invalidated"));
       }
       if (result.applied.includes("assistant")) {
@@ -144,7 +154,11 @@ export function SelectiveImportDialog({
         window.setTimeout(() => window.location.reload(), 250);
       }
     } catch (error) {
-      showStatusBarNotice(error instanceof Error ? error.message : String(error), { tone: "error" });
+      const translation = customFieldErrorTranslation(error);
+      showStatusBarNotice(
+        translation ? t(translation.key, { name: translation.name }) : error instanceof Error ? error.message : String(error),
+        { tone: "error" },
+      );
       setBusy(false);
     }
   }

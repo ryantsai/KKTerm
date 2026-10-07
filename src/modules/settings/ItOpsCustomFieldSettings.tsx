@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ConfirmSheet } from "../../app/ui/dialog";
 import { ItIcon } from "../itops/icons";
@@ -11,6 +11,7 @@ export function ItOpsCustomFieldSettings({ fields, savedFields, onChange, disabl
 }) {
   const { t } = useTranslation();
   const [removing, setRemoving] = useState<CustomFieldDefinition | null>(null);
+  const pendingFocus = useRef<string | null>(null);
   function update(id: string, patch: Partial<CustomFieldDefinition>) {
     onChange(fields.map((field) => field.id === id ? { ...field, ...patch } : field));
   }
@@ -23,13 +24,17 @@ export function ItOpsCustomFieldSettings({ fields, savedFields, onChange, disabl
       const saved = savedFields.some((entry) => entry.id === field.id);
       return <div className="it-custom-field-definition" key={field.id} role="group" aria-label={field.name || t("itops.customFields.add")}>
         <div className="it-custom-field-row">
-          <input aria-label={t("itops.customFields.name")} placeholder={t("itops.customFields.name")} value={field.name} maxLength={120} onChange={(event) => update(field.id, { name: event.currentTarget.value })} />
-          <select aria-label={t("itops.customFields.recordKind")} value={field.recordKind} disabled={saved} title={saved ? t("itops.customFields.immutableHint") : undefined} onChange={(event) => update(field.id, { recordKind: event.currentTarget.value as CustomFieldRecordKind })}>
+          <label className="it-custom-field-name"><span className="it-custom-field-label">{t("itops.customFields.name")}</span><input placeholder={t("itops.customFields.name")} value={field.name} maxLength={120}
+            ref={(input) => { if (input && pendingFocus.current === field.id) { input.focus(); pendingFocus.current = null; } }}
+            onChange={(event) => update(field.id, { name: event.currentTarget.value })} /></label>
+          {saved ? <div className="it-custom-field-readonly"><span className="it-custom-field-label">{t("itops.customFields.recordKind")}</span><span>{t(`itops.customFields.recordType.${field.recordKind}`)}</span></div>
+            : <label><span className="it-custom-field-label">{t("itops.customFields.recordKind")}</span><select value={field.recordKind} onChange={(event) => update(field.id, { recordKind: event.currentTarget.value as CustomFieldRecordKind })}>
             {CUSTOM_FIELD_RECORD_KINDS.map((kind) => <option key={kind} value={kind}>{t(`itops.customFields.recordType.${kind}`)}</option>)}
-          </select>
-          <select aria-label={t("itops.customFields.type")} value={field.type} disabled={saved} title={saved ? t("itops.customFields.immutableHint") : undefined} onChange={(event) => update(field.id, { type: event.currentTarget.value as CustomFieldType, options: [] })}>
+          </select></label>}
+          {saved ? <div className="it-custom-field-readonly"><span className="it-custom-field-label">{t("itops.customFields.type")}</span><span>{t(`itops.customFields.types.${field.type}`)}</span></div>
+            : <label><span className="it-custom-field-label">{t("itops.customFields.type")}</span><select value={field.type} onChange={(event) => update(field.id, { type: event.currentTarget.value as CustomFieldType, options: [] })}>
             {CUSTOM_FIELD_TYPES.map((type) => <option key={type} value={type}>{t(`itops.customFields.types.${type}`)}</option>)}
-          </select>
+          </select></label>}
           <button type="button" className="toolbar-button danger it-custom-field-remove" data-preserve-content-focus="true" aria-label={t("common.delete")} title={t("common.delete")} onClick={() => saved ? setRemoving(field) : onChange(fields.filter((entry) => entry.id !== field.id))}>
             <ItIcon name="trash" size={14} />
           </button>
@@ -42,7 +47,11 @@ export function ItOpsCustomFieldSettings({ fields, savedFields, onChange, disabl
       </div>;
     })}</div>
     <div className="it-custom-field-actions">
-      <button type="button" className="toolbar-button" data-preserve-content-focus="true" disabled={fields.length >= 128} onClick={() => onChange([...fields, { id: `cf-${crypto.randomUUID()}`, name: "", recordKind: "prefix", type: "text", options: [] }])}>
+      <button type="button" className="toolbar-button" data-preserve-content-focus="true" disabled={fields.length >= 128} onClick={() => {
+        const id = `cf-${crypto.randomUUID()}`;
+        pendingFocus.current = id;
+        onChange([...fields, { id, name: "", recordKind: "prefix", type: "text", options: [] }]);
+      }}>
         <ItIcon name="plus" size={14} />{t("itops.customFields.add")}
       </button>
       {savedFields.length > 0 ? <small className="field-hint">{t("itops.customFields.immutableHint")}</small> : null}

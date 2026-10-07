@@ -142,7 +142,7 @@ function PrefixDialog({
   const preview = previewCidr(cidr);
 
   async function save() {
-    if (!preview || busy || !custom.valid) return;
+    if (!preview || busy || !custom.validate()) return;
     setBusy(true);
     const input: PrefixInput = {
       customFields: custom.values,
@@ -179,7 +179,7 @@ function PrefixDialog({
           <Actions
             cancel={<Btn onClick={onClose}>{t("itops.actions.cancel")}</Btn>}
             primary={
-              <Btn kind="primary" icon="check" onClick={() => void save()} disabled={!preview || busy || !custom.valid}>
+              <Btn kind="primary" icon="check" onClick={() => void save()} disabled={!preview || busy || !custom.loaded}>
                 {t("itops.actions.save")}
               </Btn>
             }
@@ -266,7 +266,7 @@ function PrefixDialog({
             onChange={(event) => setDescription(event.currentTarget.value)}
           />
         </Field>
-        <CustomFieldEditor kind="prefix" values={custom.values} onChange={custom.setValues} />
+        <CustomFieldEditor kind="prefix" values={custom.values} onChange={custom.setValues} editorRef={custom.editorRef} />
       </Sheet>
     </DialogShell>
   );
@@ -329,7 +329,7 @@ function AddressDialog({
   }, [prefix, record, suggestFreeAddresses]);
 
   async function save() {
-    if (!address.trim() || busy || !custom.valid) return;
+    if (!address.trim() || busy || !custom.validate()) return;
     setBusy(true);
     const input: AddressInput = {
       customFields: custom.values,
@@ -374,7 +374,7 @@ function AddressDialog({
                 kind="primary"
                 icon="check"
                 onClick={() => void save()}
-                disabled={!address.trim() || busy || !custom.valid}
+                disabled={!address.trim() || busy || !custom.loaded}
               >
                 {t("itops.actions.save")}
               </Btn>
@@ -493,7 +493,7 @@ function AddressDialog({
             onChange={(event) => setDescription(event.currentTarget.value)}
           />
         </Field>
-        <CustomFieldEditor kind="address" values={custom.values} onChange={custom.setValues} />
+        <CustomFieldEditor kind="address" values={custom.values} onChange={custom.setValues} editorRef={custom.editorRef} />
       </Sheet>
     </DialogShell>
   );

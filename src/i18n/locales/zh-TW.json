@@ -1426,7 +1426,7 @@
       "type": "資料類型",
       "add": "新增自訂欄位",
       "options": "選項",
-      "optionsHint": "每行輸入一個選項。使用中的選項無法移除。",
+      "optionsHint": "每行輸入一個選項，儲存時會略過空白行。使用中的選項無法移除。",
       "immutableHint": "已儲存欄位的資料類型與記錄類型無法變更。",
       "removeTitle": "刪除自訂欄位",
       "removeBody": "儲存設定後，將刪除「{{name}}」及其所有已儲存的值。",
@@ -1468,8 +1468,10 @@
         "fieldMissing": "此自訂欄位已不存在。請重新開啟編輯器以更新欄位。",
         "kindMismatch": "此自訂欄位適用於其他記錄類型。",
         "recordMissing": "此 IPAM 記錄已不存在。",
-        "invalidValue": "請為「{{name}}」輸入有效值。若為選項欄位，請保留已使用的選項。"
-      }
+        "invalidValue": "請為「{{name}}」輸入有效值。",
+        "choiceInUse": "請保留「{{name}}」中記錄已使用的所有選項。移除選項前，請先清除或替換記錄中的對應值。"
+      },
+      "numberHint": "請使用半形句點作為小數點（例如 1.5）。"
     },
     "railLabel": "IT Ops",
     "title": "IT Ops",

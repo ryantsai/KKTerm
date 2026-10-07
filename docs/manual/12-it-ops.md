@@ -106,7 +106,13 @@ Record dialogs show each field with the control for its configured type; empty
 values can be cleared, while zero and `itops.customFields.no` remain real values.
 Short values share a compact two-column layout; multiline text and links use the
 full width, and narrow windows use one column.
+Number fields retain unfinished input while typing; `itops.customFields.numberHint`
+explains the decimal separator. Saving an invalid custom value focuses that
+control and shows `itops.customFields.errors.invalidValue` in the Status Bar.
+Text limits count Unicode characters consistently, including Chinese and emoji.
 Saved field values appear beneath the record identity in the IPAM grid.
+After a selective IT Ops import, loaded IPAM records and custom fields refresh
+before `settings.selectiveImportComplete` appears.
 
 `itops.customFields.types.credential` selects an existing Saved Credential by
 label and username. Manage credentials in Settings; passwords stay in the secret
@@ -121,6 +127,9 @@ HTTP(S) values open in the default browser.
 Custom definitions and values are included in full backups and the selective
 IT Ops export/import segment. The IPAM CSV, TSV, and Excel formats keep their
 standard built-in columns and do not carry custom fields.
+Selective imports validate definitions, typed values, record ownership, and the
+combined 128-field limit before committing; invalid custom metadata rolls back
+the import.
 
 Tutorial/grep hints: `settings.itopsCustomFields` (navigation `page=settings
 settingsSectionId=itops-settings`), `itops.customFields.heading`,

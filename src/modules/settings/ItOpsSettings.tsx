@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Network } from "../../lib/reicon";
 import { useTranslation } from "react-i18next";
 import { invokeCommand, isTauriRuntime } from "../../lib/tauri";
@@ -20,6 +20,7 @@ export function ItOpsSettings() {
   const loadCustomFields = useItOpsStore((state) => state.loadCustomFields);
   const saveCustomFields = useItOpsStore((state) => state.saveCustomFields);
   const [fieldDraft, setFieldDraft] = useState<CustomFieldDefinition[]>(customFields);
+  const previousFields = useRef(customFields);
   const [saving, setSaving] = useState(false);
   const fieldChanges = JSON.stringify(fieldDraft) !== JSON.stringify(customFields);
   const hasChanges =
@@ -28,7 +29,11 @@ export function ItOpsSettings() {
   useEffect(() => {
     void loadCustomFields().catch((error: unknown) => showStatusBarNotice(String(error), { tone: "error" }));
   }, [loadCustomFields, showStatusBarNotice]);
-  useEffect(() => setFieldDraft(customFields), [customFields]);
+  useEffect(() => {
+    const previous = previousFields.current;
+    previousFields.current = customFields;
+    setFieldDraft((current) => JSON.stringify(current) === JSON.stringify(previous) ? customFields : current);
+  }, [customFields]);
 
   useEffect(() => {
     setDraft(generalSettings);
@@ -38,7 +43,10 @@ export function ItOpsSettings() {
     if (saving || !customFieldsLoaded) return;
     setSaving(true);
     try {
-      if (fieldChanges) await saveCustomFields(fieldDraft);
+      if (fieldChanges) {
+        await saveCustomFields(fieldDraft);
+        setFieldDraft(useItOpsStore.getState().customFields.fields);
+      }
       const currentSettings = useWorkspaceStore.getState().generalSettings;
       const request = {
         ...currentSettings,

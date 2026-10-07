@@ -1426,7 +1426,7 @@
       "type": "Data type",
       "add": "Add custom field",
       "options": "Choices",
-      "optionsHint": "Enter one choice per line. Choices in use cannot be removed.",
+      "optionsHint": "Enter one choice per line. Blank lines are ignored. Choices in use cannot be removed.",
       "immutableHint": "A saved field's data type and record type cannot be changed.",
       "removeTitle": "Delete custom field",
       "removeBody": "Saving Settings will delete “{{name}}” and all its saved values.",
@@ -1468,8 +1468,10 @@
         "fieldMissing": "This custom field no longer exists. Reopen the editor to refresh the fields.",
         "kindMismatch": "This custom field applies to a different record type.",
         "recordMissing": "This IPAM record no longer exists.",
-        "invalidValue": "Enter a valid value for “{{name}}”. For choice fields, keep any choices that are already in use."
-      }
+        "invalidValue": "Enter a valid value for “{{name}}”.",
+        "choiceInUse": "Keep all choices already used by records for “{{name}}”. Clear or replace those values before removing a choice."
+      },
+      "numberHint": "Use a period for decimals (for example, 1.5)."
     },
     "railLabel": "IT Ops",
     "title": "IT Ops",

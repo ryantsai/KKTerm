@@ -58,7 +58,7 @@ export function VlanDialog({ vlan, onClose }: { vlan: Vlan | null; onClose: () =
   const taken = vlans.some((entry) => entry.vid === parsed && entry.id !== vlan?.id);
 
   async function save() {
-    if (!validVid || taken || busy || !custom.valid) return;
+    if (!validVid || taken || busy || !custom.validate()) return;
     setBusy(true);
     const input: VlanInput = {
       customFields: custom.values,
@@ -94,7 +94,7 @@ export function VlanDialog({ vlan, onClose }: { vlan: Vlan | null; onClose: () =
                 kind="primary"
                 icon="check"
                 onClick={() => void save()}
-                disabled={!validVid || taken || busy || !custom.valid}
+                disabled={!validVid || taken || busy || !custom.loaded}
               >
                 {t("itops.actions.save")}
               </Btn>
@@ -158,7 +158,7 @@ export function VlanDialog({ vlan, onClose }: { vlan: Vlan | null; onClose: () =
             onChange={(event) => setDescription(event.currentTarget.value)}
           />
         </Field>
-        <CustomFieldEditor kind="vlan" values={custom.values} onChange={custom.setValues} />
+        <CustomFieldEditor kind="vlan" values={custom.values} onChange={custom.setValues} editorRef={custom.editorRef} />
       </Sheet>
     </DialogShell>
   );

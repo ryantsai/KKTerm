@@ -1426,7 +1426,7 @@
       "type": "Datentyp",
       "add": "Benutzerdefiniertes Feld hinzufügen",
       "options": "Auswahlwerte",
-      "optionsHint": "Geben Sie einen Auswahlwert pro Zeile ein. Verwendete Werte können nicht entfernt werden.",
+      "optionsHint": "Geben Sie einen Auswahlwert pro Zeile ein. Leerzeilen werden ignoriert. Verwendete Werte können nicht entfernt werden.",
       "immutableHint": "Datentyp und Eintragstyp eines gespeicherten Felds können nicht geändert werden.",
       "removeTitle": "Benutzerdefiniertes Feld löschen",
       "removeBody": "Beim Speichern der Einstellungen werden „{{name}}“ und alle zugehörigen gespeicherten Werte gelöscht.",
@@ -1468,8 +1468,10 @@
         "fieldMissing": "Dieses benutzerdefinierte Feld existiert nicht mehr. Öffnen Sie den Editor erneut, um die Felder zu aktualisieren.",
         "kindMismatch": "Dieses benutzerdefinierte Feld gilt für einen anderen Eintragstyp.",
         "recordMissing": "Dieser IPAM-Eintrag existiert nicht mehr.",
-        "invalidValue": "Geben Sie einen gültigen Wert für „{{name}}“ ein. Behalten Sie bei Auswahlfeldern bereits verwendete Auswahlwerte bei."
-      }
+        "invalidValue": "Geben Sie einen gültigen Wert für „{{name}}“ ein.",
+        "choiceInUse": "Behalten Sie für „{{name}}“ alle bereits in Einträgen verwendeten Auswahlwerte bei. Leeren oder ersetzen Sie diese Werte, bevor Sie einen Auswahlwert entfernen."
+      },
+      "numberHint": "Verwenden Sie einen Punkt als Dezimaltrennzeichen (zum Beispiel 1.5)."
     },
     "railLabel": "IT Ops",
     "title": "IT Ops",

@@ -1426,7 +1426,7 @@
       "type": "Type de données",
       "add": "Ajouter un champ personnalisé",
       "options": "Choix",
-      "optionsHint": "Saisissez un choix par ligne. Les choix utilisés ne peuvent pas être supprimés.",
+      "optionsHint": "Saisissez un choix par ligne. Les lignes vides sont ignorées. Les choix utilisés ne peuvent pas être supprimés.",
       "immutableHint": "Le type de données et le type d’enregistrement d’un champ enregistré ne peuvent pas être modifiés.",
       "removeTitle": "Supprimer le champ personnalisé",
       "removeBody": "L’enregistrement des paramètres supprimera « {{name}} » et toutes ses valeurs enregistrées.",
@@ -1468,8 +1468,10 @@
         "fieldMissing": "Ce champ personnalisé n’existe plus. Rouvrez l’éditeur pour actualiser les champs.",
         "kindMismatch": "Ce champ personnalisé s’applique à un autre type d’enregistrement.",
         "recordMissing": "Cet enregistrement IPAM n’existe plus.",
-        "invalidValue": "Saisissez une valeur valide pour « {{name}} ». Pour les champs de choix, conservez les choix déjà utilisés."
-      }
+        "invalidValue": "Saisissez une valeur valide pour « {{name}} ».",
+        "choiceInUse": "Conservez tous les choix de « {{name}} » déjà utilisés dans des enregistrements. Effacez ou remplacez ces valeurs avant de supprimer un choix."
+      },
+      "numberHint": "Utilisez un point comme séparateur décimal (par exemple, 1.5)."
     },
     "railLabel": "IT Ops",
     "title": "IT Ops",

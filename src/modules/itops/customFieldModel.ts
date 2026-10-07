@@ -6,6 +6,18 @@ export const CUSTOM_FIELD_TYPES = ["text", "multiline", "number", "boolean", "da
 export const CUSTOM_FIELD_RECORD_KINDS = ["prefix", "address", "vlan"] as const;
 export const CUSTOM_FIELD_LINK_KINDS = ["connection", "rack", "rackItem", "networkNode"] as const;
 
+/** Retain incomplete/invalid input as text so it cannot silently clear a value. */
+export function parseCustomFieldNumber(text: string): number | string | null {
+  if (text === "") return null;
+  if (!/^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i.test(text)) return text;
+  const number = Number(text);
+  return Number.isFinite(number) ? number : text;
+}
+
+export function prepareCustomFieldDefinitions(fields: CustomFieldDefinition[]): CustomFieldDefinition[] {
+  return fields.map((field) => ({ ...field, options: field.options.map((option) => option.trim()).filter(Boolean) }));
+}
+
 /** Translate the custom-field validation errors without hiding other command failures. */
 export function customFieldErrorTranslation(error: unknown): { key: string; name?: string } | null {
   const message = error instanceof Error ? error.message : String(error);
@@ -21,6 +33,8 @@ export function customFieldErrorTranslation(error: unknown): { key: string; name
     "Custom field record no longer exists": "recordMissing",
   };
   if (keys[message]) return { key: `itops.customFields.errors.${keys[message]}` };
+  const choice = /^Choices in use cannot be removed from custom field '(.*)'$/s.exec(message);
+  if (choice) return { key: "itops.customFields.errors.choiceInUse", name: choice[1] };
   const invalid = /^Invalid value for custom field '(.*)'$/s.exec(message);
   return invalid ? { key: "itops.customFields.errors.invalidValue", name: invalid[1] } : null;
 }
@@ -43,7 +57,7 @@ export function customFieldValueValid(field: CustomFieldDefinition, value: Custo
   switch (field.type) {
     case "number": return typeof value === "number" && Number.isFinite(value);
     case "boolean": return typeof value === "boolean";
-    case "text": case "multiline": return typeof value === "string" && value.length <= 16384;
+    case "text": case "multiline": return typeof value === "string" && Array.from(value).length <= 16384;
     case "date": {
       if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value) || value.startsWith("0000")) return false;
       const date = new Date(`${value}T00:00:00Z`);
@@ -51,7 +65,7 @@ export function customFieldValueValid(field: CustomFieldDefinition, value: Custo
     }
     case "select": return typeof value === "string" && field.options.includes(value);
     case "url": {
-      if (typeof value !== "string" || value.length > 2048) return false;
+      if (typeof value !== "string" || Array.from(value).length > 2048) return false;
       try { const url = new URL(value); return ["http:", "https:"].includes(url.protocol) && !!url.hostname; }
       catch { return false; }
     }
@@ -66,7 +80,7 @@ export function customFieldValueValid(field: CustomFieldDefinition, value: Custo
 function validReference(value: CustomFieldValue, kind: string, keys: string[]): boolean {
   if (typeof value !== "object" || value.kind !== kind || Object.keys(value).length !== keys.length + 1) return false;
   const object = value as unknown as Record<string, unknown>;
-  return keys.every((key) => typeof object[key] === "string" && !!object[key] && object[key].length <= 256 && object[key] === object[key].trim());
+  return keys.every((key) => typeof object[key] === "string" && !!object[key] && Array.from(object[key]).length <= 256 && object[key] === object[key].trim());
 }
 
 export function customFieldLinkChoices(catalog: CustomFieldCatalog): { value: CustomFieldLink; label: string }[] {

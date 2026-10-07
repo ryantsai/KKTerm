@@ -213,6 +213,18 @@ fn definition_limits_count_unicode_characters() {
 }
 
 #[test]
+fn value_limits_count_unicode_characters_instead_of_utf8_bytes() {
+    for kind in ["text", "multiline"] {
+        let definition = field("f", "prefix", kind);
+        validate_value(&definition, &json!("欄😀".repeat(8192))).unwrap();
+        assert!(validate_value(&definition, &json!("欄".repeat(16385))).is_err());
+    }
+    let definition = field("f", "prefix", "url");
+    validate_value(&definition, &json!(format!("https://example.com/{}", "欄".repeat(2028)))).unwrap();
+    assert!(validate_value(&definition, &json!(format!("https://example.com/{}", "欄".repeat(2030)))).is_err());
+}
+
+#[test]
 fn deleting_any_record_kind_cleans_up_its_custom_values() {
     let conn = fixture();
     conn.execute_batch(

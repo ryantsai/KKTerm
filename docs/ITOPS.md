@@ -364,6 +364,10 @@ SQLite tables:
   Both tables travel with selective IT Ops bundles and full backups; import
   remaps field ids, record owners, and link destinations while preserving
   map-local node ids. IPAM CSV/TSV/Excel files retain their standard columns.
+  Selective imports share the normal custom-field validator and validate the
+  combined definition limit and every value's owning record inside the import
+  transaction. Invalid metadata rolls back the import. Text, URL, and reference
+  length limits count Unicode scalar values on both sides of the command boundary.
 
 Durable definitions only. **Live state never persists**: in-flight Batch
 Run progress stays in memory in the runtime layer, consistent with the

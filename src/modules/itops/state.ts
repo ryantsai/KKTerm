@@ -41,7 +41,7 @@ import type {
 import type { DashboardBackground } from "../dashboard/types";
 import { sanitizeRoomObjects, type RoomObject } from "./roomObjects";
 import type { CustomFieldDefinition, CustomFieldRecordKind, CustomFieldSnapshot, CustomFieldValues } from "./customFieldTypes";
-import { customFieldErrorTranslation } from "./customFieldModel";
+import { customFieldErrorTranslation, prepareCustomFieldDefinitions } from "./customFieldModel";
 
 function customFieldCommandError(error: unknown): never {
   const translation = customFieldErrorTranslation(error);
@@ -1048,7 +1048,7 @@ export const useItOpsStore = create<ItOpsState>((set, get) => ({
   },
 
   async saveCustomFields(fields) {
-    const customFields = await invokeCommand("itops_set_custom_fields", { fields }).catch(customFieldCommandError);
+    const customFields = await invokeCommand("itops_set_custom_fields", { fields: prepareCustomFieldDefinitions(fields) }).catch(customFieldCommandError);
     set({ customFields, customFieldsLoaded: true });
   },
 

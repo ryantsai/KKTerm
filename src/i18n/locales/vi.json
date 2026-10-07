@@ -1420,13 +1420,13 @@
   "itops": {
     "customFields": {
       "heading": "Trường tùy chỉnh",
-      "settingsHint": "Định nghĩa số mạch, băng thông, nhà cung cấp, người liên hệ hoặc siêu dữ liệu khác cho bản ghi IPAM.",
+      "settingsHint": "Định nghĩa mã đường truyền, băng thông, nhà cung cấp, người liên hệ hoặc siêu dữ liệu khác cho bản ghi IPAM.",
       "name": "Tên trường",
       "recordKind": "Áp dụng cho",
       "type": "Kiểu dữ liệu",
       "add": "Thêm trường tùy chỉnh",
       "options": "Lựa chọn",
-      "optionsHint": "Nhập một lựa chọn trên mỗi dòng. Không thể xóa lựa chọn đang được sử dụng.",
+      "optionsHint": "Nhập một lựa chọn trên mỗi dòng. Các dòng trống sẽ được bỏ qua. Không thể xóa lựa chọn đang được sử dụng.",
       "immutableHint": "Không thể đổi kiểu dữ liệu và loại bản ghi của trường đã lưu.",
       "removeTitle": "Xóa trường tùy chỉnh",
       "removeBody": "Khi lưu Cài đặt, “{{name}}” cùng tất cả giá trị đã lưu của trường sẽ bị xóa.",
@@ -1468,8 +1468,10 @@
         "fieldMissing": "Trường tùy chỉnh này không còn tồn tại. Mở lại trình chỉnh sửa để cập nhật các trường.",
         "kindMismatch": "Trường tùy chỉnh này áp dụng cho một loại bản ghi khác.",
         "recordMissing": "Bản ghi IPAM này không còn tồn tại.",
-        "invalidValue": "Nhập giá trị hợp lệ cho “{{name}}”. Với trường lựa chọn, hãy giữ các lựa chọn đã được sử dụng."
-      }
+        "invalidValue": "Nhập giá trị hợp lệ cho “{{name}}”.",
+        "choiceInUse": "Giữ lại mọi lựa chọn của “{{name}}” đang được dùng trong các bản ghi. Xóa hoặc thay thế các giá trị đó trước khi xóa lựa chọn."
+      },
+      "numberHint": "Dùng dấu chấm để phân cách phần thập phân (ví dụ: 1.5)."
     },
     "railLabel": "IT Ops",
     "title": "IT Ops",

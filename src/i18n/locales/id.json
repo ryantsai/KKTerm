@@ -1426,7 +1426,7 @@
       "type": "Tipe data",
       "add": "Tambahkan kolom kustom",
       "options": "Pilihan",
-      "optionsHint": "Masukkan satu pilihan per baris. Pilihan yang digunakan tidak dapat dihapus.",
+      "optionsHint": "Masukkan satu pilihan per baris. Baris kosong diabaikan. Pilihan yang digunakan tidak dapat dihapus.",
       "immutableHint": "Tipe data dan jenis catatan kolom yang tersimpan tidak dapat diubah.",
       "removeTitle": "Hapus kolom kustom",
       "removeBody": "Menyimpan Pengaturan akan menghapus “{{name}}” beserta semua nilai yang tersimpan.",
@@ -1468,8 +1468,10 @@
         "fieldMissing": "Kolom kustom ini sudah tidak ada. Buka kembali editor untuk memperbarui kolom.",
         "kindMismatch": "Kolom kustom ini berlaku untuk jenis catatan lain.",
         "recordMissing": "Catatan IPAM ini sudah tidak ada.",
-        "invalidValue": "Masukkan nilai yang valid untuk “{{name}}”. Untuk kolom pilihan, pertahankan pilihan yang sudah digunakan."
-      }
+        "invalidValue": "Masukkan nilai yang valid untuk “{{name}}”.",
+        "choiceInUse": "Pertahankan semua pilihan “{{name}}” yang sudah digunakan dalam catatan. Kosongkan atau ganti nilai tersebut sebelum menghapus pilihan."
+      },
+      "numberHint": "Gunakan titik sebagai pemisah desimal (misalnya, 1.5)."
     },
     "railLabel": "IT Ops",
     "title": "IT Ops",

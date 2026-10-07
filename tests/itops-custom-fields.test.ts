@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { customFieldErrorTranslation, customFieldLinkChoices, customFieldLinkKey, customFieldNavigationRequest, customFieldRecordValues, customFieldValueValid } from "../src/modules/itops/customFieldModel";
+import { customFieldErrorTranslation, customFieldLinkChoices, customFieldLinkKey, customFieldNavigationRequest, customFieldRecordValues, customFieldValueValid, parseCustomFieldNumber, prepareCustomFieldDefinitions } from "../src/modules/itops/customFieldModel";
 import type { CustomFieldDefinition, CustomFieldLink, CustomFieldSnapshot } from "../src/modules/itops/customFieldTypes";
 import type { NetworkMap, Rack, Site } from "../src/types";
 
@@ -9,6 +9,7 @@ const field = (type: CustomFieldDefinition["type"], options: string[] = []): Cus
 test("custom-field validation messages translate without masking unrelated command failures", () => {
   assert.deepEqual(customFieldErrorTranslation("Choice options must be non-empty and unique"), { key: "itops.customFields.errors.choiceOptions" });
   assert.deepEqual(customFieldErrorTranslation(new Error("Invalid value for custom field 'Provider's circuit'")), { key: "itops.customFields.errors.invalidValue", name: "Provider's circuit" });
+  assert.deepEqual(customFieldErrorTranslation("Choices in use cannot be removed from custom field 'Provider'"), { key: "itops.customFields.errors.choiceInUse", name: "Provider" });
   assert.equal(customFieldErrorTranslation("database is locked"), null);
 });
 
@@ -39,6 +40,30 @@ test("record values are scoped by kind and identity and preserve reference objec
   assert.deepEqual(customFieldRecordValues(snapshot, "prefix", "p1"), { bandwidth: 0, live: false });
   assert.deepEqual(customFieldRecordValues(snapshot, "address", "p1"), { link: { kind: "connection", connectionId: "c1" } });
   assert.deepEqual(customFieldRecordValues(snapshot, "prefix"), {});
+});
+
+test("text limits count Unicode characters consistently with the backend", () => {
+  for (const type of ["text", "multiline"] as const) {
+    assert.ok(customFieldValueValid(field(type), "欄😀".repeat(8192)));
+    assert.equal(customFieldValueValid(field(type), "欄".repeat(16385)), false);
+  }
+});
+
+test("number drafts retain incomplete input without clearing a saved value", () => {
+  assert.equal(parseCustomFieldNumber(""), null);
+  for (const draft of ["-", ".", "1e", "1e-", "Infinity", "0x10", "1,5", " "]) {
+    assert.equal(parseCustomFieldNumber(draft), draft);
+    assert.equal(customFieldValueValid(field("number"), parseCustomFieldNumber(draft)), false);
+  }
+  assert.equal(parseCustomFieldNumber("-1.50"), -1.5);
+  assert.equal(parseCustomFieldNumber("1e3"), 1000);
+  assert.equal(parseCustomFieldNumber("0"), 0);
+});
+
+test("choice definitions ignore blank lines without dropping duplicate choices", () => {
+  const draft = field("select", [" ISP A ", "", "ISP B", "   ", "ISP A"]);
+  assert.deepEqual(prepareCustomFieldDefinitions([draft])[0].options, ["ISP A", "ISP B", "ISP A"]);
+  assert.deepEqual(draft.options, [" ISP A ", "", "ISP B", "   ", "ISP A"]);
 });
 
 test("deep links retain owning rack and map ids so identical local node ids are distinct", () => {

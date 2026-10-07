@@ -1420,13 +1420,13 @@
   "itops": {
     "customFields": {
       "heading": "自定义字段",
-      "settingsHint": "为 IPAM 记录定义电路编号、带宽、运营商、联系人或其他元数据。",
+      "settingsHint": "为 IPAM 记录定义线路编号、带宽、运营商、联系人或其他元数据。",
       "name": "字段名称",
       "recordKind": "适用记录",
       "type": "数据类型",
       "add": "添加自定义字段",
       "options": "选项",
-      "optionsHint": "每行输入一个选项。不能移除正在使用的选项。",
+      "optionsHint": "每行输入一个选项。空行会被忽略。不能移除正在使用的选项。",
       "immutableHint": "已保存字段的数据类型和记录类型不能更改。",
       "removeTitle": "删除自定义字段",
       "removeBody": "保存设置后将删除“{{name}}”及其全部已保存的值。",
@@ -1468,8 +1468,10 @@
         "fieldMissing": "此自定义字段已不存在。请重新打开编辑器以刷新字段。",
         "kindMismatch": "此自定义字段适用于其他记录类型。",
         "recordMissing": "此 IPAM 记录已不存在。",
-        "invalidValue": "请为“{{name}}”输入有效值。对于选项字段，请保留正在使用的选项。"
-      }
+        "invalidValue": "请为“{{name}}”输入有效值。",
+        "choiceInUse": "请保留“{{name}}”中记录正在使用的所有选项。移除选项前，请先清空或替换记录中的对应值。"
+      },
+      "numberHint": "小数请使用英文句点分隔（例如 1.5）。"
     },
     "railLabel": "IT Ops",
     "title": "IT Ops",

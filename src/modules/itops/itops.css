@@ -7773,6 +7773,7 @@
    data attributes so the palette stays with the scheme, not the markup.
    ══════════════════════════════════════════════════════════════════════════ */
 .it-custom-field-editor {
+  container-type: inline-size;
   margin: 10px 0 0;
   padding: 10px 0 0;
   border: 0;
@@ -7783,19 +7784,19 @@
 .it-custom-field-value-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; }
 .it-custom-field-value-grid > .kk-field { min-width: 0; margin: 0; }
 .it-custom-field-wide { grid-column: 1 / -1; }
-.it-custom-field-link-controls { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 8px; }
+.it-custom-field-link-controls { display: grid; grid-template-columns: minmax(130px, 1fr) minmax(0, 2fr); gap: 8px; }
+.it-custom-field-link-controls > .kk-field { min-width: 0; margin: 0; }
+.it-custom-field-editor [aria-invalid="true"] { border-color: var(--red); }
 .it-custom-field-summary { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: 5px; min-width: 0; }
 .it-custom-field-chip { display: inline-flex; gap: 4px; min-width: 0; max-width: 100%; font-size: 11px; color: var(--text-muted); }
-.it-custom-field-chip b { flex-shrink: 0; font-weight: 500; }
+.it-custom-field-chip b { min-width: 0; overflow-wrap: anywhere; font-weight: 500; }
 .it-custom-field-chip > span,
 .it-custom-field-chip > button { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .it-custom-field-chip > button { border: 0; background: none; padding: 0; color: var(--accent-text); font: inherit; cursor: pointer; text-align: start; }
 .it-custom-field-chip > button:hover { text-decoration: underline; }
 .it-custom-field-chip > button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-@media (max-width: 780px) {
+@container (max-width: 400px) {
   .it-custom-field-link-controls { grid-template-columns: 1fr; }
-}
-@media (max-width: 600px) {
   .it-custom-field-value-grid { grid-template-columns: 1fr; }
 }
 

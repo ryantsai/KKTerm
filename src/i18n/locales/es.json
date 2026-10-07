@@ -1426,7 +1426,7 @@
       "type": "Tipo de datos",
       "add": "Añadir campo personalizado",
       "options": "Opciones",
-      "optionsHint": "Introduce una opción por línea. Las opciones en uso no se pueden eliminar.",
+      "optionsHint": "Introduce una opción por línea. Se ignoran las líneas en blanco. Las opciones en uso no se pueden eliminar.",
       "immutableHint": "No se pueden cambiar el tipo de datos ni el tipo de registro de un campo guardado.",
       "removeTitle": "Eliminar campo personalizado",
       "removeBody": "Al guardar los ajustes, se eliminarán «{{name}}» y todos sus valores guardados.",
@@ -1468,8 +1468,10 @@
         "fieldMissing": "Este campo personalizado ya no existe. Vuelve a abrir el editor para actualizar los campos.",
         "kindMismatch": "Este campo personalizado se aplica a otro tipo de registro.",
         "recordMissing": "Este registro de IPAM ya no existe.",
-        "invalidValue": "Introduce un valor válido para «{{name}}». En los campos de opciones, conserva las opciones que ya se están usando."
-      }
+        "invalidValue": "Introduce un valor válido para «{{name}}».",
+        "choiceInUse": "Conserva todas las opciones de «{{name}}» que ya se usan en registros. Borra o sustituye esos valores antes de eliminar una opción."
+      },
+      "numberHint": "Usa un punto como separador decimal (por ejemplo, 1.5)."
     },
     "railLabel": "IT Ops",
     "title": "IT Ops",

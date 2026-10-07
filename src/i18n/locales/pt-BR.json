@@ -1426,7 +1426,7 @@
       "type": "Tipo de dados",
       "add": "Adicionar campo personalizado",
       "options": "Opções",
-      "optionsHint": "Insira uma opção por linha. As opções em uso não podem ser removidas.",
+      "optionsHint": "Insira uma opção por linha. As linhas em branco são ignoradas. As opções em uso não podem ser removidas.",
       "immutableHint": "O tipo de dados e o tipo de registro de um campo salvo não podem ser alterados.",
       "removeTitle": "Excluir campo personalizado",
       "removeBody": "Ao salvar as configurações, “{{name}}” e todos os seus valores salvos serão excluídos.",
@@ -1461,15 +1461,17 @@
       },
       "errors": {
         "definitionLimit": "Você pode definir até 128 campos personalizados.",
-        "definitionInvalid": "Use um nome de campo exclusivo de 1 a 120 caracteres por tipo de registro e um tipo de dado compatível.",
+        "definitionInvalid": "Use um nome de campo exclusivo de 1 a 120 caracteres por tipo de registro e um tipo de dados compatível.",
         "choiceOptions": "As opções devem ser únicas, não vazias e ter no máximo 120 caracteres cada.",
         "choiceCount": "Insira de 1 a 100 opções para este campo.",
-        "immutable": "O tipo de dado e o tipo de registro de um campo salvo não podem ser alterados.",
+        "immutable": "O tipo de dados e o tipo de registro de um campo salvo não podem ser alterados.",
         "fieldMissing": "Este campo personalizado não existe mais. Abra o editor novamente para atualizar os campos.",
         "kindMismatch": "Este campo personalizado se aplica a outro tipo de registro.",
         "recordMissing": "Este registro de IPAM não existe mais.",
-        "invalidValue": "Insira um valor válido para “{{name}}”. Nos campos de opções, mantenha as opções que já estão em uso."
-      }
+        "invalidValue": "Insira um valor válido para “{{name}}”.",
+        "choiceInUse": "Mantenha todas as opções de “{{name}}” já usadas nos registros. Limpe ou substitua esses valores antes de remover uma opção."
+      },
+      "numberHint": "Use um ponto como separador decimal (por exemplo, 1.5)."
     },
     "railLabel": "IT Ops",
     "title": "IT Ops",

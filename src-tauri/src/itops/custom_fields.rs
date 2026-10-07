@@ -136,7 +136,7 @@ fn valid_reference(value: &Value, kind: &str, keys: &[&str]) -> bool {
         && value.get("kind").and_then(Value::as_str) == Some(kind)
         && keys.iter().all(|key| {
             value.get(key).and_then(Value::as_str).is_some_and(|text| {
-                !text.trim().is_empty() && text.len() <= 256 && text == text.trim()
+                !text.trim().is_empty() && text.chars().count() <= 256 && text == text.trim()
             })
         })
 }
@@ -147,13 +147,13 @@ pub fn validate_value(field: &FieldDefinition, value: &Value) -> Result<(), Stri
     }
     let text = value.as_str();
     let valid = match field.field_type.as_str() {
-        "text" | "multiline" => text.is_some_and(|text| text.len() <= 16384),
+        "text" | "multiline" => text.is_some_and(|text| text.chars().count() <= 16384),
         "number" => value.as_f64().is_some_and(f64::is_finite),
         "boolean" => value.is_boolean(),
         "date" => text.is_some_and(valid_date),
         "select" => text.is_some_and(|text| field.options.iter().any(|option| option == text)),
         "url" => text.is_some_and(|text| {
-            text.len() <= 2048
+            text.chars().count() <= 2048
                 && url::Url::parse(text).is_ok_and(|url| {
                     matches!(url.scheme(), "http" | "https") && url.host_str().is_some()
                 })
@@ -174,10 +174,7 @@ pub fn validate_value(field: &FieldDefinition, value: &Value) -> Result<(), Stri
     }
 }
 
-pub fn set_fields(
-    conn: &Connection,
-    mut fields: Vec<FieldDefinition>,
-) -> Result<FieldSnapshot, String> {
+fn validate_definitions(mut fields: Vec<FieldDefinition>) -> Result<Vec<FieldDefinition>, String> {
     if fields.len() > 128 {
         return Err("At most 128 custom fields are supported".into());
     }
@@ -224,6 +221,37 @@ pub fn set_fields(
             field.options.clear();
         }
     }
+    Ok(fields)
+}
+
+/// Generic backup row insertion must obey the same contract as normal edits.
+/// Run inside the import transaction so any invalid metadata rolls back the bundle.
+pub fn validate_import(conn: &Connection) -> Result<(), String> {
+    let imported = snapshot(conn)?;
+    let fields = validate_definitions(imported.fields.clone())?;
+    if fields != imported.fields {
+        return Err("Custom fields need unique names per record kind and a supported type".into());
+    }
+    for entry in imported.values {
+        let field = fields.iter().find(|field| field.id == entry.field_id)
+            .ok_or("Custom field no longer exists")?;
+        if entry.record_kind != field.record_kind {
+            return Err("Custom field belongs to a different record kind".into());
+        }
+        validate_value(field, &entry.value)?;
+        let table = owner_table(&entry.record_kind)?;
+        let exists: bool = conn.query_row(
+            &format!("SELECT EXISTS(SELECT 1 FROM {table} WHERE id = ?)"),
+            [&entry.record_id], |row| row.get(0),
+        ).map_err(|e| e.to_string())?;
+        if !exists { return Err("Custom field record no longer exists".into()); }
+    }
+    Ok(())
+}
+
+pub fn set_fields(conn: &Connection, fields: Vec<FieldDefinition>) -> Result<FieldSnapshot, String> {
+    let fields = validate_definitions(fields)?;
+    let ids: HashSet<_> = fields.iter().map(|field| &field.id).collect();
     let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
     let existing = snapshot(&tx)?;
     for field in &fields {
@@ -239,6 +267,9 @@ pub fn set_fields(
             .iter()
             .filter(|entry| entry.field_id == field.id)
         {
+            if field.field_type == "select" && !entry.value.is_null() && validate_value(field, &entry.value).is_err() {
+                return Err(format!("Choices in use cannot be removed from custom field '{}'", field.name));
+            }
             validate_value(field, &entry.value)?;
         }
     }

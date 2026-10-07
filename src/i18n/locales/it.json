@@ -1426,7 +1426,7 @@
       "type": "Tipo di dati",
       "add": "Aggiungi campo personalizzato",
       "options": "Opzioni",
-      "optionsHint": "Inserisci un’opzione per riga. Le opzioni in uso non possono essere rimosse.",
+      "optionsHint": "Inserisci un’opzione per riga. Le righe vuote vengono ignorate. Le opzioni in uso non possono essere rimosse.",
       "immutableHint": "Il tipo di dati e il tipo di record di un campo salvato non possono essere modificati.",
       "removeTitle": "Elimina campo personalizzato",
       "removeBody": "Salvando le impostazioni verranno eliminati «{{name}}» e tutti i suoi valori salvati.",
@@ -1468,8 +1468,10 @@
         "fieldMissing": "Questo campo personalizzato non esiste più. Riapri l’editor per aggiornare i campi.",
         "kindMismatch": "Questo campo personalizzato si applica a un altro tipo di record.",
         "recordMissing": "Questo record IPAM non esiste più.",
-        "invalidValue": "Inserisci un valore valido per «{{name}}». Per i campi di scelta, mantieni le opzioni già in uso."
-      }
+        "invalidValue": "Inserisci un valore valido per «{{name}}».",
+        "choiceInUse": "Mantieni tutte le opzioni di «{{name}}» già utilizzate nei record. Cancella o sostituisci quei valori prima di rimuovere un’opzione."
+      },
+      "numberHint": "Usa un punto come separatore decimale (ad esempio, 1.5)."
     },
     "railLabel": "IT Ops",
     "title": "IT Ops",

@@ -1,15 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type Ref } from "react";
 import { useTranslation } from "react-i18next";
 import { Field, Select, TextArea, TextInput } from "../../app/ui/dialog";
 import { invokeCommand, isTauriRuntime, openExternalUrl } from "../../lib/tauri";
 import { useWorkspaceStore } from "../../store";
 import type { Connection, ConnectionPasswordCredentialEntry } from "../../types";
 import { flattenConnections } from "../workspace/connections/treeUtils";
-import { customFieldLinkChoices, customFieldLinkKey, customFieldNavigationRequest, customFieldRecordValues, customFieldValueValid, CUSTOM_FIELD_LINK_KINDS, type CustomFieldCatalog } from "./customFieldModel";
+import { customFieldLinkChoices, customFieldLinkKey, customFieldNavigationRequest, customFieldRecordValues, customFieldValueValid, parseCustomFieldNumber, CUSTOM_FIELD_LINK_KINDS, type CustomFieldCatalog } from "./customFieldModel";
 import type { CustomFieldLink, CustomFieldRecordKind, CustomFieldValue, CustomFieldValues } from "./customFieldTypes";
 import { useItOpsStore } from "./state";
 
 export function useCustomFieldDraft(kind: CustomFieldRecordKind, id?: string) {
+  const { t } = useTranslation();
+  const notice = useWorkspaceStore((state) => state.showStatusBarNotice);
+  const editorRef = useRef<HTMLFieldSetElement>(null);
   const snapshot = useItOpsStore((state) => state.customFields);
   const loaded = useItOpsStore((state) => state.customFieldsLoaded);
   const initialized = useRef(loaded);
@@ -21,7 +24,15 @@ export function useCustomFieldDraft(kind: CustomFieldRecordKind, id?: string) {
     }
   }, [loaded, snapshot, kind, id]);
   const fields = snapshot.fields.filter((field) => field.recordKind === kind);
-  return { values, setValues, valid: loaded && fields.every((field) => customFieldValueValid(field, values[field.id])) };
+  function validate() {
+    if (!loaded) return false;
+    const invalid = fields.find((field) => !customFieldValueValid(field, values[field.id]));
+    if (!invalid) return true;
+    notice(t("itops.customFields.errors.invalidValue", { name: invalid.name }), { tone: "error" });
+    editorRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+    return false;
+  }
+  return { values, setValues, loaded, validate, editorRef };
 }
 
 /** Fetch target metadata on demand; no secrets or recurring command polling. */
@@ -86,10 +97,26 @@ export async function navigateCustomFieldLink(link: CustomFieldLink, showWorkspa
   return true;
 }
 
-export function CustomFieldEditor({ kind, values, onChange }: {
+function CustomFieldNumberInput({ value, onChange }: {
+  value: CustomFieldValue | null | undefined; onChange: (value: CustomFieldValue | null) => void;
+}) {
+  const [draft, setDraft] = useState({ value, text: value == null ? "" : String(value) });
+  return <TextInput inputMode="decimal" aria-invalid={typeof value === "string" || (typeof value === "number" && !Number.isFinite(value)) || undefined}
+    value={Object.is(value, draft.value) ? draft.text : value == null ? "" : String(value)}
+    onChange={(event) => {
+      const text = event.currentTarget.value;
+      const next = parseCustomFieldNumber(text);
+      setDraft({ value: next, text });
+      onChange(next);
+    }} />;
+}
+
+export function CustomFieldEditor({ kind, values, onChange, editorRef }: {
   kind: CustomFieldRecordKind; values: CustomFieldValues; onChange: (values: CustomFieldValues) => void;
+  editorRef?: Ref<HTMLFieldSetElement>;
 }) {
   const { t } = useTranslation();
+  const id = useId();
   const definitions = useItOpsStore((state) => state.customFields.fields);
   const fields = definitions.filter((field) => field.recordKind === kind);
   const catalog = useCustomFieldCatalog(fields.some((field) => ["link", "credential"].includes(field.type)));
@@ -97,24 +124,27 @@ export function CustomFieldEditor({ kind, values, onChange }: {
   const [linkKinds, setLinkKinds] = useState<Record<string, CustomFieldLink["kind"]>>({});
   if (fields.length === 0) return null;
   function setValue(id: string, value: CustomFieldValue | null) { onChange({ ...values, [id]: value }); }
-  return <fieldset className="it-custom-field-editor kk-surface"><legend>{t("itops.customFields.heading")}</legend>
+  return <fieldset ref={editorRef} className="it-custom-field-editor kk-surface"><legend>{t("itops.customFields.heading")}</legend>
     <div className="it-custom-field-value-grid">{fields.map((field) => {
       const value = values[field.id];
       const text = typeof value === "string" || typeof value === "number" ? String(value) : "";
       const unavailable = t("itops.customFields.unavailable");
+      const invalid = !customFieldValueValid(field, value) || undefined;
       let control;
       if (field.type === "multiline") {
-        control = <TextArea rows={3} value={text} onChange={(event) => setValue(field.id, event.currentTarget.value || null)} />;
+        control = <TextArea rows={3} aria-invalid={invalid} value={text} onChange={(event) => setValue(field.id, event.currentTarget.value || null)} />;
+      } else if (field.type === "number") {
+        control = <CustomFieldNumberInput value={value} onChange={(next) => setValue(field.id, next)} />;
       } else if (field.type === "boolean" || field.type === "select") {
         const selected = field.type === "boolean" ? typeof value === "boolean" ? String(value) : "" : text;
-        control = <Select value={selected} options={[{ value: "", label: "—" }, ...(field.type === "boolean"
+        control = <Select aria-invalid={invalid} value={selected} options={[{ value: "", label: "—" }, ...(field.type === "select" && selected && !field.options.includes(selected) ? [{ value: selected, label: selected }] : []), ...(field.type === "boolean"
           ? [{ value: "true", label: t("itops.customFields.yes") }, { value: "false", label: t("itops.customFields.no") }]
           : field.options.map((option) => ({ value: option, label: option })))]}
           onChange={(event) => { const next = event.currentTarget.value; setValue(field.id, next === "" ? null : field.type === "boolean" ? next === "true" : next); }} />;
       } else if (field.type === "credential") {
         const selected = value && typeof value === "object" && value.kind === "credential" ? value.credentialId : "";
         const options = catalog.credentials.map((entry) => ({ value: entry.id, label: [entry.label, entry.username].filter(Boolean).join(" · ") || entry.id }));
-        control = <Select value={selected} options={[{ value: "", label: "—" }, ...(selected && !options.some((option) => option.value === selected) ? [{ value: selected, label: unavailable }] : []), ...options]}
+        control = <Select aria-invalid={invalid} value={selected} options={[{ value: "", label: "—" }, ...(selected && !options.some((option) => option.value === selected) ? [{ value: selected, label: unavailable }] : []), ...options]}
           onChange={(event) => setValue(field.id, event.currentTarget.value ? { kind: "credential", credentialId: event.currentTarget.value } : null)} />;
       } else if (field.type === "link") {
         const link = value && typeof value === "object" && value.kind !== "credential" ? value : null;
@@ -122,17 +152,20 @@ export function CustomFieldEditor({ kind, values, onChange }: {
         const selected = link ? customFieldLinkKey(link) : "";
         const targets = choices.filter((choice) => choice.value.kind === linkKind);
         control = <div className="it-custom-field-link-controls">
-          <Select aria-label={t("itops.customFields.linkKind")} value={linkKind} options={CUSTOM_FIELD_LINK_KINDS.map((kind) => ({ value: kind, label: t(`itops.customFields.linkType.${kind}`) }))}
-            onChange={(event) => { const next = event.currentTarget.value as CustomFieldLink["kind"]; setLinkKinds((current) => ({ ...current, [field.id]: next })); setValue(field.id, null); }} />
-          <Select aria-label={t("itops.customFields.linkTarget")} value={selected} options={[{ value: "", label: "—" }, ...(selected && !targets.some((target) => customFieldLinkKey(target.value) === selected) ? [{ value: selected, label: unavailable }] : []), ...targets.map((target) => ({ value: customFieldLinkKey(target.value), label: target.label }))]}
-            onChange={(event) => setValue(field.id, targets.find((target) => customFieldLinkKey(target.value) === event.currentTarget.value)?.value ?? null)} />
+          <Field label={t("itops.customFields.linkKind")}><Select value={linkKind} options={CUSTOM_FIELD_LINK_KINDS.map((kind) => ({ value: kind, label: t(`itops.customFields.linkType.${kind}`) }))}
+            onChange={(event) => { const next = event.currentTarget.value as CustomFieldLink["kind"]; setLinkKinds((current) => ({ ...current, [field.id]: next })); setValue(field.id, null); }} /></Field>
+          <Field label={t("itops.customFields.linkTarget")}><Select aria-invalid={invalid} value={selected} options={[{ value: "", label: "—" }, ...(selected && !targets.some((target) => customFieldLinkKey(target.value) === selected) ? [{ value: selected, label: unavailable }] : []), ...targets.map((target) => ({ value: customFieldLinkKey(target.value), label: target.label }))]}
+            onChange={(event) => setValue(field.id, targets.find((target) => customFieldLinkKey(target.value) === event.currentTarget.value)?.value ?? null)} /></Field>
         </div>;
       } else {
-        control = <TextInput type={field.type === "number" ? "number" : field.type === "date" ? "date" : field.type === "url" ? "url" : "text"}
-          step={field.type === "number" ? "any" : undefined} value={text}
-          onChange={(event) => { const next = event.currentTarget.value; setValue(field.id, next === "" ? null : field.type === "number" ? Number(next) : next); }} />;
+        control = <TextInput type={field.type === "date" ? "date" : field.type === "url" ? "url" : "text"}
+          aria-invalid={invalid} value={text}
+          onChange={(event) => { const next = event.currentTarget.value; setValue(field.id, next === "" ? null : next); }} />;
       }
-      return <Field key={field.id} className={["multiline", "link"].includes(field.type) ? "it-custom-field-wide" : undefined} label={field.name} hint={field.type === "credential" ? t("itops.customFields.credentialHint") : field.type === "url" ? t("itops.customFields.urlHint") : undefined}>{control}</Field>;
+      if (field.type === "link") return <div key={field.id} className="kk-field it-custom-field-wide" role="group" aria-labelledby={`${id}-${field.id}`}>
+        <span className="kk-lbl" id={`${id}-${field.id}`}>{field.name}</span>{control}
+      </div>;
+      return <Field key={field.id} className={field.type === "multiline" ? "it-custom-field-wide" : undefined} label={field.name} hint={field.type === "credential" ? t("itops.customFields.credentialHint") : field.type === "url" ? t("itops.customFields.urlHint") : field.type === "number" ? t("itops.customFields.numberHint") : undefined}>{control}</Field>;
     })}</div>
   </fieldset>;
 }

@@ -4536,19 +4536,26 @@ input.settings-credential-search {
   font-variant-numeric: tabular-nums;
   text-align: end;
 }
-.it-custom-field-definitions { display: grid; gap: 6px; margin: 10px 0; }
+.it-custom-field-definitions { display: grid; gap: 8px; margin: 10px 0; container-type: inline-size; }
 .it-custom-field-heading,
 .it-custom-field-row { display: grid; grid-template-columns: minmax(140px, 1.2fr) minmax(130px, 1fr) minmax(120px, 1fr) 30px; gap: 8px; align-items: center; }
 .it-custom-field-heading { padding: 0 2px; color: var(--text-muted); font-size: 12px; }
-.settings-section .it-custom-field-row > :is(input, select) { width: 100%; min-width: 0; height: 32px; min-height: 32px; padding: 4px 8px; font-size: 12px; }
+.settings-section .it-custom-field-row > label { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; min-height: 0; margin: 0; padding: 0; border: 0; gap: 4px; }
+.settings-section .it-custom-field-row label > :is(input, select) { grid-column: 1; width: 100%; min-width: 0; height: 32px; min-height: 32px; padding: 4px 8px; font-size: 12px; }
+.settings-section .it-custom-field-row .it-custom-field-label { color: var(--text-muted); font-size: 12px; }
+.it-custom-field-readonly { min-width: 0; padding-inline: 8px; font-size: 12px; overflow-wrap: anywhere; }
+.it-custom-field-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .settings-section .it-custom-field-remove { width: 28px; height: 28px; min-height: 28px; padding: 0; justify-content: center; }
-.it-custom-field-options { margin: 5px 38px 5px 2px; font-size: 12px; }
+.it-custom-field-options { margin-block: 5px; margin-inline: 2px 38px; font-size: 12px; }
 .it-custom-field-options summary { color: var(--text-muted); cursor: pointer; }
 .settings-section .it-custom-field-options textarea { display: block; width: 100%; min-height: 52px; margin: 6px 0; }
 .it-custom-field-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
-@media (max-width: 780px) {
+@container (max-width: 560px) {
   .it-custom-field-heading { display: none; }
-  .it-custom-field-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 30px; }
-  .it-custom-field-row > input { grid-column: 1 / span 2; }
-  .it-custom-field-row > button { grid-column: 3; grid-row: 1 / span 2; }
+  .it-custom-field-definition + .it-custom-field-definition { border-top: 1px solid var(--border); padding-top: 12px; }
+  .it-custom-field-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 30px; align-items: end; }
+  .it-custom-field-row > .it-custom-field-name { grid-column: 1 / span 2; }
+  .it-custom-field-row > button { grid-column: 3; grid-row: 1; }
+  .it-custom-field-label { position: static; width: auto; height: auto; overflow: visible; clip-path: none; color: var(--text-muted); font-size: 12px; }
+  .it-custom-field-readonly { display: grid; gap: 4px; padding-inline: 0; }
 }

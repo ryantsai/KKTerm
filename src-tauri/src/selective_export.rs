@@ -1011,6 +1011,10 @@ fn apply_segment(
         }
     }
 
+    if tables.iter().any(|table| table.name == "itops_custom_fields") {
+        crate::itops::custom_fields::validate_import(tx)?;
+    }
+
     Ok(())
 }
 
@@ -2258,6 +2262,46 @@ mod tests {
         )
         .expect("itops schema");
         conn.execute_batch(include_str!("itops/custom_fields_schema.sql")).unwrap();
+    }
+
+    #[test]
+    fn itops_custom_fields_import_rejects_invalid_metadata_atomically() {
+        use serde_json::json;
+        for (definition, value, kind, owner) in [
+            ("number", json!("not a number"), "prefix", "p"),
+            ("credential", json!({"kind":"credential", "credentialId":"c", "password":"secret"}), "prefix", "p"),
+            ("text", json!("orphan"), "prefix", "missing"),
+            ("text", json!("wrong owner kind"), "vlan", "p"),
+            ("unsupported", json!("value"), "prefix", "p"),
+        ] {
+            let mut conn = SqliteConnection::open_in_memory().unwrap();
+            itops_schema(&conn);
+            let data = json!({
+                "itops_ip_prefixes": [{"id":"p", "cidr":"192.0.2.0/24"}],
+                "itops_custom_fields": [{"id":"f", "name":"Field", "record_kind":"prefix", "field_type":definition, "options_json":"[]", "sort_order":0}],
+                "itops_custom_field_values": [{"id":"fv", "field_id":"f", "record_kind":kind, "record_id":owner, "value_json":value.to_string()}]
+            });
+            let tx = conn.transaction().unwrap();
+            assert!(apply_segment(&tx, segment_tables("itops").unwrap(), data.as_object().unwrap(), "add", &mut HashMap::new()).is_err(), "accepted {definition}: {value}");
+            tx.rollback().unwrap();
+            assert!(crate::itops::custom_fields::snapshot(&conn).unwrap().fields.is_empty());
+            assert_eq!(conn.query_row("SELECT COUNT(*) FROM itops_ip_prefixes", [], |row| row.get::<_, i64>(0)).unwrap(), 0);
+        }
+    }
+
+    #[test]
+    fn itops_custom_fields_merge_enforces_the_combined_definition_limit() {
+        use serde_json::json;
+        let mut conn = SqliteConnection::open_in_memory().unwrap();
+        itops_schema(&conn);
+        for index in 0..128 {
+            conn.execute("INSERT INTO itops_custom_fields VALUES (?1, ?1, 'prefix', 'text', '[]', ?2)", rusqlite::params![format!("f{index}"), index]).unwrap();
+        }
+        let data = json!({"itops_custom_fields":[{"id":"extra", "name":"Extra", "record_kind":"prefix", "field_type":"text", "options_json":"[]", "sort_order":0}]});
+        let tx = conn.transaction().unwrap();
+        assert!(apply_segment(&tx, segment_tables("itops").unwrap(), data.as_object().unwrap(), "add", &mut HashMap::new()).is_err());
+        tx.rollback().unwrap();
+        assert_eq!(crate::itops::custom_fields::snapshot(&conn).unwrap().fields.len(), 128);
     }
 
     #[test]
