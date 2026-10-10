@@ -20,7 +20,7 @@ mod platform {
         mem::ManuallyDrop,
         sync::{
             Arc, Mutex, MutexGuard, OnceLock, TryLockError, Weak,
-            atomic::{AtomicU32, Ordering},
+            atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering},
             mpsc,
         },
         thread,
@@ -29,7 +29,7 @@ mod platform {
 
     use serde::{Deserialize, Serialize};
     use serde_json::json;
-    use tauri::{AppHandle, Manager};
+    use tauri::{AppHandle, Emitter, Manager};
 
     use super::{RdpFullscreenEntryOutcome, RdpStartupFullscreenState};
     use crate::logging::{rdp_debug, ui_debug};
@@ -129,6 +129,17 @@ mod platform {
     const DISPID_DISCONNECTED: i32 = 4;
     const DISPID_REQUEST_GO_FULLSCREEN: i32 = 8;
     const DISPID_REQUEST_LEAVE_FULLSCREEN: i32 = 9;
+    const DISPID_REMOTE_DESKTOP_SIZE_CHANGE: i32 = 12;
+    // `OnDisconnected(discReason)`: 1 is a local disconnection, which is not an
+    // error. KKTerm unsubscribes before it disconnects a Session itself, so a
+    // live Session only reports it when the user ends it from the full-screen
+    // connection bar. Observed on Windows 11: that button logs `Reason= 1` in
+    // the RDPClient/Operational event log (id 1026); socket closes log 2308,
+    // failed connects 516 and a server-side disconnect 3.
+    const RDP_DISCONNECT_REASON_LOCAL: i32 = 1;
+    /// Tauri event announcing that the user closed a full-screen Session from
+    /// the ActiveX connection bar. Payload: `{ "sessionId": string }`.
+    const RDP_FULLSCREEN_CLOSED_EVENT: &str = "rdp-fullscreen-closed";
     const IMSTSCAX_EVENTS_IID: GUID = GUID::from_u128(0x336d5562_efa8_482e_8cb3_c5c0fc7a7db6);
     const RDP_PROGIDS: &[&str] = &[
         "MsTscAx.MsTscAx.13",
@@ -523,6 +534,11 @@ mod platform {
         // is interactive, instead of relying on a manual pane nudge.
         #[serde(default)]
         force: bool,
+        // The request only re-asserts the full-screen display. It is a no-op
+        // unless the Session is currently full screen, so a settle pass that
+        // outlives the user leaving full screen never resizes the Pane.
+        #[serde(default)]
+        fullscreen_only: bool,
     }
 
     #[derive(Deserialize)]
@@ -623,7 +639,20 @@ mod platform {
         resolution_mode: RemoteResolutionMode,
         fullscreen_restore: Option<RdpFullscreenRestore>,
         suppressed_fullscreen_dispid: Arc<AtomicU32>,
+        events: Arc<RdpEventState>,
         event_subscription: RdpEventSubscription,
+    }
+
+    /// Facts the ActiveX event sink publishes for main-thread readers. ActiveX
+    /// raises events synchronously, sometimes while the Session mutex is held,
+    /// so the sink only ever stores into these atomics.
+    #[derive(Default)]
+    struct RdpEventState {
+        /// Last size from `OnRemoteDesktopSizeChange` (see
+        /// `pack_remote_desktop_size`); 0 until the first event.
+        remote_desktop_size: AtomicU64,
+        /// The latest `OnDisconnected` was `RDP_DISCONNECT_REASON_LOCAL`.
+        local_disconnect: AtomicBool,
     }
 
     #[derive(Clone, Copy)]
@@ -660,6 +689,7 @@ mod platform {
         session_id: String,
         fullscreen_requests: mpsc::Sender<(i32, usize)>,
         suppressed_fullscreen_dispid: Arc<AtomicU32>,
+        events: Arc<RdpEventState>,
     }
 
     // These values are always created, used, and destroyed through closures
@@ -696,6 +726,7 @@ mod platform {
             session_id: String,
             origin_hwnd: isize,
             suppressed_fullscreen_dispid: Arc<AtomicU32>,
+            events: Arc<RdpEventState>,
         ) -> Result<IUnknown, String> {
             let fullscreen_requests = start_rdp_fullscreen_request_worker(
                 app,
@@ -710,11 +741,46 @@ mod platform {
                 session_id,
                 fullscreen_requests,
                 suppressed_fullscreen_dispid,
+                events,
             });
             Ok(unsafe { IUnknown::from_raw(Box::into_raw(sink).cast()) })
         }
 
-        fn handle_event(&self, dispidmember: i32) {
+        fn handle_event(&self, dispidmember: i32, params: *const DISPPARAMS) {
+            if dispidmember == DISPID_REMOTE_DESKTOP_SIZE_CHANGE {
+                // Lock-free on purpose: ActiveX raises this synchronously from
+                // inside UpdateSessionDisplaySettings while the Session mutex
+                // is held, so the callback must never wait for that mutex.
+                if let Some((width, height)) = remote_desktop_size_from_params(params) {
+                    self.events
+                        .remote_desktop_size
+                        .store(pack_remote_desktop_size(width, height), Ordering::Release);
+                    rdp_debug(
+                        "display.remote_size.changed",
+                        &json!({
+                            "sessionId": &self.session_id,
+                            "width": width,
+                            "height": height,
+                        }),
+                    );
+                }
+                return;
+            }
+            if dispidmember == DISPID_DISCONNECTED {
+                // Publish before queueing so the main-thread handler sees it.
+                let reason = disconnect_reason_from_params(params);
+                self.events.local_disconnect.store(
+                    reason == Some(RDP_DISCONNECT_REASON_LOCAL),
+                    Ordering::Release,
+                );
+                rdp_debug(
+                    "session.disconnected",
+                    &json!({
+                        "sessionId": &self.session_id,
+                        "reason": reason,
+                    }),
+                );
+            }
             if !matches!(
                 dispidmember,
                 DISPID_DISCONNECTED
@@ -932,14 +998,61 @@ mod platform {
         _iid: *const GUID,
         _lcid: u32,
         _flags: DISPATCH_FLAGS,
-        _params: *const DISPPARAMS,
+        params: *const DISPPARAMS,
         _result: *mut VARIANT,
         _exception: *mut EXCEPINFO,
         _argument_error: *mut u32,
     ) -> windows::core::HRESULT {
         let sink = unsafe { &*this.cast::<RdpEventSink>() };
-        sink.handle_event(dispidmember);
+        sink.handle_event(dispidmember, params);
         S_OK
+    }
+
+    /// `OnRemoteDesktopSizeChange(long width, long height)`. `IDispatch` passes
+    /// arguments right-to-left, so the event arrives as `[height, width]`.
+    fn remote_desktop_size_from_params(params: *const DISPPARAMS) -> Option<(i32, i32)> {
+        // SAFETY: COM hands `Invoke` a DISPPARAMS that is valid for the call;
+        // the argument array is only dereferenced after the count and null checks.
+        let params = unsafe { params.as_ref() }?;
+        if params.cArgs != 2 || params.rgvarg.is_null() {
+            return None;
+        }
+        let height = unsafe { variant_long(&*params.rgvarg.add(0)) }?;
+        let width = unsafe { variant_long(&*params.rgvarg.add(1)) }?;
+        (width > 0 && height > 0).then_some((width, height))
+    }
+
+    /// `OnDisconnected(long discReason)`.
+    fn disconnect_reason_from_params(params: *const DISPPARAMS) -> Option<i32> {
+        // SAFETY: see `remote_desktop_size_from_params`.
+        let params = unsafe { params.as_ref() }?;
+        if params.cArgs != 1 || params.rgvarg.is_null() {
+            return None;
+        }
+        unsafe { variant_long(&*params.rgvarg) }
+    }
+
+    unsafe fn variant_long(variant: &VARIANT) -> Option<i32> {
+        let data = unsafe { &*variant.Anonymous.Anonymous };
+        (data.vt == VT_I4).then(|| unsafe { data.Anonymous.lVal })
+    }
+
+    fn pack_remote_desktop_size(width: i32, height: i32) -> u64 {
+        (u64::from(width as u32) << 32) | u64::from(height as u32)
+    }
+
+    /// True once the control has reported `target` as the actual remote desktop
+    /// size for a display update that matches the one KKTerm last requested.
+    /// A successful `UpdateSessionDisplaySettings` call proves neither: the
+    /// server ignores it until its Display Control channel is ready.
+    fn remote_display_confirmed(
+        requested: RdpDisplaySettings,
+        target: RdpDisplaySettings,
+        reported_size: u64,
+    ) -> bool {
+        requested == target
+            && reported_size
+                == pack_remote_desktop_size(target.desktop_width, target.desktop_height)
     }
 
     fn rdp_request_scale_factor(requested: Option<f64>, host_scale_factor: f64) -> f64 {
@@ -985,6 +1098,9 @@ mod platform {
                 let session = sessions
                     .get_mut(&request.session_id)
                     .ok_or_else(|| format!("RDP session '{}' was not found", request.session_id))?;
+                if request.fullscreen_only && session.fullscreen_restore.is_none() {
+                    return Ok(());
+                }
                 let native_fullscreen = is_native_fullscreen(session);
                 if session.fullscreen_restore.is_some() {
                     update_fullscreen_restore_bounds(
@@ -998,21 +1114,43 @@ mod platform {
                     if native_fullscreen {
                         // The retained ActiveX host currently fills its monitor;
                         // retain the latest windowed Pane bounds until exit.
-                        // The server can ignore the first display update during
-                        // automatic entry. Keep the startup settle passes alive,
-                        // targeting the monitor rather than the restored Pane.
+                        // The Display Control channel is not ready right after
+                        // logon: ActiveX rejects the update (0x80020009) or the
+                        // server drops it while the call returns success. Keep
+                        // re-sending the monitor-sized update on
+                        // forced settle passes until the control reports that
+                        // size back, targeting the monitor rather than the
+                        // restored Pane.
                         if request.force {
                             let (monitor_rect, monitor_scale) =
                                 fullscreen_monitor_geometry(session)?;
                             let display_settings =
                                 fullscreen_display_settings(session, &monitor_rect, monitor_scale);
-                            let display_sync_completed =
-                                sync_remote_desktop_size(session, display_settings, true);
-                            apply_smart_sizing(&session.dispatch, true);
-                            if !display_sync_completed {
-                                return Err(
-                                    "failed to settle the RDP full-screen display size".to_string(),
+                            let requested = current_rdp_display_settings(session);
+                            let reported_size = session
+                                .events
+                                .remote_desktop_size
+                                .load(Ordering::Acquire);
+                            if remote_display_confirmed(requested, display_settings, reported_size) {
+                                rdp_debug(
+                                    "display.resize.skipped",
+                                    &json!({
+                                        "reason": "remoteConfirmed",
+                                        "sessionId": &session.session_id,
+                                        "desktopWidth": display_settings.desktop_width,
+                                        "desktopHeight": display_settings.desktop_height,
+                                    }),
                                 );
+                            } else {
+                                let display_sync_completed =
+                                    sync_remote_desktop_size(session, display_settings, true);
+                                apply_smart_sizing(&session.dispatch, true);
+                                if !display_sync_completed {
+                                    return Err(
+                                        "failed to settle the RDP full-screen display size"
+                                            .to_string(),
+                                    );
+                                }
                             }
                         }
                         return Ok(());
@@ -1826,6 +1964,7 @@ mod platform {
             &options,
         )?;
         let suppressed_fullscreen_dispid = Arc::new(AtomicU32::new(0));
+        let events = Arc::new(RdpEventState::default());
         let event_subscription = subscribe_rdp_events(
             &dispatch,
             app,
@@ -1833,6 +1972,7 @@ mod platform {
             &session_id,
             hwnd.0 as isize,
             Arc::clone(&suppressed_fullscreen_dispid),
+            Arc::clone(&events),
         )?;
         rdp_debug(
             "session.start.configured",
@@ -1877,6 +2017,7 @@ mod platform {
                 resolution_mode,
                 fullscreen_restore: None,
                 suppressed_fullscreen_dispid,
+                events,
                 event_subscription,
             },
         );
@@ -2832,7 +2973,7 @@ mod platform {
     }
 
     fn handle_rdp_fullscreen_request(
-        _app: &AppHandle,
+        app: &AppHandle,
         sessions: &Arc<Mutex<HashMap<String, RdpSession>>>,
         session_id: &str,
         origin_hwnd: isize,
@@ -2871,7 +3012,19 @@ mod platform {
             return Ok(true);
         }
         match dispid {
-            DISPID_DISCONNECTED => restore_disconnected_fullscreen_host(session),
+            DISPID_DISCONNECTED => {
+                let was_fullscreen = session.fullscreen_restore.is_some();
+                let restored = restore_disconnected_fullscreen_host(session);
+                // Narrow by design: only the connection bar's close button ends a
+                // full-screen Session with a local disconnect. A remote logoff,
+                // server drop or network error keeps the disconnected Pane so the
+                // user can read it and reconnect. Request the Tab close even if
+                // restoring the host failed, because closing destroys that host.
+                if was_fullscreen && session.events.local_disconnect.load(Ordering::Acquire) {
+                    request_close_after_fullscreen_disconnect(app, &session.session_id);
+                }
+                restored
+            }
             DISPID_REQUEST_GO_FULLSCREEN => {
                 enter_native_fullscreen_if(session, &request_is_current).map(|_| ())
             }
@@ -2883,6 +3036,17 @@ mod platform {
         Ok(true)
     }
 
+    fn request_close_after_fullscreen_disconnect(app: &AppHandle, session_id: &str) {
+        let result = app.emit(RDP_FULLSCREEN_CLOSED_EVENT, json!({ "sessionId": session_id }));
+        rdp_debug(
+            "fullscreen.disconnect.close_requested",
+            &json!({
+                "sessionId": session_id,
+                "emitError": result.err().map(|error| error.to_string()),
+            }),
+        );
+    }
+
     fn subscribe_rdp_events(
         dispatch: &IDispatch,
         app: &AppHandle,
@@ -2890,6 +3054,7 @@ mod platform {
         session_id: &str,
         origin_hwnd: isize,
         suppressed_fullscreen_dispid: Arc<AtomicU32>,
+        events: Arc<RdpEventState>,
     ) -> Result<RdpEventSubscription, String> {
         let container = dispatch
             .cast::<IConnectionPointContainer>()
@@ -2904,6 +3069,7 @@ mod platform {
             session_id.to_string(),
             origin_hwnd,
             suppressed_fullscreen_dispid,
+            events,
         )?;
         let cookie = unsafe { connection_point.Advise(&sink) }
             .map_err(|error| format!("failed to subscribe to RDP ActiveX events: {error}"))?;
@@ -4726,6 +4892,113 @@ mod platform {
             assert!(is_rdp_active_state(1));
             assert!(is_rdp_active_state(2));
         }
+
+        fn display_settings(width: i32, height: i32) -> RdpDisplaySettings {
+            RdpDisplaySettings {
+                desktop_width: width,
+                desktop_height: height,
+                physical_width: RDP_UNKNOWN_PHYSICAL_SIZE_MM,
+                physical_height: RDP_UNKNOWN_PHYSICAL_SIZE_MM,
+                desktop_scale_factor: 100,
+                device_scale_factor: 100,
+            }
+        }
+
+        fn event_params(variants: &mut [VARIANT]) -> DISPPARAMS {
+            DISPPARAMS {
+                rgvarg: variants.as_mut_ptr(),
+                rgdispidNamedArgs: std::ptr::null_mut(),
+                cArgs: variants.len() as u32,
+                cNamedArgs: 0,
+            }
+        }
+
+        #[test]
+        fn reads_remote_desktop_size_from_right_to_left_event_arguments() {
+            // OnRemoteDesktopSizeChange(width, height) is delivered as [height, width].
+            let mut variants = [variant_i4(1440), variant_i4(2560)];
+            let params = event_params(&mut variants);
+            assert_eq!(remote_desktop_size_from_params(&params), Some((2560, 1440)));
+        }
+
+        #[test]
+        fn ignores_malformed_remote_desktop_size_events() {
+            assert_eq!(remote_desktop_size_from_params(std::ptr::null()), None);
+
+            let mut one_argument = [variant_i4(1440)];
+            let params = event_params(&mut one_argument);
+            assert_eq!(remote_desktop_size_from_params(&params), None);
+
+            let mut wrong_type = [variant_i4(1440), variant_bstr("2560")];
+            let params = event_params(&mut wrong_type);
+            assert_eq!(remote_desktop_size_from_params(&params), None);
+
+            let mut non_positive = [variant_i4(0), variant_i4(2560)];
+            let params = event_params(&mut non_positive);
+            assert_eq!(remote_desktop_size_from_params(&params), None);
+
+            for variant in wrong_type.iter_mut() {
+                unsafe {
+                    let _ = VariantClear(variant);
+                }
+            }
+        }
+
+        #[test]
+        fn reads_the_disconnect_reason_and_only_a_local_disconnect_is_the_bar_close() {
+            let mut local = [variant_i4(RDP_DISCONNECT_REASON_LOCAL)];
+            let params = event_params(&mut local);
+            assert_eq!(
+                disconnect_reason_from_params(&params),
+                Some(RDP_DISCONNECT_REASON_LOCAL)
+            );
+
+            // Remote logoff/disconnect (2, 3) and network errors are not the bar's close button.
+            for reason in [0, 2, 3, 264, 2308] {
+                let mut other = [variant_i4(reason)];
+                let params = event_params(&mut other);
+                assert_ne!(
+                    disconnect_reason_from_params(&params),
+                    Some(RDP_DISCONNECT_REASON_LOCAL)
+                );
+            }
+
+            assert_eq!(disconnect_reason_from_params(std::ptr::null()), None);
+            let mut two_arguments = [variant_i4(1), variant_i4(1)];
+            let params = event_params(&mut two_arguments);
+            assert_eq!(disconnect_reason_from_params(&params), None);
+        }
+
+        #[test]
+        fn packs_remote_desktop_size_without_mixing_axes() {
+            assert_eq!(pack_remote_desktop_size(1, 2), (1_u64 << 32) | 2);
+            assert_ne!(
+                pack_remote_desktop_size(2560, 1440),
+                pack_remote_desktop_size(1440, 2560)
+            );
+            assert_ne!(pack_remote_desktop_size(2560, 1440), 0);
+        }
+
+        #[test]
+        fn display_update_is_confirmed_only_by_the_control_reporting_the_target_size() {
+            let pane = display_settings(1264, 700);
+            let monitor = display_settings(2560, 1440);
+            let reported_pane = pack_remote_desktop_size(1264, 700);
+            let reported_monitor = pack_remote_desktop_size(2560, 1440);
+
+            // The ActiveX call succeeded but the server never resized: still pane-sized.
+            assert!(!remote_display_confirmed(monitor, monitor, reported_pane));
+            // Nothing reported yet, e.g. before the first size event.
+            assert!(!remote_display_confirmed(monitor, monitor, 0));
+            // The control reports the monitor size for the update KKTerm requested.
+            assert!(remote_display_confirmed(monitor, monitor, reported_monitor));
+            // KKTerm never asked for the monitor size, so a coincidental report is not an ack.
+            assert!(!remote_display_confirmed(pane, monitor, reported_monitor));
+            // A scale-factor-only difference is a different request.
+            let mut scaled = monitor;
+            scaled.desktop_scale_factor = 150;
+            assert!(!remote_display_confirmed(scaled, monitor, reported_monitor));
+        }
     }
 }
 
@@ -4814,6 +5087,8 @@ mod platform {
         pub scale_factor: Option<f64>,
         #[serde(default)]
         pub force: bool,
+        #[serde(default)]
+        pub fullscreen_only: bool,
     }
 
     #[derive(Deserialize)]

@@ -189,3 +189,16 @@ test("platform readiness hooks reuse the existing full-screen entry and cancel o
   assert.match(source, /invokeCommand\("get_rdp_session_status"[\s\S]*?if \(status.connected\) \{\s*tryOpenRdpStartupFullscreen/);
   assert.match(source, /const tryOpenRdpStartupFullscreen[\s\S]*?hasRdpStartupFullscreen[\s\S]*?documentHasRdpBlockingOverlay[\s\S]*?enterFullscreenRef.current/);
 });
+
+test("an acknowledged Windows entry starts a full-screen-only display settle that teardown cancels", async () => {
+  const source = await readFile(new URL(
+    "../src/modules/workspace/connections/remote-desktop/RemoteDesktopWorkspace.tsx", import.meta.url,
+  ), "utf8");
+  // Only an applied (never skipped) ActiveX entry arms it, for the Session that entered.
+  assert.match(source, /if \(outcome === "applied" && canStartRdp\) scheduleRdpFullscreenDisplaySettle\(sessionId\);/);
+  // It must be forced and full-screen-only so it can neither be swallowed by the
+  // cached-size gate nor resize the windowed Pane after the user leaves full screen.
+  assert.match(source, /const scheduleRdpFullscreenDisplaySettle[\s\S]*?update_rdp_bounds[\s\S]*?force: true,\s*fullscreenOnly: true/);
+  // Reconnect and unmount reach it through the shared settle cancellation.
+  assert.match(source, /const cancelRdpDisplaySettle = \(\) => \{[\s\S]*?fullscreenSettleStopRef.current\?\.\(\)/);
+});

@@ -37,6 +37,7 @@ import { normalizeRdpSharedLocalFolders } from "./rdpLocalResources";
 import {
   createRdpStartupFullscreenAttempt,
   isRdpStartupActivationCurrent,
+  startRdpFullscreenDisplaySettle,
   type RdpFullscreenEntryOutcome,
 } from "./rdpStartupFullscreen";
 import {
@@ -82,6 +83,9 @@ const RDP_DISPLAY_SETTLE_INTERVAL_MS = 2000;
 const RDP_DISPLAY_SETTLE_PASSES = 6;
 const RDP_DISPLAY_SETTLE_SUCCESS_PASSES = 2;
 const REMOTE_FULLSCREEN_SHORTCUT_EVENT = "kkterm://toggle-remote-fullscreen";
+// Emitted by the Windows backend when the user ends a full-screen Session with
+// the ActiveX connection bar's close button. Other disconnects never emit it.
+const RDP_FULLSCREEN_CLOSED_EVENT = "rdp-fullscreen-closed";
 
 function currentRdpPixelScale() {
   return window.devicePixelRatio || 1;
@@ -93,10 +97,13 @@ function createRemoteDesktopSessionId(kind: "rdp" | "vnc") {
 
 export function RemoteDesktopWorkspace({
   isActive,
+  onFullscreenClose,
   onOpenAssistant = () => undefined,
   tab,
 }: {
   isActive: boolean;
+  /** Closes the owning Tab or Pane. Omitted where the surface has none to close. */
+  onFullscreenClose?: () => void;
   onOpenAssistant?: () => void;
   tab: WorkspaceTab;
 }) {
@@ -113,6 +120,8 @@ export function RemoteDesktopWorkspace({
   const sessionStartedRef = useRef(false);
   const sessionStartingRef = useRef(false);
   const openFullscreenRef = useRef<() => void>(() => undefined);
+  const fullscreenCloseRef = useRef(onFullscreenClose);
+  fullscreenCloseRef.current = onFullscreenClose;
   const enterFullscreenRef = useRef<(generation?: number) => Promise<RdpFullscreenEntryOutcome>>(
     async () => "skipped",
   );
@@ -128,6 +137,7 @@ export function RemoteDesktopWorkspace({
   const displaySyncInFlightRef = useRef(false);
   const displaySettleTimerRef = useRef<number | null>(null);
   const displaySettlePassesRef = useRef(0);
+  const fullscreenSettleStopRef = useRef<(() => void) | null>(null);
   const rdpVisibleRef = useRef(false);
   const rdpControlRef = useRef("");
   const rdpSuppressionCaptureInFlightRef = useRef(false);
@@ -702,6 +712,38 @@ export function RemoteDesktopWorkspace({
       displaySettleTimerRef.current = null;
     }
     displaySettlePassesRef.current = 0;
+    fullscreenSettleStopRef.current?.();
+    fullscreenSettleStopRef.current = null;
+  };
+
+  // The connect-time settle above is anchored to when the session became
+  // displayable and stops after two accepted passes, but the server may not
+  // accept a display update until long after that. Anchor a second, failure-
+  // tolerant settle to the moment full screen is entered; the native side stops
+  // re-sending once the control reports the monitor-sized desktop.
+  const scheduleRdpFullscreenDisplaySettle = (sessionId: string) => {
+    fullscreenSettleStopRef.current?.();
+    fullscreenSettleStopRef.current = startRdpFullscreenDisplaySettle({
+      isCurrent: () => sessionIdRef.current === sessionId && sessionStartedRef.current,
+      canReassert: () =>
+        displayReadyRef.current
+        && rdpVisibleRef.current
+        && visibilityRef.current.isActive
+        && !visibilityRef.current.suppressed,
+      reassert: async () => {
+        const bounds = computeBounds() ?? lastBoundsRef.current;
+        if (!bounds) return;
+        await invokeCommand("update_rdp_bounds", {
+          request: {
+            sessionId,
+            scaleFactor: currentRdpPixelScale(),
+            ...bounds,
+            force: true,
+            fullscreenOnly: true,
+          },
+        });
+      },
+    });
   };
 
   // Re-apply visible RDP bounds for a short window after the session first
@@ -976,7 +1018,13 @@ export function RemoteDesktopWorkspace({
         // Login prompts (Connected = 2) are displayable but not ready for entry.
         && (!canStartRdp || (rdpConnectedRef.current && rdpVisibleRef.current && startupActivationRef.current !== null))
         && (!useRdpCanvas || document.hasFocus()),
-      enter: () => enterFullscreenRef.current(canStartRdp ? startupActivationRef.current ?? undefined : undefined),
+      enter: async () => {
+        const outcome = await enterFullscreenRef.current(
+          canStartRdp ? startupActivationRef.current ?? undefined : undefined,
+        );
+        if (outcome === "applied" && canStartRdp) scheduleRdpFullscreenDisplaySettle(sessionId);
+        return outcome;
+      },
       // A native refusal is retryable only during the original foreground launch.
       canRetry: async () => useWorkspaceStore.getState().hasRdpStartupFullscreen(tab.id)
         && (canStartRdp ? await checkRdpStartupActivation() : document.hasFocus()),
@@ -1077,6 +1125,29 @@ export function RemoteDesktopWorkspace({
     // The activation check reads the captured generation from a live ref.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canStartRdp, startupFullscreenRequested, tab.id]);
+
+  useEffect(() => {
+    if (!canStartRdp || !isTauriRuntime()) {
+      return;
+    }
+    let disposed = false;
+    let dispose: (() => void) | undefined;
+    void listen<{ sessionId: string }>(RDP_FULLSCREEN_CLOSED_EVENT, (event) => {
+      if (!disposed && event.payload.sessionId === sessionIdRef.current) {
+        fullscreenCloseRef.current?.();
+      }
+    }).then((unlisten) => {
+      if (disposed) {
+        unlisten();
+      } else {
+        dispose = unlisten;
+      }
+    });
+    return () => {
+      disposed = true;
+      dispose?.();
+    };
+  }, [canStartRdp]);
 
   useEffect(() => {
     const unregisterSurface = registerRemoteFullscreenSurface(

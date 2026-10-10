@@ -701,6 +701,7 @@ export function WorkspaceCanvas({
             <DockableWorkspaceTab isActive={tabIsActive} key={tab.id} tab={tab}>
               <RemoteDesktopWorkspace
                 isActive={tabIsActive}
+                onFullscreenClose={() => closeTab(tab.id)}
                 onOpenAssistant={onOpenAssistant}
                 tab={tab}
               />

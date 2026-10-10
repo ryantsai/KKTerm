@@ -1371,7 +1371,7 @@ test("disconnecting from the ActiveX full-screen connection bar restores the KKT
   assert.match(eventCallback, /DISPID_DISCONNECTED/);
   assert.match(
     eventHandler,
-    /DISPID_DISCONNECTED => restore_disconnected_fullscreen_host\(session\)/,
+    /DISPID_DISCONNECTED => \{[\s\S]*?restore_disconnected_fullscreen_host\(session\)/,
   );
   assert.match(
     disconnectRecovery,

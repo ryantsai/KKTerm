@@ -1053,6 +1053,11 @@ export interface UpdateRdpBoundsRequest {
    * matches. Used by the post-connect settle passes; defaults to false.
    */
   force?: boolean;
+  /**
+   * Only re-assert the full-screen display. The native side ignores the request
+   * unless the Session is full screen, so it never resizes the windowed Pane.
+   */
+  fullscreenOnly?: boolean;
 }
 
 export interface SetRdpVisibilityRequest {

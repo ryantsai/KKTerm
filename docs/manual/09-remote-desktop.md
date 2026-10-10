@@ -65,7 +65,7 @@ VNC and macOS/Linux RDP full-screen windows carry a **connection bar** (`remoteD
 - **Ctrl+Alt+Del** (`remoteDesktop.sendCtrlAltDel`) — routed per surface (`send_vnc_ctrl_alt_delete`, `send_rdp_client_ctrl_alt_delete`, or `send_rdp_ctrl_alt_delete`).
 - **Exit** (`remoteDesktop.fullscreen.exit`) — closes the window; the Session keeps running in its Pane.
 
-Windows ActiveX RDP uses the Microsoft control's native connection bar because WebView2 content cannot render above its HWND. KKTerm enables `DisplayConnectionBar`, leaves it unpinned for the standard top-edge auto-hide behavior, and enables the restore button. Use the restore button or `remoteDesktop.fullscreen.toggle` to return to the Pane; closing the Session from the connection bar disconnects it and returns the disconnected surface to its KKTerm Pane. Ctrl+Alt+End remains the supported Windows RDP secure-attention shortcut.
+Windows ActiveX RDP uses the Microsoft control's native connection bar because WebView2 content cannot render above its HWND. KKTerm enables `DisplayConnectionBar`, leaves it unpinned for the standard top-edge auto-hide behavior, and enables the restore button. Use the restore button or `remoteDesktop.fullscreen.toggle` to return to the Pane; closing the Session with the connection bar's close button disconnects it and closes its Tab (or its split Pane), so there is no shrunken, disconnected window to dismiss afterwards. Any other disconnect, such as signing out inside the remote desktop, a server drop or a network error, still returns the disconnected surface to its KKTerm Pane so you can read the reason and reconnect. Ctrl+Alt+End remains the supported Windows RDP secure-attention shortcut.
 
 Detached-surface backend: `list_display_monitors`, `open_remote_fullscreen_window`, and `close_remote_fullscreen_window` (`src-tauri/src/remote_fullscreen.rs`). The VNC/canvas window loads the app bundle at `#/remote-fullscreen/<kind>/<sessionId>/<connectionId>`; `main.tsx` mounts only `RemoteFullscreenApp` for that route.
 
@@ -108,7 +108,7 @@ The Connection editor's `connections.inheritSettingsDefaults` switch owns the wh
 
 Only an explicitly opened foreground RDP Session can enter fullscreen once, after it connects and its surface is ready. Temporary dialogs or popups defer automatic entry until the surface is available. Reconnect, revisiting an existing Tab, saved-layout restore, folder bulk-open, and Panorama do not trigger it. Changing this preference does not move an already running Session. Switching away or losing app focus while connecting cancels automatic entry; moving focus into Windows' own RDP surface does not. Leaving fullscreen returns the same Session to its original Workspace Pane; Windows uses the native connection bar and macOS/Linux use the detached full-screen window described above. VNC is unchanged.
 
-On Windows, automatic fullscreen reapplies the monitor-sized remote resolution during the first few seconds after connection, so a server that ignores the initial resize can still expand to the full screen. An explicitly fixed remote resolution remains fixed.
+On Windows, automatic fullscreen keeps reapplying the monitor-sized remote resolution for about half a minute after entry until the remote desktop reports that size, so a server that is slow to accept the initial resize (for example during a slow sign-in) still expands to the full screen instead of staying at the Pane size. It stops sending once the size is confirmed. An explicitly fixed remote resolution remains fixed.
 
 ### VNC performance presets
 

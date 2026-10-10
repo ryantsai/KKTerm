@@ -44,6 +44,24 @@ test("startup focus snapshot accepts owned native windows and observes leave-and
   assert.equal(activation.match(/WINDOWS_SHORTCUT_GENERATION\.fetch_add\(1, Ordering::AcqRel\)/g)?.length, 2);
 });
 
+test("full-screen display updates are confirmed by the control instead of assumed from the COM call", () => {
+  // OnRemoteDesktopSizeChange(width, height) is DISPID 12 in the mstscax IMsTscAxEvents type library.
+  assert.match(rdp, /DISPID_REMOTE_DESKTOP_SIZE_CHANGE: i32 = 12/);
+  const sink = rdp.slice(rdp.indexOf("fn handle_event("), rdp.indexOf("fn start_rdp_fullscreen_request_worker("));
+  // The callback runs inside UpdateSessionDisplaySettings with the Session mutex held.
+  assert.match(sink, /DISPID_REMOTE_DESKTOP_SIZE_CHANGE[\s\S]*?remote_desktop_size[\s\S]*?\.store\(/);
+  assert.doesNotMatch(sink, /lock_sessions|try_lock|\.lock\(\)/);
+
+  const bounds = rdp.slice(rdp.indexOf("pub fn update_bounds("), rdp.indexOf("pub fn set_visibility("));
+  assert.match(bounds, /request\.fullscreen_only && session\.fullscreen_restore\.is_none\(\)/);
+  const forceStart = bounds.indexOf("if request.force {");
+  const fullscreenBranch = bounds.slice(forceStart, bounds.indexOf("failed to settle the RDP full-screen display size", forceStart));
+  assert.ok(forceStart >= 0 && fullscreenBranch.length > 0, "full-screen settle branch must exist");
+  assert.match(fullscreenBranch, /remote_display_confirmed\(requested, display_settings, reported_size\)/);
+  // An unconfirmed pass must still re-send; only a confirmed one may be skipped.
+  assert.match(fullscreenBranch, /sync_remote_desktop_size\(session, display_settings, true\)/);
+});
+
 test("startup focus snapshot has a registered main-window command permission", () => {
   assert.match(lib, /fn get_rdp_startup_fullscreen_state\(/);
   assert.match(lib, /set_rdp_visibility,\s*get_rdp_startup_fullscreen_state,\s*enter_rdp_fullscreen,/);

@@ -770,6 +770,7 @@ function EmbeddedConnectionPane({
       body = (
         <RemoteDesktopWorkspace
           isActive={isActive}
+          onFullscreenClose={canClosePane ? () => closePane(tabId, pane.id) : undefined}
           onOpenAssistant={onOpenAssistant}
           tab={embeddedTab}
         />

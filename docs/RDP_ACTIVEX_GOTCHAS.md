@@ -118,6 +118,35 @@ scaling. When the UI scale is correct but the cursor is offset, suspect a
 coordinate transform mismatch between the native HWND size, SmartSizing, and the
 remote desktop size.
 
+## A Successful Display Update Is Not An Applied One
+
+`Connected = 1` (`OnConnected`) is raised before the Display Control channel is
+ready. Until it is, `UpdateSessionDisplaySettings` either fails with
+`0x80020009` or returns success while the server drops the request. Symptom:
+automatic full screen enters, but the desktop stays at the old Pane resolution,
+scaled by SmartSizing into the monitor, roughly once in ten connects (a slow
+sign-in pushes channel readiness past every early retry).
+
+Observed on 2026-10-10 against a Windows server: `Connect` at +0.0 s, Windows'
+`Connected to domain ... with session 2` (event 1027) at +2 s, and the first
+forced update at +2.0 s still failed with `0x80020009` while `Connected = 1`.
+The connect-time settle gave up on that single failure, and the next update, ~7 s
+later, succeeded.
+
+- Never count a returned `Ok` as an applied resize. The only proof is
+  `OnRemoteDesktopSizeChange(width, height)` (DISPID 12, two by-value `VT_I4`
+  arguments, delivered right-to-left), which the event sink records.
+- Anchor retries to the action that needs the size (full-screen entry), not to
+  connect time, and do not let one failed pass end them. A rejected update is
+  exactly what a channel that is not ready produces.
+- Stop re-sending once the control reports the requested size: repeating a
+  successful update flickers some servers, so the schedule must be self-limiting.
+- The event handler runs inside `UpdateSessionDisplaySettings` while the Session
+  mutex is held. Keep it lock-free.
+- A server that never raises the event (for example GNOME Desktop Sharing, which
+  mirrors a fixed framebuffer) is simply never confirmed and falls back to the
+  bounded schedule, with SmartSizing fitting the picture.
+
 ## Debug Log Fields That Matter
 
 When asking a user for another RDP log, make sure the following events are
@@ -135,7 +164,24 @@ present:
 - `display.resize.error`: method failure, HRESULT text, force flag, failure
   count, and requested display settings.
 - `display.resize.skipped`: confirms the cached-size gate skipped because
-  dimensions and scale factors were unchanged.
+  dimensions and scale factors were unchanged (`reason: "unchanged"`), or that a
+  full-screen settle pass skipped because the control already reported the
+  requested size (`reason: "remoteConfirmed"`).
+- `session.disconnected`: the `OnDisconnected` reason code. `1` is a local
+  disconnection and is what the full-screen connection bar's close button
+  produces; it is the only reason that closes the Tab. Windows records the same
+  number independently as event 1026 (`RDP ClientActiveX has been disconnected
+  (Reason= N)`) in `Microsoft-Windows-TerminalServices-RDPClient/Operational`,
+  which is the way to confirm a code when KKTerm's log predates this event. On
+  the development machine the bar's X logged `1`; other disconnects logged 2308
+  (socket closed, by far the most common), 516 (could not connect) and 3. If closing from the bar
+  leaves the disconnected Pane behind, this event shows which code the control
+  actually reported, and `fullscreen.disconnect.close_requested` shows whether the
+  close request was emitted.
+- `display.remote_size.changed`: the size the control reported through
+  `OnRemoteDesktopSizeChange`. If a full-screen session is stuck at the Pane
+  size, check whether this event ever reports the monitor size after
+  `fullscreen.enter`; no event means the server never accepted the update.
 - `visibility.set`: visible/hidden state, request bounds, native rect, and
   parked Session count.
 - `main_thread.operation.*`: proves whether an RDP command stalled the main UI
