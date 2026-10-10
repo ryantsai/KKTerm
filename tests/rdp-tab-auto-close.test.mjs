@@ -64,6 +64,27 @@ test("RDP disconnects never close a Tab, except the connection bar close button 
   assert.match(listener, /fullscreenCloseRef\.current\?\.\(\)/);
   assert.doesNotMatch(listener, /closeTab|closePane|close_rdp_session|markConnectionSessionEnded/);
   assert.equal(remoteDesktopSource.match(/RDP_FULLSCREEN_CLOSED_EVENT/g)?.length, 2, "constant plus its one listener");
+
+  // Hosts. A connection opened from the Connection Tree is an embedded Pane in a terminal Tab, so
+  // that host must always supply the callback. `canClosePane` only decides whether the Pane draws
+  // a close button (false for a single-Pane Tab); gating the callback on it left such Tabs open.
+  const terminalSource = await readFile(
+    new URL("../src/modules/workspace/connections/terminal/TerminalWorkspace.tsx", import.meta.url),
+    "utf8",
+  );
+  const embeddedRdp = terminalSource.slice(
+    terminalSource.indexOf("<RemoteDesktopWorkspace"),
+    terminalSource.indexOf("/>", terminalSource.indexOf("<RemoteDesktopWorkspace")),
+  );
+  assert.match(embeddedRdp, /onFullscreenClose=\{\(\) => closePane\(tabId, pane\.id\)\}/);
+  assert.doesNotMatch(embeddedRdp, /canClosePane/);
+  const canvasSource = await readFile(new URL("../src/modules/workspace/WorkspaceCanvas.tsx", import.meta.url), "utf8");
+  assert.match(canvasSource, /onFullscreenClose=\{\(\) => closeTab\(tab\.id\)\}/);
+  const widgetSource = await readFile(
+    new URL("../src/modules/dashboard/widgets/builtin/connections/ConnectionWidget.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(widgetSource, /onFullscreenClose/, "a Dashboard widget has no Tab to close");
   assert.match(rdpSource, /DISPID_REQUEST_GO_FULLSCREEN:\s*i32\s*=\s*8/);
   assert.match(rdpSource, /DISPID_REQUEST_LEAVE_FULLSCREEN:\s*i32\s*=\s*9/);
 });
