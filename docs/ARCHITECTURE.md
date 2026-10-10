@@ -379,7 +379,8 @@ Windows capture cancellation is native: both selection overlays request keyboard
 focus and poll Esc only for the lifetime of the picker, so minimizing KKTerm cannot
 strand selection on another window's focus. Frontend capture delays share an
 Esc-cancellable wait while the app has focus. Active Windows recordings have a
-short-lived Esc watcher bound to the recording path; cancellation claims the
+short-lived Ctrl+Esc watcher bound to the recording path; Esc alone leaves active
+and paused recordings running. Cancellation claims the
 same active state as Stop, blocks new starts during cleanup, reaps capture/encoding
 before deleting the partial file, closes the controller, and emits
 `kkterm://video-recording-canceled`. Cancellation never emits the completed event

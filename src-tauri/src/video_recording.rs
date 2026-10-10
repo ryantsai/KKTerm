@@ -172,7 +172,7 @@ fn discard_recording(mut recording: ActiveRecording) -> Result<(), String> {
 #[cfg(target_os = "windows")]
 fn watch_recording_escape(app: tauri::AppHandle, path: PathBuf) -> Result<(), String> {
     use tauri::Emitter;
-    use windows_sys::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_ESCAPE};
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_CONTROL, VK_ESCAPE};
     #[derive(Clone, Serialize)]
     struct Canceled {
         path: String,
@@ -192,7 +192,9 @@ fn watch_recording_escape(app: tauri::AppHandle, path: PathBuf) -> Result<(), St
                         return;
                     }
                 }
-                if unsafe { GetAsyncKeyState(VK_ESCAPE as i32) } < 0 {
+                if unsafe { GetAsyncKeyState(VK_ESCAPE as i32) } < 0
+                    && unsafe { GetAsyncKeyState(VK_CONTROL as i32) } < 0
+                {
                     let Some(recording) = take_canceled_recording(&state, &path) else { return };
                     let _finalizing = Finalizing(&state.finalizing);
                     let error = discard_recording(recording).err();

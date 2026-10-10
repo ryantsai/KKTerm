@@ -36,9 +36,10 @@ Video capture writes directly to the Screenshots folder and appears in the same 
 On Windows, Esc cancels both the region and window picker for images and videos,
 including while dragging a region. While the Module capture delay is pending,
 Esc in the app cancels the pending image or video capture. During an active or
-paused Windows recording, Esc works even while KKTerm is minimized: it discards
-the recording, removes its file, and closes the controller without opening the
-trim editor. Use `screenshots.video.stop` to keep the recording instead.
+paused Windows recording, Ctrl+Esc works even while KKTerm is minimized: it
+discards the recording, removes its file, and closes the controller without
+opening the trim editor. Esc alone leaves the recording running. Use
+`screenshots.video.stop` to keep the recording instead.
 
 The detached controller's `screenshots.video.pause`, `screenshots.video.resume`, and
 `screenshots.video.stop` actions also work while the main window is minimized.
