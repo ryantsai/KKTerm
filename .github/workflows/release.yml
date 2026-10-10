@@ -75,7 +75,7 @@ jobs:
           node-version: 24.20.0
           cache: pnpm
 
-      - uses: dtolnay/rust-toolchain@1.97.1
+      - uses: dtolnay/rust-toolchain@1.99.0
 
       - run: pnpm install --frozen-lockfile
 
@@ -146,7 +146,7 @@ jobs:
           node-version: 24.20.0
           cache: pnpm
 
-      - uses: dtolnay/rust-toolchain@1.97.1
+      - uses: dtolnay/rust-toolchain@1.99.0
         with:
           targets: aarch64-apple-darwin, x86_64-apple-darwin
 
@@ -220,7 +220,7 @@ jobs:
           node-version: 24.20.0
           cache: pnpm
 
-      - uses: dtolnay/rust-toolchain@1.97.1
+      - uses: dtolnay/rust-toolchain@1.99.0
 
       - name: Install Tauri Linux build dependencies
         run: |

@@ -5,7 +5,7 @@ description = "Fast local-first administration workspace for terminals, SSH, SFT
 authors = ["Ryan Tsai"]
 license-file = "../LICENSE"
 edition = "2024"
-rust-version = "1.97.1"
+rust-version = "1.99.0"
 default-run = "kkterm"
 
 [features]
@@ -40,7 +40,7 @@ aes-gcm = "0.11"
 argon2 = "0.6.0"
 # Do not enable default features here: github-copilot-sdk defaults to bundling
 # the Copilot CLI, which bloats the KKTerm installer by embedding a large binary.
-github-copilot-sdk = { version = "1.0.11", default-features = false }
+github-copilot-sdk = { version = "1.0.19", default-features = false }
 rand = "0.10"
 base64 = "0.23"
 # Document Connection text decoding: encoding_rs is the standard (Firefox) decoder
@@ -64,7 +64,7 @@ russh-sftp = "2.4.0"
 suppaftp = { version = "11.0.0", default-features = false, features = ["tokio", "tokio-async-native-tls", "deprecated"] }
 async-native-tls = { version = "0.6", default-features = false, features = ["runtime-tokio"] }
 serial2 = { version = "0.2.38", features = ["unix"] }
-tokio = { version = "1.53.1", features = ["io-std", "io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
+tokio = { version = "1.53.2", features = ["io-std", "io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
 url = "2"
 scraper = "0.27"
 tauri-plugin-dialog = "2"
@@ -81,14 +81,14 @@ calamine = { version = "0.36", default-features = false }
 futures = "0.3"
 rayon = "1.12"
 filedescriptor = "0.8.3"
-lazy_static = "1.5.0"
+lazy_static = "1.5.1"
 shared_library = "0.1.9"
 winapi = "0.3.9"
 lettre = { version = "0.11", default-features = false, features = ["builder", "smtp-transport", "rustls-tls"] }
 # Direct WS-Man transport for IT Ops Windows execution. Default features keep
 # the production path pure Rust (NTLMv2/Basic over reqwest+rustls); CredSSP is
 # intentionally not enabled because upstream marks it experimental.
-winrm-rs = { version = "1.1.2", default-features = false }
+winrm-rs = { version = "1.2.2", default-features = false }
 
 # AST-based validation of AI-authored script widget source. oxc is ~3x faster
 # than swc on the parse-only path and ships a stable visitor API for
@@ -117,10 +117,10 @@ windows = { version = "0.62", features = ["ApplicationModel", "ApplicationModel_
 windows-collections = "0.3.2"
 # Keep these on Wry's binding line so WebView2 COM interface values use the
 # same windows-core ABI. Revisit together when Tauri/Wry updates webview2-com.
-windows-core = "=0.61.2"
+windows-core = "=0.62.2"
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Globalization", "Win32_Graphics_Gdi", "Win32_NetworkManagement_IpHelper", "Win32_NetworkManagement_Ndis", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_DataExchange", "Win32_System_Environment", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Ole", "Win32_System_Power", "Win32_System_ProcessStatus", "Win32_System_Registry", "Win32_System_Shutdown", "Win32_System_SystemInformation", "Win32_System_Threading", "Win32_UI_Controls", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
 windows-native-keyring-store = "1.1.0"
-webview2-com = "=0.38.2"
+webview2-com = "=0.39.1"
 # Default screen-capture engine (Windows Graphics Capture via `wgc`), with the
 # native GDI path in screenshot.rs as fallback. Shares the existing windows 0.62
 # / image 0.25 tree, so this adds no new transitive crates on Windows.
@@ -261,7 +261,7 @@ sspi = { path = "vendor/sspi-rs-russh-061" }
 ironrdp-connector = { path = "vendor/ironrdp-russh-061/crates/ironrdp-connector" }
 
 [dev-dependencies]
-tokio = { version = "1.53.1", features = ["test-util"] }
+tokio = { version = "1.53.2", features = ["test-util"] }
 tempfile = "3.27.0"
 # Enables tauri::test::mock_app() so unit tests can build an AppHandle.
 tauri = { version = "2", features = ["test"] }

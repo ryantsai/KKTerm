@@ -4788,6 +4788,7 @@ fn github_copilot_model_options_preserve_account_catalog_metadata() {
                 adaptive_thinking: None,
                 reasoning_effort: Some(true),
                 vision: Some(false),
+                ..Default::default()
             }),
         },
         id: "gpt-4.1".to_string(),
@@ -4796,6 +4797,7 @@ fn github_copilot_model_options_preserve_account_catalog_metadata() {
         name: "GPT-4.1".to_string(),
         policy: None,
         supported_reasoning_efforts: Some(vec!["low".to_string(), "medium".to_string()]),
+        ..Default::default()
     };
 
     let option = copilot_model_option_from_sdk_model(&model).expect("valid model option");

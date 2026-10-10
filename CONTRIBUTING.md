@@ -66,7 +66,7 @@ If the queues are empty, that just means you get to define the problem. Open an 
 
 - **Windows 10/11, macOS, or Linux**
 - **Node.js** (LTS) and **pnpm** — any recent pnpm self-switches to the version pinned by `packageManager` in `package.json`; `corepack enable pnpm` also works
-- **Rust toolchain** (`rustup` recommended)
+- **Rust toolchain** via `rustup` — use the version pinned in `rust-toolchain.toml` (currently 1.99.0), including Cargo, Clippy, rustfmt, and rust-src
 - **Tauri v2 prerequisites for Windows** — most importantly **WebView2 Runtime** (preinstalled on modern Windows; otherwise grab it from Microsoft)
 - **Visual Studio Build Tools** with the Desktop C++ workload (required by Rust on Windows)
 
@@ -75,11 +75,18 @@ If the queues are empty, that just means you get to define the problem. Open an 
 ```bash
 git clone https://github.com/ryantsai/KKTerm.git
 cd KKTerm
+rustup toolchain install 1.99.0 --component clippy,rustfmt,rust-src
 pnpm install
 pnpm run tauri dev
 ```
 
 The first build of the Rust side will take several minutes — it is compiling `russh`, `vnc-rs`, `suppaftp`, and a handful of other crates from source. Subsequent builds are incremental and fast.
+
+The repository's toolchain pin overrides your default Rust installation. If Cargo or
+rustc reports that it is not installed, rerun the toolchain installation command
+above; updating only `stable` does not repair a separate pinned installation. For
+Windows ARM64 cross-builds, also run `rustup target add aarch64-pc-windows-msvc`
+from the repository and follow the prerequisites in [`docs/RELEASE.md`](docs/RELEASE.md).
 
 If `pnpm run tauri dev` produces a native window: you're set. If it produces a stack trace: copy it into an issue and tag it `setup`, we'll dig.
 
