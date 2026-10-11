@@ -7,7 +7,7 @@
   "engines": {
     "node": "24.20.x"
   },
-  "packageManager": "pnpm@12.4.1",
+  "packageManager": "pnpm@12.11.2",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
