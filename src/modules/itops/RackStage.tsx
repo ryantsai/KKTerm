@@ -323,7 +323,7 @@ export function RackStage({
         const geom = geometry[b.face];
         if (!geom) return null;
         const status = isGhost?.(b.item) ? "offline" : itemStatus(b.item);
-        const spec = specOf(b.item, t);
+        const spec = specOf(b.item, (k, o) => t(k, o ?? {}));
         const model = b.item.metadata?.vendor?.trim() || null;
         const notes = b.item.metadata?.notes?.trim() || null;
         const boundConnectionCount = collectBoundConnectionIds(b.item).length;

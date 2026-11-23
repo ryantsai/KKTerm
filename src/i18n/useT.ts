@@ -17,7 +17,7 @@ export function useT() {
   const { t } = useTranslation();
 
   function translate(key: TranslationKey, options?: Record<string, unknown>): string {
-    return t(key, options);
+    return t(key, options ?? {});
   }
 
   return translate;

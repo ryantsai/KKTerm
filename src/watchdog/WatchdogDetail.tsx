@@ -129,11 +129,11 @@ export function WatchdogDetail({ id, onClose }: { id: string; onClose: () => voi
             <>
               <Stat
                 label={t("watchdog.detail.watchSummary")}
-                value={describeTarget(report.config.target, t)}
+                value={describeTarget(report.config.target, (key, options) => t(key, options ?? {}))}
               />
               <Stat
                 label={t("watchdog.detail.exitCondition")}
-                value={describeStop(report.config.stop, t)}
+                value={describeStop(report.config.stop, (key, options) => t(key, options ?? {}))}
               />
               <Stat
                 label={t("watchdog.detail.notificationMethod")}

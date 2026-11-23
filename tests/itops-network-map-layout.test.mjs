@@ -67,7 +67,7 @@ test("Network Maps bound animation and rendering work for large canvases", async
   assert.match(designer, /data-animation-mode=\{networkMapAnimations\}/);
   assert.match(
     designer,
-    /committedNetworkMapCanvasNodeChanges\(changes\)/,
+    /committedNetworkMapCanvasNodeChanges\(changes\.toArray\(\)\)/,
   );
   assert.match(
     styles,

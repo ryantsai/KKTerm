@@ -72,7 +72,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24.22.1
+          node-version: 24.22.2
           cache: pnpm
 
       - uses: dtolnay/rust-toolchain@1.99.0
@@ -143,7 +143,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24.22.1
+          node-version: 24.22.2
           cache: pnpm
 
       - uses: dtolnay/rust-toolchain@1.99.0
@@ -217,7 +217,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24.22.1
+          node-version: 24.22.2
           cache: pnpm
 
       - uses: dtolnay/rust-toolchain@1.99.0

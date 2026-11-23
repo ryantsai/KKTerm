@@ -505,7 +505,7 @@ export function TerminalSettings() {
                 <optgroup label={t("settings.recommendedFonts")}>
                   {terminalFontOptions.map((option) => (
                     <option key={option.value} value={option.value}>
-                      {option.labelKey ? t(option.labelKey, option.labelParams) : option.label}
+                      {option.labelKey ? t(option.labelKey, option.labelParams ?? {}) : option.label}
                     </option>
                   ))}
                 </optgroup>

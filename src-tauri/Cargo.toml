@@ -27,7 +27,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = ["tray-icon", "image-png", "protocol-asset", "macos-proxy"] }
 tauri-plugin-opener = "2"
-anyhow = "1.0.104"
+anyhow = "1.0.105"
 rusqlite = { version = "0.40", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -40,7 +40,7 @@ aes-gcm = "0.11"
 argon2 = "0.6.0"
 # Do not enable default features here: github-copilot-sdk defaults to bundling
 # the Copilot CLI, which bloats the KKTerm installer by embedding a large binary.
-github-copilot-sdk = { version = "1.0.19", default-features = false }
+github-copilot-sdk = { version = "1.0.35", default-features = false }
 rand = "0.10"
 base64 = "0.23"
 # Document Connection text decoding: encoding_rs is the standard (Firefox) decoder
@@ -57,14 +57,14 @@ webp = { version = "=0.3.1", default-features = false }
 # DirectWrite / Core Text bindings into the build.
 ttf-parser = "0.25"
 portable-pty = "0.9.0"
-keyring-core = "1.0.0"
+keyring-core = "1.1.0"
 # Exact pin keeps the SSH transport and its RustCrypto line reproducible.
 russh = { version = "=0.63.1", default-features = false, features = ["des", "flate2", "ring", "rsa"] }
 russh-sftp = "2.4.0"
 suppaftp = { version = "11.0.0", default-features = false, features = ["tokio", "tokio-async-native-tls", "deprecated"] }
 async-native-tls = { version = "0.6", default-features = false, features = ["runtime-tokio"] }
-serial2 = { version = "0.2.38", features = ["unix"] }
-tokio = { version = "1.53.2", features = ["io-std", "io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
+serial2 = { version = "0.2.39", features = ["unix"] }
+tokio = { version = "1.54.1", features = ["io-std", "io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
 url = "2"
 scraper = "0.27"
 tauri-plugin-dialog = "2"
@@ -88,7 +88,7 @@ lettre = { version = "0.11", default-features = false, features = ["builder", "s
 # Direct WS-Man transport for IT Ops Windows execution. Default features keep
 # the production path pure Rust (NTLMv2/Basic over reqwest+rustls); CredSSP is
 # intentionally not enabled because upstream marks it experimental.
-winrm-rs = { version = "1.2.2", default-features = false }
+winrm-rs = { version = "1.4.1", default-features = false }
 
 # AST-based validation of AI-authored script widget source. oxc is ~3x faster
 # than swc on the parse-only path and ships a stable visitor API for
@@ -100,7 +100,7 @@ oxc_ast = "0.147"
 oxc_ast_visit = "0.147"
 tauri-plugin-single-instance = "2"
 tauri-plugin-drag = "2.1.1"
-arboard = { version = "3.6.1", default-features = false, features = ["image-data", "wayland-data-control"] }
+arboard = { version = "3.7.0", default-features = false, features = ["image-data", "wayland-data-control"] }
 
 # Network admin tools - AV-friendly choices.
 # MVP scope: DNS, ping, port scan/check, WoL, interfaces, WHOIS. SNMP + traceroute deferred.
@@ -127,7 +127,7 @@ webview2-com = "=0.39.1"
 xcap = { version = "0.9", default-features = false, features = ["image", "wgc"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-apple-native-keyring-store = { version = "1.0.2", features = ["keychain"] }
+apple-native-keyring-store = { version = "1.0.3", features = ["keychain"] }
 security-framework = "3.7.0"
 libc = "0.2"
 # Host monitoring (Status Bar CPU/RAM/Network + detailed Dashboard counters).
@@ -261,7 +261,7 @@ sspi = { path = "vendor/sspi-rs-russh-061" }
 ironrdp-connector = { path = "vendor/ironrdp-russh-061/crates/ironrdp-connector" }
 
 [dev-dependencies]
-tokio = { version = "1.53.2", features = ["test-util"] }
+tokio = { version = "1.54.1", features = ["test-util"] }
 tempfile = "3.27.0"
 # Enables tauri::test::mock_app() so unit tests can build an AppHandle.
 tauri = { version = "2", features = ["test"] }

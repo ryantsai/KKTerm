@@ -36,7 +36,7 @@ import {
   type Edge,
   type EdgeProps,
   type Node,
-  type NodeChange,
+  type NodeChangeset,
   type NodeProps,
   type ReactFlowInstance,
 } from "@xyflow/react";
@@ -3569,8 +3569,8 @@ function MapEditor({
     vlanIndex,
   ]);
 
-  const onNodesChange = useCallback((changes: NodeChange[]) => {
-    const committedChanges = committedNetworkMapCanvasNodeChanges(changes);
+  const onNodesChange = useCallback((changes: NodeChangeset) => {
+    const committedChanges = committedNetworkMapCanvasNodeChanges(changes.toArray());
     if (committedChanges.length === 0) return;
     setGraph((current) => applyNetworkMapCanvasNodeChanges(current, committedChanges));
   }, []);

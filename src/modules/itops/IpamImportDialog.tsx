@@ -45,7 +45,7 @@ export function IpamImportDialog({ onClose }: { onClose: () => void }) {
   const [resolveHostnames, setResolveHostnames] = useState(false);
 
   const issueText = (issue: IpamImportIssue) =>
-    t(`itops.ipam.fileImportIssue.${issue.code}`, issue.values);
+    t(`itops.ipam.fileImportIssue.${issue.code}`, issue.values ?? {});
 
   async function chooseFile() {
     const path = await selectIpamImportFile({
