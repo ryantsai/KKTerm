@@ -237,7 +237,7 @@ impl russh::server::Handler for StartupServer {
     async fn auth_publickey(
         &mut self,
         _: &str,
-        _: &russh::keys::ssh_key::PublicKey,
+        _: russh::server::VerifiedPublicKey<'_>,
     ) -> Result<russh::server::Auth, Self::Error> {
         if self.stall == Some(StallStage::Authentication) {
             std::future::pending::<()>().await;

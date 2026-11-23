@@ -4426,7 +4426,7 @@ fn full_settings_backup_round_trips_flat_json_histories() {
         let file = File::open(&backup.path).expect("backup opens");
         let mut archive = ZipArchive::new(file).expect("backup is a zip");
         let names = (0..archive.len())
-            .map(|index| archive.by_index(index).unwrap().name().to_string())
+            .map(|index| archive.by_index(index).unwrap().name().unwrap().to_string())
             .collect::<Vec<_>>();
         assert!(names.iter().any(|name| name == "assistant-chat-threads/index.json"));
         assert!(names.iter().any(|name| {

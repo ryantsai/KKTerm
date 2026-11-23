@@ -1547,7 +1547,6 @@ fn read_table(conn: &SqliteConnection, table: &str) -> Result<Vec<Value>, String
         .map_err(|error| format!("failed to read {table}: {error}"))?;
     let columns: Vec<String> = stmt
         .column_names()
-        .iter()
         .map(|name| name.to_string())
         .collect();
     let rows = stmt

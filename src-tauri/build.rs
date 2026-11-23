@@ -60,4 +60,12 @@ fn main() {
             .app_manifest(tauri_build::AppManifest::new().commands(commands)),
     )
     .expect("failed to build Tauri application manifest");
+    // tauri-build links its compiled `resource.lib` into binaries by full path
+    // only. The lib test executable links it by name (see the `#[link]` in
+    // `webview.rs` tests), so expose OUT_DIR as a native search path.
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows") {
+        if let Ok(out_dir) = std::env::var("OUT_DIR") {
+            println!("cargo:rustc-link-search=native={out_dir}");
+        }
+    }
 }

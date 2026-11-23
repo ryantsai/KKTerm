@@ -1304,7 +1304,7 @@ async fn download_file_bytes(
                 *transferred += n as u64;
                 emit_progress(app, transfer_id, *transferred, total_bytes);
             }
-            s.finalize_retr_stream(reader).await.map_err(map_ftp_err)?;
+            reader.finish().await.map_err(map_ftp_err)?;
             buf
         }
         FtpTransport::Tls(s) => {
@@ -1326,7 +1326,7 @@ async fn download_file_bytes(
                 *transferred += n as u64;
                 emit_progress(app, transfer_id, *transferred, total_bytes);
             }
-            s.finalize_retr_stream(reader).await.map_err(map_ftp_err)?;
+            reader.finish().await.map_err(map_ftp_err)?;
             buf
         }
     };

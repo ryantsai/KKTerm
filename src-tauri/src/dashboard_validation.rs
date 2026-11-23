@@ -1239,7 +1239,7 @@ fn parse_script_source_ast(source: &str) -> Result<HashSet<String>, String> {
             first.message
         ));
     }
-    if ret.panicked {
+    if ret.fatal_error {
         return Err(
             "script source is not parseable JavaScript (parser produced no diagnostic)".to_string(),
         );

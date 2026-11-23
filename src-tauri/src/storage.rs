@@ -4604,7 +4604,10 @@ fn extract_imported_settings(
         let mut entry = archive
             .by_index(index)
             .map_err(|error| format!("failed to inspect import entry: {error}"))?;
-        let name = entry.name().replace('\\', "/");
+        let name = entry
+            .name()
+            .map_err(|error| format!("failed to inspect import entry: {error}"))?
+            .replace('\\', "/");
         if name == "manifest.json" || name.ends_with('/') {
             continue;
         }

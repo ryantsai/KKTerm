@@ -492,7 +492,7 @@ impl RoutedTransport {
             };
         };
         let mut config = WinrmConfig::default();
-        config.port = spec.winrm_port;
+        config.port = Some(spec.winrm_port);
         config.use_tls = spec.winrm_use_tls;
         config.accept_invalid_certs = spec.winrm_accept_invalid_certs;
         config.connect_timeout_secs = spec.timeout_seconds.min(30);

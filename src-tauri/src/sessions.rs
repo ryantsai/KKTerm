@@ -5059,6 +5059,7 @@ mod tests {
                     .by_index(index)
                     .expect("archive entry opens")
                     .name()
+                    .expect("archive entry name decodes")
                     .to_string()
             })
             .collect::<Vec<_>>();
