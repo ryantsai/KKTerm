@@ -56,6 +56,7 @@ import { useWorkspaceStore } from "../../store";
 import { workspaceShortcutFromKeyboardEvent } from "../workspace/keymap";
 import { formatScreenshotBytes } from "./LibraryView";
 import { cropImagePlacement, cursorImagePoint, fitImageDimensions } from "./editorSizing";
+import { sourcePixelColor, type PixelColor } from "./editorPixel";
 
 type EditorTool = "pan" | "select" | "pencil" | "arrow" | "rectangle" | "ellipse" | "text" | "mosaic" | "crop";
 type ShapeKind = "arrow" | "rectangle" | "ellipse";
@@ -752,6 +753,7 @@ export function ScreenshotEditor({
   const [canvasSize, setCanvasSize] = useState({ width: screenshot.width, height: screenshot.height });
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
   const [cursorPoint, setCursorPoint] = useState<Point | null>(null);
+  const [cursorColor, setCursorColor] = useState<PixelColor | null>(null);
   const [editorSize, setEditorSize] = useState(initialEditorSize);
   const [zoom, setZoom] = useState<ZoomLevel>("fit");
   const [ready, setReady] = useState(false);
@@ -777,6 +779,8 @@ export function ScreenshotEditor({
     const base = baseRef.current;
     cropRectRef.current = next;
     setCropRect(next);
+    setCursorPoint(null);
+    setCursorColor(null);
     if (!canvas || !base) {
       return;
     }
@@ -910,6 +914,7 @@ export function ScreenshotEditor({
     cropDragRef.current = null;
     setCropDraft(null);
     setCursorPoint(null);
+    setCursorColor(null);
     freehandRef.current = null;
     moveDragRef.current = null;
     handleDragRef.current = null;
@@ -930,7 +935,7 @@ export function ScreenshotEditor({
           const base = document.createElement("canvas");
           base.width = full.width;
           base.height = full.height;
-          base.getContext("2d")?.drawImage(image, 0, 0);
+          base.getContext("2d", { willReadFrequently: true })?.drawImage(image, 0, 0);
           baseRef.current = base;
           const canvas = canvasRef.current;
           canvas.width = full.width;
@@ -1571,6 +1576,9 @@ export function ScreenshotEditor({
   // The footer readout reports image pixels, not on-screen pixels, so the
   // coordinate stays at its 1x position when the view is zoomed in or out.
   function trackCursor(event: ReactPointerEvent<HTMLCanvasElement>) {
+    if (!ready || saving) {
+      return;
+    }
     const canvas = event.currentTarget;
     const rect = canvas.getBoundingClientRect();
     const point = cursorImagePoint(
@@ -1584,13 +1592,15 @@ export function ScreenshotEditor({
     setCursorPoint((current) => (
       current && current.x === point.x && current.y === point.y ? current : point
     ));
+    const source = baseRef.current?.getContext("2d");
+    const pixel = source ? sourcePixelColor(source, point, cropRectRef.current) : null;
+    setCursorColor((current) => (
+      current && pixel && current.red === pixel.red && current.green === pixel.green
+        && current.blue === pixel.blue && current.alpha === pixel.alpha ? current : pixel
+    ));
   }
 
   function pointerMove(event: ReactPointerEvent<HTMLCanvasElement>) {
-    trackCursor(event);
-    if (tool === "crop") {
-      return;
-    }
     if (tool === "pan") {
       const pan = panRef.current;
       const stage = stageRef.current;
@@ -1598,6 +1608,11 @@ export function ScreenshotEditor({
         stage.scrollLeft = pan.scrollLeft - (event.clientX - pan.startX);
         stage.scrollTop = pan.scrollTop - (event.clientY - pan.startY);
       }
+      trackCursor(event);
+      return;
+    }
+    trackCursor(event);
+    if (tool === "crop") {
       return;
     }
     const canvas = event.currentTarget;
@@ -1900,6 +1915,19 @@ export function ScreenshotEditor({
     }
   }
 
+  async function copyCursorColor() {
+    if (!cursorColor) {
+      return;
+    }
+    try {
+      await writeToClipboard(`${cursorColor.red}, ${cursorColor.green}, ${cursorColor.blue}`);
+      showStatusBarNotice(t("screenshots.editor.cursorColorCopied"), { tone: "success" });
+      workspaceRef.current?.focus();
+    } catch (error) {
+      onError(error);
+    }
+  }
+
   async function saveAs() {
     if (!canvasRef.current || !ready || saving) {
       return;
@@ -1957,7 +1985,7 @@ export function ScreenshotEditor({
       const savedBase = document.createElement("canvas");
       savedBase.width = flattened.width;
       savedBase.height = flattened.height;
-      savedBase.getContext("2d")?.drawImage(flattened, 0, 0);
+      savedBase.getContext("2d", { willReadFrequently: true })?.drawImage(flattened, 0, 0);
       baseRef.current = savedBase;
       applyCropRect(null);
       undoRef.current = [];
@@ -2126,14 +2154,31 @@ export function ScreenshotEditor({
                   {canvasSize.width}×{canvasSize.height} · {formatScreenshotBytes(screenshot.fileSizeBytes)}
                 </span>
                 {cursorPoint ? (
-                  <button
-                    type="button"
+                  <div
                     className="screenshots-editor__footer-cursor"
-                    title={t("screenshots.editor.copyCursorPosition")}
-                    onClick={() => void copyCursorPosition()}
+                    data-preserve-content-focus="true"
                   >
-                    {t("screenshots.editor.cursorPosition", { x: cursorPoint.x, y: cursorPoint.y })}
-                  </button>
+                    {cursorColor ? (
+                      <button
+                        type="button"
+                        data-tutorial-id="screenshots.editor.cursorColor"
+                        title={t("screenshots.editor.copyCursorColor")}
+                        onClick={() => void copyCursorColor()}
+                      >
+                        <span className="screenshots-editor__pixel-swatch" aria-hidden="true">
+                          <span style={{ backgroundColor: `rgba(${cursorColor.red}, ${cursorColor.green}, ${cursorColor.blue}, ${cursorColor.alpha / 255})` }} />
+                        </span>
+                        {t("screenshots.editor.cursorColor", cursorColor)}
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      title={t("screenshots.editor.copyCursorPosition")}
+                      onClick={() => void copyCursorPosition()}
+                    >
+                      {t("screenshots.editor.cursorPosition", { x: cursorPoint.x, y: cursorPoint.y })}
+                    </button>
+                  </div>
                 ) : null}
               </>
             }

@@ -162,6 +162,7 @@
         "itops.errorNotice": "IT Ops: {{message}}",
         "screenshots.video.frameRateOption": "{{fps}} fps",
         "screenshots.editor.cursorPosition": "X {{x}}, Y {{y}}",
+        "screenshots.editor.cursorColor": "RGB {{red}}, {{green}}, {{blue}}",
         "settings.rdpColorDepth32": "32-bit",
         "settings.rdpColorDepth24": "24-bit",
         "settings.rdpColorDepth16": "16-bit",

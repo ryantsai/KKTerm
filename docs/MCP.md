@@ -302,6 +302,10 @@ and launch can execute software or change the computer, so they use the
 
 ### Screenshots Module (`kkterm.screenshots.*`)
 
+The assistant tutorial target `screenshots.editor.cursorColor` highlights the
+source-pixel RGB copy control when an image editor is already open and the user
+has moved the pointer over the image. It does not initiate desktop sampling.
+
 The Screenshots Module tools use the configured library folder, format,
 quality, Capture Mode, border, cursor, and acceleration settings. Listing,
 copying, non-destructive transforms, rename, and explicit operating-system file
