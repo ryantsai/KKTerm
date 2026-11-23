@@ -1887,6 +1887,20 @@
         "right": "Phải"
       },
       "vendorLabel": "Mẫu",
+      "inventory": {
+        "title": "Thông số phần cứng",
+        "cpu": "CPU",
+        "memory": "Bộ nhớ RAM",
+        "storage": "Ổ đĩa",
+        "network": "Bộ điều hợp mạng",
+        "raid": "Chế độ RAID",
+        "maintenance": "Bảo trì phần cứng",
+        "addMaintenance": "Thêm mục",
+        "date": "Ngày",
+        "details": "Công việc đã thực hiện",
+        "removeMaintenance": "Xóa mục",
+        "invalid": "Điền các trường bảo trì bắt buộc và kiểm tra thông số phần cứng."
+      },
       "vendorHint": "Dùng Dell 740XD, HP DL380 hoặc mẫu khung máy khác cho bản xem trước đồ họa.",
       "expiryLabel": "Hết hạn",
       "rotationLabel": "Xoay",

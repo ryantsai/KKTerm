@@ -1887,6 +1887,20 @@
         "right": "오른쪽"
       },
       "vendorLabel": "모델",
+      "inventory": {
+        "title": "하드웨어 사양",
+        "cpu": "CPU",
+        "memory": "메모리",
+        "storage": "디스크",
+        "network": "네트워크 어댑터",
+        "raid": "RAID 모드",
+        "maintenance": "하드웨어 유지보수 기록",
+        "addMaintenance": "기록 추가",
+        "date": "날짜",
+        "details": "작업 내용",
+        "removeMaintenance": "기록 삭제",
+        "invalid": "유지보수 기록의 필수 항목을 입력하고 하드웨어 사양을 확인하세요."
+      },
       "vendorHint": "그래픽 미리보기에 Dell 740XD, HP DL380 또는 다른 섀시 모델을 사용하세요.",
       "expiryLabel": "만료",
       "rotationLabel": "회전",

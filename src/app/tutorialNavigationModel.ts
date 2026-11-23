@@ -199,6 +199,7 @@ const ITOPS_TUTORIAL_TARGET_IDS = [
   "app.activityRailItOps",
   "itops.sitesTree",
   "itops.siteView",
+  "itops.rackInventory",
 ] as const;
 
 // IT Ops destination-page targets: highlighting one first opens its navigator

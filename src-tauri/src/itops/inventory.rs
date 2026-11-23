@@ -21,6 +21,24 @@ fn normalize_speed(value: &str) -> String {
 }
 
 pub fn normalize_metadata(mut metadata: RackItemMetadata) -> RackItemMetadata {
+    if let Some(inventory) = &mut metadata.inventory {
+        for value in [
+            &mut inventory.cpu,
+            &mut inventory.memory,
+            &mut inventory.storage,
+            &mut inventory.network,
+            &mut inventory.raid,
+        ] {
+            trim_string(value);
+        }
+        for entry in &mut inventory.maintenance {
+            entry.date = entry.date.trim().to_string();
+            entry.notes = entry.notes.trim().to_string();
+        }
+        if *inventory == super::types::RackDeviceInventory::default() {
+            metadata.inventory = None;
+        }
+    }
     trim_string(&mut metadata.accent);
     trim_string(&mut metadata.icon);
     trim_string(&mut metadata.notes);
@@ -105,9 +123,51 @@ pub fn normalize_metadata(mut metadata: RackItemMetadata) -> RackItemMetadata {
     metadata
 }
 
+/// Validate before writing, rather than silently truncating service history.
+pub fn validate_inventory(metadata: &RackItemMetadata) -> Result<(), String> {
+    let Some(inventory) = &metadata.inventory else {
+        return Ok(());
+    };
+    for value in [
+        &inventory.cpu,
+        &inventory.memory,
+        &inventory.storage,
+        &inventory.network,
+        &inventory.raid,
+    ]
+    .into_iter()
+    .flatten()
+    {
+        if value.chars().count() > 500 {
+            return Err("Hardware specifications must not exceed 500 characters per field".into());
+        }
+    }
+    if inventory.maintenance.len() > 100 {
+        return Err("At most 100 maintenance entries are supported per device".into());
+    }
+    let mut ids = HashSet::new();
+    for entry in &inventory.maintenance {
+        if entry.id.trim().is_empty() || entry.id.chars().count() > 128 || !ids.insert(&entry.id) {
+            return Err("Maintenance entries must have unique non-empty identifiers".into());
+        }
+        let valid_date = time::Date::parse(
+            &entry.date,
+            time::macros::format_description!("[year]-[month]-[day]"),
+        )
+        .is_ok_and(|date| date.year() > 0);
+        if entry.date.len() != 10 || !valid_date {
+            return Err("Maintenance dates must be valid YYYY-MM-DD dates".into());
+        }
+        if entry.notes.trim().is_empty() || entry.notes.chars().count() > 2000 {
+            return Err("Maintenance notes must contain 1 to 2000 characters".into());
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod inventory_tests {
-    use super::normalize_metadata;
+    use super::{normalize_metadata, validate_inventory};
     use crate::itops::types::RackItemMetadata;
 
     #[test]
@@ -136,5 +196,46 @@ mod inventory_tests {
         assert_eq!(normalized.server_panel_style.as_deref(), Some("style1"));
         assert_eq!(normalized.rack_top_corner, Some(3));
         assert_eq!(normalized.rack_top_facing, Some(1));
+    }
+
+    #[test]
+    fn hardware_inventory_is_optional_and_normalizes_without_losing_history() {
+        let old: RackItemMetadata = serde_json::from_str("{\"vendor\":\"Dell\"}").unwrap();
+        assert!(old.inventory.is_none());
+        assert!(validate_inventory(&old).is_ok());
+        let metadata = normalize_metadata(serde_json::from_value(serde_json::json!({
+            "inventory": {"cpu": " 2 × Xeon ", "memory": " ", "raid": " RAID 10 ",
+                "maintenance": [{"id": "service-1", "date": " 2024-02-29 ", "notes": " Replaced failed disk "}]}
+        })).unwrap());
+        assert!(validate_inventory(&metadata).is_ok());
+        let inventory = metadata.inventory.unwrap();
+        assert_eq!(inventory.cpu.as_deref(), Some("2 × Xeon"));
+        assert!(inventory.memory.is_none());
+        assert_eq!(inventory.maintenance[0].date, "2024-02-29");
+        assert_eq!(inventory.maintenance[0].notes, "Replaced failed disk");
+        assert_eq!(inventory.maintenance[0].id, "service-1");
+        let empty =
+            normalize_metadata(serde_json::from_str("{\"inventory\":{\"cpu\":\" \"}}").unwrap());
+        assert!(empty.inventory.is_none());
+    }
+
+    #[test]
+    fn invalid_hardware_inventory_is_rejected_instead_of_truncated() {
+        use serde_json::json;
+        let entry = json!({"id":"e1", "date":"2024-02-29", "notes":"Replaced RAM"});
+        for inventory in [
+            json!({"cpu":"x".repeat(501)}),
+            json!({"maintenance": vec![entry.clone(); 101]}),
+            json!({"maintenance": [entry.clone(), entry.clone()]}),
+            json!({"maintenance": [{"id":"", "date":"2024-02-29", "notes":"Work"}]}),
+            json!({"maintenance": [{"id":"e1", "date":"2025-02-29", "notes":"Work"}]}),
+            json!({"maintenance": [{"id":"e1", "date":"0000-01-01", "notes":"Work"}]}),
+            json!({"maintenance": [{"id":"e1", "date":"2024-02-29", "notes":"  "}]}),
+            json!({"maintenance": [{"id":"e1", "date":"2024-02-29", "notes":"x".repeat(2001)}]}),
+        ] {
+            let metadata =
+                normalize_metadata(serde_json::from_value(json!({"inventory":inventory})).unwrap());
+            assert!(validate_inventory(&metadata).is_err());
+        }
     }
 }

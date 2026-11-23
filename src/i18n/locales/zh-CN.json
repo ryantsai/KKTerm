@@ -1887,6 +1887,20 @@
         "right": "右"
       },
       "vendorLabel": "型号",
+      "inventory": {
+        "title": "硬件规格",
+        "cpu": "CPU",
+        "memory": "内存",
+        "storage": "磁盘",
+        "network": "网卡",
+        "raid": "RAID 模式",
+        "maintenance": "硬件维护记录",
+        "addMaintenance": "添加记录",
+        "date": "日期",
+        "details": "维护内容",
+        "removeMaintenance": "移除记录",
+        "invalid": "请填写维护记录的必填字段，并检查硬件规格。"
+      },
       "vendorHint": "使用 Dell 740XD、HP DL380 或其他机箱型号进行图形预览。",
       "expiryLabel": "到期",
       "rotationLabel": "旋转",

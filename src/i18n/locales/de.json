@@ -1887,6 +1887,20 @@
         "right": "Rechts"
       },
       "vendorLabel": "Modell",
+      "inventory": {
+        "title": "Hardwarespezifikationen",
+        "cpu": "CPU",
+        "memory": "Arbeitsspeicher",
+        "storage": "Laufwerke",
+        "network": "Netzwerkadapter",
+        "raid": "RAID-Modus",
+        "maintenance": "Hardwarewartung",
+        "addMaintenance": "Eintrag hinzufügen",
+        "date": "Datum",
+        "details": "Durchgeführte Arbeiten",
+        "removeMaintenance": "Eintrag entfernen",
+        "invalid": "Füllen Sie die Pflichtfelder der Wartung aus und prüfen Sie die Hardwarespezifikationen."
+      },
       "vendorHint": "Verwenden Sie Dell 740XD, HP DL380 oder ein anderes Gehäusemodell für die grafische Vorschau.",
       "expiryLabel": "Ablauf",
       "rotationLabel": "Drehung",

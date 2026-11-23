@@ -18,6 +18,7 @@ import {
 import { useWorkspaceStore } from "../../store";
 import type {
   Rack,
+  RackDeviceInventory,
   RackItem,
   RackItemKind,
   RackItemMetadata,
@@ -37,6 +38,8 @@ import {
 } from "./rackInventory";
 import { RackDevice } from "./RackDevice";
 import { RackHostBindingDialog } from "./RackHostBindingDialog";
+import { RackInventoryFields } from "./RackInventoryFields";
+import { isDeviceInventoryValid, normalizeDeviceInventory } from "./rackDeviceInventory";
 import { useItOpsStore } from "./state";
 
 const SHELL_OPTIONS: RackShell[] = ["black", "white", "grey"];
@@ -153,6 +156,7 @@ export function RackItemDialog({
   const [hostId, setHostId] = useState(item?.metadata?.hostId ?? "");
   const [editingHostBinding, setEditingHostBinding] = useState(false);
   const [vendor, setVendor] = useState(item?.metadata?.vendor ?? "");
+  const [inventory, setInventory] = useState<RackDeviceInventory>(initialMetadata.inventory ?? {});
   const [formFactor, setFormFactor] = useState<RackServerFormFactor>(
     initialMetadata.formFactor ?? "rack",
   );
@@ -183,6 +187,7 @@ export function RackItemDialog({
   const isKuaiguai = kind === "kuaiguai";
 
   const metadata: RackItemMetadata = {
+    inventory: normalizeDeviceInventory(inventory),
     accent: isKuaiguai || accent === "none" ? null : accent,
     status: isKuaiguai ? "online" : status,
     shell: isKuaiguai || shell === "black" ? null : shell,
@@ -217,7 +222,7 @@ export function RackItemDialog({
 
   const needsConnection = kind === "connection";
   const hasConnection = !needsConnection || connectionId.length > 0;
-  const canSave = hasConnection && !busy && heightU >= 1 && startU >= 1;
+  const canSave = hasConnection && !busy && heightU >= 1 && startU >= 1 && isDeviceInventoryValid(inventory);
   // Picker flow: the dialog only configures the device; the rack position
   // comes from the armed placement click afterwards.
   const placementMode = !isEdit && !!onConfigured;
@@ -691,6 +696,9 @@ export function RackItemDialog({
 
           </section>
         </div>
+        {kind === "server" || kind === "storage" || kind === "connection" || normalizeDeviceInventory(inventory) ? (
+          <RackInventoryFields value={inventory} onChange={setInventory} disabled={busy} />
+        ) : null}
       </Sheet>
       {editingHostBinding ? (
         <RackHostBindingDialog

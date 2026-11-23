@@ -324,7 +324,25 @@ export interface RackSnmpHint {
   lastError?: string | null;
 }
 
+/** Operator-authored hardware documentation owned by one Rack Device.
+ * Host bindings do not copy or override this inventory. */
+export interface RackDeviceInventory {
+  cpu?: string | null;
+  memory?: string | null;
+  storage?: string | null;
+  network?: string | null;
+  raid?: string | null;
+  maintenance?: RackMaintenanceEntry[];
+}
+
+export interface RackMaintenanceEntry {
+  id: string;
+  date: string;
+  notes: string;
+}
+
 export interface RackItemMetadata {
+  inventory?: RackDeviceInventory | null;
   accent?: string | null;
   icon?: string | null;
   notes?: string | null;

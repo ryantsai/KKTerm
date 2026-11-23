@@ -1003,6 +1003,9 @@ fn apply_segment(
                 continue;
             }
             rewrite_row(tx, table, &mut rewritten, action, remap)?;
+            if table.name == "itops_site_rack_items" {
+                validate_rack_inventory_import(&rewritten)?;
+            }
             // On "add", a built-in Task the importer already has (same
             // deterministic id / built_in_key) is kept as-is rather than
             // duplicated; one the importer lacks is inserted.
@@ -1016,6 +1019,27 @@ fn apply_segment(
     }
 
     Ok(())
+}
+
+/// Validate new inventory before committing an import. Keep the original JSON
+/// so unrelated metadata and future properties round-trip without rewriting.
+fn validate_rack_inventory_import(row: &Map<String, Value>) -> Result<(), String> {
+    let Some(raw) = row.get("metadata_json").and_then(Value::as_str) else {
+        return Ok(());
+    };
+    let metadata: Value = serde_json::from_str(raw)
+        .map_err(|error| format!("Invalid Rack Device metadata: {error}"))?;
+    let Some(inventory) = metadata.get("inventory").filter(|value| !value.is_null()) else {
+        return Ok(());
+    };
+    let inventory = serde_json::from_value(inventory.clone())
+        .map_err(|error| format!("Invalid Rack Device inventory: {error}"))?;
+    let metadata =
+        crate::itops::inventory::normalize_metadata(crate::itops::types::RackItemMetadata {
+            inventory: Some(inventory),
+            ..Default::default()
+        });
+    crate::itops::inventory::validate_inventory(&metadata)
 }
 
 /// A bundled IT Ops Task row that is part of the seeded built-in catalog
@@ -2368,6 +2392,62 @@ mod tests {
     }
 
     #[test]
+    fn rack_inventory_import_rejects_invalid_history_atomically() {
+        use serde_json::json;
+        for action in ["add", "replace"] {
+            for inventory in [
+                json!({"maintenance": [{"id":"e1", "date":"2025-02-29", "notes":"Disk replacement"}]}),
+                json!({"maintenance": "malformed"}),
+                json!({"raid": "x".repeat(501)}),
+            ] {
+                let mut conn = SqliteConnection::open_in_memory().unwrap();
+                itops_schema(&conn);
+                conn.execute(
+                    "INSERT INTO itops_sites (id, name, sort_order) VALUES ('keep', 'Existing', 0)",
+                    [],
+                )
+                .unwrap();
+                let data = json!({
+                    "itops_sites": [{"id":"s", "name":"Imported", "sort_order":0}],
+                    "itops_site_racks": [{"id":"r", "site_id":"s", "name":"Rack", "sort_order":0}],
+                    "itops_site_rack_items": [{"id":"d", "rack_id":"r", "kind":"server", "start_u":1,
+                        "metadata_json":json!({"inventory":inventory}).to_string()}]
+                });
+                let tx = conn.transaction().unwrap();
+                let error = apply_segment(
+                    &tx,
+                    segment_tables("itops").unwrap(),
+                    data.as_object().unwrap(),
+                    action,
+                    &mut HashMap::new(),
+                )
+                .unwrap_err();
+                assert!(
+                    error.contains("Maintenance")
+                        || error.contains("Hardware")
+                        || error.contains("Rack Device inventory"),
+                    "unexpected import failure: {error}"
+                );
+                tx.rollback().unwrap();
+                assert_eq!(
+                    conn.query_row("SELECT name FROM itops_sites", [], |row| row
+                        .get::<_, String>(0))
+                        .unwrap(),
+                    "Existing"
+                );
+                assert_eq!(
+                    conn.query_row("SELECT COUNT(*) FROM itops_site_rack_items", [], |row| row
+                        .get::<_, i64>(
+                        0
+                    ))
+                    .unwrap(),
+                    0
+                );
+            }
+        }
+    }
+
+    #[test]
     fn itops_merge_remaps_hierarchy_and_soft_references() {
         let src = SqliteConnection::open_in_memory().unwrap();
         itops_schema(&src);
@@ -2410,6 +2490,12 @@ mod tests {
         )
         .unwrap();
 
+        let hardware = serde_json::json!({
+            "cpu":"2 × Xeon", "memory":"128 GB", "storage":"8 × 2 TB", "network":"2 × 10 GbE", "raid":"RAID 10",
+            "maintenance":[{"id":"service-1", "date":"2024-02-29", "notes":"Replaced disk in bay 3"}]
+        });
+        src.execute("UPDATE itops_site_rack_items SET metadata_json = ?1 WHERE id = 'it1'",
+            [serde_json::json!({"connectionIds":["c1","c-foreign"], "hostId":"h1", "inventory":hardware}).to_string()]).unwrap();
         let mut seg = Map::new();
         for spec in segment_tables("itops").unwrap() {
             seg.insert(
@@ -2490,6 +2576,7 @@ mod tests {
             )
             .unwrap();
         let item_metadata: Value = serde_json::from_str(&item_metadata).unwrap();
+        assert_eq!(item_metadata["inventory"], hardware);
         assert_eq!(item_metadata["connectionIds"][0], "conn-new");
         assert_eq!(item_metadata["connectionIds"][1], "c-foreign");
         assert_eq!(
