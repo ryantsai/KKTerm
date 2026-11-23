@@ -190,6 +190,7 @@
         "dashboard.sha1": "SHA-1",
         "dashboard.sha256": "SHA-256",
         "dashboard.qrModeQr": "QR",
+        "itops.racks.inventory.cpu": "CPU",
         "dashboard.pcInfoSection.cpu": "CPU",
         "dashboard.pcInfoField.cpu": "CPU",
         "dashboard.pcInfoField.ram": "RAM",

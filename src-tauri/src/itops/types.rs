@@ -567,10 +567,39 @@ where
     }))
 }
 
-/// Presentation-only metadata for a Rack Device. No secrets ever land here.
+/// Operator-authored specifications and service history, owned by the Rack
+/// Device (not copied into its optional Host binding). No live probe state.
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct RackDeviceInventory {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cpu: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub memory: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub storage: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub network: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub raid: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub maintenance: Vec<RackMaintenanceEntry>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct RackMaintenanceEntry {
+    pub id: String,
+    pub date: String,
+    pub notes: String,
+}
+
+/// Non-secret presentation and inventory metadata for a Rack Device.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct RackItemMetadata {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub inventory: Option<RackDeviceInventory>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub accent: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

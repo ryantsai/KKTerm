@@ -1887,6 +1887,20 @@
         "right": "Kanan"
       },
       "vendorLabel": "Model",
+      "inventory": {
+        "title": "Spesifikasi perangkat keras",
+        "cpu": "CPU",
+        "memory": "Memori",
+        "storage": "Disk",
+        "network": "Adaptor jaringan",
+        "raid": "Mode RAID",
+        "maintenance": "Pemeliharaan perangkat keras",
+        "addMaintenance": "Tambah entri",
+        "date": "Tanggal",
+        "details": "Pekerjaan yang dilakukan",
+        "removeMaintenance": "Hapus entri",
+        "invalid": "Lengkapi kolom pemeliharaan yang wajib diisi dan periksa spesifikasi perangkat keras."
+      },
       "vendorHint": "Gunakan Dell 740XD, HP DL380, atau model sasis lain untuk pratinjau grafis.",
       "expiryLabel": "Kedaluwarsa",
       "rotationLabel": "Rotasi",

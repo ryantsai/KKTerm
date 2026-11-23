@@ -74,7 +74,7 @@ const CODEX_CLI_IGNORE_USER_CONFIG_FLAG: &str = "--ignore-user-config";
 const TUTORIAL_TOOL_KNOWN_TARGETS: &str = concat!(
     "app.activityRailWorkspace, app.activityRailNewWorkspace, app.activityRailDashboard, app.connectionRail, app.activityRailDontSleep, app.activityRailInstaller, app.activityRailSettings, app.connectionsResize, app.aiAssistantResize with navigation page=workspace; ",
     "assistant.panel, assistant.toolbar, assistant.settings, assistant.newChat, assistant.context, assistant.chatLog, assistant.composer, assistant.addContext, assistant.permissionMode, assistant.model, assistant.send with navigation page=workspace; ",
-    "app.activityRailItOps, itops.sitesTree, itops.siteView with navigation page=itops; ",
+    "app.activityRailItOps, itops.sitesTree, itops.siteView, itops.rackInventory (visible in an open Rack Device Properties dialog) with navigation page=itops; ",
     "itops.hostsPanel, itops.hostsRunTask, itops.hostsImport, itops.hostsScan with navigation page=itops itopsDestination=hosts; ",
     "itops.runHistoryPanel with navigation page=itops itopsDestination=runHistory; ",
     "itops.taskLibrary, itops.taskLibraryNew with navigation page=itops itopsDestination=taskLibrary; ",
@@ -3312,6 +3312,18 @@ fn ai_tool_definitions_with_skills(
                 "powerCapacityW":{"type":"integer","minimum":0}
             },"required":["siteId","name","serverRoom"]}),
         ));
+        let rack_inventory_schema = json!({"type":"object","description":"Manual hardware documentation owned by this Rack Device, never live probe state or secrets","properties":{
+            "cpu":{"type":"string","maxLength":500},
+            "memory":{"type":"string","maxLength":500},
+            "storage":{"type":"string","maxLength":500},
+            "network":{"type":"string","maxLength":500},
+            "raid":{"type":"string","maxLength":500},
+            "maintenance":{"type":"array","maxItems":100,"items":{"type":"object","properties":{
+                "id":{"type":"string","minLength":1,"maxLength":128,"description":"Unique within this device; preserve existing entry ids"},
+                "date":{"type":"string","format":"date","description":"Calendar date YYYY-MM-DD, years 0001 through 9999"},
+                "notes":{"type":"string","minLength":1,"maxLength":2000}
+            },"required":["id","date","notes"]}}
+        }});
         tools.push(tool_definition(
             "itops_place_rack_item",
             "Place one Rack Device into a Rack. Call itops_list_racks first. mountFace is front or rear and defaults to front; when the user asks for the back, backside, or rear of a Rack, set mountFace to \"rear\" explicitly. Rack floor-plan facing is unrelated to mounting face, and overlap validation is independent per face. For an in-cabinet device, startU is its lowest occupied U (1 = bottom) and startU..startU+heightU-1 must fit without overlap on that face. To place a standing Kuai Kuai package on the rack top, use kind \"kuaiguai\", startU = rack.heightU + 1, heightU 4, and metadata.kuaiguaiStyle \"full\"; a laid-down package uses heightU 1 and \"laidDown\". metadata.expiry is an ISO date (YYYY-MM-DD). Only one Kuai Kuai may occupy a rack top regardless of face. kind \"connection\" requires connectionId; other kinds are passive inventory/visual devices. Metadata never contains secrets.",
@@ -3324,6 +3336,7 @@ fn ai_tool_definitions_with_skills(
                 "mountFace":{"type":"string","enum":["front","rear"]},
                 "connectionId":{"type":"string"},
                 "metadata":{"type":"object","properties":{
+                    "inventory":rack_inventory_schema.clone(),
                     "expiry":{"type":"string","description":"ISO date in YYYY-MM-DD form"},
                     "kuaiguaiStyle":{"type":"string","enum":["full","laidDown"]},
                     "kuaiguaiSize":{"type":"string","enum":["small","regular","large"]},
@@ -3341,6 +3354,7 @@ fn ai_tool_definitions_with_skills(
                 "connectionId":{"type":"string"},
                 "mountFace":{"type":"string","enum":["front","rear"]},
                 "metadata":{"type":"object","properties":{
+                    "inventory":rack_inventory_schema.clone(),
                     "expiry":{"type":"string","description":"ISO date in YYYY-MM-DD form"},
                     "kuaiguaiStyle":{"type":"string","enum":["full","laidDown"]},
                     "kuaiguaiSize":{"type":"string","enum":["small","regular","large"]},

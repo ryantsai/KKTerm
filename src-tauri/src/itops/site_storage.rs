@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 use rusqlite::{Connection as SqliteConnection, OptionalExtension, Transaction, params};
 
-use super::inventory::normalize_metadata;
+use super::inventory::{normalize_metadata, validate_inventory};
 use super::storage::ItopsStorageError;
 use super::types::{
     Rack, RackFacingEntry, RackItem, RackItemKind, RackItemMetadata, RackMountFace,
@@ -578,6 +578,7 @@ fn validate_server_room(conn: &SqliteConnection, site_id: &str, name: &str) -> R
 }
 
 fn metadata_to_json(metadata: &RackItemMetadata) -> Result<String> {
+    validate_inventory(metadata).map_err(ItopsStorageError::Validation)?;
     serde_json::to_string(&normalize_metadata(metadata.clone()))
         .map_err(|error| ItopsStorageError::Validation(error.to_string()))
 }
@@ -1682,6 +1683,105 @@ mod tests {
             x_start,
             x_quarters,
         }
+    }
+
+    #[test]
+    fn hardware_inventory_survives_edits_moves_and_duplication() {
+        let conn = open_test_db();
+        create_rack(
+            &conn, "r1", "f1", "Rack-1", "Room B", "", None, 42, 1000, None,
+        )
+        .unwrap();
+        let metadata: RackItemMetadata = serde_json::from_value(serde_json::json!({
+            "hostId": "host-1", "vendor": "PowerEdge R740", "inventory": {
+                "cpu": "2 × Xeon Gold", "memory": "256 GB ECC", "storage": "8 × 2 TB SSD",
+                "network": "2 × 25 GbE", "raid": "RAID 10",
+                "maintenance": [{"id":"service-1", "date":"2024-02-29", "notes":"Replaced disk in bay 3"}]
+            }
+        })).unwrap();
+        let placed = place_rack_item(
+            &conn,
+            "item-1",
+            "r1",
+            None,
+            RackItemKind::Server,
+            "Database",
+            1,
+            2,
+            metadata,
+        )
+        .unwrap();
+        let expected = placed.metadata.inventory.clone();
+        assert!(expected.is_some());
+        let edited = update_rack_item(
+            &conn,
+            "item-1",
+            RackItemKind::Server,
+            None,
+            "Database renamed",
+            placed.metadata.clone(),
+            None,
+        )
+        .unwrap();
+        assert_eq!(edited.metadata.inventory, expected);
+        assert_eq!(edited.metadata.host_id.as_deref(), Some("host-1"));
+        let mut invalid = edited.metadata.clone();
+        invalid.inventory.as_mut().unwrap().maintenance[0].date = "2025-02-29".into();
+        assert!(
+            update_rack_item(
+                &conn,
+                "item-1",
+                RackItemKind::Server,
+                None,
+                "Must not save",
+                invalid,
+                None
+            )
+            .is_err()
+        );
+        assert_eq!(
+            fetch_item(&conn, "item-1").unwrap().label,
+            "Database renamed"
+        );
+        assert_eq!(
+            fetch_item(&conn, "item-1").unwrap().metadata.inventory,
+            expected
+        );
+        let moved = move_rack_item(&conn, "item-1", "r1", 10, 2, None).unwrap();
+        assert_eq!(moved.start_u, 10);
+        assert_eq!(moved.metadata.inventory, expected);
+
+        let mut sequence = 0;
+        let copied = duplicate_rack(
+            &conn,
+            "r1",
+            "Rack copy",
+            "Room B",
+            "",
+            None,
+            42,
+            1000,
+            None,
+            None,
+            None,
+            None,
+            |prefix| {
+                sequence += 1;
+                format!("{prefix}-copy-{sequence}")
+            },
+        )
+        .unwrap();
+        assert_ne!(copied.items[0].id, "item-1");
+        assert_eq!(copied.items[0].metadata.inventory, expected);
+        let raw: String = conn
+            .query_row(
+                "SELECT metadata_json FROM itops_site_rack_items WHERE id = 'item-1'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let restored: RackItemMetadata = serde_json::from_str(&raw).unwrap();
+        assert_eq!(restored.inventory, expected);
     }
 
     #[test]

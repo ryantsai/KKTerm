@@ -89,8 +89,13 @@ is stored in `itops_site_rack_items`; older code/schema may still use the
 **Rack Device Type** — the finite device kind that controls faceplate
 rendering and properties; it is not a Connection type.
 
-**Rack Device Properties** — non-secret presentation metadata for a Rack
-Device. Never store credentials or live Session state here.
+**Rack Device Properties** — non-secret presentation and operator-authored
+hardware inventory for a Rack Device. Never store credentials or live Session
+state here. CPU, RAM, disks, network adapters, RAID mode, and dated maintenance
+notes are owned by the Rack Device, even when it has no Host binding. A Host
+binding remains a reference; it never duplicates these hardware facts. These
+records are manual documentation, not automatic discovery, monitoring, or
+a maintenance scheduler.
 Server Rack Devices may use a rack or tower form factor; tower is a half-width
 faceplate presentation and does not change vertical U occupancy. A Server may
 also select Default, Style 1, or Style 2 front-panel artwork independently of
@@ -314,7 +319,17 @@ SQLite tables:
   Properties does not expose transport; new Sites use `auto`, and current Host
   execution resolves from bound Connections.
 - `itops_site_racks` / `itops_site_rack_items` — Site topology and Rack
-  Devices. Pure metadata; Connection ids are soft references.
+  Devices. Pure metadata; Connection ids are soft references. Rack Device
+  `metadata_json.inventory` optionally holds five specification strings (at
+  most 500 characters each) and up to 100 maintenance entries with a
+  device-local unique id, an ISO calendar date (`YYYY-MM-DD`, years 0001–9999),
+  and 1–2000 characters of work notes. Existing metadata without `inventory`
+  reads as empty inventory. Save validates before writing; selective import
+  rejects malformed inventory transactionally. Edits, moves, Rack/Server Room
+  duplication, full database backups, and selective IT Ops exports preserve
+  the nested data. A duplicate copies its history; entry ids are local to each
+  device and do not need global remapping. This adds no table, schema version,
+  migration, startup reconciliation, or write on a current-version startup.
 - `itops_hosts` — per-Site Host inventory: hostname, label, kind
   (physical/vm/container/other), soft `parent_host_id` self reference for
   child Hosts, ordered soft Connection references, the last connectivity-scan

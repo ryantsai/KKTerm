@@ -1887,6 +1887,20 @@
         "right": "Derecha"
       },
       "vendorLabel": "Modelo",
+      "inventory": {
+        "title": "Especificaciones de hardware",
+        "cpu": "CPU",
+        "memory": "Memoria RAM",
+        "storage": "Discos",
+        "network": "Adaptadores de red",
+        "raid": "Modo RAID",
+        "maintenance": "Mantenimiento de hardware",
+        "addMaintenance": "Agregar registro",
+        "date": "Fecha",
+        "details": "Trabajo realizado",
+        "removeMaintenance": "Eliminar registro",
+        "invalid": "Complete los campos obligatorios de mantenimiento y revise las especificaciones de hardware."
+      },
       "vendorHint": "Usa Dell 740XD, HP DL380 u otro modelo de chasis para la vista previa gráfica.",
       "expiryLabel": "Vencimiento",
       "rotationLabel": "Rotación",

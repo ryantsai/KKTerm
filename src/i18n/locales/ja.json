@@ -1887,6 +1887,20 @@
         "right": "右"
       },
       "vendorLabel": "モデル",
+      "inventory": {
+        "title": "ハードウェア仕様",
+        "cpu": "CPU",
+        "memory": "メモリ",
+        "storage": "ディスク",
+        "network": "ネットワークアダプター",
+        "raid": "RAID モード",
+        "maintenance": "ハードウェア保守履歴",
+        "addMaintenance": "記録を追加",
+        "date": "日付",
+        "details": "作業内容",
+        "removeMaintenance": "記録を削除",
+        "invalid": "保守記録の必須項目を入力し、ハードウェア仕様を確認してください。"
+      },
       "vendorHint": "グラフィカルプレビューには Dell 740XD、HP DL380、または別のシャーシモデルを使用します。",
       "expiryLabel": "有効期限",
       "rotationLabel": "回転",

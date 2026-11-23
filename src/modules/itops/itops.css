@@ -6594,6 +6594,32 @@
   gap: 10px;
   min-width: 0;
 }
+.rack-device-inventory {
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.rack-device-inventory h3 {
+  margin: 0 0 10px;
+  color: var(--text);
+  font-size: 13px;
+}
+.rack-maintenance-heading,
+.rack-maintenance-date {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.rack-maintenance-heading { margin-top: 16px; }
+.rack-maintenance-heading h3 { margin: 0; }
+.rack-maintenance-entry {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.rack-inventory-validation { color: var(--red); font-size: 12px; }
 .rack-host-bind-link {
   align-self: flex-end;
   margin-top: auto;

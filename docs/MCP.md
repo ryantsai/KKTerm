@@ -380,6 +380,17 @@ secret-vault references; those are configured only in the Task Library editor.
 The topology invariant is Site → Server Room → Rack → Rack Device: create the
 parent first.
 
+Rack Device `metadata.inventory` optionally carries `cpu`, `memory`, `storage`,
+`network`, and `raid` strings (500 characters each), plus `maintenance` entries
+with device-local unique `id`, calendar `date` (`YYYY-MM-DD`, years 0001–9999),
+and `notes` (1–2000 characters; 100 entries per device). The same validation
+applies to assistant/MCP edits and the properties UI. These are operator notes,
+owned by the Rack Device rather than its optional Host, and contain no secrets
+or live measurements. Read the existing device and resend its metadata when
+editing: metadata replacement is not a partial merge. Tutorial target
+`itops.rackInventory` is visible only inside an open Rack Device Properties
+dialog (`page=itops`).
+
 | Name | Description |
 |---|---|
 | `kkterm.itops.sites.list` | List IT Ops Sites (id, name, memberIds, filter, transport). Presentation-heavy fields (backgrounds, icon images) are omitted. |
