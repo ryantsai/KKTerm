@@ -35,9 +35,21 @@ export function ItOpsCustomFieldSettings({ fields, savedFields, onChange, disabl
             : <label><span className="it-custom-field-label">{t("itops.customFields.type")}</span><select value={field.type} onChange={(event) => update(field.id, { type: event.currentTarget.value as CustomFieldType, options: [] })}>
             {CUSTOM_FIELD_TYPES.map((type) => <option key={type} value={type}>{t(`itops.customFields.types.${type}`)}</option>)}
           </select></label>}
-          <button type="button" className="toolbar-button danger it-custom-field-remove" data-preserve-content-focus="true" aria-label={t("common.delete")} title={t("common.delete")} onClick={() => saved ? setRemoving(field) : onChange(fields.filter((entry) => entry.id !== field.id))}>
-            <ItIcon name="trash" size={14} />
-          </button>
+          <div className="it-custom-field-row-actions">
+            {saved ? <button type="button" className="toolbar-button it-custom-field-edit" data-preserve-content-focus="true" aria-label={t("common.edit")} title={t("common.edit")} onClick={(event) => {
+              const definition = event.currentTarget.closest(".it-custom-field-definition");
+              const nameInput = definition?.querySelector<HTMLInputElement>(".it-custom-field-name input");
+              const choices = definition?.querySelector<HTMLDetailsElement>(".it-custom-field-options");
+              if (choices) choices.open = true;
+              nameInput?.focus();
+              nameInput?.select();
+            }}>
+              <ItIcon name="edit" size={14} />
+            </button> : null}
+            <button type="button" className="toolbar-button danger it-custom-field-remove" data-preserve-content-focus="true" aria-label={t("common.delete")} title={t("common.delete")} onClick={() => saved ? setRemoving(field) : onChange(fields.filter((entry) => entry.id !== field.id))}>
+              <ItIcon name="trash" size={14} />
+            </button>
+          </div>
         </div>
         {field.type === "select" ? <details className="it-custom-field-options" open={!saved}>
           <summary>{t("itops.customFields.options")}</summary>

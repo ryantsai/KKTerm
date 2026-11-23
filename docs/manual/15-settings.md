@@ -403,7 +403,10 @@ Subsection `itops.customFields.heading` defines metadata for IPAM records.
 The new field's name receives keyboard focus. In narrow panes, each control
 keeps its own visible label. Saved record kinds and data types appear as
 read-only text; only a new field offers those dropdowns.
-Expand `itops.customFields.options` beneath a choice field to edit its options.
+The `common.edit` pencil beside each saved definition focuses and selects its
+name and expands `itops.customFields.options` for choice fields. Names and
+choices remain editable inline; changes use the Settings Save action. You can
+also expand `itops.customFields.options` beneath a choice field directly.
 Text, multiline text, numbers, yes/no values, dates,
 choices, HTTP(S) URLs, Saved Credential references, and KKTerm links are
 supported. A choice uses `itops.customFields.options`, one option per line;

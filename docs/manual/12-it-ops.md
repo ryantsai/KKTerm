@@ -93,7 +93,7 @@ The script is state-changing operator input. Review it and the target Site befor
 
 ## IPAM
 
-**IPAM** is the global IP address plan. It stands outside the Site tree in the navigator's `itops.navigation.networking` section and stays reachable whichever Site is selected. Its grid includes a Type column and shows VLAN and IP Prefix records together. `common.add` opens a menu whose `itops.ipam.cidrLabel` and `itops.ipam.vlanLabel` items create the corresponding record type; the menu expands the page header without covering the import and export toolbar.
+**IPAM** is the global IP address plan. It stands outside the Site tree in the navigator's `itops.navigation.networking` section and stays reachable whichever Site is selected. Its grid includes a Type column and shows VLAN and IP Prefix records together. `common.add` opens a menu whose `itops.ipam.cidrLabel`, `itops.customFields.recordType.address`, and `itops.ipam.vlanLabel` items create the corresponding record type; the menu expands the page header without covering the import and export toolbar. The top-level Address Record action opens `itops.ipam.newAddressTitle` without choosing a Prefix or VRF for you; enter the address and optional VRF, Site, and Host. A matching Prefix is derived from containment and VRF when the record is saved; uncovered records appear under `itops.ipam.unassignedAddresses`. The plus action on an individual Prefix still opens the same editor with that Prefix's defaults and free-address suggestions. Tutorial/grep anchor: `itops.ipamNew`.
 
 ### Custom fields
 

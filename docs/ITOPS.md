@@ -461,8 +461,10 @@ Network Node value opens its Network Map, selects the node, and centers the view
 `src-tauri/src/itops/custom_fields.rs` owns validation and atomic persistence.
 
 Its Add button opens a menu for
-creating either an IP Prefix or VLAN; both record types share the grid and have
-an explicit Type column. Rows are grouped by their
+creating an IP Prefix, IP Address Record, or VLAN. Top-level address creation
+uses the existing address editor without guessing a Prefix or VRF; the Prefix
+row action still seeds its defaults and free-address suggestions. Prefix and
+VLAN records share the grid and have an explicit Type column. Rows are grouped by their
 optional Site tag, with Site-less or stale soft references collected under All
 Sites. Within each Site group, Prefix rows retain the snapshot's containment order and
 are indented by the server-derived `depth`, so indentation always matches real
