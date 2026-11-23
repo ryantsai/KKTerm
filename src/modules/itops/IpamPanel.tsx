@@ -1116,6 +1116,17 @@ export function IpamPanel({ onShowWorkspace }: { onShowWorkspace: () => void }) 
                   role="menuitem"
                   onClick={() => {
                     setAddMenuOpen(false);
+                    setAddressDialog({ record: null, prefix: null });
+                  }}
+                >
+                  <ItIcon name="plus" size={14} />
+                  {t("itops.customFields.recordType.address")}
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setAddMenuOpen(false);
                     setVlanDialog(null);
                   }}
                 >
