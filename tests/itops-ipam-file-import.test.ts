@@ -24,7 +24,7 @@ test("Excel import stays out of the web bundle and enforces import limits", asyn
   const dependencies = JSON.parse(packageJson).dependencies as Record<string, string>;
   assert.equal(dependencies.xlsx, undefined);
   assert.equal(dependencies["sheetjs"], undefined);
-  assert.match(cargoToml, /calamine = \{ version = "0\.36", default-features = false \}/);
+  assert.match(cargoToml, /calamine = \{ version = "0\.38", default-features = false \}/);
   assert.match(dialog, /from "papaparse"/);
   assert.match(dialog, /> 50 \* 1024 \* 1024/);
   assert.match(backend, /const MAX_IMPORT_RECORDS: usize = 100_000;/);

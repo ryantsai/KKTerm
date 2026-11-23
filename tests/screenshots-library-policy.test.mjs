@@ -82,7 +82,7 @@ test("screenshot library drags original files and uses compatible native image c
   assert.match(backend, /thumbnail_path: Option<String>/);
   assert.match(backend, /arboard::ImageData/);
   assert.doesNotMatch(backend, /SetClipboardData\(CF_DIB/);
-  assert.match(cargo, /arboard = \{ version = "3\.6\.1"/);
+  assert.match(cargo, /arboard = \{ version = "3\.7\.0"/);
   assert.match(cargo, /tauri-plugin-drag = "2\.1\.1"/);
   assert.match(capability, /"drag:default"/);
   assert.match(appBackend, /plugin\(tauri_plugin_drag::init\(\)\)/);
@@ -221,7 +221,7 @@ test("macOS and Linux screenshot delivery use xcap-backed images and native imag
   assert.match(backend, /org\.freedesktop\.portal\.Screenshot/);
   assert.match(backend, /"interactive", Value::from\(true\)/);
   assert.match(backend, /arboard::ImageData/);
-  assert.match(cargo, /arboard = \{ version = "3\.6\.1"/);
+  assert.match(cargo, /arboard = \{ version = "3\.7\.0"/);
 });
 
 test("Windows native screenshot selection paints dimmed frames atomically", async () => {
