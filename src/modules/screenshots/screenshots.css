@@ -869,6 +869,15 @@
 .screenshots-editor__footer-cursor {
   position: absolute;
   right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.screenshots-editor__footer-cursor button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   padding: 2px 6px;
   border: 1px solid transparent;
   border-radius: 5px;
@@ -881,15 +890,31 @@
   cursor: pointer;
 }
 
-.screenshots-editor__footer-cursor:hover {
+.screenshots-editor__footer-cursor button:hover {
   border-color: var(--border);
   background: var(--surface);
   color: var(--text);
 }
 
-.screenshots-editor__footer-cursor:focus-visible {
+.screenshots-editor__footer-cursor button:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
+}
+
+.screenshots-editor__pixel-swatch {
+  display: inline-flex;
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: repeating-conic-gradient(var(--surface) 0% 25%, var(--border) 0% 50%) 0 0 / 6px 6px;
+}
+
+.screenshots-editor__pixel-swatch > span {
+  width: 100%;
+  height: 100%;
 }
 
 .screenshots-editor .kk-dlg-foot {

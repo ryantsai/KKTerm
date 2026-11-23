@@ -241,6 +241,7 @@ const SCREENSHOTS_TUTORIAL_TARGET_IDS = [
   "screenshots.captureFullscreen",
   "screenshots.viewSwitch",
   "screenshots.library",
+  "screenshots.editor.cursorColor",
 ] as const;
 
 const SYSTEM_CLEANER_TUTORIAL_TARGET_IDS = [
