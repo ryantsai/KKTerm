@@ -433,6 +433,9 @@ struct WebviewSession {
     window: WebviewWindow,
     host_window: WebviewWindow,
     visible: bool,
+    /// Last logical bounds the frontend requested, re-applied when the main
+    /// window returns from minimized/hidden.
+    bounds: Option<(f64, f64, f64, f64)>,
 }
 
 #[derive(Deserialize)]
@@ -951,6 +954,7 @@ impl WebviewSessionManager {
                 window,
                 host_window,
                 visible: false,
+                bounds: None,
             },
         );
         starting_reservation.commit();
@@ -974,9 +978,9 @@ impl WebviewSessionManager {
     }
 
     pub fn update_bounds(&self, request: UpdateWebviewBoundsRequest) -> Result<(), String> {
-        let sessions = self.lock()?;
+        let mut sessions = self.lock()?;
         let session = sessions
-            .get(&request.session_id)
+            .get_mut(&request.session_id)
             .ok_or_else(|| format!("webview session '{}' was not found", request.session_id))?;
         webview_debug_log(format!(
             "update_bounds session={} tracked_visible={} x={} y={} width={} height={}",
@@ -1000,6 +1004,7 @@ impl WebviewSessionManager {
                 },
             }),
         );
+        session.bounds = Some((request.x, request.y, request.width, request.height));
         if session.visible {
             show_webview(session, request.x, request.y, request.width, request.height)?;
         }
@@ -1034,6 +1039,7 @@ impl WebviewSessionManager {
             }),
         );
         if request.visible {
+            session.bounds = Some((request.x, request.y, request.width, request.height));
             show_webview(session, request.x, request.y, request.width, request.height)?;
             session.visible = true;
         } else {
@@ -1048,7 +1054,7 @@ impl WebviewSessionManager {
         let session = sessions
             .get(&request.session_id)
             .ok_or_else(|| format!("webview session '{}' was not found", request.session_id))?;
-        if !session.visible {
+        if !session.visible || host_suppresses_overlay(&session.host_window) {
             return Ok(());
         }
         session
@@ -1231,6 +1237,32 @@ fn webview_label_for(session_id: &str) -> String {
     format!("url-session-{session_id}")
 }
 
+/// Reconciles URL overlays with the main window, mirroring the Custom Module
+/// overlay sync: hidden while the main window is minimized or hidden, and
+/// re-placed at their last requested bounds when it is visible again (#803).
+/// The per-session `visible` flag is the frontend's intent and is not changed.
+pub(crate) fn sync_url_overlays_with_main_window<R: tauri::Runtime>(
+    main_window: &tauri::Window<R>,
+) {
+    let Some(manager) = main_window.try_state::<WebviewSessionManager>() else {
+        return;
+    };
+    let Ok(sessions) = manager.lock() else {
+        return;
+    };
+    for session in sessions.values() {
+        if host_suppresses_overlay(&session.host_window) {
+            let _ = hide_webview(&session.window);
+        } else if let (true, Some((x, y, width, height))) = (session.visible, session.bounds) {
+            let _ = show_webview(session, x, y, width, height);
+        }
+    }
+}
+
+fn host_suppresses_overlay(host_window: &WebviewWindow) -> bool {
+    !host_window.is_visible().unwrap_or(true) || host_window.is_minimized().unwrap_or(false)
+}
+
 fn show_webview(
     session: &WebviewSession,
     x: f64,
@@ -1238,6 +1270,13 @@ fn show_webview(
     width: f64,
     height: f64,
 ) -> Result<(), String> {
+    // A minimized host reports its client origin near (-32000, -32000). Placing
+    // and showing the overlay then leaves a visible owned popup off screen that
+    // restore does not move back, so the URL Tab stays blank (#803). Keep it
+    // hidden; the main-window sync re-applies these bounds on restore.
+    if host_suppresses_overlay(&session.host_window) {
+        return hide_webview(&session.window);
+    }
     let (position, size) = overlay_rect(&session.host_window, x, y, width, height)?;
     logging::url_connection_debug(
         "backend.overlay.show",
@@ -2395,6 +2434,100 @@ mod tests {
             })
             // Only the configuration/assets are empty; Builder::default uses
             // the real Wry runtime and creates native WebView2 windows.
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .unwrap();
+        app.run_return(|app, event| {
+            if matches!(event, tauri::RunEvent::Ready) {
+                app.exit(0);
+            }
+        });
+        receiver.recv().unwrap().unwrap();
+    }
+
+    // #803: a URL overlay shown while the main window is minimized used to be
+    // placed relative to the minimized origin (about -32000) and stayed there
+    // after restore, leaving the URL Tab blank. Same interactive requirement:
+    // cargo test --lib windows_overlay_stays_hidden_while_host_minimized -- --ignored
+    #[cfg(target_os = "windows")]
+    #[test]
+    #[ignore = "requires an interactive Windows desktop and WebView2"]
+    fn windows_overlay_stays_hidden_while_host_minimized() {
+        use windows::Win32::{
+            Foundation::{HWND, RECT},
+            UI::WindowsAndMessaging::{
+                GetWindowRect, IsWindowVisible, SW_MINIMIZE, SW_RESTORE, ShowWindow,
+            },
+        };
+
+        let profile = tempfile::tempdir().unwrap();
+        let data_directory = profile.path().to_path_buf();
+        let (sender, receiver) = std::sync::mpsc::channel();
+        let app = tauri::Builder::default()
+            .any_thread()
+            .setup(move |app| {
+                let result = (|| -> Result<(), String> {
+                    let owner = WebviewWindowBuilder::new(
+                        app,
+                        "overlay-minimized-owner",
+                        WebviewUrl::External(parse_webview_blank_url()?),
+                    )
+                    .title("KKTerm overlay minimized regression")
+                    .position(200.0, 200.0)
+                    .inner_size(900.0, 600.0)
+                    .data_directory(data_directory.clone())
+                    .build()
+                    .map_err(|error| error.to_string())?;
+                    let overlay = WebviewWindowBuilder::new(
+                        app,
+                        "overlay-minimized-url",
+                        WebviewUrl::External(parse_webview_blank_url()?),
+                    )
+                    .owner(&owner)
+                    .map_err(|error| error.to_string())?
+                    .decorations(false)
+                    .resizable(false)
+                    .skip_taskbar(true)
+                    .focused(false)
+                    .visible(false)
+                    .data_directory(data_directory)
+                    .build()
+                    .map_err(|error| error.to_string())?;
+                    let hwnd = HWND(webview_hwnd(&overlay)?);
+                    let owner_hwnd = HWND(webview_hwnd(&owner)?);
+                    let session = WebviewSession {
+                        window: overlay,
+                        host_window: owner,
+                        visible: true,
+                        bounds: Some((50.0, 80.0, 500.0, 350.0)),
+                    };
+
+                    unsafe {
+                        let _ = ShowWindow(owner_hwnd, SW_MINIMIZE);
+                    }
+                    show_webview(&session, 50.0, 80.0, 500.0, 350.0)?;
+                    if unsafe { IsWindowVisible(hwnd) }.as_bool() {
+                        return Err("overlay was shown while its host was minimized".into());
+                    }
+
+                    unsafe {
+                        let _ = ShowWindow(owner_hwnd, SW_RESTORE);
+                    }
+                    show_webview(&session, 50.0, 80.0, 500.0, 350.0)?;
+                    let mut rect = RECT::default();
+                    unsafe {
+                        let _ = GetWindowRect(hwnd, &mut rect);
+                    }
+                    if !unsafe { IsWindowVisible(hwnd) }.as_bool() || rect.left < -1000 {
+                        return Err(format!(
+                            "overlay not restored on screen: left={} top={}",
+                            rect.left, rect.top
+                        ));
+                    }
+                    Ok(())
+                })();
+                sender.send(result).unwrap();
+                Ok(())
+            })
             .build(tauri::test::mock_context(tauri::test::noop_assets()))
             .unwrap();
         app.run_return(|app, event| {

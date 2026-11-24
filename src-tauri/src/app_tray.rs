@@ -354,6 +354,7 @@ pub fn restore_main_window<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
         let recovery = crate::window_state::recover_if_offscreen(&main_window);
         set_owned_popups_visible(&main_window, true);
         crate::custom_modules::sync_custom_module_overlays_with_main_window(&main_window);
+        crate::webview::sync_url_overlays_with_main_window(&main_window);
         let focus_result = main_window.set_focus().map(|_| "ok").unwrap_or("error");
         let recovery_result = recovery
             .map(|bounds| {
@@ -384,6 +385,7 @@ pub fn hide_minimized_window_if_enabled<R: tauri::Runtime>(window: &tauri::Windo
     let _ = window.hide();
     set_owned_popups_visible(window, false);
     crate::custom_modules::sync_custom_module_overlays_with_main_window(window);
+    crate::webview::sync_url_overlays_with_main_window(window);
 }
 
 /// Diverts the native title-bar close button to a hide-to-tray when minimize-to-tray is enabled.
@@ -414,6 +416,7 @@ pub fn hide_window_on_close_if_enabled<R: tauri::Runtime>(
     crate::debug_heartbeat::record_window_event("hide-close-to-tray");
     let _ = window.hide();
     crate::custom_modules::sync_custom_module_overlays_with_main_window(window);
+    crate::webview::sync_url_overlays_with_main_window(window);
 }
 
 #[cfg(target_os = "windows")]
