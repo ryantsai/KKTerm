@@ -3,6 +3,48 @@
 All notable changes to KKTerm are documented here.
 
 ## Direct Downloads
+* 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.29/kkterm-3000.0.29-windows-x64-setup.exe)
+* 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.29/kkterm-3000.0.29-windows-arm64-setup.exe)
+* 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.29/kkterm-3000.0.29-windows-x64-portable.zip)
+* 📦 [Portable for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.29/kkterm-3000.0.29-windows-arm64-portable.zip)
+
+## v3000.0.29
+
+## Highlights
+- Rack inventory can now track server hardware and maintenance, and screenshot editing can show and copy source-pixel RGB values.
+
+## New
+- Record server hardware details and maintenance in rack inventory. [#816](https://github.com/ryantsai/KKTerm/pull/816) — @ryantsai
+- View and copy the source pixel’s RGB value in the screenshot editor. [#815](https://github.com/ryantsai/KKTerm/pull/815) — @ryantsai
+
+## Improved
+- IPAM now supports creating IP addresses, and custom fields can be edited. [#814](https://github.com/ryantsai/KKTerm/pull/814) — @ryantsai
+
+## Fixed
+- URL Session overlays stay hidden while the main window is minimized or hidden, then return to their requested position when the window is shown. This also prevents off-screen popups from stealing taskbar activation. (ca9b684; refs #803)
+
+## Internal
+- Updated Node to 24.22.2, pnpm to 12.23.0, and JavaScript and Rust dependencies. The dependency list got a maintenance window, too.
+
+# KKTerm v3000.0.29（繁體中文・台灣）
+
+## 重點
+- 機架庫存現在可記錄伺服器硬體與維護資訊；截圖編輯器可顯示並複製來源像素的 RGB 值。
+
+## 新增
+- 可在機架庫存中記錄伺服器硬體詳細資料與維護資訊。[#816](https://github.com/ryantsai/KKTerm/pull/816) — @ryantsai
+- 可在截圖編輯器中查看並複製來源像素的 RGB 值。[#815](https://github.com/ryantsai/KKTerm/pull/815) — @ryantsai
+
+## 改進
+- IPAM 現在支援建立 IP 位址，也可編輯自訂欄位。[#814](https://github.com/ryantsai/KKTerm/pull/814) — @ryantsai
+
+## 修正
+- 主視窗最小化或隱藏時，URL Session 浮層會保持隱藏；視窗重新顯示後，浮層會回到指定位置。視窗外的彈出視窗也不會再搶走工作列的啟用焦點。（ca9b684；參見 #803）
+
+## 內部
+- 更新 Node 至 24.22.2、pnpm 至 12.23.0，並更新 JavaScript 與 Rust 相依套件。相依套件清單也趁機做了維護。
+
+## Direct Downloads
 * 💻 [Download for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.28/kkterm-3000.0.28-windows-x64-setup.exe)
 * 💻 [Download for Windows (ARM64)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.28/kkterm-3000.0.28-windows-arm64-setup.exe)
 * 📦 [Portable for Windows (64-bit)](https://github.com/ryantsai/KKTerm/releases/download/v3000.0.28/kkterm-3000.0.28-windows-x64-portable.zip)
