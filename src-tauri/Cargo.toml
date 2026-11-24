@@ -133,7 +133,7 @@ libc = "0.2"
 # Host monitoring (Status Bar CPU/RAM/Network + detailed Dashboard counters).
 # Shared with Linux (see the Linux target block); the Windows path uses
 # hand-rolled Win32 calls in performance.rs.
-sysinfo = "0.40"
+sysinfo = "0.39"
 # CFString construction for the IOKit power assertion used by Don't Sleep.
 # IOKit itself links as a system framework via #[link] in power.rs.
 core-foundation-sys = "0.8"
@@ -175,11 +175,11 @@ winping = "0.10"
 # Dashboard PC Info enrichment on Linux (CPU brand/cores/frequency, disks,
 # network adapters + MAC/IP) plus host monitoring (Status Bar CPU/RAM/Network
 # and detailed Dashboard counters). Windows uses CIM / hand-rolled Win32 calls.
-sysinfo = "0.40"
+sysinfo = "0.39"
 # Don't Sleep: D-Bus idle/suspend inhibitors (xdg-desktop-portal with an
 # org.freedesktop.ScreenSaver fallback). Already in the tree via
 # tauri-plugin-opener/xcap, so this adds no new build cost.
-zbus = "6"
+zbus = "5"
 
 [target.'cfg(not(target_os = "windows"))'.dependencies]
 # Unix ICMP via surge-ping (raw sockets - Unix users typically have CAP_NET_RAW or root).

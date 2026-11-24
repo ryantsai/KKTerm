@@ -4465,7 +4465,7 @@ dependencies = [
  "winrm-rs",
  "x509-cert 0.3.1",
  "xcap",
- "zbus 6.5.0",
+ "zbus 5.19.0",
  "zip",
 ]
 
@@ -8607,9 +8607,9 @@ dependencies = [
 
 [[package]]
 name = "sysinfo"
-version = "0.40.4"
+version = "0.39.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e80749408e2d8bec0ffa303012cf4e1b3b355f4a09087b4fdf7473680f6a2de"
+checksum = "d2071df9448915b71c4fe6d25deaf1c22f12bd234f01540b77312bb8e41361e6"
 dependencies = [
  "libc",
  "memchr",
@@ -9317,7 +9317,6 @@ dependencies = [
  "signal-hook-registry",
  "socket2",
  "tokio-macros",
- "tracing",
  "windows-sys 0.61.2",
 ]
 
@@ -11114,8 +11113,6 @@ dependencies = [
  "serde",
  "serde_repr",
  "socket2",
- "tokio",
- "tracing",
  "uds_windows",
  "uuid",
  "windows-sys 0.61.2",
@@ -11352,7 +11349,6 @@ dependencies = [
  "futures-io",
  "rustix 1.1.6",
  "socket2",
- "tracing",
  "windows-sys 0.61.2",
 ]
 
