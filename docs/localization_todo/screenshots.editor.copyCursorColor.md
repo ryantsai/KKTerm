@@ -2,9 +2,9 @@
 
 - **English value**: `Copy source pixel RGB`
 - **Namespace**: `screenshots`
-- **File/component**: `src/modules/screenshots/ScreenshotEditor.tsx`
-- **UI role**: `tooltip`
-- **User flow**: Hover the RGB readout next to the image-relative XY readout to discover its copy action.
+- **File/component**: `src/modules/screenshots/ScreenshotEditor.tsx` and the shortcut catalog in `src/modules/workspace/keymap.ts`
+- **UI role**: `label` and `tooltip`
+- **User flow**: Hover the RGB readout or right-click an image pixel to find the copy action. The same label identifies its binding under `settings.screenshotsEditorShortcuts`.
 - **Tone**: Concise and neutral.
 - **Placeholders**: none.
 - **Context/meaning**: Source pixel means the underlying saved image before temporary annotations; crop coordinates still apply.

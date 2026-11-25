@@ -20,6 +20,7 @@ import {
   conflictingWorkspaceShortcutAction,
   defaultWorkspaceShortcutBinding,
   displayShortcutBinding,
+  effectiveWorkspaceShortcutBindings,
   workspaceShortcutIsFixed,
   type WorkspaceShortcutActionId,
   type WorkspaceShortcutOverrides,
@@ -103,14 +104,6 @@ export function ShortcutsSettings() {
     });
   }, [loadScreenshotSettings, showStatusBarNotice]);
 
-  function effectiveBinding(actionId: WorkspaceShortcutActionId) {
-    const action = WORKSPACE_SHORTCUT_ACTIONS.find((entry) => entry.id === actionId);
-    const override = draft[actionId];
-    return override !== undefined && action && !workspaceShortcutIsFixed(action)
-      ? override
-      : (action ? defaultWorkspaceShortcutBinding(action) : null);
-  }
-
   function setOverride(actionId: WorkspaceShortcutActionId, binding: string | null) {
     const action = WORKSPACE_SHORTCUT_ACTIONS.find((entry) => entry.id === actionId);
     setDraft((current) => {
@@ -177,10 +170,12 @@ export function ShortcutsSettings() {
 
   useSettingsSaveRegistration({ hasChanges, onSave: handleSave });
 
+  const effectiveBindings = effectiveWorkspaceShortcutBindings(draft);
+
   function renderRows(scope: WorkspaceShortcutScope) {
     return WORKSPACE_SHORTCUT_ACTIONS.filter((action) => action.scope === scope).map((action) => {
       const fixed = workspaceShortcutIsFixed(action);
-      const binding = effectiveBinding(action.id);
+      const binding = effectiveBindings.get(action.id);
       const overridden = !fixed && action.id in draft;
       const recording = recordingActionId === action.id;
       return (

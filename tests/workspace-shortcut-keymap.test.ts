@@ -129,10 +129,13 @@ test("workspaceShortcutFromKeyboardEvent resolves defaults within the requested 
 });
 
 test("screenshot editor actions resolve only within their own scope", () => {
-  // Copy/Save/Save As default to the conventional modal-dialog bindings.
   assert.equal(
     workspaceShortcutFromKeyboardEvent(keyEvent("c", { ctrlKey: true }), {}, "screenshotEditor"),
     "screenshotEditorCopy",
+  );
+  assert.equal(
+    workspaceShortcutFromKeyboardEvent(keyEvent("c", { ctrlKey: true, shiftKey: true }), {}, "screenshotEditor"),
+    "screenshotEditorCopyRgb",
   );
   assert.equal(
     workspaceShortcutFromKeyboardEvent(keyEvent("s", { ctrlKey: true }), {}, "screenshotEditor"),
@@ -156,6 +159,23 @@ test("screenshot editor actions resolve only within their own scope", () => {
     ),
     "screenshotEditorCopy",
   );
+});
+
+test("Copy RGB can be rebound or cleared, and its default yields to an existing editor override", () => {
+  const defaultKey = keyEvent("c", { ctrlKey: true, shiftKey: true });
+  const existingOverrides = { screenshotEditorSave: "Ctrl+Shift+C" };
+  assert.equal(effectiveWorkspaceShortcutBindings(existingOverrides).get("screenshotEditorCopyRgb"), null);
+  assert.equal(workspaceShortcutFromKeyboardEvent(defaultKey, existingOverrides, "screenshotEditor"), "screenshotEditorSave");
+  assert.equal(workspaceShortcutFromKeyboardEvent(
+    keyEvent("r", { ctrlKey: true, shiftKey: true }),
+    { ...existingOverrides, screenshotEditorCopyRgb: "Ctrl+Shift+R" },
+    "screenshotEditor",
+  ), "screenshotEditorCopyRgb");
+  assert.equal(workspaceShortcutFromKeyboardEvent(
+    defaultKey,
+    { screenshotEditorCopyRgb: null },
+    "screenshotEditor",
+  ), null);
 });
 
 test("overrides rebind and unbind actions", () => {
@@ -230,8 +250,12 @@ test("conflict detection is isolated to the recording action's namespace", () =>
   // The editor's Ctrl+C default must not block reusing Ctrl+C for a workspace or
   // terminal action, and vice versa — they live in separate namespaces.
   assert.equal(conflictingWorkspaceShortcutAction("Ctrl+C", {}, "newTab"), null);
-  assert.equal(conflictingWorkspaceShortcutAction("Ctrl+Shift+C", {}, "screenshotEditorCopy"), null);
+  assert.equal(conflictingWorkspaceShortcutAction("Ctrl+Shift+C", {}, "screenshotEditorCopyRgb"), null);
   // Within the editor namespace, a real collision is still reported.
+  assert.equal(
+    conflictingWorkspaceShortcutAction("Ctrl+Shift+C", {}, "screenshotEditorCopy")?.id,
+    "screenshotEditorCopyRgb",
+  );
   assert.equal(
     conflictingWorkspaceShortcutAction("Ctrl+S", {}, "screenshotEditorCopy")?.id,
     "screenshotEditorSave",

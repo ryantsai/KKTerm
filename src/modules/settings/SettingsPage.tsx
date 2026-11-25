@@ -558,7 +558,7 @@ function SettingsNavIcon({ item }: { item: SettingsNavItem }) {
 
 function findSettingsSearchTextTarget(root: HTMLElement, label: string) {
   const candidates = root.querySelectorAll<HTMLElement>(
-    "legend, label, button, option, h2, h3, strong, small, p, [aria-label]",
+    "legend, label, button, option, h2, h3, strong, small, p, .shortcut-row-label, [aria-label]",
   );
   let bestTarget: HTMLElement | null = null;
   let bestScore = 0;

@@ -148,6 +148,7 @@ test("Settings result clicks resolve, scroll, and highlight the detail target", 
 
   assert.match(pageSource, /data-settings-section-id=\{sectionId\}/);
   assert.match(pageSource, /findSettingsSearchTextTarget\(panel, pendingSearchTarget\.label\)/);
+  assert.match(pageSource, /querySelectorAll<HTMLElement>\(\s*"[^"]*\.shortcut-row-label/);
   assert.match(pageSource, /highlightTarget\.scrollIntoView\(/);
   assert.match(pageSource, /classList\.add\("settings-search-target-highlight"\)/);
   assert.match(styleSource, /\.settings-search-target-highlight\s*\{[^}]*outline:[^}]*var\(--accent\)/s);
