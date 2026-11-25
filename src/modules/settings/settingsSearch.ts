@@ -273,7 +273,7 @@ export const SETTINGS_SEARCH_KEYS: Record<SettingsSectionId, readonly string[]> 
     "settings.shortcutsHint", "settings.sectionScreenshots", "settings.screenshotsShortcuts",
     "screenshots.captureRegion", "screenshots.captureWindow", "screenshots.captureFullscreen",
     "settings.screenshotsEditorShortcuts", "screenshots.menu.copy", "common.save",
-    "screenshots.editor.saveAs",
+    "screenshots.editor.saveAs", "screenshots.editor.copyCursorColor",
   ],
   "proxy-settings": [
     "settings.proxyMode", "settings.proxyModeSystem", "settings.proxyModeNone",

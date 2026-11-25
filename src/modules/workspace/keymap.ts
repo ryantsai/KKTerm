@@ -7,8 +7,7 @@
 // null value means "explicitly unbound"; actions absent from the map keep
 // their default. Workspace and terminal defaults use Ctrl+Shift combinations
 // (or Ctrl with keys no shell interprets) so terminal Sessions never lose plain
-// Ctrl+letter input; the Screenshots editor is a modal dialog, so its defaults
-// use the conventional Ctrl+C / Ctrl+S / Ctrl+Shift+S.
+// Ctrl+letter input. The modal Screenshots editor has its own shortcut scope.
 //
 // Scopes: "workspace" actions are handled by a window-level capture listener
 // while the Workspace Module is active; "terminal" actions are handled inside
@@ -45,7 +44,8 @@ export type WorkspaceShortcutActionId =
   | "remoteFullscreen"
   | "screenshotEditorCopy"
   | "screenshotEditorSave"
-  | "screenshotEditorSaveAs";
+  | "screenshotEditorSaveAs"
+  | "screenshotEditorCopyRgb";
 
 export type WorkspaceShortcutOverrides = Record<string, string | null>;
 
@@ -94,6 +94,7 @@ export const WORKSPACE_SHORTCUT_ACTIONS: readonly WorkspaceShortcutAction[] = [
   { id: "screenshotEditorCopy", scope: "screenshotEditor", labelKey: "screenshots.menu.copy", defaultBinding: "Ctrl+C" },
   { id: "screenshotEditorSave", scope: "screenshotEditor", labelKey: "common.save", defaultBinding: "Ctrl+S" },
   { id: "screenshotEditorSaveAs", scope: "screenshotEditor", labelKey: "screenshots.editor.saveAs", defaultBinding: "Ctrl+Shift+S" },
+  { id: "screenshotEditorCopyRgb", scope: "screenshotEditor", labelKey: "screenshots.editor.copyCursorColor", defaultBinding: "Ctrl+Shift+C" },
 ];
 
 const FIXED_TERMINAL_SHORTCUT_ALIASES: ReadonlyArray<{
@@ -218,12 +219,16 @@ export function effectiveWorkspaceShortcutBindings(
   const bindings = new Map<WorkspaceShortcutActionId, string | null>();
   for (const action of WORKSPACE_SHORTCUT_ACTIONS) {
     const override = overrides?.[action.id];
-    bindings.set(
-      action.id,
-      override !== undefined && !workspaceShortcutIsFixed(action, platform)
-        ? override
-        : defaultWorkspaceShortcutBinding(action, platform),
+    if (override !== undefined && !workspaceShortcutIsFixed(action, platform)) {
+      bindings.set(action.id, override);
+      continue;
+    }
+    const defaultBinding = defaultWorkspaceShortcutBinding(action, platform);
+    // An existing editor shortcut can already be using the new Copy RGB default.
+    const defaultInUse = action.id === "screenshotEditorCopyRgb" && WORKSPACE_SHORTCUT_ACTIONS.some(
+      (other) => other.scope === action.scope && overrides?.[other.id] === defaultBinding,
     );
+    bindings.set(action.id, defaultInUse ? null : defaultBinding);
   }
   return bindings;
 }

@@ -1469,6 +1469,17 @@ export function ScreenshotEditor({
       return;
     }
     const canvas = event.currentTarget;
+    const position = { x: event.clientX, y: event.clientY };
+    const pixel = trackCursor(event);
+    const copyRgbItems: NativeContextMenuItem[] = pixel ? [
+      {
+        kind: "item",
+        label: t("screenshots.editor.copyCursorColor"),
+        iconSvg: nativeMenuIcons.copy,
+        action: () => void copyPixelColor(pixel),
+      },
+      { kind: "separator" },
+    ] : [];
     const context = tool === "select" ? canvas.getContext("2d") : null;
     const hit = context
       ? hitTest(
@@ -1479,7 +1490,7 @@ export function ScreenshotEditor({
       )
       : null;
     if (!hit) {
-      void showNativeContextMenu(editorMenuItems(), { x: event.clientX, y: event.clientY });
+      void showNativeContextMenu([...copyRgbItems, ...editorMenuItems()], position);
       return;
     }
     setSelectedId(hit.id);
@@ -1499,7 +1510,7 @@ export function ScreenshotEditor({
           },
           { kind: "item", label: t("common.delete"), iconSvg: nativeMenuIcons.trash, action: () => deleteAnnotation(hit.id) },
         ];
-    void showNativeContextMenu(items, { x: event.clientX, y: event.clientY });
+    void showNativeContextMenu([...copyRgbItems, ...items], position);
   }
 
   function stepZoom(direction: -1 | 1) {
@@ -1575,9 +1586,9 @@ export function ScreenshotEditor({
 
   // The footer readout reports image pixels, not on-screen pixels, so the
   // coordinate stays at its 1x position when the view is zoomed in or out.
-  function trackCursor(event: ReactPointerEvent<HTMLCanvasElement>) {
+  function trackCursor(event: ReactMouseEvent<HTMLCanvasElement>) {
     if (!ready || saving) {
-      return;
+      return null;
     }
     const canvas = event.currentTarget;
     const rect = canvas.getBoundingClientRect();
@@ -1598,6 +1609,7 @@ export function ScreenshotEditor({
       current && pixel && current.red === pixel.red && current.green === pixel.green
         && current.blue === pixel.blue && current.alpha === pixel.alpha ? current : pixel
     ));
+    return pixel;
   }
 
   function pointerMove(event: ReactPointerEvent<HTMLCanvasElement>) {
@@ -1915,16 +1927,76 @@ export function ScreenshotEditor({
     }
   }
 
-  async function copyCursorColor() {
-    if (!cursorColor) {
-      return;
-    }
+  async function copyPixelColor(pixel: PixelColor) {
     try {
-      await writeToClipboard(`${cursorColor.red}, ${cursorColor.green}, ${cursorColor.blue}`);
+      await writeToClipboard(`${pixel.red}, ${pixel.green}, ${pixel.blue}`);
       showStatusBarNotice(t("screenshots.editor.cursorColorCopied"), { tone: "success" });
       workspaceRef.current?.focus();
     } catch (error) {
       onError(error);
+    }
+  }
+
+  function editorKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const target = event.target;
+    if (event.defaultPrevented || !(target instanceof Node) || !event.currentTarget.contains(target)) {
+      return;
+    }
+    const inWorkspace = workspaceRef.current?.contains(target);
+    if (inWorkspace && event.key === "Escape" && !saving) {
+      event.preventDefault();
+      requestClose();
+      return;
+    }
+    if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) {
+      return;
+    }
+    const shortcutAction = workspaceShortcutFromKeyboardEvent(
+      event.nativeEvent,
+      shortcutOverrides,
+      "screenshotEditor",
+    );
+    if (shortcutAction === "screenshotEditorCopyRgb") {
+      event.preventDefault();
+      if (cursorColor && ready && !saving) {
+        void copyPixelColor(cursorColor);
+      }
+      return;
+    }
+    if (!inWorkspace) {
+      return;
+    }
+    if (shortcutAction === "screenshotEditorCopy") {
+      event.preventDefault();
+      copyEditedImage();
+      return;
+    }
+    if (shortcutAction === "screenshotEditorSave") {
+      event.preventDefault();
+      void save();
+      return;
+    }
+    if (shortcutAction === "screenshotEditorSaveAs") {
+      event.preventDefault();
+      void saveAs();
+      return;
+    }
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+      event.preventDefault();
+      undo();
+    } else if (
+      (event.key === "Delete" || event.key === "Backspace")
+      && selectedId !== null
+      && tool === "select"
+    ) {
+      event.preventDefault();
+      deleteAnnotation(selectedId);
+    } else if (event.key === "ArrowLeft" && hasPrevious) {
+      event.preventDefault();
+      requestNavigation(-1);
+    } else if (event.key === "ArrowRight" && hasNext) {
+      event.preventDefault();
+      requestNavigation(1);
     }
   }
 
@@ -2146,6 +2218,7 @@ export function ScreenshotEditor({
         ariaLabel={screenshot.fileName}
         closeAriaLabel={t("common.close")}
         onClose={requestClose}
+        onKeyDown={editorKeyDown}
         footer={
           <Actions
             extraLeft={
@@ -2163,7 +2236,7 @@ export function ScreenshotEditor({
                         type="button"
                         data-tutorial-id="screenshots.editor.cursorColor"
                         title={t("screenshots.editor.copyCursorColor")}
-                        onClick={() => void copyCursorColor()}
+                        onClick={() => void copyPixelColor(cursorColor)}
                       >
                         <span className="screenshots-editor__pixel-swatch" aria-hidden="true">
                           <span style={{ backgroundColor: `rgba(${cursorColor.red}, ${cursorColor.green}, ${cursorColor.blue}, ${cursorColor.alpha / 255})` }} />
@@ -2189,56 +2262,6 @@ export function ScreenshotEditor({
           ref={workspaceRef}
           className="screenshots-editor__workspace"
           tabIndex={-1}
-          onKeyDown={(event) => {
-            const editingText = event.target instanceof HTMLInputElement
-              || event.target instanceof HTMLTextAreaElement
-              || event.target instanceof HTMLSelectElement;
-            if (event.key === "Escape" && !saving) {
-              event.preventDefault();
-              requestClose();
-              return;
-            }
-            if (editingText) {
-              return;
-            }
-            const shortcutAction = workspaceShortcutFromKeyboardEvent(
-              event.nativeEvent,
-              shortcutOverrides,
-              "screenshotEditor",
-            );
-            if (shortcutAction === "screenshotEditorCopy") {
-              event.preventDefault();
-              copyEditedImage();
-              return;
-            }
-            if (shortcutAction === "screenshotEditorSave") {
-              event.preventDefault();
-              void save();
-              return;
-            }
-            if (shortcutAction === "screenshotEditorSaveAs") {
-              event.preventDefault();
-              void saveAs();
-              return;
-            }
-            if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
-              event.preventDefault();
-              undo();
-            } else if (
-              (event.key === "Delete" || event.key === "Backspace")
-              && selectedId !== null
-              && tool === "select"
-            ) {
-              event.preventDefault();
-              deleteAnnotation(selectedId);
-            } else if (event.key === "ArrowLeft" && hasPrevious) {
-              event.preventDefault();
-              requestNavigation(-1);
-            } else if (event.key === "ArrowRight" && hasNext) {
-              event.preventDefault();
-              requestNavigation(1);
-            }
-          }}
         >
           <div className="screenshots-editor__toolbar" role="toolbar">
             <div className="screenshots-editor__nav-group">
